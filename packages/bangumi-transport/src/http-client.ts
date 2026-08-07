@@ -34,7 +34,7 @@ export class HttpClient {
   constructor(config: HttpClientConfig = {}) {
     this.baseUrl = config.baseUrl || 'https://api.bgm.tv';
     this.userAgent =
-      config.userAgent || 'Kurarion/bangumi-agent-kit/0.1.0 (https://github.com/BangumiAgentKit)';
+      config.userAgent || 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)';
     this.accessToken = config.accessToken;
     this.timeoutMs = config.timeoutMs ?? 10000;
     this.cache = config.cache || new MemoryCache();

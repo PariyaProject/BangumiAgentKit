@@ -6,14 +6,14 @@ const UPSTREAM_URL = 'https://raw.githubusercontent.com/bangumi/api/master/open-
 const TARGET_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
 
 async function syncOpenApi() {
-  console.log(`[sync-openapi] Target path: ${TARGET_PATH}`);
+  const args = process.argv.slice(2);
+  const isFetch = args.includes('--fetch');
+  console.log(`[sync-openapi] Target path: ${TARGET_PATH} (mode: ${isFetch ? 'fetch' : 'validate'})`);
+
   let content: string;
 
-  if (fs.existsSync(TARGET_PATH)) {
-    console.log('[sync-openapi] Found local v0.yaml spec');
-    content = fs.readFileSync(TARGET_PATH, 'utf-8');
-  } else {
-    console.log(`[sync-openapi] Fetching v0.yaml from ${UPSTREAM_URL}...`);
+  if (isFetch) {
+    console.log(`[sync-openapi] Fetching v0.yaml from upstream ${UPSTREAM_URL}...`);
     const res = await fetch(UPSTREAM_URL);
     if (!res.ok) {
       throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`);
@@ -21,7 +21,13 @@ async function syncOpenApi() {
     content = await res.text();
     fs.mkdirSync(path.dirname(TARGET_PATH), { recursive: true });
     fs.writeFileSync(TARGET_PATH, content, 'utf-8');
-    console.log('[sync-openapi] Downloaded and saved v0.yaml');
+    console.log('[sync-openapi] Successfully updated pinned v0.yaml from upstream');
+  } else {
+    if (!fs.existsSync(TARGET_PATH)) {
+      throw new Error(`Pinned spec file missing at ${TARGET_PATH}. Run openapi:fetch first.`);
+    }
+    console.log('[sync-openapi] Validating pinned local v0.yaml spec');
+    content = fs.readFileSync(TARGET_PATH, 'utf-8');
   }
 
   // Parse YAML to validate

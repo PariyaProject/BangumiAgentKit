@@ -57,7 +57,7 @@ export class OAuthService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'BangumiAgentKit/0.1.0',
+        'User-Agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',

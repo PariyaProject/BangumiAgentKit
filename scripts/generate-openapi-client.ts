@@ -29,132 +29,34 @@ function generateClient() {
 
   code.push(`// Auto-generated Bangumi OpenAPI Client & Types. DO NOT EDIT MANUALLY.`);
   code.push(`// Spec version: Bangumi OpenAPI v0\n`);
-  code.push(`import { HttpClient, HttpClientConfig } from '@bangumi-agent-kit/bangumi-transport';\n`);
+  code.push(`import { HttpClient, HttpClientConfig } from '@bangumi-agent-kit/bangumi-transport';`);
+  code.push(`import type { components, operations, paths } from './schema.js';\n`);
 
-  // Basic types and Enums
-  code.push(`export type SubjectType = 1 | 2 | 3 | 4 | 6; // 1: book, 2: anime, 3: music, 4: game, 6: real`);
-  code.push(`export type CollectionStatus = 'wish' | 'collect' | 'do' | 'on_hold' | 'dropped';`);
-  code.push(`export type EpisodeType = 0 | 1 | 2 | 3 | 4 | 5; // 0: main, 1: SP, 2: OP, 3: ED, etc.`);
+  code.push(`export type { components, operations, paths };\n`);
 
-  code.push(`
-export interface Subject {
-  id: number;
-  type: SubjectType;
-  name: string;
-  name_cn: string;
-  summary: string;
-  nsfw: boolean;
-  locked: boolean;
-  date?: string;
-  platform?: string;
-  images?: {
-    large?: string;
-    common?: string;
-    medium?: string;
-    small?: string;
-    grid?: string;
-  };
-  rating?: {
-    total: number;
-    count: Record<string, number>;
-    score: number;
-    rank: number;
-  };
-  collection?: {
-    wish: number;
-    collect: number;
-    doing: number;
-    on_hold: number;
-    dropped: number;
-  };
-  eps?: number;
-  total_episodes?: number;
-}
+  code.push(`// Helper types to extract operation parameters and responses safely`);
+  code.push(`export type OperationQuery<K extends keyof operations> = operations[K] extends { parameters: { query?: infer Q } } ? Q : Record<string, unknown>;`);
+  code.push(`export type OperationBody<K extends keyof operations> = operations[K] extends { requestBody: { content: { 'application/json': infer B } } } ? B : (operations[K] extends { requestBody?: { content: { 'application/json': infer B } } } ? B : any);`);
+  code.push(`export type OperationResponse<K extends keyof operations> = operations[K] extends { responses: { 200: { content: { 'application/json': infer R } } } } ? R : (operations[K] extends { responses: { 201: { content: { 'application/json': infer R } } } } ? R : (operations[K] extends { responses: { 302: any } } ? { location: string } : (operations[K] extends { responses: { 204: any } } ? Record<string, never> : any)));\n`);
 
-export interface PagedResult<T> {
-  total: number;
-  limit: number;
-  offset: number;
-  data: T[];
-}
+  code.push(`// Re-exported DTO types derived strictly from OpenAPI components schema`);
+  code.push(`export type Subject = components['schemas']['Subject'];`);
+  code.push(`export type SubjectType = components['schemas']['SubjectType'];`);
+  code.push(`export type SubjectCategory = components['schemas']['SubjectCategory'];`);
+  code.push(`export type Character = components['schemas']['Character'];`);
+  code.push(`export type Person = components['schemas']['Person'];`);
+  code.push(`export type User = components['schemas']['User'];`);
+  code.push(`export type Episode = components['schemas']['Episode'];`);
+  code.push(`export type EpisodeType = components['schemas']['Episode']['type'];`);
+  code.push(`export type UserSubjectCollection = components['schemas']['UserSubjectCollection'];`);
+  code.push(`export type Index = components['schemas']['Index'];`);
+  code.push(`export type Revision = components['schemas']['Revision'];`);
+  code.push(`export type PagedSubject = components['schemas']['Paged_Subject'];`);
+  code.push(`export type PagedCharacter = components['schemas']['Paged_Character'];`);
+  code.push(`export type PagedPerson = components['schemas']['Paged_Person'];`);
+  code.push(`export type PagedEpisode = components['schemas']['Paged_Episode'];`);
+  code.push(`\n`);
 
-export interface Character {
-  id: number;
-  name: string;
-  role_name?: string;
-  type: number;
-  summary: string;
-  images?: Record<string, string>;
-  comment?: number;
-  collects?: number;
-}
-
-export interface Person {
-  id: number;
-  name: string;
-  type: number;
-  career: string[];
-  summary: string;
-  images?: Record<string, string>;
-}
-
-export interface User {
-  id: number;
-  username: string;
-  nickname: string;
-  user_group: number;
-  avatar?: Record<string, string>;
-  sign?: string;
-}
-
-export interface Episode {
-  id: number;
-  type: EpisodeType;
-  name: string;
-  name_cn: string;
-  sort: number;
-  ep?: number;
-  airdate?: string;
-  comment?: number;
-  duration?: string;
-  desc?: string;
-  disc?: number;
-}
-
-export interface Collection {
-  subject_id: number;
-  rate?: number;
-  type: number;
-  comment?: string;
-  tags?: string[];
-  ep_status?: number;
-  vol_status?: number;
-  updated_at?: string;
-  private?: boolean;
-}
-
-export interface Index {
-  id: number;
-  title: string;
-  desc: string;
-  total: number;
-  stat: {
-    collects: number;
-    comment: number;
-  };
-  created_at: string;
-}
-
-export interface Revision {
-  id: number;
-  type: number;
-  summary: string;
-  created_at: string;
-  data?: any;
-}
-`);
-
-  // Generate OpenAPI Client Methods
   code.push(`export class GeneratedBangumiOpenApiClient {
   private transport: HttpClient;
 
@@ -167,7 +69,6 @@ export interface Revision {
   }
 `);
 
-  // Method signatures for all 55 v0 operations
   for (const [apiPath, pathItem] of Object.entries(spec.paths as Record<string, any>)) {
     for (const m of ['get', 'post', 'put', 'patch', 'delete']) {
       const op = pathItem[m];
@@ -176,12 +77,7 @@ export interface Revision {
         const opId = op.operationId;
         const summary = op.summary || opId;
 
-        // Resolve parameters (path + operation levels)
-        const rawParams = [
-          ...(pathItem.parameters || []),
-          ...(op.parameters || []),
-        ];
-
+        const rawParams = [...(pathItem.parameters || []), ...(op.parameters || [])];
         const resolvedParamsMap = new Map<string, any>();
         for (const p of rawParams) {
           const resP = resolveRef(spec, p);
@@ -189,10 +85,8 @@ export interface Revision {
             resolvedParamsMap.set(`${resP.in}:${resP.name}`, resP);
           }
         }
-
         const resolvedParams = Array.from(resolvedParamsMap.values());
 
-        // Extract path param names in path order
         const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g)).map((match) => match[1]);
         const pathParamNames: string[] = [];
         for (const pName of pathMatches) {
@@ -206,38 +100,62 @@ export interface Revision {
           }
         }
 
-        const hasQueryParams = resolvedParams.some((p) => p.in === 'query');
+        const queryParams = resolvedParams.filter((p) => p.in === 'query');
+        const hasQueryParams = queryParams.length > 0;
+        const queryRequired = queryParams.some((p) => Boolean(p.required));
+
         const hasBody = !!op.requestBody;
+        const resBody = hasBody ? resolveRef(spec, op.requestBody) : null;
+        const bodyRequired = Boolean(resBody?.required);
 
         const argsList: string[] = [];
         for (const pName of pathParamNames) {
           argsList.push(`${pName}: string | number`);
         }
-        if (hasQueryParams) {
-          argsList.push(`query?: Record<string, unknown>`);
-        }
-        if (hasBody) {
-          argsList.push(`body?: unknown`);
+
+        if (hasQueryParams && hasBody) {
+          if (queryRequired) {
+            argsList.push(`query: OperationQuery<'${opId}'>`);
+          } else {
+            argsList.push(`query: OperationQuery<'${opId}'> | undefined`);
+          }
+
+          if (bodyRequired) {
+            argsList.push(`body: OperationBody<'${opId}'>`);
+          } else {
+            argsList.push(`body?: OperationBody<'${opId}'>`);
+          }
+        } else if (hasQueryParams) {
+          if (queryRequired) {
+            argsList.push(`query: OperationQuery<'${opId}'>`);
+          } else {
+            argsList.push(`query?: OperationQuery<'${opId}'>`);
+          }
+        } else if (hasBody) {
+          if (bodyRequired) {
+            argsList.push(`body: OperationBody<'${opId}'>`);
+          } else {
+            argsList.push(`body?: OperationBody<'${opId}'>`);
+          }
         }
 
         const argsStr = argsList.join(', ');
 
-        // Construct path template expression with encodeURIComponent
         let pathExpr = `\`${apiPath}\``;
         for (const pName of pathParamNames) {
           pathExpr = pathExpr.replace(`{${pName}}`, `\${encodeURIComponent(String(${pName}))}`);
         }
 
         code.push(`  /** ${summary} (${method} ${apiPath}) */`);
-        code.push(`  async ${opId}(${argsStr}): Promise<any> {`);
-        code.push(`    return this.transport.request<any>({`);
+        code.push(`  async ${opId}(${argsStr}): Promise<OperationResponse<'${opId}'>> {`);
+        code.push(`    return this.transport.request<OperationResponse<'${opId}'>>({`);
         code.push(`      method: '${method}',`);
         code.push(`      path: ${pathExpr},`);
         if (hasQueryParams) {
-          code.push(`      query,`);
+          code.push(`      query: query as Record<string, unknown> | undefined,`);
         }
         if (hasBody) {
-          code.push(`      body,`);
+          code.push(`      body: body as unknown,`);
         }
         code.push(`    });`);
         code.push(`  }\n`);

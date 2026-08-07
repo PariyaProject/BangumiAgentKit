@@ -74,31 +74,49 @@ export function createRawOperationTools(httpClient: HttpClient) {
         throw new Error(`Operation "${input.operationId}" requires OAuth authentication. Please bind account first.`);
       }
 
-      // Check if client has method for operationId
+      const pathParamsMap = input.pathParams || {};
+      const pathArgs: (string | number)[] = [];
+
+      // Validate and extract path parameters strictly in metadata order
+      for (const paramName of meta.pathParameters) {
+        const val = pathParamsMap[paramName];
+        if (val === undefined || val === null || val === '') {
+          throw new Error(`MISSING_PATH_PARAMETER: Operation "${input.operationId}" requires path parameter "${paramName}"`);
+        }
+        pathArgs.push(val);
+      }
+
+      // Check client function signature
       const clientFn = (openApiClient as any)[input.operationId];
       if (typeof clientFn === 'function') {
-        // Collect arguments matching operation signature
-        const args: any[] = [];
-        if (input.pathParams) {
-          for (const val of Object.values(input.pathParams)) {
-            args.push(val);
-          }
-        }
-        if (input.queryParams) {
+        const args: any[] = [...pathArgs];
+        const hasQueryMeta = Boolean(meta.queryParameters && meta.queryParameters.length > 0);
+        const hasBodyMeta = Boolean(meta.requestBody);
+
+        if (hasQueryMeta && hasBodyMeta) {
           args.push(input.queryParams);
-        }
-        if (input.body) {
+          args.push(input.body);
+        } else if (hasQueryMeta) {
+          args.push(input.queryParams);
+        } else if (hasBodyMeta) {
           args.push(input.body);
         }
+
         return await clientFn.apply(openApiClient, args);
       }
 
-      // Generic fallback request via httpClient
+      // Generic fallback request via httpClient with path encoding and missing placeholder check
       let resolvedPath = meta.path;
-      if (input.pathParams) {
-        for (const [k, v] of Object.entries(input.pathParams)) {
-          resolvedPath = resolvedPath.replace(`{${k}}`, String(v));
+      for (const paramName of meta.pathParameters) {
+        const val = pathParamsMap[paramName];
+        if (val === undefined || val === null || val === '') {
+          throw new Error(`MISSING_PATH_PARAMETER: Operation "${input.operationId}" requires path parameter "${paramName}"`);
         }
+        resolvedPath = resolvedPath.replace(`{${paramName}}`, encodeURIComponent(String(val)));
+      }
+
+      if (/\{[^}]+\}/.test(resolvedPath)) {
+        throw new Error(`MISSING_PATH_PARAMETER: Unresolved path placeholders in "${resolvedPath}"`);
       }
 
       return await httpClient.request({

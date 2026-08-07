@@ -5,11 +5,23 @@ import * as YAML from 'yaml';
 export type OperationRisk = 'read' | 'write' | 'destructive';
 export type AuthRequirement = 'none' | 'optional' | 'required';
 
+export interface QueryParamMeta {
+  name: string;
+  required: boolean;
+}
+
+export interface RequestBodyMeta {
+  required: boolean;
+}
+
 export interface OperationMeta {
   operationId: string;
   tag: string;
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
+  pathParameters: string[];
+  queryParameters?: QueryParamMeta[];
+  requestBody?: RequestBodyMeta;
   auth: AuthRequirement;
   scopes: string[];
   risk: OperationRisk;
@@ -20,6 +32,18 @@ const SPEC_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
 const OVERRIDES_PATH = path.join(__dirname, '..', 'openapi', 'operation-overrides.yaml');
 const REGISTRY_JSON_PATH = path.join(__dirname, '..', 'openapi', 'generated-operation-registry.json');
 const REGISTRY_TS_PATH = path.join(__dirname, '..', 'packages', 'bangumi-openapi', 'src', 'operation-registry.ts');
+
+function resolveRef(spec: any, item: any): any {
+  if (item && typeof item === 'object' && typeof item.$ref === 'string') {
+    const refPath = item.$ref.replace(/^#\//, '').split('/');
+    let current = spec;
+    for (const segment of refPath) {
+      current = current?.[segment];
+    }
+    return resolveRef(spec, current);
+  }
+  return item;
+}
 
 function loadOverrides(): Record<string, { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }> {
   if (fs.existsSync(OVERRIDES_PATH)) {
@@ -57,7 +81,9 @@ function extractSecurityMeta(op: any): { auth: AuthRequirement; scopes: string[]
 }
 
 function getOperationMeta(
+  spec: any,
   op: any,
+  pathItem: any,
   tag: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   apiPath: string,
@@ -82,11 +108,46 @@ function getOperationMeta(
     risk = 'write';
   }
 
+  // Extract path parameter names in order of appearance in path template
+  const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g)).map((m) => m[1]);
+  const pathParameters: string[] = [];
+  for (const name of pathMatches) {
+    if (!pathParameters.includes(name)) {
+      pathParameters.push(name);
+    }
+  }
+
+  // Extract query parameters
+  const rawParams = [...(pathItem.parameters || []), ...(op.parameters || [])];
+  const queryMap = new Map<string, boolean>();
+  for (const rawP of rawParams) {
+    const resP = resolveRef(spec, rawP);
+    if (resP && resP.in === 'query' && resP.name) {
+      queryMap.set(resP.name, Boolean(resP.required));
+    }
+  }
+  const queryParameters: QueryParamMeta[] = Array.from(queryMap.entries()).map(([name, required]) => ({
+    name,
+    required,
+  }));
+
+  // Extract request body meta
+  let requestBody: RequestBodyMeta | undefined;
+  if (op.requestBody) {
+    const resBody = resolveRef(spec, op.requestBody);
+    requestBody = {
+      required: Boolean(resBody?.required),
+    };
+  }
+
   return {
     operationId: opId,
     tag,
     method,
     path: apiPath,
+    pathParameters,
+    ...(queryParameters.length > 0 ? { queryParameters } : {}),
+    ...(requestBody ? { requestBody } : {}),
     auth,
     scopes,
     risk,
@@ -109,7 +170,7 @@ function generateRegistry() {
         const method = m.toUpperCase() as OperationMeta['method'];
         const tag = op.tags?.[0] || '通用';
         const summary = op.summary || op.description?.split('\n')[0] || op.operationId;
-        const meta = getOperationMeta(op, tag, method, apiPath, summary, overrides);
+        const meta = getOperationMeta(spec, op, pathItem, tag, method, apiPath, summary, overrides);
         registry[op.operationId] = meta;
       }
     }
@@ -121,6 +182,7 @@ function generateRegistry() {
     tag: '每日放送',
     method: 'GET',
     path: '/calendar',
+    pathParameters: [],
     auth: 'none',
     scopes: [],
     risk: 'read',
@@ -144,11 +206,23 @@ function generateRegistry() {
 export type OperationRisk = 'read' | 'write' | 'destructive';
 export type AuthRequirement = 'none' | 'optional' | 'required';
 
+export interface QueryParamMeta {
+  name: string;
+  required: boolean;
+}
+
+export interface RequestBodyMeta {
+  required: boolean;
+}
+
 export interface OperationMeta {
   operationId: string;
   tag: string;
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
+  pathParameters: string[];
+  queryParameters?: QueryParamMeta[];
+  requestBody?: RequestBodyMeta;
   auth: AuthRequirement;
   scopes: string[];
   risk: OperationRisk;

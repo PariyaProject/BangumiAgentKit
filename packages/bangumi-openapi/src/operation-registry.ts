@@ -3,11 +3,23 @@
 export type OperationRisk = 'read' | 'write' | 'destructive';
 export type AuthRequirement = 'none' | 'optional' | 'required';
 
+export interface QueryParamMeta {
+  name: string;
+  required: boolean;
+}
+
+export interface RequestBodyMeta {
+  required: boolean;
+}
+
 export interface OperationMeta {
   operationId: string;
   tag: string;
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
+  pathParameters: string[];
+  queryParameters?: QueryParamMeta[];
+  requestBody?: RequestBodyMeta;
   auth: AuthRequirement;
   scopes: string[];
   risk: OperationRisk;
@@ -20,6 +32,20 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "POST",
     "path": "/v0/search/subjects",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -30,6 +56,20 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "POST",
     "path": "/v0/search/characters",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -40,6 +80,20 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "POST",
     "path": "/v0/search/persons",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -50,6 +104,45 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "type",
+        "required": true
+      },
+      {
+        "name": "cat",
+        "required": false
+      },
+      {
+        "name": "series",
+        "required": false
+      },
+      {
+        "name": "platform",
+        "required": false
+      },
+      {
+        "name": "sort",
+        "required": false
+      },
+      {
+        "name": "year",
+        "required": false
+      },
+      {
+        "name": "month",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -60,6 +153,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}",
+    "pathParameters": [
+      "subject_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -70,6 +166,15 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/image",
+    "pathParameters": [
+      "subject_id"
+    ],
+    "queryParameters": [
+      {
+        "name": "type",
+        "required": true
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -80,6 +185,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/persons",
+    "pathParameters": [
+      "subject_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -90,6 +198,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/characters",
+    "pathParameters": [
+      "subject_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -100,6 +211,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/subjects",
+    "pathParameters": [
+      "subject_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -110,6 +224,25 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "章节",
     "method": "GET",
     "path": "/v0/episodes",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "subject_id",
+        "required": true
+      },
+      {
+        "name": "type",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -120,6 +253,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "章节",
     "method": "GET",
     "path": "/v0/episodes/{episode_id}",
+    "pathParameters": [
+      "episode_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -130,6 +266,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}",
+    "pathParameters": [
+      "character_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -140,6 +279,15 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/image",
+    "pathParameters": [
+      "character_id"
+    ],
+    "queryParameters": [
+      {
+        "name": "type",
+        "required": true
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -150,6 +298,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/subjects",
+    "pathParameters": [
+      "character_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -160,6 +311,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/persons",
+    "pathParameters": [
+      "character_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -170,6 +324,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "POST",
     "path": "/v0/characters/{character_id}/collect",
+    "pathParameters": [
+      "character_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -182,6 +339,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "DELETE",
     "path": "/v0/characters/{character_id}/collect",
+    "pathParameters": [
+      "character_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -194,6 +354,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}",
+    "pathParameters": [
+      "person_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -204,6 +367,15 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/image",
+    "pathParameters": [
+      "person_id"
+    ],
+    "queryParameters": [
+      {
+        "name": "type",
+        "required": true
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -214,6 +386,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/subjects",
+    "pathParameters": [
+      "person_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -224,6 +399,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/characters",
+    "pathParameters": [
+      "person_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -234,6 +412,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "POST",
     "path": "/v0/persons/{person_id}/collect",
+    "pathParameters": [
+      "person_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -246,6 +427,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "DELETE",
     "path": "/v0/persons/{person_id}/collect",
+    "pathParameters": [
+      "person_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -258,6 +442,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "用户",
     "method": "GET",
     "path": "/v0/users/{username}",
+    "pathParameters": [
+      "username"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -268,6 +455,15 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "用户",
     "method": "GET",
     "path": "/v0/users/{username}/avatar",
+    "pathParameters": [
+      "username"
+    ],
+    "queryParameters": [
+      {
+        "name": "type",
+        "required": true
+      }
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -278,6 +474,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "用户",
     "method": "GET",
     "path": "/v0/me",
+    "pathParameters": [],
     "auth": "required",
     "scopes": [],
     "risk": "read",
@@ -288,6 +485,27 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections",
+    "pathParameters": [
+      "username"
+    ],
+    "queryParameters": [
+      {
+        "name": "subject_type",
+        "required": false
+      },
+      {
+        "name": "type",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -298,6 +516,10 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/{subject_id}",
+    "pathParameters": [
+      "username",
+      "subject_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -308,6 +530,12 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "POST",
     "path": "/v0/users/-/collections/{subject_id}",
+    "pathParameters": [
+      "subject_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -320,6 +548,12 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "PATCH",
     "path": "/v0/users/-/collections/{subject_id}",
+    "pathParameters": [
+      "subject_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -332,6 +566,23 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/-/collections/{subject_id}/episodes",
+    "pathParameters": [
+      "subject_id"
+    ],
+    "queryParameters": [
+      {
+        "name": "offset",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "episode_type",
+        "required": false
+      }
+    ],
     "auth": "required",
     "scopes": [],
     "risk": "read",
@@ -342,6 +593,12 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "PATCH",
     "path": "/v0/users/-/collections/{subject_id}/episodes",
+    "pathParameters": [
+      "subject_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -354,6 +611,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/-/collections/-/episodes/{episode_id}",
+    "pathParameters": [
+      "episode_id"
+    ],
     "auth": "required",
     "scopes": [],
     "risk": "read",
@@ -364,6 +624,12 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "PUT",
     "path": "/v0/users/-/collections/-/episodes/{episode_id}",
+    "pathParameters": [
+      "episode_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -376,6 +642,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/characters",
+    "pathParameters": [
+      "username"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -386,6 +655,10 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/characters/{character_id}",
+    "pathParameters": [
+      "username",
+      "character_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -396,6 +669,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/persons",
+    "pathParameters": [
+      "username"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -406,6 +682,10 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/persons/{person_id}",
+    "pathParameters": [
+      "username",
+      "person_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -416,6 +696,21 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/persons",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "person_id",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -426,6 +721,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/persons/{revision_id}",
+    "pathParameters": [
+      "revision_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -436,6 +734,21 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/characters",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "character_id",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -446,6 +759,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/characters/{revision_id}",
+    "pathParameters": [
+      "revision_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -456,6 +772,21 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/subjects",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "subject_id",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -466,6 +797,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/subjects/{revision_id}",
+    "pathParameters": [
+      "revision_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -476,6 +810,21 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/episodes",
+    "pathParameters": [],
+    "queryParameters": [
+      {
+        "name": "episode_id",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -486,6 +835,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/episodes/{revision_id}",
+    "pathParameters": [
+      "revision_id"
+    ],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -496,6 +848,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "POST",
     "path": "/v0/indices",
+    "pathParameters": [],
     "auth": "required",
     "scopes": [
       "write:indices"
@@ -508,6 +861,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "GET",
     "path": "/v0/indices/{index_id}",
+    "pathParameters": [
+      "index_id"
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -518,6 +874,12 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "PUT",
     "path": "/v0/indices/{index_id}",
+    "pathParameters": [
+      "index_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:indices"
@@ -530,6 +892,23 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "GET",
     "path": "/v0/indices/{index_id}/subjects",
+    "pathParameters": [
+      "index_id"
+    ],
+    "queryParameters": [
+      {
+        "name": "type",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "required": false
+      },
+      {
+        "name": "offset",
+        "required": false
+      }
+    ],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -540,6 +919,12 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "POST",
     "path": "/v0/indices/{index_id}/subjects",
+    "pathParameters": [
+      "index_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:indices"
@@ -552,6 +937,13 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "PUT",
     "path": "/v0/indices/{index_id}/subjects/{subject_id}",
+    "pathParameters": [
+      "index_id",
+      "subject_id"
+    ],
+    "requestBody": {
+      "required": false
+    },
     "auth": "required",
     "scopes": [
       "write:indices"
@@ -564,6 +956,10 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "DELETE",
     "path": "/v0/indices/{index_id}/subjects/{subject_id}",
+    "pathParameters": [
+      "index_id",
+      "subject_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:indices"
@@ -576,6 +972,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "POST",
     "path": "/v0/indices/{index_id}/collect",
+    "pathParameters": [
+      "index_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -588,6 +987,9 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "目录",
     "method": "DELETE",
     "path": "/v0/indices/{index_id}/collect",
+    "pathParameters": [
+      "index_id"
+    ],
     "auth": "required",
     "scopes": [
       "write:collection"
@@ -600,6 +1002,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "每日放送",
     "method": "GET",
     "path": "/calendar",
+    "pathParameters": [],
     "auth": "none",
     "scopes": [],
     "risk": "read",
