@@ -244,11 +244,34 @@ export class PostgresStorage implements Storage {
       where: eq(schema.accessCredentials.bangumiAccountId, accountId),
     });
     if (!res) return null;
+
+    let encryptedAccessToken: unknown = res.encryptedAccessToken;
+    if (typeof res.encryptedAccessToken === 'string') {
+      try {
+        encryptedAccessToken = JSON.parse(res.encryptedAccessToken);
+      } catch {
+        encryptedAccessToken = res.encryptedAccessToken;
+      }
+    }
+
+    let encryptedRefreshToken: unknown = undefined;
+    if (res.encryptedRefreshToken) {
+      if (typeof res.encryptedRefreshToken === 'string') {
+        try {
+          encryptedRefreshToken = JSON.parse(res.encryptedRefreshToken);
+        } catch {
+          encryptedRefreshToken = res.encryptedRefreshToken;
+        }
+      } else {
+        encryptedRefreshToken = res.encryptedRefreshToken;
+      }
+    }
+
     return {
       id: res.id,
       bangumiAccountId: res.bangumiAccountId,
-      encryptedAccessToken: typeof res.encryptedAccessToken === 'string' ? JSON.parse(res.encryptedAccessToken) : (res.encryptedAccessToken as unknown),
-      encryptedRefreshToken: res.encryptedRefreshToken ? (typeof res.encryptedRefreshToken === 'string' ? JSON.parse(res.encryptedRefreshToken) : (res.encryptedRefreshToken as unknown)) : undefined,
+      encryptedAccessToken,
+      encryptedRefreshToken,
       expiresAt: res.expiresAt,
       requestedCapabilities: (res.requestedCapabilities as string[] | null) || [],
       reportedScopes: res.reportedScopes as string[] | null,
