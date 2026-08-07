@@ -1,0 +1,136 @@
+import { describe, it, expect } from 'vitest';
+import { MemoryStorage, PostgresStorage, Storage } from '@bangumi-agent-kit/db';
+
+function testStorageContract(name: string, createStorage: () => Promise<Storage | null>) {
+  describe(`Storage Contract: ${name}`, () => {
+    it('manages principal, binding, and credentials', async () => {
+      const storage = await createStorage();
+      if (!storage) return;
+
+      const principal = await storage.findOrCreatePrincipal({
+        provider: 'test-platform',
+        botInstanceId: 'bot-1',
+        externalUserId: 'user-100',
+        displayName: 'Test User',
+      });
+
+      expect(principal.id).toBeDefined();
+      expect(principal.provider).toBe('test-platform');
+
+      const foundPrincipal = await storage.getPrincipal(principal.id);
+      expect(foundPrincipal?.id).toBe(principal.id);
+
+      const account = await storage.upsertBangumiAccount({
+        id: 'bgm-1001',
+        username: 'spike',
+        nickname: 'Spike Spiegel',
+        avatarUrl: 'https://example.com/avatar.jpg',
+      });
+      expect(account.id).toBe('bgm-1001');
+
+      const binding = await storage.replaceActiveBinding(principal.id, account.id);
+      expect(binding.principalId).toBe(principal.id);
+      expect(binding.bangumiAccountId).toBe(account.id);
+      expect(binding.isActive).toBe(true);
+
+      const activeBinding = await storage.getActiveBinding(principal.id);
+      expect(activeBinding?.bangumiAccountId).toBe(account.id);
+
+      await storage.upsertCredential({
+        bangumiAccountId: account.id,
+        encryptedAccessToken: 'encrypted-access-token-bytes',
+        encryptedRefreshToken: 'encrypted-refresh-token-bytes',
+        expiresAt: new Date(Date.now() + 3600000),
+        keyVersion: 'v1',
+        updatedAt: new Date(),
+      });
+
+      const cred = await storage.getCredential(account.id);
+      expect(cred?.encryptedAccessToken).toBe('encrypted-access-token-bytes');
+
+      await storage.deactivateBindings(principal.id);
+      const deactivated = await storage.getActiveBinding(principal.id);
+      expect(deactivated).toBeNull();
+
+      await storage.deleteCredential(account.id);
+      const deletedCred = await storage.getCredential(account.id);
+      expect(deletedCred).toBeNull();
+
+      await storage.close();
+    });
+
+    it('handles oauth session lifecycle single-use state', async () => {
+      const storage = await createStorage();
+      if (!storage) return;
+
+      const session = {
+        stateHash: 'state-hash-abc-123',
+        principalId: 'p-1',
+        botInstanceId: 'bot-1',
+        conversationId: 'c-1',
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 600000),
+      };
+
+      await storage.createOAuthSession(session);
+
+      const consumed = await storage.consumeOAuthSession('state-hash-abc-123');
+      expect(consumed.principalId).toBe('p-1');
+
+      await expect(storage.consumeOAuthSession('state-hash-abc-123')).rejects.toThrow('OAUTH_STATE_REUSED');
+
+      await storage.close();
+    });
+
+    it('handles pending action state machine', async () => {
+      const storage = await createStorage();
+      if (!storage) return;
+
+      const now = new Date();
+      const action = {
+        id: 'conf-123',
+        confirmationId: 'conf-123',
+        principalId: 'p-1',
+        botInstanceId: 'b-1',
+        conversationKey: 'c-1',
+        actionType: 'manage_index_create',
+        summary: 'Create index',
+        payloadHash: 'hash-xyz',
+        payload: { title: 'New Index' },
+        status: 'pending' as const,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + 600000),
+      };
+
+      await storage.createPendingAction(action);
+
+      const claimed = await storage.claimPendingAction({
+        confirmationId: 'conf-123',
+        principalId: 'p-1',
+        botInstanceId: 'b-1',
+        conversationId: 'c-1',
+        payloadHash: 'hash-xyz',
+      });
+
+      expect(claimed.id).toBe('conf-123');
+      expect(claimed.status).toBe('executing');
+
+      await storage.markPendingActionSucceeded('conf-123');
+
+      await storage.close();
+    });
+  });
+}
+
+testStorageContract('MemoryStorage', async () => new MemoryStorage());
+
+testStorageContract('PostgresStorage', async () => {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return null;
+  try {
+    const storage = new PostgresStorage(dbUrl);
+    return storage;
+  } catch {
+    return null;
+  }
+});

@@ -1,67 +1,68 @@
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { DomainIndex } from '../models/domain-index.js';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+
+export interface CreateIndexResult {
+  id: number;
+  title: string;
+  desc: string;
+  partialSuccess?: boolean;
+  warning?: string;
+}
 
 export class IndexWriteService {
-  constructor(private client: HttpClient) {}
+  constructor(private client: GeneratedBangumiOpenApiClient) {}
 
-  async createIndex(title: string, desc: string, accessToken: string): Promise<DomainIndex> {
-    const raw = await this.client.request<any>({
-      method: 'POST',
-      path: '/v0/indices',
-      accessToken,
-      body: { title, desc },
-    });
+  async createIndex(title?: string, desc?: string): Promise<CreateIndexResult> {
+    const raw = await this.client.newIndex();
+    const indexId = raw.id;
+
+    if (title || desc) {
+      try {
+        await this.client.editIndexById(indexId, {
+          title: title || `目录 ${indexId}`,
+          desc: desc || '',
+        } as any);
+      } catch (err: unknown) {
+        return {
+          id: indexId,
+          title: `目录 ${indexId}`,
+          desc: '',
+          partialSuccess: true,
+          warning: `Index ${indexId} was created, but updating title/desc failed: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    }
 
     return {
-      id: raw.id,
-      title: raw.title || title,
-      desc: raw.desc || desc,
-      total: 0,
-      collects: 0,
-      comments: 0,
-      createdAt: raw.created_at || new Date().toISOString(),
+      id: indexId,
+      title: title || `目录 ${indexId}`,
+      desc: desc || '',
     };
   }
 
-  async editIndex(indexId: number, title: string, desc: string, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'PUT',
-      path: `/v0/indices/${indexId}`,
-      accessToken,
-      body: { title, desc },
-    });
+  async editIndex(indexId: number, title?: string, desc?: string): Promise<void> {
+    const body: Record<string, unknown> = {};
+    if (title !== undefined) body.title = title;
+    if (desc !== undefined) body.desc = desc;
+
+    await this.client.editIndexById(indexId, body as any);
   }
 
-  async addSubjectToIndex(indexId: number, subjectId: number, comment?: string, accessToken?: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'POST',
-      path: `/v0/indices/${indexId}/subjects`,
-      accessToken,
-      body: { subject_id: subjectId, comment },
-    });
+  async addSubjectToIndex(indexId: number, subjectId: number, comment?: string): Promise<void> {
+    await this.client.addSubjectToIndexByIndexId(indexId, {
+      subject_id: subjectId,
+      comment,
+    } as any);
   }
 
-  async removeSubjectFromIndex(indexId: number, subjectId: number, accessToken?: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'DELETE',
-      path: `/v0/indices/${indexId}/subjects/${subjectId}`,
-      accessToken,
-    });
+  async removeSubjectFromIndex(indexId: number, subjectId: number): Promise<void> {
+    await this.client.delelteSubjectFromIndexByIndexIdAndSubjectID(indexId, subjectId);
   }
 
-  async collectIndex(indexId: number, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'POST',
-      path: `/v0/indices/${indexId}/collect`,
-      accessToken,
-    });
+  async collectIndex(indexId: number): Promise<void> {
+    await this.client.collectIndexByIndexIdAndUserId(indexId);
   }
 
-  async uncollectIndex(indexId: number, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'DELETE',
-      path: `/v0/indices/${indexId}/collect`,
-      accessToken,
-    });
+  async uncollectIndex(indexId: number): Promise<void> {
+    await this.client.uncollectIndexByIndexIdAndUserId(indexId);
   }
 }

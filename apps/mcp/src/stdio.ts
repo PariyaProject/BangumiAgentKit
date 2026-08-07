@@ -1,4 +1,4 @@
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import { BangumiMcpServer } from './server.js';
 
 export async function startStdioServer() {
@@ -8,11 +8,4 @@ export async function startStdioServer() {
 
   await server.connect(transport);
   console.error('[bangumi-mcp] Stdio transport connected and running');
-}
-
-if (require.main === module) {
-  startStdioServer().catch((err) => {
-    console.error('[bangumi-mcp] Fatal Stdio error:', err);
-    process.exit(1);
-  });
 }

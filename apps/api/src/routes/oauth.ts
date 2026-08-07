@@ -1,29 +1,65 @@
 import { OAuthService } from '@bangumi-agent-kit/auth';
 
 export function handleOAuthCallbackRoute(oauthService: OAuthService) {
-  return async (code: string, state: string) => {
+  return async (code?: string, state?: string) => {
     if (!code || !state) {
       return {
-        ok: false,
-        error: 'Missing code or state query parameter',
+        statusCode: 400,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        body: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>绑定失败</title></head>
+<body style="font-family: sans-serif; text-align: center; padding: 40px;">
+  <h2 style="color: #e53e3e;">Bangumi 账号绑定失败</h2>
+  <p>缺少必要的 code 或 state 参数，请重新在聊天窗口发起绑定。</p>
+</body>
+</html>`,
       };
     }
 
     try {
       const authorized = await oauthService.handleCallback(code, state);
       return {
-        ok: true,
-        message: 'Bangumi 账号绑定成功！可以返回聊天终端使用 Bangumi 机器人。',
+        statusCode: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        body: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>绑定成功</title></head>
+<body style="font-family: sans-serif; text-align: center; padding: 40px;">
+  <h2 style="color: #38a169;">Bangumi 账号绑定成功！</h2>
+  <p>账号 <strong>${escapeHtml(authorized.nickname)}</strong> (@${escapeHtml(authorized.username)}) 已成功关联。</p>
+  <p>现在可以关闭此页面，返回聊天窗口使用 Bangumi 机器人。</p>
+</body>
+</html>`,
         user: {
           username: authorized.username,
           nickname: authorized.nickname,
         },
       };
     } catch (err: unknown) {
+      const safeMsg = err instanceof Error ? err.message : '认证回调处理失败';
       return {
-        ok: false,
-        error: err instanceof Error ? err.message : String(err),
+        statusCode: 400,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        body: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>绑定失败</title></head>
+<body style="font-family: sans-serif; text-align: center; padding: 40px;">
+  <h2 style="color: #e53e3e;">Bangumi 账号绑定失败</h2>
+  <p>${escapeHtml(safeMsg)}</p>
+  <p>请返回聊天窗口重新发起授权。</p>
+</body>
+</html>`,
       };
     }
   };
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

@@ -1,13 +1,15 @@
-import { DatabaseStore } from '@bangumi-agent-kit/db';
+import { Storage, BangumiAccountRecord } from '@bangumi-agent-kit/db';
 import { OAuthStateStore } from './state-store.js';
 import { encryptToken } from './token-crypto.js';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiOAuthClient } from './oauth-client.js';
 
 export interface OAuthConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
   secretKey: string;
+  keyVersion?: string;
   authorizeUrl?: string;
   tokenUrl?: string;
 }
@@ -21,17 +23,30 @@ export interface AuthorizedAccount {
 
 export class OAuthService {
   private stateStore: OAuthStateStore;
+  private oauthClient: BangumiOAuthClient;
 
   constructor(
-    private db: DatabaseStore,
+    private storage: Storage,
     private config: OAuthConfig,
-    private httpClient: HttpClient
+    private httpClient: HttpClient,
+    oauthClient?: BangumiOAuthClient
   ) {
-    this.stateStore = new OAuthStateStore(db);
+    this.stateStore = new OAuthStateStore(storage);
+    this.oauthClient = oauthClient || new BangumiOAuthClient();
   }
 
-  createAuthorizationUrl(principalId: string, scopes: string[] = ['write:collection']): { url: string; state: string } {
-    const { state } = this.stateStore.generateState(principalId, scopes);
+  async createAuthorizationUrl(
+    principalId: string,
+    botInstanceId?: string,
+    conversationId?: string,
+    requestedCapabilities: string[] = ['write:collection']
+  ): Promise<{ url: string; state: string; expiresAt: Date }> {
+    const { state, session } = await this.stateStore.generateState({
+      principalId,
+      botInstanceId,
+      conversationId,
+      requestedCapabilities,
+    });
     const authUrl = this.config.authorizeUrl || 'https://bgm.tv/oauth/authorize';
 
     const params = new URLSearchParams({
@@ -44,41 +59,22 @@ export class OAuthService {
     return {
       url: `${authUrl}?${params.toString()}`,
       state,
+      expiresAt: session.expiresAt,
     };
   }
 
   async handleCallback(code: string, state: string): Promise<AuthorizedAccount> {
-    // 1. Consume state safely
-    const session = this.stateStore.consumeState(state);
+    // 1. Consume state safely & atomically
+    const session = await this.stateStore.consumeState(state);
 
     // 2. Exchange code for access_token
-    const tokenUrl = this.config.tokenUrl || 'https://bgm.tv/oauth/access_token';
-    const tokenRes = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: this.config.clientId,
-        client_secret: this.config.clientSecret,
-        code,
-        redirect_uri: this.config.redirectUri,
-      }),
-    });
-
-    if (!tokenRes.ok) {
-      const errText = await tokenRes.text();
-      throw new Error(`OAuth token exchange failed [${tokenRes.status}]: ${errText}`);
-    }
-
-    const tokenData = (await tokenRes.json()) as {
-      access_token: string;
-      refresh_token?: string;
-      expires_in?: number;
-      user_id?: number;
-    };
+    const tokenData = await this.oauthClient.exchangeAuthorizationCode(
+      code,
+      this.config.clientId,
+      this.config.clientSecret,
+      this.config.redirectUri,
+      this.config.tokenUrl
+    );
 
     // 3. Verify user identity via /v0/me
     const meData = await this.httpClient.request<any>({
@@ -90,8 +86,8 @@ export class OAuthService {
     const accountId = `acc_${meData.id}`;
     const now = new Date();
 
-    // 4. Save Bangumi Account Record
-    const accountRecord = {
+    // 4. Upsert Bangumi Account Record
+    const accountRecord: BangumiAccountRecord = await this.storage.upsertBangumiAccount({
       id: accountId,
       bangumiUserId: meData.id,
       username: meData.username || String(meData.id),
@@ -99,16 +95,17 @@ export class OAuthService {
       avatarUrl: meData.avatar?.medium || meData.avatar?.large,
       createdAt: now,
       updatedAt: now,
-    };
-    this.db.bangumiAccounts.set(accountId, accountRecord);
+    });
 
     // 5. Encrypt Tokens and save AccessCredentialRecord
-    const encryptedAccess = encryptToken(tokenData.access_token, this.config.secretKey);
+    const keyVersion = this.config.keyVersion || 'v1';
+    const encryptedAccess = encryptToken(tokenData.access_token, this.config.secretKey, keyVersion);
     const encryptedRefresh = tokenData.refresh_token
-      ? encryptToken(tokenData.refresh_token, this.config.secretKey)
+      ? encryptToken(tokenData.refresh_token, this.config.secretKey, keyVersion)
       : undefined;
 
     const expiresAt = new Date(now.getTime() + (tokenData.expires_in || 7 * 86400) * 1000);
+    const reportedScopes = tokenData.scope ? tokenData.scope.split(' ') : null;
 
     const credRecord = {
       id: `crd_${accountId}`,
@@ -116,22 +113,17 @@ export class OAuthService {
       encryptedAccessToken: encryptedAccess,
       encryptedRefreshToken: encryptedRefresh,
       expiresAt,
-      scopes: session.requestedScopes,
-      keyVersion: 'v1',
+      requestedCapabilities: session.requestedCapabilities,
+      reportedScopes,
+      scopeEvidence: (tokenData.scope ? 'reported' : 'unknown') as 'reported' | 'unknown',
+      keyVersion,
       createdAt: now,
       updatedAt: now,
     };
-    this.db.accessCredentials.set(accountId, credRecord);
+    await this.storage.upsertCredential(credRecord);
 
     // 6. Bind Principal to Account
-    const bindingRecord = {
-      id: `bnd_${session.principalId}`,
-      principalId: session.principalId,
-      bangumiAccountId: accountId,
-      isActive: true,
-      createdAt: now,
-    };
-    this.db.accountBindings.set(bindingRecord.id, bindingRecord);
+    await this.storage.replaceActiveBinding(session.principalId, accountId);
 
     return {
       accountId,

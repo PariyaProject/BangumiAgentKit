@@ -1,4 +1,5 @@
-import { DatabaseStore, AuditEventRecord } from '@bangumi-agent-kit/db';
+import crypto from 'node:crypto';
+import { Storage, AuditEventRecord } from '@bangumi-agent-kit/db';
 
 export interface AuditRecordOptions {
   principalId: string;
@@ -9,30 +10,30 @@ export interface AuditRecordOptions {
   resourceId: string;
   changeSummary: unknown;
   confirmationId?: string;
-  result: 'success' | 'failed' | 'cancelled';
+  result: 'success' | 'failed' | 'cancelled' | 'unknown';
   requestId?: string;
 }
 
 export class AuditService {
-  constructor(private db: DatabaseStore) {}
+  constructor(private storage: Storage) {}
 
   async recordWrite(options: AuditRecordOptions): Promise<AuditEventRecord> {
     const record: AuditEventRecord = {
-      id: `aud_${Math.random().toString(36).slice(2, 10)}`,
+      id: `aud_${crypto.randomUUID()}`,
       principalId: options.principalId,
       bangumiAccountId: options.bangumiAccountId,
       operationId: options.operationId,
       riskLevel: options.riskLevel,
       resourceType: options.resourceType,
       resourceId: options.resourceId,
-      changeSummaryJson: JSON.stringify(options.changeSummary),
+      changeSummaryJson: JSON.stringify(options.changeSummary || {}),
       confirmationId: options.confirmationId,
       result: options.result,
       requestId: options.requestId,
       createdAt: new Date(),
     };
 
-    this.db.auditEvents.push(record);
+    await this.storage.appendAuditEvent(record);
     return record;
   }
 }

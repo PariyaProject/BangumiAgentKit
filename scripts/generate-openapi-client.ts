@@ -62,10 +62,10 @@ function generateClient() {
   private transport: HttpClient;
 
   constructor(configOrTransport?: HttpClient | HttpClientConfig) {
-    if (configOrTransport instanceof HttpClient) {
-      this.transport = configOrTransport;
+    if (configOrTransport && typeof (configOrTransport as any).request === 'function') {
+      this.transport = configOrTransport as HttpClient;
     } else {
-      this.transport = new HttpClient(configOrTransport);
+      this.transport = new HttpClient(configOrTransport as HttpClientConfig);
     }
   }
 `);

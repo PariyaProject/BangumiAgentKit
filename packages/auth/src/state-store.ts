@@ -1,14 +1,21 @@
 import crypto from 'node:crypto';
-import { DatabaseStore, OAuthSessionRecord } from '@bangumi-agent-kit/db';
+import { Storage, OAuthSessionRecord } from '@bangumi-agent-kit/db';
 
 export function hashState(state: string): string {
   return crypto.createHash('sha256').update(state).digest('hex');
 }
 
-export class OAuthStateStore {
-  constructor(private db: DatabaseStore) {}
+export interface GenerateStateOptions {
+  principalId: string;
+  botInstanceId?: string;
+  conversationId?: string;
+  requestedCapabilities?: string[];
+}
 
-  generateState(principalId: string, requestedScopes: string[] = ['write:collection']): { state: string; session: OAuthSessionRecord } {
+export class OAuthStateStore {
+  constructor(private storage: Storage) {}
+
+  async generateState(options: GenerateStateOptions): Promise<{ state: string; session: OAuthSessionRecord }> {
     const state = crypto.randomBytes(24).toString('hex');
     const stateHash = hashState(state);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -16,35 +23,21 @@ export class OAuthStateStore {
     const session: OAuthSessionRecord = {
       id: `ses_${crypto.randomBytes(8).toString('hex')}`,
       stateHash,
-      principalId,
-      requestedScopes,
+      principalId: options.principalId,
+      botInstanceId: options.botInstanceId,
+      conversationId: options.conversationId,
+      requestedCapabilities: options.requestedCapabilities || ['write:collection'],
       expiresAt,
       usedAt: null,
       createdAt: new Date(),
     };
 
-    this.db.oauthSessions.set(session.id, session);
+    await this.storage.createOAuthSession(session);
     return { state, session };
   }
 
-  consumeState(state: string): OAuthSessionRecord {
+  async consumeState(state: string): Promise<OAuthSessionRecord> {
     const stateHash = hashState(state);
-    const session = this.db.getOAuthSessionByHash(stateHash);
-
-    if (!session) {
-      throw new Error('Invalid OAuth state parameter');
-    }
-
-    if (session.usedAt) {
-      throw new Error('OAuth state parameter has already been used');
-    }
-
-    if (new Date() > session.expiresAt) {
-      throw new Error('OAuth state parameter has expired');
-    }
-
-    // Mark as used immediately
-    session.usedAt = new Date();
-    return session;
+    return await this.storage.consumeOAuthSession(stateHash);
   }
 }

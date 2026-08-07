@@ -266,25 +266,6 @@ export function createReadTools(httpClient: HttpClient) {
     },
   });
 
-  const authStatus = defineTool({
-    name: 'bangumi.auth_status',
-    description: '检查当前对话平台用户是否已经绑定 Bangumi 账号。',
-    input: z.object({}),
-    auth: 'none',
-    scopes: [],
-    risk: 'read',
-    execute: async (_input, context) => {
-      const isBound = Boolean(context.accessToken);
-      return {
-        bound: isBound,
-        principalId: context.principalId,
-        message: isBound
-          ? '已绑定 Bangumi 账号'
-          : '当前未绑定 Bangumi 账号。如需使用个人收藏和进度更新功能，请调用 bangumi.auth_start',
-      };
-    },
-  });
-
   return [
     searchSubjects,
     getSubject,
@@ -300,6 +281,5 @@ export function createReadTools(httpClient: HttpClient) {
     getUser,
     getRevision,
     getIndex,
-    authStatus,
   ];
 }

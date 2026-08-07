@@ -42,14 +42,18 @@ export interface AccessCredentialRecord {
     ciphertext: string;
     iv: string;
     authTag: string;
+    keyVersion?: string;
   };
   encryptedRefreshToken?: {
     ciphertext: string;
     iv: string;
     authTag: string;
+    keyVersion?: string;
   };
   expiresAt: Date;
-  scopes: string[];
+  requestedCapabilities: string[];
+  reportedScopes: string[] | null;
+  scopeEvidence: 'reported' | 'unknown';
   keyVersion: string;
   createdAt: Date;
   updatedAt: Date;
@@ -59,7 +63,9 @@ export interface OAuthSessionRecord {
   id: string;
   stateHash: string;
   principalId: string;
-  requestedScopes: string[];
+  botInstanceId?: string;
+  conversationId?: string;
+  requestedCapabilities: string[];
   expiresAt: Date;
   usedAt?: Date | null;
   createdAt: Date;
@@ -78,16 +84,33 @@ export interface ConversationContextRecord {
   expiresAt: Date;
 }
 
+export type PendingActionStatus =
+  | 'pending'
+  | 'executing'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'expired'
+  | 'unknown';
+
 export interface PendingActionRecord {
   id: string;
   principalId: string;
+  botInstanceId: string;
   conversationKey: string;
   actionType: string;
+  summary: string;
   normalizedPayloadJson: string;
   payloadHash: string;
+  status: PendingActionStatus;
   expiresAt: Date;
   confirmedAt?: Date | null;
+  executionStartedAt?: Date | null;
   executedAt?: Date | null;
+  failureCode?: string;
+  failureMessageSafe?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AuditEventRecord {
@@ -100,7 +123,7 @@ export interface AuditEventRecord {
   resourceId: string;
   changeSummaryJson: string;
   confirmationId?: string;
-  result: 'success' | 'failed' | 'cancelled';
+  result: 'success' | 'failed' | 'cancelled' | 'unknown';
   requestId?: string;
   createdAt: Date;
 }

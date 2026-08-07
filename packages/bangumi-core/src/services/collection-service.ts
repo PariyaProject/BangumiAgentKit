@@ -1,4 +1,4 @@
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { UserCollectionItem } from '../models/user.js';
 
 export interface UpdateCollectionInput {
@@ -22,12 +22,9 @@ function mapStatusToTypeNum(status?: string): number | undefined {
 }
 
 export class CollectionService {
-  constructor(private client: HttpClient) {}
+  constructor(private client: GeneratedBangumiOpenApiClient) {}
 
-  async updateCollection(
-    input: UpdateCollectionInput,
-    accessToken: string
-  ): Promise<UserCollectionItem> {
+  async updateCollection(input: UpdateCollectionInput): Promise<UserCollectionItem> {
     const body: Record<string, unknown> = {};
     if (input.status) {
       body.type = mapStatusToTypeNum(input.status);
@@ -45,12 +42,7 @@ export class CollectionService {
       body.private = input.private;
     }
 
-    const raw = await this.client.request<any>({
-      method: 'POST',
-      path: `/v0/users/-/collections/${input.subjectId}`,
-      accessToken,
-      body,
-    });
+    const raw = await this.client.postUserCollection(input.subjectId, body as any);
 
     return {
       subjectId: input.subjectId,
@@ -66,18 +58,12 @@ export class CollectionService {
   async updateEpisodeProgress(
     subjectId: number,
     episodeIds: number[],
-    type: number = 2, // 2 = watched/看过
-    accessToken: string
+    type: number = 2
   ): Promise<{ updatedEpisodes: number[]; count: number }> {
-    await this.client.request<any>({
-      method: 'PATCH',
-      path: `/v0/users/-/collections/${subjectId}/episodes`,
-      accessToken,
-      body: {
-        episode_id: episodeIds,
-        type,
-      },
-    });
+    await this.client.patchUserSubjectEpisodeCollection(subjectId, {
+      episode_id: episodeIds,
+      type,
+    } as any);
 
     return {
       updatedEpisodes: episodeIds,
@@ -85,35 +71,19 @@ export class CollectionService {
     };
   }
 
-  async collectCharacter(characterId: number, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'POST',
-      path: `/v0/users/-/collections/characters/${characterId}`,
-      accessToken,
-    });
+  async collectCharacter(characterId: number): Promise<void> {
+    await this.client.collectCharacterByCharacterIdAndUserId(characterId);
   }
 
-  async uncollectCharacter(characterId: number, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'DELETE',
-      path: `/v0/users/-/collections/characters/${characterId}`,
-      accessToken,
-    });
+  async uncollectCharacter(characterId: number): Promise<void> {
+    await this.client.uncollectCharacterByCharacterIdAndUserId(characterId);
   }
 
-  async collectPerson(personId: number, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'POST',
-      path: `/v0/users/-/collections/persons/${personId}`,
-      accessToken,
-    });
+  async collectPerson(personId: number): Promise<void> {
+    await this.client.collectPersonByPersonIdAndUserId(personId);
   }
 
-  async uncollectPerson(personId: number, accessToken: string): Promise<void> {
-    await this.client.request<any>({
-      method: 'DELETE',
-      path: `/v0/users/-/collections/persons/${personId}`,
-      accessToken,
-    });
+  async uncollectPerson(personId: number): Promise<void> {
+    await this.client.uncollectPersonByPersonIdAndUserId(personId);
   }
 }

@@ -7,7 +7,16 @@ export interface EncryptedTokenPayload {
   keyVersion?: string;
 }
 
+export function validateEncryptionKey(secretKey: string): void {
+  if (!secretKey || secretKey.trim().length < 16) {
+    throw new Error(
+      'INVALID_ENCRYPTION_KEY: BANGUMI_TOKEN_ENCRYPTION_KEY must be configured with a secure key (at least 16 characters).'
+    );
+  }
+}
+
 function deriveKey(secretKey: string): Buffer {
+  validateEncryptionKey(secretKey);
   return crypto.createHash('sha256').update(secretKey).digest();
 }
 

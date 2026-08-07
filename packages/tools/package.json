@@ -4,9 +4,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -b"
   },
   "dependencies": {
+    "@bangumi-agent-kit/auth": "workspace:*",
     "@bangumi-agent-kit/bangumi-core": "workspace:*",
     "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
     "@bangumi-agent-kit/bangumi-transport": "workspace:*",

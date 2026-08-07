@@ -1,14 +1,20 @@
 import { z } from 'zod';
-import { defineTool } from '../define-tool.js';
+import { defineTool, ResolvedToolPolicy } from '../define-tool.js';
+import { BangumiClientProvider, DefaultBangumiClientProvider, TokenBroker } from '@bangumi-agent-kit/auth';
+import { CollectionService, IndexWriteService } from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { DatabaseStore } from '@bangumi-agent-kit/db';
-import { CollectionService, IndexWriteService, AuditService } from '@bangumi-agent-kit/bangumi-core';
-import { PolicyManager } from '../policy.js';
+import { Storage, MemoryStorage } from '@bangumi-agent-kit/db';
 
-export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
-  const collectionService = new CollectionService(httpClient);
-  const indexWriteService = new IndexWriteService(httpClient);
-  const auditService = new AuditService(db);
+export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient, db?: Storage) {
+  let provider: BangumiClientProvider;
+  if (clientProviderOrHttpClient && 'requireAuthenticatedClient' in clientProviderOrHttpClient) {
+    provider = clientProviderOrHttpClient;
+  } else {
+    const http = (clientProviderOrHttpClient as HttpClient) || new HttpClient();
+    const storage = db || new MemoryStorage();
+    const broker = new TokenBroker(storage, { secretKey: 'test-secret-key-123456789' }, http);
+    provider = new DefaultBangumiClientProvider(broker);
+  }
 
   const updateCollection = defineTool({
     name: 'bangumi.update_collection',
@@ -23,29 +29,11 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
-    execute: async (input, context) => {
-      PolicyManager.assertWriteAllowed({
-        db,
-        context,
-        actionType: 'updateCollection',
-        summary: `更新条目 ${input.subjectId} 的收藏状态`,
-        risk: 'write',
-        payload: input,
-      });
-
-      const res = await collectionService.updateCollection(input, context.accessToken!);
-
-      await auditService.recordWrite({
-        principalId: context.principalId,
-        operationId: 'patchUserCollection',
-        riskLevel: 'write',
-        resourceType: 'subject',
-        resourceId: String(input.subjectId),
-        changeSummary: input,
-        result: 'success',
-      });
-
-      return res;
+    execute: async (input, context, deps?: Record<string, unknown>) => {
+      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const collectionService = new CollectionService(client);
+      return await collectionService.updateCollection(input);
     },
   });
 
@@ -60,44 +48,29 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
-    execute: async (input, context) => {
+    resolvePolicy: (input): ResolvedToolPolicy => {
       const isBulk = input.episodeIds.length > 20;
-
-      PolicyManager.assertWriteAllowed({
-        db,
-        context,
+      return {
+        auth: 'required',
+        requiredCapabilities: ['write:collection'],
+        risk: 'write',
+        requiresConfirmation: isBulk,
+        affectedCount: input.episodeIds.length,
         actionType: 'updateEpisodeProgress',
         summary: `更新条目 ${input.subjectId} 的 ${input.episodeIds.length} 个章节进度`,
-        risk: 'write',
-        payload: input,
-        isBulk,
-        affectedCount: input.episodeIds.length,
-      });
-
-      const res = await collectionService.updateEpisodeProgress(
-        input.subjectId,
-        input.episodeIds,
-        input.type,
-        context.accessToken!
-      );
-
-      await auditService.recordWrite({
-        principalId: context.principalId,
-        operationId: 'patchUserSubjectEpisodeCollection',
-        riskLevel: 'write',
-        resourceType: 'episodes',
-        resourceId: String(input.subjectId),
-        changeSummary: { count: input.episodeIds.length },
-        result: 'success',
-      });
-
-      return res;
+      };
+    },
+    execute: async (input, context, deps?: Record<string, unknown>) => {
+      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const collectionService = new CollectionService(client);
+      return await collectionService.updateEpisodeProgress(input.subjectId, input.episodeIds, input.type);
     },
   });
 
   const manageCharacterCollection = defineTool({
     name: 'bangumi.manage_character_collection',
-    description: '收藏或取消收藏指定的虚拟角色。',
+    description: '收藏或取消收藏指定的虚拟角色。取消收藏属于破坏性操作，需要二次确认。',
     input: z.object({
       characterId: z.number().int().positive().describe('角色 ID'),
       action: z.enum(['collect', 'uncollect']).describe('操作动作'),
@@ -105,33 +78,26 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
-    execute: async (input, context) => {
+    resolvePolicy: (input): ResolvedToolPolicy => {
       const risk = input.action === 'uncollect' ? 'destructive' : 'write';
-
-      PolicyManager.assertWriteAllowed({
-        db,
-        context,
+      return {
+        auth: 'required',
+        requiredCapabilities: ['write:collection'],
+        risk,
         actionType: 'manageCharacterCollection',
         summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}角色 ${input.characterId}`,
-        risk,
-        payload: input,
-      });
+      };
+    },
+    execute: async (input, context, deps?: Record<string, unknown>) => {
+      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const collectionService = new CollectionService(client);
 
       if (input.action === 'collect') {
-        await collectionService.collectCharacter(input.characterId, context.accessToken!);
+        await collectionService.collectCharacter(input.characterId);
       } else {
-        await collectionService.uncollectCharacter(input.characterId, context.accessToken!);
+        await collectionService.uncollectCharacter(input.characterId);
       }
-
-      await auditService.recordWrite({
-        principalId: context.principalId,
-        operationId: input.action === 'collect' ? 'collectCharacter' : 'uncollectCharacter',
-        riskLevel: risk,
-        resourceType: 'character',
-        resourceId: String(input.characterId),
-        changeSummary: input,
-        result: 'success',
-      });
 
       return { success: true, action: input.action, characterId: input.characterId };
     },
@@ -139,7 +105,7 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
 
   const managePersonCollection = defineTool({
     name: 'bangumi.manage_person_collection',
-    description: '收藏或取消收藏指定的现实人物/声优。',
+    description: '收藏或取消收藏指定的现实人物/声优。取消收藏属于破坏性操作，需要二次确认。',
     input: z.object({
       personId: z.number().int().positive().describe('人物 ID'),
       action: z.enum(['collect', 'uncollect']).describe('操作动作'),
@@ -147,33 +113,26 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
-    execute: async (input, context) => {
+    resolvePolicy: (input): ResolvedToolPolicy => {
       const risk = input.action === 'uncollect' ? 'destructive' : 'write';
-
-      PolicyManager.assertWriteAllowed({
-        db,
-        context,
+      return {
+        auth: 'required',
+        requiredCapabilities: ['write:collection'],
+        risk,
         actionType: 'managePersonCollection',
         summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}人物 ${input.personId}`,
-        risk,
-        payload: input,
-      });
+      };
+    },
+    execute: async (input, context, deps?: Record<string, unknown>) => {
+      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const collectionService = new CollectionService(client);
 
       if (input.action === 'collect') {
-        await collectionService.collectPerson(input.personId, context.accessToken!);
+        await collectionService.collectPerson(input.personId);
       } else {
-        await collectionService.uncollectPerson(input.personId, context.accessToken!);
+        await collectionService.uncollectPerson(input.personId);
       }
-
-      await auditService.recordWrite({
-        principalId: context.principalId,
-        operationId: input.action === 'collect' ? 'collectPerson' : 'uncollectPerson',
-        riskLevel: risk,
-        resourceType: 'person',
-        resourceId: String(input.personId),
-        changeSummary: input,
-        result: 'success',
-      });
 
       return { success: true, action: input.action, personId: input.personId };
     },
@@ -181,10 +140,10 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
 
   const manageIndex = defineTool({
     name: 'bangumi.manage_index',
-    description: '创建、编辑目录，或向目录中添加/删除条目。从目录删除条目属于破坏性操作，需要二次确认。',
+    description: '创建、编辑目录，向目录添加/删除条目，或收藏/取消收藏目录。从目录删除条目与取消收藏目录属于破坏性操作，需要二次确认。',
     input: z.object({
       action: z.enum(['create', 'edit', 'add_subject', 'remove_subject', 'collect', 'uncollect']),
-      indexId: z.number().int().optional().describe('目录 ID (编辑/添加/删除时必填)'),
+      indexId: z.number().int().optional().describe('目录 ID (编辑/添加/删除/收藏/取消收藏时必填)'),
       subjectId: z.number().int().optional().describe('条目 ID (添加/删除条目时必填)'),
       title: z.string().optional().describe('目录标题'),
       desc: z.string().optional().describe('目录描述'),
@@ -193,42 +152,56 @@ export function createWriteTools(httpClient: HttpClient, db: DatabaseStore) {
     auth: 'required',
     scopes: ['write:indices'],
     risk: 'write',
-    execute: async (input, context) => {
+    resolvePolicy: (input): ResolvedToolPolicy => {
       const risk = (input.action === 'remove_subject' || input.action === 'uncollect') ? 'destructive' : 'write';
-
-      PolicyManager.assertWriteAllowed({
-        db,
-        context,
-        actionType: 'manageIndex',
-        summary: `目录操作: ${input.action}`,
+      return {
+        auth: 'required',
+        requiredCapabilities: ['write:indices'],
         risk,
-        payload: input,
-      });
-
-      let res: unknown = { success: true };
+        actionType: `manageIndex_${input.action}`,
+        summary: `目录操作: ${input.action}`,
+      };
+    },
+    execute: async (input, context, deps?: Record<string, unknown>) => {
+      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:indices']);
+      const indexWriteService = new IndexWriteService(client);
 
       if (input.action === 'create') {
-        if (!input.title || !input.desc) throw new Error('title and desc required for create index');
-        res = await indexWriteService.createIndex(input.title, input.desc, context.accessToken!);
-      } else if (input.action === 'add_subject') {
-        if (!input.indexId || !input.subjectId) throw new Error('indexId and subjectId required');
-        await indexWriteService.addSubjectToIndex(input.indexId, input.subjectId, input.comment, context.accessToken);
-      } else if (input.action === 'remove_subject') {
-        if (!input.indexId || !input.subjectId) throw new Error('indexId and subjectId required');
-        await indexWriteService.removeSubjectFromIndex(input.indexId, input.subjectId, context.accessToken);
+        return await indexWriteService.createIndex(input.title, input.desc);
       }
 
-      await auditService.recordWrite({
-        principalId: context.principalId,
-        operationId: `manageIndex_${input.action}`,
-        riskLevel: risk,
-        resourceType: 'index',
-        resourceId: String(input.indexId || 0),
-        changeSummary: input,
-        result: 'success',
-      });
+      if (input.action === 'edit') {
+        if (!input.indexId) throw new Error('MISSING_PARAMETER: indexId is required for edit action');
+        await indexWriteService.editIndex(input.indexId, input.title, input.desc);
+        return { success: true, action: input.action, indexId: input.indexId };
+      }
 
-      return res;
+      if (input.action === 'add_subject') {
+        if (!input.indexId || !input.subjectId) throw new Error('MISSING_PARAMETER: indexId and subjectId are required for add_subject action');
+        await indexWriteService.addSubjectToIndex(input.indexId, input.subjectId, input.comment);
+        return { success: true, action: input.action, indexId: input.indexId, subjectId: input.subjectId };
+      }
+
+      if (input.action === 'remove_subject') {
+        if (!input.indexId || !input.subjectId) throw new Error('MISSING_PARAMETER: indexId and subjectId are required for remove_subject action');
+        await indexWriteService.removeSubjectFromIndex(input.indexId, input.subjectId);
+        return { success: true, action: input.action, indexId: input.indexId, subjectId: input.subjectId };
+      }
+
+      if (input.action === 'collect') {
+        if (!input.indexId) throw new Error('MISSING_PARAMETER: indexId is required for collect action');
+        await indexWriteService.collectIndex(input.indexId);
+        return { success: true, action: input.action, indexId: input.indexId };
+      }
+
+      if (input.action === 'uncollect') {
+        if (!input.indexId) throw new Error('MISSING_PARAMETER: indexId is required for uncollect action');
+        await indexWriteService.uncollectIndex(input.indexId);
+        return { success: true, action: input.action, indexId: input.indexId };
+      }
+
+      throw new Error(`UNSUPPORTED_ACTION: Action "${input.action}" is not supported`);
     },
   });
 

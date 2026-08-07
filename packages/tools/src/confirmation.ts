@@ -1,37 +1,64 @@
 import crypto from 'node:crypto';
-import { DatabaseStore, PendingActionRecord } from '@bangumi-agent-kit/db';
+import { Storage, PendingActionRecord } from '@bangumi-agent-kit/db';
 import { ToolContext } from './define-tool.js';
+import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 
-export function computePayloadHash(payload: unknown): string {
-  const jsonStr = JSON.stringify(payload || {});
+export function toCanonicalJson(val: unknown): unknown {
+  if (val === null || typeof val !== 'object') {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val.map(toCanonicalJson);
+  }
+  const obj = val as Record<string, unknown>;
+  const sortedKeys = Object.keys(obj).sort();
+  const result: Record<string, unknown> = {};
+  for (const key of sortedKeys) {
+    if (obj[key] !== undefined) {
+      result[key] = toCanonicalJson(obj[key]);
+    }
+  }
+  return result;
+}
+
+export function computeCanonicalPayloadHash(payload: unknown): string {
+  const canonical = toCanonicalJson(payload ?? {});
+  const jsonStr = JSON.stringify(canonical);
   return crypto.createHash('sha256').update(jsonStr).digest('hex');
 }
 
-export function createPendingAction(
-  db: DatabaseStore,
+export async function createPendingAction(
+  storage: Storage,
   context: ToolContext,
   actionType: string,
   summary: string,
   payload: unknown,
   ttlMinutes = 10
-): { confirmationId: string; summary: string; expiresAt: Date; pendingAction: PendingActionRecord } {
+): Promise<{ confirmationId: string; summary: string; expiresAt: Date; pendingAction: PendingActionRecord }> {
   const confirmationId = `cfm_${crypto.randomBytes(8).toString('hex')}`;
-  const payloadHash = computePayloadHash(payload);
-  const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+  const payloadHash = computeCanonicalPayloadHash(payload);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttlMinutes * 60 * 1000);
 
   const pendingAction: PendingActionRecord = {
     id: confirmationId,
     principalId: context.principalId,
+    botInstanceId: context.botInstanceId,
     conversationKey: context.conversationId,
     actionType,
-    normalizedPayloadJson: JSON.stringify(payload),
+    summary,
+    normalizedPayloadJson: JSON.stringify(toCanonicalJson(payload)),
     payloadHash,
+    status: 'pending',
     expiresAt,
     confirmedAt: null,
+    executionStartedAt: null,
     executedAt: null,
+    createdAt: now,
+    updatedAt: now,
   };
 
-  db.pendingActions.set(confirmationId, pendingAction);
+  await storage.createPendingAction(pendingAction);
 
   return {
     confirmationId,
@@ -41,35 +68,38 @@ export function createPendingAction(
   };
 }
 
-export function verifyAndConsumePendingAction(
-  db: DatabaseStore,
+export async function claimPendingAction(
+  storage: Storage,
   context: ToolContext,
   confirmationId: string,
   payload: unknown
-): PendingActionRecord {
-  const action = db.pendingActions.get(confirmationId);
-
-  if (!action) {
-    throw new Error(`Invalid confirmationId: ${confirmationId}`);
+): Promise<PendingActionRecord> {
+  const payloadHash = computeCanonicalPayloadHash(payload);
+  try {
+    return await storage.claimPendingAction({
+      confirmationId,
+      principalId: context.principalId,
+      botInstanceId: context.botInstanceId,
+      conversationId: context.conversationId,
+      payloadHash,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('CONFIRMATION_EXPIRED')) {
+      throw new BangumiError(
+        'CONFIRMATION_EXPIRED',
+        '二次确认已超时失效，请重新发起请求',
+        false,
+        400,
+        '重新调用原工具发起操作'
+      );
+    }
+    throw new BangumiError(
+      'CONFIRMATION_INVALID',
+      `二次确认校验失败: ${msg}`,
+      false,
+      400,
+      '检查 confirmationId 及请求参数'
+    );
   }
-
-  if (action.principalId !== context.principalId) {
-    throw new Error('Confirmation ID does not belong to current user');
-  }
-
-  if (action.executedAt) {
-    throw new Error('Confirmation ID has already been executed');
-  }
-
-  if (new Date() > action.expiresAt) {
-    throw new Error('Confirmation ID has expired');
-  }
-
-  const currentPayloadHash = computePayloadHash(payload);
-  if (action.payloadHash !== currentPayloadHash) {
-    throw new Error('Action payload has changed since confirmation was issued');
-  }
-
-  action.executedAt = new Date();
-  return action;
 }

@@ -9,6 +9,7 @@
     { "path": "../bangumi-openapi" },
     { "path": "../bangumi-transport" },
     { "path": "../db" },
+    { "path": "../auth" },
     { "path": "../bangumi-core" }
   ]
 }

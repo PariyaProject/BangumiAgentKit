@@ -9,6 +9,8 @@
     { "path": "../../packages/bangumi-openapi" },
     { "path": "../../packages/bangumi-transport" },
     { "path": "../../packages/db" },
-    { "path": "../../packages/auth" }
+    { "path": "../../packages/auth" },
+    { "path": "../../packages/bangumi-core" },
+    { "path": "../../packages/tools" }
   ]
 }

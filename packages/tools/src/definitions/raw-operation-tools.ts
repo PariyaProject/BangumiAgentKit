@@ -1,10 +1,21 @@
 import { z } from 'zod';
-import { defineTool } from '../define-tool.js';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { OPERATION_REGISTRY, GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import { defineTool, ResolvedToolPolicy } from '../define-tool.js';
+import { OPERATION_REGISTRY } from '@bangumi-agent-kit/bangumi-openapi';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiClientProvider, TokenBroker } from '@bangumi-agent-kit/auth';
+import { MemoryStorage } from '@bangumi-agent-kit/db';
 
-export function createRawOperationTools(httpClient: HttpClient) {
-  const openApiClient = new GeneratedBangumiOpenApiClient(httpClient);
+export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
+  let provider: BangumiClientProvider;
+
+  if (clientProviderOrHttpClient && typeof (clientProviderOrHttpClient as any).requireAuthenticatedClient === 'function') {
+    provider = clientProviderOrHttpClient as BangumiClientProvider;
+  } else {
+    const http = (clientProviderOrHttpClient && typeof (clientProviderOrHttpClient as any).request === 'function')
+      ? (clientProviderOrHttpClient as HttpClient)
+      : new HttpClient();
+    provider = new TokenBroker(new MemoryStorage(), { secretKey: 'test-secret-key-123456789' }, http);
+  }
 
   const listOperations = defineTool({
     name: 'bangumi.list_operations',
@@ -64,20 +75,52 @@ export function createRawOperationTools(httpClient: HttpClient) {
     auth: 'optional',
     scopes: [],
     risk: 'read',
-    execute: async (input, context) => {
+    resolvePolicy: (input): ResolvedToolPolicy => {
+      const meta = OPERATION_REGISTRY[input.operationId];
+      if (!meta) {
+        return { auth: 'optional', requiredCapabilities: [], risk: 'read' };
+      }
+
+      const allowRawWrites = process.env.BANGUMI_ALLOW_RAW_WRITES === 'true';
+      if (meta.risk !== 'read' && !allowRawWrites) {
+        throw new BangumiError(
+          'RAW_WRITE_OPERATION_DISABLED',
+          `当前系统配置禁止使用 bangumi.call_operation 执行写/破坏性操作 (${input.operationId})。请改用高层语义 Tool。`,
+          false,
+          403,
+          '使用高层语义 Tool 或在环境变量中开启 BANGUMI_ALLOW_RAW_WRITES=true'
+        );
+      }
+
+      return {
+        auth: meta.auth,
+        requiredCapabilities: [],
+        risk: meta.risk,
+        actionType: `call_operation_${input.operationId}`,
+        summary: `底层 Operation 调用: ${input.operationId}`,
+      };
+    },
+    execute: async (input, context, deps?: Record<string, unknown>) => {
       const meta = OPERATION_REGISTRY[input.operationId];
       if (!meta) {
         throw new Error(`Operation "${input.operationId}" is not allowed or does not exist in registry.`);
       }
 
-      if (meta.auth === 'required' && !context.accessToken) {
-        throw new Error(`Operation "${input.operationId}" requires OAuth authentication. Please bind account first.`);
+      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+
+      let client;
+      if (meta.auth === 'required') {
+        const authed = await activeProvider.requireAuthenticatedClient(context.principalId);
+        client = authed.client;
+      } else if (meta.auth === 'optional') {
+        client = await activeProvider.getOptionalAuthenticatedClient(context.principalId);
+      } else {
+        client = await activeProvider.getPublicClient();
       }
 
       const pathParamsMap = input.pathParams || {};
       const pathArgs: (string | number)[] = [];
 
-      // Validate and extract path parameters strictly in metadata order
       for (const paramName of meta.pathParameters) {
         const val = pathParamsMap[paramName];
         if (val === undefined || val === null || val === '') {
@@ -86,8 +129,7 @@ export function createRawOperationTools(httpClient: HttpClient) {
         pathArgs.push(val);
       }
 
-      // Check client function signature
-      const clientFn = (openApiClient as any)[input.operationId];
+      const clientFn = (client as any)[input.operationId];
       if (typeof clientFn === 'function') {
         const args: any[] = [...pathArgs];
         const hasQueryMeta = Boolean(meta.queryParameters && meta.queryParameters.length > 0);
@@ -102,30 +144,10 @@ export function createRawOperationTools(httpClient: HttpClient) {
           args.push(input.body);
         }
 
-        return await clientFn.apply(openApiClient, args);
+        return await clientFn.apply(client, args);
       }
 
-      // Generic fallback request via httpClient with path encoding and missing placeholder check
-      let resolvedPath = meta.path;
-      for (const paramName of meta.pathParameters) {
-        const val = pathParamsMap[paramName];
-        if (val === undefined || val === null || val === '') {
-          throw new Error(`MISSING_PATH_PARAMETER: Operation "${input.operationId}" requires path parameter "${paramName}"`);
-        }
-        resolvedPath = resolvedPath.replace(`{${paramName}}`, encodeURIComponent(String(val)));
-      }
-
-      if (/\{[^}]+\}/.test(resolvedPath)) {
-        throw new Error(`MISSING_PATH_PARAMETER: Unresolved path placeholders in "${resolvedPath}"`);
-      }
-
-      return await httpClient.request({
-        method: meta.method,
-        path: resolvedPath,
-        query: input.queryParams,
-        body: input.body,
-        accessToken: context.accessToken,
-      });
+      throw new Error(`Client function "${input.operationId}" not found on OpenApiClient`);
     },
   });
 

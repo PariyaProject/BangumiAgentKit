@@ -1,43 +1,63 @@
-import { DatabaseStore } from '@bangumi-agent-kit/db';
-import { OperationRisk } from '@bangumi-agent-kit/bangumi-openapi';
-import { ToolContext } from './define-tool.js';
-import { createPendingAction, verifyAndConsumePendingAction } from './confirmation.js';
+import { Storage } from '@bangumi-agent-kit/db';
+import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
+import { ToolContext, ToolDefinition, ResolvedToolPolicy } from './define-tool.js';
+import { createPendingAction, claimPendingAction } from './confirmation.js';
 
 export interface AssertWriteOptions {
-  db: DatabaseStore;
+  storage: Storage;
   context: ToolContext;
   actionType: string;
   summary: string;
-  risk: OperationRisk;
+  policy: ResolvedToolPolicy;
   payload: unknown;
-  isBulk?: boolean;
-  affectedCount?: number;
 }
 
 export class PolicyManager {
-  static assertWriteAllowed(options: AssertWriteOptions): { requiresConfirmation: boolean; confirmationId?: string } {
-    const { db, context, actionType, summary, risk, payload, isBulk, affectedCount } = options;
-
-    if (!context.accessToken) {
-      throw new Error('AUTH_REQUIRED: 该写操作需要先绑定 Bangumi 账号。');
+  static resolvePolicyForTool(
+    tool: ToolDefinition,
+    input: unknown,
+    context: ToolContext
+  ): ResolvedToolPolicy {
+    if (typeof tool.resolvePolicy === 'function') {
+      return tool.resolvePolicy(input, context);
     }
+    return {
+      auth: tool.auth,
+      requiredCapabilities: tool.scopes || [],
+      risk: tool.risk,
+    };
+  }
+
+  static async assertAndClaimWritePolicy(
+    options: AssertWriteOptions
+  ): Promise<{ requiresConfirmation: boolean; confirmationId?: string; pendingActionId?: string }> {
+    const { storage, context, actionType, summary, policy, payload } = options;
 
     const requiresConfirmation =
-      risk === 'destructive' ||
-      Boolean(isBulk) ||
-      (affectedCount !== undefined && affectedCount > 20);
+      policy.risk === 'destructive' ||
+      Boolean(policy.requiresConfirmation) ||
+      (policy.affectedCount !== undefined && policy.affectedCount > 20);
 
     if (requiresConfirmation) {
       if (!context.confirmationId) {
-        const pending = createPendingAction(db, context, actionType, summary, payload);
-        throw new Error(
-          `CONFIRMATION_REQUIRED: 操作具有破坏性或大批量变更 (${summary})。请再次确认。Confirmation ID: ${pending.confirmationId}`
+        const pending = await createPendingAction(storage, context, actionType, summary, payload);
+        throw new BangumiError(
+          'CONFIRMATION_REQUIRED',
+          `该操作具有破坏性或包含大批量变更 (${summary})，需要确认后才能继续。Confirmation ID: ${pending.confirmationId}`,
+          false,
+          400,
+          `在 ToolContext 中传入 confirmationId: "${pending.confirmationId}" 并重新发起请求`
         );
       }
 
-      verifyAndConsumePendingAction(db, context, context.confirmationId, payload);
+      const claimedAction = await claimPendingAction(storage, context, context.confirmationId, payload);
+      return {
+        requiresConfirmation: true,
+        confirmationId: context.confirmationId,
+        pendingActionId: claimedAction.id,
+      };
     }
 
-    return { requiresConfirmation };
+    return { requiresConfirmation: false };
   }
 }

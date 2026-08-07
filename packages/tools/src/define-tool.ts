@@ -1,29 +1,40 @@
 import { z } from 'zod';
-import { AuthRequirement, OperationRisk } from '@bangumi-agent-kit/bangumi-openapi';
+
+export type OperationRisk = 'read' | 'write' | 'destructive';
+export type ToolAuthRequirement = 'none' | 'optional' | 'required';
 
 export interface ToolContext {
   principalId: string;
   botInstanceId: string;
   conversationId: string;
-  locale?: 'zh-CN' | 'ja-JP' | 'en';
-  timezone?: string;
-  outputMode?: 'auto' | 'text' | 'image' | 'mixed' | 'json';
   confirmationId?: string;
-  accessToken?: string;
+  requestId?: string;
+}
+
+export interface ResolvedToolPolicy {
+  auth: ToolAuthRequirement;
+  requiredCapabilities: string[];
+  risk: OperationRisk;
+  requiresConfirmation?: boolean;
+  affectedCount?: number;
+  actionType?: string;
+  summary?: string;
 }
 
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
   name: string;
   description: string;
   input: TSchema;
-  auth: AuthRequirement;
+  auth: ToolAuthRequirement;
   scopes: string[];
   risk: OperationRisk;
-  execute: (input: z.infer<TSchema>, context: ToolContext) => Promise<unknown>;
+  resolvePolicy?: (input: z.infer<TSchema>, context: ToolContext) => ResolvedToolPolicy;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  execute: (input: z.infer<TSchema>, context: ToolContext, deps?: any) => Promise<unknown>;
 }
 
 export function defineTool<TSchema extends z.ZodType>(
-  tool: ToolDefinition<TSchema>
+  def: ToolDefinition<TSchema>
 ): ToolDefinition<TSchema> {
-  return tool;
+  return def;
 }
