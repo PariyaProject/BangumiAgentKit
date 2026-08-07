@@ -270,8 +270,8 @@ export class PostgresStorage implements Storage {
     return {
       id: res.id,
       bangumiAccountId: res.bangumiAccountId,
-      encryptedAccessToken,
-      encryptedRefreshToken,
+      encryptedAccessToken: encryptedAccessToken as AccessCredentialRecord['encryptedAccessToken'],
+      encryptedRefreshToken: encryptedRefreshToken as AccessCredentialRecord['encryptedRefreshToken'],
       expiresAt: res.expiresAt,
       requestedCapabilities: (res.requestedCapabilities as string[] | null) || [],
       reportedScopes: res.reportedScopes as string[] | null,
