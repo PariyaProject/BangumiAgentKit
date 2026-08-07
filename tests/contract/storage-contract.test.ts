@@ -63,21 +63,29 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
       const storage = await createStorage();
       if (!storage) return;
 
+      const principal = await storage.findOrCreatePrincipal({
+        provider: 'test-platform',
+        botInstanceId: 'bot-1',
+        externalUserId: 'user-p1',
+      });
+
       const session = {
-        stateHash: 'state-hash-abc-123',
-        principalId: 'p-1',
+        id: `sess_${Date.now()}`,
+        stateHash: `state-hash-abc-${Date.now()}`,
+        principalId: principal.id,
         botInstanceId: 'bot-1',
         conversationId: 'c-1',
+        requestedCapabilities: ['read:collection'],
         createdAt: new Date(),
         expiresAt: new Date(Date.now() + 600000),
       };
 
       await storage.createOAuthSession(session);
 
-      const consumed = await storage.consumeOAuthSession('state-hash-abc-123');
-      expect(consumed.principalId).toBe('p-1');
+      const consumed = await storage.consumeOAuthSession(session.stateHash);
+      expect(consumed.principalId).toBe(principal.id);
 
-      await expect(storage.consumeOAuthSession('state-hash-abc-123')).rejects.toThrow('OAUTH_STATE_REUSED');
+      await expect(storage.consumeOAuthSession(session.stateHash)).rejects.toThrow('OAUTH_STATE_REUSED');
 
       await storage.close();
     });
@@ -86,15 +94,22 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
       const storage = await createStorage();
       if (!storage) return;
 
+      const principal = await storage.findOrCreatePrincipal({
+        provider: 'test-platform',
+        botInstanceId: 'b-1',
+        externalUserId: 'user-p2',
+      });
+
       const now = new Date();
       const action = {
-        id: 'conf-123',
-        confirmationId: 'conf-123',
-        principalId: 'p-1',
+        id: `conf-${Date.now()}`,
+        confirmationId: `conf-${Date.now()}`,
+        principalId: principal.id,
         botInstanceId: 'b-1',
         conversationKey: 'c-1',
         actionType: 'manage_index_create',
         summary: 'Create index',
+        normalizedPayloadJson: JSON.stringify({ title: 'New Index' }),
         payloadHash: 'hash-xyz',
         payload: { title: 'New Index' },
         status: 'pending' as const,
@@ -105,17 +120,17 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
       await storage.createPendingAction(action);
 
       const claimed = await storage.claimPendingAction({
-        confirmationId: 'conf-123',
-        principalId: 'p-1',
+        confirmationId: action.id,
+        principalId: principal.id,
         botInstanceId: 'b-1',
         conversationId: 'c-1',
         payloadHash: 'hash-xyz',
       });
 
-      expect(claimed.id).toBe('conf-123');
+      expect(claimed.id).toBe(action.id);
       expect(claimed.status).toBe('executing');
 
-      await storage.markPendingActionSucceeded('conf-123');
+      await storage.markPendingActionSucceeded(action.id);
 
       await storage.close();
     });
@@ -128,7 +143,7 @@ testStorageContract('PostgresStorage', async () => {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return null;
   try {
-    const storage = new PostgresStorage(dbUrl);
+    const storage = await PostgresStorage.create(dbUrl);
     return storage;
   } catch {
     return null;
