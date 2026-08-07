@@ -1,0 +1,14 @@
+{
+  "name": "@bangumi-agent-kit/app-api",
+  "version": "0.1.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@bangumi-agent-kit/auth": "workspace:*",
+    "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
+    "@bangumi-agent-kit/bangumi-transport": "workspace:*",
+    "@bangumi-agent-kit/db": "workspace:*"
+  }
+}

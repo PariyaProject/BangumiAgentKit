@@ -1,0 +1,35 @@
+{
+  "name": "bangumi-agent-kit-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bangumi Agent Kit monorepo workspace",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:contract": "vitest run tests/contract",
+    "test:render": "vitest run tests/render",
+    "openapi:sync": "ts-node scripts/sync-openapi.ts",
+    "openapi:generate": "ts-node scripts/generate-openapi-client.ts",
+    "openapi:registry": "ts-node scripts/generate-operation-registry.ts",
+    "openapi:verify": "pnpm openapi:sync && pnpm openapi:generate && pnpm openapi:registry && git diff --exit-code packages/bangumi-openapi/src/generated",
+    "format": "prettier --write \"**/*.{ts,json,md,yaml,yml}\""
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^17.9.0",
+    "prettier": "^3.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^2.0.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  }
+}

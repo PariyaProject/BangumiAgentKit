@@ -1,0 +1,592 @@
+{
+  "searchSubjects": {
+    "operationId": "searchSubjects",
+    "tag": "条目",
+    "method": "POST",
+    "path": "/v0/search/subjects",
+    "auth": "none",
+    "scopes": [],
+    "risk": "read",
+    "summary": "条目搜索"
+  },
+  "searchCharacters": {
+    "operationId": "searchCharacters",
+    "tag": "角色",
+    "method": "POST",
+    "path": "/v0/search/characters",
+    "auth": "none",
+    "scopes": [],
+    "risk": "read",
+    "summary": "角色搜索"
+  },
+  "searchPersons": {
+    "operationId": "searchPersons",
+    "tag": "人物",
+    "method": "POST",
+    "path": "/v0/search/persons",
+    "auth": "none",
+    "scopes": [],
+    "risk": "read",
+    "summary": "人物搜索"
+  },
+  "getSubjects": {
+    "operationId": "getSubjects",
+    "tag": "条目",
+    "method": "GET",
+    "path": "/v0/subjects",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "浏览条目"
+  },
+  "getSubjectById": {
+    "operationId": "getSubjectById",
+    "tag": "条目",
+    "method": "GET",
+    "path": "/v0/subjects/{subject_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取条目"
+  },
+  "getSubjectImageById": {
+    "operationId": "getSubjectImageById",
+    "tag": "条目",
+    "method": "GET",
+    "path": "/v0/subjects/{subject_id}/image",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Subject Image"
+  },
+  "getRelatedPersonsBySubjectId": {
+    "operationId": "getRelatedPersonsBySubjectId",
+    "tag": "条目",
+    "method": "GET",
+    "path": "/v0/subjects/{subject_id}/persons",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Subject Persons"
+  },
+  "getRelatedCharactersBySubjectId": {
+    "operationId": "getRelatedCharactersBySubjectId",
+    "tag": "条目",
+    "method": "GET",
+    "path": "/v0/subjects/{subject_id}/characters",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Subject Characters"
+  },
+  "getRelatedSubjectsBySubjectId": {
+    "operationId": "getRelatedSubjectsBySubjectId",
+    "tag": "条目",
+    "method": "GET",
+    "path": "/v0/subjects/{subject_id}/subjects",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Subject Relations"
+  },
+  "getEpisodes": {
+    "operationId": "getEpisodes",
+    "tag": "章节",
+    "method": "GET",
+    "path": "/v0/episodes",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Episodes"
+  },
+  "getEpisodeById": {
+    "operationId": "getEpisodeById",
+    "tag": "章节",
+    "method": "GET",
+    "path": "/v0/episodes/{episode_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Episode"
+  },
+  "getCharacterById": {
+    "operationId": "getCharacterById",
+    "tag": "角色",
+    "method": "GET",
+    "path": "/v0/characters/{character_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Character Detail"
+  },
+  "getCharacterImageById": {
+    "operationId": "getCharacterImageById",
+    "tag": "角色",
+    "method": "GET",
+    "path": "/v0/characters/{character_id}/image",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Character Image"
+  },
+  "getRelatedSubjectsByCharacterId": {
+    "operationId": "getRelatedSubjectsByCharacterId",
+    "tag": "角色",
+    "method": "GET",
+    "path": "/v0/characters/{character_id}/subjects",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "get character related subjects"
+  },
+  "getRelatedPersonsByCharacterId": {
+    "operationId": "getRelatedPersonsByCharacterId",
+    "tag": "角色",
+    "method": "GET",
+    "path": "/v0/characters/{character_id}/persons",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "get character related persons"
+  },
+  "collectCharacterByCharacterIdAndUserId": {
+    "operationId": "collectCharacterByCharacterIdAndUserId",
+    "tag": "角色",
+    "method": "POST",
+    "path": "/v0/characters/{character_id}/collect",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "write",
+    "summary": "Collect character for current user"
+  },
+  "uncollectCharacterByCharacterIdAndUserId": {
+    "operationId": "uncollectCharacterByCharacterIdAndUserId",
+    "tag": "角色",
+    "method": "DELETE",
+    "path": "/v0/characters/{character_id}/collect",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "destructive",
+    "summary": "Uncollect character for current user"
+  },
+  "getPersonById": {
+    "operationId": "getPersonById",
+    "tag": "人物",
+    "method": "GET",
+    "path": "/v0/persons/{person_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Person"
+  },
+  "getPersonImageById": {
+    "operationId": "getPersonImageById",
+    "tag": "人物",
+    "method": "GET",
+    "path": "/v0/persons/{person_id}/image",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Person Image"
+  },
+  "getRelatedSubjectsByPersonId": {
+    "operationId": "getRelatedSubjectsByPersonId",
+    "tag": "人物",
+    "method": "GET",
+    "path": "/v0/persons/{person_id}/subjects",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "get person related subjects"
+  },
+  "getRelatedCharactersByPersonId": {
+    "operationId": "getRelatedCharactersByPersonId",
+    "tag": "人物",
+    "method": "GET",
+    "path": "/v0/persons/{person_id}/characters",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "get person related characters"
+  },
+  "collectPersonByPersonIdAndUserId": {
+    "operationId": "collectPersonByPersonIdAndUserId",
+    "tag": "人物",
+    "method": "POST",
+    "path": "/v0/persons/{person_id}/collect",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "write",
+    "summary": "Collect person for current user"
+  },
+  "uncollectPersonByPersonIdAndUserId": {
+    "operationId": "uncollectPersonByPersonIdAndUserId",
+    "tag": "人物",
+    "method": "DELETE",
+    "path": "/v0/persons/{person_id}/collect",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "destructive",
+    "summary": "Uncollect person for current user"
+  },
+  "getUserByName": {
+    "operationId": "getUserByName",
+    "tag": "用户",
+    "method": "GET",
+    "path": "/v0/users/{username}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get User by name"
+  },
+  "getUserAvatarByName": {
+    "operationId": "getUserAvatarByName",
+    "tag": "用户",
+    "method": "GET",
+    "path": "/v0/users/{username}/avatar",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get User Avatar by name"
+  },
+  "getMyself": {
+    "operationId": "getMyself",
+    "tag": "用户",
+    "method": "GET",
+    "path": "/v0/me",
+    "auth": "required",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get User"
+  },
+  "getUserCollectionsByUsername": {
+    "operationId": "getUserCollectionsByUsername",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/{username}/collections",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取用户收藏"
+  },
+  "getUserCollection": {
+    "operationId": "getUserCollection",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/{username}/collections/{subject_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取用户单个条目收藏"
+  },
+  "postUserCollection": {
+    "operationId": "postUserCollection",
+    "tag": "收藏",
+    "method": "POST",
+    "path": "/v0/users/-/collections/{subject_id}",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "write",
+    "summary": "新增或修改用户单个条目收藏"
+  },
+  "patchUserCollection": {
+    "operationId": "patchUserCollection",
+    "tag": "收藏",
+    "method": "PATCH",
+    "path": "/v0/users/-/collections/{subject_id}",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "write",
+    "summary": "修改用户单个收藏"
+  },
+  "getUserSubjectEpisodeCollection": {
+    "operationId": "getUserSubjectEpisodeCollection",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/-/collections/{subject_id}/episodes",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "章节收藏信息"
+  },
+  "patchUserSubjectEpisodeCollection": {
+    "operationId": "patchUserSubjectEpisodeCollection",
+    "tag": "收藏",
+    "method": "PATCH",
+    "path": "/v0/users/-/collections/{subject_id}/episodes",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "write",
+    "summary": "章节收藏信息"
+  },
+  "getUserEpisodeCollection": {
+    "operationId": "getUserEpisodeCollection",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/-/collections/-/episodes/{episode_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "章节收藏信息"
+  },
+  "putUserEpisodeCollection": {
+    "operationId": "putUserEpisodeCollection",
+    "tag": "收藏",
+    "method": "PUT",
+    "path": "/v0/users/-/collections/-/episodes/{episode_id}",
+    "auth": "required",
+    "scopes": [
+      "write:collection"
+    ],
+    "risk": "write",
+    "summary": "更新章节收藏信息"
+  },
+  "getUserCharacterCollections": {
+    "operationId": "getUserCharacterCollections",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/{username}/collections/-/characters",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取用户角色收藏列表"
+  },
+  "getUserCharacterCollection": {
+    "operationId": "getUserCharacterCollection",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/{username}/collections/-/characters/{character_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取用户单个角色收藏信息"
+  },
+  "getUserPersonCollections": {
+    "operationId": "getUserPersonCollections",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/{username}/collections/-/persons",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取用户人物收藏列表"
+  },
+  "getUserPersonCollection": {
+    "operationId": "getUserPersonCollection",
+    "tag": "收藏",
+    "method": "GET",
+    "path": "/v0/users/{username}/collections/-/persons/{person_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取用户单个人物收藏信息"
+  },
+  "getPersonRevisions": {
+    "operationId": "getPersonRevisions",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/persons",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Person Revisions"
+  },
+  "getPersonRevisionByRevisionId": {
+    "operationId": "getPersonRevisionByRevisionId",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/persons/{revision_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Person Revision"
+  },
+  "getCharacterRevisions": {
+    "operationId": "getCharacterRevisions",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/characters",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Character Revisions"
+  },
+  "getCharacterRevisionByRevisionId": {
+    "operationId": "getCharacterRevisionByRevisionId",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/characters/{revision_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Character Revision"
+  },
+  "getSubjectRevisions": {
+    "operationId": "getSubjectRevisions",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/subjects",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Subject Revisions"
+  },
+  "getSubjectRevisionByRevisionId": {
+    "operationId": "getSubjectRevisionByRevisionId",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/subjects/{revision_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Subject Revision"
+  },
+  "getEpisodeRevisions": {
+    "operationId": "getEpisodeRevisions",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/episodes",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Episode Revisions"
+  },
+  "getEpisodeRevisionByRevisionId": {
+    "operationId": "getEpisodeRevisionByRevisionId",
+    "tag": "编辑历史",
+    "method": "GET",
+    "path": "/v0/revisions/episodes/{revision_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Episode Revision"
+  },
+  "newIndex": {
+    "operationId": "newIndex",
+    "tag": "目录",
+    "method": "POST",
+    "path": "/v0/indices",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "write",
+    "summary": "Create a new index"
+  },
+  "getIndexById": {
+    "operationId": "getIndexById",
+    "tag": "目录",
+    "method": "GET",
+    "path": "/v0/indices/{index_id}",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Index By ID"
+  },
+  "editIndexById": {
+    "operationId": "editIndexById",
+    "tag": "目录",
+    "method": "PUT",
+    "path": "/v0/indices/{index_id}",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "write",
+    "summary": "Edit index's information"
+  },
+  "getIndexSubjectsByIndexId": {
+    "operationId": "getIndexSubjectsByIndexId",
+    "tag": "目录",
+    "method": "GET",
+    "path": "/v0/indices/{index_id}/subjects",
+    "auth": "optional",
+    "scopes": [],
+    "risk": "read",
+    "summary": "Get Index Subjects"
+  },
+  "addSubjectToIndexByIndexId": {
+    "operationId": "addSubjectToIndexByIndexId",
+    "tag": "目录",
+    "method": "POST",
+    "path": "/v0/indices/{index_id}/subjects",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "write",
+    "summary": "Add a subject to Index"
+  },
+  "editIndexSubjectsByIndexIdAndSubjectID": {
+    "operationId": "editIndexSubjectsByIndexIdAndSubjectID",
+    "tag": "目录",
+    "method": "PUT",
+    "path": "/v0/indices/{index_id}/subjects/{subject_id}",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "write",
+    "summary": "Edit subject information in a index"
+  },
+  "delelteSubjectFromIndexByIndexIdAndSubjectID": {
+    "operationId": "delelteSubjectFromIndexByIndexIdAndSubjectID",
+    "tag": "目录",
+    "method": "DELETE",
+    "path": "/v0/indices/{index_id}/subjects/{subject_id}",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "destructive",
+    "summary": "Delete a subject from a Index"
+  },
+  "collectIndexByIndexIdAndUserId": {
+    "operationId": "collectIndexByIndexIdAndUserId",
+    "tag": "目录",
+    "method": "POST",
+    "path": "/v0/indices/{index_id}/collect",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "write",
+    "summary": "Collect index for current user"
+  },
+  "uncollectIndexByIndexIdAndUserId": {
+    "operationId": "uncollectIndexByIndexIdAndUserId",
+    "tag": "目录",
+    "method": "DELETE",
+    "path": "/v0/indices/{index_id}/collect",
+    "auth": "required",
+    "scopes": [
+      "write:indices"
+    ],
+    "risk": "destructive",
+    "summary": "Uncollect index for current user"
+  },
+  "getCalendar": {
+    "operationId": "getCalendar",
+    "tag": "每日放送",
+    "method": "GET",
+    "path": "/calendar",
+    "auth": "none",
+    "scopes": [],
+    "risk": "read",
+    "summary": "获取每日放送动画列表"
+  }
+}

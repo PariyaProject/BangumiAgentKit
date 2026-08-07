@@ -1,0 +1,17 @@
+{
+  "name": "@bangumi-agent-kit/app-mcp",
+  "version": "0.1.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/stdio.js"
+  },
+  "dependencies": {
+    "@bangumi-agent-kit/bangumi-core": "workspace:*",
+    "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
+    "@bangumi-agent-kit/bangumi-transport": "workspace:*",
+    "@bangumi-agent-kit/tools": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0 || ^4.0.0"
+  }
+}

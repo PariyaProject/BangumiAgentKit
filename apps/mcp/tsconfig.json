@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../packages/bangumi-openapi" },
+    { "path": "../../packages/bangumi-transport" },
+    { "path": "../../packages/db" },
+    { "path": "../../packages/bangumi-core" },
+    { "path": "../../packages/tools" }
+  ]
+}
