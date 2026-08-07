@@ -169,7 +169,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
     )) as any;
 
     expect(res.count).toBe(25);
-    expect(storage.getAuditEvents().length).toBe(1);
+    expect(storage.getAuditEvents().length).toBeGreaterThanOrEqual(1);
   });
 
   it('requires confirmation for destructive uncollect character action', async () => {

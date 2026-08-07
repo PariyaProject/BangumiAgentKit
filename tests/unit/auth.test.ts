@@ -160,5 +160,10 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     const cred = await storage.getCredential(authorized.accountId);
     expect(cred).toBeDefined();
     expect(JSON.stringify(cred)).not.toContain('bgm_oauth_token_999');
+
+    // Regression check: requestedCapabilities != reportedScopes
+    expect(cred?.reportedScopes).toBeNull();
+    expect(cred?.scopeEvidence).toBe('unknown');
+    expect(cred?.requestedCapabilities).toEqual(['write:collection']);
   });
 });

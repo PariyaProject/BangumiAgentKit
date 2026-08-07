@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { GeneratedBangumiOpenApiClient, OperationResponse } from '../../packages/bangumi-openapi/src/index.js';
+import { ToolContext } from '../../packages/tools/src/define-tool.js';
 
 type IsAny<T> = 0 extends (1 & T) ? true : false;
 type ExpectFalse<T extends false> = T;
@@ -43,6 +44,24 @@ describe('Phase 1: Compile-Time Negative Contract Tests', () => {
 
     // @ts-expect-error index_id is integer
     client.getIndexById("1");
+  });
+
+  it('rejects forbidden token properties on ToolContext at compile-time', () => {
+    const validContext: ToolContext = {
+      principalId: 'p',
+      botInstanceId: 'b',
+      conversationId: 'c',
+    };
+    expect(validContext.principalId).toBe('p');
+
+    // @ts-expect-error accessToken does not exist on ToolContext
+    const invalidContext: ToolContext = {
+      principalId: 'p',
+      botInstanceId: 'b',
+      conversationId: 'c',
+      accessToken: 'secret',
+    };
+    expect(invalidContext).toBeDefined();
   });
 
   it('validates compile-time type assertions', () => {
