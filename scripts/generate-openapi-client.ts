@@ -6,6 +6,18 @@ const SPEC_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
 const GENERATED_DIR = path.join(__dirname, '..', 'packages', 'bangumi-openapi', 'src', 'generated');
 const CLIENT_OUTPUT_PATH = path.join(GENERATED_DIR, 'index.ts');
 
+function resolveRef(spec: any, item: any): any {
+  if (item && typeof item === 'object' && typeof item.$ref === 'string') {
+    const refPath = item.$ref.replace(/^#\//, '').split('/');
+    let current = spec;
+    for (const segment of refPath) {
+      current = current?.[segment];
+    }
+    return resolveRef(spec, current);
+  }
+  return item;
+}
+
 function generateClient() {
   console.log(`[generate-client] Reading spec from ${SPEC_PATH}...`);
   const content = fs.readFileSync(SPEC_PATH, 'utf-8');
@@ -17,6 +29,7 @@ function generateClient() {
 
   code.push(`// Auto-generated Bangumi OpenAPI Client & Types. DO NOT EDIT MANUALLY.`);
   code.push(`// Spec version: Bangumi OpenAPI v0\n`);
+  code.push(`import { HttpClient, HttpClientConfig } from '@bangumi-agent-kit/bangumi-transport';\n`);
 
   // Basic types and Enums
   code.push(`export type SubjectType = 1 | 2 | 3 | 4 | 6; // 1: book, 2: anime, 3: music, 4: game, 6: real`);
@@ -142,73 +155,19 @@ export interface Revision {
 `);
 
   // Generate OpenAPI Client Methods
-  code.push(`export interface BangumiRawClientConfig {
-  baseUrl?: string;
-  userAgent?: string;
-  accessToken?: string;
-}
+  code.push(`export class GeneratedBangumiOpenApiClient {
+  private transport: HttpClient;
 
-export class GeneratedBangumiOpenApiClient {
-  private baseUrl: string;
-  private userAgent: string;
-  private accessToken?: string;
-
-  constructor(config: BangumiRawClientConfig = {}) {
-    this.baseUrl = config.baseUrl || 'https://api.bgm.tv';
-    this.userAgent = config.userAgent || 'BangumiAgentKit/0.1.0';
-    this.accessToken = config.accessToken;
-  }
-
-  private async request<T>(method: string, path: string, options: { query?: Record<string, any>; body?: any } = {}): Promise<T> {
-    let url = \`\${this.baseUrl}\${path}\`;
-    if (options.query) {
-      const params = new URLSearchParams();
-      for (const [k, v] of Object.entries(options.query)) {
-        if (v !== undefined && v !== null) {
-          params.append(k, String(v));
-        }
-      }
-      const queryString = params.toString();
-      if (queryString) {
-        url += \`?\${queryString}\`;
-      }
+  constructor(configOrTransport?: HttpClient | HttpClientConfig) {
+    if (configOrTransport instanceof HttpClient) {
+      this.transport = configOrTransport;
+    } else {
+      this.transport = new HttpClient(configOrTransport);
     }
-
-    const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'User-Agent': this.userAgent,
-    };
-
-    if (this.accessToken) {
-      headers['Authorization'] = \`Bearer \${this.accessToken}\`;
-    }
-
-    let reqBody: string | undefined = undefined;
-    if (options.body) {
-      headers['Content-Type'] = 'application/json';
-      reqBody = JSON.stringify(options.body);
-    }
-
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: reqBody,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(\`Bangumi API Request Failed [\${response.status}]: \${errorText}\`);
-    }
-
-    if (response.status === 204) {
-      return {} as T;
-    }
-
-    return (await response.json()) as T;
   }
 `);
 
-  // Method signatures for all 55 operations
+  // Method signatures for all 55 v0 operations
   for (const [apiPath, pathItem] of Object.entries(spec.paths as Record<string, any>)) {
     for (const m of ['get', 'post', 'put', 'patch', 'delete']) {
       const op = pathItem[m];
@@ -217,17 +176,42 @@ export class GeneratedBangumiOpenApiClient {
         const opId = op.operationId;
         const summary = op.summary || opId;
 
-        // Path params extraction
-        const pathParams = (op.parameters || [])
-          .filter((p: any) => p.in === 'path')
-          .map((p: any) => p.name);
+        // Resolve parameters (path + operation levels)
+        const rawParams = [
+          ...(pathItem.parameters || []),
+          ...(op.parameters || []),
+        ];
 
-        const hasQueryParams = (op.parameters || []).some((p: any) => p.in === 'query');
+        const resolvedParamsMap = new Map<string, any>();
+        for (const p of rawParams) {
+          const resP = resolveRef(spec, p);
+          if (resP && resP.name && resP.in) {
+            resolvedParamsMap.set(`${resP.in}:${resP.name}`, resP);
+          }
+        }
+
+        const resolvedParams = Array.from(resolvedParamsMap.values());
+
+        // Extract path param names in path order
+        const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g)).map((match) => match[1]);
+        const pathParamNames: string[] = [];
+        for (const pName of pathMatches) {
+          if (!pathParamNames.includes(pName)) {
+            pathParamNames.push(pName);
+          }
+        }
+        for (const resP of resolvedParams) {
+          if (resP.in === 'path' && !pathParamNames.includes(resP.name)) {
+            pathParamNames.push(resP.name);
+          }
+        }
+
+        const hasQueryParams = resolvedParams.some((p) => p.in === 'query');
         const hasBody = !!op.requestBody;
 
         const argsList: string[] = [];
-        for (const p of pathParams) {
-          argsList.push(`${p}: string | number`);
+        for (const pName of pathParamNames) {
+          argsList.push(`${pName}: string | number`);
         }
         if (hasQueryParams) {
           argsList.push(`query?: Record<string, unknown>`);
@@ -238,19 +222,24 @@ export class GeneratedBangumiOpenApiClient {
 
         const argsStr = argsList.join(', ');
 
-        // Path string replace
+        // Construct path template expression with encodeURIComponent
         let pathExpr = `\`${apiPath}\``;
-        for (const p of pathParams) {
-          pathExpr = pathExpr.replace(`{${p}}`, `\${${p}}`);
+        for (const pName of pathParamNames) {
+          pathExpr = pathExpr.replace(`{${pName}}`, `\${encodeURIComponent(String(${pName}))}`);
         }
 
         code.push(`  /** ${summary} (${method} ${apiPath}) */`);
         code.push(`  async ${opId}(${argsStr}): Promise<any> {`);
-        const optProps: string[] = [];
-        if (hasQueryParams) optProps.push('query');
-        if (hasBody) optProps.push('body');
-        const optStr = optProps.length > 0 ? `, { ${optProps.join(', ')} }` : '';
-        code.push(`    return this.request<any>('${method}', ${pathExpr}${optStr});`);
+        code.push(`    return this.transport.request<any>({`);
+        code.push(`      method: '${method}',`);
+        code.push(`      path: ${pathExpr},`);
+        if (hasQueryParams) {
+          code.push(`      query,`);
+        }
+        if (hasBody) {
+          code.push(`      body,`);
+        }
+        code.push(`    });`);
         code.push(`  }\n`);
       }
     }

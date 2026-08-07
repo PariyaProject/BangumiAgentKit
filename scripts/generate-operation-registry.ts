@@ -17,77 +17,73 @@ export interface OperationMeta {
 }
 
 const SPEC_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
+const OVERRIDES_PATH = path.join(__dirname, '..', 'openapi', 'operation-overrides.yaml');
 const REGISTRY_JSON_PATH = path.join(__dirname, '..', 'openapi', 'generated-operation-registry.json');
 const REGISTRY_TS_PATH = path.join(__dirname, '..', 'packages', 'bangumi-openapi', 'src', 'operation-registry.ts');
 
+function loadOverrides(): Record<string, { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }> {
+  if (fs.existsSync(OVERRIDES_PATH)) {
+    const raw = fs.readFileSync(OVERRIDES_PATH, 'utf-8');
+    const parsed = YAML.parse(raw);
+    return parsed?.overrides || {};
+  }
+  return {};
+}
+
+function extractSecurityMeta(op: any): { auth: AuthRequirement; scopes: string[] } {
+  const secList: any[] = op.security || [];
+  let auth: AuthRequirement = 'none';
+  const scopes: string[] = [];
+
+  if (secList.length > 0) {
+    for (const secObj of secList) {
+      if (typeof secObj !== 'object' || secObj === null) continue;
+      for (const [scheme, scopeArray] of Object.entries(secObj as Record<string, string[]>)) {
+        if (scheme === 'HTTPBearer' || scheme === 'OAuth2') {
+          auth = 'required';
+          if (Array.isArray(scopeArray)) {
+            for (const s of scopeArray) {
+              if (!scopes.includes(s)) scopes.push(s);
+            }
+          }
+        } else if (scheme === 'OptionalHTTPBearer' && auth !== 'required') {
+          auth = 'optional';
+        }
+      }
+    }
+  }
+
+  return { auth, scopes };
+}
+
 function getOperationMeta(
-  operationId: string,
+  op: any,
   tag: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   apiPath: string,
   summary: string,
+  overrides: Record<string, { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }>
 ): OperationMeta {
-  // Determine risk, auth, scopes based on operationId and method
-  let auth: AuthRequirement = 'none';
-  let scopes: string[] = [];
-  let risk: OperationRisk = 'read';
+  const opId = op.operationId;
+  const { auth: parsedAuth, scopes: parsedScopes } = extractSecurityMeta(op);
 
-  if (method === 'GET') {
+  const override = overrides[opId] || {};
+  const auth = override.auth || parsedAuth;
+  const scopes = override.scopes || parsedScopes;
+
+  let risk: OperationRisk;
+  if (override.risk) {
+    risk = override.risk;
+  } else if (method === 'GET') {
     risk = 'read';
-    if (operationId === 'getMyself') {
-      auth = 'required';
-    } else if (
-      operationId.includes('Collection') ||
-      operationId.includes('User')
-    ) {
-      auth = 'optional';
-    } else {
-      auth = 'optional';
-    }
+  } else if (method === 'DELETE') {
+    risk = 'destructive';
   } else {
-    // Search operations are read-only POSTs
-    if (
-      operationId === 'searchSubjects' ||
-      operationId === 'searchCharacters' ||
-      operationId === 'searchPersons'
-    ) {
-      risk = 'read';
-      auth = 'none';
-    } else if (
-      operationId.includes('Index') ||
-      operationId.includes('SubjectFromIndex')
-    ) {
-      auth = 'required';
-      scopes = ['write:indices'];
-      if (
-        operationId.includes('delelte') ||
-        operationId.includes('delete') ||
-        operationId.includes('uncollect')
-      ) {
-        risk = 'destructive';
-      } else {
-        risk = 'write';
-      }
-    } else if (
-      operationId.includes('Collection') ||
-      operationId.includes('collect') ||
-      operationId.includes('uncollect')
-    ) {
-      auth = 'required';
-      scopes = ['write:collection'];
-      if (operationId.startsWith('uncollect')) {
-        risk = 'destructive';
-      } else {
-        risk = 'write';
-      }
-    } else {
-      auth = 'required';
-      risk = method === 'DELETE' ? 'destructive' : 'write';
-    }
+    risk = 'write';
   }
 
   return {
-    operationId,
+    operationId: opId,
     tag,
     method,
     path: apiPath,
@@ -102,6 +98,7 @@ function generateRegistry() {
   console.log(`[generate-registry] Reading ${SPEC_PATH}...`);
   const content = fs.readFileSync(SPEC_PATH, 'utf-8');
   const spec = YAML.parse(content);
+  const overrides = loadOverrides();
 
   const registry: Record<string, OperationMeta> = {};
 
@@ -112,7 +109,7 @@ function generateRegistry() {
         const method = m.toUpperCase() as OperationMeta['method'];
         const tag = op.tags?.[0] || '通用';
         const summary = op.summary || op.description?.split('\n')[0] || op.operationId;
-        const meta = getOperationMeta(op.operationId, tag, method, apiPath, summary);
+        const meta = getOperationMeta(op, tag, method, apiPath, summary, overrides);
         registry[op.operationId] = meta;
       }
     }

@@ -1,0 +1,45 @@
+# Explicit Operation Risk Overrides
+# Allowed risks: read | write | destructive
+
+overrides:
+  # Special POST Search operations (read-only)
+  searchSubjects:
+    risk: read
+  searchCharacters:
+    risk: read
+  searchPersons:
+    risk: read
+
+  # Write operations
+  collectCharacterByCharacterIdAndUserId:
+    risk: write
+  collectPersonByPersonIdAndUserId:
+    risk: write
+  postUserCollection:
+    risk: write
+  patchUserCollection:
+    risk: write
+  patchUserSubjectEpisodeCollection:
+    risk: write
+  putUserEpisodeCollection:
+    risk: write
+  newIndex:
+    risk: write
+  editIndexById:
+    risk: write
+  addSubjectToIndexByIndexId:
+    risk: write
+  editIndexSubjectsByIndexIdAndSubjectID:
+    risk: write
+  collectIndexByIndexIdAndUserId:
+    risk: write
+
+  # Destructive operations
+  uncollectCharacterByCharacterIdAndUserId:
+    risk: destructive
+  uncollectPersonByPersonIdAndUserId:
+    risk: destructive
+  delelteSubjectFromIndexByIndexIdAndSubjectID:
+    risk: destructive
+  uncollectIndexByIndexIdAndUserId:
+    risk: destructive

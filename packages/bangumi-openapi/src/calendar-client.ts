@@ -1,3 +1,5 @@
+import { HttpClient, HttpClientConfig } from '@bangumi-agent-kit/bangumi-transport';
+
 export interface CalendarItem {
   weekday: {
     en: string;
@@ -34,31 +36,23 @@ export interface CalendarItem {
 }
 
 export class CalendarClient {
-  private baseUrl: string;
-  private userAgent: string;
+  private transport: HttpClient;
 
-  constructor(config: { baseUrl?: string; userAgent?: string } = {}) {
-    this.baseUrl = config.baseUrl || 'https://api.bgm.tv';
-    this.userAgent = config.userAgent || 'BangumiAgentKit/0.1.0';
+  constructor(configOrTransport?: HttpClient | HttpClientConfig) {
+    if (configOrTransport instanceof HttpClient) {
+      this.transport = configOrTransport;
+    } else {
+      this.transport = new HttpClient(configOrTransport);
+    }
   }
 
   /**
    * getCalendar Operation (GET /calendar)
    */
   async getCalendar(): Promise<CalendarItem[]> {
-    const url = `${this.baseUrl}/calendar`;
-    const response = await fetch(url, {
+    return this.transport.request<CalendarItem[]>({
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': this.userAgent,
-      },
+      path: '/calendar',
     });
-
-    if (!response.ok) {
-      throw new Error(`Calendar API Request Failed [${response.status}]: ${response.statusText}`);
-    }
-
-    return (await response.json()) as CalendarItem[];
   }
 }

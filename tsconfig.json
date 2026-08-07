@@ -4,8 +4,8 @@
   },
   "files": [],
   "references": [
-    { "path": "./packages/bangumi-openapi" },
     { "path": "./packages/bangumi-transport" },
+    { "path": "./packages/bangumi-openapi" },
     { "path": "./packages/bangumi-core" },
     { "path": "./packages/auth" },
     { "path": "./packages/tools" },

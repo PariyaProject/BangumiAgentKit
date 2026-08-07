@@ -130,7 +130,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Character Detail"
@@ -150,7 +150,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/subjects",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "get character related subjects"
@@ -160,7 +160,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/persons",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "get character related persons"
@@ -194,7 +194,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Person"
@@ -214,7 +214,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/subjects",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "get person related subjects"
@@ -224,7 +224,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/characters",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "get person related characters"
@@ -258,7 +258,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "用户",
     "method": "GET",
     "path": "/v0/users/{username}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get User by name"
@@ -268,7 +268,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "用户",
     "method": "GET",
     "path": "/v0/users/{username}/avatar",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get User Avatar by name"
@@ -332,7 +332,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/-/collections/{subject_id}/episodes",
-    "auth": "optional",
+    "auth": "required",
     "scopes": [],
     "risk": "read",
     "summary": "章节收藏信息"
@@ -354,7 +354,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/-/collections/-/episodes/{episode_id}",
-    "auth": "optional",
+    "auth": "required",
     "scopes": [],
     "risk": "read",
     "summary": "章节收藏信息"
@@ -376,7 +376,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/characters",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "获取用户角色收藏列表"
@@ -386,7 +386,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/characters/{character_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "获取用户单个角色收藏信息"
@@ -396,7 +396,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/persons",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "获取用户人物收藏列表"
@@ -406,7 +406,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/persons/{person_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "获取用户单个人物收藏信息"
@@ -416,7 +416,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/persons",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Person Revisions"
@@ -426,7 +426,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/persons/{revision_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Person Revision"
@@ -436,7 +436,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/characters",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Character Revisions"
@@ -446,7 +446,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/characters/{revision_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Character Revision"
@@ -456,7 +456,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/subjects",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Subject Revisions"
@@ -466,7 +466,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/subjects/{revision_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Subject Revision"
@@ -476,7 +476,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/episodes",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Episode Revisions"
@@ -486,7 +486,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/episodes/{revision_id}",
-    "auth": "optional",
+    "auth": "none",
     "scopes": [],
     "risk": "read",
     "summary": "Get Episode Revision"
@@ -578,7 +578,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "path": "/v0/indices/{index_id}/collect",
     "auth": "required",
     "scopes": [
-      "write:indices"
+      "write:collection"
     ],
     "risk": "write",
     "summary": "Collect index for current user"
@@ -590,7 +590,7 @@ export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
     "path": "/v0/indices/{index_id}/collect",
     "auth": "required",
     "scopes": [
-      "write:indices"
+      "write:collection"
     ],
     "risk": "destructive",
     "summary": "Uncollect index for current user"

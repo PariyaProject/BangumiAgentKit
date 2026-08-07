@@ -14,7 +14,7 @@
     "openapi:sync": "ts-node scripts/sync-openapi.ts",
     "openapi:generate": "ts-node scripts/generate-openapi-client.ts",
     "openapi:registry": "ts-node scripts/generate-operation-registry.ts",
-    "openapi:verify": "pnpm openapi:sync && pnpm openapi:generate && pnpm openapi:registry && git diff --exit-code packages/bangumi-openapi/src/generated",
+    "openapi:verify": "pnpm openapi:sync && pnpm openapi:generate && pnpm openapi:registry && git diff --exit-code packages/bangumi-openapi/src/generated openapi/generated-operation-registry.json packages/bangumi-openapi/src/operation-registry.ts",
     "format": "prettier --write \"**/*.{ts,json,md,yaml,yml}\""
   },
   "devDependencies": {

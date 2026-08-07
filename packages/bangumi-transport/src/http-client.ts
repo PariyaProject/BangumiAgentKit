@@ -8,6 +8,7 @@ export interface HttpClientConfig {
   accessToken?: string;
   timeoutMs?: number;
   cache?: MemoryCache;
+  fetchFn?: typeof fetch;
 }
 
 export interface HttpRequestOptions {
@@ -28,6 +29,7 @@ export class HttpClient {
   private accessToken?: string;
   private timeoutMs: number;
   private cache: MemoryCache;
+  private fetchFn?: typeof fetch;
 
   constructor(config: HttpClientConfig = {}) {
     this.baseUrl = config.baseUrl || 'https://api.bgm.tv';
@@ -36,6 +38,7 @@ export class HttpClient {
     this.accessToken = config.accessToken;
     this.timeoutMs = config.timeoutMs ?? 10000;
     this.cache = config.cache || new MemoryCache();
+    this.fetchFn = config.fetchFn;
   }
 
   async request<T>(options: HttpRequestOptions): Promise<T> {
@@ -86,7 +89,7 @@ export class HttpClient {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
-      const fetchImpl = options.fetchFn || fetch;
+      const fetchImpl = options.fetchFn || this.fetchFn || fetch;
 
       let response: Response;
       try {
@@ -104,6 +107,10 @@ export class HttpClient {
         throw new BangumiError('NETWORK_ERROR', err instanceof Error ? err.message : 'Network failure', true);
       } finally {
         clearTimeout(timer);
+      }
+
+      if (response.status === 302 || response.status === 301 || response.headers.get('location')) {
+        return { location: response.headers.get('location') || response.url || '' } as T;
       }
 
       if (!response.ok) {
@@ -147,6 +154,11 @@ export class HttpClient {
         return {} as T;
       }
 
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.startsWith('image/')) {
+        return { location: response.url || response.headers.get('location') || '' } as T;
+      }
+
       let dataText = '';
       try {
         dataText = await response.text();
@@ -156,6 +168,9 @@ export class HttpClient {
         const data = JSON.parse(dataText) as T;
         return data;
       } catch {
+        if (contentType.includes('image') || response.status === 302) {
+          return { location: response.url || response.headers.get('location') || '' } as T;
+        }
         throw new BangumiError('PARSER_ERROR', `Invalid JSON response: ${dataText.slice(0, 100)}`, false, response.status);
       }
     };

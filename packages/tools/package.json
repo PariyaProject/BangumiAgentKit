@@ -10,6 +10,7 @@
     "@bangumi-agent-kit/bangumi-core": "workspace:*",
     "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
     "@bangumi-agent-kit/bangumi-transport": "workspace:*",
+    "@bangumi-agent-kit/db": "workspace:*",
     "zod": "^3.22.0 || ^4.0.0"
   }
 }

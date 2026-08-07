@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { ToolRegistry, ToolContext } from '@bangumi-agent-kit/tools';
@@ -38,14 +39,15 @@ export class BangumiMcpServer {
     // List Tools Handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = this.registry.getTools();
-      const mcpTools = tools.map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      }));
+      const mcpTools = tools.map((tool) => {
+        const jsonSchema = z.toJSONSchema(tool.input) as Record<string, unknown>;
+        delete jsonSchema.$schema;
+        return {
+          name: tool.name,
+          description: tool.description,
+          inputSchema: jsonSchema,
+        };
+      });
       return { tools: mcpTools };
     });
 
@@ -58,8 +60,35 @@ export class BangumiMcpServer {
         conversationId: 'local-session',
       };
 
+      const tool = this.registry.getTools().find((t) => t.name === name);
+      if (!tool) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: `Unknown tool: ${name}`,
+            },
+          ],
+        };
+      }
+
+      // Perform runtime Zod schema validation
+      const parseResult = tool.input.safeParse(args || {});
+      if (!parseResult.success) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: `Validation Error for ${name}: ${parseResult.error.message}`,
+            },
+          ],
+        };
+      }
+
       try {
-        const result = await this.registry.executeTool(name, args || {}, context);
+        const result = await this.registry.executeTool(name, parseResult.data, context);
         return {
           content: [
             {

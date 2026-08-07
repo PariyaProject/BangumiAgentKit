@@ -4,10 +4,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { OPERATION_REGISTRY, GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 
 export function createRawOperationTools(httpClient: HttpClient) {
-  const openApiClient = new GeneratedBangumiOpenApiClient({
-    baseUrl: (httpClient as any).baseUrl,
-    userAgent: (httpClient as any).userAgent,
-  });
+  const openApiClient = new GeneratedBangumiOpenApiClient(httpClient);
 
   const listOperations = defineTool({
     name: 'bangumi.list_operations',

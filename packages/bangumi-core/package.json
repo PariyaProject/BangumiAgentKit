@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
-    "@bangumi-agent-kit/bangumi-transport": "workspace:*"
+    "@bangumi-agent-kit/bangumi-transport": "workspace:*",
+    "@bangumi-agent-kit/db": "workspace:*"
   }
 }

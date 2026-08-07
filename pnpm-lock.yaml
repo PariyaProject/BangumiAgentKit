@@ -48,15 +48,57 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
 
-  apps/api: {}
+  apps/api:
+    dependencies:
+      '@bangumi-agent-kit/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@bangumi-agent-kit/bangumi-openapi':
+        specifier: workspace:*
+        version: link:../../packages/bangumi-openapi
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../../packages/bangumi-transport
+      '@bangumi-agent-kit/db':
+        specifier: workspace:*
+        version: link:../../packages/db
 
   apps/bot: {}
 
-  apps/mcp: {}
+  apps/mcp:
+    dependencies:
+      '@bangumi-agent-kit/bangumi-core':
+        specifier: workspace:*
+        version: link:../../packages/bangumi-core
+      '@bangumi-agent-kit/bangumi-openapi':
+        specifier: workspace:*
+        version: link:../../packages/bangumi-openapi
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../../packages/bangumi-transport
+      '@bangumi-agent-kit/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.30.0(zod@4.4.3)
+      zod:
+        specifier: ^3.22.0 || ^4.0.0
+        version: 4.4.3
 
   apps/worker: {}
 
-  packages/auth: {}
+  packages/auth:
+    dependencies:
+      '@bangumi-agent-kit/bangumi-openapi':
+        specifier: workspace:*
+        version: link:../bangumi-openapi
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../bangumi-transport
+      '@bangumi-agent-kit/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/bangumi-core:
     dependencies:
@@ -66,8 +108,15 @@ importers:
       '@bangumi-agent-kit/bangumi-transport':
         specifier: workspace:*
         version: link:../bangumi-transport
+      '@bangumi-agent-kit/db':
+        specifier: workspace:*
+        version: link:../db
 
-  packages/bangumi-openapi: {}
+  packages/bangumi-openapi:
+    dependencies:
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../bangumi-transport
 
   packages/bangumi-transport: {}
 
@@ -85,11 +134,35 @@ importers:
 
   packages/platform-onebot: {}
 
-  packages/platform-qq-official: {}
+  packages/platform-qq-official:
+    dependencies:
+      '@bangumi-agent-kit/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
 
-  packages/renderer: {}
+  packages/renderer:
+    dependencies:
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../bangumi-transport
 
-  packages/tools: {}
+  packages/tools:
+    dependencies:
+      '@bangumi-agent-kit/bangumi-core':
+        specifier: workspace:*
+        version: link:../bangumi-core
+      '@bangumi-agent-kit/bangumi-openapi':
+        specifier: workspace:*
+        version: link:../bangumi-openapi
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../bangumi-transport
+      '@bangumi-agent-kit/db':
+        specifier: workspace:*
+        version: link:../db
+      zod:
+        specifier: ^3.22.0 || ^4.0.0
+        version: 4.4.3
 
 packages:
 
