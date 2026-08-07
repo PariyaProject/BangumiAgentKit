@@ -1,10 +1,41 @@
 import crypto from 'node:crypto';
+import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 
 export interface EncryptedTokenPayload {
   ciphertext: string;
   iv: string;
   authTag: string;
   keyVersion?: string;
+}
+
+export class TokenKeyring {
+  private keys = new Map<string, string>();
+
+  constructor(keys: Record<string, string> | string) {
+    if (typeof keys === 'string') {
+      validateEncryptionKey(keys);
+      this.keys.set('v1', keys);
+    } else {
+      for (const [v, k] of Object.entries(keys)) {
+        validateEncryptionKey(k);
+        this.keys.set(v, k);
+      }
+    }
+  }
+
+  resolve(keyVersion = 'v1'): string {
+    const key = this.keys.get(keyVersion);
+    if (!key) {
+      throw new BangumiError(
+        'KEY_VERSION_UNAVAILABLE',
+        `Encryption key version "${keyVersion}" is unavailable in TokenKeyring`,
+        false,
+        401,
+        '请检查服务密钥配置'
+      );
+    }
+    return key;
+  }
 }
 
 export function validateEncryptionKey(secretKey: string): void {
@@ -37,7 +68,10 @@ export function encryptToken(plaintext: string, secretKey: string, keyVersion = 
   };
 }
 
-export function decryptToken(payload: EncryptedTokenPayload, secretKey: string): string {
+export function decryptToken(payload: EncryptedTokenPayload, keyringOrSecret: TokenKeyring | string): string {
+  const keyring = keyringOrSecret instanceof TokenKeyring ? keyringOrSecret : new TokenKeyring(keyringOrSecret);
+  const version = payload.keyVersion || 'v1';
+  const secretKey = keyring.resolve(version);
   const key = deriveKey(secretKey);
   const iv = Buffer.from(payload.iv, 'hex');
   const authTag = Buffer.from(payload.authTag, 'hex');
@@ -48,3 +82,4 @@ export function decryptToken(payload: EncryptedTokenPayload, secretKey: string):
   plaintext += decipher.final('utf-8');
   return plaintext;
 }
+

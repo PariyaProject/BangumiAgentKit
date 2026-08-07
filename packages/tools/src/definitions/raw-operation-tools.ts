@@ -94,7 +94,7 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
 
       return {
         auth: meta.auth,
-        requiredCapabilities: [],
+        requiredCapabilities: meta.scopes || [],
         risk: meta.risk,
         actionType: `call_operation_${input.operationId}`,
         summary: `底层 Operation 调用: ${input.operationId}`,
@@ -109,8 +109,11 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
       const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
 
       let client;
-      if (meta.auth === 'required') {
-        const authed = await activeProvider.requireAuthenticatedClient(context.principalId);
+      const session = (deps as any)?.executionSession;
+      if (session?.client) {
+        client = session.client;
+      } else if (meta.auth === 'required') {
+        const authed = await activeProvider.requireAuthenticatedClient(context.principalId, meta.scopes || []);
         client = authed.client;
       } else if (meta.auth === 'optional') {
         client = await activeProvider.getOptionalAuthenticatedClient(context.principalId);

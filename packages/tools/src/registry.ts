@@ -172,10 +172,26 @@ export class ToolRegistry {
       );
     }
 
-    // 2. Policy Evaluation
+    // 2. Resolve Policy
     const policy = PolicyManager.resolvePolicyForTool(tool, parseResult.data, context);
 
-    // 3. Confirmation Evaluation & Execution Gate
+    // 3. Resolve Authentication & Capabilities BEFORE Confirmation / PendingAction
+    let executionSession: { account?: { id: string; username: string; nickname: string; avatarUrl?: string }; client: unknown } | undefined;
+    if (policy.auth === 'required') {
+      const authed = await this.deps.clientProvider.requireAuthenticatedClient(
+        context.principalId,
+        policy.requiredCapabilities
+      );
+      executionSession = { account: authed.account, client: authed.client };
+    } else if (policy.auth === 'optional') {
+      const client = await this.deps.clientProvider.getOptionalAuthenticatedClient(context.principalId);
+      executionSession = { client };
+    } else {
+      const client = await this.deps.clientProvider.getPublicClient();
+      executionSession = { client };
+    }
+
+    // 4. Confirmation Evaluation & Execution Gate
     let confirmationId: string | undefined;
     let pendingActionId: string | undefined;
 
@@ -192,10 +208,13 @@ export class ToolRegistry {
       confirmationId = claimResult.confirmationId;
       pendingActionId = claimResult.pendingActionId;
 
-      // 4. API Execution
-      const result = await tool.execute(parseResult.data, context, this.deps);
+      // 5. API Execution
+      const result = await tool.execute(parseResult.data, context, {
+        ...this.deps,
+        executionSession,
+      });
 
-      // 5. Success handling
+      // 6. Success handling
       if (pendingActionId) {
         await this.deps.storage.markPendingActionSucceeded(pendingActionId);
       }
@@ -203,10 +222,17 @@ export class ToolRegistry {
       if (policy.risk !== 'read') {
         await this.deps.auditService.recordWrite({
           principalId: context.principalId,
+          bangumiAccountId: executionSession?.account?.id,
           operationId: name,
           riskLevel: policy.risk,
           resourceType: name.split('.')[1] || 'resource',
-          resourceId: String((parseResult.data as Record<string, unknown>)?.subjectId || (parseResult.data as Record<string, unknown>)?.characterId || (parseResult.data as Record<string, unknown>)?.personId || (parseResult.data as Record<string, unknown>)?.indexId || '0'),
+          resourceId: String(
+            (parseResult.data as Record<string, unknown>)?.subjectId ||
+              (parseResult.data as Record<string, unknown>)?.characterId ||
+              (parseResult.data as Record<string, unknown>)?.personId ||
+              (parseResult.data as Record<string, unknown>)?.indexId ||
+              '0'
+          ),
           changeSummary: parseResult.data,
           confirmationId,
           result: 'success',
@@ -217,22 +243,31 @@ export class ToolRegistry {
       return result;
     } catch (err: unknown) {
       const isNetworkUnknown = err instanceof BangumiError && err.code === 'WRITE_RESULT_UNKNOWN';
+      const safeFailMsg = err instanceof BangumiError ? err.message : '内部服务发生错误';
+      const failCode = err instanceof BangumiError ? err.code : 'EXECUTION_FAILED';
 
       if (pendingActionId) {
         if (isNetworkUnknown) {
-          await this.deps.storage.markPendingActionUnknown(pendingActionId, err instanceof Error ? err.message : String(err));
+          await this.deps.storage.markPendingActionUnknown(pendingActionId, safeFailMsg);
         } else {
-          await this.deps.storage.markPendingActionFailed(pendingActionId, err instanceof Error ? err.message : String(err), 'EXECUTION_FAILED');
+          await this.deps.storage.markPendingActionFailed(pendingActionId, safeFailMsg, failCode);
         }
       }
 
       if (policy.risk !== 'read') {
         await this.deps.auditService.recordWrite({
           principalId: context.principalId,
+          bangumiAccountId: executionSession?.account?.id,
           operationId: name,
           riskLevel: policy.risk,
           resourceType: name.split('.')[1] || 'resource',
-          resourceId: String((parseResult.data as Record<string, unknown>)?.subjectId || (parseResult.data as Record<string, unknown>)?.characterId || (parseResult.data as Record<string, unknown>)?.personId || (parseResult.data as Record<string, unknown>)?.indexId || '0'),
+          resourceId: String(
+            (parseResult.data as Record<string, unknown>)?.subjectId ||
+              (parseResult.data as Record<string, unknown>)?.characterId ||
+              (parseResult.data as Record<string, unknown>)?.personId ||
+              (parseResult.data as Record<string, unknown>)?.indexId ||
+              '0'
+          ),
           changeSummary: parseResult.data,
           confirmationId,
           result: isNetworkUnknown ? 'unknown' : 'failed',

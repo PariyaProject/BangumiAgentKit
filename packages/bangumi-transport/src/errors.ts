@@ -15,7 +15,9 @@ export type BangumiErrorCode =
   | 'RAW_WRITE_OPERATION_DISABLED'
   | 'WRITE_RESULT_UNKNOWN'
   | 'STORAGE_ERROR'
-  | 'OAUTH_EXCHANGE_FAILED';
+  | 'OAUTH_EXCHANGE_FAILED'
+  | 'KEY_VERSION_UNAVAILABLE'
+  | 'INTERNAL_ERROR';
 
 export class BangumiError extends Error {
   constructor(

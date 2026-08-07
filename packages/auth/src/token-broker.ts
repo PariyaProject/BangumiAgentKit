@@ -126,7 +126,7 @@ export class TokenBroker implements BangumiClientProvider {
 
   async requireAuthenticatedClient(
     principalId: string,
-    _requiredCapabilities: string[] = []
+    requiredCapabilities: string[] = []
   ): Promise<{ account: BangumiAccountRecord; client: GeneratedBangumiOpenApiClient }> {
     const account = await this.requireAccount(principalId);
     const cred = await this.storage.getCredential(account.id);
@@ -139,6 +139,20 @@ export class TokenBroker implements BangumiClientProvider {
         401,
         '调用 bangumi.auth_start'
       );
+    }
+
+    if (cred.scopeEvidence === 'reported') {
+      const reported = cred.reportedScopes || [];
+      const missing = requiredCapabilities.filter((cap) => !reported.includes(cap));
+      if (missing.length > 0) {
+        throw new BangumiError(
+          'PERMISSION_DENIED',
+          `当前账号缺失以下必要权限: ${missing.join(', ')}`,
+          false,
+          403,
+          `缺少 Scope: ${missing.join(', ')}`
+        );
+      }
     }
 
     const accessToken = await this.resolveAndRefreshToken(cred, account.id);
@@ -230,11 +244,22 @@ export class TokenBroker implements BangumiClientProvider {
 
       const newExpiresAt = new Date(lockNow.getTime() + (refreshedData.expires_in || 7 * 86400) * 1000);
 
+      let newReportedScopes = latestCred.reportedScopes;
+      let newScopeEvidence = latestCred.scopeEvidence;
+      if (refreshedData.scope !== undefined && refreshedData.scope !== null) {
+        newReportedScopes = Array.isArray(refreshedData.scope)
+          ? refreshedData.scope
+          : String(refreshedData.scope).split(' ').filter(Boolean);
+        newScopeEvidence = 'reported';
+      }
+
       const updatedRecord = {
         ...latestCred,
         encryptedAccessToken: newEncryptedAccess,
         encryptedRefreshToken: newEncryptedRefresh,
         expiresAt: newExpiresAt,
+        reportedScopes: newReportedScopes,
+        scopeEvidence: newScopeEvidence,
         updatedAt: lockNow,
       };
 

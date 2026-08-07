@@ -1,4 +1,5 @@
 import { OAuthService } from '@bangumi-agent-kit/auth';
+import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 
 export function handleOAuthCallbackRoute(oauthService: OAuthService) {
   return async (code?: string, state?: string) => {
@@ -37,7 +38,12 @@ export function handleOAuthCallbackRoute(oauthService: OAuthService) {
         },
       };
     } catch (err: unknown) {
-      const safeMsg = err instanceof Error ? err.message : '认证回调处理失败';
+      let safeMsg = '内部服务发生错误';
+      if (err instanceof BangumiError) {
+        safeMsg = err.message;
+      } else {
+        console.error('[OAuth Callback Internal Error]', err);
+      }
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },

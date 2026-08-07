@@ -72,11 +72,10 @@ testSharedStorageIntegration('MemoryStorage', async () => new MemoryStorage());
 
 testSharedStorageIntegration('PostgresStorage', async () => {
   const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return null;
-  try {
-    const storage = new PostgresStorage(dbUrl);
-    return storage;
-  } catch {
-    return null;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL environment variable is required for integration tests');
   }
+  const storage = new PostgresStorage(dbUrl);
+  await storage.init();
+  return storage;
 });

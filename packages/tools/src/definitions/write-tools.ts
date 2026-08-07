@@ -31,7 +31,8 @@ export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvi
     risk: 'write',
     execute: async (input, context, deps?: Record<string, unknown>) => {
       const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
-      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const client = (deps?.executionSession as any)?.client ||
+        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection'])).client;
       const collectionService = new CollectionService(client);
       return await collectionService.updateCollection(input);
     },
@@ -42,7 +43,7 @@ export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvi
     description: '更新单个或批量正篇章节的播放进度（如看到第 N 集）。超过 20 集的大批量变更将自动要求二次确认。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      episodeIds: z.array(z.number().int().positive()).min(1).describe('要更新的章节 ID 数组'),
+      episodeIds: z.array(z.number().int().min(1)).min(1).describe('要更新的章节 ID 数组'),
       type: z.number().int().optional().default(2).describe('2=看过, 1=想看, 3=抛弃'),
     }),
     auth: 'required',
@@ -62,7 +63,8 @@ export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvi
     },
     execute: async (input, context, deps?: Record<string, unknown>) => {
       const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
-      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const client = (deps?.executionSession as any)?.client ||
+        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection'])).client;
       const collectionService = new CollectionService(client);
       return await collectionService.updateEpisodeProgress(input.subjectId, input.episodeIds, input.type);
     },
@@ -90,7 +92,8 @@ export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvi
     },
     execute: async (input, context, deps?: Record<string, unknown>) => {
       const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
-      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const client = (deps?.executionSession as any)?.client ||
+        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection'])).client;
       const collectionService = new CollectionService(client);
 
       if (input.action === 'collect') {
@@ -125,7 +128,8 @@ export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvi
     },
     execute: async (input, context, deps?: Record<string, unknown>) => {
       const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
-      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']);
+      const client = (deps?.executionSession as any)?.client ||
+        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection'])).client;
       const collectionService = new CollectionService(client);
 
       if (input.action === 'collect') {
@@ -154,17 +158,24 @@ export function createWriteTools(clientProviderOrHttpClient?: BangumiClientProvi
     risk: 'write',
     resolvePolicy: (input): ResolvedToolPolicy => {
       const risk = (input.action === 'remove_subject' || input.action === 'uncollect') ? 'destructive' : 'write';
+      const requiredCapabilities = (input.action === 'collect' || input.action === 'uncollect')
+        ? ['write:collection']
+        : ['write:indices'];
       return {
         auth: 'required',
-        requiredCapabilities: ['write:indices'],
+        requiredCapabilities,
         risk,
         actionType: `manageIndex_${input.action}`,
         summary: `目录操作: ${input.action}`,
       };
     },
     execute: async (input, context, deps?: Record<string, unknown>) => {
+      const reqCaps = (input.action === 'collect' || input.action === 'uncollect')
+        ? ['write:collection']
+        : ['write:indices'];
       const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
-      const { client } = await activeProvider.requireAuthenticatedClient(context.principalId, ['write:indices']);
+      const client = (deps?.executionSession as any)?.client ||
+        (await activeProvider.requireAuthenticatedClient(context.principalId, reqCaps)).client;
       const indexWriteService = new IndexWriteService(client);
 
       if (input.action === 'create') {

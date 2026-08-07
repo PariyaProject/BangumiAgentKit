@@ -11,6 +11,17 @@ export interface ToolContext {
   requestId?: string;
 }
 
+export interface AuthenticatedExecutionSession {
+  account?: {
+    id: string;
+    username: string;
+    nickname: string;
+    avatarUrl?: string;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any;
+}
+
 export interface ResolvedToolPolicy {
   auth: ToolAuthRequirement;
   requiredCapabilities: string[];

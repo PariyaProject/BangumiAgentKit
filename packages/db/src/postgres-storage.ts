@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import crypto from 'node:crypto';
 import pg from 'pg';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -14,6 +16,26 @@ import {
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import * as schema from './drizzle/schema.js';
+
+function getMigrationSql(): string {
+  const possiblePaths = [
+    path.join(__dirname, 'drizzle', 'migrations', '0000_initial.sql'),
+    path.join(__dirname, '..', 'src', 'drizzle', 'migrations', '0000_initial.sql'),
+    path.join(__dirname, '..', 'drizzle', 'migrations', '0000_initial.sql'),
+    path.join(process.cwd(), 'packages', 'db', 'src', 'drizzle', 'migrations', '0000_initial.sql'),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p, 'utf-8');
+    }
+  }
+  throw new Error(`Migration SQL file 0000_initial.sql not found in any expected paths: ${possiblePaths.join(', ')}`);
+}
+
+function stringToTwoInt32(str: string): [number, number] {
+  const hash = crypto.createHash('sha256').update(str).digest();
+  return [hash.readInt32BE(0), hash.readInt32BE(4)];
+}
 
 export class PostgresStorage implements Storage {
   private pool: pg.Pool;
@@ -33,126 +55,8 @@ export class PostgresStorage implements Storage {
   async init(): Promise<void> {
     const client = await this.pool.connect();
     try {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS bot_instances (
-          id TEXT PRIMARY KEY,
-          provider TEXT NOT NULL,
-          external_bot_id TEXT NOT NULL,
-          encrypted_config TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE TABLE IF NOT EXISTS external_principals (
-          id TEXT PRIMARY KEY,
-          provider TEXT NOT NULL,
-          bot_instance_id TEXT NOT NULL,
-          external_user_id TEXT NOT NULL,
-          display_name TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          CONSTRAINT external_principals_unique UNIQUE (provider, bot_instance_id, external_user_id)
-        );
-
-        CREATE TABLE IF NOT EXISTS bangumi_accounts (
-          id TEXT PRIMARY KEY,
-          bangumi_user_id INTEGER NOT NULL UNIQUE,
-          username TEXT NOT NULL,
-          nickname TEXT NOT NULL,
-          avatar_url TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE TABLE IF NOT EXISTS account_bindings (
-          id TEXT PRIMARY KEY,
-          principal_id TEXT NOT NULL,
-          bangumi_account_id TEXT NOT NULL,
-          is_active BOOLEAN NOT NULL DEFAULT TRUE,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE INDEX IF NOT EXISTS account_bindings_principal_id_idx ON account_bindings (principal_id);
-
-        CREATE TABLE IF NOT EXISTS access_credentials (
-          id TEXT PRIMARY KEY,
-          bangumi_account_id TEXT NOT NULL UNIQUE,
-          encrypted_access_token JSONB NOT NULL,
-          encrypted_refresh_token JSONB,
-          expires_at TIMESTAMP NOT NULL,
-          requested_capabilities JSONB NOT NULL,
-          reported_scopes JSONB,
-          scope_evidence TEXT NOT NULL DEFAULT 'unknown',
-          key_version TEXT NOT NULL DEFAULT 'v1',
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE TABLE IF NOT EXISTS oauth_sessions (
-          id TEXT PRIMARY KEY,
-          state_hash TEXT NOT NULL UNIQUE,
-          principal_id TEXT NOT NULL,
-          bot_instance_id TEXT,
-          conversation_id TEXT,
-          requested_capabilities JSONB NOT NULL,
-          expires_at TIMESTAMP NOT NULL,
-          used_at TIMESTAMP,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE TABLE IF NOT EXISTS conversation_contexts (
-          principal_id TEXT NOT NULL,
-          conversation_key TEXT NOT NULL,
-          last_subject_id INTEGER,
-          last_character_id INTEGER,
-          last_person_id INTEGER,
-          search_candidates_json TEXT,
-          preferred_output_mode TEXT,
-          locale TEXT,
-          timezone TEXT,
-          expires_at TIMESTAMP NOT NULL,
-          PRIMARY KEY (principal_id, conversation_key)
-        );
-
-        CREATE TABLE IF NOT EXISTS pending_actions (
-          id TEXT PRIMARY KEY,
-          principal_id TEXT NOT NULL,
-          bot_instance_id TEXT NOT NULL,
-          conversation_key TEXT NOT NULL,
-          action_type TEXT NOT NULL,
-          summary TEXT NOT NULL,
-          normalized_payload_json TEXT NOT NULL,
-          payload_hash TEXT NOT NULL,
-          status TEXT NOT NULL DEFAULT 'pending',
-          expires_at TIMESTAMP NOT NULL,
-          confirmed_at TIMESTAMP,
-          execution_started_at TIMESTAMP,
-          executed_at TIMESTAMP,
-          failure_code TEXT,
-          failure_message_safe TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE INDEX IF NOT EXISTS pending_actions_principal_expires_idx ON pending_actions (principal_id, expires_at);
-
-        CREATE TABLE IF NOT EXISTS audit_events (
-          id TEXT PRIMARY KEY,
-          principal_id TEXT NOT NULL,
-          bangumi_account_id TEXT,
-          operation_id TEXT NOT NULL,
-          risk_level TEXT NOT NULL,
-          resource_type TEXT NOT NULL,
-          resource_id TEXT NOT NULL,
-          change_summary_json TEXT NOT NULL,
-          confirmation_id TEXT,
-          result TEXT NOT NULL,
-          request_id TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW()
-        );
-
-        CREATE INDEX IF NOT EXISTS audit_events_principal_created_idx ON audit_events (principal_id, created_at);
-      `);
+      const sql = getMigrationSql();
+      await client.query(sql);
     } finally {
       client.release();
     }
@@ -243,14 +147,19 @@ export class PostgresStorage implements Storage {
   }
 
   async upsertBangumiAccount(
-    input: Omit<BangumiAccountRecord, 'createdAt' | 'updatedAt'> &
+    input: Partial<Pick<BangumiAccountRecord, 'bangumiUserId'>> &
+      Omit<BangumiAccountRecord, 'createdAt' | 'updatedAt' | 'bangumiUserId'> &
       Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>
   ): Promise<BangumiAccountRecord> {
     const now = new Date();
     const createdAt = input.createdAt || now;
+    const bangumiUserId =
+      input.bangumiUserId ??
+      Math.abs(input.id.split('').reduce((acc, c) => (acc << 5) - acc + c.charCodeAt(0), 0));
+
     await this.db.insert(schema.bangumiAccounts).values({
       id: input.id,
-      bangumiUserId: input.bangumiUserId,
+      bangumiUserId,
       username: input.username,
       nickname: input.nickname,
       avatarUrl: input.avatarUrl,
@@ -268,7 +177,7 @@ export class PostgresStorage implements Storage {
 
     return {
       id: input.id,
-      bangumiUserId: input.bangumiUserId,
+      bangumiUserId,
       username: input.username,
       nickname: input.nickname,
       avatarUrl: input.avatarUrl,
@@ -295,23 +204,30 @@ export class PostgresStorage implements Storage {
   }
 
   async replaceActiveBinding(principalId: string, bangumiAccountId: string): Promise<AccountBindingRecord> {
-    await this.deactivateBindings(principalId);
-    const now = new Date();
-    const id = `bnd_${crypto.randomUUID()}`;
-    await this.db.insert(schema.accountBindings).values({
-      id,
-      principalId,
-      bangumiAccountId,
-      isActive: true,
-      createdAt: now,
-    });
-    return {
-      id,
-      principalId,
-      bangumiAccountId,
-      isActive: true,
-      createdAt: now,
-    };
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE account_bindings SET is_active = false WHERE principal_id = $1 AND is_active = true', [principalId]);
+      const now = new Date();
+      const id = `bnd_${crypto.randomUUID()}`;
+      await client.query(
+        'INSERT INTO account_bindings (id, principal_id, bangumi_account_id, is_active, created_at) VALUES ($1, $2, $3, $4, $5)',
+        [id, principalId, bangumiAccountId, true, now]
+      );
+      await client.query('COMMIT');
+      return {
+        id,
+        principalId,
+        bangumiAccountId,
+        isActive: true,
+        createdAt: now,
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async deactivateBindings(principalId: string): Promise<void> {
@@ -344,29 +260,34 @@ export class PostgresStorage implements Storage {
   }
 
   async upsertCredential(record: AccessCredentialRecord): Promise<void> {
+    const id = record.id || `cred_${crypto.randomUUID()}`;
+    const requestedCapabilities = record.requestedCapabilities || [];
+    const createdAt = record.createdAt || new Date();
+    const updatedAt = record.updatedAt || new Date();
+
     await this.db.insert(schema.accessCredentials).values({
-      id: record.id,
+      id,
       bangumiAccountId: record.bangumiAccountId,
       encryptedAccessToken: record.encryptedAccessToken as unknown as string,
       encryptedRefreshToken: record.encryptedRefreshToken ? (record.encryptedRefreshToken as unknown as string) : null,
       expiresAt: record.expiresAt,
-      requestedCapabilities: record.requestedCapabilities as unknown as string[],
+      requestedCapabilities: requestedCapabilities as unknown as string[],
       reportedScopes: record.reportedScopes as unknown as string[],
-      scopeEvidence: record.scopeEvidence,
-      keyVersion: record.keyVersion,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      scopeEvidence: record.scopeEvidence || 'unknown',
+      keyVersion: record.keyVersion || 'v1',
+      createdAt,
+      updatedAt,
     }).onConflictDoUpdate({
       target: schema.accessCredentials.bangumiAccountId,
       set: {
         encryptedAccessToken: record.encryptedAccessToken as unknown as string,
         encryptedRefreshToken: record.encryptedRefreshToken ? (record.encryptedRefreshToken as unknown as string) : null,
         expiresAt: record.expiresAt,
-        requestedCapabilities: record.requestedCapabilities as unknown as string[],
+        requestedCapabilities: requestedCapabilities as unknown as string[],
         reportedScopes: record.reportedScopes as unknown as string[],
-        scopeEvidence: record.scopeEvidence,
-        keyVersion: record.keyVersion,
-        updatedAt: record.updatedAt,
+        scopeEvidence: record.scopeEvidence || 'unknown',
+        keyVersion: record.keyVersion || 'v1',
+        updatedAt,
       },
     });
   }
@@ -583,16 +504,20 @@ export class PostgresStorage implements Storage {
 
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
+    const [key1, key2] = stringToTwoInt32(accountId);
+    let lockAcquired = false;
     try {
-      await client.query('BEGIN');
-      await client.query('SELECT id FROM access_credentials WHERE bangumi_account_id = $1 FOR UPDATE', [accountId]);
-      const res = await fn();
-      await client.query('COMMIT');
-      return res;
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
+      await client.query('SELECT pg_advisory_lock($1, $2)', [key1, key2]);
+      lockAcquired = true;
+      return await fn();
     } finally {
+      if (lockAcquired) {
+        try {
+          await client.query('SELECT pg_advisory_unlock($1, $2)', [key1, key2]);
+        } catch {
+          // ignore unlock error if connection closed
+        }
+      }
       client.release();
     }
   }

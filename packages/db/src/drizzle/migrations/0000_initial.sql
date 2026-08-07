@@ -30,17 +30,18 @@ CREATE TABLE IF NOT EXISTS bangumi_accounts (
 
 CREATE TABLE IF NOT EXISTS account_bindings (
   id TEXT PRIMARY KEY,
-  principal_id TEXT NOT NULL,
-  bangumi_account_id TEXT NOT NULL,
+  principal_id TEXT NOT NULL REFERENCES external_principals(id) ON DELETE CASCADE,
+  bangumi_account_id TEXT NOT NULL REFERENCES bangumi_accounts(id) ON DELETE CASCADE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS account_bindings_principal_id_idx ON account_bindings (principal_id);
+CREATE UNIQUE INDEX IF NOT EXISTS account_bindings_active_principal_unique ON account_bindings (principal_id) WHERE is_active = true;
 
 CREATE TABLE IF NOT EXISTS access_credentials (
   id TEXT PRIMARY KEY,
-  bangumi_account_id TEXT NOT NULL UNIQUE,
+  bangumi_account_id TEXT NOT NULL UNIQUE REFERENCES bangumi_accounts(id) ON DELETE CASCADE,
   encrypted_access_token JSONB NOT NULL,
   encrypted_refresh_token JSONB,
   expires_at TIMESTAMP NOT NULL,
@@ -116,3 +117,4 @@ CREATE TABLE IF NOT EXISTS audit_events (
 );
 
 CREATE INDEX IF NOT EXISTS audit_events_principal_created_idx ON audit_events (principal_id, created_at);
+
