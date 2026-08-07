@@ -2,9 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { GeneratedBangumiOpenApiClient, CalendarClient, OPERATION_REGISTRY } from '../../packages/bangumi-openapi/src/index.js';
 import { HttpClient } from '../../packages/bangumi-transport/src/index.js';
 import { createRawOperationTools } from '../../packages/tools/src/definitions/raw-operation-tools.js';
+import { OPERATION_FIXTURES } from './operation-fixtures.js';
 
 describe('Phase 1: Request & Response Contract Tests', () => {
-  it('all operations resolve path placeholders', async () => {
+  it('all operations resolve path placeholders using OPERATION_FIXTURES', async () => {
     let lastCapturedUrl = '';
     const mockFetch = vi.fn().mockImplementation(async (url: string) => {
       lastCapturedUrl = url;
@@ -19,29 +20,26 @@ describe('Phase 1: Request & Response Contract Tests', () => {
 
     for (const [opId, meta] of Object.entries(OPERATION_REGISTRY)) {
       lastCapturedUrl = '';
+      const fixture = OPERATION_FIXTURES[opId];
+      expect(fixture, `Missing fixture for ${opId}`).toBeDefined();
 
       if (opId === 'getCalendar') {
         await calendarClient.getCalendar();
       } else {
         const fn = (openApiClient as any)[opId];
-        expect(typeof fn).toBe('function');
+        expect(typeof fn, `Method ${opId} should exist on client`).toBe('function');
 
-        // Construct valid positional arguments matching signature
-        const args: any[] = [];
-        for (const pName of meta.pathParameters) {
-          args.push(pName === 'username' ? 'testuser' : 123);
-        }
-
+        const args: any[] = [...fixture.pathArgs];
         const hasQuery = Boolean(meta.queryParameters && meta.queryParameters.length > 0);
         const hasBody = Boolean(meta.requestBody);
 
         if (hasQuery && hasBody) {
-          args.push(meta.queryParameters?.some((q) => q.required) ? { type: 1 } : undefined);
-          args.push({ test: 'body' });
+          args.push(fixture.queryFixture);
+          args.push(fixture.bodyFixture);
         } else if (hasQuery) {
-          args.push({ type: 1, limit: 10 });
+          args.push(fixture.queryFixture);
         } else if (hasBody) {
-          args.push({ test: 'body' });
+          args.push(fixture.bodyFixture);
         }
 
         await fn.apply(openApiClient, args);
@@ -69,26 +67,24 @@ describe('Phase 1: Request & Response Contract Tests', () => {
       const openApiClient = new GeneratedBangumiOpenApiClient(httpClient);
       const calendarClient = new CalendarClient(httpClient);
 
+      const fixture = OPERATION_FIXTURES[opId];
+      expect(fixture, `Missing fixture for ${opId}`).toBeDefined();
+
       if (opId === 'getCalendar') {
         await calendarClient.getCalendar();
       } else {
         const fn = (openApiClient as any)[opId];
-        const args: any[] = [];
-
-        for (const pName of meta.pathParameters) {
-          args.push(pName === 'username' ? 'alice' : 456);
-        }
-
+        const args: any[] = [...fixture.pathArgs];
         const hasQuery = Boolean(meta.queryParameters && meta.queryParameters.length > 0);
         const hasBody = Boolean(meta.requestBody);
 
         if (hasQuery && hasBody) {
-          args.push(meta.queryParameters?.some((q) => q.required) ? { type: 1 } : undefined);
-          args.push({ keyword: 'test_payload' });
+          args.push(fixture.queryFixture);
+          args.push(fixture.bodyFixture);
         } else if (hasQuery) {
-          args.push({ type: 1, limit: 5 });
+          args.push(fixture.queryFixture);
         } else if (hasBody) {
-          args.push({ keyword: 'test_payload' });
+          args.push(fixture.bodyFixture);
         }
 
         await fn.apply(openApiClient, args);
@@ -100,10 +96,19 @@ describe('Phase 1: Request & Response Contract Tests', () => {
       // Assert Path parameters are replaced and contain no placeholders
       expect(capturedUrl).not.toMatch(/\{[^}]+\}/);
 
-      // Assert Request Body serialization if body was sent
-      if (meta.requestBody && capturedBody) {
-        const parsed = JSON.parse(capturedBody);
-        expect(parsed).toEqual({ keyword: 'test_payload' });
+      // Assert Query parameter forwarding if fixture provides query
+      if (fixture.queryFixture) {
+        const parsedUrl = new URL(capturedUrl);
+        for (const [qKey, qVal] of Object.entries(fixture.queryFixture)) {
+          expect(parsedUrl.searchParams.get(qKey)).toBe(String(qVal));
+        }
+      }
+
+      // Assert Request Body serialization if body parameter is expected
+      if (meta.requestBody) {
+        expect(capturedBody, `Body should be sent for ${opId}`).toBeDefined();
+        const parsed = JSON.parse(capturedBody!);
+        expect(parsed).toEqual(fixture.bodyFixture);
       }
     }
   });

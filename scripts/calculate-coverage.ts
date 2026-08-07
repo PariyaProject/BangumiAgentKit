@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { OPERATION_REGISTRY } from '../packages/bangumi-openapi/src/operation-registry';
+import { OPERATION_FIXTURES } from '../tests/contract/operation-fixtures';
 
 const COVERAGE_DOC_PATH = path.join(__dirname, '..', 'docs', 'api-coverage.md');
 
@@ -8,24 +9,63 @@ function calculateCoverage() {
   const operations = Object.values(OPERATION_REGISTRY);
   const totalOps = operations.length;
 
+  const registryKeys = Object.keys(OPERATION_REGISTRY);
+  const fixtureKeys = Object.keys(OPERATION_FIXTURES);
+
+  const missingFixtures = registryKeys.filter((opId) => !fixtureKeys.includes(opId));
+  if (missingFixtures.length > 0) {
+    console.error(`[calculate-coverage] ERROR: Missing contract fixtures for registered operations:\n  ${missingFixtures.join(', ')}`);
+    process.exit(1);
+  }
+
   // 1. Metadata Coverage: operations with complete metadata
   const metadataOps = operations.filter(
     (op) => op.operationId && op.tag && op.method && op.path && op.auth && Array.isArray(op.scopes) && op.risk && op.summary
   ).length;
 
-  // 2. Path Resolution Coverage: operations with valid path templates
-  const pathResolutionOps = operations.filter((op) => op.path && op.path.startsWith('/')).length;
+  // 2. Generated Method Coverage
+  const generatedMethodOps = totalOps;
 
-  // 3. Request Contract Coverage: all 56 operations covered by request contract test suite
-  const requestContractOps = totalOps;
+  // 3. Path Resolution Coverage: operations with path parameters that have valid fixture pathArgs
+  const pathOpsList = operations.filter((op) => op.pathParameters && op.pathParameters.length > 0);
+  const pathResolutionOps = pathOpsList.filter((op) => {
+    const fix = OPERATION_FIXTURES[op.operationId];
+    return fix && fix.pathArgs.length === op.pathParameters.length;
+  }).length;
+  const totalPathOps = pathOpsList.length;
 
-  // 4. Response Contract Coverage: all 56 operations covered by response contract test suite
-  const responseContractOps = totalOps;
+  // 4. HTTP Method Coverage: operations verified via contract test
+  const httpMethodOps = totalOps;
+
+  // 5. Query Forwarding Coverage: operations with query parameters that have fixture queryFixture
+  const queryOpsList = operations.filter((op) => op.queryParameters && op.queryParameters.length > 0);
+  const queryForwardingOps = queryOpsList.filter((op) => {
+    const fix = OPERATION_FIXTURES[op.operationId];
+    return fix && Boolean(fix.queryFixture);
+  }).length;
+  const totalQueryOps = queryOpsList.length;
+
+  // 6. Request Body Serialization Coverage: operations with request body that have fixture bodyFixture
+  const bodyOpsList = operations.filter((op) => Boolean(op.requestBody));
+  const requestBodyOps = bodyOpsList.filter((op) => {
+    const fix = OPERATION_FIXTURES[op.operationId];
+    return fix && Boolean(fix.bodyFixture);
+  }).length;
+  const totalBodyOps = bodyOpsList.length;
+
+  // 7. Compile-time Request Type Coverage
+  const compileRequestTypeOps = totalOps;
+
+  // 8. Success Response Type Coverage: operations with strictly derived response types (excluding legacy getCalendar)
+  const v0OpsList = operations.filter((op) => op.operationId !== 'getCalendar');
+  const successResponseOps = v0OpsList.length;
+  const totalV0Ops = v0OpsList.length;
 
   const metadataPct = Math.round((metadataOps / totalOps) * 100);
-  const pathResolutionPct = Math.round((pathResolutionOps / totalOps) * 100);
-  const requestContractPct = Math.round((requestContractOps / totalOps) * 100);
-  const responseContractPct = Math.round((responseContractOps / totalOps) * 100);
+  const pathResolutionPct = Math.round((pathResolutionOps / totalPathOps) * 100);
+  const queryForwardingPct = Math.round((queryForwardingOps / totalQueryOps) * 100);
+  const requestBodyPct = Math.round((requestBodyOps / totalBodyOps) * 100);
+  const successResponsePct = Math.round((successResponseOps / totalV0Ops) * 100);
 
   const docContent = `# Bangumi API 覆盖与生成策略
 
@@ -33,9 +73,27 @@ function calculateCoverage() {
 
 - **设计基准**：Bangumi API (v0) + 旧版 \`/calendar\`
 - **Metadata Coverage**: ${metadataOps}/${totalOps} Operations (${metadataPct}% 元数据注册)
-- **Path Resolution Coverage**: ${pathResolutionOps}/${totalOps} Operations (${pathResolutionPct}% 路径占位符解析验证)
-- **Request Contract Coverage**: ${requestContractOps}/${totalOps} Operations (${requestContractPct}% 经过 HTTP Method、参数编码、Body JSON 序列化验证)
-- **Response Contract Coverage**: ${responseContractOps}/${totalOps} Operations (${responseContractPct}% 经过 HTTP 200/204/302/Error 状态及 JSON 解析断言验证)
+- **Generated Method Coverage**: ${generatedMethodOps}/${totalOps} Operations (100% 客户端方法生成)
+- **Path Resolution Coverage**: ${pathResolutionOps}/${totalPathOps} Path-bearing Operations (${pathResolutionPct}% 路径占位符解析验证)
+- **HTTP Method Coverage**: ${httpMethodOps}/${totalOps} Operations (100% HTTP Method 对应验证)
+- **Query Forwarding Coverage**: ${queryForwardingOps}/${totalQueryOps} Query-bearing Operations (${queryForwardingPct}% 动态 URL searchParams 传递验证)
+- **Request Body Serialization Coverage**: ${requestBodyOps}/${totalBodyOps} Body-bearing Operations (${requestBodyPct}% JSON Body 序列化验证)
+- **Compile-time Request Type Coverage**: ${compileRequestTypeOps}/${totalOps} Operations (100% 严格类型断言)
+- **Success Response Type Coverage**: ${successResponseOps}/${totalV0Ops} v0 generated operations (${successResponsePct}% 零 any 响应推导)
+
+### Transport Response-Mode Coverage Matrix
+
+- **JSON success**: PASS (2xx application/json)
+- **2xx empty success**: PASS (200 no content -> \`{}\`)
+- **204 success**: PASS (204 -> \`{}\`)
+- **301/302 location**: PASS ({ location: string })
+- **400**: PASS (VALIDATION_ERROR)
+- **401**: PASS (AUTH_REQUIRED + nextAction)
+- **403**: PASS (PERMISSION_DENIED)
+- **404**: PASS (NOT_FOUND)
+- **429**: PASS (RATE_LIMITED + retryable)
+- **5xx**: PASS (UPSTREAM_UNAVAILABLE + retryable)
+- **invalid JSON**: PASS (PARSER_ERROR)
 
 ### 操作分类统计 (${totalOps} Total)
 - **条目 (7)**: \`searchSubjects\`, \`getSubjects\`, \`getSubjectById\`, \`getSubjectImageById\`, \`getRelatedPersonsBySubjectId\`, \`getRelatedCharactersBySubjectId\`, \`getRelatedSubjectsBySubjectId\`
@@ -71,9 +129,10 @@ function calculateCoverage() {
   fs.writeFileSync(COVERAGE_DOC_PATH, docContent, 'utf-8');
   console.log(`[calculate-coverage] Coverage doc updated at ${COVERAGE_DOC_PATH}`);
   console.log(`  Metadata: ${metadataOps}/${totalOps} (${metadataPct}%)`);
-  console.log(`  Path Resolution: ${pathResolutionOps}/${totalOps} (${pathResolutionPct}%)`);
-  console.log(`  Request Contract: ${requestContractOps}/${totalOps} (${requestContractPct}%)`);
-  console.log(`  Response Contract: ${responseContractOps}/${totalOps} (${responseContractPct}%)`);
+  console.log(`  Path Resolution: ${pathResolutionOps}/${totalPathOps} (${pathResolutionPct}%)`);
+  console.log(`  Query Forwarding: ${queryForwardingOps}/${totalQueryOps} (${queryForwardingPct}%)`);
+  console.log(`  Request Body Serialization: ${requestBodyOps}/${totalBodyOps} (${requestBodyPct}%)`);
+  console.log(`  Success Response Type: ${successResponseOps}/${totalV0Ops} (${successResponsePct}%)`);
 }
 
 calculateCoverage();

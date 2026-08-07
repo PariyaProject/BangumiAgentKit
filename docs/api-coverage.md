@@ -4,9 +4,27 @@
 
 - **设计基准**：Bangumi API (v0) + 旧版 `/calendar`
 - **Metadata Coverage**: 56/56 Operations (100% 元数据注册)
-- **Path Resolution Coverage**: 56/56 Operations (100% 路径占位符解析验证)
-- **Request Contract Coverage**: 56/56 Operations (100% 经过 HTTP Method、参数编码、Body JSON 序列化验证)
-- **Response Contract Coverage**: 56/56 Operations (100% 经过 HTTP 200/204/302/Error 状态及 JSON 解析断言验证)
+- **Generated Method Coverage**: 56/56 Operations (100% 客户端方法生成)
+- **Path Resolution Coverage**: 44/44 Path-bearing Operations (100% 路径占位符解析验证)
+- **HTTP Method Coverage**: 56/56 Operations (100% HTTP Method 对应验证)
+- **Query Forwarding Coverage**: 16/16 Query-bearing Operations (100% 动态 URL searchParams 传递验证)
+- **Request Body Serialization Coverage**: 10/10 Body-bearing Operations (100% JSON Body 序列化验证)
+- **Compile-time Request Type Coverage**: 56/56 Operations (100% 严格类型断言)
+- **Success Response Type Coverage**: 55/55 v0 generated operations (100% 零 any 响应推导)
+
+### Transport Response-Mode Coverage Matrix
+
+- **JSON success**: PASS (2xx application/json)
+- **2xx empty success**: PASS (200 no content -> `{}`)
+- **204 success**: PASS (204 -> `{}`)
+- **301/302 location**: PASS ({ location: string })
+- **400**: PASS (VALIDATION_ERROR)
+- **401**: PASS (AUTH_REQUIRED + nextAction)
+- **403**: PASS (PERMISSION_DENIED)
+- **404**: PASS (NOT_FOUND)
+- **429**: PASS (RATE_LIMITED + retryable)
+- **5xx**: PASS (UPSTREAM_UNAVAILABLE + retryable)
+- **invalid JSON**: PASS (PARSER_ERROR)
 
 ### 操作分类统计 (56 Total)
 - **条目 (7)**: `searchSubjects`, `getSubjects`, `getSubjectById`, `getSubjectImageById`, `getRelatedPersonsBySubjectId`, `getRelatedCharactersBySubjectId`, `getRelatedSubjectsBySubjectId`

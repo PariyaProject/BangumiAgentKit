@@ -17,6 +17,16 @@ describe('Phase 2: HTTP Transport Tests', () => {
     expect(result.name).toBe('Steins;Gate');
   });
 
+  it('handles HTTP 200 with empty response body without PARSER_ERROR', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response('', { status: 200, headers: { 'Content-Type': 'application/json' } })
+    );
+
+    const client = new HttpClient();
+    const res = await client.request({ path: '/v0/indices/123/subjects', fetchFn: mockFetch as any });
+    expect(res).toEqual({});
+  });
+
   it('maps 400 to VALIDATION_ERROR', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: 'Invalid page parameter' }), { status: 400 })
