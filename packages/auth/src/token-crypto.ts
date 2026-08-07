@@ -38,6 +38,11 @@ export class TokenKeyring {
   }
 }
 
+export interface TokenEncryptionConfig {
+  keyring: TokenKeyring;
+  activeKeyVersion: string;
+}
+
 export function validateEncryptionKey(secretKey: string): void {
   if (!secretKey || secretKey.trim().length < 16) {
     throw new Error(
@@ -51,7 +56,13 @@ function deriveKey(secretKey: string): Buffer {
   return crypto.createHash('sha256').update(secretKey).digest();
 }
 
-export function encryptToken(plaintext: string, secretKey: string, keyVersion = 'v1'): EncryptedTokenPayload {
+export function encryptToken(
+  plaintext: string,
+  keyringOrSecret: TokenKeyring | string,
+  activeKeyVersion = 'v1'
+): EncryptedTokenPayload {
+  const keyring = keyringOrSecret instanceof TokenKeyring ? keyringOrSecret : new TokenKeyring(keyringOrSecret);
+  const secretKey = keyring.resolve(activeKeyVersion);
   const key = deriveKey(secretKey);
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -64,7 +75,7 @@ export function encryptToken(plaintext: string, secretKey: string, keyVersion = 
     ciphertext,
     iv: iv.toString('hex'),
     authTag,
-    keyVersion,
+    keyVersion: activeKeyVersion,
   };
 }
 
@@ -82,4 +93,56 @@ export function decryptToken(payload: EncryptedTokenPayload, keyringOrSecret: To
   plaintext += decipher.final('utf-8');
   return plaintext;
 }
+
+export interface ResolveTokenEncryptionConfigOptions {
+  secretKey?: string;
+  keyVersion?: string;
+  tokenEncryptionKeysJson?: string;
+  tokenActiveKeyVersion?: string;
+  tokenEncryption?: TokenEncryptionConfig;
+}
+
+export function resolveTokenEncryptionConfig(
+  options: ResolveTokenEncryptionConfigOptions = {},
+  env: Record<string, string | undefined> = process.env
+): TokenEncryptionConfig {
+  if (options.tokenEncryption) {
+    options.tokenEncryption.keyring.resolve(options.tokenEncryption.activeKeyVersion);
+    return options.tokenEncryption;
+  }
+
+  const keysJson = options.tokenEncryptionKeysJson || env.BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON;
+  if (keysJson && keysJson.trim().length > 0) {
+    let parsed: Record<string, string>;
+    try {
+      parsed = JSON.parse(keysJson);
+    } catch {
+      throw new Error('INVALID_CONFIG: BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON must be valid JSON object.');
+    }
+    const keyring = new TokenKeyring(parsed);
+    const activeKeyVersion =
+      options.tokenActiveKeyVersion ||
+      env.BANGUMI_TOKEN_ACTIVE_KEY_VERSION ||
+      options.keyVersion ||
+      env.BANGUMI_TOKEN_KEY_VERSION ||
+      'v1';
+    keyring.resolve(activeKeyVersion);
+    return { keyring, activeKeyVersion };
+  }
+
+  const secretKey = options.secretKey || env.BANGUMI_TOKEN_ENCRYPTION_KEY;
+  const isProd = env.NODE_ENV === 'production';
+  if (isProd && !secretKey) {
+    throw new Error(
+      'CONFIG_ERROR: BANGUMI_TOKEN_ENCRYPTION_KEY or BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON is required in production environment.'
+    );
+  }
+
+  const effectiveSecretKey = secretKey || 'default-test-secret-key-123456';
+  const activeKeyVersion = options.keyVersion || env.BANGUMI_TOKEN_KEY_VERSION || 'v1';
+  const keyring = new TokenKeyring({ [activeKeyVersion]: effectiveSecretKey });
+  keyring.resolve(activeKeyVersion);
+  return { keyring, activeKeyVersion };
+}
+
 

@@ -207,6 +207,8 @@ export class PostgresStorage implements Storage {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      const [key1, key2] = stringToTwoInt32(`bnd_${principalId}`);
+      await client.query('SELECT pg_advisory_xact_lock($1, $2)', [key1, key2]);
       await client.query('UPDATE account_bindings SET is_active = false WHERE principal_id = $1 AND is_active = true', [principalId]);
       const now = new Date();
       const id = `bnd_${crypto.randomUUID()}`;

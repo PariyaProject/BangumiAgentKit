@@ -1,12 +1,18 @@
 import { Storage, BangumiAccountRecord } from '@bangumi-agent-kit/db';
-import { decryptToken, encryptToken } from './token-crypto.js';
+import {
+  decryptToken,
+  encryptToken,
+  TokenEncryptionConfig,
+  resolveTokenEncryptionConfig,
+} from './token-crypto.js';
 import { HttpClient, BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { BangumiOAuthClient } from './oauth-client.js';
 import { BangumiClientProvider } from './client-provider.js';
 
 export interface TokenBrokerConfig {
-  secretKey: string;
+  tokenEncryption?: TokenEncryptionConfig;
+  secretKey?: string;
   keyVersion?: string;
   clientId?: string;
   clientSecret?: string;
@@ -30,6 +36,7 @@ export interface AuthStatusResult {
 
 export class TokenBroker implements BangumiClientProvider {
   private oauthClient: BangumiOAuthClient;
+  private tokenEncryption: TokenEncryptionConfig;
 
   constructor(
     private storage: Storage,
@@ -38,6 +45,11 @@ export class TokenBroker implements BangumiClientProvider {
     oauthClient?: BangumiOAuthClient
   ) {
     this.oauthClient = oauthClient || new BangumiOAuthClient();
+    this.tokenEncryption = resolveTokenEncryptionConfig({
+      tokenEncryption: config.tokenEncryption,
+      secretKey: config.secretKey,
+      keyVersion: config.keyVersion,
+    });
   }
 
   async requireAccount(principalId: string): Promise<BangumiAccountRecord> {
@@ -168,7 +180,7 @@ export class TokenBroker implements BangumiClientProvider {
     const skewMs = skewSeconds * 1000;
 
     if (now.getTime() + skewMs < cred.expiresAt.getTime()) {
-      return decryptToken(cred.encryptedAccessToken, this.config.secretKey);
+      return decryptToken(cred.encryptedAccessToken, this.tokenEncryption.keyring);
     }
 
     return await this.storage.withCredentialLock(accountId, async () => {
@@ -179,7 +191,7 @@ export class TokenBroker implements BangumiClientProvider {
 
       const lockNow = new Date();
       if (lockNow.getTime() + skewMs < latestCred.expiresAt.getTime()) {
-        return decryptToken(latestCred.encryptedAccessToken, this.config.secretKey);
+        return decryptToken(latestCred.encryptedAccessToken, this.tokenEncryption.keyring);
       }
 
       if (!latestCred.encryptedRefreshToken) {
@@ -194,8 +206,11 @@ export class TokenBroker implements BangumiClientProvider {
 
       let oldRefreshToken: string;
       try {
-        oldRefreshToken = decryptToken(latestCred.encryptedRefreshToken, this.config.secretKey);
-      } catch {
+        oldRefreshToken = decryptToken(latestCred.encryptedRefreshToken, this.tokenEncryption.keyring);
+      } catch (err: unknown) {
+        if (err instanceof BangumiError && err.code === 'KEY_VERSION_UNAVAILABLE') {
+          throw err;
+        }
         throw new BangumiError(
           'AUTH_EXPIRED',
           '无法解密 Refresh Token，请重新绑定',
@@ -236,10 +251,14 @@ export class TokenBroker implements BangumiClientProvider {
         );
       }
 
-      const keyVersion = this.config.keyVersion || latestCred.keyVersion || 'v1';
-      const newEncryptedAccess = encryptToken(refreshedData.access_token, this.config.secretKey, keyVersion);
+      const activeVersion = this.tokenEncryption.activeKeyVersion;
+      const newEncryptedAccess = encryptToken(
+        refreshedData.access_token,
+        this.tokenEncryption.keyring,
+        activeVersion
+      );
       const newEncryptedRefresh = refreshedData.refresh_token
-        ? encryptToken(refreshedData.refresh_token, this.config.secretKey, keyVersion)
+        ? encryptToken(refreshedData.refresh_token, this.tokenEncryption.keyring, activeVersion)
         : latestCred.encryptedRefreshToken;
 
       const newExpiresAt = new Date(lockNow.getTime() + (refreshedData.expires_in || 7 * 86400) * 1000);
@@ -257,6 +276,7 @@ export class TokenBroker implements BangumiClientProvider {
         ...latestCred,
         encryptedAccessToken: newEncryptedAccess,
         encryptedRefreshToken: newEncryptedRefresh,
+        keyVersion: activeVersion,
         expiresAt: newExpiresAt,
         reportedScopes: newReportedScopes,
         scopeEvidence: newScopeEvidence,

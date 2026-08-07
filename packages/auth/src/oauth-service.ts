@@ -1,6 +1,10 @@
 import { Storage, BangumiAccountRecord } from '@bangumi-agent-kit/db';
 import { OAuthStateStore } from './state-store.js';
-import { encryptToken } from './token-crypto.js';
+import {
+  encryptToken,
+  TokenEncryptionConfig,
+  resolveTokenEncryptionConfig,
+} from './token-crypto.js';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiOAuthClient } from './oauth-client.js';
 
@@ -8,7 +12,8 @@ export interface OAuthConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  secretKey: string;
+  tokenEncryption?: TokenEncryptionConfig;
+  secretKey?: string;
   keyVersion?: string;
   authorizeUrl?: string;
   tokenUrl?: string;
@@ -24,6 +29,7 @@ export interface AuthorizedAccount {
 export class OAuthService {
   private stateStore: OAuthStateStore;
   private oauthClient: BangumiOAuthClient;
+  private tokenEncryption: TokenEncryptionConfig;
 
   constructor(
     private storage: Storage,
@@ -33,6 +39,11 @@ export class OAuthService {
   ) {
     this.stateStore = new OAuthStateStore(storage);
     this.oauthClient = oauthClient || new BangumiOAuthClient();
+    this.tokenEncryption = resolveTokenEncryptionConfig({
+      tokenEncryption: config.tokenEncryption,
+      secretKey: config.secretKey,
+      keyVersion: config.keyVersion,
+    });
   }
 
   async createAuthorizationUrl(
@@ -98,10 +109,10 @@ export class OAuthService {
     });
 
     // 5. Encrypt Tokens and save AccessCredentialRecord
-    const keyVersion = this.config.keyVersion || 'v1';
-    const encryptedAccess = encryptToken(tokenData.access_token, this.config.secretKey, keyVersion);
+    const { keyring, activeKeyVersion } = this.tokenEncryption;
+    const encryptedAccess = encryptToken(tokenData.access_token, keyring, activeKeyVersion);
     const encryptedRefresh = tokenData.refresh_token
-      ? encryptToken(tokenData.refresh_token, this.config.secretKey, keyVersion)
+      ? encryptToken(tokenData.refresh_token, keyring, activeKeyVersion)
       : undefined;
 
     const expiresAt = new Date(now.getTime() + (tokenData.expires_in || 7 * 86400) * 1000);
@@ -116,7 +127,7 @@ export class OAuthService {
       requestedCapabilities: session.requestedCapabilities,
       reportedScopes,
       scopeEvidence: (tokenData.scope ? 'reported' : 'unknown') as 'reported' | 'unknown',
-      keyVersion,
+      keyVersion: activeKeyVersion,
       createdAt: now,
       updatedAt: now,
     };

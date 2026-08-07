@@ -33,6 +33,6 @@
 | P3-29 | manage_index six actions | `bangumi.manage_index` (`create`, `edit`, `add_subject`, `remove_subject`, `collect`, `uncollect`) | `tests/unit/manage-index-actions.test.ts` | VERIFIED |
 | P3-30 | Index create workflow | `newIndex()` -> `editIndexById()` if title/desc | `tests/unit/manage-index-actions.test.ts` | VERIFIED |
 | P3-31 | No automatic write retry | `HttpClient` default idempotent-only retry logic | `tests/unit/transport.test.ts` | VERIFIED |
-| P3-32 | Shared PostgreSQL API/MCP integration | `tests/integration/cross-instance-persistence.test.ts` | `tests/integration/cross-instance-persistence.test.ts` | VERIFIED |
+| P3-32 | Cross-instance PostgreSQL persistence | `tests/integration/cross-instance-persistence.test.ts` | `tests/integration/cross-instance-persistence.test.ts` | VERIFIED |
 | P3-33 | Config validation | `createRuntimeDependencies` fail-fast in production mode | `tests/unit/auth.test.ts` | VERIFIED |
 | P3-34 | PostgreSQL CI service | `.github/workflows/ci.yml` postgres service container | GitHub Actions Workflow | VERIFIED |

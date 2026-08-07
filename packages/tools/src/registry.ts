@@ -7,7 +7,8 @@ import {
   OAuthService,
   BangumiClientProvider,
   DefaultBangumiClientProvider,
-  validateEncryptionKey,
+  TokenEncryptionConfig,
+  resolveTokenEncryptionConfig,
 } from '@bangumi-agent-kit/auth';
 import { PolicyManager } from './policy.js';
 import { createReadTools } from './definitions/read-tools.js';
@@ -34,6 +35,9 @@ export interface CreateRuntimeDependenciesConfig {
   redirectUri?: string;
   secretKey?: string;
   keyVersion?: string;
+  tokenEncryptionKeysJson?: string;
+  tokenActiveKeyVersion?: string;
+  tokenEncryption?: TokenEncryptionConfig;
   tokenUrl?: string;
   authorizeUrl?: string;
   publicHttpClient?: HttpClient;
@@ -42,12 +46,13 @@ export interface CreateRuntimeDependenciesConfig {
 
 export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfig = {}): RuntimeDependencies {
   const isProd = process.env.NODE_ENV === 'production';
-  const secretKey = config.secretKey || process.env.BANGUMI_TOKEN_ENCRYPTION_KEY;
-  if (isProd && !secretKey) {
-    throw new Error('CONFIG_ERROR: BANGUMI_TOKEN_ENCRYPTION_KEY is required in production environment.');
-  }
-  const effectiveSecretKey = secretKey || 'default-test-secret-key-123456';
-  validateEncryptionKey(effectiveSecretKey);
+  const tokenEncryption = resolveTokenEncryptionConfig({
+    tokenEncryption: config.tokenEncryption,
+    secretKey: config.secretKey,
+    keyVersion: config.keyVersion,
+    tokenEncryptionKeysJson: config.tokenEncryptionKeysJson,
+    tokenActiveKeyVersion: config.tokenActiveKeyVersion,
+  });
 
   const databaseUrl = config.databaseUrl || process.env.DATABASE_URL;
   const clientId = config.clientId || process.env.BANGUMI_OAUTH_CLIENT_ID;
@@ -63,7 +68,6 @@ export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfi
 
   const storage = config.storage || (databaseUrl ? new PostgresStorage(databaseUrl) : new MemoryStorage());
   const publicHttpClient = config.publicHttpClient || new HttpClient();
-  const keyVersion = config.keyVersion || process.env.BANGUMI_TOKEN_KEY_VERSION || 'v1';
 
   const oauthService = new OAuthService(
     storage,
@@ -71,8 +75,7 @@ export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfi
       clientId: clientId || 'test_client_id',
       clientSecret: clientSecret || 'test_client_secret',
       redirectUri: redirectUri || 'http://localhost:3000/oauth/bangumi/callback',
-      secretKey: effectiveSecretKey,
-      keyVersion,
+      tokenEncryption,
       tokenUrl: config.tokenUrl,
       authorizeUrl: config.authorizeUrl,
     },
@@ -82,8 +85,7 @@ export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfi
   const tokenBroker = new TokenBroker(
     storage,
     {
-      secretKey: effectiveSecretKey,
-      keyVersion,
+      tokenEncryption,
       clientId,
       clientSecret,
       redirectUri,
