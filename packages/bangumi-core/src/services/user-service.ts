@@ -1,5 +1,9 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient, User } from '@bangumi-agent-kit/bangumi-openapi';
+import {
+  GeneratedBangumiOpenApiClient,
+  User,
+  SubjectType as OpenApiSubjectType,
+} from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainUser, UserCollectionItem } from '../models/user.js';
 import { getCollectionStatusLabel, mapCollectionStatus } from './collection-service.js';
 import { mapSubjectType } from './subject-service.js';
@@ -69,30 +73,29 @@ export class UserService {
     }
 
     const res = await this.api.getUserCollectionsByUsername(username, {
-      subject_type: subjectTypeNum as any,
-      type: typeNum as any,
+      subject_type: subjectTypeNum as OpenApiSubjectType | undefined,
+      type: typeNum as 1 | 2 | 3 | 4 | 5 | undefined,
       limit,
       offset,
     });
 
     const data = res.data || [];
-    const items = data.map((col: Record<string, unknown>) => {
-      const colSubject = col.subject as Record<string, unknown> | undefined;
-      const status = mapCollectionStatus(col.type as number | string);
-      const subjectTypeStr = mapSubjectType(colSubject?.type as number | undefined);
+    const items = data.map((col) => {
+      const status = mapCollectionStatus(col.type);
+      const subjectTypeStr = mapSubjectType(col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
-        subjectId: Number(col.subject_id || 0),
-        subjectName: colSubject?.name as string | undefined,
-        subjectNameCn: (colSubject?.name_cn || colSubject?.name) as string | undefined,
+        subjectId: col.subject_id,
+        subjectName: col.subject?.name,
+        subjectNameCn: col.subject?.name_cn || col.subject?.name,
         status,
         statusLabel,
-        rating: col.rate as number | undefined,
-        comment: col.comment as string | undefined,
-        tags: col.tags as string[] | undefined,
-        epStatus: col.ep_status as number | undefined,
-        updatedAt: col.updated_at as string | undefined,
+        rating: col.rate,
+        comment: col.comment,
+        tags: col.tags,
+        epStatus: col.ep_status,
+        updatedAt: col.updated_at,
       };
     });
 

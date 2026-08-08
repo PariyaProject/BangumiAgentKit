@@ -1,5 +1,5 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient, Episode } from '@bangumi-agent-kit/bangumi-openapi';
+import { GeneratedBangumiOpenApiClient, Episode, OperationQuery } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainEpisode, DomainEpisodeCategory } from '../models/episode.js';
 
 export function mapEpisodeCategory(typeNum: number): DomainEpisodeCategory {
@@ -48,14 +48,14 @@ export class EpisodeService {
 
   async getEpisodes(
     subjectId: number,
-    options: { type?: number; limit?: number; offset?: number } = {},
+    options: { type?: OperationQuery<'getEpisodes'>['type']; limit?: number; offset?: number } = {},
   ): Promise<{ total: number; limit: number; offset: number; items: DomainEpisode[] }> {
     const limit = options.limit ?? 100;
     const offset = options.offset ?? 0;
 
     const res = await this.api.getEpisodes({
       subject_id: subjectId,
-      type: options.type as any,
+      type: options.type,
       limit,
       offset,
     });

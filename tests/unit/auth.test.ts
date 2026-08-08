@@ -166,4 +166,18 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     expect(cred?.scopeEvidence).toBe('unknown');
     expect(cred?.requestedCapabilities).toEqual(['write:collection']);
   });
+
+  it('OAuth callback handler suppresses raw internal errors and returns safe generic message', async () => {
+    const { handleOAuthCallbackRoute } = await import('../../apps/api/src/routes/oauth.js');
+    const mockOAuthService = {
+      handleCallback: vi.fn().mockRejectedValue(new Error('relation access_credentials does not exist')),
+    } as any;
+
+    const handler = handleOAuthCallbackRoute(mockOAuthService);
+    const res = await handler('code_123', 'state_123');
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).not.toContain('access_credentials');
+    expect(res.body).toContain('内部服务发生错误');
+  });
 });

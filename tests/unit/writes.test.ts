@@ -267,4 +267,71 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
     expect(res.success).toBe(true);
     expect(res.action).toBe('uncollect');
   });
+
+  it('PendingAction unknown failure sets failureMessageSafe to generic message', async () => {
+    const storage = new MemoryStorage();
+    const client = new HttpClient();
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'qq-official',
+      botInstanceId: 'bot_1',
+      externalUserId: 'user_fail_test',
+    });
+    const account = await storage.upsertBangumiAccount({
+      id: 'bgm_acc_fail',
+      bangumiUserId: 888,
+      username: 'fail_user',
+      nickname: 'Fail User',
+    });
+    await storage.replaceActiveBinding(principal.id, account.id);
+    await storage.upsertCredential({
+      id: 'cred_fail_1',
+      bangumiAccountId: account.id,
+      encryptedAccessToken: encryptToken('access-token', SECRET_KEY, 'v1'),
+      expiresAt: new Date(Date.now() + 3600000),
+      requestedCapabilities: ['write:collection'],
+      reportedScopes: ['write:collection'],
+      scopeEvidence: 'reported',
+      keyVersion: 'v1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const deps = createRuntimeDependencies({
+      storage,
+      publicHttpClient: client,
+      secretKey: SECRET_KEY,
+    });
+    const registry = new ToolRegistry(deps);
+
+    const pending = await createPendingAction(
+      storage,
+      { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
+      'manageCharacterCollection',
+      '取消收藏角色 1001',
+      { characterId: 1001, action: 'uncollect' },
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error('relation access_credentials does not exist')),
+    );
+
+    await expect(
+      registry.executeTool(
+        'bangumi.manage_character_collection',
+        { characterId: 1001, action: 'uncollect' },
+        {
+          principalId: principal.id,
+          botInstanceId: 'bot_1',
+          conversationId: 'conv_1',
+          confirmationId: pending.confirmationId,
+        },
+      ),
+    ).rejects.toThrow();
+
+    const action = await storage.findPendingActionByConfirmationId(pending.confirmationId);
+    expect(action?.status).toBe('failed');
+    expect(action?.failureMessageSafe).toBe('内部服务发生错误');
+    expect(action?.failureMessageSafe).not.toContain('access_credentials');
+  });
 });

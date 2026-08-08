@@ -1,4 +1,5 @@
 import { OAuthService } from '@bangumi-agent-kit/auth';
+import { BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 
 export function handleOAuthCallbackRoute(oauthService: OAuthService) {
   return async (code?: string, state?: string) => {
@@ -37,13 +38,10 @@ export function handleOAuthCallbackRoute(oauthService: OAuthService) {
         },
       };
     } catch (err: unknown) {
-      const errObj = err as { message?: string };
-      let safeMsg = '内部服务发生错误';
-      if (errObj.message) {
-        safeMsg = errObj.message;
-      } else {
+      if (!(err instanceof BangumiError)) {
         console.error('[OAuth Callback Internal Error]', err);
       }
+      const publicErr = toPublicError(err);
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -52,7 +50,7 @@ export function handleOAuthCallbackRoute(oauthService: OAuthService) {
 <head><meta charset="utf-8"><title>绑定失败</title></head>
 <body style="font-family: sans-serif; text-align: center; padding: 40px;">
   <h2 style="color: #e53e3e;">Bangumi 账号绑定失败</h2>
-  <p>${escapeHtml(safeMsg)}</p>
+  <p>${escapeHtml(publicErr.message)}</p>
   <p>请返回聊天窗口重新发起授权。</p>
 </body>
 </html>`,

@@ -1,5 +1,5 @@
 import { ToolDefinition, ToolContext } from './define-tool.js';
-import { HttpClient, BangumiError } from '@bangumi-agent-kit/bangumi-transport';
+import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage, MemoryStorage, PostgresStorage } from '@bangumi-agent-kit/db';
 import { AuditService } from '@bangumi-agent-kit/bangumi-core';
 import {
@@ -271,16 +271,21 @@ export class ToolRegistry {
 
       return result;
     } catch (err: unknown) {
-      const errObj = err as { code?: string; message?: string };
-      const isNetworkUnknown = errObj.code === 'WRITE_RESULT_UNKNOWN';
-      const safeFailMsg = errObj.message || '内部服务发生错误';
-      const failCode = errObj.code || 'EXECUTION_FAILED';
+      if (!(err instanceof BangumiError)) {
+        console.error('[Tool Execution Error]', err);
+      }
+      const isNetworkUnknown = err instanceof BangumiError && err.code === 'WRITE_RESULT_UNKNOWN';
+      const publicErr = toPublicError(err);
 
       if (pendingActionId) {
         if (isNetworkUnknown) {
-          await this.deps.storage.markPendingActionUnknown(pendingActionId, safeFailMsg);
+          await this.deps.storage.markPendingActionUnknown(pendingActionId, publicErr.message);
         } else {
-          await this.deps.storage.markPendingActionFailed(pendingActionId, safeFailMsg, failCode);
+          await this.deps.storage.markPendingActionFailed(
+            pendingActionId,
+            publicErr.message,
+            publicErr.code,
+          );
         }
       }
 

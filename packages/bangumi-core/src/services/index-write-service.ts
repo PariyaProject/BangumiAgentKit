@@ -1,4 +1,4 @@
-import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import { GeneratedBangumiOpenApiClient, OperationBody } from '@bangumi-agent-kit/bangumi-openapi';
 
 export interface CreateIndexResult {
   id: number;
@@ -20,7 +20,7 @@ export class IndexWriteService {
         await this.client.editIndexById(indexId, {
           title: title || `目录 ${indexId}`,
           desc: desc || '',
-        } as any);
+        } as OperationBody<'editIndexById'>);
       } catch (err: unknown) {
         return {
           id: indexId,
@@ -40,18 +40,18 @@ export class IndexWriteService {
   }
 
   async editIndex(indexId: number, title?: string, desc?: string): Promise<void> {
-    const body: Record<string, unknown> = {};
+    const body: OperationBody<'editIndexById'> = {};
     if (title !== undefined) body.title = title;
-    if (desc !== undefined) body.desc = desc;
+    if (desc !== undefined) body.description = desc;
 
-    await this.client.editIndexById(indexId, body as any);
+    await this.client.editIndexById(indexId, body);
   }
 
   async addSubjectToIndex(indexId: number, subjectId: number, comment?: string): Promise<void> {
     await this.client.addSubjectToIndexByIndexId(indexId, {
       subject_id: subjectId,
       comment,
-    } as any);
+    } as OperationBody<'addSubjectToIndexByIndexId'>);
   }
 
   async removeSubjectFromIndex(indexId: number, subjectId: number): Promise<void> {

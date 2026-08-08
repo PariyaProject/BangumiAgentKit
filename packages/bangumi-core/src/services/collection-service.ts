@@ -1,5 +1,5 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import { GeneratedBangumiOpenApiClient, OperationBody } from '@bangumi-agent-kit/bangumi-openapi';
 import { UserCollectionItem } from '../models/user.js';
 
 export type CollectionStatus = 'wish' | 'doing' | 'done' | 'on_hold' | 'dropped' | 'unknown';
@@ -70,7 +70,7 @@ export interface UpdateCollectionInput {
   private?: boolean;
 }
 
-export function mapStatusToTypeNum(status?: string): number | undefined {
+export function mapStatusToTypeNum(status?: string): 1 | 2 | 3 | 4 | 5 | undefined {
   switch (status) {
     case 'wish':
       return 1;
@@ -126,7 +126,7 @@ export class CollectionService {
       collection?: UserCollectionItem & { statusLabel: string };
     }>,
   ): Promise<UpdateCollectionResult> {
-    const body: Record<string, unknown> = {};
+    const body: OperationBody<'postUserCollection'> = {};
     if (input.status) {
       body.type = mapStatusToTypeNum(input.status);
     }
@@ -144,7 +144,7 @@ export class CollectionService {
     }
 
     // POST returns 204 No Content on success
-    await this.api.postUserCollection(input.subjectId, body as any);
+    await this.api.postUserCollection(input.subjectId, body);
 
     if (username && userServiceFetch) {
       try {
@@ -176,7 +176,7 @@ export class CollectionService {
     await this.api.patchUserSubjectEpisodeCollection(subjectId, {
       episode_id: episodeIds,
       type,
-    } as any);
+    } as OperationBody<'patchUserSubjectEpisodeCollection'>);
 
     return {
       updatedEpisodes: episodeIds,

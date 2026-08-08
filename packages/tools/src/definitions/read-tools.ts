@@ -116,7 +116,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const getSubjectCastTool = defineTool({
     name: 'bangumi.get_subject_cast',
-    description: '获取指定动画/作品的主要角色以及对应的声优 (CV) 人物列表。',
+    description:
+      '获取作品中的角色关系，以及 Bangumi 返回的演员/声优人物列表。动画中 actors 通常对应声优，三次元作品中可能对应演员。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       limit: z.number().int().min(1).max(100).optional().describe('显示条数上限'),
@@ -145,12 +146,25 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const categoryTypeMap: Record<string, number> = {
+    main: 0,
+    sp: 1,
+    op: 2,
+    ed: 3,
+    pv: 4,
+    mad: 5,
+    other: 6,
+  };
+
   const getEpisodes = defineTool({
     name: 'bangumi.get_episodes',
-    description: '获取一个条目的章节列表，自动分类正篇 (main) 与 SP/OP/ED。',
+    description: '获取一个条目的章节列表，自动分类正篇 (main) 与 SP/OP/ED/PV/MAD/其他。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      type: z.number().int().optional().describe('0=正篇, 1=SP, 2=OP, 3=ED'),
+      category: z
+        .enum(['main', 'sp', 'op', 'ed', 'pv', 'mad', 'other'])
+        .optional()
+        .describe('章节分类: main(正篇), sp(SP), op(OP), ed(ED), pv(PV), mad(MAD), other(其他)'),
       limit: z.number().int().min(1).max(200).optional().describe('分页参数 limit'),
       offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
@@ -158,8 +172,11 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     scopes: [],
     risk: 'read',
     execute: async (input) => {
+      const typeNum = input.category
+        ? (categoryTypeMap[input.category] as 0 | 1 | 2 | 3 | 4 | 5 | 6)
+        : undefined;
       return await episodeService.getEpisodes(input.subjectId, {
-        type: input.type,
+        type: typeNum,
         limit: input.limit ?? 100,
         offset: input.offset ?? 0,
       });

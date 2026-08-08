@@ -1,5 +1,5 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient, Subject } from '@bangumi-agent-kit/bangumi-openapi';
+import { GeneratedBangumiOpenApiClient, Subject, OperationBody } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   DomainSubject,
   SubjectSearchResult,
@@ -119,9 +119,9 @@ export class SubjectService {
       nsfwFilter = undefined;
     }
 
-    const filter: Record<string, unknown> = {};
+    const filter: NonNullable<OperationBody<'searchSubjects'>['filter']> = {};
     if (options.type) {
-      filter.type = [options.type];
+      filter.type = [options.type as 1 | 2 | 3 | 4 | 6];
     }
     if (nsfwFilter !== undefined) {
       filter.nsfw = nsfwFilter;
@@ -130,7 +130,7 @@ export class SubjectService {
       filter.tag = options.tags;
     }
     if (options.metaTags && options.metaTags.length > 0) {
-      filter.meta_tag = options.metaTags;
+      filter.meta_tags = options.metaTags;
     }
 
     const res = await this.api.searchSubjects(
@@ -138,7 +138,7 @@ export class SubjectService {
       {
         keyword,
         sort: options.sort,
-        filter: Object.keys(filter).length > 0 ? (filter as any) : undefined,
+        filter: Object.keys(filter).length > 0 ? filter : undefined,
       },
     );
 
@@ -158,12 +158,12 @@ export class SubjectService {
 
   async getSubjectRelations(subjectId: number): Promise<SubjectRelationItem[]> {
     const raw = await this.api.getRelatedSubjectsBySubjectId(subjectId);
-    return (raw || []).map((item: Record<string, unknown>) => ({
-      id: Number(item.id || 0),
-      type: mapSubjectType(item.type as number | undefined),
-      name: String(item.name || ''),
-      nameCn: String(item.name_cn || item.name || ''),
-      relation: String(item.relation || '关联条目'),
+    return (raw || []).map((item) => ({
+      id: item.id,
+      type: mapSubjectType(item.type),
+      name: item.name || '',
+      nameCn: item.name_cn || item.name || '',
+      relation: item.relation || '关联条目',
       images: item.images ? (item.images as Record<string, string>) : undefined,
     }));
   }

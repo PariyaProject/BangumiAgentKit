@@ -196,7 +196,7 @@
   },
   {
     "name": "bangumi.get_episodes",
-    "description": "获取一个条目的章节列表，自动分类正篇 (main) 与 SP/OP/ED。",
+    "description": "获取一个条目的章节列表，自动分类正篇 (main) 与 SP/OP/ED/PV/MAD/其他。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -210,11 +210,10 @@
           "maximum": 9007199254740991,
           "description": "Bangumi 条目 ID"
         },
-        "type": {
-          "description": "0=正篇, 1=SP, 2=OP, 3=ED",
-          "type": "integer",
-          "minimum": -9007199254740991,
-          "maximum": 9007199254740991
+        "category": {
+          "description": "章节分类: main(正篇), sp(SP), op(OP), ed(ED), pv(PV), mad(MAD), other(其他)",
+          "type": "string",
+          "enum": ["main", "sp", "op", "ed", "pv", "mad", "other"]
         },
         "limit": {
           "description": "分页参数 limit",
@@ -349,7 +348,7 @@
   },
   {
     "name": "bangumi.get_subject_cast",
-    "description": "获取指定动画/作品的主要角色以及对应的声优 (CV) 人物列表。",
+    "description": "获取作品中的角色关系，以及 Bangumi 返回的演员/声优人物列表。动画中 actors 通常对应声优，三次元作品中可能对应演员。",
     "auth": "none",
     "risk": "read",
     "scopes": [],

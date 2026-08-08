@@ -61,4 +61,34 @@ describe('C. Trusted MCP Identity Boundary Regression Test', () => {
 
     await client.close();
   });
+
+  it('MCP server suppresses raw unknown error details and returns safe generic message', async () => {
+    const storage = new MemoryStorage();
+    const deps = createRuntimeDependencies({
+      storage,
+      secretKey: 'test-secret-key-123456789012345678901234',
+    });
+
+    const mcpApp = new BangumiMcpServer({ dependencies: deps, storage });
+    const server = mcpApp.getMcpServer();
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+
+    const client = new Client({ name: 'test-client-err', version: '1.0' }, { capabilities: {} });
+    await client.connect(clientTransport);
+
+    const registry = mcpApp.getRegistry();
+    vi.spyOn(registry, 'executeTool').mockRejectedValue(new Error('password authentication failed'));
+
+    const res = await client.callTool({
+      name: 'bangumi.search_subjects',
+      arguments: { query: 'test' },
+    });
+
+    const textContent = (res.content[0] as { text: string }).text;
+    expect(textContent).not.toContain('password authentication failed');
+    expect(textContent).toBe('内部服务发生错误');
+
+    await client.close();
+  });
 });

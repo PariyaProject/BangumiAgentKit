@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { createReadTools, createWriteTools, ToolRegistry } from '@bangumi-agent-kit/tools';
+import {
+  createReadTools,
+  createWriteTools,
+  ToolRegistry,
+  ToolContext,
+  createRuntimeDependencies,
+} from '@bangumi-agent-kit/tools';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { TokenBroker, encryptToken } from '@bangumi-agent-kit/auth';
 import {
@@ -10,13 +16,13 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import { z } from 'zod';
 
-async function executeTestTool<T = any>(
-  tool: { execute: (input: any, context: any, deps?: any) => Promise<any> },
-  input: Record<string, unknown>,
-  context: { principalId: string; botInstanceId: string; conversationId: string },
+async function executeTestTool<TInput, TOutput>(
+  tool: { execute: (input: TInput, context: ToolContext, deps?: Record<string, unknown>) => Promise<TOutput> },
+  input: TInput,
+  context: ToolContext,
   deps?: Record<string, unknown>,
-): Promise<T> {
-  return (await tool.execute(input, context, deps)) as T;
+): Promise<TOutput> {
+  return await tool.execute(input, context, deps);
 }
 
 describe('Semantic Tools Contract Tests (S01 - S25)', () => {
@@ -38,7 +44,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
 
-    const res = await executeTestTool<any>(searchTool, { query: '少女终末旅行' }, context);
+    const res = await executeTestTool(searchTool, { query: '少女终末旅行' }, context);
     expect(res.status).toBe('exact');
     expect(res.exact?.id).toBe(226998);
   });
@@ -59,7 +65,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
 
-    const res = await executeTestTool<any>(searchTool, { query: '少女終末旅行' }, context);
+    const res = await executeTestTool(searchTool, { query: '少女終末旅行' }, context);
     expect(res.status).toBe('exact');
     expect(res.exact?.id).toBe(226998);
   });
@@ -83,7 +89,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
 
-    const res = await executeTestTool<any>(searchTool, { query: 'SAME NAME' }, context);
+    const res = await executeTestTool(searchTool, { query: 'SAME NAME' }, context);
     expect(res.status).toBe('disambiguation');
     expect(res.candidates).toHaveLength(2);
   });
@@ -98,7 +104,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
 
-    const res = await executeTestTool<any>(
+    const res = await executeTestTool(
       searchTool,
       { query: 'nonexistent_keyword_xyz' },
       context,
@@ -117,7 +123,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
 
-    const res = await executeTestTool<any>(searchTool, { query: '226998' }, context);
+    const res = await executeTestTool(searchTool, { query: '226998' }, context);
     expect(res.status).toBe('exact');
     expect(res.exact?.id).toBe(226998);
   });
@@ -125,7 +131,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   it('S06: search character by name -> POST search/characters', async () => {
     let capturedUrl = '';
     let capturedMethod = '';
-    let capturedBody: any;
+    let capturedBody: Record<string, unknown> | undefined;
 
     const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       capturedUrl = url;
@@ -145,7 +151,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchCharTool = tools.find((t) => t.name === 'bangumi.search_characters')!;
 
-    const res = await executeTestTool<any>(searchCharTool, { query: '後藤ひとり' }, context);
+    const res = await executeTestTool(searchCharTool, { query: '後藤ひとり' }, context);
     expect(capturedUrl).toContain('/v0/search/characters');
     expect(capturedMethod).toBe('POST');
     expect(capturedBody).toEqual({ keyword: '後藤ひとり' });
@@ -155,7 +161,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   it('S07: search person by name -> POST search/persons', async () => {
     let capturedUrl = '';
     let capturedMethod = '';
-    let capturedBody: any;
+    let capturedBody: Record<string, unknown> | undefined;
 
     const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       capturedUrl = url;
@@ -175,7 +181,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchPersonTool = tools.find((t) => t.name === 'bangumi.search_persons')!;
 
-    const res = await executeTestTool<any>(searchPersonTool, { query: '青山吉能' }, context);
+    const res = await executeTestTool(searchPersonTool, { query: '青山吉能' }, context);
     expect(capturedUrl).toContain('/v0/search/persons');
     expect(capturedMethod).toBe('POST');
     expect(capturedBody).toEqual({ keyword: '青山吉能' });
@@ -195,7 +201,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const getCharTool = tools.find((t) => t.name === 'bangumi.get_character')!;
 
-    const res = await executeTestTool<any>(getCharTool, { characterId: 10 }, context);
+    const res = await executeTestTool(getCharTool, { characterId: 10 }, context);
     expect(capturedUrls[0]).toContain('/v0/characters/10');
     expect(res.id).toBe(10);
   });
@@ -213,7 +219,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const getPersonTool = tools.find((t) => t.name === 'bangumi.get_person')!;
 
-    const res = await executeTestTool<any>(getPersonTool, { personId: 20 }, context);
+    const res = await executeTestTool(getPersonTool, { personId: 20 }, context);
     expect(capturedUrls[0]).toContain('/v0/persons/20');
     expect(res.id).toBe(20);
   });
@@ -250,7 +256,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const castTool = tools.find((t) => t.name === 'bangumi.get_subject_cast')!;
 
-    const res = await executeTestTool<any>(castTool, { subjectId: 100 }, context);
+    const res = await executeTestTool(castTool, { subjectId: 100 }, context);
     expect(callCount).toBe(1);
     expect(capturedUrls[0]).toContain('/v0/subjects/100/characters');
     expect(res.status).toBe('ok');
@@ -347,7 +353,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const writeTools = createWriteTools(broker);
     const progressTool = writeTools.find((t) => t.name === 'bangumi.update_episode_progress')!;
 
-    const res = await executeTestTool<any>(
+    const res = await executeTestTool(
       progressTool,
       {
         subjectId: 100,
@@ -361,6 +367,32 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(res.targetReached).toBe(true);
     expect(res.resolvedEpisodeIds).toHaveLength(12);
     expect(res.resolvedEpisodeIds).not.toContain(101);
+  });
+
+  it('get_episodes category enum correctly maps category string to type integer', async () => {
+    const capturedUrls: string[] = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      capturedUrls.push(url);
+      return new Response(
+        JSON.stringify({ total: 1, limit: 10, offset: 0, data: [{ id: 1, type: 0 }] }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const tools = createReadTools(httpClient);
+    const getEpTool = tools.find((t) => t.name === 'bangumi.get_episodes')!;
+
+    await executeTestTool(getEpTool, { subjectId: 100, category: 'main' }, context);
+    expect(capturedUrls[0]).toContain('type=0');
+
+    await executeTestTool(getEpTool, { subjectId: 100, category: 'pv' }, context);
+    expect(capturedUrls[1]).toContain('type=4');
+
+    await executeTestTool(getEpTool, { subjectId: 100, category: 'mad' }, context);
+    expect(capturedUrls[2]).toContain('type=5');
+
+    await executeTestTool(getEpTool, { subjectId: 100, category: 'other' }, context);
+    expect(capturedUrls[3]).toContain('type=6');
   });
 
   it('S14: target episode missing -> partial result and warning', async () => {
@@ -416,7 +448,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const writeTools = createWriteTools(broker);
     const progressTool = writeTools.find((t) => t.name === 'bangumi.update_episode_progress')!;
 
-    const res = await executeTestTool<any>(
+    const res = await executeTestTool(
       progressTool,
       {
         subjectId: 100,
@@ -459,8 +491,8 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       updatedAt: new Date(),
     });
 
-    const deps = { storage, secretKey };
-    const registry = new ToolRegistry(deps as any);
+    const deps = createRuntimeDependencies({ storage, secretKey });
+    const registry = new ToolRegistry(deps);
 
     await expect(
       registry.executeTool(
@@ -508,7 +540,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const listColTool = tools.find((t) => t.name === 'bangumi.list_collections')!;
 
-    const res = await executeTestTool<any>(listColTool, { username: 'spike' }, context);
+    const res = await executeTestTool(listColTool, { username: 'spike' }, context);
     expect(res.items[0].statusLabel).toBe('看过');
   });
 
@@ -524,7 +556,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const getUserTool = tools.find((t) => t.name === 'bangumi.get_user')!;
 
-    const res = await executeTestTool<any>(getUserTool, { username: 'spike' }, context);
+    const res = await executeTestTool(getUserTool, { username: 'spike' }, context);
     expect(apiCallCount).toBe(1);
     expect(res.username).toBe('spike');
   });
@@ -543,7 +575,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const tools = createReadTools(httpClient);
     const searchCharTool = tools.find((t) => t.name === 'bangumi.search_characters')!;
 
-    const res = await executeTestTool<any>(searchCharTool, { query: 'Bocchi' }, context);
+    const res = await executeTestTool(searchCharTool, { query: 'Bocchi' }, context);
     expect(res.candidates[0].summary).toBeUndefined();
   });
 

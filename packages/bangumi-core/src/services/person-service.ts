@@ -1,29 +1,43 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient, Person } from '@bangumi-agent-kit/bangumi-openapi';
+import {
+  GeneratedBangumiOpenApiClient,
+  Person,
+} from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainPerson, PersonRelationSubject } from '../models/person.js';
 import { PersonCandidate, SearchResult, SearchStatus } from '../results/result.js';
 import { normalizeSearchText } from '../workflows/resolve-subject.js';
 
-export function mapPerson(raw: Person | Record<string, unknown>): DomainPerson {
-  const item = raw as Record<string, unknown>;
+export function mapPerson(raw: {
+  id: number;
+  name?: string;
+  type?: number;
+  career?: string[];
+  short_summary?: string;
+  summary?: string;
+  images?: Record<string, string>;
+}): DomainPerson {
   return {
-    id: Number(item.id || 0),
-    name: String(item.name || ''),
-    type: Number(item.type || 1),
-    career: Array.isArray(item.career) ? (item.career as string[]) : [],
-    summary: String(item.short_summary || item.summary || ''),
-    images: item.images ? (item.images as Record<string, string>) : undefined,
+    id: raw.id,
+    name: raw.name || '',
+    type: raw.type || 1,
+    career: (raw.career as string[]) || [],
+    summary: raw.short_summary || raw.summary || '',
+    images: raw.images ? (raw.images as Record<string, string>) : undefined,
   };
 }
 
-export function mapPersonCandidate(raw: Person | Record<string, unknown>): PersonCandidate {
-  const item = raw as Record<string, unknown>;
-  const images = item.images as Record<string, string> | undefined;
-  const image = images?.medium || images?.small || images?.grid || images?.large;
+export function mapPersonCandidate(raw: {
+  id: number;
+  name?: string;
+  career?: string[];
+  images?: { large?: string; medium?: string; small?: string; grid?: string };
+}): PersonCandidate {
+  const image =
+    raw.images?.medium || raw.images?.small || raw.images?.grid || raw.images?.large;
   return {
-    id: Number(item.id || 0),
-    name: String(item.name || ''),
-    career: Array.isArray(item.career) ? (item.career as string[]) : [],
+    id: raw.id,
+    name: raw.name || '',
+    career: (raw.career as string[]) || [],
     image,
   };
 }
@@ -106,11 +120,11 @@ export class PersonService {
   async getPersonRelatedSubjects(personId: number, limit = 20): Promise<PersonRelationSubject[]> {
     const raw = await this.api.getRelatedSubjectsByPersonId(personId);
     const items = (raw || []).slice(0, limit);
-    return items.map((item: Record<string, unknown>) => ({
-      id: Number(item.id || 0),
-      name: String(item.name || ''),
-      nameCn: String(item.name_cn || item.name || ''),
-      staffRole: (item.staff as string) || (typeof item.type === 'string' ? item.type : undefined),
+    return items.map((item) => ({
+      id: item.id,
+      name: item.name || '',
+      nameCn: item.name_cn || item.name || '',
+      staffRole: item.staff || (typeof item.type === 'string' ? item.type : undefined),
     }));
   }
 
@@ -120,22 +134,22 @@ export class PersonService {
   ): Promise<PersonRelationCharacter[]> {
     const raw = await this.api.getRelatedCharactersByPersonId(personId);
     const items = (raw || []).slice(0, limit);
-    return items.map((item: Record<string, unknown>) => ({
-      id: Number(item.id || 0),
-      name: String(item.name || ''),
-      type: item.type as number | undefined,
-      subjectId: item.subject_id as number | undefined,
-      subjectName: item.subject_name as string | undefined,
+    return items.map((item) => ({
+      id: item.id,
+      name: item.name || '',
+      type: item.type,
+      subjectId: item.subject_id,
+      subjectName: item.subject_name,
     }));
   }
 
   async getSubjectPersons(subjectId: number): Promise<DomainPerson[]> {
     const raw = await this.api.getRelatedPersonsBySubjectId(subjectId);
-    return (raw || []).map((item: Record<string, unknown>) => ({
-      id: Number(item.id || 0),
-      name: String(item.name || ''),
-      type: Number(item.type || 1),
-      career: Array.isArray(item.career) ? (item.career as string[]) : [],
+    return (raw || []).map((item) => ({
+      id: item.id,
+      name: item.name || '',
+      type: item.type || 1,
+      career: item.career || [],
       summary: '',
       images: item.images ? (item.images as Record<string, string>) : undefined,
     }));

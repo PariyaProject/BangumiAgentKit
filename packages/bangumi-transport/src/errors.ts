@@ -46,3 +46,21 @@ export class BangumiError extends Error {
     };
   }
 }
+
+export interface PublicErrorInfo {
+  code: string;
+  message: string;
+}
+
+export function toPublicError(err: unknown): PublicErrorInfo {
+  if (err instanceof BangumiError) {
+    return {
+      code: err.code,
+      message: err.message,
+    };
+  }
+  return {
+    code: 'INTERNAL_ERROR',
+    message: '内部服务发生错误',
+  };
+}

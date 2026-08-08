@@ -8,7 +8,7 @@ import {
   RuntimeDependencies,
   createRuntimeDependencies,
 } from '@bangumi-agent-kit/tools';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
 
 export interface McpExecutionIdentityProvider {
@@ -147,16 +147,15 @@ export class BangumiMcpServer {
           ],
         };
       } catch (err: unknown) {
-        const errObj = err as { message?: string };
-        const safeMessage =
-          errObj.message ||
-          (process.env.NODE_ENV === 'production' ? '内部服务发生错误' : '内部服务发生错误');
-
+        if (!(err instanceof BangumiError)) {
+          console.error('[MCP Tool Execution Error]', err);
+        }
+        const publicErr = toPublicError(err);
         return {
           content: [
             {
               type: 'text',
-              text: `Error executing tool ${name}: ${safeMessage}`,
+              text: publicErr.message,
             },
           ],
           isError: true,
