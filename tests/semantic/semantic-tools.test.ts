@@ -16,13 +16,13 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import { z } from 'zod';
 
-async function executeTestTool<TInput, TOutput>(
-  tool: { execute: (input: TInput, context: ToolContext, deps?: Record<string, unknown>) => Promise<TOutput> },
-  input: TInput,
+async function executeTestTool<TOutput = any>(
+  tool: { execute: (input: any, context: ToolContext, deps?: Record<string, unknown>) => Promise<any> },
+  input: Record<string, unknown>,
   context: ToolContext,
   deps?: Record<string, unknown>,
 ): Promise<TOutput> {
-  return await tool.execute(input, context, deps);
+  return (await tool.execute(input, context, deps)) as TOutput;
 }
 
 describe('Semantic Tools Contract Tests (S01 - S25)', () => {

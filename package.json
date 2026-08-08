@@ -5,7 +5,7 @@
   "description": "Bangumi Agent Kit monorepo workspace",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b --force",
     "lint": "eslint .",
     "typecheck:packages": "tsc -b",
     "typecheck:tests": "tsc -p tsconfig.tests.json",

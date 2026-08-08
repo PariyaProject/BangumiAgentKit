@@ -47,13 +47,26 @@ export class BangumiError extends Error {
   }
 }
 
+const PUBLIC_SAFE_CODES = new Set<BangumiErrorCode>([
+  'VALIDATION_ERROR',
+  'AUTH_REQUIRED',
+  'AUTH_EXPIRED',
+  'PERMISSION_DENIED',
+  'NOT_FOUND',
+  'RATE_LIMITED',
+  'CONFIRMATION_REQUIRED',
+  'CONFIRMATION_INVALID',
+  'CONFIRMATION_EXPIRED',
+  'RAW_WRITE_OPERATION_DISABLED',
+]);
+
 export interface PublicErrorInfo {
   code: string;
   message: string;
 }
 
 export function toPublicError(err: unknown): PublicErrorInfo {
-  if (err instanceof BangumiError) {
+  if (err instanceof BangumiError && PUBLIC_SAFE_CODES.has(err.code)) {
     return {
       code: err.code,
       message: err.message,

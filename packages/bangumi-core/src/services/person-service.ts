@@ -1,8 +1,5 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import {
-  GeneratedBangumiOpenApiClient,
-  Person,
-} from '@bangumi-agent-kit/bangumi-openapi';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainPerson, PersonRelationSubject } from '../models/person.js';
 import { PersonCandidate, SearchResult, SearchStatus } from '../results/result.js';
 import { normalizeSearchText } from '../workflows/resolve-subject.js';
