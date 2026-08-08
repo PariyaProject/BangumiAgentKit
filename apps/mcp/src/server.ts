@@ -101,6 +101,9 @@ export class BangumiMcpServer {
       const mcpTools = tools.map((tool: any) => {
         const derivedJsonSchema = z.toJSONSchema(tool.input) as Record<string, unknown>;
         delete derivedJsonSchema.$schema;
+        if (!derivedJsonSchema.type) {
+          derivedJsonSchema.type = 'object';
+        }
 
         return {
           name: tool.name,

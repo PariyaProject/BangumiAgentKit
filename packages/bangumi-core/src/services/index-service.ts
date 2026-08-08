@@ -2,14 +2,14 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient, Index } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainIndex, DomainIndexSubjectItem } from '../models/domain-index.js';
 
-export function mapIndex(raw: Index | any): DomainIndex {
+export function mapIndex(raw: Index): DomainIndex {
   return {
     id: raw.id,
     title: raw.title || '',
     desc: raw.desc || '',
     total: raw.total || 0,
     collects: raw.stat?.collects || 0,
-    comments: raw.stat?.comment || 0,
+    comments: raw.stat?.comments || 0,
     createdAt: raw.created_at || '',
   };
 }
@@ -39,8 +39,14 @@ export class IndexReadService {
 
     const res = await this.api.getIndexSubjectsByIndexId(indexId, { limit, offset });
 
-    const data = res.data || [];
-    const items = data.map((item: any) => ({
+    const data = (res.data || []) as unknown as Array<{
+      id: number;
+      name?: string;
+      name_cn?: string;
+      order?: number;
+      comment?: string;
+    }>;
+    const items = data.map((item) => ({
       id: item.id,
       name: item.name || '',
       nameCn: item.name_cn || item.name || '',

@@ -17,10 +17,10 @@ export function mapEpisodeCategory(typeNum: number): DomainEpisodeCategory {
   }
 }
 
-export function mapEpisode(raw: Episode | any, subjectId?: number): DomainEpisode {
+export function mapEpisode(raw: Episode, subjectId?: number): DomainEpisode {
   return {
     id: raw.id,
-    subjectId: subjectId ?? raw.subject_id,
+    subjectId: subjectId ?? (raw as unknown as { subject_id?: number }).subject_id ?? 0,
     category: mapEpisodeCategory(raw.type ?? 0),
     rawType: raw.type ?? 0,
     name: raw.name || '',

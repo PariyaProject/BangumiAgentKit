@@ -19,7 +19,7 @@
     "openapi": "pnpm openapi:verify",
     "openapi:validate": "ts-node scripts/sync-openapi.ts --validate",
     "openapi:fetch": "ts-node scripts/sync-openapi.ts --fetch",
-    "openapi:generate": "npx openapi-typescript openapi/upstream/v0.yaml --output packages/bangumi-openapi/src/generated/schema.ts && ts-node scripts/generate-openapi-client.ts && ts-node scripts/generate-operation-registry.ts && ts-node scripts/calculate-coverage.ts && ts-node scripts/generate-tool-catalog.ts",
+    "openapi:generate": "npx openapi-typescript openapi/upstream/v0.yaml --output packages/bangumi-openapi/src/generated/schema.ts && ts-node scripts/generate-openapi-client.ts && ts-node scripts/generate-operation-registry.ts && ts-node scripts/calculate-coverage.ts && pnpm build && ts-node scripts/generate-tool-catalog.ts && pnpm format",
     "openapi:registry": "ts-node scripts/generate-operation-registry.ts",
     "openapi:catalog": "ts-node scripts/generate-tool-catalog.ts",
     "openapi:verify": "pnpm openapi:validate && pnpm openapi:generate && git diff --exit-code packages/bangumi-openapi/src/generated openapi/generated-operation-registry.json packages/bangumi-openapi/src/operation-registry.ts docs/api-coverage.md docs/tool-catalog.json",

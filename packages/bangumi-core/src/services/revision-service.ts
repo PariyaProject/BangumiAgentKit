@@ -2,13 +2,14 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient, Revision } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainRevision } from '../models/revision.js';
 
-export function mapRevision(raw: Revision | any): DomainRevision {
+export function mapRevision(raw: Revision | Record<string, unknown>): DomainRevision {
+  const item = raw as Record<string, unknown>;
   return {
-    id: raw.id,
-    type: raw.type || 0,
-    summary: raw.summary || '',
-    createdAt: raw.created_at || raw.createdAt || '',
-    data: raw.data,
+    id: Number(item.id || 0),
+    type: Number(item.type || 0),
+    summary: String(item.summary || ''),
+    createdAt: String(item.created_at || item.createdAt || ''),
+    data: item.data,
   };
 }
 
@@ -33,7 +34,7 @@ export class RevisionService {
     const limit = options.limit ?? 10;
     const offset = options.offset ?? 0;
 
-    let res: any;
+    let res: { total?: number; limit?: number; offset?: number; data?: Revision[] };
     switch (entityType) {
       case 'subject':
         res = await this.api.getSubjectRevisions({ subject_id: entityId, limit, offset });
@@ -70,7 +71,7 @@ export class RevisionService {
   }
 
   async getRevision(entityType: RevisionEntityType, revisionId: number): Promise<DomainRevision> {
-    let raw: any;
+    let raw: Revision | Record<string, unknown>;
     switch (entityType) {
       case 'subject':
         raw = await this.api.getSubjectRevisionByRevisionId(revisionId);

@@ -1,3 +1,5 @@
+import { PersonCandidate } from '../results/result.js';
+
 export interface DomainCharacter {
   id: number;
   name: string;
@@ -7,6 +9,18 @@ export interface DomainCharacter {
   images?: Record<string, string>;
   comment?: number;
   collects?: number;
+}
+
+export interface DomainRelatedCharacter {
+  character: {
+    id: number;
+    name: string;
+    type: number;
+    summary?: string;
+    images?: Record<string, string>;
+  };
+  relation: string;
+  actors: PersonCandidate[];
 }
 
 export interface CharacterRelationSubject {
@@ -19,5 +33,10 @@ export interface CharacterRelationSubject {
 export interface CharacterRelatedPerson {
   id: number;
   name: string;
-  roleName?: string;
+  type?: number;
+  subjectId: number;
+  subjectType?: number;
+  subjectName?: string;
+  subjectNameCn?: string;
+  staff?: string;
 }

@@ -2,37 +2,31 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient, Character } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   DomainCharacter,
+  DomainRelatedCharacter,
   CharacterRelationSubject,
   CharacterRelatedPerson,
 } from '../models/character.js';
-import { CharacterCandidate, SearchResult } from '../results/result.js';
+import { CharacterCandidate, SearchResult, SearchStatus } from '../results/result.js';
+import { mapPersonCandidate } from './person-service.js';
+import { normalizeSearchText } from '../workflows/resolve-subject.js';
 
-export function mapCharacter(raw: Character | any): DomainCharacter {
+export function mapCharacter(raw: Character): DomainCharacter {
   return {
     id: raw.id,
     name: raw.name || '',
-    roleName: raw.role_name || undefined,
     type: raw.type || 1,
     summary: raw.summary || '',
-    images: raw.images,
-    comment: raw.comment ?? undefined,
-    collects: raw.collects ?? undefined,
+    images: raw.images ? (raw.images as Record<string, string>) : undefined,
   };
 }
 
-export function mapCharacterCandidate(raw: Character | any): CharacterCandidate {
-  const image =
-    raw.images?.medium ||
-    raw.images?.common ||
-    raw.images?.small ||
-    raw.images?.grid ||
-    raw.images?.large;
+export function mapCharacterCandidate(raw: Character): CharacterCandidate {
+  const image = raw.images?.medium || raw.images?.small || raw.images?.grid || raw.images?.large;
   return {
     id: raw.id,
     name: raw.name || '',
     type: raw.type || 1,
     image,
-    relationHint: raw.role_name || undefined,
   };
 }
 
@@ -64,12 +58,33 @@ export class CharacterService {
     const data = res.data || [];
     const candidates = data.map(mapCharacterCandidate);
 
+    const normQuery = normalizeSearchText(query);
+    const exactMatches = candidates.filter((c) => normalizeSearchText(c.name) === normQuery);
+
+    let status: SearchStatus = 'disambiguation';
+    let exact: CharacterCandidate | undefined;
+
+    if (candidates.length === 0) {
+      status = 'not_found';
+    } else if (exactMatches.length === 1) {
+      status = 'exact';
+      exact = exactMatches[0];
+    } else if (exactMatches.length > 1) {
+      status = 'disambiguation';
+    } else if (candidates.length === 1) {
+      status = 'exact';
+      exact = candidates[0];
+    } else {
+      status = 'disambiguation';
+    }
+
     return {
-      status: candidates.length === 0 ? 'not_found' : 'disambiguation',
+      status,
       query,
       total: res.total || 0,
       limit: res.limit || limit,
       offset: res.offset || offset,
+      exact,
       candidates,
       meta: { source: 'bangumi-v0' },
     };
@@ -86,11 +101,11 @@ export class CharacterService {
   ): Promise<CharacterRelationSubject[]> {
     const raw = await this.api.getRelatedSubjectsByCharacterId(characterId);
     const items = (raw || []).slice(0, limit);
-    return items.map((item: any) => ({
+    return items.map((item) => ({
       id: item.id,
       name: item.name || '',
       nameCn: item.name_cn || item.name || '',
-      staffRole: item.staff || item.role_name,
+      staffRole: item.staff,
     }));
   }
 
@@ -100,15 +115,30 @@ export class CharacterService {
   ): Promise<CharacterRelatedPerson[]> {
     const raw = await this.api.getRelatedPersonsByCharacterId(characterId);
     const items = (raw || []).slice(0, limit);
-    return items.map((item: any) => ({
+    return items.map((item) => ({
       id: item.id,
       name: item.name || '',
-      roleName: item.role_name || item.type,
+      type: item.type,
+      subjectId: item.subject_id,
+      subjectType: item.subject_type,
+      subjectName: item.subject_name || '',
+      subjectNameCn: item.subject_name_cn || item.subject_name || '',
+      staff: item.staff,
     }));
   }
 
-  async getSubjectCharacters(subjectId: number): Promise<DomainCharacter[]> {
+  async getSubjectCharacters(subjectId: number): Promise<DomainRelatedCharacter[]> {
     const raw = await this.api.getRelatedCharactersBySubjectId(subjectId);
-    return (raw || []).map(mapCharacter);
+    return (raw || []).map((item) => ({
+      character: {
+        id: item.id,
+        name: item.name || '',
+        type: item.type || 1,
+        summary: item.summary || undefined,
+        images: item.images ? (item.images as Record<string, string>) : undefined,
+      },
+      relation: item.relation || '',
+      actors: (item.actors || []).map((actor) => mapPersonCandidate(actor)),
+    }));
   }
 }

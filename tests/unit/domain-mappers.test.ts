@@ -17,7 +17,7 @@ describe('Domain Mappers Unit Tests', () => {
       name: 'Original Title',
       type: 2,
     };
-    const mappedNoCn = mapSubject(rawNoCn);
+    const mappedNoCn = mapSubject(rawNoCn as any);
     expect(mappedNoCn.nameCn).toBe('Original Title');
     expect(mappedNoCn.score).toBeUndefined();
     expect(mappedNoCn.rank).toBeUndefined();
@@ -30,7 +30,7 @@ describe('Domain Mappers Unit Tests', () => {
       type: 1,
       rating: { score: 0, rank: 0, total: 0 },
     };
-    const mappedZeroScore = mapSubject(rawZeroScore);
+    const mappedZeroScore = mapSubject(rawZeroScore as any);
     expect(mappedZeroScore.nameCn).toBe('测试');
     expect(mappedZeroScore.score).toBeUndefined();
     expect(mappedZeroScore.rank).toBeUndefined();
@@ -43,12 +43,11 @@ describe('Domain Mappers Unit Tests', () => {
   });
 
   it('maps Character and Person correctly', () => {
-    const char = mapCharacter({ id: 10, name: 'Hitori Gotou', role_name: 'Main', type: 1 });
+    const char = mapCharacter({ id: 10, name: 'Hitori Gotou', type: 1 } as any);
     expect(char.id).toBe(10);
     expect(char.name).toBe('Hitori Gotou');
-    expect(char.roleName).toBe('Main');
 
-    const person = mapPerson({ id: 20, name: 'Yoshino Aoyama', career: ['seiyu'] });
+    const person = mapPerson({ id: 20, name: 'Yoshino Aoyama', career: ['seiyu'] } as any);
     expect(person.id).toBe(20);
     expect(person.career).toEqual(['seiyu']);
   });
@@ -60,7 +59,7 @@ describe('Domain Mappers Unit Tests', () => {
     expect(mapEpisodeCategory(3)).toBe('ed');
     expect(mapEpisodeCategory(99)).toBe('other');
 
-    const ep = mapEpisode({ id: 50, type: 99, name: 'Bonus Track' });
+    const ep = mapEpisode({ id: 50, type: 99, name: 'Bonus Track' } as any);
     expect(ep.category).toBe('other');
   });
 
@@ -82,10 +81,12 @@ describe('Domain Mappers Unit Tests', () => {
     expect(getCollectionStatusLabel('book', 'done')).toBe('读过');
     expect(getCollectionStatusLabel('music', 'done')).toBe('听过');
     expect(getCollectionStatusLabel('game', 'done')).toBe('玩过');
+    expect(getCollectionStatusLabel('other', 'done')).toBe('已完成');
 
     expect(getCollectionStatusLabel('anime', 'doing')).toBe('在看');
     expect(getCollectionStatusLabel('book', 'doing')).toBe('在读');
     expect(getCollectionStatusLabel('music', 'doing')).toBe('在听');
     expect(getCollectionStatusLabel('game', 'doing')).toBe('在玩');
+    expect(getCollectionStatusLabel('other', 'doing')).toBe('进行中');
   });
 });

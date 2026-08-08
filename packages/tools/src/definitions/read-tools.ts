@@ -27,7 +27,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     publicHttpClient = (clientProviderOrHttpClient as HttpClient) || new HttpClient();
   }
 
-  const subjectService = new SubjectService(publicHttpClient);
   const episodeService = new EpisodeService(publicHttpClient);
   const characterService = new CharacterService(publicHttpClient);
   const personService = new PersonService(publicHttpClient);
@@ -61,22 +60,23 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       nsfw: z
         .enum(['exclude', 'include', 'only'])
         .optional()
-        .default('exclude')
         .describe('NSFW 过滤: exclude(默认排除), include(包含), only(仅看)'),
-      limit: z.number().int().min(1).max(50).optional().default(10),
-      offset: z.number().int().min(0).optional().default(0),
+      limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
+      offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
-    auth: 'none',
+    auth: 'optional',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
+    execute: async (input, context, deps) => {
+      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeService = new SubjectService(activeClient);
       const typeNum = input.type ? subjectTypeMap[input.type] : undefined;
-      return await resolveSubject(subjectService, input.query, {
+      return await resolveSubject(activeService, input.query, {
         type: typeNum,
         sort: input.sort,
-        nsfw: input.nsfw,
-        limit: input.limit,
-        offset: input.offset,
+        nsfw: input.nsfw ?? 'exclude',
+        limit: input.limit ?? 10,
+        offset: input.offset ?? 0,
       });
     },
   });
@@ -91,8 +91,10 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await subjectService.getSubjectById(input.subjectId);
+    execute: async (input, context, deps) => {
+      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeService = new SubjectService(activeClient);
+      return await activeService.getSubjectById(input.subjectId);
     },
   });
 
@@ -105,8 +107,10 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await subjectService.getSubjectRelations(input.subjectId);
+    execute: async (input, context, deps) => {
+      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeService = new SubjectService(activeClient);
+      return await activeService.getSubjectRelations(input.subjectId);
     },
   });
 
@@ -115,13 +119,17 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     description: '获取指定动画/作品的主要角色以及对应的声优 (CV) 人物列表。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      limit: z.number().int().min(1).max(100).optional().default(30),
+      limit: z.number().int().min(1).max(100).optional().describe('显示条数上限'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await getSubjectCast(characterService, input.subjectId, { limit: input.limit });
+    execute: async (input, context, deps) => {
+      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeService = new CharacterService(activeClient);
+      return await getSubjectCast(activeService, input.subjectId, {
+        limit: input.limit ?? 30,
+      });
     },
   });
 
@@ -143,8 +151,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       type: z.number().int().optional().describe('0=正篇, 1=SP, 2=OP, 3=ED'),
-      limit: z.number().int().min(1).max(200).optional().default(100),
-      offset: z.number().int().min(0).optional().default(0),
+      limit: z.number().int().min(1).max(200).optional().describe('分页参数 limit'),
+      offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
     auth: 'none',
     scopes: [],
@@ -152,8 +160,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     execute: async (input) => {
       return await episodeService.getEpisodes(input.subjectId, {
         type: input.type,
-        limit: input.limit,
-        offset: input.offset,
+        limit: input.limit ?? 100,
+        offset: input.offset ?? 0,
       });
     },
   });
@@ -174,39 +182,38 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const searchCharacters = defineTool({
     name: 'bangumi.search_characters',
-    description:
-      '按角色名称搜索虚拟角色。返回精简候选列表。若已知角色 ID，请使用 bangumi.get_character。',
+    description: '搜索 Bangumi 虚拟角色。若已知角色 ID，请使用 bangumi.get_character。',
     input: z.object({
-      query: z.string().describe('角色名称关键词 (如 "後藤ひとり")'),
-      limit: z.number().int().min(1).max(50).optional().default(10),
-      offset: z.number().int().min(0).optional().default(0),
+      query: z.string().describe('搜索关键词'),
+      limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
+      offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
     execute: async (input) => {
       return await characterService.searchCharacters(input.query, {
-        limit: input.limit,
-        offset: input.offset,
+        limit: input.limit ?? 10,
+        offset: input.offset ?? 0,
       });
     },
   });
 
   const getCharacter = defineTool({
     name: 'bangumi.get_character',
-    description: '仅在已获得 Bangumi 角色 ID 时使用。获取单个角色的详细资料及其参演作品和声优。',
+    description: '获取指定虚拟角色的详细信息（简介、相关条目、声优等）。',
     input: z.object({
-      characterId: z.number().int().positive().describe('角色 ID'),
+      characterId: z.number().int().positive().describe('Bangumi 角色 ID'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
     execute: async (input) => {
       const detail = await characterService.getCharacterById(input.characterId);
-      const subjects = await characterService.getCharacterRelatedSubjects(input.characterId, 20);
-      const persons = await characterService.getCharacterRelatedPersons(input.characterId, 20);
+      const subjects = await characterService.getCharacterRelatedSubjects(input.characterId);
+      const persons = await characterService.getCharacterRelatedPersons(input.characterId);
       return {
-        character: detail,
+        ...detail,
         relatedSubjects: subjects,
         relatedPersons: persons,
       };
@@ -215,40 +222,38 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const searchPersons = defineTool({
     name: 'bangumi.search_persons',
-    description:
-      '按人物姓名/声优/制作人员名称搜索现实人物。返回精简候选列表。若已知人物 ID，请使用 bangumi.get_person。',
+    description: '搜索 Bangumi 现实人物/声优/制作人员/公司/团体。',
     input: z.object({
-      query: z.string().describe('人物/声优名称关键词 (如 "青山吉能")'),
-      limit: z.number().int().min(1).max(50).optional().default(10),
-      offset: z.number().int().min(0).optional().default(0),
+      query: z.string().describe('搜索关键词'),
+      limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
+      offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
     execute: async (input) => {
       return await personService.searchPersons(input.query, {
-        limit: input.limit,
-        offset: input.offset,
+        limit: input.limit ?? 10,
+        offset: input.offset ?? 0,
       });
     },
   });
 
   const getPerson = defineTool({
     name: 'bangumi.get_person',
-    description:
-      '仅在已获得 Bangumi 人物 ID 时使用。获取现实人物（声优/监督/画师等）的详细资料及参与的作品/角色列表。',
+    description: '获取现实人物/声优的详细信息及其参与的作品、饰演的角色。',
     input: z.object({
-      personId: z.number().int().positive().describe('人物 ID'),
+      personId: z.number().int().positive().describe('Bangumi 人物 ID'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
     execute: async (input) => {
-      const person = await personService.getPersonById(input.personId);
-      const subjects = await personService.getPersonRelatedSubjects(input.personId, 20);
-      const characters = await personService.getPersonRelatedCharacters(input.personId, 20);
+      const detail = await personService.getPersonById(input.personId);
+      const subjects = await personService.getPersonRelatedSubjects(input.personId);
+      const characters = await personService.getPersonRelatedCharacters(input.personId);
       return {
-        person,
+        ...detail,
         relatedSubjects: subjects,
         relatedCharacters: characters,
       };
@@ -257,10 +262,9 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const getUser = defineTool({
     name: 'bangumi.get_user',
-    description:
-      '获取某个 Bangumi 用户的公开主页基本资料。读取用户收藏列表请使用 bangumi.list_collections。',
+    description: '获取 Bangumi 用户公开个人主页信息（昵称、签名、头像等）。',
     input: z.object({
-      username: z.string().describe('Bangumi 用户名或用户 ID'),
+      username: z.string().describe('Bangumi 用户名或 UID'),
     }),
     auth: 'none',
     scopes: [],
@@ -272,29 +276,28 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const getMyProfile = defineTool({
     name: 'bangumi.get_my_profile',
-    description: '获取当前绑定 Bangumi 账号的主页个人资料。',
+    description: '获取当前绑定的 Bangumi 账号个人信息。',
     input: z.object({}),
     auth: 'required',
     scopes: [],
     risk: 'read',
-    execute: async (_input, context, deps) => {
-      let authedClient = (deps as any)?.executionSession?.client;
-      if (!authedClient && clientProvider) {
-        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
-        authedClient = authed.client;
+    execute: async (input, context, deps) => {
+      const sessionClient = (deps as any)?.executionSession?.client;
+      if (sessionClient) {
+        return await new UserService(sessionClient).getMyself();
       }
-      if (!authedClient) {
-        throw new Error('AUTH_REQUIRED: Authentication is required to access personal profile.');
+      if (!clientProvider) {
+        throw new Error('BangumiClientProvider is required to run get_my_profile tool');
       }
-      const uService = new UserService(authedClient);
-      return await uService.getMyself();
+      const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
+      const service = new UserService(authed.client);
+      return await service.getMyself();
     },
   });
 
   const listCollections = defineTool({
     name: 'bangumi.list_collections',
-    description:
-      '获取用户（或当前绑定账号）的条目收藏列表（想看/在看/看过/搁置/抛弃），包含语义状态标签与进度。',
+    description: '获取指定用户（或当前绑定账号）的收藏列表。',
     input: z.object({
       username: z.string().optional().describe('Bangumi 用户名。若不传，则查询当前绑定账号'),
       subjectType: z
@@ -307,8 +310,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         .describe(
           '收藏状态过滤: wish(想看/想读), doing(在看/在读), done(看过/读过), on_hold(搁置), dropped(抛弃)',
         ),
-      limit: z.number().int().min(1).max(50).optional().default(20),
-      offset: z.number().int().min(0).optional().default(0),
+      limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
+      offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
     auth: 'optional',
     scopes: [],
@@ -323,29 +326,40 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
     execute: async (input, context, deps) => {
       let targetUsername = input.username?.trim();
-      let activeService = userService;
+      let authedClient = (deps as any)?.executionSession?.client;
+      const sessionUsername = (deps as any)?.executionSession?.account?.username;
 
       if (!targetUsername) {
-        let authedClient = (deps as any)?.executionSession?.client;
-        if (!authedClient && clientProvider) {
-          const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
-          authedClient = authed.client;
+        if (sessionUsername) {
+          targetUsername = sessionUsername;
+        } else {
+          if (!authedClient && clientProvider) {
+            const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
+            authedClient = authed.client;
+          }
+          if (!authedClient) {
+            throw new Error(
+              'AUTH_REQUIRED: Must provide username or bind a Bangumi account to list collections.',
+            );
+          }
+          const authedService = new UserService(authedClient);
+          const me = await authedService.getMyself();
+          targetUsername = me.username;
         }
-        if (!authedClient) {
-          throw new Error(
-            'AUTH_REQUIRED: Must provide username or bind a Bangumi account to list collections.',
-          );
-        }
-        activeService = new UserService(authedClient);
-        const me = await activeService.getMyself();
-        targetUsername = me.username;
       }
 
+      if (!targetUsername) {
+        throw new Error(
+          'AUTH_REQUIRED: Must provide username or bind a Bangumi account to list collections.',
+        );
+      }
+
+      const activeService = authedClient ? new UserService(authedClient) : userService;
       return await activeService.getUserCollections(targetUsername, {
         subjectType: input.subjectType,
         type: input.status,
-        limit: input.limit,
-        offset: input.offset,
+        limit: input.limit ?? 20,
+        offset: input.offset ?? 0,
       });
     },
   });
@@ -370,24 +384,35 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
     execute: async (input, context, deps) => {
       let targetUsername = input.username?.trim();
-      let activeService = userService;
+      let authedClient = (deps as any)?.executionSession?.client;
+      const sessionUsername = (deps as any)?.executionSession?.account?.username;
 
       if (!targetUsername) {
-        let authedClient = (deps as any)?.executionSession?.client;
-        if (!authedClient && clientProvider) {
-          const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
-          authedClient = authed.client;
+        if (sessionUsername) {
+          targetUsername = sessionUsername;
+        } else {
+          if (!authedClient && clientProvider) {
+            const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
+            authedClient = authed.client;
+          }
+          if (!authedClient) {
+            throw new Error(
+              'AUTH_REQUIRED: Must provide username or bind a Bangumi account to get collection.',
+            );
+          }
+          const authedService = new UserService(authedClient);
+          const me = await authedService.getMyself();
+          targetUsername = me.username;
         }
-        if (!authedClient) {
-          throw new Error(
-            'AUTH_REQUIRED: Must provide username or bind a Bangumi account to get collection.',
-          );
-        }
-        activeService = new UserService(authedClient);
-        const me = await activeService.getMyself();
-        targetUsername = me.username;
       }
 
+      if (!targetUsername) {
+        throw new Error(
+          'AUTH_REQUIRED: Must provide username or bind a Bangumi account to get collection.',
+        );
+      }
+
+      const activeService = authedClient ? new UserService(authedClient) : userService;
       return await activeService.getUserSubjectCollection(targetUsername, input.subjectId);
     },
   });
@@ -398,8 +423,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     input: z.object({
       entityType: z.enum(['subject', 'episode', 'character', 'person']).describe('实体类型'),
       entityId: z.number().int().positive().describe('实体 ID'),
-      limit: z.number().int().min(1).max(50).optional().default(10),
-      offset: z.number().int().min(0).optional().default(0),
+      limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
+      offset: z.number().int().min(0).optional().describe('分页参数 offset'),
     }),
     auth: 'none',
     scopes: [],
@@ -409,8 +434,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         input.entityType as RevisionEntityType,
         input.entityId,
         {
-          limit: input.limit,
-          offset: input.offset,
+          limit: input.limit ?? 10,
+          offset: input.offset ?? 0,
         },
       );
     },
@@ -420,33 +445,17 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     name: 'bangumi.get_revision',
     description: '查看单条编辑修订记录的详细变更。',
     input: z.object({
-      entityType: z
-        .enum(['subject', 'episode', 'character', 'person'])
-        .optional()
-        .default('subject')
-        .describe('实体类型'),
-      revisionId: z.number().int().positive().optional().describe('修订 ID'),
-      subjectId: z
-        .number()
-        .int()
-        .positive()
-        .optional()
-        .describe('(Deprecated) 旧接口兼容: 条目 ID'),
+      entityType: z.enum(['subject', 'episode', 'character', 'person']).describe('实体类型'),
+      revisionId: z.number().int().positive().describe('修订 ID'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
     execute: async (input) => {
-      if (input.revisionId) {
-        return await revisionService.getRevision(
-          input.entityType as RevisionEntityType,
-          input.revisionId,
-        );
-      }
-      if (input.subjectId) {
-        return await revisionService.getSubjectRevisions(input.subjectId);
-      }
-      throw new Error('MISSING_PARAMETER: Either revisionId or subjectId must be provided.');
+      return await revisionService.getRevision(
+        input.entityType as RevisionEntityType,
+        input.revisionId,
+      );
     },
   });
 
@@ -455,8 +464,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     description: '获取 Bangumi 目录（列表/榜单）详情及其包含的条目列表。',
     input: z.object({
       indexId: z.number().int().positive().describe('Bangumi 目录 ID'),
-      subjectLimit: z.number().int().min(1).max(50).optional().default(20),
-      subjectOffset: z.number().int().min(0).optional().default(0),
+      subjectLimit: z.number().int().min(1).max(50).optional().describe('条目数量上限'),
+      subjectOffset: z.number().int().min(0).optional().describe('条目偏移量'),
     }),
     auth: 'none',
     scopes: [],
@@ -464,8 +473,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     execute: async (input) => {
       const detail = await indexService.getIndexById(input.indexId);
       const subjectsRes = await indexService.getIndexSubjects(input.indexId, {
-        limit: input.subjectLimit,
-        offset: input.subjectOffset,
+        limit: input.subjectLimit ?? 20,
+        offset: input.subjectOffset ?? 0,
       });
       return {
         index: detail,

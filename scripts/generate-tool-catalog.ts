@@ -17,12 +17,21 @@ async function main() {
     const inputSchema = z.toJSONSchema(t.input) as Record<string, unknown>;
     delete inputSchema.$schema;
 
+    const isDynamic = Boolean(t.resolvePolicy);
+
     return {
       name: t.name,
       description: t.description,
       auth: t.auth,
       risk: t.risk,
       scopes: t.scopes,
+      policyMode: isDynamic ? ('dynamic' as const) : ('static' as const),
+      ...(isDynamic
+        ? {
+            policyDescription:
+              'Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.',
+          }
+        : {}),
       inputSchema,
     };
   });

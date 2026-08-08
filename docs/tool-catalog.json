@@ -5,6 +5,7 @@
     "auth": "required",
     "risk": "destructive",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {},
@@ -17,6 +18,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -37,6 +39,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {},
@@ -49,6 +52,8 @@
     "auth": "optional",
     "risk": "read",
     "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -95,6 +100,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -113,6 +119,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {},
@@ -121,10 +128,11 @@
   },
   {
     "name": "bangumi.get_character",
-    "description": "仅在已获得 Bangumi 角色 ID 时使用。获取单个角色的详细资料及其参演作品和声优。",
+    "description": "获取指定虚拟角色的详细信息（简介、相关条目、声优等）。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -132,7 +140,7 @@
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991,
-          "description": "角色 ID"
+          "description": "Bangumi 角色 ID"
         }
       },
       "required": ["characterId"],
@@ -145,6 +153,8 @@
     "auth": "optional",
     "risk": "read",
     "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -169,6 +179,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -189,6 +200,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -205,19 +217,19 @@
           "maximum": 9007199254740991
         },
         "limit": {
-          "default": 100,
+          "description": "分页参数 limit",
           "type": "integer",
           "minimum": 1,
           "maximum": 200
         },
         "offset": {
-          "default": 0,
+          "description": "分页参数 offset",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["subjectId", "limit", "offset"],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -227,6 +239,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -237,28 +250,29 @@
           "description": "Bangumi 目录 ID"
         },
         "subjectLimit": {
-          "default": 20,
+          "description": "条目数量上限",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "subjectOffset": {
-          "default": 0,
+          "description": "条目偏移量",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["indexId", "subjectLimit", "subjectOffset"],
+      "required": ["indexId"],
       "additionalProperties": false
     }
   },
   {
     "name": "bangumi.get_my_profile",
-    "description": "获取当前绑定 Bangumi 账号的主页个人资料。",
+    "description": "获取当前绑定的 Bangumi 账号个人信息。",
     "auth": "required",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {},
@@ -267,10 +281,11 @@
   },
   {
     "name": "bangumi.get_person",
-    "description": "仅在已获得 Bangumi 人物 ID 时使用。获取现实人物（声优/监督/画师等）的详细资料及参与的作品/角色列表。",
+    "description": "获取现实人物/声优的详细信息及其参与的作品、饰演的角色。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -278,7 +293,7 @@
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991,
-          "description": "人物 ID"
+          "description": "Bangumi 人物 ID"
         }
       },
       "required": ["personId"],
@@ -291,29 +306,23 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
         "entityType": {
-          "default": "subject",
-          "description": "实体类型",
           "type": "string",
-          "enum": ["subject", "episode", "character", "person"]
+          "enum": ["subject", "episode", "character", "person"],
+          "description": "实体类型"
         },
         "revisionId": {
-          "description": "修订 ID",
           "type": "integer",
           "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
-        },
-        "subjectId": {
-          "description": "(Deprecated) 旧接口兼容: 条目 ID",
-          "type": "integer",
-          "exclusiveMinimum": 0,
-          "maximum": 9007199254740991
+          "maximum": 9007199254740991,
+          "description": "修订 ID"
         }
       },
-      "required": ["entityType"],
+      "required": ["entityType", "revisionId"],
       "additionalProperties": false
     }
   },
@@ -323,6 +332,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -343,6 +353,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -353,13 +364,13 @@
           "description": "Bangumi 条目 ID"
         },
         "limit": {
-          "default": 30,
+          "description": "显示条数上限",
           "type": "integer",
           "minimum": 1,
           "maximum": 100
         }
       },
-      "required": ["subjectId", "limit"],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -369,6 +380,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -385,16 +397,17 @@
   },
   {
     "name": "bangumi.get_user",
-    "description": "获取某个 Bangumi 用户的公开主页基本资料。读取用户收藏列表请使用 bangumi.list_collections。",
+    "description": "获取 Bangumi 用户公开个人主页信息（昵称、签名、头像等）。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
         "username": {
           "type": "string",
-          "description": "Bangumi 用户名或用户 ID"
+          "description": "Bangumi 用户名或 UID"
         }
       },
       "required": ["username"],
@@ -403,10 +416,12 @@
   },
   {
     "name": "bangumi.list_collections",
-    "description": "获取用户（或当前绑定账号）的条目收藏列表（想看/在看/看过/搁置/抛弃），包含语义状态标签与进度。",
+    "description": "获取指定用户（或当前绑定账号）的收藏列表。",
     "auth": "optional",
     "risk": "read",
     "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -425,19 +440,18 @@
           "enum": ["wish", "doing", "done", "on_hold", "dropped"]
         },
         "limit": {
-          "default": 20,
+          "description": "分页参数 limit",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "offset": {
-          "default": 0,
+          "description": "分页参数 offset",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["limit", "offset"],
       "additionalProperties": false
     }
   },
@@ -447,6 +461,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -464,6 +479,7 @@
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -479,19 +495,19 @@
           "description": "实体 ID"
         },
         "limit": {
-          "default": 10,
+          "description": "分页参数 limit",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "offset": {
-          "default": 0,
+          "description": "分页参数 offset",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["entityType", "entityId", "limit", "offset"],
+      "required": ["entityType", "entityId"],
       "additionalProperties": false
     }
   },
@@ -501,6 +517,8 @@
     "auth": "required",
     "risk": "write",
     "scopes": ["write:collection"],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -522,44 +540,116 @@
   },
   {
     "name": "bangumi.manage_index",
-    "description": "创建、编辑目录，向目录添加/删除条目，或收藏/取消收藏目录。从目录删除条目与取消收藏目录属于破坏性操作，需要二次确认。",
+    "description": "创建、编辑或为目录添加/移除条目。删除目录或移除条目需要二次确认。",
     "auth": "required",
     "risk": "write",
-    "scopes": ["write:indices"],
+    "scopes": ["write:index"],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
-      "type": "object",
-      "properties": {
-        "action": {
-          "type": "string",
-          "enum": ["create", "edit", "add_subject", "remove_subject", "collect", "uncollect"]
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "create"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "description": "目录标题"
+            },
+            "description": {
+              "description": "目录简介",
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": ["action", "title"],
+          "additionalProperties": false
         },
-        "indexId": {
-          "description": "目录 ID (编辑/添加/删除/收藏/取消收藏时必填)",
-          "type": "integer",
-          "minimum": -9007199254740991,
-          "maximum": 9007199254740991
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "edit"
+            },
+            "indexId": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "description": "目录 ID"
+            },
+            "title": {
+              "description": "新标题",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": {
+              "description": "新简介",
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": ["action", "indexId"],
+          "additionalProperties": false
         },
-        "subjectId": {
-          "description": "条目 ID (添加/删除条目时必填)",
-          "type": "integer",
-          "minimum": -9007199254740991,
-          "maximum": 9007199254740991
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "add_subject"
+            },
+            "indexId": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "description": "目录 ID"
+            },
+            "subjectId": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "description": "条目 ID"
+            },
+            "comment": {
+              "description": "评价/点评",
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": ["action", "indexId", "subjectId"],
+          "additionalProperties": false
         },
-        "title": {
-          "description": "目录标题",
-          "type": "string"
-        },
-        "desc": {
-          "description": "目录描述",
-          "type": "string"
-        },
-        "comment": {
-          "description": "条目批注",
-          "type": "string"
+        {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "remove_subject"
+            },
+            "indexId": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "description": "目录 ID"
+            },
+            "subjectId": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "description": "条目 ID"
+            }
+          },
+          "required": ["action", "indexId", "subjectId"],
+          "additionalProperties": false
         }
-      },
-      "required": ["action"],
-      "additionalProperties": false
+      ]
     }
   },
   {
@@ -568,6 +658,8 @@
     "auth": "required",
     "risk": "write",
     "scopes": ["write:collection"],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -589,70 +681,73 @@
   },
   {
     "name": "bangumi.search_characters",
-    "description": "按角色名称搜索虚拟角色。返回精简候选列表。若已知角色 ID，请使用 bangumi.get_character。",
+    "description": "搜索 Bangumi 虚拟角色。若已知角色 ID，请使用 bangumi.get_character。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
         "query": {
           "type": "string",
-          "description": "角色名称关键词 (如 \"後藤ひとり\")"
+          "description": "搜索关键词"
         },
         "limit": {
-          "default": 10,
+          "description": "分页参数 limit",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "offset": {
-          "default": 0,
+          "description": "分页参数 offset",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["query", "limit", "offset"],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
   {
     "name": "bangumi.search_persons",
-    "description": "按人物姓名/声优/制作人员名称搜索现实人物。返回精简候选列表。若已知人物 ID，请使用 bangumi.get_person。",
+    "description": "搜索 Bangumi 现实人物/声优/制作人员/公司/团体。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
         "query": {
           "type": "string",
-          "description": "人物/声优名称关键词 (如 \"青山吉能\")"
+          "description": "搜索关键词"
         },
         "limit": {
-          "default": 10,
+          "description": "分页参数 limit",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "offset": {
-          "default": 0,
+          "description": "分页参数 offset",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["query", "limit", "offset"],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
   {
     "name": "bangumi.search_subjects",
     "description": "搜索 Bangumi 条目（动画、书籍、音乐、游戏、三次元影视）。根据关键词返回精简候选列表。若已知条目 ID，请使用 bangumi.get_subject。",
-    "auth": "none",
+    "auth": "optional",
     "risk": "read",
     "scopes": [],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -671,25 +766,24 @@
           "enum": ["match", "heat", "rank", "score"]
         },
         "nsfw": {
-          "default": "exclude",
           "description": "NSFW 过滤: exclude(默认排除), include(包含), only(仅看)",
           "type": "string",
           "enum": ["exclude", "include", "only"]
         },
         "limit": {
-          "default": 10,
+          "description": "分页参数 limit",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "offset": {
-          "default": 0,
+          "description": "分页参数 offset",
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
         }
       },
-      "required": ["query", "nsfw", "limit", "offset"],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -699,6 +793,7 @@
     "auth": "required",
     "risk": "write",
     "scopes": ["write:collection"],
+    "policyMode": "static",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -742,6 +837,8 @@
     "auth": "required",
     "risk": "write",
     "scopes": ["write:collection"],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
       "type": "object",
       "properties": {

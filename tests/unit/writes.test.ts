@@ -36,18 +36,22 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
   });
 
   it('updates collection and records audit event when authenticated', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(
+    const mockFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(null, { status: 204 });
+      }
+      return new Response(
         JSON.stringify({
           subject_id: 226998,
           type: 3,
           rate: 9,
           comment: '神作收藏',
           updated_at: '2026-08-06T23:00:00Z',
+          subject: { name: '少女終末旅行', type: 2 },
         }),
         { status: 200 },
-      ),
-    );
+      );
+    });
     vi.stubGlobal('fetch', mockFetch);
 
     const storage = new MemoryStorage();
@@ -96,9 +100,9 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       },
     )) as any;
 
-    expect(res.subjectId).toBe(226998);
-    expect(res.status).toBe('doing');
-    expect(res.rating).toBe(9);
+    expect(res.collection.subjectId).toBe(226998);
+    expect(res.collection.status).toBe('doing');
+    expect(res.collection.rating).toBe(9);
 
     // Verify Audit Event was recorded in Storage
     const events = storage.getAuditEvents();

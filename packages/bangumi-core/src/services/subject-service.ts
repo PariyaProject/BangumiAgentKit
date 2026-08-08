@@ -25,7 +25,7 @@ export function mapSubjectType(typeNum?: number): SubjectType {
   }
 }
 
-export function mapSubject(raw: Subject | any): DomainSubject {
+export function mapSubject(raw: Subject): DomainSubject {
   const ratingCount: Record<string, number> | undefined = raw.rating?.count
     ? (raw.rating.count as Record<string, number>)
     : undefined;
@@ -40,7 +40,7 @@ export function mapSubject(raw: Subject | any): DomainSubject {
     locked: Boolean(raw.locked),
     date: raw.date || undefined,
     platform: raw.platform || undefined,
-    images: raw.images,
+    images: raw.images ? (raw.images as Record<string, string>) : undefined,
     score:
       raw.rating?.score !== undefined && raw.rating?.score !== 0 ? raw.rating.score : undefined,
     rank: raw.rating?.rank !== undefined && raw.rating?.rank !== 0 ? raw.rating.rank : undefined,
@@ -60,7 +60,7 @@ export function mapSubject(raw: Subject | any): DomainSubject {
   };
 }
 
-export function mapSubjectCandidate(raw: Subject | any): SubjectCandidate {
+export function mapSubjectCandidate(raw: Subject): SubjectCandidate {
   const image =
     raw.images?.medium ||
     raw.images?.common ||
@@ -110,13 +110,16 @@ export class SubjectService {
     const offset = options.offset ?? 0;
 
     let nsfwFilter: boolean | undefined;
-    if (options.nsfw === 'include' || options.nsfw === 'only') {
+    if (options.nsfw === 'only') {
       nsfwFilter = true;
     } else if (options.nsfw === 'exclude') {
       nsfwFilter = false;
+    } else {
+      // 'include' or undefined -> do not filter nsfw (returns all)
+      nsfwFilter = undefined;
     }
 
-    const filter: any = {};
+    const filter: Record<string, unknown> = {};
     if (options.type) {
       filter.type = [options.type];
     }
@@ -135,7 +138,7 @@ export class SubjectService {
       {
         keyword,
         sort: options.sort,
-        filter: Object.keys(filter).length > 0 ? filter : undefined,
+        filter: Object.keys(filter).length > 0 ? (filter as any) : undefined,
       },
     );
 
@@ -155,13 +158,13 @@ export class SubjectService {
 
   async getSubjectRelations(subjectId: number): Promise<SubjectRelationItem[]> {
     const raw = await this.api.getRelatedSubjectsBySubjectId(subjectId);
-    return (raw || []).map((item: any) => ({
+    return (raw || []).map((item) => ({
       id: item.id,
       type: mapSubjectType(item.type),
       name: item.name || '',
       nameCn: item.name_cn || item.name || '',
       relation: item.relation || '关联条目',
-      images: item.images,
+      images: item.images ? (item.images as Record<string, string>) : undefined,
     }));
   }
 }

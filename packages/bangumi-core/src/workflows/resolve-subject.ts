@@ -58,8 +58,15 @@ export async function resolveSubject(
         exact: subject,
         candidates: [candidate],
       };
-    } catch {
-      // Direct ID lookup failed (404), fallback to keyword search below
+    } catch (err: unknown) {
+      const errorObj = err as { status?: number; code?: string; statusCode?: number };
+      const status = errorObj?.status ?? errorObj?.statusCode;
+      const code = errorObj?.code;
+      if (status === 404 || code === 'NOT_FOUND') {
+        // Direct ID lookup failed (404), fallback to keyword search below
+      } else {
+        throw err;
+      }
     }
   }
 

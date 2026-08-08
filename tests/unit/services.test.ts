@@ -87,9 +87,23 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/characters/1001/persons')) {
         return Promise.resolve(
-          new Response(JSON.stringify([{ id: 2001, name: '水瀬いのり', role_name: '声优' }]), {
-            status: 200,
-          }),
+          new Response(
+            JSON.stringify([
+              {
+                id: 2001,
+                name: '水瀬いのり',
+                type: 1,
+                subject_id: 100,
+                subject_type: 2,
+                subject_name: 'anime',
+                subject_name_cn: '动画',
+                staff: 'CV',
+              },
+            ]),
+            {
+              status: 200,
+            },
+          ),
         );
       }
       if (url.includes('/persons/2001')) {
@@ -127,7 +141,15 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
       new Response(
         JSON.stringify({
           total: 1,
-          data: [{ subject_id: 226998, type: 2, rate: 9, comment: '神作！' }],
+          data: [
+            {
+              subject_id: 226998,
+              type: 2,
+              rate: 9,
+              comment: '神作！',
+              subject: { name: '少女終末旅行', type: 2 },
+            },
+          ],
         }),
         { status: 200 },
       ),
@@ -274,21 +296,69 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(resDisambig.candidates?.length).toBe(2);
   });
 
-  it('Workflow getSubjectCast aggregates character and VA details', async () => {
+  it('Workflow resolveSubject propagates 500 / Network errors on numeric lookup', async () => {
+    const client = new HttpClient();
+    const subjectService = new SubjectService(client);
+    const searchSpy = vi.spyOn(subjectService, 'searchSubjects');
+
+    vi.spyOn(subjectService, 'getSubjectById').mockRejectedValue({
+      status: 500,
+      code: 'INTERNAL_ERROR',
+      message: 'Server error',
+    });
+
+    await expect(resolveSubject(subjectService, '12345')).rejects.toEqual({
+      status: 500,
+      code: 'INTERNAL_ERROR',
+      message: 'Server error',
+    });
+    expect(searchSpy).not.toHaveBeenCalled();
+  });
+
+  it('Workflow resolveSubject falls back to keyword search only on 404', async () => {
+    const client = new HttpClient();
+    const subjectService = new SubjectService(client);
+    vi.spyOn(subjectService, 'getSubjectById').mockRejectedValue({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    vi.spyOn(subjectService, 'searchSubjects').mockResolvedValue({
+      total: 1,
+      limit: 5,
+      offset: 0,
+      items: [
+        {
+          id: 12345,
+          type: 'anime',
+          name: 'Target Subject',
+          nameCn: '目标条目',
+          summary: '',
+          nsfw: false,
+          locked: false,
+        },
+      ],
+    });
+
+    const res = await resolveSubject(subjectService, '12345');
+    expect(res.status).toBe('exact');
+  });
+
+  it('Workflow getSubjectCast aggregates character and VA details with 1 HTTP request', async () => {
     const client = new HttpClient();
     const charService = new CharacterService(client);
 
     vi.spyOn(charService, 'getSubjectCharacters').mockResolvedValue([
-      { id: 10, name: 'Chito', type: 1, summary: '' },
-    ]);
-
-    vi.spyOn(charService, 'getCharacterRelatedPersons').mockResolvedValue([
-      { id: 20, name: 'Inori Minase', roleName: '声优' },
+      {
+        character: { id: 10, name: 'Chito', type: 1, summary: '' },
+        relation: '主角',
+        actors: [{ id: 20, name: 'Inori Minase', career: ['seiyu'] }],
+      },
     ]);
 
     const castRes = await getSubjectCast(charService, 226998);
     expect(castRes.cast.length).toBe(1);
     expect(castRes.cast[0]?.character.name).toBe('Chito');
-    expect(castRes.cast[0]?.persons[0]?.name).toBe('Inori Minase');
+    expect(castRes.cast[0]?.relation).toBe('主角');
+    expect(castRes.cast[0]?.actors[0]?.name).toBe('Inori Minase');
   });
 });

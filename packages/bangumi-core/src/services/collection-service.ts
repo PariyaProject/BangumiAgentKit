@@ -38,16 +38,19 @@ export function getCollectionStatusLabel(
       if (normType === 'book') return '想读';
       if (normType === 'music') return '想听';
       if (normType === 'game') return '想玩';
+      if (normType === 'other') return '想收藏';
       return '想看';
     case 'doing':
       if (normType === 'book') return '在读';
       if (normType === 'music') return '在听';
       if (normType === 'game') return '在玩';
+      if (normType === 'other') return '进行中';
       return '在看';
     case 'done':
       if (normType === 'book') return '读过';
       if (normType === 'music') return '听过';
       if (normType === 'game') return '玩过';
+      if (normType === 'other') return '已完成';
       return '看过';
     case 'on_hold':
       return '搁置';
@@ -84,10 +87,27 @@ export function mapStatusToTypeNum(status?: string): number | undefined {
   }
 }
 
+export interface UpdateCollectionSuccessResult {
+  success: true;
+  collection: UserCollectionItem & { statusLabel: string };
+}
+
+export interface UpdateCollectionRefreshFailedResult {
+  success: true;
+  status: 'updated_but_refresh_failed';
+  applied: UpdateCollectionInput;
+  warning: string;
+}
+
+export type UpdateCollectionResult =
+  UpdateCollectionSuccessResult | UpdateCollectionRefreshFailedResult;
+
 export class CollectionService {
   private api: GeneratedBangumiOpenApiClient;
+  private client: GeneratedBangumiOpenApiClient | HttpClient;
 
   constructor(client: GeneratedBangumiOpenApiClient | HttpClient) {
+    this.client = client;
     if (client instanceof GeneratedBangumiOpenApiClient) {
       this.api = client;
     } else {
@@ -97,7 +117,15 @@ export class CollectionService {
 
   async updateCollection(
     input: UpdateCollectionInput,
-  ): Promise<UserCollectionItem & { statusLabel: string }> {
+    username?: string,
+    userServiceFetch?: (
+      username: string,
+      subjectId: number,
+    ) => Promise<{
+      found: boolean;
+      collection?: UserCollectionItem & { statusLabel: string };
+    }>,
+  ): Promise<UpdateCollectionResult> {
     const body: Record<string, unknown> = {};
     if (input.status) {
       body.type = mapStatusToTypeNum(input.status);
@@ -115,19 +143,28 @@ export class CollectionService {
       body.private = input.private;
     }
 
-    const raw = await this.api.postUserCollection(input.subjectId, body as any);
-    const status = input.status || mapCollectionStatus(raw.type || 3);
-    const statusLabel = getCollectionStatusLabel('anime', status);
+    // POST returns 204 No Content on success
+    await this.api.postUserCollection(input.subjectId, body as any);
+
+    if (username && userServiceFetch) {
+      try {
+        const canonical = await userServiceFetch(username, input.subjectId);
+        if (canonical.found && canonical.collection) {
+          return {
+            success: true,
+            collection: canonical.collection,
+          };
+        }
+      } catch {
+        // Refresh GET failed after POST 204 succeeded
+      }
+    }
 
     return {
-      subjectId: input.subjectId,
-      status,
-      statusLabel,
-      rating: raw.rate ?? input.rating,
-      comment: raw.comment ?? input.comment,
-      tags: raw.tags ?? input.tags,
-      epStatus: raw.ep_status,
-      updatedAt: raw.updated_at || new Date().toISOString(),
+      success: true,
+      status: 'updated_but_refresh_failed',
+      applied: input,
+      warning: 'Collection updated on server, but failed to fetch canonical collection state.',
     };
   }
 

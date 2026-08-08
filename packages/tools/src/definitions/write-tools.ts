@@ -9,6 +9,7 @@ import {
   CollectionService,
   EpisodeService,
   IndexWriteService,
+  UserService,
 } from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage, MemoryStorage } from '@bangumi-agent-kit/db';
@@ -59,7 +60,12 @@ export function createWriteTools(
         (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']))
           .client;
       const collectionService = new CollectionService(client);
-      return await collectionService.updateCollection(input);
+      const userService = new UserService(client);
+      const username = (deps?.executionSession as any)?.account?.username;
+
+      return await collectionService.updateCollection(input, username, (un, sid) =>
+        userService.getUserSubjectCollection(un, sid),
+      );
     },
   });
 
@@ -116,7 +122,9 @@ export function createWriteTools(
         const epNum = input.target.episodeNumber;
         isBulk = epNum > 20;
         count = epNum;
-        summaryStr = `将把条目 ${input.subjectId} 的正篇观看进度更新至第 ${epNum} 集`;
+        const catMap: Record<string, string> = { main: '正篇', sp: 'SP', op: 'OP', ed: 'ED' };
+        const catLabel = catMap[input.target.category || 'main'] || '正篇';
+        summaryStr = `将把条目 ${input.subjectId} 的 ${catLabel} 观看进度更新至第 ${epNum} 集`;
       } else {
         const ids = input.target?.kind === 'ids' ? input.target.episodeIds : input.episodeIds || [];
         count = ids.length;
@@ -143,7 +151,6 @@ export function createWriteTools(
           .client;
       const collectionService = new CollectionService(client);
 
-      // Status mapping: wish -> 1, watched -> 2, dropped -> 3
       let typeNum = 2;
       if (input.status) {
         if (input.status === 'wish') typeNum = 1;
@@ -170,8 +177,20 @@ export function createWriteTools(
           );
         }
 
+        const targetReached = resolution.resolvedEpisodeNumbers.includes(
+          input.target.episodeNumber,
+        );
+        const maxResolved =
+          resolution.resolvedEpisodeNumbers.length > 0
+            ? Math.max(...resolution.resolvedEpisodeNumbers)
+            : 0;
+
         return {
           success: true,
+          status: targetReached ? 'complete' : 'partial',
+          targetReached,
+          requestedEpisodeNumber: input.target.episodeNumber,
+          resolvedThroughEpisodeNumber: maxResolved,
           subjectId: input.subjectId,
           resolvedEpisodeIds: resolution.resolvedEpisodeIds,
           resolvedEpisodeNumbers: resolution.resolvedEpisodeNumbers,
@@ -255,7 +274,7 @@ export function createWriteTools(
         requiredCapabilities: ['write:collection'],
         risk,
         actionType: 'managePersonCollection',
-        summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}人物 ${input.personId}`,
+        summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}现实人物 ${input.personId}`,
       };
     },
     execute: async (input, context, deps?: Record<string, unknown>) => {
@@ -279,100 +298,85 @@ export function createWriteTools(
 
   const manageIndex = defineTool({
     name: 'bangumi.manage_index',
-    description:
-      '创建、编辑目录，向目录添加/删除条目，或收藏/取消收藏目录。从目录删除条目与取消收藏目录属于破坏性操作，需要二次确认。',
-    input: z.object({
-      action: z.enum(['create', 'edit', 'add_subject', 'remove_subject', 'collect', 'uncollect']),
-      indexId: z.number().int().optional().describe('目录 ID (编辑/添加/删除/收藏/取消收藏时必填)'),
-      subjectId: z.number().int().optional().describe('条目 ID (添加/删除条目时必填)'),
-      title: z.string().optional().describe('目录标题'),
-      desc: z.string().optional().describe('目录描述'),
-      comment: z.string().optional().describe('条目批注'),
-    }),
+    description: '创建、编辑或为目录添加/移除条目。删除目录或移除条目需要二次确认。',
+    input: z.discriminatedUnion('action', [
+      z.object({
+        action: z.literal('create'),
+        title: z.string().min(1).max(100).describe('目录标题'),
+        description: z.string().max(1000).optional().describe('目录简介'),
+      }),
+      z.object({
+        action: z.literal('edit'),
+        indexId: z.number().int().positive().describe('目录 ID'),
+        title: z.string().min(1).max(100).optional().describe('新标题'),
+        description: z.string().max(1000).optional().describe('新简介'),
+      }),
+      z.object({
+        action: z.literal('add_subject'),
+        indexId: z.number().int().positive().describe('目录 ID'),
+        subjectId: z.number().int().positive().describe('条目 ID'),
+        comment: z.string().max(500).optional().describe('评价/点评'),
+      }),
+      z.object({
+        action: z.literal('remove_subject'),
+        indexId: z.number().int().positive().describe('目录 ID'),
+        subjectId: z.number().int().positive().describe('条目 ID'),
+      }),
+    ]),
     auth: 'required',
-    scopes: ['write:indices'],
+    scopes: ['write:index'],
     risk: 'write',
     resolvePolicy: (input): ResolvedToolPolicy => {
-      const risk =
-        input.action === 'remove_subject' || input.action === 'uncollect' ? 'destructive' : 'write';
-      const requiredCapabilities =
-        input.action === 'collect' || input.action === 'uncollect'
-          ? ['write:collection']
-          : ['write:indices'];
+      const risk = input.action === 'remove_subject' ? 'destructive' : 'write';
+      let summary = '';
+      if (input.action === 'create') summary = `创建目录 "${input.title}"`;
+      else if (input.action === 'edit') summary = `编辑目录 ${input.indexId}`;
+      else if (input.action === 'add_subject')
+        summary = `为目录 ${input.indexId} 添加条目 ${input.subjectId}`;
+      else if (input.action === 'remove_subject')
+        summary = `从目录 ${input.indexId} 移除条目 ${input.subjectId}`;
+
       return {
         auth: 'required',
-        requiredCapabilities,
+        requiredCapabilities: ['write:index'],
         risk,
-        actionType: `manageIndex_${input.action}`,
-        summary: `目录操作: ${input.action}`,
+        actionType: 'manageIndex',
+        summary,
       };
     },
     execute: async (input, context, deps?: Record<string, unknown>) => {
-      const reqCaps =
-        input.action === 'collect' || input.action === 'uncollect'
-          ? ['write:collection']
-          : ['write:indices'];
       const activeProvider: BangumiClientProvider =
         (deps?.clientProvider as BangumiClientProvider) || provider;
       const client =
         (deps?.executionSession as any)?.client ||
-        (await activeProvider.requireAuthenticatedClient(context.principalId, reqCaps)).client;
+        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:index']))
+          .client;
       const indexWriteService = new IndexWriteService(client);
 
       if (input.action === 'create') {
-        return await indexWriteService.createIndex(input.title, input.desc);
-      }
-
-      if (input.action === 'edit') {
-        if (!input.indexId)
-          throw new Error('MISSING_PARAMETER: indexId is required for edit action');
-        await indexWriteService.editIndex(input.indexId, input.title, input.desc);
-        return { success: true, action: input.action, indexId: input.indexId };
-      }
-
-      if (input.action === 'add_subject') {
-        if (!input.indexId || !input.subjectId)
-          throw new Error(
-            'MISSING_PARAMETER: indexId and subjectId are required for add_subject action',
-          );
+        const indexId = await indexWriteService.createIndex(input.title, input.description);
+        return { success: true, action: 'create', indexId };
+      } else if (input.action === 'edit') {
+        await indexWriteService.editIndex(input.indexId, input.title, input.description);
+        return { success: true, action: 'edit', indexId: input.indexId };
+      } else if (input.action === 'add_subject') {
         await indexWriteService.addSubjectToIndex(input.indexId, input.subjectId, input.comment);
         return {
           success: true,
-          action: input.action,
+          action: 'add_subject',
           indexId: input.indexId,
           subjectId: input.subjectId,
         };
-      }
-
-      if (input.action === 'remove_subject') {
-        if (!input.indexId || !input.subjectId)
-          throw new Error(
-            'MISSING_PARAMETER: indexId and subjectId are required for remove_subject action',
-          );
+      } else if (input.action === 'remove_subject') {
         await indexWriteService.removeSubjectFromIndex(input.indexId, input.subjectId);
         return {
           success: true,
-          action: input.action,
+          action: 'remove_subject',
           indexId: input.indexId,
           subjectId: input.subjectId,
         };
       }
-
-      if (input.action === 'collect') {
-        if (!input.indexId)
-          throw new Error('MISSING_PARAMETER: indexId is required for collect action');
-        await indexWriteService.collectIndex(input.indexId);
-        return { success: true, action: input.action, indexId: input.indexId };
-      }
-
-      if (input.action === 'uncollect') {
-        if (!input.indexId)
-          throw new Error('MISSING_PARAMETER: indexId is required for uncollect action');
-        await indexWriteService.uncollectIndex(input.indexId);
-        return { success: true, action: input.action, indexId: input.indexId };
-      }
-
-      throw new Error(`UNSUPPORTED_ACTION: Action "${input.action}" is not supported`);
+      throw new Error('UNSUPPORTED_ACTION');
     },
   });
 

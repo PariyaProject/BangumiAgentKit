@@ -2,13 +2,14 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient, User } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainUser, UserCollectionItem } from '../models/user.js';
 import { getCollectionStatusLabel, mapCollectionStatus } from './collection-service.js';
+import { mapSubjectType } from './subject-service.js';
 
-export function mapUser(raw: User | any, defaultUsername?: string): DomainUser {
+export function mapUser(raw: User, defaultUsername?: string): DomainUser {
   return {
     id: raw.id,
     username: raw.username || defaultUsername || String(raw.id),
     nickname: raw.nickname || raw.username || defaultUsername || String(raw.id),
-    avatar: raw.avatar,
+    avatar: raw.avatar ? (raw.avatar as Record<string, string>) : undefined,
     sign: raw.sign || undefined,
   };
 }
@@ -75,20 +76,9 @@ export class UserService {
     });
 
     const data = res.data || [];
-    const items = data.map((col: any) => {
+    const items = data.map((col) => {
       const status = mapCollectionStatus(col.type);
-      const subjectTypeStr =
-        col.subject?.type === 1
-          ? 'book'
-          : col.subject?.type === 2
-            ? 'anime'
-            : col.subject?.type === 3
-              ? 'music'
-              : col.subject?.type === 4
-                ? 'game'
-                : col.subject?.type === 6
-                  ? 'real'
-                  : 'anime';
+      const subjectTypeStr = mapSubjectType(col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
@@ -120,18 +110,7 @@ export class UserService {
     try {
       const raw = await this.api.getUserCollection(username, subjectId);
       const status = mapCollectionStatus(raw.type);
-      const subjectTypeStr =
-        raw.subject?.type === 1
-          ? 'book'
-          : raw.subject?.type === 2
-            ? 'anime'
-            : raw.subject?.type === 3
-              ? 'music'
-              : raw.subject?.type === 4
-                ? 'game'
-                : raw.subject?.type === 6
-                  ? 'real'
-                  : 'anime';
+      const subjectTypeStr = mapSubjectType(raw.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
@@ -149,8 +128,13 @@ export class UserService {
           updatedAt: raw.updated_at,
         },
       };
-    } catch (err: any) {
-      if (err?.status === 404 || err?.code === 'NOT_FOUND' || err?.statusCode === 404) {
+    } catch (err: unknown) {
+      const errorObj = err as { status?: number; code?: string; statusCode?: number };
+      if (
+        errorObj?.status === 404 ||
+        errorObj?.code === 'NOT_FOUND' ||
+        errorObj?.statusCode === 404
+      ) {
         return { found: false };
       }
       throw err;

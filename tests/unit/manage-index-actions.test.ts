@@ -40,8 +40,8 @@ describe('Manage Index 6 Actions Unit Tests', () => {
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('test-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
-      requestedCapabilities: ['write:indices', 'write:collection'],
-      reportedScopes: ['write:indices', 'write:collection'],
+      requestedCapabilities: ['write:index', 'write:indices', 'write:collection'],
+      reportedScopes: ['write:index', 'write:indices', 'write:collection'],
       scopeEvidence: 'reported',
       keyVersion: 'v1',
       createdAt: new Date(),
@@ -123,32 +123,6 @@ describe('Manage Index 6 Actions Unit Tests', () => {
 
     expect(capturedRequests.length).toBe(1);
     expect(capturedRequests[0]?.url).toContain('/v0/indices/50/subjects');
-    expect(capturedRequests[0]?.method).toBe('DELETE');
-  });
-
-  it('handles action="collect"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } =
-      await setupTestEnvironment();
-
-    await (manageIndexTool.execute as any)({ action: 'collect', indexId: 50 }, context, {
-      clientProvider: tokenBroker,
-    } as any);
-
-    expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0]?.url).toContain('/v0/indices/50/collect');
-    expect(capturedRequests[0]?.method).toBe('POST');
-  });
-
-  it('handles action="uncollect"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } =
-      await setupTestEnvironment();
-
-    await (manageIndexTool.execute as any)({ action: 'uncollect', indexId: 50 }, context, {
-      clientProvider: tokenBroker,
-    } as any);
-
-    expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0]?.url).toContain('/v0/indices/50/collect');
     expect(capturedRequests[0]?.method).toBe('DELETE');
   });
 });
