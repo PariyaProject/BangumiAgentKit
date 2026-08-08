@@ -15,7 +15,10 @@ import type {
   CalendarDayViewModel,
 } from '../view-models/index.js';
 
-export function truncateText(text: string | undefined, maxLength: number): { text: string; truncated: boolean } {
+export function truncateText(
+  text: string | undefined,
+  maxLength: number,
+): { text: string; truncated: boolean } {
   if (!text) {
     return { text: '', truncated: false };
   }
@@ -73,7 +76,7 @@ export function buildSearchListViewModel(
   queryOverride?: string,
   maxItems = 10,
 ): SearchListViewModel {
-  const query = 'query' in input ? input.query : (queryOverride || '');
+  const query = 'query' in input ? input.query : queryOverride || '';
   const rawItems = input.items || [];
   const cappedItems = rawItems.slice(0, maxItems);
   const hasMore = rawItems.length > maxItems || input.total > maxItems;
@@ -111,9 +114,12 @@ export function buildCastCardViewModel(
     character: {
       id: item.character.id,
       name: item.character.name,
-      image: item.character.images?.grid || item.character.images?.small || item.character.images?.medium,
+      image:
+        item.character.images?.grid ||
+        item.character.images?.small ||
+        item.character.images?.medium,
     },
-    relation: item.relation || '主角',
+    relation: item.relation || '未知',
     actors: (item.actors || []).map((actor) => ({
       id: actor.id,
       name: actor.name,

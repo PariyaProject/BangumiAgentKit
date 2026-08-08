@@ -170,7 +170,9 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
   it('OAuth callback handler suppresses raw internal errors and returns safe generic message', async () => {
     const { handleOAuthCallbackRoute } = await import('../../apps/api/src/routes/oauth.js');
     const mockOAuthService = {
-      handleCallback: vi.fn().mockRejectedValue(new Error('relation access_credentials does not exist')),
+      handleCallback: vi
+        .fn()
+        .mockRejectedValue(new Error('relation access_credentials does not exist')),
     } as any;
 
     const handler = handleOAuthCallbackRoute(mockOAuthService);

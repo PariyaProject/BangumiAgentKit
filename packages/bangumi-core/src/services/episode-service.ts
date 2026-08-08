@@ -1,5 +1,9 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient, Episode, OperationQuery } from '@bangumi-agent-kit/bangumi-openapi';
+import {
+  GeneratedBangumiOpenApiClient,
+  Episode,
+  OperationQuery,
+} from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainEpisode, DomainEpisodeCategory } from '../models/episode.js';
 
 export function mapEpisodeCategory(typeNum: number): DomainEpisodeCategory {

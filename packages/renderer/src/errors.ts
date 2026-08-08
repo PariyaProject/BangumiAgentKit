@@ -8,6 +8,7 @@ export type RendererErrorCode =
   | 'ASSET_FETCH_FAILED'
   | 'ASSET_TOO_LARGE'
   | 'ASSET_INVALID_IMAGE'
+  | 'ASSET_TIMEOUT'
   | 'RENDERER_CLOSED';
 
 export class RendererError extends Error {

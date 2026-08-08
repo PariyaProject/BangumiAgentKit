@@ -136,7 +136,11 @@ describe('Safe Error Policy & Control-Flow Regression Tests', () => {
       'fetch',
       vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
         if (init?.method === 'DELETE' || String(url).includes('/characters/1001')) {
-          throw new BangumiError('WRITE_RESULT_UNKNOWN', 'Socket closed prematurely by peer', false);
+          throw new BangumiError(
+            'WRITE_RESULT_UNKNOWN',
+            'Socket closed prematurely by peer',
+            false,
+          );
         }
         return new Response(JSON.stringify({}), { status: 200 });
       }),

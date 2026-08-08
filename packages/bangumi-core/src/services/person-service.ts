@@ -29,8 +29,7 @@ export function mapPersonCandidate(raw: {
   career?: string[];
   images?: { large?: string; medium?: string; small?: string; grid?: string };
 }): PersonCandidate {
-  const image =
-    raw.images?.medium || raw.images?.small || raw.images?.grid || raw.images?.large;
+  const image = raw.images?.medium || raw.images?.small || raw.images?.grid || raw.images?.large;
   return {
     id: raw.id,
     name: raw.name || '',

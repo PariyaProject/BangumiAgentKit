@@ -67,4 +67,3 @@ export function defineTool<TSchema extends z.ZodType>(
 ): ToolDefinition<TSchema> {
   return def;
 }
-

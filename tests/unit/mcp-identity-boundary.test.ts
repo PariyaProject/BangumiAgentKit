@@ -78,7 +78,9 @@ describe('C. Trusted MCP Identity Boundary Regression Test', () => {
     await client.connect(clientTransport);
 
     const registry = mcpApp.getRegistry();
-    vi.spyOn(registry, 'executeTool').mockRejectedValue(new Error('password authentication failed'));
+    vi.spyOn(registry, 'executeTool').mockRejectedValue(
+      new Error('password authentication failed'),
+    );
 
     const res = await client.callTool({
       name: 'bangumi.search_subjects',

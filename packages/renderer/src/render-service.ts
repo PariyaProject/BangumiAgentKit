@@ -1,12 +1,12 @@
 import crypto from 'node:crypto';
 import sharp from 'sharp';
-import { MemoryCache } from '@bangumi-agent-kit/bangumi-transport';
 import { RenderViewModel } from './view-models/index.js';
 import { RenderThemeName } from './themes/index.js';
 import { renderHtmlTemplate } from './template-engine.js';
 import { BrowserPool } from './browser-pool.js';
-import { AssetResolver, RenderWarning } from './asset-resolver.js';
+import { AssetResolver, RenderWarning, ResolvedAsset } from './asset-resolver.js';
 import { RendererError } from './errors.js';
+import { RendererLruCache } from './lru-cache.js';
 
 export interface RenderOptions {
   theme?: RenderThemeName;
@@ -36,7 +36,9 @@ export function canonicalizeJson(obj: unknown): string {
     return '[' + obj.map(canonicalizeJson).join(',') + ']';
   }
   const keys = Object.keys(obj as Record<string, unknown>).sort();
-  const entries = keys.map((k) => JSON.stringify(k) + ':' + canonicalizeJson((obj as Record<string, unknown>)[k]));
+  const entries = keys.map(
+    (k) => JSON.stringify(k) + ':' + canonicalizeJson((obj as Record<string, unknown>)[k]),
+  );
   return '{' + entries.join(',') + '}';
 }
 
@@ -86,23 +88,49 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
   return Array.from(urls);
 }
 
+async function mapConcurrent<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }).map(async () => {
+    while (index < items.length) {
+      const current = index++;
+      const item = items[current];
+      if (item !== undefined) {
+        results[current] = await fn(item);
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
 export class RenderService {
   private browserPool: BrowserPool;
-  private cache: MemoryCache;
+  private cache: RendererLruCache<RenderResult>;
   private assetResolver: AssetResolver;
   private maxOutputBytes: number;
+  private timeoutMs: number;
+  private maxAssetConcurrency: number;
 
   constructor(
     browserPool?: BrowserPool,
-    cache?: MemoryCache,
+    cache?: RendererLruCache<RenderResult>,
     assetResolver?: AssetResolver,
     maxOutputBytes?: number,
   ) {
     this.browserPool = browserPool || new BrowserPool();
-    this.cache = cache || new MemoryCache(200);
+    this.cache = cache || new RendererLruCache<RenderResult>(200);
     this.assetResolver = assetResolver || new AssetResolver();
     this.maxOutputBytes =
       maxOutputBytes ?? parseInt(process.env.RENDERER_MAX_OUTPUT_BYTES || '5242880', 10);
+    this.timeoutMs = parseInt(process.env.RENDERER_TIMEOUT_MS || '8000', 10);
+    this.maxAssetConcurrency = parseInt(process.env.RENDERER_ASSET_MAX_CONCURRENCY || '4', 10);
   }
 
   async renderCard(viewModel: RenderViewModel, options: RenderOptions = {}): Promise<RenderResult> {
@@ -111,54 +139,112 @@ export class RenderService {
     const theme = options.theme ?? 'bangumi-dark';
 
     if (width < 640 || width > 1200) {
-      throw new RendererError('RENDER_VALIDATION_ERROR', `Width ${width} out of allowed bounds (640 - 1200).`);
+      throw new RendererError(
+        'RENDER_VALIDATION_ERROR',
+        `Width ${width} out of allowed bounds (640 - 1200).`,
+      );
     }
     if (dpr < 1 || dpr > 2) {
-      throw new RendererError('RENDER_VALIDATION_ERROR', `deviceScaleFactor ${dpr} out of allowed bounds (1 - 2).`);
-    }
-
-    const imageUrls = extractImageUrls(viewModel);
-    const resolvedImages: Record<string, string> = {};
-    const warnings: RenderWarning[] = [];
-
-    for (const url of imageUrls) {
-      const resolved = await this.assetResolver.resolveAsset(url);
-      resolvedImages[url] = resolved.dataUrl;
-      if (resolved.warning) {
-        warnings.push(resolved.warning);
-      }
-    }
-
-    const cacheKey = computeRenderCacheKey(viewModel, { ...options, theme, width, deviceScaleFactor: dpr }, resolvedImages);
-    const cached = this.cache.get<RenderResult>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const html = renderHtmlTemplate(viewModel, theme, resolvedImages);
-    const buffer = await this.browserPool.renderHtmlToBuffer(html, { width, deviceScaleFactor: dpr });
-
-    if (buffer.length > this.maxOutputBytes) {
       throw new RendererError(
-        'RENDER_OUTPUT_TOO_LARGE',
-        `Render output PNG size (${buffer.length} bytes) exceeds maximum limit (${this.maxOutputBytes} bytes).`,
+        'RENDER_VALIDATION_ERROR',
+        `deviceScaleFactor ${dpr} out of allowed bounds (1 - 2).`,
       );
     }
 
-    const imageMetadata = await sharp(buffer).metadata();
-    const result: RenderResult = {
-      buffer,
-      mimeType: 'image/png',
-      width: imageMetadata.width || width,
-      height: imageMetadata.height || 0,
-      template: viewModel.template,
-      templateVersion: viewModel.version,
-      cacheKey,
-      warnings,
-    };
+    const controller = new AbortController();
+    let timeoutTimer: NodeJS.Timeout | null = setTimeout(() => {
+      controller.abort();
+    }, this.timeoutMs);
 
-    this.cache.set(cacheKey, result, 3600);
-    return result;
+    try {
+      const imageUrls = extractImageUrls(viewModel);
+      const resolvedAssets = await mapConcurrent(
+        imageUrls,
+        this.maxAssetConcurrency,
+        async (url): Promise<{ url: string; resolved: ResolvedAsset }> => {
+          if (controller.signal.aborted) {
+            throw new RendererError(
+              'RENDER_TIMEOUT',
+              `Total render deadline reached before resolving assets.`,
+            );
+          }
+          const resolved = await this.assetResolver.resolveAsset(url, controller.signal);
+          return { url, resolved };
+        },
+      );
+
+      const resolvedImages: Record<string, string> = {};
+      const warnings: RenderWarning[] = [];
+
+      for (const item of resolvedAssets) {
+        resolvedImages[item.url] = item.resolved.dataUrl;
+        if (item.resolved.warning) {
+          warnings.push(item.resolved.warning);
+        }
+      }
+
+      const cacheKey = computeRenderCacheKey(
+        viewModel,
+        { ...options, theme, width, deviceScaleFactor: dpr },
+        resolvedImages,
+      );
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      if (controller.signal.aborted) {
+        throw new RendererError(
+          'RENDER_TIMEOUT',
+          `Total render deadline reached before HTML generation.`,
+        );
+      }
+
+      const html = renderHtmlTemplate(viewModel, theme, resolvedImages);
+      const buffer = await this.browserPool.renderHtmlToBuffer(html, {
+        width,
+        deviceScaleFactor: dpr,
+        signal: controller.signal,
+      });
+
+      if (buffer.length > this.maxOutputBytes) {
+        throw new RendererError(
+          'RENDER_OUTPUT_TOO_LARGE',
+          `Render output PNG size (${buffer.length} bytes) exceeds maximum limit (${this.maxOutputBytes} bytes).`,
+        );
+      }
+
+      const imageMetadata = await sharp(buffer).metadata();
+      const result: RenderResult = {
+        buffer,
+        mimeType: 'image/png',
+        width: imageMetadata.width || width,
+        height: imageMetadata.height || 0,
+        template: viewModel.template,
+        templateVersion: viewModel.version,
+        cacheKey,
+        warnings,
+      };
+
+      this.cache.set(cacheKey, result);
+      return result;
+    } catch (err) {
+      if (
+        controller.signal.aborted &&
+        !(err instanceof RendererError && err.code === 'RENDER_TIMEOUT')
+      ) {
+        throw new RendererError(
+          'RENDER_TIMEOUT',
+          `Total render deadline reached (${this.timeoutMs}ms).`,
+        );
+      }
+      throw err;
+    } finally {
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer);
+        timeoutTimer = null;
+      }
+    }
   }
 
   async close(): Promise<void> {

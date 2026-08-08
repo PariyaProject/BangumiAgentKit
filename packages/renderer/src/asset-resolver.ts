@@ -1,8 +1,14 @@
-import dns from 'node:dns/promises';
-import net from 'node:net';
 import { URL } from 'node:url';
+import net from 'node:net';
 import sharp from 'sharp';
 import { RendererError } from './errors.js';
+import { RendererLruCache } from './lru-cache.js';
+import {
+  AssetHttpTransport,
+  AssetNetworkResolver,
+  DefaultAssetNetworkResolver,
+  NodeAssetHttpTransport,
+} from './asset-transport.js';
 
 export interface RenderWarning {
   code: string;
@@ -101,7 +107,11 @@ export function isUrlAllowed(rawUrl: string): boolean {
       return false;
     }
 
-    if (hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname.endsWith('.localhost')) {
+    if (
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
+      hostname.endsWith('.localhost')
+    ) {
       return false;
     }
 
@@ -117,43 +127,17 @@ export function isUrlAllowed(rawUrl: string): boolean {
   }
 }
 
-export async function validateDnsAndIp(hostname: string): Promise<string[]> {
-  if (net.isIP(hostname)) {
-    if (isIpAddressBlocked(hostname)) {
-      throw new RendererError('ASSET_URL_BLOCKED', `Blocked IP address "${hostname}".`);
-    }
-    return [hostname];
-  }
-
-  try {
-    const records = await dns.lookup(hostname, { all: true });
-    if (!records || records.length === 0) {
-      throw new RendererError('ASSET_FETCH_FAILED', `DNS resolution returned empty for "${hostname}".`);
-    }
-
-    const ips = records.map((r) => r.address);
-    for (const ip of ips) {
-      if (isIpAddressBlocked(ip)) {
-        throw new RendererError('ASSET_URL_BLOCKED', `DNS resolved to blocked IP "${ip}" for host "${hostname}".`);
-      }
-    }
-    return ips;
-  } catch (err) {
-    if (err instanceof RendererError) throw err;
-    throw new RendererError('ASSET_FETCH_FAILED', `DNS lookup failed for "${hostname}": ${String(err)}`);
-  }
-}
-
-const DEFAULT_PLACEHOLDER_DATA_URL =
+export const DEFAULT_PLACEHOLDER_DATA_URL =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
 export async function fetchAndProcessImage(
   urlStr: string,
-  fetchFn: typeof fetch = fetch,
+  transport: AssetHttpTransport = new NodeAssetHttpTransport(),
+  resolver: AssetNetworkResolver = new DefaultAssetNetworkResolver(),
   maxRedirects = 3,
+  signal?: AbortSignal,
 ): Promise<Buffer> {
   let currentUrl = urlStr;
-  let response: Response | null = null;
 
   for (let hop = 0; hop <= maxRedirects; hop++) {
     if (!isUrlAllowed(currentUrl)) {
@@ -161,146 +145,157 @@ export async function fetchAndProcessImage(
     }
 
     const parsed = new URL(currentUrl);
-    await validateDnsAndIp(parsed.hostname);
+    const approvedAddresses = await resolver.resolve(parsed.hostname);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-
-    try {
-      response = await fetchFn(currentUrl, {
-        method: 'GET',
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: {
-          UserAent: 'BangumiAgentKit-Renderer/1.0',
-          Accept: 'image/png,image/jpeg,image/webp,*/*',
-        },
-      });
-    } catch (err) {
-      clearTimeout(timeout);
-      throw new RendererError('ASSET_FETCH_FAILED', `Fetch failed for "${currentUrl}": ${String(err)}`);
-    } finally {
-      clearTimeout(timeout);
+    if (!approvedAddresses || approvedAddresses.length === 0) {
+      throw new RendererError(
+        'ASSET_FETCH_FAILED',
+        `No valid IP address for "${parsed.hostname}".`,
+      );
     }
 
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
+    const approvedAddress = approvedAddresses[0];
+    if (!approvedAddress) {
+      throw new RendererError(
+        'ASSET_FETCH_FAILED',
+        `No valid IP address for "${parsed.hostname}".`,
+      );
+    }
+    const res = await transport.request(currentUrl, approvedAddress, { signal, timeoutMs: 5000 });
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers['location'];
       if (!location) {
-        throw new RendererError('ASSET_FETCH_FAILED', `Redirect response missing Location header from "${currentUrl}".`);
+        throw new RendererError(
+          'ASSET_FETCH_FAILED',
+          `Redirect response missing Location header from "${currentUrl}".`,
+        );
       }
       currentUrl = new URL(location, currentUrl).toString();
       continue;
     }
 
-    if (!response.ok) {
-      throw new RendererError('ASSET_FETCH_FAILED', `HTTP ${response.status} when fetching image from "${currentUrl}".`);
+    if (res.status < 200 || res.status >= 300) {
+      throw new RendererError(
+        'ASSET_FETCH_FAILED',
+        `HTTP ${res.status} when fetching image from "${currentUrl}".`,
+      );
     }
 
-    break;
-  }
-
-  if (!response || !response.ok) {
-    throw new RendererError('ASSET_FETCH_FAILED', `Failed to obtain image after redirects.`);
-  }
-
-  const contentType = (response.headers.get('content-type') || '').toLowerCase();
-  if (contentType.includes('svg') || currentUrl.toLowerCase().endsWith('.svg')) {
-    throw new RendererError('ASSET_INVALID_IMAGE', `SVG images are rejected for safety.`);
-  }
-
-  const MAX_BYTES = 5 * 1024 * 1024; // 5MB
-  let rawBuffer: Buffer;
-
-  if (response.body && typeof response.body.getReader === 'function') {
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let loadedBytes = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        loadedBytes += value.length;
-        if (loadedBytes > MAX_BYTES) {
-          controllerAbort(reader);
-          throw new RendererError('ASSET_TOO_LARGE', `Asset exceeded maximum 5MB size limit.`);
-        }
-        chunks.push(value);
-      }
+    const headerContentType =
+      (res.headers['content-type'] || '').toLowerCase().split(';')[0]?.trim() || '';
+    if (headerContentType.includes('svg') || currentUrl.toLowerCase().endsWith('.svg')) {
+      throw new RendererError('ASSET_INVALID_IMAGE', `SVG images are rejected for safety.`);
     }
-    rawBuffer = Buffer.concat(chunks);
-  } else {
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > MAX_BYTES) {
+    const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+    if (headerContentType && !ALLOWED_CONTENT_TYPES.has(headerContentType)) {
+      throw new RendererError(
+        'ASSET_INVALID_IMAGE',
+        `Content-Type "${headerContentType}" is not allowed. Expected image/png, image/jpeg, or image/webp.`,
+      );
+    }
+
+    const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+    if (res.buffer.length > MAX_BYTES) {
       throw new RendererError('ASSET_TOO_LARGE', `Asset exceeded maximum 5MB size limit.`);
     }
-    rawBuffer = Buffer.from(arrayBuffer);
-  }
 
-  try {
-    const image = sharp(rawBuffer);
-    const metadata = await image.metadata();
+    // Sharp validation and processing
+    try {
+      const image = sharp(res.buffer);
+      const metadata = await image.metadata();
 
-    if (!metadata.format || metadata.format === 'svg') {
-      throw new RendererError('ASSET_INVALID_IMAGE', `Invalid or unsupported image format "${metadata.format}".`);
+      if (!metadata.format || metadata.format === 'svg') {
+        throw new RendererError(
+          'ASSET_INVALID_IMAGE',
+          `Invalid or unsupported image format "${metadata.format}".`,
+        );
+      }
+
+      const width = metadata.width || 0;
+      const height = metadata.height || 0;
+      if (width > 4096 || height > 4096 || width * height > 16000000) {
+        throw new RendererError(
+          'ASSET_TOO_LARGE',
+          `Image dimensions (${width}x${height}) exceed maximum allowed size.`,
+        );
+      }
+
+      const processedBuffer = await image
+        .rotate()
+        .resize({ width: 800, height: 1200, fit: 'inside', withoutEnlargement: true })
+        .toFormat('png')
+        .toBuffer();
+
+      return processedBuffer;
+    } catch (err) {
+      if (err instanceof RendererError) throw err;
+      throw new RendererError(
+        'ASSET_INVALID_IMAGE',
+        `Sharp image processing failed: ${String(err)}`,
+      );
     }
-
-    const width = metadata.width || 0;
-    const height = metadata.height || 0;
-    if (width > 4096 || height > 4096 || width * height > 16000000) {
-      throw new RendererError('ASSET_TOO_LARGE', `Image dimensions (${width}x${height}) exceed maximum allowed size.`);
-    }
-
-    const processedBuffer = await image
-      .rotate() // auto orient EXIF
-      .resize({ width: 800, height: 1200, fit: 'inside', withoutEnlargement: true })
-      .toFormat('png')
-      .toBuffer();
-
-    return processedBuffer;
-  } catch (err) {
-    if (err instanceof RendererError) throw err;
-    throw new RendererError('ASSET_INVALID_IMAGE', `Sharp image processing failed: ${String(err)}`);
   }
-}
 
-function controllerAbort(reader: ReadableStreamDefaultReader<Uint8Array>) {
-  try {
-    reader.cancel();
-  } catch {
-    // ignore
-  }
+  throw new RendererError('ASSET_FETCH_FAILED', `Exceeded maximum redirects (${maxRedirects}).`);
 }
 
 export class AssetResolver {
-  constructor(private fetchFn: typeof fetch = fetch) {}
+  private cache = new RendererLruCache<ResolvedAsset>(100);
 
-  async resolveAsset(url?: string): Promise<ResolvedAsset> {
+  constructor(
+    private transport: AssetHttpTransport = new NodeAssetHttpTransport(),
+    private resolver: AssetNetworkResolver = new DefaultAssetNetworkResolver(),
+  ) {}
+
+  async resolveAsset(url?: string, signal?: AbortSignal): Promise<ResolvedAsset> {
     if (!url) {
       return { dataUrl: DEFAULT_PLACEHOLDER_DATA_URL };
     }
 
-    if (url.startsWith('data:image/')) {
-      if (url.includes('image/svg+xml')) {
-        return {
-          dataUrl: DEFAULT_PLACEHOLDER_DATA_URL,
-          warning: { code: 'ASSET_INVALID_IMAGE', message: 'SVG data URLs rejected for safety', url },
-        };
-      }
-      return { dataUrl: url };
+    // Reject caller-supplied data:, blob:, file:, etc.
+    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('file:')) {
+      return {
+        dataUrl: DEFAULT_PLACEHOLDER_DATA_URL,
+        warning: {
+          code: 'ASSET_URL_BLOCKED',
+          message: 'Caller-supplied data/blob/file URLs are rejected for security',
+          url,
+        },
+      };
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return {
+        dataUrl: DEFAULT_PLACEHOLDER_DATA_URL,
+        warning: {
+          code: 'ASSET_URL_BLOCKED',
+          message: 'Invalid or unsupported URL scheme',
+          url,
+        },
+      };
+    }
+
+    const cached = this.cache.get(url);
+    if (cached) {
+      return cached;
     }
 
     try {
-      const pngBuffer = await fetchAndProcessImage(url, this.fetchFn);
+      const pngBuffer = await fetchAndProcessImage(url, this.transport, this.resolver, 3, signal);
       const base64 = pngBuffer.toString('base64');
-      return { dataUrl: `data:image/png;base64,${base64}` };
+      const result: ResolvedAsset = { dataUrl: `data:image/png;base64,${base64}` };
+      this.cache.set(url, result);
+      return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       const code = err instanceof RendererError ? err.code : 'ASSET_FETCH_FAILED';
-      return {
+      const result: ResolvedAsset = {
         dataUrl: DEFAULT_PLACEHOLDER_DATA_URL,
         warning: { code, message: msg, url },
       };
+      // Don't cache transient failures
+      return result;
     }
   }
 }

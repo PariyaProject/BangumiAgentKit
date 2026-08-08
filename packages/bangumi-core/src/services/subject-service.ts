@@ -1,5 +1,9 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { GeneratedBangumiOpenApiClient, Subject, OperationBody } from '@bangumi-agent-kit/bangumi-openapi';
+import {
+  GeneratedBangumiOpenApiClient,
+  Subject,
+  OperationBody,
+} from '@bangumi-agent-kit/bangumi-openapi';
 import {
   DomainSubject,
   SubjectSearchResult,

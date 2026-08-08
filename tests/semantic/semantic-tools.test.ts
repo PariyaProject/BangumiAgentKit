@@ -206,11 +206,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const httpClient = new HttpClient({ fetchFn: mockFetch });
     const { searchTool } = getReadToolMap(httpClient);
 
-    const res = await executeTestTool(
-      searchTool,
-      { query: 'nonexistent_keyword_xyz' },
-      context,
-    );
+    const res = await executeTestTool(searchTool, { query: 'nonexistent_keyword_xyz' }, context);
     expect(res.status).toBe('not_found');
     expect(res.candidates).toHaveLength(0);
   });

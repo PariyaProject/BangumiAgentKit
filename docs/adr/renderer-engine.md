@@ -1,16 +1,20 @@
 # ADR 005: Renderer Engine Technology Choice
 
 ## Status
+
 Accepted
 
 ## Context
+
 `packages/renderer` requires a deterministic, secure, and high-fidelity static image card rendering engine to convert Bangumi domain objects into rich PNG image cards. Key requirements include:
+
 - Complex layout and formatting (CJK typography, flexbox, grid, badges, progress bars).
 - Defense against XSS and remote image SSRF / DNS rebinding attacks.
 - High performance rendering with browser process isolation and bounded resource consumption.
 - Zero network requests inside browser contexts.
 
 ## Decision
+
 We adopt **React SSR (`react-dom/server`) + Playwright Chromium**:
 
 1. **React SSR (`ReactDOMServer.renderToStaticMarkup`)**:

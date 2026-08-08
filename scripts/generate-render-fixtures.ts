@@ -47,7 +47,9 @@ async function main() {
 
   const subjectResult = await renderService.renderCard(subjectVm);
   fs.writeFileSync(path.join(outputDir, 'subject.png'), subjectResult.buffer);
-  console.log(`Saved subject.png (${subjectResult.width}x${subjectResult.height}, ${subjectResult.buffer.length} bytes)`);
+  console.log(
+    `Saved subject.png (${subjectResult.width}x${subjectResult.height}, ${subjectResult.buffer.length} bytes)`,
+  );
 
   // 2. Search list fixture
   const searchVm: SearchListViewModel = {
@@ -68,7 +70,9 @@ async function main() {
 
   const searchResult = await renderService.renderCard(searchVm);
   fs.writeFileSync(path.join(outputDir, 'search.png'), searchResult.buffer);
-  console.log(`Saved search.png (${searchResult.width}x${searchResult.height}, ${searchResult.buffer.length} bytes)`);
+  console.log(
+    `Saved search.png (${searchResult.width}x${searchResult.height}, ${searchResult.buffer.length} bytes)`,
+  );
 
   // 3. Cast card fixture
   const castVm: CastCardViewModel = {
@@ -85,7 +89,9 @@ async function main() {
 
   const castResult = await renderService.renderCard(castVm);
   fs.writeFileSync(path.join(outputDir, 'cast.png'), castResult.buffer);
-  console.log(`Saved cast.png (${castResult.width}x${castResult.height}, ${castResult.buffer.length} bytes)`);
+  console.log(
+    `Saved cast.png (${castResult.width}x${castResult.height}, ${castResult.buffer.length} bytes)`,
+  );
 
   // 4. Collection progress fixture
   const collectionVm: CollectionProgressViewModel = {
@@ -111,21 +117,25 @@ async function main() {
   const calendarVm: CalendarViewModel = {
     template: 'calendar',
     version: 1,
-    days: ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'].map((day, dIdx) => ({
-      weekdayCn: day,
-      items: Array.from({ length: 5 }).map((_, i) => ({
-        id: dIdx * 10 + i,
-        name: `Anime ${dIdx}-${i}`,
-        nameCn: `新番条目 ${dIdx + 1}-${i + 1}`,
-        score: 7.5 + (i % 3) * 0.5,
-      })),
-      overflowCount: dIdx === 5 ? 3 : undefined,
-    })),
+    days: ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'].map(
+      (day, dIdx) => ({
+        weekdayCn: day,
+        items: Array.from({ length: 5 }).map((_, i) => ({
+          id: dIdx * 10 + i,
+          name: `Anime ${dIdx}-${i}`,
+          nameCn: `新番条目 ${dIdx + 1}-${i + 1}`,
+          score: 7.5 + (i % 3) * 0.5,
+        })),
+        overflowCount: dIdx === 5 ? 3 : undefined,
+      }),
+    ),
   };
 
   const calendarResult = await renderService.renderCard(calendarVm);
   fs.writeFileSync(path.join(outputDir, 'calendar.png'), calendarResult.buffer);
-  console.log(`Saved calendar.png (${calendarResult.width}x${calendarResult.height}, ${calendarResult.buffer.length} bytes)`);
+  console.log(
+    `Saved calendar.png (${calendarResult.width}x${calendarResult.height}, ${calendarResult.buffer.length} bytes)`,
+  );
 
   await renderService.close();
   console.log('Successfully generated all 5 fixture images.');

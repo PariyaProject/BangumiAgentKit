@@ -6,8 +6,5 @@
     "jsx": "react-jsx"
   },
   "include": ["src/**/*"],
-  "references": [
-    { "path": "../bangumi-core" },
-    { "path": "../bangumi-transport" }
-  ]
+  "references": [{ "path": "../bangumi-core" }, { "path": "../bangumi-transport" }]
 }

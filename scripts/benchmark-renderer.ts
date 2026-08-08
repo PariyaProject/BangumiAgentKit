@@ -1,7 +1,4 @@
-import {
-  RenderService,
-  SubjectCardViewModel,
-} from '../packages/renderer/dist/index.js';
+import { RenderService, SubjectCardViewModel } from '../packages/renderer/dist/index.js';
 
 async function benchmark() {
   console.log('=== Bangumi Agent Kit Renderer Benchmark ===\n');
@@ -26,14 +23,18 @@ async function benchmark() {
   const service = new RenderService();
   const resFirst = await service.renderCard(vm);
   const coldDuration = performance.now() - startCold;
-  console.log(`Cold Browser Start + First Render: ${coldDuration.toFixed(2)} ms (${resFirst.buffer.length} bytes)`);
+  console.log(
+    `Cold Browser Start + First Render: ${coldDuration.toFixed(2)} ms (${resFirst.buffer.length} bytes)`,
+  );
 
   // Warm render (uncached VM)
   const warmVm: SubjectCardViewModel = { ...vm, subject: { ...vm.subject, id: 2 } };
   const startWarm = performance.now();
   const resWarm = await service.renderCard(warmVm);
   const warmDuration = performance.now() - startWarm;
-  console.log(`Warm Browser Render (uncached): ${warmDuration.toFixed(2)} ms (${resWarm.buffer.length} bytes)`);
+  console.log(
+    `Warm Browser Render (uncached): ${warmDuration.toFixed(2)} ms (${resWarm.buffer.length} bytes)`,
+  );
 
   // Cache hit
   const startCache = performance.now();
@@ -48,7 +49,9 @@ async function benchmark() {
   );
   await Promise.all(concurrentTasks);
   const concurrentDuration = performance.now() - startConcurrent;
-  console.log(`10 Concurrent Renders: ${concurrentDuration.toFixed(2)} ms (avg ${(concurrentDuration / 10).toFixed(2)} ms / card)`);
+  console.log(
+    `10 Concurrent Renders: ${concurrentDuration.toFixed(2)} ms (avg ${(concurrentDuration / 10).toFixed(2)} ms / card)`,
+  );
 
   await service.close();
   console.log('\nBenchmark completed successfully.');

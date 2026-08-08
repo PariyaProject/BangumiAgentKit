@@ -59,6 +59,7 @@ PNG Buffer + RenderResult Metadata
 The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates (`subject-card`, `search-list`, `cast-card`, `collection-progress`, `calendar`).
 
 All operations use structured `RendererError` types:
+
 - `RENDER_VALIDATION_ERROR`
 - `RENDER_TEMPLATE_NOT_FOUND`
 - `RENDER_TIMEOUT`

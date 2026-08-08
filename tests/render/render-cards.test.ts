@@ -184,4 +184,22 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     const result = await renderService.renderCard(vm);
     assertValidPng(result.buffer);
   });
+
+  it('R08: Font readiness verification succeeds', async () => {
+    const vm: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: {
+        id: 101,
+        name: 'Font Test',
+        nameCn: '字体就绪测试',
+        type: 'anime',
+      },
+      source: { label: 'Font Check' },
+    };
+
+    const result = await renderService.renderCard(vm);
+    assertValidPng(result.buffer);
+    expect(result.buffer.length).toBeGreaterThan(1000);
+  });
 });
