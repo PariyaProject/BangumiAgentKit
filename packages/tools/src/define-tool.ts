@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import type { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import type { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import type { Storage } from '@bangumi-agent-kit/db';
+import type { OAuthService, TokenBroker, BangumiClientProvider } from '@bangumi-agent-kit/auth';
+import type { AuditService } from '@bangumi-agent-kit/bangumi-core';
 
 export type OperationRisk = 'read' | 'write' | 'destructive';
 export type ToolAuthRequirement = 'none' | 'optional' | 'required';
@@ -18,8 +23,18 @@ export interface AuthenticatedExecutionSession {
     nickname: string;
     avatarUrl?: string;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any;
+  client: GeneratedBangumiOpenApiClient;
+}
+
+export interface ToolExecutionDependencies {
+  storage?: Storage;
+  publicHttpClient?: HttpClient;
+  oauthService?: OAuthService;
+  tokenBroker?: TokenBroker;
+  clientProvider?: BangumiClientProvider;
+  auditService?: AuditService;
+
+  executionSession?: AuthenticatedExecutionSession;
 }
 
 export interface ResolvedToolPolicy {
@@ -40,8 +55,11 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
   scopes: string[];
   risk: OperationRisk;
   resolvePolicy?: (input: z.infer<TSchema>, context: ToolContext) => ResolvedToolPolicy;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  execute: (input: z.infer<TSchema>, context: ToolContext, deps?: any) => Promise<unknown>;
+  execute: (
+    input: z.infer<TSchema>,
+    context: ToolContext,
+    deps?: ToolExecutionDependencies,
+  ) => Promise<unknown>;
 }
 
 export function defineTool<TSchema extends z.ZodType>(
@@ -49,3 +67,4 @@ export function defineTool<TSchema extends z.ZodType>(
 ): ToolDefinition<TSchema> {
   return def;
 }
+

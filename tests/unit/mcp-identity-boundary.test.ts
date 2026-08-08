@@ -87,7 +87,10 @@ describe('C. Trusted MCP Identity Boundary Regression Test', () => {
 
     const textContent = (res.content as Array<{ type: string; text: string }>)[0]!.text;
     expect(textContent).not.toContain('password authentication failed');
-    expect(textContent).toBe('内部服务发生错误');
+    const parsed = JSON.parse(textContent);
+    expect(parsed.ok).toBe(false);
+    expect(parsed.error.code).toBe('INTERNAL_ERROR');
+    expect(parsed.error.message).toBe('内部服务发生错误');
 
     await client.close();
   });

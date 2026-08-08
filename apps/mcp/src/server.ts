@@ -151,11 +151,28 @@ export class BangumiMcpServer {
           console.error('[MCP Tool Execution Error]', err);
         }
         const publicErr = toPublicError(err);
+        const errorBody: Record<string, unknown> = {
+          code: publicErr.code,
+          message: publicErr.message,
+        };
+        if (typeof publicErr.retryable === 'boolean') {
+          errorBody.retryable = publicErr.retryable;
+        }
+        if (publicErr.nextAction) {
+          errorBody.nextAction = publicErr.nextAction;
+        }
         return {
           content: [
             {
               type: 'text',
-              text: publicErr.message,
+              text: JSON.stringify(
+                {
+                  ok: false,
+                  error: errorBody,
+                },
+                null,
+                2,
+              ),
             },
           ],
           isError: true,

@@ -5,6 +5,7 @@ import {
   createWriteTools,
   ToolRegistry,
   ToolContext,
+  ToolExecutionDependencies,
   createRuntimeDependencies,
 } from '@bangumi-agent-kit/tools';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
@@ -16,13 +17,39 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import { z } from 'zod';
 
-async function executeTestTool<TOutput = any>(
-  tool: { execute: (input: any, context: ToolContext, deps?: Record<string, unknown>) => Promise<any> },
-  input: Record<string, unknown>,
+interface TestToolResult {
+  status: string;
+  exact: { id: number; name: string; name_cn: string };
+  candidates: Array<{ id: number; name: string; name_cn: string; type: number; summary: string }>;
+  subject: { id: number; name: string; name_cn: string };
+  cast: Array<{
+    id: number;
+    name: string;
+    relation: string;
+    actors: Array<{ id: number; name: string }>;
+  }>;
+  items: Array<{ id: number; name: string; comment: string; statusLabel: string }>;
+  count: number;
+  total: number;
+  operations: Array<{ operationId: string }>;
+  operationId: string;
+  method: string;
+  [key: string]: unknown;
+}
+
+async function executeTestTool<TOutput = TestToolResult>(
+  tool: {
+    execute: (
+      input: never,
+      context: ToolContext,
+      deps?: ToolExecutionDependencies,
+    ) => Promise<unknown>;
+  },
+  input: unknown,
   context: ToolContext,
-  deps?: Record<string, unknown>,
+  deps?: ToolExecutionDependencies,
 ): Promise<TOutput> {
-  return (await tool.execute(input, context, deps)) as TOutput;
+  return (await tool.execute(input as never, context, deps)) as TOutput;
 }
 
 describe('Semantic Tools Contract Tests (S01 - S25)', () => {
@@ -155,7 +182,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(capturedUrl).toContain('/v0/search/characters');
     expect(capturedMethod).toBe('POST');
     expect(capturedBody).toEqual({ keyword: '後藤ひとり' });
-    expect(res.candidates[0].name).toBe('後藤ひとり');
+    expect(res.candidates[0]!.name).toBe('後藤ひとり');
   });
 
   it('S07: search person by name -> POST search/persons', async () => {
@@ -185,7 +212,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(capturedUrl).toContain('/v0/search/persons');
     expect(capturedMethod).toBe('POST');
     expect(capturedBody).toEqual({ keyword: '青山吉能' });
-    expect(res.candidates[0].name).toBe('青山吉能');
+    expect(res.candidates[0]!.name).toBe('青山吉能');
   });
 
   it('S08: get_character by ID -> detail endpoint', async () => {
@@ -261,8 +288,8 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(capturedUrls[0]).toContain('/v0/subjects/100/characters');
     expect(res.status).toBe('ok');
     expect(res.cast).toHaveLength(1);
-    expect(res.cast[0].relation).toBe('主角');
-    expect(res.cast[0].actors[0].name).toBe('声优A');
+    expect(res.cast[0]!.relation).toBe('主角');
+    expect(res.cast[0]!.actors[0]!.name).toBe('声优A');
   });
 
   it('S10 regression: CharacterPerson numeric type does not leak into roleName string', async () => {
@@ -541,7 +568,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const listColTool = tools.find((t) => t.name === 'bangumi.list_collections')!;
 
     const res = await executeTestTool(listColTool, { username: 'spike' }, context);
-    expect(res.items[0].statusLabel).toBe('看过');
+    expect(res.items[0]!.statusLabel).toBe('看过');
   });
 
   it('S23: get_user -> only one user API request', async () => {
@@ -576,7 +603,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     const searchCharTool = tools.find((t) => t.name === 'bangumi.search_characters')!;
 
     const res = await executeTestTool(searchCharTool, { query: 'Bocchi' }, context);
-    expect(res.candidates[0].summary).toBeUndefined();
+    expect(res.candidates[0]!.summary).toBeUndefined();
   });
 
   it('S25: all curated tools expose required metadata', async () => {

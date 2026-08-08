@@ -52,16 +52,15 @@ export function createWriteTools(
     auth: 'required',
     scopes: ['write:collection'],
     risk: 'write',
-    execute: async (input, context, deps?: Record<string, unknown>) => {
-      const activeProvider: BangumiClientProvider =
-        (deps?.clientProvider as BangumiClientProvider) || provider;
+    execute: async (input, context, deps) => {
+      const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
-        (deps?.executionSession as any)?.client ||
+        deps?.executionSession?.client ||
         (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']))
           .client;
       const collectionService = new CollectionService(client);
       const userService = new UserService(client);
-      const username = (deps?.executionSession as any)?.account?.username;
+      const username = deps?.executionSession?.account?.username;
 
       return await collectionService.updateCollection(input, username, (un: string, sid: number) =>
         userService.getUserSubjectCollection(un, sid),
@@ -142,11 +141,10 @@ export function createWriteTools(
         summary: summaryStr,
       };
     },
-    execute: async (input, context, deps?: Record<string, unknown>) => {
-      const activeProvider: BangumiClientProvider =
-        (deps?.clientProvider as BangumiClientProvider) || provider;
+    execute: async (input, context, deps) => {
+      const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
-        (deps?.executionSession as any)?.client ||
+        deps?.executionSession?.client ||
         (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']))
           .client;
       const collectionService = new CollectionService(client);
@@ -238,11 +236,10 @@ export function createWriteTools(
         summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}角色 ${input.characterId}`,
       };
     },
-    execute: async (input, context, deps?: Record<string, unknown>) => {
-      const activeProvider: BangumiClientProvider =
-        (deps?.clientProvider as BangumiClientProvider) || provider;
+    execute: async (input, context, deps) => {
+      const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
-        (deps?.executionSession as any)?.client ||
+        deps?.executionSession?.client ||
         (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']))
           .client;
       const collectionService = new CollectionService(client);
@@ -277,11 +274,10 @@ export function createWriteTools(
         summary: `${input.action === 'uncollect' ? '取消收藏' : '收藏'}现实人物 ${input.personId}`,
       };
     },
-    execute: async (input, context, deps?: Record<string, unknown>) => {
-      const activeProvider: BangumiClientProvider =
-        (deps?.clientProvider as BangumiClientProvider) || provider;
+    execute: async (input, context, deps) => {
+      const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
-        (deps?.executionSession as any)?.client ||
+        deps?.executionSession?.client ||
         (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:collection']))
           .client;
       const collectionService = new CollectionService(client);
@@ -344,11 +340,10 @@ export function createWriteTools(
         summary,
       };
     },
-    execute: async (input, context, deps?: Record<string, unknown>) => {
-      const activeProvider: BangumiClientProvider =
-        (deps?.clientProvider as BangumiClientProvider) || provider;
+    execute: async (input, context, deps) => {
+      const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
-        (deps?.executionSession as any)?.client ||
+        deps?.executionSession?.client ||
         (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:index']))
           .client;
       const indexWriteService = new IndexWriteService(client);

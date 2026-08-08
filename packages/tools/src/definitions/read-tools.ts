@@ -68,7 +68,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     scopes: [],
     risk: 'read',
     execute: async (input, context, deps) => {
-      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       const typeNum = input.type ? subjectTypeMap[input.type] : undefined;
       return await resolveSubject(activeService, input.query, {
@@ -92,7 +92,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     scopes: [],
     risk: 'read',
     execute: async (input, context, deps) => {
-      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectById(input.subjectId);
     },
@@ -108,7 +108,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     scopes: [],
     risk: 'read',
     execute: async (input, context, deps) => {
-      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectRelations(input.subjectId);
     },
@@ -126,7 +126,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     scopes: [],
     risk: 'read',
     execute: async (input, context, deps) => {
-      const activeClient = (deps as any)?.executionSession?.client || publicHttpClient;
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new CharacterService(activeClient);
       return await getSubjectCast(activeService, input.subjectId, {
         limit: input.limit ?? 30,
@@ -299,7 +299,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     scopes: [],
     risk: 'read',
     execute: async (input, context, deps) => {
-      const sessionClient = (deps as any)?.executionSession?.client;
+      const sessionClient = deps?.executionSession?.client;
       if (sessionClient) {
         return await new UserService(sessionClient).getMyself();
       }
@@ -343,8 +343,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
     execute: async (input, context, deps) => {
       let targetUsername = input.username?.trim();
-      let authedClient = (deps as any)?.executionSession?.client;
-      const sessionUsername = (deps as any)?.executionSession?.account?.username;
+      let authedClient = deps?.executionSession?.client;
+      const sessionUsername = deps?.executionSession?.account?.username;
 
       if (!targetUsername) {
         if (sessionUsername) {
@@ -401,8 +401,8 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
     execute: async (input, context, deps) => {
       let targetUsername = input.username?.trim();
-      let authedClient = (deps as any)?.executionSession?.client;
-      const sessionUsername = (deps as any)?.executionSession?.account?.username;
+      let authedClient = deps?.executionSession?.client;
+      const sessionUsername = deps?.executionSession?.account?.username;
 
       if (!targetUsername) {
         if (sessionUsername) {

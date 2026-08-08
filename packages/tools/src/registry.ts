@@ -1,5 +1,10 @@
-import { ToolDefinition, ToolContext } from './define-tool.js';
-import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
+import {
+  ToolDefinition,
+  ToolContext,
+  AuthenticatedExecutionSession,
+  ToolExecutionDependencies,
+} from './define-tool.js';
+import { HttpClient, BangumiError, toPublicError, isBangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage, MemoryStorage, PostgresStorage } from '@bangumi-agent-kit/db';
 import { AuditService } from '@bangumi-agent-kit/bangumi-core';
 import {
@@ -198,12 +203,7 @@ export class ToolRegistry {
     const policy = PolicyManager.resolvePolicyForTool(tool, parseResult.data, context);
 
     // 3. Resolve Authentication & Capabilities BEFORE Confirmation / PendingAction
-    let executionSession:
-      | {
-          account?: { id: string; username: string; nickname: string; avatarUrl?: string };
-          client: unknown;
-        }
-      | undefined;
+    let executionSession: AuthenticatedExecutionSession | undefined;
     if (policy.auth === 'required') {
       const authed = await this.deps.clientProvider.requireAuthenticatedClient(
         context.principalId,
@@ -271,10 +271,10 @@ export class ToolRegistry {
 
       return result;
     } catch (err: unknown) {
-      if (!(err instanceof BangumiError)) {
+      if (!isBangumiError(err)) {
         console.error('[Tool Execution Error]', err);
       }
-      const isNetworkUnknown = err instanceof BangumiError && err.code === 'WRITE_RESULT_UNKNOWN';
+      const isNetworkUnknown = isBangumiError(err) && err.code === 'WRITE_RESULT_UNKNOWN';
       const publicErr = toPublicError(err);
 
       if (pendingActionId) {

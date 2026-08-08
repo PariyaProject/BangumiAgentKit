@@ -331,7 +331,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
 
     const action = (storage as any).pendingActions.get(pending.pendingAction.id);
     expect(action?.status).toBe('failed');
-    expect(action?.failureMessageSafe).toBe('内部服务发生错误');
+    expect(action?.failureMessageSafe).toBe('网络请求失败，请稍后重试。');
     expect(action?.failureMessageSafe).not.toContain('access_credentials');
   });
 });

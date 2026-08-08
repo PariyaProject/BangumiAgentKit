@@ -12,14 +12,16 @@ export function createRawOperationTools(
 
   if (
     clientProviderOrHttpClient &&
-    typeof (clientProviderOrHttpClient as any).requireAuthenticatedClient === 'function'
+    'requireAuthenticatedClient' in clientProviderOrHttpClient &&
+    typeof clientProviderOrHttpClient.requireAuthenticatedClient === 'function'
   ) {
-    provider = clientProviderOrHttpClient as BangumiClientProvider;
+    provider = clientProviderOrHttpClient;
   } else {
     const http =
       clientProviderOrHttpClient &&
-      typeof (clientProviderOrHttpClient as any).request === 'function'
-        ? (clientProviderOrHttpClient as HttpClient)
+      'request' in clientProviderOrHttpClient &&
+      typeof clientProviderOrHttpClient.request === 'function'
+        ? clientProviderOrHttpClient
         : new HttpClient();
     provider = new TokenBroker(
       new MemoryStorage(),
@@ -126,7 +128,7 @@ export function createRawOperationTools(
         summary: `底层 Operation 调用: ${input.operationId}`,
       };
     },
-    execute: async (input, context, deps?: Record<string, unknown>) => {
+    execute: async (input, context, deps) => {
       const meta = OPERATION_REGISTRY[input.operationId];
       if (!meta) {
         throw new Error(
@@ -138,7 +140,7 @@ export function createRawOperationTools(
         (deps?.clientProvider as BangumiClientProvider) || provider;
 
       let client;
-      const session = (deps as any)?.executionSession;
+      const session = deps?.executionSession;
       if (session?.client) {
         client = session.client;
       } else if (meta.auth === 'required') {
@@ -166,9 +168,11 @@ export function createRawOperationTools(
         pathArgs.push(val);
       }
 
-      const clientFn = (client as any)[input.operationId];
+      const clientFn = (
+        client as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+      )[input.operationId];
       if (typeof clientFn === 'function') {
-        const args: any[] = [...pathArgs];
+        const args: unknown[] = [...pathArgs];
         const hasQueryMeta = Boolean(meta.queryParameters && meta.queryParameters.length > 0);
         const hasBodyMeta = Boolean(meta.requestBody);
 

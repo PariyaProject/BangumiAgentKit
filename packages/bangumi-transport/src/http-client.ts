@@ -1,4 +1,4 @@
-import { BangumiError } from './errors.js';
+import { BangumiError, isBangumiError } from './errors.js';
 import { withRetry, RetryOptions } from './retry.js';
 import { MemoryCache, buildCacheKey, CacheKeyContext } from './cache.js';
 
@@ -107,6 +107,9 @@ export class HttpClient {
         });
       } catch (err: unknown) {
         clearTimeout(timer);
+        if (isBangumiError(err)) {
+          throw err;
+        }
         if (err instanceof Error && err.name === 'AbortError') {
           throw new BangumiError(
             'NETWORK_ERROR',

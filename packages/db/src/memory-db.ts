@@ -271,4 +271,8 @@ export class MemoryStorage implements Storage {
   getAuditEvents(): AuditEventRecord[] {
     return [...this.auditEvents];
   }
+
+  getPendingActions(): PendingActionRecord[] {
+    return Array.from(this.pendingActions.values());
+  }
 }
