@@ -35,12 +35,27 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     const pool = new BrowserPool({ maxConcurrency: 1 });
     const html = `<div data-render-root style="width:400px;height:200px;">Task</div>`;
 
-    // Render #1 -> forced timeout via signal
+    // Render #1 -> start render with a non-aborted AbortSignal
     const controller = new AbortController();
+    const render1Promise = pool.renderHtmlToBuffer(html, { signal: controller.signal });
+
+    // Wait until pool acquired the slot (activeCount === 1)
+    const waitForCondition = async (predicate: () => boolean, timeoutMs = 5000) => {
+      const start = Date.now();
+      while (!predicate()) {
+        if (Date.now() - start > timeoutMs) {
+          throw new Error(`Condition not met within ${timeoutMs}ms`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+    };
+
+    await waitForCondition(() => pool.getActiveCount() === 1);
+
+    // Abort after slot is acquired
     controller.abort();
-    await expect(pool.renderHtmlToBuffer(html, { signal: controller.signal })).rejects.toThrowError(
-      /RENDER_TIMEOUT/,
-    );
+
+    await expect(render1Promise).rejects.toThrowError(/RENDER_TIMEOUT/);
 
     // Verify slot was released on the SAME pool
     expect(pool.getActiveCount()).toBe(0);
