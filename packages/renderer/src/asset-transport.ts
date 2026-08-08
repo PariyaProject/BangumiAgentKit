@@ -98,6 +98,7 @@ export class NodeAssetHttpTransport implements AssetHttpTransport {
     return new Promise((resolve, reject) => {
       let isSettled = false;
       let timeoutTimer: NodeJS.Timeout | null = null;
+      let req: http.ClientRequest | null = null;
 
       const cleanup = () => {
         if (timeoutTimer) {
@@ -113,7 +114,7 @@ export class NodeAssetHttpTransport implements AssetHttpTransport {
         if (!isSettled) {
           isSettled = true;
           cleanup();
-          req.destroy();
+          req?.destroy();
           reject(err);
         }
       };
@@ -161,7 +162,7 @@ export class NodeAssetHttpTransport implements AssetHttpTransport {
         servername: parsed.hostname, // TLS SNI hostname
       };
 
-      const req = (requestModule as typeof https).request(reqOpts, (res) => {
+      req = (requestModule as typeof https).request(reqOpts, (res) => {
         const rawHeaders: Record<string, string> = {};
         for (const [k, v] of Object.entries(res.headers)) {
           if (typeof v === 'string') {
@@ -178,6 +179,7 @@ export class NodeAssetHttpTransport implements AssetHttpTransport {
           if (!isSettled) {
             isSettled = true;
             cleanup();
+            res.destroy();
             resolve({
               status: statusCode,
               headers: rawHeaders,

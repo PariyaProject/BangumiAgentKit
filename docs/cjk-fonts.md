@@ -30,6 +30,9 @@ In Dockerfile (Debian/Alpine base):
 RUN apt-get update && apt-get install -y fonts-noto-cjk fontconfig && fc-cache -f -v
 ```
 
-## Verification
+## Verification & Guarantees
 
-Render cards containing CJK characters (Simplified, Traditional, Japanese) and ensure characters are properly shaped without missing glyph (tofu) boxes.
+- **Recommended Production Font Family**: **Noto Sans CJK** (also known as Noto Sans SC/TC/JP) is recommended for production environments.
+- **CI Smoke Verification**: CI suite executes CJK rendering smoke tests (`R06`, `R07`, `R08`) verifying Chinese and Japanese cards render without layout crashes or buffer errors.
+- **Cross-Platform Render Disclaimer**: Current CI does NOT guarantee cross-platform pixel-identical font selection unless the runtime explicitly installs the documented `fonts-noto-cjk` font package.
+

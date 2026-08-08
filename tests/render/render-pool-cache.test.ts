@@ -4,7 +4,12 @@ import {
   SubjectCardViewModel,
   computeRenderCacheKey,
 } from '@bangumi-agent-kit/renderer';
-import { BrowserPool, RendererLruCache } from '../../packages/renderer/src/internal/index.js';
+import {
+  BrowserPool,
+  RendererLruCache,
+  RendererError,
+  ResolvedAsset,
+} from '../../packages/renderer/src/internal/index.js';
 
 describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
   it('R22: Concurrency pool bounds active contexts to configured maximum', async () => {
@@ -27,22 +32,25 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
   });
 
   it('R23: Render timeout releases pool slot and allows subsequent renders on SAME pool', async () => {
-    const pool = new BrowserPool({ maxConcurrency: 1, timeoutMs: 1 });
+    const pool = new BrowserPool({ maxConcurrency: 1 });
     const html = `<div data-render-root style="width:400px;height:200px;">Task</div>`;
 
-    // Render #1 -> forced timeout
-    await expect(pool.renderHtmlToBuffer(html)).rejects.toThrowError(/RENDER_TIMEOUT/);
+    // Render #1 -> forced timeout via signal
+    const controller = new AbortController();
+    controller.abort();
+    await expect(pool.renderHtmlToBuffer(html, { signal: controller.signal })).rejects.toThrowError(
+      /RENDER_TIMEOUT/,
+    );
 
-    // Verify slot was released on the SAME pool: render #2 succeeds when given enough time
-    const normalPool = new BrowserPool({ maxConcurrency: 1, timeoutMs: 5000 });
-    const resultBuffer = await normalPool.renderHtmlToBuffer(html);
-    expect(resultBuffer).toBeDefined();
-
+    // Verify slot was released on the SAME pool
     expect(pool.getActiveCount()).toBe(0);
-    expect(normalPool.getActiveCount()).toBe(0);
+
+    // Render #2 on SAME pool succeeds
+    const resultBuffer = await pool.renderHtmlToBuffer(html);
+    expect(resultBuffer).toBeDefined();
+    expect(pool.getActiveCount()).toBe(0);
 
     await pool.close();
-    await normalPool.close();
   });
 
   it('R24: Cache hit skips browser rendering (spy on renderHtmlToBuffer)', async () => {
@@ -189,7 +197,7 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     ).rejects.toThrowError(/RENDERER_CLOSED/);
   });
 
-  it('R30: RendererLruCache eviction behavior', () => {
+  it('Cache-LRU-01: RendererLruCache eviction behavior', () => {
     const cache = new RendererLruCache<string>(2);
     cache.set('A', 'valA');
     cache.set('B', 'valB');
@@ -203,5 +211,52 @@ describe('PR-5 BrowserPool, Cache & Options Bounds (R22 - R30)', () => {
     expect(cache.get('A')).toBe('valA');
     expect(cache.get('C')).toBe('valC');
     expect(cache.get('B')).toBeUndefined();
+  });
+
+  it('R30: Total Render Deadline Enforcement aborts stalled asset resolution within limit', async () => {
+    const pool = new BrowserPool();
+    const spy = vi.spyOn(pool, 'renderHtmlToBuffer');
+
+    const stallingAssetResolver = {
+      async resolveAsset(url?: string, signal?: AbortSignal) {
+        if (!url) return { dataUrl: 'data:image/png;base64,' };
+        return new Promise<ResolvedAsset>((_resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new RendererError('ASSET_TIMEOUT', 'Signal already aborted'));
+            return;
+          }
+          signal?.addEventListener('abort', () => {
+            reject(
+              new RendererError('ASSET_TIMEOUT', 'Asset fetch aborted due to total deadline'),
+            );
+          });
+        });
+      },
+    } as any;
+
+    const service = new RenderService(pool, undefined, stallingAssetResolver);
+    (service as any).timeoutMs = 250;
+
+    const vm: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: {
+        id: 1,
+        name: 'Deadline Test',
+        type: 'anime',
+        image: 'http://example.com/stalled-cover.png',
+      },
+      source: { label: 'Test' },
+    };
+
+    const startTime = Date.now();
+    await expect(service.renderCard(vm)).rejects.toThrowError(/RENDER_TIMEOUT/);
+    const elapsed = Date.now() - startTime;
+
+    expect(elapsed).toBeLessThan(1000);
+    // Verify Playwright renderHtmlToBuffer was NEVER called because asset resolution timed out
+    expect(spy).not.toHaveBeenCalled();
+
+    await service.close();
   });
 });

@@ -21,6 +21,9 @@ class Semaphore {
   constructor(private max: number) {}
 
   async acquire(signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) {
+      throw new RendererError('RENDER_TIMEOUT', 'Acquire aborted due to deadline.');
+    }
     if (this.activeCount < this.max) {
       this.activeCount++;
       return;
@@ -160,6 +163,10 @@ export class BrowserPool {
         }, this.timeoutMs);
 
         if (options?.signal) {
+          if (options.signal.aborted) {
+            reject(new RendererError('RENDER_TIMEOUT', 'Rendering aborted due to deadline.'));
+            return;
+          }
           options.signal.addEventListener('abort', () => {
             reject(new RendererError('RENDER_TIMEOUT', 'Rendering aborted due to deadline.'));
           });

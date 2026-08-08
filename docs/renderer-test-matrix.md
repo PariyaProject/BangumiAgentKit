@@ -9,7 +9,7 @@
 | R05 | Calendar Card PNG Render                      | Implemented           | `tests/render/render-cards.test.ts`        | Tested      |
 | R06 | Simplified & Traditional CJK Chinese Text     | Implemented           | `tests/render/render-cards.test.ts`        | Tested      |
 | R07 | Japanese Text Rendering                       | Implemented           | `tests/render/render-cards.test.ts`        | Tested      |
-| R08 | Font Readiness & Fallback Verification        | Implemented           | `tests/render/render-cards.test.ts`        | Tested      |
+| R08 | CJK rendering smoke test                      | Implemented           | `tests/render/render-cards.test.ts`        | Tested      |
 | R09 | True Browser Zero-Network Isolation           | Implemented           | `tests/render/render-zero-network.test.ts` | Tested      |
 | R10 | Localhost URL Blocked                         | Implemented           | `tests/render/render-ssrf-asset.test.ts`   | Tested      |
 | R11 | Loopback 127.0.0.1 IP Blocked                 | Implemented           | `tests/render/render-ssrf-asset.test.ts`   | Tested      |

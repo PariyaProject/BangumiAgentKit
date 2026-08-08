@@ -1,3 +1,5 @@
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   isUrlAllowed,
@@ -6,6 +8,7 @@ import {
   AssetResolver,
   AssetHttpTransport,
   AssetNetworkResolver,
+  NodeAssetHttpTransport,
   RendererError,
   sharp,
 } from '../../packages/renderer/src/internal/index.js';
@@ -281,5 +284,80 @@ describe('PR-5 SSRF Security & Asset Resolver (R10 - R21)', () => {
     expect(resolved.dataUrl).toContain('data:image/png;base64,');
     expect(resolved.warning).toBeDefined();
     expect(resolved.warning?.code).toBe('ASSET_FETCH_FAILED');
+  });
+
+  it('Pre-aborted signal regression: request rejects with ASSET_TIMEOUT without ReferenceError', async () => {
+    const transport = new NodeAssetHttpTransport();
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      transport.request(
+        'http://example.test/a.png',
+        { address: '93.184.216.34', family: 4 },
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({
+      code: 'ASSET_TIMEOUT',
+    });
+  });
+
+  it('Redirect response body termination: 302 response with infinite body stream resolves immediately', async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(302, { Location: 'http://example.test/target.png' });
+      const interval = setInterval(() => {
+        res.write('never-ending body data...');
+      }, 10);
+      res.on('close', () => {
+        clearInterval(interval);
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    const transport = new NodeAssetHttpTransport();
+    try {
+      const res = await transport.request(`http://127.0.0.1:${port}/redirect`, {
+        address: '127.0.0.1',
+        family: 4,
+      });
+
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toBe('http://example.test/target.png');
+      expect(res.buffer.length).toBe(0);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('Real Asset Body Timeout: stalls during body streaming returns ASSET_TIMEOUT', async () => {
+    const server = http.createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      res.write(Buffer.from([0x89, 0x50, 0x4e, 0x47])); // Write 4 bytes header signature
+      // Do NOT end response, stall body delivery
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    const transport = new NodeAssetHttpTransport();
+    const startTime = Date.now();
+    try {
+      await expect(
+        transport.request(
+          `http://127.0.0.1:${port}/stalled.png`,
+          { address: '127.0.0.1', family: 4 },
+          { timeoutMs: 150 },
+        ),
+      ).rejects.toMatchObject({
+        code: 'ASSET_TIMEOUT',
+      });
+
+      const duration = Date.now() - startTime;
+      expect(duration).toBeLessThan(1000);
+    } finally {
+      server.close();
+    }
   });
 });
