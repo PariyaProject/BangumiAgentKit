@@ -7,20 +7,22 @@ export interface SubjectCardViewModel {
     nameCn?: string;
     type: string;
     date?: string;
-    imageUrl?: string;
+    image?: string;
     score?: number;
     rank?: number;
     summary?: string;
     tags?: string[];
   };
-  userCollection?: {
+  collection?: {
     status: string;
+    statusLabel?: string;
     rating?: number;
     comment?: string;
-    watchedEps?: number;
-    totalEps?: number;
+    episodeProgress?: string;
   };
-  sourceLabel: string;
+  source: {
+    label: string;
+  };
 }
 
 export interface SearchItemViewModel {
@@ -28,8 +30,10 @@ export interface SearchItemViewModel {
   name: string;
   nameCn?: string;
   type: string;
+  date?: string;
   score?: number;
-  imageUrl?: string;
+  rank?: number;
+  image?: string;
 }
 
 export interface SearchListViewModel {
@@ -37,18 +41,64 @@ export interface SearchListViewModel {
   version: 1;
   query: string;
   total: number;
-  page: number;
   items: SearchItemViewModel[];
+  hasMore?: boolean;
+}
+
+export interface CastItemViewModel {
+  character: {
+    id: number;
+    name: string;
+    image?: string;
+  };
+  relation: string;
+  actors: Array<{
+    id: number;
+    name: string;
+    image?: string;
+  }>;
+}
+
+export interface CastCardViewModel {
+  template: 'cast-card';
+  version: 1;
+  subject: {
+    id: number;
+    name: string;
+    nameCn?: string;
+  };
+  items: CastItemViewModel[];
+  hiddenCount?: number;
+}
+
+export interface CollectionProgressViewModel {
+  template: 'collection-progress';
+  version: 1;
+  subject: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    image?: string;
+  };
+  status: string;
+  statusLabel: string;
+  watchedEpisodes: number;
+  totalEpisodes?: number;
+  rating?: number;
+  comment?: string;
+  progressPercentage?: number;
 }
 
 export interface CalendarDayViewModel {
   weekdayCn: string;
   items: Array<{
     id: number;
-    nameCn: string;
+    name: string;
+    nameCn?: string;
+    image?: string;
     score?: number;
-    imageUrl?: string;
   }>;
+  overflowCount?: number;
 }
 
 export interface CalendarViewModel {
@@ -57,16 +107,9 @@ export interface CalendarViewModel {
   days: CalendarDayViewModel[];
 }
 
-export interface CollectionProgressViewModel {
-  template: 'collection-progress';
-  version: 1;
-  subjectId: number;
-  subjectNameCn: string;
-  watchedEps: number;
-  totalEps?: number;
-  status: string;
-  rating?: number;
-}
-
 export type RenderViewModel =
-  SubjectCardViewModel | SearchListViewModel | CalendarViewModel | CollectionProgressViewModel;
+  | SubjectCardViewModel
+  | SearchListViewModel
+  | CastCardViewModel
+  | CollectionProgressViewModel
+  | CalendarViewModel;

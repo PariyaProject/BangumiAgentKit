@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import {
   isUrlAllowed,
   renderHtmlTemplate,
@@ -9,6 +9,12 @@ import {
 } from '../../packages/renderer/src/index.js';
 
 describe('Phase 7: Renderer & SSRF Protection Tests', () => {
+  const renderService = new RenderService();
+
+  afterAll(async () => {
+    await renderService.close();
+  });
+
   it('Asset Proxy blocks local, private, and metadata URLs (SSRF Protection)', () => {
     expect(isUrlAllowed('http://localhost/avatar.jpg')).toBe(false);
     expect(isUrlAllowed('http://127.0.0.1/test.png')).toBe(false);
@@ -33,7 +39,7 @@ describe('Phase 7: Renderer & SSRF Protection Tests', () => {
         score: 8.6,
         tags: ['治愈', '末日', '神作'],
       },
-      sourceLabel: 'Bangumi Agent Kit',
+      source: { label: 'Bangumi Agent Kit' },
     };
 
     const html = renderHtmlTemplate(subjectVm);
@@ -46,8 +52,7 @@ describe('Phase 7: Renderer & SSRF Protection Tests', () => {
       version: 1,
       query: '少女',
       total: 10,
-      page: 1,
-      items: [{ id: 1, name: '少女动画', score: 9.0, type: 'anime' }],
+      items: [{ id: 1, name: '少女动画', nameCn: '少女动画', score: 9.0, type: 'anime' }],
     };
     const searchHtml = renderHtmlTemplate(searchVm);
     expect(searchHtml).toContain('搜索结果');
@@ -56,24 +61,24 @@ describe('Phase 7: Renderer & SSRF Protection Tests', () => {
     const calendarVm: CalendarViewModel = {
       template: 'calendar',
       version: 1,
-      days: [{ weekdayCn: '星期一', items: [{ id: 1, nameCn: '新番 1' }] }],
+      days: [{ weekdayCn: '星期一', items: [{ id: 1, name: '新番 1', nameCn: '新番 1' }] }],
     };
     const calendarHtml = renderHtmlTemplate(calendarVm);
     expect(calendarHtml).toContain('星期一');
   });
 
   it('RenderService caches rendered buffers by SHA-256 payload key', async () => {
-    const service = new RenderService();
     const subjectVm: SubjectCardViewModel = {
       template: 'subject-card',
       version: 1,
       subject: { id: 226998, name: '少女終末旅行', type: 'anime' },
-      sourceLabel: 'Bangumi Agent Kit',
+      source: { label: 'Bangumi Agent Kit' },
     };
 
-    const buf1 = await service.renderCard(subjectVm);
-    const buf2 = await service.renderCard(subjectVm);
+    const res1 = await renderService.renderCard(subjectVm);
+    const res2 = await renderService.renderCard(subjectVm);
 
-    expect(buf1).toEqual(buf2);
+    expect(res1.cacheKey).toBe(res2.cacheKey);
+    expect(res1.buffer.equals(res2.buffer)).toBe(true);
   });
 });

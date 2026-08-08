@@ -23,6 +23,8 @@ pnpm-debug.log*
 # Testing & Coverage
 coverage
 .vitest
+.artifacts
+
 
 # OS / Editor
 .DS_Store
