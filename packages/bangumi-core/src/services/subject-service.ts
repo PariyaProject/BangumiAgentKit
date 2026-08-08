@@ -158,12 +158,12 @@ export class SubjectService {
 
   async getSubjectRelations(subjectId: number): Promise<SubjectRelationItem[]> {
     const raw = await this.api.getRelatedSubjectsBySubjectId(subjectId);
-    return (raw || []).map((item) => ({
-      id: item.id,
-      type: mapSubjectType(item.type),
-      name: item.name || '',
-      nameCn: item.name_cn || item.name || '',
-      relation: item.relation || '关联条目',
+    return (raw || []).map((item: Record<string, unknown>) => ({
+      id: Number(item.id || 0),
+      type: mapSubjectType(item.type as number | undefined),
+      name: String(item.name || ''),
+      nameCn: String(item.name_cn || item.name || ''),
+      relation: String(item.relation || '关联条目'),
       images: item.images ? (item.images as Record<string, string>) : undefined,
     }));
   }

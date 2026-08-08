@@ -34,7 +34,7 @@ describe('A. PostgreSQL Refresh Concurrency Test', () => {
 
     // Save an expired credential with refresh token
     await storageA.upsertCredential({
-      id: 'cred_pg_conc',
+      id: `cred_pg_conc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('old-expired-access-token', secretKey, 'v1'),
       encryptedRefreshToken: encryptToken('valid-refresh-token', secretKey, 'v1'),

@@ -271,9 +271,10 @@ export class ToolRegistry {
 
       return result;
     } catch (err: unknown) {
-      const isNetworkUnknown = err instanceof BangumiError && err.code === 'WRITE_RESULT_UNKNOWN';
-      const safeFailMsg = err instanceof BangumiError ? err.message : '内部服务发生错误';
-      const failCode = err instanceof BangumiError ? err.code : 'EXECUTION_FAILED';
+      const errObj = err as { code?: string; message?: string };
+      const isNetworkUnknown = errObj.code === 'WRITE_RESULT_UNKNOWN';
+      const safeFailMsg = errObj.message || '内部服务发生错误';
+      const failCode = errObj.code || 'EXECUTION_FAILED';
 
       if (pendingActionId) {
         if (isNetworkUnknown) {

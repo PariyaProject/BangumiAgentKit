@@ -40,7 +40,15 @@ export function createRawOperationTools(
     risk: 'read',
     execute: async (input) => {
       const result = [];
-      for (const [opId, meta] of Object.entries(OPERATION_REGISTRY)) {
+      for (const [opId, rawMeta] of Object.entries(OPERATION_REGISTRY)) {
+        const meta = rawMeta as {
+          tag?: string;
+          method?: string;
+          path?: string;
+          risk?: string;
+          auth?: string;
+          summary?: string;
+        };
         if (!input.tag || meta.tag === input.tag) {
           result.push({
             operationId: opId,

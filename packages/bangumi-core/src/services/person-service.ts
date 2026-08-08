@@ -65,7 +65,9 @@ export class PersonService {
     const candidates = data.map(mapPersonCandidate);
 
     const normQuery = normalizeSearchText(query);
-    const exactMatches = candidates.filter((c) => normalizeSearchText(c.name) === normQuery);
+    const exactMatches = candidates.filter(
+      (c: PersonCandidate) => normalizeSearchText(c.name) === normQuery,
+    );
 
     let status: SearchStatus = 'disambiguation';
     let exact: PersonCandidate | undefined;
@@ -104,11 +106,11 @@ export class PersonService {
   async getPersonRelatedSubjects(personId: number, limit = 20): Promise<PersonRelationSubject[]> {
     const raw = await this.api.getRelatedSubjectsByPersonId(personId);
     const items = (raw || []).slice(0, limit);
-    return items.map((item) => ({
-      id: item.id,
-      name: item.name || '',
-      nameCn: item.name_cn || item.name || '',
-      staffRole: item.staff || (typeof item.type === 'string' ? item.type : undefined),
+    return items.map((item: Record<string, unknown>) => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      nameCn: String(item.name_cn || item.name || ''),
+      staffRole: (item.staff as string) || (typeof item.type === 'string' ? item.type : undefined),
     }));
   }
 
@@ -118,22 +120,22 @@ export class PersonService {
   ): Promise<PersonRelationCharacter[]> {
     const raw = await this.api.getRelatedCharactersByPersonId(personId);
     const items = (raw || []).slice(0, limit);
-    return items.map((item) => ({
-      id: item.id,
-      name: item.name || '',
-      type: item.type,
-      subjectId: item.subject_id,
-      subjectName: item.subject_name,
+    return items.map((item: Record<string, unknown>) => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      type: item.type as number | undefined,
+      subjectId: item.subject_id as number | undefined,
+      subjectName: item.subject_name as string | undefined,
     }));
   }
 
   async getSubjectPersons(subjectId: number): Promise<DomainPerson[]> {
     const raw = await this.api.getRelatedPersonsBySubjectId(subjectId);
-    return (raw || []).map((item) => ({
-      id: item.id,
-      name: item.name || '',
-      type: item.type || 1,
-      career: Array.isArray(item.career) ? item.career : [],
+    return (raw || []).map((item: Record<string, unknown>) => ({
+      id: Number(item.id || 0),
+      name: String(item.name || ''),
+      type: Number(item.type || 1),
+      career: Array.isArray(item.career) ? (item.career as string[]) : [],
       summary: '',
       images: item.images ? (item.images as Record<string, string>) : undefined,
     }));

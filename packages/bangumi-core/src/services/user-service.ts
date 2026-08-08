@@ -76,22 +76,23 @@ export class UserService {
     });
 
     const data = res.data || [];
-    const items = data.map((col) => {
-      const status = mapCollectionStatus(col.type);
-      const subjectTypeStr = mapSubjectType(col.subject?.type);
+    const items = data.map((col: Record<string, unknown>) => {
+      const colSubject = col.subject as Record<string, unknown> | undefined;
+      const status = mapCollectionStatus(col.type as number | string);
+      const subjectTypeStr = mapSubjectType(colSubject?.type as number | undefined);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
-        subjectId: col.subject_id,
-        subjectName: col.subject?.name,
-        subjectNameCn: col.subject?.name_cn || col.subject?.name,
+        subjectId: Number(col.subject_id || 0),
+        subjectName: colSubject?.name as string | undefined,
+        subjectNameCn: (colSubject?.name_cn || colSubject?.name) as string | undefined,
         status,
         statusLabel,
-        rating: col.rate,
-        comment: col.comment,
-        tags: col.tags,
-        epStatus: col.ep_status,
-        updatedAt: col.updated_at,
+        rating: col.rate as number | undefined,
+        comment: col.comment as string | undefined,
+        tags: col.tags as string[] | undefined,
+        epStatus: col.ep_status as number | undefined,
+        updatedAt: col.updated_at as string | undefined,
       };
     });
 

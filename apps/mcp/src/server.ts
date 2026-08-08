@@ -8,7 +8,7 @@ import {
   RuntimeDependencies,
   createRuntimeDependencies,
 } from '@bangumi-agent-kit/tools';
-import { HttpClient, BangumiError } from '@bangumi-agent-kit/bangumi-transport';
+import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
 
 export interface McpExecutionIdentityProvider {
@@ -147,14 +147,10 @@ export class BangumiMcpServer {
           ],
         };
       } catch (err: unknown) {
+        const errObj = err as { message?: string };
         const safeMessage =
-          err instanceof BangumiError
-            ? err.message
-            : process.env.NODE_ENV === 'production'
-              ? '内部服务发生错误'
-              : err instanceof Error
-                ? err.message
-                : '内部服务发生错误';
+          errObj.message ||
+          (process.env.NODE_ENV === 'production' ? '内部服务发生错误' : '内部服务发生错误');
 
         return {
           content: [

@@ -63,7 +63,7 @@ export function createWriteTools(
       const userService = new UserService(client);
       const username = (deps?.executionSession as any)?.account?.username;
 
-      return await collectionService.updateCollection(input, username, (un, sid) =>
+      return await collectionService.updateCollection(input, username, (un: string, sid: number) =>
         userService.getUserSubjectCollection(un, sid),
       );
     },

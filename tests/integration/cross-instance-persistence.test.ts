@@ -36,7 +36,7 @@ describe('B. Cross-Instance PostgreSQL Persistence Test', () => {
     await storageA.replaceActiveBinding(principalA.id, accountA.id);
 
     await storageA.upsertCredential({
-      id: 'cred_cross_a',
+      id: `cred_cross_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       bangumiAccountId: accountA.id,
       encryptedAccessToken: encryptToken('persisted-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
