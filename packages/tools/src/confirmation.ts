@@ -33,8 +33,13 @@ export async function createPendingAction(
   actionType: string,
   summary: string,
   payload: unknown,
-  ttlMinutes = 10
-): Promise<{ confirmationId: string; summary: string; expiresAt: Date; pendingAction: PendingActionRecord }> {
+  ttlMinutes = 10,
+): Promise<{
+  confirmationId: string;
+  summary: string;
+  expiresAt: Date;
+  pendingAction: PendingActionRecord;
+}> {
   const confirmationId = `cfm_${crypto.randomBytes(8).toString('hex')}`;
   const payloadHash = computeCanonicalPayloadHash(payload);
   const now = new Date();
@@ -72,7 +77,7 @@ export async function claimPendingAction(
   storage: Storage,
   context: ToolContext,
   confirmationId: string,
-  payload: unknown
+  payload: unknown,
 ): Promise<PendingActionRecord> {
   const payloadHash = computeCanonicalPayloadHash(payload);
   try {
@@ -91,7 +96,7 @@ export async function claimPendingAction(
         '二次确认已超时失效，请重新发起请求',
         false,
         400,
-        '重新调用原工具发起操作'
+        '重新调用原工具发起操作',
       );
     }
     throw new BangumiError(
@@ -99,7 +104,7 @@ export async function claimPendingAction(
       `二次确认校验失败: ${msg}`,
       false,
       400,
-      '检查 confirmationId 及请求参数'
+      '检查 confirmationId 及请求参数',
     );
   }
 }

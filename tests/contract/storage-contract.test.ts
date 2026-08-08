@@ -22,6 +22,7 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
 
       const account = await storage.upsertBangumiAccount({
         id: 'bgm-1001',
+        bangumiUserId: 1001,
         username: 'spike',
         nickname: 'Spike Spiegel',
         avatarUrl: 'https://example.com/avatar.jpg',
@@ -36,17 +37,35 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
       const activeBinding = await storage.getActiveBinding(principal.id);
       expect(activeBinding?.bangumiAccountId).toBe(account.id);
 
-      await storage.upsertCredential({
-        bangumiAccountId: account.id,
-        encryptedAccessToken: 'encrypted-access-token-bytes',
-        encryptedRefreshToken: 'encrypted-refresh-token-bytes',
-        expiresAt: new Date(Date.now() + 3600000),
+      const encToken = {
+        ciphertext: 'encrypted-access-token-bytes',
+        iv: 'iv',
+        authTag: 'tag',
         keyVersion: 'v1',
+      };
+      const encRefresh = {
+        ciphertext: 'encrypted-refresh-token-bytes',
+        iv: 'iv',
+        authTag: 'tag',
+        keyVersion: 'v1',
+      };
+
+      await storage.upsertCredential({
+        id: 'c-1001',
+        bangumiAccountId: account.id,
+        encryptedAccessToken: encToken,
+        encryptedRefreshToken: encRefresh,
+        expiresAt: new Date(Date.now() + 3600000),
+        requestedCapabilities: ['read'],
+        reportedScopes: ['read'],
+        scopeEvidence: 'reported',
+        keyVersion: 'v1',
+        createdAt: new Date(),
         updatedAt: new Date(),
       });
 
       const cred = await storage.getCredential(account.id);
-      expect(cred?.encryptedAccessToken).toBe('encrypted-access-token-bytes');
+      expect(cred?.encryptedAccessToken.ciphertext).toBe('encrypted-access-token-bytes');
 
       await storage.deactivateBindings(principal.id);
       const deactivated = await storage.getActiveBinding(principal.id);
@@ -85,7 +104,9 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
       const consumed = await storage.consumeOAuthSession(session.stateHash);
       expect(consumed.principalId).toBe(principal.id);
 
-      await expect(storage.consumeOAuthSession(session.stateHash)).rejects.toThrow('OAUTH_STATE_REUSED');
+      await expect(storage.consumeOAuthSession(session.stateHash)).rejects.toThrow(
+        'OAUTH_STATE_REUSED',
+      );
 
       await storage.close();
     });
@@ -114,6 +135,7 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
         payload: { title: 'New Index' },
         status: 'pending' as const,
         createdAt: now,
+        updatedAt: now,
         expiresAt: new Date(now.getTime() + 600000),
       };
 

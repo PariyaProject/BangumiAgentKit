@@ -45,7 +45,7 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 }
 
 export function defineTool<TSchema extends z.ZodType>(
-  def: ToolDefinition<TSchema>
+  def: ToolDefinition<TSchema>,
 ): ToolDefinition<TSchema> {
   return def;
 }

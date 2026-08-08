@@ -30,10 +30,13 @@ export interface Storage {
   getBangumiAccount(id: string): Promise<BangumiAccountRecord | null>;
   upsertBangumiAccount(
     input: Omit<BangumiAccountRecord, 'createdAt' | 'updatedAt'> &
-      Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>
+      Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>,
   ): Promise<BangumiAccountRecord>;
   getActiveBinding(principalId: string): Promise<AccountBindingRecord | null>;
-  replaceActiveBinding(principalId: string, bangumiAccountId: string): Promise<AccountBindingRecord>;
+  replaceActiveBinding(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<AccountBindingRecord>;
   deactivateBindings(principalId: string): Promise<void>;
   getCredential(accountId: string): Promise<AccessCredentialRecord | null>;
   upsertCredential(record: AccessCredentialRecord): Promise<void>;

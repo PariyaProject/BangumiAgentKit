@@ -59,19 +59,15 @@ describe('TokenKeyring Rotation Tests', () => {
     const mockHttpClient = new HttpClient();
     vi.spyOn(mockHttpClient, 'request').mockResolvedValue({ id: 1001, username: 'user_a' } as any);
 
-    const broker = new TokenBroker(
-      storage,
-      { tokenEncryption },
-      mockHttpClient
-    );
+    const broker = new TokenBroker(storage, { tokenEncryption }, mockHttpClient);
 
     const result = await broker.requireAuthenticatedClient(principal.id, ['read']);
     expect(result.account.id).toBe('acc_a');
-    await result.client.getSubjectById({ subjectId: 1 });
+    await result.client.getSubjectById(1);
     expect(mockHttpClient.request).toHaveBeenCalledWith(
       expect.objectContaining({
         accessToken: 'access-token-v1-secret',
-      })
+      }),
     );
   });
 
@@ -108,7 +104,7 @@ describe('TokenKeyring Rotation Tests', () => {
         tokenEncryption,
       },
       mockHttpClient,
-      mockOAuthClient
+      mockOAuthClient,
     );
 
     const authUrl = await oauthService.createAuthorizationUrl('principal-b');
@@ -189,7 +185,7 @@ describe('TokenKeyring Rotation Tests', () => {
         redirectUri: 'http://localhost/callback',
       },
       mockHttpClient,
-      mockOAuthClient
+      mockOAuthClient,
     );
 
     await broker.requireAuthenticatedClient(principal.id, ['read']);
@@ -199,7 +195,7 @@ describe('TokenKeyring Rotation Tests', () => {
       'client-id',
       'client-secret',
       'http://localhost/callback',
-      undefined
+      undefined,
     );
 
     const updatedCred = await storage.getCredential(account.id);
@@ -257,11 +253,7 @@ describe('TokenKeyring Rotation Tests', () => {
       updatedAt: new Date(),
     });
 
-    const broker = new TokenBroker(
-      storage,
-      { tokenEncryption },
-      new HttpClient()
-    );
+    const broker = new TokenBroker(storage, { tokenEncryption }, new HttpClient());
 
     let thrownError: any = null;
     try {
@@ -280,7 +272,7 @@ describe('TokenKeyring Rotation Tests', () => {
       {},
       {
         BANGUMI_TOKEN_ENCRYPTION_KEY: KEY_V1,
-      }
+      },
     );
 
     expect(config.activeKeyVersion).toBe('v1');
@@ -300,7 +292,7 @@ describe('TokenKeyring Rotation Tests', () => {
           v2: KEY_V2,
         }),
         BANGUMI_TOKEN_ACTIVE_KEY_VERSION: 'v2',
-      }
+      },
     );
 
     expect(config.activeKeyVersion).toBe('v2');
@@ -321,7 +313,7 @@ describe('TokenKeyring Rotation Tests', () => {
             v1: KEY_V1,
           }),
           BANGUMI_TOKEN_ACTIVE_KEY_VERSION: 'v2', // v2 does not exist
-        }
+        },
       );
     }).toThrow(BangumiError);
   });

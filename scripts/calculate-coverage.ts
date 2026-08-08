@@ -14,13 +14,23 @@ function calculateCoverage() {
 
   const missingFixtures = registryKeys.filter((opId) => !fixtureKeys.includes(opId));
   if (missingFixtures.length > 0) {
-    console.error(`[calculate-coverage] ERROR: Missing contract fixtures for registered operations:\n  ${missingFixtures.join(', ')}`);
+    console.error(
+      `[calculate-coverage] ERROR: Missing contract fixtures for registered operations:\n  ${missingFixtures.join(', ')}`,
+    );
     process.exit(1);
   }
 
   // 1. Metadata Coverage: operations with complete metadata
   const metadataOps = operations.filter(
-    (op) => op.operationId && op.tag && op.method && op.path && op.auth && Array.isArray(op.scopes) && op.risk && op.summary
+    (op) =>
+      op.operationId &&
+      op.tag &&
+      op.method &&
+      op.path &&
+      op.auth &&
+      Array.isArray(op.scopes) &&
+      op.risk &&
+      op.summary,
   ).length;
 
   // 2. Generated Method Coverage
@@ -38,7 +48,9 @@ function calculateCoverage() {
   const httpMethodOps = totalOps;
 
   // 5. Query Forwarding Coverage: operations with query parameters that have fixture queryFixture
-  const queryOpsList = operations.filter((op) => op.queryParameters && op.queryParameters.length > 0);
+  const queryOpsList = operations.filter(
+    (op) => op.queryParameters && op.queryParameters.length > 0,
+  );
   const queryForwardingOps = queryOpsList.filter((op) => {
     const fix = OPERATION_FIXTURES[op.operationId];
     return fix && Boolean(fix.queryFixture);
@@ -130,9 +142,15 @@ function calculateCoverage() {
   console.log(`[calculate-coverage] Coverage doc updated at ${COVERAGE_DOC_PATH}`);
   console.log(`  Metadata: ${metadataOps}/${totalOps} (${metadataPct}%)`);
   console.log(`  Path Resolution: ${pathResolutionOps}/${totalPathOps} (${pathResolutionPct}%)`);
-  console.log(`  Query Forwarding: ${queryForwardingOps}/${totalQueryOps} (${queryForwardingPct}%)`);
-  console.log(`  Request Body Serialization: ${requestBodyOps}/${totalBodyOps} (${requestBodyPct}%)`);
-  console.log(`  Success Response Type: ${successResponseOps}/${totalV0Ops} (${successResponsePct}%)`);
+  console.log(
+    `  Query Forwarding: ${queryForwardingOps}/${totalQueryOps} (${queryForwardingPct}%)`,
+  );
+  console.log(
+    `  Request Body Serialization: ${requestBodyOps}/${totalBodyOps} (${requestBodyPct}%)`,
+  );
+  console.log(
+    `  Success Response Type: ${successResponseOps}/${totalV0Ops} (${successResponsePct}%)`,
+  );
 }
 
 calculateCoverage();

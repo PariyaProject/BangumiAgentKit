@@ -241,18 +241,18 @@ bangumi-render-worker
 
 按当前官方 OpenAPI 文档统计，v0 API 包含以下分组：
 
-| 分组 | 操作数量 |
-|---|---:|
-| 条目 | 7 |
-| 章节 | 2 |
-| 角色 | 7 |
-| 人物 | 7 |
-| 用户 | 3 |
-| 收藏 | 12 |
-| 编辑历史 | 8 |
-| 目录 | 9 |
-| 旧版每日放送 `/calendar` | 1 |
-| **合计** | **56** |
+| 分组                     | 操作数量 |
+| ------------------------ | -------: |
+| 条目                     |        7 |
+| 章节                     |        2 |
+| 角色                     |        7 |
+| 人物                     |        7 |
+| 用户                     |        3 |
+| 收藏                     |       12 |
+| 编辑历史                 |        8 |
+| 目录                     |        9 |
+| 旧版每日放送 `/calendar` |        1 |
+| **合计**                 |   **56** |
 
 当前文档还包含实验性的条目、角色和人物搜索接口。 citeturn627679search1turn313606view0
 
@@ -300,20 +300,14 @@ git diff --exit-code packages/bangumi-openapi/src/generated
 生成客户端之外，再自动生成一份操作元数据：
 
 ```ts
-export type OperationRisk =
-  | "read"
-  | "write"
-  | "destructive";
+export type OperationRisk = 'read' | 'write' | 'destructive';
 
-export type AuthRequirement =
-  | "none"
-  | "optional"
-  | "required";
+export type AuthRequirement = 'none' | 'optional' | 'required';
 
 export interface OperationMeta {
   operationId: string;
   tag: string;
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
 
   auth: AuthRequirement;
@@ -346,7 +340,7 @@ export interface OperationMeta {
 测试：
 
 ```ts
-it("every OpenAPI operation has security metadata", () => {
+it('every OpenAPI operation has security metadata', () => {
   for (const operation of openApiOperations) {
     expect(operationRegistry[operation.operationId]).toBeDefined();
   }
@@ -747,8 +741,8 @@ HTTP 请求：
 
 ```ts
 const headers: Record<string, string> = {
-  Accept: "application/json",
-  "User-Agent": config.bangumiUserAgent,
+  Accept: 'application/json',
+  'User-Agent': config.bangumiUserAgent,
 };
 
 if (accessToken) {
@@ -762,16 +756,16 @@ if (accessToken) {
 
 ```ts
 export type BangumiErrorCode =
-  | "VALIDATION_ERROR"
-  | "AUTH_REQUIRED"
-  | "AUTH_EXPIRED"
-  | "PERMISSION_DENIED"
-  | "NOT_FOUND"
-  | "RATE_LIMITED"
-  | "UPSTREAM_UNAVAILABLE"
-  | "NETWORK_ERROR"
-  | "PARSER_ERROR"
-  | "UNKNOWN_ERROR";
+  | 'VALIDATION_ERROR'
+  | 'AUTH_REQUIRED'
+  | 'AUTH_EXPIRED'
+  | 'PERMISSION_DENIED'
+  | 'NOT_FOUND'
+  | 'RATE_LIMITED'
+  | 'UPSTREAM_UNAVAILABLE'
+  | 'NETWORK_ERROR'
+  | 'PARSER_ERROR'
+  | 'UNKNOWN_ERROR';
 
 export class BangumiError extends Error {
   constructor(
@@ -1015,10 +1009,7 @@ key_version
 interface TokenBroker {
   requireAccount(principalId: string): Promise<AuthorizedAccount>;
 
-  getValidAccessToken(
-    accountId: string,
-    requiredScopes: string[],
-  ): Promise<string>;
+  getValidAccessToken(accountId: string, requiredScopes: string[]): Promise<string>;
 
   disconnect(principalId: string): Promise<void>;
 }
@@ -1477,17 +1468,14 @@ principalId + operationId + subjectId + normalizedBody
 
 ```ts
 const updateCollectionTool = defineTool({
-  name: "bangumi.update_collection",
+  name: 'bangumi.update_collection',
 
-  description:
-    "更新当前用户对一个 Bangumi 条目的收藏状态、评分、标签或评论。",
+  description: '更新当前用户对一个 Bangumi 条目的收藏状态、评分、标签或评论。',
 
   input: z.object({
     subjectId: z.number().int().positive(),
 
-    status: z
-      .enum(["wish", "doing", "done", "on_hold", "dropped"])
-      .optional(),
+    status: z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']).optional(),
 
     rating: z.number().int().min(1).max(10).optional(),
 
@@ -1496,19 +1484,17 @@ const updateCollectionTool = defineTool({
     comment: z.string().max(2000).optional(),
   }),
 
-  auth: "required",
-  scopes: ["write:collection"],
-  risk: "write",
+  auth: 'required',
+  scopes: ['write:collection'],
+  risk: 'write',
 
   async execute(input, context) {
-    const account = await tokenBroker.requireAccount(
-      context.principalId,
-    );
+    const account = await tokenBroker.requireAccount(context.principalId);
 
     await policy.assertWriteAllowed({
       principalId: context.principalId,
       accountId: account.id,
-      operationId: "patchUserCollection",
+      operationId: 'patchUserCollection',
       payload: input,
       confirmationId: context.confirmationId,
     });
@@ -1521,8 +1507,8 @@ const updateCollectionTool = defineTool({
     await auditService.recordWrite({
       principalId: context.principalId,
       accountId: account.id,
-      operationId: "patchUserCollection",
-      resourceType: "subject",
+      operationId: 'patchUserCollection',
+      resourceType: 'subject',
       resourceId: String(input.subjectId),
       summary: result.changeSummary,
     });
@@ -1540,9 +1526,9 @@ export interface ToolContext {
   botInstanceId: string;
   conversationId: string;
 
-  locale: "zh-CN" | "ja-JP" | "en";
+  locale: 'zh-CN' | 'ja-JP' | 'en';
   timezone: string;
-  outputMode: "auto" | "text" | "image" | "mixed" | "json";
+  outputMode: 'auto' | 'text' | 'image' | 'mixed' | 'json';
 
   confirmationId?: string;
 }
@@ -1689,15 +1675,9 @@ packages/html-providers/
 export interface DataProvider<Request, Response> {
   readonly capability: string;
 
-  readonly source:
-    | "official-v0-api"
-    | "documented-legacy-api"
-    | "public-html";
+  readonly source: 'official-v0-api' | 'documented-legacy-api' | 'public-html';
 
-  fetch(
-    request: Request,
-    context: ProviderContext,
-  ): Promise<ProviderResult<Response>>;
+  fetch(request: Request, context: ProviderContext): Promise<ProviderResult<Response>>;
 }
 ```
 
@@ -1809,7 +1789,7 @@ tests/html-fixtures/
 
 ```ts
 export interface SubjectCardViewModel {
-  template: "subject-card";
+  template: 'subject-card';
   version: 1;
 
   subject: {
@@ -1960,12 +1940,7 @@ sha256(
 ## 14.7 输出模式
 
 ```ts
-type OutputMode =
-  | "auto"
-  | "text"
-  | "image"
-  | "mixed"
-  | "json";
+type OutputMode = 'auto' | 'text' | 'image' | 'mixed' | 'json';
 ```
 
 推荐默认：
@@ -1986,18 +1961,11 @@ CLI                    text
 
 ```ts
 export interface ChatPlatformAdapter {
-  start(
-    handler: (message: InboundMessage) => Promise<void>,
-  ): Promise<void>;
+  start(handler: (message: InboundMessage) => Promise<void>): Promise<void>;
 
-  send(
-    target: ReplyTarget,
-    message: OutboundMessage,
-  ): Promise<void>;
+  send(target: ReplyTarget, message: OutboundMessage): Promise<void>;
 
-  getCapabilities(
-    target: ReplyTarget,
-  ): Promise<PlatformCapabilities>;
+  getCapabilities(target: ReplyTarget): Promise<PlatformCapabilities>;
 }
 ```
 
@@ -2005,7 +1973,7 @@ export interface ChatPlatformAdapter {
 
 ```ts
 interface InboundMessage {
-  provider: "qq-official" | "onebot";
+  provider: 'qq-official' | 'onebot';
   botInstanceId: string;
   messageId: string;
 
@@ -2016,7 +1984,7 @@ interface InboundMessage {
 
   conversation: {
     id: string;
-    type: "private" | "group" | "channel";
+    type: 'private' | 'group' | 'channel';
   };
 
   text: string;

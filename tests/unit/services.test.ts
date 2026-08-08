@@ -38,8 +38,8 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
             },
           ],
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -64,15 +64,16 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
             { id: 103, type: 1, sort: 1, name: 'SP 1' },
           ],
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
     const client = new HttpClient();
     const service = new EpisodeService(client);
 
-    const eps = await service.getEpisodes(100);
+    const epsRes = await service.getEpisodes(100);
+    const eps = epsRes.items;
     expect(eps.length).toBe(3);
     expect(eps[0]?.category).toBe('main');
     expect(eps[2]?.category).toBe('sp');
@@ -86,19 +87,23 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/characters/1001/persons')) {
         return Promise.resolve(
-          new Response(JSON.stringify([{ id: 2001, name: '水瀬いのり', role_name: '声优' }]), { status: 200 })
+          new Response(JSON.stringify([{ id: 2001, name: '水瀬いのり', role_name: '声优' }]), {
+            status: 200,
+          }),
         );
       }
       if (url.includes('/persons/2001')) {
         return Promise.resolve(
-          new Response(JSON.stringify({ id: 2001, name: '水瀬いのり', type: 1, career: ['artist'] }), { status: 200 })
+          new Response(
+            JSON.stringify({ id: 2001, name: '水瀬いのり', type: 1, career: ['artist'] }),
+            { status: 200 },
+          ),
         );
       }
       return Promise.resolve(
-        new Response(
-          JSON.stringify({ id: 1001, name: 'チト', summary: '主人公之一' }),
-          { status: 200 }
-        )
+        new Response(JSON.stringify({ id: 1001, name: 'チト', summary: '主人公之一' }), {
+          status: 200,
+        }),
       );
     });
     vi.stubGlobal('fetch', mockFetch);
@@ -122,12 +127,10 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
       new Response(
         JSON.stringify({
           total: 1,
-          data: [
-            { subject_id: 226998, type: 2, rate: 9, comment: '神作！' },
-          ],
+          data: [{ subject_id: 226998, type: 2, rate: 9, comment: '神作！' }],
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -148,8 +151,8 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
           total: 1,
           data: [{ id: 1, type: 1, summary: '修改中文名称', created_at: '2026-01-01' }],
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -165,11 +168,22 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/subjects')) {
         return Promise.resolve(
-          new Response(JSON.stringify({ total: 1, data: [{ id: 10, name: 'Anime 1', order: 1 }] }), { status: 200 })
+          new Response(
+            JSON.stringify({ total: 1, data: [{ id: 10, name: 'Anime 1', order: 1 }] }),
+            { status: 200 },
+          ),
         );
       }
       return Promise.resolve(
-        new Response(JSON.stringify({ id: 50, title: '推荐动画榜', desc: '测试目录', stat: { collects: 100 } }), { status: 200 })
+        new Response(
+          JSON.stringify({
+            id: 50,
+            title: '推荐动画榜',
+            desc: '测试目录',
+            stat: { collects: 100 },
+          }),
+          { status: 200 },
+        ),
       );
     });
     vi.stubGlobal('fetch', mockFetch);
@@ -193,8 +207,8 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
             items: [{ id: 1, name: 'Anime Mon', name_cn: '周一动画', air_date: '2026-08-03' }],
           },
         ]),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -230,8 +244,24 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
       limit: 5,
       offset: 0,
       items: [
-        { id: 1, type: 'anime', name: 'Steins;Gate', nameCn: '命运石之门', summary: '', nsfw: false, locked: false },
-        { id: 2, type: 'anime', name: 'Steins;Gate 0', nameCn: '命运石之门0', summary: '', nsfw: false, locked: false },
+        {
+          id: 1,
+          type: 'anime',
+          name: 'Steins;Gate',
+          nameCn: '命运石之门',
+          summary: '',
+          nsfw: false,
+          locked: false,
+        },
+        {
+          id: 2,
+          type: 'anime',
+          name: 'Steins;Gate 0',
+          nameCn: '命运石之门0',
+          summary: '',
+          nsfw: false,
+          locked: false,
+        },
       ],
     });
 
@@ -256,9 +286,9 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
       { id: 20, name: 'Inori Minase', roleName: '声优' },
     ]);
 
-    const cast = await getSubjectCast(charService, 226998);
-    expect(cast.length).toBe(1);
-    expect(cast[0]?.character.name).toBe('Chito');
-    expect(cast[0]?.actors[0]?.name).toBe('Inori Minase');
+    const castRes = await getSubjectCast(charService, 226998);
+    expect(castRes.cast.length).toBe(1);
+    expect(castRes.cast[0]?.character.name).toBe('Chito');
+    expect(castRes.cast[0]?.persons[0]?.name).toBe('Inori Minase');
   });
 });

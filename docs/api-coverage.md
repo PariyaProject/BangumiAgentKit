@@ -27,6 +27,7 @@
 - **invalid JSON**: PASS (PARSER_ERROR)
 
 ### 操作分类统计 (56 Total)
+
 - **条目 (7)**: `searchSubjects`, `getSubjects`, `getSubjectById`, `getSubjectImageById`, `getRelatedPersonsBySubjectId`, `getRelatedCharactersBySubjectId`, `getRelatedSubjectsBySubjectId`
 - **章节 (2)**: `getEpisodes`, `getEpisodeById`
 - **角色 (7)**: `searchCharacters`, `getCharacterById`, `getCharacterImageById`, `getRelatedSubjectsByCharacterId`, `getRelatedPersonsByCharacterId`, `collectCharacterByCharacterIdAndUserId`, `uncollectCharacterByCharacterIdAndUserId`

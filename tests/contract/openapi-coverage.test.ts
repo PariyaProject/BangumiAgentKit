@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { OPERATION_REGISTRY, GeneratedBangumiOpenApiClient, CalendarClient } from '../../packages/bangumi-openapi/src/index.js';
+import {
+  OPERATION_REGISTRY,
+  GeneratedBangumiOpenApiClient,
+  CalendarClient,
+} from '../../packages/bangumi-openapi/src/index.js';
 
 describe('Phase 1: OpenAPI Coverage & Contract Test', () => {
   it('has exactly 56 registered operations in OPERATION_REGISTRY', () => {

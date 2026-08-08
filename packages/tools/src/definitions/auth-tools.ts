@@ -19,21 +19,25 @@ export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthSer
     name: 'bangumi.auth_start',
     description: '生成 Bangumi OAuth 账号绑定授权 URL。返回引导用户在浏览器中打开的认证链接。',
     input: z.object({
-      capabilities: z.array(z.string()).optional().describe('申请的能力/权限范围列表 (如 ["write:collection"])'),
+      capabilities: z
+        .array(z.string())
+        .optional()
+        .describe('申请的能力/权限范围列表 (如 ["write:collection"])'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
     execute: async (input, context) => {
-      const caps = input.capabilities && input.capabilities.length > 0
-        ? input.capabilities
-        : ['write:collection'];
+      const caps =
+        input.capabilities && input.capabilities.length > 0
+          ? input.capabilities
+          : ['write:collection'];
 
       const result = await oauthService.createAuthorizationUrl(
         context.principalId,
         context.botInstanceId,
         context.conversationId,
-        caps
+        caps,
       );
 
       return {

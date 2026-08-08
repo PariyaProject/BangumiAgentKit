@@ -27,985 +27,862 @@ export interface OperationMeta {
 }
 
 export const OPERATION_REGISTRY: Record<string, OperationMeta> = {
-  "searchSubjects": {
-    "operationId": "searchSubjects",
-    "tag": "条目",
-    "method": "POST",
-    "path": "/v0/search/subjects",
-    "pathParameters": [],
-    "queryParameters": [
+  searchSubjects: {
+    operationId: 'searchSubjects',
+    tag: '条目',
+    method: 'POST',
+    path: '/v0/search/subjects',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "requestBody": {
-      "required": false
+    requestBody: {
+      required: false,
     },
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "条目搜索"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '条目搜索',
   },
-  "searchCharacters": {
-    "operationId": "searchCharacters",
-    "tag": "角色",
-    "method": "POST",
-    "path": "/v0/search/characters",
-    "pathParameters": [],
-    "queryParameters": [
+  searchCharacters: {
+    operationId: 'searchCharacters',
+    tag: '角色',
+    method: 'POST',
+    path: '/v0/search/characters',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "requestBody": {
-      "required": false
+    requestBody: {
+      required: false,
     },
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "角色搜索"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '角色搜索',
   },
-  "searchPersons": {
-    "operationId": "searchPersons",
-    "tag": "人物",
-    "method": "POST",
-    "path": "/v0/search/persons",
-    "pathParameters": [],
-    "queryParameters": [
+  searchPersons: {
+    operationId: 'searchPersons',
+    tag: '人物',
+    method: 'POST',
+    path: '/v0/search/persons',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "requestBody": {
-      "required": false
+    requestBody: {
+      required: false,
     },
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "人物搜索"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '人物搜索',
   },
-  "getSubjects": {
-    "operationId": "getSubjects",
-    "tag": "条目",
-    "method": "GET",
-    "path": "/v0/subjects",
-    "pathParameters": [],
-    "queryParameters": [
+  getSubjects: {
+    operationId: 'getSubjects',
+    tag: '条目',
+    method: 'GET',
+    path: '/v0/subjects',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "type",
-        "required": true
+        name: 'type',
+        required: true,
       },
       {
-        "name": "cat",
-        "required": false
+        name: 'cat',
+        required: false,
       },
       {
-        "name": "series",
-        "required": false
+        name: 'series',
+        required: false,
       },
       {
-        "name": "platform",
-        "required": false
+        name: 'platform',
+        required: false,
       },
       {
-        "name": "sort",
-        "required": false
+        name: 'sort',
+        required: false,
       },
       {
-        "name": "year",
-        "required": false
+        name: 'year',
+        required: false,
       },
       {
-        "name": "month",
-        "required": false
+        name: 'month',
+        required: false,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "浏览条目"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: '浏览条目',
   },
-  "getSubjectById": {
-    "operationId": "getSubjectById",
-    "tag": "条目",
-    "method": "GET",
-    "path": "/v0/subjects/{subject_id}",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取条目"
+  getSubjectById: {
+    operationId: 'getSubjectById',
+    tag: '条目',
+    method: 'GET',
+    path: '/v0/subjects/{subject_id}',
+    pathParameters: ['subject_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: '获取条目',
   },
-  "getSubjectImageById": {
-    "operationId": "getSubjectImageById",
-    "tag": "条目",
-    "method": "GET",
-    "path": "/v0/subjects/{subject_id}/image",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "queryParameters": [
+  getSubjectImageById: {
+    operationId: 'getSubjectImageById',
+    tag: '条目',
+    method: 'GET',
+    path: '/v0/subjects/{subject_id}/image',
+    pathParameters: ['subject_id'],
+    queryParameters: [
       {
-        "name": "type",
-        "required": true
-      }
+        name: 'type',
+        required: true,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Subject Image"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Subject Image',
   },
-  "getRelatedPersonsBySubjectId": {
-    "operationId": "getRelatedPersonsBySubjectId",
-    "tag": "条目",
-    "method": "GET",
-    "path": "/v0/subjects/{subject_id}/persons",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Subject Persons"
+  getRelatedPersonsBySubjectId: {
+    operationId: 'getRelatedPersonsBySubjectId',
+    tag: '条目',
+    method: 'GET',
+    path: '/v0/subjects/{subject_id}/persons',
+    pathParameters: ['subject_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Subject Persons',
   },
-  "getRelatedCharactersBySubjectId": {
-    "operationId": "getRelatedCharactersBySubjectId",
-    "tag": "条目",
-    "method": "GET",
-    "path": "/v0/subjects/{subject_id}/characters",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Subject Characters"
+  getRelatedCharactersBySubjectId: {
+    operationId: 'getRelatedCharactersBySubjectId',
+    tag: '条目',
+    method: 'GET',
+    path: '/v0/subjects/{subject_id}/characters',
+    pathParameters: ['subject_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Subject Characters',
   },
-  "getRelatedSubjectsBySubjectId": {
-    "operationId": "getRelatedSubjectsBySubjectId",
-    "tag": "条目",
-    "method": "GET",
-    "path": "/v0/subjects/{subject_id}/subjects",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Subject Relations"
+  getRelatedSubjectsBySubjectId: {
+    operationId: 'getRelatedSubjectsBySubjectId',
+    tag: '条目',
+    method: 'GET',
+    path: '/v0/subjects/{subject_id}/subjects',
+    pathParameters: ['subject_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Subject Relations',
   },
-  "getEpisodes": {
-    "operationId": "getEpisodes",
-    "tag": "章节",
-    "method": "GET",
-    "path": "/v0/episodes",
-    "pathParameters": [],
-    "queryParameters": [
+  getEpisodes: {
+    operationId: 'getEpisodes',
+    tag: '章节',
+    method: 'GET',
+    path: '/v0/episodes',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "subject_id",
-        "required": true
+        name: 'subject_id',
+        required: true,
       },
       {
-        "name": "type",
-        "required": false
+        name: 'type',
+        required: false,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Episodes"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Episodes',
   },
-  "getEpisodeById": {
-    "operationId": "getEpisodeById",
-    "tag": "章节",
-    "method": "GET",
-    "path": "/v0/episodes/{episode_id}",
-    "pathParameters": [
-      "episode_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Episode"
+  getEpisodeById: {
+    operationId: 'getEpisodeById',
+    tag: '章节',
+    method: 'GET',
+    path: '/v0/episodes/{episode_id}',
+    pathParameters: ['episode_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Episode',
   },
-  "getCharacterById": {
-    "operationId": "getCharacterById",
-    "tag": "角色",
-    "method": "GET",
-    "path": "/v0/characters/{character_id}",
-    "pathParameters": [
-      "character_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Character Detail"
+  getCharacterById: {
+    operationId: 'getCharacterById',
+    tag: '角色',
+    method: 'GET',
+    path: '/v0/characters/{character_id}',
+    pathParameters: ['character_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Character Detail',
   },
-  "getCharacterImageById": {
-    "operationId": "getCharacterImageById",
-    "tag": "角色",
-    "method": "GET",
-    "path": "/v0/characters/{character_id}/image",
-    "pathParameters": [
-      "character_id"
-    ],
-    "queryParameters": [
+  getCharacterImageById: {
+    operationId: 'getCharacterImageById',
+    tag: '角色',
+    method: 'GET',
+    path: '/v0/characters/{character_id}/image',
+    pathParameters: ['character_id'],
+    queryParameters: [
       {
-        "name": "type",
-        "required": true
-      }
+        name: 'type',
+        required: true,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Character Image"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Character Image',
   },
-  "getRelatedSubjectsByCharacterId": {
-    "operationId": "getRelatedSubjectsByCharacterId",
-    "tag": "角色",
-    "method": "GET",
-    "path": "/v0/characters/{character_id}/subjects",
-    "pathParameters": [
-      "character_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "get character related subjects"
+  getRelatedSubjectsByCharacterId: {
+    operationId: 'getRelatedSubjectsByCharacterId',
+    tag: '角色',
+    method: 'GET',
+    path: '/v0/characters/{character_id}/subjects',
+    pathParameters: ['character_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'get character related subjects',
   },
-  "getRelatedPersonsByCharacterId": {
-    "operationId": "getRelatedPersonsByCharacterId",
-    "tag": "角色",
-    "method": "GET",
-    "path": "/v0/characters/{character_id}/persons",
-    "pathParameters": [
-      "character_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "get character related persons"
+  getRelatedPersonsByCharacterId: {
+    operationId: 'getRelatedPersonsByCharacterId',
+    tag: '角色',
+    method: 'GET',
+    path: '/v0/characters/{character_id}/persons',
+    pathParameters: ['character_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'get character related persons',
   },
-  "collectCharacterByCharacterIdAndUserId": {
-    "operationId": "collectCharacterByCharacterIdAndUserId",
-    "tag": "角色",
-    "method": "POST",
-    "path": "/v0/characters/{character_id}/collect",
-    "pathParameters": [
-      "character_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "Collect character for current user"
+  collectCharacterByCharacterIdAndUserId: {
+    operationId: 'collectCharacterByCharacterIdAndUserId',
+    tag: '角色',
+    method: 'POST',
+    path: '/v0/characters/{character_id}/collect',
+    pathParameters: ['character_id'],
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: 'Collect character for current user',
   },
-  "uncollectCharacterByCharacterIdAndUserId": {
-    "operationId": "uncollectCharacterByCharacterIdAndUserId",
-    "tag": "角色",
-    "method": "DELETE",
-    "path": "/v0/characters/{character_id}/collect",
-    "pathParameters": [
-      "character_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "destructive",
-    "summary": "Uncollect character for current user"
+  uncollectCharacterByCharacterIdAndUserId: {
+    operationId: 'uncollectCharacterByCharacterIdAndUserId',
+    tag: '角色',
+    method: 'DELETE',
+    path: '/v0/characters/{character_id}/collect',
+    pathParameters: ['character_id'],
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'destructive',
+    summary: 'Uncollect character for current user',
   },
-  "getPersonById": {
-    "operationId": "getPersonById",
-    "tag": "人物",
-    "method": "GET",
-    "path": "/v0/persons/{person_id}",
-    "pathParameters": [
-      "person_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Person"
+  getPersonById: {
+    operationId: 'getPersonById',
+    tag: '人物',
+    method: 'GET',
+    path: '/v0/persons/{person_id}',
+    pathParameters: ['person_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Person',
   },
-  "getPersonImageById": {
-    "operationId": "getPersonImageById",
-    "tag": "人物",
-    "method": "GET",
-    "path": "/v0/persons/{person_id}/image",
-    "pathParameters": [
-      "person_id"
-    ],
-    "queryParameters": [
+  getPersonImageById: {
+    operationId: 'getPersonImageById',
+    tag: '人物',
+    method: 'GET',
+    path: '/v0/persons/{person_id}/image',
+    pathParameters: ['person_id'],
+    queryParameters: [
       {
-        "name": "type",
-        "required": true
-      }
+        name: 'type',
+        required: true,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Person Image"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Person Image',
   },
-  "getRelatedSubjectsByPersonId": {
-    "operationId": "getRelatedSubjectsByPersonId",
-    "tag": "人物",
-    "method": "GET",
-    "path": "/v0/persons/{person_id}/subjects",
-    "pathParameters": [
-      "person_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "get person related subjects"
+  getRelatedSubjectsByPersonId: {
+    operationId: 'getRelatedSubjectsByPersonId',
+    tag: '人物',
+    method: 'GET',
+    path: '/v0/persons/{person_id}/subjects',
+    pathParameters: ['person_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'get person related subjects',
   },
-  "getRelatedCharactersByPersonId": {
-    "operationId": "getRelatedCharactersByPersonId",
-    "tag": "人物",
-    "method": "GET",
-    "path": "/v0/persons/{person_id}/characters",
-    "pathParameters": [
-      "person_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "get person related characters"
+  getRelatedCharactersByPersonId: {
+    operationId: 'getRelatedCharactersByPersonId',
+    tag: '人物',
+    method: 'GET',
+    path: '/v0/persons/{person_id}/characters',
+    pathParameters: ['person_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'get person related characters',
   },
-  "collectPersonByPersonIdAndUserId": {
-    "operationId": "collectPersonByPersonIdAndUserId",
-    "tag": "人物",
-    "method": "POST",
-    "path": "/v0/persons/{person_id}/collect",
-    "pathParameters": [
-      "person_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "Collect person for current user"
+  collectPersonByPersonIdAndUserId: {
+    operationId: 'collectPersonByPersonIdAndUserId',
+    tag: '人物',
+    method: 'POST',
+    path: '/v0/persons/{person_id}/collect',
+    pathParameters: ['person_id'],
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: 'Collect person for current user',
   },
-  "uncollectPersonByPersonIdAndUserId": {
-    "operationId": "uncollectPersonByPersonIdAndUserId",
-    "tag": "人物",
-    "method": "DELETE",
-    "path": "/v0/persons/{person_id}/collect",
-    "pathParameters": [
-      "person_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "destructive",
-    "summary": "Uncollect person for current user"
+  uncollectPersonByPersonIdAndUserId: {
+    operationId: 'uncollectPersonByPersonIdAndUserId',
+    tag: '人物',
+    method: 'DELETE',
+    path: '/v0/persons/{person_id}/collect',
+    pathParameters: ['person_id'],
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'destructive',
+    summary: 'Uncollect person for current user',
   },
-  "getUserByName": {
-    "operationId": "getUserByName",
-    "tag": "用户",
-    "method": "GET",
-    "path": "/v0/users/{username}",
-    "pathParameters": [
-      "username"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get User by name"
+  getUserByName: {
+    operationId: 'getUserByName',
+    tag: '用户',
+    method: 'GET',
+    path: '/v0/users/{username}',
+    pathParameters: ['username'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get User by name',
   },
-  "getUserAvatarByName": {
-    "operationId": "getUserAvatarByName",
-    "tag": "用户",
-    "method": "GET",
-    "path": "/v0/users/{username}/avatar",
-    "pathParameters": [
-      "username"
-    ],
-    "queryParameters": [
+  getUserAvatarByName: {
+    operationId: 'getUserAvatarByName',
+    tag: '用户',
+    method: 'GET',
+    path: '/v0/users/{username}/avatar',
+    pathParameters: ['username'],
+    queryParameters: [
       {
-        "name": "type",
-        "required": true
-      }
+        name: 'type',
+        required: true,
+      },
     ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get User Avatar by name"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get User Avatar by name',
   },
-  "getMyself": {
-    "operationId": "getMyself",
-    "tag": "用户",
-    "method": "GET",
-    "path": "/v0/me",
-    "pathParameters": [],
-    "auth": "required",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get User"
+  getMyself: {
+    operationId: 'getMyself',
+    tag: '用户',
+    method: 'GET',
+    path: '/v0/me',
+    pathParameters: [],
+    auth: 'required',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get User',
   },
-  "getUserCollectionsByUsername": {
-    "operationId": "getUserCollectionsByUsername",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/{username}/collections",
-    "pathParameters": [
-      "username"
-    ],
-    "queryParameters": [
+  getUserCollectionsByUsername: {
+    operationId: 'getUserCollectionsByUsername',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/{username}/collections',
+    pathParameters: ['username'],
+    queryParameters: [
       {
-        "name": "subject_type",
-        "required": false
+        name: 'subject_type',
+        required: false,
       },
       {
-        "name": "type",
-        "required": false
+        name: 'type',
+        required: false,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取用户收藏"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: '获取用户收藏',
   },
-  "getUserCollection": {
-    "operationId": "getUserCollection",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/{username}/collections/{subject_id}",
-    "pathParameters": [
-      "username",
-      "subject_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取用户单个条目收藏"
+  getUserCollection: {
+    operationId: 'getUserCollection',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/{username}/collections/{subject_id}',
+    pathParameters: ['username', 'subject_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: '获取用户单个条目收藏',
   },
-  "postUserCollection": {
-    "operationId": "postUserCollection",
-    "tag": "收藏",
-    "method": "POST",
-    "path": "/v0/users/-/collections/{subject_id}",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "requestBody": {
-      "required": false
+  postUserCollection: {
+    operationId: 'postUserCollection',
+    tag: '收藏',
+    method: 'POST',
+    path: '/v0/users/-/collections/{subject_id}',
+    pathParameters: ['subject_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "新增或修改用户单个条目收藏"
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: '新增或修改用户单个条目收藏',
   },
-  "patchUserCollection": {
-    "operationId": "patchUserCollection",
-    "tag": "收藏",
-    "method": "PATCH",
-    "path": "/v0/users/-/collections/{subject_id}",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "requestBody": {
-      "required": false
+  patchUserCollection: {
+    operationId: 'patchUserCollection',
+    tag: '收藏',
+    method: 'PATCH',
+    path: '/v0/users/-/collections/{subject_id}',
+    pathParameters: ['subject_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "修改用户单个收藏"
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: '修改用户单个收藏',
   },
-  "getUserSubjectEpisodeCollection": {
-    "operationId": "getUserSubjectEpisodeCollection",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/-/collections/{subject_id}/episodes",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "queryParameters": [
+  getUserSubjectEpisodeCollection: {
+    operationId: 'getUserSubjectEpisodeCollection',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/-/collections/{subject_id}/episodes',
+    pathParameters: ['subject_id'],
+    queryParameters: [
       {
-        "name": "offset",
-        "required": false
+        name: 'offset',
+        required: false,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "episode_type",
-        "required": false
-      }
+        name: 'episode_type',
+        required: false,
+      },
     ],
-    "auth": "required",
-    "scopes": [],
-    "risk": "read",
-    "summary": "章节收藏信息"
+    auth: 'required',
+    scopes: [],
+    risk: 'read',
+    summary: '章节收藏信息',
   },
-  "patchUserSubjectEpisodeCollection": {
-    "operationId": "patchUserSubjectEpisodeCollection",
-    "tag": "收藏",
-    "method": "PATCH",
-    "path": "/v0/users/-/collections/{subject_id}/episodes",
-    "pathParameters": [
-      "subject_id"
-    ],
-    "requestBody": {
-      "required": false
+  patchUserSubjectEpisodeCollection: {
+    operationId: 'patchUserSubjectEpisodeCollection',
+    tag: '收藏',
+    method: 'PATCH',
+    path: '/v0/users/-/collections/{subject_id}/episodes',
+    pathParameters: ['subject_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "章节收藏信息"
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: '章节收藏信息',
   },
-  "getUserEpisodeCollection": {
-    "operationId": "getUserEpisodeCollection",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/-/collections/-/episodes/{episode_id}",
-    "pathParameters": [
-      "episode_id"
-    ],
-    "auth": "required",
-    "scopes": [],
-    "risk": "read",
-    "summary": "章节收藏信息"
+  getUserEpisodeCollection: {
+    operationId: 'getUserEpisodeCollection',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/-/collections/-/episodes/{episode_id}',
+    pathParameters: ['episode_id'],
+    auth: 'required',
+    scopes: [],
+    risk: 'read',
+    summary: '章节收藏信息',
   },
-  "putUserEpisodeCollection": {
-    "operationId": "putUserEpisodeCollection",
-    "tag": "收藏",
-    "method": "PUT",
-    "path": "/v0/users/-/collections/-/episodes/{episode_id}",
-    "pathParameters": [
-      "episode_id"
-    ],
-    "requestBody": {
-      "required": false
+  putUserEpisodeCollection: {
+    operationId: 'putUserEpisodeCollection',
+    tag: '收藏',
+    method: 'PUT',
+    path: '/v0/users/-/collections/-/episodes/{episode_id}',
+    pathParameters: ['episode_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "更新章节收藏信息"
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: '更新章节收藏信息',
   },
-  "getUserCharacterCollections": {
-    "operationId": "getUserCharacterCollections",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/{username}/collections/-/characters",
-    "pathParameters": [
-      "username"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取用户角色收藏列表"
+  getUserCharacterCollections: {
+    operationId: 'getUserCharacterCollections',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/{username}/collections/-/characters',
+    pathParameters: ['username'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '获取用户角色收藏列表',
   },
-  "getUserCharacterCollection": {
-    "operationId": "getUserCharacterCollection",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/{username}/collections/-/characters/{character_id}",
-    "pathParameters": [
-      "username",
-      "character_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取用户单个角色收藏信息"
+  getUserCharacterCollection: {
+    operationId: 'getUserCharacterCollection',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/{username}/collections/-/characters/{character_id}',
+    pathParameters: ['username', 'character_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '获取用户单个角色收藏信息',
   },
-  "getUserPersonCollections": {
-    "operationId": "getUserPersonCollections",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/{username}/collections/-/persons",
-    "pathParameters": [
-      "username"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取用户人物收藏列表"
+  getUserPersonCollections: {
+    operationId: 'getUserPersonCollections',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/{username}/collections/-/persons',
+    pathParameters: ['username'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '获取用户人物收藏列表',
   },
-  "getUserPersonCollection": {
-    "operationId": "getUserPersonCollection",
-    "tag": "收藏",
-    "method": "GET",
-    "path": "/v0/users/{username}/collections/-/persons/{person_id}",
-    "pathParameters": [
-      "username",
-      "person_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取用户单个人物收藏信息"
+  getUserPersonCollection: {
+    operationId: 'getUserPersonCollection',
+    tag: '收藏',
+    method: 'GET',
+    path: '/v0/users/{username}/collections/-/persons/{person_id}',
+    pathParameters: ['username', 'person_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '获取用户单个人物收藏信息',
   },
-  "getPersonRevisions": {
-    "operationId": "getPersonRevisions",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/persons",
-    "pathParameters": [],
-    "queryParameters": [
+  getPersonRevisions: {
+    operationId: 'getPersonRevisions',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/persons',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "person_id",
-        "required": true
+        name: 'person_id',
+        required: true,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Person Revisions"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Person Revisions',
   },
-  "getPersonRevisionByRevisionId": {
-    "operationId": "getPersonRevisionByRevisionId",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/persons/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Person Revision"
+  getPersonRevisionByRevisionId: {
+    operationId: 'getPersonRevisionByRevisionId',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/persons/{revision_id}',
+    pathParameters: ['revision_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Person Revision',
   },
-  "getCharacterRevisions": {
-    "operationId": "getCharacterRevisions",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/characters",
-    "pathParameters": [],
-    "queryParameters": [
+  getCharacterRevisions: {
+    operationId: 'getCharacterRevisions',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/characters',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "character_id",
-        "required": true
+        name: 'character_id',
+        required: true,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Character Revisions"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Character Revisions',
   },
-  "getCharacterRevisionByRevisionId": {
-    "operationId": "getCharacterRevisionByRevisionId",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/characters/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Character Revision"
+  getCharacterRevisionByRevisionId: {
+    operationId: 'getCharacterRevisionByRevisionId',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/characters/{revision_id}',
+    pathParameters: ['revision_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Character Revision',
   },
-  "getSubjectRevisions": {
-    "operationId": "getSubjectRevisions",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/subjects",
-    "pathParameters": [],
-    "queryParameters": [
+  getSubjectRevisions: {
+    operationId: 'getSubjectRevisions',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/subjects',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "subject_id",
-        "required": true
+        name: 'subject_id',
+        required: true,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Subject Revisions"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Subject Revisions',
   },
-  "getSubjectRevisionByRevisionId": {
-    "operationId": "getSubjectRevisionByRevisionId",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/subjects/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Subject Revision"
+  getSubjectRevisionByRevisionId: {
+    operationId: 'getSubjectRevisionByRevisionId',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/subjects/{revision_id}',
+    pathParameters: ['revision_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Subject Revision',
   },
-  "getEpisodeRevisions": {
-    "operationId": "getEpisodeRevisions",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/episodes",
-    "pathParameters": [],
-    "queryParameters": [
+  getEpisodeRevisions: {
+    operationId: 'getEpisodeRevisions',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/episodes',
+    pathParameters: [],
+    queryParameters: [
       {
-        "name": "episode_id",
-        "required": true
+        name: 'episode_id',
+        required: true,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Episode Revisions"
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Episode Revisions',
   },
-  "getEpisodeRevisionByRevisionId": {
-    "operationId": "getEpisodeRevisionByRevisionId",
-    "tag": "编辑历史",
-    "method": "GET",
-    "path": "/v0/revisions/episodes/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Episode Revision"
+  getEpisodeRevisionByRevisionId: {
+    operationId: 'getEpisodeRevisionByRevisionId',
+    tag: '编辑历史',
+    method: 'GET',
+    path: '/v0/revisions/episodes/{revision_id}',
+    pathParameters: ['revision_id'],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Episode Revision',
   },
-  "newIndex": {
-    "operationId": "newIndex",
-    "tag": "目录",
-    "method": "POST",
-    "path": "/v0/indices",
-    "pathParameters": [],
-    "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
-    "risk": "write",
-    "summary": "Create a new index"
+  newIndex: {
+    operationId: 'newIndex',
+    tag: '目录',
+    method: 'POST',
+    path: '/v0/indices',
+    pathParameters: [],
+    auth: 'required',
+    scopes: ['write:indices'],
+    risk: 'write',
+    summary: 'Create a new index',
   },
-  "getIndexById": {
-    "operationId": "getIndexById",
-    "tag": "目录",
-    "method": "GET",
-    "path": "/v0/indices/{index_id}",
-    "pathParameters": [
-      "index_id"
-    ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Index By ID"
+  getIndexById: {
+    operationId: 'getIndexById',
+    tag: '目录',
+    method: 'GET',
+    path: '/v0/indices/{index_id}',
+    pathParameters: ['index_id'],
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Index By ID',
   },
-  "editIndexById": {
-    "operationId": "editIndexById",
-    "tag": "目录",
-    "method": "PUT",
-    "path": "/v0/indices/{index_id}",
-    "pathParameters": [
-      "index_id"
-    ],
-    "requestBody": {
-      "required": false
+  editIndexById: {
+    operationId: 'editIndexById',
+    tag: '目录',
+    method: 'PUT',
+    path: '/v0/indices/{index_id}',
+    pathParameters: ['index_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
-    "risk": "write",
-    "summary": "Edit index's information"
+    auth: 'required',
+    scopes: ['write:indices'],
+    risk: 'write',
+    summary: "Edit index's information",
   },
-  "getIndexSubjectsByIndexId": {
-    "operationId": "getIndexSubjectsByIndexId",
-    "tag": "目录",
-    "method": "GET",
-    "path": "/v0/indices/{index_id}/subjects",
-    "pathParameters": [
-      "index_id"
-    ],
-    "queryParameters": [
+  getIndexSubjectsByIndexId: {
+    operationId: 'getIndexSubjectsByIndexId',
+    tag: '目录',
+    method: 'GET',
+    path: '/v0/indices/{index_id}/subjects',
+    pathParameters: ['index_id'],
+    queryParameters: [
       {
-        "name": "type",
-        "required": false
+        name: 'type',
+        required: false,
       },
       {
-        "name": "limit",
-        "required": false
+        name: 'limit',
+        required: false,
       },
       {
-        "name": "offset",
-        "required": false
-      }
+        name: 'offset',
+        required: false,
+      },
     ],
-    "auth": "optional",
-    "scopes": [],
-    "risk": "read",
-    "summary": "Get Index Subjects"
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    summary: 'Get Index Subjects',
   },
-  "addSubjectToIndexByIndexId": {
-    "operationId": "addSubjectToIndexByIndexId",
-    "tag": "目录",
-    "method": "POST",
-    "path": "/v0/indices/{index_id}/subjects",
-    "pathParameters": [
-      "index_id"
-    ],
-    "requestBody": {
-      "required": false
+  addSubjectToIndexByIndexId: {
+    operationId: 'addSubjectToIndexByIndexId',
+    tag: '目录',
+    method: 'POST',
+    path: '/v0/indices/{index_id}/subjects',
+    pathParameters: ['index_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
-    "risk": "write",
-    "summary": "Add a subject to Index"
+    auth: 'required',
+    scopes: ['write:indices'],
+    risk: 'write',
+    summary: 'Add a subject to Index',
   },
-  "editIndexSubjectsByIndexIdAndSubjectID": {
-    "operationId": "editIndexSubjectsByIndexIdAndSubjectID",
-    "tag": "目录",
-    "method": "PUT",
-    "path": "/v0/indices/{index_id}/subjects/{subject_id}",
-    "pathParameters": [
-      "index_id",
-      "subject_id"
-    ],
-    "requestBody": {
-      "required": false
+  editIndexSubjectsByIndexIdAndSubjectID: {
+    operationId: 'editIndexSubjectsByIndexIdAndSubjectID',
+    tag: '目录',
+    method: 'PUT',
+    path: '/v0/indices/{index_id}/subjects/{subject_id}',
+    pathParameters: ['index_id', 'subject_id'],
+    requestBody: {
+      required: false,
     },
-    "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
-    "risk": "write",
-    "summary": "Edit subject information in a index"
+    auth: 'required',
+    scopes: ['write:indices'],
+    risk: 'write',
+    summary: 'Edit subject information in a index',
   },
-  "delelteSubjectFromIndexByIndexIdAndSubjectID": {
-    "operationId": "delelteSubjectFromIndexByIndexIdAndSubjectID",
-    "tag": "目录",
-    "method": "DELETE",
-    "path": "/v0/indices/{index_id}/subjects/{subject_id}",
-    "pathParameters": [
-      "index_id",
-      "subject_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
-    "risk": "destructive",
-    "summary": "Delete a subject from a Index"
+  delelteSubjectFromIndexByIndexIdAndSubjectID: {
+    operationId: 'delelteSubjectFromIndexByIndexIdAndSubjectID',
+    tag: '目录',
+    method: 'DELETE',
+    path: '/v0/indices/{index_id}/subjects/{subject_id}',
+    pathParameters: ['index_id', 'subject_id'],
+    auth: 'required',
+    scopes: ['write:indices'],
+    risk: 'destructive',
+    summary: 'Delete a subject from a Index',
   },
-  "collectIndexByIndexIdAndUserId": {
-    "operationId": "collectIndexByIndexIdAndUserId",
-    "tag": "目录",
-    "method": "POST",
-    "path": "/v0/indices/{index_id}/collect",
-    "pathParameters": [
-      "index_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "write",
-    "summary": "Collect index for current user"
+  collectIndexByIndexIdAndUserId: {
+    operationId: 'collectIndexByIndexIdAndUserId',
+    tag: '目录',
+    method: 'POST',
+    path: '/v0/indices/{index_id}/collect',
+    pathParameters: ['index_id'],
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'write',
+    summary: 'Collect index for current user',
   },
-  "uncollectIndexByIndexIdAndUserId": {
-    "operationId": "uncollectIndexByIndexIdAndUserId",
-    "tag": "目录",
-    "method": "DELETE",
-    "path": "/v0/indices/{index_id}/collect",
-    "pathParameters": [
-      "index_id"
-    ],
-    "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
-    "risk": "destructive",
-    "summary": "Uncollect index for current user"
+  uncollectIndexByIndexIdAndUserId: {
+    operationId: 'uncollectIndexByIndexIdAndUserId',
+    tag: '目录',
+    method: 'DELETE',
+    path: '/v0/indices/{index_id}/collect',
+    pathParameters: ['index_id'],
+    auth: 'required',
+    scopes: ['write:collection'],
+    risk: 'destructive',
+    summary: 'Uncollect index for current user',
   },
-  "getCalendar": {
-    "operationId": "getCalendar",
-    "tag": "每日放送",
-    "method": "GET",
-    "path": "/calendar",
-    "pathParameters": [],
-    "auth": "none",
-    "scopes": [],
-    "risk": "read",
-    "summary": "获取每日放送动画列表"
-  }
+  getCalendar: {
+    operationId: 'getCalendar',
+    tag: '每日放送',
+    method: 'GET',
+    path: '/calendar',
+    pathParameters: [],
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    summary: '获取每日放送动画列表',
+  },
 };

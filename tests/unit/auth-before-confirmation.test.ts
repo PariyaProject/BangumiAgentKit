@@ -18,8 +18,8 @@ describe('E. Auth-Before-Confirmation Test', () => {
       registry.executeTool(
         'bangumi.manage_character_collection',
         { characterId: 101, action: 'uncollect' },
-        { principalId: unboundPrincipalId, botInstanceId: 'bot-1', conversationId: 'conv-1' }
-      )
+        { principalId: unboundPrincipalId, botInstanceId: 'bot-1', conversationId: 'conv-1' },
+      ),
     ).rejects.toThrow('AUTH_REQUIRED');
 
     // Verify 0 PendingAction records were created in storage

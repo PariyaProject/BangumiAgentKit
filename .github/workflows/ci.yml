@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -57,6 +57,9 @@ jobs:
 
       - name: Run contract tests
         run: pnpm test:contract
+
+      - name: Run semantic tests
+        run: pnpm test:semantic
 
       - name: Run integration tests
         run: pnpm test:integration

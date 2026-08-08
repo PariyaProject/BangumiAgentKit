@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { QqOfficialAdapter, QqPrivacyPolicyManager } from '../../packages/platform-qq-official/src/index.js';
+import {
+  QqOfficialAdapter,
+  QqPrivacyPolicyManager,
+} from '../../packages/platform-qq-official/src/index.js';
 import { InboundMessage } from '../../packages/platform-core/src/index.js';
 
 describe('Phase 8: QQ Official Adapter & Group Privacy Policy Tests', () => {
@@ -45,7 +48,7 @@ describe('Phase 8: QQ Official Adapter & Group Privacy Policy Tests', () => {
 
     const sanitized = QqPrivacyPolicyManager.sanitizeOutboundMessage(
       { id: 'group_100', type: 'group' },
-      groupMessage
+      groupMessage,
     );
 
     expect(sanitized.text).not.toContain('/oauth/authorize');
@@ -59,7 +62,7 @@ describe('Phase 8: QQ Official Adapter & Group Privacy Policy Tests', () => {
 
     const sanitized = QqPrivacyPolicyManager.sanitizeOutboundMessage(
       { id: 'group_100', type: 'group' },
-      groupMessage
+      groupMessage,
     );
 
     expect(sanitized.text).toContain('Bearer ***');

@@ -10,7 +10,7 @@ export interface UserCollectionItem {
   subjectId: number;
   subjectName?: string;
   subjectNameCn?: string;
-  status: 'wish' | 'doing' | 'done' | 'on_hold' | 'dropped';
+  status: 'wish' | 'doing' | 'done' | 'on_hold' | 'dropped' | 'unknown';
   rating?: number;
   comment?: string;
   tags?: string[];

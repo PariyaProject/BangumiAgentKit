@@ -9,7 +9,16 @@ async function runMigrations() {
     process.exit(1);
   }
 
-  const migrationPath = path.join(__dirname, '..', 'packages', 'db', 'src', 'drizzle', 'migrations', '0000_initial.sql');
+  const migrationPath = path.join(
+    __dirname,
+    '..',
+    'packages',
+    'db',
+    'src',
+    'drizzle',
+    'migrations',
+    '0000_initial.sql',
+  );
   if (!fs.existsSync(migrationPath)) {
     console.error(`ERROR: Migration file not found at ${migrationPath}`);
     process.exit(1);

@@ -2,7 +2,12 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { ToolRegistry, ToolContext, RuntimeDependencies, createRuntimeDependencies } from '@bangumi-agent-kit/tools';
+import {
+  ToolRegistry,
+  ToolContext,
+  RuntimeDependencies,
+  createRuntimeDependencies,
+} from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
 
@@ -70,7 +75,7 @@ export class BangumiMcpServer {
         capabilities: {
           tools: {},
         },
-      }
+      },
     );
 
     this.setupHandlers();
@@ -113,7 +118,8 @@ export class BangumiMcpServer {
       const rawArgs = (args || {}) as Record<string, unknown>;
 
       const resolvedContext = await this.identityProvider.resolveContext(request);
-      const confirmationId = (rawArgs._confirmationId as string) || (rawArgs.confirmationId as string) || undefined;
+      const confirmationId =
+        (rawArgs._confirmationId as string) || (rawArgs.confirmationId as string) || undefined;
 
       const context: ToolContext = {
         ...resolvedContext,
@@ -160,4 +166,3 @@ export class BangumiMcpServer {
     });
   }
 }
-

@@ -85,13 +85,7 @@ export interface ConversationContextRecord {
 }
 
 export type PendingActionStatus =
-  | 'pending'
-  | 'executing'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
-  | 'expired'
-  | 'unknown';
+  'pending' | 'executing' | 'succeeded' | 'failed' | 'cancelled' | 'expired' | 'unknown';
 
 export interface PendingActionRecord {
   id: string;

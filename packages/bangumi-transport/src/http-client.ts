@@ -34,7 +34,8 @@ export class HttpClient {
   constructor(config: HttpClientConfig = {}) {
     this.baseUrl = config.baseUrl || 'https://api.bgm.tv';
     this.userAgent =
-      config.userAgent || 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)';
+      config.userAgent ||
+      'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)';
     this.accessToken = config.accessToken;
     this.timeoutMs = config.timeoutMs ?? 10000;
     this.cache = config.cache || new MemoryCache();
@@ -47,7 +48,12 @@ export class HttpClient {
 
     // Check Cache
     let cacheKey: string | undefined;
-    if (isReadOnly && options.cacheContext && options.cacheTtlSeconds && options.cacheTtlSeconds > 0) {
+    if (
+      isReadOnly &&
+      options.cacheContext &&
+      options.cacheTtlSeconds &&
+      options.cacheTtlSeconds > 0
+    ) {
       cacheKey = buildCacheKey(options.cacheContext);
       const cached = this.cache.get<T>(cacheKey);
       if (cached !== undefined) {
@@ -102,9 +108,17 @@ export class HttpClient {
       } catch (err: unknown) {
         clearTimeout(timer);
         if (err instanceof Error && err.name === 'AbortError') {
-          throw new BangumiError('NETWORK_ERROR', `Request timed out after ${this.timeoutMs}ms`, true);
+          throw new BangumiError(
+            'NETWORK_ERROR',
+            `Request timed out after ${this.timeoutMs}ms`,
+            true,
+          );
         }
-        throw new BangumiError('NETWORK_ERROR', err instanceof Error ? err.message : 'Network failure', true);
+        throw new BangumiError(
+          'NETWORK_ERROR',
+          err instanceof Error ? err.message : 'Network failure',
+          true,
+        );
       } finally {
         clearTimeout(timer);
       }
@@ -133,7 +147,13 @@ export class HttpClient {
           case 400:
             throw new BangumiError('VALIDATION_ERROR', errorMsg, false, 400);
           case 401:
-            throw new BangumiError('AUTH_REQUIRED', errorMsg, false, 401, '调用 bangumi.auth_start');
+            throw new BangumiError(
+              'AUTH_REQUIRED',
+              errorMsg,
+              false,
+              401,
+              '调用 bangumi.auth_start',
+            );
           case 403:
             throw new BangumiError('PERMISSION_DENIED', errorMsg, false, 403);
           case 404:
@@ -171,7 +191,12 @@ export class HttpClient {
         if (contentType.includes('image') || response.status === 302) {
           return { location: response.url || response.headers.get('location') || '' } as T;
         }
-        throw new BangumiError('PARSER_ERROR', `Invalid JSON response: ${dataText.slice(0, 100)}`, false, response.status);
+        throw new BangumiError(
+          'PARSER_ERROR',
+          `Invalid JSON response: ${dataText.slice(0, 100)}`,
+          false,
+          response.status,
+        );
       }
     };
 

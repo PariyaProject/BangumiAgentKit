@@ -37,7 +37,9 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
     expect(subjectSchema.type).toBe('object');
     expect(subjectSchema.properties.subjectId).toBeDefined();
     expect(['integer', 'number']).toContain(subjectSchema.properties.subjectId.type);
-    const subjectMin = subjectSchema.properties.subjectId.minimum ?? subjectSchema.properties.subjectId.exclusiveMinimum;
+    const subjectMin =
+      subjectSchema.properties.subjectId.minimum ??
+      subjectSchema.properties.subjectId.exclusiveMinimum;
     expect(subjectMin).toBeGreaterThanOrEqual(0);
     expect(subjectSchema.required).toContain('subjectId');
 

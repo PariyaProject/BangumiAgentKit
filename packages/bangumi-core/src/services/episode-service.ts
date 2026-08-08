@@ -1,83 +1,169 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { GeneratedBangumiOpenApiClient, Episode } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainEpisode, DomainEpisodeCategory } from '../models/episode.js';
 
-function mapEpisodeCategory(typeNum: number): DomainEpisodeCategory {
+export function mapEpisodeCategory(typeNum: number): DomainEpisodeCategory {
   switch (typeNum) {
-    case 0: return 'main';
-    case 1: return 'sp';
-    case 2: return 'op';
-    case 3: return 'ed';
-    default: return 'other';
+    case 0:
+      return 'main';
+    case 1:
+      return 'sp';
+    case 2:
+      return 'op';
+    case 3:
+      return 'ed';
+    default:
+      return 'other';
   }
 }
 
-function mapEpisode(raw: any, subjectId?: number): DomainEpisode {
+export function mapEpisode(raw: Episode | any, subjectId?: number): DomainEpisode {
   return {
     id: raw.id,
-    subjectId,
+    subjectId: subjectId ?? raw.subject_id,
     category: mapEpisodeCategory(raw.type ?? 0),
     rawType: raw.type ?? 0,
     name: raw.name || '',
     nameCn: raw.name_cn || raw.name || '',
     sort: raw.sort || 0,
     ep: raw.ep ?? raw.sort,
-    airdate: raw.airdate,
-    comment: raw.comment,
-    duration: raw.duration,
-    desc: raw.desc,
-    disc: raw.disc,
+    airdate: raw.airdate || undefined,
+    comment: raw.comment ?? undefined,
+    duration: raw.duration || undefined,
+    desc: raw.desc || undefined,
+    disc: raw.disc ?? undefined,
   };
 }
 
 export class EpisodeService {
-  constructor(private client: HttpClient) {}
+  private api: GeneratedBangumiOpenApiClient;
 
-  async getEpisodes(subjectId: number, options: { type?: number; limit?: number; offset?: number } = {}): Promise<DomainEpisode[]> {
-    const query: Record<string, unknown> = {
-      subject_id: subjectId,
-      limit: options.limit ?? 100,
-      offset: options.offset ?? 0,
-    };
-    if (options.type !== undefined) {
-      query.type = options.type;
+  constructor(client: GeneratedBangumiOpenApiClient | HttpClient) {
+    if (client instanceof GeneratedBangumiOpenApiClient) {
+      this.api = client;
+    } else {
+      this.api = new GeneratedBangumiOpenApiClient(client);
     }
+  }
 
-    const raw = await this.client.request<any>({
-      method: 'GET',
-      path: '/v0/episodes',
-      query,
-      cacheContext: {
-        operationId: 'getEpisodes',
-        pathParams: { subjectId },
-        queryParams: query,
-      },
-      cacheTtlSeconds: 300,
+  async getEpisodes(
+    subjectId: number,
+    options: { type?: number; limit?: number; offset?: number } = {},
+  ): Promise<{ total: number; limit: number; offset: number; items: DomainEpisode[] }> {
+    const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
+
+    const res = await this.api.getEpisodes({
+      subject_id: subjectId,
+      type: options.type as any,
+      limit,
+      offset,
     });
 
-    const items = raw.data || raw || [];
-    return (Array.isArray(items) ? items : []).map((item) => mapEpisode(item, subjectId));
+    const data = res.data || [];
+    return {
+      total: res.total || 0,
+      limit: res.limit || limit,
+      offset: res.offset || offset,
+      items: data.map((item) => mapEpisode(item, subjectId)),
+    };
   }
 
   async getEpisodeById(episodeId: number): Promise<DomainEpisode> {
-    const raw = await this.client.request<any>({
-      method: 'GET',
-      path: `/v0/episodes/${episodeId}`,
-      cacheContext: {
-        operationId: 'getEpisodeById',
-        pathParams: { episodeId },
-      },
-      cacheTtlSeconds: 300,
-    });
-
+    const raw = await this.api.getEpisodeById(episodeId);
     return mapEpisode(raw);
   }
 
   /**
-   * Helper method to filter main正篇 episodes up to specified episode number
+   * Fetch all episodes for a subject with automatic pagination (limit 100 per page, hard cap 5000).
    */
-  filterMainEpisodesUpTo(episodes: DomainEpisode[], targetEp: number): DomainEpisode[] {
+  async getAllEpisodesForSubject(subjectId: number): Promise<DomainEpisode[]> {
+    const allEpisodes: DomainEpisode[] = [];
+    const pageSize = 100;
+    const hardCap = 5000;
+    let offset = 0;
+
+    while (allEpisodes.length < hardCap) {
+      const res = await this.getEpisodes(subjectId, { limit: pageSize, offset });
+      if (!res.items || res.items.length === 0) {
+        break;
+      }
+      allEpisodes.push(...res.items);
+      if (res.items.length < pageSize || allEpisodes.length >= (res.total || 0)) {
+        break;
+      }
+      offset += pageSize;
+    }
+
+    return allEpisodes;
+  }
+
+  /**
+   * Helper method to filter main (or specified category) episodes up to target episode number.
+   * Prioritizes ep field over sort.
+   */
+  filterMainEpisodesUpTo(
+    episodes: DomainEpisode[],
+    targetEp: number,
+    category: DomainEpisodeCategory = 'main',
+  ): DomainEpisode[] {
     return episodes
-      .filter((ep) => ep.category === 'main' && (ep.sort <= targetEp || (ep.ep !== undefined && ep.ep <= targetEp)))
-      .sort((a, b) => a.sort - b.sort);
+      .filter((ep) => {
+        if (ep.category !== category) return false;
+        const epNum = ep.ep !== undefined && ep.ep !== 0 ? ep.ep : ep.sort;
+        return epNum <= targetEp;
+      })
+      .sort((a, b) => {
+        const aNum = a.ep !== undefined && a.ep !== 0 ? a.ep : a.sort;
+        const bNum = b.ep !== undefined && b.ep !== 0 ? b.ep : b.sort;
+        return aNum - bNum;
+      });
+  }
+
+  /**
+   * Resolve "through episode N" progress targets into concrete episode IDs with validation warnings.
+   */
+  async resolveThroughEpisodes(
+    subjectId: number,
+    targetEpisodeNumber: number,
+    category: DomainEpisodeCategory = 'main',
+  ): Promise<{
+    episodes: DomainEpisode[];
+    resolvedEpisodeIds: number[];
+    resolvedEpisodeNumbers: number[];
+    count: number;
+    warning?: string;
+  }> {
+    const allEpisodes = await this.getAllEpisodesForSubject(subjectId);
+    const filtered = this.filterMainEpisodesUpTo(allEpisodes, targetEpisodeNumber, category);
+
+    const hasExactTarget = filtered.some((ep) => {
+      const epNum = ep.ep !== undefined && ep.ep !== 0 ? ep.ep : ep.sort;
+      return epNum === targetEpisodeNumber;
+    });
+
+    let warning: string | undefined;
+    if (!hasExactTarget) {
+      const latestMatching = filtered[filtered.length - 1];
+      const latestNum = latestMatching
+        ? latestMatching.ep !== undefined && latestMatching.ep !== 0
+          ? latestMatching.ep
+          : latestMatching.sort
+        : 0;
+      warning = `target episode ${targetEpisodeNumber} was not found; updated through latest matching episode ${latestNum}`;
+    }
+
+    const resolvedEpisodeIds = filtered.map((e) => e.id);
+    const resolvedEpisodeNumbers = filtered.map((e) =>
+      e.ep !== undefined && e.ep !== 0 ? e.ep : e.sort,
+    );
+
+    return {
+      episodes: filtered,
+      resolvedEpisodeIds,
+      resolvedEpisodeNumbers,
+      count: filtered.length,
+      warning,
+    };
   }
 }

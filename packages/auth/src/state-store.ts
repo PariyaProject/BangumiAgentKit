@@ -15,7 +15,9 @@ export interface GenerateStateOptions {
 export class OAuthStateStore {
   constructor(private storage: Storage) {}
 
-  async generateState(options: GenerateStateOptions): Promise<{ state: string; session: OAuthSessionRecord }> {
+  async generateState(
+    options: GenerateStateOptions,
+  ): Promise<{ state: string; session: OAuthSessionRecord }> {
     const state = crypto.randomBytes(24).toString('hex');
     const stateHash = hashState(state);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes

@@ -4,7 +4,11 @@ import { renderHtmlTemplate } from './template-engine.js';
 import { BrowserPool } from './browser-pool.js';
 import { MemoryCache } from '@bangumi-agent-kit/bangumi-transport';
 
-export function computeRenderCacheKey(viewModel: RenderViewModel, theme = 'dark', width = 960): string {
+export function computeRenderCacheKey(
+  viewModel: RenderViewModel,
+  theme = 'dark',
+  width = 960,
+): string {
   const payload = JSON.stringify(viewModel);
   const rawKey = `${viewModel.template}:${viewModel.version}:${theme}:${width}:${payload}`;
   return crypto.createHash('sha256').update(rawKey).digest('hex');

@@ -10,14 +10,15 @@ export interface OAuthTokenResponse {
 }
 
 export class BangumiOAuthClient {
-  private userAgent = 'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)';
+  private userAgent =
+    'Kurarion/BangumiAgentKit/0.1.0 (https://github.com/PariyaProject/BangumiAgentKit)';
 
   async exchangeAuthorizationCode(
     code: string,
     clientId: string,
     clientSecret: string,
     redirectUri: string,
-    tokenUrl = 'https://bgm.tv/oauth/access_token'
+    tokenUrl = 'https://bgm.tv/oauth/access_token',
   ): Promise<OAuthTokenResponse> {
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -42,7 +43,7 @@ export class BangumiOAuthClient {
         `OAuth token exchange failed with status ${res.status}`,
         false,
         res.status,
-        '重新尝试绑定授权'
+        '重新尝试绑定授权',
       );
     }
 
@@ -58,7 +59,7 @@ export class BangumiOAuthClient {
         'OAuth token exchange returned invalid JSON payload',
         false,
         500,
-        '重新尝试绑定授权'
+        '重新尝试绑定授权',
       );
     }
   }
@@ -68,7 +69,7 @@ export class BangumiOAuthClient {
     clientId: string,
     clientSecret: string,
     redirectUri: string,
-    tokenUrl = 'https://bgm.tv/oauth/access_token'
+    tokenUrl = 'https://bgm.tv/oauth/access_token',
   ): Promise<OAuthTokenResponse> {
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -93,7 +94,7 @@ export class BangumiOAuthClient {
         `OAuth token refresh rejected with status ${res.status}`,
         false,
         401,
-        '调用 bangumi.auth_start'
+        '调用 bangumi.auth_start',
       );
     }
 
@@ -109,7 +110,7 @@ export class BangumiOAuthClient {
         'OAuth token refresh returned invalid JSON payload',
         false,
         401,
-        '调用 bangumi.auth_start'
+        '调用 bangumi.auth_start',
       );
     }
   }

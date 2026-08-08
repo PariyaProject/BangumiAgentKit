@@ -11,9 +11,9 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
 
   it('ToolRegistry exposes curated tools by default and full tools when configured', () => {
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry(httpClient);
+    const registry = new ToolRegistry({ publicHttpClient: httpClient });
 
-    const curatedTools = registry.getTools('curated');
+    const curatedTools = registry.getTools();
     expect(curatedTools.length).toBeGreaterThanOrEqual(15);
     const toolNames = curatedTools.map((t) => t.name);
     expect(toolNames).toContain('bangumi.search_subjects');
@@ -33,22 +33,22 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
           offset: 0,
           data: [{ id: 226998, name: '少女終末旅行', name_cn: '少女终末旅行', type: 2 }],
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry(httpClient);
+    const registry = new ToolRegistry({ publicHttpClient: httpClient });
 
     const result = (await registry.executeTool(
       'bangumi.search_subjects',
       { query: '少女终末旅行' },
-      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' }
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
     )) as any;
 
     expect(result.status).toBe('exact');
-    expect(result.subject?.id).toBe(226998);
+    expect(result.exact?.id).toBe(226998);
   });
 
   it('executes bangumi.get_calendar tool successfully', async () => {
@@ -60,18 +60,18 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
             items: [{ id: 1, name: 'Monday Anime' }],
           },
         ]),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry(httpClient);
+    const registry = new ToolRegistry({ publicHttpClient: httpClient });
 
     const result = (await registry.executeTool(
       'bangumi.get_calendar',
       {},
-      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' }
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
     )) as any[];
 
     expect(result.length).toBe(1);
@@ -80,12 +80,12 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
 
   it('executes bangumi.list_operations and bangumi.describe_operation fallback tools', async () => {
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry(httpClient);
+    const registry = new ToolRegistry({ publicHttpClient: httpClient });
 
     const listRes = (await registry.executeTool(
       'bangumi.list_operations',
       { tag: '条目' },
-      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' }
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
     )) as any;
 
     expect(listRes.total).toBeGreaterThan(0);
@@ -94,7 +94,7 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     const descRes = (await registry.executeTool(
       'bangumi.describe_operation',
       { operationId: 'getSubjectById' },
-      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' }
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
     )) as any;
 
     expect(descRes.operationId).toBe('getSubjectById');

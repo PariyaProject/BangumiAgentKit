@@ -8,7 +8,9 @@ const TARGET_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml')
 async function syncOpenApi() {
   const args = process.argv.slice(2);
   const isFetch = args.includes('--fetch');
-  console.log(`[sync-openapi] Target path: ${TARGET_PATH} (mode: ${isFetch ? 'fetch' : 'validate'})`);
+  console.log(
+    `[sync-openapi] Target path: ${TARGET_PATH} (mode: ${isFetch ? 'fetch' : 'validate'})`,
+  );
 
   let content: string;
 

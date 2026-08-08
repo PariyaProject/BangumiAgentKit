@@ -5,21 +5,33 @@ import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiClientProvider, TokenBroker } from '@bangumi-agent-kit/auth';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 
-export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
+export function createRawOperationTools(
+  clientProviderOrHttpClient?: BangumiClientProvider | HttpClient,
+) {
   let provider: BangumiClientProvider;
 
-  if (clientProviderOrHttpClient && typeof (clientProviderOrHttpClient as any).requireAuthenticatedClient === 'function') {
+  if (
+    clientProviderOrHttpClient &&
+    typeof (clientProviderOrHttpClient as any).requireAuthenticatedClient === 'function'
+  ) {
     provider = clientProviderOrHttpClient as BangumiClientProvider;
   } else {
-    const http = (clientProviderOrHttpClient && typeof (clientProviderOrHttpClient as any).request === 'function')
-      ? (clientProviderOrHttpClient as HttpClient)
-      : new HttpClient();
-    provider = new TokenBroker(new MemoryStorage(), { secretKey: 'test-secret-key-123456789' }, http);
+    const http =
+      clientProviderOrHttpClient &&
+      typeof (clientProviderOrHttpClient as any).request === 'function'
+        ? (clientProviderOrHttpClient as HttpClient)
+        : new HttpClient();
+    provider = new TokenBroker(
+      new MemoryStorage(),
+      { secretKey: 'test-secret-key-123456789' },
+      http,
+    );
   }
 
   const listOperations = defineTool({
     name: 'bangumi.list_operations',
-    description: '列出 Bangumi API 支持的所有底层 Operation ID 以及对应的 tag、HTTP Method 和 Risk 级别。用于保底查找工具。',
+    description:
+      '列出 Bangumi API 支持的所有底层 Operation ID 以及对应的 tag、HTTP Method 和 Risk 级别。用于保底查找工具。',
     input: z.object({
       tag: z.string().optional().describe('按标签过滤 (如 "条目", "收藏", "章节")'),
     }),
@@ -57,7 +69,9 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
     execute: async (input) => {
       const meta = OPERATION_REGISTRY[input.operationId];
       if (!meta) {
-        throw new Error(`Unknown operationId: ${input.operationId}. Use bangumi.list_operations to see available IDs.`);
+        throw new Error(
+          `Unknown operationId: ${input.operationId}. Use bangumi.list_operations to see available IDs.`,
+        );
       }
       return meta;
     },
@@ -65,10 +79,14 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
 
   const callOperation = defineTool({
     name: 'bangumi.call_operation',
-    description: '通过官方 Operation ID 直接执行底层 Bangumi API 请求。只能调用白名单允许的 Operation ID。',
+    description:
+      '通过官方 Operation ID 直接执行底层 Bangumi API 请求。只能调用白名单允许的 Operation ID。',
     input: z.object({
       operationId: z.string().describe('白名单 Operation ID'),
-      pathParams: z.record(z.string(), z.union([z.string(), z.number()])).optional().describe('Path 参数'),
+      pathParams: z
+        .record(z.string(), z.union([z.string(), z.number()]))
+        .optional()
+        .describe('Path 参数'),
       queryParams: z.record(z.string(), z.unknown()).optional().describe('Query 参数'),
       body: z.unknown().optional().describe('Request Body 参数'),
     }),
@@ -88,7 +106,7 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
           `当前系统配置禁止使用 bangumi.call_operation 执行写/破坏性操作 (${input.operationId})。请改用高层语义 Tool。`,
           false,
           403,
-          '使用高层语义 Tool 或在环境变量中开启 BANGUMI_ALLOW_RAW_WRITES=true'
+          '使用高层语义 Tool 或在环境变量中开启 BANGUMI_ALLOW_RAW_WRITES=true',
         );
       }
 
@@ -103,17 +121,23 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
     execute: async (input, context, deps?: Record<string, unknown>) => {
       const meta = OPERATION_REGISTRY[input.operationId];
       if (!meta) {
-        throw new Error(`Operation "${input.operationId}" is not allowed or does not exist in registry.`);
+        throw new Error(
+          `Operation "${input.operationId}" is not allowed or does not exist in registry.`,
+        );
       }
 
-      const activeProvider: BangumiClientProvider = (deps?.clientProvider as BangumiClientProvider) || provider;
+      const activeProvider: BangumiClientProvider =
+        (deps?.clientProvider as BangumiClientProvider) || provider;
 
       let client;
       const session = (deps as any)?.executionSession;
       if (session?.client) {
         client = session.client;
       } else if (meta.auth === 'required') {
-        const authed = await activeProvider.requireAuthenticatedClient(context.principalId, meta.scopes || []);
+        const authed = await activeProvider.requireAuthenticatedClient(
+          context.principalId,
+          meta.scopes || [],
+        );
         client = authed.client;
       } else if (meta.auth === 'optional') {
         client = await activeProvider.getOptionalAuthenticatedClient(context.principalId);
@@ -127,7 +151,9 @@ export function createRawOperationTools(clientProviderOrHttpClient?: BangumiClie
       for (const paramName of meta.pathParameters) {
         const val = pathParamsMap[paramName];
         if (val === undefined || val === null || val === '') {
-          throw new Error(`MISSING_PATH_PARAMETER: Operation "${input.operationId}" requires path parameter "${paramName}"`);
+          throw new Error(
+            `MISSING_PATH_PARAMETER: Operation "${input.operationId}" requires path parameter "${paramName}"`,
+          );
         }
         pathArgs.push(val);
       }

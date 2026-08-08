@@ -31,7 +31,7 @@ export class TokenKeyring {
         `Encryption key version "${keyVersion}" is unavailable in TokenKeyring`,
         false,
         401,
-        '请检查服务密钥配置'
+        '请检查服务密钥配置',
       );
     }
     return key;
@@ -46,7 +46,7 @@ export interface TokenEncryptionConfig {
 export function validateEncryptionKey(secretKey: string): void {
   if (!secretKey || secretKey.trim().length < 16) {
     throw new Error(
-      'INVALID_ENCRYPTION_KEY: BANGUMI_TOKEN_ENCRYPTION_KEY must be configured with a secure key (at least 16 characters).'
+      'INVALID_ENCRYPTION_KEY: BANGUMI_TOKEN_ENCRYPTION_KEY must be configured with a secure key (at least 16 characters).',
     );
   }
 }
@@ -59,9 +59,10 @@ function deriveKey(secretKey: string): Buffer {
 export function encryptToken(
   plaintext: string,
   keyringOrSecret: TokenKeyring | string,
-  activeKeyVersion = 'v1'
+  activeKeyVersion = 'v1',
 ): EncryptedTokenPayload {
-  const keyring = keyringOrSecret instanceof TokenKeyring ? keyringOrSecret : new TokenKeyring(keyringOrSecret);
+  const keyring =
+    keyringOrSecret instanceof TokenKeyring ? keyringOrSecret : new TokenKeyring(keyringOrSecret);
   const secretKey = keyring.resolve(activeKeyVersion);
   const key = deriveKey(secretKey);
   const iv = crypto.randomBytes(12);
@@ -79,8 +80,12 @@ export function encryptToken(
   };
 }
 
-export function decryptToken(payload: EncryptedTokenPayload, keyringOrSecret: TokenKeyring | string): string {
-  const keyring = keyringOrSecret instanceof TokenKeyring ? keyringOrSecret : new TokenKeyring(keyringOrSecret);
+export function decryptToken(
+  payload: EncryptedTokenPayload,
+  keyringOrSecret: TokenKeyring | string,
+): string {
+  const keyring =
+    keyringOrSecret instanceof TokenKeyring ? keyringOrSecret : new TokenKeyring(keyringOrSecret);
   const version = payload.keyVersion || 'v1';
   const secretKey = keyring.resolve(version);
   const key = deriveKey(secretKey);
@@ -104,7 +109,7 @@ export interface ResolveTokenEncryptionConfigOptions {
 
 export function resolveTokenEncryptionConfig(
   options: ResolveTokenEncryptionConfigOptions = {},
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
 ): TokenEncryptionConfig {
   if (options.tokenEncryption) {
     options.tokenEncryption.keyring.resolve(options.tokenEncryption.activeKeyVersion);
@@ -117,7 +122,9 @@ export function resolveTokenEncryptionConfig(
     try {
       parsed = JSON.parse(keysJson);
     } catch {
-      throw new Error('INVALID_CONFIG: BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON must be valid JSON object.');
+      throw new Error(
+        'INVALID_CONFIG: BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON must be valid JSON object.',
+      );
     }
     const keyring = new TokenKeyring(parsed);
     const activeKeyVersion =
@@ -134,7 +141,7 @@ export function resolveTokenEncryptionConfig(
   const isProd = env.NODE_ENV === 'production';
   if (isProd && !secretKey) {
     throw new Error(
-      'CONFIG_ERROR: BANGUMI_TOKEN_ENCRYPTION_KEY or BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON is required in production environment.'
+      'CONFIG_ERROR: BANGUMI_TOKEN_ENCRYPTION_KEY or BANGUMI_TOKEN_ENCRYPTION_KEYS_JSON is required in production environment.',
     );
   }
 
@@ -144,5 +151,3 @@ export function resolveTokenEncryptionConfig(
   keyring.resolve(activeKeyVersion);
   return { keyring, activeKeyVersion };
 }
-
-

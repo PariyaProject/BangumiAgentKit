@@ -68,5 +68,6 @@ packages/auth  ───>  packages/db
 ```
 
 **禁止反向依赖**：
+
 - `packages/bangumi-core` 绝对禁止依赖任何 LLM SDK 或平台 SDK（如 QQ SDK / OneBot）。
 - `packages/bangumi-openapi` 必须完全由脚本自动生成，人工禁止编辑 `src/generated` 目录。

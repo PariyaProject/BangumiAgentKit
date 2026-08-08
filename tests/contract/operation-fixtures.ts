@@ -1,4 +1,7 @@
-import type { OperationBody, OperationQuery } from '../../packages/bangumi-openapi/src/generated/index.js';
+import type {
+  OperationBody,
+  OperationQuery,
+} from '../../packages/bangumi-openapi/src/generated/index.js';
 
 export interface ContractFixture {
   pathArgs: (string | number)[];
@@ -99,7 +102,10 @@ export const OPERATION_FIXTURES: Record<string, ContractFixture> = {
   },
   getUserCollectionsByUsername: {
     pathArgs: ['alice'],
-    queryFixture: { subject_type: 2, limit: 10 } satisfies OperationQuery<'getUserCollectionsByUsername'>,
+    queryFixture: {
+      subject_type: 2,
+      limit: 10,
+    } satisfies OperationQuery<'getUserCollectionsByUsername'>,
   },
   getUserCollection: {
     pathArgs: ['alice', 123],
@@ -118,7 +124,10 @@ export const OPERATION_FIXTURES: Record<string, ContractFixture> = {
   },
   patchUserSubjectEpisodeCollection: {
     pathArgs: [123],
-    bodyFixture: { episode_id: [456], type: 2 } satisfies OperationBody<'patchUserSubjectEpisodeCollection'>,
+    bodyFixture: {
+      episode_id: [456],
+      type: 2,
+    } satisfies OperationBody<'patchUserSubjectEpisodeCollection'>,
   },
   getUserEpisodeCollection: {
     pathArgs: [456],
@@ -183,11 +192,18 @@ export const OPERATION_FIXTURES: Record<string, ContractFixture> = {
   },
   addSubjectToIndexByIndexId: {
     pathArgs: [202],
-    bodyFixture: { subject_id: 123, sort: 1, comment: 'note' } satisfies OperationBody<'addSubjectToIndexByIndexId'>,
+    bodyFixture: {
+      subject_id: 123,
+      sort: 1,
+      comment: 'note',
+    } satisfies OperationBody<'addSubjectToIndexByIndexId'>,
   },
   editIndexSubjectsByIndexIdAndSubjectID: {
     pathArgs: [202, 123],
-    bodyFixture: { sort: 1, comment: 'updated' } satisfies OperationBody<'editIndexSubjectsByIndexIdAndSubjectID'>,
+    bodyFixture: {
+      sort: 1,
+      comment: 'updated',
+    } satisfies OperationBody<'editIndexSubjectsByIndexIdAndSubjectID'>,
   },
   delelteSubjectFromIndexByIndexIdAndSubjectID: {
     pathArgs: [202, 123],

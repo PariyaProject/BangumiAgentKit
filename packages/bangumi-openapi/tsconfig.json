@@ -4,10 +4,6 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": [
-    "src/**/*"
-  ],
-  "references": [
-    { "path": "../bangumi-transport" }
-  ]
+  "include": ["src/**/*"],
+  "references": [{ "path": "../bangumi-transport" }]
 }

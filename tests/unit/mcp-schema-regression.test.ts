@@ -8,7 +8,10 @@ import { createRuntimeDependencies } from '@bangumi-agent-kit/tools';
 describe('D. MCP Schema Regression Test', () => {
   it('exposes correct JSON Schema for manage_index enum and update_episode_progress array items', async () => {
     const storage = new MemoryStorage();
-    const deps = createRuntimeDependencies({ storage, secretKey: 'test-secret-key-123456789012345678901234' });
+    const deps = createRuntimeDependencies({
+      storage,
+      secretKey: 'test-secret-key-123456789012345678901234',
+    });
     const mcpApp = new BangumiMcpServer({ dependencies: deps, storage });
 
     const server = mcpApp.getMcpServer();
@@ -26,10 +29,19 @@ describe('D. MCP Schema Regression Test', () => {
 
     const actionSchema = (manageIndexTool?.inputSchema?.properties as any)?.action;
     expect(actionSchema).toBeDefined();
-    expect(actionSchema.enum).toEqual(['create', 'edit', 'add_subject', 'remove_subject', 'collect', 'uncollect']);
+    expect(actionSchema.enum).toEqual([
+      'create',
+      'edit',
+      'add_subject',
+      'remove_subject',
+      'collect',
+      'uncollect',
+    ]);
 
     // 2. Verify bangumi.update_episode_progress episodeIds array items integer type and minimum
-    const updateProgressTool = toolsList.tools.find((t) => t.name === 'bangumi.update_episode_progress');
+    const updateProgressTool = toolsList.tools.find(
+      (t) => t.name === 'bangumi.update_episode_progress',
+    );
     expect(updateProgressTool).toBeDefined();
 
     const episodeIdsSchema = (updateProgressTool?.inputSchema?.properties as any)?.episodeIds;

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { ToolRegistry, createPendingAction, createRuntimeDependencies } from '@bangumi-agent-kit/tools';
+import {
+  ToolRegistry,
+  createPendingAction,
+  createRuntimeDependencies,
+} from '@bangumi-agent-kit/tools';
 import { encryptToken } from '@bangumi-agent-kit/auth';
 
 describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
@@ -15,15 +19,19 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
   it('fails with AUTH_REQUIRED if user is not authenticated', async () => {
     const storage = new MemoryStorage();
     const client = new HttpClient();
-    const deps = createRuntimeDependencies({ storage, publicHttpClient: client, secretKey: SECRET_KEY });
+    const deps = createRuntimeDependencies({
+      storage,
+      publicHttpClient: client,
+      secretKey: SECRET_KEY,
+    });
     const registry = new ToolRegistry(deps);
 
     await expect(
       registry.executeTool(
         'bangumi.update_collection',
         { subjectId: 226998, status: 'doing', rating: 9 },
-        { principalId: 'user_qq_1', botInstanceId: 'bot_1', conversationId: 'conv_1' }
-      )
+        { principalId: 'user_qq_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
+      ),
     ).rejects.toThrow('AUTH_REQUIRED');
   });
 
@@ -37,8 +45,8 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
           comment: '神作收藏',
           updated_at: '2026-08-06T23:00:00Z',
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -71,7 +79,11 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       updatedAt: new Date(),
     });
 
-    const deps = createRuntimeDependencies({ storage, publicHttpClient: client, secretKey: SECRET_KEY });
+    const deps = createRuntimeDependencies({
+      storage,
+      publicHttpClient: client,
+      secretKey: SECRET_KEY,
+    });
     const registry = new ToolRegistry(deps);
 
     const res = (await registry.executeTool(
@@ -81,7 +93,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
         principalId: principal.id,
         botInstanceId: 'bot_1',
         conversationId: 'conv_1',
-      }
+      },
     )) as any;
 
     expect(res.subjectId).toBe(226998);
@@ -125,7 +137,11 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       updatedAt: new Date(),
     });
 
-    const deps = createRuntimeDependencies({ storage, publicHttpClient: client, secretKey: SECRET_KEY });
+    const deps = createRuntimeDependencies({
+      storage,
+      publicHttpClient: client,
+      secretKey: SECRET_KEY,
+    });
     const registry = new ToolRegistry(deps);
     const episodeIds = Array.from({ length: 25 }, (_, i) => i + 1);
 
@@ -138,8 +154,8 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
           principalId: principal.id,
           botInstanceId: 'bot_1',
           conversationId: 'conv_1',
-        }
-      )
+        },
+      ),
     ).rejects.toThrow('CONFIRMATION_REQUIRED');
 
     // Create valid Pending Action
@@ -148,12 +164,12 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
       'updateEpisodeProgress',
       '更新 25 集进度',
-      { subjectId: 226998, episodeIds, type: 2 }
+      { subjectId: 226998, episodeIds },
     );
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: 'ok' }), { status: 200 })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ message: 'ok' }), { status: 200 }));
     vi.stubGlobal('fetch', mockFetch);
 
     // Attempt with confirmationId -> Succeeds
@@ -165,7 +181,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
         botInstanceId: 'bot_1',
         conversationId: 'conv_1',
         confirmationId: pending.confirmationId,
-      }
+      },
     )) as any;
 
     expect(res.count).toBe(25);
@@ -201,7 +217,11 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       updatedAt: new Date(),
     });
 
-    const deps = createRuntimeDependencies({ storage, publicHttpClient: client, secretKey: SECRET_KEY });
+    const deps = createRuntimeDependencies({
+      storage,
+      publicHttpClient: client,
+      secretKey: SECRET_KEY,
+    });
     const registry = new ToolRegistry(deps);
 
     // Attempt uncollect without confirmationId -> Throws CONFIRMATION_REQUIRED
@@ -213,8 +233,8 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
           principalId: principal.id,
           botInstanceId: 'bot_1',
           conversationId: 'conv_1',
-        }
-      )
+        },
+      ),
     ).rejects.toThrow('CONFIRMATION_REQUIRED');
 
     // Pending Action
@@ -223,12 +243,10 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
       { principalId: principal.id, botInstanceId: 'bot_1', conversationId: 'conv_1' },
       'manageCharacterCollection',
       '取消收藏角色 1001',
-      { characterId: 1001, action: 'uncollect' }
+      { characterId: 1001, action: 'uncollect' },
     );
 
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 200 })
-    );
+    const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
     vi.stubGlobal('fetch', mockFetch);
 
     const res = (await registry.executeTool(
@@ -239,7 +257,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
         botInstanceId: 'bot_1',
         conversationId: 'conv_1',
         confirmationId: pending.confirmationId,
-      }
+      },
     )) as any;
 
     expect(res.success).toBe(true);

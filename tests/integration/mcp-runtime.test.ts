@@ -20,7 +20,7 @@ describe('Phase 2: MCP Runtime Tests', () => {
           offset: 0,
           data: [{ id: 226998, name: '少女終末旅行', name_cn: '少女终末旅行', type: 2 }],
         }),
-        { status: 200 }
+        { status: 200 },
       );
     });
 
@@ -62,7 +62,10 @@ describe('Phase 2: MCP Runtime Tests', () => {
     const searchTool = toolsList.tools.find((t) => t.name === 'bangumi.search_subjects');
     expect(searchTool).toBeDefined();
 
-    const rawTool = mcpApp.getRegistry().getTools().find((t) => t.name === 'bangumi.search_subjects');
+    const rawTool = mcpApp
+      .getRegistry()
+      .getTools()
+      .find((t) => t.name === 'bangumi.search_subjects');
     expect(rawTool).toBeDefined();
 
     const derivedJsonSchema = z.toJSONSchema(rawTool!.input) as Record<string, any>;

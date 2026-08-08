@@ -36,6 +36,7 @@ describe('B. Cross-Instance PostgreSQL Persistence Test', () => {
     await storageA.replaceActiveBinding(principalA.id, accountA.id);
 
     await storageA.upsertCredential({
+      id: 'cred_cross_a',
       bangumiAccountId: accountA.id,
       encryptedAccessToken: encryptToken('persisted-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
@@ -70,8 +71,12 @@ describe('B. Cross-Instance PostgreSQL Persistence Test', () => {
 
     const statusResult: any = await authStatusTool!.execute(
       {},
-      { principalId: principalA.id, botInstanceId: 'bot-instance-a', conversationId: 'c-session-b' },
-      depsB
+      {
+        principalId: principalA.id,
+        botInstanceId: 'bot-instance-a',
+        conversationId: 'c-session-b',
+      },
+      depsB,
     );
 
     expect(statusResult.bound).toBe(true);

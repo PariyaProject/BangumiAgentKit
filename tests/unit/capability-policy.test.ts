@@ -27,6 +27,7 @@ describe('F. Capability Policy Test', () => {
 
     // Save credential with reportedScopes: ['read:collection'] (missing 'write:collection')
     await storage.upsertCredential({
+      id: 'c-cap-1',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('access-token-123', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
@@ -39,7 +40,7 @@ describe('F. Capability Policy Test', () => {
     });
 
     await expect(
-      broker.requireAuthenticatedClient(principal.id, ['write:collection'])
+      broker.requireAuthenticatedClient(principal.id, ['write:collection']),
     ).rejects.toThrow('PERMISSION_DENIED');
   });
 
@@ -64,6 +65,7 @@ describe('F. Capability Policy Test', () => {
 
     // Save credential with scopeEvidence: 'unknown'
     await storage.upsertCredential({
+      id: 'c-cap-2',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('access-token-456', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),

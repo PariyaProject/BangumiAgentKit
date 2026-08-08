@@ -32,7 +32,7 @@ export const externalPrincipals = pgTable(
   },
   (table) => ({
     uniquePrincipal: unique().on(table.provider, table.botInstanceId, table.externalUserId),
-  })
+  }),
 );
 
 export const bangumiAccounts = pgTable('bangumi_accounts', {
@@ -56,7 +56,7 @@ export const accountBindings = pgTable(
   },
   (table) => ({
     principalIdx: index('account_bindings_principal_id_idx').on(table.principalId),
-  })
+  }),
 );
 
 export const accessCredentials = pgTable('access_credentials', {
@@ -101,7 +101,7 @@ export const conversationContexts = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.principalId, table.conversationKey] }),
-  })
+  }),
 );
 
 export const pendingActions = pgTable(
@@ -126,8 +126,11 @@ export const pendingActions = pgTable(
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => ({
-    pendingActionIdx: index('pending_actions_principal_expires_idx').on(table.principalId, table.expiresAt),
-  })
+    pendingActionIdx: index('pending_actions_principal_expires_idx').on(
+      table.principalId,
+      table.expiresAt,
+    ),
+  }),
 );
 
 export const auditEvents = pgTable(
@@ -148,5 +151,5 @@ export const auditEvents = pgTable(
   },
   (table) => ({
     auditIdx: index('audit_events_principal_created_idx').on(table.principalId, table.createdAt),
-  })
+  }),
 );

@@ -42,7 +42,7 @@ export class TokenBroker implements BangumiClientProvider {
     private storage: Storage,
     private config: TokenBrokerConfig,
     private publicHttpClient: HttpClient = new HttpClient(),
-    oauthClient?: BangumiOAuthClient
+    oauthClient?: BangumiOAuthClient,
   ) {
     this.oauthClient = oauthClient || new BangumiOAuthClient();
     this.tokenEncryption = resolveTokenEncryptionConfig({
@@ -60,7 +60,7 @@ export class TokenBroker implements BangumiClientProvider {
         '该操作需要先绑定 Bangumi 账号',
         false,
         401,
-        '调用 bangumi.auth_start'
+        '调用 bangumi.auth_start',
       );
     }
 
@@ -71,7 +71,7 @@ export class TokenBroker implements BangumiClientProvider {
         '找不到关联的 Bangumi 账号资料，请重新绑定',
         false,
         401,
-        '调用 bangumi.auth_start'
+        '调用 bangumi.auth_start',
       );
     }
 
@@ -120,7 +120,9 @@ export class TokenBroker implements BangumiClientProvider {
     return new GeneratedBangumiOpenApiClient(this.publicHttpClient);
   }
 
-  async getOptionalAuthenticatedClient(principalId?: string): Promise<GeneratedBangumiOpenApiClient> {
+  async getOptionalAuthenticatedClient(
+    principalId?: string,
+  ): Promise<GeneratedBangumiOpenApiClient> {
     if (!principalId) {
       return this.getPublicClient();
     }
@@ -129,7 +131,7 @@ export class TokenBroker implements BangumiClientProvider {
       const { client } = await this.requireAuthenticatedClient(principalId);
       return client;
     } catch (err: any) {
-      if (err?.code === 'AUTH_REQUIRED' || ((err as any)?.code === 'AUTH_REQUIRED')) {
+      if (err?.code === 'AUTH_REQUIRED' || (err as any)?.code === 'AUTH_REQUIRED') {
         return this.getPublicClient();
       }
       throw err;
@@ -138,7 +140,7 @@ export class TokenBroker implements BangumiClientProvider {
 
   async requireAuthenticatedClient(
     principalId: string,
-    requiredCapabilities: string[] = []
+    requiredCapabilities: string[] = [],
   ): Promise<{ account: BangumiAccountRecord; client: GeneratedBangumiOpenApiClient }> {
     const account = await this.requireAccount(principalId);
     const cred = await this.storage.getCredential(account.id);
@@ -149,7 +151,7 @@ export class TokenBroker implements BangumiClientProvider {
         '未查找到有效授权凭证，请重新绑定',
         false,
         401,
-        '调用 bangumi.auth_start'
+        '调用 bangumi.auth_start',
       );
     }
 
@@ -162,7 +164,7 @@ export class TokenBroker implements BangumiClientProvider {
           `当前账号缺失以下必要权限: ${missing.join(', ')}`,
           false,
           403,
-          `缺少 Scope: ${missing.join(', ')}`
+          `缺少 Scope: ${missing.join(', ')}`,
         );
       }
     }
@@ -176,7 +178,9 @@ export class TokenBroker implements BangumiClientProvider {
 
   private async resolveAndRefreshToken(cred: any, accountId: string): Promise<string> {
     const now = new Date();
-    const skewSeconds = this.config.refreshSkewSeconds ?? Number(process.env.BANGUMI_TOKEN_REFRESH_SKEW_SECONDS || 300);
+    const skewSeconds =
+      this.config.refreshSkewSeconds ??
+      Number(process.env.BANGUMI_TOKEN_REFRESH_SKEW_SECONDS || 300);
     const skewMs = skewSeconds * 1000;
 
     if (now.getTime() + skewMs < cred.expiresAt.getTime()) {
@@ -186,7 +190,13 @@ export class TokenBroker implements BangumiClientProvider {
     return await this.storage.withCredentialLock(accountId, async () => {
       const latestCred = await this.storage.getCredential(accountId);
       if (!latestCred) {
-        throw new BangumiError('AUTH_EXPIRED', '授权凭证已被删除', false, 401, '调用 bangumi.auth_start');
+        throw new BangumiError(
+          'AUTH_EXPIRED',
+          '授权凭证已被删除',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
       }
 
       const lockNow = new Date();
@@ -200,13 +210,16 @@ export class TokenBroker implements BangumiClientProvider {
           '授权凭证已过期且无法自动刷新，请重新绑定',
           false,
           401,
-          '调用 bangumi.auth_start'
+          '调用 bangumi.auth_start',
         );
       }
 
       let oldRefreshToken: string;
       try {
-        oldRefreshToken = decryptToken(latestCred.encryptedRefreshToken, this.tokenEncryption.keyring);
+        oldRefreshToken = decryptToken(
+          latestCred.encryptedRefreshToken,
+          this.tokenEncryption.keyring,
+        );
       } catch (err: unknown) {
         if (err instanceof BangumiError && err.code === 'KEY_VERSION_UNAVAILABLE') {
           throw err;
@@ -216,7 +229,7 @@ export class TokenBroker implements BangumiClientProvider {
           '无法解密 Refresh Token，请重新绑定',
           false,
           401,
-          '调用 bangumi.auth_start'
+          '调用 bangumi.auth_start',
         );
       }
 
@@ -225,7 +238,7 @@ export class TokenBroker implements BangumiClientProvider {
           'AUTH_EXPIRED',
           '服务未配置 OAuth Client ID / Secret，无法进行 Token 自动刷新',
           false,
-          500
+          500,
         );
       }
 
@@ -236,7 +249,7 @@ export class TokenBroker implements BangumiClientProvider {
           this.config.clientId,
           this.config.clientSecret,
           this.config.redirectUri,
-          this.config.tokenUrl
+          this.config.tokenUrl,
         );
       } catch (err: unknown) {
         if (err instanceof BangumiError) {
@@ -247,7 +260,7 @@ export class TokenBroker implements BangumiClientProvider {
           'Bangumi 授权刷新失败，请重新绑定账号',
           false,
           401,
-          '调用 bangumi.auth_start'
+          '调用 bangumi.auth_start',
         );
       }
 
@@ -255,13 +268,15 @@ export class TokenBroker implements BangumiClientProvider {
       const newEncryptedAccess = encryptToken(
         refreshedData.access_token,
         this.tokenEncryption.keyring,
-        activeVersion
+        activeVersion,
       );
       const newEncryptedRefresh = refreshedData.refresh_token
         ? encryptToken(refreshedData.refresh_token, this.tokenEncryption.keyring, activeVersion)
         : latestCred.encryptedRefreshToken;
 
-      const newExpiresAt = new Date(lockNow.getTime() + (refreshedData.expires_in || 7 * 86400) * 1000);
+      const newExpiresAt = new Date(
+        lockNow.getTime() + (refreshedData.expires_in || 7 * 86400) * 1000,
+      );
 
       let newReportedScopes = latestCred.reportedScopes;
       let newScopeEvidence = latestCred.scopeEvidence;

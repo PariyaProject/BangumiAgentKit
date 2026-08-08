@@ -30,8 +30,20 @@ export interface OperationMeta {
 
 const SPEC_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
 const OVERRIDES_PATH = path.join(__dirname, '..', 'openapi', 'operation-overrides.yaml');
-const REGISTRY_JSON_PATH = path.join(__dirname, '..', 'openapi', 'generated-operation-registry.json');
-const REGISTRY_TS_PATH = path.join(__dirname, '..', 'packages', 'bangumi-openapi', 'src', 'operation-registry.ts');
+const REGISTRY_JSON_PATH = path.join(
+  __dirname,
+  '..',
+  'openapi',
+  'generated-operation-registry.json',
+);
+const REGISTRY_TS_PATH = path.join(
+  __dirname,
+  '..',
+  'packages',
+  'bangumi-openapi',
+  'src',
+  'operation-registry.ts',
+);
 
 function resolveRef(spec: any, item: any): any {
   if (item && typeof item === 'object' && typeof item.$ref === 'string') {
@@ -45,7 +57,10 @@ function resolveRef(spec: any, item: any): any {
   return item;
 }
 
-function loadOverrides(): Record<string, { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }> {
+function loadOverrides(): Record<
+  string,
+  { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }
+> {
   if (fs.existsSync(OVERRIDES_PATH)) {
     const raw = fs.readFileSync(OVERRIDES_PATH, 'utf-8');
     const parsed = YAML.parse(raw);
@@ -88,7 +103,7 @@ function getOperationMeta(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   apiPath: string,
   summary: string,
-  overrides: Record<string, { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }>
+  overrides: Record<string, { risk?: OperationRisk; auth?: AuthRequirement; scopes?: string[] }>,
 ): OperationMeta {
   const opId = op.operationId;
   const { auth: parsedAuth, scopes: parsedScopes } = extractSecurityMeta(op);
@@ -126,10 +141,12 @@ function getOperationMeta(
       queryMap.set(resP.name, Boolean(resP.required));
     }
   }
-  const queryParameters: QueryParamMeta[] = Array.from(queryMap.entries()).map(([name, required]) => ({
-    name,
-    required,
-  }));
+  const queryParameters: QueryParamMeta[] = Array.from(queryMap.entries()).map(
+    ([name, required]) => ({
+      name,
+      required,
+    }),
+  );
 
   // Extract request body meta
   let requestBody: RequestBodyMeta | undefined;

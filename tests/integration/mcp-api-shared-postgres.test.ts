@@ -36,6 +36,7 @@ function testSharedStorageIntegration(name: string, createStorage: () => Promise
 
       const account = await storage.upsertBangumiAccount({
         id: 'bgm-shared-1',
+        bangumiUserId: 1,
         username: 'shared_user',
         nickname: 'Shared User',
       });
@@ -43,10 +44,15 @@ function testSharedStorageIntegration(name: string, createStorage: () => Promise
       await storage.replaceActiveBinding(principal.id, account.id);
 
       await storage.upsertCredential({
+        id: 'c-shared-1',
         bangumiAccountId: account.id,
         encryptedAccessToken: encryptToken('shared-access-token', secretKey, 'v1'),
         expiresAt: new Date(Date.now() + 3600000),
+        requestedCapabilities: ['read'],
+        reportedScopes: ['read'],
+        scopeEvidence: 'reported',
         keyVersion: 'v1',
+        createdAt: new Date(),
         updatedAt: new Date(),
       });
 
@@ -57,7 +63,7 @@ function testSharedStorageIntegration(name: string, createStorage: () => Promise
       const statusResult: any = await authStatusTool.execute(
         {},
         { principalId: principal.id, botInstanceId: 'bot-1', conversationId: 'c-1' },
-        deps
+        deps,
       );
 
       expect(statusResult.bound).toBe(true);

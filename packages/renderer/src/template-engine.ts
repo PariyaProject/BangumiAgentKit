@@ -75,7 +75,7 @@ export function renderHtmlTemplate(viewModel: RenderViewModel): string {
                 ${item.score ? `<div style="color:#fbbf24; margin-top:4px;">★ ${item.score}</div>` : ''}
               </div>
             </div>
-          `
+          `,
             )
             .join('')}
         </div>
@@ -96,7 +96,7 @@ export function renderHtmlTemplate(viewModel: RenderViewModel): string {
                 ${day.items.map((it) => `<span class="tag">${it.nameCn} ${it.score ? '★' + it.score : ''}</span>`).join('')}
               </div>
             </div>
-          `
+          `,
             )
             .join('')}
         </div>

@@ -1,3 +1,4 @@
+export * from './results/result.js';
 export * from './models/subject.js';
 export * from './models/episode.js';
 export * from './models/character.js';

@@ -62,18 +62,19 @@ describe('PendingAction State Machine & Canonical Hashing Tests', () => {
         summary: policy.summary,
         policy,
         payload: tamperedPayload,
-      })
+      }),
     ).rejects.toThrow();
 
     // 3. Claiming with valid confirmationId & payload succeeds
-    const { confirmationId: claimedConfId, pendingActionId } = await PolicyManager.assertAndClaimWritePolicy({
-      storage,
-      context: { ...context, confirmationId },
-      actionType: policy.actionType,
-      summary: policy.summary,
-      policy,
-      payload,
-    });
+    const { confirmationId: claimedConfId, pendingActionId } =
+      await PolicyManager.assertAndClaimWritePolicy({
+        storage,
+        context: { ...context, confirmationId },
+        actionType: policy.actionType,
+        summary: policy.summary,
+        policy,
+        payload,
+      });
 
     expect(claimedConfId).toBe(confirmationId);
     expect(pendingActionId).toBeDefined();
@@ -87,7 +88,7 @@ describe('PendingAction State Machine & Canonical Hashing Tests', () => {
         summary: policy.summary,
         policy,
         payload,
-      })
+      }),
     ).rejects.toThrow();
   });
 });

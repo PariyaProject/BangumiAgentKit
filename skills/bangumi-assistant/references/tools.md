@@ -2,23 +2,23 @@
 
 ## 语义工具列表
 
-| 工具名称 | 权限 | 风险等级 | 说明 |
-|---|---|---|---|
-| `bangumi.search_subjects` | none | read | 按关键词搜索动画、书籍、音乐、游戏 |
-| `bangumi.get_subject` | optional | read | 获取条目详细信息（评分、排名、简介、分类统计） |
-| `bangumi.get_subject_relations` | none | read | 查看前传、续集、衍生作、原著 |
-| `bangumi.get_subject_cast` | none | read | 查看角色及其声优 (CV) 人物关联 |
-| `bangumi.get_calendar` | none | read | 获取周一至周日新番每日放送进度 |
-| `bangumi.get_episodes` | none | read | 查看章节列表（自动标识正篇/SP） |
-| `bangumi.get_episode` | none | read | 查看单个章节详情 |
-| `bangumi.search_characters` | none | read | 搜索虚拟角色 |
-| `bangumi.get_character` | none | read | 查看角色详情、关联条目与声优 |
-| `bangumi.search_persons` | none | read | 搜索现实人物/声优 |
-| `bangumi.get_person` | none | read | 查看人物详情与参与作品 |
-| `bangumi.get_user` | none | read | 查看用户公开主页与收藏 |
-| `bangumi.get_revision` | none | read | 查看条目修改修订日志 |
-| `bangumi.get_index` | none | read | 查看目录及其包含条目 |
-| `bangumi.auth_status` | none | read | 查看当前用户 Bangumi 绑定状态 |
+| 工具名称                        | 权限     | 风险等级 | 说明                                           |
+| ------------------------------- | -------- | -------- | ---------------------------------------------- |
+| `bangumi.search_subjects`       | none     | read     | 按关键词搜索动画、书籍、音乐、游戏             |
+| `bangumi.get_subject`           | optional | read     | 获取条目详细信息（评分、排名、简介、分类统计） |
+| `bangumi.get_subject_relations` | none     | read     | 查看前传、续集、衍生作、原著                   |
+| `bangumi.get_subject_cast`      | none     | read     | 查看角色及其声优 (CV) 人物关联                 |
+| `bangumi.get_calendar`          | none     | read     | 获取周一至周日新番每日放送进度                 |
+| `bangumi.get_episodes`          | none     | read     | 查看章节列表（自动标识正篇/SP）                |
+| `bangumi.get_episode`           | none     | read     | 查看单个章节详情                               |
+| `bangumi.search_characters`     | none     | read     | 搜索虚拟角色                                   |
+| `bangumi.get_character`         | none     | read     | 查看角色详情、关联条目与声优                   |
+| `bangumi.search_persons`        | none     | read     | 搜索现实人物/声优                              |
+| `bangumi.get_person`            | none     | read     | 查看人物详情与参与作品                         |
+| `bangumi.get_user`              | none     | read     | 查看用户公开主页与收藏                         |
+| `bangumi.get_revision`          | none     | read     | 查看条目修改修订日志                           |
+| `bangumi.get_index`             | none     | read     | 查看目录及其包含条目                           |
+| `bangumi.auth_status`           | none     | read     | 查看当前用户 Bangumi 绑定状态                  |
 
 ## 保底 Operation 工具
 

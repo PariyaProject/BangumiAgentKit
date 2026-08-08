@@ -16,6 +16,7 @@ describe('Token Refresh Concurrency Locking Tests', () => {
 
     const account = await storage.upsertBangumiAccount({
       id: 'bgm-100',
+      bangumiUserId: 100,
       username: 'spike',
       nickname: 'Spike',
     });
@@ -26,11 +27,16 @@ describe('Token Refresh Concurrency Locking Tests', () => {
     const oldAccessToken = 'old-access-token';
     const oldRefreshToken = 'old-refresh-token';
     await storage.upsertCredential({
+      id: 'c-100',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken(oldAccessToken, secretKey, 'v1'),
       encryptedRefreshToken: encryptToken(oldRefreshToken, secretKey, 'v1'),
       expiresAt: new Date(Date.now() - 10000), // expired
+      requestedCapabilities: ['read'],
+      reportedScopes: ['read'],
+      scopeEvidence: 'reported',
       keyVersion: 'v1',
+      createdAt: new Date(),
       updatedAt: new Date(),
     });
 
@@ -64,12 +70,12 @@ describe('Token Refresh Concurrency Locking Tests', () => {
         redirectUri: 'http://localhost/callback',
       },
       publicHttpClient,
-      mockOAuthClient
+      mockOAuthClient,
     );
 
     // Fire 5 concurrent requireAuthenticatedClient requests
     const promises = Array.from({ length: 5 }).map(() =>
-      broker.requireAuthenticatedClient(principal.id)
+      broker.requireAuthenticatedClient(principal.id),
     );
 
     const results = await Promise.all(promises);

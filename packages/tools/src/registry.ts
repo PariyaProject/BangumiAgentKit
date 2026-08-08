@@ -44,7 +44,9 @@ export interface CreateRuntimeDependenciesConfig {
   refreshSkewSeconds?: number;
 }
 
-export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfig = {}): RuntimeDependencies {
+export function createRuntimeDependencies(
+  config: CreateRuntimeDependenciesConfig = {},
+): RuntimeDependencies {
   const isProd = process.env.NODE_ENV === 'production';
   const tokenEncryption = resolveTokenEncryptionConfig({
     tokenEncryption: config.tokenEncryption,
@@ -60,13 +62,24 @@ export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfi
   const redirectUri = config.redirectUri || process.env.BANGUMI_OAUTH_REDIRECT_URI;
 
   if (isProd) {
-    if (!databaseUrl) throw new Error('CONFIG_ERROR: DATABASE_URL is required in production environment.');
-    if (!clientId) throw new Error('CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_ID is required in production environment.');
-    if (!clientSecret) throw new Error('CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_SECRET is required in production environment.');
-    if (!redirectUri) throw new Error('CONFIG_ERROR: BANGUMI_OAUTH_REDIRECT_URI is required in production environment.');
+    if (!databaseUrl)
+      throw new Error('CONFIG_ERROR: DATABASE_URL is required in production environment.');
+    if (!clientId)
+      throw new Error(
+        'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_ID is required in production environment.',
+      );
+    if (!clientSecret)
+      throw new Error(
+        'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_SECRET is required in production environment.',
+      );
+    if (!redirectUri)
+      throw new Error(
+        'CONFIG_ERROR: BANGUMI_OAUTH_REDIRECT_URI is required in production environment.',
+      );
   }
 
-  const storage = config.storage || (databaseUrl ? new PostgresStorage(databaseUrl) : new MemoryStorage());
+  const storage =
+    config.storage || (databaseUrl ? new PostgresStorage(databaseUrl) : new MemoryStorage());
   const publicHttpClient = config.publicHttpClient || new HttpClient();
 
   const oauthService = new OAuthService(
@@ -79,7 +92,7 @@ export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfi
       tokenUrl: config.tokenUrl,
       authorizeUrl: config.authorizeUrl,
     },
-    publicHttpClient
+    publicHttpClient,
   );
 
   const tokenBroker = new TokenBroker(
@@ -92,7 +105,7 @@ export function createRuntimeDependencies(config: CreateRuntimeDependenciesConfi
       tokenUrl: config.tokenUrl,
       refreshSkewSeconds: config.refreshSkewSeconds,
     },
-    publicHttpClient
+    publicHttpClient,
   );
 
   const clientProvider = new DefaultBangumiClientProvider(tokenBroker);
@@ -116,14 +129,16 @@ export class ToolRegistry {
     if (optionsOrDeps && 'storage' in optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
       this.deps = optionsOrDeps as RuntimeDependencies;
     } else {
-      this.deps = createRuntimeDependencies((optionsOrDeps as CreateRuntimeDependenciesConfig) || {});
+      this.deps = createRuntimeDependencies(
+        (optionsOrDeps as CreateRuntimeDependenciesConfig) || {},
+      );
     }
 
     this.registerCoreTools();
   }
 
   private registerCoreTools(): void {
-    const readTools = createReadTools(this.deps.publicHttpClient);
+    const readTools = createReadTools(this.deps.clientProvider);
     for (const tool of readTools) {
       this.registerTool(tool);
     }
@@ -159,7 +174,12 @@ export class ToolRegistry {
   public async executeTool(name: string, input: unknown, context: ToolContext): Promise<unknown> {
     const tool = this.getTool(name);
     if (!tool) {
-      throw new BangumiError('NOT_FOUND', `Tool "${name}" is not registered in ToolRegistry.`, false, 404);
+      throw new BangumiError(
+        'NOT_FOUND',
+        `Tool "${name}" is not registered in ToolRegistry.`,
+        false,
+        404,
+      );
     }
 
     // 1. Zod Parse
@@ -170,7 +190,7 @@ export class ToolRegistry {
         `Input parameters validation failed for tool "${name}": ${parseResult.error.message}`,
         false,
         400,
-        JSON.stringify(parseResult.error.format())
+        JSON.stringify(parseResult.error.format()),
       );
     }
 
@@ -178,15 +198,22 @@ export class ToolRegistry {
     const policy = PolicyManager.resolvePolicyForTool(tool, parseResult.data, context);
 
     // 3. Resolve Authentication & Capabilities BEFORE Confirmation / PendingAction
-    let executionSession: { account?: { id: string; username: string; nickname: string; avatarUrl?: string }; client: unknown } | undefined;
+    let executionSession:
+      | {
+          account?: { id: string; username: string; nickname: string; avatarUrl?: string };
+          client: unknown;
+        }
+      | undefined;
     if (policy.auth === 'required') {
       const authed = await this.deps.clientProvider.requireAuthenticatedClient(
         context.principalId,
-        policy.requiredCapabilities
+        policy.requiredCapabilities,
       );
       executionSession = { account: authed.account, client: authed.client };
     } else if (policy.auth === 'optional') {
-      const client = await this.deps.clientProvider.getOptionalAuthenticatedClient(context.principalId);
+      const client = await this.deps.clientProvider.getOptionalAuthenticatedClient(
+        context.principalId,
+      );
       executionSession = { client };
     } else {
       const client = await this.deps.clientProvider.getPublicClient();
@@ -233,7 +260,7 @@ export class ToolRegistry {
               (parseResult.data as Record<string, unknown>)?.characterId ||
               (parseResult.data as Record<string, unknown>)?.personId ||
               (parseResult.data as Record<string, unknown>)?.indexId ||
-              '0'
+              '0',
           ),
           changeSummary: parseResult.data,
           confirmationId,
@@ -268,7 +295,7 @@ export class ToolRegistry {
               (parseResult.data as Record<string, unknown>)?.characterId ||
               (parseResult.data as Record<string, unknown>)?.personId ||
               (parseResult.data as Record<string, unknown>)?.indexId ||
-              '0'
+              '0',
           ),
           changeSummary: parseResult.data,
           confirmationId,

@@ -40,6 +40,7 @@ describe('I. Audit Account ID Test', () => {
     await storage.replaceActiveBinding(principal.id, account.id);
 
     await storage.upsertCredential({
+      id: 'c-audit-1',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('valid-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
@@ -61,14 +62,14 @@ describe('I. Audit Account ID Test', () => {
     await registry.executeTool(
       'bangumi.update_collection',
       { subjectId: 1001, status: 'doing' },
-      context
+      context,
     );
 
     const auditEventsAfterSemantic = storage.getAuditEvents();
     expect(auditEventsAfterSemantic).toHaveLength(1);
-    expect(auditEventsAfterSemantic[0].principalId).toBe(principal.id);
-    expect(auditEventsAfterSemantic[0].bangumiAccountId).toBe(account.id);
-    expect(auditEventsAfterSemantic[0].operationId).toBe('bangumi.update_collection');
+    expect(auditEventsAfterSemantic[0]?.principalId).toBe(principal.id);
+    expect(auditEventsAfterSemantic[0]?.bangumiAccountId).toBe(account.id);
+    expect(auditEventsAfterSemantic[0]?.operationId).toBe('bangumi.update_collection');
 
     // 2. Raw developer write execution: bangumi.call_operation
     process.env.BANGUMI_ALLOW_RAW_WRITES = 'true';
@@ -76,15 +77,15 @@ describe('I. Audit Account ID Test', () => {
       await registry.executeTool(
         'bangumi.call_operation',
         { operationId: 'patchUserCollection', pathParams: { subject_id: 1001 } },
-        context
+        context,
       );
 
       const auditEventsAfterRaw = storage.getAuditEvents();
       expect(auditEventsAfterRaw).toHaveLength(2);
       const lastAudit = auditEventsAfterRaw[1];
-      expect(lastAudit.principalId).toBe(principal.id);
-      expect(lastAudit.bangumiAccountId).toBe(account.id);
-      expect(lastAudit.operationId).toBe('bangumi.call_operation');
+      expect(lastAudit?.principalId).toBe(principal.id);
+      expect(lastAudit?.bangumiAccountId).toBe(account.id);
+      expect(lastAudit?.operationId).toBe('bangumi.call_operation');
     } finally {
       process.env.BANGUMI_ALLOW_RAW_WRITES = 'false';
     }

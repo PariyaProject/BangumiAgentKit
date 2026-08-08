@@ -47,7 +47,7 @@ describe('Phase 7: Renderer & SSRF Protection Tests', () => {
       query: '少女',
       total: 10,
       page: 1,
-      items: [{ id: 1, name: '少女动画', score: 9.0 }],
+      items: [{ id: 1, name: '少女动画', score: 9.0, type: 'anime' }],
     };
     const searchHtml = renderHtmlTemplate(searchVm);
     expect(searchHtml).toContain('搜索结果');

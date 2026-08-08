@@ -1,11 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
-import { HttpClient, BangumiError, buildCacheKey, MemoryCache } from '../../packages/bangumi-transport/src/index.js';
+import {
+  HttpClient,
+  BangumiError,
+  buildCacheKey,
+  MemoryCache,
+} from '../../packages/bangumi-transport/src/index.js';
 
 describe('Phase 2: HTTP Transport Tests', () => {
   it('handles successful 200 response', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: 12345, name: 'Steins;Gate' }), { status: 200 })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ id: 12345, name: 'Steins;Gate' }), { status: 200 }),
+      );
 
     const client = new HttpClient();
     const result = await client.request<{ id: number; name: string }>({
@@ -18,19 +25,26 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('handles HTTP 200 with empty response body without PARSER_ERROR', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response('', { status: 200, headers: { 'Content-Type': 'application/json' } })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response('', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+      );
 
     const client = new HttpClient();
-    const res = await client.request({ path: '/v0/indices/123/subjects', fetchFn: mockFetch as any });
+    const res = await client.request({
+      path: '/v0/indices/123/subjects',
+      fetchFn: mockFetch as any,
+    });
     expect(res).toEqual({});
   });
 
   it('maps 400 to VALIDATION_ERROR', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Invalid page parameter' }), { status: 400 })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Invalid page parameter' }), { status: 400 }),
+      );
 
     const client = new HttpClient();
     try {
@@ -45,9 +59,11 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('maps 401 to AUTH_REQUIRED with nextAction', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 }),
+      );
 
     const client = new HttpClient();
     try {
@@ -61,9 +77,7 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('maps 403 to PERMISSION_DENIED', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response('Forbidden', { status: 403 })
-    );
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Forbidden', { status: 403 }));
 
     const client = new HttpClient();
     try {
@@ -77,9 +91,7 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('maps 404 to NOT_FOUND', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response('Subject not found', { status: 404 })
-    );
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Subject not found', { status: 404 }));
 
     const client = new HttpClient();
     try {
@@ -92,9 +104,7 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('maps 429 to RATE_LIMITED (retryable)', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response('Rate Limited', { status: 429 })
-    );
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Rate Limited', { status: 429 }));
 
     const client = new HttpClient();
     try {
@@ -112,9 +122,9 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('maps 500/503 to UPSTREAM_UNAVAILABLE', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response('Internal Server Error', { status: 500 })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response('Internal Server Error', { status: 500 }));
 
     const client = new HttpClient();
     try {
@@ -132,9 +142,9 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('maps invalid JSON to PARSER_ERROR', async () => {
-    const mockFetch = vi.fn().mockResolvedValue(
-      new Response('<html>Bad Gateway Page</html>', { status: 200 })
-    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response('<html>Bad Gateway Page</html>', { status: 200 }));
 
     const client = new HttpClient();
     try {
@@ -166,9 +176,7 @@ describe('Phase 2: HTTP Transport Tests', () => {
   });
 
   it('does NOT retry write (POST/PATCH/DELETE) requests on error', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue(new Response('Server Error', { status: 500 }));
+    const mockFetch = vi.fn().mockResolvedValue(new Response('Server Error', { status: 500 }));
 
     const client = new HttpClient();
     try {

@@ -26,6 +26,7 @@ describe('Character & Person Collection Endpoints', () => {
 
     const account = await storage.upsertBangumiAccount({
       id: 'bgm-1',
+      bangumiUserId: 1,
       username: 'spike',
       nickname: 'Spike',
     });
@@ -33,10 +34,15 @@ describe('Character & Person Collection Endpoints', () => {
     await storage.replaceActiveBinding(principal.id, account.id);
 
     await storage.upsertCredential({
+      id: 'c-1',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('test-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
+      requestedCapabilities: ['write:collection'],
+      reportedScopes: ['write:collection'],
+      scopeEvidence: 'reported',
       keyVersion: 'v1',
+      createdAt: new Date(),
       updatedAt: new Date(),
     });
 
@@ -44,7 +50,9 @@ describe('Character & Person Collection Endpoints', () => {
     const tokenBroker = new TokenBroker(storage, { secretKey }, publicHttpClient);
 
     const writeTools = createWriteTools(tokenBroker);
-    const collectCharTool = writeTools.find((t) => t.name === 'bangumi.manage_character_collection')!;
+    const collectCharTool = writeTools.find(
+      (t) => t.name === 'bangumi.manage_character_collection',
+    )!;
 
     const context = {
       principalId: principal.id,
@@ -52,7 +60,9 @@ describe('Character & Person Collection Endpoints', () => {
       conversationId: 'c-1',
     };
 
-    await collectCharTool.execute({ characterId: 100, action: 'collect' }, context, { clientProvider: tokenBroker } as any);
+    await (collectCharTool.execute as any)({ characterId: 100, action: 'collect' }, context, {
+      clientProvider: tokenBroker,
+    } as any);
 
     expect(capturedUrl).toContain('/v0/characters/100/collect');
     expect(capturedMethod).toBe('POST');
@@ -79,6 +89,7 @@ describe('Character & Person Collection Endpoints', () => {
 
     const account = await storage.upsertBangumiAccount({
       id: 'bgm-1',
+      bangumiUserId: 1,
       username: 'spike',
       nickname: 'Spike',
     });
@@ -86,10 +97,15 @@ describe('Character & Person Collection Endpoints', () => {
     await storage.replaceActiveBinding(principal.id, account.id);
 
     await storage.upsertCredential({
+      id: 'c-1',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('test-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
+      requestedCapabilities: ['write:collection'],
+      reportedScopes: ['write:collection'],
+      scopeEvidence: 'reported',
       keyVersion: 'v1',
+      createdAt: new Date(),
       updatedAt: new Date(),
     });
 
@@ -97,7 +113,9 @@ describe('Character & Person Collection Endpoints', () => {
     const tokenBroker = new TokenBroker(storage, { secretKey }, publicHttpClient);
 
     const writeTools = createWriteTools(tokenBroker);
-    const collectPersonTool = writeTools.find((t) => t.name === 'bangumi.manage_person_collection')!;
+    const collectPersonTool = writeTools.find(
+      (t) => t.name === 'bangumi.manage_person_collection',
+    )!;
 
     const context = {
       principalId: principal.id,
@@ -105,7 +123,9 @@ describe('Character & Person Collection Endpoints', () => {
       conversationId: 'c-1',
     };
 
-    await collectPersonTool.execute({ personId: 200, action: 'collect' }, context, { clientProvider: tokenBroker } as any);
+    await (collectPersonTool.execute as any)({ personId: 200, action: 'collect' }, context, {
+      clientProvider: tokenBroker,
+    } as any);
 
     expect(capturedUrl).toContain('/v0/persons/200/collect');
     expect(capturedMethod).toBe('POST');

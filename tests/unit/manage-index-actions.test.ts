@@ -28,6 +28,7 @@ describe('Manage Index 6 Actions Unit Tests', () => {
 
     const account = await storage.upsertBangumiAccount({
       id: 'bgm-1',
+      bangumiUserId: 1,
       username: 'spike',
       nickname: 'Spike',
     });
@@ -35,10 +36,15 @@ describe('Manage Index 6 Actions Unit Tests', () => {
     await storage.replaceActiveBinding(principal.id, account.id);
 
     await storage.upsertCredential({
+      id: 'c-1',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('test-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
+      requestedCapabilities: ['write:indices', 'write:collection'],
+      reportedScopes: ['write:indices', 'write:collection'],
+      scopeEvidence: 'reported',
       keyVersion: 'v1',
+      createdAt: new Date(),
       updatedAt: new Date(),
     });
 
@@ -57,90 +63,92 @@ describe('Manage Index 6 Actions Unit Tests', () => {
   }
 
   it('handles action="create"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment();
+    const { manageIndexTool, context, tokenBroker, capturedRequests } =
+      await setupTestEnvironment();
 
-    await manageIndexTool.execute(
+    await (manageIndexTool.execute as any)(
       { action: 'create', title: 'Top Anime', desc: 'Best anime' },
       context,
-      { clientProvider: tokenBroker } as any
+      { clientProvider: tokenBroker } as any,
     );
 
     expect(capturedRequests.length).toBe(2);
-    expect(capturedRequests[0].url).toContain('/v0/indices');
-    expect(capturedRequests[0].method).toBe('POST');
+    expect(capturedRequests[0]?.url).toContain('/v0/indices');
+    expect(capturedRequests[0]?.method).toBe('POST');
 
-    expect(capturedRequests[1].url).toContain('/v0/indices/50');
-    expect(capturedRequests[1].method).toBe('PUT');
+    expect(capturedRequests[1]?.url).toContain('/v0/indices/50');
+    expect(capturedRequests[1]?.method).toBe('PUT');
   });
 
   it('handles action="edit"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment();
+    const { manageIndexTool, context, tokenBroker, capturedRequests } =
+      await setupTestEnvironment();
 
-    await manageIndexTool.execute(
+    await (manageIndexTool.execute as any)(
       { action: 'edit', indexId: 50, title: 'Updated Title' },
       context,
-      { clientProvider: tokenBroker } as any
+      { clientProvider: tokenBroker } as any,
     );
 
     expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0].url).toContain('/v0/indices/50');
-    expect(capturedRequests[0].method).toBe('PUT');
+    expect(capturedRequests[0]?.url).toContain('/v0/indices/50');
+    expect(capturedRequests[0]?.method).toBe('PUT');
   });
 
   it('handles action="add_subject"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment();
+    const { manageIndexTool, context, tokenBroker, capturedRequests } =
+      await setupTestEnvironment();
 
-    await manageIndexTool.execute(
+    await (manageIndexTool.execute as any)(
       { action: 'add_subject', indexId: 50, subjectId: 101, comment: 'Must watch' },
       context,
-      { clientProvider: tokenBroker } as any
+      { clientProvider: tokenBroker } as any,
     );
 
     expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0].url).toContain('/v0/indices/50/subjects');
-    expect(capturedRequests[0].method).toBe('POST');
-    expect(capturedRequests[0].body).toEqual({ subject_id: 101, comment: 'Must watch' });
+    expect(capturedRequests[0]?.url).toContain('/v0/indices/50/subjects');
+    expect(capturedRequests[0]?.method).toBe('POST');
+    expect(capturedRequests[0]?.body).toEqual({ subject_id: 101, comment: 'Must watch' });
   });
 
   it('handles action="remove_subject"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment();
+    const { manageIndexTool, context, tokenBroker, capturedRequests } =
+      await setupTestEnvironment();
 
-    await manageIndexTool.execute(
+    await (manageIndexTool.execute as any)(
       { action: 'remove_subject', indexId: 50, subjectId: 101 },
       context,
-      { clientProvider: tokenBroker } as any
+      { clientProvider: tokenBroker } as any,
     );
 
     expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0].url).toContain('/v0/indices/50/subjects');
-    expect(capturedRequests[0].method).toBe('DELETE');
+    expect(capturedRequests[0]?.url).toContain('/v0/indices/50/subjects');
+    expect(capturedRequests[0]?.method).toBe('DELETE');
   });
 
   it('handles action="collect"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment();
+    const { manageIndexTool, context, tokenBroker, capturedRequests } =
+      await setupTestEnvironment();
 
-    await manageIndexTool.execute(
-      { action: 'collect', indexId: 50 },
-      context,
-      { clientProvider: tokenBroker } as any
-    );
+    await (manageIndexTool.execute as any)({ action: 'collect', indexId: 50 }, context, {
+      clientProvider: tokenBroker,
+    } as any);
 
     expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0].url).toContain('/v0/indices/50/collect');
-    expect(capturedRequests[0].method).toBe('POST');
+    expect(capturedRequests[0]?.url).toContain('/v0/indices/50/collect');
+    expect(capturedRequests[0]?.method).toBe('POST');
   });
 
   it('handles action="uncollect"', async () => {
-    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment();
+    const { manageIndexTool, context, tokenBroker, capturedRequests } =
+      await setupTestEnvironment();
 
-    await manageIndexTool.execute(
-      { action: 'uncollect', indexId: 50 },
-      context,
-      { clientProvider: tokenBroker } as any
-    );
+    await (manageIndexTool.execute as any)({ action: 'uncollect', indexId: 50 }, context, {
+      clientProvider: tokenBroker,
+    } as any);
 
     expect(capturedRequests.length).toBe(1);
-    expect(capturedRequests[0].url).toContain('/v0/indices/50/collect');
-    expect(capturedRequests[0].method).toBe('DELETE');
+    expect(capturedRequests[0]?.url).toContain('/v0/indices/50/collect');
+    expect(capturedRequests[0]?.method).toBe('DELETE');
   });
 });

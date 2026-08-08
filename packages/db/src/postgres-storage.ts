@@ -29,7 +29,9 @@ function getMigrationSql(): string {
       return fs.readFileSync(p, 'utf-8');
     }
   }
-  throw new Error(`Migration SQL file 0000_initial.sql not found in any expected paths: ${possiblePaths.join(', ')}`);
+  throw new Error(
+    `Migration SQL file 0000_initial.sql not found in any expected paths: ${possiblePaths.join(', ')}`,
+  );
 }
 
 function stringToTwoInt32(str: string): [number, number] {
@@ -67,7 +69,7 @@ export class PostgresStorage implements Storage {
       where: and(
         eq(schema.externalPrincipals.provider, input.provider),
         eq(schema.externalPrincipals.botInstanceId, input.botInstanceId),
-        eq(schema.externalPrincipals.externalUserId, input.externalUserId)
+        eq(schema.externalPrincipals.externalUserId, input.externalUserId),
       ),
     });
 
@@ -85,21 +87,24 @@ export class PostgresStorage implements Storage {
 
     const now = new Date();
     const id = `prc_${crypto.randomUUID()}`;
-    await this.db.insert(schema.externalPrincipals).values({
-      id,
-      provider: input.provider,
-      botInstanceId: input.botInstanceId,
-      externalUserId: input.externalUserId,
-      displayName: input.displayName,
-      createdAt: now,
-      updatedAt: now,
-    }).onConflictDoNothing();
+    await this.db
+      .insert(schema.externalPrincipals)
+      .values({
+        id,
+        provider: input.provider,
+        botInstanceId: input.botInstanceId,
+        externalUserId: input.externalUserId,
+        displayName: input.displayName,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
 
     const result = await this.db.query.externalPrincipals.findFirst({
       where: and(
         eq(schema.externalPrincipals.provider, input.provider),
         eq(schema.externalPrincipals.botInstanceId, input.botInstanceId),
-        eq(schema.externalPrincipals.externalUserId, input.externalUserId)
+        eq(schema.externalPrincipals.externalUserId, input.externalUserId),
       ),
     });
 
@@ -149,7 +154,7 @@ export class PostgresStorage implements Storage {
   async upsertBangumiAccount(
     input: Partial<Pick<BangumiAccountRecord, 'bangumiUserId'>> &
       Omit<BangumiAccountRecord, 'createdAt' | 'updatedAt' | 'bangumiUserId'> &
-      Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>
+      Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>,
   ): Promise<BangumiAccountRecord> {
     const now = new Date();
     const createdAt = input.createdAt || now;
@@ -157,23 +162,26 @@ export class PostgresStorage implements Storage {
       input.bangumiUserId ??
       Math.abs(input.id.split('').reduce((acc, c) => (acc << 5) - acc + c.charCodeAt(0), 0));
 
-    await this.db.insert(schema.bangumiAccounts).values({
-      id: input.id,
-      bangumiUserId,
-      username: input.username,
-      nickname: input.nickname,
-      avatarUrl: input.avatarUrl,
-      createdAt,
-      updatedAt: now,
-    }).onConflictDoUpdate({
-      target: schema.bangumiAccounts.id,
-      set: {
+    await this.db
+      .insert(schema.bangumiAccounts)
+      .values({
+        id: input.id,
+        bangumiUserId,
         username: input.username,
         nickname: input.nickname,
         avatarUrl: input.avatarUrl,
+        createdAt,
         updatedAt: now,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: schema.bangumiAccounts.id,
+        set: {
+          username: input.username,
+          nickname: input.nickname,
+          avatarUrl: input.avatarUrl,
+          updatedAt: now,
+        },
+      });
 
     return {
       id: input.id,
@@ -190,7 +198,7 @@ export class PostgresStorage implements Storage {
     const res = await this.db.query.accountBindings.findFirst({
       where: and(
         eq(schema.accountBindings.principalId, principalId),
-        eq(schema.accountBindings.isActive, true)
+        eq(schema.accountBindings.isActive, true),
       ),
     });
     if (!res) return null;
@@ -203,18 +211,24 @@ export class PostgresStorage implements Storage {
     };
   }
 
-  async replaceActiveBinding(principalId: string, bangumiAccountId: string): Promise<AccountBindingRecord> {
+  async replaceActiveBinding(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<AccountBindingRecord> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       const [key1, key2] = stringToTwoInt32(`bnd_${principalId}`);
       await client.query('SELECT pg_advisory_xact_lock($1, $2)', [key1, key2]);
-      await client.query('UPDATE account_bindings SET is_active = false WHERE principal_id = $1 AND is_active = true', [principalId]);
+      await client.query(
+        'UPDATE account_bindings SET is_active = false WHERE principal_id = $1 AND is_active = true',
+        [principalId],
+      );
       const now = new Date();
       const id = `bnd_${crypto.randomUUID()}`;
       await client.query(
         'INSERT INTO account_bindings (id, principal_id, bangumi_account_id, is_active, created_at) VALUES ($1, $2, $3, $4, $5)',
-        [id, principalId, bangumiAccountId, true, now]
+        [id, principalId, bangumiAccountId, true, now],
       );
       await client.query('COMMIT');
       return {
@@ -233,12 +247,15 @@ export class PostgresStorage implements Storage {
   }
 
   async deactivateBindings(principalId: string): Promise<void> {
-    await this.db.update(schema.accountBindings)
+    await this.db
+      .update(schema.accountBindings)
       .set({ isActive: false })
-      .where(and(
-        eq(schema.accountBindings.principalId, principalId),
-        eq(schema.accountBindings.isActive, true)
-      ));
+      .where(
+        and(
+          eq(schema.accountBindings.principalId, principalId),
+          eq(schema.accountBindings.isActive, true),
+        ),
+      );
   }
 
   async getCredential(accountId: string): Promise<AccessCredentialRecord | null> {
@@ -273,7 +290,8 @@ export class PostgresStorage implements Storage {
       id: res.id,
       bangumiAccountId: res.bangumiAccountId,
       encryptedAccessToken: encryptedAccessToken as AccessCredentialRecord['encryptedAccessToken'],
-      encryptedRefreshToken: encryptedRefreshToken as AccessCredentialRecord['encryptedRefreshToken'],
+      encryptedRefreshToken:
+        encryptedRefreshToken as AccessCredentialRecord['encryptedRefreshToken'],
       expiresAt: res.expiresAt,
       requestedCapabilities: (res.requestedCapabilities as string[] | null) || [],
       reportedScopes: res.reportedScopes as string[] | null,
@@ -290,35 +308,43 @@ export class PostgresStorage implements Storage {
     const createdAt = record.createdAt || new Date();
     const updatedAt = record.updatedAt || new Date();
 
-    await this.db.insert(schema.accessCredentials).values({
-      id,
-      bangumiAccountId: record.bangumiAccountId,
-      encryptedAccessToken: record.encryptedAccessToken as unknown as string,
-      encryptedRefreshToken: record.encryptedRefreshToken ? (record.encryptedRefreshToken as unknown as string) : null,
-      expiresAt: record.expiresAt,
-      requestedCapabilities: requestedCapabilities as unknown as string[],
-      reportedScopes: record.reportedScopes as unknown as string[],
-      scopeEvidence: record.scopeEvidence || 'unknown',
-      keyVersion: record.keyVersion || 'v1',
-      createdAt,
-      updatedAt,
-    }).onConflictDoUpdate({
-      target: schema.accessCredentials.bangumiAccountId,
-      set: {
+    await this.db
+      .insert(schema.accessCredentials)
+      .values({
+        id,
+        bangumiAccountId: record.bangumiAccountId,
         encryptedAccessToken: record.encryptedAccessToken as unknown as string,
-        encryptedRefreshToken: record.encryptedRefreshToken ? (record.encryptedRefreshToken as unknown as string) : null,
+        encryptedRefreshToken: record.encryptedRefreshToken
+          ? (record.encryptedRefreshToken as unknown as string)
+          : null,
         expiresAt: record.expiresAt,
         requestedCapabilities: requestedCapabilities as unknown as string[],
         reportedScopes: record.reportedScopes as unknown as string[],
         scopeEvidence: record.scopeEvidence || 'unknown',
         keyVersion: record.keyVersion || 'v1',
+        createdAt,
         updatedAt,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: schema.accessCredentials.bangumiAccountId,
+        set: {
+          encryptedAccessToken: record.encryptedAccessToken as unknown as string,
+          encryptedRefreshToken: record.encryptedRefreshToken
+            ? (record.encryptedRefreshToken as unknown as string)
+            : null,
+          expiresAt: record.expiresAt,
+          requestedCapabilities: requestedCapabilities as unknown as string[],
+          reportedScopes: record.reportedScopes as unknown as string[],
+          scopeEvidence: record.scopeEvidence || 'unknown',
+          keyVersion: record.keyVersion || 'v1',
+          updatedAt,
+        },
+      });
   }
 
   async deleteCredential(accountId: string): Promise<void> {
-    await this.db.delete(schema.accessCredentials)
+    await this.db
+      .delete(schema.accessCredentials)
       .where(eq(schema.accessCredentials.bangumiAccountId, accountId));
   }
 
@@ -336,14 +362,20 @@ export class PostgresStorage implements Storage {
     });
   }
 
-  async consumeOAuthSession(stateHash: string, now: Date = new Date()): Promise<OAuthSessionRecord> {
-    const updated = await this.db.update(schema.oauthSessions)
+  async consumeOAuthSession(
+    stateHash: string,
+    now: Date = new Date(),
+  ): Promise<OAuthSessionRecord> {
+    const updated = await this.db
+      .update(schema.oauthSessions)
       .set({ usedAt: now })
-      .where(and(
-        eq(schema.oauthSessions.stateHash, stateHash),
-        isNull(schema.oauthSessions.usedAt),
-        gt(schema.oauthSessions.expiresAt, now)
-      ))
+      .where(
+        and(
+          eq(schema.oauthSessions.stateHash, stateHash),
+          isNull(schema.oauthSessions.usedAt),
+          gt(schema.oauthSessions.expiresAt, now),
+        ),
+      )
       .returning();
 
     if (updated.length > 0 && updated[0]) {
@@ -402,22 +434,25 @@ export class PostgresStorage implements Storage {
   async claimPendingAction(input: ClaimPendingActionInput): Promise<PendingActionRecord> {
     const now = input.now || new Date();
 
-    const updated = await this.db.update(schema.pendingActions)
+    const updated = await this.db
+      .update(schema.pendingActions)
       .set({
         status: 'executing',
         confirmedAt: now,
         executionStartedAt: now,
         updatedAt: now,
       })
-      .where(and(
-        eq(schema.pendingActions.id, input.confirmationId),
-        eq(schema.pendingActions.status, 'pending'),
-        eq(schema.pendingActions.principalId, input.principalId),
-        eq(schema.pendingActions.botInstanceId, input.botInstanceId),
-        eq(schema.pendingActions.conversationKey, input.conversationId),
-        eq(schema.pendingActions.payloadHash, input.payloadHash),
-        gt(schema.pendingActions.expiresAt, now)
-      ))
+      .where(
+        and(
+          eq(schema.pendingActions.id, input.confirmationId),
+          eq(schema.pendingActions.status, 'pending'),
+          eq(schema.pendingActions.principalId, input.principalId),
+          eq(schema.pendingActions.botInstanceId, input.botInstanceId),
+          eq(schema.pendingActions.conversationKey, input.conversationId),
+          eq(schema.pendingActions.payloadHash, input.payloadHash),
+          gt(schema.pendingActions.expiresAt, now),
+        ),
+      )
       .returning();
 
     if (updated.length > 0 && updated[0]) {
@@ -451,7 +486,9 @@ export class PostgresStorage implements Storage {
       throw new Error(`CONFIRMATION_INVALID: Invalid confirmationId "${input.confirmationId}"`);
     }
     if (existing.status !== 'pending') {
-      throw new Error(`CONFIRMATION_INVALID: Action status is "${existing.status}", expected "pending"`);
+      throw new Error(
+        `CONFIRMATION_INVALID: Action status is "${existing.status}", expected "pending"`,
+      );
     }
     if (existing.principalId !== input.principalId) {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not belong to current user');
@@ -463,13 +500,16 @@ export class PostgresStorage implements Storage {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match current conversation');
     }
     if (now > existing.expiresAt) {
-      await this.db.update(schema.pendingActions)
+      await this.db
+        .update(schema.pendingActions)
         .set({ status: 'expired', updatedAt: now })
         .where(eq(schema.pendingActions.id, input.confirmationId));
       throw new Error('CONFIRMATION_EXPIRED: Confirmation has expired');
     }
     if (existing.payloadHash !== input.payloadHash) {
-      throw new Error('CONFIRMATION_INVALID: Action payload hash does not match original confirmation');
+      throw new Error(
+        'CONFIRMATION_INVALID: Action payload hash does not match original confirmation',
+      );
     }
 
     throw new Error('CONFIRMATION_INVALID: Failed to claim pending action');
@@ -477,7 +517,8 @@ export class PostgresStorage implements Storage {
 
   async markPendingActionSucceeded(id: string): Promise<void> {
     const now = new Date();
-    await this.db.update(schema.pendingActions)
+    await this.db
+      .update(schema.pendingActions)
       .set({
         status: 'succeeded',
         executedAt: now,
@@ -488,7 +529,8 @@ export class PostgresStorage implements Storage {
 
   async markPendingActionFailed(id: string, reason: string, failureCode?: string): Promise<void> {
     const now = new Date();
-    await this.db.update(schema.pendingActions)
+    await this.db
+      .update(schema.pendingActions)
       .set({
         status: 'failed',
         failureMessageSafe: reason,
@@ -500,7 +542,8 @@ export class PostgresStorage implements Storage {
 
   async markPendingActionUnknown(id: string, reason: string): Promise<void> {
     const now = new Date();
-    await this.db.update(schema.pendingActions)
+    await this.db
+      .update(schema.pendingActions)
       .set({
         status: 'unknown',
         failureMessageSafe: reason,

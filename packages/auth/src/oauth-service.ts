@@ -35,7 +35,7 @@ export class OAuthService {
     private storage: Storage,
     private config: OAuthConfig,
     private httpClient: HttpClient,
-    oauthClient?: BangumiOAuthClient
+    oauthClient?: BangumiOAuthClient,
   ) {
     this.stateStore = new OAuthStateStore(storage);
     this.oauthClient = oauthClient || new BangumiOAuthClient();
@@ -50,7 +50,7 @@ export class OAuthService {
     principalId: string,
     botInstanceId?: string,
     conversationId?: string,
-    requestedCapabilities: string[] = ['write:collection']
+    requestedCapabilities: string[] = ['write:collection'],
   ): Promise<{ url: string; state: string; expiresAt: Date }> {
     const { state, session } = await this.stateStore.generateState({
       principalId,
@@ -84,7 +84,7 @@ export class OAuthService {
       this.config.clientId,
       this.config.clientSecret,
       this.config.redirectUri,
-      this.config.tokenUrl
+      this.config.tokenUrl,
     );
 
     // 3. Verify user identity via /v0/me

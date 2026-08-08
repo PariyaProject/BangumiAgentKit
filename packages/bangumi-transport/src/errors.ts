@@ -25,7 +25,7 @@ export class BangumiError extends Error {
     message: string,
     public readonly retryable: boolean,
     public readonly upstreamStatus?: number,
-    public readonly nextAction?: string
+    public readonly nextAction?: string,
   ) {
     const fullMessage = message.startsWith(code) ? message : `${code}: ${message}`;
     super(fullMessage);

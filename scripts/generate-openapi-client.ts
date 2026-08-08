@@ -35,10 +35,18 @@ function generateClient() {
   code.push(`export type { components, operations, paths };\n`);
 
   code.push(`// Helper types to extract operation parameters and responses safely`);
-  code.push(`export type OperationPath<K extends keyof operations> = operations[K] extends { parameters: { path: infer P } } ? P : (operations[K] extends { parameters?: { path?: infer P } } ? P : Record<string, never>);`);
-  code.push(`export type OperationQuery<K extends keyof operations> = operations[K] extends { parameters: { query?: infer Q } } ? Q : Record<string, unknown>;`);
-  code.push(`export type OperationBody<K extends keyof operations> = operations[K] extends { requestBody: { content: { 'application/json': infer B } } } ? B : (operations[K] extends { requestBody?: { content: { 'application/json': infer B } } } ? B : never);`);
-  code.push(`export type OperationResponse<K extends keyof operations> = operations[K] extends { responses: { 200: { content: { 'application/json': infer R } } } } ? R : (operations[K] extends { responses: { 201: { content: { 'application/json': infer R } } } } ? R : (operations[K] extends { responses: { 302: unknown } } ? { location: string } : (operations[K] extends { responses: { 301: unknown } } ? { location: string } : (operations[K] extends { responses: { 204: unknown } } ? Record<string, never> : (operations[K] extends { responses: { 200: unknown } } ? Record<string, never> : never)))));\n`);
+  code.push(
+    `export type OperationPath<K extends keyof operations> = operations[K] extends { parameters: { path: infer P } } ? P : (operations[K] extends { parameters?: { path?: infer P } } ? P : Record<string, never>);`,
+  );
+  code.push(
+    `export type OperationQuery<K extends keyof operations> = operations[K] extends { parameters: { query?: infer Q } } ? Q : Record<string, unknown>;`,
+  );
+  code.push(
+    `export type OperationBody<K extends keyof operations> = operations[K] extends { requestBody: { content: { 'application/json': infer B } } } ? B : (operations[K] extends { requestBody?: { content: { 'application/json': infer B } } } ? B : never);`,
+  );
+  code.push(
+    `export type OperationResponse<K extends keyof operations> = operations[K] extends { responses: { 200: { content: { 'application/json': infer R } } } } ? R : (operations[K] extends { responses: { 201: { content: { 'application/json': infer R } } } } ? R : (operations[K] extends { responses: { 302: unknown } } ? { location: string } : (operations[K] extends { responses: { 301: unknown } } ? { location: string } : (operations[K] extends { responses: { 204: unknown } } ? Record<string, never> : (operations[K] extends { responses: { 200: unknown } } ? Record<string, never> : never)))));\n`,
+  );
 
   code.push(`// Re-exported DTO types derived strictly from OpenAPI components schema`);
   code.push(`export type Subject = components['schemas']['Subject'];`);
@@ -112,12 +120,16 @@ function generateClient() {
         if (hasBody && resBody?.content) {
           const contentTypes = Object.keys(resBody.content);
           if (contentTypes.length > 0 && !contentTypes.includes('application/json')) {
-            throw new Error(`UNSUPPORTED_REQUEST_CONTENT_TYPE: Operation '${opId}' has unsupported request content types: ${contentTypes.join(', ')}`);
+            throw new Error(
+              `UNSUPPORTED_REQUEST_CONTENT_TYPE: Operation '${opId}' has unsupported request content types: ${contentTypes.join(', ')}`,
+            );
           }
         }
 
         const responsesMap = op.responses || {};
-        const successCodes = Object.keys(responsesMap).filter((c) => c.startsWith('2') || c.startsWith('3'));
+        const successCodes = Object.keys(responsesMap).filter(
+          (c) => c.startsWith('2') || c.startsWith('3'),
+        );
         for (const codeStr of successCodes) {
           const respItem = resolveRef(spec, responsesMap[codeStr]);
           const contentMap = respItem?.content;
@@ -125,15 +137,24 @@ function generateClient() {
             if (contentMap) {
               const keys = Object.keys(contentMap);
               if (keys.length > 0 && !keys.includes('application/json')) {
-                throw new Error(`UNSUPPORTED_SUCCESS_RESPONSE: Operation '${opId}' has unsupported response content type for ${codeStr}: ${keys.join(', ')}`);
+                throw new Error(
+                  `UNSUPPORTED_SUCCESS_RESPONSE: Operation '${opId}' has unsupported response content type for ${codeStr}: ${keys.join(', ')}`,
+                );
               }
             }
           } else if (codeStr === '204') {
             // 204 no content
-          } else if (codeStr === '301' || codeStr === '302' || codeStr === '307' || codeStr === '308') {
+          } else if (
+            codeStr === '301' ||
+            codeStr === '302' ||
+            codeStr === '307' ||
+            codeStr === '308'
+          ) {
             // redirect
           } else {
-            throw new Error(`UNSUPPORTED_SUCCESS_RESPONSE: Operation '${opId}' has unsupported success response status code ${codeStr}`);
+            throw new Error(
+              `UNSUPPORTED_SUCCESS_RESPONSE: Operation '${opId}' has unsupported success response status code ${codeStr}`,
+            );
           }
         }
 

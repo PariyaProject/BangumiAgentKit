@@ -118,8 +118,8 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
               expires_in: 604800,
               user_id: 8888,
             }),
-            { status: 200 }
-          )
+            { status: 200 },
+          ),
         );
       }
       if (url.includes('/v0/me')) {
@@ -130,8 +130,8 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
               username: 'bgm_test_user',
               nickname: 'Bangumi Tester',
             }),
-            { status: 200 }
-          )
+            { status: 200 },
+          ),
         );
       }
       return Promise.reject(new Error('Unknown URL'));
@@ -146,7 +146,7 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
         redirectUri: 'https://example.com/oauth/callback',
         secretKey: SECRET_KEY,
       },
-      httpClient
+      httpClient,
     );
 
     const { state } = await oauthService.createAuthorizationUrl('qq_principal_1');

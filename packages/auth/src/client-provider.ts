@@ -7,7 +7,7 @@ export interface BangumiClientProvider {
   getOptionalAuthenticatedClient(principalId?: string): Promise<GeneratedBangumiOpenApiClient>;
   requireAuthenticatedClient(
     principalId: string,
-    requiredCapabilities?: string[]
+    requiredCapabilities?: string[],
   ): Promise<{ account: BangumiAccountRecord; client: GeneratedBangumiOpenApiClient }>;
 }
 
@@ -18,13 +18,15 @@ export class DefaultBangumiClientProvider implements BangumiClientProvider {
     return await this.tokenBroker.getPublicClient();
   }
 
-  async getOptionalAuthenticatedClient(principalId?: string): Promise<GeneratedBangumiOpenApiClient> {
+  async getOptionalAuthenticatedClient(
+    principalId?: string,
+  ): Promise<GeneratedBangumiOpenApiClient> {
     return await this.tokenBroker.getOptionalAuthenticatedClient(principalId);
   }
 
   async requireAuthenticatedClient(
     principalId: string,
-    requiredCapabilities?: string[]
+    requiredCapabilities?: string[],
   ): Promise<{ account: BangumiAccountRecord; client: GeneratedBangumiOpenApiClient }> {
     return await this.tokenBroker.requireAuthenticatedClient(principalId, requiredCapabilities);
   }

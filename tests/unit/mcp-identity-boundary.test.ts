@@ -8,7 +8,10 @@ import { createRuntimeDependencies } from '@bangumi-agent-kit/tools';
 describe('C. Trusted MCP Identity Boundary Regression Test', () => {
   it('strictly ignores or rejects _principalId argument passed in callTool to prevent user impersonation', async () => {
     const storage = new MemoryStorage();
-    const deps = createRuntimeDependencies({ storage, secretKey: 'test-secret-key-123456789012345678901234' });
+    const deps = createRuntimeDependencies({
+      storage,
+      secretKey: 'test-secret-key-123456789012345678901234',
+    });
 
     // Custom identity provider locking server identity to 'server-assigned-principal'
     const customIdentityProvider = {
@@ -48,12 +51,12 @@ describe('C. Trusted MCP Identity Boundary Regression Test', () => {
     });
 
     expect(executeSpy).toHaveBeenCalled();
-    const passedContext = executeSpy.mock.calls[0][2];
-    const passedArgs = executeSpy.mock.calls[0][1];
+    const passedContext = executeSpy.mock.calls[0]![2];
+    const passedArgs = executeSpy.mock.calls[0]![1] as any;
 
     // Verify _principalId in args was NOT used to overwrite server context
-    expect(passedContext.principalId).toBe('server-assigned-principal');
-    expect(passedContext.principalId).not.toBe('victim');
+    expect(passedContext?.principalId).toBe('server-assigned-principal');
+    expect(passedContext?.principalId).not.toBe('victim');
     expect(passedArgs._principalId).toBeUndefined();
 
     await client.close();

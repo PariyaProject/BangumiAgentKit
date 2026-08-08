@@ -1,12 +1,15 @@
 # ADR 0001: PostgreSQL Schema Integrity & Key Constraints
 
 ## Status
+
 Accepted
 
 ## Context
+
 PR-3 established the PostgreSQL storage backend for multi-tenant Bangumi agent identity and authentication credentials. However, earlier iterations lacked database-level guarantees for single-active bindings and explicit foreign keys between relational entities.
 
 ## Decision
+
 1. **Single-Active Binding Guarantee**:
    We add a partial unique index on `account_bindings`:
    `UNIQUE(principal_id) WHERE is_active = true`

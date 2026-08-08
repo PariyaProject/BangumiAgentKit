@@ -41,7 +41,7 @@ describe('H. Fastify API Integration Test', () => {
     // 5. Valid mocked OAuth callback -> 200
     vi.spyOn(deps.oauthService, 'handleCallback').mockResolvedValue({
       principalId: 'p-1',
-      bangumiAccountId: 'bgm-1',
+      accountId: 'bgm-1',
       username: 'testuser',
       nickname: 'Test User',
     });

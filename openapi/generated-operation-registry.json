@@ -125,9 +125,7 @@
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -138,9 +136,7 @@
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/image",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "queryParameters": [
       {
         "name": "type",
@@ -157,9 +153,7 @@
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/persons",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -170,9 +164,7 @@
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/characters",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -183,9 +175,7 @@
     "tag": "条目",
     "method": "GET",
     "path": "/v0/subjects/{subject_id}/subjects",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -225,9 +215,7 @@
     "tag": "章节",
     "method": "GET",
     "path": "/v0/episodes/{episode_id}",
-    "pathParameters": [
-      "episode_id"
-    ],
+    "pathParameters": ["episode_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -238,9 +226,7 @@
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}",
-    "pathParameters": [
-      "character_id"
-    ],
+    "pathParameters": ["character_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -251,9 +237,7 @@
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/image",
-    "pathParameters": [
-      "character_id"
-    ],
+    "pathParameters": ["character_id"],
     "queryParameters": [
       {
         "name": "type",
@@ -270,9 +254,7 @@
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/subjects",
-    "pathParameters": [
-      "character_id"
-    ],
+    "pathParameters": ["character_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -283,9 +265,7 @@
     "tag": "角色",
     "method": "GET",
     "path": "/v0/characters/{character_id}/persons",
-    "pathParameters": [
-      "character_id"
-    ],
+    "pathParameters": ["character_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -296,13 +276,9 @@
     "tag": "角色",
     "method": "POST",
     "path": "/v0/characters/{character_id}/collect",
-    "pathParameters": [
-      "character_id"
-    ],
+    "pathParameters": ["character_id"],
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "Collect character for current user"
   },
@@ -311,13 +287,9 @@
     "tag": "角色",
     "method": "DELETE",
     "path": "/v0/characters/{character_id}/collect",
-    "pathParameters": [
-      "character_id"
-    ],
+    "pathParameters": ["character_id"],
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "destructive",
     "summary": "Uncollect character for current user"
   },
@@ -326,9 +298,7 @@
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}",
-    "pathParameters": [
-      "person_id"
-    ],
+    "pathParameters": ["person_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -339,9 +309,7 @@
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/image",
-    "pathParameters": [
-      "person_id"
-    ],
+    "pathParameters": ["person_id"],
     "queryParameters": [
       {
         "name": "type",
@@ -358,9 +326,7 @@
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/subjects",
-    "pathParameters": [
-      "person_id"
-    ],
+    "pathParameters": ["person_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -371,9 +337,7 @@
     "tag": "人物",
     "method": "GET",
     "path": "/v0/persons/{person_id}/characters",
-    "pathParameters": [
-      "person_id"
-    ],
+    "pathParameters": ["person_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -384,13 +348,9 @@
     "tag": "人物",
     "method": "POST",
     "path": "/v0/persons/{person_id}/collect",
-    "pathParameters": [
-      "person_id"
-    ],
+    "pathParameters": ["person_id"],
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "Collect person for current user"
   },
@@ -399,13 +359,9 @@
     "tag": "人物",
     "method": "DELETE",
     "path": "/v0/persons/{person_id}/collect",
-    "pathParameters": [
-      "person_id"
-    ],
+    "pathParameters": ["person_id"],
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "destructive",
     "summary": "Uncollect person for current user"
   },
@@ -414,9 +370,7 @@
     "tag": "用户",
     "method": "GET",
     "path": "/v0/users/{username}",
-    "pathParameters": [
-      "username"
-    ],
+    "pathParameters": ["username"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -427,9 +381,7 @@
     "tag": "用户",
     "method": "GET",
     "path": "/v0/users/{username}/avatar",
-    "pathParameters": [
-      "username"
-    ],
+    "pathParameters": ["username"],
     "queryParameters": [
       {
         "name": "type",
@@ -457,9 +409,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections",
-    "pathParameters": [
-      "username"
-    ],
+    "pathParameters": ["username"],
     "queryParameters": [
       {
         "name": "subject_type",
@@ -488,10 +438,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/{subject_id}",
-    "pathParameters": [
-      "username",
-      "subject_id"
-    ],
+    "pathParameters": ["username", "subject_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -502,16 +449,12 @@
     "tag": "收藏",
     "method": "POST",
     "path": "/v0/users/-/collections/{subject_id}",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "新增或修改用户单个条目收藏"
   },
@@ -520,16 +463,12 @@
     "tag": "收藏",
     "method": "PATCH",
     "path": "/v0/users/-/collections/{subject_id}",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "修改用户单个收藏"
   },
@@ -538,9 +477,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/-/collections/{subject_id}/episodes",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "queryParameters": [
       {
         "name": "offset",
@@ -565,16 +502,12 @@
     "tag": "收藏",
     "method": "PATCH",
     "path": "/v0/users/-/collections/{subject_id}/episodes",
-    "pathParameters": [
-      "subject_id"
-    ],
+    "pathParameters": ["subject_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "章节收藏信息"
   },
@@ -583,9 +516,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/-/collections/-/episodes/{episode_id}",
-    "pathParameters": [
-      "episode_id"
-    ],
+    "pathParameters": ["episode_id"],
     "auth": "required",
     "scopes": [],
     "risk": "read",
@@ -596,16 +527,12 @@
     "tag": "收藏",
     "method": "PUT",
     "path": "/v0/users/-/collections/-/episodes/{episode_id}",
-    "pathParameters": [
-      "episode_id"
-    ],
+    "pathParameters": ["episode_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "更新章节收藏信息"
   },
@@ -614,9 +541,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/characters",
-    "pathParameters": [
-      "username"
-    ],
+    "pathParameters": ["username"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -627,10 +552,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/characters/{character_id}",
-    "pathParameters": [
-      "username",
-      "character_id"
-    ],
+    "pathParameters": ["username", "character_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -641,9 +563,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/persons",
-    "pathParameters": [
-      "username"
-    ],
+    "pathParameters": ["username"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -654,10 +574,7 @@
     "tag": "收藏",
     "method": "GET",
     "path": "/v0/users/{username}/collections/-/persons/{person_id}",
-    "pathParameters": [
-      "username",
-      "person_id"
-    ],
+    "pathParameters": ["username", "person_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -693,9 +610,7 @@
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/persons/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
+    "pathParameters": ["revision_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -731,9 +646,7 @@
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/characters/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
+    "pathParameters": ["revision_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -769,9 +682,7 @@
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/subjects/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
+    "pathParameters": ["revision_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -807,9 +718,7 @@
     "tag": "编辑历史",
     "method": "GET",
     "path": "/v0/revisions/episodes/{revision_id}",
-    "pathParameters": [
-      "revision_id"
-    ],
+    "pathParameters": ["revision_id"],
     "auth": "none",
     "scopes": [],
     "risk": "read",
@@ -822,9 +731,7 @@
     "path": "/v0/indices",
     "pathParameters": [],
     "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
+    "scopes": ["write:indices"],
     "risk": "write",
     "summary": "Create a new index"
   },
@@ -833,9 +740,7 @@
     "tag": "目录",
     "method": "GET",
     "path": "/v0/indices/{index_id}",
-    "pathParameters": [
-      "index_id"
-    ],
+    "pathParameters": ["index_id"],
     "auth": "optional",
     "scopes": [],
     "risk": "read",
@@ -846,16 +751,12 @@
     "tag": "目录",
     "method": "PUT",
     "path": "/v0/indices/{index_id}",
-    "pathParameters": [
-      "index_id"
-    ],
+    "pathParameters": ["index_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
+    "scopes": ["write:indices"],
     "risk": "write",
     "summary": "Edit index's information"
   },
@@ -864,9 +765,7 @@
     "tag": "目录",
     "method": "GET",
     "path": "/v0/indices/{index_id}/subjects",
-    "pathParameters": [
-      "index_id"
-    ],
+    "pathParameters": ["index_id"],
     "queryParameters": [
       {
         "name": "type",
@@ -891,16 +790,12 @@
     "tag": "目录",
     "method": "POST",
     "path": "/v0/indices/{index_id}/subjects",
-    "pathParameters": [
-      "index_id"
-    ],
+    "pathParameters": ["index_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
+    "scopes": ["write:indices"],
     "risk": "write",
     "summary": "Add a subject to Index"
   },
@@ -909,17 +804,12 @@
     "tag": "目录",
     "method": "PUT",
     "path": "/v0/indices/{index_id}/subjects/{subject_id}",
-    "pathParameters": [
-      "index_id",
-      "subject_id"
-    ],
+    "pathParameters": ["index_id", "subject_id"],
     "requestBody": {
       "required": false
     },
     "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
+    "scopes": ["write:indices"],
     "risk": "write",
     "summary": "Edit subject information in a index"
   },
@@ -928,14 +818,9 @@
     "tag": "目录",
     "method": "DELETE",
     "path": "/v0/indices/{index_id}/subjects/{subject_id}",
-    "pathParameters": [
-      "index_id",
-      "subject_id"
-    ],
+    "pathParameters": ["index_id", "subject_id"],
     "auth": "required",
-    "scopes": [
-      "write:indices"
-    ],
+    "scopes": ["write:indices"],
     "risk": "destructive",
     "summary": "Delete a subject from a Index"
   },
@@ -944,13 +829,9 @@
     "tag": "目录",
     "method": "POST",
     "path": "/v0/indices/{index_id}/collect",
-    "pathParameters": [
-      "index_id"
-    ],
+    "pathParameters": ["index_id"],
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "write",
     "summary": "Collect index for current user"
   },
@@ -959,13 +840,9 @@
     "tag": "目录",
     "method": "DELETE",
     "path": "/v0/indices/{index_id}/collect",
-    "pathParameters": [
-      "index_id"
-    ],
+    "pathParameters": ["index_id"],
     "auth": "required",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "risk": "destructive",
     "summary": "Uncollect index for current user"
   },

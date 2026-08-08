@@ -16,7 +16,7 @@ export class PolicyManager {
   static resolvePolicyForTool(
     tool: ToolDefinition,
     input: unknown,
-    context: ToolContext
+    context: ToolContext,
   ): ResolvedToolPolicy {
     if (typeof tool.resolvePolicy === 'function') {
       return tool.resolvePolicy(input, context);
@@ -29,7 +29,7 @@ export class PolicyManager {
   }
 
   static async assertAndClaimWritePolicy(
-    options: AssertWriteOptions
+    options: AssertWriteOptions,
   ): Promise<{ requiresConfirmation: boolean; confirmationId?: string; pendingActionId?: string }> {
     const { storage, context, actionType, summary, policy, payload } = options;
 
@@ -46,11 +46,16 @@ export class PolicyManager {
           `该操作具有破坏性或包含大批量变更 (${summary})，需要确认后才能继续。Confirmation ID: ${pending.confirmationId}`,
           false,
           400,
-          `在 ToolContext 中传入 confirmationId: "${pending.confirmationId}" 并重新发起请求`
+          `在 ToolContext 中传入 confirmationId: "${pending.confirmationId}" 并重新发起请求`,
         );
       }
 
-      const claimedAction = await claimPendingAction(storage, context, context.confirmationId, payload);
+      const claimedAction = await claimPendingAction(
+        storage,
+        context,
+        context.confirmationId,
+        payload,
+      );
       return {
         requiresConfirmation: true,
         confirmationId: context.confirmationId,

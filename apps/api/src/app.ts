@@ -1,6 +1,10 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import { Storage } from '@bangumi-agent-kit/db';
-import { createRuntimeDependencies, RuntimeDependencies, CreateRuntimeDependenciesConfig } from '@bangumi-agent-kit/tools';
+import {
+  createRuntimeDependencies,
+  RuntimeDependencies,
+  CreateRuntimeDependenciesConfig,
+} from '@bangumi-agent-kit/tools';
 import { handleOAuthCallbackRoute } from './routes/oauth.js';
 
 export interface ApiAppOptions extends Partial<CreateRuntimeDependenciesConfig> {
@@ -80,4 +84,3 @@ export function createApiApp(options: ApiAppOptions = {}): ApiAppInstance {
     handleHealthReady,
   };
 }
-

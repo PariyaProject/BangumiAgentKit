@@ -57,13 +57,13 @@ export class MemoryStorage implements Storage {
 
   async upsertBangumiAccount(
     input: Omit<BangumiAccountRecord, 'createdAt' | 'updatedAt'> &
-      Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>
+      Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>,
   ): Promise<BangumiAccountRecord> {
     const now = new Date();
     const existing = this.bangumiAccounts.get(input.id);
     const rec: BangumiAccountRecord = {
       ...input,
-      createdAt: existing ? existing.createdAt : (input.createdAt || now),
+      createdAt: existing ? existing.createdAt : input.createdAt || now,
       updatedAt: now,
     };
     this.bangumiAccounts.set(input.id, rec);
@@ -79,7 +79,10 @@ export class MemoryStorage implements Storage {
     return null;
   }
 
-  async replaceActiveBinding(principalId: string, bangumiAccountId: string): Promise<AccountBindingRecord> {
+  async replaceActiveBinding(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<AccountBindingRecord> {
     await this.deactivateBindings(principalId);
     const now = new Date();
     const binding: AccountBindingRecord = {
@@ -118,7 +121,10 @@ export class MemoryStorage implements Storage {
     this.oauthSessions.set(session.id, { ...session });
   }
 
-  async consumeOAuthSession(stateHash: string, now: Date = new Date()): Promise<OAuthSessionRecord> {
+  async consumeOAuthSession(
+    stateHash: string,
+    now: Date = new Date(),
+  ): Promise<OAuthSessionRecord> {
     let target: OAuthSessionRecord | null = null;
     for (const s of this.oauthSessions.values()) {
       if (s.stateHash === stateHash) {
@@ -156,7 +162,9 @@ export class MemoryStorage implements Storage {
     }
 
     if (action.status !== 'pending') {
-      throw new Error(`CONFIRMATION_INVALID: Action status is "${action.status}", expected "pending"`);
+      throw new Error(
+        `CONFIRMATION_INVALID: Action status is "${action.status}", expected "pending"`,
+      );
     }
 
     if (action.principalId !== input.principalId) {
@@ -177,7 +185,9 @@ export class MemoryStorage implements Storage {
     }
 
     if (action.payloadHash !== input.payloadHash) {
-      throw new Error('CONFIRMATION_INVALID: Action payload hash does not match original confirmation');
+      throw new Error(
+        'CONFIRMATION_INVALID: Action payload hash does not match original confirmation',
+      );
     }
 
     action.status = 'executing';
@@ -227,7 +237,10 @@ export class MemoryStorage implements Storage {
     const next = new Promise<void>((resolve) => {
       release = resolve;
     });
-    this.credentialLocks.set(accountId, previous.then(() => next));
+    this.credentialLocks.set(
+      accountId,
+      previous.then(() => next),
+    );
 
     try {
       await previous;

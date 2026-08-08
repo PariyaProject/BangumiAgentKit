@@ -37,7 +37,7 @@ export function isUrlAllowed(rawUrl: string): boolean {
 
 export async function fetchAndVerifyImage(
   url: string,
-  fetchFn: typeof fetch = fetch
+  fetchFn: typeof fetch = fetch,
 ): Promise<{ buffer: Buffer; contentType: string }> {
   if (!isUrlAllowed(url)) {
     throw new Error(`SSRF Blocked: Image URL "${url}" is not allowed.`);

@@ -69,7 +69,4 @@ export interface CollectionProgressViewModel {
 }
 
 export type RenderViewModel =
-  | SubjectCardViewModel
-  | SearchListViewModel
-  | CalendarViewModel
-  | CollectionProgressViewModel;
+  SubjectCardViewModel | SearchListViewModel | CalendarViewModel | CollectionProgressViewModel;
