@@ -1,9 +1,4 @@
-import {
-  ToolDefinition,
-  ToolContext,
-  AuthenticatedExecutionSession,
-  ToolExecutionDependencies,
-} from './define-tool.js';
+import { ToolDefinition, ToolContext, AuthenticatedExecutionSession } from './define-tool.js';
 import { HttpClient, BangumiError, toPublicError, isBangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage, MemoryStorage, PostgresStorage } from '@bangumi-agent-kit/db';
 import { AuditService } from '@bangumi-agent-kit/bangumi-core';

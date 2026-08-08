@@ -381,5 +381,5 @@ export function createWriteTools(
     manageCharacterCollection,
     managePersonCollection,
     manageIndex,
-  ];
+  ] as const;
 }

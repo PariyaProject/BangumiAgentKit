@@ -524,5 +524,5 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     listRevisions,
     getRevision,
     getIndex,
-  ];
+  ] as const;
 }

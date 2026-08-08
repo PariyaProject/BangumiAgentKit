@@ -5,6 +5,8 @@ import {
   createWriteTools,
   ToolRegistry,
   ToolContext,
+  ToolDefinition,
+  defineTool,
   ToolExecutionDependencies,
   createRuntimeDependencies,
 } from '@bangumi-agent-kit/tools';
@@ -37,23 +39,100 @@ interface TestToolResult {
   [key: string]: unknown;
 }
 
-async function executeTestTool<TOutput = TestToolResult>(
-  tool: {
-    execute: (
-      input: never,
-      context: ToolContext,
-      deps?: ToolExecutionDependencies,
-    ) => Promise<unknown>;
-  },
-  input: unknown,
+async function executeTestTool<TSchema extends z.ZodType, TResult = TestToolResult>(
+  tool: ToolDefinition<TSchema>,
+  input: z.infer<TSchema>,
   context: ToolContext,
   deps?: ToolExecutionDependencies,
-): Promise<TOutput> {
-  return (await tool.execute(input as never, context, deps)) as TOutput;
+): Promise<TResult> {
+  return (await tool.execute(input, context, deps)) as TResult;
+}
+
+function getReadToolMap(httpClient?: HttpClient) {
+  const [
+    searchTool,
+    getSubjectTool,
+    getSubjectRelationsTool,
+    castTool,
+    getCalendarTool,
+    getEpTool,
+    getEpisodeTool,
+    searchCharTool,
+    getCharTool,
+    searchPersonTool,
+    getPersonTool,
+    getUserTool,
+    getMyProfileTool,
+    listColTool,
+    getCollectionTool,
+    listRevisionsTool,
+    getRevisionTool,
+    getIndexTool,
+  ] = createReadTools(httpClient);
+  return {
+    searchTool,
+    getSubjectTool,
+    getSubjectRelationsTool,
+    castTool,
+    getCalendarTool,
+    getEpTool,
+    getEpisodeTool,
+    searchCharTool,
+    getCharTool,
+    searchPersonTool,
+    getPersonTool,
+    getUserTool,
+    getMyProfileTool,
+    listColTool,
+    getCollectionTool,
+    listRevisionsTool,
+    getRevisionTool,
+    getIndexTool,
+  };
+}
+
+function getWriteToolMap(deps?: Parameters<typeof createWriteTools>[0]) {
+  const [
+    updateCollectionTool,
+    progressTool,
+    manageCharColTool,
+    managePersonColTool,
+    manageIndexTool,
+  ] = createWriteTools(deps);
+  return {
+    updateCollectionTool,
+    progressTool,
+    manageCharColTool,
+    managePersonColTool,
+    manageIndexTool,
+  };
 }
 
 describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   const context = { principalId: 'user-s', botInstanceId: 'bot-s', conversationId: 'c-s' };
+
+  it('S00: static input type checking regression tests', () => {
+    const getEpisodesTool = defineTool({
+      name: 'bangumi.get_episodes',
+      description: 'test',
+      input: z.object({
+        subjectId: z.number().int().positive(),
+        category: z.enum(['main', 'sp', 'op', 'ed', 'pv', 'mad', 'other']).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+        offset: z.number().int().min(0).optional(),
+      }),
+      auth: 'none',
+      scopes: [],
+      risk: 'read',
+      execute: async () => ({}),
+    });
+
+    // @ts-expect-error - subjectId must be a number, not a string
+    executeTestTool(getEpisodesTool, { subjectId: 'wrong-string' }, context);
+
+    // @ts-expect-error - category must be 'main' | 'sp' | 'op' | 'ed' | ..., not 'invalid-category'
+    executeTestTool(getEpisodesTool, { subjectId: 1, category: 'invalid-category' }, context);
+  });
 
   it('S01: search subject exact Chinese name', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
@@ -68,8 +147,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ),
     );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
+    const { searchTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchTool, { query: '少女终末旅行' }, context);
     expect(res.status).toBe('exact');
@@ -89,8 +167,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ),
     );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
+    const { searchTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchTool, { query: '少女終末旅行' }, context);
     expect(res.status).toBe('exact');
@@ -113,8 +190,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ),
     );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
+    const { searchTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchTool, { query: 'SAME NAME' }, context);
     expect(res.status).toBe('disambiguation');
@@ -128,8 +204,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
         new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), { status: 200 }),
       );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
+    const { searchTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(
       searchTool,
@@ -147,8 +222,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       }),
     );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
+    const { searchTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchTool, { query: '226998' }, context);
     expect(res.status).toBe('exact');
@@ -175,8 +249,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       );
     });
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchCharTool = tools.find((t) => t.name === 'bangumi.search_characters')!;
+    const { searchCharTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchCharTool, { query: '後藤ひとり' }, context);
     expect(capturedUrl).toContain('/v0/search/characters');
@@ -205,8 +278,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       );
     });
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchPersonTool = tools.find((t) => t.name === 'bangumi.search_persons')!;
+    const { searchPersonTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchPersonTool, { query: '青山吉能' }, context);
     expect(capturedUrl).toContain('/v0/search/persons');
@@ -225,8 +297,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       return new Response(JSON.stringify([]), { status: 200 });
     });
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const getCharTool = tools.find((t) => t.name === 'bangumi.get_character')!;
+    const { getCharTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(getCharTool, { characterId: 10 }, context);
     expect(capturedUrls[0]).toContain('/v0/characters/10');
@@ -243,8 +314,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       return new Response(JSON.stringify([]), { status: 200 });
     });
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const getPersonTool = tools.find((t) => t.name === 'bangumi.get_person')!;
+    const { getPersonTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(getPersonTool, { personId: 20 }, context);
     expect(capturedUrls[0]).toContain('/v0/persons/20');
@@ -280,8 +350,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     });
 
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const castTool = tools.find((t) => t.name === 'bangumi.get_subject_cast')!;
+    const { castTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(castTool, { subjectId: 100 }, context);
     expect(callCount).toBe(1);
@@ -377,8 +446,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
 
     const httpClient = new HttpClient({ fetchFn: mockFetch });
     const broker = new TokenBroker(storage, { secretKey }, httpClient);
-    const writeTools = createWriteTools(broker);
-    const progressTool = writeTools.find((t) => t.name === 'bangumi.update_episode_progress')!;
+    const { progressTool } = getWriteToolMap(broker);
 
     const res = await executeTestTool(
       progressTool,
@@ -406,8 +474,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       );
     });
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const getEpTool = tools.find((t) => t.name === 'bangumi.get_episodes')!;
+    const { getEpTool } = getReadToolMap(httpClient);
 
     await executeTestTool(getEpTool, { subjectId: 100, category: 'main' }, context);
     expect(capturedUrls[0]).toContain('type=0');
@@ -472,8 +539,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
 
     const httpClient = new HttpClient({ fetchFn: mockFetch });
     const broker = new TokenBroker(storage, { secretKey }, httpClient);
-    const writeTools = createWriteTools(broker);
-    const progressTool = writeTools.find((t) => t.name === 'bangumi.update_episode_progress')!;
+    const { progressTool } = getWriteToolMap(broker);
 
     const res = await executeTestTool(
       progressTool,
@@ -564,8 +630,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ),
     );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const listColTool = tools.find((t) => t.name === 'bangumi.list_collections')!;
+    const { listColTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(listColTool, { username: 'spike' }, context);
     expect(res.items[0]!.statusLabel).toBe('看过');
@@ -580,8 +645,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       });
     });
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const getUserTool = tools.find((t) => t.name === 'bangumi.get_user')!;
+    const { getUserTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(getUserTool, { username: 'spike' }, context);
     expect(apiCallCount).toBe(1);
@@ -599,8 +663,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ),
     );
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const tools = createReadTools(httpClient);
-    const searchCharTool = tools.find((t) => t.name === 'bangumi.search_characters')!;
+    const { searchCharTool } = getReadToolMap(httpClient);
 
     const res = await executeTestTool(searchCharTool, { query: 'Bocchi' }, context);
     expect(res.candidates[0]!.summary).toBeUndefined();
@@ -619,15 +682,13 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   });
 
   it('Tool Catalog Regression: optional params not marked as required in JSON schema', () => {
-    const tools = createReadTools();
-    const searchTool = tools.find((t) => t.name === 'bangumi.search_subjects')!;
+    const { searchTool, castTool } = getReadToolMap();
     const searchSchema = z.toJSONSchema(searchTool.input) as { required?: string[] };
     expect(searchSchema.required).toBeDefined();
     expect(searchSchema.required).not.toContain('limit');
     expect(searchSchema.required).not.toContain('offset');
     expect(searchSchema.required).not.toContain('nsfw');
 
-    const castTool = tools.find((t) => t.name === 'bangumi.get_subject_cast')!;
     const castSchema = z.toJSONSchema(castTool.input) as { required?: string[] };
     expect(castSchema.required).toEqual(['subjectId']);
   });

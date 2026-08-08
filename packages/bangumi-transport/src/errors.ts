@@ -47,47 +47,69 @@ export class BangumiError extends Error {
   }
 }
 
+export const BANGUMI_ERROR_CODES = new Set<BangumiErrorCode>([
+  'VALIDATION_ERROR',
+  'AUTH_REQUIRED',
+  'AUTH_EXPIRED',
+  'PERMISSION_DENIED',
+  'NOT_FOUND',
+  'RATE_LIMITED',
+  'UPSTREAM_UNAVAILABLE',
+  'NETWORK_ERROR',
+  'PARSER_ERROR',
+  'UNKNOWN_ERROR',
+  'CONFIRMATION_REQUIRED',
+  'CONFIRMATION_INVALID',
+  'CONFIRMATION_EXPIRED',
+  'RAW_WRITE_OPERATION_DISABLED',
+  'WRITE_RESULT_UNKNOWN',
+  'STORAGE_ERROR',
+  'OAUTH_EXCHANGE_FAILED',
+  'KEY_VERSION_UNAVAILABLE',
+  'INTERNAL_ERROR',
+]);
+
 const PUBLIC_ERROR_POLICY: Partial<
   Record<
     BangumiErrorCode,
     {
-      message: string | ((err: BangumiError) => string);
+      message: string;
       preserveNextAction?: boolean;
     }
   >
 > = {
   VALIDATION_ERROR: {
-    message: (err) => err.message,
+    message: '输入参数无效，请检查调用参数。',
   },
   AUTH_REQUIRED: {
-    message: (err) => err.message,
+    message: '需要先绑定 Bangumi 账号。',
     preserveNextAction: true,
   },
   AUTH_EXPIRED: {
-    message: (err) => err.message,
+    message: 'Bangumi 登录凭证已失效，请重新授权。',
     preserveNextAction: true,
   },
   PERMISSION_DENIED: {
-    message: (err) => err.message,
+    message: '当前账号没有执行此操作所需的权限。',
   },
   NOT_FOUND: {
-    message: (err) => err.message,
+    message: '未找到请求的资源。',
   },
   RATE_LIMITED: {
     message: '请求频率超出限制，请稍后重试。',
   },
   CONFIRMATION_REQUIRED: {
-    message: (err) => err.message,
+    message: '此操作需要确认后才能执行。',
     preserveNextAction: true,
   },
   CONFIRMATION_INVALID: {
-    message: (err) => err.message,
+    message: '确认信息无效，请重新发起操作。',
   },
   CONFIRMATION_EXPIRED: {
-    message: (err) => err.message,
+    message: '确认已过期，请重新发起操作。',
   },
   RAW_WRITE_OPERATION_DISABLED: {
-    message: (err) => err.message,
+    message: 'Raw 写操作当前未启用，请使用语义写工具。',
   },
   WRITE_RESULT_UNKNOWN: {
     message: '写入结果未知，请先查询当前状态，不要自动重试。',
@@ -117,20 +139,29 @@ export interface PublicErrorInfo {
 }
 
 export function isBangumiError(err: unknown): err is BangumiError {
-  return (
-    err instanceof BangumiError ||
-    (typeof err === 'object' && err !== null && (err as { name?: string }).name === 'BangumiError')
-  );
+  if (err instanceof BangumiError) {
+    return true;
+  }
+  if (typeof err === 'object' && err !== null) {
+    const candidate = err as Record<string, unknown>;
+    return (
+      candidate.name === 'BangumiError' &&
+      typeof candidate.code === 'string' &&
+      BANGUMI_ERROR_CODES.has(candidate.code as BangumiErrorCode) &&
+      typeof candidate.retryable === 'boolean' &&
+      typeof candidate.message === 'string'
+    );
+  }
+  return false;
 }
 
 export function toPublicError(err: unknown): PublicErrorInfo {
   if (isBangumiError(err)) {
     const policy = PUBLIC_ERROR_POLICY[err.code];
     if (policy) {
-      const msg = typeof policy.message === 'function' ? policy.message(err) : policy.message;
       return {
         code: err.code,
-        message: msg,
+        message: policy.message,
         retryable: err.retryable,
         nextAction: policy.preserveNextAction ? err.nextAction : undefined,
       };

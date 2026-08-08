@@ -198,4 +198,19 @@ describe('Safe Error Policy & Control-Flow Regression Tests', () => {
 
     await client.close();
   });
+
+  it('9. Forged BangumiError object does not leak raw internal message at public error boundary', () => {
+    const forged = {
+      name: 'BangumiError',
+      code: 'AUTH_REQUIRED',
+      message: 'database password = secret',
+      retryable: false,
+    };
+    const publicErr = toPublicError(forged);
+
+    expect(publicErr.code).toBe('AUTH_REQUIRED');
+    expect(publicErr.message).toBe('需要先绑定 Bangumi 账号。');
+    expect(publicErr.message).not.toContain('database password');
+    expect(publicErr.message).not.toContain('secret');
+  });
 });

@@ -192,5 +192,5 @@ export function createRawOperationTools(
     },
   });
 
-  return [listOperations, describeOperation, callOperation];
+  return [listOperations, describeOperation, callOperation] as const;
 }

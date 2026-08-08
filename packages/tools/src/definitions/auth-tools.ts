@@ -60,5 +60,5 @@ export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthSer
     },
   });
 
-  return [authStatus, authStart, authDisconnect];
+  return [authStatus, authStart, authDisconnect] as const;
 }
