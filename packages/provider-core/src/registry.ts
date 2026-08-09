@@ -17,6 +17,10 @@ import type {
   CalendarProvider,
   ProviderRequestContext,
   ProviderSubjectData,
+  SubjectDiscoveryBrowseRequest,
+  SubjectDiscoveryPage,
+  SubjectDiscoverySearchRequest,
+  SubjectDiscoveryProvider,
   SubjectProvider,
   SubjectStatsData,
 } from './providers.js';
@@ -43,7 +47,8 @@ export interface ProviderDiagnostic {
 }
 
 export interface ProviderRegistryOptions {
-  v0?: SubjectProvider;
+  v0?: SubjectProvider &
+    Partial<Pick<SubjectDiscoveryProvider, 'searchSubjects' | 'browseSubjects'>>;
   legacyCalendar?: CalendarProvider;
   policy?: SourcePolicy;
   now?: () => number;
@@ -72,7 +77,8 @@ function statusFor(
 
 export class ProviderRegistry {
   private readonly policy: SourcePolicy;
-  private readonly v0?: SubjectProvider;
+  private readonly v0?: SubjectProvider &
+    Partial<Pick<SubjectDiscoveryProvider, 'searchSubjects' | 'browseSubjects'>>;
   private readonly legacyCalendar?: CalendarProvider;
   private readonly now: () => number;
   private readonly diagnosticLog: ProviderDiagnostic[] = [];
@@ -128,6 +134,57 @@ export class ProviderRegistry {
     );
   }
 
+  async searchSubjects(
+    request: SubjectDiscoverySearchRequest,
+    context: ProviderRequestContext = {},
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const source: SourceDescriptor = {
+      class: 'official_v0',
+      provider: 'bangumi',
+      operation: 'searchSubjects',
+      experimental: true,
+    };
+    if (
+      sourceAvailability('official_v0', this.policy) !== 'enabled' ||
+      !this.v0?.searchSubjects
+    ) {
+      return this.recordUnavailable(
+        'official-v0',
+        source,
+        'searchSubjects',
+        sourceUnavailableResult(source, this.policy),
+      );
+    }
+    return this.invoke('official-v0', source, 'searchSubjects', () =>
+      this.v0!.searchSubjects!(request, context),
+    );
+  }
+
+  async browseSubjects(
+    request: SubjectDiscoveryBrowseRequest,
+    context: ProviderRequestContext = {},
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const source: SourceDescriptor = {
+      class: 'official_v0',
+      provider: 'bangumi',
+      operation: 'browseSubjects',
+    };
+    if (
+      sourceAvailability('official_v0', this.policy) !== 'enabled' ||
+      !this.v0?.browseSubjects
+    ) {
+      return this.recordUnavailable(
+        'official-v0',
+        source,
+        'browseSubjects',
+        sourceUnavailableResult(source, this.policy),
+      );
+    }
+    return this.invoke('official-v0', source, 'browseSubjects', () =>
+      this.v0!.browseSubjects!(request, context),
+    );
+  }
+
   async getCalendar(
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<CalendarDayData[]>> {
@@ -154,7 +211,7 @@ export class ProviderRegistry {
       statusFor(
         'official-v0',
         'official_v0',
-        ['subject', 'subject_stats'],
+        ['subject', 'subject_stats', 'subject_search', 'subject_browse'],
         this.policy,
         Boolean(this.v0),
       ),
