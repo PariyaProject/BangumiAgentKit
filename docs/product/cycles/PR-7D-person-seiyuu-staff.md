@@ -76,6 +76,7 @@ client and transport:
 - `GET /v0/persons/{person_id}/subjects`
 - `GET /v0/persons/{person_id}/characters`
 - `GET /v0/subjects/{subject_id}/persons`
+- `GET /v0/subjects/{subject_id}/characters`
 
 Derived layer: deterministic local aggregation (S7). No new provider, HTML access,
 cookies, Structured Web enablement, snapshot store, or write authority is needed.
@@ -92,11 +93,12 @@ Input:
 
 Output:
 
-- person identity and career fields;
+- person identity, type label, aliases/infobox, career, and parsed identity fields;
 - observed subject and character credit rows, capped with explicit truncation state;
 - unique subject/character/credit-row counts;
-- deterministic counts grouped by numeric media type and exact raw `staff` label;
+- deterministic counts grouped by normalized media labels with raw numeric v0 codes and exact raw `staff` labels;
 - `coverage` with fetched/returned counts, limits, missing fields, and state;
+- machine-readable `state`/`capabilityStates` and warnings for partial or not-computable claims;
 - `evidence` naming the three official v0 operations and the S7 formula version;
 - `limitations` stating that relation payloads do not support air-date windows,
   recent ordering, collaboration counts, or historical growth.
@@ -110,15 +112,16 @@ silently erased.
 Input:
 
 - `subjectId` (required positive integer)
-- `limit` (optional, bounded; default 100, maximum 200)
+- `limit` (optional, bounded; default 200, maximum 200, applied independently to both sources)
 
 Output:
 
-- subject identity reference;
-- staff rows with person identity, raw relation, `eps`, and image;
-- groups keyed by exact raw relation label, preserving an `未知` bucket only when the
-  source relation is empty;
-- observed/partial coverage and official v0 evidence.
+- `productionStaff` rows from `/persons` and `cast` rows from `/characters` are separate,
+  so CVs cannot be mistaken for production staff;
+- staff rows with person identity, normalized display relation, preserved raw relation,
+  `eps`, and image;
+- groups keyed by the normalized display label with canonical `memberIds`, avoiding row duplication;
+- per-source observed/returned/truncated coverage, machine-readable state/warnings, and official v0 evidence.
 
 ## Analytics contract
 
@@ -129,6 +132,8 @@ Formula version: `person-activity-v1`.
 - `uniqueCharacters`: count of distinct character IDs.
 - role/media distributions: deterministic group counts over source rows; no inferred
   role normalization beyond stable labels and numeric v0 media types.
+- numeric media codes remain alongside normalized labels; empty or unknown labels remain
+  visible as `未知`/`other` rather than being dropped.
 - `coverage.state = partial` if a configured cap truncates a source list; no total is
   fabricated when the API does not provide a total.
 - `not_computable`: date-window, recent, trend, growth, and collaboration-count claims
@@ -167,8 +172,14 @@ Add a bounded `person-profile` card using the semantic profile result:
 - identity header with image fallback, names, and career chips;
 - compact KPI row for unique subjects, credit rows, characters;
 - media and role distribution summaries;
+- identity facts, aliases when present, and a concise summary;
+- character-media distribution and raw-code annotations;
 - a short list of representative subject/character credits;
-- a clear partial/limitation footer when dates or historical workload are unavailable.
+- representative lists are labeled as returned samples and distinguish source-returned
+  hidden rows from observed-but-not-read rows;
+- a clear state/warning footer when identity, coverage, dates, or historical workload are unavailable;
+- the requested render width is passed through to the person card; 640px is a required
+  narrow-layout case, with no duplicate name in the avatar/header stack.
 
 The renderer must not fetch data or perform analytics. The view model carries already
 aggregated fields and preserves coverage/limitation text for human-readable output.
@@ -177,12 +188,13 @@ aggregated fields and preserves coverage/limitation text for human-readable outp
 
 - unit tests for media/role grouping, stable-ID dedupe, unknown labels, caps, and
   partial coverage;
-- semantic tool tests for request paths, three official person requests, subject staff
-  mapping, input validation, and public error behavior;
+- semantic tool tests for request paths, three official person requests, two-source
+  subject staff mapping including a dense production fixture and a negative no-CV-in-
+  `persons` case, input validation, injected transport, and public 404/429/503 behavior;
 - contract/typecheck tests covering new model and tool schemas;
 - standalone command tests for `person` and `render person` routing;
-- renderer tests for missing image, long CJK names, sparse credits, dense credits, and
-  partial/not-computable state;
+- renderer tests for missing image, long CJK names, sparse credits, dense credits,
+  source-returned versus rendered counts, narrow width, and partial/not-computable state;
 - real-user QA with person `10868` and a sparse/unknown fixture;
 - Agent QA using “who is this person?”, “what roles/media?”, and a recent-work question
   that must be rejected as not computable;
@@ -192,8 +204,8 @@ aggregated fields and preserves coverage/limitation text for human-readable outp
 ## Resource and security limits
 
 - official v0 only; no cookies, HTML, Structured Web, new credentials, or write calls;
-- at most one detail + two relationship requests for a person profile and one request
-  for subject staff;
+- at most one detail + two relationship requests for a person profile and two bounded
+  relationship requests for subject staff (`persons` + `characters`);
 - output caps are enforced before serialization/rendering;
 - no public/shared cache changes and no private data;
 - preserve existing SSRF-constrained asset resolution for optional person images;

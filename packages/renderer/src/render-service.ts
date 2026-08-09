@@ -202,7 +202,7 @@ export class RenderService {
         );
       }
 
-      const html = renderHtmlTemplate(viewModel, theme, resolvedImages);
+      const html = renderHtmlTemplate(viewModel, theme, resolvedImages, width);
       const buffer = await this.browserPool.renderHtmlToBuffer(html, {
         width,
         deviceScaleFactor: dpr,

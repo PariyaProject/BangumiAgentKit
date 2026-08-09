@@ -220,6 +220,7 @@ export function buildPersonProfileViewModel(
     maxSubjectCredits?: number;
     maxCharacterCredits?: number;
     limitations?: string[];
+    notComputable?: string[];
   } = {},
 ): PersonProfileViewModel {
   const maxSubjectCredits = options.maxSubjectCredits ?? 8;
@@ -242,10 +243,37 @@ export function buildPersonProfileViewModel(
       subjectName: character.subjectName,
       subjectNameCn: character.subjectNameCn,
     }));
+  const identityMissingFields = [
+    profile.person.gender ? undefined : 'person.gender',
+    profile.person.birthYear === undefined ? 'person.birth_year' : undefined,
+    profile.person.bloodType === undefined ? 'person.blood_type' : undefined,
+  ].filter((field): field is string => field !== undefined);
+  const birthDate = [
+    profile.person.birthYear,
+    profile.person.birthMonth,
+    profile.person.birthDay,
+  ].some((part) => part !== undefined)
+    ? [profile.person.birthYear, profile.person.birthMonth, profile.person.birthDay]
+        .map((part, index) => (part === undefined ? (index === 0 ? '????' : '??') : String(part)))
+        .join('-')
+    : undefined;
+  const observed = profile.subjects.observed + profile.characters.observed;
+  const returned = profile.subjects.returned + profile.characters.returned;
+  const rendered = subjectCredits.length + characterCredits.length;
+  const notComputable = options.notComputable || [
+    'recent_activity',
+    'voice_actor_workload_window',
+    'historical_growth',
+    'collaboration_count',
+  ];
 
   return {
     template: 'person-profile',
     version: 1,
+    state:
+      profile.subjects.truncated || profile.characters.truncated || identityMissingFields.length > 0
+        ? 'partial'
+        : 'complete',
     person: {
       id: profile.person.id,
       name: profile.person.name,
@@ -253,7 +281,14 @@ export function buildPersonProfileViewModel(
         profile.person.images?.large ||
         profile.person.images?.medium ||
         profile.person.images?.small,
+      typeLabel: profile.person.typeLabel,
+      aliases: profile.person.aliases,
       career: profile.person.career,
+      summary: profile.person.summary,
+      gender: profile.person.gender,
+      bloodType: profile.person.bloodType,
+      birthDate,
+      identityMissingFields,
     },
     summary: {
       uniqueSubjects: profile.summary.uniqueSubjects,
@@ -263,6 +298,7 @@ export function buildPersonProfileViewModel(
       characterSubjects: profile.summary.characterSubjects,
     },
     mediaBreakdown: profile.summary.subjectMedia,
+    characterMediaBreakdown: profile.summary.characterMedia,
     roleBreakdown: profile.summary.subjectRoles,
     characterRoleBreakdown: profile.summary.characterRoles,
     subjectCredits,
@@ -271,14 +307,42 @@ export function buildPersonProfileViewModel(
       Math.max(0, profile.subjects.returned - subjectCredits.length) || undefined,
     hiddenCharacterCredits:
       Math.max(0, profile.characters.returned - characterCredits.length) || undefined,
+    unobservedSubjectCredits:
+      Math.max(0, profile.subjects.observed - profile.subjects.returned) || undefined,
+    unobservedCharacterCredits:
+      Math.max(0, profile.characters.observed - profile.characters.returned) || undefined,
     coverage: {
-      state: profile.subjects.truncated || profile.characters.truncated ? 'partial' : 'complete',
-      observed: profile.subjects.observed + profile.characters.observed,
-      returned: profile.subjects.returned + profile.characters.returned,
+      state:
+        profile.subjects.truncated ||
+        profile.characters.truncated ||
+        identityMissingFields.length > 0
+          ? 'partial'
+          : 'complete',
+      observed,
+      returned,
+      rendered,
+      unobserved: Math.max(0, observed - returned),
     },
     limitations: options.limitations || [
       '关系接口没有作品日期，因此不能从此卡片推断最近活动或时间窗口工作量。',
       '没有历史快照，因此不显示增长或趋势结论。',
+      '关系明细按官方接口返回顺序展示，仅作为样本，不代表最新或优先级排序。',
+    ],
+    warnings: [
+      ...(identityMissingFields.length > 0
+        ? [
+            {
+              code: 'MISSING_IDENTITY_FIELDS',
+              state: 'partial' as const,
+              message: `身份字段缺失：${identityMissingFields.join(', ')}`,
+            },
+          ]
+        : []),
+      {
+        code: 'NOT_COMPUTABLE',
+        state: 'not_computable' as const,
+        message: `不可计算：${notComputable.join(', ')}`,
+      },
     ],
     source: {
       label: options.sourceLabel || 'Bangumi v0 · PersonProfile',

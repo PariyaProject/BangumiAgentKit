@@ -17,6 +17,39 @@ import { mapSubjectType } from './subject-service.js';
 
 export type { PersonRelationCharacter } from '../models/person.js';
 
+function mapPersonTypeLabel(type?: number): string {
+  switch (type) {
+    case 1:
+      return '个人';
+    case 2:
+      return '公司';
+    case 3:
+      return '组合';
+    default:
+      return '未知';
+  }
+}
+
+function collectInfoboxValues(value: unknown): string[] {
+  if (typeof value === 'string') return value.trim() ? [value.trim()] : [];
+  if (Array.isArray(value)) return value.flatMap(collectInfoboxValues);
+  if (!value || typeof value !== 'object') return [];
+  const record = value as Record<string, unknown>;
+  if (typeof record.v === 'string') return record.v.trim() ? [record.v.trim()] : [];
+  return [];
+}
+
+export function mapPersonAliases(infobox?: unknown[]): string[] | undefined {
+  const aliases = new Set<string>();
+  for (const entry of infobox || []) {
+    if (!entry || typeof entry !== 'object') continue;
+    const record = entry as Record<string, unknown>;
+    if (record.key !== '别名' && record.key !== 'aliases' && record.key !== 'alias') continue;
+    for (const value of collectInfoboxValues(record.value)) aliases.add(value);
+  }
+  return aliases.size > 0 ? Array.from(aliases) : undefined;
+}
+
 export function mapPerson(raw: {
   id: number;
   name?: string;
@@ -25,15 +58,41 @@ export function mapPerson(raw: {
   short_summary?: string;
   summary?: string;
   images?: Record<string, string>;
+  locked?: boolean;
+  last_modified?: string;
+  infobox?: unknown[];
+  gender?: string;
+  blood_type?: number;
+  birth_year?: number;
+  birth_mon?: number;
+  birth_day?: number;
+  stat?: { comments?: number; collects?: number };
 }): DomainPerson {
-  return {
+  const type = raw.type ?? 1;
+  const person: DomainPerson = {
     id: raw.id,
     name: raw.name || '',
-    type: raw.type || 1,
+    type,
+    typeLabel: mapPersonTypeLabel(type),
     career: (raw.career as string[]) || [],
     summary: raw.short_summary || raw.summary || '',
     images: raw.images ? (raw.images as Record<string, string>) : undefined,
+    aliases: mapPersonAliases(raw.infobox),
   };
+
+  if (raw.locked !== undefined) person.locked = raw.locked;
+  if (raw.last_modified) person.lastModified = raw.last_modified;
+  if (Array.isArray(raw.infobox)) person.infobox = raw.infobox;
+  if (raw.gender) person.gender = raw.gender;
+  if (raw.blood_type !== undefined) person.bloodType = raw.blood_type;
+  if (raw.birth_year !== undefined) person.birthYear = raw.birth_year;
+  if (raw.birth_mon !== undefined) person.birthMonth = raw.birth_mon;
+  if (raw.birth_day !== undefined) person.birthDay = raw.birth_day;
+  if (raw.stat && raw.stat.comments !== undefined && raw.stat.collects !== undefined) {
+    person.stat = { comments: raw.stat.comments, collects: raw.stat.collects };
+  }
+
+  return person;
 }
 
 export function mapPersonCandidate(raw: {
@@ -66,6 +125,7 @@ export function mapPersonRelationSubject(raw: {
     nameCn: raw.name_cn || raw.name || '',
     staffRole: raw.staff || undefined,
     mediaType: mapSubjectType(raw.type),
+    mediaTypeCode: raw.type,
     eps: raw.eps || undefined,
     image: raw.image || undefined,
   };
@@ -89,6 +149,7 @@ export function mapPersonRelationCharacter(raw: {
     image: raw.images?.medium || raw.images?.small || raw.images?.grid || raw.images?.large,
     subjectId: raw.subject_id,
     subjectType: raw.subject_type === undefined ? undefined : mapSubjectType(raw.subject_type),
+    subjectTypeCode: raw.subject_type,
     subjectName: raw.subject_name || undefined,
     subjectNameCn: raw.subject_name_cn || raw.subject_name || undefined,
     staff: raw.staff || undefined,
@@ -104,13 +165,15 @@ export function mapSubjectStaffMember(raw: {
   relation?: string;
   eps?: string;
 }): SubjectStaffMember {
+  const rawRelation = raw.relation || '';
   return {
     id: raw.id,
     name: raw.name || '',
     type: raw.type || 1,
     career: raw.career || [],
     images: raw.images,
-    relation: raw.relation || '未知',
+    relation: rawRelation.trim() || '未知',
+    rawRelation,
     eps: raw.eps || '',
   };
 }
@@ -119,8 +182,12 @@ function buildDistribution<T>(
   items: readonly T[],
   keyOf: (item: T) => string | undefined,
   subjectIdOf: (item: T) => number | undefined,
+  rawCodeOf?: (item: T) => number | undefined,
 ): PersonActivityDistribution[] {
-  const buckets = new Map<string, { label: string; count: number; subjectIds: Set<number> }>();
+  const buckets = new Map<
+    string,
+    { label: string; count: number; subjectIds: Set<number>; rawCodes: Set<number> }
+  >();
 
   for (const item of items) {
     const rawKey = keyOf(item)?.trim();
@@ -129,10 +196,13 @@ function buildDistribution<T>(
       label: rawKey || '未知',
       count: 0,
       subjectIds: new Set<number>(),
+      rawCodes: new Set<number>(),
     };
     bucket.count += 1;
     const subjectId = subjectIdOf(item);
     if (subjectId !== undefined) bucket.subjectIds.add(subjectId);
+    const rawCode = rawCodeOf?.(item);
+    if (rawCode !== undefined) bucket.rawCodes.add(rawCode);
     buckets.set(key, bucket);
   }
 
@@ -142,6 +212,10 @@ function buildDistribution<T>(
       label: bucket.label,
       count: bucket.count,
       uniqueSubjects: bucket.subjectIds.size,
+      rawCodes:
+        bucket.rawCodes.size > 0
+          ? Array.from(bucket.rawCodes).sort((left, right) => left - right)
+          : undefined,
     }))
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 }
@@ -164,6 +238,7 @@ export function aggregatePersonActivity(
       subjects,
       (subject) => subject.mediaType,
       (subject) => subject.id,
+      (subject) => subject.mediaTypeCode,
     ),
     subjectRoles: buildDistribution(
       subjects,
@@ -174,6 +249,7 @@ export function aggregatePersonActivity(
       characters,
       (character) => character.subjectType,
       (character) => character.subjectId,
+      (character) => character.subjectTypeCode,
     ),
     characterRoles: buildDistribution(
       characters,
@@ -196,7 +272,7 @@ export function groupSubjectStaff(members: readonly SubjectStaffMember[]): Subje
     .map(([relation, groupedMembers]) => ({
       relation,
       count: groupedMembers.length,
-      members: groupedMembers,
+      memberIds: groupedMembers.map((member) => member.id),
     }))
     .sort((left, right) => right.count - left.count || left.relation.localeCompare(right.relation));
 }

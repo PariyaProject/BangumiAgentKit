@@ -120,12 +120,20 @@ export interface PersonProfileCreditViewModel {
 export interface PersonProfileViewModel {
   template: 'person-profile';
   version: 1;
+  state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
   person: {
     id: number;
     name: string;
     nameCn?: string;
     image?: string;
+    typeLabel?: string;
+    aliases?: string[];
     career: string[];
+    summary?: string;
+    gender?: string;
+    bloodType?: number;
+    birthDate?: string;
+    identityMissingFields: string[];
   };
   summary: {
     uniqueSubjects: number;
@@ -138,6 +146,13 @@ export interface PersonProfileViewModel {
     label: string;
     count: number;
     uniqueSubjects: number;
+    rawCodes?: number[];
+  }>;
+  characterMediaBreakdown: Array<{
+    label: string;
+    count: number;
+    uniqueSubjects: number;
+    rawCodes?: number[];
   }>;
   roleBreakdown: Array<{
     label: string;
@@ -153,12 +168,21 @@ export interface PersonProfileViewModel {
   characterCredits: PersonProfileCreditViewModel[];
   hiddenSubjectCredits?: number;
   hiddenCharacterCredits?: number;
+  unobservedSubjectCredits?: number;
+  unobservedCharacterCredits?: number;
   coverage: {
     state: 'complete' | 'partial';
     observed: number;
     returned: number;
+    rendered: number;
+    unobserved: number;
   };
   limitations: string[];
+  warnings: Array<{
+    code: string;
+    state: 'partial' | 'not_computable' | 'unavailable';
+    message: string;
+  }>;
   source: {
     label: string;
     retrievedAt?: string;

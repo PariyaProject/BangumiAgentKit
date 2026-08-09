@@ -7,6 +7,7 @@ import {
   CollectionProgressViewModel,
   CalendarViewModel,
   PersonProfileViewModel,
+  renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -211,7 +212,14 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       person: {
         id: 10868,
         name: '水瀬いのり / 水濑祈 / Inori Minase',
+        typeLabel: '个人',
+        aliases: ['いのりん', 'Inorin'],
         career: ['seiyu', 'artist', 'actor'],
+        summary: '日本の声優、歌手、俳優。',
+        gender: '女性',
+        birthDate: '1995-12-02',
+        bloodType: 1,
+        identityMissingFields: [],
       },
       summary: {
         uniqueSubjects: 335,
@@ -224,6 +232,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         { label: 'anime', count: 217, uniqueSubjects: 217 },
         { label: 'game', count: 85, uniqueSubjects: 70 },
       ],
+      characterMediaBreakdown: [{ label: 'anime', count: 319, uniqueSubjects: 287, rawCodes: [2] }],
       roleBreakdown: [{ label: '艺术家', count: 237, uniqueSubjects: 237 }],
       characterRoleBreakdown: [
         { label: '主角', count: 156, uniqueSubjects: 120 },
@@ -245,19 +254,35 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
           subjectNameCn: '传颂之物-虚伪的假面-',
         },
       ],
-      hiddenSubjectCredits: 327,
-      hiddenCharacterCredits: 311,
-      coverage: { state: 'partial', observed: 654, returned: 654 },
+      hiddenSubjectCredits: 334,
+      hiddenCharacterCredits: 318,
+      unobservedSubjectCredits: 20,
+      unobservedCharacterCredits: 26,
+      state: 'partial',
+      coverage: { state: 'partial', observed: 700, returned: 654, rendered: 2, unobserved: 46 },
       limitations: [
         '关系接口没有作品日期，因此不能从此卡片推断最近活动或时间窗口工作量。',
         '没有历史快照，因此不显示增长或趋势结论。',
       ],
+      warnings: [
+        {
+          code: 'NOT_COMPUTABLE',
+          state: 'not_computable',
+          message: '不可计算：最近活动与历史趋势。',
+        },
+      ],
       source: { label: 'Bangumi v0 · PersonProfile', retrievedAt: '2026-08-10T00:00:00Z' },
     };
 
-    const result = await renderService.renderCard(vm);
+    const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
+    expect(html).toContain('已观察 700 条，返回 654 条，展示 2 条');
+    expect(html).toContain('另有 334 条已返回关系未展示');
+    expect(html).toContain('另有 20 条关系未读取');
+
+    const result = await renderService.renderCard(vm, { width: 640, deviceScaleFactor: 1 });
     assertValidPng(result.buffer);
     expect(result.template).toBe('person-profile');
+    expect(result.width).toBe(640);
     expect(result.height).toBeGreaterThan(300);
   });
 });

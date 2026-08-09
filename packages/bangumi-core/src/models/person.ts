@@ -4,9 +4,23 @@ export interface DomainPerson {
   id: number;
   name: string;
   type: number;
+  typeLabel?: string;
   career: string[];
   summary: string;
   images?: Record<string, string>;
+  aliases?: string[];
+  locked?: boolean;
+  lastModified?: string;
+  infobox?: unknown[];
+  gender?: string;
+  bloodType?: number;
+  birthYear?: number;
+  birthMonth?: number;
+  birthDay?: number;
+  stat?: {
+    comments: number;
+    collects: number;
+  };
 }
 
 export interface PersonRelationSubject {
@@ -15,6 +29,7 @@ export interface PersonRelationSubject {
   nameCn: string;
   staffRole?: string;
   mediaType?: SubjectType;
+  mediaTypeCode?: number;
   eps?: string;
   image?: string;
 }
@@ -26,6 +41,7 @@ export interface PersonRelationCharacter {
   image?: string;
   subjectId?: number;
   subjectType?: SubjectType;
+  subjectTypeCode?: number;
   subjectName?: string;
   subjectNameCn?: string;
   staff?: string;
@@ -38,13 +54,14 @@ export interface SubjectStaffMember {
   career: string[];
   images?: Record<string, string>;
   relation: string;
+  rawRelation?: string;
   eps: string;
 }
 
 export interface SubjectStaffGroup {
   relation: string;
   count: number;
-  members: SubjectStaffMember[];
+  memberIds: number[];
 }
 
 export interface RelationCollection<T> {
@@ -59,6 +76,7 @@ export interface PersonActivityDistribution {
   label: string;
   count: number;
   uniqueSubjects: number;
+  rawCodes?: number[];
 }
 
 export interface PersonActivitySummary {

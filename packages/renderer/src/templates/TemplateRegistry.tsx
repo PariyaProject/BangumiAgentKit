@@ -24,6 +24,7 @@ export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
     viewModel: T,
     theme: ThemeTokens,
     resolvedImages?: Record<string, string>,
+    width?: number,
   ): React.ReactNode;
 }
 
@@ -78,8 +79,8 @@ registerTemplate<CalendarViewModel>({
 registerTemplate<PersonProfileViewModel>({
   id: 'person-profile',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <PersonProfileCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <PersonProfileCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 

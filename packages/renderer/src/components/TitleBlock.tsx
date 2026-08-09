@@ -17,6 +17,8 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({ title, subtitle, theme }
           color: theme.accent,
           margin: 0,
           lineHeight: 1.3,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
         }}
       >
         {title}

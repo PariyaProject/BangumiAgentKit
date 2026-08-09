@@ -157,32 +157,61 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getSubjectStaff = defineTool({
     name: 'bangumi.get_subject_staff',
     description:
-      '获取作品的制作人员与声优关系，并按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。',
+      '获取作品的制作人员与角色声优关系，并明确分为 productionStaff 与 cast；制作人员按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      limit: z.number().int().min(1).max(200).optional().describe('显示条数上限'),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('productionStaff 与 cast 各自的显示条数上限；默认 200'),
     }),
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      const collection = await personService.getSubjectStaff(input.subjectId, input.limit ?? 100);
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      const activePersonService = new PersonService(activeClient);
+      const activeCharacterService = new CharacterService(activeClient);
+      const limit = input.limit ?? 200;
+      const [collection, castResult] = await Promise.all([
+        activePersonService.getSubjectStaff(input.subjectId, limit),
+        getSubjectCast(activeCharacterService, input.subjectId, { limit }),
+      ]);
       const retrievedAt = new Date().toISOString();
+      const partial = collection.truncated || castResult.truncated;
       return {
+        state: partial ? 'partial' : 'complete',
         subjectId: input.subjectId,
-        staff: collection.items,
+        productionStaff: collection.items,
+        cast: castResult.cast,
         groups: groupSubjectStaff(collection.items),
         coverage: {
-          state: collection.truncated ? 'partial' : 'complete',
+          state: partial ? 'partial' : 'complete',
           retrievedAt,
-          observed: collection.observed,
-          returned: collection.returned,
-          limit: input.limit ?? 100,
+          productionStaff: {
+            observed: collection.observed,
+            returned: collection.returned,
+            truncated: collection.truncated,
+          },
+          cast: {
+            observed: castResult.observed,
+            returned: castResult.returned,
+            truncated: castResult.truncated,
+          },
+          limit,
         },
         evidence: [
           {
             source: 'official-v0',
             operation: 'GET /v0/subjects/{subject_id}/persons',
+            retrievedAt,
+          },
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/subjects/{subject_id}/characters',
             retrievedAt,
           },
           {
@@ -192,6 +221,22 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
             retrievedAt,
           },
         ],
+        warnings: partial
+          ? [
+              {
+                code: 'OUTPUT_TRUNCATED',
+                state: 'partial',
+                message: '制作人员或角色声优关系达到显示上限。',
+              },
+            ]
+          : [],
+        capabilityStates: {
+          productionStaff: collection.truncated ? 'partial' : 'complete',
+          cast: castResult.truncated ? 'partial' : 'complete',
+          recent_activity: 'not_computable',
+          workload_trend: 'not_computable',
+          historical_growth: 'not_computable',
+        },
       };
     },
   });
@@ -352,14 +397,29 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      const profile = await personService.getPersonProfile(input.personId, {
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      const activePersonService = new PersonService(activeClient);
+      const profile = await activePersonService.getPersonProfile(input.personId, {
         maxSubjects: input.maxSubjects ?? 500,
         maxCharacters: input.maxCharacters ?? 500,
       });
       const retrievedAt = new Date().toISOString();
-      const partial = profile.subjects.truncated || profile.characters.truncated;
+      const identityMissingFields = [
+        profile.person.gender ? undefined : 'person.gender',
+        profile.person.birthYear === undefined ? 'person.birth_year' : undefined,
+        profile.person.bloodType === undefined ? 'person.blood_type' : undefined,
+      ].filter((field): field is string => field !== undefined);
+      const relationPartial = profile.subjects.truncated || profile.characters.truncated;
+      const partial = relationPartial || identityMissingFields.length > 0;
+      const notComputable = [
+        'recent_activity',
+        'voice_actor_workload_window',
+        'historical_growth',
+        'collaboration_count',
+      ];
       return {
+        state: partial ? 'partial' : 'complete',
         person: profile.person,
         summary: profile.summary,
         credits:
@@ -372,6 +432,10 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         coverage: {
           state: partial ? 'partial' : 'complete',
           retrievedAt,
+          identity: {
+            state: identityMissingFields.length > 0 ? 'partial' : 'complete',
+            missingFields: identityMissingFields,
+          },
           subjects: {
             observed: profile.subjects.observed,
             returned: profile.subjects.returned,
@@ -386,6 +450,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
             'person-related-subject.date',
             'person-related-subject.score',
             'person-related-character.airDate',
+            ...identityMissingFields,
           ],
         },
         evidence: [
@@ -412,12 +477,32 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           '本仓库没有兼容历史快照，不能计算增长、趋势或前后窗口比较。',
           '合作人数和共同作品需要额外的 subject→persons 图遍历，本工具不伪造该统计。',
         ],
-        notComputable: [
-          'recent_activity',
-          'voice_actor_workload_window',
-          'historical_growth',
-          'collaboration_count',
+        notComputable,
+        warnings: [
+          ...(identityMissingFields.length > 0
+            ? [
+                {
+                  code: 'MISSING_IDENTITY_FIELDS',
+                  state: 'partial',
+                  fields: identityMissingFields,
+                  message: '人物资料中的部分身份字段由官方源缺失。',
+                },
+              ]
+            : []),
+          {
+            code: 'NOT_COMPUTABLE',
+            state: 'not_computable',
+            fields: notComputable,
+            message: '当前官方关系源没有日期或历史快照，不能计算时间窗口、趋势或合作人数。',
+          },
         ],
+        capabilityStates: {
+          profile: partial ? 'partial' : 'complete',
+          recent_activity: 'not_computable',
+          voice_actor_workload_window: 'not_computable',
+          historical_growth: 'not_computable',
+          collaboration_count: 'not_computable',
+        },
       };
     },
   });

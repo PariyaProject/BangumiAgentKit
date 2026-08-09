@@ -484,7 +484,7 @@
   },
   {
     "name": "bangumi.get_subject_staff",
-    "description": "获取作品的制作人员与声优关系，并按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。",
+    "description": "获取作品的制作人员与角色声优关系，并明确分为 productionStaff 与 cast；制作人员按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -499,7 +499,7 @@
           "description": "Bangumi 条目 ID"
         },
         "limit": {
-          "description": "显示条数上限",
+          "description": "productionStaff 与 cast 各自的显示条数上限；默认 200",
           "type": "integer",
           "minimum": 1,
           "maximum": 200
