@@ -33,6 +33,10 @@ export default defineConfig({
         __dirname,
         'packages/provider-core/src/index.ts',
       ),
+      '@bangumi-agent-kit/discovery': path.resolve(
+        __dirname,
+        'packages/discovery/src/index.ts',
+      ),
     },
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },

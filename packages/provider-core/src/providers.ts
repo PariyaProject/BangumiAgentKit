@@ -1,4 +1,10 @@
-import type { CalendarItem, Subject } from '@bangumi-agent-kit/bangumi-openapi';
+import type {
+  CalendarItem,
+  OperationBody,
+  OperationQuery,
+  PagedSubject,
+  Subject,
+} from '@bangumi-agent-kit/bangumi-openapi';
 import { isBangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import {
   createEvidenceRef,
@@ -91,12 +97,90 @@ export interface SubjectProvider {
   ): Promise<CapabilityResult<SubjectStatsData>>;
 }
 
+export interface SubjectDiscoveryCollection {
+  wish?: number;
+  collect?: number;
+  doing?: number;
+  onHold?: number;
+  dropped?: number;
+}
+
+/** A deliberately small provider boundary for discovery; generated clients stay behind it. */
+export interface SubjectDiscoveryCandidate {
+  id: number;
+  type: number;
+  name: string;
+  nameCn?: string;
+  date?: string;
+  platform?: string;
+  score?: number;
+  rank?: number;
+  ratingCount?: number;
+  collection?: SubjectDiscoveryCollection;
+  tags: string[];
+  metaTags: string[];
+  images?: Record<string, string | undefined>;
+  nsfw?: boolean;
+}
+
+export interface SubjectDiscoveryPage {
+  items: SubjectDiscoveryCandidate[];
+  total?: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SubjectDiscoverySearchFilter {
+  type?: number[];
+  tag?: string[];
+  metaTags?: string[];
+  airDate?: string[];
+  rating?: string[];
+  ratingCount?: string[];
+  rank?: string[];
+  nsfw?: boolean;
+}
+
+export interface SubjectDiscoverySearchRequest {
+  keyword: string;
+  limit: number;
+  offset: number;
+  sort: 'match' | 'heat' | 'rank' | 'score';
+  filter?: SubjectDiscoverySearchFilter;
+}
+
+export interface SubjectDiscoveryBrowseRequest {
+  type: number;
+  category?: number;
+  year?: number;
+  month?: number;
+  sort?: 'date' | 'rank';
+  limit: number;
+  offset: number;
+}
+
+export interface SubjectDiscoveryProvider extends SubjectProvider {
+  searchSubjects(
+    request: SubjectDiscoverySearchRequest,
+    context?: ProviderRequestContext,
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>>;
+  browseSubjects(
+    request: SubjectDiscoveryBrowseRequest,
+    context?: ProviderRequestContext,
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>>;
+}
+
 export interface CalendarProvider {
   getCalendar(context?: ProviderRequestContext): Promise<CapabilityResult<CalendarDayData[]>>;
 }
 
 export interface OfficialV0Api {
   getSubjectById(subjectId: number): Promise<Subject>;
+  searchSubjects?: (
+    query: OperationQuery<'searchSubjects'> | undefined,
+    body?: OperationBody<'searchSubjects'>,
+  ) => Promise<PagedSubject>;
+  getSubjects?: (query: OperationQuery<'getSubjects'>) => Promise<PagedSubject>;
 }
 
 export interface LegacyCalendarApi {
@@ -337,7 +421,122 @@ function parseSubject(raw: Subject): { data: ProviderSubjectData; fields: string
   };
 }
 
-export class OfficialV0Provider implements SubjectProvider {
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (typeof item === 'string') return [item];
+    if (isRecord(item) && typeof item.name === 'string') return [item.name];
+    return [];
+  });
+}
+
+function optionalCollection(value: unknown): SubjectDiscoveryCollection | undefined {
+  if (!isRecord(value)) return undefined;
+  const collection: SubjectDiscoveryCollection = {
+    wish: optionalNumber(value.wish),
+    collect: optionalNumber(value.collect),
+    doing: optionalNumber(value.doing),
+    onHold: optionalNumber(value.on_hold),
+    dropped: optionalNumber(value.dropped),
+  };
+  return Object.values(collection).some((item) => item !== undefined) ? collection : undefined;
+}
+
+function parseDiscoveryCandidate(raw: Subject): SubjectDiscoveryCandidate {
+  const value = raw as unknown as Record<string, unknown>;
+  const rating = isRecord(value.rating) ? value.rating : undefined;
+  return {
+    id: requiredNumber(value.id, 'id'),
+    type: requiredNumber(value.type, 'type'),
+    name: optionalString(value.name) ?? '',
+    nameCn: optionalString(value.name_cn),
+    date: optionalString(value.date),
+    platform: optionalString(value.platform),
+    score: rating ? optionalNumber(rating.score) : undefined,
+    rank: rating ? optionalNumber(rating.rank) : undefined,
+    ratingCount: rating ? optionalNumber(rating.total) : undefined,
+    collection: optionalCollection(value.collection),
+    tags: stringList(value.tags),
+    metaTags: stringList(value.meta_tags),
+    images: isRecord(value.images)
+      ? Object.fromEntries(
+          Object.entries(value.images).flatMap(([key, image]) =>
+            image === undefined || typeof image === 'string' ? [[key, image]] : [],
+          ),
+        )
+      : undefined,
+    nsfw: typeof value.nsfw === 'boolean' ? value.nsfw : undefined,
+  };
+}
+
+function parseDiscoveryPage(raw: PagedSubject, request: { limit: number; offset: number }): SubjectDiscoveryPage {
+  const value = raw as unknown as Record<string, unknown>;
+  if (!Array.isArray(value.data)) throw new SchemaDriftError('Discovery response data must be an array.');
+  const items = value.data.map((item) => parseDiscoveryCandidate(item as Subject));
+  return {
+    items,
+    total: optionalNumber(value.total),
+    limit: optionalNumber(value.limit) ?? request.limit,
+    offset: optionalNumber(value.offset) ?? request.offset,
+  };
+}
+
+function discoveryEvidence(
+  source: SourceDescriptor,
+  retrievedAt: string,
+  page: SubjectDiscoveryPage,
+  authScope: AuthScope,
+): FieldEvidence {
+  const evidence: FieldEvidence = {};
+  const fields = ['items', 'total', 'limit', 'offset'];
+  for (const fieldPath of fields) {
+    evidence[fieldPath] = [
+      createEvidenceRef({
+        source,
+        retrievedAt,
+        fieldPath,
+        freshness: { state: 'unknown' },
+        authScope,
+        confidence: 'high',
+      }),
+    ];
+  }
+  for (const item of page.items) {
+    for (const fieldPath of ['id', 'name', 'nameCn', 'date', 'platform', 'score', 'rank', 'ratingCount', 'collection', 'tags', 'metaTags', 'images', 'nsfw']) {
+      const key = `items[${item.id}].${fieldPath}`;
+      evidence[key] = [
+        createEvidenceRef({
+          source,
+          retrievedAt,
+          entity: { type: 'subject', id: item.id },
+          fieldPath: key,
+          freshness: { state: 'unknown' },
+          authScope,
+          confidence: 'high',
+        }),
+      ];
+    }
+  }
+  return evidence;
+}
+
+function unavailableDiscovery<T>(source: SourceDescriptor): CapabilityResult<T> {
+  return {
+    state: 'unavailable',
+    error: { code: 'upstream_unavailable', retryable: true },
+    warnings: [warning('SOURCE_NOT_CONFIGURED', 'The official discovery operation is not configured.', { source })],
+  };
+}
+
+export class OfficialV0Provider implements SubjectDiscoveryProvider {
   constructor(private readonly api: OfficialV0Api) {}
 
   async getSubject(
@@ -380,6 +579,93 @@ export class OfficialV0Provider implements SubjectProvider {
         ),
       ),
     };
+  }
+
+  async searchSubjects(
+    request: SubjectDiscoverySearchRequest,
+    context: ProviderRequestContext = {},
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const source: SourceDescriptor = {
+      ...SOURCE_V0,
+      operation: 'searchSubjects',
+      experimental: true,
+    };
+    const retrievedAt = new Date().toISOString();
+    const authScope = context.authScope ?? 'public';
+    if (!this.api.searchSubjects) return unavailableDiscovery(source);
+    try {
+      const filter: NonNullable<OperationBody<'searchSubjects'>['filter']> = {};
+      if (request.filter?.type) filter.type = request.filter.type as typeof filter.type;
+      if (request.filter?.tag) filter.tag = request.filter.tag;
+      if (request.filter?.metaTags) filter.meta_tags = request.filter.metaTags;
+      if (request.filter?.airDate) filter.air_date = request.filter.airDate;
+      if (request.filter?.rating) filter.rating = request.filter.rating;
+      if (request.filter?.ratingCount) filter.rating_count = request.filter.ratingCount;
+      if (request.filter?.rank) filter.rank = request.filter.rank;
+      if (request.filter?.nsfw !== undefined) filter.nsfw = request.filter.nsfw;
+      const raw = await this.api.searchSubjects(
+        { limit: request.limit, offset: request.offset },
+        {
+          keyword: request.keyword,
+          sort: request.sort,
+          filter: Object.keys(filter).length > 0 ? filter : undefined,
+        },
+      );
+      const data = parseDiscoveryPage(raw, request);
+      return {
+        state: 'ok',
+        data,
+        evidence: discoveryEvidence(source, retrievedAt, data, authScope),
+        coverage: {
+          state: 'complete',
+          requested: request.limit,
+          scanned: data.items.length,
+          matched: data.items.length,
+          returned: data.items.length,
+        },
+        retrievedAt,
+        warnings: [warning('EXPERIMENTAL_SOURCE', 'Official v0 subject search is marked experimental upstream.', { source })],
+      };
+    } catch (err: unknown) {
+      return failure(source, err);
+    }
+  }
+
+  async browseSubjects(
+    request: SubjectDiscoveryBrowseRequest,
+    context: ProviderRequestContext = {},
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const source: SourceDescriptor = { ...SOURCE_V0, operation: 'browseSubjects' };
+    const retrievedAt = new Date().toISOString();
+    const authScope = context.authScope ?? 'public';
+    if (!this.api.getSubjects) return unavailableDiscovery(source);
+    try {
+      const raw = await this.api.getSubjects({
+        type: request.type as OperationQuery<'getSubjects'> extends { type: infer T } ? T : never,
+        ...(request.category === undefined ? {} : { cat: request.category as never }),
+        ...(request.year === undefined ? {} : { year: request.year }),
+        ...(request.month === undefined ? {} : { month: request.month }),
+        ...(request.sort === undefined ? {} : { sort: request.sort }),
+        limit: request.limit,
+        offset: request.offset,
+      } as OperationQuery<'getSubjects'>);
+      const data = parseDiscoveryPage(raw, request);
+      return {
+        state: 'ok',
+        data,
+        evidence: discoveryEvidence(source, retrievedAt, data, authScope),
+        coverage: {
+          state: 'complete',
+          requested: request.limit,
+          scanned: data.items.length,
+          matched: data.items.length,
+          returned: data.items.length,
+        },
+        retrievedAt,
+      };
+    } catch (err: unknown) {
+      return failure(source, err);
+    }
   }
 }
 

@@ -11,6 +11,7 @@
     { "path": "./packages/auth" },
     { "path": "./packages/bangumi-core" },
     { "path": "./packages/provider-core" },
+    { "path": "./packages/discovery" },
     { "path": "./packages/tools" },
     { "path": "./packages/renderer" },
     { "path": "./packages/platform-core" },
