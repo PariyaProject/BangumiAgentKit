@@ -264,10 +264,6 @@ function dateAssertion(rows, name, predicate) {
   return everyRow(rows, name, predicate);
 }
 
-function numericValues(rows, getter) {
-  return rows.map(getter).filter((value) => typeof value === 'number' && Number.isFinite(value));
-}
-
 function checkMonotonic(rows, name, getter, direction) {
   if (rows.length === 0) return unknown(name, 'page has no rows');
   const values = rows.map(getter);

@@ -211,7 +211,7 @@ export class ProviderRegistry {
       statusFor(
         'official-v0',
         'official_v0',
-        ['subject', 'subject_stats', 'subject_search', 'subject_browse'],
+        ['subject', 'subject_stats'],
         this.policy,
         Boolean(this.v0),
       ),

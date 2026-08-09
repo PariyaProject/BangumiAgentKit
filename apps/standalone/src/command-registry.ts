@@ -56,7 +56,7 @@ Renderer:
 Developer playground:
   tool list
   tool describe <tool>
-  tool call <tool> <json> [--confirm <id>]
+  tool call bangumi.search_subjects '{"query":"少女终末旅行"}' [--confirm <id>]
 
 Non-interactive flags:
   --json       Emit JSON only to stdout
