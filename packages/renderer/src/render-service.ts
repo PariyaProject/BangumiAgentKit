@@ -83,6 +83,8 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
         if (item.image) urls.add(item.image);
       }
     }
+  } else if (viewModel.template === 'person-profile') {
+    if (viewModel.person.image) urls.add(viewModel.person.image);
   }
 
   return Array.from(urls);

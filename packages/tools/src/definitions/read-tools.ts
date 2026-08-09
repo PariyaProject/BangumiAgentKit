@@ -13,6 +13,7 @@ import {
   CalendarService,
   resolveSubject,
   getSubjectCast,
+  groupSubjectStaff,
   RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 
@@ -150,6 +151,48 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       return await getSubjectCast(activeService, input.subjectId, {
         limit: input.limit ?? 30,
       });
+    },
+  });
+
+  const getSubjectStaff = defineTool({
+    name: 'bangumi.get_subject_staff',
+    description:
+      '获取作品的制作人员与声优关系，并按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+      limit: z.number().int().min(1).max(200).optional().describe('显示条数上限'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input) => {
+      const collection = await personService.getSubjectStaff(input.subjectId, input.limit ?? 100);
+      const retrievedAt = new Date().toISOString();
+      return {
+        subjectId: input.subjectId,
+        staff: collection.items,
+        groups: groupSubjectStaff(collection.items),
+        coverage: {
+          state: collection.truncated ? 'partial' : 'complete',
+          retrievedAt,
+          observed: collection.observed,
+          returned: collection.returned,
+          limit: input.limit ?? 100,
+        },
+        evidence: [
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/subjects/{subject_id}/persons',
+            retrievedAt,
+          },
+          {
+            source: 'derived-s7',
+            formulaVersion: 'subject-staff-grouping-v1',
+            description: '按原始 relation 标签分组；空标签归入未知。',
+            retrievedAt,
+          },
+        ],
+      };
     },
   });
 
@@ -292,6 +335,89 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         ...detail,
         relatedSubjects: subjects,
         relatedCharacters: characters,
+      };
+    },
+  });
+
+  const getPersonProfile = defineTool({
+    name: 'bangumi.get_person_profile',
+    description:
+      '生成一个现实人物/声优/制作人员的结构化履历摘要：身份、媒介分布、原始职位/角色标签、去重作品/角色计数和受限关系明细。用于 Agent 一次回答“这个人参与过什么”；时间窗口、最近活动、工作量趋势和合作次数需要额外数据，本工具不会猜测。',
+    input: z.object({
+      personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+      includeCredits: z.boolean().optional().describe('是否返回受限的作品/角色关系明细；默认 true'),
+      maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系最多返回条数'),
+      maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系最多返回条数'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input) => {
+      const profile = await personService.getPersonProfile(input.personId, {
+        maxSubjects: input.maxSubjects ?? 500,
+        maxCharacters: input.maxCharacters ?? 500,
+      });
+      const retrievedAt = new Date().toISOString();
+      const partial = profile.subjects.truncated || profile.characters.truncated;
+      return {
+        person: profile.person,
+        summary: profile.summary,
+        credits:
+          input.includeCredits === false
+            ? undefined
+            : {
+                subjects: profile.subjects.items,
+                characters: profile.characters.items,
+              },
+        coverage: {
+          state: partial ? 'partial' : 'complete',
+          retrievedAt,
+          subjects: {
+            observed: profile.subjects.observed,
+            returned: profile.subjects.returned,
+            truncated: profile.subjects.truncated,
+          },
+          characters: {
+            observed: profile.characters.observed,
+            returned: profile.characters.returned,
+            truncated: profile.characters.truncated,
+          },
+          missingFields: [
+            'person-related-subject.date',
+            'person-related-subject.score',
+            'person-related-character.airDate',
+          ],
+        },
+        evidence: [
+          { source: 'official-v0', operation: 'GET /v0/persons/{person_id}', retrievedAt },
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/persons/{person_id}/subjects',
+            retrievedAt,
+          },
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/persons/{person_id}/characters',
+            retrievedAt,
+          },
+          {
+            source: 'derived-s7',
+            formulaVersion: 'person-activity-v1',
+            description: '作品/角色按稳定 ID 去重；媒介和职位分布按官方关系行确定性计数。',
+            retrievedAt,
+          },
+        ],
+        limitations: [
+          '人物关系接口不提供作品日期，不能从本结果计算最近作品或 3/6/12 个月工作量。',
+          '本仓库没有兼容历史快照，不能计算增长、趋势或前后窗口比较。',
+          '合作人数和共同作品需要额外的 subject→persons 图遍历，本工具不伪造该统计。',
+        ],
+        notComputable: [
+          'recent_activity',
+          'voice_actor_workload_window',
+          'historical_growth',
+          'collaboration_count',
+        ],
       };
     },
   });
@@ -529,6 +655,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubject,
     getSubjectRelations,
     getSubjectCastTool,
+    getSubjectStaff,
     getCalendar,
     getEpisodes,
     getEpisode,
@@ -536,6 +663,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCharacter,
     searchPersons,
     getPerson,
+    getPersonProfile,
     getUser,
     getMyProfile,
     listCollections,

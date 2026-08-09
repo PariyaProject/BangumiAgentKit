@@ -6,6 +6,7 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  PersonProfileViewModel,
 } from '@bangumi-agent-kit/renderer';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -201,5 +202,62 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     const result = await renderService.renderCard(vm);
     assertValidPng(result.buffer);
     expect(result.buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('PR-7D: PersonProfile renders long CJK identity, distributions, and partial-state copy', async () => {
+    const vm: PersonProfileViewModel = {
+      template: 'person-profile',
+      version: 1,
+      person: {
+        id: 10868,
+        name: '水瀬いのり / 水濑祈 / Inori Minase',
+        career: ['seiyu', 'artist', 'actor'],
+      },
+      summary: {
+        uniqueSubjects: 335,
+        subjectCredits: 335,
+        uniqueCharacters: 319,
+        characterCredits: 319,
+        characterSubjects: 287,
+      },
+      mediaBreakdown: [
+        { label: 'anime', count: 217, uniqueSubjects: 217 },
+        { label: 'game', count: 85, uniqueSubjects: 70 },
+      ],
+      roleBreakdown: [{ label: '艺术家', count: 237, uniqueSubjects: 237 }],
+      characterRoleBreakdown: [
+        { label: '主角', count: 156, uniqueSubjects: 120 },
+        { label: '配角', count: 144, uniqueSubjects: 115 },
+      ],
+      subjectCredits: [
+        {
+          id: 1,
+          name: 'Very Long Japanese Title',
+          nameCn: '这是一个非常长的中文条目名称用于测试移动端换行和层级',
+          role: '艺术家',
+        },
+      ],
+      characterCredits: [
+        {
+          id: 2,
+          name: 'ネコネ',
+          role: '主角',
+          subjectNameCn: '传颂之物-虚伪的假面-',
+        },
+      ],
+      hiddenSubjectCredits: 327,
+      hiddenCharacterCredits: 311,
+      coverage: { state: 'partial', observed: 654, returned: 654 },
+      limitations: [
+        '关系接口没有作品日期，因此不能从此卡片推断最近活动或时间窗口工作量。',
+        '没有历史快照，因此不显示增长或趋势结论。',
+      ],
+      source: { label: 'Bangumi v0 · PersonProfile', retrievedAt: '2026-08-10T00:00:00Z' },
+    };
+
+    const result = await renderService.renderCard(vm);
+    assertValidPng(result.buffer);
+    expect(result.template).toBe('person-profile');
+    expect(result.height).toBeGreaterThan(300);
   });
 });

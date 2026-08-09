@@ -107,9 +107,68 @@ export interface CalendarViewModel {
   days: CalendarDayViewModel[];
 }
 
+export interface PersonProfileCreditViewModel {
+  id: number;
+  name: string;
+  nameCn?: string;
+  role?: string;
+  subjectName?: string;
+  subjectNameCn?: string;
+  eps?: string;
+}
+
+export interface PersonProfileViewModel {
+  template: 'person-profile';
+  version: 1;
+  person: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    image?: string;
+    career: string[];
+  };
+  summary: {
+    uniqueSubjects: number;
+    subjectCredits: number;
+    uniqueCharacters: number;
+    characterCredits: number;
+    characterSubjects: number;
+  };
+  mediaBreakdown: Array<{
+    label: string;
+    count: number;
+    uniqueSubjects: number;
+  }>;
+  roleBreakdown: Array<{
+    label: string;
+    count: number;
+    uniqueSubjects: number;
+  }>;
+  characterRoleBreakdown: Array<{
+    label: string;
+    count: number;
+    uniqueSubjects: number;
+  }>;
+  subjectCredits: PersonProfileCreditViewModel[];
+  characterCredits: PersonProfileCreditViewModel[];
+  hiddenSubjectCredits?: number;
+  hiddenCharacterCredits?: number;
+  coverage: {
+    state: 'complete' | 'partial';
+    observed: number;
+    returned: number;
+  };
+  limitations: string[];
+  source: {
+    label: string;
+    retrievedAt?: string;
+  };
+}
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
   | CastCardViewModel
   | CollectionProgressViewModel
-  | CalendarViewModel;
+  | CalendarViewModel
+  | PersonProfileViewModel;

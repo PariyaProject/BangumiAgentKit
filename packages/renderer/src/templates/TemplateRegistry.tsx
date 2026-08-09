@@ -6,6 +6,7 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  PersonProfileViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -14,11 +15,16 @@ import { SearchListCard } from './SearchListCard.js';
 import { CastCard } from './CastCard.js';
 import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
+import { PersonProfileCard } from './PersonProfileCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
   version: number;
-  render(viewModel: T, theme: ThemeTokens, resolvedImages?: Record<string, string>): React.ReactNode;
+  render(
+    viewModel: T,
+    theme: ThemeTokens,
+    resolvedImages?: Record<string, string>,
+  ): React.ReactNode;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,10 +75,21 @@ registerTemplate<CalendarViewModel>({
   ),
 });
 
+registerTemplate<PersonProfileViewModel>({
+  id: 'person-profile',
+  version: 1,
+  render: (vm, theme, resolvedImages) => (
+    <PersonProfileCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  ),
+});
+
 export function getTemplate(templateId: string): CardTemplate {
   const t = templates.get(templateId);
   if (!t) {
-    throw new RendererError('RENDER_TEMPLATE_NOT_FOUND', `Template "${templateId}" is not registered.`);
+    throw new RendererError(
+      'RENDER_TEMPLATE_NOT_FOUND',
+      `Template "${templateId}" is not registered.`,
+    );
   }
   return t;
 }

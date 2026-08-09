@@ -53,25 +53,29 @@ Independent Freeze Reviewers:
 
 ## Current Cycle
 
-AUTONOMOUS PRODUCT CYCLE SELECTION
+PR-7D Person / Seiyuu / Staff Intelligence
 
 State:
 
-OBSERVE
+PLAN_CREATED
 
 Phase:
 
-OPPORTUNITY_SELECTION
+DESIGN
 
 Active Workplan:
 
-None
+`docs/product/cycles/PR-7D-person-seiyuu-staff.md`
 
 ---
 
 ## Current Objective
 
-Select the highest-value coherent safe Product Cycle according to:
+Implement a bounded official-v0 person activity profile and subject staff view,
+with deterministic aggregation, evidence/coverage semantics, Standalone routing,
+and a PersonProfile renderer.
+
+Selection rationale:
 
 - User Value
 - Agent Leverage
@@ -82,8 +86,11 @@ Select the highest-value coherent safe Product Cycle according to:
 - Maintenance Risk
 - Source Risk
 
-Person / Seiyuu / Staff Intelligence is a strong existing candidate,
-but it is not mandatory.
+Person / Seiyuu / Staff Intelligence was selected because official v0 exposes
+complete person→subject, person→character, and subject→person relationships,
+while the current product only returns shallow raw lists and has no staff view.
+Historical workload/trend claims remain deferred because relationship payloads
+have no air dates and no compatible snapshots exist.
 
 ---
 
@@ -123,16 +130,12 @@ NOT_STARTED
 
 ## Next Action
 
-Perform Autonomous Product Opportunity Selection.
+Implement the bounded PR-7D capability and its validation matrix.
 
-Then create one bounded Cycle Plan under:
-
-`docs/product/cycles/`
-
-and begin implementation.
+Do not enable HTML/Structured Web or introduce historical snapshots in this cycle.
 
 ---
 
 ## Outer Goal Status
 
-NOT_STARTED
+IN_PROGRESS

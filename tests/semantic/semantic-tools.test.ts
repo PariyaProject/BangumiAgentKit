@@ -54,6 +54,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getSubjectTool,
     getSubjectRelationsTool,
     castTool,
+    getSubjectStaffTool,
     getCalendarTool,
     getEpTool,
     getEpisodeTool,
@@ -61,6 +62,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getCharTool,
     searchPersonTool,
     getPersonTool,
+    getPersonProfileTool,
     getUserTool,
     getMyProfileTool,
     listColTool,
@@ -68,12 +70,14 @@ function getReadToolMap(httpClient?: HttpClient) {
     listRevisionsTool,
     getRevisionTool,
     getIndexTool,
+    getSubjectStatsTool,
   ] = createReadTools(httpClient);
   return {
     searchTool,
     getSubjectTool,
     getSubjectRelationsTool,
     castTool,
+    getSubjectStaffTool,
     getCalendarTool,
     getEpTool,
     getEpisodeTool,
@@ -81,6 +85,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getCharTool,
     searchPersonTool,
     getPersonTool,
+    getPersonProfileTool,
     getUserTool,
     getMyProfileTool,
     listColTool,
@@ -88,6 +93,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     listRevisionsTool,
     getRevisionTool,
     getIndexTool,
+    getSubjectStatsTool,
   };
 }
 
@@ -355,6 +361,137 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(res.cast).toHaveLength(1);
     expect(res.cast[0]!.relation).toBe('主角');
     expect(res.cast[0]!.actors[0]!.name).toBe('声优A');
+  });
+
+  it('PR-7D: get_person_profile aggregates official person relationships with explicit coverage', async () => {
+    const capturedUrls: string[] = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      capturedUrls.push(url);
+      if (url.endsWith('/persons/20')) {
+        return new Response(
+          JSON.stringify({ id: 20, name: 'Yoshino', career: ['seiyu'], images: {} }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith('/persons/20/subjects')) {
+        return new Response(
+          JSON.stringify([
+            { id: 100, type: 2, name: '作品A', name_cn: '作品甲', staff: '艺术家', eps: '' },
+            { id: 101, type: 3, name: '作品B', name_cn: '', staff: '艺术家', eps: '' },
+          ]),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify([
+          {
+            id: 1000,
+            name: '角色A',
+            type: 1,
+            subject_id: 100,
+            subject_type: 2,
+            subject_name: '作品A',
+            subject_name_cn: '作品甲',
+            staff: '主角',
+          },
+          {
+            id: 1001,
+            name: '角色B',
+            type: 1,
+            subject_id: 101,
+            subject_type: 3,
+            subject_name: '作品B',
+            staff: '配角',
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getPersonProfileTool } = getReadToolMap(httpClient);
+
+    const res = await executeTestTool(
+      getPersonProfileTool,
+      { personId: 20, maxSubjects: 1, maxCharacters: 2 },
+      context,
+    );
+    const profile = res as any;
+
+    expect(capturedUrls).toHaveLength(3);
+    expect(capturedUrls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('/v0/persons/20'),
+        expect.stringContaining('/v0/persons/20/subjects'),
+        expect.stringContaining('/v0/persons/20/characters'),
+      ]),
+    );
+    expect(profile.person.name).toBe('Yoshino');
+    expect(profile.summary).toMatchObject({
+      subjectCredits: 1,
+      uniqueSubjects: 1,
+      characterCredits: 2,
+      uniqueCharacters: 2,
+      characterSubjects: 2,
+    });
+    expect(profile.coverage.state).toBe('partial');
+    expect(profile.coverage.subjects).toMatchObject({ observed: 2, returned: 1, truncated: true });
+    expect(profile.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ operation: 'GET /v0/persons/{person_id}/subjects' }),
+        expect.objectContaining({ source: 'derived-s7', formulaVersion: 'person-activity-v1' }),
+      ]),
+    );
+    expect(profile.notComputable).toContain('voice_actor_workload_window');
+  });
+
+  it('PR-7D: get_subject_staff preserves raw relation labels and groups them', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: 1,
+            name: '导演A',
+            type: 1,
+            career: ['producer'],
+            relation: '导演',
+            eps: '',
+          },
+          {
+            id: 2,
+            name: '脚本B',
+            type: 1,
+            career: ['writer'],
+            relation: '脚本',
+            eps: '全12话',
+          },
+          {
+            id: 3,
+            name: '声优C',
+            type: 1,
+            career: ['seiyu'],
+            relation: 'CV',
+            eps: '1,2',
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getSubjectStaffTool } = getReadToolMap(httpClient);
+
+    const res = await executeTestTool(getSubjectStaffTool, { subjectId: 226998 }, context);
+    const staff = res as any;
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(staff.staff).toHaveLength(3);
+    expect(staff.staff[1]).toMatchObject({ relation: '脚本', eps: '全12话' });
+    expect(staff.groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ relation: '导演', count: 1 }),
+        expect.objectContaining({ relation: 'CV', count: 1 }),
+      ]),
+    );
+    expect(staff.coverage.state).toBe('complete');
   });
 
   it('S10 regression: CharacterPerson numeric type does not leak into roleName string', async () => {

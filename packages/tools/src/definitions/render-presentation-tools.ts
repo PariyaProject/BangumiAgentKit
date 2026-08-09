@@ -6,6 +6,7 @@ import {
   UserService,
   CharacterService,
   CalendarService,
+  PersonService,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
@@ -16,6 +17,7 @@ import {
   buildCollectionProgressViewModel,
   buildCalendarViewModel,
   buildSearchListViewModel,
+  buildPersonProfileViewModel,
 } from '@bangumi-agent-kit/renderer';
 
 let globalArtifactStore: ArtifactStore | null = null;
@@ -249,7 +251,10 @@ export function createRenderPresentationTools(
     description: '生成 Bangumi 搜索结果列表图片卡片 Artifact。',
     input: z.object({
       query: z.string().describe('搜索关键词'),
-      subjectType: z.number().optional().describe('条目类型: 1-Book, 2-Anime, 3-Music, 4-Game, 6-Real'),
+      subjectType: z
+        .number()
+        .optional()
+        .describe('条目类型: 1-Book, 2-Anime, 3-Music, 4-Game, 6-Real'),
       limit: z.number().optional().describe('最多渲染条目数 (默认 10)'),
     }),
     auth: 'none',
@@ -282,11 +287,45 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderPersonProfile = defineTool({
+    name: 'bangumi.render_person_profile',
+    description: '生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。',
+    input: z.object({
+      personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+      maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系读取上限'),
+      maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系读取上限'),
+      maxCredits: z.number().int().min(1).max(20).optional().describe('每类关系最多展示条数'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const clientProvider = deps?.clientProvider;
+      if (!clientProvider) {
+        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
+      }
+
+      const client = await clientProvider.getPublicClient();
+      const personService = new PersonService(client);
+      const profile = await personService.getPersonProfile(input.personId, {
+        maxSubjects: input.maxSubjects ?? 500,
+        maxCharacters: input.maxCharacters ?? 500,
+      });
+      const viewModel = buildPersonProfileViewModel(profile, {
+        retrievedAt: new Date().toISOString(),
+        maxSubjectCredits: input.maxCredits ?? 8,
+        maxCharacterCredits: input.maxCredits ?? 8,
+      });
+      return await executeRenderAndSave(viewModel);
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
     renderCollectionProgress,
     renderCalendar,
     renderSearch,
+    renderPersonProfile,
   ] as const;
 }
