@@ -25,6 +25,8 @@ coverage
 .vitest
 .artifacts
 .codegraph/
+__pycache__/
+*.py[cod]
 
 
 # OS / Editor
