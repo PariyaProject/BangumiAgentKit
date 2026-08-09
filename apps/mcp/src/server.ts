@@ -69,7 +69,7 @@ function extractConfirmationId(rawArgs: Record<string, unknown>): string | undef
   if (legacy !== undefined && typeof legacy !== 'string') {
     throw new BangumiError('CONFIRMATION_INVALID', 'MCP confirmationId must be a string.', false, 400);
   }
-  if (reserved && legacy && reserved !== legacy) {
+  if (reserved !== undefined && legacy !== undefined && reserved !== legacy) {
     throw new BangumiError(
       'CONFIRMATION_INVALID',
       'MCP _confirmationId and confirmationId must match when both are provided.',
@@ -78,7 +78,7 @@ function extractConfirmationId(rawArgs: Record<string, unknown>): string | undef
     );
   }
 
-  return reserved || legacy;
+  return reserved !== undefined ? reserved : legacy;
 }
 
 export interface McpServerOptions {
