@@ -17,7 +17,7 @@ orchestrator。BangumiAgentKit 的 MCP、Storage、TokenBroker 仍是独立服�
 pnpm install
 pnpm setup:local
 pnpm build
-pnpm doctor
+pnpm run doctor
 pnpm doctor:host
 ```
 

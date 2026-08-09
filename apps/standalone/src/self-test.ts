@@ -203,19 +203,21 @@ export async function runSelfTest(options: SelfTestOptions = {}): Promise<SelfTe
         fs.rmSync(path.join(artifactDir, `${ref.id}.json`), { force: true });
       } catch (err) {
         const message = String(err);
+        const rendererUnavailable =
+          /RENDERER_UNAVAILABLE|Executable does not exist|Executable doesn't exist|browserType\.launch|playwright/i.test(
+            message,
+          );
         checks.push(
           check(
             'renderer',
-            /RENDERER_UNAVAILABLE|Executable does not exist|playwright/i.test(message)
-              ? 'SKIP'
-              : 'FAIL',
-            /RENDERER_UNAVAILABLE|Executable does not exist|playwright/i.test(message)
+            rendererUnavailable ? 'SKIP' : 'FAIL',
+            rendererUnavailable
               ? 'Chromium is unavailable; renderer is optional'
               : `Renderer fixture failed: ${message}`,
           ),
         );
       } finally {
-        await renderService.close();
+        await renderService.close().catch(() => undefined);
       }
     } else {
       checks.push(

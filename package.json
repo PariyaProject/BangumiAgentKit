@@ -48,6 +48,7 @@
     "standalone:build": "pnpm --filter @bangumi-agent-kit/app-standalone build",
     "self-test": "node apps/standalone/dist/self-test-main.js",
     "smoke:standalone": "ts-node -P tsconfig.base.json scripts/smoke-standalone.ts",
+    "smoke:v0.1": "ts-node -P tsconfig.base.json scripts/smoke-v0.1.ts",
     "version:check": "ts-node -P tsconfig.base.json scripts/version-check.ts"
   },
   "devDependencies": {

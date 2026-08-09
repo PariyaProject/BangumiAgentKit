@@ -175,7 +175,7 @@ token、secret、OAuth code 或加密 key。`SKIP` 不会使 self-test 失败。
 ## 诊断
 
 ```bash
-pnpm doctor
+pnpm run doctor
 pnpm version:check
 ```
 

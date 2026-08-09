@@ -11,7 +11,7 @@ pnpm install
 pnpm setup:local
 pnpm db:migrate
 pnpm build
-pnpm doctor
+pnpm run doctor
 ```
 
 The default local runtime uses SQLite under `~/.bangumi-agent-kit`. PostgreSQL

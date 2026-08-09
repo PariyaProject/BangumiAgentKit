@@ -81,7 +81,7 @@ BANGUMI_OAUTH_REDIRECT_URI=${DEFAULT_BANGUMI_OAUTH_REDIRECT_URI}
     console.log('  - BANGUMI_OAUTH_CLIENT_ID');
     console.log('  - BANGUMI_OAUTH_CLIENT_SECRET');
   }
-  console.log('Run `pnpm doctor` to verify your environment readiness.');
+  console.log('Run `pnpm run doctor` to verify your environment readiness.');
 
   return { envLocalPath, dataDir, callbackPath: BANGUMI_OAUTH_CALLBACK_PATH };
 }

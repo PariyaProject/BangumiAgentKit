@@ -168,7 +168,7 @@ pnpm smoke:v0.1
 ```
 
 The full final gate is documented in `CONTRIBUTING.md` and the release notes
-for the current change. `pnpm doctor` reports Claude Host as optional and does
+for the current change. `pnpm run doctor` reports Claude Host as optional and does
 not fail a Standalone-only installation because an LLM is absent.
 
 ## License
