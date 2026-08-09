@@ -24,6 +24,7 @@ pnpm-debug.log*
 coverage
 .vitest
 .artifacts
+.codegraph/
 
 
 # OS / Editor

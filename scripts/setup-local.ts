@@ -6,8 +6,8 @@ import {
   BANGUMI_OAUTH_CALLBACK_PATH,
   DEFAULT_BANGUMI_OAUTH_REDIRECT_URI,
   loadRuntimeEnv,
-} from '@bangumi-agent-kit/config';
-import { SQLiteStorage, resolveSqlitePath } from '@bangumi-agent-kit/db';
+} from '../packages/config/src/index';
+import { SQLiteStorage, resolveSqlitePath } from '../packages/db/src/index';
 
 export interface SetupLocalOptions {
   cwd?: string;

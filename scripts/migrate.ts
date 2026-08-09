@@ -1,6 +1,6 @@
-import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
+import { loadRuntimeEnv } from '../packages/config/src/index';
 import { Client } from 'pg';
-import { SQLiteStorage, resolveSqlitePath, runPostgresMigrations } from '@bangumi-agent-kit/db';
+import { SQLiteStorage, resolveSqlitePath, runPostgresMigrations } from '../packages/db/src/index';
 
 async function runMigrations() {
   loadRuntimeEnv();

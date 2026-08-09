@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
-import { resolveSqlitePath } from '@bangumi-agent-kit/db';
+import { loadRuntimeEnv } from '../packages/config/src/index';
+import { resolveSqlitePath } from '../packages/db/src/index';
 
 interface DiagnosticResult {
   category: string;
