@@ -11,4 +11,6 @@ export {
 } from './render-service.js';
 export type { RenderResult, RenderOptions } from './render-service.js';
 
+export * from './artifact-store.js';
+
 export const MODULE_NAME = 'renderer';

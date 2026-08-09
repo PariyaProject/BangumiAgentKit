@@ -10,6 +10,7 @@
     { "path": "../bangumi-transport" },
     { "path": "../db" },
     { "path": "../auth" },
-    { "path": "../bangumi-core" }
+    { "path": "../bangumi-core" },
+    { "path": "../renderer" }
   ]
 }

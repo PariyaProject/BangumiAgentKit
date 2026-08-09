@@ -20,6 +20,7 @@ import { createReadTools } from './definitions/read-tools.js';
 import { createRawOperationTools } from './definitions/raw-operation-tools.js';
 import { createWriteTools } from './definitions/write-tools.js';
 import { createAuthTools } from './definitions/auth-tools.js';
+import { createRenderPresentationTools } from './definitions/render-presentation-tools.js';
 
 export type ToolMode = 'curated' | 'full';
 
@@ -160,6 +161,11 @@ export class ToolRegistry {
 
     const authTools = createAuthTools(this.deps.tokenBroker, this.deps.oauthService);
     for (const tool of authTools) {
+      this.registerTool(tool);
+    }
+
+    const renderTools = createRenderPresentationTools();
+    for (const tool of renderTools) {
       this.registerTool(tool);
     }
   }

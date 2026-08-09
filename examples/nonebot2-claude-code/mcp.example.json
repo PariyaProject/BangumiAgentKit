@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bangumi": {
+      "command": "node",
+      "args": ["/path/to/BangumiAgentKit/apps/mcp/dist/main.js"],
+      "env": {
+        "BANGUMI_DATA_DIR": "~/.bangumi-agent-kit",
+        "BANGUMI_DB_DRIVER": "sqlite"
+      }
+    }
+  }
+}

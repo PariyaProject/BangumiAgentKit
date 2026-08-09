@@ -29,7 +29,22 @@ export default defineConfig({
         'packages/platform-qq-official/src/index.ts',
       ),
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
+  plugins: [
+    {
+      name: 'resolve-tsx-for-js',
+      resolveId(id, importer) {
+        if (id.endsWith('.js') && importer && importer.includes('/packages/renderer/src/')) {
+          const tsxPath = path.resolve(path.dirname(importer), id.replace(/\.js$/, '.tsx'));
+          if (fs.existsSync(tsxPath)) {
+            return tsxPath;
+          }
+        }
+        return null;
+      },
+    },
+  ],
   test: {
     globals: true,
     environment: 'node',

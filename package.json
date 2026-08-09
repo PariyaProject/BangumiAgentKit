@@ -19,6 +19,7 @@
     "test:render": "vitest run tests/render",
     "setup:local": "ts-node scripts/setup-local.ts",
     "doctor": "ts-node scripts/doctor.ts",
+    "smoke:claude-host": "ts-node scripts/smoke-claude-host.ts",
     "renderer:install": "npx playwright install chromium",
     "start:api": "pnpm --filter @bangumi-agent-kit/app-api start",
     "start:mcp": "pnpm --filter @bangumi-agent-kit/app-mcp start",

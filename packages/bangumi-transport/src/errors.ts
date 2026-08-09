@@ -17,6 +17,7 @@ export type BangumiErrorCode =
   | 'STORAGE_ERROR'
   | 'OAUTH_EXCHANGE_FAILED'
   | 'KEY_VERSION_UNAVAILABLE'
+  | 'RENDERER_UNAVAILABLE'
   | 'INTERNAL_ERROR';
 
 export class BangumiError extends Error {
