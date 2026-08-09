@@ -61,3 +61,13 @@ and is recorded as empirically verified rather than an official API contract.
 Population standard deviation uses the upstream rating histogram and returns a
 `not_computable` result when the population is empty. Upstream score and
 derived histogram mean are retained separately so a mismatch is visible.
+
+## Verification seams
+
+The provider contract, official adapters, source merge policy, formula registry,
+registry diagnostics, and semantic tool seam are covered by
+`pnpm test:provider`. The existing renderer SSRF suite also covers both Node
+lookup callback forms and the pinned-address transport. Standalone exposes the
+safe readiness view through `provider status`; `provider explain subject <id>`
+returns capability state and evidence metadata without credentials or local
+storage paths.
