@@ -220,6 +220,15 @@ importers:
         specifier: workspace:*
         version: link:../platform-core
 
+  packages/provider-core:
+    dependencies:
+      '@bangumi-agent-kit/bangumi-openapi':
+        specifier: workspace:*
+        version: link:../bangumi-openapi
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../bangumi-transport
+
   packages/renderer:
     dependencies:
       '@bangumi-agent-kit/bangumi-core':

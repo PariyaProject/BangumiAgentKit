@@ -85,6 +85,22 @@ export type CapabilityState =
   | 'unsupported'
   | 'upstream_error';
 
+export type ProviderErrorCode =
+  | 'not_found'
+  | 'auth_required'
+  | 'permission_denied'
+  | 'rate_limited'
+  | 'timeout'
+  | 'network_error'
+  | 'schema_drift'
+  | 'upstream_unavailable'
+  | 'upstream_error';
+
+export interface ProviderError {
+  code: ProviderErrorCode;
+  retryable: boolean;
+}
+
 export interface ConflictCandidate<T = unknown> {
   source: SourceDescriptor;
   value: T;
@@ -125,6 +141,7 @@ export type FieldEvidence = Record<string, EvidenceRef[]>;
 
 export interface CapabilityResult<T> {
   state: CapabilityState;
+  error?: ProviderError;
   data?: T;
   evidence?: FieldEvidence;
   coverage?: Coverage;
