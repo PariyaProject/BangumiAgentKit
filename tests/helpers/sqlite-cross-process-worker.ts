@@ -1,4 +1,4 @@
-import { SQLiteStorage } from '../../packages/db/dist/index.js';
+import { SQLiteStorage } from '../../packages/db/src/index';
 import fs from 'node:fs';
 
 const mode = process.argv[2] || '';
