@@ -40,17 +40,17 @@ export interface DiscoveryBudgetInput {
 
 export interface DiscoveryQuery {
   keyword?: string;
-  media?: MediaType | MediaType[];
-  categories?: DiscoveryCategory | DiscoveryCategory[];
+  media?: MediaType | readonly MediaType[];
+  categories?: DiscoveryCategory | readonly DiscoveryCategory[];
   year?: number;
   month?: number;
   season?: string;
   from?: string;
   to?: string;
-  tags?: string[];
-  metaTags?: string[];
-  excludeMetaTags?: string[];
-  concepts?: string[];
+  tags?: readonly string[];
+  metaTags?: readonly string[];
+  excludeMetaTags?: readonly string[];
+  concepts?: readonly string[];
   rating?: NumericRangeInput;
   ratingCount?: NumericRangeInput;
   rank?: NumericRangeInput;

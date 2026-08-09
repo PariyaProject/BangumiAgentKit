@@ -28,7 +28,7 @@ const SEASON_MONTHS = {
   autumn: [10, 1],
 } as const;
 
-function asStringArray(value: string | string[] | undefined, field: string, issues: string[]): string[] {
+function asStringArray(value: string | readonly string[] | undefined, field: string, issues: string[]): string[] {
   if (value === undefined) return [];
   const values = Array.isArray(value) ? value : [value];
   const normalized = values.map((item) => item.trim()).filter(Boolean);
@@ -37,7 +37,7 @@ function asStringArray(value: string | string[] | undefined, field: string, issu
 }
 
 function asEnumArray<T extends string>(
-  value: T | T[] | undefined,
+  value: T | readonly T[] | undefined,
   allowed: readonly T[],
   field: string,
   issues: string[],
