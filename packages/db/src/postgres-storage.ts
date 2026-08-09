@@ -246,6 +246,111 @@ export class PostgresStorage implements Storage {
     }
   }
 
+  async listBindings(principalId: string): Promise<AccountBindingRecord[]> {
+    const rows = await this.db.query.accountBindings.findMany({
+      where: eq(schema.accountBindings.principalId, principalId),
+    });
+    return rows.map((res) => ({
+      id: res.id,
+      principalId: res.principalId,
+      bangumiAccountId: res.bangumiAccountId,
+      isActive: res.isActive,
+      createdAt: res.createdAt,
+    }));
+  }
+
+  async bindAccount(
+    principalId: string,
+    bangumiAccountId: string,
+    activate = true,
+  ): Promise<AccountBindingRecord> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (activate) {
+        await client.query(
+          'UPDATE account_bindings SET is_active = false WHERE principal_id = $1 AND is_active = true',
+          [principalId],
+        );
+      }
+      const existing = await client.query(
+        'SELECT id FROM account_bindings WHERE principal_id = $1 AND bangumi_account_id = $2',
+        [principalId, bangumiAccountId],
+      );
+      const now = new Date();
+      if (existing.rows.length > 0) {
+        const id = existing.rows[0].id;
+        await client.query(
+          'UPDATE account_bindings SET is_active = $1 WHERE id = $2',
+          [activate, id],
+        );
+        await client.query('COMMIT');
+        return { id, principalId, bangumiAccountId, isActive: activate, createdAt: now };
+      }
+      const id = `bnd_${crypto.randomUUID()}`;
+      await client.query(
+        'INSERT INTO account_bindings (id, principal_id, bangumi_account_id, is_active, created_at) VALUES ($1, $2, $3, $4, $5)',
+        [id, principalId, bangumiAccountId, activate, now],
+      );
+      await client.query('COMMIT');
+      return { id, principalId, bangumiAccountId, isActive: activate, createdAt: now };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async setActiveBinding(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<AccountBindingRecord> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const existing = await client.query(
+        'SELECT id FROM account_bindings WHERE principal_id = $1 AND bangumi_account_id = $2',
+        [principalId, bangumiAccountId],
+      );
+      if (existing.rows.length === 0) {
+        throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+      }
+      await client.query(
+        'UPDATE account_bindings SET is_active = false WHERE principal_id = $1',
+        [principalId],
+      );
+      await client.query(
+        'UPDATE account_bindings SET is_active = true WHERE principal_id = $1 AND bangumi_account_id = $2',
+        [principalId, bangumiAccountId],
+      );
+      await client.query('COMMIT');
+      return {
+        id: existing.rows[0].id,
+        principalId,
+        bangumiAccountId,
+        isActive: true,
+        createdAt: new Date(),
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async removeBinding(principalId: string, bangumiAccountId: string): Promise<void> {
+    await this.db
+      .delete(schema.accountBindings)
+      .where(
+        and(
+          eq(schema.accountBindings.principalId, principalId),
+          eq(schema.accountBindings.bangumiAccountId, bangumiAccountId),
+        ),
+      );
+  }
+
   async deactivateBindings(principalId: string): Promise<void> {
     await this.db
       .update(schema.accountBindings)

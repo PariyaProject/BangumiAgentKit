@@ -96,6 +96,77 @@ export class MemoryStorage implements Storage {
     return { ...binding };
   }
 
+  async listBindings(principalId: string): Promise<AccountBindingRecord[]> {
+    const list: AccountBindingRecord[] = [];
+    for (const b of this.accountBindings.values()) {
+      if (b.principalId === principalId) {
+        list.push({ ...b });
+      }
+    }
+    return list;
+  }
+
+  async bindAccount(
+    principalId: string,
+    bangumiAccountId: string,
+    activate = true,
+  ): Promise<AccountBindingRecord> {
+    if (activate) {
+      await this.deactivateBindings(principalId);
+    }
+    const now = new Date();
+    // Check if binding already exists
+    for (const b of this.accountBindings.values()) {
+      if (b.principalId === principalId && b.bangumiAccountId === bangumiAccountId) {
+        b.isActive = activate;
+        return { ...b };
+      }
+    }
+    const binding: AccountBindingRecord = {
+      id: `bnd_${crypto.randomUUID()}`,
+      principalId,
+      bangumiAccountId,
+      isActive: activate,
+      createdAt: now,
+    };
+    this.accountBindings.set(binding.id, binding);
+    return { ...binding };
+  }
+
+  async setActiveBinding(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<AccountBindingRecord> {
+    let found = false;
+    for (const b of this.accountBindings.values()) {
+      if (b.principalId === principalId && b.bangumiAccountId === bangumiAccountId) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+    }
+
+    await this.deactivateBindings(principalId);
+    for (const b of this.accountBindings.values()) {
+      if (b.principalId === principalId && b.bangumiAccountId === bangumiAccountId) {
+        b.isActive = true;
+        return { ...b };
+      }
+    }
+    throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+  }
+
+  async removeBinding(principalId: string, bangumiAccountId: string): Promise<void> {
+    for (const [id, b] of this.accountBindings.entries()) {
+      if (b.principalId === principalId && b.bangumiAccountId === bangumiAccountId) {
+        this.accountBindings.delete(id);
+        break;
+      }
+    }
+  }
+
   async deactivateBindings(principalId: string): Promise<void> {
     for (const b of this.accountBindings.values()) {
       if (b.principalId === principalId && b.isActive) {

@@ -33,6 +33,17 @@ export interface Storage {
       Partial<Pick<BangumiAccountRecord, 'createdAt' | 'updatedAt'>>,
   ): Promise<BangumiAccountRecord>;
   getActiveBinding(principalId: string): Promise<AccountBindingRecord | null>;
+  listBindings(principalId: string): Promise<AccountBindingRecord[]>;
+  bindAccount(
+    principalId: string,
+    bangumiAccountId: string,
+    activate?: boolean,
+  ): Promise<AccountBindingRecord>;
+  setActiveBinding(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<AccountBindingRecord>;
+  removeBinding(principalId: string, bangumiAccountId: string): Promise<void>;
   replaceActiveBinding(
     principalId: string,
     bangumiAccountId: string,

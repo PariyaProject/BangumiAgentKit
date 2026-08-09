@@ -4,7 +4,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -b",
-    "start": "node dist/stdio.js"
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@bangumi-agent-kit/auth": "workspace:*",
