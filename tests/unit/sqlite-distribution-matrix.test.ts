@@ -14,7 +14,7 @@ import { createApiApp } from '../../apps/api/src/app.js';
 import { TokenBroker, encryptToken } from '../../packages/auth/src/index.js';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
 import { BANGUMI_OAUTH_CALLBACK_PATH, loadRuntimeEnv } from '../../packages/config/src/index.js';
-import { setupLocal } from '../../scripts/setup-local.js';
+import { setupLocal } from '../../scripts/lib/setup-local.js';
 
 describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
   let origEnv: NodeJS.ProcessEnv;
