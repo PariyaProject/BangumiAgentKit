@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 import { Storage } from '@bangumi-agent-kit/db';
 import {
   createRuntimeDependencies,
+  createRuntimeDependenciesWithStorage,
   RuntimeDependencies,
   CreateRuntimeDependenciesConfig,
 } from '@bangumi-agent-kit/tools';
@@ -28,21 +29,12 @@ export interface ApiAppInstance {
   handleHealthReady: () => Promise<{ status: string }>;
 }
 
-export function createApiApp(options: ApiAppOptions = {}): ApiAppInstance {
+export async function createApiApp(options: ApiAppOptions = {}): Promise<ApiAppInstance> {
   const deps =
     options.dependencies ||
-    createRuntimeDependencies({
-      storage: options.storage,
-      databaseUrl: options.databaseUrl,
-      clientId: options.clientId,
-      clientSecret: options.clientSecret,
-      redirectUri: options.redirectUri,
-      secretKey: options.secretKey,
-      keyVersion: options.keyVersion,
-      tokenUrl: options.tokenUrl,
-      authorizeUrl: options.authorizeUrl,
-      publicHttpClient: options.publicHttpClient,
-    });
+    (options.storage
+      ? createRuntimeDependenciesWithStorage(options.storage, options)
+      : await createRuntimeDependencies(options));
 
   const app = Fastify({ logger: false });
   const oauthHandler = handleOAuthCallbackRoute(deps.oauthService);

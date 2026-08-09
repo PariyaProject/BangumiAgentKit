@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { resolveSqlitePath } from '../packages/db/dist/index.js';
+import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
+import { resolveSqlitePath } from '@bangumi-agent-kit/db';
 
 interface DiagnosticResult {
   category: string;
@@ -10,28 +11,8 @@ interface DiagnosticResult {
   guidance?: string;
 }
 
-function loadEnvFiles() {
-  for (const file of ['.env.local', '.env']) {
-    const envPath = path.join(process.cwd(), file);
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, 'utf-8');
-      for (const line of content.split('\n')) {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-          const idx = trimmed.indexOf('=');
-          const key = trimmed.slice(0, idx).trim();
-          const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
-          if (key && process.env[key] === undefined) {
-            process.env[key] = val;
-          }
-        }
-      }
-    }
-  }
-}
-
 async function runDoctor() {
-  loadEnvFiles();
+  loadRuntimeEnv();
   console.log('=== BangumiAgentKit Doctor ===\n');
   const results: DiagnosticResult[] = [];
 
@@ -168,8 +149,7 @@ async function runDoctor() {
   // 7. Chromium / Renderer Availability
   try {
     const pwModule = 'playwright';
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pw = require(pwModule);
+    const pw = require(pwModule) as { chromium: { executablePath: () => string } };
     const browserPath = pw.chromium.executablePath();
     if (fs.existsSync(browserPath)) {
       results.push({

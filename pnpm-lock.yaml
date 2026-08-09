@@ -232,6 +232,9 @@ importers:
       '@bangumi-agent-kit/db':
         specifier: workspace:*
         version: link:../db
+      '@bangumi-agent-kit/renderer':
+        specifier: workspace:*
+        version: link:../renderer
       zod:
         specifier: ^3.22.0 || ^4.0.0
         version: 4.4.3

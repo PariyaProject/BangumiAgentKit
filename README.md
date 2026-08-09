@@ -1,10 +1,10 @@
-# BangumiAgentKit (v0.1.0)
+# BangumiAgentKit (v0.1 pre-release development)
 
 > Lightweight, secure, multi-account agentic kit & Model Context Protocol (MCP) server for Bangumi (bgm.tv).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https.mit.org/licenses/MIT)
 
-BangumiAgentKit provides a complete, production-ready MCP server and tools ecosystem for interacting with Bangumi (bgm.tv). It enables AI agents to search subjects, manage collections, query characters and calendar schedules, render high-quality presentation cards, and safely execute write operations with explicit confirmation gates.
+BangumiAgentKit provides a v0.1 release candidate MCP server and tools ecosystem for interacting with Bangumi (bgm.tv). It enables AI agents to search subjects, manage collections, query characters and calendar schedules, render high-quality presentation cards, and safely execute write operations with explicit confirmation gates.
 
 ---
 
@@ -82,7 +82,7 @@ pnpm start:mcp
 | `DATABASE_URL` | None | PostgreSQL connection URI (auto-enables `postgres` driver) |
 | `BANGUMI_OAUTH_CLIENT_ID` | None | Bangumi OAuth App Client ID |
 | `BANGUMI_OAUTH_CLIENT_SECRET` | None | Bangumi OAuth App Client Secret |
-| `BANGUMI_TOKEN_SECRET_KEY` | Hex Key | AES-256-GCM encryption secret key |
+| `BANGUMI_TOKEN_ENCRYPTION_KEY` | Hex Key | AES-256-GCM encryption secret key |
 
 ---
 

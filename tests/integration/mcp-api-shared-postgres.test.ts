@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -22,7 +23,7 @@ function testSharedStorageIntegration(name: string, createStorage: () => Promise
         redirectUri: 'http://localhost:3000/oauth/callback',
       });
 
-      const apiApp = createApiApp({ dependencies: deps, storage });
+      const apiApp = await createApiApp({ dependencies: deps, storage });
       const mcpServer = new BangumiMcpServer({ dependencies: deps, storage });
 
       // 1. API Health Check

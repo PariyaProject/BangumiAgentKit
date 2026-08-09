@@ -8,7 +8,62 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  sqlite-default:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @bangumi-agent-kit/renderer exec playwright install --with-deps chromium
+
+      - name: Setup local database & environment
+        run: pnpm setup:local
+
+      - name: Run database migrations
+        run: pnpm db:migrate
+
+      - name: Run environment doctor
+        run: pnpm doctor
+
+      - name: Lint check
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Run contract tests
+        run: pnpm test:contract
+
+      - name: Run semantic tests
+        run: pnpm test:semantic
+
+      - name: Run SQLite integration tests
+        run: pnpm test:integration:sqlite
+
+      - name: Run render tests
+        run: pnpm test:render
+
+      - name: Verify OpenAPI generated outputs
+        run: pnpm openapi:verify
+
+      - name: Build packages
+        run: pnpm build
+
+  postgres-compat:
     runs-on: ubuntu-latest
 
     services:
@@ -27,6 +82,7 @@ jobs:
           --health-retries 5
 
     env:
+      BANGUMI_DB_DRIVER: postgres
       DATABASE_URL: postgres://bangumi:bangumipassword@localhost:5432/bangumi_db
       BANGUMI_TOKEN_ENCRYPTION_KEY: test-secret-key-123456789012345678901234
 
@@ -43,35 +99,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Chromium
-        run: pnpm --filter @bangumi-agent-kit/renderer exec playwright install --with-deps chromium
-
       - name: Run database migrations
         run: pnpm db:migrate
 
-      - name: Lint check
-        run: pnpm lint
+      - name: Run environment doctor
+        run: pnpm doctor
 
-      - name: Type check
-        run: pnpm typecheck
-
-      - name: Run unit tests
-        run: pnpm test
+      - name: Run unit tests (non-render)
+        run: pnpm vitest run tests/unit --exclude tests/unit/renderer.test.ts
 
       - name: Run contract tests
         run: pnpm test:contract
 
-      - name: Run semantic tests
-        run: pnpm test:semantic
-
-      - name: Run integration tests
-        run: pnpm test:integration
-
-      - name: Run render tests
-        run: pnpm test:render
-
-      - name: Verify OpenAPI generated outputs
-        run: pnpm openapi:verify
-
-      - name: Build packages
-        run: pnpm build
+      - name: Run PostgreSQL integration tests
+        run: pnpm test:integration:postgres

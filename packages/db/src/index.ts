@@ -5,3 +5,5 @@ export { PostgresStorage } from './postgres-storage.js';
 export { SQLiteStorage, resolveSqlitePath } from './sqlite-storage.js';
 export { createStorageFromConfig, createStorageFromEnv } from './factory.js';
 export type { StorageDriver, StorageConfig } from './factory.js';
+export { runSqliteMigrations, runPostgresMigrations, getMigrationDir } from './migrator.js';
+

@@ -11,7 +11,7 @@ describe('H. Fastify API Integration Test', () => {
       secretKey: 'test-secret-key-123456789012345678901234',
     });
 
-    const { app } = createApiApp({ dependencies: deps, storage });
+    const { app } = await createApiApp({ dependencies: deps, storage });
 
     // 1. GET /health/live -> 200
     const liveRes = await app.inject({ method: 'GET', url: '/health/live' });

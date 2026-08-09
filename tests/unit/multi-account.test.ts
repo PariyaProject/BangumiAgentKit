@@ -16,11 +16,11 @@ describe('PR-6B: Multi-Account & Principal Isolation Tests', () => {
     const key = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
     const encConfig = resolveTokenEncryptionConfig({ secretKey: key });
 
-    const mockHttpClient: HttpClient = {
-      async request() {
-        return { status: 200, statusText: 'OK', headers: {}, data: {} };
+    const mockHttpClient = {
+      async request<T>() {
+        return { status: 200, statusText: 'OK', headers: {}, data: {} } as unknown as T;
       },
-    };
+    } as unknown as HttpClient;
 
     const config = { secretKey: key };
     const broker = new TokenBroker(storage, config, mockHttpClient);

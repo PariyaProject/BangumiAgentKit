@@ -2,9 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
-import { SQLiteStorage, resolveSqlitePath } from '../packages/db/dist/index.js';
+import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
+import { SQLiteStorage, resolveSqlitePath } from '@bangumi-agent-kit/db';
 
 async function setupLocal() {
+  loadRuntimeEnv();
   console.log('=== BangumiAgentKit Local Setup ===\n');
 
   const dataDir = process.env.BANGUMI_DATA_DIR || path.join(os.homedir(), '.bangumi-agent-kit');
@@ -16,7 +18,6 @@ async function setupLocal() {
   }
 
   const envLocalPath = path.join(process.cwd(), '.env.local');
-  let secretGenerated = false;
   let envContent = '';
 
   if (fs.existsSync(envLocalPath)) {
@@ -24,7 +25,6 @@ async function setupLocal() {
     envContent = fs.readFileSync(envLocalPath, 'utf-8');
   } else {
     const generatedKey = crypto.randomBytes(32).toString('hex');
-    secretGenerated = true;
 
     envContent = `# BangumiAgentKit Local Configuration
 BANGUMI_DB_DRIVER=sqlite
@@ -35,7 +35,7 @@ BANGUMI_TOKEN_ENCRYPTION_KEY=${generatedKey}
 # Register app at https://bgm.tv/dev/app
 BANGUMI_OAUTH_CLIENT_ID=
 BANGUMI_OAUTH_CLIENT_SECRET=
-BANGUMI_OAUTH_REDIRECT_URI=http://localhost:3000/api/auth/callback
+BANGUMI_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/bangumi/callback
 `;
     fs.writeFileSync(envLocalPath, envContent, { mode: 0o600 });
     console.log(`✓ Created .env.local with newly generated BANGUMI_TOKEN_ENCRYPTION_KEY.`);

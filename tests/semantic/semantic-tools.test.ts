@@ -609,7 +609,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   });
 
   it('S21: list own collections unbound -> AUTH_REQUIRED via ToolRegistry', async () => {
-    const registry = new ToolRegistry();
+    const registry = new ToolRegistry({ storage: new MemoryStorage() });
     await expect(registry.executeTool('bangumi.list_collections', {}, context)).rejects.toThrow(
       'AUTH_REQUIRED',
     );
@@ -666,7 +666,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
   });
 
   it('S25: all curated tools expose required metadata', async () => {
-    const registry = new ToolRegistry();
+    const registry = new ToolRegistry({ storage: new MemoryStorage() });
     const tools = registry.getTools();
 
     expect(tools.length).toBeGreaterThanOrEqual(18);

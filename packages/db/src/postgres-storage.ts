@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import crypto from 'node:crypto';
 import pg from 'pg';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -17,22 +15,7 @@ import {
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import * as schema from './drizzle/schema.js';
 
-function getMigrationSql(): string {
-  const possiblePaths = [
-    path.join(__dirname, 'drizzle', 'migrations', '0000_initial.sql'),
-    path.join(__dirname, '..', 'src', 'drizzle', 'migrations', '0000_initial.sql'),
-    path.join(__dirname, '..', 'drizzle', 'migrations', '0000_initial.sql'),
-    path.join(process.cwd(), 'packages', 'db', 'src', 'drizzle', 'migrations', '0000_initial.sql'),
-  ];
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      return fs.readFileSync(p, 'utf-8');
-    }
-  }
-  throw new Error(
-    `Migration SQL file 0000_initial.sql not found in any expected paths: ${possiblePaths.join(', ')}`,
-  );
-}
+import { runPostgresMigrations } from './migrator.js';
 
 function stringToTwoInt32(str: string): [number, number] {
   const hash = crypto.createHash('sha256').update(str).digest();
@@ -57,8 +40,7 @@ export class PostgresStorage implements Storage {
   async init(): Promise<void> {
     const client = await this.pool.connect();
     try {
-      const sql = getMigrationSql();
-      await client.query(sql);
+      await runPostgresMigrations(client);
     } finally {
       client.release();
     }

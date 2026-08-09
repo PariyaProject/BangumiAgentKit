@@ -11,6 +11,7 @@
     { "path": "../../packages/db" },
     { "path": "../../packages/auth" },
     { "path": "../../packages/bangumi-core" },
-    { "path": "../../packages/tools" }
+    { "path": "../../packages/tools" },
+    { "path": "../../packages/config" }
   ]
 }

@@ -7,9 +7,10 @@ import {
   ToolContext,
   RuntimeDependencies,
   createRuntimeDependencies,
+  createRuntimeDependenciesWithStorage,
 } from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
-import { Storage } from '@bangumi-agent-kit/db';
+import { Storage, MemoryStorage } from '@bangumi-agent-kit/db';
 
 export interface McpExecutionIdentityProvider {
   resolveContext(request: unknown): Promise<Omit<ToolContext, 'confirmationId'>>;
@@ -58,15 +59,28 @@ export class BangumiMcpServer {
 
     if (opts.registry) {
       this.registry = opts.registry;
-      this.dependencies = opts.dependencies || createRuntimeDependencies({ storage: opts.storage });
-    } else {
       this.dependencies =
         opts.dependencies ||
-        createRuntimeDependencies({
-          storage: opts.storage,
-          databaseUrl: opts.databaseUrl,
-          publicHttpClient: opts.httpClient,
-        });
+        (opts.storage
+          ? createRuntimeDependenciesWithStorage(opts.storage)
+          : (() => {
+              throw new Error('Registry provided without dependencies or storage');
+            })());
+    } else if (opts.dependencies) {
+      this.dependencies = opts.dependencies;
+      this.registry = new ToolRegistry(this.dependencies);
+    } else if (opts.storage) {
+      this.dependencies = createRuntimeDependenciesWithStorage(opts.storage, {
+        databaseUrl: opts.databaseUrl,
+        publicHttpClient: opts.httpClient,
+      });
+      this.registry = new ToolRegistry(this.dependencies);
+    } else {
+      const storage = new MemoryStorage();
+      this.dependencies = createRuntimeDependenciesWithStorage(storage, {
+        databaseUrl: opts.databaseUrl,
+        publicHttpClient: opts.httpClient,
+      });
       this.registry = new ToolRegistry(this.dependencies);
     }
 
@@ -83,6 +97,25 @@ export class BangumiMcpServer {
     );
 
     this.setupHandlers();
+  }
+
+  static async create(options: McpServerOptions | HttpClient = {}): Promise<BangumiMcpServer> {
+    let opts: McpServerOptions = {};
+    if (options && 'request' in options && typeof (options as HttpClient).request === 'function') {
+      opts = { httpClient: options as HttpClient };
+    } else {
+      opts = options as McpServerOptions;
+    }
+
+    if (opts.dependencies || opts.storage || opts.registry) {
+      return new BangumiMcpServer(opts);
+    }
+
+    const dependencies = await createRuntimeDependencies({
+      databaseUrl: opts.databaseUrl,
+      publicHttpClient: opts.httpClient,
+    });
+    return new BangumiMcpServer({ ...opts, dependencies });
   }
 
   public get mcpServer(): Server {

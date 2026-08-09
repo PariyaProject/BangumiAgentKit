@@ -241,6 +241,14 @@ export class TokenBroker implements BangumiClientProvider {
     return { account, client };
   }
 
+  async resolveAccessToken(accountId: string): Promise<string> {
+    const cred = await this.storage.getCredential(accountId);
+    if (!cred) {
+      throw new BangumiError('AUTH_REQUIRED', '未查找到有效授权凭证', false, 401);
+    }
+    return this.resolveAndRefreshToken(cred, accountId);
+  }
+
   private async resolveAndRefreshToken(cred: any, accountId: string): Promise<string> {
     const now = new Date();
     const skewSeconds =

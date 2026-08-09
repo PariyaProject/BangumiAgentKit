@@ -1,9 +1,10 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
 import { Client } from 'pg';
-import { SQLiteStorage, resolveSqlitePath } from '../packages/db/dist/index.js';
+import { SQLiteStorage, resolveSqlitePath, runPostgresMigrations } from '@bangumi-agent-kit/db';
 
 async function runMigrations() {
+  loadRuntimeEnv();
+
   const isPostgres =
     process.env.BANGUMI_DB_DRIVER === 'postgres' ||
     (!process.env.BANGUMI_DB_DRIVER && process.env.DATABASE_URL);
@@ -15,30 +16,13 @@ async function runMigrations() {
       process.exit(1);
     }
 
-    const migrationPath = path.join(
-      __dirname,
-      '..',
-      'packages',
-      'db',
-      'src',
-      'drizzle',
-      'postgres',
-      'migrations',
-      '0000_initial.sql',
-    );
-    if (!fs.existsSync(migrationPath)) {
-      console.error(`ERROR: Migration file not found at ${migrationPath}`);
-      process.exit(1);
-    }
-
-    const sql = fs.readFileSync(migrationPath, 'utf-8');
     const client = new Client({ connectionString: databaseUrl });
 
     try {
       await client.connect();
       console.log('Connected to PostgreSQL database for migration.');
-      await client.query(sql);
-      console.log('Successfully executed PostgreSQL migrations from 0000_initial.sql.');
+      await runPostgresMigrations(client);
+      console.log('Successfully executed PostgreSQL migrations.');
     } catch (err) {
       console.error('PostgreSQL migration failed:', err);
       process.exit(1);

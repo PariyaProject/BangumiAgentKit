@@ -96,7 +96,9 @@ function generateClient() {
         }
         const resolvedParams = Array.from(resolvedParamsMap.values());
 
-        const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g)).map((match) => match[1]);
+        const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g))
+          .map((match) => match[1])
+          .filter((p): p is string => Boolean(p));
         const pathParamNames: string[] = [];
         for (const pName of pathMatches) {
           if (!pathParamNames.includes(pName)) {

@@ -66,16 +66,16 @@ describe('PR-6A: SQLite Concurrency & Lock Tests', () => {
       },
     } as any;
 
-    const mockHttpClient: HttpClient = {
-      async request() {
+    const mockHttpClient = {
+      async request<T>() {
         return {
           status: 200,
           statusText: 'OK',
           headers: {},
           data: {},
-        };
+        } as unknown as T;
       },
-    };
+    } as unknown as HttpClient;
 
     const config = {
       secretKey: key,
@@ -198,6 +198,19 @@ describe('PR-6A: SQLite Concurrency & Lock Tests', () => {
       provider: 'qq',
       botInstanceId: 'bot-1',
       externalUserId: 'user-binding-1',
+    });
+
+    await storage1.upsertBangumiAccount({
+      id: 'bgm-acc-1',
+      bangumiUserId: 1,
+      username: 'acc1',
+      nickname: 'Acc 1',
+    });
+    await storage1.upsertBangumiAccount({
+      id: 'bgm-acc-2',
+      bangumiUserId: 2,
+      username: 'acc2',
+      nickname: 'Acc 2',
     });
 
     await storage1.bindAccount(principal.id, 'bgm-acc-1', true);

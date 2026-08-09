@@ -13,6 +13,38 @@
     }
   },
   {
+    "name": "bangumi.auth_list_accounts",
+    "description": "列出当前平台用户绑定的所有 Bangumi 账号及当前激活状态。不会暴露任何明文 Token。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.auth_remove_account",
+    "description": "移除当前平台用户已绑定的指定 Bangumi 账号。需要二次确认。",
+    "auth": "required",
+    "risk": "destructive",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "description": "需要解绑的 Bangumi 账号 ID"
+        }
+      },
+      "required": ["accountId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.auth_start",
     "description": "生成 Bangumi OAuth 账号绑定授权 URL。返回引导用户在浏览器中打开的认证链接。",
     "auth": "none",
@@ -43,6 +75,25 @@
     "inputSchema": {
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.auth_switch_account",
+    "description": "切换当前平台用户的活跃 Bangumi 账号。只能选择已绑定至当前平台用户的账号。",
+    "auth": "none",
+    "risk": "write",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "description": "需要切换为活跃状态的 Bangumi 账号 ID"
+        }
+      },
+      "required": ["accountId"],
       "additionalProperties": false
     }
   },
@@ -675,6 +726,112 @@
         }
       },
       "required": ["personId", "action"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_calendar",
+    "description": "生成 Bangumi 每日放送/追番日历卡片 Artifact。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "weekday": {
+          "description": "限定特定星期 (1-7)",
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_cast_card",
+    "description": "生成指定 Subject 的角色与声优 (Cast) 图片卡片 Artifact。",
+    "auth": "optional",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "number",
+          "description": "Subject 条目 ID"
+        }
+      },
+      "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_collection_progress",
+    "description": "生成用户对指定 Subject 的追番/追剧进度与评分卡片 Artifact。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "number",
+          "description": "Subject 条目 ID"
+        }
+      },
+      "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_search",
+    "description": "生成 Bangumi 搜索结果列表图片卡片 Artifact。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "搜索关键词"
+        },
+        "subjectType": {
+          "description": "条目类型: 1-Book, 2-Anime, 3-Music, 4-Game, 6-Real",
+          "type": "number"
+        },
+        "limit": {
+          "description": "最多渲染条目数 (默认 10)",
+          "type": "number"
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_subject_card",
+    "description": "生成指定 Subject 条目的渲染图片卡片 Artifact。返回 ArtifactRef (包含 ID 和尺寸，不写死本地绝对路径)。",
+    "auth": "optional",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "number",
+          "description": "Subject 条目 ID"
+        },
+        "includeCollection": {
+          "description": "是否包含用户的收藏与评分状态",
+          "type": "boolean"
+        }
+      },
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },

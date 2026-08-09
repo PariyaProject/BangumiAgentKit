@@ -1,7 +1,9 @@
+import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
 import { createApiApp } from './app.js';
 
 async function main() {
-  const { app } = createApiApp();
+  loadRuntimeEnv();
+  const { app } = await createApiApp();
   const host = process.env.HOST || '0.0.0.0';
   const port = parseInt(process.env.PORT || '3000', 10);
 

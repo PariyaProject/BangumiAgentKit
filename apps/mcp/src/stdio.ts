@@ -1,8 +1,10 @@
+import { loadRuntimeEnv } from '@bangumi-agent-kit/config';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import { BangumiMcpServer } from './server.js';
 
 export async function startStdioServer() {
-  const mcpApp = new BangumiMcpServer();
+  loadRuntimeEnv();
+  const mcpApp = await BangumiMcpServer.create();
   const server = mcpApp.getMcpServer();
   const transport = new StdioServerTransport();
 

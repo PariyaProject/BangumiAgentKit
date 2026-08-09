@@ -124,7 +124,9 @@ function getOperationMeta(
   }
 
   // Extract path parameter names in order of appearance in path template
-  const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g)).map((m) => m[1]);
+  const pathMatches = Array.from(apiPath.matchAll(/\{([^}]+)\}/g))
+    .map((m) => m[1])
+    .filter((p): p is string => Boolean(p));
   const pathParameters: string[] = [];
   for (const name of pathMatches) {
     if (!pathParameters.includes(name)) {

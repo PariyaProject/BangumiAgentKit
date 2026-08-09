@@ -5,7 +5,7 @@ import {
   toPublicError,
   isBangumiError,
 } from '@bangumi-agent-kit/bangumi-transport';
-import { Storage, MemoryStorage, PostgresStorage } from '@bangumi-agent-kit/db';
+import { Storage, createStorageFromConfig, StorageDriver } from '@bangumi-agent-kit/db';
 import { AuditService } from '@bangumi-agent-kit/bangumi-core';
 import {
   TokenBroker,
@@ -50,7 +50,8 @@ export interface CreateRuntimeDependenciesConfig {
   refreshSkewSeconds?: number;
 }
 
-export function createRuntimeDependencies(
+export function createRuntimeDependenciesWithStorage(
+  storage: Storage,
   config: CreateRuntimeDependenciesConfig = {},
 ): RuntimeDependencies {
   const isProd = process.env.NODE_ENV === 'production';
@@ -62,14 +63,11 @@ export function createRuntimeDependencies(
     tokenActiveKeyVersion: config.tokenActiveKeyVersion,
   });
 
-  const databaseUrl = config.databaseUrl || process.env.DATABASE_URL;
   const clientId = config.clientId || process.env.BANGUMI_OAUTH_CLIENT_ID;
   const clientSecret = config.clientSecret || process.env.BANGUMI_OAUTH_CLIENT_SECRET;
   const redirectUri = config.redirectUri || process.env.BANGUMI_OAUTH_REDIRECT_URI;
 
   if (isProd) {
-    if (!databaseUrl)
-      throw new Error('CONFIG_ERROR: DATABASE_URL is required in production environment.');
     if (!clientId)
       throw new Error(
         'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_ID is required in production environment.',
@@ -84,8 +82,6 @@ export function createRuntimeDependencies(
       );
   }
 
-  const storage =
-    config.storage || (databaseUrl ? new PostgresStorage(databaseUrl) : new MemoryStorage());
   const publicHttpClient = config.publicHttpClient || new HttpClient();
 
   const oauthService = new OAuthService(
@@ -127,20 +123,59 @@ export function createRuntimeDependencies(
   };
 }
 
+export function createRuntimeDependencies(
+  config: CreateRuntimeDependenciesConfig & { storage: Storage },
+): RuntimeDependencies;
+export function createRuntimeDependencies(
+  config?: CreateRuntimeDependenciesConfig,
+): Promise<RuntimeDependencies>;
+export function createRuntimeDependencies(
+  config: CreateRuntimeDependenciesConfig = {},
+): RuntimeDependencies | Promise<RuntimeDependencies> {
+  if (config.storage) {
+    return createRuntimeDependenciesWithStorage(config.storage, config);
+  }
+  return createStorageFromConfig({
+    databaseUrl: config.databaseUrl,
+    driver: process.env.BANGUMI_DB_DRIVER as StorageDriver | undefined,
+  }).then((storage) => createRuntimeDependenciesWithStorage(storage, config));
+}
+
 export class ToolRegistry {
   private toolsMap: Map<string, ToolDefinition> = new Map();
   private deps: RuntimeDependencies;
 
-  constructor(optionsOrDeps?: RuntimeDependencies | CreateRuntimeDependenciesConfig) {
-    if (optionsOrDeps && 'storage' in optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
+  constructor(
+    optionsOrDeps:
+      | RuntimeDependencies
+      | (CreateRuntimeDependenciesConfig & { storage: Storage }),
+  ) {
+    if (optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
       this.deps = optionsOrDeps as RuntimeDependencies;
+    } else if (optionsOrDeps && optionsOrDeps.storage) {
+      this.deps = createRuntimeDependenciesWithStorage(optionsOrDeps.storage, optionsOrDeps);
     } else {
-      this.deps = createRuntimeDependencies(
-        (optionsOrDeps as CreateRuntimeDependenciesConfig) || {},
+      throw new Error(
+        'ToolRegistry requires explicit RuntimeDependencies or config with pre-created storage. Use ToolRegistry.create() for async initialization.',
       );
     }
 
     this.registerCoreTools();
+  }
+
+  static async create(
+    optionsOrDeps?: RuntimeDependencies | CreateRuntimeDependenciesConfig,
+  ): Promise<ToolRegistry> {
+    if (optionsOrDeps && 'storage' in optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
+      return new ToolRegistry(optionsOrDeps as RuntimeDependencies);
+    }
+    if (optionsOrDeps && optionsOrDeps.storage) {
+      return new ToolRegistry(
+        optionsOrDeps as CreateRuntimeDependenciesConfig & { storage: Storage },
+      );
+    }
+    const deps = await createRuntimeDependencies(optionsOrDeps);
+    return new ToolRegistry(deps);
   }
 
   private registerCoreTools(): void {
@@ -280,7 +315,8 @@ export class ToolRegistry {
       if (!isBangumiError(err)) {
         console.error('[Tool Execution Error]', err);
       }
-      const isNetworkUnknown = isBangumiError(err) && err.code === 'WRITE_RESULT_UNKNOWN';
+      const isNetworkUnknown =
+        isBangumiError(err) && (err as BangumiError).code === 'WRITE_RESULT_UNKNOWN';
       const publicErr = toPublicError(err);
 
       if (pendingActionId) {

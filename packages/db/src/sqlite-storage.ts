@@ -7,7 +7,6 @@ import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { eq, and } from 'drizzle-orm';
 import * as sqliteSchema from './drizzle/sqlite/schema.js';
 import {
-  BotInstanceRecord,
   ExternalPrincipalRecord,
   BangumiAccountRecord,
   AccountBindingRecord,
@@ -18,6 +17,7 @@ import {
   AuditEventRecord,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
+import { runSqliteMigrations } from './migrator.js';
 
 export function resolveSqlitePath(dbPath?: string, dataDir?: string): string {
   if (dbPath) return dbPath;
@@ -34,6 +34,60 @@ export function resolveSqlitePath(dbPath?: string, dataDir?: string): string {
 export interface SQLiteStorageOptions {
   dbPath?: string;
   dataDir?: string;
+}
+
+interface SqliteAccountBindingRow {
+  id: string;
+  principal_id: string;
+  bangumi_account_id: string;
+  is_active: number;
+  created_at: number;
+}
+
+interface SqliteAccessCredentialRow {
+  id: string;
+  bangumi_account_id: string;
+  encrypted_access_token: string;
+  encrypted_refresh_token?: string | null;
+  expires_at: number;
+  requested_capabilities: string;
+  reported_scopes?: string | null;
+  scope_evidence: string;
+  key_version: string;
+  created_at: number;
+  updated_at: number;
+}
+
+interface SqliteOAuthSessionRow {
+  id: string;
+  state_hash: string;
+  principal_id: string;
+  bot_instance_id?: string | null;
+  conversation_id?: string | null;
+  requested_capabilities: string;
+  expires_at: number;
+  used_at?: number | null;
+  created_at: number;
+}
+
+interface SqlitePendingActionRow {
+  id: string;
+  principal_id: string;
+  bot_instance_id: string;
+  conversation_key: string;
+  action_type: string;
+  summary: string;
+  normalized_payload_json: string;
+  payload_hash: string;
+  status: string;
+  expires_at: number;
+  confirmed_at?: number | null;
+  execution_started_at?: number | null;
+  executed_at?: number | null;
+  failure_code?: string | null;
+  failure_message_safe?: string | null;
+  created_at: number;
+  updated_at: number;
 }
 
 export class SQLiteStorage implements Storage {
@@ -71,132 +125,8 @@ export class SQLiteStorage implements Storage {
       // best effort
     }
 
-    // Run initial DDL setup
-    sqliteDb.exec(`
-      CREATE TABLE IF NOT EXISTS bot_instances (
-        id TEXT PRIMARY KEY,
-        provider TEXT NOT NULL,
-        external_bot_id TEXT NOT NULL,
-        encrypted_config TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS external_principals (
-        id TEXT PRIMARY KEY,
-        provider TEXT NOT NULL,
-        bot_instance_id TEXT NOT NULL,
-        external_user_id TEXT NOT NULL,
-        display_name TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        UNIQUE(provider, bot_instance_id, external_user_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS bangumi_accounts (
-        id TEXT PRIMARY KEY,
-        bangumi_user_id INTEGER NOT NULL UNIQUE,
-        username TEXT NOT NULL,
-        nickname TEXT NOT NULL,
-        avatar_url TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS account_bindings (
-        id TEXT PRIMARY KEY,
-        principal_id TEXT NOT NULL,
-        bangumi_account_id TEXT NOT NULL,
-        is_active INTEGER NOT NULL DEFAULT 1,
-        created_at INTEGER NOT NULL,
-        UNIQUE(principal_id, bangumi_account_id)
-      );
-      CREATE INDEX IF NOT EXISTS account_bindings_principal_id_idx ON account_bindings (principal_id);
-
-      CREATE TABLE IF NOT EXISTS access_credentials (
-        id TEXT PRIMARY KEY,
-        bangumi_account_id TEXT NOT NULL UNIQUE,
-        encrypted_access_token TEXT NOT NULL,
-        encrypted_refresh_token TEXT,
-        expires_at INTEGER NOT NULL,
-        requested_capabilities TEXT NOT NULL,
-        reported_scopes TEXT,
-        scope_evidence TEXT NOT NULL DEFAULT 'unknown',
-        key_version TEXT NOT NULL DEFAULT 'v1',
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS oauth_sessions (
-        id TEXT PRIMARY KEY,
-        state_hash TEXT NOT NULL UNIQUE,
-        principal_id TEXT NOT NULL,
-        bot_instance_id TEXT,
-        conversation_id TEXT,
-        requested_capabilities TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        used_at INTEGER,
-        created_at INTEGER NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS conversation_contexts (
-        principal_id TEXT NOT NULL,
-        conversation_key TEXT NOT NULL,
-        last_subject_id INTEGER,
-        last_character_id INTEGER,
-        last_person_id INTEGER,
-        search_candidates_json TEXT,
-        preferred_output_mode TEXT,
-        locale TEXT,
-        timezone TEXT,
-        expires_at INTEGER NOT NULL,
-        PRIMARY KEY (principal_id, conversation_key)
-      );
-
-      CREATE TABLE IF NOT EXISTS pending_actions (
-        id TEXT PRIMARY KEY,
-        principal_id TEXT NOT NULL,
-        bot_instance_id TEXT NOT NULL,
-        conversation_key TEXT NOT NULL,
-        action_type TEXT NOT NULL,
-        summary TEXT NOT NULL,
-        normalized_payload_json TEXT NOT NULL,
-        payload_hash TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        expires_at INTEGER NOT NULL,
-        confirmed_at INTEGER,
-        execution_started_at INTEGER,
-        executed_at INTEGER,
-        failure_code TEXT,
-        failure_message_safe TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS pending_actions_principal_expires_idx ON pending_actions (principal_id, expires_at);
-
-      CREATE TABLE IF NOT EXISTS audit_events (
-        id TEXT PRIMARY KEY,
-        principal_id TEXT NOT NULL,
-        bangumi_account_id TEXT,
-        operation_id TEXT NOT NULL,
-        risk_level TEXT NOT NULL,
-        resource_type TEXT NOT NULL,
-        resource_id TEXT NOT NULL,
-        change_summary_json TEXT NOT NULL,
-        confirmation_id TEXT,
-        result TEXT NOT NULL,
-        request_id TEXT,
-        created_at INTEGER NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS audit_events_principal_created_idx ON audit_events (principal_id, created_at);
-
-      CREATE TABLE IF NOT EXISTS storage_locks (
-        lock_key TEXT PRIMARY KEY,
-        owner_id TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-    `);
+    // Run versioned migrations
+    await runSqliteMigrations(sqliteDb);
 
     return new SQLiteStorage(sqliteDb);
   }
@@ -322,7 +252,7 @@ export class SQLiteStorage implements Storage {
     const stmt = this.sqliteDb.prepare(`
       SELECT * FROM account_bindings WHERE principal_id = ? AND is_active = 1
     `);
-    const row = stmt.get(principalId) as any;
+    const row = stmt.get(principalId) as SqliteAccountBindingRow | undefined;
     if (!row) return null;
     return {
       id: row.id,
@@ -337,7 +267,7 @@ export class SQLiteStorage implements Storage {
     const stmt = this.sqliteDb.prepare(`
       SELECT * FROM account_bindings WHERE principal_id = ?
     `);
-    const rows = stmt.all(principalId) as any[];
+    const rows = stmt.all(principalId) as SqliteAccountBindingRow[];
     return rows.map((row) => ({
       id: row.id,
       principalId: row.principal_id,
@@ -364,7 +294,7 @@ export class SQLiteStorage implements Storage {
       const existingStmt = this.sqliteDb.prepare(
         `SELECT id FROM account_bindings WHERE principal_id = ? AND bangumi_account_id = ?`,
       );
-      const existing = existingStmt.get(principalId, bangumiAccountId) as any;
+      const existing = existingStmt.get(principalId, bangumiAccountId) as { id: string } | undefined;
       if (existing) {
         this.sqliteDb
           .prepare(`UPDATE account_bindings SET is_active = ? WHERE id = ?`)
@@ -382,7 +312,7 @@ export class SQLiteStorage implements Storage {
     const activeStmt = this.sqliteDb.prepare(
       `SELECT * FROM account_bindings WHERE principal_id = ? AND bangumi_account_id = ?`,
     );
-    const row = activeStmt.get(principalId, bangumiAccountId) as any;
+    const row = activeStmt.get(principalId, bangumiAccountId) as SqliteAccountBindingRow;
 
     return {
       id: row.id,
@@ -400,9 +330,13 @@ export class SQLiteStorage implements Storage {
     const checkStmt = this.sqliteDb.prepare(
       `SELECT id FROM account_bindings WHERE principal_id = ? AND bangumi_account_id = ?`,
     );
-    const existing = checkStmt.get(principalId, bangumiAccountId) as any;
+    const existing = checkStmt.get(principalId, bangumiAccountId) as
+      | { id: string }
+      | undefined;
     if (!existing) {
-      throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+      throw new Error(
+        `BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`,
+      );
     }
 
     this.sqliteDb.transaction(() => {
@@ -415,7 +349,7 @@ export class SQLiteStorage implements Storage {
     })();
 
     const activeStmt = this.sqliteDb.prepare(`SELECT * FROM account_bindings WHERE id = ?`);
-    const row = activeStmt.get(existing.id) as any;
+    const row = activeStmt.get(existing.id) as SqliteAccountBindingRow;
 
     return {
       id: row.id,
@@ -441,20 +375,26 @@ export class SQLiteStorage implements Storage {
   }
 
   async deactivateBindings(principalId: string): Promise<void> {
-    const stmt = this.sqliteDb.prepare(`UPDATE account_bindings SET is_active = 0 WHERE principal_id = ?`);
+    const stmt = this.sqliteDb.prepare(
+      `UPDATE account_bindings SET is_active = 0 WHERE principal_id = ?`,
+    );
     stmt.run(principalId);
   }
 
   async getCredential(accountId: string): Promise<AccessCredentialRecord | null> {
-    const stmt = this.sqliteDb.prepare(`SELECT * FROM access_credentials WHERE bangumi_account_id = ?`);
-    const res = stmt.get(accountId) as any;
+    const stmt = this.sqliteDb.prepare(
+      `SELECT * FROM access_credentials WHERE bangumi_account_id = ?`,
+    );
+    const res = stmt.get(accountId) as SqliteAccessCredentialRow | undefined;
     if (!res) return null;
 
     return {
       id: res.id,
       bangumiAccountId: res.bangumi_account_id,
       encryptedAccessToken: JSON.parse(res.encrypted_access_token),
-      encryptedRefreshToken: res.encrypted_refresh_token ? JSON.parse(res.encrypted_refresh_token) : undefined,
+      encryptedRefreshToken: res.encrypted_refresh_token
+        ? JSON.parse(res.encrypted_refresh_token)
+        : undefined,
       expiresAt: new Date(res.expires_at),
       requestedCapabilities: JSON.parse(res.requested_capabilities),
       reportedScopes: res.reported_scopes ? JSON.parse(res.reported_scopes) : null,
@@ -504,7 +444,9 @@ export class SQLiteStorage implements Storage {
   }
 
   async deleteCredential(accountId: string): Promise<void> {
-    const stmt = this.sqliteDb.prepare(`DELETE FROM access_credentials WHERE bangumi_account_id = ?`);
+    const stmt = this.sqliteDb.prepare(
+      `DELETE FROM access_credentials WHERE bangumi_account_id = ?`,
+    );
     stmt.run(accountId);
   }
 
@@ -545,7 +487,7 @@ export class SQLiteStorage implements Storage {
 
     if (result.changes > 0) {
       const getStmt = this.sqliteDb.prepare(`SELECT * FROM oauth_sessions WHERE state_hash = ?`);
-      const row = getStmt.get(stateHash) as any;
+      const row = getStmt.get(stateHash) as SqliteOAuthSessionRow;
       return {
         id: row.id,
         stateHash: row.state_hash,
@@ -554,13 +496,13 @@ export class SQLiteStorage implements Storage {
         conversationId: row.conversation_id || undefined,
         requestedCapabilities: JSON.parse(row.requested_capabilities),
         expiresAt: new Date(row.expires_at),
-        usedAt: new Date(row.used_at),
+        usedAt: row.used_at ? new Date(row.used_at) : undefined,
         createdAt: new Date(row.created_at),
       };
     }
 
     const checkStmt = this.sqliteDb.prepare(`SELECT * FROM oauth_sessions WHERE state_hash = ?`);
-    const existing = checkStmt.get(stateHash) as any;
+    const existing = checkStmt.get(stateHash) as SqliteOAuthSessionRow | undefined;
     if (!existing) {
       throw new Error('INVALID_OAUTH_STATE: OAuth state not found');
     }
@@ -636,7 +578,7 @@ export class SQLiteStorage implements Storage {
 
     if (result.changes > 0) {
       const getStmt = this.sqliteDb.prepare(`SELECT * FROM pending_actions WHERE id = ?`);
-      const row = getStmt.get(input.confirmationId) as any;
+      const row = getStmt.get(input.confirmationId) as SqlitePendingActionRow;
       return {
         id: row.id,
         principalId: row.principal_id,
@@ -659,7 +601,7 @@ export class SQLiteStorage implements Storage {
     }
 
     const checkStmt = this.sqliteDb.prepare(`SELECT * FROM pending_actions WHERE id = ?`);
-    const existing = checkStmt.get(input.confirmationId) as any;
+    const existing = checkStmt.get(input.confirmationId) as SqlitePendingActionRow | undefined;
 
     if (!existing) {
       throw new Error(`CONFIRMATION_INVALID: Invalid confirmationId "${input.confirmationId}"`);

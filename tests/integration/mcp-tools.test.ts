@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { MemoryStorage } from '../../packages/db/src/index.js';
 import { HttpClient } from '../../packages/bangumi-transport/src/index.js';
 import { ToolRegistry } from '../../packages/tools/src/index.js';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
@@ -11,7 +12,8 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
 
   it('ToolRegistry exposes curated tools by default and full tools when configured', () => {
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ publicHttpClient: httpClient });
+    const storage = new MemoryStorage();
+    const registry = new ToolRegistry({ storage, publicHttpClient: httpClient });
 
     const curatedTools = registry.getTools();
     expect(curatedTools.length).toBeGreaterThanOrEqual(15);
@@ -39,7 +41,7 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ publicHttpClient: httpClient });
+    const registry = new ToolRegistry({ storage: new MemoryStorage(), publicHttpClient: httpClient });
 
     const result = (await registry.executeTool(
       'bangumi.search_subjects',
@@ -66,7 +68,7 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ publicHttpClient: httpClient });
+    const registry = new ToolRegistry({ storage: new MemoryStorage(), publicHttpClient: httpClient });
 
     const result = (await registry.executeTool(
       'bangumi.get_calendar',
@@ -80,7 +82,7 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
 
   it('executes bangumi.list_operations and bangumi.describe_operation fallback tools', async () => {
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ publicHttpClient: httpClient });
+    const registry = new ToolRegistry({ storage: new MemoryStorage(), publicHttpClient: httpClient });
 
     const listRes = (await registry.executeTool(
       'bangumi.list_operations',
