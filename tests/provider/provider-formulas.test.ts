@@ -18,19 +18,67 @@ const stats: SubjectStatsData = {
 };
 
 const inputEvidence: FieldEvidence = {
-  'collection.wish': [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'collection.wish' }],
-  'collection.collect': [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'collection.collect' }],
-  'collection.doing': [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'collection.doing' }],
-  'collection.on_hold': [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'collection.on_hold' }],
-  'collection.dropped': [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'collection.dropped' }],
-  'rating.count.6': [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'rating.count.6' }],
-  score: [{ source: { class: 'official_v0', provider: 'bangumi' }, retrievedAt: '2026-08-09T00:00:00Z', fieldPath: 'rating.score' }],
+  'collection.wish': [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'collection.wish',
+    },
+  ],
+  'collection.collect': [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'collection.collect',
+    },
+  ],
+  'collection.doing': [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'collection.doing',
+    },
+  ],
+  'collection.on_hold': [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'collection.on_hold',
+    },
+  ],
+  'collection.dropped': [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'collection.dropped',
+    },
+  ],
+  'rating.count.6': [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'rating.count.6',
+    },
+  ],
+  score: [
+    {
+      source: { class: 'official_v0', provider: 'bangumi' },
+      retrievedAt: '2026-08-09T00:00:00Z',
+      fieldPath: 'rating.score',
+    },
+  ],
 };
 
 describe('PR-7B formula foundation', () => {
   it('PF23/PF24: preserves the exact ten rating buckets and five collection buckets', () => {
     expect(Object.keys(stats.ratingHistogram)).toHaveLength(10);
-    expect(Object.keys(stats.collection)).toEqual(['wish', 'collect', 'doing', 'onHold', 'dropped']);
+    expect(Object.keys(stats.collection)).toEqual([
+      'wish',
+      'collect',
+      'doing',
+      'onHold',
+      'dropped',
+    ]);
   });
 
   it('PF25: computes histogram percentages without replacing raw counts', () => {
@@ -46,10 +94,11 @@ describe('PR-7B formula foundation', () => {
       ...stats,
       ratingHistogram: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1 },
     });
-    expect(result.state).toBe('ok');
+    expect(result.state).toBe('conflict');
     expect(result.data?.histogramPopulation).toBe(10);
     expect(result.data?.standardDeviation).toBeCloseTo(Math.sqrt(8.25), 8);
     expect(result.data?.upstreamScore).toBe(6);
+    expect(result.conflicts).toHaveLength(1);
 
     const empty = computePopulationStandardDeviation({
       ...stats,
@@ -84,5 +133,23 @@ describe('PR-7B formula foundation', () => {
     expect(result.evidence?.['collection.wish']?.[0]?.source.class).toBe('official_v0');
     expect(result.evidence?.value?.[0]?.source.class).toBe('derived');
     expect(POPULATION_SD_FORMULA.id).toBe('bangumi.rating.population_sd.v1');
+  });
+
+  it('SC14/SC15: unresolved score disagreement is conflict, while one-decimal rounding is diagnostic only', () => {
+    const unresolved = computePopulationStandardDeviation({
+      ...stats,
+      ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 2, 6: 1, 7: 0, 8: 0, 9: 0, 10: 0 },
+    });
+    expect(unresolved.state).toBe('conflict');
+    expect(unresolved.conflicts).toHaveLength(1);
+
+    const rounded = computePopulationStandardDeviation({
+      ...stats,
+      score: 5.3,
+      ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 2, 6: 1, 7: 0, 8: 0, 9: 0, 10: 0 },
+    });
+    expect(rounded.state).toBe('ok');
+    expect(rounded.conflicts).toBeUndefined();
+    expect(rounded.warnings?.[0]?.code).toBe('SOURCE_DISAGREEMENT');
   });
 });

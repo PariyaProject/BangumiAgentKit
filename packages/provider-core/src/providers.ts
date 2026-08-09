@@ -81,7 +81,10 @@ export interface CalendarDayData {
 }
 
 export interface SubjectProvider {
-  getSubject(subjectId: number, context?: ProviderRequestContext): Promise<CapabilityResult<ProviderSubjectData>>;
+  getSubject(
+    subjectId: number,
+    context?: ProviderRequestContext,
+  ): Promise<CapabilityResult<ProviderSubjectData>>;
   getSubjectStats(
     subjectId: number,
     context?: ProviderRequestContext,
@@ -122,6 +125,13 @@ function requiredString(value: unknown, path: string): string {
   return value;
 }
 
+function requiredBoolean(value: unknown, path: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new SchemaDriftError(`Required boolean field ${path} is missing or invalid.`);
+  }
+  return value;
+}
+
 function requiredRecord(value: unknown, path: string): Record<string, unknown> {
   if (!isRecord(value)) {
     throw new SchemaDriftError(`Required object field ${path} is missing or invalid.`);
@@ -137,13 +147,10 @@ function mapWarning(
   return warning(code, message, { source });
 }
 
-function failure<T>(
-  source: SourceDescriptor,
-  err: unknown,
-): CapabilityResult<T> {
+function failure<T>(source: SourceDescriptor, err: unknown): CapabilityResult<T> {
   let state: CapabilityResult<T>['state'] = 'upstream_error';
   let providerError: ProviderError = { code: 'upstream_error', retryable: false };
-  let warningCode: WarningCode = 'UPSTREAM_TIMEOUT';
+  let warningCode: WarningCode = 'UPSTREAM_ERROR';
   let message = 'Provider request failed.';
 
   if (err instanceof SchemaDriftError) {
@@ -155,7 +162,7 @@ function failure<T>(
     message = 'Provider request returned an expected upstream error.';
     switch (err.code) {
       case 'NOT_FOUND':
-        state = 'unavailable';
+        state = 'not_found';
         providerError = { code: 'not_found', retryable: false };
         warningCode = 'UPSTREAM_NOT_FOUND';
         break;
@@ -173,15 +180,18 @@ function failure<T>(
       case 'RATE_LIMITED':
         state = 'upstream_error';
         providerError = { code: 'rate_limited', retryable: true };
-        warningCode = 'UPSTREAM_TIMEOUT';
+        warningCode = 'UPSTREAM_RATE_LIMITED';
         break;
       case 'NETWORK_ERROR':
-        state = 'unavailable';
-        providerError = {
-          code: /timed? ?out|timeout/i.test(err.message) ? 'timeout' : 'network_error',
-          retryable: true,
-        };
-        warningCode = 'UPSTREAM_TIMEOUT';
+        {
+          const timedOut = /timed? ?out|timeout/i.test(err.message);
+          state = 'unavailable';
+          providerError = {
+            code: timedOut ? 'timeout' : 'network_error',
+            retryable: true,
+          };
+          warningCode = timedOut ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_ERROR';
+        }
         break;
       case 'PARSER_ERROR':
         state = 'unavailable';
@@ -191,12 +201,12 @@ function failure<T>(
       case 'UPSTREAM_UNAVAILABLE':
         state = 'unavailable';
         providerError = { code: 'upstream_unavailable', retryable: true };
-        warningCode = 'UPSTREAM_TIMEOUT';
+        warningCode = 'UPSTREAM_ERROR';
         break;
       default:
         state = 'upstream_error';
         providerError = { code: 'upstream_error', retryable: err.retryable };
-        warningCode = 'UPSTREAM_TIMEOUT';
+        warningCode = 'UPSTREAM_ERROR';
     }
   } else if (err instanceof Error && /timed? ?out|timeout/i.test(err.message)) {
     state = 'unavailable';
@@ -226,7 +236,7 @@ function fieldEvidence(
           retrievedAt,
           entity: { type: 'subject', id: 0 },
           fieldPath,
-          freshness: { state: 'fresh' },
+          freshness: { state: 'unknown' },
           authScope,
           confidence: 'high',
         }),
@@ -294,8 +304,8 @@ function parseSubject(raw: Subject): { data: ProviderSubjectData; fields: string
       name: requiredString(value.name, 'name'),
       nameCn: requiredString(value.name_cn, 'name_cn'),
       summary: requiredString(value.summary, 'summary'),
-      nsfw: Boolean(value.nsfw),
-      locked: Boolean(value.locked),
+      nsfw: requiredBoolean(value.nsfw, 'nsfw'),
+      locked: requiredBoolean(value.locked, 'locked'),
       date: value.date === undefined ? undefined : requiredString(value.date, 'date'),
       platform: requiredString(value.platform, 'platform'),
       images: images as Record<string, string | undefined>,
@@ -365,7 +375,9 @@ export class OfficialV0Provider implements SubjectProvider {
       ...subject,
       data: subject.data.stats,
       evidence: Object.fromEntries(
-        Object.entries(subject.evidence ?? {}).filter(([field]) => field.startsWith('rating.') || field.startsWith('collection.')),
+        Object.entries(subject.evidence ?? {}).filter(
+          ([field]) => field.startsWith('rating.') || field.startsWith('collection.'),
+        ),
       ),
     };
   }
@@ -393,16 +405,28 @@ function parseCalendar(raw: CalendarItem[]): CalendarDayData[] {
         const value = requiredRecord(item, `calendar[${dayIndex}].items[${itemIndex}]`);
         const images = value.images;
         if (images !== undefined && !isRecord(images)) {
-          throw new SchemaDriftError(`Calendar image field is invalid at ${dayIndex}.${itemIndex}.`);
+          throw new SchemaDriftError(
+            `Calendar image field is invalid at ${dayIndex}.${itemIndex}.`,
+          );
         }
         return {
           id: requiredNumber(value.id, `calendar[${dayIndex}].items[${itemIndex}].id`),
           name: requiredString(value.name, `calendar[${dayIndex}].items[${itemIndex}].name`),
-          nameCn: requiredString(value.name_cn, `calendar[${dayIndex}].items[${itemIndex}].name_cn`),
-          airDate: requiredString(value.air_date, `calendar[${dayIndex}].items[${itemIndex}].air_date`),
-          score: isRecord(value.rating) && value.rating.score !== undefined
-            ? requiredNumber(value.rating.score, `calendar[${dayIndex}].items[${itemIndex}].rating.score`)
-            : undefined,
+          nameCn: requiredString(
+            value.name_cn,
+            `calendar[${dayIndex}].items[${itemIndex}].name_cn`,
+          ),
+          airDate: requiredString(
+            value.air_date,
+            `calendar[${dayIndex}].items[${itemIndex}].air_date`,
+          ),
+          score:
+            isRecord(value.rating) && value.rating.score !== undefined
+              ? requiredNumber(
+                  value.rating.score,
+                  `calendar[${dayIndex}].items[${itemIndex}].rating.score`,
+                )
+              : undefined,
           images: images as Record<string, string> | undefined,
         };
       }),
@@ -427,7 +451,7 @@ export class OfficialLegacyCalendarProvider implements CalendarProvider {
             source,
             retrievedAt,
             fieldPath: 'items',
-            freshness: { state: 'fresh' },
+            freshness: { state: 'unknown' },
             authScope,
             confidence: 'high',
           }),
@@ -437,7 +461,7 @@ export class OfficialLegacyCalendarProvider implements CalendarProvider {
             source,
             retrievedAt,
             fieldPath: 'weekday',
-            freshness: { state: 'fresh' },
+            freshness: { state: 'unknown' },
             authScope,
             confidence: 'high',
           }),
@@ -447,7 +471,10 @@ export class OfficialLegacyCalendarProvider implements CalendarProvider {
         state: 'ok',
         data,
         evidence,
-        coverage: { state: 'complete', returned: data.reduce((count, day) => count + day.items.length, 0) },
+        coverage: {
+          state: 'complete',
+          returned: data.reduce((count, day) => count + day.items.length, 0),
+        },
         retrievedAt,
       };
     } catch (err: unknown) {
@@ -456,6 +483,8 @@ export class OfficialLegacyCalendarProvider implements CalendarProvider {
   }
 }
 
-export function providerErrorCode(result: CapabilityResult<unknown>): ProviderErrorCode | undefined {
+export function providerErrorCode(
+  result: CapabilityResult<unknown>,
+): ProviderErrorCode | undefined {
   return result.error?.code;
 }

@@ -2,6 +2,8 @@ import {
   createEvidenceRef,
   SOURCE_DERIVED,
   type CapabilityResult,
+  type CapabilityConflict,
+  type CapabilityWarning,
   type FieldEvidence,
   type SourceDescriptor,
 } from './contracts.js';
@@ -56,6 +58,9 @@ export const COMPLETION_FORMULA = FORMULA_REGISTRY[0] as FormulaDescriptor;
 export const RATING_PERCENTAGES_FORMULA = FORMULA_REGISTRY[1] as FormulaDescriptor;
 export const POPULATION_SD_FORMULA = FORMULA_REGISTRY[2] as FormulaDescriptor;
 
+/** Upstream scores are published to one decimal place; this is the rounding band. */
+export const UPSTREAM_SCORE_ROUNDING_TOLERANCE = 0.05;
+
 export interface PopulationStandardDeviationData {
   standardDeviation: number;
   histogramPopulation: number;
@@ -103,10 +108,8 @@ function histogramPopulation(histogram: RatingHistogram): number {
 
 function histogramMean(histogram: RatingHistogram, population: number): number {
   return (
-    Object.entries(histogram).reduce(
-      (total, [score, count]) => total + Number(score) * count,
-      0,
-    ) / population
+    Object.entries(histogram).reduce((total, [score, count]) => total + Number(score) * count, 0) /
+    population
   );
 }
 
@@ -134,7 +137,9 @@ export function computeCollectionCompletionRate(
       data: null,
       evidence: { value: [formulaRef], ...inputs },
       retrievedAt,
-      warnings: [warning('MISSING_FIELD', 'Collection denominator is zero; completion is not computable.')],
+      warnings: [
+        warning('MISSING_FIELD', 'Collection denominator is zero; completion is not computable.'),
+      ],
     };
   }
 
@@ -167,7 +172,12 @@ export function computeRatingPercentages(
       data: null,
       evidence: { value: [formulaRef], ...inputs },
       retrievedAt,
-      warnings: [warning('MISSING_FIELD', 'Rating histogram population is zero; percentages are not computable.')],
+      warnings: [
+        warning(
+          'MISSING_FIELD',
+          'Rating histogram population is zero; percentages are not computable.',
+        ),
+      ],
     };
   }
 
@@ -193,7 +203,12 @@ export function computePopulationStandardDeviation(
       data: null,
       evidence: { value: [formulaRef], ...inputs },
       retrievedAt,
-      warnings: [warning('MISSING_FIELD', 'Rating histogram population is zero; standard deviation is not computable.')],
+      warnings: [
+        warning(
+          'MISSING_FIELD',
+          'Rating histogram population is zero; standard deviation is not computable.',
+        ),
+      ],
     };
   }
 
@@ -209,39 +224,45 @@ export function computePopulationStandardDeviation(
     histogramMean: mean,
     upstreamScore: stats.score,
   };
-  const warnings = [];
-  const conflicts = [];
-  if (Math.abs(mean - stats.score) > 0.01) {
+  const warnings: CapabilityWarning[] = [];
+  const conflicts: CapabilityConflict<number>[] = [];
+  const scoreDelta = Math.abs(mean - stats.score);
+  if (scoreDelta > 0) {
     warnings.push(
-      warning('SOURCE_DISAGREEMENT', 'Histogram mean differs from upstream score; both values are retained.', {
-        source: formulaSource(POPULATION_SD_FORMULA),
-      }),
+      warning(
+        'SOURCE_DISAGREEMENT',
+        scoreDelta <= UPSTREAM_SCORE_ROUNDING_TOLERANCE
+          ? 'Histogram mean differs within the upstream one-decimal score rounding band.'
+          : 'Histogram mean differs materially from upstream score; both values are retained.',
+        { source: formulaSource(POPULATION_SD_FORMULA) },
+      ),
     );
-    conflicts.push({
-      state: 'conflict' as const,
-      reason: 'derived histogram mean differs from upstream score',
-      resolution: 'retain upstream score and expose derived histogram mean separately',
-      candidates: [
-        { source: SOURCE_DERIVED, value: mean, evidence: [formulaRef] },
-        {
-          source: {
-            class: 'official_v0',
-            provider: 'bangumi',
-            operation: 'getSubjectById',
-          } as const,
-          value: stats.score,
-          evidence: input.score,
-        },
-      ],
-    });
+    if (scoreDelta > UPSTREAM_SCORE_ROUNDING_TOLERANCE) {
+      conflicts.push({
+        state: 'conflict',
+        reason: 'derived histogram mean differs materially from upstream score',
+        candidates: [
+          { source: SOURCE_DERIVED, value: mean, evidence: [formulaRef] },
+          {
+            source: {
+              class: 'official_v0',
+              provider: 'bangumi',
+              operation: 'getSubjectById',
+            } as const,
+            value: stats.score,
+            evidence: input.score,
+          },
+        ],
+      });
+    }
   }
 
   return {
-    state: 'ok',
+    state: conflicts.length > 0 ? 'conflict' : 'ok',
     data,
     evidence: { value: [formulaRef], ...inputs },
     retrievedAt,
     warnings,
-    conflicts,
+    conflicts: conflicts.length > 0 ? conflicts : undefined,
   };
 }

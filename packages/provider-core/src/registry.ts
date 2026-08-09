@@ -21,7 +21,8 @@ import type {
   SubjectStatsData,
 } from './providers.js';
 
-export type ProviderId = 'official-v0' | 'official-legacy' | 'structured-web' | 'website-html' | 'snapshots';
+export type ProviderId =
+  'official-v0' | 'official-legacy' | 'structured-web' | 'website-html' | 'snapshots';
 export type ProviderStatusState = 'READY' | 'DISABLED' | 'NOT_CONFIGURED';
 
 export interface ProviderStatus {
@@ -48,13 +49,25 @@ export interface ProviderRegistryOptions {
   now?: () => number;
 }
 
-function statusState(
-  availability: SourceAvailability,
-  configured: boolean,
-): ProviderStatusState {
+function statusState(availability: SourceAvailability, configured: boolean): ProviderStatusState {
   if (availability === 'disabled') return 'DISABLED';
   if (availability === 'not_configured' || !configured) return 'NOT_CONFIGURED';
   return 'READY';
+}
+
+function statusFor(
+  id: ProviderId,
+  sourceClass: SourceClass,
+  capabilities: string[],
+  policy: SourcePolicy,
+  configured: boolean,
+): ProviderStatus {
+  return {
+    id,
+    sourceClass,
+    state: statusState(sourceAvailability(sourceClass, policy), configured),
+    capabilities,
+  };
 }
 
 export class ProviderRegistry {
@@ -75,66 +88,86 @@ export class ProviderRegistry {
     subjectId: number,
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<ProviderSubjectData>> {
-    const source: SourceDescriptor = { class: 'official_v0', provider: 'bangumi', operation: 'getSubjectById' };
+    const source: SourceDescriptor = {
+      class: 'official_v0',
+      provider: 'bangumi',
+      operation: 'getSubjectById',
+    };
     if (sourceAvailability('official_v0', this.policy) !== 'enabled' || !this.v0) {
-      return this.recordUnavailable('official-v0', source, 'getSubjectById', sourceUnavailableResult(source, this.policy));
+      return this.recordUnavailable(
+        'official-v0',
+        source,
+        'getSubjectById',
+        sourceUnavailableResult(source, this.policy),
+      );
     }
-    return this.invoke('official-v0', source, 'getSubjectById', () => this.v0!.getSubject(subjectId, context));
+    return this.invoke('official-v0', source, 'getSubjectById', () =>
+      this.v0!.getSubject(subjectId, context),
+    );
   }
 
   async getSubjectStats(
     subjectId: number,
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<SubjectStatsData>> {
-    const source: SourceDescriptor = { class: 'official_v0', provider: 'bangumi', operation: 'getSubjectStats' };
+    const source: SourceDescriptor = {
+      class: 'official_v0',
+      provider: 'bangumi',
+      operation: 'getSubjectStats',
+    };
     if (sourceAvailability('official_v0', this.policy) !== 'enabled' || !this.v0) {
-      return this.recordUnavailable('official-v0', source, 'getSubjectStats', sourceUnavailableResult(source, this.policy));
+      return this.recordUnavailable(
+        'official-v0',
+        source,
+        'getSubjectStats',
+        sourceUnavailableResult(source, this.policy),
+      );
     }
-    return this.invoke('official-v0', source, 'getSubjectStats', () => this.v0!.getSubjectStats(subjectId, context));
+    return this.invoke('official-v0', source, 'getSubjectStats', () =>
+      this.v0!.getSubjectStats(subjectId, context),
+    );
   }
 
   async getCalendar(
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<CalendarDayData[]>> {
-    const source: SourceDescriptor = { class: 'official_legacy', provider: 'bangumi', operation: 'getCalendar' };
+    const source: SourceDescriptor = {
+      class: 'official_legacy',
+      provider: 'bangumi',
+      operation: 'getCalendar',
+    };
     if (sourceAvailability('official_legacy', this.policy) !== 'enabled' || !this.legacyCalendar) {
-      return this.recordUnavailable('official-legacy', source, 'getCalendar', sourceUnavailableResult(source, this.policy));
+      return this.recordUnavailable(
+        'official-legacy',
+        source,
+        'getCalendar',
+        sourceUnavailableResult(source, this.policy),
+      );
     }
-    return this.invoke('official-legacy', source, 'getCalendar', () => this.legacyCalendar!.getCalendar(context));
+    return this.invoke('official-legacy', source, 'getCalendar', () =>
+      this.legacyCalendar!.getCalendar(context),
+    );
   }
 
   getStatus(): ProviderStatus[] {
     return [
-      {
-        id: 'official-v0',
-        sourceClass: 'official_v0',
-        state: statusState(sourceAvailability('official_v0', this.policy), Boolean(this.v0)),
-        capabilities: ['subject', 'subject_stats'],
-      },
-      {
-        id: 'official-legacy',
-        sourceClass: 'official_legacy',
-        state: statusState(sourceAvailability('official_legacy', this.policy), Boolean(this.legacyCalendar)),
-        capabilities: ['calendar'],
-      },
-      {
-        id: 'structured-web',
-        sourceClass: 'structured_web',
-        state: 'DISABLED',
-        capabilities: [],
-      },
-      {
-        id: 'website-html',
-        sourceClass: 'website_html',
-        state: 'DISABLED',
-        capabilities: [],
-      },
-      {
-        id: 'snapshots',
-        sourceClass: 'snapshot',
-        state: 'NOT_CONFIGURED',
-        capabilities: [],
-      },
+      statusFor(
+        'official-v0',
+        'official_v0',
+        ['subject', 'subject_stats'],
+        this.policy,
+        Boolean(this.v0),
+      ),
+      statusFor(
+        'official-legacy',
+        'official_legacy',
+        ['calendar'],
+        this.policy,
+        Boolean(this.legacyCalendar),
+      ),
+      statusFor('structured-web', 'structured_web', [], this.policy, false),
+      statusFor('website-html', 'website_html', [], this.policy, false),
+      statusFor('snapshots', 'snapshot', [], this.policy, false),
     ];
   }
 

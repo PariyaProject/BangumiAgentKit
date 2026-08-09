@@ -35,10 +35,18 @@ model-facing representation does not expose principal IDs.
 Coverage is explicit (`complete`, `partial`, `unknown`, or
 `not_applicable`). A provider must not claim complete coverage when a page or
 source budget ended early. Capability state distinguishes an unavailable
-provider from a valid but non-computable result.
+provider from a valid but non-computable result. `retrievedAt` records when the
+adapter read a response; it does not prove source freshness. Official HTTP
+evidence therefore defaults to `freshness.state: unknown` unless the upstream
+source supplies an explicit freshness signal. A `not_found` result is distinct
+from an unavailable provider, while timeout, rate-limit, generic upstream, and
+schema-drift failures retain typed warning codes.
 
-Conflicts preserve typed candidates and their source evidence. Resolution is a
-capability-specific policy, not a global “newest source wins” rule.
+Conflicts preserve typed candidates and their source evidence. An unresolved
+conflict has `state: conflict`; a deterministic informational diagnostic (such
+as the normal one-decimal rounding difference between a histogram mean and the
+upstream score) keeps `state: ok` and does not populate `conflicts`. Resolution
+is a capability-specific policy, not a global “newest source wins” rule.
 
 ## Initial source policy
 
@@ -46,7 +54,10 @@ The initial composition root enables the official v0 and official legacy
 providers. Structured web, HTML, and snapshot sources remain disabled or
 unconfigured until a later plan explicitly enables them. In particular, a v0
 failure does not automatically call HTML, and a legacy calendar failure does
-not automatically call HTML.
+not automatically call HTML. A disabled source returns `unsupported` with
+`SOURCE_DISABLED`; an enabled source with no registered adapter returns
+`unavailable` with `SOURCE_NOT_CONFIGURED`; a snapshot source that is not
+configured returns `not_computable` with `SOURCE_NOT_CONFIGURED`.
 
 ## Formulas
 

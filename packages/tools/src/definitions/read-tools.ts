@@ -16,9 +16,7 @@ import {
   RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 
-export function createReadTools(
-  clientProviderOrHttpClient?: BangumiClientProvider | HttpClient,
-) {
+export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
   let publicHttpClient: HttpClient;
   let clientProvider: BangumiClientProvider | undefined;
 
@@ -94,11 +92,6 @@ export function createReadTools(
     scopes: [],
     risk: 'read',
     execute: async (input, context, deps) => {
-      if (deps?.providerRegistry) {
-        return await deps.providerRegistry.getSubject(input.subjectId, {
-          authScope: deps.executionSession?.account ? 'account' : 'public',
-        });
-      }
       const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectById(input.subjectId);
@@ -107,8 +100,7 @@ export function createReadTools(
 
   const getSubjectStats = defineTool({
     name: 'bangumi.get_subject_stats',
-    description:
-      '获取条目的评分直方图、评分人数、排名和收藏分布，并保留字段级来源证据。',
+    description: '获取条目的评分直方图、评分人数、排名和收藏分布，并保留字段级来源证据。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
     }),

@@ -56,6 +56,46 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     expect(result.exact?.id).toBe(226998);
   });
 
+  it('preserves the legacy bangumi.get_subject shape through ToolRegistry', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 123,
+            type: 2,
+            name: '少女終末旅行',
+            name_cn: '少女终末旅行',
+            summary: 'MCP semantic fixture',
+            nsfw: false,
+            locked: false,
+            date: '2017-10-06',
+            platform: 'TV',
+            images: { medium: 'https://example.test/medium.png' },
+            eps: 12,
+            total_episodes: 12,
+            rating: { score: 8.2, rank: 42, total: 100, count: { '8': 10 } },
+            collection: { wish: 1, collect: 2, doing: 3, on_hold: 4, dropped: 5 },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    const registry = new ToolRegistry({ storage: new MemoryStorage() });
+
+    const result = (await registry.executeTool(
+      'bangumi.get_subject',
+      { subjectId: 123 },
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
+    )) as Record<string, unknown>;
+
+    expect(result).toMatchObject({ id: 123, type: 'anime', nameCn: '少女终末旅行' });
+    expect(result).toHaveProperty('score', 8.2);
+    expect(result).toHaveProperty('collectionCounts');
+    expect(result).not.toHaveProperty('state');
+    expect(result).not.toHaveProperty('data');
+  });
+
   it('executes bangumi.get_calendar tool successfully', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(

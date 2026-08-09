@@ -76,11 +76,15 @@ describe('PR-7B official provider foundation', () => {
     expect(result.data?.stats.ratingHistogram[10]).toBe(10);
     expect(result.evidence?.['name_cn']?.[0]?.source.class).toBe('official_v0');
     expect(result.evidence?.['rating.score']?.[0]?.source.class).toBe('official_v0');
+    expect(result.retrievedAt).toBeTruthy();
+    expect(result.evidence?.['name']?.[0]?.freshness?.state).toBe('unknown');
     expect(result.coverage?.state).toBe('complete');
   });
 
   it('Subject stats capability retains the v0 evidence paths', async () => {
-    const result = await new OfficialV0Provider({ getSubjectById: async () => subjectFixture() }).getSubjectStats(123);
+    const result = await new OfficialV0Provider({
+      getSubjectById: async () => subjectFixture(),
+    }).getSubjectStats(123);
 
     expect(result.state).toBe('ok');
     expect(result.data?.collection.collect).toBe(40);
@@ -97,6 +101,9 @@ describe('PR-7B official provider foundation', () => {
     expect(result.data?.[0]?.items[0]?.id).toBe(123);
     expect(result.evidence?.membership?.[0]?.source.class).toBe('official_legacy');
     expect(result.evidence?.weekday?.[0]?.source.operation).toBe('getCalendar');
+    expect(result.retrievedAt).toBeTruthy();
+    expect(result.evidence?.membership?.[0]?.freshness?.state).toBe('unknown');
+    expect(result.evidence?.weekday?.[0]?.freshness?.state).toBe('unknown');
   });
 
   it('PF15/negative: required response fields fail visibly as schema drift', async () => {
@@ -124,8 +131,64 @@ describe('PR-7B official provider foundation', () => {
       },
     }).getSubject(123);
 
+    expect(notFound.state).toBe('not_found');
     expect(notFound.error?.code).toBe('not_found');
     expect(auth.state).toBe('auth_required');
     expect(JSON.stringify(auth)).not.toContain('credential detail');
+  });
+
+  it('SC07/SC08: preserves typed rate-limit and generic upstream warnings', async () => {
+    const rateLimited = await new OfficialV0Provider({
+      getSubjectById: async () => {
+        throw new BangumiError('RATE_LIMITED', 'rate limit body', true, 429);
+      },
+    }).getSubject(123);
+    const generic = await new OfficialV0Provider({
+      getSubjectById: async () => {
+        throw new BangumiError('UNKNOWN_ERROR', 'generic upstream body', false, 500);
+      },
+    }).getSubject(123);
+
+    expect(rateLimited.state).toBe('upstream_error');
+    expect(rateLimited.error).toEqual({ code: 'rate_limited', retryable: true });
+    expect(rateLimited.warnings?.[0]?.code).toBe('UPSTREAM_RATE_LIMITED');
+    expect(generic.state).toBe('upstream_error');
+    expect(generic.error).toEqual({ code: 'upstream_error', retryable: false });
+    expect(generic.warnings?.[0]?.code).toBe('UPSTREAM_ERROR');
+    expect(JSON.stringify(rateLimited)).not.toContain('rate limit body');
+    expect(JSON.stringify(generic)).not.toContain('generic upstream body');
+  });
+
+  it('SC06: maps a transport timeout to unavailable with a timeout warning', async () => {
+    const result = await new OfficialV0Provider({
+      getSubjectById: async () => {
+        throw new BangumiError('NETWORK_ERROR', 'Request timed out', true);
+      },
+    }).getSubject(123);
+
+    expect(result.state).toBe('unavailable');
+    expect(result.error).toEqual({ code: 'timeout', retryable: true });
+    expect(result.warnings?.[0]?.code).toBe('UPSTREAM_TIMEOUT');
+  });
+
+  it('SC09: rejects missing and non-boolean required subject flags as schema drift', async () => {
+    for (const field of ['nsfw', 'locked'] as const) {
+      const malformed = subjectFixture() as unknown as Record<string, unknown>;
+      delete malformed[field];
+      const missing = await new OfficialV0Provider({
+        getSubjectById: async () => malformed as Subject,
+      }).getSubject(123);
+
+      const wrongType = subjectFixture() as unknown as Record<string, unknown>;
+      wrongType[field] = field === 'nsfw' ? 'false' : 0;
+      const invalid = await new OfficialV0Provider({
+        getSubjectById: async () => wrongType as Subject,
+      }).getSubject(123);
+
+      expect(missing.state).toBe('unavailable');
+      expect(missing.error?.code).toBe('schema_drift');
+      expect(invalid.state).toBe('unavailable');
+      expect(invalid.error?.code).toBe('schema_drift');
+    }
   });
 });

@@ -83,6 +83,7 @@ export type CapabilityState =
   | 'unavailable'
   | 'not_computable'
   | 'unsupported'
+  | 'not_found'
   | 'upstream_error';
 
 export type ProviderErrorCode =
@@ -127,7 +128,9 @@ export type WarningCode =
   | 'SOURCE_DISABLED'
   | 'SOURCE_NOT_CONFIGURED'
   | 'UPSTREAM_NOT_FOUND'
-  | 'UPSTREAM_TIMEOUT';
+  | 'UPSTREAM_TIMEOUT'
+  | 'UPSTREAM_RATE_LIMITED'
+  | 'UPSTREAM_ERROR';
 
 export interface CapabilityWarning {
   code: WarningCode;
@@ -150,7 +153,8 @@ export interface CapabilityResult<T> {
   conflicts?: CapabilityConflict[];
 }
 
-const SECRET_KEYS = /^(?:accessToken|refreshToken|token|password|clientSecret|authorization|headers?|ciphertext|authTag|iv|principalId)$/iu;
+const SECRET_KEYS =
+  /^(?:accessToken|refreshToken|token|password|clientSecret|authorization|headers?|ciphertext|authTag|iv|principalId)$/iu;
 
 function assertSafeObject(value: unknown, path: string): void {
   if (Array.isArray(value)) {

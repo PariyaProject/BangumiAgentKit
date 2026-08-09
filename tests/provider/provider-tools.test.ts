@@ -30,8 +30,30 @@ const subject: ProviderSubjectData = {
 
 const stats: SubjectStatsData = subject.stats;
 
+const legacySubject = {
+  id: 123,
+  type: 2,
+  name: '少女終末旅行',
+  name_cn: '少女终末旅行',
+  summary: 'legacy semantic fixture',
+  nsfw: false,
+  locked: false,
+  date: '2017-10-06',
+  platform: 'TV',
+  images: { medium: 'https://example.test/medium.png' },
+  eps: 12,
+  total_episodes: 12,
+  rating: {
+    score: 8.2,
+    rank: 42,
+    total: 100,
+    count: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 10, '9': 0, '10': 0 },
+  },
+  collection: { wish: 1, collect: 2, doing: 3, on_hold: 4, dropped: 5 },
+};
+
 describe('PR-7B semantic tool provider seam', () => {
-  it('migrates get_subject and subject stats through ProviderRegistry with evidence-bearing results', async () => {
+  it('SC01-SC04: freezes the old get_subject shape while keeping stats evidence-bearing', async () => {
     const registry = new ProviderRegistry({
       v0: {
         async getSubject() {
@@ -68,9 +90,19 @@ describe('PR-7B semantic tool provider seam', () => {
         },
       },
     });
-    const tools = createReadTools(new HttpClient({ fetchFn: async () => new Response('{}') }));
+    const tools = createReadTools(
+      new HttpClient({
+        fetchFn: async () =>
+          new Response(JSON.stringify(legacySubject), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      }),
+    );
     const getSubject = tools.find((tool) => tool.name === 'bangumi.get_subject') as ToolDefinition;
-    const getStats = tools.find((tool) => tool.name === 'bangumi.get_subject_stats') as ToolDefinition;
+    const getStats = tools.find(
+      (tool) => tool.name === 'bangumi.get_subject_stats',
+    ) as ToolDefinition;
     const context = { principalId: 'test', botInstanceId: 'test', conversationId: 'test' };
 
     const subjectResult = await getSubject?.execute({ subjectId: 123 }, context, {
@@ -80,8 +112,42 @@ describe('PR-7B semantic tool provider seam', () => {
       providerRegistry: registry,
     });
 
-    expect(subjectResult).toMatchObject({ state: 'ok', data: { id: 123 } });
-    expect((subjectResult as { evidence: Record<string, unknown> }).evidence.name).toBeDefined();
+    expect(subjectResult).toEqual({
+      id: 123,
+      type: 'anime',
+      name: '少女終末旅行',
+      nameCn: '少女终末旅行',
+      summary: 'legacy semantic fixture',
+      nsfw: false,
+      locked: false,
+      date: '2017-10-06',
+      platform: 'TV',
+      images: { medium: 'https://example.test/medium.png' },
+      score: 8.2,
+      rank: 42,
+      ratingTotal: 100,
+      ratingCount: {
+        '1': 0,
+        '2': 0,
+        '3': 0,
+        '4': 0,
+        '5': 0,
+        '6': 0,
+        '7': 0,
+        '8': 10,
+        '9': 0,
+        '10': 0,
+      },
+      collectionCounts: { wish: 1, collect: 2, doing: 3, onHold: 4, dropped: 5 },
+      eps: 12,
+      totalEpisodes: 12,
+    });
+    expect(subjectResult).not.toHaveProperty('state');
+    expect(subjectResult).not.toHaveProperty('data');
+    expect(subjectResult).not.toHaveProperty('stats');
     expect(statsResult).toMatchObject({ state: 'ok', data: { score: 8.2 } });
+    expect(
+      (statsResult as { evidence: Record<string, unknown> }).evidence['rating.score'],
+    ).toBeDefined();
   });
 });
