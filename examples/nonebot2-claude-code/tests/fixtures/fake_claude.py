@@ -22,6 +22,9 @@ def main() -> int:
     if scenario == 'nonzero':
         print('private diagnostic', file=sys.stderr)
         return 7
+    if scenario == 'mcp-startup-failure':
+        print('MCP server failed to start', file=sys.stderr)
+        return 12
     if scenario == 'invalid-json':
         print('not json')
         return 0

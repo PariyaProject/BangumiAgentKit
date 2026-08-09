@@ -129,6 +129,12 @@ The resulting internal principal is available only to server-side
 two people in one group get separate Claude sessions, pending actions, and
 Bangumi account bindings.
 
+For direct standalone MCP development only, the legacy internal principal
+environment can be enabled explicitly with
+`BANGUMI_MCP_ALLOW_INTERNAL_PRINCIPAL_ID=true` in a non-production environment.
+Production rejects `BANGUMI_MCP_PRINCIPAL_ID`, and the NoneBot host never uses
+this compatibility path.
+
 ## Connecting an existing NoneBot2 project
 
 ### Level 1: call the helper from an existing matcher

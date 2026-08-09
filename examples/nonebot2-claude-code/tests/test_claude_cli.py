@@ -122,6 +122,11 @@ class ClaudeCliTests(unittest.TestCase):
         self.assertEqual(nonzero_result.returncode, 7)
         self.assertIn('private diagnostic', nonzero_result.stderr)
 
+        os.environ['FAKE_CLAUDE_SCENARIO'] = 'mcp-startup-failure'
+        mcp_failure_result = asyncio.run(ClaudeCli(config).run('hello', {}))
+        self.assertEqual(mcp_failure_result.returncode, 12)
+        self.assertIn('MCP server failed to start', mcp_failure_result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()
