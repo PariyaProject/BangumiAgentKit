@@ -930,47 +930,11 @@
         "limit": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 1000
+          "maximum": 100
         },
         "explain": {
           "type": "string",
           "enum": ["none", "compact", "full"]
-        },
-        "budget": {
-          "type": "object",
-          "properties": {
-            "maxPages": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1000
-            },
-            "maxCandidates": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100000
-            },
-            "maxHydrations": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 10000
-            },
-            "concurrency": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 32
-            },
-            "maxConceptProbes": {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 100
-            },
-            "maxReturnedItems": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1000
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false

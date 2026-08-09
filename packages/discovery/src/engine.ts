@@ -11,6 +11,7 @@ import {
   type SubjectDiscoveryCandidate,
   type SubjectDiscoveryBrowseRequest,
   type SubjectDiscoveryPage,
+  type SubjectDiscoveryTotalKind,
   type SubjectDiscoveryProvider,
   type SubjectDiscoverySearchRequest,
 } from '@bangumi-agent-kit/provider-core';
@@ -145,6 +146,12 @@ function matchesCategory(item: CandidateWithDetail, categories: readonly Discove
   return categories.includes(categoryForPlatform(item.detail?.platform ?? item.candidate.platform) as DiscoveryCategory);
 }
 
+function matchesExcludedMetaTags(item: CandidateWithDetail, excluded: readonly string[]): boolean {
+  if (excluded.length === 0) return true;
+  const metaTags = item.detail?.metaTags ?? item.candidate.metaTags;
+  return excluded.every((tag) => !metaTags.includes(tag));
+}
+
 function sortItems(items: CandidateWithDetail[], query: NormalizedDiscoveryQuery): CandidateWithDetail[] {
   const ordered = [...items];
   if (query.sort === 'score' || query.sort === 'rank' || query.sort === 'date') {
@@ -167,6 +174,32 @@ function sortItems(items: CandidateWithDetail[], query: NormalizedDiscoveryQuery
   return ordered;
 }
 
+function nativeOrder(
+  operation: DiscoveryPlan['operation'],
+  sort: NormalizedDiscoveryQuery['sort'],
+): NormalizedDiscoveryQuery['order'] | undefined {
+  if (operation === 'browseSubjects') {
+    if (sort === 'rank') return 'asc';
+    if (sort === 'date') return 'desc';
+    return undefined;
+  }
+  if (sort === 'rank') return 'asc';
+  if (sort === 'heat' || sort === 'score' || sort === 'relevance') return 'desc';
+  return undefined;
+}
+
+function canStopTop(
+  query: NormalizedDiscoveryQuery,
+  plan: DiscoveryPlan,
+): boolean {
+  return (
+    query.resultMode === 'top' &&
+    query.order === nativeOrder(plan.operation, query.sort) &&
+    !plan.postFilters.some((item) => item.field === 'sort:date') &&
+    !plan.derivedFilters.some((item) => item.field === 'order')
+  );
+}
+
 function emptyCoverage(query: NormalizedDiscoveryQuery, reason?: string): DiscoveryCoverage {
   return {
     state: 'unknown',
@@ -179,6 +212,7 @@ function emptyCoverage(query: NormalizedDiscoveryQuery, reason?: string): Discov
     upstreamExhausted: false,
     budgetExceeded: false,
     postFilterCount: 0,
+    totalKind: 'unknown',
     ...(reason === undefined ? {} : { reason }),
   };
 }
@@ -247,6 +281,7 @@ export class DiscoveryEngine {
     let postFilterCount = 0;
     let upstreamExhausted = false;
     let budgetExceeded = false;
+    let totalKind: SubjectDiscoveryTotalKind = 'unknown';
     let orderCounter = 0;
     let lastState: DiscoveryResult['state'] = 'ok';
     let offset = 0;
@@ -254,7 +289,7 @@ export class DiscoveryEngine {
       ? plan.steps[0].request.limit
       : Math.min(50, Math.max(query.limit, 20));
     const requestKeys = new Set<string>();
-    const canStopTop = query.resultMode === 'top' && query.order === 'desc' && query.sort !== 'date';
+    const canStopTopQuery = canStopTop(query, plan);
 
     while (pagesScanned < query.budget.maxPages && scanned < query.budget.maxCandidates) {
       const step = plan.steps[0];
@@ -279,6 +314,7 @@ export class DiscoveryEngine {
         break;
       }
       const page = result.data;
+      totalKind = page.totalKind ?? 'unknown';
       if (page.items.length === 0) {
         upstreamExhausted = true;
         break;
@@ -311,6 +347,7 @@ export class DiscoveryEngine {
         const collectionValue = collection.total;
         const isMatch =
           matchesCategory(item, query.categories) &&
+          matchesExcludedMetaTags(item, query.excludeMetaTags) &&
           matchesRange(score, query.rating) &&
           matchesRange(ratingCount, query.ratingCount) &&
           matchesRange(rank, query.rank) &&
@@ -320,9 +357,9 @@ export class DiscoveryEngine {
           matched.delete(item.candidate.id);
         }
       }
-      if (canStopTop && matched.size >= query.limit) break;
+      if (canStopTopQuery && matched.size >= query.limit) break;
       const total = page.total;
-      if (total !== undefined && offset + page.items.length >= total) {
+      if (page.totalKind === 'exact' && total !== undefined && offset + page.items.length >= total) {
         upstreamExhausted = true;
         break;
       }
@@ -335,11 +372,13 @@ export class DiscoveryEngine {
     if (!upstreamExhausted && pagesScanned >= query.budget.maxPages) budgetExceeded = true;
     if (!upstreamExhausted && scanned >= query.budget.maxCandidates) budgetExceeded = true;
     const sorted = sortItems([...matched.values()], query);
+    const outputCap = query.resultMode === 'all' ? query.budget.maxReturnedItems : query.limit;
+    const outputTruncated = query.resultMode === 'all' && sorted.length > outputCap;
     const returnedItems = sorted
-      .slice(0, query.limit)
+      .slice(0, outputCap)
       .map((item) => this.toItem(item, item.pageEvidence ?? {}, query));
     const coverage: DiscoveryCoverage = {
-      state: budgetExceeded ? 'partial' : upstreamExhausted ? 'complete' : 'unknown',
+      state: budgetExceeded || outputTruncated ? 'partial' : upstreamExhausted ? 'complete' : 'unknown',
       requested: query.resultMode === 'all' ? (upstreamExhausted ? scanned : 0) : query.limit,
       scanned,
       matched: sorted.length,
@@ -349,7 +388,12 @@ export class DiscoveryEngine {
       upstreamExhausted,
       budgetExceeded,
       postFilterCount,
-      ...(budgetExceeded ? { reason: 'Execution budget was exhausted before upstream coverage was proven.' } : {}),
+      totalKind,
+      ...(outputTruncated
+        ? { outputCap, reason: 'output_cap' }
+        : budgetExceeded
+          ? { reason: 'Execution budget was exhausted before upstream coverage was proven.' }
+          : {}),
     };
     if (budgetExceeded) {
       warnings.push({
@@ -358,10 +402,20 @@ export class DiscoveryEngine {
       });
       lastState = 'partial';
     }
+    if (outputTruncated) {
+      warnings.push({
+        code: 'DISCOVERY_OUTPUT_TRUNCATED',
+        message: 'Discovery matched more items than the trusted output cap; the result is partial.',
+        matched: sorted.length,
+        returned: returnedItems.length,
+        outputCap,
+      });
+      lastState = 'partial';
+    }
     if (lastState !== 'ok' && returnedItems.length === 0 && warnings.length === 0) {
       warnings.push({ code: 'UPSTREAM_ERROR', message: 'The official discovery provider did not return data.' });
     }
-    const finalState = lastState === 'ok' ? (budgetExceeded ? 'partial' : 'ok') : lastState;
+    const finalState = lastState === 'ok' ? (budgetExceeded || outputTruncated ? 'partial' : 'ok') : lastState;
     const result: DiscoveryResult = {
       state: finalState,
       items: returnedItems,
@@ -411,6 +465,8 @@ export class DiscoveryEngine {
       postFilters: plan.postFilters,
       derivedFilters: plan.derivedFilters,
       quality: plan.quality,
+      totalKind: coverage.totalKind,
+      coverageScope: 'Currently enabled official source result set under the stated query semantics; experimental search does not prove mathematical completeness of the entire Bangumi database.',
       coverage,
       limitations: plan.limitations,
       ...(query.sort === 'heat'

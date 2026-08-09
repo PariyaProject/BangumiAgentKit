@@ -20,7 +20,7 @@ const MATRIX: readonly SourceCapability[] = [
   { field: 'dateRange', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'half-open air_date expressions' },
   { field: 'tags', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'AND tag filter' },
   { field: 'metaTags', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'AND meta_tags filter' },
-  { field: 'excludeMetaTags', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'negative meta_tags filter' },
+  { field: 'excludeMetaTags', operation: 'searchSubjects', classification: 'POST_FILTER', notes: 'canonical hydrated meta_tags exclusion; upstream minus syntax is not verified' },
   { field: 'concepts', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'resolved to literal tag/meta_tag values' },
   { field: 'rating', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'rating range expressions' },
   { field: 'ratingCount', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'rating_count range expressions' },

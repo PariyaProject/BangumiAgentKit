@@ -9,17 +9,6 @@ const range = z
   })
   .strict();
 
-const budget = z
-  .object({
-    maxPages: z.number().int().min(1).max(1000).optional(),
-    maxCandidates: z.number().int().min(1).max(100_000).optional(),
-    maxHydrations: z.number().int().min(0).max(10_000).optional(),
-    concurrency: z.number().int().min(1).max(32).optional(),
-    maxConceptProbes: z.number().int().min(0).max(100).optional(),
-    maxReturnedItems: z.number().int().min(1).max(1000).optional(),
-  })
-  .strict();
-
 const discoveryQueryInput = z
   .object({
     keyword: z.string().max(200).optional(),
@@ -52,9 +41,8 @@ const discoveryQueryInput = z
     sort: z.enum(['relevance', 'heat', 'rank', 'score', 'date']).optional(),
     order: z.enum(['asc', 'desc']).optional(),
     resultMode: z.enum(['top', 'all']).optional(),
-    limit: z.number().int().min(1).max(1000).optional(),
+    limit: z.number().int().min(1).max(100).optional(),
     explain: z.enum(['none', 'compact', 'full']).optional(),
-    budget: budget.optional(),
   })
   .strict();
 

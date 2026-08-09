@@ -121,6 +121,9 @@ The body filter has these documented fields:
   exclusion for the corresponding tag arrays.
 
 The response is `Paged_Subject`: `total`, `limit`, `offset`, and `data[]`.
+PR-7C records this as `totalKind: "estimated"` for search because the
+current source derives `total` from Meilisearch `estimatedTotalHits`; a search
+total never proves that the source result set is exhausted.
 The pinned search operation declares `limit` and `offset` as integer query
 parameters but does not declare their defaults or maximums.
 
@@ -147,8 +150,15 @@ The current source translates filters as follows:
 
 The source validates numeric comparators and dates before querying. The
 OpenAPI's documented leading-minus exclusion syntax is not visibly translated
-by this source path; it is therefore an unresolved live-behavior item rather
-than a safe C0 implementation assumption.
+by this source path. A narrow live probe on 2026-08-10 compared
+`meta_tags: ["原创"]` with `meta_tags: ["原创", "-科幻"]`: both requests returned
+HTTP 200, the first returned `total=1000` and sampled rows including subject
+50 with `meta_tags` containing `科幻`, while the second returned `total=0` and
+no rows. The deployed result does not establish negative exclusion semantics;
+the zero result is also compatible with treating `-科幻` as a literal value.
+PR-7C therefore treats exclusion as a canonical hydrated post-filter rather
+than trusted pushdown. The probe has no known excluded sample because the
+negative case returned no rows.
 
 ### Empty keyword and filter-only requests
 
@@ -179,6 +189,13 @@ The current index source defines `heat` as
 
 - Do not rename `heat` to recent trend, seven-day popularity, discussion heat,
   or growth; no official source supports those meanings here.
+
+PR-7C keeps source-native order when the public `order` is omitted: search
+`heat` and `score` default to descending, search `rank` defaults to ascending,
+search relevance preserves upstream match order, browse `rank` is ascending,
+and browse `date` is descending. A reverse request is only a local ordering
+operation and cannot claim a global Top-N result before the relevant source is
+exhausted.
 - The OpenAPI's short wording (“收藏人数”) and the current source's sum of
   all five collection states should be retained as two pieces of provenance.
   The exact deployed value/order remains a live observation item.
@@ -206,7 +223,9 @@ details, not a durable public contract. The probe requests `limit=5` at offsets
 
 The response `total` is produced from Meilisearch's
 `estimatedTotalHits` in the current source. Do not silently describe it as an
-exact database count without further upstream evidence.
+exact database count without further upstream evidence. Search pagination is
+considered exhausted only after an empty page, a short page relative to the
+effective returned limit, or another explicit pagination signal.
 
 ### Browse
 
@@ -257,6 +276,8 @@ The browse handler performs a count first, then applies `limit`/`offset`, and
 returns `total`, effective `limit`, `offset`, and `data`. It also documents a
 cache policy in the OpenAPI description: first page 24h, later pages 1h. That
 cache statement is not a freshness guarantee for discovery results.
+PR-7C records browse pages as `totalKind: "exact"`; only this source-native
+exact count may prove exhaustion by `offset + rows >= total`.
 
 ## Probe artifact and execution policy
 
@@ -281,8 +302,9 @@ The opt-in probe is [`probe-subject-search.mjs`](../../scripts/research/pr7c/pro
    deployment; still experimental and not a durable guarantee.
 2. **Filter-only completeness** — a 200 response would show acceptance, but
    it would not by itself prove that every filter combination is exhaustive.
-3. **Negative tag/meta-tag syntax** — documented in OpenAPI, not visibly
-   compiled specially by current server source.
+3. **Negative tag/meta-tag syntax** — documented in OpenAPI, but the targeted
+   deployment probe returned no rows for the mixed positive/negative case and
+   did not prove exclusion semantics; runtime uses canonical post-filtering.
 4. **Search limit** — pinned schema has no bounds; current source says 20 at
    the handler boundary and contains a separate 50 cap downstream. The live
    run observed `limit=50` becoming `limit=20`.
@@ -304,5 +326,6 @@ checks, so PR-7C may model filter-only discovery as a current verified
 capability with bounded/experimental confidence. It must not treat this as an
 unbounded exact query: search is experimental, totals are estimated/capped,
 and filter combinations need their own bounded coverage. It should keep
-search and browse as separate source-native operations. No PR-7C production
-code is implemented by this C0 artifact.
+search and browse as separate source-native operations. Negative meta-tag
+exclusion remains a hydrated canonical post-filter. No PR-7C production code
+is implemented by this C0 artifact.

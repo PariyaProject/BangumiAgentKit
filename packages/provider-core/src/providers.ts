@@ -64,6 +64,8 @@ export interface ProviderSubjectData {
   images: Record<string, string | undefined>;
   eps: number;
   totalEpisodes: number;
+  tags?: string[];
+  metaTags?: string[];
   stats: SubjectStatsData;
 }
 
@@ -123,9 +125,12 @@ export interface SubjectDiscoveryCandidate {
   nsfw?: boolean;
 }
 
+export type SubjectDiscoveryTotalKind = 'exact' | 'estimated' | 'unknown';
+
 export interface SubjectDiscoveryPage {
   items: SubjectDiscoveryCandidate[];
   total?: number;
+  totalKind: SubjectDiscoveryTotalKind;
   limit: number;
   offset: number;
 }
@@ -395,6 +400,8 @@ function parseSubject(raw: Subject): { data: ProviderSubjectData; fields: string
       images: images as Record<string, string | undefined>,
       eps: requiredNumber(value.eps, 'eps'),
       totalEpisodes: requiredNumber(value.total_episodes, 'total_episodes'),
+      tags: stringList(value.tags),
+      metaTags: stringList(value.meta_tags),
       stats,
     },
     fields: [
@@ -412,6 +419,8 @@ function parseSubject(raw: Subject): { data: ProviderSubjectData; fields: string
       'rating.rank',
       'rating.total',
       'rating.count',
+      'tags',
+      'meta_tags',
       'collection.wish',
       'collection.collect',
       'collection.doing',
@@ -477,13 +486,18 @@ function parseDiscoveryCandidate(raw: Subject): SubjectDiscoveryCandidate {
   };
 }
 
-function parseDiscoveryPage(raw: PagedSubject, request: { limit: number; offset: number }): SubjectDiscoveryPage {
+function parseDiscoveryPage(
+  raw: PagedSubject,
+  request: { limit: number; offset: number },
+  totalKind: SubjectDiscoveryTotalKind,
+): SubjectDiscoveryPage {
   const value = raw as unknown as Record<string, unknown>;
   if (!Array.isArray(value.data)) throw new SchemaDriftError('Discovery response data must be an array.');
   const items = value.data.map((item) => parseDiscoveryCandidate(item as Subject));
   return {
     items,
     total: optionalNumber(value.total),
+    totalKind,
     limit: optionalNumber(value.limit) ?? request.limit,
     offset: optionalNumber(value.offset) ?? request.offset,
   };
@@ -496,7 +510,7 @@ function discoveryEvidence(
   authScope: AuthScope,
 ): FieldEvidence {
   const evidence: FieldEvidence = {};
-  const fields = ['items', 'total', 'limit', 'offset'];
+  const fields = ['items', 'total', 'totalKind', 'limit', 'offset'];
   for (const fieldPath of fields) {
     evidence[fieldPath] = [
       createEvidenceRef({
@@ -611,7 +625,7 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
           filter: Object.keys(filter).length > 0 ? filter : undefined,
         },
       );
-      const data = parseDiscoveryPage(raw, request);
+      const data = parseDiscoveryPage(raw, request, 'estimated');
       return {
         state: 'ok',
         data,
@@ -649,7 +663,7 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
         limit: request.limit,
         offset: request.offset,
       } as OperationQuery<'getSubjects'>);
-      const data = parseDiscoveryPage(raw, request);
+      const data = parseDiscoveryPage(raw, request, 'exact');
       return {
         state: 'ok',
         data,

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   OfficialV0Provider,
+  type SubjectDiscoveryBrowseRequest,
   type SubjectDiscoverySearchRequest,
 } from '@bangumi-agent-kit/provider-core';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
@@ -51,6 +52,7 @@ describe('official v0 discovery adapter', () => {
     };
     const result = await provider.searchSubjects(request);
     expect(result.state).toBe('ok');
+    expect(result.data?.totalKind).toBe('estimated');
     expect(result.data?.items[0]).toMatchObject({
       id: 123,
       tags: ['后宫'],
@@ -70,5 +72,21 @@ describe('official v0 discovery adapter', () => {
         rating_count: ['>=5000'],
       },
     });
+  });
+
+  it('marks database-count browse totals as exact', async () => {
+    const provider = new OfficialV0Provider({
+      getSubjectById: vi.fn(),
+      getSubjects: vi.fn().mockResolvedValue({
+        total: 1,
+        limit: 20,
+        offset: 0,
+        data: [{ id: 321, type: 2, name: 'Browse subject', name_cn: '浏览条目', platform: 'TV', tags: [], meta_tags: [] }],
+      }),
+    } as never);
+    const request: SubjectDiscoveryBrowseRequest = { type: 2, limit: 20, offset: 0, sort: 'date' };
+    const result = await provider.browseSubjects(request);
+    expect(result.state).toBe('ok');
+    expect(result.data?.totalKind).toBe('exact');
   });
 });

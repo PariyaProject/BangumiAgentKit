@@ -43,4 +43,18 @@ describe('discovery query normalization', () => {
       maxReturnedItems: 100,
     });
   });
+
+  it('uses source-native order when order is omitted', () => {
+    expect(normalizeDiscoveryQuery({ sort: 'rank' }).order).toBe('asc');
+    expect(normalizeDiscoveryQuery({ sort: 'score' }).order).toBe('desc');
+    expect(normalizeDiscoveryQuery({ sort: 'heat' }).order).toBe('desc');
+    expect(normalizeDiscoveryQuery({ sort: 'date' }).order).toBe('desc');
+    expect(normalizeDiscoveryQuery({ sort: 'relevance' }).order).toBe('desc');
+  });
+
+  it('rejects model-controlled workload values above the server authority ceiling', () => {
+    expect(() => normalizeDiscoveryQuery({ limit: 101 })).toThrow(DiscoveryValidationError);
+    expect(() => normalizeDiscoveryQuery({ budget: { maxPages: 11 } })).toThrow(DiscoveryValidationError);
+    expect(() => normalizeDiscoveryQuery({ budget: { maxCandidates: 501 } })).toThrow(DiscoveryValidationError);
+  });
 });

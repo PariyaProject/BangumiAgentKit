@@ -6,6 +6,7 @@ import type {
   FieldEvidence,
   SubjectDiscoveryCandidate,
   SubjectDiscoveryPage,
+  SubjectDiscoveryTotalKind,
   SubjectDiscoverySearchRequest,
   SubjectDiscoveryBrowseRequest,
 } from '@bangumi-agent-kit/provider-core';
@@ -158,6 +159,7 @@ export type DiscoveryPlanQuality =
 export interface DiscoveryPlan {
   source: 'official_v0';
   operation: 'searchSubjects' | 'browseSubjects';
+  totalKind: SubjectDiscoveryTotalKind;
   pushdown: PlanFilter[];
   postFilters: PlanFilter[];
   derivedFilters: PlanFilter[];
@@ -181,6 +183,8 @@ export interface DiscoveryCoverage extends Coverage {
   upstreamExhausted: boolean;
   budgetExceeded: boolean;
   postFilterCount: number;
+  totalKind: SubjectDiscoveryTotalKind;
+  outputCap?: number;
   reason?: string;
 }
 
@@ -219,6 +223,8 @@ export interface DiscoveryExplanation {
   postFilters: PlanFilter[];
   derivedFilters: PlanFilter[];
   quality: DiscoveryPlanQuality;
+  totalKind: SubjectDiscoveryTotalKind;
+  coverageScope: string;
   coverage: DiscoveryCoverage;
   limitations: string[];
   heat?: HeatEvidence;

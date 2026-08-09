@@ -134,6 +134,7 @@ export type WarningCode =
   | 'DISCOVERY_AMBIGUOUS_CONCEPT'
   | 'DISCOVERY_UNKNOWN_CONCEPT'
   | 'DISCOVERY_BUDGET_EXCEEDED'
+  | 'DISCOVERY_OUTPUT_TRUNCATED'
   | 'DISCOVERY_UNSUPPORTED_FILTER';
 
 export interface CapabilityWarning {
@@ -141,6 +142,9 @@ export interface CapabilityWarning {
   message: string;
   source?: SourceDescriptor;
   fieldPath?: string;
+  matched?: number;
+  returned?: number;
+  outputCap?: number;
 }
 
 /** Field-level evidence keeps normal data ergonomic while retaining auditability. */

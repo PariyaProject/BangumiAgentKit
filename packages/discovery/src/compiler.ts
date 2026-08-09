@@ -31,6 +31,10 @@ function rangeExpressions(range: { min?: number; max?: number }): string[] {
   ];
 }
 
+function fullYearRange(year: number): { from: string; to: string } {
+  return { from: `${year}-01-01`, to: `${year + 1}-01-01` };
+}
+
 function canBrowse(query: NormalizedDiscoveryQuery): boolean {
   return (
     query.keyword === '' &&
@@ -45,9 +49,24 @@ function canBrowse(query: NormalizedDiscoveryQuery): boolean {
     query.collectionCount === undefined &&
     query.nsfw === 'include' &&
     (query.dateRange === undefined || (query.year !== undefined && query.month !== undefined)) &&
-    (query.sort === 'date' || query.sort === 'rank' || query.sort === 'relevance') &&
+    query.categories.length <= 1 &&
+    (query.sort === 'date' || query.sort === 'rank') &&
     (query.year !== undefined || query.month !== undefined || query.categories.length > 0)
   );
+}
+
+function nativeOrder(
+  operation: DiscoveryPlan['operation'],
+  sort: NormalizedDiscoveryQuery['sort'],
+): NormalizedDiscoveryQuery['order'] | undefined {
+  if (operation === 'browseSubjects') {
+    if (sort === 'rank') return 'asc';
+    if (sort === 'date') return 'desc';
+    return undefined;
+  }
+  if (sort === 'rank') return 'asc';
+  if (sort === 'heat' || sort === 'score' || sort === 'relevance') return 'desc';
+  return undefined;
 }
 
 function conceptFilters(
@@ -70,17 +89,16 @@ function searchRequest(
   const filter: SubjectDiscoverySearchRequest['filter'] = {
     ...(type.length === 0 ? {} : { type }),
     ...(query.tags.length === 0 ? {} : { tag: query.tags }),
-    ...(query.metaTags.length === 0 && query.excludeMetaTags.length === 0
+    ...(query.metaTags.length === 0
       ? {}
       : {
-          metaTags: [
-            ...query.metaTags,
-            ...query.excludeMetaTags.map((item) => `-${item}`),
-          ],
+          metaTags: [...query.metaTags],
         }),
-    ...(query.dateRange === undefined
-      ? {}
-      : { airDate: [`>=${query.dateRange.from}`, `<${query.dateRange.to}`] }),
+    ...(query.dateRange !== undefined
+      ? { airDate: [`>=${query.dateRange.from}`, `<${query.dateRange.to}`] }
+      : query.year === undefined
+        ? {}
+        : { airDate: [`>=${query.year}-01-01`, `<${query.year + 1}-01-01`] }),
     ...(query.rating === undefined ? {} : { rating: rangeExpressions(query.rating) }),
     ...(query.ratingCount === undefined ? {} : { ratingCount: rangeExpressions(query.ratingCount) }),
     ...(query.rank === undefined ? {} : { rank: rangeExpressions(query.rank) }),
@@ -125,6 +143,9 @@ export function compileDiscoveryPlan(
   const postFilters: PlanFilter[] = [];
   const derivedFilters: PlanFilter[] = [];
   const unsupported: PlanFilter[] = [];
+  const searchDateRange = query.dateRange ?? (
+    query.year !== undefined && query.month === undefined ? fullYearRange(query.year) : undefined
+  );
 
   if (operation === 'browseSubjects') {
     if (query.media.length === 1) pushdown.push(planFilter('media', operation, 'eq', query.media[0] ?? 'anime'));
@@ -137,8 +158,8 @@ export function compileDiscoveryPlan(
     if (query.media.length > 0) pushdown.push(planFilter('media', operation, 'in', query.media));
     if (query.tags.length > 0) pushdown.push(planFilter('tags', operation, 'contains_all', query.tags));
     if (query.metaTags.length > 0) pushdown.push(planFilter('metaTags', operation, 'contains_all', query.metaTags));
-    if (query.excludeMetaTags.length > 0) pushdown.push(planFilter('excludeMetaTags', operation, 'contains_all', query.excludeMetaTags));
-    if (query.dateRange) pushdown.push(planFilter('dateRange', operation, 'range', query.dateRange));
+    if (query.excludeMetaTags.length > 0) postFilters.push(planFilter('excludeMetaTags', operation, 'contains_all', query.excludeMetaTags));
+    if (searchDateRange) pushdown.push(planFilter('dateRange', operation, 'range', searchDateRange));
     if (query.rating) pushdown.push(planFilter('rating', operation, 'range', query.rating));
     if (query.ratingCount) pushdown.push(planFilter('ratingCount', operation, 'range', query.ratingCount));
     if (query.rank) pushdown.push(planFilter('rank', operation, 'range', query.rank));
@@ -149,7 +170,9 @@ export function compileDiscoveryPlan(
     pushdown.push(...conceptFilters(operation, resolvedConcepts));
     if (query.sort === 'date') postFilters.push(planFilter('sort:date', operation, 'eq', query.sort));
   }
-  if (query.order === 'asc') derivedFilters.push(planFilter('order', operation, 'eq', query.order));
+  if (query.order !== nativeOrder(operation, query.sort)) {
+    derivedFilters.push(planFilter('order', operation, 'eq', query.order));
+  }
   if (operation === 'browseSubjects' && query.collectionCount) derivedFilters.push(planFilter('collectionCount', operation, 'range', query.collectionCount));
 
   const request = operation === 'browseSubjects' ? browseRequest(query) : searchRequest(query, resolvedConcepts);
@@ -158,12 +181,19 @@ export function compileDiscoveryPlan(
     : { kind: 'search', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoverySearchRequest };
   const limitations = [
     'Enumeration is bounded by maxPages and maxCandidates.',
+    ...(operation === 'searchSubjects'
+      ? ['Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.']
+      : []),
     ...(query.resultMode === 'all' ? ['all requests a complete attempt; budget exhaustion is reported as partial.'] : []),
+    ...(query.excludeMetaTags.length > 0
+      ? ['Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.']
+      : []),
     ...(query.sort === 'heat' ? ['heat means upstream 收藏人数 and is not a recent-trend metric.'] : []),
   ];
   return {
     source: 'official_v0',
     operation,
+    totalKind: operation === 'browseSubjects' ? 'exact' : 'estimated',
     pushdown,
     postFilters,
     derivedFilters,

@@ -10,4 +10,11 @@ describe('discovery surface parity', () => {
     expect(registry.getTool('bangumi.search_subjects')).toBeDefined();
     expect(registry.getTool('bangumi.get_subject')).toBeDefined();
   });
+
+  it('keeps raw execution budgets out of the model-facing discovery schema', () => {
+    const tool = new ToolRegistry({ storage: new MemoryStorage() }).getTool('bangumi.query_subjects');
+    expect(tool?.input.safeParse({ media: 'anime', limit: 100 }).success).toBe(true);
+    expect(tool?.input.safeParse({ media: 'anime', limit: 101 }).success).toBe(false);
+    expect(tool?.input.safeParse({ media: 'anime', budget: { maxPages: 1000 } }).success).toBe(false);
+  });
 });

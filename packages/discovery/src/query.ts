@@ -21,6 +21,15 @@ const DEFAULT_BUDGET: ExecutionBudget = {
   maxReturnedItems: 100,
 };
 
+export const SERVER_EXECUTION_BUDGET_CEILINGS: Readonly<ExecutionBudget> = Object.freeze({
+  maxPages: 10,
+  maxCandidates: 500,
+  maxHydrations: 120,
+  concurrency: 6,
+  maxConceptProbes: 8,
+  maxReturnedItems: 100,
+});
+
 const SEASON_MONTHS = {
   winter: [1, 4],
   spring: [4, 7],
@@ -111,12 +120,12 @@ function dateRangeForSeason(value: string, issues: string[]): DateRange | undefi
 
 function normalizeBudget(input: DiscoveryBudgetInput | undefined, issues: string[]): ExecutionBudget {
   const budget = { ...DEFAULT_BUDGET, ...(input ?? {}) };
-  assertInteger(budget.maxPages, 'budget.maxPages', 1, 1000, issues);
-  assertInteger(budget.maxCandidates, 'budget.maxCandidates', 1, 100_000, issues);
-  assertInteger(budget.maxHydrations, 'budget.maxHydrations', 0, 10_000, issues);
-  assertInteger(budget.concurrency, 'budget.concurrency', 1, 32, issues);
-  assertInteger(budget.maxConceptProbes, 'budget.maxConceptProbes', 0, 100, issues);
-  assertInteger(budget.maxReturnedItems, 'budget.maxReturnedItems', 1, 1000, issues);
+  assertInteger(budget.maxPages, 'budget.maxPages', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxPages, issues);
+  assertInteger(budget.maxCandidates, 'budget.maxCandidates', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxCandidates, issues);
+  assertInteger(budget.maxHydrations, 'budget.maxHydrations', 0, SERVER_EXECUTION_BUDGET_CEILINGS.maxHydrations, issues);
+  assertInteger(budget.concurrency, 'budget.concurrency', 1, SERVER_EXECUTION_BUDGET_CEILINGS.concurrency, issues);
+  assertInteger(budget.maxConceptProbes, 'budget.maxConceptProbes', 0, SERVER_EXECUTION_BUDGET_CEILINGS.maxConceptProbes, issues);
+  assertInteger(budget.maxReturnedItems, 'budget.maxReturnedItems', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxReturnedItems, issues);
   return budget;
 }
 
@@ -176,14 +185,14 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   const collectionCount = normalizeRange(input.collectionCount, 'collectionCount', issues);
   const sort = input.sort ?? 'relevance';
   if (!DISCOVERY_SORTS.includes(sort)) issues.push(`sort must be one of: ${DISCOVERY_SORTS.join(', ')}`);
-  const order = input.order ?? 'desc';
+  const order = input.order ?? (sort === 'rank' ? 'asc' : 'desc');
   if (order !== 'asc' && order !== 'desc') issues.push('order must be asc or desc');
   const resultMode = input.resultMode ?? 'top';
   if (resultMode !== 'top' && resultMode !== 'all') issues.push('resultMode must be top or all');
   const explain = input.explain ?? 'none';
   if (explain !== 'none' && explain !== 'compact' && explain !== 'full') issues.push('explain must be none, compact, or full');
   const limit = input.limit ?? 20;
-  assertInteger(limit, 'limit', 1, 1000, issues);
+  assertInteger(limit, 'limit', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxReturnedItems, issues);
   const budget = normalizeBudget(input.budget, issues);
   if (limit > budget.maxReturnedItems) issues.push('limit must not exceed budget.maxReturnedItems');
 
