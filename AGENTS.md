@@ -4,24 +4,31 @@
 
 BangumiAgentKit aims to become the most thoughtful, complete,
 trustworthy, intelligent, agent-friendly and visually excellent
-way to use Bangumi data.
+Bangumi Product Intelligence Layer.
 
-Before substantial product work, read:
+It should capture the useful information richness of bgm.tv and,
+where reliable data permits, exceed the website through aggregation,
+analysis, relationships, history, personalization and better presentation.
+
+Before substantial product work, always read:
 
 - `docs/agent/AUTONOMOUS_PRODUCT_EVOLUTION.md`
+- `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`
 - `docs/product/loop-status.md`
 - `docs/product/opportunity-log.md`
 
-If an active workplan is referenced by `loop-status.md`, read it too.
+If an active cycle plan is referenced by `loop-status.md`, read it too.
 
-## Working Model
+## Autonomous Development Model
 
-Follow the Autonomous Product Evolution Charter.
+The default governance mode is:
 
-Work in bounded product cycles:
+AI_REVIEW_IN_LOOP + HUMAN_ON_EXCEPTION
+
+The implementation/orchestration agent may autonomously:
 
 OBSERVE
-→ QUESTION
+→ DISCOVER PRODUCT OPPORTUNITIES
 → RESEARCH
 → DESIGN
 → IMPLEMENT
@@ -29,80 +36,147 @@ OBSERVE
 → USER QA
 → AGENT QA
 → VISUAL QA when applicable
-→ FREEZE CANDIDATE
+→ CREATE FREEZE CANDIDATE
+→ REQUEST INDEPENDENT AI REVIEWS
+→ FIX REVIEW FINDINGS
+→ AUTO FREEZE WHEN APPROVED
+→ CONTINUE TO NEXT SAFE PRODUCT CYCLE
 
-Do not optimize for feature count.
+Follow:
 
-Prioritize:
-1. correctness
-2. user value
-3. Agent leverage
-4. information richness
-5. Renderer quality
-6. evidence and explainability
-7. maintainability
+`docs/agent/AUTONOMOUS_REVIEW_POLICY.md`
 
-## Progress Management
+for exact freeze and continuation rules.
 
-`docs/product/loop-status.md` is the canonical progress ledger.
+## Independent Review
 
-Update it after meaningful milestones and before stopping.
+The implementation agent MUST NOT approve its own Freeze Candidate.
 
-`docs/product/opportunity-log.md` is the product opportunity backlog.
+Every Product Cycle Freeze Candidate must be independently reviewed by:
 
-New ideas should normally be recorded there instead of being
-implemented immediately.
+- `sol_code_reviewer`
+- `sol_product_reviewer`
+
+Both reviewers must inspect the actual repository and evidence.
+
+They must not trust the implementation report alone.
+
+If either reviewer returns `CORRECTIVE_REQUIRED`,
+the implementation agent must fix the findings and request fresh reviews.
+
+If either returns `HUMAN_REVIEW_REQUIRED`,
+the affected decision must be parked under:
+
+`docs/product/human-review-queue/`
+
+Do not implement that protected change.
+
+Continue with another independent safe opportunity when possible.
+
+## Human-On-Exception Boundaries
+
+Human approval remains required before implementing:
+
+- authentication trust-model changes
+- principal / authorization model changes
+- weakening SSRF or security boundaries
+- token, cookie or credential handling expansion
+- destructive/write authority expansion
+- broad default enablement of Structured Web or HTML sources
+- aggressive crawling
+- major irreversible semantic database migrations
+- license/legal-policy changes
+- breaking frozen public contracts without a safe compatibility path
+- release / package / tag publication
+
+Encountering one protected decision does NOT automatically stop the
+whole Autonomous Loop.
+
+Park the decision and continue with another safe opportunity.
+
+Stop only if no valuable independent safe work remains.
 
 ## Frozen Foundations
 
-Do not casually redesign frozen foundations or public contracts.
+Do not casually reopen frozen foundations.
 
-If a frozen foundation blocks a valuable feature, write a
-FOUNDATION CHANGE PROPOSAL and stop that architectural change
-for human review.
+If a frozen contract blocks a high-value capability, create a:
 
-## Human Checkpoint Required
+FOUNDATION CHANGE PROPOSAL
 
-Stop and request review before:
+with:
 
-- breaking a frozen public contract
-- changing Auth / Principal / confirmation trust semantics
-- weakening security or SSRF protections
-- enabling Structured Web or HTML globally
-- requiring Bangumi web cookies
-- large-scale crawling
-- major DB semantic migrations
-- new destructive/write capabilities
-- licensing changes
-- publishing packages
-- creating releases or tags
+- blocked capability
+- why current contract is insufficient
+- smallest proposed change
+- compatibility impact
+- migration risk
+- alternatives
 
-## Quality Gate
+Then classify it according to the Autonomous Review Policy.
 
-A capability is not complete because the API call works.
+## Progress Management
 
-It should answer a meaningful user question with:
-- correct semantics
-- truthful coverage
-- evidence
-- graceful failure
-- useful Agent UX
-- useful human UX
-- high-quality visual output where applicable
+`docs/product/loop-status.md`
+is the canonical persistent execution ledger.
+
+Update it after meaningful milestones and before interruption.
+
+`docs/product/opportunity-log.md`
+is the canonical product opportunity backlog.
+
+New ideas outside the active Cycle belong there rather than expanding
+the active Cycle indefinitely.
+
+## Product Quality
+
+Do not optimize for feature count.
+
+A capability is mature only when it:
+
+- solves meaningful user questions
+- has correct semantics
+- has truthful evidence and coverage
+- handles partial / unknown / conflict / unavailable states honestly
+- is easy for an Agent to use correctly
+- has useful human-facing output
+- has excellent visual output when rendering is relevant
 
 Never fabricate certainty.
 
+## Renderer Quality
+
+Renderer is a first-class product surface.
+
+A successfully generated PNG is not sufficient evidence of quality.
+
+When rendering is in scope, perform representative visual QA for:
+
+- information density
+- layout hierarchy
+- Chinese/Japanese typography
+- covers and avatars
+- long and missing fields
+- mobile/chat readability
+- partial/conflict/unavailable states
+
+Aim to equal or exceed the useful information density of bgm.tv,
+not blindly duplicate its visual design.
+
 ## Git / CI
 
-Do not rewrite frozen history.
-Do not force-push shared history.
-Do not create release tags automatically.
+Never force-push shared frozen history.
 
-Final freeze candidates require:
-- relevant local test suites
-- exact SHA
-- remote CI green
-- clean git status
+Never create release tags or publish packages autonomously.
 
-When a cycle reaches READY FOR REVIEW, stop modifying that
-architectural area.
+Every implementation Freeze Candidate requires:
+
+- exact Candidate SHA
+- relevant local tests
+- mandatory remote CI on the exact Candidate SHA
+- independent AI review
+- no unresolved P0/P1 blockers
+
+Review metadata may be committed after the implementation Candidate
+according to the two-SHA freeze model in
+`AUTONOMOUS_REVIEW_POLICY.md`.

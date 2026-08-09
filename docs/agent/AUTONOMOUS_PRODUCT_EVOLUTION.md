@@ -1,3 +1,17 @@
+> [!IMPORTANT]
+> Review and continuation governance is defined by
+> `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`.
+>
+> If older sections of this Charter say that every READY_FOR_REVIEW
+> cycle must stop for human approval, the Autonomous Review Policy
+> supersedes that behavior.
+>
+> Ordinary read-oriented Product Cycles may be independently reviewed,
+> corrected, automatically frozen, and followed by another Product Cycle.
+>
+> Protected architectural/security/legal decisions remain Human-On-Exception
+> and must be parked rather than autonomously approved.
+
 BangumiAgentKit
 AUTONOMOUS PRODUCT EVOLUTION CHARTER
 LOOP MODE / LONG-RUN DEVELOPMENT MODE
