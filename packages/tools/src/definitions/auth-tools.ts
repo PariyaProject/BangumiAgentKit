@@ -47,6 +47,47 @@ export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthSer
     },
   });
 
+  const authListAccounts = defineTool({
+    name: 'bangumi.auth_list_accounts',
+    description: '列出当前平台用户绑定的所有 Bangumi 账号及当前激活状态。不会暴露任何明文 Token。',
+    input: z.object({}),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (_input, context) => {
+      return await tokenBroker.listAccounts(context.principalId);
+    },
+  });
+
+  const authSwitchAccount = defineTool({
+    name: 'bangumi.auth_switch_account',
+    description: '切换当前平台用户的活跃 Bangumi 账号。只能选择已绑定至当前平台用户的账号。',
+    input: z.object({
+      accountId: z.string().describe('需要切换为活跃状态的 Bangumi 账号 ID'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'write',
+    execute: async (input, context) => {
+      return await tokenBroker.switchAccount(context.principalId, input.accountId);
+    },
+  });
+
+  const authRemoveAccount = defineTool({
+    name: 'bangumi.auth_remove_account',
+    description: '移除当前平台用户已绑定的指定 Bangumi 账号。需要二次确认。',
+    input: z.object({
+      accountId: z.string().describe('需要解绑的 Bangumi 账号 ID'),
+    }),
+    auth: 'required',
+    scopes: [],
+    risk: 'destructive',
+    execute: async (input, context) => {
+      await tokenBroker.removeAccount(context.principalId, input.accountId);
+      return { success: true, message: `Bangumi 账号 ${input.accountId} 已解绑` };
+    },
+  });
+
   const authDisconnect = defineTool({
     name: 'bangumi.auth_disconnect',
     description: '解绑当前平台用户的 Bangumi 账号并清除凭证。属于破坏性操作，需要二次确认。',
@@ -60,5 +101,12 @@ export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthSer
     },
   });
 
-  return [authStatus, authStart, authDisconnect] as const;
+  return [
+    authStatus,
+    authStart,
+    authListAccounts,
+    authSwitchAccount,
+    authRemoveAccount,
+    authDisconnect,
+  ] as const;
 }

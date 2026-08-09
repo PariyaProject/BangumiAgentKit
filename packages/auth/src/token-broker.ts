@@ -23,6 +23,7 @@ export interface TokenBrokerConfig {
 
 export interface AuthStatusResult {
   bound: boolean;
+  accountCount?: number;
   account?: {
     username: string;
     nickname: string;
@@ -79,33 +80,97 @@ export class TokenBroker implements BangumiClientProvider {
   }
 
   async getAuthStatus(principalId: string): Promise<AuthStatusResult> {
-    const binding = await this.storage.getActiveBinding(principalId);
-    if (!binding) {
-      return { bound: false };
+    const bindings = await this.storage.listBindings(principalId);
+    const activeBinding = bindings.find((b) => b.isActive);
+
+    if (!activeBinding) {
+      return { bound: false, accountCount: bindings.length };
     }
 
-    const account = await this.storage.getBangumiAccount(binding.bangumiAccountId);
+    const account = await this.storage.getBangumiAccount(activeBinding.bangumiAccountId);
     if (!account) {
-      return { bound: false };
+      return { bound: false, accountCount: bindings.length };
     }
 
     const cred = await this.storage.getCredential(account.id);
-    if (!cred) {
-      return { bound: false };
-    }
 
     return {
       bound: true,
+      accountCount: bindings.length,
       account: {
         username: account.username,
         nickname: account.nickname,
         avatarUrl: account.avatarUrl,
       },
-      credential: {
-        expiresAt: cred.expiresAt.toISOString(),
-        refreshable: Boolean(cred.encryptedRefreshToken),
-      },
+      credential: cred
+        ? {
+            expiresAt: cred.expiresAt.toISOString(),
+            refreshable: Boolean(cred.encryptedRefreshToken),
+          }
+        : undefined,
     };
+  }
+
+  async listAccounts(principalId: string): Promise<
+    Array<{
+      accountId: string;
+      username: string;
+      nickname: string;
+      avatarUrl?: string;
+      active: boolean;
+    }>
+  > {
+    const bindings = await this.storage.listBindings(principalId);
+    const list = [];
+    for (const b of bindings) {
+      const acc = await this.storage.getBangumiAccount(b.bangumiAccountId);
+      if (acc) {
+        list.push({
+          accountId: acc.id,
+          username: acc.username,
+          nickname: acc.nickname,
+          avatarUrl: acc.avatarUrl,
+          active: b.isActive,
+        });
+      }
+    }
+    return list;
+  }
+
+  async switchAccount(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<{ success: boolean; activeAccountId: string }> {
+    const bindings = await this.storage.listBindings(principalId);
+    const target = bindings.find((b) => b.bangumiAccountId === bangumiAccountId);
+    if (!target) {
+      throw new BangumiError(
+        'PERMISSION_DENIED',
+        `账号 ${bangumiAccountId} 未绑定至当前用户`,
+        false,
+        403,
+      );
+    }
+    await this.storage.setActiveBinding(principalId, bangumiAccountId);
+    return { success: true, activeAccountId: bangumiAccountId };
+  }
+
+  async removeAccount(
+    principalId: string,
+    bangumiAccountId: string,
+  ): Promise<{ success: boolean }> {
+    const bindings = await this.storage.listBindings(principalId);
+    const target = bindings.find((b) => b.bangumiAccountId === bangumiAccountId);
+    if (!target) {
+      throw new BangumiError(
+        'NOT_FOUND',
+        `账号 ${bangumiAccountId} 未绑定至当前用户`,
+        false,
+        404,
+      );
+    }
+    await this.storage.removeBinding(principalId, bangumiAccountId);
+    return { success: true };
   }
 
   async disconnect(principalId: string): Promise<void> {

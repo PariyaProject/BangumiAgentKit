@@ -16,13 +16,17 @@ export interface McpExecutionIdentityProvider {
 }
 
 export class StdioMcpExecutionIdentityProvider implements McpExecutionIdentityProvider {
-  private conversationId = `session_${crypto.randomUUID()}`;
+  private fallbackConversationId = `session_${crypto.randomUUID()}`;
 
   async resolveContext(): Promise<Omit<ToolContext, 'confirmationId'>> {
+    const principalId = process.env.BANGUMI_MCP_PRINCIPAL_ID || 'local-mcp-user';
+    const botInstanceId = process.env.BANGUMI_MCP_BOT_INSTANCE_ID || 'local-mcp';
+    const conversationId = process.env.BANGUMI_MCP_CONVERSATION_ID || this.fallbackConversationId;
+
     return {
-      principalId: process.env.BANGUMI_MCP_PRINCIPAL_ID || 'local-mcp-user',
-      botInstanceId: 'local-mcp',
-      conversationId: this.conversationId,
+      principalId,
+      botInstanceId,
+      conversationId,
     };
   }
 }
