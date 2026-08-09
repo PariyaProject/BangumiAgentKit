@@ -19,6 +19,28 @@ import {
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import { runSqliteMigrations } from './migrator.js';
 
+const SQLITE_JOURNAL_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800, 1600, 3200];
+
+function isSqliteBusyError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED' || /database is locked/i.test(String(error));
+}
+
+async function enableWalMode(sqliteDb: Database.Database): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      sqliteDb.pragma('journal_mode = WAL');
+      return;
+    } catch (error) {
+      const delay = SQLITE_JOURNAL_RETRY_DELAYS_MS[attempt];
+      if (!isSqliteBusyError(error) || delay === undefined) {
+        throw error;
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 export function resolveSqlitePath(dbPath?: string, dataDir?: string): string {
   if (dbPath) return dbPath;
   if (process.env.BANGUMI_SQLITE_PATH) return process.env.BANGUMI_SQLITE_PATH;
@@ -114,7 +136,7 @@ export class SQLiteStorage implements Storage {
     const sqliteDb = new Database(resolvedPath);
     sqliteDb.pragma('busy_timeout = 5000');
     sqliteDb.pragma('foreign_keys = ON');
-    sqliteDb.pragma('journal_mode = WAL');
+    await enableWalMode(sqliteDb);
     sqliteDb.pragma('synchronous = NORMAL');
 
     try {

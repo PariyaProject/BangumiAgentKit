@@ -3,6 +3,17 @@ import * as path from 'node:path';
 import type Database from 'better-sqlite3';
 import type pg from 'pg';
 
+const SQLITE_MIGRATION_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800, 1600, 3200];
+
+function isSqliteBusyError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED' || /database is locked/i.test(String(error));
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 export function getMigrationDir(dialect: 'sqlite' | 'postgres'): string {
   const possibleDirs = [
     path.join(__dirname, 'drizzle', dialect, 'migrations'),
@@ -28,37 +39,45 @@ export async function runSqliteMigrations(sqliteDb: Database.Database): Promise<
     .filter((f) => f.endsWith('.sql'))
     .sort();
 
-  // The write transaction covers migration-table bootstrap, the applied check,
-  // every migration body, and the history writes. This serializes initialization
-  // across independent processes sharing the same SQLite file.
-  sqliteDb.exec('BEGIN IMMEDIATE');
-  try {
-    sqliteDb.exec(`
-      CREATE TABLE IF NOT EXISTS _schema_migrations (
-        id TEXT PRIMARY KEY,
-        applied_at INTEGER NOT NULL
-      );
-    `);
-
-    for (const file of files) {
-      const existing = sqliteDb.prepare('SELECT id FROM _schema_migrations WHERE id = ?').get(file);
-      if (!existing) {
-        const sqlPath = path.join(migrationDir, file);
-        const sql = fs.readFileSync(sqlPath, 'utf-8');
-        sqliteDb.exec(sql);
-        sqliteDb
-          .prepare('INSERT INTO _schema_migrations (id, applied_at) VALUES (?, ?)')
-          .run(file, Date.now());
-      }
-    }
-    sqliteDb.exec('COMMIT');
-  } catch (err) {
+  for (let attempt = 0; ; attempt += 1) {
+    // The write transaction covers migration-table bootstrap, the applied check,
+    // every migration body, and the history writes. This serializes initialization
+    // across independent processes sharing the same SQLite file.
     try {
-      sqliteDb.exec('ROLLBACK');
-    } catch {
-      // Preserve the original migration error.
+      sqliteDb.exec('BEGIN IMMEDIATE');
+      sqliteDb.exec(`
+        CREATE TABLE IF NOT EXISTS _schema_migrations (
+          id TEXT PRIMARY KEY,
+          applied_at INTEGER NOT NULL
+        );
+      `);
+
+      for (const file of files) {
+        const existing = sqliteDb.prepare('SELECT id FROM _schema_migrations WHERE id = ?').get(file);
+        if (!existing) {
+          const sqlPath = path.join(migrationDir, file);
+          const sql = fs.readFileSync(sqlPath, 'utf-8');
+          sqliteDb.exec(sql);
+          sqliteDb
+            .prepare('INSERT INTO _schema_migrations (id, applied_at) VALUES (?, ?)')
+            .run(file, Date.now());
+        }
+      }
+      sqliteDb.exec('COMMIT');
+      return;
+    } catch (err) {
+      try {
+        sqliteDb.exec('ROLLBACK');
+      } catch {
+        // Preserve the original migration error.
+      }
+
+      const delay = SQLITE_MIGRATION_RETRY_DELAYS_MS[attempt];
+      if (!isSqliteBusyError(err) || delay === undefined) {
+        throw err;
+      }
+      await wait(delay);
     }
-    throw err;
   }
 }
 
