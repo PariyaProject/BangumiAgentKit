@@ -751,6 +751,232 @@
     }
   },
   {
+    "name": "bangumi.query_subjects",
+    "description": "按受控条件发现 Bangumi 条目。支持媒体类型、季/月日期、标签、概念、评分/排名/收藏人数范围与 explain；它是有界、可解释的 discovery，不替代已知 ID 的 bangumi.get_subject。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "keyword": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "media": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["anime", "book", "music", "game", "real"]
+            },
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["anime", "book", "music", "game", "real"]
+              }
+            }
+          ]
+        },
+        "categories": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["tv", "ova", "movie", "web"]
+            },
+            {
+              "minItems": 1,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["tv", "ova", "movie", "web"]
+              }
+            }
+          ]
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2200
+        },
+        "month": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "season": {
+          "type": "string",
+          "pattern": "^\\d{4}-(winter|spring|summer|autumn)$"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "tags": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "metaTags": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "excludeMetaTags": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "concepts": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "rating": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "ratingCount": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "rank": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "collectionCount": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "nsfw": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["include", "exclude", "only"]
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "sort": {
+          "type": "string",
+          "enum": ["relevance", "heat", "rank", "score", "date"]
+        },
+        "order": {
+          "type": "string",
+          "enum": ["asc", "desc"]
+        },
+        "resultMode": {
+          "type": "string",
+          "enum": ["top", "all"]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "explain": {
+          "type": "string",
+          "enum": ["none", "compact", "full"]
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "maxPages": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "maxCandidates": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            },
+            "maxHydrations": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "concurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "maxConceptProbes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "maxReturnedItems": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.render_calendar",
     "description": "生成 Bangumi 每日放送/追番日历卡片 Artifact。",
     "auth": "none",
@@ -853,6 +1079,26 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.resolve_subject_concept",
+    "description": "解析一个受控的条目 discovery 概念。只接受精确词表匹配；未知或同时命中 tag/meta_tag 的概念会明确返回，不进行隐式语义扩展。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "concept": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": ["concept"],
       "additionalProperties": false
     }
   },
