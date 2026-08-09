@@ -14,6 +14,7 @@
     "test": "vitest run tests/unit tests/render",
     "test:contract": "vitest run tests/contract",
     "test:semantic": "vitest run tests/semantic",
+    "test:provider": "vitest run tests/provider",
     "test:integration": "vitest run tests/integration",
     "test:integration:sqlite": "BANGUMI_DB_DRIVER=sqlite vitest run tests/integration",
     "test:integration:postgres": "BANGUMI_DB_DRIVER=postgres vitest run tests/integration",

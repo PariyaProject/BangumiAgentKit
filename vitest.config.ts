@@ -29,6 +29,10 @@ export default defineConfig({
         __dirname,
         'packages/platform-qq-official/src/index.ts',
       ),
+      '@bangumi-agent-kit/provider-core': path.resolve(
+        __dirname,
+        'packages/provider-core/src/index.ts',
+      ),
     },
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },

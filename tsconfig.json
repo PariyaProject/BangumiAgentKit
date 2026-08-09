@@ -19,6 +19,7 @@
     { "path": "./packages/html-providers" },
     { "path": "./packages/config" },
     { "path": "./packages/observability" },
+    { "path": "./packages/provider-core" },
     { "path": "./apps/api" },
     { "path": "./apps/mcp" },
     { "path": "./apps/standalone" },
