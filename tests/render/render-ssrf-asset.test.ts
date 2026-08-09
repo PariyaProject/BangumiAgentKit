@@ -9,6 +9,7 @@ import {
   AssetHttpTransport,
   AssetNetworkResolver,
   NodeAssetHttpTransport,
+  createPinnedLookup,
   RendererError,
   sharp,
 } from '../../packages/renderer/src/internal/index.js';
@@ -29,6 +30,24 @@ beforeAll(async () => {
 });
 
 describe('PR-5 SSRF Security & Asset Resolver (R10 - R21)', () => {
+  it('B0: pinned lookup returns the scalar callback contract by default', () => {
+    const lookup = createPinnedLookup({ address: '93.184.216.34', family: 4 });
+    const callback = vi.fn();
+
+    lookup('cover.example', { all: false }, callback);
+
+    expect(callback).toHaveBeenCalledWith(null, '93.184.216.34', 4);
+  });
+
+  it('B0: pinned lookup returns an address array for all:true', () => {
+    const lookup = createPinnedLookup({ address: '2001:db8::20', family: 6 });
+    const callback = vi.fn();
+
+    lookup('cover.example', { all: true }, callback);
+
+    expect(callback).toHaveBeenCalledWith(null, [{ address: '2001:db8::20', family: 6 }]);
+  });
+
   it('R10: localhost asset blocked by URL policy', () => {
     expect(isUrlAllowed('http://localhost/image.png')).toBe(false);
     expect(isUrlAllowed('http://localhost:8080/image.png')).toBe(false);

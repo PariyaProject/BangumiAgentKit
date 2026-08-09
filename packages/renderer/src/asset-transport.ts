@@ -37,6 +37,26 @@ export interface AssetHttpTransport {
   ): Promise<AssetHttpTransportResponse>;
 }
 
+/**
+ * Create the DNS lookup callback used by the pinned asset transport.
+ *
+ * Node has two lookup callback contracts: the default scalar form and the
+ * `all: true` form. Returning a scalar for the latter makes Node treat the
+ * result as malformed and can bypass the transport's intended pinning path.
+ */
+export function createPinnedLookup(
+  approvedAddress: ApprovedAddress,
+): NonNullable<http.RequestOptions['lookup']> {
+  return (_hostname, options, callback) => {
+    if (options.all === true) {
+      callback(null, [{ address: approvedAddress.address, family: approvedAddress.family }]);
+      return;
+    }
+
+    callback(null, approvedAddress.address, approvedAddress.family);
+  };
+}
+
 export class DefaultAssetNetworkResolver implements AssetNetworkResolver {
   async resolve(hostname: string): Promise<ApprovedAddress[]> {
     if (net.isIP(hostname)) {
@@ -142,10 +162,7 @@ export class NodeAssetHttpTransport implements AssetHttpTransport {
         );
       }, timeoutMs);
 
-      const customLookup: http.RequestOptions['lookup'] = (_hostname, _opts, cb) => {
-        // Pin connection strictly to approved address
-        cb(null, approvedAddress.address, approvedAddress.family);
-      };
+      const customLookup = createPinnedLookup(approvedAddress);
 
       const reqOpts: https.RequestOptions = {
         hostname: parsed.hostname,
