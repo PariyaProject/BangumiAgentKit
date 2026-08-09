@@ -253,6 +253,7 @@ class MultiCategoryProvider implements SubjectDiscoveryProvider {
 
 class NativeOrderProvider implements SubjectDiscoveryProvider {
   readonly searchCalls: number[] = [];
+  hydrateCalls = 0;
   private readonly subjects: SubjectDiscoveryCandidate[] = [
     { id: 1, type: 2, name: 'Rank 1', platform: 'TV', date: '2026-01-01', score: 7, rank: 1, collection: { collect: 100 }, tags: [], metaTags: [] },
     { id: 2, type: 2, name: 'Rank 2', platform: 'TV', date: '2026-02-01', score: 8, rank: 2, collection: { collect: 80 }, tags: [], metaTags: [] },
@@ -261,6 +262,7 @@ class NativeOrderProvider implements SubjectDiscoveryProvider {
   ];
 
   async getSubject(): Promise<CapabilityResult<ProviderSubjectData>> {
+    this.hydrateCalls += 1;
     return { state: 'not_found' };
   }
 
@@ -333,6 +335,103 @@ class MetaExclusionProvider implements SubjectDiscoveryProvider {
     return {
       state: 'ok',
       data: { items: this.subjects, total: 2, totalKind: 'estimated', limit: 2, offset: 0 },
+      evidence: {},
+    };
+  }
+
+  async browseSubjects(_request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return { state: 'ok', data: { items: [], total: 0, totalKind: 'exact', limit: 20, offset: 0 }, evidence: {} };
+  }
+}
+
+class GlobalHydrationBudgetProvider implements SubjectDiscoveryProvider {
+  getSubjectCalls = 0;
+
+  async getSubject(id: number): Promise<CapabilityResult<ProviderSubjectData>> {
+    this.getSubjectCalls += 1;
+    const retained = (id - 1) % 20 < 2;
+    return {
+      state: 'ok',
+      data: {
+        id,
+        type: 2,
+        name: `Hydrated ${id}`,
+        nameCn: `Hydrated ${id}`,
+        summary: '',
+        nsfw: false,
+        locked: false,
+        date: '2026-07-01',
+        platform: retained ? 'TV' : 'Movie',
+        images: {},
+        eps: 1,
+        totalEpisodes: 1,
+        stats: stats(8, id, 100),
+      },
+      evidence: {},
+    };
+  }
+
+  async getSubjectStats(id: number): Promise<CapabilityResult<SubjectStatsData>> {
+    const result = await this.getSubject(id);
+    return result.data
+      ? { ...result, data: result.data.stats }
+      : (result as unknown as CapabilityResult<SubjectStatsData>);
+  }
+
+  async searchSubjects(request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const items = Array.from({ length: 20 }, (_, index) => ({
+      id: request.offset + index + 1,
+      type: 2,
+      name: `Candidate ${request.offset + index + 1}`,
+      tags: [],
+      metaTags: [],
+    }));
+    return {
+      state: 'ok',
+      data: { items, total: 200, totalKind: 'estimated', limit: 20, offset: request.offset },
+      evidence: {},
+    };
+  }
+
+  async browseSubjects(_request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return { state: 'ok', data: { items: [], total: 0, totalKind: 'exact', limit: 20, offset: 0 }, evidence: {} };
+  }
+}
+
+class FailedHydrationProvider implements SubjectDiscoveryProvider {
+  getSubjectCalls = 0;
+
+  constructor(private readonly failureState: 'unavailable' | 'not_found' = 'unavailable') {}
+
+  async getSubject(): Promise<CapabilityResult<ProviderSubjectData>> {
+    this.getSubjectCalls += 1;
+    return {
+      state: this.failureState,
+      error: {
+        code: this.failureState === 'not_found' ? 'not_found' : 'upstream_unavailable',
+        retryable: this.failureState !== 'not_found',
+      },
+      warnings: [{
+        code: this.failureState === 'not_found' ? 'UPSTREAM_NOT_FOUND' : 'UPSTREAM_ERROR',
+        message: 'fixture unavailable',
+      }],
+    };
+  }
+
+  async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+    return { state: 'unavailable', error: { code: 'upstream_unavailable', retryable: true } };
+  }
+
+  async searchSubjects(_request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return {
+      state: 'ok',
+      data: {
+        items: [{ id: 901, type: 2, name: 'Unresolved candidate', tags: [], metaTags: [] }],
+        total: 1,
+        totalKind: 'estimated',
+        limit: 20,
+        offset: 0,
+      },
       evidence: {},
     };
   }
@@ -489,6 +588,69 @@ describe('bounded discovery engine', () => {
     expect(result.items.map((item) => item.id)).toEqual([4, 3]);
     expect(provider.searchCalls).toEqual([0, 2, 4]);
     expect(result.coverage.upstreamExhausted).toBe(true);
+    expect(provider.hydrateCalls).toBe(0);
+  });
+
+  it('enforces maxHydrations across every page of one query', async () => {
+    const provider = new GlobalHydrationBudgetProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      categories: 'tv',
+      resultMode: 'all',
+      budget: { maxPages: 10, maxCandidates: 500, maxHydrations: 30, concurrency: 6 },
+    });
+
+    expect(provider.getSubjectCalls).toBe(30);
+    expect(provider.getSubjectCalls).toBeLessThanOrEqual(30);
+    expect(result.coverage.hydrationsAttempted).toBe(30);
+    expect(result.coverage.hydrationsSucceeded).toBe(30);
+    expect(result.coverage.hydrationsFailed).toBe(0);
+    expect(result.coverage.hydrationsUnresolved).toBeGreaterThan(0);
+    expect(result.coverage.state).toBe('partial');
+    expect(result.coverage.budgetExceeded).toBe(true);
+    expect(result.coverage.hydrationBudgetExceeded).toBe(true);
+    expect(result.warnings).toContainEqual(expect.objectContaining({
+      code: 'DISCOVERY_HYDRATION_BUDGET_EXCEEDED',
+    }));
+  });
+
+  it('keeps hydration failures unresolved instead of counting them as filter misses', async () => {
+    const provider = new FailedHydrationProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      categories: 'tv',
+      resultMode: 'all',
+    });
+
+    expect(provider.getSubjectCalls).toBe(1);
+    expect(result.state).toBe('partial');
+    expect(result.items).toEqual([]);
+    expect(result.coverage.hydrationsAttempted).toBe(1);
+    expect(result.coverage.hydrationsSucceeded).toBe(0);
+    expect(result.coverage.hydrationsFailed).toBe(1);
+    expect(result.coverage.hydrationsUnresolved).toBe(1);
+    expect(result.coverage.postFilterCount).toBe(0);
+    expect(result.warnings).toContainEqual(expect.objectContaining({
+      code: 'DISCOVERY_HYDRATION_UNRESOLVED',
+    }));
+  });
+
+  it('marks hydration NOT_FOUND as a source-changed unresolved candidate', async () => {
+    const result = await new DiscoveryEngine(new FailedHydrationProvider('not_found')).query({
+      media: 'anime',
+      categories: 'tv',
+      resultMode: 'all',
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.postFilterCount).toBe(0);
+    expect(result.warnings).toContainEqual(expect.objectContaining({
+      code: 'UPSTREAM_NOT_FOUND',
+    }));
+    expect(result.warnings).toContainEqual(expect.objectContaining({
+      code: 'DISCOVERY_HYDRATION_UNRESOLVED',
+      message: expect.stringContaining('source_changed'),
+    }));
   });
 
   it('applies meta-tag exclusion against hydrated canonical fields', async () => {

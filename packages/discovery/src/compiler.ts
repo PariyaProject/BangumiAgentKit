@@ -1,6 +1,7 @@
 import type {
   ConceptCandidate,
   DiscoveryBrowseStep,
+  DiscoveryHydrationRequirement,
   DiscoveryPlan,
   DiscoveryQuery,
   DiscoverySearchStep,
@@ -143,6 +144,15 @@ export function compileDiscoveryPlan(
   const postFilters: PlanFilter[] = [];
   const derivedFilters: PlanFilter[] = [];
   const unsupported: PlanFilter[] = [];
+  const hydrationRequirements: DiscoveryHydrationRequirement[] = [];
+  const requireHydration = (
+    reason: DiscoveryHydrationRequirement['reason'],
+    fields: string[],
+    source: DiscoveryHydrationRequirement['source'] = 'candidate_or_detail',
+  ): void => {
+    if (hydrationRequirements.some((item) => item.reason === reason)) return;
+    hydrationRequirements.push({ reason, fields, source });
+  };
   const searchDateRange = query.dateRange ?? (
     query.year !== undefined && query.month === undefined ? fullYearRange(query.year) : undefined
   );
@@ -158,18 +168,54 @@ export function compileDiscoveryPlan(
     if (query.media.length > 0) pushdown.push(planFilter('media', operation, 'in', query.media));
     if (query.tags.length > 0) pushdown.push(planFilter('tags', operation, 'contains_all', query.tags));
     if (query.metaTags.length > 0) pushdown.push(planFilter('metaTags', operation, 'contains_all', query.metaTags));
-    if (query.excludeMetaTags.length > 0) postFilters.push(planFilter('excludeMetaTags', operation, 'contains_all', query.excludeMetaTags));
+    if (query.excludeMetaTags.length > 0) {
+      postFilters.push(planFilter('excludeMetaTags', operation, 'contains_all', query.excludeMetaTags));
+      requireHydration('canonical_meta_tags', ['metaTags'], 'canonical_detail');
+    }
     if (searchDateRange) pushdown.push(planFilter('dateRange', operation, 'range', searchDateRange));
-    if (query.rating) pushdown.push(planFilter('rating', operation, 'range', query.rating));
-    if (query.ratingCount) pushdown.push(planFilter('ratingCount', operation, 'range', query.ratingCount));
-    if (query.rank) pushdown.push(planFilter('rank', operation, 'range', query.rank));
-    if (query.nsfw !== 'include') pushdown.push(planFilter('nsfw', operation, 'eq', query.nsfw === 'only'));
-    if (query.categories.length > 0) postFilters.push(planFilter('categories', operation, 'in', query.categories));
-    if (query.collectionCount) derivedFilters.push(planFilter('collectionCount', operation, 'range', query.collectionCount));
+    if (query.rating) {
+      pushdown.push(planFilter('rating', operation, 'range', query.rating));
+      requireHydration('rating_filter', ['score']);
+    }
+    if (query.ratingCount) {
+      pushdown.push(planFilter('ratingCount', operation, 'range', query.ratingCount));
+      requireHydration('rating_count_filter', ['ratingCount']);
+    }
+    if (query.rank) {
+      pushdown.push(planFilter('rank', operation, 'range', query.rank));
+      requireHydration('rank_filter', ['rank']);
+    }
+    if (query.nsfw !== 'include') {
+      pushdown.push(planFilter('nsfw', operation, 'eq', query.nsfw === 'only'));
+      requireHydration('nsfw_filter', ['nsfw']);
+    }
+    if (query.categories.length > 0) {
+      postFilters.push(planFilter('categories', operation, 'in', query.categories));
+      requireHydration('category_filter', ['platform']);
+    }
+    if (query.collectionCount) {
+      derivedFilters.push(planFilter('collectionCount', operation, 'range', query.collectionCount));
+      requireHydration('collection_count_filter', [
+        'collection.wish',
+        'collection.collect',
+        'collection.doing',
+        'collection.onHold',
+        'collection.dropped',
+      ]);
+    }
     pushdown.push(planFilter(`sort:${query.sort}`, operation, 'eq', query.sort));
     pushdown.push(...conceptFilters(operation, resolvedConcepts));
-    if (query.sort === 'date') postFilters.push(planFilter('sort:date', operation, 'eq', query.sort));
+    if (query.sort === 'date') {
+      postFilters.push(planFilter('sort:date', operation, 'eq', query.sort));
+      requireHydration('date_sort', ['date']);
+    }
   }
+  if (operation === 'browseSubjects' && query.categories.length > 0) {
+    requireHydration('category_filter', ['platform']);
+  }
+  if (query.sort === 'score') requireHydration('score_sort', ['score']);
+  if (query.sort === 'rank') requireHydration('rank_sort', ['rank']);
+  if (operation === 'browseSubjects' && query.sort === 'date') requireHydration('date_sort', ['date']);
   if (query.order !== nativeOrder(operation, query.sort)) {
     derivedFilters.push(planFilter('order', operation, 'eq', query.order));
   }
@@ -198,7 +244,8 @@ export function compileDiscoveryPlan(
     postFilters,
     derivedFilters,
     unsupported,
-    hydrationRequired: postFilters.length > 0 || derivedFilters.length > 0,
+    hydrationRequired: hydrationRequirements.length > 0,
+    hydrationRequirements,
     requestedTopN: query.limit,
     resultMode: query.resultMode,
     quality: query.resultMode === 'all' ? 'bounded_exact' : 'exact',

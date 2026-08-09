@@ -10,7 +10,6 @@ import {
   type ProviderSubjectData,
   type SubjectDiscoveryCandidate,
   type SubjectDiscoveryBrowseRequest,
-  type SubjectDiscoveryPage,
   type SubjectDiscoveryTotalKind,
   type SubjectDiscoveryProvider,
   type SubjectDiscoverySearchRequest,
@@ -22,6 +21,7 @@ import {
   type ConceptCandidate,
   type ConceptResolution,
   type DiscoveryItem,
+  type DiscoveryHydrationRequirement,
   type DiscoveryPlan,
   type DiscoveryQuery,
   type DiscoveryResult,
@@ -40,6 +40,7 @@ interface CandidateWithDetail {
   detailResult?: CapabilityResult<ProviderSubjectData>;
   pageEvidence?: FieldEvidence;
   order: number;
+  evaluation: 'pending' | 'match' | 'non_match' | 'unresolved';
 }
 
 function mediaForType(type: number): MediaType {
@@ -148,8 +149,115 @@ function matchesCategory(item: CandidateWithDetail, categories: readonly Discove
 
 function matchesExcludedMetaTags(item: CandidateWithDetail, excluded: readonly string[]): boolean {
   if (excluded.length === 0) return true;
-  const metaTags = item.detail?.metaTags ?? item.candidate.metaTags;
+  const metaTags = item.detail?.metaTags;
+  if (!metaTags) return false;
   return excluded.every((tag) => !metaTags.includes(tag));
+}
+
+function matchesNsfw(item: CandidateWithDetail, query: NormalizedDiscoveryQuery): boolean {
+  if (query.nsfw === 'include') return true;
+  const nsfw = item.detail?.nsfw ?? item.candidate.nsfw;
+  if (nsfw === undefined) return false;
+  return query.nsfw === 'only' ? nsfw : !nsfw;
+}
+
+function candidateHasField(item: CandidateWithDetail, field: string): boolean {
+  switch (field) {
+    case 'platform':
+      return typeof item.candidate.platform === 'string' && item.candidate.platform.length > 0;
+    case 'date':
+      return typeof item.candidate.date === 'string' && item.candidate.date.length > 0;
+    case 'score':
+      return Number.isFinite(item.candidate.score);
+    case 'rank':
+      return Number.isFinite(item.candidate.rank);
+    case 'ratingCount':
+      return Number.isFinite(item.candidate.ratingCount);
+    case 'nsfw':
+      return typeof item.candidate.nsfw === 'boolean';
+    case 'collection.wish':
+    case 'collection.collect':
+    case 'collection.doing':
+    case 'collection.onHold':
+    case 'collection.dropped':
+      return Number.isFinite(item.candidate.collection?.wish)
+        && Number.isFinite(item.candidate.collection?.collect)
+        && Number.isFinite(item.candidate.collection?.doing)
+        && Number.isFinite(item.candidate.collection?.onHold)
+        && Number.isFinite(item.candidate.collection?.dropped);
+    case 'metaTags':
+      return Array.isArray(item.candidate.metaTags);
+    default:
+      return false;
+  }
+}
+
+function detailHasField(item: CandidateWithDetail, field: string): boolean {
+  if (item.detailResult?.state !== 'ok' || !item.detail) return false;
+  switch (field) {
+    case 'platform':
+      return typeof item.detail.platform === 'string' && item.detail.platform.length > 0;
+    case 'date':
+      return typeof item.detail.date === 'string' && item.detail.date.length > 0;
+    case 'score':
+      return Number.isFinite(item.detail.stats.score);
+    case 'rank':
+      return Number.isFinite(item.detail.stats.rank);
+    case 'ratingCount':
+      return Number.isFinite(item.detail.stats.ratingTotal);
+    case 'nsfw':
+      return typeof item.detail.nsfw === 'boolean';
+    case 'collection.wish':
+    case 'collection.collect':
+    case 'collection.doing':
+    case 'collection.onHold':
+    case 'collection.dropped':
+      return Number.isFinite(item.detail.stats.collection.wish)
+        && Number.isFinite(item.detail.stats.collection.collect)
+        && Number.isFinite(item.detail.stats.collection.doing)
+        && Number.isFinite(item.detail.stats.collection.onHold)
+        && Number.isFinite(item.detail.stats.collection.dropped);
+    case 'metaTags':
+      return Array.isArray(item.detail.metaTags);
+    default:
+      return false;
+  }
+}
+
+function requirementSatisfied(item: CandidateWithDetail, requirement: DiscoveryHydrationRequirement): boolean {
+  if (requirement.source === 'canonical_detail') {
+    return requirement.fields.every((field) => detailHasField(item, field));
+  }
+  return requirement.fields.every((field) => candidateHasField(item, field) || detailHasField(item, field));
+}
+
+function requiresHydration(
+  item: CandidateWithDetail,
+  requirements: readonly DiscoveryHydrationRequirement[],
+): boolean {
+  return item.detailResult === undefined && requirements.some((requirement) => !requirementSatisfied(item, requirement));
+}
+
+function evaluateCandidate(
+  item: CandidateWithDetail,
+  query: NormalizedDiscoveryQuery,
+  requirements: readonly DiscoveryHydrationRequirement[],
+): 'match' | 'non_match' | 'unresolved' {
+  if (requirements.some((requirement) => !requirementSatisfied(item, requirement))) return 'unresolved';
+  const collection = collectionFor(item.candidate, item.detail);
+  const score = numberFor(item.candidate, item.detail, 'score');
+  const rank = numberFor(item.candidate, item.detail, 'rank');
+  const ratingCount = numberFor(item.candidate, item.detail, 'ratingCount');
+  const collectionValue = collection.total;
+  const isMatch =
+    matchesCategory(item, query.categories) &&
+    matchesExcludedMetaTags(item, query.excludeMetaTags) &&
+    matchesNsfw(item, query) &&
+    matchesRange(score, query.rating) &&
+    matchesRange(ratingCount, query.ratingCount) &&
+    matchesRange(rank, query.rank) &&
+    matchesRange(collectionValue, query.collectionCount);
+  return isMatch ? 'match' : 'non_match';
 }
 
 function sortItems(items: CandidateWithDetail[], query: NormalizedDiscoveryQuery): CandidateWithDetail[] {
@@ -213,34 +321,70 @@ function emptyCoverage(query: NormalizedDiscoveryQuery, reason?: string): Discov
     budgetExceeded: false,
     postFilterCount: 0,
     totalKind: 'unknown',
+    hydrationsAttempted: 0,
+    hydrationsSucceeded: 0,
+    hydrationsFailed: 0,
+    hydrationsUnresolved: 0,
+    hydrationBudgetExceeded: false,
     ...(reason === undefined ? {} : { reason }),
   };
 }
 
-function allEvidence(result: CapabilityResult<SubjectDiscoveryPage>): EvidenceRef[] {
+function allEvidence(result: { evidence?: FieldEvidence }): EvidenceRef[] {
   return Object.values(result.evidence ?? {}).flat();
+}
+
+interface BoundedHydrationResult {
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  unresolved: CandidateWithDetail[];
+  results: Array<{ item: CandidateWithDetail; result: CapabilityResult<ProviderSubjectData> }>;
 }
 
 async function boundedHydration(
   provider: SubjectDiscoveryProvider,
   candidates: CandidateWithDetail[],
-  budget: NormalizedDiscoveryQuery['budget'],
+  remainingBudget: number,
+  concurrency: number,
   context: ProviderRequestContext,
-): Promise<void> {
-  const toHydrate = candidates.slice(0, budget.maxHydrations);
-  for (let start = 0; start < toHydrate.length; start += budget.concurrency) {
-    const batch = toHydrate.slice(start, start + budget.concurrency);
+): Promise<BoundedHydrationResult> {
+  const toHydrate = candidates.slice(0, Math.max(0, Math.floor(remainingBudget)));
+  const batchSize = Math.max(1, Math.floor(concurrency));
+  const hydrated: Array<{ item: CandidateWithDetail; result: CapabilityResult<ProviderSubjectData> }> = [];
+  for (let start = 0; start < toHydrate.length; start += batchSize) {
+    const batch = toHydrate.slice(start, start + batchSize);
     const results = await Promise.all(
-      batch.map(async (item) => ({
-        item,
-        result: await provider.getSubject(item.candidate.id, context),
-      })),
+      batch.map(async (item) => {
+        let result: CapabilityResult<ProviderSubjectData>;
+        try {
+          result = await provider.getSubject(item.candidate.id, context);
+        } catch {
+          result = {
+            state: 'upstream_error',
+            error: { code: 'upstream_error', retryable: false },
+            warnings: [{ code: 'UPSTREAM_ERROR', message: 'Subject hydration failed before a provider result was returned.' }],
+          };
+        }
+        return { item, result };
+      }),
     );
     for (const { item, result } of results) {
       item.detailResult = result;
       item.detail = result.data;
+      hydrated.push({ item, result });
     }
   }
+  const succeeded = hydrated.filter(({ result }) => result.state === 'ok' && result.data !== undefined).length;
+  return {
+    attempted: hydrated.length,
+    succeeded,
+    failed: hydrated.length - succeeded,
+    unresolved: hydrated
+      .filter(({ result }) => result.state !== 'ok' || result.data === undefined)
+      .map(({ item }) => item),
+    results: hydrated,
+  };
 }
 
 export class DiscoveryEngine {
@@ -273,7 +417,7 @@ export class DiscoveryEngine {
 
     const warnings: CapabilityWarning[] = [];
     const evidence: EvidenceRef[] = [];
-    const matched = new Map<number, CandidateWithDetail>();
+    const candidatesById = new Map<number, CandidateWithDetail>();
     const seenIds = new Set<number>();
     let scanned = 0;
     let pagesRequested = 0;
@@ -281,6 +425,12 @@ export class DiscoveryEngine {
     let postFilterCount = 0;
     let upstreamExhausted = false;
     let budgetExceeded = false;
+    let hydrationBudgetExceeded = false;
+    let hydrationsAttempted = 0;
+    let hydrationsSucceeded = 0;
+    let hydrationsFailed = 0;
+    let hydrationsUnresolved = 0;
+    let hydrationSourceChanged = false;
     let totalKind: SubjectDiscoveryTotalKind = 'unknown';
     let orderCounter = 0;
     let lastState: DiscoveryResult['state'] = 'ok';
@@ -310,7 +460,7 @@ export class DiscoveryEngine {
       evidence.push(...allEvidence(result));
       if (result.state !== 'ok' || !result.data) {
         lastState = result.state;
-        if (matched.size > 0) lastState = 'partial';
+        if ([...candidatesById.values()].some((item) => item.evaluation === 'match')) lastState = 'partial';
         break;
       }
       const page = result.data;
@@ -327,37 +477,53 @@ export class DiscoveryEngine {
         }
         if (seenIds.has(candidate.id)) continue;
         seenIds.add(candidate.id);
-        matched.set(candidate.id, {
+        candidatesById.set(candidate.id, {
           candidate,
           pageEvidence: result.evidence,
           order: orderCounter++,
+          evaluation: 'pending',
         });
       }
-      const candidates = [...matched.values()];
-      const needsHydration = plan.hydrationRequired;
-      if (needsHydration) {
-        await boundedHydration(this.provider, candidates.filter((item) => !item.detailResult), query.budget, context);
-        if (candidates.length > query.budget.maxHydrations) budgetExceeded = true;
+      const candidates = [...candidatesById.values()];
+      const hydrationCandidates = candidates.filter((item) =>
+        item.evaluation === 'pending' && requiresHydration(item, plan.hydrationRequirements));
+      const remainingHydrations = Math.max(0, query.budget.maxHydrations - hydrationsAttempted);
+      if (hydrationCandidates.length > 0) {
+        const hydration = await boundedHydration(
+          this.provider,
+          hydrationCandidates,
+          remainingHydrations,
+          query.budget.concurrency,
+          context,
+        );
+        hydrationsAttempted += hydration.attempted;
+        hydrationsSucceeded += hydration.succeeded;
+        hydrationsFailed += hydration.failed;
+        for (const { result: detailResult } of hydration.results) {
+          warnings.push(...(detailResult.warnings ?? []));
+          evidence.push(...allEvidence(detailResult));
+          if (detailResult.state === 'not_found') hydrationSourceChanged = true;
+        }
+        if (hydrationCandidates.length > remainingHydrations) hydrationBudgetExceeded = true;
       }
       for (const item of candidates) {
-        const collection = collectionFor(item.candidate, item.detail);
-        const score = numberFor(item.candidate, item.detail, 'score');
-        const rank = numberFor(item.candidate, item.detail, 'rank');
-        const ratingCount = numberFor(item.candidate, item.detail, 'ratingCount');
-        const collectionValue = collection.total;
-        const isMatch =
-          matchesCategory(item, query.categories) &&
-          matchesExcludedMetaTags(item, query.excludeMetaTags) &&
-          matchesRange(score, query.rating) &&
-          matchesRange(ratingCount, query.ratingCount) &&
-          matchesRange(rank, query.rank) &&
-          matchesRange(collectionValue, query.collectionCount);
-        if (!isMatch) {
+        if (item.evaluation !== 'pending') continue;
+        const evaluation = evaluateCandidate(item, query, plan.hydrationRequirements);
+        item.evaluation = evaluation;
+        if (evaluation === 'non_match') {
           postFilterCount += 1;
-          matched.delete(item.candidate.id);
+          candidatesById.delete(item.candidate.id);
+        } else if (evaluation === 'unresolved') {
+          hydrationsUnresolved += 1;
         }
       }
-      if (canStopTopQuery && matched.size >= query.limit) break;
+      if (hydrationBudgetExceeded) {
+        budgetExceeded = true;
+        break;
+      }
+      const matchedCount = [...candidatesById.values()]
+        .filter((item) => item.evaluation === 'match').length;
+      if (canStopTopQuery && matchedCount >= query.limit && hydrationsUnresolved === 0) break;
       const total = page.total;
       if (page.totalKind === 'exact' && total !== undefined && offset + page.items.length >= total) {
         upstreamExhausted = true;
@@ -371,14 +537,22 @@ export class DiscoveryEngine {
     }
     if (!upstreamExhausted && pagesScanned >= query.budget.maxPages) budgetExceeded = true;
     if (!upstreamExhausted && scanned >= query.budget.maxCandidates) budgetExceeded = true;
-    const sorted = sortItems([...matched.values()], query);
+    if (hydrationBudgetExceeded) budgetExceeded = true;
+    const sorted = sortItems(
+      [...candidatesById.values()].filter((item) => item.evaluation === 'match'),
+      query,
+    );
     const outputCap = query.resultMode === 'all' ? query.budget.maxReturnedItems : query.limit;
     const outputTruncated = query.resultMode === 'all' && sorted.length > outputCap;
     const returnedItems = sorted
       .slice(0, outputCap)
       .map((item) => this.toItem(item, item.pageEvidence ?? {}, query));
     const coverage: DiscoveryCoverage = {
-      state: budgetExceeded || outputTruncated ? 'partial' : upstreamExhausted ? 'complete' : 'unknown',
+      state: budgetExceeded || outputTruncated || hydrationsUnresolved > 0
+        ? 'partial'
+        : upstreamExhausted
+          ? 'complete'
+          : 'unknown',
       requested: query.resultMode === 'all' ? (upstreamExhausted ? scanned : 0) : query.limit,
       scanned,
       matched: sorted.length,
@@ -389,8 +563,15 @@ export class DiscoveryEngine {
       budgetExceeded,
       postFilterCount,
       totalKind,
+      hydrationsAttempted,
+      hydrationsSucceeded,
+      hydrationsFailed,
+      hydrationsUnresolved,
+      hydrationBudgetExceeded,
       ...(outputTruncated
         ? { outputCap, reason: 'output_cap' }
+        : hydrationBudgetExceeded
+          ? { reason: 'Hydration budget was exhausted before all required candidates could be evaluated.' }
         : budgetExceeded
           ? { reason: 'Execution budget was exhausted before upstream coverage was proven.' }
           : {}),
@@ -399,6 +580,21 @@ export class DiscoveryEngine {
       warnings.push({
         code: 'DISCOVERY_BUDGET_EXCEEDED',
         message: 'Discovery returned a bounded partial result because the execution budget was exhausted.',
+      });
+      lastState = 'partial';
+    }
+    if (hydrationBudgetExceeded) {
+      warnings.push({
+        code: 'DISCOVERY_HYDRATION_BUDGET_EXCEEDED',
+        message: 'Discovery left candidates unresolved because the per-query hydration budget was exhausted.',
+      });
+    }
+    if (hydrationsUnresolved > 0) {
+      warnings.push({
+        code: 'DISCOVERY_HYDRATION_UNRESOLVED',
+        message: hydrationSourceChanged
+          ? 'Some discovered candidates could not be reliably evaluated during hydration and remain unresolved (source_changed).'
+          : 'Some discovered candidates could not be reliably evaluated during hydration and remain unresolved.',
       });
       lastState = 'partial';
     }
@@ -415,7 +611,9 @@ export class DiscoveryEngine {
     if (lastState !== 'ok' && returnedItems.length === 0 && warnings.length === 0) {
       warnings.push({ code: 'UPSTREAM_ERROR', message: 'The official discovery provider did not return data.' });
     }
-    const finalState = lastState === 'ok' ? (budgetExceeded || outputTruncated ? 'partial' : 'ok') : lastState;
+    const finalState = lastState === 'ok'
+      ? (budgetExceeded || outputTruncated || hydrationsUnresolved > 0 ? 'partial' : 'ok')
+      : lastState;
     const result: DiscoveryResult = {
       state: finalState,
       items: returnedItems,
@@ -503,8 +701,8 @@ export class DiscoveryEngine {
         ? {}
         : { ratingCount: numberFor(item.candidate, detail, 'ratingCount') }),
       ...(collection.total === undefined ? {} : { collectionTotal: collection.total }),
-      tags: [...item.candidate.tags],
-      metaTags: [...item.candidate.metaTags],
+      tags: [...(detail?.tags ?? item.candidate.tags)],
+      metaTags: [...(detail?.metaTags ?? item.candidate.metaTags)],
       ...(imageFor(item.candidate, detail) === undefined ? {} : { image: imageFor(item.candidate, detail) }),
       ...(detail?.nsfw ?? item.candidate.nsfw) === undefined
         ? {}

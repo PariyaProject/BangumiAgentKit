@@ -156,6 +156,24 @@ export type DiscoveryPlanQuality =
   | 'partial_possible'
   | 'unsupported';
 
+export type DiscoveryHydrationReason =
+  | 'canonical_meta_tags'
+  | 'category_filter'
+  | 'collection_count_filter'
+  | 'rating_filter'
+  | 'rating_count_filter'
+  | 'rank_filter'
+  | 'nsfw_filter'
+  | 'date_sort'
+  | 'score_sort'
+  | 'rank_sort';
+
+export interface DiscoveryHydrationRequirement {
+  reason: DiscoveryHydrationReason;
+  fields: string[];
+  source: 'candidate_or_detail' | 'canonical_detail';
+}
+
 export interface DiscoveryPlan {
   source: 'official_v0';
   operation: 'searchSubjects' | 'browseSubjects';
@@ -165,6 +183,7 @@ export interface DiscoveryPlan {
   derivedFilters: PlanFilter[];
   unsupported: PlanFilter[];
   hydrationRequired: boolean;
+  hydrationRequirements: DiscoveryHydrationRequirement[];
   requestedTopN: number;
   resultMode: DiscoveryResultMode;
   quality: DiscoveryPlanQuality;
@@ -184,6 +203,11 @@ export interface DiscoveryCoverage extends Coverage {
   budgetExceeded: boolean;
   postFilterCount: number;
   totalKind: SubjectDiscoveryTotalKind;
+  hydrationsAttempted: number;
+  hydrationsSucceeded: number;
+  hydrationsFailed: number;
+  hydrationsUnresolved: number;
+  hydrationBudgetExceeded: boolean;
   outputCap?: number;
   reason?: string;
 }
