@@ -1,34 +1,54 @@
-## Current Cycle
+## Last Frozen Cycle
 
 PR-7C Advanced Discovery & Query Planner
 
-State:
+Status:
 
-READY_FOR_REVIEW
+FROZEN
 
-Freeze Candidate SHA:
+Frozen SHA:
 
 9ae07d5a8ad5517da5dc9c33a999e174e71a86c9
 
-Human Checkpoint:
+Freeze Review:
 
-REQUIRED BEFORE NEXT PRODUCT IMPLEMENTATION CYCLE
+PASSED
+
+---
+
+## Current Cycle
+
+AUTONOMOUS PRODUCT CYCLE SELECTION
+
+State:
+
+OBSERVE
 
 ## Current Phase
 
-READY_FOR_REVIEW
+OBSERVE
+
+## Active Workplan
+
+None.
+
+The next Product Cycle must be selected according to:
+
+`docs/agent/AUTONOMOUS_PRODUCT_EVOLUTION.md`
 
 ## Next Product Cycle Candidate
 
-TBD
-
-Likely:
 Person / Seiyuu / Staff Intelligence
 
-This is a candidate only.
-The autonomous selection cycle must re-evaluate priority.
+This is a candidate, not a mandatory choice.
+
+The autonomous cycle must re-evaluate priority.
+
+## Human Checkpoint
+
+CLEARED for the next bounded read-oriented Product Cycle,
+subject to AGENTS.md checkpoint rules.
 
 ## Next Action
 
-Complete human/freeze review of PR-7C.
-After approval, begin Autonomous Product Cycle Selection.
+Perform Autonomous Product Cycle Selection.
