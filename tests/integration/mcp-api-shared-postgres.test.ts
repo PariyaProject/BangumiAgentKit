@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { MemoryStorage, PostgresStorage, Storage } from '@bangumi-agent-kit/db';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { MemoryStorage, PostgresStorage, SQLiteStorage, Storage } from '@bangumi-agent-kit/db';
 import { createRuntimeDependencies } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
 import { createApiApp } from '../../apps/api/src/app.js';
@@ -76,12 +78,17 @@ function testSharedStorageIntegration(name: string, createStorage: () => Promise
 
 testSharedStorageIntegration('MemoryStorage', async () => new MemoryStorage());
 
-testSharedStorageIntegration('PostgresStorage', async () => {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    throw new Error('DATABASE_URL environment variable is required for integration tests');
-  }
-  const storage = new PostgresStorage(dbUrl);
-  await storage.init();
-  return storage;
+testSharedStorageIntegration('SQLiteStorage', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgm-shared-sqlite-'));
+  const dbPath = path.join(tmpDir, 'shared.sqlite');
+  return await SQLiteStorage.create({ dbPath });
 });
+
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl) {
+  testSharedStorageIntegration('PostgresStorage', async () => {
+    const storage = new PostgresStorage(dbUrl);
+    await storage.init();
+    return storage;
+  });
+}
