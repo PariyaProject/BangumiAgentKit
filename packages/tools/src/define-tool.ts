@@ -4,6 +4,7 @@ import type { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import type { Storage } from '@bangumi-agent-kit/db';
 import type { OAuthService, TokenBroker, BangumiClientProvider } from '@bangumi-agent-kit/auth';
 import type { AuditService } from '@bangumi-agent-kit/bangumi-core';
+import type { ProviderRegistry } from '@bangumi-agent-kit/provider-core';
 
 export type OperationRisk = 'read' | 'write' | 'destructive';
 export type ToolAuthRequirement = 'none' | 'optional' | 'required';
@@ -33,6 +34,7 @@ export interface ToolExecutionDependencies {
   tokenBroker?: TokenBroker;
   clientProvider?: BangumiClientProvider;
   auditService?: AuditService;
+  providerRegistry?: ProviderRegistry;
 
   executionSession?: AuthenticatedExecutionSession;
 }

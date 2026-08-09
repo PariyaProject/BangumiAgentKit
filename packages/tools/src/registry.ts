@@ -22,6 +22,12 @@ import { createWriteTools } from './definitions/write-tools.js';
 import { createAuthTools } from './definitions/auth-tools.js';
 import { createRenderPresentationTools } from './definitions/render-presentation-tools.js';
 import type { ArtifactStore, RenderService } from '@bangumi-agent-kit/renderer';
+import {
+  OfficialLegacyCalendarProvider,
+  OfficialV0Provider,
+  ProviderRegistry,
+} from '@bangumi-agent-kit/provider-core';
+import { CalendarClient, GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 
 export type ToolMode = 'curated' | 'full';
 
@@ -34,6 +40,7 @@ export interface RuntimeDependencies {
   auditService: AuditService;
   renderService?: RenderService;
   artifactStore?: ArtifactStore;
+  providerRegistry?: ProviderRegistry;
 }
 
 export interface CreateRuntimeDependenciesConfig {
@@ -88,6 +95,10 @@ export function createRuntimeDependenciesWithStorage(
   }
 
   const publicHttpClient = config.publicHttpClient || new HttpClient();
+  const providerRegistry = new ProviderRegistry({
+    v0: new OfficialV0Provider(new GeneratedBangumiOpenApiClient(publicHttpClient)),
+    legacyCalendar: new OfficialLegacyCalendarProvider(new CalendarClient(publicHttpClient)),
+  });
 
   const oauthService = new OAuthService(
     storage,
@@ -127,6 +138,7 @@ export function createRuntimeDependenciesWithStorage(
     auditService,
     renderService: config.renderService,
     artifactStore: config.artifactStore,
+    providerRegistry,
   };
 }
 

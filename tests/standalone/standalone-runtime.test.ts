@@ -219,6 +219,31 @@ describe('PR-6R-C standalone runtime', () => {
     await host.close();
   });
 
+  it('PR-7B: provider status exposes official readiness and gated sources', async () => {
+    const host = await createTestHost();
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const context = {
+      host,
+      flags: parseCliArgs(['--json', 'provider', 'status']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+
+    const result = await registry.execute(['provider', 'status'], context);
+    const statuses = result.value as Array<{ id: string; state: string }>;
+    expect(statuses).toEqual(
+      expect.arrayContaining([
+        { id: 'official-v0', state: 'READY', sourceClass: 'official_v0', capabilities: ['subject', 'subject_stats'] },
+        { id: 'official-legacy', state: 'READY', sourceClass: 'official_legacy', capabilities: ['calendar'] },
+        { id: 'structured-web', state: 'DISABLED', sourceClass: 'structured_web', capabilities: [] },
+        { id: 'website-html', state: 'DISABLED', sourceClass: 'website_html', capabilities: [] },
+        { id: 'snapshots', state: 'NOT_CONFIGURED', sourceClass: 'snapshot', capabilities: [] },
+      ]),
+    );
+    await host.close();
+  });
+
   it('ST-20/ST-21: presenters redact token-shaped fields from human and JSON output', () => {
     const value = {
       username: 'alice',

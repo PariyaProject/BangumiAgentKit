@@ -15,15 +15,23 @@ function subjectFixture(): Subject {
     name: '少女終末旅行',
     name_cn: '少女终末旅行',
     summary: 'fixture subject',
+    series: false,
     nsfw: false,
     locked: false,
     date: '2017-10-06',
     platform: 'TV',
-    images: { large: 'https://example.test/large.png' },
+    images: {
+      large: 'https://example.test/large.png',
+      common: 'https://example.test/common.png',
+      medium: 'https://example.test/medium.png',
+      small: 'https://example.test/small.png',
+      grid: 'https://example.test/grid.png',
+    },
     infobox: [],
     volumes: 0,
     eps: 12,
     total_episodes: 12,
+    rank: 42,
     rating: {
       rank: 42,
       total: 100,
@@ -33,7 +41,7 @@ function subjectFixture(): Subject {
     collection: { wish: 10, collect: 40, doing: 20, on_hold: 5, dropped: 2 },
     meta_tags: [],
     tags: [],
-  } as Subject;
+  } as unknown as Subject;
 }
 
 function calendarFixture(): CalendarItem[] {

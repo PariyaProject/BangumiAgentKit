@@ -274,6 +274,9 @@ importers:
       '@bangumi-agent-kit/db':
         specifier: workspace:*
         version: link:../db
+      '@bangumi-agent-kit/provider-core':
+        specifier: workspace:*
+        version: link:../provider-core
       '@bangumi-agent-kit/renderer':
         specifier: workspace:*
         version: link:../renderer

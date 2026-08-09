@@ -68,6 +68,12 @@ export interface StandaloneStatus {
   renderer: 'ready' | 'unavailable';
   oauthCallback:
     StandaloneOAuthStatus | { ready: false; host: string; port: number; callbackUrl: string };
+  providers: Array<{
+    id: string;
+    sourceClass: string;
+    state: string;
+    capabilities: string[];
+  }>;
 }
 
 const DEFAULT_VERSION = '0.1.0';
@@ -282,6 +288,7 @@ export class StandaloneHost {
       oauth: auth,
       renderer: await detectRenderer(),
       oauthCallback: this.oauthController.status(),
+      providers: this.dependencies.providerRegistry?.getStatus() ?? [],
     };
   }
 

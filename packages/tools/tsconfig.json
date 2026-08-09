@@ -11,6 +11,7 @@
     { "path": "../db" },
     { "path": "../auth" },
     { "path": "../bangumi-core" },
+    { "path": "../provider-core" },
     { "path": "../renderer" }
   ]
 }

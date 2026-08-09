@@ -11,6 +11,7 @@
     "@bangumi-agent-kit/auth": "workspace:*",
     "@bangumi-agent-kit/bangumi-core": "workspace:*",
     "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
+    "@bangumi-agent-kit/provider-core": "workspace:*",
     "@bangumi-agent-kit/bangumi-transport": "workspace:*",
     "@bangumi-agent-kit/db": "workspace:*",
     "@bangumi-agent-kit/renderer": "workspace:*",

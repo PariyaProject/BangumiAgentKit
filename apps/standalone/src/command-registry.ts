@@ -26,6 +26,8 @@ const HELP_TEXT = `BangumiAgentKit Standalone v0.1
 General:
   help                         Show this help
   status                       Show local runtime status
+  provider status              Show provider readiness and source policy
+  provider explain subject <id>  Explain subject evidence (safe metadata only)
   doctor                       Run local diagnostics
   version                      Show version
   clear                        Clear the terminal
@@ -177,6 +179,7 @@ export class StandaloneCommandRegistry {
     if (command === 'version') return { value: { version: '0.1.0' } };
     if (command === 'status') return { value: await ctx.host.getStatus(ctx.flags.verbose) };
     if (command === 'doctor') return { value: await this.doctor(ctx) };
+    if (command === 'provider') return { value: await this.provider(args.slice(1), ctx) };
     if (command === 'search') return { value: await this.search(args.slice(1), ctx) };
     if (command === 'subject') {
       return {
@@ -347,6 +350,31 @@ export class StandaloneCommandRegistry {
     throw new StandaloneCliError(`USAGE_ERROR: unknown tool command "${args[0]}".`, 2);
   }
 
+  private async provider(args: string[], ctx: StandaloneCommandContext): Promise<unknown> {
+    const subcommand = requireArg(args[0], 'provider subcommand').toLowerCase();
+    const registry = ctx.host.getDependencies().providerRegistry;
+    if (!registry) {
+      throw new StandaloneCliError('RUNTIME_ERROR: provider registry is unavailable.', 1);
+    }
+    if (subcommand === 'status') return registry.getStatus();
+    if (subcommand === 'explain') {
+      const capability = requireArg(args[1], 'provider capability').toLowerCase();
+      if (capability !== 'subject') {
+        throw new StandaloneCliError(
+          `USAGE_ERROR: provider explain currently supports subject <id>.`,
+          2,
+        );
+      }
+      const subjectId = parsePositiveInteger(args[2], 'subject id');
+      return {
+        capability,
+        subjectId,
+        result: await registry.getSubject(subjectId),
+      };
+    }
+    throw new StandaloneCliError(`USAGE_ERROR: unknown provider command "${args[0]}".`, 2);
+  }
+
   private async doctor(ctx: StandaloneCommandContext): Promise<unknown> {
     const status = await ctx.host.getStatus(ctx.flags.verbose);
     const checks = [
@@ -370,7 +398,14 @@ export class StandaloneCommandRegistry {
         message:
           status.renderer === 'ready'
             ? 'Chromium renderer is ready'
-            : 'Renderer is optional and unavailable',
+          : 'Renderer is optional and unavailable',
+      },
+      {
+        category: 'Providers',
+        status: status.providers.some((provider) => provider.state === 'READY') ? 'PASS' : 'WARN',
+        message: status.providers.some((provider) => provider.state === 'READY')
+          ? 'Official provider adapters are ready'
+          : 'No official provider adapter is ready',
       },
       {
         category: 'Claude Host',

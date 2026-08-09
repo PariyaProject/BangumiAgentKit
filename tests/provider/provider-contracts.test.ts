@@ -126,11 +126,11 @@ describe('PR-7B provider core contracts', () => {
   it('PF15: unsafe credential fields cannot enter evidence', () => {
     expect(() =>
       createEvidenceRef({
-        source: SOURCE_DERIVED,
-        retrievedAt,
-        formula: 'safe',
-        ...( { ciphertext: 'not-safe' } as never),
-      }),
+        ...Object.assign(
+          { source: SOURCE_DERIVED, retrievedAt, formula: 'safe' },
+          { ciphertext: 'not-safe' },
+        ),
+      } as EvidenceRef),
     ).toThrow(/Unsafe provider evidence field/);
   });
 });
