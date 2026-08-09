@@ -189,8 +189,11 @@ class HostConfig:
     def process_environment(self, identity_env: Mapping[str, str]) -> dict[str, str]:
         env = dict(os.environ)
         env.update(identity_env)
-        env.setdefault('BANGUMI_DATA_DIR', str(self.data_dir))
-        env.setdefault('BANGUMI_DB_DRIVER', 'sqlite')
+        # The host owns the runtime profile for this invocation.  In particular,
+        # an unrelated parent-shell data directory must not redirect the MCP
+        # subprocess away from this host's configured state.
+        env['BANGUMI_DATA_DIR'] = str(self.data_dir)
+        env['BANGUMI_DB_DRIVER'] = 'sqlite'
         if self.env_file is not None:
             env['BANGUMI_ENV_FILE'] = str(self.env_file)
         return env

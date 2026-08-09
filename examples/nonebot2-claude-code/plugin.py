@@ -1,141 +1,80 @@
-import os
-import re
-import json
-import asyncio
-from typing import Dict, Any, Optional
+"""Optional NoneBot2 adapter for an existing bot application.
 
-# Conversation session memory mapping (ConversationID -> Claude SessionID)
-SESSION_MAP: Dict[str, str] = {}
-CONVERSATION_LOCKS: Dict[str, asyncio.Lock] = {}
+The generic bridge lives in ``bangumi_host`` and has no NoneBot dependency.
+This file exposes an explicit ``/bangumi`` matcher only when NoneBot2 and its
+OneBot v11 adapter are installed; it never registers a catch-all matcher.
+"""
 
-def get_conversation_lock(conversation_id: str) -> asyncio.Lock:
-    if conversation_id not in CONVERSATION_LOCKS:
-        CONVERSATION_LOCKS[conversation_id] = asyncio.Lock()
-    return CONVERSATION_LOCKS[conversation_id]
+from __future__ import annotations
 
-async def invoke_claude_host(
-    message: str,
-    principal_id: str,
-    bot_instance_id: str,
-    conversation_id: str,
-    claude_bin: str = "claude",
-    workdir: Optional[str] = None,
-    timeout_seconds: int = 45,
-) -> Dict[str, Any]:
-    """
-    Invokes `claude -p` CLI with identity env vars, resuming existing session if present.
-    Executes using argument arrays without shell=True for security.
-    """
-    lock = get_conversation_lock(conversation_id)
-    async with lock:
-        env = os.environ.copy()
-        env["BANGUMI_MCP_PRINCIPAL_ID"] = principal_id
-        env["BANGUMI_MCP_BOT_INSTANCE_ID"] = bot_instance_id
-        env["BANGUMI_MCP_CONVERSATION_ID"] = conversation_id
-        env["BANGUMI_DB_DRIVER"] = env.get("BANGUMI_DB_DRIVER", "sqlite")
+from bangumi_host.adapter import handle_bangumi_agent_message as _handle_message
+from bangumi_host.service import ClaudeHostService, HostResult
 
-        cmd = [claude_bin, "-p", message, "--output-format", "json"]
 
-        session_id = SESSION_MAP.get(conversation_id)
-        if session_id:
-            cmd.extend(["--resume", session_id])
+_SERVICE: ClaudeHostService | None = None
 
-        cwd = workdir or os.getcwd()
 
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                cwd=cwd,
-                env=env,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+def get_host_service() -> ClaudeHostService:
+    global _SERVICE
+    if _SERVICE is None:
+        _SERVICE = ClaudeHostService.from_env()
+    return _SERVICE
 
-            try:
-                stdout_data, stderr_data = await asyncio.wait_for(
-                    proc.communicate(), timeout=float(timeout_seconds)
-                )
-            except asyncio.TimeoutError:
-                proc.kill()
-                await proc.wait()
-                return {
-                    "ok": False,
-                    "text": "请求处理超时，请重试。",
-                    "error": "CLAUDE_TIMEOUT",
-                }
-
-            if proc.returncode != 0:
-                err_text = stderr_data.decode("utf-8", errors="ignore")
-                return {
-                    "ok": False,
-                    "text": "Bangumi Agent 服务暂时不可用。",
-                    "error": f"CLAUDE_PROCESS_ERROR (code {proc.returncode}): {err_text}",
-                }
-
-            raw_out = stdout_data.decode("utf-8", errors="ignore").strip()
-            if not raw_out:
-                return {
-                    "ok": False,
-                    "text": "模型未返回有效响应。",
-                    "error": "EMPTY_OUTPUT",
-                }
-
-            parsed = json.loads(raw_out)
-
-            # Capture session_id for future continuation
-            if isinstance(parsed, dict) and "session_id" in parsed:
-                SESSION_MAP[conversation_id] = parsed["session_id"]
-
-            return {
-                "ok": True,
-                "data": parsed,
-            }
-        except Exception as e:
-            return {
-                "ok": False,
-                "text": "系统底层处理出错，请联系管理员。",
-                "error": str(e),
-            }
-
-def resolve_artifact_path(artifact_id: str, artifact_dir: Optional[str] = None) -> Optional[str]:
-    """
-    Safely resolves art_xxx to local absolute file path.
-    Enforces pattern ^art_[A-Za-z0-9_-]+$ to prevent path traversal.
-    """
-    if not re.match(r"^art_[A-Za-z0-9_-]+$", artifact_id):
-        return None
-
-    base_dir = artifact_dir or os.environ.get(
-        "BANGUMI_ARTIFACT_DIR", os.path.expanduser("~/.bangumi-agent-kit/artifacts")
-    )
-    file_path = os.path.join(base_dir, f"{artifact_id}.png")
-
-    if os.path.exists(file_path):
-        return os.path.abspath(file_path)
-
-    return None
 
 async def handle_bangumi_agent_message(
     user_id: str,
-    group_id: Optional[str],
-    bot_id: str,
+    group_id: str | None,
+    bot_self_id: str,
+    display_name: str | None,
     message_text: str,
-    claude_bin: str = "claude",
-) -> Dict[str, Any]:
-    """
-    Helper function for NoneBot handlers.
-    Derives principal_id, bot_instance_id, conversation_id and executes request.
-    """
-    principal_id = f"qq:{user_id}"
-    bot_instance_id = f"qq:{bot_id}"
-    conversation_id = f"qq:group:{group_id}" if group_id else f"qq:private:{user_id}"
-
-    res = await invoke_claude_host(
-        message=message_text,
-        principal_id=principal_id,
-        bot_instance_id=bot_instance_id,
-        conversation_id=conversation_id,
-        claude_bin=claude_bin,
+    service: ClaudeHostService | None = None,
+) -> HostResult:
+    """Call this from an existing matcher/router at the integration point of choice."""
+    return await _handle_message(
+        user_id=user_id,
+        group_id=group_id,
+        bot_self_id=bot_self_id,
+        display_name=display_name,
+        message_text=message_text,
+        service=service or get_host_service(),
     )
 
-    return res
+
+try:
+    from nonebot import on_command
+    from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+
+    bangumi_command = on_command('bangumi', aliases={'bgm', '邦奇'}, priority=10, block=False)
+
+    @bangumi_command.handle()
+    async def _handle_explicit_command(bot: Bot, event: MessageEvent, args: Message) -> None:
+        text = args.extract_plain_text().strip()
+        if not text:
+            await bangumi_command.finish('请在 /bangumi 后输入问题。')
+
+        sender = getattr(event, 'sender', None)
+        display_name = None
+        if sender is not None:
+            display_name = getattr(sender, 'card', None) or getattr(sender, 'nickname', None)
+            if isinstance(sender, dict):
+                display_name = sender.get('card') or sender.get('nickname')
+
+        group_id = getattr(event, 'group_id', None)
+        result = await handle_bangumi_agent_message(
+            user_id=str(event.get_user_id()),
+            group_id=str(group_id) if group_id is not None else None,
+            bot_self_id=str(bot.self_id),
+            display_name=str(display_name) if display_name else None,
+            message_text=text,
+        )
+        reply = Message(result.response.text)
+        for path in result.artifact_paths:
+            reply.append(MessageSegment.image(path=str(path)))
+        await bangumi_command.finish(reply)
+except ImportError:
+    # The reusable bridge remains usable in environments that do not install
+    # NoneBot; deployment environments can install the adapter separately.
+    bangumi_command = None
+
+
+__all__ = ['get_host_service', 'handle_bangumi_agent_message', 'bangumi_command']
