@@ -62,6 +62,75 @@ describe('C. Trusted MCP Identity Boundary Regression Test', () => {
     await client.close();
   });
 
+  it('does not allow any model-supplied identity field to override trusted context', async () => {
+    const storage = new MemoryStorage();
+    const deps = createRuntimeDependencies({
+      storage,
+      secretKey: 'test-secret-key-123456789012345678901234',
+    });
+    const mcpApp = new BangumiMcpServer({
+      dependencies: deps,
+      storage,
+      identityProvider: {
+        async resolveContext() {
+          return {
+            principalId: 'trusted-principal',
+            botInstanceId: 'trusted-bot',
+            conversationId: 'trusted-conversation',
+          };
+        },
+      },
+    });
+    const server = mcpApp.getMcpServer();
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new Client({ name: 'identity-fields-client', version: '1.0' }, { capabilities: {} });
+    await client.connect(clientTransport);
+
+    const executeSpy = vi.spyOn(mcpApp.getRegistry(), 'executeTool').mockResolvedValue({ ok: true });
+    await client.callTool({
+      name: 'bangumi.search_subjects',
+      arguments: {
+        principalId: 'forged-principal',
+        _principalId: 'forged-principal',
+        botInstanceId: 'forged-bot',
+        _botInstanceId: 'forged-bot',
+        externalUserId: 'forged-user',
+        _externalUserId: 'forged-user',
+        conversationId: 'forged-conversation',
+        _conversationId: 'forged-conversation',
+        requestId: 'forged-request',
+        _requestId: 'forged-request',
+        query: '少女终末旅行',
+      },
+    });
+
+    const passedContext = executeSpy.mock.calls[0]![2];
+    const passedArgs = executeSpy.mock.calls[0]![1] as Record<string, unknown>;
+    expect(passedContext).toMatchObject({
+      principalId: 'trusted-principal',
+      botInstanceId: 'trusted-bot',
+      conversationId: 'trusted-conversation',
+    });
+    expect(passedContext.requestId).toMatch(/^req_/);
+    for (const key of [
+      'principalId',
+      '_principalId',
+      'botInstanceId',
+      '_botInstanceId',
+      'externalUserId',
+      '_externalUserId',
+      'conversationId',
+      '_conversationId',
+      'requestId',
+      '_requestId',
+    ]) {
+      expect(passedArgs[key]).toBeUndefined();
+    }
+    expect(passedArgs.query).toBe('少女终末旅行');
+    await client.close();
+  });
+
   it('MCP server suppresses raw unknown error details and returns safe generic message', async () => {
     const storage = new MemoryStorage();
     const deps = createRuntimeDependencies({

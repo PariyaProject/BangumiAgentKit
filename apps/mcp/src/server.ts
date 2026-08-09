@@ -11,25 +11,74 @@ import {
 } from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
+import {
+  StdioMcpExecutionIdentityProvider,
+} from './identity.js';
+import type { McpExecutionIdentityProvider } from './identity.js';
 
-export interface McpExecutionIdentityProvider {
-  resolveContext(request: unknown): Promise<Omit<ToolContext, 'confirmationId'>>;
+export { StdioMcpExecutionIdentityProvider } from './identity.js';
+export type { McpExecutionIdentityProvider } from './identity.js';
+
+const RESERVED_IDENTITY_ARGUMENTS = new Set([
+  'principalId',
+  '_principalId',
+  'botInstanceId',
+  '_botInstanceId',
+  'externalUserId',
+  '_externalUserId',
+  'conversationId',
+  '_conversationId',
+  'requestId',
+  '_requestId',
+]);
+
+const CONFIRMATION_ID_PATTERN = '^cfm_[A-Za-z0-9_-]+$';
+
+function addMcpConfirmationSchema(
+  tool: ReturnType<ToolRegistry['getTools']>[number],
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  if (tool.risk === 'read') return schema;
+
+  const properties =
+    schema.properties && typeof schema.properties === 'object'
+      ? (schema.properties as Record<string, unknown>)
+      : {};
+
+  return {
+    ...schema,
+    properties: {
+      ...properties,
+      _confirmationId: {
+        type: 'string',
+        pattern: CONFIRMATION_ID_PATTERN,
+        description:
+          'Only use the confirmation ID returned by a previous CONFIRMATION_REQUIRED response for the exact same operation and payload.',
+      },
+    },
+  };
 }
 
-export class StdioMcpExecutionIdentityProvider implements McpExecutionIdentityProvider {
-  private fallbackConversationId = `session_${crypto.randomUUID()}`;
+function extractConfirmationId(rawArgs: Record<string, unknown>): string | undefined {
+  const reserved = rawArgs._confirmationId;
+  const legacy = rawArgs.confirmationId;
 
-  async resolveContext(): Promise<Omit<ToolContext, 'confirmationId'>> {
-    const principalId = process.env.BANGUMI_MCP_PRINCIPAL_ID || 'local-mcp-user';
-    const botInstanceId = process.env.BANGUMI_MCP_BOT_INSTANCE_ID || 'local-mcp';
-    const conversationId = process.env.BANGUMI_MCP_CONVERSATION_ID || this.fallbackConversationId;
-
-    return {
-      principalId,
-      botInstanceId,
-      conversationId,
-    };
+  if (reserved !== undefined && typeof reserved !== 'string') {
+    throw new BangumiError('CONFIRMATION_INVALID', 'MCP _confirmationId must be a string.', false, 400);
   }
+  if (legacy !== undefined && typeof legacy !== 'string') {
+    throw new BangumiError('CONFIRMATION_INVALID', 'MCP confirmationId must be a string.', false, 400);
+  }
+  if (reserved && legacy && reserved !== legacy) {
+    throw new BangumiError(
+      'CONFIRMATION_INVALID',
+      'MCP _confirmationId and confirmationId must match when both are provided.',
+      false,
+      400,
+    );
+  }
+
+  return reserved || legacy;
 }
 
 export interface McpServerOptions {
@@ -47,15 +96,13 @@ export class BangumiMcpServer {
   private dependencies: RuntimeDependencies;
   private identityProvider: McpExecutionIdentityProvider;
 
-  constructor(options: McpServerOptions | HttpClient) {
+  constructor(options: McpServerOptions | HttpClient = {}) {
     let opts: McpServerOptions = {};
     if (options && 'request' in options && typeof (options as HttpClient).request === 'function') {
       opts = { httpClient: options as HttpClient };
     } else {
       opts = options as McpServerOptions;
     }
-
-    this.identityProvider = opts.identityProvider || new StdioMcpExecutionIdentityProvider();
 
     if (opts.registry) {
       this.registry = opts.registry;
@@ -78,6 +125,9 @@ export class BangumiMcpServer {
     } else {
       throw new Error('Use BangumiMcpServer.create() for runtime initialization.');
     }
+
+    this.identityProvider =
+      opts.identityProvider || new StdioMcpExecutionIdentityProvider(this.dependencies.storage);
 
     this.server = new Server(
       {
@@ -144,7 +194,7 @@ export class BangumiMcpServer {
         return {
           name: tool.name,
           description: tool.description,
-          inputSchema: derivedJsonSchema,
+          inputSchema: addMcpConfirmationSchema(tool, derivedJsonSchema),
         };
       });
 
@@ -153,26 +203,24 @@ export class BangumiMcpServer {
 
     // Call Tool Handler
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-      const rawArgs = (args || {}) as Record<string, unknown>;
-
-      const resolvedContext = await this.identityProvider.resolveContext(request);
-      const confirmationId =
-        (rawArgs._confirmationId as string) || (rawArgs.confirmationId as string) || undefined;
-
-      const context: ToolContext = {
-        ...resolvedContext,
-        confirmationId,
-      };
-
-      const toolArgs: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(rawArgs)) {
-        if (!k.startsWith('_')) {
-          toolArgs[k] = v;
-        }
-      }
-
       try {
+        const { name, arguments: args } = request.params;
+        const rawArgs = (args || {}) as Record<string, unknown>;
+        const resolvedContext = await this.identityProvider.resolveContext(request);
+        const confirmationId = extractConfirmationId(rawArgs);
+        const context: ToolContext = {
+          ...resolvedContext,
+          requestId: `req_${crypto.randomUUID()}`,
+          confirmationId,
+        };
+
+        const toolArgs: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(rawArgs)) {
+          if (!key.startsWith('_') && key !== 'confirmationId' && !RESERVED_IDENTITY_ARGUMENTS.has(key)) {
+            toolArgs[key] = value;
+          }
+        }
+
         const result = await this.registry.executeTool(name, toolArgs, context);
         return {
           content: [
