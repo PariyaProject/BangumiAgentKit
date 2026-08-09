@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { HttpClient } from '../../packages/bangumi-transport/src/index.js';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
+import { MemoryStorage } from '../../packages/db/src/index.js';
 import { z } from 'zod';
 
 describe('Phase 2: MCP Runtime Tests', () => {
@@ -25,7 +26,7 @@ describe('Phase 2: MCP Runtime Tests', () => {
     });
 
     const httpClient = new HttpClient({ fetchFn: mockFetch });
-    const mcpApp = new BangumiMcpServer(httpClient);
+    const mcpApp = new BangumiMcpServer({ httpClient, storage: new MemoryStorage() });
     const server = mcpApp.getMcpServer();
 
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

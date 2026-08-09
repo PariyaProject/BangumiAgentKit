@@ -71,6 +71,9 @@ importers:
       '@bangumi-agent-kit/bangumi-transport':
         specifier: workspace:*
         version: link:../../packages/bangumi-transport
+      '@bangumi-agent-kit/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@bangumi-agent-kit/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -97,6 +100,9 @@ importers:
       '@bangumi-agent-kit/bangumi-transport':
         specifier: workspace:*
         version: link:../../packages/bangumi-transport
+      '@bangumi-agent-kit/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@bangumi-agent-kit/db':
         specifier: workspace:*
         version: link:../../packages/db

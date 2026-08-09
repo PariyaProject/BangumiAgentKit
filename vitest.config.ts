@@ -20,6 +20,7 @@ export default defineConfig({
       ),
       '@bangumi-agent-kit/tools': path.resolve(__dirname, 'packages/tools/src/index.ts'),
       '@bangumi-agent-kit/renderer': path.resolve(__dirname, 'packages/renderer/src/index.ts'),
+      '@bangumi-agent-kit/config': path.resolve(__dirname, 'packages/config/src/index.ts'),
       '@bangumi-agent-kit/platform-core': path.resolve(
         __dirname,
         'packages/platform-core/src/index.ts',

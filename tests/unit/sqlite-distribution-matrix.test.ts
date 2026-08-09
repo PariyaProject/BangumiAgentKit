@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Database = require('better-sqlite3') as any;
+const Database = require('better-sqlite3');
 import {
   SQLiteStorage,
   PostgresStorage,
@@ -11,9 +10,11 @@ import {
   runSqliteMigrations,
   resolveSqlitePath,
 } from '../../packages/db/src/index.js';
-import { loadRuntimeEnv } from '../../packages/config/src/index.js';
 import { createApiApp } from '../../apps/api/src/app.js';
 import { TokenBroker, encryptToken } from '../../packages/auth/src/index.js';
+import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
+import { BANGUMI_OAUTH_CALLBACK_PATH, loadRuntimeEnv } from '../../packages/config/src/index.js';
+import { setupLocal } from '../../scripts/setup-local.js';
 
 describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
   let origEnv: NodeJS.ProcessEnv;
@@ -79,26 +80,41 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
   });
 
   // R6A-05
-  it('R6A-05: API and MCP independent runtimes share same SQLite file', async () => {
+  it('R6A-05: API runtime state is visible to an independently initialized MCP runtime', async () => {
     const dbPath = path.join(tmpDir, 'shared.sqlite');
+    process.env.BANGUMI_DB_DRIVER = 'sqlite';
+    process.env.BANGUMI_SQLITE_PATH = dbPath;
+    delete process.env.DATABASE_URL;
 
-    // Runtime A (API)
-    const storageA = await SQLiteStorage.create({ dbPath });
-    const accountA = await storageA.upsertBangumiAccount({
+    const apiRuntime = await createApiApp();
+    const principal = await apiRuntime.storage.findOrCreatePrincipal({
+      provider: 'qq',
+      botInstanceId: 'api-bot',
+      externalUserId: 'api-user',
+    });
+    const accountA = await apiRuntime.storage.upsertBangumiAccount({
       id: 'bgm-shared-1',
       bangumiUserId: 8888,
       username: 'shared_user',
       nickname: 'Shared User',
     });
-    expect(accountA.id).toBe('bgm-shared-1');
-    await storageA.close();
+    await apiRuntime.storage.bindAccount(principal.id, accountA.id, true);
 
-    // Runtime B (MCP)
-    const storageB = await SQLiteStorage.create({ dbPath });
-    const accountB = await storageB.getBangumiAccount('bgm-shared-1');
-    expect(accountB).not.toBeNull();
-    expect(accountB?.username).toBe('shared_user');
-    await storageB.close();
+    const mcpRuntime = await BangumiMcpServer.create();
+    const status = await mcpRuntime
+      .getRegistry()
+      .executeTool(
+        'bangumi.auth_status',
+        {},
+        { principalId: principal.id, botInstanceId: 'api-bot', conversationId: 'api-conversation' },
+      );
+    expect(status).toMatchObject({
+      bound: true,
+      account: { username: 'shared_user' },
+    });
+
+    await mcpRuntime.close();
+    await apiRuntime.storage.close();
   });
 
   // R6A-06 & R6A-07
@@ -109,8 +125,14 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
 
     process.env.TEST_VAR_PREEXISTING = 'original';
 
-    fs.writeFileSync(path.join(tmpDir, '.env.local'), 'TEST_VAR_LOCAL=from_local\nTEST_VAR_PREEXISTING=local_override\n');
-    fs.writeFileSync(path.join(tmpDir, '.env'), 'TEST_VAR_LOCAL=from_env\nTEST_VAR_DEFAULT=from_env\n');
+    fs.writeFileSync(
+      path.join(tmpDir, '.env.local'),
+      'TEST_VAR_LOCAL=from_local\nTEST_VAR_PREEXISTING=local_override\n',
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, '.env'),
+      'TEST_VAR_LOCAL=from_env\nTEST_VAR_DEFAULT=from_env\n',
+    );
 
     loadRuntimeEnv(tmpDir);
 
@@ -121,13 +143,22 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
 
   // R6A-08
   it('R6A-08: setup OAuth callback redirect URI matches Fastify route', async () => {
-    const dbPath = path.join(tmpDir, 'oauth.sqlite');
-    const storage = await SQLiteStorage.create({ dbPath });
+    const dataDir = path.join(tmpDir, 'oauth-data');
+    await setupLocal({ cwd: tmpDir, dataDir });
+    const envContent = fs.readFileSync(path.join(tmpDir, '.env.local'), 'utf8');
+    const redirectUri = envContent
+      .split('\n')
+      .find((line) => line.startsWith('BANGUMI_OAUTH_REDIRECT_URI='))
+      ?.slice('BANGUMI_OAUTH_REDIRECT_URI='.length);
+    expect(redirectUri?.endsWith(BANGUMI_OAUTH_CALLBACK_PATH)).toBe(true);
+
+    const storage = await SQLiteStorage.create({ dbPath: resolveSqlitePath(undefined, dataDir) });
     const { app } = await createApiApp({ storage });
+    expect(app.hasRoute({ method: 'GET', url: BANGUMI_OAUTH_CALLBACK_PATH })).toBe(true);
 
     const res = await app.inject({
       method: 'GET',
-      url: '/oauth/bangumi/callback',
+      url: BANGUMI_OAUTH_CALLBACK_PATH,
     });
 
     // Should reach handler (400 due to missing code/state), proving route exists
@@ -223,7 +254,7 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
   });
 
   // R6A-14
-  it('R6A-14: concurrent active binding switches leave exactly one active binding', async () => {
+  it('R6A-14: DB active invariant under independent connections', async () => {
     const dbPath = path.join(tmpDir, 'concurrent_active.sqlite');
     const storageInit = await SQLiteStorage.create({ dbPath });
 
@@ -259,7 +290,9 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
 
     const rawDb = new Database(dbPath);
     const row = rawDb
-      .prepare('SELECT COUNT(*) as count FROM account_bindings WHERE principal_id = ? AND is_active = 1')
+      .prepare(
+        'SELECT COUNT(*) as count FROM account_bindings WHERE principal_id = ? AND is_active = 1',
+      )
       .get(p.id) as { count: number };
 
     expect(row.count).toBe(1);
@@ -318,15 +351,12 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    const tokenBroker = new TokenBroker(
-      storage,
-      {
-        secretKey: 'test-secret-key-123456789012345678901234',
-        clientId: 'cid',
-        clientSecret: 'csec',
-        redirectUri: 'http://localhost:3000/oauth/bangumi/callback',
-      },
-    );
+    const tokenBroker = new TokenBroker(storage, {
+      secretKey: 'test-secret-key-123456789012345678901234',
+      clientId: 'cid',
+      clientSecret: 'csec',
+      redirectUri: 'http://localhost:3000/oauth/bangumi/callback',
+    });
 
     // Call resolveAccessToken concurrently 5 times
     const results = await Promise.all(
@@ -432,15 +462,22 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
   });
 
   // R6A-18
-  it('R6A-18: setupLocal preserves existing encryption key on repeated execution', () => {
+  it('R6A-18: actual setupLocal preserves existing encryption key on repeated execution', async () => {
+    const dataDir = path.join(tmpDir, 'setup-data');
+    await setupLocal({ cwd: tmpDir, dataDir });
     const envLocalPath = path.join(tmpDir, '.env.local');
-    const initialContent = `BANGUMI_TOKEN_ENCRYPTION_KEY=existing_key_12345678901234567890123456789012\n`;
-    fs.writeFileSync(envLocalPath, initialContent);
+    const firstKey = fs
+      .readFileSync(envLocalPath, 'utf8')
+      .split('\n')
+      .find((line) => line.startsWith('BANGUMI_TOKEN_ENCRYPTION_KEY='));
 
-    // Simulate setupLocal logic checking for existing file
-    if (fs.existsSync(envLocalPath)) {
-      const content = fs.readFileSync(envLocalPath, 'utf-8');
-      expect(content).toContain('existing_key_12345678901234567890123456789012');
-    }
+    await setupLocal({ cwd: tmpDir, dataDir });
+    const secondKey = fs
+      .readFileSync(envLocalPath, 'utf8')
+      .split('\n')
+      .find((line) => line.startsWith('BANGUMI_TOKEN_ENCRYPTION_KEY='));
+
+    expect(firstKey).toBeDefined();
+    expect(secondKey).toBe(firstKey);
   });
 });

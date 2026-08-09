@@ -1,4 +1,5 @@
 import Fastify, { FastifyInstance } from 'fastify';
+import { BANGUMI_OAUTH_CALLBACK_PATH } from '@bangumi-agent-kit/config';
 import { Storage } from '@bangumi-agent-kit/db';
 import {
   createRuntimeDependencies,
@@ -52,7 +53,7 @@ export async function createApiApp(options: ApiAppOptions = {}): Promise<ApiAppI
     return reply.status(200).send(res);
   });
 
-  app.get('/oauth/bangumi/callback', async (req, reply) => {
+  app.get(BANGUMI_OAUTH_CALLBACK_PATH, async (req, reply) => {
     const { code, state } = req.query as { code?: string; state?: string };
     const res = await oauthHandler(code, state);
     return reply.status(res.statusCode).headers(res.headers).send(res.body);

@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
+import { MemoryStorage } from '../../packages/db/src/index.js';
 
 describe('Phase 2: MCP Tool Schema Tests', () => {
   it('publishes valid inputSchema for bangumi.search_subjects, bangumi.get_subject, and bangumi.get_calendar', async () => {
-    const mcpApp = new BangumiMcpServer();
+    const mcpApp = new BangumiMcpServer({ storage: new MemoryStorage() });
     const server = mcpApp.getMcpServer();
 
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

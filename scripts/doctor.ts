@@ -18,7 +18,7 @@ async function runDoctor() {
 
   // 1. Node.js Version
   const nodeVersion = process.version;
-  const major = parseInt(nodeVersion.replace(/^v/, '').split('.')[0], 10);
+  const major = parseInt(nodeVersion.replace(/^v/, '').split('.')[0] || '0', 10);
   if (major >= 18) {
     results.push({
       category: 'Node Runtime',

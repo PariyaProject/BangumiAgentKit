@@ -10,7 +10,7 @@ import {
   createRuntimeDependenciesWithStorage,
 } from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
-import { Storage, MemoryStorage } from '@bangumi-agent-kit/db';
+import { Storage } from '@bangumi-agent-kit/db';
 
 export interface McpExecutionIdentityProvider {
   resolveContext(request: unknown): Promise<Omit<ToolContext, 'confirmationId'>>;
@@ -47,7 +47,7 @@ export class BangumiMcpServer {
   private dependencies: RuntimeDependencies;
   private identityProvider: McpExecutionIdentityProvider;
 
-  constructor(options: McpServerOptions | HttpClient = {}) {
+  constructor(options: McpServerOptions | HttpClient) {
     let opts: McpServerOptions = {};
     if (options && 'request' in options && typeof (options as HttpClient).request === 'function') {
       opts = { httpClient: options as HttpClient };
@@ -76,12 +76,7 @@ export class BangumiMcpServer {
       });
       this.registry = new ToolRegistry(this.dependencies);
     } else {
-      const storage = new MemoryStorage();
-      this.dependencies = createRuntimeDependenciesWithStorage(storage, {
-        databaseUrl: opts.databaseUrl,
-        publicHttpClient: opts.httpClient,
-      });
-      this.registry = new ToolRegistry(this.dependencies);
+      throw new Error('Use BangumiMcpServer.create() for runtime initialization.');
     }
 
     this.server = new Server(
@@ -128,6 +123,10 @@ export class BangumiMcpServer {
 
   public getRegistry(): ToolRegistry {
     return this.registry;
+  }
+
+  public async close(): Promise<void> {
+    await this.dependencies.storage.close();
   }
 
   private setupHandlers(): void {

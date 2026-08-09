@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as crypto from 'node:crypto';
 import Database from 'better-sqlite3';
 import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as sqliteSchema from './drizzle/sqlite/schema.js';
 import {
   ExternalPrincipalRecord,
@@ -24,9 +24,7 @@ export function resolveSqlitePath(dbPath?: string, dataDir?: string): string {
   if (process.env.BANGUMI_SQLITE_PATH) return process.env.BANGUMI_SQLITE_PATH;
 
   const resolvedDataDir =
-    dataDir ||
-    process.env.BANGUMI_DATA_DIR ||
-    path.join(os.homedir(), '.bangumi-agent-kit');
+    dataDir || process.env.BANGUMI_DATA_DIR || path.join(os.homedir(), '.bangumi-agent-kit');
 
   return path.join(resolvedDataDir, 'bangumi-agent-kit.sqlite');
 }
@@ -114,9 +112,9 @@ export class SQLiteStorage implements Storage {
     }
 
     const sqliteDb = new Database(resolvedPath);
+    sqliteDb.pragma('busy_timeout = 5000');
     sqliteDb.pragma('foreign_keys = ON');
     sqliteDb.pragma('journal_mode = WAL');
-    sqliteDb.pragma('busy_timeout = 5000');
     sqliteDb.pragma('synchronous = NORMAL');
 
     try {
@@ -132,46 +130,59 @@ export class SQLiteStorage implements Storage {
   }
 
   async findOrCreatePrincipal(input: FindOrCreatePrincipalInput): Promise<ExternalPrincipalRecord> {
-    const existing = await this.db.query.externalPrincipals.findFirst({
-      where: and(
-        eq(sqliteSchema.externalPrincipals.provider, input.provider),
-        eq(sqliteSchema.externalPrincipals.botInstanceId, input.botInstanceId),
-        eq(sqliteSchema.externalPrincipals.externalUserId, input.externalUserId),
-      ),
-    });
-
-    if (existing) {
-      return {
-        id: existing.id,
-        provider: existing.provider,
-        botInstanceId: existing.botInstanceId,
-        externalUserId: existing.externalUserId,
-        displayName: existing.displayName || undefined,
-        createdAt: new Date(existing.createdAt),
-        updatedAt: new Date(existing.updatedAt),
-      };
-    }
-
     const now = new Date();
     const id = `prc_${crypto.randomUUID()}`;
-    await this.db.insert(sqliteSchema.externalPrincipals).values({
-      id,
-      provider: input.provider,
-      botInstanceId: input.botInstanceId,
-      externalUserId: input.externalUserId,
-      displayName: input.displayName,
-      createdAt: now.getTime(),
-      updatedAt: now.getTime(),
-    });
+    this.sqliteDb
+      .prepare(
+        `
+        INSERT INTO external_principals (
+          id, provider, bot_instance_id, external_user_id, display_name, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(provider, bot_instance_id, external_user_id) DO NOTHING
+      `,
+      )
+      .run(
+        id,
+        input.provider,
+        input.botInstanceId,
+        input.externalUserId,
+        input.displayName || null,
+        now.getTime(),
+        now.getTime(),
+      );
+
+    const stored = this.sqliteDb
+      .prepare(
+        `
+        SELECT id, provider, bot_instance_id, external_user_id, display_name, created_at, updated_at
+        FROM external_principals
+        WHERE provider = ? AND bot_instance_id = ? AND external_user_id = ?
+      `,
+      )
+      .get(input.provider, input.botInstanceId, input.externalUserId) as
+      | {
+          id: string;
+          provider: string;
+          bot_instance_id: string;
+          external_user_id: string;
+          display_name?: string | null;
+          created_at: number;
+          updated_at: number;
+        }
+      | undefined;
+
+    if (!stored) {
+      throw new Error('STORAGE_ERROR: Principal insert succeeded but canonical row was not found');
+    }
 
     return {
-      id,
-      provider: input.provider,
-      botInstanceId: input.botInstanceId,
-      externalUserId: input.externalUserId,
-      displayName: input.displayName,
-      createdAt: now,
-      updatedAt: now,
+      id: stored.id,
+      provider: stored.provider,
+      botInstanceId: stored.bot_instance_id,
+      externalUserId: stored.external_user_id,
+      displayName: stored.display_name || undefined,
+      createdAt: new Date(stored.created_at),
+      updatedAt: new Date(stored.updated_at),
     };
   }
 
@@ -294,7 +305,8 @@ export class SQLiteStorage implements Storage {
       const existingStmt = this.sqliteDb.prepare(
         `SELECT id FROM account_bindings WHERE principal_id = ? AND bangumi_account_id = ?`,
       );
-      const existing = existingStmt.get(principalId, bangumiAccountId) as { id: string } | undefined;
+      const existing = existingStmt.get(principalId, bangumiAccountId) as
+        { id: string } | undefined;
       if (existing) {
         this.sqliteDb
           .prepare(`UPDATE account_bindings SET is_active = ? WHERE id = ?`)
@@ -330,9 +342,7 @@ export class SQLiteStorage implements Storage {
     const checkStmt = this.sqliteDb.prepare(
       `SELECT id FROM account_bindings WHERE principal_id = ? AND bangumi_account_id = ?`,
     );
-    const existing = checkStmt.get(principalId, bangumiAccountId) as
-      | { id: string }
-      | undefined;
+    const existing = checkStmt.get(principalId, bangumiAccountId) as { id: string } | undefined;
     if (!existing) {
       throw new Error(
         `BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`,
@@ -607,7 +617,9 @@ export class SQLiteStorage implements Storage {
       throw new Error(`CONFIRMATION_INVALID: Invalid confirmationId "${input.confirmationId}"`);
     }
     if (existing.status !== 'pending') {
-      throw new Error(`CONFIRMATION_INVALID: Action status is "${existing.status}", expected "pending"`);
+      throw new Error(
+        `CONFIRMATION_INVALID: Action status is "${existing.status}", expected "pending"`,
+      );
     }
     if (existing.principal_id !== input.principalId) {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not belong to current user');
@@ -619,12 +631,16 @@ export class SQLiteStorage implements Storage {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match current conversation');
     }
     if (nowMs > existing.expires_at) {
-      const expStmt = this.sqliteDb.prepare(`UPDATE pending_actions SET status = 'expired', updated_at = ? WHERE id = ?`);
+      const expStmt = this.sqliteDb.prepare(
+        `UPDATE pending_actions SET status = 'expired', updated_at = ? WHERE id = ?`,
+      );
       expStmt.run(nowMs, input.confirmationId);
       throw new Error('CONFIRMATION_EXPIRED: Confirmation has expired');
     }
     if (existing.payload_hash !== input.payloadHash) {
-      throw new Error('CONFIRMATION_INVALID: Action payload hash does not match original confirmation');
+      throw new Error(
+        'CONFIRMATION_INVALID: Action payload hash does not match original confirmation',
+      );
     }
 
     throw new Error('CONFIRMATION_INVALID: Failed to claim pending action');
@@ -729,7 +745,9 @@ export class SQLiteStorage implements Storage {
       await new Promise((r) => setTimeout(r, 20));
     }
 
-    throw new Error(`LOCK_TIMEOUT: Failed to acquire credential lock for account ${accountId} within ${timeoutMs}ms`);
+    throw new Error(
+      `LOCK_TIMEOUT: Failed to acquire credential lock for account ${accountId} within ${timeoutMs}ms`,
+    );
   }
 
   async close(): Promise<void> {

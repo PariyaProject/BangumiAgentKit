@@ -41,7 +41,10 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ storage: new MemoryStorage(), publicHttpClient: httpClient });
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: httpClient,
+    });
 
     const result = (await registry.executeTool(
       'bangumi.search_subjects',
@@ -68,7 +71,10 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ storage: new MemoryStorage(), publicHttpClient: httpClient });
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: httpClient,
+    });
 
     const result = (await registry.executeTool(
       'bangumi.get_calendar',
@@ -82,7 +88,10 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
 
   it('executes bangumi.list_operations and bangumi.describe_operation fallback tools', async () => {
     const httpClient = new HttpClient();
-    const registry = new ToolRegistry({ storage: new MemoryStorage(), publicHttpClient: httpClient });
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: httpClient,
+    });
 
     const listRes = (await registry.executeTool(
       'bangumi.list_operations',
@@ -104,8 +113,14 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
   });
 
   it('BangumiMcpServer initializes correctly with handlers', () => {
-    const mcpServer = new BangumiMcpServer();
+    const mcpServer = new BangumiMcpServer({ storage: new MemoryStorage() });
     expect(mcpServer.getMcpServer()).toBeDefined();
     expect(mcpServer.getRegistry()).toBeDefined();
+  });
+
+  it('requires the async runtime factory when storage is not explicitly injected', () => {
+    expect(() => new BangumiMcpServer({})).toThrow(
+      'Use BangumiMcpServer.create() for runtime initialization.',
+    );
   });
 });

@@ -49,9 +49,10 @@ BangumiAgentKit provides a v0.1 release candidate MCP server and tools ecosystem
 ### 1. Setup Environment
 
 ```bash
-# Install dependencies & build packages
+# Install dependencies, configure the local database, and build packages
 pnpm install
 pnpm setup:local
+pnpm build
 
 # Run environment doctor
 pnpm doctor
@@ -63,10 +64,13 @@ pnpm doctor
 pnpm renderer:install
 ```
 
-### 3. Run MCP Server
+### 3. Run API and MCP Servers
 
 ```bash
-# Start MCP server via stdio
+# Start the API server
+pnpm start:api
+
+# In another terminal, start MCP via stdio
 pnpm start:mcp
 ```
 
@@ -74,15 +78,15 @@ pnpm start:mcp
 
 ## Storage & Configuration
 
-| Environment Variable | Default Value | Description |
-| --- | --- | --- |
-| `BANGUMI_DATA_DIR` | `~/.bangumi-agent-kit` | Base directory for storage & artifacts |
-| `BANGUMI_DB_DRIVER` | `sqlite` | Database driver (`sqlite` or `postgres`) |
-| `BANGUMI_SQLITE_PATH` | `<BANGUMI_DATA_DIR>/bangumi-agent-kit.sqlite` | Custom SQLite file path |
-| `DATABASE_URL` | None | PostgreSQL connection URI (auto-enables `postgres` driver) |
-| `BANGUMI_OAUTH_CLIENT_ID` | None | Bangumi OAuth App Client ID |
-| `BANGUMI_OAUTH_CLIENT_SECRET` | None | Bangumi OAuth App Client Secret |
-| `BANGUMI_TOKEN_ENCRYPTION_KEY` | Hex Key | AES-256-GCM encryption secret key |
+| Environment Variable           | Default Value                                 | Description                                                |
+| ------------------------------ | --------------------------------------------- | ---------------------------------------------------------- |
+| `BANGUMI_DATA_DIR`             | `~/.bangumi-agent-kit`                        | Base directory for storage & artifacts                     |
+| `BANGUMI_DB_DRIVER`            | `sqlite`                                      | Database driver (`sqlite` or `postgres`)                   |
+| `BANGUMI_SQLITE_PATH`          | `<BANGUMI_DATA_DIR>/bangumi-agent-kit.sqlite` | Custom SQLite file path                                    |
+| `DATABASE_URL`                 | None                                          | PostgreSQL connection URI (auto-enables `postgres` driver) |
+| `BANGUMI_OAUTH_CLIENT_ID`      | None                                          | Bangumi OAuth App Client ID                                |
+| `BANGUMI_OAUTH_CLIENT_SECRET`  | None                                          | Bangumi OAuth App Client Secret                            |
+| `BANGUMI_TOKEN_ENCRYPTION_KEY` | Hex Key                                       | AES-256-GCM encryption secret key                          |
 
 ---
 

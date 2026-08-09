@@ -11,6 +11,7 @@
     "@bangumi-agent-kit/bangumi-core": "workspace:*",
     "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
     "@bangumi-agent-kit/bangumi-transport": "workspace:*",
+    "@bangumi-agent-kit/config": "workspace:*",
     "@bangumi-agent-kit/db": "workspace:*",
     "@bangumi-agent-kit/tools": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",

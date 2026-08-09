@@ -38,7 +38,6 @@ CREATE TABLE IF NOT EXISTS account_bindings (
 );
 
 CREATE INDEX IF NOT EXISTS account_bindings_principal_id_idx ON account_bindings (principal_id);
-CREATE UNIQUE INDEX IF NOT EXISTS account_bindings_active_principal_idx ON account_bindings (principal_id) WHERE is_active = true;
 
 CREATE TABLE IF NOT EXISTS access_credentials (
   id TEXT PRIMARY KEY,
