@@ -31,7 +31,7 @@ export interface MergedCalendarDay {
 export function mergeCalendarWithSubjects(
   calendar: CapabilityResult<CalendarDayData[]>,
   subjectResults: ReadonlyMap<number, CapabilityResult<ProviderSubjectData>>,
-  policy: SourcePolicy = DEFAULT_SOURCE_POLICY,
+  _policy: SourcePolicy = DEFAULT_SOURCE_POLICY,
 ): CapabilityResult<MergedCalendarDay[]> {
   if (!calendar.data) {
     return calendar as unknown as CapabilityResult<MergedCalendarDay[]>;

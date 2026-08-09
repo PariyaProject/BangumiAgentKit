@@ -1,5 +1,5 @@
 import type { CalendarItem, Subject } from '@bangumi-agent-kit/bangumi-openapi';
-import { BangumiError, isBangumiError } from '@bangumi-agent-kit/bangumi-transport';
+import { isBangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import {
   createEvidenceRef,
   SOURCE_LEGACY,
