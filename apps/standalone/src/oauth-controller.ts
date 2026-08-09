@@ -92,6 +92,12 @@ export class StandaloneOAuthController {
     return Boolean(this.apiApp);
   }
 
+  async injectHealth(): Promise<{ statusCode: number; body: string }> {
+    if (!this.apiApp) throw new Error('RUNTIME_ERROR: OAuth listener is not running');
+    const response = await this.apiApp.app.inject({ method: 'GET', url: '/health/ready' });
+    return { statusCode: response.statusCode, body: response.body };
+  }
+
   status(): StandaloneOAuthStatus {
     return {
       ready: this.isReady(),

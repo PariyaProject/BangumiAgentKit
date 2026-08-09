@@ -5,5 +5,6 @@ export * from './command-registry.js';
 export * from './oauth-controller.js';
 export * from './standalone-host.js';
 export * from './presenter.js';
+export * from './self-test.js';
 
 export const MODULE_NAME = 'standalone';

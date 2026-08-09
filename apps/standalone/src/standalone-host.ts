@@ -250,6 +250,10 @@ export class StandaloneHost {
     return this.oauthController.start();
   }
 
+  async checkOAuthHealth(): Promise<{ statusCode: number; body: string }> {
+    return this.oauthController.injectHealth();
+  }
+
   async waitForAuthorization(timeoutMs = 120_000): Promise<StandaloneStatus['oauth']> {
     const before = await this.dependencies.tokenBroker.listAccounts(this.principalId);
     const beforeSnapshot = JSON.stringify(before);

@@ -17,7 +17,7 @@
     "test:integration:sqlite": "BANGUMI_DB_DRIVER=sqlite vitest run tests/integration",
     "test:integration:postgres": "BANGUMI_DB_DRIVER=postgres vitest run tests/integration",
     "test:render": "vitest run tests/render",
-    "test:standalone": "vitest run tests/standalone",
+    "test:standalone": "pnpm build && vitest run tests/standalone",
     "setup:local": "ts-node -P tsconfig.base.json scripts/setup-local.ts",
     "doctor": "ts-node -P tsconfig.base.json scripts/doctor.ts",
     "doctor:host": "cd examples/nonebot2-claude-code && python3 -m bangumi_host.doctor",
@@ -44,7 +44,9 @@
     "format:check": "prettier --check \"**/*.{ts,json,md,yaml,yml}\"",
     "standalone": "node apps/standalone/dist/main.js",
     "bak": "node apps/standalone/dist/main.js",
-    "standalone:build": "pnpm --filter @bangumi-agent-kit/app-standalone build"
+    "standalone:build": "pnpm --filter @bangumi-agent-kit/app-standalone build",
+    "self-test": "node apps/standalone/dist/self-test-main.js",
+    "smoke:standalone": "ts-node -P tsconfig.base.json scripts/smoke-standalone.ts"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
