@@ -161,6 +161,13 @@ class ClaudeCli:
         finally:
             stdout, stdout_limited = await stdout_task
             stderr, stderr_limited = await stderr_task
+            # Bounded readers intentionally stop early after a limit breach.
+            # Close the underlying pipe transports explicitly so asyncio does
+            # not try to schedule cleanup on a loop that the caller has closed.
+            for stream in (process.stdout, process.stderr):
+                transport = getattr(stream, '_transport', None)
+                if transport is not None:
+                    transport.close()
 
         return ClaudeRunResult(
             returncode=process.returncode if process.returncode is not None else -1,

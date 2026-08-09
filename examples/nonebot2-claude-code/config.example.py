@@ -1,17 +1,31 @@
-import os
-from pydantic import BaseModel
+"""Environment-oriented configuration example for the Host Bridge.
 
-class Config(BaseModel):
-    claude_bin: str = os.getenv("CLAUDE_BIN", "claude")
-    claude_workdir: str = os.getenv("CLAUDE_WORKDIR", "/tmp/bangumi-claude-workdir")
-    claude_timeout_seconds: int = int(os.getenv("CLAUDE_TIMEOUT_SECONDS", "45"))
-    mcp_server_script: str = os.getenv(
-        "BANGUMI_MCP_SCRIPT",
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "../../apps/mcp/dist/main.js")),
-    )
-    bangumi_data_dir: str = os.getenv(
-        "BANGUMI_DATA_DIR", os.path.expanduser("~/.bangumi-agent-kit")
-    )
-    bangumi_artifact_dir: str = os.getenv(
-        "BANGUMI_ARTIFACT_DIR", os.path.expanduser("~/.bangumi-agent-kit/artifacts")
-    )
+The bridge deliberately uses Python stdlib only.  Set these values in the
+NoneBot process environment (or in an explicit BANGUMI_ENV_FILE) and let
+``HostConfig.from_env()`` validate and resolve them.
+"""
+
+from __future__ import annotations
+
+import os
+
+
+HOST_ENVIRONMENT = {
+    'CLAUDE_BIN': os.environ.get('CLAUDE_BIN', 'claude'),
+    'CLAUDE_WORKDIR': os.environ.get('CLAUDE_WORKDIR', ''),
+    'CLAUDE_TIMEOUT_SECONDS': os.environ.get('CLAUDE_TIMEOUT_SECONDS', '75'),
+    'CLAUDE_MAX_OUTPUT_BYTES': os.environ.get('CLAUDE_MAX_OUTPUT_BYTES', str(2 * 1024 * 1024)),
+    'CLAUDE_MAX_TURNS': os.environ.get('CLAUDE_MAX_TURNS', '16'),
+    'BANGUMI_DATA_DIR': os.environ.get('BANGUMI_DATA_DIR', ''),
+    'BANGUMI_ARTIFACT_DIR': os.environ.get('BANGUMI_ARTIFACT_DIR', ''),
+    'BANGUMI_ENV_FILE': os.environ.get('BANGUMI_ENV_FILE', ''),
+    'BANGUMI_HOST_SESSION_TTL_HOURS': os.environ.get(
+        'BANGUMI_HOST_SESSION_TTL_HOURS',
+        '168',
+    ),
+    'BANGUMI_HOST_STRICT_MCP': os.environ.get('BANGUMI_HOST_STRICT_MCP', 'true'),
+    'BANGUMI_HOST_ALLOWED_TOOLS': os.environ.get(
+        'BANGUMI_HOST_ALLOWED_TOOLS',
+        'mcp__bangumi__*',
+    ),
+}

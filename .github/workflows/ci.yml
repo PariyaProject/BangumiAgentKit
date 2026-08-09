@@ -66,6 +66,38 @@ jobs:
       - name: Run built SQLite runtime smoke
         run: pnpm smoke:runtime:sqlite
 
+  host-integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build MCP and workspace packages
+        run: pnpm build
+
+      - name: Run Python host tests
+        run: pnpm test:host
+
+      - name: Run host smoke without real Claude
+        run: pnpm smoke:host
+
+      - name: Run built MCP host integration
+        run: pnpm test:integration:host-built
+
   postgres-compat:
     runs-on: ubuntu-latest
 

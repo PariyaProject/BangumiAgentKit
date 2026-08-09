@@ -141,6 +141,23 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
     expect(process.env.TEST_VAR_DEFAULT).toBe('from_env');
   });
 
+  it('R6A-07b: explicit BANGUMI_ENV_FILE wins over the host cwd files', () => {
+    delete process.env.TEST_VAR_EXPLICIT;
+    delete process.env.TEST_VAR_LOCAL_ONLY;
+    process.env.BANGUMI_ENV_FILE = path.join(tmpDir, 'explicit.env');
+
+    fs.writeFileSync(path.join(tmpDir, 'explicit.env'), 'TEST_VAR_EXPLICIT=from_explicit\n');
+    fs.writeFileSync(
+      path.join(tmpDir, '.env.local'),
+      'TEST_VAR_EXPLICIT=from_local\nTEST_VAR_LOCAL_ONLY=local\n',
+    );
+
+    loadRuntimeEnv(tmpDir);
+
+    expect(process.env.TEST_VAR_EXPLICIT).toBe('from_explicit');
+    expect(process.env.TEST_VAR_LOCAL_ONLY).toBe('local');
+  });
+
   // R6A-08
   it('R6A-08: setup OAuth callback redirect URI matches Fastify route', async () => {
     const dataDir = path.join(tmpDir, 'oauth-data');
