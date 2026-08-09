@@ -16,7 +16,7 @@
 - [ ] `search 少女终末旅行` 返回语义候选，而非 CLI 自行请求 API。
 - [ ] `subject 218707` 返回 subject 详情。
 - [ ] `cast 218707`、`calendar`、`episodes 218707` 可用。
-- [ ] `tool list`、`tool describe bangumi.search_subjects`、`tool call ...` 可用。
+- [ ] `tool list`、`tool describe bangumi.search_subjects`、`tool call bangumi.search_subjects '{"query":"少女终末旅行"}'` 可用。
 - [ ] `pnpm bak -- --json status` stdout 可直接 `JSON.parse`。
 - [ ] 使用 `--profile qa-a`、`--profile qa-b` 检查两个 profile 共享 DB 但状态隔离。
 

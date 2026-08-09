@@ -127,7 +127,7 @@ principal、conversation、payload、过期时间和单次 claim。Raw playgroun
 ```text
 tool list
 tool describe bangumi.search_subjects
-tool call bangumi.search_subjects {"query":"少女终末旅行"}
+tool call bangumi.search_subjects '{"query":"少女终末旅行"}'
 ```
 
 Raw call 仍然走 `ToolRegistry.executeTool()`，因此保留 Zod 校验、身份、

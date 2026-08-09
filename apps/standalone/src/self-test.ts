@@ -44,6 +44,15 @@ function isPng(buffer: Buffer): boolean {
   return buffer.subarray(0, 8).equals(PNG_SIGNATURE);
 }
 
+async function isRendererAvailable(): Promise<boolean> {
+  try {
+    const playwright = await import('playwright');
+    return fs.existsSync(playwright.chromium.executablePath());
+  } catch {
+    return false;
+  }
+}
+
 function reportFromChecks(checks: SelfTestCheck[]): SelfTestReport {
   return {
     name: 'BangumiAgentKit Self-Test',
@@ -168,56 +177,47 @@ export async function runSelfTest(options: SelfTestOptions = {}): Promise<SelfTe
     }
 
     if (options.render) {
-      const renderService = new RenderService();
-      try {
-        const viewModel = buildSubjectCardViewModel({
-          id: 1,
-          name: 'BangumiAgentKit Fixture',
-          nameCn: 'BangumiAgentKit 测试卡片',
-          type: 'anime',
-          summary: 'Deterministic local self-test fixture.',
-          nsfw: false,
-          locked: false,
-        });
-        const result = await renderService.renderCard(viewModel);
-        const store = new LocalArtifactStore({ artifactDir });
-        const ref = await store.saveArtifact(result.buffer, 'image/png', {
-          width: result.width,
-          height: result.height,
-        });
-        const metadata = await store.getArtifact(ref.id);
-        const filePath = await store.resolveFilePath(ref.id);
-        const bytes = filePath ? fs.readFileSync(filePath) : Buffer.alloc(0);
-        checks.push(
-          check(
-            'renderer',
-            metadata && filePath && isPng(bytes) && result.width > 0 && result.height > 0
-              ? 'PASS'
-              : 'FAIL',
-            metadata && filePath && isPng(bytes)
-              ? 'Renderer fixture produced a valid PNG ArtifactRef'
-              : 'Renderer fixture validation failed',
-          ),
-        );
-        if (filePath) fs.rmSync(filePath, { force: true });
-        fs.rmSync(path.join(artifactDir, `${ref.id}.json`), { force: true });
-      } catch (err) {
-        const message = String(err);
-        const rendererUnavailable =
-          /RENDERER_UNAVAILABLE|Executable does not exist|Executable doesn't exist|browserType\.launch|playwright/i.test(
-            message,
+      if (!(await isRendererAvailable())) {
+        checks.push(check('renderer', 'SKIP', 'Chromium is unavailable; renderer is optional'));
+      } else {
+        const renderService = new RenderService();
+        try {
+          const viewModel = buildSubjectCardViewModel({
+            id: 1,
+            name: 'BangumiAgentKit Fixture',
+            nameCn: 'BangumiAgentKit 测试卡片',
+            type: 'anime',
+            summary: 'Deterministic local self-test fixture.',
+            nsfw: false,
+            locked: false,
+          });
+          const result = await renderService.renderCard(viewModel);
+          const store = new LocalArtifactStore({ artifactDir });
+          const ref = await store.saveArtifact(result.buffer, 'image/png', {
+            width: result.width,
+            height: result.height,
+          });
+          const metadata = await store.getArtifact(ref.id);
+          const filePath = await store.resolveFilePath(ref.id);
+          const bytes = filePath ? fs.readFileSync(filePath) : Buffer.alloc(0);
+          checks.push(
+            check(
+              'renderer',
+              metadata && filePath && isPng(bytes) && result.width > 0 && result.height > 0
+                ? 'PASS'
+                : 'FAIL',
+              metadata && filePath && isPng(bytes)
+                ? 'Renderer fixture produced a valid PNG ArtifactRef'
+                : 'Renderer fixture validation failed',
+            ),
           );
-        checks.push(
-          check(
-            'renderer',
-            rendererUnavailable ? 'SKIP' : 'FAIL',
-            rendererUnavailable
-              ? 'Chromium is unavailable; renderer is optional'
-              : `Renderer fixture failed: ${message}`,
-          ),
-        );
-      } finally {
-        await renderService.close().catch(() => undefined);
+          if (filePath) fs.rmSync(filePath, { force: true });
+          fs.rmSync(path.join(artifactDir, `${ref.id}.json`), { force: true });
+        } catch (err) {
+          checks.push(check('renderer', 'FAIL', `Renderer fixture failed: ${String(err)}`));
+        } finally {
+          await renderService.close().catch(() => undefined);
+        }
       }
     } else {
       checks.push(

@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { PassThrough } from 'node:stream';
 import { z } from 'zod';
+import { BANGUMI_OAUTH_CALLBACK_PATH } from '../../packages/config/src/index.js';
 import { HttpClient } from '../../packages/bangumi-transport/src/index.js';
 import { MemoryStorage } from '../../packages/db/src/index.js';
 import {
@@ -14,6 +17,8 @@ import { LocalArtifactStore } from '../../packages/renderer/src/index.js';
 import { StandaloneCommandRegistry } from '../../apps/standalone/src/command-registry.js';
 import { parseCliArgs, tokenizeCommandLine } from '../../apps/standalone/src/command-parser.js';
 import { createStandaloneIdentity } from '../../apps/standalone/src/identity.js';
+import { runCli } from '../../apps/standalone/src/cli.js';
+import { StandaloneOAuthController } from '../../apps/standalone/src/oauth-controller.js';
 import { StandaloneHost } from '../../apps/standalone/src/standalone-host.js';
 import { Presenter, sanitizeOutput } from '../../apps/standalone/src/presenter.js';
 
@@ -132,6 +137,17 @@ describe('PR-6R-C standalone runtime', () => {
     ).resolves.toMatchObject({
       value: { name: 'bangumi.search_subjects', inputSchema: expect.any(Object) },
     });
+    const rawLine = `tool call bangumi.search_subjects '{"query":"少女终末旅行"}'`;
+    const rawTokens = tokenizeCommandLine(rawLine);
+    expect(rawTokens).toEqual([
+      'tool',
+      'call',
+      'bangumi.search_subjects',
+      '{"query":"少女终末旅行"}',
+    ]);
+    await expect(registry.execute(rawTokens, context)).resolves.toMatchObject({
+      value: { candidates: [{ name: '少女终末旅行' }] },
+    });
     await host.close();
   });
 
@@ -214,6 +230,65 @@ describe('PR-6R-C standalone runtime', () => {
     expect(JSON.stringify(sanitizeOutput(value))).not.toContain('secret-value');
   });
 
+  it('AUTH-OUT-01/AUTH-OUT-02: JSON auth login keeps OAuth metadata and no secrets', async () => {
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const stdoutChunks: Buffer[] = [];
+    stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
+
+    const exitCode = await runCli(['--json', 'auth', 'login'], {
+      stdout,
+      stderr,
+    });
+    expect(exitCode).toBe(0);
+    const output = JSON.parse(Buffer.concat(stdoutChunks).toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+    expect(output.authorizationUrl).toMatch(/^https:\/\//u);
+    expect(output.authorizationComplete).toBeUndefined();
+    expect(JSON.stringify(output)).not.toMatch(/accessToken|refreshToken|clientSecret|password/iu);
+
+    const outputWithSecrets = {
+      ...output,
+      accessToken: 'access-secret',
+      refreshToken: 'refresh-secret',
+      clientSecret: 'client-secret',
+    };
+    const safe = sanitizeOutput(outputWithSecrets) as Record<string, unknown>;
+    expect(safe.authorizationUrl).toBe(output.authorizationUrl);
+    expect(JSON.stringify(safe)).not.toContain('access-secret');
+    expect(JSON.stringify(safe)).not.toContain('refresh-secret');
+    expect(JSON.stringify(safe)).not.toContain('client-secret');
+  });
+
+  it('AUTH-OUT-03: nested credential and Authorization header fields are recursively redacted', () => {
+    const safe = sanitizeOutput({
+      authorizationUrl: 'https://bgm.tv/oauth/authorize?state=opaque',
+      authorizationComplete: false,
+      expiresAt: '2030-01-01T00:00:00.000Z',
+      nested: {
+        credentials: {
+          encryptedAccessToken: 'ciphertext-secret',
+          clientSecret: 'client-secret',
+        },
+        headers: { Authorization: 'Bearer access-secret' },
+        ciphertext: 'ciphertext-secret',
+        authTag: 'auth-tag-secret',
+        iv: 'iv-secret',
+      },
+    }) as Record<string, any>;
+
+    expect(safe.authorizationUrl).toBe('https://bgm.tv/oauth/authorize?state=opaque');
+    expect(safe.authorizationComplete).toBe(false);
+    expect(safe.expiresAt).toBe('2030-01-01T00:00:00.000Z');
+    expect(safe.nested.credentials).toBe('[REDACTED]');
+    expect(safe.nested.headers.Authorization).toBe('[REDACTED]');
+    expect(safe.nested.ciphertext).toBe('[REDACTED]');
+    expect(safe.nested.authTag).toBe('[REDACTED]');
+    expect(safe.nested.iv).toBe('[REDACTED]');
+  });
+
   it('ST-24-ST-26: verified artifacts export without implicit overwrite', async () => {
     const artifactStore = new LocalArtifactStore({ artifactDir: path.join(tempDir, 'artifacts') });
     const host = await createTestHost({ artifactStore });
@@ -243,5 +318,34 @@ describe('PR-6R-C standalone runtime', () => {
       json: true,
     });
     expect(createStandaloneIdentity('alice')).toMatchObject({ conversationId: 'standalone:alice' });
+  });
+
+  it('OAUTH-PORT-01: an occupied OAuth port returns an actionable error', async () => {
+    const host = await createTestHost();
+    const occupied = net.createServer();
+    await new Promise<void>((resolve, reject) => {
+      occupied.once('error', reject);
+      occupied.listen(0, '127.0.0.1', () => resolve());
+    });
+    const address = occupied.address();
+    if (!address || typeof address === 'string') throw new Error('occupied port was not allocated');
+
+    const controller = new StandaloneOAuthController({
+      dependencies: host.getDependencies(),
+      host: '127.0.0.1',
+      port: address.port,
+      callbackPath: BANGUMI_OAUTH_CALLBACK_PATH,
+    });
+    try {
+      await expect(controller.start()).rejects.toThrow(
+        `Standalone OAuth port ${address.port} is already in use`,
+      );
+    } finally {
+      await controller.close();
+      await host.close();
+      await new Promise<void>((resolve, reject) => {
+        occupied.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
   });
 });

@@ -5,11 +5,54 @@ export interface OutputSink {
   stderr: NodeJS.WritableStream;
 }
 
-const SECRET_KEY_PATTERN =
-  /(token|secret|password|authorization|credential|ciphertext|autht?ag|\biv\b)/iu;
+function isSecretKey(key: string): boolean {
+  const normalized = key.replace(/[-_]/gu, '').toLowerCase();
+
+  if (
+    normalized === 'authorizationurl' ||
+    normalized === 'authorizationcomplete' ||
+    normalized === 'expiresat'
+  ) {
+    return false;
+  }
+
+  if (
+    normalized === 'authorization' ||
+    normalized === 'authorizationheader' ||
+    normalized === 'authorizationvalue'
+  ) {
+    return true;
+  }
+
+  if (
+    normalized === 'password' ||
+    normalized === 'secret' ||
+    normalized.endsWith('secret') ||
+    normalized === 'clientsecret' ||
+    normalized === 'ciphertext' ||
+    normalized === 'authtag' ||
+    normalized === 'iv' ||
+    normalized === 'encrypted' ||
+    normalized === 'credential' ||
+    normalized === 'credentials' ||
+    normalized.includes('credential')
+  ) {
+    return true;
+  }
+
+  return (
+    normalized === 'token' ||
+    normalized === 'accesstoken' ||
+    normalized === 'refreshtoken' ||
+    normalized === 'tokenvalue' ||
+    normalized === 'tokenencryptionkey' ||
+    (normalized.includes('encrypted') &&
+      (normalized.includes('token') || normalized.includes('credential')))
+  );
+}
 
 function sanitize(value: unknown, key?: string): unknown {
-  if (key && SECRET_KEY_PATTERN.test(key)) return '[REDACTED]';
+  if (key && isSecretKey(key)) return '[REDACTED]';
   if (Array.isArray(value)) return value.map((item) => sanitize(item));
   if (value && typeof value === 'object') {
     const result: Record<string, unknown> = {};
