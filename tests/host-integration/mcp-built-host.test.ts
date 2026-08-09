@@ -107,7 +107,7 @@ async function callJson(client: Client, name: string, args: Record<string, unkno
 
 async function seedAuthenticatedFixture(dataDir: string): Promise<{
   storage: SQLiteStorage;
-  accountIds: { first: string; second: string };
+  accountIds: { first: string; second: string; alternateForFirst: string };
 }> {
   const storage = await SQLiteStorage.create({ dbPath: resolveSqlitePath(undefined, dataDir) });
   const firstPrincipal = await storage.findOrCreatePrincipal({
@@ -132,7 +132,14 @@ async function seedAuthenticatedFixture(dataDir: string): Promise<{
     username: 'host_b',
     nickname: 'Host B',
   });
+  const alternateAccount = await storage.upsertBangumiAccount({
+    id: 'account-host-a-alternate',
+    bangumiUserId: 910003,
+    username: 'host_a_alternate',
+    nickname: 'Host A Alternate',
+  });
   await storage.bindAccount(firstPrincipal.id, firstAccount.id, true);
+  await storage.bindAccount(firstPrincipal.id, alternateAccount.id, false);
   await storage.bindAccount(secondPrincipal.id, secondAccount.id, true);
   const now = new Date();
   const encrypted = (token: string) =>
@@ -151,7 +158,15 @@ async function seedAuthenticatedFixture(dataDir: string): Promise<{
   });
   await storage.upsertCredential(credential(firstAccount.id, 'fixture-token-a'));
   await storage.upsertCredential(credential(secondAccount.id, 'fixture-token-b'));
-  return { storage, accountIds: { first: firstAccount.id, second: secondAccount.id } };
+  await storage.upsertCredential(credential(alternateAccount.id, 'fixture-token-a-alternate'));
+  return {
+    storage,
+    accountIds: {
+      first: firstAccount.id,
+      second: secondAccount.id,
+      alternateForFirst: alternateAccount.id,
+    },
+  };
 }
 
 const builtSuite = hasBuiltEntry ? describe : describe.skip;
@@ -234,6 +249,27 @@ builtSuite('PR-6R-B built MCP host integration', () => {
         properties: { _confirmationId: { pattern: '^cfm_[A-Za-z0-9_-]+$' } },
       });
 
+      const accounts = await callJson(clientA, 'bangumi.auth_list_accounts');
+      expect(accounts.body).toHaveLength(2);
+      const switched = await callJson(clientA, 'bangumi.auth_switch_account', {
+        accountId: fixture.accountIds.alternateForFirst,
+      });
+      expect(switched.body).toMatchObject({
+        success: true,
+        activeAccountId: fixture.accountIds.alternateForFirst,
+      });
+      const alternateStatus = await callJson(clientA, 'bangumi.auth_status');
+      expect(alternateStatus.body).toMatchObject({
+        account: { username: 'host_a_alternate' },
+      });
+      const switchedBack = await callJson(clientA, 'bangumi.auth_switch_account', {
+        accountId: fixture.accountIds.first,
+      });
+      expect(switchedBack.body).toMatchObject({
+        success: true,
+        activeAccountId: fixture.accountIds.first,
+      });
+
       const first = await callJson(clientA, 'bangumi.auth_disconnect');
       expect(first.result.isError).toBe(true);
       const firstError = first.body as PublicToolError;
@@ -248,6 +284,11 @@ builtSuite('PR-6R-B built MCP host integration', () => {
           conversationId: 'qq:host-integration-bot:group:group-1:user:user-b',
         }),
       );
+      const wrongAccount = await callJson(clientB, 'bangumi.auth_switch_account', {
+        accountId: fixture.accountIds.alternateForFirst,
+      });
+      expect(wrongAccount.result.isError).toBe(true);
+      expect((wrongAccount.body as PublicToolError).error?.code).toBe('PERMISSION_DENIED');
       const wrongIdentity = await callJson(clientB, 'bangumi.auth_disconnect', {
         _confirmationId: confirmationId,
       });
