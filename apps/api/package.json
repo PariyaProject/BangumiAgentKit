@@ -1,6 +1,7 @@
 {
   "name": "@bangumi-agent-kit/app-api",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "main": "dist/main.js",
   "types": "dist/index.d.ts",
   "exports": {

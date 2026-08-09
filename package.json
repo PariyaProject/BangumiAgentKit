@@ -2,6 +2,7 @@
   "name": "bangumi-agent-kit-monorepo",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Bangumi Agent Kit monorepo workspace",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
@@ -46,7 +47,8 @@
     "bak": "node apps/standalone/dist/main.js",
     "standalone:build": "pnpm --filter @bangumi-agent-kit/app-standalone build",
     "self-test": "node apps/standalone/dist/self-test-main.js",
-    "smoke:standalone": "ts-node -P tsconfig.base.json scripts/smoke-standalone.ts"
+    "smoke:standalone": "ts-node -P tsconfig.base.json scripts/smoke-standalone.ts",
+    "version:check": "ts-node -P tsconfig.base.json scripts/version-check.ts"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

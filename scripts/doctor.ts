@@ -125,7 +125,8 @@ async function runDoctor() {
       category: 'Bangumi OAuth',
       status: 'WARN',
       message: 'Bangumi OAuth credentials are not fully set',
-      guidance: 'Fill BANGUMI_OAUTH_CLIENT_ID and BANGUMI_OAUTH_CLIENT_SECRET in .env.local for full auth capabilities.',
+      guidance:
+        'Fill BANGUMI_OAUTH_CLIENT_ID and BANGUMI_OAUTH_CLIENT_SECRET in .env.local for full auth capabilities.',
     });
   }
 
@@ -146,7 +147,47 @@ async function runDoctor() {
     });
   }
 
-  // 7. Chromium / Renderer Availability
+  // 7. Standalone & API Build Outputs
+  const standaloneDistPath = path.join(process.cwd(), 'apps', 'standalone', 'dist', 'main.js');
+  results.push(
+    fs.existsSync(standaloneDistPath)
+      ? {
+          category: 'Standalone Runtime',
+          status: 'PASS',
+          message: `Standalone runtime build found (${standaloneDistPath})`,
+        }
+      : {
+          category: 'Standalone Runtime',
+          status: 'WARN',
+          message: `Standalone runtime build missing at ${standaloneDistPath}`,
+          guidance: 'Run `pnpm build` to enable the local console.',
+        },
+  );
+
+  const apiDistPath = path.join(process.cwd(), 'apps', 'api', 'dist', 'main.js');
+  results.push(
+    fs.existsSync(apiDistPath)
+      ? {
+          category: 'API Runtime',
+          status: 'PASS',
+          message: `API runtime build found (${apiDistPath})`,
+        }
+      : {
+          category: 'API Runtime',
+          status: 'WARN',
+          message: `API runtime build missing at ${apiDistPath}`,
+          guidance: 'Run `pnpm build` to enable OAuth API routes.',
+        },
+  );
+
+  results.push({
+    category: 'Claude Host',
+    status: 'WARN',
+    message: 'Claude Host is optional; Standalone does not require an LLM.',
+    guidance: 'Run `pnpm doctor:host` only when using the NoneBot2/Claude integration.',
+  });
+
+  // 8. Chromium / Renderer Availability
   try {
     const pwModule = 'playwright';
     const pw = require(pwModule) as { chromium: { executablePath: () => string } };
@@ -161,7 +202,8 @@ async function runDoctor() {
       results.push({
         category: 'Renderer / Chromium',
         status: 'WARN',
-        message: 'Chromium binary missing; text-only operations will work, render tools will report RENDERER_UNAVAILABLE',
+        message:
+          'Chromium binary missing; text-only operations will work, render tools will report RENDERER_UNAVAILABLE',
         guidance: 'Run `pnpm renderer:install` if you want image rendering features.',
       });
     }

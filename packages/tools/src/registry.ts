@@ -97,7 +97,7 @@ export function createRuntimeDependenciesWithStorage(
       redirectUri: redirectUri || 'http://localhost:3000/oauth/bangumi/callback',
       tokenEncryption,
       tokenUrl: config.tokenUrl,
-      authorizeUrl: config.authorizeUrl,
+      authorizeUrl: config.authorizeUrl || process.env.BANGUMI_OAUTH_AUTHORIZE_URL,
     },
     publicHttpClient,
   );
@@ -109,7 +109,7 @@ export function createRuntimeDependenciesWithStorage(
       clientId,
       clientSecret,
       redirectUri,
-      tokenUrl: config.tokenUrl,
+      tokenUrl: config.tokenUrl || process.env.BANGUMI_OAUTH_TOKEN_URL,
       refreshSkewSeconds: config.refreshSkewSeconds,
     },
     publicHttpClient,

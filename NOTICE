@@ -1,0 +1,10 @@
+BangumiAgentKit
+Copyright 2026 BangumiAgentKit Contributors
+
+BangumiAgentKit project-owned source code is distributed under the Apache
+License, Version 2.0. See LICENSE.
+
+This repository also contains third-party and upstream material described in
+THIRD_PARTY_NOTICES.md. In particular, openapi/upstream/v0.yaml is retained as
+an upstream Bangumi API schema artifact. Its upstream license was not stated
+in the checked-in file, so it is not re-labelled as Apache-2.0 by this project.

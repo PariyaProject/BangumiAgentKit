@@ -38,3 +38,30 @@
 
 1. Asset Proxy 强制过滤图片 URL，禁止访问 `127.0.0.1`、`localhost`、内网 IP、云厂商 Metadata 服务及 `file://` 协议。
 2. ViewModel 输入经 Zod 清洗，防止外部 Prompt Injection 注入恶意 Script 或破坏 DOM。
+
+---
+
+## 5. Standalone 安全边界
+
+Standalone 是一个本地 trusted Host，但仍然使用外部身份模型：
+
+```text
+provider=local, botInstanceId=standalone,
+externalUserId=<profile>, conversationId=standalone:<profile>
+```
+
+它不能通过普通命令注入 `prc_*`，也不把 MCP 当作内部调用路径。命令直接
+经过共享 `ToolRegistry.executeTool()`，保留 Zod、auth、scope、PendingAction、
+payload hash、audit 和 safe error policy。交互确认只接受 `y`、`yes` 或
+`确认`；非交互 CLI 永不自动确认，必须显式提供原操作返回的 `--confirm`
+且由服务端再次校验。
+
+Standalone OAuth listener 默认只绑定 `127.0.0.1`，端口由
+`BANGUMI_STANDALONE_OAUTH_PORT` 控制。显式非 loopback bind 会警告。OAuth
+Token、client secret、encryption key 和内部 credential 字段不会进入人类
+输出或 JSON presenter。
+
+Renderer 导出只接受用户指定的目标路径；源文件从受信任 ArtifactStore 派生，
+校验 ArtifactRef、metadata、mime、expiry 和 PNG signature，并默认拒绝覆盖。
+没有 Chromium 时只降级 render 能力，不影响文本、auth、collection 或 raw
+tool 的安全管线。
