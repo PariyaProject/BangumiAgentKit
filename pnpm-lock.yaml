@@ -204,6 +204,12 @@ importers:
         specifier: ^0.31.10
         version: 0.31.10
 
+  packages/discovery:
+    dependencies:
+      '@bangumi-agent-kit/provider-core':
+        specifier: workspace:*
+        version: link:../provider-core
+
   packages/html-providers: {}
 
   packages/legacy-command-adapter: {}
@@ -274,6 +280,9 @@ importers:
       '@bangumi-agent-kit/db':
         specifier: workspace:*
         version: link:../db
+      '@bangumi-agent-kit/discovery':
+        specifier: workspace:*
+        version: link:../discovery
       '@bangumi-agent-kit/provider-core':
         specifier: workspace:*
         version: link:../provider-core

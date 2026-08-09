@@ -21,6 +21,7 @@ import { createRawOperationTools } from './definitions/raw-operation-tools.js';
 import { createWriteTools } from './definitions/write-tools.js';
 import { createAuthTools } from './definitions/auth-tools.js';
 import { createRenderPresentationTools } from './definitions/render-presentation-tools.js';
+import { createDiscoveryTools } from './definitions/discovery-tools.js';
 import type { ArtifactStore, RenderService } from '@bangumi-agent-kit/renderer';
 import {
   OfficialLegacyCalendarProvider,
@@ -196,6 +197,11 @@ export class ToolRegistry {
   }
 
   private registerCoreTools(): void {
+    const discoveryTools = createDiscoveryTools();
+    for (const tool of discoveryTools) {
+      this.registerTool(tool);
+    }
+
     const readTools = createReadTools(this.deps.clientProvider);
     for (const tool of readTools) {
       this.registerTool(tool);

@@ -35,6 +35,8 @@ General:
 
 Bangumi:
   search <query> [--type anime] [--limit 5]
+  discover [--media anime] [--season 2026-summer] [--concept 后宫]
+           [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
   cast <subjectId>
   calendar
@@ -99,6 +101,21 @@ function withoutOptions(args: string[], names: string[]): string[] {
     result.push(arg as string);
   }
   return result;
+}
+
+function optionNumber(value: string, name: string, positive = false): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || (positive ? parsed <= 0 : parsed < 0)) {
+    throw new StandaloneCliError(`USAGE_ERROR: ${name} must be an integer${positive ? ' greater than zero' : ''}.`, 2);
+  }
+  return parsed;
+}
+
+function appendOption(input: Record<string, unknown>, key: string, value: string, alwaysArray = false): void {
+  const current = input[key];
+  if (current === undefined) input[key] = alwaysArray ? [value] : value;
+  else if (Array.isArray(current)) current.push(value);
+  else input[key] = [current, value];
 }
 
 function parseStatus(value: string): 'wish' | 'doing' | 'done' | 'on_hold' | 'dropped' {
@@ -181,6 +198,7 @@ export class StandaloneCommandRegistry {
     if (command === 'doctor') return { value: await this.doctor(ctx) };
     if (command === 'provider') return { value: await this.provider(args.slice(1), ctx) };
     if (command === 'search') return { value: await this.search(args.slice(1), ctx) };
+    if (command === 'discover') return { value: await this.discover(args.slice(1), ctx) };
     if (command === 'subject') {
       return {
         value: await runTool(ctx, 'bangumi.get_subject', {
@@ -231,6 +249,78 @@ export class StandaloneCommandRegistry {
     if (type) input.type = type;
     if (limitValue) input.limit = parsePositiveInteger(limitValue, 'limit');
     return runTool(ctx, 'bangumi.search_subjects', input);
+  }
+
+  private async discover(args: string[], ctx: StandaloneCommandContext): Promise<unknown> {
+    const input: Record<string, unknown> = {};
+    let all = false;
+    let explain = false;
+    const withValue = new Set([
+      '--keyword', '--media', '--category', '--year', '--month', '--season', '--from', '--to',
+      '--tag', '--meta-tag', '--exclude-meta-tag', '--concept', '--rating-min', '--rating-max',
+      '--rating-count-min', '--rating-count-max', '--rank-min', '--rank-max', '--collection-count-min',
+      '--collection-count-max', '--nsfw', '--sort', '--order', '--limit', '--explain',
+    ]);
+    for (let index = 0; index < args.length; index += 1) {
+      const arg = args[index];
+      if (arg === '--all') {
+        all = true;
+        continue;
+      }
+      if (arg === '--explain') {
+        const next = args[index + 1];
+        if (next && !next.startsWith('--')) {
+          index += 1;
+          if (next !== 'compact' && next !== 'full') {
+            throw new StandaloneCliError('USAGE_ERROR: --explain must be compact or full.', 2);
+          }
+          input.explain = next;
+        } else {
+          explain = true;
+        }
+        continue;
+      }
+      if (!arg || !withValue.has(arg)) {
+        throw new StandaloneCliError(`USAGE_ERROR: unknown discover option "${arg}".`, 2);
+      }
+      const value = requireArg(args[++index], arg);
+      switch (arg) {
+        case '--keyword': input.keyword = value; break;
+        case '--media': appendOption(input, 'media', value); break;
+        case '--category': appendOption(input, 'categories', value, true); break;
+        case '--year': input.year = optionNumber(value, '--year'); break;
+        case '--month': input.month = optionNumber(value, '--month', true); break;
+        case '--season': input.season = value; break;
+        case '--from': input.from = value; break;
+        case '--to': input.to = value; break;
+        case '--tag': appendOption(input, 'tags', value, true); break;
+        case '--meta-tag': appendOption(input, 'metaTags', value, true); break;
+        case '--exclude-meta-tag': appendOption(input, 'excludeMetaTags', value, true); break;
+        case '--concept': appendOption(input, 'concepts', value, true); break;
+        case '--rating-min': input.rating = { ...(input.rating as object | undefined), min: Number(value) }; break;
+        case '--rating-max': input.rating = { ...(input.rating as object | undefined), max: Number(value) }; break;
+        case '--rating-count-min': input.ratingCount = { ...(input.ratingCount as object | undefined), min: Number(value) }; break;
+        case '--rating-count-max': input.ratingCount = { ...(input.ratingCount as object | undefined), max: Number(value) }; break;
+        case '--rank-min': input.rank = { ...(input.rank as object | undefined), min: Number(value) }; break;
+        case '--rank-max': input.rank = { ...(input.rank as object | undefined), max: Number(value) }; break;
+        case '--collection-count-min': input.collectionCount = { ...(input.collectionCount as object | undefined), min: Number(value) }; break;
+        case '--collection-count-max': input.collectionCount = { ...(input.collectionCount as object | undefined), max: Number(value) }; break;
+        case '--nsfw':
+          if (value !== 'include' && value !== 'exclude' && value !== 'only' && value !== 'true' && value !== 'false') {
+            throw new StandaloneCliError('USAGE_ERROR: --nsfw must be include, exclude, only, true, or false.', 2);
+          }
+          input.nsfw = value === 'true' ? true : value === 'false' ? false : value;
+          break;
+        case '--sort': input.sort = value; break;
+        case '--order': input.order = value; break;
+        case '--limit': input.limit = optionNumber(value, '--limit', true); break;
+        case '--explain': input.explain = value; break;
+      }
+    }
+    if (all) input.resultMode = 'all';
+    if (explain) input.explain = 'full';
+    if (all && input.limit === undefined) input.limit = 100;
+    return runTool(ctx, 'bangumi.query_subjects', input);
   }
 
   private async collection(args: string[], ctx: StandaloneCommandContext): Promise<unknown> {

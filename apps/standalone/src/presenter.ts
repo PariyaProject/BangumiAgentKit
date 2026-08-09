@@ -89,6 +89,27 @@ function presentSearch(value: Record<string, unknown>): string | undefined {
   return lines.join('\n');
 }
 
+function presentDiscovery(value: Record<string, unknown>): string | undefined {
+  const items = Array.isArray(value.items) ? value.items : undefined;
+  if (!items) return undefined;
+  const lines: string[] = [];
+  if (value.state) lines.push(`状态: ${String(value.state)}`);
+  for (const [index, candidate] of items.entries()) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const item = candidate as Record<string, unknown>;
+    lines.push(`${index + 1}. ${String(item.displayName || item.nameCn || item.name || `#${item.id}`)}`);
+    lines.push(`   ID: ${String(item.id)}${item.media ? ` | ${String(item.media)}` : ''}`);
+    if (item.score !== undefined) lines.push(`   评分: ${String(item.score)}`);
+    if (item.date) lines.push(`   日期: ${String(item.date)}`);
+  }
+  const coverage = value.coverage;
+  if (coverage && typeof coverage === 'object') {
+    const details = coverage as Record<string, unknown>;
+    lines.push(`覆盖: scanned=${String(details.scanned)} matched=${String(details.matched)} returned=${String(details.returned)}`);
+  }
+  return lines.join('\n');
+}
+
 function presentArtifact(value: Record<string, unknown>): string | undefined {
   const artifact = value.artifact;
   if (!artifact || typeof artifact !== 'object') return undefined;
@@ -102,6 +123,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const discovery = presentDiscovery(safe as Record<string, unknown>);
+    if (discovery) return discovery;
     const search = presentSearch(safe as Record<string, unknown>);
     if (search) return search;
   }

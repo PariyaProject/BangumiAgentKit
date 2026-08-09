@@ -12,6 +12,7 @@
     { "path": "../auth" },
     { "path": "../bangumi-core" },
     { "path": "../provider-core" },
+    { "path": "../discovery" },
     { "path": "../renderer" }
   ]
 }
