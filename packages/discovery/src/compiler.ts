@@ -44,7 +44,7 @@ function canBrowse(query: NormalizedDiscoveryQuery): boolean {
     query.rank === undefined &&
     query.collectionCount === undefined &&
     query.nsfw === 'include' &&
-    query.dateRange === undefined &&
+    (query.dateRange === undefined || (query.year !== undefined && query.month !== undefined)) &&
     (query.sort === 'date' || query.sort === 'rank' || query.sort === 'relevance') &&
     (query.year !== undefined || query.month !== undefined || query.categories.length > 0)
   );

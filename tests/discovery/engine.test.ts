@@ -37,7 +37,7 @@ class FixtureDiscoveryProvider implements SubjectDiscoveryProvider {
     { id: 3, type: 2, name: 'C', nameCn: '丙', platform: 'TV', date: '2026-07-03', tags: [], metaTags: [], score: 7, rank: 4, ratingCount: 50 },
   ];
 
-  async getSubject(id: number): Promise<CapabilityResult<ProviderSubjectData>> {
+  async getSubject(id: number, _context?: ProviderRequestContext): Promise<CapabilityResult<ProviderSubjectData>> {
     this.inFlight += 1;
     this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
     this.hydrateCalls += 1;
@@ -68,7 +68,9 @@ class FixtureDiscoveryProvider implements SubjectDiscoveryProvider {
 
   async getSubjectStats(id: number, context?: ProviderRequestContext): Promise<CapabilityResult<SubjectStatsData>> {
     const result = await this.getSubject(id, context);
-    return result.data ? { ...result, data: result.data.stats } : result as CapabilityResult<SubjectStatsData>;
+    return result.data
+      ? { ...result, data: result.data.stats }
+      : (result as unknown as CapabilityResult<SubjectStatsData>);
   }
 
   async searchSubjects(request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
