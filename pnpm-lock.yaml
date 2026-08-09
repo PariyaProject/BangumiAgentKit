@@ -119,6 +119,33 @@ importers:
         specifier: ^3.22.0
         version: 3.25.2(zod@4.4.3)
 
+  apps/standalone:
+    dependencies:
+      '@bangumi-agent-kit/app-api':
+        specifier: workspace:*
+        version: link:../api
+      '@bangumi-agent-kit/bangumi-transport':
+        specifier: workspace:*
+        version: link:../../packages/bangumi-transport
+      '@bangumi-agent-kit/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@bangumi-agent-kit/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@bangumi-agent-kit/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
+      '@bangumi-agent-kit/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
+      playwright:
+        specifier: ^1.49.1
+        version: 1.62.1
+      zod:
+        specifier: ^3.22.0 || ^4.0.0
+        version: 4.4.3
+
   apps/worker: {}
 
   packages/auth:

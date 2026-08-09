@@ -21,6 +21,7 @@ import { createRawOperationTools } from './definitions/raw-operation-tools.js';
 import { createWriteTools } from './definitions/write-tools.js';
 import { createAuthTools } from './definitions/auth-tools.js';
 import { createRenderPresentationTools } from './definitions/render-presentation-tools.js';
+import type { ArtifactStore, RenderService } from '@bangumi-agent-kit/renderer';
 
 export type ToolMode = 'curated' | 'full';
 
@@ -31,6 +32,8 @@ export interface RuntimeDependencies {
   tokenBroker: TokenBroker;
   clientProvider: BangumiClientProvider;
   auditService: AuditService;
+  renderService?: RenderService;
+  artifactStore?: ArtifactStore;
 }
 
 export interface CreateRuntimeDependenciesConfig {
@@ -48,6 +51,8 @@ export interface CreateRuntimeDependenciesConfig {
   authorizeUrl?: string;
   publicHttpClient?: HttpClient;
   refreshSkewSeconds?: number;
+  renderService?: RenderService;
+  artifactStore?: ArtifactStore;
 }
 
 export function createRuntimeDependenciesWithStorage(
@@ -120,6 +125,8 @@ export function createRuntimeDependenciesWithStorage(
     tokenBroker,
     clientProvider,
     auditService,
+    renderService: config.renderService,
+    artifactStore: config.artifactStore,
   };
 }
 
@@ -146,9 +153,7 @@ export class ToolRegistry {
   private deps: RuntimeDependencies;
 
   constructor(
-    optionsOrDeps:
-      | RuntimeDependencies
-      | (CreateRuntimeDependenciesConfig & { storage: Storage }),
+    optionsOrDeps: RuntimeDependencies | (CreateRuntimeDependenciesConfig & { storage: Storage }),
   ) {
     if (optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
       this.deps = optionsOrDeps as RuntimeDependencies;
@@ -199,7 +204,10 @@ export class ToolRegistry {
       this.registerTool(tool);
     }
 
-    const renderTools = createRenderPresentationTools();
+    const renderTools = createRenderPresentationTools(
+      this.deps.renderService,
+      this.deps.artifactStore,
+    );
     for (const tool of renderTools) {
       this.registerTool(tool);
     }
@@ -354,5 +362,9 @@ export class ToolRegistry {
 
       throw err;
     }
+  }
+
+  public async close(): Promise<void> {
+    await this.deps.renderService?.close();
   }
 }

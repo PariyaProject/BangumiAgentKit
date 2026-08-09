@@ -1,18 +1,12 @@
 {
-  "name": "@bangumi-agent-kit/app-api",
+  "name": "@bangumi-agent-kit/app-standalone",
   "version": "0.1.0",
   "main": "dist/main.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
-    },
-    "./app": {
-      "types": "./dist/app.d.ts",
-      "import": "./dist/app.js",
-      "require": "./dist/app.js"
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
@@ -20,13 +14,13 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@bangumi-agent-kit/auth": "workspace:*",
-    "@bangumi-agent-kit/bangumi-core": "workspace:*",
-    "@bangumi-agent-kit/bangumi-openapi": "workspace:*",
+    "@bangumi-agent-kit/app-api": "workspace:*",
     "@bangumi-agent-kit/bangumi-transport": "workspace:*",
     "@bangumi-agent-kit/config": "workspace:*",
     "@bangumi-agent-kit/db": "workspace:*",
+    "@bangumi-agent-kit/renderer": "workspace:*",
     "@bangumi-agent-kit/tools": "workspace:*",
-    "fastify": "^4.28.1"
+    "playwright": "^1.49.1",
+    "zod": "^3.22.0 || ^4.0.0"
   }
 }
