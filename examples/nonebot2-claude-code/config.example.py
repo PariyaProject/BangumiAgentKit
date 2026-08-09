@@ -28,4 +28,12 @@ HOST_ENVIRONMENT = {
         'BANGUMI_HOST_ALLOWED_TOOLS',
         'mcp__bangumi__*',
     ),
+    'BANGUMI_HOST_BUILTIN_TOOLS': os.environ.get(
+        'BANGUMI_HOST_BUILTIN_TOOLS',
+        'WebSearch,WebFetch',
+    ),
+    'BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST': os.environ.get(
+        'BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST',
+        '',
+    ),
 }

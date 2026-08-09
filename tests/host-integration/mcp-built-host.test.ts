@@ -50,23 +50,13 @@ function runtimeEnv(
     externalUserId: string;
     conversationId: string;
   },
+  confirmationGrant?: string,
 ): Record<string, string> {
-  const env = Object.fromEntries(
-    Object.entries(process.env).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined,
-    ),
-  );
-  for (const key of [
-    'DATABASE_URL',
-    'BANGUMI_SQLITE_PATH',
-    'BANGUMI_ENV_FILE',
-    'BANGUMI_MCP_PRINCIPAL_ID',
-    'BANGUMI_MCP_ALLOW_INTERNAL_PRINCIPAL_ID',
-  ]) {
-    delete env[key];
-  }
-  env.HOME = homeDir;
-  env.NODE_ENV = 'test';
+  const env: Record<string, string> = {
+    PATH: process.env.PATH || '',
+    HOME: homeDir,
+    NODE_ENV: 'test',
+  };
   env.BANGUMI_DATA_DIR = dataDir;
   env.BANGUMI_DB_DRIVER = 'sqlite';
   env.BANGUMI_TOKEN_ENCRYPTION_KEY = 'host-integration-key-012345678901234567890';
@@ -74,6 +64,9 @@ function runtimeEnv(
   env.BANGUMI_MCP_EXTERNAL_USER_ID = identity.externalUserId;
   env.BANGUMI_MCP_BOT_INSTANCE_ID = 'qq:host-integration-bot';
   env.BANGUMI_MCP_CONVERSATION_ID = identity.conversationId;
+  if (confirmationGrant) {
+    env.BANGUMI_MCP_CONFIRMATION_GRANT = confirmationGrant;
+  }
   return env;
 }
 
@@ -278,11 +271,24 @@ builtSuite('PR-6R-B built MCP host integration', () => {
       const confirmationId = nextAction.match(/cfm_[A-Za-z0-9_-]+/)?.[0];
       expect(confirmationId).toMatch(/^cfm_/);
 
+      const rememberedWithoutGrant = await callJson(clientA, 'bangumi.auth_disconnect', {
+        _confirmationId: confirmationId,
+      });
+      expect(rememberedWithoutGrant.result.isError).toBe(true);
+      expect((rememberedWithoutGrant.body as PublicToolError).error?.code).toBe(
+        'CONFIRMATION_INVALID',
+      );
+
       const clientB = await connectMcp(
-        runtimeEnv(dataDir, homeDir, {
-          externalUserId: 'user-b',
-          conversationId: 'qq:host-integration-bot:group:group-1:user:user-b',
-        }),
+        runtimeEnv(
+          dataDir,
+          homeDir,
+          {
+            externalUserId: 'user-b',
+            conversationId: 'qq:host-integration-bot:group:group-1:user:user-b',
+          },
+          confirmationId,
+        ),
       );
       const wrongAccount = await callJson(clientB, 'bangumi.auth_switch_account', {
         accountId: fixture.accountIds.alternateForFirst,
@@ -296,7 +302,37 @@ builtSuite('PR-6R-B built MCP host integration', () => {
       expect((wrongIdentity.body as PublicToolError).error?.code).toBe('CONFIRMATION_INVALID');
       await clientB.close();
 
-      const confirmed = await callJson(clientA, 'bangumi.auth_disconnect', {
+      const mismatchClient = await connectMcp(
+        runtimeEnv(
+          dataDir,
+          homeDir,
+          {
+            externalUserId: 'user-a',
+            conversationId: 'qq:host-integration-bot:group:group-1:user:user-a',
+          },
+          'cfm_mismatch',
+        ),
+      );
+      const mismatchedGrant = await callJson(mismatchClient, 'bangumi.auth_disconnect', {
+        _confirmationId: confirmationId,
+      });
+      expect(mismatchedGrant.result.isError).toBe(true);
+      expect((mismatchedGrant.body as PublicToolError).error?.code).toBe('CONFIRMATION_INVALID');
+      await mismatchClient.close();
+
+      await clientA.close();
+      const confirmedClient = await connectMcp(
+        runtimeEnv(
+          dataDir,
+          homeDir,
+          {
+            externalUserId: 'user-a',
+            conversationId: 'qq:host-integration-bot:group:group-1:user:user-a',
+          },
+          confirmationId,
+        ),
+      );
+      const confirmed = await callJson(confirmedClient, 'bangumi.auth_disconnect', {
         _confirmationId: confirmationId,
       });
       expect(confirmed.result.isError).toBeUndefined();
@@ -307,12 +343,12 @@ builtSuite('PR-6R-B built MCP host integration', () => {
       expect(afterSuccess).toBeNull();
       expect(otherAccount).not.toBeNull();
 
-      const replay = await callJson(clientA, 'bangumi.auth_disconnect', {
+      const replay = await callJson(confirmedClient, 'bangumi.auth_disconnect', {
         _confirmationId: confirmationId,
       });
       expect(replay.result.isError).toBe(true);
       expect((replay.body as PublicToolError).error?.code).toBe('AUTH_REQUIRED');
-      await clientA.close();
+      await confirmedClient.close();
     } finally {
       await fixture?.storage.close();
       fs.rmSync(tempDir, { recursive: true, force: true });

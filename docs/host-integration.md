@@ -50,10 +50,22 @@ existing process.env > explicit BANGUMI_ENV_FILE > cwd/.env.local > cwd/.env
 ```
 
 The generated MCP config uses stable server name `bangumi`, an absolute built
-MCP entry, SQLite, and the configured data directory. `--strict-mcp-config`
-and `--allowedTools mcp__bangumi__*` prevent unrelated MCP servers from being
-silently introduced. The bridge does not enable broad Claude permission bypass
+MCP entry, SQLite, and the configured data directory. It explicitly maps the
+trusted identity fields and the per-invocation confirmation grant into the MCP
+child; `BANGUMI_ENV_FILE` remains server-only. `--strict-mcp-config` and
+`--allowedTools mcp__bangumi__*` prevent unrelated MCP servers from being
+silently introduced. Claude's default built-in profile is
+`--tools WebSearch,WebFetch`; `Bash`, `Read`, `Edit`, and `Write` are not
+enabled by default. The bridge does not enable broad Claude permission bypass
 flags.
+
+The Claude process starts from an explicit environment allowlist. Portable
+runtime values and intentionally configured Claude/Anthropic authentication
+variables are retained; arbitrary parent variables, Bangumi token-encryption
+keys, OAuth secrets, database URLs, and `BANGUMI_ENV_FILE` are withheld. Extra
+variables require explicit comma-separated names in
+`BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST`; `*` and `BANGUMI_*` server variables are
+rejected.
 
 ## Persistent state and security boundaries
 
@@ -68,12 +80,17 @@ not a path. The Python host derives `<artifact-root>/<id>.png`, checks the
 metadata ID/mime/expiry, file size, and PNG signature, and ignores any metadata
 `filePath`. Invalid artifacts are omitted while text remains deliverable.
 
-Destructive and bulk writes stay behind the existing MCP PendingAction gate.
-The host never adds `_confirmationId` automatically. Claude may use a persisted
-pending ID only after an explicit user confirmation, and MCP still checks
-principal, bot, conversation, payload hash, expiry, and atomic single-use claim.
-If a Claude session disappears while a pending action exists, the host fails
-closed and asks the user to initiate the operation again.
+Destructive and bulk writes have two server-side gates. First, only a
+conservatively recognized `CONFIRM` message causes the trusted Host to set
+`BANGUMI_MCP_CONFIRMATION_GRANT=<pending-id>` for one Claude invocation. The
+grant is never persisted as a permanent process/session environment. Second,
+MCP requires `_confirmationId` to match that grant before it reaches the
+existing PendingAction checks for principal, bot, conversation, exact payload,
+expiry, and atomic single-use claim. A Claude session remembering an ID is not
+authorization. `OTHER` messages receive no grant; `CANCEL`/`取消` clears only
+the Host pending confirmation and preserves the Claude session ID without
+calling Claude. If a Claude session disappears while a pending action exists,
+the host fails closed and asks the user to initiate the operation again.
 
 ## Existing NoneBot projects
 
@@ -87,9 +104,13 @@ Choose one of these integration levels:
 3. Copy `bangumi_host/`, `response-schema.json`, and `system-prompt.md` into
    the existing bot package. Keep NoneBot imports in the application adapter.
 
-The generic host modules use Python stdlib only. NoneBot/OneBot packages are
-application dependencies, not hidden requirements of the session or artifact
-logic.
+The generic host modules use Python stdlib only. The reference image adapter
+is tested with `nonebot2>=2.4,<3` and `nonebot-adapter-onebot>=2.4,<3`;
+NoneBot/OneBot packages remain application dependencies, not hidden
+requirements of the session or artifact logic. Image replies are constructed
+with the supported `MessageSegment.image(file=path)` API using the trusted
+local path after artifact validation; paths never enter model structured
+output.
 
 ## OAuth, accounts, and renderer
 

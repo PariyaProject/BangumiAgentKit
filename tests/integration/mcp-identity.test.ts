@@ -16,6 +16,7 @@ describe('Trusted MCP external identity', () => {
       'BANGUMI_MCP_BOT_INSTANCE_ID',
       'BANGUMI_MCP_CONVERSATION_ID',
       'BANGUMI_MCP_DISPLAY_NAME',
+      'BANGUMI_MCP_CONFIRMATION_GRANT',
       'BANGUMI_MCP_PRINCIPAL_ID',
       'BANGUMI_MCP_ALLOW_INTERNAL_PRINCIPAL_ID',
     ]) {
@@ -98,9 +99,9 @@ describe('Trusted MCP external identity', () => {
     process.env.NODE_ENV = 'production';
     process.env.BANGUMI_MCP_PRINCIPAL_ID = 'prc_other_user';
 
-    await expect(
-      new StdioMcpExecutionIdentityProvider(storage).resolveContext({}),
-    ).rejects.toThrow('BANGUMI_MCP_PRINCIPAL_ID is forbidden in production');
+    await expect(new StdioMcpExecutionIdentityProvider(storage).resolveContext({})).rejects.toThrow(
+      'BANGUMI_MCP_PRINCIPAL_ID is forbidden in production',
+    );
     await storage.close();
   });
 

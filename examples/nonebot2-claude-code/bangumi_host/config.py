@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +11,69 @@ from typing import Mapping
 
 class HostConfigError(ValueError):
     """Raised when the external Host configuration is unsafe or incomplete."""
+
+
+_ENV_NAME_PATTERN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+_MCP_IDENTITY_ENV_NAMES = frozenset(
+    {
+        'BANGUMI_MCP_IDENTITY_PROVIDER',
+        'BANGUMI_MCP_EXTERNAL_USER_ID',
+        'BANGUMI_MCP_BOT_INSTANCE_ID',
+        'BANGUMI_MCP_CONVERSATION_ID',
+        'BANGUMI_MCP_DISPLAY_NAME',
+        'BANGUMI_MCP_CONFIRMATION_GRANT',
+    }
+)
+_CLAUDE_BASE_ENV_NAMES = frozenset(
+    {
+        'PATH',
+        'HOME',
+        'USER',
+        'LOGNAME',
+        'SHELL',
+        'TMPDIR',
+        'TMP',
+        'TEMP',
+        'LANG',
+        'LC_ALL',
+        'LC_CTYPE',
+        'SSL_CERT_FILE',
+        'SSL_CERT_DIR',
+        'HTTP_PROXY',
+        'HTTPS_PROXY',
+        'ALL_PROXY',
+        'NO_PROXY',
+        'http_proxy',
+        'https_proxy',
+        'all_proxy',
+        'no_proxy',
+    }
+)
+_CLAUDE_AUTH_ENV_NAMES = frozenset(
+    {
+        'ANTHROPIC_API_KEY',
+        'ANTHROPIC_AUTH_TOKEN',
+        'ANTHROPIC_BASE_URL',
+        'ANTHROPIC_MODEL',
+        'ANTHROPIC_SMALL_FAST_MODEL',
+        'CLAUDE_CODE_OAUTH_TOKEN',
+        'CLAUDE_CODE_USE_BEDROCK',
+        'CLAUDE_CODE_USE_FOUNDRY',
+        'CLAUDE_CODE_USE_VERTEX',
+        'AWS_ACCESS_KEY_ID',
+        'AWS_SECRET_ACCESS_KEY',
+        'AWS_SESSION_TOKEN',
+        'AWS_PROFILE',
+        'AWS_REGION',
+        'AWS_DEFAULT_REGION',
+        'AWS_SDK_LOAD_CONFIG',
+        'GOOGLE_APPLICATION_CREDENTIALS',
+        'GOOGLE_CLOUD_PROJECT',
+        'GOOGLE_CLOUD_QUOTA_PROJECT',
+        'VERTEXAI_PROJECT',
+        'VERTEXAI_REGION',
+    }
+)
 
 
 def _env_bool(environ: Mapping[str, str], name: str, default: bool) -> bool:
@@ -44,6 +108,24 @@ def _resolve_path(raw: str | None, default: Path) -> Path:
     return Path(raw).expanduser().resolve() if raw else default.expanduser().resolve()
 
 
+def _parse_csv(raw: str) -> tuple[str, ...]:
+    return tuple(item.strip() for item in raw.split(',') if item.strip())
+
+
+def _parse_env_allowlist(raw: str) -> tuple[str, ...]:
+    values = _parse_csv(raw)
+    for name in values:
+        if name == '*' or not _ENV_NAME_PATTERN.fullmatch(name):
+            raise HostConfigError(
+                'BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST must contain explicit environment names, not wildcards'
+            )
+        if name.startswith('BANGUMI_'):
+            raise HostConfigError(
+                'BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST cannot pass BANGUMI_* server variables to Claude'
+            )
+    return values
+
+
 @dataclass(frozen=True)
 class HostConfig:
     claude_bin: str
@@ -62,6 +144,8 @@ class HostConfig:
     allowed_tools: tuple[str, ...]
     repo_root: Path
     mcp_entry: Path
+    builtin_tools: tuple[str, ...] = ('WebSearch', 'WebFetch')
+    claude_env_allowlist: tuple[str, ...] = ()
 
     @classmethod
     def from_env(
@@ -99,9 +183,15 @@ class HostConfig:
         )
 
         allowed_tools_raw = env.get('BANGUMI_HOST_ALLOWED_TOOLS', 'mcp__bangumi__*')
-        allowed_tools = tuple(item.strip() for item in allowed_tools_raw.split(',') if item.strip())
+        allowed_tools = _parse_csv(allowed_tools_raw)
         if not allowed_tools:
             raise HostConfigError('BANGUMI_HOST_ALLOWED_TOOLS must contain at least one tool pattern')
+        builtin_tools = _parse_csv(env.get('BANGUMI_HOST_BUILTIN_TOOLS', 'WebSearch,WebFetch'))
+        if any('*' in item for item in builtin_tools):
+            raise HostConfigError('BANGUMI_HOST_BUILTIN_TOOLS must name explicit tools, not wildcards')
+        claude_env_allowlist = _parse_env_allowlist(
+            env.get('BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST', '')
+        )
 
         config = cls(
             claude_bin=env.get('CLAUDE_BIN', 'claude'),
@@ -120,6 +210,8 @@ class HostConfig:
             allowed_tools=allowed_tools,
             repo_root=root,
             mcp_entry=mcp_entry,
+            builtin_tools=builtin_tools,
+            claude_env_allowlist=claude_env_allowlist,
         )
         config.validate()
         return config
@@ -127,6 +219,8 @@ class HostConfig:
     def validate(self, require_runtime_files: bool = False) -> None:
         if not self.claude_bin.strip():
             raise HostConfigError('CLAUDE_BIN must not be empty')
+        if any('*' in item for item in self.builtin_tools):
+            raise HostConfigError('BANGUMI_HOST_BUILTIN_TOOLS must name explicit tools, not wildcards')
         if self.env_file is not None and not self.env_file.is_absolute():
             raise HostConfigError('BANGUMI_ENV_FILE must resolve to an absolute path')
         if require_runtime_files:
@@ -152,12 +246,13 @@ class HostConfig:
 
     def ensure_mcp_config(self) -> Path:
         """Create the default absolute MCP config, or validate an explicit one."""
-        if self.mcp_config.exists():
+        is_default_config = self.mcp_config == self.data_dir / 'mcp.generated.json'
+        if self.mcp_config.exists() and not is_default_config:
             if not self.mcp_config.is_file():
                 raise HostConfigError(f'MCP config is not a file: {self.mcp_config}')
             return self.mcp_config
 
-        if self.mcp_config != self.data_dir / 'mcp.generated.json':
+        if not is_default_config:
             raise HostConfigError(f'Configured MCP config does not exist: {self.mcp_config}')
         if not self.mcp_entry.is_file():
             raise HostConfigError(f'Built MCP entry not found: {self.mcp_entry}')
@@ -166,6 +261,12 @@ class HostConfig:
         server_env: dict[str, str] = {
             'BANGUMI_DATA_DIR': str(self.data_dir),
             'BANGUMI_DB_DRIVER': 'sqlite',
+            'BANGUMI_MCP_IDENTITY_PROVIDER': '${BANGUMI_MCP_IDENTITY_PROVIDER}',
+            'BANGUMI_MCP_EXTERNAL_USER_ID': '${BANGUMI_MCP_EXTERNAL_USER_ID}',
+            'BANGUMI_MCP_BOT_INSTANCE_ID': '${BANGUMI_MCP_BOT_INSTANCE_ID}',
+            'BANGUMI_MCP_CONVERSATION_ID': '${BANGUMI_MCP_CONVERSATION_ID}',
+            'BANGUMI_MCP_DISPLAY_NAME': '${BANGUMI_MCP_DISPLAY_NAME:-}',
+            'BANGUMI_MCP_CONFIRMATION_GRANT': '${BANGUMI_MCP_CONFIRMATION_GRANT:-}',
         }
         if self.env_file is not None:
             server_env['BANGUMI_ENV_FILE'] = str(self.env_file)
@@ -187,13 +288,28 @@ class HostConfig:
         return self.mcp_config
 
     def process_environment(self, identity_env: Mapping[str, str]) -> dict[str, str]:
-        env = dict(os.environ)
-        env.update(identity_env)
-        # The host owns the runtime profile for this invocation.  In particular,
-        # an unrelated parent-shell data directory must not redirect the MCP
-        # subprocess away from this host's configured state.
-        env['BANGUMI_DATA_DIR'] = str(self.data_dir)
-        env['BANGUMI_DB_DRIVER'] = 'sqlite'
-        if self.env_file is not None:
-            env['BANGUMI_ENV_FILE'] = str(self.env_file)
+        parent = os.environ
+        env: dict[str, str] = {}
+        for name in self.claude_env_allowlist:
+            if name.startswith('BANGUMI_') or name in {'DATABASE_URL', 'BANGUMI_SQLITE_PATH'}:
+                raise HostConfigError(
+                    f'Claude environment allowlist cannot pass server-only variable: {name}'
+                )
+        allowed_names = _CLAUDE_BASE_ENV_NAMES | _CLAUDE_AUTH_ENV_NAMES
+        allowed_names |= set(self.claude_env_allowlist)
+        for name in allowed_names:
+            value = parent.get(name)
+            if value is not None:
+                env[name] = value
+        for name, value in parent.items():
+            if name.startswith('LC_'):
+                env[name] = value
+
+        for name, value in identity_env.items():
+            if name not in _MCP_IDENTITY_ENV_NAMES:
+                raise HostConfigError(f'Unsupported Host identity environment variable: {name}')
+            if not isinstance(value, str):
+                raise HostConfigError(f'Host identity environment variable {name} must be a string')
+            if value:
+                env[name] = value
         return env

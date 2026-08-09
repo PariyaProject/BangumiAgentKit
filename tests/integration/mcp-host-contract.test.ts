@@ -21,6 +21,12 @@ const trustedIdentity = {
   },
 };
 
+function fixedGrant(grant: string | undefined) {
+  return {
+    getGrant: () => grant,
+  };
+}
+
 async function connectClient(app: BangumiMcpServer, name: string) {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await app.getMcpServer().connect(serverTransport);
@@ -47,6 +53,7 @@ describe('MCP host confirmation contract', () => {
     const app = new BangumiMcpServer({
       storage: new MemoryStorage(),
       identityProvider: trustedIdentity,
+      confirmationGrantProvider: fixedGrant('cfm_valid'),
     });
     const client = await connectClient(app, 'schema-contract');
     const tools = await client.listTools();
@@ -65,6 +72,7 @@ describe('MCP host confirmation contract', () => {
     const app = new BangumiMcpServer({
       storage: new MemoryStorage(),
       identityProvider: trustedIdentity,
+      confirmationGrantProvider: fixedGrant('cfm_valid'),
     });
     const executeSpy = vi.spyOn(app.getRegistry(), 'executeTool').mockResolvedValue({ ok: true });
     const client = await connectClient(app, 'reserved-fields-contract');
@@ -85,6 +93,9 @@ describe('MCP host confirmation contract', () => {
         _conversationId: 'forged-conversation',
         requestId: 'forged-request',
         _requestId: 'forged-request',
+        confirmationGrant: 'forged-grant',
+        _confirmationGrant: 'forged-grant',
+        BANGUMI_MCP_CONFIRMATION_GRANT: 'forged-grant',
       },
     });
 
@@ -129,6 +140,7 @@ describe('MCP host confirmation contract', () => {
     });
     const registry = new ToolRegistry(dependencies);
     let executionCount = 0;
+    const grantState: { value?: string } = {};
     registry.registerTool(
       defineTool({
         name: 'test.destructive_write',
@@ -148,6 +160,9 @@ describe('MCP host confirmation contract', () => {
       dependencies,
       registry,
       identityProvider: trustedIdentity,
+      confirmationGrantProvider: {
+        getGrant: () => grantState.value,
+      },
     });
     const client = await connectClient(app, 'confirmation-lifecycle');
     const first = await client.callTool({
@@ -160,6 +175,34 @@ describe('MCP host confirmation contract', () => {
     expect(first.isError).toBe(true);
     expect(firstError.error.code).toBe('CONFIRMATION_REQUIRED');
     expect(confirmationId).toMatch(/^cfm_/);
+    grantState.value = confirmationId;
+
+    const noGrantApp = new BangumiMcpServer({
+      dependencies,
+      registry,
+      identityProvider: trustedIdentity,
+      confirmationGrantProvider: fixedGrant(undefined),
+    });
+    const noGrantClient = await connectClient(noGrantApp, 'remembered-id-without-grant');
+    const rememberedWithoutGrant = await noGrantClient.callTool({
+      name: 'test.destructive_write',
+      arguments: { value: 'same-payload', _confirmationId: confirmationId },
+    });
+    expect(parseMcpError(rememberedWithoutGrant).error.code).toBe('CONFIRMATION_INVALID');
+    expect(executionCount).toBe(0);
+
+    const mismatchedGrantApp = new BangumiMcpServer({
+      dependencies,
+      registry,
+      identityProvider: trustedIdentity,
+      confirmationGrantProvider: fixedGrant('cfm_other'),
+    });
+    const mismatchedGrantClient = await connectClient(mismatchedGrantApp, 'mismatched-grant');
+    const mismatchedGrant = await mismatchedGrantClient.callTool({
+      name: 'test.destructive_write',
+      arguments: { value: 'same-payload', _confirmationId: confirmationId },
+    });
+    expect(parseMcpError(mismatchedGrant).error.code).toBe('CONFIRMATION_INVALID');
 
     const wrongContextApp = new BangumiMcpServer({
       dependencies,
@@ -173,6 +216,9 @@ describe('MCP host confirmation contract', () => {
           };
         },
       },
+      confirmationGrantProvider: {
+        getGrant: () => grantState.value,
+      },
     });
     const wrongContextClient = await connectClient(wrongContextApp, 'wrong-context');
     const wrongContext = await wrongContextClient.callTool({
@@ -180,6 +226,29 @@ describe('MCP host confirmation contract', () => {
       arguments: { value: 'same-payload', _confirmationId: confirmationId },
     });
     expect(parseMcpError(wrongContext).error.code).toBe('CONFIRMATION_INVALID');
+
+    const wrongConversationApp = new BangumiMcpServer({
+      dependencies,
+      registry,
+      identityProvider: {
+        async resolveContext() {
+          return {
+            principalId: 'principal-a',
+            botInstanceId: 'qq:10001',
+            conversationId: 'qq:10001:group:20001:user:other-conversation',
+          };
+        },
+      },
+      confirmationGrantProvider: {
+        getGrant: () => grantState.value,
+      },
+    });
+    const wrongConversationClient = await connectClient(wrongConversationApp, 'wrong-conversation');
+    const wrongConversation = await wrongConversationClient.callTool({
+      name: 'test.destructive_write',
+      arguments: { value: 'same-payload', _confirmationId: confirmationId },
+    });
+    expect(parseMcpError(wrongConversation).error.code).toBe('CONFIRMATION_INVALID');
 
     const changedPayload = await client.callTool({
       name: 'test.destructive_write',
@@ -200,6 +269,9 @@ describe('MCP host confirmation contract', () => {
     });
     expect(parseMcpError(replay).error.code).toBe('CONFIRMATION_INVALID');
     await wrongContextClient.close();
+    await wrongConversationClient.close();
+    await mismatchedGrantClient.close();
+    await noGrantClient.close();
     await client.close();
     await storage.close();
   });

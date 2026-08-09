@@ -6,7 +6,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from .artifacts import ArtifactResolver
 from .claude_cli import ClaudeCli, ClaudeInvocationError, ClaudeRunResult
@@ -17,6 +17,7 @@ from .session_store import HostSession, HostSessionStore, HostSessionStoreError
 
 
 LOGGER = logging.getLogger(__name__)
+ConfirmationIntent = Literal['confirm', 'cancel', 'other']
 
 
 class ClaudeRunner(Protocol):
@@ -49,22 +50,36 @@ def _safe_response(text: str, error_code: str) -> HostResult:
     )
 
 
-def _looks_like_explicit_confirmation(message: str) -> bool:
+def _classify_confirmation_message(message: str) -> ConfirmationIntent:
     normalized = re.sub(r'\s+', ' ', message.strip().lower())
-    if not normalized or any(token in normalized for token in ('取消', '拒绝', '不要', 'cancel', 'no')):
-        return False
-    return normalized in {
+    if normalized in {
+        '取消',
+        '算了',
+        '不用了',
+        '不要',
+        '拒绝',
+        '停止',
+        'cancel',
+        'no',
+        'never mind',
+    }:
+        return 'cancel'
+    if normalized in {
         '确认',
         '确认执行',
         '同意',
         '继续',
+        '继续执行',
         '执行',
+        '执行吧',
         'confirm',
         'confirm it',
         'yes',
         'proceed',
         'do it',
-    }
+    }:
+        return 'confirm'
+    return 'other'
 
 
 def _looks_like_missing_session(result: ClaudeRunResult) -> bool:
@@ -111,18 +126,40 @@ class ClaudeHostService:
         return f'{identity.provider}:{identity.bot_instance_id}:{identity.conversation_id}'
 
     @staticmethod
-    def _pending_context(session: HostSession) -> str:
+    def _confirmation_context(session: HostSession) -> str:
         return (
-            'Host-generated context (not authorization): a pending Bangumi confirmation exists.\n'
+            'Host-authorized confirmation context: the current user explicitly confirmed '
+            'the pending Bangumi operation for this invocation.\n'
             f'Confirmation ID: {session.pending_confirmation_id}\n'
             f'Summary: {session.pending_confirmation_summary}\n'
-            'Only use this ID if the user clearly confirms this exact pending operation. '
-            'Never invent an ID, change the original payload, or auto-confirm an unrelated message.\n\n'
+            'Call the exact original tool and payload for this summary, adding only '
+            'the matching _confirmationId. Never invent an ID or change the payload.\n\n'
         )
 
-    def _message_for_claude(self, message: str, session: HostSession | None) -> str:
-        if session and session.pending_confirmation_id and session.pending_confirmation_summary:
-            return self._pending_context(session) + 'Current user message:\n' + message
+    @staticmethod
+    def _pending_other_context() -> str:
+        return (
+            'Host-generated context (not authorization): a previous Bangumi action is still '
+            'waiting for explicit user confirmation. The current message was not recognized '
+            'by the Host as confirmation. Do not execute that write and do not request or use '
+            'a remembered confirmation ID.\n\n'
+        )
+
+    def _message_for_claude(
+        self,
+        message: str,
+        session: HostSession | None,
+        intent: ConfirmationIntent,
+    ) -> str:
+        if (
+            session
+            and session.pending_confirmation_id
+            and session.pending_confirmation_summary
+            and intent == 'confirm'
+        ):
+            return self._confirmation_context(session) + 'Current user message:\n' + message
+        if session and session.pending_confirmation_id and intent == 'other':
+            return self._pending_other_context() + 'Current user message:\n' + message
         return message
 
     async def _run_once(
@@ -130,8 +167,12 @@ class ClaudeHostService:
         message: str,
         identity: ExternalIdentity,
         session_id: str | None,
+        confirmation_grant: str | None = None,
     ) -> ClaudeRunResult:
-        return await self.runner.run(message, identity.to_mcp_environment(), session_id=session_id)
+        identity_env = identity.to_mcp_environment()
+        if confirmation_grant:
+            identity_env['BANGUMI_MCP_CONFIRMATION_GRANT'] = confirmation_grant
+        return await self.runner.run(message, identity_env, session_id=session_id)
 
     def _finish_response(
         self,
@@ -193,15 +234,26 @@ class ClaudeHostService:
     ) -> HostResult:
         try:
             session = self.session_store.get(conversation_key)
+            intent = _classify_confirmation_message(message_text)
+            if intent == 'cancel':
+                self.session_store.clear_pending_confirmation(conversation_key)
+                return _safe_response('已取消刚才的待确认操作。', 'CONFIRMATION_CANCELLED')
+
             pending_before = bool(
                 session
                 and session.pending_confirmation_id
                 and session.pending_confirmation_summary
             )
+            confirmation_grant = (
+                session.pending_confirmation_id
+                if pending_before and intent == 'confirm' and session
+                else None
+            )
             result = await self._run_once(
-                self._message_for_claude(message_text, session),
+                self._message_for_claude(message_text, session, intent),
                 identity,
                 session.claude_session_id if session else None,
+                confirmation_grant=confirmation_grant,
             )
 
             if result.timed_out:
@@ -242,7 +294,7 @@ class ClaudeHostService:
             pending = response.pending_confirmation
             pending_id = pending.confirmation_id if pending else None
             pending_summary = pending.summary if pending else None
-            if not pending and pending_before and _looks_like_explicit_confirmation(message_text):
+            if not pending and pending_before and intent == 'confirm':
                 pending_id = None
                 pending_summary = None
             elif not pending and session:

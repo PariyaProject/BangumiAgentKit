@@ -89,6 +89,8 @@ class ClaudeCommandBuilder:
             schema,
             '--mcp-config',
             str(self.config.mcp_config),
+            '--tools',
+            ','.join(self.config.builtin_tools),
             '--allowedTools',
             *self.config.allowed_tools,
             '--append-system-prompt-file',

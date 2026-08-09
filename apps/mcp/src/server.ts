@@ -11,13 +11,15 @@ import {
 } from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
-import {
-  StdioMcpExecutionIdentityProvider,
-} from './identity.js';
+import { StdioMcpExecutionIdentityProvider } from './identity.js';
 import type { McpExecutionIdentityProvider } from './identity.js';
+import { StdioMcpConfirmationGrantProvider } from './confirmation.js';
+import type { McpConfirmationGrantProvider } from './confirmation.js';
 
 export { StdioMcpExecutionIdentityProvider } from './identity.js';
 export type { McpExecutionIdentityProvider } from './identity.js';
+export { StdioMcpConfirmationGrantProvider } from './confirmation.js';
+export type { McpConfirmationGrantProvider } from './confirmation.js';
 
 const RESERVED_IDENTITY_ARGUMENTS = new Set([
   'principalId',
@@ -33,6 +35,7 @@ const RESERVED_IDENTITY_ARGUMENTS = new Set([
 ]);
 
 const CONFIRMATION_ID_PATTERN = '^cfm_[A-Za-z0-9_-]+$';
+const CONFIRMATION_ID_REGEX = /^cfm_[A-Za-z0-9_-]+$/;
 
 function addMcpConfirmationSchema(
   tool: ReturnType<ToolRegistry['getTools']>[number],
@@ -59,15 +62,28 @@ function addMcpConfirmationSchema(
   };
 }
 
-function extractConfirmationId(rawArgs: Record<string, unknown>): string | undefined {
+function extractConfirmationId(
+  rawArgs: Record<string, unknown>,
+  grantProvider: McpConfirmationGrantProvider,
+): string | undefined {
   const reserved = rawArgs._confirmationId;
   const legacy = rawArgs.confirmationId;
 
   if (reserved !== undefined && typeof reserved !== 'string') {
-    throw new BangumiError('CONFIRMATION_INVALID', 'MCP _confirmationId must be a string.', false, 400);
+    throw new BangumiError(
+      'CONFIRMATION_INVALID',
+      'MCP _confirmationId must be a string.',
+      false,
+      400,
+    );
   }
   if (legacy !== undefined && typeof legacy !== 'string') {
-    throw new BangumiError('CONFIRMATION_INVALID', 'MCP confirmationId must be a string.', false, 400);
+    throw new BangumiError(
+      'CONFIRMATION_INVALID',
+      'MCP confirmationId must be a string.',
+      false,
+      400,
+    );
   }
   if (reserved !== undefined && legacy !== undefined && reserved !== legacy) {
     throw new BangumiError(
@@ -78,7 +94,32 @@ function extractConfirmationId(rawArgs: Record<string, unknown>): string | undef
     );
   }
 
-  return reserved !== undefined ? reserved : legacy;
+  const confirmationId = reserved !== undefined ? reserved : legacy;
+  if (confirmationId === undefined) return undefined;
+  if (!CONFIRMATION_ID_REGEX.test(confirmationId)) {
+    throw new BangumiError(
+      'CONFIRMATION_INVALID',
+      'MCP confirmation ID has an invalid format.',
+      false,
+      400,
+    );
+  }
+
+  const trustedGrant = grantProvider.getGrant();
+  if (
+    !trustedGrant ||
+    !CONFIRMATION_ID_REGEX.test(trustedGrant) ||
+    confirmationId !== trustedGrant
+  ) {
+    throw new BangumiError(
+      'CONFIRMATION_INVALID',
+      'MCP confirmation requires a matching trusted Host grant for this invocation.',
+      false,
+      400,
+    );
+  }
+
+  return confirmationId;
 }
 
 export interface McpServerOptions {
@@ -88,6 +129,7 @@ export interface McpServerOptions {
   httpClient?: HttpClient;
   registry?: ToolRegistry;
   identityProvider?: McpExecutionIdentityProvider;
+  confirmationGrantProvider?: McpConfirmationGrantProvider;
 }
 
 export class BangumiMcpServer {
@@ -95,6 +137,7 @@ export class BangumiMcpServer {
   private registry: ToolRegistry;
   private dependencies: RuntimeDependencies;
   private identityProvider: McpExecutionIdentityProvider;
+  private confirmationGrantProvider: McpConfirmationGrantProvider;
 
   constructor(options: McpServerOptions | HttpClient = {}) {
     let opts: McpServerOptions = {};
@@ -128,6 +171,8 @@ export class BangumiMcpServer {
 
     this.identityProvider =
       opts.identityProvider || new StdioMcpExecutionIdentityProvider(this.dependencies.storage);
+    this.confirmationGrantProvider =
+      opts.confirmationGrantProvider || new StdioMcpConfirmationGrantProvider();
 
     this.server = new Server(
       {
@@ -207,7 +252,7 @@ export class BangumiMcpServer {
         const { name, arguments: args } = request.params;
         const rawArgs = (args || {}) as Record<string, unknown>;
         const resolvedContext = await this.identityProvider.resolveContext(request);
-        const confirmationId = extractConfirmationId(rawArgs);
+        const confirmationId = extractConfirmationId(rawArgs, this.confirmationGrantProvider);
         const context: ToolContext = {
           ...resolvedContext,
           requestId: `req_${crypto.randomUUID()}`,
@@ -216,7 +261,13 @@ export class BangumiMcpServer {
 
         const toolArgs: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(rawArgs)) {
-          if (!key.startsWith('_') && key !== 'confirmationId' && !RESERVED_IDENTITY_ARGUMENTS.has(key)) {
+          if (
+            !key.startsWith('_') &&
+            key !== 'confirmationId' &&
+            key !== 'confirmationGrant' &&
+            key !== 'BANGUMI_MCP_CONFIRMATION_GRANT' &&
+            !RESERVED_IDENTITY_ARGUMENTS.has(key)
+          ) {
             toolArgs[key] = value;
           }
         }

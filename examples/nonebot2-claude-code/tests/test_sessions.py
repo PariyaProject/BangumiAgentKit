@@ -71,7 +71,7 @@ print('1' if acquired else '0')
     def test_pending_can_be_cleared_without_deleting_session(self) -> None:
         store = HostSessionStore(self.database)
         store.upsert_session('conversation', 'session', pending_confirmation_id='cfm_x', pending_confirmation_summary='x')
-        cleared = store.clear_pending('conversation')
+        cleared = store.clear_pending_confirmation('conversation')
         self.assertIsNotNone(cleared)
         assert cleared is not None
         self.assertEqual(cleared.claude_session_id, 'session')

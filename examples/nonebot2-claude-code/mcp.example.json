@@ -6,7 +6,13 @@
       "env": {
         "BANGUMI_DB_DRIVER": "sqlite",
         "BANGUMI_DATA_DIR": "/absolute/path/to/bangumi-agent-kit-data",
-        "BANGUMI_ENV_FILE": "/absolute/path/to/BangumiAgentKit/.env.local"
+        "BANGUMI_ENV_FILE": "/absolute/path/to/BangumiAgentKit/.env.local",
+        "BANGUMI_MCP_IDENTITY_PROVIDER": "${BANGUMI_MCP_IDENTITY_PROVIDER}",
+        "BANGUMI_MCP_EXTERNAL_USER_ID": "${BANGUMI_MCP_EXTERNAL_USER_ID}",
+        "BANGUMI_MCP_BOT_INSTANCE_ID": "${BANGUMI_MCP_BOT_INSTANCE_ID}",
+        "BANGUMI_MCP_CONVERSATION_ID": "${BANGUMI_MCP_CONVERSATION_ID}",
+        "BANGUMI_MCP_DISPLAY_NAME": "${BANGUMI_MCP_DISPLAY_NAME:-}",
+        "BANGUMI_MCP_CONFIRMATION_GRANT": "${BANGUMI_MCP_CONFIRMATION_GRANT:-}"
       }
     }
   }

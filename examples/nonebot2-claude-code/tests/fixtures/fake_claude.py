@@ -13,7 +13,7 @@ def main() -> int:
         print('fake-claude 0.1')
         return 0
     if '--help' in args:
-        print(' --output-format --json-schema --mcp-config --strict-mcp-config --allowedTools --resume')
+        print(' --output-format --json-schema --mcp-config --strict-mcp-config --tools --allowedTools --resume')
         return 0
     scenario = os.environ.get('FAKE_CLAUDE_SCENARIO', 'success')
     if scenario == 'timeout':
@@ -55,6 +55,19 @@ def main() -> int:
                                 'BANGUMI_MCP_EXTERNAL_USER_ID',
                                 'BANGUMI_MCP_BOT_INSTANCE_ID',
                                 'BANGUMI_MCP_CONVERSATION_ID',
+                                'BANGUMI_MCP_CONFIRMATION_GRANT',
+                            )
+                        },
+                        'environment_present': {
+                            key: key in os.environ
+                            for key in (
+                                'BANGUMI_TOKEN_ENCRYPTION_KEY',
+                                'BANGUMI_OAUTH_CLIENT_SECRET',
+                                'DATABASE_URL',
+                                'SOME_OTHER_BOT_SECRET',
+                                'BANGUMI_ENV_FILE',
+                                'BANGUMI_DATA_DIR',
+                                'BANGUMI_DB_DRIVER',
                             )
                         },
                     }

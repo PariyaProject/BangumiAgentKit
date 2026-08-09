@@ -48,6 +48,8 @@ def make_config(root: Path, fake_claude: Path) -> HostConfig:
         allowed_tools=('mcp__bangumi__*',),
         repo_root=root,
         mcp_entry=mcp_entry,
+        builtin_tools=('WebSearch', 'WebFetch'),
+        claude_env_allowlist=('FAKE_CLAUDE_LOG', 'FAKE_CLAUDE_SCENARIO'),
     )
 
 
@@ -80,6 +82,11 @@ async def run_smoke() -> None:
         environment_backup = os.environ.copy()
         os.environ['FAKE_CLAUDE_LOG'] = str(log_path)
         os.environ['FAKE_CLAUDE_SCENARIO'] = 'success'
+        os.environ['BANGUMI_TOKEN_ENCRYPTION_KEY'] = 'SENTINEL'
+        os.environ['BANGUMI_OAUTH_CLIENT_SECRET'] = 'SENTINEL'
+        os.environ['DATABASE_URL'] = 'SENTINEL'
+        os.environ['SOME_OTHER_BOT_SECRET'] = 'SENTINEL'
+        os.environ['BANGUMI_ENV_FILE'] = '/secret/.env'
         try:
             config = make_config(root, fake_claude)
             store = HostSessionStore(config.data_dir / 'host-bridge.sqlite', session_ttl_seconds=86400)
@@ -101,6 +108,19 @@ async def run_smoke() -> None:
             os.environ['FAKE_CLAUDE_SCENARIO'] = 'pending-confirmation'
             pending = await service.handle_message(identity, 'perform a write')
             assert pending.response.pending_confirmation is not None
+
+            cancelled = await service.handle_message(identity, '取消')
+            assert cancelled.error_code == 'CONFIRMATION_CANCELLED'
+            assert len(log_path.read_text(encoding='utf-8').splitlines()) == 3
+
+            os.environ['FAKE_CLAUDE_SCENARIO'] = 'success'
+            after_cancel = await service.handle_message(identity, '确认')
+            assert after_cancel.response.text == 'fake response'
+            assert len(log_path.read_text(encoding='utf-8').splitlines()) == 4
+
+            os.environ['FAKE_CLAUDE_SCENARIO'] = 'pending-confirmation'
+            pending_again = await service.handle_message(identity, 'perform a write again')
+            assert pending_again.response.pending_confirmation is not None
             os.environ['FAKE_CLAUDE_SCENARIO'] = 'success'
             confirmed = await service.handle_message(identity, '确认')
             assert confirmed.response.pending_confirmation is None
@@ -108,15 +128,28 @@ async def run_smoke() -> None:
             service.close()
 
             calls = [json.loads(line) for line in log_path.read_text(encoding='utf-8').splitlines()]
-            assert len(calls) == 4
+            assert len(calls) == 6
             assert calls[0]['identity']['BANGUMI_MCP_EXTERNAL_USER_ID'] == 'smoke-user'
             assert 'BANGUMI_MCP_PRINCIPAL_ID' not in calls[0]['identity']
+            assert calls[0]['identity']['BANGUMI_MCP_CONFIRMATION_GRANT'] is None
+            assert calls[2]['identity']['BANGUMI_MCP_CONFIRMATION_GRANT'] is None
+            assert calls[3]['identity']['BANGUMI_MCP_CONFIRMATION_GRANT'] is None
+            assert calls[4]['identity']['BANGUMI_MCP_CONFIRMATION_GRANT'] is None
+            assert calls[5]['identity']['BANGUMI_MCP_CONFIRMATION_GRANT'] == 'cfm_smoke'
+            for call in calls:
+                assert all(value is False for value in call['environment_present'].values())
             assert '--resume' not in calls[0]['args']
             assert '--resume' in calls[1]['args']
             assert '--mcp-config' in calls[1]['args']
             assert '--json-schema' in calls[1]['args']
+            assert '--tools' in calls[1]['args']
+            assert calls[1]['args'][calls[1]['args'].index('--tools') + 1] == 'WebSearch,WebFetch'
             assert '--allowedTools' in calls[1]['args']
             assert '--append-system-prompt-file' in calls[1]['args']
+            mcp_config = json.loads(config.mcp_config.read_text(encoding='utf-8'))
+            bridge_env = mcp_config['mcpServers']['bangumi']['env']
+            assert bridge_env['BANGUMI_MCP_IDENTITY_PROVIDER'] == '${BANGUMI_MCP_IDENTITY_PROVIDER}'
+            assert bridge_env['BANGUMI_MCP_CONFIRMATION_GRANT'] == '${BANGUMI_MCP_CONFIRMATION_GRANT:-}'
             print('smoke:host passed')
         finally:
             os.environ.clear()

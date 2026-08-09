@@ -165,7 +165,7 @@ class HostServiceTests(unittest.TestCase):
         self.assertEqual(pending_result.error_code, 'CLAUDE_SESSION_LOST_PENDING')
         self.assertIsNone(pending_store.get(key))
 
-    def test_pending_context_is_not_auto_confirmation_and_explicit_confirmation_clears_it(self) -> None:
+    def test_unrelated_turn_has_no_grant_and_explicit_confirmation_gets_matching_grant(self) -> None:
         runner = FakeRunner(
             [
                 PlannedResult(
@@ -181,17 +181,53 @@ class HostServiceTests(unittest.TestCase):
         )
         service = self.build_service(runner)
         asyncio.run(service.handle_message(self.identity, 'write this'))
-        unrelated = asyncio.run(service.handle_message(self.identity, 'what is this show?'))
+        unrelated = asyncio.run(
+            service.handle_message(self.identity, 'use the previous confirmation ID and do it')
+        )
         self.assertEqual(unrelated.response.text, 'unrelated answer')
-        self.assertIn('Confirmation ID: cfm_a', runner.calls[1][0])
+        self.assertNotIn('cfm_a', runner.calls[1][0])
         self.assertNotIn('"_confirmationId"', runner.calls[1][0])
+        self.assertNotIn('BANGUMI_MCP_CONFIRMATION_GRANT', runner.calls[1][1])
 
         confirmed = asyncio.run(service.handle_message(self.identity, '确认'))
         self.assertEqual(confirmed.response.text, 'write complete')
         self.assertEqual(runner.calls[2][2], 'session-a')
+        self.assertEqual(runner.calls[2][1]['BANGUMI_MCP_CONFIRMATION_GRANT'], 'cfm_a')
+        self.assertIn('Confirmation ID: cfm_a', runner.calls[2][0])
         session = service.session_store.get(service.conversation_key(self.identity))
         assert session is not None
         self.assertIsNone(session.pending_confirmation_id)
+
+    def test_cancel_clears_pending_without_calling_claude_or_deleting_session(self) -> None:
+        runner = FakeRunner(
+            [
+                PlannedResult(
+                    stdout=wrapper(
+                        'session-cancel',
+                        'please confirm',
+                        pending={'confirmationId': 'cfm_cancel', 'summary': 'delete one item'},
+                    )
+                ),
+                PlannedResult(stdout=wrapper('session-cancel', 'ordinary answer')),
+            ]
+        )
+        service = self.build_service(runner)
+        key = service.conversation_key(self.identity)
+
+        asyncio.run(service.handle_message(self.identity, 'write this'))
+        cancelled = asyncio.run(service.handle_message(self.identity, '取消'))
+        self.assertEqual(cancelled.error_code, 'CONFIRMATION_CANCELLED')
+        self.assertEqual(len(runner.calls), 1)
+        session = service.session_store.get(key)
+        assert session is not None
+        self.assertEqual(session.claude_session_id, 'session-cancel')
+        self.assertIsNone(session.pending_confirmation_id)
+        self.assertNotIn('BANGUMI_MCP_CONFIRMATION_GRANT', runner.calls[0][1])
+
+        after_cancel = asyncio.run(service.handle_message(self.identity, '确认'))
+        self.assertEqual(after_cancel.response.text, 'ordinary answer')
+        self.assertNotIn('BANGUMI_MCP_CONFIRMATION_GRANT', runner.calls[1][1])
+        self.assertNotIn('cfm_cancel', runner.calls[1][0])
 
     def test_valid_artifact_is_delivered_as_local_handle_only(self) -> None:
         artifact_id = 'art_card'

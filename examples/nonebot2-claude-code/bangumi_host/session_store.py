@@ -211,7 +211,11 @@ class HostSessionStore:
             connection.close()
         return self.get(key, now=current_time)
 
-    def clear_pending(self, conversation_key: str, now: int | None = None) -> HostSession | None:
+    def clear_pending_confirmation(
+        self,
+        conversation_key: str,
+        now: int | None = None,
+    ) -> HostSession | None:
         key = self._require_key(conversation_key, 'conversation_key')
         current_time = self._now(now)
         connection = self._connect()
@@ -232,6 +236,10 @@ class HostSessionStore:
         finally:
             connection.close()
         return self.get(key, now=current_time)
+
+    def clear_pending(self, conversation_key: str, now: int | None = None) -> HostSession | None:
+        """Backward-compatible alias for the explicit cancellation operation."""
+        return self.clear_pending_confirmation(conversation_key, now=now)
 
     def clear_session(self, conversation_key: str) -> None:
         key = self._require_key(conversation_key, 'conversation_key')

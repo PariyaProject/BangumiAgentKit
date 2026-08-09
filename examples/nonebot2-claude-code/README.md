@@ -23,7 +23,7 @@ the whole NoneBot application, or register a priority-1 catch-all matcher.
 
 - `bangumi_host/`: NoneBot-independent Python stdlib bridge.
 - `bangumi_host/config.py`: validated paths, limits, MCP config generation,
-  and subprocess environment.
+  explicit Claude environment allowlist, and subprocess environment.
 - `bangumi_host/identity.py`: external QQ identity mapping only.
 - `bangumi_host/claude_cli.py`: bounded, timeout-safe `claude -p` execution.
 - `bangumi_host/session_store.py`: separate `host-bridge.sqlite` sessions,
@@ -71,22 +71,24 @@ real Claude smoke can consume quota; CI uses the fake fixture instead.
 
 The important bridge settings are:
 
-| Variable                         | Default / meaning                                                 |
-| -------------------------------- | ----------------------------------------------------------------- |
-| `CLAUDE_BIN`                     | `claude` executable or absolute path                              |
-| `CLAUDE_WORKDIR`                 | stable Claude work directory; defaults below `BANGUMI_DATA_DIR`   |
-| `CLAUDE_TIMEOUT_SECONDS`         | 75 seconds, bounded to a safe range                               |
-| `CLAUDE_MAX_OUTPUT_BYTES`        | 2 MiB bounded stdout/stderr capture                               |
-| `CLAUDE_MAX_TURNS`               | 16                                                                |
-| `BANGUMI_DATA_DIR`               | `~/.bangumi-agent-kit` unless explicitly configured               |
-| `BANGUMI_ARTIFACT_DIR`           | `<data-dir>/artifacts`                                            |
-| `BANGUMI_ENV_FILE`               | explicit absolute env file for the MCP child                      |
-| `BANGUMI_MCP_CONFIG`             | generated absolute MCP config unless an existing file is supplied |
-| `BANGUMI_RESPONSE_SCHEMA`        | this directory's strict schema                                    |
-| `BANGUMI_HOST_SYSTEM_PROMPT`     | this directory's system prompt                                    |
-| `BANGUMI_HOST_SESSION_TTL_HOURS` | 168 hours                                                         |
-| `BANGUMI_HOST_STRICT_MCP`        | `true`; isolates this host from unrelated MCP servers             |
-| `BANGUMI_HOST_ALLOWED_TOOLS`     | `mcp__bangumi__*`                                                 |
+| Variable                            | Default / meaning                                                 |
+| ----------------------------------- | ----------------------------------------------------------------- |
+| `CLAUDE_BIN`                        | `claude` executable or absolute path                              |
+| `CLAUDE_WORKDIR`                    | stable Claude work directory; defaults below `BANGUMI_DATA_DIR`   |
+| `CLAUDE_TIMEOUT_SECONDS`            | 75 seconds, bounded to a safe range                               |
+| `CLAUDE_MAX_OUTPUT_BYTES`           | 2 MiB bounded stdout/stderr capture                               |
+| `CLAUDE_MAX_TURNS`                  | 16                                                                |
+| `BANGUMI_DATA_DIR`                  | `~/.bangumi-agent-kit` unless explicitly configured               |
+| `BANGUMI_ARTIFACT_DIR`              | `<data-dir>/artifacts`                                            |
+| `BANGUMI_ENV_FILE`                  | explicit absolute env file for the MCP child                      |
+| `BANGUMI_MCP_CONFIG`                | generated absolute MCP config unless an existing file is supplied |
+| `BANGUMI_RESPONSE_SCHEMA`           | this directory's strict schema                                    |
+| `BANGUMI_HOST_SYSTEM_PROMPT`        | this directory's system prompt                                    |
+| `BANGUMI_HOST_SESSION_TTL_HOURS`    | 168 hours                                                         |
+| `BANGUMI_HOST_STRICT_MCP`           | `true`; isolates this host from unrelated MCP servers             |
+| `BANGUMI_HOST_ALLOWED_TOOLS`        | `mcp__bangumi__*`                                                 |
+| `BANGUMI_HOST_BUILTIN_TOOLS`        | `WebSearch,WebFetch`; exact Claude built-in tool allowlist        |
+| `BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST` | empty; explicit extra parent env names, never `*` or `BANGUMI_*`  |
 
 When `BANGUMI_ENV_FILE` is set, runtime env loading uses this order while
 never overwriting an existing process variable:
@@ -97,7 +99,24 @@ existing process.env > explicit BANGUMI_ENV_FILE > cwd/.env.local > cwd/.env
 
 The generated MCP definition uses server name `bangumi`, `node`, the absolute
 `apps/mcp/dist/main.js` path, SQLite, the configured data directory, and the
-explicit env file. JSON does not rely on shell expansion of `~`.
+explicit env file. It explicitly bridges the trusted external identity and
+per-invocation confirmation grant with Claude's `${BANGUMI_*}` expansion. JSON
+does not rely on shell expansion of `~`.
+
+Claude receives a deliberately small environment: portable process values,
+explicit Claude/Anthropic authentication values, and only names listed in
+`BANGUMI_HOST_CLAUDE_ENV_ALLOWLIST`. `BANGUMI_ENV_FILE`, database URLs, token
+encryption keys, OAuth secrets, and other `BANGUMI_*` server values stay in the
+MCP server configuration or parent process and are not copied into Claude.
+The optional allowlist is for operator-selected values such as
+`AWS_REGION,AWS_PROFILE`; it must never be `*`.
+
+The default Claude built-in tool profile is `WebSearch,WebFetch`. Bangumi MCP
+tools are separately allowed by `mcp__bangumi__*`. Operators may explicitly
+configure a power profile, but enabling `Bash`, `Read`, `Edit`, `Write`, or
+other filesystem/shell tools gives Claude the OS user's corresponding
+capabilities and is not a strongly isolated mode. The bridge never enables
+`--dangerously-skip-permissions` or `bypassPermissions`.
 
 Check the installation without exposing secrets:
 
@@ -224,10 +243,19 @@ For a destructive or bulk write:
 
 1. MCP returns `CONFIRMATION_REQUIRED` and the model presents its summary.
 2. The host persists the confirmation ID and summary with the session.
-3. An unrelated or ambiguous message does not auto-confirm anything.
-4. Only an explicit confirmation lets Claude repeat the exact same tool name
-   and payload with `_confirmationId`.
-5. MCP binds the pending action to principal, bot, conversation, payload hash,
+3. The Host classifies the next message as `CONFIRM`, `CANCEL`, or `OTHER`.
+   Only a deliberately recognized confirmation (for example `确认` or
+   `confirm`) gets the pending ID as `BANGUMI_MCP_CONFIRMATION_GRANT` for that
+   one Claude invocation. The grant is not stored as a session environment.
+4. An unrelated or ambiguous message does not get a grant and does not receive
+   a fresh copy of the pending ID. Claude memory of the ID is harmless because
+   MCP rejects `_confirmationId` without the matching trusted grant.
+5. `取消`/`cancel` is handled locally: pending confirmation is cleared, the
+   Claude session ID remains, and no Claude invocation is needed.
+6. On confirmation, Claude must repeat the exact same tool name and payload
+   with `_confirmationId`.
+7. MCP requires both the trusted per-invocation grant and the PendingAction
+   checks for principal, bot, conversation, payload hash,
    expiry, and atomic single-use claim.
 
 Wrong user, wrong bot, wrong conversation, changed payload, expired ID, and

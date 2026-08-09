@@ -8,6 +8,7 @@ OneBot v11 adapter are installed; it never registers a catch-all matcher.
 from __future__ import annotations
 
 from bangumi_host.adapter import handle_bangumi_agent_message as _handle_message
+from bangumi_host.nonebot_adapter import build_nonebot_reply
 from bangumi_host.service import ClaudeHostService, HostResult
 
 
@@ -42,7 +43,7 @@ async def handle_bangumi_agent_message(
 
 try:
     from nonebot import on_command
-    from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+    from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent
 
     bangumi_command = on_command('bangumi', aliases={'bgm', '邦奇'}, priority=10, block=False)
 
@@ -67,9 +68,7 @@ try:
             display_name=str(display_name) if display_name else None,
             message_text=text,
         )
-        reply = Message(result.response.text)
-        for path in result.artifact_paths:
-            reply.append(MessageSegment.image(path=str(path)))
+        reply = build_nonebot_reply(result)
         await bangumi_command.finish(reply)
 except ImportError:
     # The reusable bridge remains usable in environments that do not install
@@ -77,4 +76,9 @@ except ImportError:
     bangumi_command = None
 
 
-__all__ = ['get_host_service', 'handle_bangumi_agent_message', 'bangumi_command']
+__all__ = [
+    'build_nonebot_reply',
+    'get_host_service',
+    'handle_bangumi_agent_message',
+    'bangumi_command',
+]

@@ -15,6 +15,7 @@ REQUIRED_CLAUDE_FLAGS = (
     '--json-schema',
     '--mcp-config',
     '--strict-mcp-config',
+    '--tools',
     '--allowedTools',
     '--resume',
 )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import sys
@@ -45,6 +46,8 @@ def make_config(
         allowed_tools=('mcp__bangumi__*',),
         repo_root=root,
         mcp_entry=mcp_entry,
+        builtin_tools=('WebSearch', 'WebFetch'),
+        claude_env_allowlist=('FAKE_CLAUDE_LOG', 'FAKE_CLAUDE_SCENARIO'),
     )
     return config
 
@@ -56,28 +59,40 @@ class ClaudeCliTests(unittest.TestCase):
         shutil.copy2(FAKE_CLAUDE, self.fake_claude)
         os.chmod(self.fake_claude, 0o755)
         self.original_scenario = os.environ.get('FAKE_CLAUDE_SCENARIO')
+        self.original_log = os.environ.get('FAKE_CLAUDE_LOG')
 
     def tearDown(self) -> None:
         if self.original_scenario is None:
             os.environ.pop('FAKE_CLAUDE_SCENARIO', None)
         else:
             os.environ['FAKE_CLAUDE_SCENARIO'] = self.original_scenario
+        if self.original_log is None:
+            os.environ.pop('FAKE_CLAUDE_LOG', None)
+        else:
+            os.environ['FAKE_CLAUDE_LOG'] = self.original_log
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_command_contains_full_isolated_contract(self) -> None:
         config = make_config(self.temp_dir, claude_bin=self.fake_claude)
-        args = ClaudeCommandBuilder(config).build('user message', 'session-1')
-        self.assertEqual(args[0], str(self.fake_claude))
-        self.assertIn('--output-format', args)
-        self.assertIn('--json-schema', args)
-        self.assertIn('--mcp-config', args)
-        self.assertIn('--strict-mcp-config', args)
-        self.assertIn('--allowedTools', args)
-        self.assertIn('mcp__bangumi__*', args)
-        self.assertIn('--append-system-prompt-file', args)
-        self.assertIn('--resume', args)
-        self.assertIn('session-1', args)
-        self.assertIn('user message', args)
+        for args in (
+            ClaudeCommandBuilder(config).build('user message'),
+            ClaudeCommandBuilder(config).build('user message', 'session-1'),
+        ):
+            self.assertEqual(args[0], str(self.fake_claude))
+            self.assertIn('--output-format', args)
+            self.assertIn('--json-schema', args)
+            self.assertIn('--mcp-config', args)
+            self.assertIn('--tools', args)
+            self.assertEqual(args[args.index('--tools') + 1], 'WebSearch,WebFetch')
+            self.assertIn('--strict-mcp-config', args)
+            self.assertIn('--allowedTools', args)
+            self.assertIn('mcp__bangumi__*', args)
+            self.assertIn('--append-system-prompt-file', args)
+            self.assertNotIn('--dangerously-skip-permissions', args)
+            self.assertNotIn('bypassPermissions', args)
+        self.assertIn('--resume', ClaudeCommandBuilder(config).build('user message', 'session-1'))
+        self.assertIn('session-1', ClaudeCommandBuilder(config).build('user message', 'session-1'))
+        self.assertIn('user message', ClaudeCommandBuilder(config).build('user message'))
 
     def test_success_and_resume(self) -> None:
         config = make_config(self.temp_dir, claude_bin=self.fake_claude)
@@ -92,6 +107,42 @@ class ClaudeCliTests(unittest.TestCase):
         self.assertIn('session-1', result.stdout)
         self.assertFalse(result.timed_out)
         self.assertFalse(result.output_limited)
+
+    def test_subprocess_environment_contains_identity_and_grant_but_not_server_secrets(self) -> None:
+        config = make_config(self.temp_dir, claude_bin=self.fake_claude)
+        log_path = self.temp_dir / 'environment.jsonl'
+        os.environ['FAKE_CLAUDE_LOG'] = str(log_path)
+        os.environ['BANGUMI_TOKEN_ENCRYPTION_KEY'] = 'SENTINEL'
+        os.environ['BANGUMI_OAUTH_CLIENT_SECRET'] = 'SENTINEL'
+        os.environ['DATABASE_URL'] = 'SENTINEL'
+        os.environ['SOME_OTHER_BOT_SECRET'] = 'SENTINEL'
+        os.environ['BANGUMI_ENV_FILE'] = '/secret/.env'
+        try:
+            asyncio.run(
+                ClaudeCli(config).run(
+                    'confirm',
+                    {
+                        'BANGUMI_MCP_IDENTITY_PROVIDER': 'qq',
+                        'BANGUMI_MCP_EXTERNAL_USER_ID': 'user-a',
+                        'BANGUMI_MCP_BOT_INSTANCE_ID': 'qq:bot',
+                        'BANGUMI_MCP_CONVERSATION_ID': 'qq:bot:private:user-a',
+                        'BANGUMI_MCP_CONFIRMATION_GRANT': 'cfm_test',
+                    },
+                )
+            )
+            entry = json.loads(log_path.read_text(encoding='utf-8').splitlines()[0])
+            self.assertEqual(entry['identity']['BANGUMI_MCP_EXTERNAL_USER_ID'], 'user-a')
+            self.assertEqual(entry['identity']['BANGUMI_MCP_CONFIRMATION_GRANT'], 'cfm_test')
+            self.assertTrue(all(value is False for value in entry['environment_present'].values()))
+        finally:
+            for key in (
+                'BANGUMI_TOKEN_ENCRYPTION_KEY',
+                'BANGUMI_OAUTH_CLIENT_SECRET',
+                'DATABASE_URL',
+                'SOME_OTHER_BOT_SECRET',
+                'BANGUMI_ENV_FILE',
+            ):
+                os.environ.pop(key, None)
 
     def test_timeout_and_output_limit_are_bounded(self) -> None:
         config = make_config(
