@@ -29,15 +29,17 @@ describe('PR-6C Host Bridge & Security Isolation Tests', () => {
 
   it('H02: Environment identity injection structure check', () => {
     const env = {
-      BANGUMI_MCP_PRINCIPAL_ID: 'qq:123456',
+      BANGUMI_MCP_IDENTITY_PROVIDER: 'qq',
+      BANGUMI_MCP_EXTERNAL_USER_ID: '123456',
       BANGUMI_MCP_BOT_INSTANCE_ID: 'qq:bot01',
-      BANGUMI_MCP_CONVERSATION_ID: 'qq:group:7890',
+      BANGUMI_MCP_CONVERSATION_ID: 'qq:bot01:group:7890:user:123456',
       BANGUMI_DB_DRIVER: 'sqlite',
     };
 
-    expect(env.BANGUMI_MCP_PRINCIPAL_ID).toBe('qq:123456');
+    expect(env.BANGUMI_MCP_IDENTITY_PROVIDER).toBe('qq');
+    expect(env.BANGUMI_MCP_EXTERNAL_USER_ID).toBe('123456');
     expect(env.BANGUMI_MCP_BOT_INSTANCE_ID).toBe('qq:bot01');
-    expect(env.BANGUMI_MCP_CONVERSATION_ID).toBe('qq:group:7890');
+    expect(env.BANGUMI_MCP_CONVERSATION_ID).toBe('qq:bot01:group:7890:user:123456');
     expect(env.BANGUMI_DB_DRIVER).toBe('sqlite');
   });
 
