@@ -22,17 +22,18 @@ S4 embedded data只在页面确实携带实体数据时使用，通常作为 S3/
 
 ## Capability fallback table
 
-| Capability                        | Primary            | Fallback                              | 禁止的 fallback                           |
-| --------------------------------- | ------------------ | ------------------------------------- | ----------------------------------------- |
-| Calendar days/items               | S2                 | S3 experimental → S5 display evidence | 把 S5 headline 当 item truth；把 p1 当 v0 |
-| Subject core                      | S1                 | S3 → S5                               | 用旧 HTML 结果覆盖新鲜 S1 字段            |
-| Stats histogram                   | S5                 | future S3/S1 capability               | 用 score/count 推导 histogram             |
-| Cast/staff/relations/episodes     | S1                 | S3 → S5                               | 以页面缺一行推断不存在                    |
-| Community current                 | S3                 | S5                                    | 用 S1 subject count 伪装 community heat   |
-| Community growth                  | S6 over S3/S5      | none → `NOT_COMPUTABLE`               | 用一次 current count 计算 7-day delta     |
-| User private collection/progress  | S1 auth or S3 auth | none                                  | public HTML / another user data           |
-| Public profile/activity           | S1                 | S3 → S5                               | 未授权时读取 private-looking fields       |
-| Historical rank/rating/collection | S6                 | source-specific archived snapshots    | 用当前 rank 回填过去                      |
+| Capability                         | Primary            | Fallback                              | 禁止的 fallback                           |
+| ---------------------------------- | ------------------ | ------------------------------------- | ----------------------------------------- |
+| Calendar days/items                | S2                 | S3 experimental → S5 display evidence | 把 S5 headline 当 item truth；把 p1 当 v0 |
+| Subject core                       | S1                 | S3 → S5                               | 用旧 HTML 结果覆盖新鲜 S1 字段            |
+| Core stats histogram/completion/SD | S1 + S7            | S2 equivalent summary → S5 definition | 用 score/count 之外的猜测补 histogram     |
+| Web-specific stats charts          | S5                 | future S3 structured aggregation      | 用 core S1 histogram 冒充 user cross-tabs |
+| Cast/staff/relations/episodes      | S1                 | S3 → S5                               | 以页面缺一行推断不存在                    |
+| Community current                  | S3                 | S5                                    | 用 S1 subject count 伪装 community heat   |
+| Community growth                   | S6 over S3/S5      | none → `NOT_COMPUTABLE`               | 用一次 current count 计算 7-day delta     |
+| User private collection/progress   | S1 auth or S3 auth | none                                  | public HTML / another user data           |
+| Public profile/activity            | S1                 | S3 → S5                               | 未授权时读取 private-looking fields       |
+| Historical rank/rating/collection  | S6                 | source-specific archived snapshots    | 用当前 rank 回填过去                      |
 
 ## Merge rules
 

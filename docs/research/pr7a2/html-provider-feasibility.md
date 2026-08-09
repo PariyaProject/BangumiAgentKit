@@ -2,11 +2,11 @@
 
 ## 最终建议：保留但延后，采用 Hybrid Provider
 
-**FACT**：S1/S2 已覆盖大部分 subject/person/episode/calendar 原始数据；S3 `/p1` 已覆盖新版网页大量 structured community/user/discovery 能力；S5 仍是 subject stats 分布和旧网页可见编排的已验证来源。
+**FACT**：S1/S2 已覆盖大部分 subject/person/episode/calendar 原始数据；S1 Subject 还直接提供总体 rating histogram 与五类 collection buckets；S3 `/p1` 已覆盖新版网页大量 structured community/user/discovery 能力；S5 仍提供网站特有 stats chart、定义文案和旧网页可见编排。
 
 **EVIDENCE**：官方 v0/legacy schema、官方 frontend private schema/live endpoints、[`bgm.tv/subject/41529/stats`](https://bgm.tv/subject/41529/stats)、[`bgm.tv/calendar`](https://bgm.tv/calendar)。
 
-**REASONING**：HTML Provider 不再应被设计成所有数据缺口的默认补偿层；但完全取消它会丢失 stats、旧页面可见模块和 S3 unavailable 时的有限 read fallback。最佳选择是结构化优先、HTML 隔离且 capability-scoped 的 hybrid architecture。
+**REASONING**：HTML Provider 不再应被设计成 rating histogram、基础 collection distribution 或 core completion/SD 的默认补偿层；但完全取消它会丢失网站特有 chart、stats 定义、旧页面可见模块和 S3 unavailable 时的有限 read fallback。最佳选择是结构化优先、HTML 隔离且 capability-scoped 的 hybrid architecture。
 
 **CONFIDENCE**：HIGH（“需要隔离”）；具体 stats DOM parser 成本 MEDIUM。
 
@@ -16,16 +16,24 @@
 
 ## HTML-required capability list（研究时点）
 
-| Capability                                  | 为何 HTML required               | S3 未来变化时的替代                     |
-| ------------------------------------------- | -------------------------------- | --------------------------------------- |
-| 完整 rating histogram / status distribution | 未在 S1/S2/S3 已审 contract 证明 | 若官方提供 stats endpoint，优先 S3      |
-| old subject stats page 的可见定义/分母文案  | 页面定义是 S5 证据               | 保留 S5 作为 evidence，即使数据另有 API |
-| 旧 Rakuen/board 页面编排与未映射链接        | S3 coverage 不保证完整           | S3 subject/group topics + S5 fallback   |
-| 页面 only 的 discovery controls/排序显示    | S1/s3 filter vocabulary 可能不同 | capability diff 后再结构化              |
+| Capability                                             | 为何仍是 S4/S5 web-specific                                      | S3 未来变化时的替代                   |
+| ------------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------- |
+| rating by collection type (`interest_type`)            | S1 只有总体 histogram，没有 user collection state × score 交叉表 | 若 p1 提供稳定交叉表，优先 S3         |
+| user collection-volume distribution (`total_collects`) | 需要用户总体收藏量分桶，Subject schema 不含                      | 若 p1 提供公开聚合，优先 S3           |
+| user registration-time distribution (`regdate`)        | 需要用户注册时间分桶，Subject schema 不含                        | 若 p1 提供公开聚合，优先 S3           |
+| rating time since registration (`relative_regdate`)    | 需要用户注册时间与评分时间关系                                   | 若 p1 提供稳定公开聚合，优先 S3       |
+| VIB rating distribution                                | VIB 是网站特定用户筛选/定义，不在 S1                             | 只有官方结构化定义和数据出现后才替代  |
+| broadcast-time distribution (`airdate`)                | 是 rating × airdate status 的网站图表，不是 Calendar 基础字段    | p1 若公开同一聚合再评估               |
+| stats-page explanatory definitions / Beta labels       | 这是网站定义/展示 provenance                                     | 保留 S5 作为 definition evidence      |
+| 旧 Rakuen/board 页面编排与未映射链接                   | S3 coverage 不保证完整                                           | S3 subject/group topics + S5 fallback |
 
 ## 不该用 HTML 的能力
 
-Calendar、subject detail、episodes、cast/staff、person works、public collections 和基础关系已有 S1/S2 或 S3；HTML 只能作为可见性验证/有限 fallback，不能在 API 失败时静默抓取并改变语义。
+Calendar、subject detail、episodes、cast/staff、person works、public collections、基础关系、总体 rating histogram、collection buckets、completion 和 population SD 已有 S1/S2 + S7 支撑；HTML 只能作为 web-specific stats、可见性验证和有限 fallback，不能在 API 失败时静默抓取并改变语义。
+
+## v0.1 / v0.2 importance
+
+**结论**：HTML 对高价值 v0.1 core capabilities 不是必要条件；对 v0.2 主要是 advanced stats、community fallback、旧站页面证据和 website-specific definitions 的可选增强。若产品承诺显示 `interest_type`、用户收藏量/注册时间/评分时间分布、VIB 或 broadcast-time chart，则仍需 S5 或未来获得等价的 S3 source；若只承诺 core Subject Stats，S1+S7 已足够。
 
 ## Parser/运营要求（设计，不实施）
 
