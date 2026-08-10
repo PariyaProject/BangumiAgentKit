@@ -229,10 +229,56 @@ export interface PersonProfileViewModel {
   };
 }
 
+export interface RevisionTimelineViewModel {
+  template: 'revision-timeline';
+  version: 1;
+  state: 'complete' | 'partial' | 'unavailable';
+  entityType: 'subject' | 'episode' | 'character' | 'person';
+  entityId: number;
+  items: Array<{
+    id: number;
+    type: number;
+    summary?: string;
+    createdAt?: string;
+    creator?: {
+      username?: string;
+      nickname?: string;
+    };
+  }>;
+  coverage: {
+    state: 'complete' | 'partial' | 'unavailable';
+    observed: number;
+    returned: number;
+    total: number;
+    totalKind: 'exact' | 'estimated';
+    limit: number;
+    offset: number;
+    truncated: boolean;
+    rendered: number;
+    missingFields: Record<string, number>;
+  };
+  capabilityStates: {
+    historical_growth: 'not_computable';
+  };
+  source: {
+    label: string;
+    operation: string;
+    retrievedAt?: string;
+    attemptedAt?: string;
+  };
+  limitations: string[];
+  warnings: Array<{
+    code: string;
+    state: 'partial' | 'unavailable';
+    message: string;
+  }>;
+}
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
   | CastCardViewModel
   | CollectionProgressViewModel
   | CalendarViewModel
+  | RevisionTimelineViewModel
   | PersonProfileViewModel;

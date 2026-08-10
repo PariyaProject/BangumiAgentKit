@@ -6,12 +6,14 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   buildCalendarIntelligenceViewModel,
+  buildRevisionTimelineViewModel,
   PersonProfileViewModel,
   buildPersonProfileViewModel,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 import type {
   CalendarIntelligenceResult,
+  RevisionIntelligenceResult,
   PersonActivityProfile,
 } from '@bangumi-agent-kit/bangumi-core';
 
@@ -297,7 +299,10 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         makeResult(
           'complete',
           Array.from({ length: 7 }, (_, index) =>
-            makeDay(index + 1, Array.from({ length: 8 }, (_, itemIndex) => makeItem(itemIndex + 1))),
+            makeDay(
+              index + 1,
+              Array.from({ length: 8 }, (_, itemIndex) => makeItem(itemIndex + 1)),
+            ),
           ),
         ),
       ],
@@ -319,6 +324,124 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         expect(rendered.height, `${label} ${width}`).toBeGreaterThan(100);
       }
     }
+  });
+
+  it('PR-7F: Revision timeline renders complete, partial, empty, long-CJK, and unavailable at 640/960', async () => {
+    const makeResult = (
+      state: RevisionIntelligenceResult['state'],
+      items: RevisionIntelligenceResult['items'],
+      total = items.length,
+    ): RevisionIntelligenceResult => {
+      const missingFields: Record<string, number> =
+        items.length > 1 ? { 'revision.summary': 1 } : {};
+      const truncated = total > items.length;
+      const partial = state === 'partial';
+      return {
+        state,
+        entityType: 'subject',
+        entityId: 218707,
+        items,
+        coverage: {
+          state,
+          observed: items.length,
+          returned: items.length,
+          total,
+          totalKind: state === 'unavailable' ? 'estimated' : 'exact',
+          limit: 10,
+          offset: 0,
+          truncated,
+          missingFields,
+        },
+        capabilityStates: { historical_growth: 'not_computable' },
+        source: {
+          class: 'official-v0',
+          operation: 'GET /v0/revisions/subjects',
+          ...(state === 'unavailable'
+            ? { attemptedAt: '2026-08-10T00:00:00.000Z' }
+            : { retrievedAt: '2026-08-10T00:00:00.000Z' }),
+        },
+        evidence: [],
+        limitations: ['当前仅代表官方有界修订页面。'],
+        warnings: [
+          ...(partial
+            ? [{ code: 'OUTPUT_TRUNCATED', state: 'partial' as const, message: '有界样本。' }]
+            : []),
+          ...(state === 'unavailable'
+            ? [
+                {
+                  code: 'UPSTREAM_UNAVAILABLE',
+                  state: 'unavailable' as const,
+                  message: '官方修订源暂时不可用。',
+                },
+              ]
+            : []),
+        ],
+      };
+    };
+
+    const cases: Array<[string, RevisionIntelligenceResult]> = [
+      [
+        'complete',
+        makeResult('complete', [
+          {
+            id: 1,
+            type: 1,
+            summary: '修改条目中文名',
+            createdAt: '2026-08-01T00:00:00Z',
+            creator: { username: 'editor', nickname: '编辑者' },
+          },
+        ]),
+      ],
+      [
+        'partial-long-CJK',
+        makeResult(
+          'partial',
+          [
+            {
+              id: 2,
+              type: 1,
+              summary: `修改简介：${'这是一个很长的繁體簡體中文修订摘要，用于测试移动端换行。'.repeat(8)} <script>no-html</script>`,
+              createdAt: '2026-08-02T00:00:00Z',
+            },
+            { id: 3, type: 2 },
+          ],
+          10,
+        ),
+      ],
+      ['empty', makeResult('complete', [], 0)],
+      ['unavailable', makeResult('unavailable', [], 0)],
+    ];
+
+    for (const [label, result] of cases) {
+      const viewModel = buildRevisionTimelineViewModel(result);
+      for (const width of [640, 960]) {
+        const rendered = await renderService.renderCard(viewModel, {
+          width,
+          deviceScaleFactor: 1,
+        });
+        assertValidPng(rendered.buffer);
+        expect(rendered.template, `${label} ${width}`).toBe('revision-timeline');
+        expect(rendered.width, `${label} ${width}`).toBe(width);
+        expect(rendered.height, `${label} ${width}`).toBeGreaterThan(100);
+      }
+    }
+
+    const partialVm = buildRevisionTimelineViewModel(
+      makeResult(
+        'partial',
+        [
+          {
+            id: 4,
+            type: 1,
+            summary: '<script>no-html</script>',
+          },
+        ],
+        2,
+      ),
+    );
+    const html = renderHtmlTemplate(partialVm, 'bangumi-dark', {}, 640);
+    expect(html).toContain('&lt;script&gt;no-html&lt;/script&gt;');
+    expect(html).toContain('历史增长趋势：当前源不支持计算');
   });
 
   it('R06: CJK Chinese text renders without throwing or breaking layout', async () => {

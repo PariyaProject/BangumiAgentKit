@@ -53,7 +53,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|cast|person|calendar|search|collection <args> [--output <path>] [--force]
+  render subject|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -507,6 +507,12 @@ export class StandaloneCommandRegistry {
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
     } else if (kind === 'calendar') {
       name = 'bangumi.render_calendar';
+    } else if (kind === 'revision') {
+      name = 'bangumi.render_revision_timeline';
+      input = {
+        entityType: requireArg(args[1], 'revision entity type').toLowerCase(),
+        entityId: parsePositiveInteger(args[2], 'entity id'),
+      };
     } else if (kind === 'search') {
       name = 'bangumi.render_search';
       input = { query: requireArg(args[1], 'search query') };

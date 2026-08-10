@@ -189,6 +189,162 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(res.items[0]?.summary).toBe('修改中文名称');
   });
 
+  it('RevisionService returns bounded revision intelligence with truthful coverage', async () => {
+    const capturedUrls: string[] = [];
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      capturedUrls.push(url);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            total: 30,
+            limit: 20,
+            offset: 10,
+            data: [
+              {
+                id: 101,
+                type: 1,
+                summary: '修改中文名称',
+                created_at: '2026-08-01T00:00:00Z',
+                creator: { username: 'alice', nickname: 'Alice' },
+              },
+              { id: 102, type: 2, summary: '' },
+            ],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    });
+
+    const result = await new RevisionService(
+      new HttpClient({ fetchFn: mockFetch }),
+    ).getRevisionIntelligence('subject', 123, { limit: 50, offset: 10 });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(capturedUrls[0]).toContain('/v0/revisions/subjects?subject_id=123&limit=20&offset=10');
+    expect(result.state).toBe('partial');
+    expect(result.items[0]).toMatchObject({
+      id: 101,
+      summary: '修改中文名称',
+      createdAt: '2026-08-01T00:00:00Z',
+      creator: { username: 'alice', nickname: 'Alice' },
+    });
+    expect(result.items[1]?.summary).toBeUndefined();
+    expect(result.coverage).toMatchObject({
+      observed: 2,
+      returned: 2,
+      total: 30,
+      totalKind: 'exact',
+      limit: 20,
+      offset: 10,
+      truncated: true,
+      missingFields: {
+        'revision.summary': 1,
+        'revision.createdAt': 1,
+        'revision.creator.username': 1,
+        'revision.creator.nickname': 1,
+      },
+    });
+    expect(result.capabilityStates.historical_growth).toBe('not_computable');
+    expect(result.source.retrievedAt).toBeTruthy();
+    expect(result.evidence[0]).toMatchObject({
+      source: 'official-v0',
+      operation: 'GET /v0/revisions/subjects',
+    });
+  });
+
+  it('RevisionService makes one request and preserves public revision failures', async () => {
+    const cases = [
+      { status: 404, code: 'NOT_FOUND' },
+      { status: 429, code: 'RATE_LIMITED' },
+      { status: 503, code: 'UPSTREAM_UNAVAILABLE' },
+    ] as const;
+
+    for (const testCase of cases) {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValue(new Response('revision failure', { status: testCase.status }));
+      const result = await new RevisionService(
+        new HttpClient({ fetchFn: mockFetch }),
+      ).getRevisionIntelligence('subject', 123);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(result.state).toBe('unavailable');
+      expect(result.error).toMatchObject({ code: testCase.code });
+      expect(result.source.retrievedAt).toBeUndefined();
+      expect(result.source.attemptedAt).toBeTruthy();
+    }
+  });
+
+  it('RevisionService classifies malformed revision pages as schema drift', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ data: { id: 1 } }), { status: 200 }));
+    const result = await new RevisionService(
+      new HttpClient({ fetchFn: mockFetch }),
+    ).getRevisionIntelligence('person', 7);
+
+    expect(result.state).toBe('unavailable');
+    expect(result.error).toMatchObject({ code: 'PARSER_ERROR' });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
+    );
+  });
+
+  it('RevisionService routes each supported entity through its official bounded endpoint', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    const service = new RevisionService(new HttpClient({ fetchFn: mockFetch }));
+
+    for (const [entityType, path, idKey] of [
+      ['subject', '/v0/revisions/subjects', 'subject_id'],
+      ['episode', '/v0/revisions/episodes', 'episode_id'],
+      ['character', '/v0/revisions/characters', 'character_id'],
+      ['person', '/v0/revisions/persons', 'person_id'],
+    ] as const) {
+      await service.getRevisionIntelligence(entityType, 218707, { limit: 10 });
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        expect.stringContaining(`${path}?${idKey}=218707&limit=10&offset=0`),
+        expect.any(Object),
+      );
+    }
+
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it('RevisionService rejects an oversized revision page before mapping unbounded data', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 21,
+          limit: 20,
+          offset: 0,
+          data: Array.from({ length: 21 }, (_, id) => ({
+            id: id + 1,
+            type: 1,
+            summary: 'bounded fixture',
+            created_at: '2026-01-01T00:00:00Z',
+          })),
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const result = await new RevisionService(
+      new HttpClient({ fetchFn: mockFetch }),
+    ).getRevisionIntelligence('subject', 218707);
+
+    expect(result.state).toBe('unavailable');
+    expect(result.error).toMatchObject({ code: 'PARSER_ERROR' });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
+    );
+  });
+
   it('IndexReadService reads index details and subjects', async () => {
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/subjects')) {
@@ -506,14 +662,24 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     });
     const item = (id: number) => ({ id, name: `Item ${id}` });
 
-    expect(() => parseCalendarPayload(Array.from({ length: 33 }, (_, index) => day((index % 7) + 1))))
-      .toThrow('PARSER_ERROR');
-    expect(() => parseCalendarPayload([day(1, Array.from({ length: 129 }, (_, index) => item(index + 1)))]))
-      .toThrow('PARSER_ERROR');
+    expect(() =>
+      parseCalendarPayload(Array.from({ length: 33 }, (_, index) => day((index % 7) + 1))),
+    ).toThrow('PARSER_ERROR');
+    expect(() =>
+      parseCalendarPayload([
+        day(
+          1,
+          Array.from({ length: 129 }, (_, index) => item(index + 1)),
+        ),
+      ]),
+    ).toThrow('PARSER_ERROR');
     expect(() =>
       parseCalendarPayload(
         Array.from({ length: 7 }, (_, dayIndex) =>
-          day(dayIndex + 1, Array.from({ length: 80 }, (_, itemIndex) => item(dayIndex * 80 + itemIndex + 1))),
+          day(
+            dayIndex + 1,
+            Array.from({ length: 80 }, (_, itemIndex) => item(dayIndex * 80 + itemIndex + 1)),
+          ),
         ),
       ),
     ).toThrow('PARSER_ERROR');

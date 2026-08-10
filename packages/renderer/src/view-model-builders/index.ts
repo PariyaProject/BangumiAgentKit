@@ -3,6 +3,7 @@ import type {
   DomainCalendarDay,
   DomainRelatedCharacter,
   CalendarIntelligenceResult,
+  RevisionIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -12,6 +13,7 @@ import type {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  RevisionTimelineViewModel,
   SearchItemViewModel,
   CastItemViewModel,
   CalendarDayViewModel,
@@ -256,6 +258,32 @@ export function buildCalendarIntelligenceViewModel(
     source: {
       label: 'Bangumi official legacy calendar',
       retrievedAt: result.source.retrievedAt,
+    },
+    limitations: result.limitations,
+    warnings: result.warnings,
+  };
+}
+
+export function buildRevisionTimelineViewModel(
+  result: RevisionIntelligenceResult,
+): RevisionTimelineViewModel {
+  return {
+    template: 'revision-timeline',
+    version: 1,
+    state: result.state,
+    entityType: result.entityType,
+    entityId: result.entityId,
+    items: result.items,
+    coverage: {
+      ...result.coverage,
+      rendered: result.items.length,
+    },
+    capabilityStates: result.capabilityStates,
+    source: {
+      label: 'Bangumi official v0 revision history',
+      operation: result.source.operation,
+      retrievedAt: result.source.retrievedAt,
+      attemptedAt: result.source.attemptedAt,
     },
     limitations: result.limitations,
     warnings: result.warnings,

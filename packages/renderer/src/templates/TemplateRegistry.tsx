@@ -6,6 +6,7 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  RevisionTimelineViewModel,
   PersonProfileViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
@@ -15,6 +16,7 @@ import { SearchListCard } from './SearchListCard.js';
 import { CastCard } from './CastCard.js';
 import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
+import { RevisionTimelineCard } from './RevisionTimelineCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
@@ -73,6 +75,14 @@ registerTemplate<CalendarViewModel>({
   version: 1,
   render: (vm, theme, resolvedImages, width) => (
     <CalendarCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
+  ),
+});
+
+registerTemplate<RevisionTimelineViewModel>({
+  id: 'revision-timeline',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <RevisionTimelineCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

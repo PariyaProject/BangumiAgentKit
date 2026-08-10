@@ -192,6 +192,52 @@ describe('PR-6R-C standalone runtime', () => {
     await host.close();
   });
 
+  it('PR-7F: standalone render revision dispatches the bounded timeline tool path', async () => {
+    const host = await createTestHost();
+    let executions = 0;
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.render_revision_timeline',
+        description: 'revision route fixture',
+        input: z.object({
+          entityType: z.enum(['subject', 'episode', 'character', 'person']),
+          entityId: z.number().int().positive(),
+        }),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          executions += 1;
+          return {
+            artifact: {
+              id: `revision-${input.entityType}-${input.entityId}`,
+              mimeType: 'image/png',
+              width: 640,
+              height: 480,
+            },
+          };
+        },
+      }),
+    );
+
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const context = {
+      host,
+      flags: parseCliArgs(['--json', 'render', 'revision', 'subject', '218707']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+
+    await expect(
+      registry.execute(['render', 'revision', 'subject', '218707'], context),
+    ).resolves.toMatchObject({
+      value: { artifact: { id: 'revision-subject-218707', width: 640 } },
+    });
+    expect(executions).toBe(1);
+    await host.close();
+  });
+
   it('ST-07/ST-08/ST-13-ST-19: raw and high-level writes preserve validation, identity, and confirmation', async () => {
     let executions = 0;
     const host = await createTestHost();
@@ -275,9 +321,24 @@ describe('PR-6R-C standalone runtime', () => {
     const statuses = result.value as Array<{ id: string; state: string }>;
     expect(statuses).toEqual(
       expect.arrayContaining([
-        { id: 'official-v0', state: 'READY', sourceClass: 'official_v0', capabilities: ['subject', 'subject_stats'] },
-        { id: 'official-legacy', state: 'READY', sourceClass: 'official_legacy', capabilities: ['calendar'] },
-        { id: 'structured-web', state: 'DISABLED', sourceClass: 'structured_web', capabilities: [] },
+        {
+          id: 'official-v0',
+          state: 'READY',
+          sourceClass: 'official_v0',
+          capabilities: ['subject', 'subject_stats'],
+        },
+        {
+          id: 'official-legacy',
+          state: 'READY',
+          sourceClass: 'official_legacy',
+          capabilities: ['calendar'],
+        },
+        {
+          id: 'structured-web',
+          state: 'DISABLED',
+          sourceClass: 'structured_web',
+          capabilities: [],
+        },
         { id: 'website-html', state: 'DISABLED', sourceClass: 'website_html', capabilities: [] },
         { id: 'snapshots', state: 'NOT_CONFIGURED', sourceClass: 'snapshot', capabilities: [] },
       ]),

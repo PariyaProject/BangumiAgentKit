@@ -72,6 +72,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getIndexTool,
     getSubjectStatsTool,
     getCalendarIntelligenceTool,
+    getRevisionIntelligenceTool,
   ] = createReadTools(httpClient);
   return {
     searchTool,
@@ -96,6 +97,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getIndexTool,
     getSubjectStatsTool,
     getCalendarIntelligenceTool,
+    getRevisionIntelligenceTool,
   };
 }
 
@@ -452,6 +454,49 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
         expect.arrayContaining([expect.objectContaining({ code: warningCode })]),
       );
     }
+  });
+
+  it('PR-7F: get_revision_intelligence exposes bounded official history semantics', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 2,
+          limit: 2,
+          offset: 0,
+          data: [
+            {
+              id: 11,
+              type: 1,
+              summary: '修改条目中文名',
+              created_at: '2026-08-01T00:00:00Z',
+              creator: { username: 'editor', nickname: '编辑者' },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getRevisionIntelligenceTool } = getReadToolMap(httpClient);
+
+    const result = (await executeTestTool(
+      getRevisionIntelligenceTool,
+      { entityType: 'subject', entityId: 218707, limit: 20 },
+      context,
+    )) as any;
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(result.state).toBe('partial');
+    expect(result.items[0]).toMatchObject({ id: 11, summary: '修改条目中文名' });
+    expect(result.coverage).toMatchObject({
+      observed: 1,
+      returned: 1,
+      total: 2,
+      truncated: true,
+    });
+    expect(result.capabilityStates.historical_growth).toBe('not_computable');
+    expect(result.limitations[0]).toContain('有界页面');
+    expect(getRevisionIntelligenceTool.description).toContain('完整生命周期历史');
   });
 
   it('PR-7D: get_person_profile aggregates official person relationships with explicit coverage', async () => {

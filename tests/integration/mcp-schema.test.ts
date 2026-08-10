@@ -66,6 +66,30 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
     expect(renderCalendarSchema.properties.weekday.minimum).toBeUndefined();
     expect(renderCalendarSchema.properties.weekday.maximum).toBeUndefined();
 
+    const revisionIntelligenceTool = tools.find(
+      (t: any) => t.name === 'bangumi.get_revision_intelligence',
+    );
+    expect(revisionIntelligenceTool).toBeDefined();
+    const revisionIntelligenceSchema = revisionIntelligenceTool?.inputSchema as any;
+    expect(revisionIntelligenceSchema.properties.entityType.enum).toEqual([
+      'subject',
+      'episode',
+      'character',
+      'person',
+    ]);
+    expect(revisionIntelligenceSchema.properties.limit.maximum).toBe(20);
+    expect(revisionIntelligenceSchema.properties.offset.maximum).toBe(1_000_000);
+
+    const renderRevisionTool = tools.find(
+      (t: any) => t.name === 'bangumi.render_revision_timeline',
+    );
+    expect(renderRevisionTool).toBeDefined();
+    const renderRevisionSchema = renderRevisionTool?.inputSchema as any;
+    const revisionEntityIdMin =
+      renderRevisionSchema.properties.entityId.minimum ??
+      renderRevisionSchema.properties.entityId.exclusiveMinimum;
+    expect(revisionEntityIdMin).toBeGreaterThanOrEqual(0);
+
     await client.close();
   });
 });

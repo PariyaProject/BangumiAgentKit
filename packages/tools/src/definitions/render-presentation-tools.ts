@@ -7,6 +7,8 @@ import {
   CharacterService,
   CalendarService,
   PersonService,
+  RevisionService,
+  RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
@@ -18,6 +20,7 @@ import {
   buildCalendarIntelligenceViewModel,
   buildSearchListViewModel,
   buildPersonProfileViewModel,
+  buildRevisionTimelineViewModel,
 } from '@bangumi-agent-kit/renderer';
 
 let globalArtifactStore: ArtifactStore | null = null;
@@ -231,6 +234,36 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderRevisionTimeline = defineTool({
+    name: 'bangumi.render_revision_timeline',
+    description:
+      '生成官方修订历史摘要图片卡片 Artifact。结果是有界样本，不宣称完整生命周期历史；支持 subject、episode、character、person。',
+    input: z.object({
+      entityType: z
+        .enum(['subject', 'episode', 'character', 'person'])
+        .describe('实体类型：subject 条目、episode 章节、character 角色、person 人物'),
+      entityId: z.number().int().positive().describe('实体 ID'),
+      limit: z.number().int().min(1).max(20).optional().describe('最多展示修订条数，默认 10'),
+      offset: z.number().int().min(0).max(1_000_000).optional().describe('官方分页偏移量，默认 0'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const publicClient = deps?.publicHttpClient;
+      if (!publicClient) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const revisionService = new RevisionService(publicClient);
+      const revisionResult = await revisionService.getRevisionIntelligence(
+        input.entityType as RevisionEntityType,
+        input.entityId,
+        { limit: input.limit, offset: input.offset },
+      );
+      return await executeRenderAndSave(buildRevisionTimelineViewModel(revisionResult));
+    },
+  });
+
   const renderSearch = defineTool({
     name: 'bangumi.render_search',
     description: '生成 Bangumi 搜索结果列表图片卡片 Artifact。',
@@ -312,5 +345,6 @@ export function createRenderPresentationTools(
     renderCalendar,
     renderSearch,
     renderPersonProfile,
+    renderRevisionTimeline,
   ] as const;
 }

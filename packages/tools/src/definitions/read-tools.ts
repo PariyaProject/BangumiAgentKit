@@ -32,7 +32,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const characterService = new CharacterService(publicHttpClient);
   const personService = new PersonService(publicHttpClient);
   const userService = new UserService(publicHttpClient);
-  const revisionService = new RevisionService(publicHttpClient);
   const indexService = new IndexReadService(publicHttpClient);
 
   const subjectTypeMap: Record<string, number> = {
@@ -690,7 +689,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
-    description: '获取指定实体（条目、章节、角色、人物）的编辑修订历史列表。',
+    description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
     input: z.object({
       entityType: z.enum(['subject', 'episode', 'character', 'person']).describe('实体类型'),
       entityId: z.number().int().positive().describe('实体 ID'),
@@ -700,8 +699,9 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await revisionService.listRevisions(
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.listRevisions(
         input.entityType as RevisionEntityType,
         input.entityId,
         {
@@ -722,10 +722,42 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await revisionService.getRevision(
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getRevision(
         input.entityType as RevisionEntityType,
         input.revisionId,
+      );
+    },
+  });
+
+  const getRevisionIntelligence = defineTool({
+    name: 'bangumi.get_revision_intelligence',
+    description:
+      '获取指定条目、章节、角色或人物的有界官方修订摘要。返回 observed/returned/total 覆盖、创建时间、修订摘要、来源证据与 partial/unavailable 状态；limit 最大 20。它不宣称完整生命周期历史，也不计算历史增长趋势；需要原始分页请使用 bangumi.list_revisions，需要单条变更详情请使用 bangumi.get_revision。',
+    input: z.object({
+      entityType: z
+        .enum(['subject', 'episode', 'character', 'person'])
+        .describe('实体类型：subject 条目、episode 章节、character 角色、person 人物'),
+      entityId: z.number().int().positive().describe('实体 ID'),
+      limit: z.number().int().min(1).max(20).optional().describe('最多返回修订条数，默认 10'),
+      offset: z
+        .number()
+        .int()
+        .min(0)
+        .max(1_000_000)
+        .optional()
+        .describe('官方分页偏移量，默认 0；不代表已读取全部历史'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getRevisionIntelligence(
+        input.entityType as RevisionEntityType,
+        input.entityId,
+        { limit: input.limit, offset: input.offset },
       );
     },
   });
@@ -782,5 +814,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getIndex,
     getSubjectStats,
     getCalendarIntelligence,
+    getRevisionIntelligence,
   ] as const;
 }
