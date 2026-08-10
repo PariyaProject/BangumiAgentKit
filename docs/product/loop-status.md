@@ -18,7 +18,7 @@ Primary governance:
 
 Cycle:
 
-PR-7D Person / Seiyuu / Staff Intelligence
+PR-7E Calendar / Schedule Intelligence
 
 Status:
 
@@ -26,15 +26,15 @@ FROZEN
 
 Implementation Frozen SHA:
 
-84e32b3366c62346e14d154bb740fb5c480e96f9
+d53d800c5497cacd156792b1139ab7f2a696cdbe
 
 Freeze Review:
 
-PASSED — exact-head CI 31345745611; both independent reviewers PASS
+PASSED — exact-head CI 31354128241; both independent reviewers PASS
 
 Governance Record SHA:
 
-25c9eec507620c2d30a4b7482518666aad87c042
+to be recorded in the follow-up governance metadata commit
 
 ---
 
@@ -57,7 +57,7 @@ Independent Freeze Reviewers:
 
 ## Current Cycle
 
-PR-7E Calendar / Schedule Intelligence
+PR-7F Revision / Change History Intelligence
 
 State:
 
@@ -65,19 +65,20 @@ PLAN_CREATED
 
 Phase:
 
-DISCOVERY
+OPPORTUNITY_SELECTED
 
 Active Workplan:
 
-`docs/product/cycles/PR-7E-calendar-schedule-intelligence.md`
+`docs/product/cycles/PR-7F-revision-change-intelligence.md`
 
 ---
 
 ## Current Objective
 
-Implement a bounded official calendar/schedule intelligence result and renderer using
-the existing read-only `/calendar` source, preserving air-date facts, coverage, evidence,
-and unavailable states without changing auth, write, or source-activation boundaries.
+Implement a bounded official revision/change-history intelligence result using the existing
+read-only revisions source, preserving observed timestamps, summaries, coverage, evidence,
+and unavailable states without claiming unsupported historical trends or changing auth,
+write, snapshot, HTML, or source-activation boundaries.
 
 Selection rationale:
 
@@ -90,11 +91,12 @@ Selection rationale:
 - Maintenance Risk
 - Source Risk
 
-Calendar / Schedule Intelligence was selected because the existing official calendar
-source is reliable and read-only, while the current semantic boundary loses useful
-air-date facts and coverage semantics. Personal watchlists, account access, and
-historical schedule claims remain deferred because they would require different source
-or trust contracts.
+Calendar / Schedule Intelligence was frozen because its official source is reliable and
+read-only. Revision / Change History Intelligence is selected next because the repository
+already has official revision operations and models, while the current semantic boundary
+does not provide bounded entity-scoped change summaries or a useful timeline. Snapshot
+trends, personal history, and source activation remain deferred because they require
+different source or trust contracts.
 
 ---
 
@@ -116,31 +118,31 @@ The Autonomous Loop should continue with independent safe work when possible.
 
 Current Candidate SHA:
 
-None (PR-7E discovery)
+None (PR-7F planning)
 
 sol_code_reviewer:
 
-PR-7D PASS
+PR-7E PASS
 
 sol_product_reviewer:
 
-PR-7D PASS
+PR-7E PASS
 
 Remote CI:
 
-PR-7D exact Candidate CI 31345745611: SUCCESS
+PR-7E exact Candidate CI 31354128241: SUCCESS
 
 ---
 
 ## Next Action
 
-Research and implement the bounded PR-7E calendar/schedule opportunity. Keep personal
-watchlists, OAuth, authorization, HTML/Structured Web, snapshots, and writes out of scope.
+Research and implement the bounded PR-7F revision/change opportunity. Keep snapshots,
+historical trend claims, OAuth, authorization, HTML/Structured Web, and writes out of scope.
 
-Do not enable HTML/Structured Web or introduce historical snapshots in this cycle.
+Do not enable HTML/Structured Web or introduce a snapshot store in this cycle.
 
 ---
 
 ## Outer Goal Status
 
-IN_PROGRESS — 1 of up to 3 required cycles frozen; PR-7E selected
+IN_PROGRESS — 2 of up to 3 required cycles frozen; PR-7F selected

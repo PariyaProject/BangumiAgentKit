@@ -102,7 +102,7 @@ grouping them deterministically; do not infer a broader role taxonomy in this cy
 ## OP-006 Calendar / Schedule Intelligence
 
 Status:
-SELECTED_FOR_PR-7E
+DELIVERED_IN_PR-7E_FROZEN
 
 User questions:
 
@@ -136,3 +136,46 @@ The existing calendar path is read-only and source-bounded but loses useful sche
 facts and coverage semantics at the semantic boundary. PR-7E will preserve air dates,
 ratings, types, ranks, missing fields, caps, evidence, and unavailable states without
 adding OAuth, personal watchlists, HTML, Structured Web, snapshots, or write authority.
+
+---
+
+## OP-007 Revision / Change History Intelligence
+
+Status:
+SELECTED_FOR_PR-7F
+
+User questions:
+
+“这个条目的标题或简介为什么变了？”
+
+“最近有哪些官方修订记录？”
+
+User Value:
+4/5
+
+Agent Leverage:
+4/5
+
+Data Availability:
+5/5
+
+Reliability:
+4/5
+
+Possible Sources:
+Official v0 subject/person/character/episode revisions through the existing OpenAPI
+client and read-only Provider seam
+
+Potential Capability:
+revision_change_intelligence
+
+Potential Renderer:
+RevisionTimeline / ChangeHistoryCard
+
+Notes:
+The repository already exposes list/get revision operations, but the semantic boundary
+does not yet provide bounded entity-scoped change summaries, field-level unknowns, or a
+human-readable timeline. PR-7F will preserve official revision timestamps and summaries,
+bound list/detail work, and distinguish observed history from unsupported trend claims.
+No snapshot store, HTML/Structured Web source, authentication, or write authority is
+needed for the bounded read-only cycle.
