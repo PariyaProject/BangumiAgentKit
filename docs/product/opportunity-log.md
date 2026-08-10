@@ -3,7 +3,7 @@
 ## OP-001 Voice Actor Workload
 
 Status:
-SELECTED_FOR_PR-7D_BOUNDED
+DELIVERED_IN_PR-7D_BOUNDED
 
 User question:
 
@@ -68,7 +68,7 @@ S3 + S6 + S7
 ## OP-005 Subject Staff Intelligence
 
 Status:
-SELECTED_FOR_PR-7D
+DELIVERED_IN_PR-7D
 
 User question:
 
@@ -96,3 +96,43 @@ Notes:
 Official `/v0/subjects/{id}/persons` returns person identity, raw relation,
 episode/track participation, and image. Preserve raw relation labels while
 grouping them deterministically; do not infer a broader role taxonomy in this cycle.
+
+---
+
+## OP-006 Calendar / Schedule Intelligence
+
+Status:
+SELECTED_FOR_PR-7E
+
+User questions:
+
+“今天和本周有哪些动画，什么时候播？”
+
+“为什么今天的播出日历不完整？”
+
+User Value:
+5/5
+
+Agent Leverage:
+4/5
+
+Data Availability:
+5/5
+
+Reliability:
+4/5
+
+Possible Sources:
+Official legacy `/calendar` through the existing Provider seam
+
+Potential Capability:
+calendar_intelligence
+
+Potential Renderer:
+CalendarSchedule
+
+Notes:
+The existing calendar path is read-only and source-bounded but loses useful schedule
+facts and coverage semantics at the semantic boundary. PR-7E will preserve air dates,
+ratings, types, ranks, missing fields, caps, evidence, and unavailable states without
+adding OAuth, personal watchlists, HTML, Structured Web, snapshots, or write authority.

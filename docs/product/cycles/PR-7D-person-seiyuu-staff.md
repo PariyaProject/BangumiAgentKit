@@ -1,6 +1,12 @@
 # PR-7D Person / Seiyuu / Staff Intelligence
 
-Status: PLANNED
+Status: FROZEN
+
+Implementation Frozen SHA: `84e32b3366c62346e14d154bb740fb5c480e96f9`
+
+Exact-head CI: `31345745611` (SUCCESS)
+
+Independent Freeze Review: `sol_code_reviewer = PASS`; `sol_product_reviewer = PASS`
 
 Base: `9ae07d5a8ad5517da5dc9c33a999e174e71a86c9` (PR-7C implementation freeze)
 

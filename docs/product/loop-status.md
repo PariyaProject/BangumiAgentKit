@@ -18,7 +18,7 @@ Primary governance:
 
 Cycle:
 
-PR-7C Advanced Discovery & Query Planner
+PR-7D Person / Seiyuu / Staff Intelligence
 
 Status:
 
@@ -26,11 +26,15 @@ FROZEN
 
 Implementation Frozen SHA:
 
-9ae07d5a8ad5517da5dc9c33a999e174e71a86c9
+84e32b3366c62346e14d154bb740fb5c480e96f9
 
 Freeze Review:
 
-PASSED
+PASSED — exact-head CI 31345745611; both independent reviewers PASS
+
+Governance Record SHA:
+
+The separate commit containing this ledger update; reported after commit.
 
 ---
 
@@ -53,7 +57,7 @@ Independent Freeze Reviewers:
 
 ## Current Cycle
 
-PR-7D Person / Seiyuu / Staff Intelligence
+PR-7E Calendar / Schedule Intelligence
 
 State:
 
@@ -61,19 +65,19 @@ PLAN_CREATED
 
 Phase:
 
-DESIGN
+DISCOVERY
 
 Active Workplan:
 
-`docs/product/cycles/PR-7D-person-seiyuu-staff.md`
+`docs/product/cycles/PR-7E-calendar-schedule-intelligence.md`
 
 ---
 
 ## Current Objective
 
-Implement a bounded official-v0 person activity profile and subject staff view,
-with deterministic aggregation, evidence/coverage semantics, Standalone routing,
-and a PersonProfile renderer.
+Implement a bounded official calendar/schedule intelligence result and renderer using
+the existing read-only `/calendar` source, preserving air-date facts, coverage, evidence,
+and unavailable states without changing auth, write, or source-activation boundaries.
 
 Selection rationale:
 
@@ -86,11 +90,11 @@ Selection rationale:
 - Maintenance Risk
 - Source Risk
 
-Person / Seiyuu / Staff Intelligence was selected because official v0 exposes
-complete person→subject, person→character, and subject→person relationships,
-while the current product only returns shallow raw lists and has no staff view.
-Historical workload/trend claims remain deferred because relationship payloads
-have no air dates and no compatible snapshots exist.
+Calendar / Schedule Intelligence was selected because the existing official calendar
+source is reliable and read-only, while the current semantic boundary loses useful
+air-date facts and coverage semantics. Personal watchlists, account access, and
+historical schedule claims remain deferred because they would require different source
+or trust contracts.
 
 ---
 
@@ -112,25 +116,26 @@ The Autonomous Loop should continue with independent safe work when possible.
 
 Current Candidate SHA:
 
-None
+None (PR-7E discovery)
 
 sol_code_reviewer:
 
-NOT_STARTED
+PR-7D PASS
 
 sol_product_reviewer:
 
-NOT_STARTED
+PR-7D PASS
 
 Remote CI:
 
-NOT_STARTED
+PR-7D exact Candidate CI 31345745611: SUCCESS
 
 ---
 
 ## Next Action
 
-Implement the bounded PR-7D capability and its validation matrix.
+Research and implement the bounded PR-7E calendar/schedule opportunity. Keep personal
+watchlists, OAuth, authorization, HTML/Structured Web, snapshots, and writes out of scope.
 
 Do not enable HTML/Structured Web or introduce historical snapshots in this cycle.
 
@@ -138,4 +143,4 @@ Do not enable HTML/Structured Web or introduce historical snapshots in this cycl
 
 ## Outer Goal Status
 
-IN_PROGRESS
+IN_PROGRESS — 1 of up to 3 required cycles frozen; PR-7E selected
