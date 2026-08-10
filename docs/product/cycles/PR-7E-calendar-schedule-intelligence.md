@@ -65,6 +65,8 @@ official legacy operation and retrieval timestamp.
 - one official legacy calendar request per result;
 - maximum seven weekdays, maximum eight displayed items per day, and maximum 56 rendered
   items;
+- parser rejects more than 32 source day envelopes, 128 items in one envelope, or 512
+  source items before item mapping; duplicate weekday aggregation is linear;
 - existing SSRF-constrained asset resolution and renderer output/timeout limits remain
   in force;
 - no credentials, cookies, database migration, or public/shared cache expansion.
