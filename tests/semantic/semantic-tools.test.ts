@@ -515,6 +515,81 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(staff.coverage.cast).toMatchObject({ observed: 1, returned: 1, truncated: false });
   });
 
+  it('PR-7D: get_subject_staff reports independent source caps and machine-readable partial state', async () => {
+    let cappedSource: 'productionStaff' | 'cast' = 'productionStaff';
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/persons')) {
+        const count = cappedSource === 'productionStaff' ? 201 : 1;
+        return new Response(
+          JSON.stringify(
+            Array.from({ length: count }, (_, index) => ({
+              id: index + 1,
+              name: `制作人员${index + 1}`,
+              type: 1,
+              relation: '制作',
+              eps: '',
+            })),
+          ),
+          { status: 200 },
+        );
+      }
+      const count = cappedSource === 'cast' ? 201 : 1;
+      return new Response(
+        JSON.stringify(
+          Array.from({ length: count }, (_, index) => ({
+            id: index + 1000,
+            name: `角色${index + 1}`,
+            type: 1,
+            relation: '主角',
+            actors: [],
+          })),
+        ),
+        { status: 200 },
+      );
+    });
+    const { getSubjectStaffTool } = getReadToolMap(new HttpClient({ fetchFn: mockFetch }));
+
+    const productionPartial = (await executeTestTool(
+      getSubjectStaffTool,
+      { subjectId: 226998 },
+      context,
+    )) as any;
+    expect(productionPartial.state).toBe('partial');
+    expect(productionPartial.coverage.productionStaff).toMatchObject({
+      observed: 201,
+      returned: 200,
+      truncated: true,
+    });
+    expect(productionPartial.coverage.cast).toMatchObject({
+      observed: 1,
+      returned: 1,
+      truncated: false,
+    });
+    expect(productionPartial.capabilityStates.productionStaff).toBe('partial');
+    expect(productionPartial.capabilityStates.cast).toBe('complete');
+
+    cappedSource = 'cast';
+    const castPartial = (await executeTestTool(
+      getSubjectStaffTool,
+      { subjectId: 226998, limit: 200 },
+      context,
+    )) as any;
+    expect(castPartial.state).toBe('partial');
+    expect(castPartial.coverage.productionStaff).toMatchObject({
+      observed: 1,
+      returned: 1,
+      truncated: false,
+    });
+    expect(castPartial.coverage.cast).toMatchObject({
+      observed: 201,
+      returned: 200,
+      truncated: true,
+    });
+    expect(castPartial.capabilityStates.productionStaff).toBe('complete');
+    expect(castPartial.capabilityStates.cast).toBe('partial');
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
   it('PR-7D: ToolRegistry uses injected transport and preserves machine-readable upstream failures', async () => {
     const secretKey = 'test-secret-key-123456789012345678901234';
     const injectedFetch = vi.fn().mockImplementation(async (url: string) => {
@@ -578,6 +653,9 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
           context,
         ),
       ).rejects.toThrow('VALIDATION_ERROR');
+      await expect(
+        registry.executeTool('bangumi.get_subject_staff', { subjectId: 0 }, context),
+      ).rejects.toThrow('VALIDATION_ERROR');
     } finally {
       vi.unstubAllGlobals();
       await registry.close();
@@ -603,7 +681,35 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ).rejects.toMatchObject({ code });
       await errorRegistry.close();
     }
-  });
+
+    for (const failedSource of ['persons', 'characters'] as const) {
+      for (const [status, code] of [
+        [404, 'NOT_FOUND'],
+        [429, 'RATE_LIMITED'],
+        [503, 'UPSTREAM_UNAVAILABLE'],
+      ] as const) {
+        const errorClient = new HttpClient({
+          fetchFn: vi.fn().mockImplementation(async (url: string) => {
+            const failed = url.includes(`/subjects/226998/${failedSource}`);
+            return failed
+              ? new Response('upstream failure', { status })
+              : new Response(JSON.stringify([]), { status: 200 });
+          }),
+        });
+        const errorRegistry = new ToolRegistry(
+          createRuntimeDependencies({
+            storage: new MemoryStorage(),
+            secretKey,
+            publicHttpClient: errorClient,
+          }),
+        );
+        await expect(
+          errorRegistry.executeTool('bangumi.get_subject_staff', { subjectId: 226998 }, context),
+        ).rejects.toMatchObject({ code });
+        await errorRegistry.close();
+      }
+    }
+  }, 30000);
 
   it('S10 regression: CharacterPerson numeric type does not leak into roleName string', async () => {
     const mockFetch = vi.fn().mockImplementation(async () => {

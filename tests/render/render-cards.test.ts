@@ -7,8 +7,10 @@ import {
   CollectionProgressViewModel,
   CalendarViewModel,
   PersonProfileViewModel,
+  buildPersonProfileViewModel,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+import type { PersonActivityProfile } from '@bangumi-agent-kit/bangumi-core';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -206,78 +208,89 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
   });
 
   it('PR-7D: PersonProfile renders long CJK identity, distributions, and partial-state copy', async () => {
-    const vm: PersonProfileViewModel = {
-      template: 'person-profile',
-      version: 1,
+    const profile: PersonActivityProfile = {
       person: {
         id: 10868,
         name: '水瀬いのり / 水濑祈 / Inori Minase',
+        type: 1,
         typeLabel: '个人',
         aliases: ['いのりん', 'Inorin'],
         career: ['seiyu', 'artist', 'actor'],
         summary: '日本の声優、歌手、俳優。',
         gender: '女性',
-        birthDate: '1995-12-02',
         bloodType: 1,
-        identityMissingFields: [],
+        birthYear: 1995,
+        birthMonth: 12,
+        birthDay: 2,
+      },
+      subjects: {
+        items: Array.from({ length: 6 }, (_, index) => ({
+          id: index + 1,
+          name: `Very Long Japanese Title ${index + 1}`,
+          nameCn: '这是一个非常长的中文条目名称用于测试移动端换行和层级',
+          mediaType: 'anime' as const,
+          mediaTypeCode: 2,
+          staffRole: '艺术家',
+        })),
+        observed: 9,
+        returned: 6,
+        truncated: true,
+      },
+      characters: {
+        items: Array.from({ length: 5 }, (_, index) => ({
+          id: index + 101,
+          name: index === 0 ? 'ネコネ' : `角色${index + 1}`,
+          subjectId: index + 1,
+          subjectType: 'anime' as const,
+          subjectTypeCode: 2,
+          subjectName: 'Very Long Japanese Title',
+          subjectNameCn: '传颂之物-虚伪的假面-',
+          staff: '主角',
+        })),
+        observed: 7,
+        returned: 5,
+        truncated: true,
       },
       summary: {
-        uniqueSubjects: 335,
-        subjectCredits: 335,
-        uniqueCharacters: 319,
-        characterCredits: 319,
-        characterSubjects: 287,
+        uniqueSubjects: 6,
+        subjectCredits: 6,
+        uniqueCharacters: 5,
+        characterCredits: 5,
+        characterSubjects: 5,
+        subjectMedia: [
+          { key: 'anime', label: 'anime', count: 6, uniqueSubjects: 6, rawCodes: [2] },
+        ],
+        subjectRoles: [{ key: '艺术家', label: '艺术家', count: 6, uniqueSubjects: 6 }],
+        characterMedia: [
+          { key: 'anime', label: 'anime', count: 5, uniqueSubjects: 5, rawCodes: [2] },
+        ],
+        characterRoles: [{ key: '主角', label: '主角', count: 5, uniqueSubjects: 5 }],
       },
-      mediaBreakdown: [
-        { label: 'anime', count: 217, uniqueSubjects: 217 },
-        { label: 'game', count: 85, uniqueSubjects: 70 },
-      ],
-      characterMediaBreakdown: [{ label: 'anime', count: 319, uniqueSubjects: 287, rawCodes: [2] }],
-      roleBreakdown: [{ label: '艺术家', count: 237, uniqueSubjects: 237 }],
-      characterRoleBreakdown: [
-        { label: '主角', count: 156, uniqueSubjects: 120 },
-        { label: '配角', count: 144, uniqueSubjects: 115 },
-      ],
-      subjectCredits: [
-        {
-          id: 1,
-          name: 'Very Long Japanese Title',
-          nameCn: '这是一个非常长的中文条目名称用于测试移动端换行和层级',
-          role: '艺术家',
-        },
-      ],
-      characterCredits: [
-        {
-          id: 2,
-          name: 'ネコネ',
-          role: '主角',
-          subjectNameCn: '传颂之物-虚伪的假面-',
-        },
-      ],
-      hiddenSubjectCredits: 334,
-      hiddenCharacterCredits: 318,
-      unobservedSubjectCredits: 20,
-      unobservedCharacterCredits: 26,
-      state: 'partial',
-      coverage: { state: 'partial', observed: 700, returned: 654, rendered: 2, unobserved: 46 },
-      limitations: [
-        '关系接口没有作品日期，因此不能从此卡片推断最近活动或时间窗口工作量。',
-        '没有历史快照，因此不显示增长或趋势结论。',
-      ],
-      warnings: [
-        {
-          code: 'NOT_COMPUTABLE',
-          state: 'not_computable',
-          message: '不可计算：最近活动与历史趋势。',
-        },
-      ],
-      source: { label: 'Bangumi v0 · PersonProfile', retrievedAt: '2026-08-10T00:00:00Z' },
     };
 
+    const vm: PersonProfileViewModel = buildPersonProfileViewModel(profile, {
+      maxSubjectCredits: 1,
+      maxCharacterCredits: 1,
+      retrievedAt: '2026-08-10T00:00:00Z',
+    });
+
+    expect(vm.coverage).toMatchObject({
+      state: 'partial',
+      observed: 16,
+      returned: 11,
+      rendered: 2,
+      unobserved: 5,
+    });
+    expect(vm.hiddenSubjectCredits).toBe(5);
+    expect(vm.hiddenCharacterCredits).toBe(4);
+    expect(vm.unobservedSubjectCredits).toBe(3);
+    expect(vm.unobservedCharacterCredits).toBe(2);
+
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
-    expect(html).toContain('已观察 700 条，返回 654 条，展示 2 条');
-    expect(html).toContain('另有 334 条已返回关系未展示');
-    expect(html).toContain('另有 20 条关系未读取');
+    expect(html).toContain('width:640px');
+    expect(html).toContain('已观察 16 条，返回 11 条，展示 2 条');
+    expect(html).toContain('另有 5 条已返回关系未展示');
+    expect(html).toContain('另有 3 条关系未读取');
 
     const result = await renderService.renderCard(vm, { width: 640, deviceScaleFactor: 1 });
     assertValidPng(result.buffer);
