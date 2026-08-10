@@ -188,6 +188,8 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         duplicateWeekdays: [],
         extraDayEnvelopes: 0,
         invalidWeekdayCount: 0,
+        invalidItemWeekdayCount: 0,
+        weekdayConflictCount: 0,
       },
       source: {
         class: 'official-legacy',
@@ -219,6 +221,104 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(html).toContain('原名：Anime 1');
     expect(html).toContain('排名未知');
     expect(html).toContain('已达到显示上限');
+  });
+
+  it('PR-7E: Calendar state matrix renders narrow, dense, empty, long-CJK, and unavailable at 640/960', async () => {
+    const weekdaySemantics =
+      '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified';
+    const makeItem = (id: number, long = false) => ({
+      id,
+      name: long ? `Original Japanese title ${id} ${'非常に長い作品名'.repeat(8)}` : `Anime ${id}`,
+      nameCn: long ? `超长中文条目名称 ${'繁體簡體中文'.repeat(10)}` : `动画${id}`,
+      nameCnProvided: true,
+      airDate: '2026-08-10',
+      airWeekday: 1,
+      type: 2,
+      typeLabel: 'anime',
+      score: 8.5,
+      rank: id,
+      collectionDoing: 100 + id,
+    });
+    const makeDay = (id: number, items: ReturnType<typeof makeItem>[]) => ({
+      weekday: { en: `Day ${id}`, cn: `星期${id}`, ja: `曜日${id}`, id },
+      observed: items.length,
+      returned: items.length,
+      overflowCount: 0,
+      items: items.map((item) => ({ ...item, airWeekday: id })),
+    });
+    const makeResult = (
+      state: CalendarIntelligenceResult['state'],
+      days: CalendarIntelligenceResult['days'],
+    ): CalendarIntelligenceResult => {
+      const observed = days.reduce((total, day) => total + day.observed, 0);
+      const returned = days.reduce((total, day) => total + day.returned, 0);
+      return {
+        state,
+        days,
+        coverage: {
+          state,
+          observed,
+          returned,
+          selectedDays: days.length,
+          maxPerDay: 8,
+          maxTotal: 56,
+          expectedDays: 7,
+          sourceDayCount: state === 'complete' ? 7 : days.length,
+          missingWeekdays: state === 'complete' ? [] : [2, 3, 4, 5, 6, 7],
+          duplicateWeekdays: [],
+          extraDayEnvelopes: 0,
+          invalidWeekdayCount: 0,
+          invalidItemWeekdayCount: 0,
+          weekdayConflictCount: 0,
+          missingFields: {},
+          dateSemantics: 'first_air_date',
+          weekdaySemantics,
+        },
+        source: {
+          class: 'official-legacy',
+          operation: 'GET /calendar',
+          ...(state === 'unavailable'
+            ? { attemptedAt: '2026-08-10T00:00:00.000Z' }
+            : { retrievedAt: '2026-08-10T00:00:00.000Z' }),
+        },
+        evidence: [],
+        limitations: ['air_date 表示首播日期，不是具体播出时间。'],
+        warnings:
+          state === 'unavailable'
+            ? [{ code: 'UPSTREAM_UNAVAILABLE', state, message: '官方日历源暂时不可用。' }]
+            : [],
+      };
+    };
+
+    const cases: Array<[string, CalendarIntelligenceResult]> = [
+      ['narrow', makeResult('partial', [makeDay(1, [makeItem(1), makeItem(2)])])],
+      [
+        'dense',
+        makeResult(
+          'complete',
+          Array.from({ length: 7 }, (_, index) =>
+            makeDay(index + 1, Array.from({ length: 8 }, (_, itemIndex) => makeItem(itemIndex + 1))),
+          ),
+        ),
+      ],
+      ['empty', makeResult('partial', [makeDay(1, [])])],
+      ['long-CJK', makeResult('partial', [makeDay(1, [makeItem(1, true)])])],
+      ['unavailable', makeResult('unavailable', [])],
+    ];
+
+    for (const [label, result] of cases) {
+      const viewModel = buildCalendarIntelligenceViewModel(result);
+      for (const width of [640, 960]) {
+        const rendered = await renderService.renderCard(viewModel, {
+          width,
+          deviceScaleFactor: 1,
+        });
+        assertValidPng(rendered.buffer);
+        expect(rendered.template, `${label} ${width}`).toBe('calendar');
+        expect(rendered.width, `${label} ${width}`).toBe(width);
+        expect(rendered.height, `${label} ${width}`).toBeGreaterThan(100);
+      }
+    }
   });
 
   it('R06: CJK Chinese text renders without throwing or breaking layout', async () => {

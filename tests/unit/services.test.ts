@@ -396,6 +396,49 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     );
   });
 
+  it('Calendar intelligence classifies contradictory item weekdays as partial conflicts', () => {
+    const week = Array.from({ length: 7 }, (_, index) => ({
+      weekday: {
+        en: `Day ${index + 1}`,
+        cn: `星期${index + 1}`,
+        ja: `曜日${index + 1}`,
+        id: index + 1,
+      },
+      items:
+        index === 0
+          ? [{ id: 1, name: 'Conflict', nameCn: '冲突', airDate: '', airWeekday: 2 }]
+          : [],
+    }));
+
+    const conflict = buildCalendarIntelligence(week);
+
+    expect(conflict.state).toBe('partial');
+    expect(conflict.coverage).toMatchObject({
+      weekdayConflictCount: 1,
+      invalidItemWeekdayCount: 0,
+    });
+    expect(conflict.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'WEEKDAY_CONFLICT' })]),
+    );
+
+    const invalid = buildCalendarIntelligence([
+      ...week.slice(0, 1).map((day) => ({
+        ...day,
+        items: [{ id: 2, name: 'Invalid', nameCn: '越界', airDate: '', airWeekday: 8 }],
+      })),
+      ...week.slice(1),
+    ]);
+
+    expect(invalid.state).toBe('partial');
+    expect(invalid.coverage).toMatchObject({
+      weekdayConflictCount: 0,
+      invalidItemWeekdayCount: 1,
+    });
+    expect(invalid.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
+    );
+  });
+
   it('CalendarService reports malformed legacy envelopes as schema drift', async () => {
     const malformedPayloads = [
       [{}],
@@ -403,6 +446,12 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
         {
           weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
           items: {},
+        },
+      ],
+      [
+        {
+          weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+          items: [{ id: 1, name: 'Invalid weekday', air_weekday: 8 }],
         },
       ],
       { weekday: { id: 1 }, items: [] },
@@ -442,6 +491,32 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     );
     expect(result.source.retrievedAt).toBeUndefined();
     expect(result.source.attemptedAt).toBeTruthy();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('Calendar intelligence makes one official request for each upstream failure class', async () => {
+    const cases = [
+      {
+        label: '503',
+        fetchFn: vi.fn().mockResolvedValue(new Response('unavailable', { status: 503 })),
+        error: 'UPSTREAM_UNAVAILABLE',
+      },
+      {
+        label: 'network',
+        fetchFn: vi.fn().mockRejectedValue(new Error('socket closed')),
+        error: 'NETWORK_ERROR',
+      },
+    ];
+
+    for (const testCase of cases) {
+      const result = await new CalendarService(
+        new HttpClient({ fetchFn: testCase.fetchFn }),
+      ).getCalendarIntelligence();
+
+      expect(result.state, testCase.label).toBe('unavailable');
+      expect(result.error?.code, testCase.label).toBe(testCase.error);
+      expect(testCase.fetchFn, testCase.label).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('Calendar intelligence bypasses the legacy cache and timestamps successful acquisition', async () => {

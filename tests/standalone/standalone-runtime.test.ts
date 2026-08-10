@@ -151,6 +151,47 @@ describe('PR-6R-C standalone runtime', () => {
     await host.close();
   });
 
+  it('PR-7E: standalone render calendar dispatches the calendar tool path', async () => {
+    const host = await createTestHost();
+    let executions = 0;
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.render_calendar',
+        description: 'calendar route fixture',
+        input: z.object({}),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async () => {
+          executions += 1;
+          return {
+            artifact: {
+              id: 'calendar-fixture',
+              mimeType: 'image/png',
+              width: 640,
+              height: 320,
+            },
+          };
+        },
+      }),
+    );
+
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const context = {
+      host,
+      flags: parseCliArgs(['--json', 'render', 'calendar']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+
+    await expect(registry.execute(['render', 'calendar'], context)).resolves.toMatchObject({
+      value: { artifact: { id: 'calendar-fixture', width: 640 } },
+    });
+    expect(executions).toBe(1);
+    await host.close();
+  });
+
   it('ST-07/ST-08/ST-13-ST-19: raw and high-level writes preserve validation, identity, and confirmation', async () => {
     let executions = 0;
     const host = await createTestHost();

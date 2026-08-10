@@ -125,6 +125,11 @@ export interface CalendarViewModel {
     expectedDays?: number;
     sourceDayCount?: number;
     missingWeekdays?: number[];
+    duplicateWeekdays?: number[];
+    extraDayEnvelopes?: number;
+    invalidWeekdayCount?: number;
+    invalidItemWeekdayCount?: number;
+    weekdayConflictCount?: number;
     missingFields?: Record<string, number>;
     dateSemantics?: 'first_air_date';
     weekdaySemantics?: string;

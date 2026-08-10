@@ -48,6 +48,8 @@ export interface CalendarIntelligenceResult {
     duplicateWeekdays: number[];
     extraDayEnvelopes: number;
     invalidWeekdayCount: number;
+    invalidItemWeekdayCount: number;
+    weekdayConflictCount: number;
     requestedWeekday?: number;
     missingFields: Record<string, number>;
     dateSemantics: 'first_air_date';
@@ -81,6 +83,8 @@ const CALENDAR_DEFAULT_MAX_PER_DAY = 3;
 const CALENDAR_MAX_PER_DAY = 8;
 const CALENDAR_DEFAULT_MAX_TOTAL = 21;
 const CALENDAR_MAX_TOTAL = 56;
+const CALENDAR_WEEKDAY_SEMANTICS =
+  '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -118,6 +122,15 @@ function parseCalendarItem(value: unknown, path: string): RawCalendarItem {
   if (id === undefined || id <= 0) throw schemaError(`${path}.id`, '正整数');
   const name = optionalString(value.name, `${path}.name`);
   if (name === undefined) throw schemaError(`${path}.name`, '字符串');
+  const airWeekday = optionalNumber(value.air_weekday, `${path}.air_weekday`, {
+    integer: true,
+  });
+  if (
+    airWeekday !== undefined &&
+    (airWeekday < 1 || airWeekday > CALENDAR_EXPECTED_DAYS)
+  ) {
+    throw schemaError(`${path}.air_weekday`, '1 至 7 的整数');
+  }
 
   const rating = value.rating;
   let parsedRating: RawCalendarItem['rating'];
@@ -155,7 +168,7 @@ function parseCalendarItem(value: unknown, path: string): RawCalendarItem {
     name_cn: optionalString(value.name_cn, `${path}.name_cn`),
     summary: optionalString(value.summary, `${path}.summary`),
     air_date: optionalString(value.air_date, `${path}.air_date`),
-    air_weekday: optionalNumber(value.air_weekday, `${path}.air_weekday`, { integer: true }),
+    air_weekday: airWeekday,
     rating: parsedRating,
     rank: optionalNumber(value.rank, `${path}.rank`, { integer: true }),
     collection: parsedCollection,
@@ -256,6 +269,22 @@ export function buildCalendarIntelligence(
     canonicalByWeekday.set(weekdayId, day);
   }
   const canonicalDays = Array.from(canonicalByWeekday.values()).slice(0, CALENDAR_EXPECTED_DAYS);
+  let invalidItemWeekdayCount = 0;
+  let weekdayConflictCount = 0;
+  for (const day of canonicalDays) {
+    for (const item of day.items) {
+      if (item.airWeekday === undefined) continue;
+      if (
+        !Number.isInteger(item.airWeekday) ||
+        item.airWeekday < 1 ||
+        item.airWeekday > CALENDAR_EXPECTED_DAYS
+      ) {
+        invalidItemWeekdayCount += 1;
+      } else if (item.airWeekday !== day.weekday.id) {
+        weekdayConflictCount += 1;
+      }
+    }
+  }
   const seenWeekdays = new Set(canonicalDays.map((day) => day.weekday.id));
   const missingWeekdays = Array.from(
     { length: CALENDAR_EXPECTED_DAYS },
@@ -309,9 +338,14 @@ export function buildCalendarIntelligence(
     missingWeekdays.length > 0 ||
     duplicateWeekdays.size > 0 ||
     invalidWeekdayCount > 0;
+  const weekdayConsistencyPartial = invalidItemWeekdayCount > 0 || weekdayConflictCount > 0;
   const outputTruncated = returned < observed;
   const invalidWeekdayFilter = !weekdayFilterIsValid;
-  const partial = sourceCoveragePartial || outputTruncated || invalidWeekdayFilter;
+  const partial =
+    sourceCoveragePartial ||
+    weekdayConsistencyPartial ||
+    outputTruncated ||
+    invalidWeekdayFilter;
   const warnings: CalendarIntelligenceResult['warnings'] = [];
   if (sourceCoveragePartial) {
     const sourceDetails = [
@@ -337,6 +371,20 @@ export function buildCalendarIntelligence(
       message: 'weekday 必须是 1 至 7 的整数；未生成筛选结果。',
     });
   }
+  if (invalidItemWeekdayCount > 0) {
+    warnings.push({
+      code: 'SCHEMA_DRIFT',
+      state: 'partial',
+      message: `${invalidItemWeekdayCount} 条条目的 air_weekday 超出 1 至 7 范围，coverage 为 partial。`,
+    });
+  }
+  if (weekdayConflictCount > 0) {
+    warnings.push({
+      code: 'WEEKDAY_CONFLICT',
+      state: 'partial',
+      message: `${weekdayConflictCount} 条条目的 air_weekday 与所属星期不一致，coverage 为 partial。`,
+    });
+  }
   if (outputTruncated) {
     warnings.push({
       code: 'OUTPUT_TRUNCATED',
@@ -360,11 +408,12 @@ export function buildCalendarIntelligence(
       duplicateWeekdays: Array.from(duplicateWeekdays),
       extraDayEnvelopes: Math.max(0, sourceDayCount - canonicalDays.length),
       invalidWeekdayCount,
+      invalidItemWeekdayCount,
+      weekdayConflictCount,
       requestedWeekday: options.weekday,
       missingFields,
       dateSemantics: 'first_air_date',
-      weekdaySemantics:
-        '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified',
+      weekdaySemantics: CALENDAR_WEEKDAY_SEMANTICS,
     },
     source: {
       class: 'official-legacy',
@@ -407,6 +456,7 @@ export class CalendarService {
       path: '/calendar',
       cacheContext: useCache ? { operationId: 'getCalendar' } : undefined,
       cacheTtlSeconds: useCache ? 3600 : undefined,
+      retryOptions: useCache ? undefined : { maxRetries: 0 },
     });
 
     return parseCalendarPayload(raw).map((day) => ({
@@ -461,11 +511,12 @@ export class CalendarService {
           duplicateWeekdays: [],
           extraDayEnvelopes: 0,
           invalidWeekdayCount: 0,
+          invalidItemWeekdayCount: 0,
+          weekdayConflictCount: 0,
           requestedWeekday: options.weekday,
           missingFields: {},
           dateSemantics: 'first_air_date',
-          weekdaySemantics:
-            '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified',
+          weekdaySemantics: CALENDAR_WEEKDAY_SEMANTICS,
         },
         source: {
           class: 'official-legacy',
