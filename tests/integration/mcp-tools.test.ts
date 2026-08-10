@@ -126,6 +126,48 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     expect(result[0].weekday.cn).toBe('星期一');
   });
 
+  it('executes bangumi.get_calendar_intelligence with bounded evidence', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+            items: [
+              {
+                id: 1,
+                type: 2,
+                name: 'Monday Anime',
+                name_cn: '周一动画',
+                air_date: '2026-08-10',
+                rating: { score: 8.2 },
+              },
+              { id: 2, name: 'Monday Anime 2', name_cn: '周一动画2' },
+            ],
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', mockFetch);
+
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: new HttpClient(),
+    });
+    const result = (await registry.executeTool(
+      'bangumi.get_calendar_intelligence',
+      { weekday: 1, maxPerDay: 1, maxTotal: 1 },
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
+    )) as any;
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({ observed: 2, returned: 1, maxTotal: 1 });
+    expect(result.days[0].items[0]).toMatchObject({ type: 2, typeLabel: 'anime' });
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: 'official-legacy' })]),
+    );
+  });
+
   it('executes bangumi.list_operations and bangumi.describe_operation fallback tools', async () => {
     const httpClient = new HttpClient();
     const registry = new ToolRegistry({

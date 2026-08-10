@@ -178,6 +178,38 @@
     }
   },
   {
+    "name": "bangumi.get_calendar_intelligence",
+    "description": "获取带播出日期、评分、类型、排名、来源证据与覆盖状态的有界 Bangumi 日历摘要。适合回答“本周哪些作品什么时候播”；不把源顺序当作推荐，也不读取个人收藏状态。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "weekday": {
+          "description": "限定星期，1-7；不传返回整周",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "maxPerDay": {
+          "description": "每天最多返回条数，默认 8",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "maxTotal": {
+          "description": "最多返回总条数，默认 56",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 56
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_character",
     "description": "获取指定虚拟角色的详细信息（简介、相关条目、声优等）。",
     "auth": "none",
@@ -1016,7 +1048,21 @@
       "properties": {
         "weekday": {
           "description": "限定特定星期 (1-7)",
-          "type": "number"
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "maxPerDay": {
+          "description": "每天最多展示条数，默认 8",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "maxTotal": {
+          "description": "最多展示总条数，默认 56",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 56
         }
       },
       "additionalProperties": false

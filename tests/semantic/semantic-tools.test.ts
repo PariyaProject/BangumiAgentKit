@@ -71,6 +71,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getRevisionTool,
     getIndexTool,
     getSubjectStatsTool,
+    getCalendarIntelligenceTool,
   ] = createReadTools(httpClient);
   return {
     searchTool,
@@ -94,6 +95,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getRevisionTool,
     getIndexTool,
     getSubjectStatsTool,
+    getCalendarIntelligenceTool,
   };
 }
 
@@ -361,6 +363,93 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(res.cast).toHaveLength(1);
     expect(res.cast[0]!.relation).toBe('主角');
     expect(res.cast[0]!.actors[0]!.name).toBe('声优A');
+  });
+
+  it('PR-7E: get_calendar_intelligence preserves schedule facts and explicit caps', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+            items: [
+              {
+                id: 100,
+                type: 2,
+                name: 'Anime A',
+                name_cn: '动画甲',
+                summary: 'summary',
+                air_date: '2026-08-10',
+                air_weekday: 1,
+                rating: { score: 8.4 },
+                rank: 12,
+                collection: { doing: 345 },
+              },
+              { id: 101, name: 'Anime B', name_cn: '动画乙', air_date: '2026-08-10' },
+            ],
+          },
+          {
+            weekday: { en: 'Tue', cn: '星期二', ja: '火曜日', id: 2 },
+            items: [{ id: 102, name: 'Anime C', name_cn: '动画丙' }],
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getCalendarIntelligenceTool } = getReadToolMap(httpClient);
+
+    const result = (await executeTestTool(
+      getCalendarIntelligenceTool,
+      { weekday: 1, maxPerDay: 1, maxTotal: 1 },
+      context,
+    )) as any;
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      observed: 2,
+      returned: 1,
+      selectedDays: 1,
+      maxPerDay: 1,
+      maxTotal: 1,
+    });
+    expect(result.days[0]).toMatchObject({ observed: 2, returned: 1, overflowCount: 1 });
+    expect(result.days[0].items[0]).toMatchObject({
+      id: 100,
+      type: 2,
+      typeLabel: 'anime',
+      airDate: '2026-08-10',
+      score: 8.4,
+      rank: 12,
+      collectionDoing: 345,
+    });
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'official-legacy', operation: 'GET /calendar' }),
+        expect.objectContaining({ source: 'derived-s7', formulaVersion: 'calendar-schedule-v1' }),
+      ]),
+    );
+    expect(result.limitations[0]).toContain('具体播出时间');
+  });
+
+  it('PR-7E: get_calendar_intelligence preserves public upstream failure state', async () => {
+    for (const [status, code, warningCode] of [
+      [404, 'NOT_FOUND', 'UPSTREAM_NOT_FOUND'],
+      [429, 'RATE_LIMITED', 'UPSTREAM_RATE_LIMITED'],
+      [503, 'UPSTREAM_UNAVAILABLE', 'UPSTREAM_UNAVAILABLE'],
+    ] as const) {
+      const httpClient = new HttpClient({
+        fetchFn: vi.fn().mockResolvedValue(new Response('calendar failure', { status })),
+      });
+      const { getCalendarIntelligenceTool } = getReadToolMap(httpClient);
+      const result = (await executeTestTool(getCalendarIntelligenceTool, {}, context)) as any;
+
+      expect(result.state).toBe('unavailable');
+      expect(result.error).toMatchObject({ code, retryable: status !== 404 });
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: warningCode })]),
+      );
+    }
   });
 
   it('PR-7D: get_person_profile aggregates official person relationships with explicit coverage', async () => {
@@ -658,6 +747,13 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ).rejects.toThrow('VALIDATION_ERROR');
       await expect(
         registry.executeTool('bangumi.get_subject_staff', { subjectId: 0 }, context),
+      ).rejects.toThrow('VALIDATION_ERROR');
+      await expect(
+        registry.executeTool(
+          'bangumi.get_calendar_intelligence',
+          { weekday: 8, maxPerDay: 9, maxTotal: 57 },
+          context,
+        ),
       ).rejects.toThrow('VALIDATION_ERROR');
     } finally {
       vi.unstubAllGlobals();

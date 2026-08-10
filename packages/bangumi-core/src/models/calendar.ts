@@ -3,7 +3,13 @@ export interface CalendarAnimeItem {
   name: string;
   nameCn: string;
   airDate: string;
+  airWeekday?: number;
+  type?: number;
+  typeLabel?: string;
+  summary?: string;
   score?: number;
+  rank?: number;
+  collectionDoing?: number;
   images?: Record<string, string>;
 }
 

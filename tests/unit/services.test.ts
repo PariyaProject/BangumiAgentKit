@@ -9,6 +9,8 @@ import {
   RevisionService,
   IndexReadService,
   CalendarService,
+  buildCalendarIntelligence,
+  calendarSubjectTypeLabel,
   resolveSubject,
   getSubjectCast,
 } from '../../packages/bangumi-core/src/index.js';
@@ -226,7 +228,20 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
         JSON.stringify([
           {
             weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
-            items: [{ id: 1, name: 'Anime Mon', name_cn: '周一动画', air_date: '2026-08-03' }],
+            items: [
+              {
+                id: 1,
+                type: 2,
+                name: 'Anime Mon',
+                name_cn: '周一动画',
+                summary: 'summary',
+                air_date: '2026-08-03',
+                air_weekday: 1,
+                rating: { score: 8.5 },
+                rank: 20,
+                collection: { doing: 300 },
+              },
+            ],
           },
         ]),
         { status: 200 },
@@ -241,6 +256,61 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(calendar.length).toBe(1);
     expect(calendar[0]?.weekday.cn).toBe('星期一');
     expect(calendar[0]?.items[0]?.nameCn).toBe('周一动画');
+    expect(calendar[0]?.items[0]).toMatchObject({
+      type: 2,
+      typeLabel: 'anime',
+      summary: 'summary',
+      airWeekday: 1,
+      rank: 20,
+      collectionDoing: 300,
+    });
+  });
+
+  it('Calendar intelligence filters weekdays, caps rows, and preserves unknowns', () => {
+    const result = buildCalendarIntelligence(
+      [
+        {
+          weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+          items: [
+            { id: 1, name: 'A', nameCn: '甲', airDate: '2026-08-10' },
+            { id: 2, name: 'B', nameCn: '乙', airDate: '' },
+          ],
+        },
+        {
+          weekday: { en: 'Tue', cn: '星期二', ja: '火曜日', id: 2 },
+          items: [{ id: 3, name: 'C', nameCn: '丙', airDate: '' }],
+        },
+      ],
+      { weekday: 1, maxPerDay: 1, maxTotal: 1 },
+      '2026-08-10T00:00:00.000Z',
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      observed: 2,
+      returned: 1,
+      selectedDays: 1,
+      maxPerDay: 1,
+      maxTotal: 1,
+    });
+    expect(result.days[0]).toMatchObject({ observed: 2, returned: 1, overflowCount: 1 });
+    expect(result.days[0]?.items).toHaveLength(1);
+    expect(calendarSubjectTypeLabel(2)).toBe('anime');
+    expect(calendarSubjectTypeLabel(99)).toBe('other');
+    expect(calendarSubjectTypeLabel(undefined)).toBeUndefined();
+  });
+
+  it('CalendarService maps an upstream failure to an unavailable calendar result', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response('rate limited', { status: 429 }));
+    const service = new CalendarService(new HttpClient({ fetchFn: mockFetch }));
+
+    const result = await service.getCalendarIntelligence();
+
+    expect(result.state).toBe('unavailable');
+    expect(result.error).toMatchObject({ code: 'RATE_LIMITED', retryable: true });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'UPSTREAM_RATE_LIMITED' })]),
+    );
   });
 
   it('Workflow resolveSubject handles exact ID and keyword disambiguation', async () => {

@@ -91,12 +91,19 @@ export interface CollectionProgressViewModel {
 
 export interface CalendarDayViewModel {
   weekdayCn: string;
+  observed?: number;
+  returned?: number;
   items: Array<{
     id: number;
     name: string;
     nameCn?: string;
     image?: string;
+    airDate?: string;
+    type?: number;
+    typeLabel?: string;
     score?: number;
+    rank?: number;
+    collectionDoing?: number;
   }>;
   overflowCount?: number;
 }
@@ -105,6 +112,26 @@ export interface CalendarViewModel {
   template: 'calendar';
   version: 1;
   days: CalendarDayViewModel[];
+  state?: 'complete' | 'partial' | 'unavailable';
+  coverage?: {
+    state: 'complete' | 'partial' | 'unavailable';
+    observed: number;
+    returned: number;
+    rendered: number;
+    selectedDays: number;
+    maxPerDay: number;
+    maxTotal: number;
+  };
+  source?: {
+    label: string;
+    retrievedAt?: string;
+  };
+  limitations?: string[];
+  warnings?: Array<{
+    code: string;
+    state: 'partial' | 'unavailable';
+    message: string;
+  }>;
 }
 
 export interface PersonProfileCreditViewModel {

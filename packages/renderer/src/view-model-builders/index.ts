@@ -2,6 +2,7 @@ import type {
   DomainSubject,
   DomainCalendarDay,
   DomainRelatedCharacter,
+  CalendarIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -194,12 +195,19 @@ export function buildCalendarViewModel(
 
     return {
       weekdayCn: day.weekday.cn || day.weekday.en,
+      observed: rawItems.length,
+      returned: cappedItems.length,
       items: cappedItems.map((item) => ({
         id: item.id,
         name: item.name,
         nameCn: item.nameCn || item.name,
         image: item.images?.medium || item.images?.small || item.images?.grid,
+        airDate: item.airDate || undefined,
+        type: item.type,
+        typeLabel: item.typeLabel,
         score: item.score,
+        rank: item.rank,
+        collectionDoing: item.collectionDoing,
       })),
       overflowCount: overflowCount > 0 ? overflowCount : undefined,
     };
@@ -209,6 +217,47 @@ export function buildCalendarViewModel(
     template: 'calendar',
     version: 1,
     days,
+  };
+}
+
+export function buildCalendarIntelligenceViewModel(
+  result: CalendarIntelligenceResult,
+): CalendarViewModel {
+  const days: CalendarViewModel['days'] = result.days.map((day) => ({
+    weekdayCn: day.weekday.cn || day.weekday.en,
+    observed: day.observed,
+    returned: day.returned,
+    items: day.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      nameCn: item.nameCn || item.name,
+      image: item.images?.medium || item.images?.small || item.images?.grid,
+      airDate: item.airDate || undefined,
+      type: item.type,
+      typeLabel: item.typeLabel,
+      score: item.score,
+      rank: item.rank,
+      collectionDoing: item.collectionDoing,
+    })),
+    overflowCount: day.overflowCount || undefined,
+  }));
+  const rendered = days.reduce((count, day) => count + day.items.length, 0);
+
+  return {
+    template: 'calendar',
+    version: 1,
+    days,
+    state: result.state,
+    coverage: {
+      ...result.coverage,
+      rendered,
+    },
+    source: {
+      label: 'Bangumi official legacy calendar',
+      retrievedAt: result.source.retrievedAt,
+    },
+    limitations: result.limitations,
+    warnings: result.warnings,
   };
 }
 

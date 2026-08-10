@@ -71,8 +71,8 @@ registerTemplate<CollectionProgressViewModel>({
 registerTemplate<CalendarViewModel>({
   id: 'calendar',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <CalendarCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <CalendarCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 

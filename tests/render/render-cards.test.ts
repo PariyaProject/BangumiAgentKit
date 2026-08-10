@@ -5,12 +5,15 @@ import {
   SearchListViewModel,
   CastCardViewModel,
   CollectionProgressViewModel,
-  CalendarViewModel,
+  buildCalendarIntelligenceViewModel,
   PersonProfileViewModel,
   buildPersonProfileViewModel,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
-import type { PersonActivityProfile } from '@bangumi-agent-kit/bangumi-core';
+import type {
+  CalendarIntelligenceResult,
+  PersonActivityProfile,
+} from '@bangumi-agent-kit/bangumi-core';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -132,23 +135,54 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
   });
 
   it('R05: Calendar returns valid PNG', async () => {
-    const vm: CalendarViewModel = {
-      template: 'calendar',
-      version: 1,
+    const calendarResult: CalendarIntelligenceResult = {
+      state: 'partial',
       days: [
         {
-          weekdayCn: '星期六',
+          weekday: { en: 'Sat', cn: '星期六', ja: '土曜日', id: 6 },
+          observed: 3,
+          returned: 2,
+          overflowCount: 1,
           items: [
-            { id: 100, name: 'Anime 1', nameCn: '动画1', score: 8.4 },
-            { id: 101, name: 'Anime 2', nameCn: '动画2', score: 7.9 },
+            {
+              id: 100,
+              name: 'Anime 1',
+              nameCn: '动画1',
+              airDate: '2026-08-15',
+              type: 2,
+              typeLabel: 'anime',
+              score: 8.4,
+            },
+            { id: 101, name: 'Anime 2', nameCn: '动画2', airDate: '', score: 7.9 },
           ],
         },
       ],
+      coverage: {
+        state: 'partial',
+        observed: 3,
+        returned: 2,
+        selectedDays: 1,
+        maxPerDay: 2,
+        maxTotal: 2,
+      },
+      source: {
+        class: 'official-legacy',
+        operation: 'GET /calendar',
+        retrievedAt: '2026-08-10T00:00:00.000Z',
+      },
+      evidence: [],
+      limitations: ['官方 /calendar 提供日期而非具体播出时间。'],
+      warnings: [{ code: 'OUTPUT_TRUNCATED', state: 'partial', message: '已达到显示上限。' }],
     };
+    const vm = buildCalendarIntelligenceViewModel(calendarResult);
 
-    const result = await renderService.renderCard(vm);
-    assertValidPng(result.buffer);
-    expect(result.template).toBe('calendar');
+    const renderResult = await renderService.renderCard(vm);
+    assertValidPng(renderResult.buffer);
+    expect(renderResult.template).toBe('calendar');
+    const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
+    expect(html).toContain('覆盖：观察 3 条 · 返回 2 条 · 展示 2 条');
+    expect(html).toContain('日期 2026-08-15');
+    expect(html).toContain('已达到显示上限');
   });
 
   it('R06: CJK Chinese text renders without throwing or breaking layout', async () => {

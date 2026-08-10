@@ -15,7 +15,7 @@ import {
   buildSubjectCardViewModel,
   buildCastCardViewModel,
   buildCollectionProgressViewModel,
-  buildCalendarViewModel,
+  buildCalendarIntelligenceViewModel,
   buildSearchListViewModel,
   buildPersonProfileViewModel,
 } from '@bangumi-agent-kit/renderer';
@@ -206,7 +206,9 @@ export function createRenderPresentationTools(
     name: 'bangumi.render_calendar',
     description: '生成 Bangumi 每日放送/追番日历卡片 Artifact。',
     input: z.object({
-      weekday: z.number().optional().describe('限定特定星期 (1-7)'),
+      weekday: z.number().int().min(1).max(7).optional().describe('限定特定星期 (1-7)'),
+      maxPerDay: z.number().int().min(1).max(8).optional().describe('每天最多展示条数，默认 8'),
+      maxTotal: z.number().int().min(1).max(56).optional().describe('最多展示总条数，默认 56'),
     }),
     auth: 'none',
     scopes: [],
@@ -219,29 +221,8 @@ export function createRenderPresentationTools(
 
       const calendarService = new CalendarService(publicHttpClient);
 
-      let calendarData = await calendarService.getCalendar();
-
-      if (input.weekday) {
-        calendarData = calendarData.filter((day) => day.weekday.id === input.weekday);
-      }
-
-      const domainDays = calendarData.map((day) => ({
-        weekday: {
-          id: day.weekday.id || 1,
-          en: day.weekday.en || 'Mon',
-          cn: day.weekday.cn || '星期一',
-          ja: day.weekday.ja || '月曜日',
-        },
-        items: (day.items || []).map((item) => ({
-          id: item.id,
-          name: item.name,
-          nameCn: item.nameCn,
-          images: item.images,
-          score: item.score,
-        })),
-      }));
-
-      const viewModel = buildCalendarViewModel(domainDays as any);
+      const calendarResult = await calendarService.getCalendarIntelligence(input);
+      const viewModel = buildCalendarIntelligenceViewModel(calendarResult);
       return await executeRenderAndSave(viewModel);
     },
   });

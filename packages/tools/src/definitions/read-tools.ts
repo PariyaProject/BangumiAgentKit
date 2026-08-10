@@ -253,6 +253,23 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCalendarIntelligence = defineTool({
+    name: 'bangumi.get_calendar_intelligence',
+    description:
+      '获取带播出日期、评分、类型、排名、来源证据与覆盖状态的有界 Bangumi 日历摘要。适合回答“本周哪些作品什么时候播”；不把源顺序当作推荐，也不读取个人收藏状态。',
+    input: z.object({
+      weekday: z.number().int().min(1).max(7).optional().describe('限定星期，1-7；不传返回整周'),
+      maxPerDay: z.number().int().min(1).max(8).optional().describe('每天最多返回条数，默认 8'),
+      maxTotal: z.number().int().min(1).max(56).optional().describe('最多返回总条数，默认 56'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input) => {
+      return await calendarService.getCalendarIntelligence(input);
+    },
+  });
+
   const categoryTypeMap: Record<string, number> = {
     main: 0,
     sp: 1,
@@ -757,5 +774,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getRevision,
     getIndex,
     getSubjectStats,
+    getCalendarIntelligence,
   ] as const;
 }
