@@ -6,9 +6,7 @@ Base SHA: `9ae07d5a8ad5517da5dc9c33a999e174e71a86c9`
 
 Implementation Frozen SHA: `84e32b3366c62346e14d154bb740fb5c480e96f9`
 
-Governance Record SHA: the separate commit containing this record and the canonical
-ledger updates; the exact SHA is reported after that commit because it is not knowable
-before committing its contents.
+Governance Record SHA: `25c9eec507620c2d30a4b7482518666aad87c042`
 
 ## Freeze gate
 

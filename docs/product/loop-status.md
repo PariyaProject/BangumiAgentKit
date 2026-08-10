@@ -34,7 +34,7 @@ PASSED — exact-head CI 31345745611; both independent reviewers PASS
 
 Governance Record SHA:
 
-The separate commit containing this ledger update; reported after commit.
+25c9eec507620c2d30a4b7482518666aad87c042
 
 ---
 
