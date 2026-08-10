@@ -6,7 +6,7 @@ Base SHA: `25c9eec507620c2d30a4b7482518666aad87c042`
 
 Implementation Frozen SHA: `d53d800c5497cacd156792b1139ab7f2a696cdbe`
 
-Governance Record SHA: to be recorded in the follow-up governance metadata commit
+Governance Record SHA: `7e67a2d5a1ab841a980ec35700732060b64142ca`
 
 ## Freeze gate
 

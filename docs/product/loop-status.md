@@ -34,7 +34,7 @@ PASSED — exact-head CI 31354128241; both independent reviewers PASS
 
 Governance Record SHA:
 
-to be recorded in the follow-up governance metadata commit
+7e67a2d5a1ab841a980ec35700732060b64142ca
 
 ---
 
