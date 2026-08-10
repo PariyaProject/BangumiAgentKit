@@ -128,3 +128,20 @@ The fresh independent product review also returned `CORRECTIVE_REQUIRED`:
   Monday–Sunday mapping or day/time semantics needed for “今天/周日” questions.
 - P1 renderer fallback: a valid Japanese weekday can disappear when Chinese and English
   labels are absent because the builder does not fall back to `ja`.
+
+## Fresh corrective review findings — candidate `cf4588ec856d93e3b41c2236150d29ee7b897ced`
+
+The fresh independent code review returned `CORRECTIVE_REQUIRED` after exact-SHA CI and
+the product review passed. These findings must be addressed before another candidate:
+
+- P1 request ceiling: calendar intelligence bypasses the cache but still inherits the
+  transport default of two retries, so a 429/503/network failure can make three official
+  requests instead of the cycle's one-request ceiling. Retry behavior must be disabled
+  for this bounded operation and call counts must be tested for each failure class.
+- P1 weekday consistency: an item `air_weekday` is not range-checked against its enclosing
+  weekday. Out-of-range or contradictory item weekdays can therefore be treated as a
+  complete result. Classify them as schema drift or an explicit partial conflict and add
+  negative tests.
+- P1 renderer evidence: the required narrow/dense/empty/long-CJK/unavailable matrix was
+  not actually rendered at both 640px and 960px, and no Standalone calendar-route test
+  covered the path.
