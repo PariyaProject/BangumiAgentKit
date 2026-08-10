@@ -145,3 +145,22 @@ the product review passed. These findings must be addressed before another candi
 - P1 renderer evidence: the required narrow/dense/empty/long-CJK/unavailable matrix was
   not actually rendered at both 640px and 960px, and no Standalone calendar-route test
   covered the path.
+
+## Fresh corrective review findings — candidate `0fac59e632d1c6c6f547ec3cde74321db1b6ad2f`
+
+The fresh independent code review returned `CORRECTIVE_REQUIRED` after exact-SHA CI and
+the product review passed. These findings must be addressed before another candidate:
+
+- P1 bounded source work: parsing maps every source envelope/item and duplicate weekday
+  merging repeatedly copies accumulated arrays before output caps apply. Add explicit
+  source envelope and item-count ceilings before full mapping, reject oversized payloads
+  truthfully as parser/schema drift, and merge without cumulative array copying. Add
+  adversarial oversized and duplicate-envelope tests.
+- P1 provenance API: the public `buildCalendarIntelligence` builder defaults
+  `retrievedAt` to the current time and always emits official evidence, so direct calls
+  with synthetic/cached data can fabricate freshness. Require/accept explicit acquisition
+  metadata and omit timestamps when unknown, with a direct-builder regression test.
+
+The product reviewer passed with no P0/P1 blockers; its non-blocking P2 follow-ups were
+recorded for a later opportunity: direct Agents to the legacy list tool for exhaustive
+enumeration, consider larger mobile metadata, and strengthen visual-regression assertions.
