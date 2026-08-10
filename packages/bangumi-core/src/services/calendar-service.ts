@@ -83,6 +83,9 @@ const CALENDAR_DEFAULT_MAX_PER_DAY = 3;
 const CALENDAR_MAX_PER_DAY = 8;
 const CALENDAR_DEFAULT_MAX_TOTAL = 21;
 const CALENDAR_MAX_TOTAL = 56;
+const CALENDAR_MAX_SOURCE_DAY_ENVELOPES = 32;
+const CALENDAR_MAX_SOURCE_ITEMS_PER_DAY = 128;
+const CALENDAR_MAX_SOURCE_ITEMS = 512;
 const CALENDAR_WEEKDAY_SEMANTICS =
   '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified';
 
@@ -179,8 +182,15 @@ function parseCalendarItem(value: unknown, path: string): RawCalendarItem {
 /** Validate the legacy calendar envelope before mapping any fields into domain data. */
 export function parseCalendarPayload(raw: unknown): RawCalendarDay[] {
   if (!Array.isArray(raw)) throw schemaError('payload', '七日数组');
+  if (raw.length > CALENDAR_MAX_SOURCE_DAY_ENVELOPES) {
+    throw schemaError(
+      'payload',
+      `最多 ${CALENDAR_MAX_SOURCE_DAY_ENVELOPES} 个星期封套`,
+    );
+  }
 
-  return raw.map((value, dayIndex) => {
+  let sourceItemCount = 0;
+  const validatedDays = raw.map((value, dayIndex) => {
     if (!isRecord(value)) throw schemaError(`days[${dayIndex}]`, '对象');
     if (!isRecord(value.weekday)) throw schemaError(`days[${dayIndex}].weekday`, '对象');
     const weekdayId = optionalNumber(value.weekday.id, `days[${dayIndex}].weekday.id`, {
@@ -190,15 +200,29 @@ export function parseCalendarPayload(raw: unknown): RawCalendarDay[] {
       throw schemaError(`days[${dayIndex}].weekday.id`, '1 至 7 的整数');
     }
     if (!Array.isArray(value.items)) throw schemaError(`days[${dayIndex}].items`, '数组');
+    if (value.items.length > CALENDAR_MAX_SOURCE_ITEMS_PER_DAY) {
+      throw schemaError(
+        `days[${dayIndex}].items`,
+        `最多 ${CALENDAR_MAX_SOURCE_ITEMS_PER_DAY} 条目`,
+      );
+    }
+    sourceItemCount += value.items.length;
+    if (sourceItemCount > CALENDAR_MAX_SOURCE_ITEMS) {
+      throw schemaError('payload.items', `最多 ${CALENDAR_MAX_SOURCE_ITEMS} 条目`);
+    }
 
+    return { dayIndex, weekday: value.weekday, weekdayId, items: value.items };
+  });
+
+  return validatedDays.map(({ dayIndex, weekday, weekdayId, items }) => {
     return {
       weekday: {
-        en: optionalString(value.weekday.en, `days[${dayIndex}].weekday.en`),
-        cn: optionalString(value.weekday.cn, `days[${dayIndex}].weekday.cn`),
-        ja: optionalString(value.weekday.ja, `days[${dayIndex}].weekday.ja`),
+        en: optionalString(weekday.en, `days[${dayIndex}].weekday.en`),
+        cn: optionalString(weekday.cn, `days[${dayIndex}].weekday.cn`),
+        ja: optionalString(weekday.ja, `days[${dayIndex}].weekday.ja`),
         id: weekdayId,
       },
-      items: value.items.map((item, itemIndex) =>
+      items: items.map((item, itemIndex) =>
         parseCalendarItem(item, `days[${dayIndex}].items[${itemIndex}]`),
       ),
     };
@@ -242,8 +266,8 @@ function calendarWarningCode(errorCode: string): string {
 export function buildCalendarIntelligence(
   calendarDays: readonly DomainCalendarDay[],
   options: CalendarIntelligenceOptions = {},
-  retrievedAt = new Date().toISOString(),
-  attemptedAt = retrievedAt,
+  retrievedAt?: string,
+  attemptedAt?: string,
   cache: 'bypassed' | 'unknown' = 'unknown',
 ): CalendarIntelligenceResult {
   const { maxPerDay, maxTotal } = calendarLimitOptions(options);
@@ -260,13 +284,10 @@ export function buildCalendarIntelligence(
     const existing = canonicalByWeekday.get(weekdayId);
     if (existing) {
       duplicateWeekdays.add(weekdayId);
-      canonicalByWeekday.set(weekdayId, {
-        ...existing,
-        items: [...existing.items, ...day.items],
-      });
+      existing.items.push(...day.items);
       continue;
     }
-    canonicalByWeekday.set(weekdayId, day);
+    canonicalByWeekday.set(weekdayId, { ...day, items: [...day.items] });
   }
   const canonicalDays = Array.from(canonicalByWeekday.values()).slice(0, CALENDAR_EXPECTED_DAYS);
   let invalidItemWeekdayCount = 0;

@@ -339,6 +339,27 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(result.limitations[0]).toContain('首播日期');
   });
 
+  it('Calendar intelligence builder does not invent acquisition provenance', () => {
+    const result = buildCalendarIntelligence(
+      Array.from({ length: 7 }, (_, index) => ({
+        weekday: {
+          en: `Day ${index + 1}`,
+          cn: `星期${index + 1}`,
+          ja: `曜日${index + 1}`,
+          id: index + 1,
+        },
+        items: [],
+      })),
+    );
+
+    expect(result.state).toBe('complete');
+    expect(result.source.cache).toBe('unknown');
+    expect(result.source.retrievedAt).toBeUndefined();
+    expect(result.source.attemptedAt).toBeUndefined();
+    expect(result.evidence[0]?.retrievedAt).toBeUndefined();
+    expect(result.evidence[0]?.attemptedAt).toBeUndefined();
+  });
+
   it('Calendar intelligence caps source days to seven unique weekdays', () => {
     const result = buildCalendarIntelligence(
       Array.from({ length: 20 }, (_, index) => ({
@@ -476,6 +497,26 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
   it('parseCalendarPayload accepts an empty calendar but rejects non-array roots', () => {
     expect(parseCalendarPayload([])).toEqual([]);
     expect(() => parseCalendarPayload({})).toThrow('PARSER_ERROR');
+  });
+
+  it('parseCalendarPayload rejects oversized source envelopes and item arrays before mapping', () => {
+    const day = (id: number, items: unknown[] = []) => ({
+      weekday: { en: `Day ${id}`, cn: `星期${id}`, ja: `曜日${id}`, id },
+      items,
+    });
+    const item = (id: number) => ({ id, name: `Item ${id}` });
+
+    expect(() => parseCalendarPayload(Array.from({ length: 33 }, (_, index) => day((index % 7) + 1))))
+      .toThrow('PARSER_ERROR');
+    expect(() => parseCalendarPayload([day(1, Array.from({ length: 129 }, (_, index) => item(index + 1)))]))
+      .toThrow('PARSER_ERROR');
+    expect(() =>
+      parseCalendarPayload(
+        Array.from({ length: 7 }, (_, dayIndex) =>
+          day(dayIndex + 1, Array.from({ length: 80 }, (_, itemIndex) => item(dayIndex * 80 + itemIndex + 1))),
+        ),
+      ),
+    ).toThrow('PARSER_ERROR');
   });
 
   it('CalendarService maps an upstream failure to an unavailable calendar result', async () => {
