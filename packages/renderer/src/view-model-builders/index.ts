@@ -230,7 +230,8 @@ export function buildCalendarIntelligenceViewModel(
     items: day.items.map((item) => ({
       id: item.id,
       name: item.name,
-      nameCn: item.nameCn || item.name,
+      nameCn: item.nameCnProvided === false ? undefined : item.nameCn || item.name,
+      nameCnProvided: item.nameCnProvided,
       image: item.images?.medium || item.images?.small || item.images?.grid,
       airDate: item.airDate || undefined,
       type: item.type,

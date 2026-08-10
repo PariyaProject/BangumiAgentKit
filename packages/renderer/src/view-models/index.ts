@@ -97,6 +97,7 @@ export interface CalendarDayViewModel {
     id: number;
     name: string;
     nameCn?: string;
+    nameCnProvided?: boolean;
     image?: string;
     airDate?: string;
     type?: number;
@@ -121,6 +122,11 @@ export interface CalendarViewModel {
     selectedDays: number;
     maxPerDay: number;
     maxTotal: number;
+    expectedDays?: number;
+    sourceDayCount?: number;
+    missingWeekdays?: number[];
+    missingFields?: Record<string, number>;
+    dateSemantics?: 'first_air_date';
   };
   source?: {
     label: string;

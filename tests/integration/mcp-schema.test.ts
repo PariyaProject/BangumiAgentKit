@@ -59,6 +59,13 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
     expect(calendarIntelligenceSchema.properties.maxPerDay.maximum).toBe(8);
     expect(calendarIntelligenceSchema.properties.maxTotal.maximum).toBe(56);
 
+    const renderCalendarTool = tools.find((t: any) => t.name === 'bangumi.render_calendar');
+    expect(renderCalendarTool).toBeDefined();
+    const renderCalendarSchema = renderCalendarTool?.inputSchema as any;
+    expect(renderCalendarSchema.properties.weekday.type).toBe('number');
+    expect(renderCalendarSchema.properties.weekday.minimum).toBeUndefined();
+    expect(renderCalendarSchema.properties.weekday.maximum).toBeUndefined();
+
     await client.close();
   });
 });

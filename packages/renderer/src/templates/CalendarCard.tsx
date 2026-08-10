@@ -25,6 +25,24 @@ function calendarTypeLabel(value?: string): string | undefined {
   return value ? TYPE_LABELS[value] || '类型未知' : undefined;
 }
 
+const MISSING_FIELD_LABELS: Record<string, string> = {
+  'item.name_cn': '中文名',
+  'item.air_date': '首播日期',
+  'item.rating.score': '评分',
+  'item.rank': '排名',
+  'item.type': '类型',
+  'item.collection.doing': '在看人数',
+};
+
+function missingFieldSummary(fields?: Record<string, number>): string | undefined {
+  if (!fields) return undefined;
+  const entries = Object.entries(fields).filter(([, count]) => count > 0);
+  if (entries.length === 0) return undefined;
+  return entries
+    .map(([field, count]) => `${MISSING_FIELD_LABELS[field] || field} ${count}`)
+    .join('、');
+}
+
 export const CalendarCard: React.FC<CalendarCardProps> = ({
   viewModel,
   theme,
@@ -32,6 +50,8 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
   width,
 }) => {
   const { days } = viewModel;
+  const itemBasis = width && width >= 900 ? 'calc(33.333% - 8px)' : 'calc(50% - 8px)';
+  const itemMaxWidth = width && width >= 900 ? 'calc(33.333% - 4px)' : 'calc(50% - 4px)';
   const stateLabel =
     viewModel.state === 'partial'
       ? '部分覆盖'
@@ -59,12 +79,22 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
         >
           {viewModel.state === 'unavailable'
             ? '官方日历暂时不可用，未生成播出样本。'
-            : `覆盖：观察 ${viewModel.coverage.observed} 条 · 返回 ${viewModel.coverage.returned} 条 · 展示 ${viewModel.coverage.rendered} 条${viewModel.state === 'partial' ? ' · 已达到显示上限' : ''}`}
+            : `覆盖：观察 ${viewModel.coverage.observed} 条 · 返回 ${viewModel.coverage.returned} 条 · 展示 ${viewModel.coverage.rendered} 条${
+                viewModel.coverage.sourceDayCount !== undefined
+                  ? ` · 星期 ${viewModel.coverage.sourceDayCount}/${viewModel.coverage.expectedDays ?? 7}`
+                  : ''
+              }${viewModel.state === 'partial' ? ' · 部分覆盖' : ''}`}
+        </div>
+      )}
+
+      {viewModel.coverage?.missingWeekdays && viewModel.coverage.missingWeekdays.length > 0 && (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          缺少星期：{viewModel.coverage.missingWeekdays.join('、')}
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-        {days.length === 0 && viewModel.state === 'unavailable' ? (
+        {days.length === 0 && viewModel.state !== 'complete' ? (
           <div
             style={{
               color: theme.warning,
@@ -103,7 +133,7 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
             >
               <span>{day.weekdayCn}</span>
               <span style={{ fontSize: '12px', color: theme.textMuted }}>
-                {day.returned ?? day.items.length} 部动画
+                {day.returned ?? day.items.length} 条目
                 {day.observed !== undefined && day.observed !== day.returned
                   ? ` / 观察 ${day.observed}`
                   : ''}
@@ -131,6 +161,9 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                       borderRadius: theme.radius.sm,
                       padding: '4px 8px',
                       fontSize: '12px',
+                      flex: `1 1 ${itemBasis}`,
+                      minWidth: 0,
+                      maxWidth: itemMaxWidth,
                     }}
                   >
                     {imgSrc && (
@@ -145,22 +178,52 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                         }}
                       />
                     )}
-                    <span style={{ color: theme.text, fontWeight: 500 }}>
-                      {item.nameCn || item.name}
-                    </span>
-                    <span style={{ color: theme.textMuted, fontSize: '11px' }}>
-                      {[
-                        item.airDate ? `日期 ${item.airDate}` : '日期未知',
-                        calendarTypeLabel(item.typeLabel),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                    {item.score !== undefined && (
-                      <span style={{ color: theme.score, fontWeight: 700 }}>
-                        ★ {item.score.toFixed(1)}
-                      </span>
-                    )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          color: theme.text,
+                          fontWeight: 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.nameCn || item.name}
+                      </div>
+                      {item.nameCn && item.nameCn !== item.name && (
+                        <div
+                          style={{
+                            color: theme.textMuted,
+                            fontSize: '10px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          原名：{item.name}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          color: theme.textMuted,
+                          fontSize: '10px',
+                          lineHeight: 1.35,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {[
+                          item.airDate ? `首播日期 ${item.airDate}` : '首播日期未知',
+                          calendarTypeLabel(item.typeLabel) || '类型未知',
+                          item.score !== undefined ? `评分 ${item.score.toFixed(1)}` : '评分未知',
+                          item.rank !== undefined ? `排名 ${item.rank}` : '排名未知',
+                          item.collectionDoing !== undefined
+                            ? `在看 ${item.collectionDoing}`
+                            : '在看人数未知',
+                        ].join(' · ')}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -189,6 +252,11 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
       {viewModel.warnings && viewModel.warnings.length > 0 && (
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
           {viewModel.warnings.map((warning) => warning.message).join('；')}
+        </div>
+      )}
+      {missingFieldSummary(viewModel.coverage?.missingFields) && (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          字段未知：{missingFieldSummary(viewModel.coverage?.missingFields)}
         </div>
       )}
       {viewModel.limitations && viewModel.limitations.length > 0 && (

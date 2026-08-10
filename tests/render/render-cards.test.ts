@@ -148,12 +148,20 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
               id: 100,
               name: 'Anime 1',
               nameCn: '动画1',
+              nameCnProvided: true,
               airDate: '2026-08-15',
               type: 2,
               typeLabel: 'anime',
               score: 8.4,
             },
-            { id: 101, name: 'Anime 2', nameCn: '动画2', airDate: '', score: 7.9 },
+            {
+              id: 101,
+              name: 'Anime 2',
+              nameCn: 'Anime 2',
+              nameCnProvided: false,
+              airDate: '',
+              score: 7.9,
+            },
           ],
         },
       ],
@@ -164,6 +172,16 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         selectedDays: 1,
         maxPerDay: 2,
         maxTotal: 2,
+        expectedDays: 7,
+        sourceDayCount: 1,
+        missingWeekdays: [1, 2, 3, 4, 5, 7],
+        missingFields: {
+          'item.air_date': 1,
+          'item.rank': 2,
+          'item.collection.doing': 2,
+          'item.type': 1,
+        },
+        dateSemantics: 'first_air_date',
       },
       source: {
         class: 'official-legacy',
@@ -181,7 +199,9 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(renderResult.template).toBe('calendar');
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
     expect(html).toContain('覆盖：观察 3 条 · 返回 2 条 · 展示 2 条');
-    expect(html).toContain('日期 2026-08-15');
+    expect(html).toContain('首播日期 2026-08-15');
+    expect(html).toContain('原名：Anime 1');
+    expect(html).toContain('排名未知');
     expect(html).toContain('已达到显示上限');
   });
 

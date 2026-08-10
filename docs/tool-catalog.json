@@ -194,13 +194,13 @@
           "maximum": 7
         },
         "maxPerDay": {
-          "description": "每天最多返回条数，默认 8",
+          "description": "每天最多返回条数，默认 3",
           "type": "integer",
           "minimum": 1,
           "maximum": 8
         },
         "maxTotal": {
-          "description": "最多返回总条数，默认 56",
+          "description": "最多返回总条数，默认 21",
           "type": "integer",
           "minimum": 1,
           "maximum": 56
@@ -1048,18 +1048,16 @@
       "properties": {
         "weekday": {
           "description": "限定特定星期 (1-7)",
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 7
+          "type": "number"
         },
         "maxPerDay": {
-          "description": "每天最多展示条数，默认 8",
+          "description": "每天最多展示条数，默认 3",
           "type": "integer",
           "minimum": 1,
           "maximum": 8
         },
         "maxTotal": {
-          "description": "最多展示总条数，默认 56",
+          "description": "最多展示总条数，默认 21",
           "type": "integer",
           "minimum": 1,
           "maximum": 56

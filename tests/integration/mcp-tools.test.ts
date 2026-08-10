@@ -168,6 +168,36 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     );
   });
 
+  it('routes calendar intelligence through the ToolRegistry injected transport', async () => {
+    const globalFetch = vi.fn().mockRejectedValue(new Error('global fetch must not be used'));
+    const injectedFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+            items: [{ id: 1, name: 'Injected Anime' }],
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', globalFetch);
+
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: new HttpClient({ fetchFn: injectedFetch }),
+    });
+    const result = (await registry.executeTool(
+      'bangumi.get_calendar_intelligence',
+      { weekday: 1 },
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
+    )) as any;
+
+    expect(result.days[0].items[0].name).toBe('Injected Anime');
+    expect(injectedFetch).toHaveBeenCalledTimes(1);
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
   it('executes bangumi.list_operations and bangumi.describe_operation fallback tools', async () => {
     const httpClient = new HttpClient();
     const registry = new ToolRegistry({

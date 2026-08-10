@@ -11,6 +11,7 @@ import {
   CalendarService,
   buildCalendarIntelligence,
   calendarSubjectTypeLabel,
+  parseCalendarPayload,
   resolveSubject,
   getSubjectCast,
 } from '../../packages/bangumi-core/src/index.js';
@@ -259,6 +260,7 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(calendar[0]?.items[0]).toMatchObject({
       type: 2,
       typeLabel: 'anime',
+      nameCnProvided: true,
       summary: 'summary',
       airWeekday: 1,
       rank: 20,
@@ -298,6 +300,108 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(calendarSubjectTypeLabel(2)).toBe('anime');
     expect(calendarSubjectTypeLabel(99)).toBe('other');
     expect(calendarSubjectTypeLabel(undefined)).toBeUndefined();
+  });
+
+  it('Calendar intelligence exposes source-day coverage and missing-field counts', () => {
+    const result = buildCalendarIntelligence([
+      {
+        weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+        items: [
+          {
+            id: 1,
+            name: 'Original title',
+            nameCn: 'Original title',
+            nameCnProvided: false,
+            airDate: '',
+          },
+        ],
+      },
+    ]);
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      expectedDays: 7,
+      sourceDayCount: 1,
+      missingWeekdays: [2, 3, 4, 5, 6, 7],
+      dateSemantics: 'first_air_date',
+      missingFields: {
+        'item.name_cn': 1,
+        'item.air_date': 1,
+        'item.rating.score': 1,
+        'item.rank': 1,
+        'item.collection.doing': 1,
+        'item.type': 1,
+      },
+    });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_DAY_COVERAGE' })]),
+    );
+    expect(result.limitations[0]).toContain('首播日期');
+  });
+
+  it('Calendar intelligence caps source days to seven unique weekdays', () => {
+    const result = buildCalendarIntelligence(
+      Array.from({ length: 20 }, (_, index) => ({
+        weekday: {
+          en: `Day ${index + 1}`,
+          cn: `星期${(index % 7) + 1}`,
+          ja: `曜日${(index % 7) + 1}`,
+          id: (index % 7) + 1,
+        },
+        items: [
+          {
+            id: index + 1,
+            name: `Anime ${index + 1}`,
+            nameCn: `动画${index + 1}`,
+            airDate: '',
+          },
+        ],
+      })),
+    );
+
+    expect(result.days).toHaveLength(7);
+    expect(result.coverage).toMatchObject({
+      sourceDayCount: 20,
+      expectedDays: 7,
+      missingWeekdays: [],
+    });
+    expect(result.state).toBe('partial');
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_DAY_COVERAGE' })]),
+    );
+  });
+
+  it('CalendarService reports malformed legacy envelopes as schema drift', async () => {
+    const malformedPayloads = [
+      [{}],
+      [
+        {
+          weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+          items: {},
+        },
+      ],
+      { weekday: { id: 1 }, items: [] },
+    ];
+
+    for (const payload of malformedPayloads) {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify(payload), { status: 200 }));
+      const result = await new CalendarService(
+        new HttpClient({ fetchFn: mockFetch }),
+      ).getCalendarIntelligence();
+
+      expect(result.state).toBe('unavailable');
+      expect(result.error).toMatchObject({ code: 'PARSER_ERROR' });
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
+      );
+    }
+  });
+
+  it('parseCalendarPayload accepts an empty calendar but rejects non-array roots', () => {
+    expect(parseCalendarPayload([])).toEqual([]);
+    expect(() => parseCalendarPayload({})).toThrow('PARSER_ERROR');
   });
 
   it('CalendarService maps an upstream failure to an unavailable calendar result', async () => {
