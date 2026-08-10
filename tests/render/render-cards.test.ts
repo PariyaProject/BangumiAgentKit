@@ -176,12 +176,18 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         sourceDayCount: 1,
         missingWeekdays: [1, 2, 3, 4, 5, 7],
         missingFields: {
+          'item.name_cn': 1,
           'item.air_date': 1,
           'item.rank': 2,
           'item.collection.doing': 2,
           'item.type': 1,
         },
         dateSemantics: 'first_air_date',
+        weekdaySemantics:
+          '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified',
+        duplicateWeekdays: [],
+        extraDayEnvelopes: 0,
+        invalidWeekdayCount: 0,
       },
       source: {
         class: 'official-legacy',
@@ -193,6 +199,16 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       warnings: [{ code: 'OUTPUT_TRUNCATED', state: 'partial', message: '已达到显示上限。' }],
     };
     const vm = buildCalendarIntelligenceViewModel(calendarResult);
+    const japaneseFallbackVm = buildCalendarIntelligenceViewModel({
+      ...calendarResult,
+      days: [
+        {
+          ...calendarResult.days[0]!,
+          weekday: { en: '', cn: '', ja: '土曜日', id: 6 },
+        },
+      ],
+    });
+    expect(japaneseFallbackVm.days[0]?.weekdayCn).toBe('土曜日');
 
     const renderResult = await renderService.renderCard(vm);
     assertValidPng(renderResult.buffer);

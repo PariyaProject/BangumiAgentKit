@@ -127,6 +127,7 @@ export interface CalendarViewModel {
     missingWeekdays?: number[];
     missingFields?: Record<string, number>;
     dateSemantics?: 'first_air_date';
+    weekdaySemantics?: string;
   };
   source?: {
     label: string;

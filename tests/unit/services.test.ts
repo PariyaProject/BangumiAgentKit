@@ -362,12 +362,37 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(result.days).toHaveLength(7);
     expect(result.coverage).toMatchObject({
       sourceDayCount: 20,
+      observed: 20,
+      returned: 20,
       expectedDays: 7,
       missingWeekdays: [],
+      extraDayEnvelopes: 13,
     });
     expect(result.state).toBe('partial');
     expect(result.warnings).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_DAY_COVERAGE' })]),
+    );
+  });
+
+  it('Calendar intelligence never marks an invalid legacy weekday filter complete', () => {
+    const result = buildCalendarIntelligence(
+      Array.from({ length: 7 }, (_, index) => ({
+        weekday: {
+          en: `Day ${index + 1}`,
+          cn: `星期${index + 1}`,
+          ja: `曜日${index + 1}`,
+          id: index + 1,
+        },
+        items: [],
+      })),
+      { weekday: 8 },
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.days).toEqual([]);
+    expect(result.coverage).toMatchObject({ requestedWeekday: 8, selectedDays: 0 });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'INVALID_WEEKDAY_FILTER' })]),
     );
   });
 
@@ -415,6 +440,32 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(result.warnings).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'UPSTREAM_RATE_LIMITED' })]),
     );
+    expect(result.source.retrievedAt).toBeUndefined();
+    expect(result.source.attemptedAt).toBeTruthy();
+  });
+
+  it('Calendar intelligence bypasses the legacy cache and timestamps successful acquisition', async () => {
+    const payload = [
+      {
+        weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+        items: [{ id: 1, name: 'Fresh Anime' }],
+      },
+    ];
+    const mockFetch = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(new Response(JSON.stringify(payload), { status: 200 })),
+      );
+    const service = new CalendarService(new HttpClient({ fetchFn: mockFetch }));
+
+    const first = await service.getCalendarIntelligence();
+    const second = await service.getCalendarIntelligence();
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(first.source.cache).toBe('bypassed');
+    expect(first.source.retrievedAt).toBeTruthy();
+    expect(first.source.attemptedAt).toBeTruthy();
+    expect(second.source.retrievedAt).toBeTruthy();
   });
 
   it('Workflow resolveSubject handles exact ID and keyword disambiguation', async () => {

@@ -430,6 +430,8 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
       ]),
     );
     expect(result.limitations[0]).toContain('具体播出时间');
+    expect(result.coverage.weekdaySemantics).toContain('1=Monday');
+    expect(getCalendarIntelligenceTool.description).toContain('1=周一');
   });
 
   it('PR-7E: get_calendar_intelligence preserves public upstream failure state', async () => {

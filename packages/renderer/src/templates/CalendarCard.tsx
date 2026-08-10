@@ -183,9 +183,8 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                         style={{
                           color: theme.text,
                           fontWeight: 500,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          overflowWrap: 'anywhere',
+                          wordBreak: 'break-word',
                         }}
                       >
                         {item.nameCn || item.name}
@@ -195,9 +194,8 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                           style={{
                             color: theme.textMuted,
                             fontSize: '10px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
                           }}
                         >
                           原名：{item.name}
@@ -208,9 +206,12 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                           color: theme.textMuted,
                           fontSize: '10px',
                           lineHeight: 1.35,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          columnGap: '6px',
+                          rowGap: '2px',
+                          overflowWrap: 'anywhere',
+                          wordBreak: 'break-word',
                         }}
                       >
                         {[
@@ -221,7 +222,9 @@ export const CalendarCard: React.FC<CalendarCardProps> = ({
                           item.collectionDoing !== undefined
                             ? `在看 ${item.collectionDoing}`
                             : '在看人数未知',
-                        ].join(' · ')}
+                        ].map((field) => (
+                          <span key={field}>{field}</span>
+                        ))}
                       </div>
                     </div>
                   </div>

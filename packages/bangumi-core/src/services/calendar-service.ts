@@ -45,19 +45,27 @@ export interface CalendarIntelligenceResult {
     expectedDays: 7;
     sourceDayCount: number;
     missingWeekdays: number[];
+    duplicateWeekdays: number[];
+    extraDayEnvelopes: number;
+    invalidWeekdayCount: number;
+    requestedWeekday?: number;
     missingFields: Record<string, number>;
     dateSemantics: 'first_air_date';
+    weekdaySemantics: string;
   };
   source: {
     class: 'official-legacy';
     operation: 'GET /calendar';
-    retrievedAt: string;
+    retrievedAt?: string;
+    attemptedAt?: string;
+    cache?: 'bypassed' | 'unknown';
   };
   evidence: Array<{
     source: 'official-legacy' | 'derived-s7';
     operation?: string;
     formulaVersion?: string;
-    retrievedAt: string;
+    retrievedAt?: string;
+    attemptedAt?: string;
   }>;
   limitations: string[];
   warnings: Array<{
@@ -222,29 +230,45 @@ export function buildCalendarIntelligence(
   calendarDays: readonly DomainCalendarDay[],
   options: CalendarIntelligenceOptions = {},
   retrievedAt = new Date().toISOString(),
+  attemptedAt = retrievedAt,
+  cache: 'bypassed' | 'unknown' = 'unknown',
 ): CalendarIntelligenceResult {
   const { maxPerDay, maxTotal } = calendarLimitOptions(options);
   const sourceDayCount = calendarDays.length;
-  const seenWeekdays = new Set<number>();
-  const canonicalDays = calendarDays.filter((day) => {
+  const canonicalByWeekday = new Map<number, DomainCalendarDay>();
+  const duplicateWeekdays = new Set<number>();
+  let invalidWeekdayCount = 0;
+  for (const day of calendarDays) {
     const weekdayId = day.weekday.id;
-    if (
-      !Number.isInteger(weekdayId) ||
-      weekdayId < 1 ||
-      weekdayId > CALENDAR_EXPECTED_DAYS ||
-      seenWeekdays.has(weekdayId)
-    ) {
-      return false;
+    if (!Number.isInteger(weekdayId) || weekdayId < 1 || weekdayId > CALENDAR_EXPECTED_DAYS) {
+      invalidWeekdayCount += 1;
+      continue;
     }
-    seenWeekdays.add(weekdayId);
-    return true;
-  });
+    const existing = canonicalByWeekday.get(weekdayId);
+    if (existing) {
+      duplicateWeekdays.add(weekdayId);
+      canonicalByWeekday.set(weekdayId, {
+        ...existing,
+        items: [...existing.items, ...day.items],
+      });
+      continue;
+    }
+    canonicalByWeekday.set(weekdayId, day);
+  }
+  const canonicalDays = Array.from(canonicalByWeekday.values()).slice(0, CALENDAR_EXPECTED_DAYS);
+  const seenWeekdays = new Set(canonicalDays.map((day) => day.weekday.id));
   const missingWeekdays = Array.from(
     { length: CALENDAR_EXPECTED_DAYS },
     (_, index) => index + 1,
   ).filter((weekday) => !seenWeekdays.has(weekday));
-  const selectedDays =
-    options.weekday === undefined
+  const weekdayFilterIsValid =
+    options.weekday === undefined ||
+    (Number.isInteger(options.weekday) &&
+      options.weekday >= 1 &&
+      options.weekday <= CALENDAR_EXPECTED_DAYS);
+  const filteredDays = !weekdayFilterIsValid
+    ? []
+    : options.weekday === undefined
       ? canonicalDays
       : canonicalDays.filter((day) => day.weekday.id === options.weekday);
   let remaining = maxTotal;
@@ -256,7 +280,7 @@ export function buildCalendarIntelligence(
     missingFields[field] = (missingFields[field] || 0) + 1;
   };
 
-  const days = selectedDays.map((day): CalendarIntelligenceDay => {
+  const days = filteredDays.map((day): CalendarIntelligenceDay => {
     const sourceItems = day.items || [];
     for (const item of sourceItems) {
       if (item.nameCnProvided === false || !item.nameCn.trim()) recordMissing('item.name_cn');
@@ -281,17 +305,36 @@ export function buildCalendarIntelligence(
   });
 
   const sourceCoveragePartial =
-    sourceDayCount !== CALENDAR_EXPECTED_DAYS || missingWeekdays.length > 0;
+    sourceDayCount !== CALENDAR_EXPECTED_DAYS ||
+    missingWeekdays.length > 0 ||
+    duplicateWeekdays.size > 0 ||
+    invalidWeekdayCount > 0;
   const outputTruncated = returned < observed;
-  const partial = sourceCoveragePartial || outputTruncated;
+  const invalidWeekdayFilter = !weekdayFilterIsValid;
+  const partial = sourceCoveragePartial || outputTruncated || invalidWeekdayFilter;
   const warnings: CalendarIntelligenceResult['warnings'] = [];
   if (sourceCoveragePartial) {
+    const sourceDetails = [
+      `官方日历返回 ${sourceDayCount} 个星期，预期 7 个`,
+      missingWeekdays.length ? `缺少星期 ${missingWeekdays.join('、')}` : undefined,
+      duplicateWeekdays.size
+        ? `重复星期 ${Array.from(duplicateWeekdays).join('、')} 已合并条目`
+        : undefined,
+      invalidWeekdayCount ? `忽略 ${invalidWeekdayCount} 个无效星期` : undefined,
+    ]
+      .filter(Boolean)
+      .join('；');
     warnings.push({
       code: 'SOURCE_DAY_COVERAGE',
       state: 'partial',
-      message: `官方日历返回 ${sourceDayCount} 个星期，预期 7 个；缺少 ${
-        missingWeekdays.length ? missingWeekdays.join('、') : '无'
-      }，coverage 为 partial。`,
+      message: `${sourceDetails}，coverage 为 partial。`,
+    });
+  }
+  if (invalidWeekdayFilter) {
+    warnings.push({
+      code: 'INVALID_WEEKDAY_FILTER',
+      state: 'partial',
+      message: 'weekday 必须是 1 至 7 的整数；未生成筛选结果。',
     });
   }
   if (outputTruncated) {
@@ -308,34 +351,45 @@ export function buildCalendarIntelligence(
       state: partial ? 'partial' : 'complete',
       observed,
       returned,
-      selectedDays: selectedDays.length,
+      selectedDays: filteredDays.length,
       maxPerDay,
       maxTotal,
       expectedDays: CALENDAR_EXPECTED_DAYS,
       sourceDayCount,
       missingWeekdays,
+      duplicateWeekdays: Array.from(duplicateWeekdays),
+      extraDayEnvelopes: Math.max(0, sourceDayCount - canonicalDays.length),
+      invalidWeekdayCount,
+      requestedWeekday: options.weekday,
       missingFields,
       dateSemantics: 'first_air_date',
+      weekdaySemantics:
+        '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified',
     },
     source: {
       class: 'official-legacy',
       operation: 'GET /calendar',
       retrievedAt,
+      attemptedAt,
+      cache,
     },
     evidence: [
       {
         source: 'official-legacy',
         operation: 'GET /calendar',
         retrievedAt,
+        attemptedAt,
       },
       {
         source: 'derived-s7',
         formulaVersion: 'calendar-schedule-v1',
         retrievedAt,
+        attemptedAt,
       },
     ],
     limitations: [
       'air_date 表示作品首播日期，不是本周具体播出时间或播出时刻；顺序不等同于推荐或热度排序。',
+      'weekday 使用官方周一至周日编号（1=周一，7=周日）；官方源未提供时区语义。',
       '结果不包含个人收藏、观看进度或账号个性化状态。',
       '评分、排名、类型或日期缺失时保持未知，不从其他页面推断。',
     ],
@@ -346,14 +400,13 @@ export function buildCalendarIntelligence(
 export class CalendarService {
   constructor(private client: HttpClient) {}
 
-  async getCalendar(): Promise<DomainCalendarDay[]> {
+  async getCalendar(options: { useCache?: boolean } = {}): Promise<DomainCalendarDay[]> {
+    const useCache = options.useCache !== false;
     const raw = await this.client.request<unknown>({
       method: 'GET',
       path: '/calendar',
-      cacheContext: {
-        operationId: 'getCalendar',
-      },
-      cacheTtlSeconds: 3600,
+      cacheContext: useCache ? { operationId: 'getCalendar' } : undefined,
+      cacheTtlSeconds: useCache ? 3600 : undefined,
     });
 
     return parseCalendarPayload(raw).map((day) => ({
@@ -384,9 +437,11 @@ export class CalendarService {
   async getCalendarIntelligence(
     options: CalendarIntelligenceOptions = {},
   ): Promise<CalendarIntelligenceResult> {
-    const retrievedAt = new Date().toISOString();
+    const attemptedAt = new Date().toISOString();
     try {
-      return buildCalendarIntelligence(await this.getCalendar(), options, retrievedAt);
+      const calendar = await this.getCalendar({ useCache: false });
+      const retrievedAt = new Date().toISOString();
+      return buildCalendarIntelligence(calendar, options, retrievedAt, attemptedAt, 'bypassed');
     } catch (err) {
       const publicError = toPublicError(err);
       const { maxPerDay, maxTotal } = calendarLimitOptions(options);
@@ -403,23 +458,31 @@ export class CalendarService {
           expectedDays: CALENDAR_EXPECTED_DAYS,
           sourceDayCount: 0,
           missingWeekdays: Array.from({ length: CALENDAR_EXPECTED_DAYS }, (_, index) => index + 1),
+          duplicateWeekdays: [],
+          extraDayEnvelopes: 0,
+          invalidWeekdayCount: 0,
+          requestedWeekday: options.weekday,
           missingFields: {},
           dateSemantics: 'first_air_date',
+          weekdaySemantics:
+            '1=Monday,2=Tuesday,3=Wednesday,4=Thursday,5=Friday,6=Saturday,7=Sunday; timezone=source-unspecified',
         },
         source: {
           class: 'official-legacy',
           operation: 'GET /calendar',
-          retrievedAt,
+          attemptedAt,
+          cache: 'bypassed',
         },
         evidence: [
           {
             source: 'official-legacy',
             operation: 'GET /calendar',
-            retrievedAt,
+            attemptedAt,
           },
         ],
         limitations: [
           '官方日历源不可用时不返回猜测的播出计划。',
+          'weekday 使用官方周一至周日编号（1=周一，7=周日）；官方源未提供时区语义。',
           '结果不包含个人收藏、观看进度或账号个性化状态。',
           'air_date 表示作品首播日期，不是本周具体播出时间或播出时刻。',
         ],

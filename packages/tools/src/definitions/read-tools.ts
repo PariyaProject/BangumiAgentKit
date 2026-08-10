@@ -256,9 +256,15 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getCalendarIntelligence = defineTool({
     name: 'bangumi.get_calendar_intelligence',
     description:
-      '获取带播出日期、评分、类型、排名、来源证据与覆盖状态的有界 Bangumi 日历摘要。适合回答“本周哪些作品什么时候播”；不把源顺序当作推荐，也不读取个人收藏状态。',
+      '获取带播出日期、评分、类型、排名、来源证据与覆盖状态的有界 Bangumi 日历摘要。weekday 使用 1=周一至 7=周日；官方源不提供具体时区或播出时刻。适合回答“本周哪些作品什么时候播”；不把源顺序当作推荐，也不读取个人收藏状态。',
     input: z.object({
-      weekday: z.number().int().min(1).max(7).optional().describe('限定星期，1-7；不传返回整周'),
+      weekday: z
+        .number()
+        .int()
+        .min(1)
+        .max(7)
+        .optional()
+        .describe('限定星期：1=周一、2=周二、3=周三、4=周四、5=周五、6=周六、7=周日；不传返回整周'),
       maxPerDay: z.number().int().min(1).max(8).optional().describe('每天最多返回条数，默认 3'),
       maxTotal: z.number().int().min(1).max(56).optional().describe('最多返回总条数，默认 21'),
     }),

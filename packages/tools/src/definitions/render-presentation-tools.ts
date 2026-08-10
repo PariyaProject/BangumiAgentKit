@@ -207,7 +207,10 @@ export function createRenderPresentationTools(
     description: '生成 Bangumi 每日放送/追番日历卡片 Artifact。',
     input: z.object({
       // Keep the legacy weekday number schema. The new caps are additive fields.
-      weekday: z.number().optional().describe('限定特定星期 (1-7)'),
+      weekday: z
+        .number()
+        .optional()
+        .describe('兼容旧参数：1=周一、2=周二、3=周三、4=周四、5=周五、6=周六、7=周日'),
       maxPerDay: z.number().int().min(1).max(8).optional().describe('每天最多展示条数，默认 3'),
       maxTotal: z.number().int().min(1).max(56).optional().describe('最多展示总条数，默认 21'),
     }),

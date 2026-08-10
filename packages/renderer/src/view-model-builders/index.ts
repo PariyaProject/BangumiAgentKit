@@ -194,7 +194,7 @@ export function buildCalendarViewModel(
     const overflowCount = Math.max(0, rawItems.length - maxPerDay);
 
     return {
-      weekdayCn: day.weekday.cn || day.weekday.en,
+      weekdayCn: day.weekday.cn || day.weekday.en || day.weekday.ja,
       observed: rawItems.length,
       returned: cappedItems.length,
       items: cappedItems.map((item) => ({
@@ -224,7 +224,7 @@ export function buildCalendarIntelligenceViewModel(
   result: CalendarIntelligenceResult,
 ): CalendarViewModel {
   const days: CalendarViewModel['days'] = result.days.map((day) => ({
-    weekdayCn: day.weekday.cn || day.weekday.en,
+    weekdayCn: day.weekday.cn || day.weekday.en || day.weekday.ja,
     observed: day.observed,
     returned: day.returned,
     items: day.items.map((item) => ({
