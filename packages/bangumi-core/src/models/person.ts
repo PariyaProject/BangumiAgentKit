@@ -3,6 +3,7 @@ import type { SubjectType } from './subject.js';
 export interface DomainPerson {
   id: number;
   name: string;
+  nameCn?: string;
   type: number;
   typeLabel?: string;
   career: string[];
@@ -11,6 +12,7 @@ export interface DomainPerson {
   aliases?: string[];
   locked?: boolean;
   lastModified?: string;
+  lastModifiedState?: 'known' | 'unknown';
   infobox?: unknown[];
   gender?: string;
   bloodType?: number;

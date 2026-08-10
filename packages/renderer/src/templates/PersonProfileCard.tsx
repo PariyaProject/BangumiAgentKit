@@ -19,6 +19,39 @@ function bloodTypeLabel(value?: number): string | undefined {
     : { 1: 'A', 2: 'B', 3: 'AB', 4: 'O' }[value] || `未知 (${value})`;
 }
 
+const GENDER_LABELS: Record<string, string> = {
+  female: '女性',
+  male: '男性',
+  unknown: '未知性别',
+};
+
+const CAREER_LABELS: Record<string, string> = {
+  artist: '歌手/艺术家',
+  actor: '演员',
+  seiyu: '声优',
+  director: '导演',
+  writer: '编剧',
+  producer: '制作人',
+  mangaka: '漫画家',
+  illustrator: '插画家',
+  composer: '作曲家',
+  musician: '音乐人',
+};
+
+const IDENTITY_FIELD_LABELS: Record<string, string> = {
+  'person.gender': '性别',
+  'person.birth_year': '出生日期',
+  'person.blood_type': '血型',
+};
+
+function humanizeGender(value?: string): string | undefined {
+  return value ? GENDER_LABELS[value.toLowerCase()] || value : undefined;
+}
+
+function humanizeCareer(value: string): string {
+  return CAREER_LABELS[value] || value;
+}
+
 function DistributionList({
   title,
   items,
@@ -183,6 +216,14 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
   const avatarSrc = person.image ? resolvedImages[person.image] || person.image : undefined;
   const sourceLabel = source.retrievedAt ? `${source.label} · ${source.retrievedAt}` : source.label;
   const bloodType = bloodTypeLabel(person.bloodType);
+  const gender = humanizeGender(person.gender);
+  const title = person.nameCn || person.name;
+  const subtitle = [
+    person.nameCn && person.nameCn !== person.name ? person.name : undefined,
+    `Person ID: ${person.id}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const stateLabel =
     viewModel.state === 'complete'
       ? '完整'
@@ -208,7 +249,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
             minWidth: 0,
           }}
         >
-          <TitleBlock title={person.name} subtitle={`Person ID: ${person.id}`} theme={theme} />
+          <TitleBlock title={title} subtitle={subtitle} theme={theme} />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.xs }}>
             {person.career.length > 0 ? (
               person.career.map((career) => (
@@ -223,7 +264,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
                     fontSize: '11px',
                   }}
                 >
-                  {career}
+                  {humanizeCareer(career)}
                 </span>
               ))
             ) : (
@@ -246,7 +287,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
       >
         <div style={{ color: theme.text, fontSize: '13px', fontWeight: 700 }}>
           {person.typeLabel || '人物类型未知'}
-          {person.gender ? ` · ${person.gender}` : ''}
+          {gender ? ` · ${gender}` : ''}
           {person.birthDate ? ` · ${person.birthDate}` : ''}
           {bloodType ? ` · 血型 ${bloodType}` : ''}
         </div>
@@ -257,12 +298,18 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
         )}
         {person.summary && (
           <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.5 }}>
+            <span style={{ color: theme.text, fontWeight: 600 }}>
+              简介{person.summaryTruncated ? '（摘要）' : ''}：
+            </span>
             {person.summary}
           </div>
         )}
         {person.identityMissingFields.length > 0 && (
           <div style={{ color: theme.warning, fontSize: '11px' }}>
-            未提供身份字段：{person.identityMissingFields.join('、')}
+            未提供身份字段：
+            {person.identityMissingFields
+              .map((field) => IDENTITY_FIELD_LABELS[field] || field)
+              .join('、')}
           </div>
         )}
       </div>

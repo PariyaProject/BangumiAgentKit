@@ -381,7 +381,10 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
             birth_year: 1995,
             birth_mon: 12,
             birth_day: 2,
-            infobox: [{ key: '别名', value: [{ v: 'Yoshi' }] }],
+            infobox: [
+              { key: '简体中文名', value: '吉野' },
+              { key: '别名', value: [{ v: 'Yoshi' }] },
+            ],
           }),
           { status: 200 },
         );
@@ -440,7 +443,7 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     );
     expect(profile.person.name).toBe('Yoshino');
     expect(profile.state).toBe('partial');
-    expect(profile.person).toMatchObject({ typeLabel: '个人', aliases: ['Yoshi'] });
+    expect(profile.person).toMatchObject({ typeLabel: '个人', nameCn: '吉野', aliases: ['Yoshi'] });
     expect(profile.credits).toBeUndefined();
     expect(profile.summary).toMatchObject({
       subjectCredits: 1,

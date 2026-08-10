@@ -212,11 +212,12 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
       person: {
         id: 10868,
         name: '水瀬いのり / 水濑祈 / Inori Minase',
+        nameCn: '水濑祈',
         type: 1,
         typeLabel: '个人',
         aliases: ['いのりん', 'Inorin'],
         career: ['seiyu', 'artist', 'actor'],
-        summary: '日本の声優、歌手、俳優。',
+        summary: '日本の声優、歌手、俳優。'.repeat(120),
         gender: '女性',
         bloodType: 1,
         birthYear: 1995,
@@ -285,9 +286,12 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(vm.hiddenCharacterCredits).toBe(4);
     expect(vm.unobservedSubjectCredits).toBe(3);
     expect(vm.unobservedCharacterCredits).toBe(2);
+    expect(vm.person.summaryTruncated).toBe(true);
 
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
     expect(html).toContain('width:640px');
+    expect(html).toContain('水濑祈');
+    expect(html).toContain('简介（摘要）：');
     expect(html).toContain('已观察 16 条，返回 11 条，展示 2 条');
     expect(html).toContain('另有 5 条已返回关系未展示');
     expect(html).toContain('另有 3 条关系未读取');

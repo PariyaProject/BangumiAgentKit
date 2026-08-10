@@ -130,6 +130,7 @@ export interface PersonProfileViewModel {
     aliases?: string[];
     career: string[];
     summary?: string;
+    summaryTruncated?: boolean;
     gender?: string;
     bloodType?: number;
     birthDate?: string;

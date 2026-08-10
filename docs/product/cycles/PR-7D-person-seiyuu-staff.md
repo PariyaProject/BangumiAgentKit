@@ -93,7 +93,8 @@ Input:
 
 Output:
 
-- person identity, type label, aliases/infobox, career, and parsed identity fields;
+- person identity, Chinese display name when present, type label, aliases/infobox, career,
+  parsed identity fields, and explicit unknown freshness state;
 - observed subject and character credit rows, capped with explicit truncation state;
 - unique subject/character/credit-row counts;
 - deterministic counts grouped by normalized media labels with raw numeric v0 codes and exact raw `staff` labels;
@@ -134,6 +135,8 @@ Formula version: `person-activity-v1`.
   role normalization beyond stable labels and numeric v0 media types.
 - numeric media codes remain alongside normalized labels; empty or unknown labels remain
   visible as `未知`/`other` rather than being dropped.
+- person group IDs are canonicalized to unique stable IDs, while source credit rows remain
+  available for row-level counts.
 - `coverage.state = partial` if a configured cap truncates a source list; no total is
   fabricated when the API does not provide a total.
 - `not_computable`: date-window, recent, trend, growth, and collaboration-count claims
@@ -180,6 +183,8 @@ Add a bounded `person-profile` card using the semantic profile result:
 - a clear state/warning footer when identity, coverage, dates, or historical workload are unavailable;
 - the requested render width is passed through to the person card; 640px is a required
   narrow-layout case, with no duplicate name in the avatar/header stack.
+- long official biographies are rendered as explicitly labeled summaries, preserving the
+  full value in the semantic result while keeping chat cards bounded.
 
 The renderer must not fetch data or perform analytics. The view model carries already
 aggregated fields and preserves coverage/limitation text for human-readable output.

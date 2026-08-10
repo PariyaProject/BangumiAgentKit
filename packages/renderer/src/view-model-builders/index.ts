@@ -212,6 +212,13 @@ export function buildCalendarViewModel(
   };
 }
 
+const NOT_COMPUTABLE_LABELS: Record<string, string> = {
+  recent_activity: '最近活动',
+  voice_actor_workload_window: '声优工作量时间窗口',
+  historical_growth: '历史增长趋势',
+  collaboration_count: '合作人数与共同作品',
+};
+
 export function buildPersonProfileViewModel(
   profile: PersonActivityProfile,
   options: {
@@ -219,12 +226,14 @@ export function buildPersonProfileViewModel(
     retrievedAt?: string;
     maxSubjectCredits?: number;
     maxCharacterCredits?: number;
+    summaryMaxLength?: number;
     limitations?: string[];
     notComputable?: string[];
   } = {},
 ): PersonProfileViewModel {
   const maxSubjectCredits = options.maxSubjectCredits ?? 8;
   const maxCharacterCredits = options.maxCharacterCredits ?? 8;
+  const summary = truncateText(profile.person.summary, options.summaryMaxLength ?? 240);
   const subjectCredits = profile.subjects.items
     .slice(0, maxSubjectCredits)
     .map((subject): PersonProfileCreditViewModel => ({
@@ -277,6 +286,7 @@ export function buildPersonProfileViewModel(
     person: {
       id: profile.person.id,
       name: profile.person.name,
+      nameCn: profile.person.nameCn,
       image:
         profile.person.images?.large ||
         profile.person.images?.medium ||
@@ -284,7 +294,8 @@ export function buildPersonProfileViewModel(
       typeLabel: profile.person.typeLabel,
       aliases: profile.person.aliases,
       career: profile.person.career,
-      summary: profile.person.summary,
+      summary: summary.text,
+      summaryTruncated: summary.truncated,
       gender: profile.person.gender,
       bloodType: profile.person.bloodType,
       birthDate,
@@ -341,7 +352,9 @@ export function buildPersonProfileViewModel(
       {
         code: 'NOT_COMPUTABLE',
         state: 'not_computable' as const,
-        message: `不可计算：${notComputable.join(', ')}`,
+        message: `不可计算：${notComputable
+          .map((item) => NOT_COMPUTABLE_LABELS[item] || item)
+          .join('、')}`,
       },
     ],
     source: {

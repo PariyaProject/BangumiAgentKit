@@ -4,6 +4,7 @@ import {
   aggregatePersonActivity,
   groupSubjectStaff,
   mapPerson,
+  mapPersonNameCn,
   mapPersonRelationCharacter,
   mapPersonRelationSubject,
   mapSubjectStaffMember,
@@ -82,6 +83,7 @@ describe('PR-7D person intelligence aggregation', () => {
   it('groups staff using the exact source relation label', () => {
     const groups = groupSubjectStaff([
       { id: 1, name: 'A', type: 1, career: [], relation: '导演', eps: '' },
+      { id: 1, name: 'A duplicate row', type: 1, career: [], relation: '导演', eps: '' },
       { id: 2, name: 'B', type: 1, career: [], relation: '导演', eps: '' },
       { id: 3, name: 'C', type: 1, career: [], relation: '', eps: '' },
     ]);
@@ -99,12 +101,14 @@ describe('PR-7D person intelligence aggregation', () => {
         career: ['seiyu'],
         summary: 'summary',
         infobox: [
+          { key: '简体中文名', value: '中文名' },
           {
             key: '别名',
             value: [{ v: 'Alias A' }, { v: 'Alias B' }, { k: 'English', v: 'Alias C' }],
           },
           { key: '国籍', value: '日本' },
         ],
+        last_modified: '0001-01-01T00:00:00Z',
         gender: '女性',
         blood_type: 4,
         birth_year: 1995,
@@ -115,12 +119,25 @@ describe('PR-7D person intelligence aggregation', () => {
     ).toMatchObject({
       type: 9,
       typeLabel: '未知',
+      nameCn: '中文名',
       aliases: ['Alias A', 'Alias B', 'Alias C'],
       gender: '女性',
       bloodType: 4,
       birthYear: 1995,
       stat: { comments: 3, collects: 4 },
     });
+    expect(mapPersonNameCn([{ key: '别名', value: 'not a Chinese name' }])).toBeUndefined();
+    expect(
+      mapPerson({ id: 22, name: 'Unknown freshness', last_modified: '0001-01-01T00:00:00Z' })
+        .lastModified,
+    ).toBeUndefined();
+    expect(
+      mapPerson({ id: 22, name: 'Unknown freshness', last_modified: '0001-01-01T00:00:00Z' })
+        .lastModifiedState,
+    ).toBe('unknown');
+    expect(
+      mapPerson({ id: 21, name: 'Fresh', last_modified: '2026-08-10T00:00:00Z' }).lastModified,
+    ).toBe('2026-08-10T00:00:00Z');
 
     expect(mapPersonRelationSubject({ id: 1, type: 99, staff: '', name: 'A' })).toMatchObject({
       mediaType: 'other',

@@ -50,6 +50,22 @@ export function mapPersonAliases(infobox?: unknown[]): string[] | undefined {
   return aliases.size > 0 ? Array.from(aliases) : undefined;
 }
 
+export function mapPersonNameCn(infobox?: unknown[]): string | undefined {
+  for (const entry of infobox || []) {
+    if (!entry || typeof entry !== 'object') continue;
+    const record = entry as Record<string, unknown>;
+    if (record.key !== '简体中文名' && record.key !== '中文名' && record.key !== 'name_cn') {
+      continue;
+    }
+    return collectInfoboxValues(record.value)[0];
+  }
+  return undefined;
+}
+
+function isUnknownLastModified(value: string): boolean {
+  return value.startsWith('0001-01-01');
+}
+
 export function mapPerson(raw: {
   id: number;
   name?: string;
@@ -72,6 +88,7 @@ export function mapPerson(raw: {
   const person: DomainPerson = {
     id: raw.id,
     name: raw.name || '',
+    nameCn: mapPersonNameCn(raw.infobox),
     type,
     typeLabel: mapPersonTypeLabel(type),
     career: (raw.career as string[]) || [],
@@ -81,7 +98,14 @@ export function mapPerson(raw: {
   };
 
   if (raw.locked !== undefined) person.locked = raw.locked;
-  if (raw.last_modified) person.lastModified = raw.last_modified;
+  if (raw.last_modified) {
+    if (isUnknownLastModified(raw.last_modified)) {
+      person.lastModifiedState = 'unknown';
+    } else {
+      person.lastModified = raw.last_modified;
+      person.lastModifiedState = 'known';
+    }
+  }
   if (Array.isArray(raw.infobox)) person.infobox = raw.infobox;
   if (raw.gender) person.gender = raw.gender;
   if (raw.blood_type !== undefined) person.bloodType = raw.blood_type;
@@ -260,19 +284,19 @@ export function aggregatePersonActivity(
 }
 
 export function groupSubjectStaff(members: readonly SubjectStaffMember[]): SubjectStaffGroup[] {
-  const groups = new Map<string, SubjectStaffMember[]>();
+  const groups = new Map<string, Set<number>>();
   for (const member of members) {
     const relation = member.relation.trim() || '未知';
-    const group = groups.get(relation) || [];
-    group.push(member);
+    const group = groups.get(relation) || new Set<number>();
+    group.add(member.id);
     groups.set(relation, group);
   }
 
   return Array.from(groups.entries())
     .map(([relation, groupedMembers]) => ({
       relation,
-      count: groupedMembers.length,
-      memberIds: groupedMembers.map((member) => member.id),
+      count: groupedMembers.size,
+      memberIds: Array.from(groupedMembers),
     }))
     .sort((left, right) => right.count - left.count || left.relation.localeCompare(right.relation));
 }
