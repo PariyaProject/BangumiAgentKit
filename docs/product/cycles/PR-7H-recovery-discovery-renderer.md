@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `PLANNED`
+Status: `IMPLEMENTING`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -203,10 +203,10 @@ fields, and internal budget controls are not rendered or exposed.
 
 ## Current execution state
 
-- Current state: `PLANNED`
+- Current state: `IMPLEMENTING`
 - Candidate SHA: `N/A`
 - Exact-SHA CI: `N/A`
 - Implementation Frozen SHA: `N/A`
 - Governance Record SHA: `N/A`
 - Merge Commit SHA: `N/A`
-- Next action: reconstruct the scoped product delta on the recovery branch.
+- Next action: complete affected/full validation and Luna consolidated self-review.

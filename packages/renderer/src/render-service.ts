@@ -68,6 +68,10 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
     for (const item of viewModel.items) {
       if (item.image) urls.add(item.image);
     }
+  } else if (viewModel.template === 'discovery-results') {
+    for (const item of viewModel.items) {
+      if (item.image) urls.add(item.image);
+    }
   } else if (viewModel.template === 'cast-card') {
     for (const item of viewModel.items) {
       if (item.character.image) urls.add(item.character.image);

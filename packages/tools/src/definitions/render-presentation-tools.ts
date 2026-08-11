@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
+import { DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
   SubjectService,
   UserService,
@@ -21,7 +22,9 @@ import {
   buildSearchListViewModel,
   buildPersonProfileViewModel,
   buildRevisionTimelineViewModel,
+  buildDiscoveryResultsViewModel,
 } from '@bangumi-agent-kit/renderer';
+import { discoveryQueryInput } from './discovery-tools.js';
 
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
@@ -305,6 +308,26 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderQuerySubjects = defineTool({
+    name: 'bangumi.render_query_subjects',
+    description:
+      '生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；卡片不是完整数据库枚举的承诺。',
+    input: discoveryQueryInput,
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      if (!deps?.providerRegistry) {
+        throw new BangumiError('INTERNAL_ERROR', 'ProviderRegistry unavailable', false);
+      }
+      const query = input.explain === undefined ? { ...input, explain: 'compact' as const } : input;
+      const result = await new DiscoveryEngine(deps.providerRegistry).query(query, {
+        authScope: 'public',
+      });
+      return await executeRenderAndSave(buildDiscoveryResultsViewModel(result, query));
+    },
+  });
+
   const renderPersonProfile = defineTool({
     name: 'bangumi.render_person_profile',
     description: '生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。',
@@ -344,6 +367,7 @@ export function createRenderPresentationTools(
     renderCollectionProgress,
     renderCalendar,
     renderSearch,
+    renderQuerySubjects,
     renderPersonProfile,
     renderRevisionTimeline,
   ] as const;

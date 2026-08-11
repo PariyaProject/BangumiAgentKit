@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`PLANNED`
+`IMPLEMENTING`
 
 Current Product Review Epoch:
 
@@ -92,7 +92,8 @@ Current Product Review Epoch:
 Current Work Packages / `LUNA_STABLE` Summary:
 
 `ViewModel; discovery-results renderer; render_query_subjects Agent path;
-catalog/docs/tests. No Work Package is yet marked LUNA_STABLE.`
+catalog/docs/tests reconstructed; targeted tests and visual QA are green. No
+Work Package is yet marked LUNA_STABLE.`
 
 Review Boundary Rationale:
 
@@ -102,7 +103,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`PLANNED`
+`IMPLEMENTING`
 
 Primary Model / Reasoning:
 
@@ -188,8 +189,8 @@ Merge Commit SHA:
 
 Next Action:
 
-`IMPLEMENT the scoped recovery delta on the dedicated branch; do not import
-historical runtime governance.`
+`COMPLETE the validation funnel and Luna consolidated Base..Candidate
+self-review; do not launch Sol until the exact Candidate/CI gate is ready.`
 
 Human Authorization State:
 

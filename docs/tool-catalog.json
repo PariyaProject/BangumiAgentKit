@@ -1182,6 +1182,196 @@
     }
   },
   {
+    "name": "bangumi.render_query_subjects",
+    "description": "生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；卡片不是完整数据库枚举的承诺。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "keyword": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "media": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["anime", "book", "music", "game", "real"]
+            },
+            {
+              "minItems": 1,
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["anime", "book", "music", "game", "real"]
+              }
+            }
+          ]
+        },
+        "categories": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["tv", "ova", "movie", "web"]
+            },
+            {
+              "minItems": 1,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["tv", "ova", "movie", "web"]
+              }
+            }
+          ]
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2200
+        },
+        "month": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "season": {
+          "type": "string",
+          "pattern": "^\\d{4}-(winter|spring|summer|autumn)$"
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "tags": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "metaTags": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "excludeMetaTags": {
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "concepts": {
+          "maxItems": 20,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "rating": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "ratingCount": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "rank": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "collectionCount": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "nsfw": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["include", "exclude", "only"]
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "sort": {
+          "type": "string",
+          "enum": ["relevance", "heat", "rank", "score", "date"]
+        },
+        "order": {
+          "type": "string",
+          "enum": ["asc", "desc"]
+        },
+        "resultMode": {
+          "type": "string",
+          "enum": ["top", "all"]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "explain": {
+          "type": "string",
+          "enum": ["none", "compact", "full"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.render_revision_timeline",
     "description": "生成官方修订历史摘要图片卡片 Artifact。结果是有界样本，不宣称完整生命周期历史；支持 subject、episode、character、person。",
     "auth": "none",
