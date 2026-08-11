@@ -1,13 +1,15 @@
 > [!IMPORTANT]
-> Review and continuation governance is defined by
+> Goal, budget, review, and continuation governance is defined by
+> `docs/agent/BUDGET_FIRST_EXECUTION.md` and
 > `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`.
 >
-> If older sections of this Charter say that every READY_FOR_REVIEW
-> cycle must stop for human approval, the Autonomous Review Policy
-> supersedes that behavior.
+> If older sections of this Charter describe continuous unattended execution,
+> automatic review retries, or continuation into another Product Cycle, the
+> Budget-First Execution Harness supersedes that behavior.
 >
-> Ordinary read-oriented Product Cycles may be independently reviewed,
-> corrected, automatically frozen, and followed by another Product Cycle.
+> A Goal covers one bounded Product Cycle or milestone. It stops at Freeze,
+> review-budget exhaustion, a protected decision, or another explicit stopping
+> condition. A new Cycle requires fresh user authorization.
 >
 > Protected architectural/security/legal decisions remain Human-On-Exception
 > and must be parked rather than autonomously approved.
@@ -768,7 +770,7 @@ just because an endpoint exists.
 19. DEVELOPMENT LOOP
 ==================================================
 
-Operate continuously using:
+Within one bounded, user-authorized milestone, use:
 
 OBSERVE
 
@@ -792,7 +794,9 @@ OBSERVE
 
 → IDENTIFY NEXT GAP
 
-→ REPEAT.
+→ RECORD THE NEXT GAP
+
+→ STOP AT THE GOAL CONDITION.
 
 ==================================================
 20. OBSERVE
@@ -1535,8 +1539,8 @@ newly discovered opportunities.
 48. DO NOT RUN FOREVER WITHOUT CHECKPOINTS
 ==================================================
 
-Loop mode should be autonomous,
-but not uncontrolled.
+Long-run mode may be autonomous inside one Goal,
+but must remain budgeted and bounded.
 
 Work in bounded product cycles.
 
@@ -1550,7 +1554,9 @@ a finite test matrix
 
 a freeze candidate SHA.
 
-Do not create a single giant 100-commit feature branch.
+Commit count alone is not a review trigger. A cost-efficient primary thread may
+produce many understandable commits inside one coherent milestone, but must not
+expand into unrelated capabilities or an unreviewable giant diff.
 
 ==================================================
 49. AUTONOMOUS CYCLE SIZE
@@ -2031,7 +2037,7 @@ Make these states understandable rather than ugly.
 67. AUTONOMOUS LOOP DECISION RULE
 ==================================================
 
-At the end of each cycle:
+At the end of each user-authorized cycle:
 
 1.
 Run all required tests.
@@ -2060,18 +2066,19 @@ MAINTENANCE
 DEFERRED.
 
 8.
-If blockers exist:
-fix within current cycle.
+If blockers are known before review:
+fix them within the current cycle before spending the review budget.
 
 9.
 If no blockers:
-produce freeze candidate report.
+produce one clean Freeze Candidate and stop at the review gate.
 
 10.
 Do NOT automatically declare foundation frozen
 if the change is architecturally significant.
 
-Prepare it for external review.
+Prepare it for external review. Do not launch reviewers unless the execution
+ledger records authorization and remaining budget.
 
 ==================================================
 68. LOOP CONTINUATION AFTER FREEZE CANDIDATE
@@ -2081,20 +2088,12 @@ When a cycle reaches:
 
 READY FOR REVIEW
 
-STOP coding that architectural area.
+STOP implementation and run the budget/readiness gate.
 
 Do not keep polishing it indefinitely.
 
-If unattended Loop mode must continue,
-switch to:
-
-research / opportunity analysis / test planning
-
-for the next cycle,
-
-but do NOT make irreversible
-cross-foundation architectural changes
-before the previous freeze candidate is reviewed.
+Do not start research, planning, or implementation for the next Cycle inside
+the current Goal. Record follow-up ideas in the opportunity log and stop.
 
 ==================================================
 69. SAFE UNATTENDED MODE
