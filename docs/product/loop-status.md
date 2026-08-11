@@ -108,15 +108,17 @@ Review Tier:
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — Sol #1 CORRECTIVE_REQUIRED; 1 milestone launch remains`
+`2 / 2 — Sol #2 running; no milestone launch remains`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`4 / 3 — PR-7G Sol #1/#2 and PR-7H Sol #1 consumed; 1 remains`
+`4 / 4 — PR-7G Sol #1/#2 and PR-7H Sol #1/#2 consumed; no launch remains`
 
 Current Outer Review Budget State:
 
-`AVAILABLE — 1 launch remains`
+`FINAL_REVIEW_RUNNING — the last authorized outer launch is active; after its
+terminal verdict, persist PAUSED_BY_OUTER_REVIEW_BUDGET and do not launch a
+fifth reviewer or begin an unreviewable follow-on milestone`
 
 Candidate SHA:
 
@@ -174,10 +176,13 @@ Merge Commit SHA:
 
 Next Action:
 
-`Launch the final sequential PR-7H Sol #2 comprehensive reviewer against exact
-Candidate 3f46a97010fff829ab6cfec132bae07359b34e2c, with Sol #1 findings and
-corrective evidence in scope. Persist the launch immediately; do not launch
-Sol #3 or reopen PR-7G.`
+`Wait for the same PR-7H Sol #2 reviewer
+019ff090-bf00-7b00-865f-0e65ef3fe018 to return a terminal verdict. If PASS,
+freeze the exact Candidate and perform the recorded integration gate; if
+CORRECTIVE_REQUIRED, park PR-7H at PARKED_REVIEW_LIMIT with no third launch;
+if HUMAN_REVIEW_REQUIRED, park the protected decision. After the terminal
+milestone outcome, persist PAUSED_BY_OUTER_REVIEW_BUDGET and stop before any
+fifth reviewer or unreviewable follow-on implementation.`
 
 Human Authorization State:
 
@@ -185,22 +190,24 @@ Human Authorization State:
 
 Milestone Review Runtime:
 
-`SOL #1 COMPLETED — sol_milestone_reviewer agent
-019ff073-7b21-79b3-ae85-6e10676edb96 (Russell) returned
-CORRECTIVE_REQUIRED; record: docs/product/reviews/PR-7H/sol-1-corrective.md.`
+`SOL #2 RUNNING — sol_milestone_reviewer agent
+019ff090-bf00-7b00-865f-0e65ef3fe018 (Tesla); high reasoning; sequential;
+reviewing corrected exact Candidate
+3f46a97010fff829ab6cfec132bae07359b34e2c with Sol #1 corrective evidence in
+scope. Waits on this same agent consume no additional launch.`
 
 Latest Reviewer Runtime Event:
 
-`TERMINAL_VERDICT — Sol #1 returned CORRECTIVE_REQUIRED with no P0; the
-reviewer is closed, milestone review budget remains 1 launch, and no new Sol
-launch is authorized until the corrected Candidate is ready.`
+`REVIEW_LAUNCHED — final authorized PR-7H Sol #2 started as
+019ff090-bf00-7b00-865f-0e65ef3fe018 (Tesla) against exact Candidate
+3f46a97010fff829ab6cfec132bae07359b34e2c after exact CI run 31486111752
+passed. No Sol #3 is permitted.`
 
 Latest Milestone Runtime Event:
 
-`REVIEW_READY_FOR_SOL_2 — corrected Candidate
-3f46a97010fff829ab6cfec132bae07359b34e2c passed exact run 31486111752; all
-local validation and visual matrix evidence are persisted. The final Sol #2
-launch is authorized and consumes the last milestone/outer launch.`
+`REVIEW_RUNNING — the final PR-7H review is active. Its terminal result must
+be persisted before Freeze/parking/integration, followed by the mandatory
+outer PAUSED_BY_OUTER_REVIEW_BUDGET checkpoint.`
 
 Execution-budget pause state:
 

@@ -1,6 +1,6 @@
 # PR-7H Review Readiness
 
-Status: `REVIEW_READY_FOR_SOL_2`
+Status: `SOL_2_RUNNING`
 
 ## Candidate and remote evidence
 
@@ -106,8 +106,9 @@ plan/evidence/coverage/limitation sections at both widths.
 ## Review budget and gate
 
 - Review tier: `TIER_2`, selected by the explicit self-evolution profile.
-- PR-7H milestone Sol budget: `2 authorized / 1 consumed`.
-- Outer Goal Sol budget: `4 authorized / 3 consumed`; `1 remaining`.
+- PR-7H milestone Sol budget: `2 authorized / 2 consumed`; Sol #2 is running.
+- Outer Goal Sol budget: `4 authorized / 4 consumed`; no launch remains after
+  this review.
 - Generic subagent budget: `0 authorized / 0 consumed`.
 - Reviewer: sequential `sol_milestone_reviewer`, `high` reasoning.
 - Sol #1 agent `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`) returned
@@ -118,6 +119,8 @@ plan/evidence/coverage/limitation sections at both widths.
   `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and consumed no additional launch.
 - Luna corrected the findings in Candidate
   `3f46a97010fff829ab6cfec132bae07359b34e2c`; exact run `31486111752` passed,
-  so the final PR-7H Sol #2 launch is authorized. Sol #3 is prohibited.
+  and final PR-7H Sol #2 agent `019ff090-bf00-7b00-865f-0e65ef3fe018`
+  (`Tesla`) is now running. Sol #3 is prohibited; after the terminal verdict,
+  persist the outer `PAUSED_BY_OUTER_REVIEW_BUDGET` checkpoint.
 - No P0/P1 blockers are known from Luna preflight. The independent reviewer
   must inspect the actual Base..Candidate diff and evidence before Freeze.

@@ -1,6 +1,6 @@
 # PR-7H Evidence-Bearing Subject Discovery Presentation
 
-Status: `REVIEW_READY_FOR_SOL_2`
+Status: `SOL_2_RUNNING`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget
@@ -159,10 +159,10 @@ asked, what the engine observed, and what remains uncertain; structured
 ## Review and integration ledger
 
 - Review tier: `TIER_2` (selected by the explicit self-evolution profile).
-- Milestone Sol budget: `2 authorized / 1 consumed` at selection; sequential
+- Milestone Sol budget: `2 authorized / 2 consumed`; sequential
   comprehensive `sol_milestone_reviewer`; no third launch.
 - Generic subagents: `0 authorized / 0 consumed`.
-- Outer Sol budget at selection: `4 authorized / 3 consumed`; `1 remaining`.
+- Outer Sol budget: `4 authorized / 4 consumed`; no launch remains.
 - Feature branch: `codex/pr-7h-discovery-renderer`.
 - Target base: `master` at recorded Base SHA
   `23f960ce3a8a8ac3841b791061a648037a53ab19`.
@@ -179,6 +179,8 @@ asked, what the engine observed, and what remains uncertain; structured
 - Sol #1 reviewer: `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`),
   `CORRECTIVE_REQUIRED`; record:
   `docs/product/reviews/PR-7H/sol-1-corrective.md`.
+- Sol #2 reviewer: `019ff090-bf00-7b00-865f-0e65ef3fe018` (`Tesla`), running;
+  final authorized launch; no Sol #3.
 - Freeze SHA and merge SHA: `N/A` until those gates are reached.
 
 ## Verifiable stopping condition
