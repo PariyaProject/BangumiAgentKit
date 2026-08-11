@@ -39,8 +39,10 @@ Goal Scope:
 
 The master-only governance corrective that introduced reviewer wait
 continuation, post-Freeze integration, one-milestone branch retirement, and
-unambiguous final Goal states is complete in the commit containing this ledger.
-It did not start a Product Cycle or modify production code.
+unambiguous final Goal states is complete. The final TIER_0 corrective in the
+commit containing this ledger additionally blocks unattended integration when
+the fetched target-base SHA differs from the recorded Base SHA. Neither task
+started a Product Cycle or modified production code.
 
 Explicit Non-Scope:
 
@@ -104,7 +106,11 @@ Target Base Branch:
 
 Base SHA:
 
-`f096918354b90feda4971fe5565160705cb6a7ac` at corrective start.
+`9a6675127f1288280f276afd84a33b901878a230` at this corrective's start.
+
+Current Target Base SHA:
+
+`N/A — no active integration attempt`
 
 Feature Branch:
 

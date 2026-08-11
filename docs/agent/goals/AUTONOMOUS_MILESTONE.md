@@ -243,8 +243,10 @@ branch lifecycle in `BUDGET_FIRST_EXECUTION.md`:
 For automatic integration, verify every safety gate, preserve the reviewed SHA
 as an ancestor through the default `MERGE_COMMIT` strategy, verify the PR is
 merged, retire the branch safely, and return to synchronized `master`. A failed
-gate becomes `INTEGRATION_BLOCKED` and stops. Do not select or start the next
-Product Cycle after either successful final state.
+gate becomes `INTEGRATION_BLOCKED` and stops. Target-base drift uses the
+specific canonical state `INTEGRATION_BLOCKED_BASE_DRIFT`; do not automatically
+rebase, merge the advanced base, or reuse old CI/review evidence. Do not select
+or start the next Product Cycle after either successful final state.
 
 ## Stopping conditions
 
@@ -252,6 +254,7 @@ Stop after persisting the ledger when any of the following occurs:
 
 - `FROZEN_GOAL_COMPLETE` or `MERGED_GOAL_COMPLETE`;
 - `INTEGRATION_BLOCKED`;
+- `INTEGRATION_BLOCKED_BASE_DRIFT`;
 - the Review Tier budget is exhausted without a valid Freeze;
 - a corrected Candidate requires fresh human review authorization;
 - a protected human-only decision is parked;

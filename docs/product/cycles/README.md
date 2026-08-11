@@ -29,6 +29,7 @@ A Cycle Plan should define:
 - Freeze Gate
 - Integration Policy (`STOP_AT_FREEZE` or `AUTO_MERGE_AFTER_FREEZE`)
 - Target Base Branch and Base SHA
+- Current Target Base SHA when integration is attempted
 - Feature Branch
 - Pull Request Number
 - Merge Strategy (`MERGE_COMMIT` by default for reviewed features)

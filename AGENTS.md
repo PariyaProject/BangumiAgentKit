@@ -265,10 +265,12 @@ Do not spend the review budget until the Candidate SHA is clean, locally
 validated, and green in mandatory remote CI. Do not create a follow-on Product
 Cycle after Freeze or merge without fresh user authorization. For an explicitly
 recorded `AUTO_MERGE_AFTER_FREEZE` feature milestone, complete the canonical
-integration safety gate, use a merge commit by default, prove the frozen SHA is
-an ancestor of the pushed base, retire the feature branch safely, and return to
-a synchronized `master`. If any gate fails, record `INTEGRATION_BLOCKED` and
-stop.
+integration safety gate. This includes safely fetching the target base and
+requiring its current remote SHA to equal the Cycle's recorded Base SHA; drift
+is `INTEGRATION_BLOCKED_BASE_DRIFT`, never an automatic rebase or merge. Use a
+merge commit by default, prove the frozen SHA is an ancestor of the pushed base,
+retire the feature branch safely, and return to a synchronized `master`. If any
+other gate fails, record `INTEGRATION_BLOCKED` and stop.
 
 Review metadata may be committed after the implementation Candidate
 according to the two-SHA freeze model in

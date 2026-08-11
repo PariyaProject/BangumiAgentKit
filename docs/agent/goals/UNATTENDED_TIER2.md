@@ -65,7 +65,8 @@ two launches total.
 After `FROZEN`, continue through post-Freeze integration only when the Cycle
 Plan and ledger explicitly record `AUTO_MERGE_AFTER_FREEZE`. Apply every
 canonical integration gate and stop at `MERGED_GOAL_COMPLETE` or
-`INTEGRATION_BLOCKED`. With `STOP_AT_FREEZE`, stop at
-`FROZEN_GOAL_COMPLETE`.
+`INTEGRATION_BLOCKED`. Target-base drift stops specifically at
+`INTEGRATION_BLOCKED_BASE_DRIFT`; unattended mode must not reconcile it
+automatically. With `STOP_AT_FREEZE`, stop at `FROZEN_GOAL_COMPLETE`.
 
 Never launch Sol #3. Never start the next Product Cycle.

@@ -272,6 +272,7 @@ Record these truthful runtime fields:
 - Integration Policy;
 - Target Base Branch;
 - Base SHA;
+- Current Target Base SHA when integration is attempted;
 - Feature Branch;
 - Pull Request Number;
 - Merge Strategy;
@@ -280,25 +281,44 @@ Record these truthful runtime fields:
 - Implementation Frozen SHA;
 - Merge Commit SHA.
 
+### Target-base freshness gate
+
+Immediately before automatic integration, safely fetch the recorded Target
+Base Branch, resolve the current `origin/<TargetBaseBranch>` SHA, and compare it
+with the Cycle's recorded Base SHA. For the normal unattended
+`AUTO_MERGE_AFTER_FREEZE` path, these SHAs must be exactly equal.
+
+If they differ, do not merge. Record `INTEGRATION_BLOCKED_BASE_DRIFT` together
+with the recorded Base SHA, current target-base SHA, and Implementation Frozen
+SHA, then stop. Do not automatically rebase, merge the advanced base into the
+reviewed feature branch, regenerate the Candidate, or claim that the old
+exact-SHA CI or Sol `PASS` covers the new base combination.
+
+Integrating onto an advanced base requires a separately authorized,
+validated, and when applicable independently reviewed integration path. It
+must not silently reuse the prior Freeze evidence.
+
 Automatic integration is allowed only when all of these gates are true:
 
-1. the exact Implementation Frozen SHA is known;
-2. required local validation passed;
-3. mandatory remote CI passed for that exact SHA;
-4. the recorded Review Tier is satisfied;
-5. the required independent reviewer returned `PASS` when applicable;
-6. no unresolved P0/P1 blocker remains;
-7. no `HUMAN_REVIEW_REQUIRED` item blocks integration;
-8. the PR targets the recorded base branch;
-9. the PR is not a draft;
-10. repository-host merge requirements are satisfied;
-11. production implementation has not changed after independent `PASS`;
-12. no unrelated dirty user work would be destroyed or relocated.
+1. the target-base freshness gate passed after a safe fetch;
+2. the exact Implementation Frozen SHA is known;
+3. required local validation passed;
+4. mandatory remote CI passed for that exact SHA;
+5. the recorded Review Tier is satisfied;
+6. the required independent reviewer returned `PASS` when applicable;
+7. no unresolved P0/P1 blocker remains;
+8. no `HUMAN_REVIEW_REQUIRED` item blocks integration;
+9. the PR targets the recorded base branch;
+10. the PR is not a draft;
+11. repository-host merge requirements are satisfied;
+12. production implementation has not changed after independent `PASS`;
+13. no unrelated dirty user work would be destroyed or relocated.
 
-If any gate fails, do not merge. Record `INTEGRATION_BLOCKED` with the exact
-failed gate and stop. Any production implementation change after `PASS`
-invalidates that review and creates a new Candidate; never integrate a
-materially different implementation under the old PASS.
+If any non-freshness gate fails, do not merge. Record `INTEGRATION_BLOCKED` with
+the exact failed gate and stop. Base freshness failure uses the more specific
+`INTEGRATION_BLOCKED_BASE_DRIFT` state above. Any production implementation
+change after `PASS` invalidates that review and creates a new Candidate; never
+integrate a materially different implementation under the old PASS.
 
 The default strategy for reviewed feature milestones is `MERGE_COMMIT`. Do not
 squash or rebase independently reviewed Candidate history by default. The
@@ -354,6 +374,7 @@ FROZEN + AUTO_MERGE_AFTER_FREEZE
 
 INTEGRATING
   -> INTEGRATION_BLOCKED
+  -> INTEGRATION_BLOCKED_BASE_DRIFT
 ```
 
 `FROZEN` is the quality/review fact. `FROZEN_GOAL_COMPLETE` and
@@ -372,9 +393,9 @@ the same Goal.
 - generic subagent launches authorized / consumed;
 - Review Tier and total Sol launches authorized / consumed;
 - Candidate SHA and exact-SHA CI evidence;
-- Integration Policy, Target Base Branch, Base SHA, Feature Branch, Pull Request
-  Number, Merge Strategy, Branch Cleanup Policy, Integration State,
-  Implementation Frozen SHA, and Merge Commit SHA;
+- Integration Policy, Target Base Branch, Base SHA, Current Target Base SHA,
+  Feature Branch, Pull Request Number, Merge Strategy, Branch Cleanup Policy,
+  Integration State, Implementation Frozen SHA, and Merge Commit SHA;
 - next action;
 - human authorization state.
 
