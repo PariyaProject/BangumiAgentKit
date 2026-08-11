@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEW_AUTHORIZED`
+`REVIEWER_RUNNING`
 
 Current Product Review Epoch:
 
@@ -103,7 +103,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`REVIEW_AUTHORIZED`
+`REVIEWER_RUNNING`
 
 Primary Model / Reasoning:
 
@@ -123,7 +123,14 @@ evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 0 — 2 remaining; Sol #1 is authorized but not yet launched`
+`2 / 1 — 1 remaining; Sol #1 is running`
+
+Reviewer Runtime Checkpoint:
+
+`sol_milestone_reviewer`, launch ordinal `Sol #1 of 2`, agent
+`019ff0ee-caf8-77b3-ada6-5c72cfe8254f`, launched
+`2026-08-11T13:06:54Z`, deadline `2026-08-11T15:06:54Z`, Candidate
+`043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`, runtime `REVIEWER_RUNNING`.
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -189,9 +196,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`LAUNCH Sol #1 sol_milestone_reviewer with high reasoning against the complete
-Base..Candidate recovery epoch. While it is running, perform no repository
-mutation, CI rerun, Candidate change, push, or additional reviewer launch.`
+`WAIT on the same Sol #1 sol_milestone_reviewer. While it is running, perform
+no repository mutation, CI rerun, Candidate change, push, or additional
+reviewer launch.`
 
 Human Authorization State:
 

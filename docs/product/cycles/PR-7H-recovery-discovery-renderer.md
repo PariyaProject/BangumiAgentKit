@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `REVIEW_AUTHORIZED`
+Status: `REVIEWER_RUNNING`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -202,7 +202,7 @@ fields, and internal budget controls are not rendered or exposed.
 
 ## Current execution state
 
-- Current state: `REVIEW_AUTHORIZED`
+- Current state: `REVIEWER_RUNNING`
 - Candidate SHA: `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
 - Exact-SHA CI: `PASS — run 31493891023; all six mandatory jobs green`
 - Implementation Frozen SHA: `N/A`

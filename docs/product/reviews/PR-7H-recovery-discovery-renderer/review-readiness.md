@@ -1,6 +1,6 @@
 # PR-7H Recovery Review Readiness
 
-Status: `REVIEW_AUTHORIZED`
+Status: `REVIEWER_RUNNING`
 
 ## Exact Candidate and remote CI
 
@@ -110,6 +110,17 @@ manifest records all 14 outputs and their dimensions/byte sizes.
 - Reviewer overall wall-clock limit: 120 minutes from launch.
 - No known P0/P1 blocker is intentionally deferred.
 
-Next action is the single authorized Sol #1 comprehensive review of the
-complete Base..Candidate recovery epoch. No Sol reviewer was launched before
-this readiness gate.
+## Reviewer runtime checkpoint
+
+- Reviewer: `sol_milestone_reviewer`
+- Launch ordinal: `Sol #1 of 2 authorized`
+- Agent ID: `019ff0ee-caf8-77b3-ada6-5c72cfe8254f`
+- Launch time: `2026-08-11T13:06:54Z` (`2026-08-11T22:06:54+09:00`)
+- Overall deadline: `2026-08-11T15:06:54Z`
+- Milestone Sol budget at launch: `2 authorized / 1 consumed / 1 remaining`
+- Review Candidate: `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
+- Runtime state: `REVIEWER_RUNNING`
+
+Next action is to wait on this same Sol #1 reviewer. While it is running, no
+repository mutation, CI rerun, Candidate change, push, or additional reviewer
+launch is permitted.
