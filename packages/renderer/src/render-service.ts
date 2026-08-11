@@ -132,10 +132,22 @@ function normalizeRenderViewModel(viewModel: RenderViewModel): RenderViewModel {
     const steps = viewModel.steps.slice(0, stepLimit);
     const related = viewModel.related.slice(0, relatedLimit);
     const edges = viewModel.edges.slice(0, edgeLimit);
+    const renderedOmitted = {
+      steps: Math.max(0, viewModel.steps.length - steps.length),
+      related: Math.max(0, viewModel.related.length - related.length),
+      edges: Math.max(0, viewModel.edges.length - edges.length),
+    };
     const renderTruncated =
-      steps.length < viewModel.steps.length ||
-      related.length < viewModel.related.length ||
-      edges.length < viewModel.edges.length;
+      renderedOmitted.steps > 0 || renderedOmitted.related > 0 || renderedOmitted.edges > 0;
+    const omissionLabels = [
+      renderedOmitted.steps > 0 ? `步骤 ${renderedOmitted.steps}` : undefined,
+      renderedOmitted.related > 0 ? `关系证据 ${renderedOmitted.related}` : undefined,
+      renderedOmitted.edges > 0 ? `边证据 ${renderedOmitted.edges}` : undefined,
+    ].filter((label): label is string => Boolean(label));
+    const truncationReasons = [
+      ...viewModel.coverage.truncationReasons,
+      ...omissionLabels.map((label) => `renderer-${label}`),
+    ];
 
     return {
       ...viewModel,
@@ -148,7 +160,12 @@ function normalizeRenderViewModel(viewModel: RenderViewModel): RenderViewModel {
               viewModel.state === 'not_computable'
                 ? ('not_computable' as const)
                 : ('partial' as const),
-            warnings: [...new Set([...viewModel.warnings, '渲染器对关系证据应用了安全显示上限。'])],
+            warnings: [
+              ...new Set([
+                ...viewModel.warnings,
+                `渲染器对关系证据应用了安全显示上限；省略 ${omissionLabels.join('、')}。`,
+              ]),
+            ],
           }
         : {}),
       coverage: {
@@ -160,6 +177,27 @@ function normalizeRenderViewModel(viewModel: RenderViewModel): RenderViewModel {
         edgeEvidenceTruncated:
           viewModel.coverage.edgeEvidenceTruncated || edges.length < viewModel.edges.length,
         truncated: viewModel.coverage.truncated || renderTruncated,
+        truncationReasons: [...new Set(truncationReasons)],
+        ...(renderTruncated
+          ? {
+              renderedOmitted: {
+                steps: Math.max(
+                  viewModel.coverage.renderedOmitted?.steps ?? 0,
+                  renderedOmitted.steps,
+                ),
+                related: Math.max(
+                  viewModel.coverage.renderedOmitted?.related ?? 0,
+                  renderedOmitted.related,
+                ),
+                edges: Math.max(
+                  viewModel.coverage.renderedOmitted?.edges ?? 0,
+                  renderedOmitted.edges,
+                ),
+              },
+            }
+          : viewModel.coverage.renderedOmitted
+            ? { renderedOmitted: viewModel.coverage.renderedOmitted }
+            : {}),
       },
     };
   }

@@ -313,7 +313,7 @@ export function createRenderPresentationTools(
   const renderSeriesWatchOrder = defineTool({
     name: 'bangumi.render_series_watch_order',
     description:
-      '生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；非动画证据不会消耗动画节点上限。',
+      '生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；maxNodes 先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。非动画证据不会消耗动画节点上限。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
       depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),

@@ -243,6 +243,32 @@ Human Authorization State:
 `USER-AUTHORIZED EXECUTE-ONLY FRESH PR-7G RECOVERY; HUMAN-ON-EXCEPTION
 BOUNDARIES REMAIN ACTIVE`
 
+## Explicit Human-Authorized PR-7G Finalization Overlay
+
+The historical Recovery Epoch above remains immutable at `2 / 2` Sol launches
+and `PARKED_REVIEW_LIMIT`. A separate user-authorized finalization allowance is
+now active for the existing PR #5 branch only; it is not a new Product Review
+Epoch or a reset of the historical budget.
+
+Finalization plan:
+`docs/product/cycles/PR-7G-finalization.md`
+
+Finalization state:
+`IMPLEMENTATION_IN_PROGRESS`
+
+Finalization starting branch tip:
+`ebcfad4406104aa2a8a7775fcca74efa204db57b`
+
+Finalization Sol budget:
+`1 authorized / 0 consumed; exactly one sequential sol_milestone_reviewer
+launch is permitted`
+
+Finalization branch and PR:
+`codex/recovery-pr-7g-series-watch-order` / `#5`; no new branch or PR.
+
+Historical branch protection:
+`codex/pr-7g-series-watch-order` remains preserved and untouched.
+
 ---
 
 ## Completed PR-7H Goal Ledger (historical record)

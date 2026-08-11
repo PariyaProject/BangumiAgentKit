@@ -7,8 +7,14 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
-  SeriesRelationsViewModel,
+  buildSeriesRelationsViewModel,
 } from '../packages/renderer/dist/index.js';
+import type { SeriesRelationsViewModel } from '../packages/renderer/dist/index.js';
+import {
+  assertSeriesWatchOrderFixture,
+  buildSeriesWatchOrderFixtureResults,
+  SERIES_FIXTURE_VARIANTS,
+} from './series-watch-order-fixtures.js';
 
 async function main() {
   const outputDir = path.join(process.cwd(), '.artifacts', 'render');
@@ -138,270 +144,127 @@ async function main() {
     `Saved calendar.png (${calendarResult.width}x${calendarResult.height}, ${calendarResult.buffer.length} bytes)`,
   );
 
-  // 6. Series / Watch-Order evidence fixtures
-  const seriesPath: SeriesRelationsViewModel['edges'][number] = {
-    fromId: 100,
-    toId: 101,
-    depth: 0,
-    relation: '前传',
-    relationKind: 'prequel',
-    pathIds: [100, 101],
-    pathKinds: ['prequel'],
-    direct: true,
-  };
-  const seriesStep: SeriesRelationsViewModel['steps'][number] = {
-    id: 101,
-    name: 'Prequel Original Title',
-    nameCn: '前传条目：長い日本語タイトル與中文说明',
-    type: '动画',
-    date: '2019-01-01',
-    relationLabels: ['前传'],
-    relationKinds: ['prequel'],
-    relationPaths: [seriesPath],
-    depth: 0,
-    includedInWatchOrder: true,
-    position: 1,
-    isRoot: false,
-    placement: 'before_root' as const,
-    placementReason: '起点直接关系标记为前传，置于起点前',
-  };
-  const seriesVm: SeriesRelationsViewModel = {
-    template: 'series-relations',
-    version: 1,
-    state: 'partial',
-    subjectId: 100,
-    root: {
-      id: 100,
-      name: 'Long Original Title',
-      nameCn: '超长中文起点条目與日本語タイトル',
-      type: '动画',
-      date: '2020-01-01',
-    },
-    steps: [
-      seriesStep,
-      {
-        ...seriesStep,
-        id: 100,
-        name: 'Long Original Title',
-        nameCn: '超长中文起点条目與日本語タイトル',
-        relationLabels: [],
-        relationKinds: [],
-        relationPaths: [],
-        depth: 0,
-        position: 2,
-        isRoot: true,
-        placement: 'root' as const,
-        placementReason: '请求的起始条目',
-      },
-      ...Array.from({ length: 4 }, (_, index) => ({
-        ...seriesStep,
-        id: 102 + index,
-        name: `Sequel Original Title ${index + 1}`,
-        nameCn: `续集条目 ${index + 1}：缺失封面与長文本`.repeat(2),
-        relationLabels: ['续集'],
-        relationKinds: ['sequel'],
-        relationPaths: [
-          {
-            ...seriesPath,
-            toId: 102 + index,
-            relation: '续集',
-            relationKind: 'sequel',
-            pathIds: [100, 102 + index],
-            pathKinds: ['sequel'],
-          },
-        ],
-        date: undefined,
-        position: index + 3,
-        placement: 'after_root' as const,
-        placementReason: '起点直接关系标记为续集，置于起点后',
-      })),
-    ],
-    related: [
-      seriesStep,
-      ...Array.from({ length: 4 }, (_, index) => ({
-        ...seriesStep,
-        id: 102 + index,
-        name: `Sequel Original Title ${index + 1}`,
-        nameCn: `续集条目 ${index + 1}：缺失封面与長文本`.repeat(2),
-        relationLabels: ['续集'],
-        relationKinds: ['sequel'],
-        relationPaths: [
-          {
-            ...seriesPath,
-            toId: 102 + index,
-            relation: '续集',
-            relationKind: 'sequel',
-            pathIds: [100, 102 + index],
-            pathKinds: ['sequel'],
-          },
-        ],
-        date: undefined,
-        includedInWatchOrder: true,
-        position: index + 3,
-        placement: 'after_root' as const,
-        placementReason: '起点直接关系标记为续集，置于起点后',
-      })),
-      ...Array.from({ length: 3 }, (_, index) => ({
-        ...seriesStep,
-        id: 201 + index,
-        name: `Unknown Relation ${index + 1}`,
-        nameCn: `未映射关系 ${index + 1}`,
-        type: '动画',
-        relationLabels: ['相关作品'],
-        relationKinds: ['unknown'],
-        relationPaths: [
-          {
-            ...seriesPath,
-            toId: 201 + index,
-            relation: '相关作品',
-            relationKind: 'unknown',
-            pathIds: [100, 201 + index],
-            pathKinds: ['unknown'],
-          },
-        ],
-        depth: 0,
-        includedInWatchOrder: false,
-        exclusionReason: 'relation_not_watch_step' as const,
-      })),
-      ...Array.from({ length: 8 }, (_, index) => ({
-        ...seriesStep,
-        id: 300 + index,
-        name: `Original Book ${index + 1}`,
-        nameCn: `原作书籍 ${index + 1}`,
-        type: '书籍',
-        relationLabels: ['原作'],
-        relationKinds: ['source'],
-        relationPaths: [
-          {
-            ...seriesPath,
-            toId: 300 + index,
-            relation: '原作',
-            relationKind: 'source',
-            pathIds: [100, 300 + index],
-            pathKinds: ['source'],
-          },
-        ],
-        depth: 0,
-        includedInWatchOrder: false,
-        exclusionReason: 'media_type_not_anime' as const,
-      })),
-    ],
-    edges: [seriesPath],
-    excluded: {
-      count: 15,
-      byReason: [
-        { reason: 'media_type_not_anime', count: 9 },
-        { reason: 'relation_not_watch_step', count: 6 },
-      ],
-      samples: [],
-    },
-    coverage: {
-      depth: 1,
-      maxNodes: 8,
-      media: 'all',
-      animeNodeLimit: 8,
-      nonAnimeEvidenceLimit: 8,
-      relatedLimit: 16,
-      relationRequests: 3,
-      relationRowsObserved: 20,
-      uniqueRelatedObserved: 20,
-      uniqueRelatedReturned: 16,
-      animeNodesObserved: 11,
-      animeNodesSelected: 5,
-      nonAnimeRowsObserved: 9,
-      nonAnimeRowsReturned: 8,
-      detailsAttempted: 5,
-      detailsFetched: 5,
-      detailsFailed: 0,
-      relationFailures: 1,
-      edgeEvidenceLimit: 64,
-      edgeEvidenceReturned: 1,
-      edgeEvidenceTruncated: false,
-      relatedEvidenceTruncated: true,
-      truncated: true,
-      truncationReasons: ['relation-read-failure', 'related-evidence=16'],
-      retrievedAt: '2026-08-11T00:00:00.000Z',
-    },
-    evidence: {
-      operations: ['条目详情', '条目关系'],
-      evidenceCount: 20,
-      derivation: 'series-watch-order-v2',
-      retrievedAt: '2026-08-11T00:00:00.000Z',
-    },
-    warnings: ['共有 1 个可选关系读取失败；未读取的分支不会被假设为完整。'],
-    limitations: ['这不是 Bangumi 发布的唯一官方观看顺序。', '关系源不保证覆盖整个系列。'],
-  };
-  const completeSeries: SeriesRelationsViewModel = {
-    ...seriesVm,
-    state: 'complete',
-    related: seriesVm.related.slice(0, 9),
-    excluded: {
-      count: 4,
-      byReason: [
-        { reason: 'media_type_not_anime', count: 1 },
-        { reason: 'relation_not_watch_step', count: 3 },
-      ],
-      samples: [],
-    },
-    coverage: {
-      ...seriesVm.coverage,
-      relationRowsObserved: 9,
-      uniqueRelatedObserved: 9,
-      uniqueRelatedReturned: 9,
-      animeNodesObserved: 8,
-      nonAnimeRowsObserved: 1,
-      nonAnimeRowsReturned: 1,
-      relationFailures: 0,
-      relatedEvidenceTruncated: false,
-      truncated: false,
-      truncationReasons: [],
-    },
-    evidence: { ...seriesVm.evidence, evidenceCount: 9 },
-    warnings: [],
-  };
-  const notComputableSeries: SeriesRelationsViewModel = {
-    ...completeSeries,
-    state: 'not_computable',
-    root: { ...completeSeries.root, type: '书籍' },
-    steps: [],
-    related: completeSeries.related.map((item) => ({
-      ...item,
-      includedInWatchOrder: false,
-      exclusionReason: 'root_not_anime' as const,
-    })),
-    excluded: {
-      count: completeSeries.related.length,
-      byReason: [{ reason: 'root_not_anime', count: completeSeries.related.length }],
-      samples: [],
-    },
-    coverage: {
-      ...completeSeries.coverage,
-      animeNodesSelected: 0,
-      detailsAttempted: 0,
-      detailsFetched: 0,
-      relatedEvidenceTruncated: false,
-      truncated: false,
-      truncationReasons: [],
-    },
-    warnings: ['起始条目不是动画；本次结果只能展示关系证据，不能计算动画观看步骤。'],
-  };
-  const seriesFixtures: Array<[string, SeriesRelationsViewModel]> = [
-    ['complete', completeSeries],
-    ['partial', seriesVm],
-    ['not-computable', notComputableSeries],
-  ];
-  for (const [variant, viewModel] of seriesFixtures) {
+  // 6. Series / Watch-Order evidence fixtures. Each ViewModel is derived from
+  // a typed SeriesWatchOrderResult and checked before it reaches the renderer.
+  const seriesResults = buildSeriesWatchOrderFixtureResults();
+  for (const variant of SERIES_FIXTURE_VARIANTS) {
+    const seriesResult = seriesResults[variant];
+    assertSeriesWatchOrderFixture(seriesResult);
+    const viewModel = buildSeriesRelationsViewModel(seriesResult);
     for (const width of [640, 960]) {
-      const seriesResult = await renderService.renderCard(viewModel, {
+      const renderResult = await renderService.renderCard(viewModel, {
         width,
         deviceScaleFactor: 1,
       });
       const filename = `series-relations-${variant}-${width}.png`;
-      fs.writeFileSync(path.join(outputDir, filename), seriesResult.buffer);
+      fs.writeFileSync(path.join(outputDir, filename), renderResult.buffer);
       console.log(
-        `Saved ${filename} (${seriesResult.width}x${seriesResult.height}, ${seriesResult.buffer.length} bytes)`,
+        `Saved ${filename} (${renderResult.width}x${renderResult.height}, ${renderResult.buffer.length} bytes)`,
       );
     }
+  }
+
+  // 7. Realistic maximum display input: 17 steps, 24 related rows, and the
+  // service's 64-edge evidence boundary. This is a valid partial VM because
+  // the related evidence cap is explicit; the PNG is used for visual height
+  // and mobile/chat readability QA, not as a substitute for service fixtures.
+  const completeViewModel = buildSeriesRelationsViewModel(seriesResults.complete);
+  const maximumRootId = 900;
+  const maximumSteps = Array.from({ length: 17 }, (_, index) => {
+    const isRoot = index === 8;
+    const base = completeViewModel.steps[isRoot ? 1 : 0]!;
+    return {
+      ...base,
+      id: isRoot ? maximumRootId : maximumRootId + index + 1,
+      name: isRoot ? 'Maximum Input Root' : `Maximum Step ${index + 1}`,
+      nameCn: isRoot ? '最大输入起点' : `最大输入观看步骤 ${index + 1}`,
+      position: index + 1,
+      isRoot,
+      placement: isRoot
+        ? ('root' as const)
+        : index < 8
+          ? ('before_root' as const)
+          : ('after_root' as const),
+      placementReason: isRoot ? '请求的起始条目' : '起点直接关系标记为续集，置于起点后',
+    };
+  });
+  const maximumRelated = Array.from({ length: 24 }, (_, index) => {
+    const isAnime = index < 16;
+    const base = completeViewModel.related[isAnime ? 0 : 3]!;
+    return {
+      ...base,
+      id: maximumRootId + index + 1,
+      name: isAnime ? `Maximum Related ${index + 1}` : `Maximum Non-Anime ${index - 15}`,
+      nameCn: isAnime ? `最大关系证据 ${index + 1}` : `最大非动画证据 ${index - 15}`,
+      type: isAnime ? '动画' : '书籍',
+      includedInWatchOrder: isAnime,
+      ...(isAnime ? {} : { exclusionReason: 'media_type_not_anime' as const }),
+    };
+  });
+  const maximumEdges = Array.from({ length: 64 }, (_, index) => ({
+    ...completeViewModel.edges[0]!,
+    fromId: maximumRootId,
+    toId: maximumRootId + index + 1,
+    pathIds: [maximumRootId, maximumRootId + index + 1],
+  }));
+  const maximumViewModel: SeriesRelationsViewModel = {
+    ...completeViewModel,
+    subjectId: maximumRootId,
+    state: 'partial',
+    root: {
+      ...completeViewModel.root,
+      id: maximumRootId,
+      name: 'Maximum Input Root',
+      nameCn: '最大输入起点',
+    },
+    steps: maximumSteps,
+    related: maximumRelated,
+    edges: maximumEdges,
+    excluded: {
+      count: 48,
+      byReason: [
+        { reason: 'node_cap', count: 40 },
+        { reason: 'media_type_not_anime', count: 8 },
+      ],
+      samples: maximumRelated.slice(16, 20).map((item) => ({
+        ...item,
+        includedInWatchOrder: false,
+        exclusionReason: 'media_type_not_anime' as const,
+      })),
+    },
+    coverage: {
+      ...completeViewModel.coverage,
+      depth: 1,
+      maxNodes: 16,
+      animeNodeLimit: 16,
+      relatedLimit: 24,
+      relationRowsObserved: 64,
+      uniqueRelatedObserved: 64,
+      uniqueRelatedReturned: 24,
+      animeNodesObserved: 56,
+      animeNodesSelected: 16,
+      nonAnimeRowsObserved: 8,
+      nonAnimeRowsReturned: 8,
+      detailsAttempted: 16,
+      detailsFetched: 16,
+      edgeEvidenceReturned: 64,
+      relatedEvidenceTruncated: true,
+      truncated: true,
+      truncationReasons: ['maxNodes=16', 'related-evidence=24'],
+    },
+    evidence: { ...completeViewModel.evidence, evidenceCount: 18 },
+    warnings: ['关系证据达到有界上限 24；未展示的条目通过覆盖和排除统计保留。'],
+  };
+  for (const width of [640, 960]) {
+    const renderResult = await renderService.renderCard(maximumViewModel, {
+      width,
+      deviceScaleFactor: 1,
+    });
+    const filename = `series-relations-maximum-${width}.png`;
+    fs.writeFileSync(path.join(outputDir, filename), renderResult.buffer);
+    console.log(
+      `Saved ${filename} (${renderResult.width}x${renderResult.height}, ${renderResult.buffer.length} bytes)`,
+    );
   }
 
   await renderService.close();

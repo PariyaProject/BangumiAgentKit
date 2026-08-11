@@ -217,6 +217,11 @@ export interface SeriesRelationsViewModel {
     relatedEvidenceTruncated: boolean;
     truncated: boolean;
     truncationReasons: string[];
+    renderedOmitted?: {
+      steps: number;
+      related: number;
+      edges: number;
+    };
     retrievedAt: string;
   };
   evidence: {

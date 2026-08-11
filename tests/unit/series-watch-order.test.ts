@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   SeriesService,
   type SeriesWatchOrderResult,
@@ -375,7 +375,12 @@ describe('SeriesService bounded watch-order intelligence', () => {
       failedRelations: [100],
     });
 
-    await expect(service.getSeriesWatchOrder(100)).rejects.toThrow('relation unavailable');
+    await expect(service.getSeriesWatchOrder(100)).rejects.toMatchObject({
+      name: 'BangumiError',
+      code: 'NOT_FOUND',
+      retryable: false,
+      upstreamStatus: 404,
+    } satisfies Partial<BangumiError>);
   });
 
   it('handles back-edges with a bounded visited set and keeps a deeper boundary deterministic', async () => {
@@ -422,5 +427,21 @@ describe('SeriesService bounded watch-order intelligence', () => {
     expect(result.state).toBe('partial');
     expect(result.excluded.byReason).toEqual([{ reason: 'node_cap', count: 69 }]);
     expect(result.related.map((item) => item.id)).toEqual([600]);
+  });
+
+  it('preselects maxNodes from relation evidence before detail-date ordering', async () => {
+    const { service, calls } = fixture({
+      subjects: [subject(100), subject(600, 2, '2030-01-01'), subject(601, 2, '2000-01-01')],
+      relations: {
+        100: [relation(600, '续集'), relation(601, '续集')],
+      },
+    });
+
+    const result = await service.getSeriesWatchOrder(100, { depth: 0, maxNodes: 1 });
+
+    expect(ids(result)).toEqual([100, 600]);
+    expect(calls.some((url) => url.endsWith('/subjects/600'))).toBe(true);
+    expect(calls.some((url) => url.endsWith('/subjects/601'))).toBe(false);
+    expect(result.limitations.join(' ')).toContain('有限深度');
   });
 });

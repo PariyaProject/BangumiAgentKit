@@ -138,6 +138,10 @@ Ordering rules:
   may remain visible as evidence but cannot override direct root semantics.
 - Within the same placement/depth, known dates sort ascending, missing dates
   sort after known dates, and subject ID is the final deterministic tie-breaker.
+- `maxNodes` selection is intentionally made from relation evidence before
+  selected-subject detail hydration; detail dates order the selected bounded
+  set but cannot retroactively replace a candidate outside that cap. The
+  relation-row ID is the stable preselection tie-breaker.
 
 ## Historical findings and Luna resolution matrix
 
@@ -300,3 +304,11 @@ two-SHA freeze policy.
 STOP at `PARKED_REVIEW_LIMIT`. Sol #1 and Sol #2 consumed the complete TIER_2
 budget without a PASS. Preserve the corrected Candidate and branch for a
 future explicitly authorized cycle; do not launch Sol #3 or integrate this PR.
+
+## Separate finalization overlay
+
+The historical Recovery Epoch and its `2 / 2` review budget remain terminal and
+immutable. A later, explicitly human-authorized finalization of the existing
+PR #5 is recorded separately in
+`docs/product/cycles/PR-7G-finalization.md`; it does not reset this historical
+state or create a new branch, PR, or Product Review Epoch.

@@ -136,7 +136,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getSeriesWatchOrder = defineTool({
     name: 'bangumi.get_series_watch_order',
     description:
-      '根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，media=all 额外展示有界的非动画证据。',
+      '根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。media=all 额外展示有界的非动画证据。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
       depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),

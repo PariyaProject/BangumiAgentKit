@@ -6,6 +6,11 @@ import {
   RenderService,
 } from '@bangumi-agent-kit/renderer';
 import type { SeriesWatchOrderResult } from '@bangumi-agent-kit/bangumi-core';
+import {
+  assertSeriesWatchOrderFixture,
+  buildSeriesWatchOrderFixtureResults,
+  SERIES_FIXTURE_VARIANTS,
+} from '../../scripts/series-watch-order-fixtures.js';
 
 const ONE_PIXEL_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+6R9JggAAAABJRU5ErkJggg==',
@@ -166,6 +171,19 @@ function makeResult(rootType: 'anime' | 'book' = 'anime'): SeriesWatchOrderResul
 }
 
 describe('series-relations renderer', () => {
+  it('accepts only service-shaped complete, partial, and not-computable QA fixtures', () => {
+    const fixtures = buildSeriesWatchOrderFixtureResults();
+
+    for (const variant of SERIES_FIXTURE_VARIANTS) {
+      const result = fixtures[variant];
+      expect(() => assertSeriesWatchOrderFixture(result), variant).not.toThrow();
+      const viewModel = buildSeriesRelationsViewModel(result);
+      expect(viewModel.state).toBe(variant === 'not-computable' ? 'not_computable' : variant);
+      expect(viewModel.coverage.uniqueRelatedObserved).toBe(result.coverage.uniqueRelatedObserved);
+      expect(viewModel.evidence.evidenceCount).toBe(result.evidence.sources.length);
+    }
+  });
+
   it('renders CJK, raw labels, exclusions, paths, coverage, and partial state at both target widths', () => {
     const viewModel = buildSeriesRelationsViewModel(makeResult());
 
@@ -242,6 +260,7 @@ describe('series-relations renderer', () => {
       await service.renderCard(oversized, { width: 640, deviceScaleFactor: 1 });
       expect(assetResolver.resolveAsset).toHaveBeenCalledTimes(41);
       expect(renderedHtml).toContain('安全显示上限');
+      expect(renderedHtml).toContain('省略 步骤 3、关系证据 6、边证据 6');
       expect(renderedHtml).not.toContain('step-19.jpg');
       expect(renderedHtml).not.toContain('related-29.jpg');
     } finally {

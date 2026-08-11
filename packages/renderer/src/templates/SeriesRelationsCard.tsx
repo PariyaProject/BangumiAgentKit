@@ -209,6 +209,102 @@ function StepCard({
   );
 }
 
+function CompactStepRow({
+  item,
+  theme,
+}: {
+  item: SeriesRelationsViewModel['steps'][number];
+  theme: ThemeTokens;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: theme.spacing.xs,
+        alignItems: 'flex-start',
+        backgroundColor: theme.surfaceAlt,
+        border: `1px solid ${theme.border}`,
+        borderRadius: theme.radius.sm,
+        padding: theme.spacing.xs,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          width: '24px',
+          height: '24px',
+          borderRadius: '50%',
+          backgroundColor: item.isRoot ? theme.accent : theme.surface,
+          color: item.isRoot ? theme.background : theme.accent,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '11px',
+          fontWeight: 800,
+          flexShrink: 0,
+        }}
+      >
+        {item.position}
+      </div>
+      <div style={{ minWidth: 0, lineHeight: 1.35 }}>
+        <div
+          style={{ color: theme.text, fontSize: '11px', fontWeight: 700, overflowWrap: 'anywhere' }}
+        >
+          {item.nameCn || item.name}
+          {item.nameCn && item.nameCn !== item.name ? ` · ${item.name}` : ''}
+        </div>
+        <div style={{ color: theme.textMuted, fontSize: '10px', overflowWrap: 'anywhere' }}>
+          {item.type} · {item.date || '日期未知'} · {item.relationLabels.join('、') || '起点'} ·{' '}
+          {item.placementReason}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactRelatedRow({
+  item,
+  theme,
+}: {
+  item: SeriesRelationsViewModel['related'][number];
+  theme: ThemeTokens;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2px',
+        backgroundColor: theme.surface,
+        border: `1px solid ${theme.border}`,
+        borderRadius: theme.radius.sm,
+        padding: theme.spacing.xs,
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{ color: theme.text, fontSize: '11px', fontWeight: 700, overflowWrap: 'anywhere' }}
+      >
+        {item.nameCn || item.name}
+      </div>
+      <div
+        style={{
+          color: theme.textMuted,
+          fontSize: '10px',
+          lineHeight: 1.3,
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {item.type} · {item.date || '日期未知'} · 深度 {item.depth} ·{' '}
+        {item.relationLabels.join('、') || '关系未知'}
+        {!item.includedInWatchOrder && item.exclusionReason
+          ? ` · 排除：${exclusionLabel(item.exclusionReason)}`
+          : ''}
+      </div>
+    </div>
+  );
+}
+
 function EvidenceRow({
   edge,
   theme,
@@ -219,29 +315,24 @@ function EvidenceRow({
   return (
     <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '3px',
+        display: 'block',
         backgroundColor: theme.surface,
         border: `1px solid ${theme.border}`,
         borderRadius: theme.radius.sm,
-        padding: theme.spacing.sm,
+        padding: theme.spacing.xs,
         minWidth: 0,
       }}
     >
       <div
         style={{
           color: theme.text,
-          fontSize: '11px',
-          lineHeight: 1.45,
+          fontSize: '10px',
+          lineHeight: 1.3,
           overflowWrap: 'anywhere',
         }}
       >
-        {edge.pathIds.join(' → ')} · {edge.relation}
+        {edge.pathIds.join(' → ')} · {edge.relation} · {edge.pathKinds.join(' → ')}
         {edge.direct ? ' · 起点直接' : ` · 深度 ${edge.depth + 1}`}
-      </div>
-      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.35 }}>
-        {edge.pathKinds.join(' → ')}
       </div>
     </div>
   );
@@ -273,6 +364,10 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
   const visibleWarnings = viewModel.warnings.slice(0, 4);
   const visibleLimitations = viewModel.limitations.slice(0, 3);
   const stepBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
+  const compactSteps = width !== undefined && width < 900 && visibleSteps.length > 8;
+  const compactRelated = visibleRelated.length > 12;
+  const evidenceGridColumns = 'repeat(2, minmax(0, 1fr))';
+  const compactRelatedGridColumns = width && width >= 900 ? 'repeat(2, minmax(0, 1fr))' : '1fr';
   const root = viewModel.root;
 
   return (
@@ -352,19 +447,27 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
       ) : null}
 
       <div style={{ color: theme.accent, fontWeight: 800, fontSize: '15px' }}>
-        建议观看步骤 ({visibleSteps.length})
+        建议观看步骤 ({visibleSteps.length}){compactSteps ? ' · 紧凑展示' : ''}
       </div>
       {visibleSteps.length > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          {visibleSteps.map((item) => (
-            <div
-              key={`${item.id}-${item.position}`}
-              style={{ flex: `1 1 ${stepBasis}`, minWidth: 0 }}
-            >
-              <StepCard item={item} theme={theme} resolvedImages={resolvedImages} />
-            </div>
-          ))}
-        </div>
+        compactSteps ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+            {visibleSteps.map((item) => (
+              <CompactStepRow key={`${item.id}-${item.position}`} item={item} theme={theme} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {visibleSteps.map((item) => (
+              <div
+                key={`${item.id}-${item.position}`}
+                style={{ flex: `1 1 ${stepBasis}`, minWidth: 0 }}
+              >
+                <StepCard item={item} theme={theme} resolvedImages={resolvedImages} />
+              </div>
+            ))}
+          </div>
+        )
       ) : (
         <div style={{ color: theme.textMuted, fontSize: '12px' }}>没有可确认的观看步骤。</div>
       )}
@@ -384,7 +487,13 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
           关系证据 ({visibleEdges.length})
         </div>
         {visibleEdges.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: evidenceGridColumns,
+              gap: theme.spacing.xs,
+            }}
+          >
             {visibleEdges.map((edge, index) => (
               <EvidenceRow
                 key={`${edge.fromId}-${edge.toId}-${edge.relation}-${index}`}
@@ -417,54 +526,70 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
           }}
         >
           <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
-            其他有界关系证据 ({visibleRelated.length})
+            其他有界关系证据 ({visibleRelated.length}){compactRelated ? ' · 紧凑展示' : ''}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-            {visibleRelated.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: 'flex',
-                  gap: theme.spacing.sm,
-                  alignItems: 'flex-start',
-                  backgroundColor: theme.surface,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: theme.radius.sm,
-                  padding: theme.spacing.sm,
-                }}
-              >
-                <ImageOrPlaceholder
-                  image={item.image}
-                  alt={item.nameCn || item.name}
-                  theme={theme}
-                  resolvedImages={resolvedImages}
-                  width={38}
-                  height={52}
-                />
-                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          {compactRelated ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: compactRelatedGridColumns,
+                gap: theme.spacing.xs,
+              }}
+            >
+              {visibleRelated.map((item) => (
+                <CompactRelatedRow key={item.id} item={item} theme={theme} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+              {visibleRelated.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: 'flex',
+                    gap: theme.spacing.sm,
+                    alignItems: 'flex-start',
+                    backgroundColor: theme.surface,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: theme.radius.sm,
+                    padding: theme.spacing.sm,
+                  }}
+                >
+                  <ImageOrPlaceholder
+                    image={item.image}
+                    alt={item.nameCn || item.name}
+                    theme={theme}
+                    resolvedImages={resolvedImages}
+                    width={38}
+                    height={52}
+                  />
                   <div
-                    style={{
-                      color: theme.text,
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      overflowWrap: 'anywhere',
-                    }}
+                    style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}
                   >
-                    {item.nameCn || item.name}
-                  </div>
-                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-                    {item.type} · {item.date || '日期未知'} · 深度 {item.depth}
-                  </div>
-                  <RelationChips item={item} theme={theme} />
-                  {!item.includedInWatchOrder && item.exclusionReason ? (
-                    <div style={{ color: theme.warning, fontSize: '10px' }}>
-                      排除：{exclusionLabel(item.exclusionReason)}
+                    <div
+                      style={{
+                        color: theme.text,
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {item.nameCn || item.name}
                     </div>
-                  ) : null}
+                    <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
+                      {item.type} · {item.date || '日期未知'} · 深度 {item.depth}
+                    </div>
+                    <RelationChips item={item} theme={theme} />
+                    {!item.includedInWatchOrder && item.exclusionReason ? (
+                      <div style={{ color: theme.warning, fontSize: '10px' }}>
+                        排除：{exclusionLabel(item.exclusionReason)}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           {viewModel.coverage.relatedEvidenceTruncated ? (
             <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.45 }}>
               关系证据已按 relatedLimit={viewModel.coverage.relatedLimit} 有界截断。
