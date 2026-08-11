@@ -26,6 +26,8 @@ A Cycle Plan should define:
 - generic subagent budget
 - Review Tier (`TIER_0`, `TIER_1`, or `TIER_2`) selected before implementation
 - total Sol review launch budget and, for `TIER_2`, reviewer order
+- active Self-Evolution outer Sol budget state/remaining snapshot when
+  applicable
 - overall reviewer wall-clock limit (120 minutes by default)
 - review readiness evidence
 - Freeze Gate
@@ -61,4 +63,5 @@ semantics are defined only in `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`.
 
 Review Tier, Sol authorized/consumed, and generic subagent authorized/consumed
 are per-milestone fields. Reset them only when a genuinely new substantial
-milestone begins, never for a corrective commit or implementation stage.
+milestone begins, never for a corrective commit or implementation stage. A new
+milestone does not reset an active Self-Evolution outer Sol ledger.

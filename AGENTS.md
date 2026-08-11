@@ -126,6 +126,14 @@ for an exceptionally critical review. Never launch Sol beyond the recorded tier
 budget. `AUTONOMOUS_REVIEW_POLICY.md` owns the canonical reviewer runtime-state
 semantics.
 
+An active `AUTONOMOUS_EVOLUTION_TIER2` outer Goal additionally has a default
+hard ceiling of `4` Sol launches total. Every reviewer start consumes one launch
+from both the active milestone and outer ledgers; same-reviewer waits consume
+neither. A new milestone resets only its milestone ledger. Outer exhaustion is
+`PAUSED_BY_OUTER_REVIEW_BUDGET`, never mission completion, and must stop before
+any fifth launch or unreviewable follow-on implementation. Execute-only
+`UNATTENDED_TIER2` retains only its existing two-launch milestone ceiling.
+
 ## Independent Review
 
 The implementation agent MUST NOT approve its own `TIER_1` or `TIER_2` Freeze

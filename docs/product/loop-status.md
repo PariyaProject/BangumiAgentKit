@@ -43,10 +43,12 @@ The master-only governance corrective that introduced reviewer wait
 continuation, post-Freeze integration, one-milestone branch retirement, and
 unambiguous final Goal states is complete. The previous TIER_0 corrective also
 blocks unattended integration when the fetched target-base SHA differs from the
-recorded Base SHA. The TIER_0 governance corrective in the commit containing
-this ledger adds a separate true self-evolution profile while preserving
-execute-only behavior. None of these tasks started a Product Cycle or modified
-production code.
+recorded Base SHA. TIER_0 governance commit
+`a14e905b7a0cd63aaff516cda60115d335852f4f` added a separate true
+self-evolution profile while preserving execute-only behavior. The TIER_0
+corrective in the commit containing this ledger adds its deterministic
+four-launch outer Sol ceiling. None of these tasks started a Product Cycle or
+modified production code.
 
 Explicit Non-Scope:
 
@@ -108,6 +110,14 @@ Total Sol Review Budget Authorized / Consumed:
 
 `0 / 0`
 
+Outer Sol Review Budget Authorized / Consumed:
+
+`N/A / 0 — no self-evolution Goal is active`
+
+Current Outer Review Budget State:
+
+`INACTIVE`
+
 Candidate SHA:
 
 `N/A — no implementation Candidate`
@@ -126,7 +136,7 @@ Target Base Branch:
 
 Base SHA:
 
-`304853fec88b581028c9cb37a38808ff6a356958` at this corrective's start.
+`a14e905b7a0cd63aaff516cda60115d335852f4f` at this corrective's start.
 
 Current Target Base SHA:
 
@@ -181,6 +191,13 @@ Execution-budget pause state:
 current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI, review
 and subagent usage, blockers, and exact next action.
 
+Outer review-budget pause state:
+
+`N/A`. When active, `PAUSED_BY_OUTER_REVIEW_BUDGET` must persist selected
+profile, outer Sol authorized/consumed, milestone and phase, milestone Sol
+authorized/consumed, branch, `HEAD`, latest stable Candidate, tests/CI,
+outstanding findings, parked directions, and exact next action.
+
 ---
 
 ## Reviewer Runtime Reference
@@ -188,10 +205,11 @@ and subagent usage, blockers, and exact next action.
 `docs/agent/AUTONOMOUS_REVIEW_POLICY.md` is the canonical source. A wait or
 poll timeout while the same reviewer remains running is
 `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`: keep the reviewer open and continue
-waiting with zero additional launch consumption. Only actual termination,
-overall hard timeout, crash, platform failure, or another unrecoverable state
-may become a terminal reviewer failure. Tier budgets remain `0 / 1 / 2` total
-launches, reviews remain sequential, and Sol #3 is prohibited.
+waiting with zero additional milestone or outer launch consumption. Only actual
+termination, overall hard timeout, crash, platform failure, or another
+unrecoverable state may become a terminal reviewer failure. Tier budgets remain
+`0 / 1 / 2` total launches, the Self-Evolution outer ceiling is `4`, reviews
+remain sequential, and Sol #3 is prohibited.
 
 ---
 

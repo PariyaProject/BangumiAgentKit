@@ -32,6 +32,8 @@ weakens protected human-only boundaries.
 - Review Tier: `TIER_2` per substantial milestone
 - Expected Sol launches: `1` per milestone
 - Maximum automatic Sol launches: `2` total per milestone
+- Outer Sol Launches Authorized: `4` per explicitly invoked outer Goal
+- Outer Sol Launches Consumed: `0` at new outer Goal invocation
 - Sol execution: `SEQUENTIAL ONLY`
 - Automatic Sol #3: `PROHIBITED`
 - Standing reviewer: `sol_milestone_reviewer`
@@ -41,17 +43,24 @@ Sol is never used for observation, product audits, opportunity discovery,
 prioritization, planning, ordinary implementation, individual commits, stage
 completion, test fixes, or incremental debugging.
 
+The outer four-launch ceiling is hard for this invocation. Never raise or reset
+it inside the same outer Goal; a fresh ledger requires a future explicit
+self-evolution Goal invocation.
+
 ## Startup and resume
 
 Reconstruct truth from the repository rather than chat memory.
 
 1. Inspect branch, `HEAD`, upstream, staged, unstaged, and untracked state.
 2. Read the outer state and current milestone from `loop-status.md`.
-3. If an active milestone exists, read its Cycle Plan and resume its exact
+3. Establish a fresh `4 authorized / 0 consumed` outer Sol ledger only for this
+   newly invoked outer Goal. If resuming an existing milestone, preserve its
+   existing milestone review ledger.
+4. If an active milestone exists, read its Cycle Plan and resume its exact
    persisted phase; do not replace or reprioritize it mid-cycle.
-4. If no active milestone exists, set the outer state to
+5. If no active milestone exists, set the outer state to
    `OPPORTUNITY_DISCOVERY`; absence of a Cycle is not an error or stop.
-5. If repository state is ambiguous or unsafe to mutate, persist the blocker
+6. If repository state is ambiguous or unsafe to mutate, persist the blocker
    and apply the outer stop rules rather than guessing.
 
 ## Outer evolution loop
@@ -88,6 +97,7 @@ ANY_MILESTONE_PHASE
 
 ANY_OUTER_PHASE
   -> PAUSED_BY_EXECUTION_BUDGET
+  -> PAUSED_BY_OUTER_REVIEW_BUDGET
 ```
 
 A successful Freeze completes one mature product increment, not the outer Goal.
@@ -139,7 +149,8 @@ bounds.
 Before implementation, create a bounded Cycle Plan and reset the per-milestone
 ledger to `TIER_2`, `2 authorized / 0 consumed` Sol launches and
 `0 authorized / 0 consumed` generic subagents. A corrective commit never resets
-either ledger.
+the milestone or outer Sol ledger. A new milestone resets the milestone ledger
+only; it carries the outer authorized/consumed totals forward unchanged.
 
 Use the inner execution, readiness, Candidate, CI, Freeze, and integration rules
 from `AUTONOMOUS_MILESTONE.md` and the canonical policies. Each product
@@ -159,6 +170,17 @@ testing, User QA, Agent QA, Renderer inspection, consolidated self-review, and
 backlog evolution. Full validation and Sol occur only at milestone readiness.
 
 ## Sparse Sol sequence
+
+Before every Sol launch require both:
+
+```text
+milestoneRemainingSol > 0
+AND
+outerGoalRemainingSol > 0
+```
+
+Starting a reviewer consumes one launch from each ledger. If either remaining
+count is zero, do not launch.
 
 ```text
 stable Candidate + exact-SHA evidence
@@ -182,8 +204,9 @@ blocking result after Sol #2
 ```
 
 Wait/poll timeouts while the same reviewer remains running continue waiting on
-that reviewer and consume no additional launch. Actual reviewer terminal
-failures consume their started launch. Never launch Sol #3.
+that reviewer and consume no additional milestone or outer launch. Actual
+reviewer terminal failures consume their started launch in both ledgers. Never
+launch Sol #3.
 
 `PARKED_REVIEW_LIMIT` parks only that milestone. Do not override findings or
 reset its budget. Return to discovery and select another independent safe
@@ -207,7 +230,8 @@ milestone reached its Sol ceiling.
 Stop only for the canonical outer conditions: runtime/system/Goal budget or
 quota exhaustion, user pause/stop, infrastructure or permission blocking all
 useful safe work, explicit discovery finding no meaningful independent safe
-opportunity, unsafe repository state, or a governance-mandated global emergency.
+opportunity, unsafe repository state, exhausted outer Sol budget, or a
+governance-mandated global emergency.
 
 Budget exhaustion records `PAUSED_BY_EXECUTION_BUDGET`, never project
 completion. Persist:
@@ -219,6 +243,24 @@ completion. Persist:
 - Sol and generic subagent usage;
 - blockers and parked items;
 - exact next action.
+
+Outer Sol budget exhaustion is a distinct pause:
+
+`PAUSED_BY_OUTER_REVIEW_BUDGET`
+
+When `4 / 4` outer launches have been consumed, finish waiting for any already
+running reviewer without further charge and process its verdict truthfully. A
+reviewer `PASS` may complete that exact milestone checkpoint. Then stop before
+any fifth launch or any new implementation milestone requiring mandatory
+review. If the current `TIER_2` Candidate has not received the required PASS, do
+not Freeze it.
+
+Persist selected profile, outer authorized/consumed, current milestone and
+phase, milestone authorized/consumed, branch, `HEAD`, latest stable Candidate,
+tests/CI, outstanding findings, parked directions, and exact next action. This
+pause is not Product North Star completion. A future explicit self-evolution
+Goal may create a fresh `4 / 0` outer ledger and resume; it must preserve any
+existing milestone ledger.
 
 ## Efficiency and Git discipline
 

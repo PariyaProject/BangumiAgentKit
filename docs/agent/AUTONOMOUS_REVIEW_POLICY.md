@@ -110,6 +110,11 @@ reviewer later hard-times-out, hits a platform usage-limit error, crashes, is
 terminated, or returns no verdict. Wait and poll calls on the same launched
 reviewer consume zero additional launches.
 
+For an active `AUTONOMOUS_EVOLUTION_TIER2` outer Goal, that same reviewer start
+also consumes one launch from the independent outer Goal ledger. Launch is
+prohibited unless both the milestone and outer remaining counts are positive.
+Wait and poll calls on the same reviewer consume neither additional ledger.
+
 Never launch Sol #3 automatically. Do not replace a failed required reviewer
 with the implementation agent's judgment. Any launch beyond the recorded tier
 budget requires explicit user authorization and an updated total budget in
@@ -165,6 +170,7 @@ An actual hard timeout, termination, or failure does not refund the launch. For
 `TIER_1`, no replacement reviewer is automatic. For `TIER_2`, one remaining
 launch may be used only when the recorded sequence can still produce a valid
 comprehensive `PASS` on the exact Candidate. Sol #3 remains prohibited.
+For self-evolution, the consumed outer launch is likewise never refunded.
 
 ## Review readiness
 
@@ -173,14 +179,17 @@ The implementation agent must not launch reviewers until:
 1. Cycle acceptance criteria are believed satisfied;
 2. the Cycle Plan records Review Tier, total authorized Sol launches, and any
    `TIER_2` reviewer order;
-3. the implementation is committed at an exact Candidate SHA;
-4. the checked-out branch has no milestone changes pending;
-5. relevant local validation is green;
-6. mandatory remote CI is green for the exact Candidate SHA;
-7. required user, Agent, and visual QA are complete;
-8. a consolidated preflight has checked failure states, resource bounds,
+3. an active self-evolution Goal has both milestone and outer remaining Sol
+   budgets greater than zero;
+4. the implementation is committed at an exact Candidate SHA;
+5. the checked-out branch has no milestone changes pending;
+6. relevant local validation is green;
+7. mandatory remote CI is green for the exact Candidate SHA;
+8. required user, Agent, and visual QA are complete;
+9. a consolidated preflight has checked failure states, resource bounds,
    compatibility, evidence, and representative product output;
-9. the execution ledger records reviewer authorization and remaining calls.
+10. the execution ledger records reviewer authorization and both applicable
+    remaining counts.
 
 A reviewer receives the Base SHA, Candidate SHA, active Cycle Plan, concise
 evidence packet, and relevant repository paths. Review should focus on the
@@ -402,3 +411,9 @@ In self-evolution mode, review-limit and protected-decision outcomes park the
 affected milestone or direction rather than stopping the outer Goal. The outer
 stop and `PAUSED_BY_EXECUTION_BUDGET` rules are defined canonically in
 `BUDGET_FIRST_EXECUTION.md`.
+
+Outer review-budget exhaustion is different: persist
+`PAUSED_BY_OUTER_REVIEW_BUDGET` and stop the current outer Goal. Never Freeze an
+unreviewed `TIER_2` Candidate or start further implementation milestones that
+cannot reach mandatory review. A future explicit self-evolution invocation may
+establish a fresh outer ledger and resume persisted state.

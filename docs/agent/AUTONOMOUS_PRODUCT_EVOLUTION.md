@@ -1563,8 +1563,9 @@ Work in bounded product cycles.
 
 The outer Goal may contain multiple cycles only when the self-evolution profile
 is explicitly selected. Each cycle receives a fresh milestone scope, branch,
-PR, review ledger, and Freeze/integration checkpoint; review budget never leaks
-between cycles.
+PR, per-milestone review ledger, and Freeze/integration checkpoint. Milestone
+budget never leaks between cycles; the canonical outer Goal Sol ceiling persists
+across them.
 
 Each cycle should have:
 

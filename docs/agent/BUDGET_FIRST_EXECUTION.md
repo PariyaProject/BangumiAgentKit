@@ -74,6 +74,10 @@ Before either Goal mode acts, record:
 - primary model/reasoning and generic subagent policy;
 - current or most recently completed milestone and exact resumable next action.
 
+When `AUTONOMOUS_EVOLUTION_TIER2` is explicitly invoked as a new outer Goal,
+initialize its independent review ledger to `4 authorized / 0 consumed`. Do not
+pretend this budget exists while no self-evolution Goal is active.
+
 Before each milestone implementation begins, additionally record:
 
 - milestone objective, representative user questions, and explicit non-scope;
@@ -89,7 +93,8 @@ result completes the Goal. In self-evolution mode, Freeze and integration are
 one mature product checkpoint: persist evidence, update the living backlog and
 runtime state, then return to observation and discovery. Review and subagent
 accounting reset only when a genuinely new substantial milestone begins, never
-for a corrective commit.
+for a corrective commit. A new milestone never resets the outer Goal Sol
+ledger.
 
 Self-evolution does not mean finishing a finite Task List. The Task List and
 opportunity backlog are living implementation hypotheses. Luna may add, split,
@@ -154,6 +159,7 @@ ANY_MILESTONE_PHASE
 
 ANY_OUTER_PHASE
   -> PAUSED_BY_EXECUTION_BUDGET
+  -> PAUSED_BY_OUTER_REVIEW_BUDGET
 ```
 
 At startup, an existing active milestone resumes at its persisted phase instead
@@ -170,6 +176,7 @@ was parked for human review, or one milestone exhausted its Sol budget. Valid
 outer stop conditions are only:
 
 - runtime, system, Codex quota, or explicit Goal budget exhaustion;
+- the active outer Goal's Sol review budget is exhausted;
 - user pause, stop, or changed direction;
 - infrastructure or permission prevents further useful safe work;
 - explicit opportunity discovery finds no meaningful independent safe work;
@@ -261,6 +268,61 @@ The repository cannot read or enforce the user's live Plus quota. Launch count
 is the deterministic budget proxy and must be recorded in
 `docs/product/loop-status.md`.
 
+## Self-evolution outer Sol launch budget
+
+This additional ledger applies only to an active
+`AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Its default is:
+
+- Outer Sol Launches Authorized: `4`;
+- Outer Sol Launches Consumed: `0`.
+
+It is independent from every milestone's `TIER_2` ledger. Do not raise or reset
+the four-launch ceiling inside the same outer Goal. A fifth automatic launch is
+prohibited; continuation with a fresh outer ledger requires a future explicit
+self-evolution Goal invocation.
+
+Before a Sol launch, both conditions must be true:
+
+```text
+milestoneRemainingSol > 0
+AND
+outerGoalRemainingSol > 0
+```
+
+Starting one reviewer consumes exactly one launch from both ledgers. The launch
+remains consumed in both if that reviewer later hard-times-out, hits a platform
+limit, crashes, terminates, or returns no verdict. Wait or poll calls on the
+same running reviewer consume neither additional milestone nor outer budget.
+
+Corrective commits reset neither ledger. A genuinely new substantial milestone
+resets only its own per-milestone ledger; the outer authorized/consumed totals
+continue unchanged for the entire outer Goal.
+
+If a launch consumes the final outer slot, continue waiting for that already
+running reviewer at zero additional cost and process its verdict truthfully. A
+`PASS` may complete that exact reviewed milestone's Freeze/integration
+checkpoint. Before any later reviewer launch—or before starting another
+implementation milestone that requires mandatory `TIER_2` review—persist
+`PAUSED_BY_OUTER_REVIEW_BUDGET` and stop the outer Goal.
+
+If the outer remaining budget is zero before a required launch, do not launch,
+do not Freeze an unreviewed `TIER_2` Candidate, and do not accumulate more
+implementation milestones that cannot reach their mandatory review gate. The
+pause record must include:
+
+- selected Goal profile;
+- outer Sol authorized / consumed;
+- current milestone, its phase, and milestone Sol authorized / consumed;
+- branch, `HEAD`, and latest stable Candidate;
+- tests and exact-SHA CI state;
+- outstanding findings and parked directions;
+- exact next action.
+
+Outer budget exhaustion is not Product North Star or project completion. A
+future explicitly invoked self-evolution Goal may establish a fresh outer
+`4 / 0` ledger and resume the exact persisted state. It must not reset the
+active milestone's ledger unless a genuinely new milestone begins.
+
 ## Review readiness gate
 
 Do not spend the review budget until all of the following are true:
@@ -268,14 +330,16 @@ Do not spend the review budget until all of the following are true:
 1. the milestone scope is stable;
 2. the Cycle Plan records its Review Tier, total authorized Sol budget, and any
    `TIER_2` reviewer order;
-3. the implementation is committed as an exact Candidate SHA;
-4. the checked-out branch has no tracked changes from the milestone;
-5. relevant local validation is green;
-6. mandatory remote CI is green for that Candidate SHA;
-7. user, Agent, and visual QA required by the Cycle are complete;
-8. the primary thread has performed one consolidated preflight against the
+3. for self-evolution, both milestone and outer remaining Sol budgets are
+   greater than zero;
+4. the implementation is committed as an exact Candidate SHA;
+5. the checked-out branch has no tracked changes from the milestone;
+6. relevant local validation is green;
+7. mandatory remote CI is green for that Candidate SHA;
+8. user, Agent, and visual QA required by the Cycle are complete;
+9. the primary thread has performed one consolidated preflight against the
    acceptance criteria;
-9. no known blocker is intentionally deferred to the reviewers.
+10. no known blocker is intentionally deferred to the reviewers.
 
 Reviewers must inspect the actual Base..Candidate diff and relevant evidence.
 They should receive a concise review packet and perform one comprehensive pass,
@@ -501,6 +565,7 @@ milestone.
 
 - Goal scope and stopping condition;
 - selected execution profile and outer Goal state;
+- Outer Sol Review Budget authorized / consumed and current budget state;
 - explicit non-scope;
 - current milestone identity and phase, or `BETWEEN_MILESTONES`;
 - current milestone state;

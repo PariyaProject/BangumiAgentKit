@@ -33,8 +33,10 @@ exhausted milestone review budget as completion of the outer Goal.
 This entry point authorizes Luna Max to observe the product, evolve the living
 backlog with provenance, select substantial safe milestones, execute their
 separate branch/PR/review/Freeze/integration lifecycles, and then return to
-discovery. It does not authorize protected human-only decisions, generic
-subagents, Sol #3, worktrees, release/publication, or unsafe Git mutation.
+discovery. Each milestone expects one and permits at most two Sol launches; the
+entire invoked outer Goal permits at most four Sol launches total. It does not
+authorize protected human-only decisions, generic subagents, Sol #3, worktrees,
+release/publication, or unsafe Git mutation.
 
 The selected profile resolves through this authority chain:
 
