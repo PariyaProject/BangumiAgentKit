@@ -1,6 +1,6 @@
 # PR-7G Recovery — Series / Watch-Order Intelligence
 
-Status: `IMPLEMENTING`
+Status: `REVIEW_READY`
 
 This is exactly one fresh execute-only Product Review Epoch on the current
 post-PR-7H master. The historical PR-7G branch and reports are read-only source
@@ -22,7 +22,7 @@ material; no historical runtime or governance state is imported.
   `docs/product/reviews/PR-7G/review-readiness.md`,
   `sol-1-corrective.md`, and `sol-2-corrective.md`.
 - Fresh feature branch: `codex/recovery-pr-7g-series-watch-order`
-- Pull request: to be recorded after the exact Candidate is pushed.
+- Pull request: `#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
 
 ## Epoch objective
 
@@ -241,7 +241,7 @@ closed, with focused regression evidence, before Sol #1 is launched:
 - Recorded Base SHA: `5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e`
 - Current Target Base SHA: to resolve immediately before integration
 - Feature Branch: `codex/recovery-pr-7g-series-watch-order`
-- Pull Request: to record after exact Candidate push
+- Pull Request: `#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
 - Merge Strategy: `MERGE_COMMIT`
 - Branch Cleanup Policy: after verified frozen-SHA ancestry and merged PR,
   safely retire local/remote feature branches and return to synchronized
@@ -249,7 +249,42 @@ closed, with focused regression evidence, before Sol #1 is launched:
 - Stop: `MERGED_GOAL_COMPLETE`, or a truthful documented
   `FROZEN_GOAL_COMPLETE`/integration blocker under the canonical policy.
 
+## Readiness checkpoint — before Sol #1
+
+- Milestone state: `REVIEW_READY`.
+- Exact Implementation Candidate: `c9de0a46a1445650c6b2699f7c0cd35adf5daef5`.
+- Recovery Base: `5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e`.
+- Pull request: `#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`.
+- Exact-SHA CI: GitHub Actions run `31505310143`; `sqlite-default`,
+  `host-integration`, `standalone-release-smoke`, `postgres-compat`,
+  `provider-foundation`, and `discovery-foundation` all passed.
+- Local validation: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`
+  (35 files / 201 tests), `pnpm test:contract` (22), `pnpm test:semantic`
+  (32), `pnpm test:provider` (33), `pnpm test:discovery` (51),
+  `pnpm test:standalone` (19), `pnpm test:integration:sqlite` (33),
+  `pnpm test:render` (7 files / 54 tests), and `pnpm openapi:verify` passed.
+- Agent QA: both semantic/render tools are discoverable and describable;
+  Standalone `watch-order` and render routes work; a read-only official API
+  query returned bounded steps, raw evidence, non-anime exclusions, coverage,
+  and truthful partial/depth state.
+- Renderer QA: generated and inspected complete/partial/not-computable
+  640px and 960px PNGs with long CJK, missing covers, evidence, exclusions,
+  and bounded-state messaging; layout remains readable at both widths.
+- Repository preflight: `git diff --check` passed and the working tree was
+  clean at the Candidate; historical PR-7G branch remains untouched.
+- Review budget: `TIER_2`, `2 authorized / 0 consumed / 2 remaining`;
+  generic subagents `0 / 0`; Sol #1 is the next and only currently authorized
+  launch. Sol #2 is reserved only for a corrective Candidate; Sol #3 is
+  prohibited.
+
+The exact Candidate is the implementation SHA to review. Later governance
+metadata may be recorded as a separate Governance Record SHA under the
+two-SHA freeze policy.
+
 ## Current next action
 
-Implement the current-master semantic contract, then complete all related
-Work Packages and the review-readiness gate before any Sol launch.
+Launch Sol #1, the sequential comprehensive `sol_milestone_reviewer`, against
+the exact Base..Candidate range and this readiness packet. If it passes, create
+the freeze record and follow `AUTO_MERGE_AFTER_FREEZE`; if it requires
+correction, consume no additional review launch until a new Candidate and
+exact-SHA CI are ready.

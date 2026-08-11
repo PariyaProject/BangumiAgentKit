@@ -86,7 +86,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`IMPLEMENTING`
+`REVIEW_READY`
 
 Current Product Review Epoch:
 
@@ -95,8 +95,9 @@ Current Product Review Epoch:
 Current Work Packages / `LUNA_STABLE` Summary:
 
 `Directed SeriesService/evidence; semantic tool; series-relations renderer;
-Standalone/catalog/docs/tests — in progress; no Work Package is yet declared
-LUNA_STABLE.`
+Standalone/catalog/docs/tests — complete and LUNA_STABLE after focused/full
+validation, Agent QA, representative 640/960 visual QA, and exact-Candidate
+preflight.`
 
 Review Boundary Rationale:
 
@@ -106,7 +107,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`IMPLEMENTING`
+`REVIEW_READY`
 
 Primary Model / Reasoning:
 
@@ -148,11 +149,12 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`NOT_CREATED`
+`c9de0a46a1445650c6b2699f7c0cd35adf5daef5`
 
 Exact-SHA CI:
 
-`NOT_RUN — implementation is in progress`
+`PASS — GitHub Actions run 31505310143; all six mandatory jobs passed on the
+exact Candidate SHA.`
 
 Integration Policy:
 
@@ -182,7 +184,7 @@ read-only and untouched.`
 
 Pull Request Number:
 
-`NOT_CREATED — create one PR only after the exact Candidate is ready.`
+`#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
 
 Merge Strategy:
 
@@ -207,9 +209,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`Continue current-master implementation, close the historical P1 resolution
-matrix with tests/QA, then create a clean exact Candidate and pass readiness
-before launching Sol #1.`
+`Launch Sol #1, the first sequential comprehensive TIER_2
+sol_milestone_reviewer, against Base..Candidate using the recorded readiness
+packet. No implementation changes are authorized after this Candidate unless
+the reviewer returns CORRECTIVE_REQUIRED.`
 
 Human Authorization State:
 
