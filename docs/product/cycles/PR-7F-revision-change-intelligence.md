@@ -1,6 +1,6 @@
 # PR-7F Revision / Change History Intelligence
 
-Status: `REVIEW_AUTHORIZED — TIER_2 SOL #1 READY`
+Status: `PAUSED_REVIEW_BUDGET_EXHAUSTED — SOL #1 NO VERDICT`
 
 Base: PR-7E implementation frozen SHA
 `d53d800c5497cacd156792b1139ab7f2a696cdbe`
@@ -207,12 +207,25 @@ The Review Readiness Gate is complete for Candidate
   protected human-only blocker;
 - mandatory exact-SHA CI run `31463062377` passed all six jobs.
 
-Sol #1 has been launched: reviewer agent
+Sol #1 was launched: reviewer agent
 `019fef66-d5dd-7901-9a92-7b4a04039c31` (`Locke`), standing reviewer
 `sol_milestone_reviewer`, `high` reasoning. The reviewer must inspect the actual
 Base..Candidate diff and return one of the recorded verdicts. A `PASS` freezes
 this Candidate without Sol #2; a `CORRECTIVE_REQUIRED` permits one sequential
 Sol #2 only after Luna creates a new validated Candidate.
+
+## Review Stop Record
+
+Sol #1 returned no verdict. The wait operation returned `timed_out: true` with
+no reviewer status or review message; the still-running reviewer agent was
+closed after the timeout. No PASS, `CORRECTIVE_REQUIRED`, or
+`HUMAN_REVIEW_REQUIRED` finding is available, and the Candidate is not frozen.
+
+The selected `UNATTENDED_TIER2` profile mandates stopping after any timeout or
+no-verdict outcome and does not authorize a retry or another reviewer. The
+nominal accounting is therefore `2 authorized / 1 consumed / 1 remaining`, but
+the remaining launch is not spendable in this stopped execution. No Sol #2,
+corrective implementation, or next Product Cycle may begin in this Goal.
 
 ## Acceptance Criteria
 

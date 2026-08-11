@@ -56,17 +56,17 @@ Stopping Condition:
 
 Current Milestone State:
 
-`REVIEW_AUTHORIZED`
+`PAUSED_REVIEW_BUDGET_EXHAUSTED`
 
 Current Phase:
 
-`SOL_1_IN_PROGRESS`
+`SOL_1_NO_VERDICT_STOP`
 
 Execution Runtime:
 
-The current `/goal` is running under the portable unattended profile. Luna has
-completed the corrective implementation and Review Readiness Gate; Sol #1 is
-authorized and not yet consumed.
+The current `/goal` stopped under the portable unattended profile after Sol #1
+returned no verdict before the review wait timed out. The implementation
+Candidate remains un-frozen; no corrective work or second review was started.
 
 Primary Model:
 
@@ -100,7 +100,8 @@ Sol Launches Consumed:
 
 Sol Launches Remaining:
 
-1
+1 nominally remains in the TIER_2 allocation, but the selected unattended
+profile prohibits spending it after a timeout or no-verdict stop.
 
 Review Execution:
 
@@ -155,9 +156,11 @@ Review Launch Readiness:
 - reviewer agent: `019fef66-d5dd-7901-9a92-7b4a04039c31` (`Locke`);
 - reviewer: `sol_milestone_reviewer` at `high` reasoning;
 - accounting after launch: `2 authorized / 1 consumed / 1 remaining`;
-- if Sol #1 returns `PASS`, freeze this exact Candidate without Sol #2; if it
-  returns `CORRECTIVE_REQUIRED`, use the one remaining sequential launch only
-  after a new corrected Candidate and exact-SHA CI.
+- outcome: `NO_VERDICT_TIMEOUT`; the wait returned `timed_out: true` with no
+  reviewer status or verdict, and the still-running reviewer was closed;
+- profile stop: `UNATTENDED_TIER2.md` mandates stopping after any timeout,
+  usage-limit failure, crash, cancellation, or no verdict, so the nominal
+  remaining call is not spent and no reviewer retry is authorized.
 
 Human Authorization State:
 
@@ -169,10 +172,9 @@ authorize a different Cycle or Sol #3.
 
 Next Action:
 
-Await the recorded Sol #1 `sol_milestone_reviewer` verdict for Base
-`d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
-`433e80cf1da7a5994513053c3391487d1c911a3e`; persist the verdict before taking
-the tier-specific next action.
+Stop the current Goal at the documented unattended no-verdict condition. Do
+not launch Sol #2, start corrective implementation, freeze the Candidate, or
+select another Product Cycle in this Goal.
 
 ---
 
