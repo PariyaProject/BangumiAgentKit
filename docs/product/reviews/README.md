@@ -1,10 +1,16 @@
 # Autonomous Review Records
 
-Each independently reviewed Product Cycle receives:
+Each milestone receives `<cycle-id>/freeze-record.md` plus the artifacts required
+by its recorded Review Tier:
 
-`<cycle-id>/code-review.md`
-`<cycle-id>/product-review.md`
-`<cycle-id>/freeze-record.md`
+- `TIER_0`: no Sol report; preserve the non-behavioral eligibility and primary
+  preflight evidence in `freeze-record.md`;
+- `TIER_1`: one comprehensive `milestone-review.md` report;
+- `TIER_2`: one or two reports matching the pre-recorded reviewer sequence,
+  ending in comprehensive `milestone-review.md` for the final Candidate.
+
+Specialized report names such as `code-review.md` and `product-review.md` remain
+valid for a `TIER_2` plan. They are not mandatory for ordinary milestones.
 
 Review files preserve the exact implementation Candidate SHA.
 
@@ -15,6 +21,7 @@ verdict. Timeouts and platform-limit failures consume the Cycle's review budget
 and must be preserved rather than silently retried.
 
 Reviewers run only after the milestone readiness gate. If a candidate needs
-correction, the primary thread fixes and validates it, then stops at
-`CORRECTED_AWAITING_REVIEW_AUTHORIZATION`; it does not automatically relaunch
-either reviewer.
+correction, the primary Luna thread fixes and validates it. `TIER_1` then stops
+at `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`. `TIER_2` may spend its one
+remaining sequential launch on the corrected Candidate, but Sol #3 is never
+automatic.

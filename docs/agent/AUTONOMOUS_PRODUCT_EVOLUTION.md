@@ -7,9 +7,11 @@
 > automatic review retries, or continuation into another Product Cycle, the
 > Budget-First Execution Harness supersedes that behavior.
 >
-> A Goal covers one bounded Product Cycle or milestone. It stops at Freeze,
-> review-budget exhaustion, a protected decision, or another explicit stopping
-> condition. A new Cycle requires fresh user authorization.
+> A Goal covers one substantial vertical Product Cycle or milestone and may
+> contain many commits and several hours of Luna Max work. Review Tier and total
+> Sol budget are selected before implementation. Sol is spent only after the
+> entire milestone reaches readiness. A new Cycle requires fresh user
+> authorization.
 >
 > Protected architectural/security/legal decisions remain Human-On-Exception
 > and must be parked rather than autonomously approved.
@@ -2160,30 +2162,19 @@ large-scale scraping is proposed
 release/tag/publish is proposed.
 
 ==================================================
-71. CURRENT IMMEDIATE SEQUENCE
+71. CURRENT EXECUTION AUTHORITY
 ==================================================
 
-FIRST:
+`docs/product/loop-status.md` is the only current execution ledger.
 
-finish the currently assigned
-PR-7C FINAL HYDRATION FREEZE GATE.
+Do not infer authority from historical sequences in this Charter.
 
-Do not begin this autonomous product loop
-until PR-7C reaches a clean freeze candidate.
+Before implementation, the user must authorize one substantial vertical
+milestone and its Cycle Plan must record scope, non-scope, stopping condition,
+validation, Review Tier, total Sol launch budget, and any TIER_2 reviewer order.
 
-After PR-7C:
-
-perform a short next-cycle selection review.
-
-The likely next high-value theme is:
-
-Person / Seiyuu / Staff Intelligence.
-
-But before implementation:
-
-re-evaluate current Bangumi person experience,
-current provider capabilities,
-and user opportunity log.
+After that milestone stops or freezes, do not select or begin another Cycle
+inside the same Goal.
 
 ==================================================
 72. FIRST AUTONOMOUS PRODUCT QUESTION

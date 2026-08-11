@@ -29,14 +29,18 @@ Before changing `master`, first inspect and report:
 - the exact commits that the proposed push would publish.
 
 Do not push unrelated unpublished commits as a side effect of carrying a harness
-or documentation change to `master`. If dirty feature work prevents a normal
-branch switch, preserve it in an explicit temporary branch commit, perform the
-operation in the existing checkout, and restore the feature changes to their
-previous committed or uncommitted state before removing the temporary branch.
+or documentation change to `master`. Never automatically commit, stash, reset,
+rewrite, or relocate unrelated user work. Preserve unrelated dirty files
+untouched and work safely on the current branch when possible. If a genuinely
+required branch operation cannot be performed without touching that work,
+record the blocker and stop.
 
 ## Goal contract
 
-A Codex Goal in this repository must cover exactly one coherent milestone.
+A Codex Goal in this repository must cover exactly one substantial vertical
+milestone. A milestone may contain many commits, multiple implementation stages,
+and several hours of Luna Max work. Commit count, stage completion, individual
+test fixes, and incremental refactors do not create review boundaries.
 
 Before a Goal starts, record in `docs/product/loop-status.md`:
 
@@ -44,7 +48,8 @@ Before a Goal starts, record in `docs/product/loop-status.md`:
 - explicit non-scope;
 - verifiable stopping condition;
 - validation commands or artifacts;
-- review-call budget;
+- Review Tier selected before implementation;
+- total Sol review-call budget authorized by that tier;
 - whether any non-review subagent use is authorized.
 
 The default stopping condition is one of:
@@ -67,9 +72,10 @@ Recommended starter form:
 
 ```text
 /goal Complete [one milestone] without expanding into another Product Cycle.
-Use one primary thread. Non-review subagent budget: 0. Automatic Sol review
-budget: [0, 1, or 2 launches]. Stop when [verifiable end state] is reached, a
-fresh review needs authorization, or the recorded budget is exhausted.
+Use one Luna Max primary thread. Non-review subagent budget: 0. Review Tier:
+[TIER_0, TIER_1, or TIER_2]. Total Sol budget: [0, 1, or 2 launches]. Stop when
+[verifiable end state] is reached, a fresh review needs authorization, or the
+recorded budget is exhausted.
 ```
 
 ## Model and thread routing
@@ -79,7 +85,8 @@ Default:
 - one primary thread;
 - no implementation subagents;
 - no speculative parallel research agents;
-- no automatic reviewer launches.
+- no reviewer launch before the entire milestone reaches readiness;
+- reviews are sequential and never parallel.
 
 The standing implementation model is GPT-5.6 Luna with `max` reasoning. If
 `max` is temporarily unavailable, Luna `xhigh` is the minimum fallback. Do not
@@ -98,21 +105,47 @@ and Luna `xhigh` only as the availability fallback.
 Never spawn a subagent merely to reread context, restate a plan, run commands the
 primary thread can run, or provide redundant reassurance.
 
-## Review-call budget
+## Review tiers and launch budget
 
-The default automatic Sol review budget for one milestone is:
+Every Cycle Plan must record one Review Tier before implementation:
 
-- `sol_code_reviewer`: one launch;
-- `sol_product_reviewer`: one launch when the milestone has a product, Agent UX,
-  semantic, analytics, or Renderer surface;
-- all other Sol subagents: zero launches.
+### `TIER_0` — zero Sol launches
 
-Therefore a normal Product Cycle has a maximum automatic Sol budget of two
-launches.
+Use only for documentation, tests, non-behavioral maintenance, and trivial
+internal work where the Plan establishes that user behavior and frozen
+contracts cannot change. Authorized / maximum Sol launches: `0`.
+
+### `TIER_1` — one comprehensive Sol launch
+
+This is the default for normal product milestones. Authorized / maximum Sol
+launches: `1`. Use `sol_milestone_reviewer`, which covers correctness,
+architecture, security, frozen contracts, tests, evidence and coverage,
+resource bounds, user value, Agent UX, and Renderer when applicable.
+
+### `TIER_2` — at most two Sol launches total
+
+Reserve for unusually high-risk or high-value milestones. The Cycle Plan must
+justify the tier and record reviewer identity and sequential order. Authorized /
+maximum Sol launches: `2` total, not two per role. Existing specialized
+`sol_code_reviewer` and `sol_product_reviewer` roles may be selected only here.
+They are not an automatic pair.
+
+A `TIER_2` sequence must end with `sol_milestone_reviewer` performing a
+comprehensive PASS on the exact final Candidate. A specialized reviewer may use
+launch #1 for a deliberately narrow high-risk lane; launch #2 remains the final
+comprehensive gate. If launch #1 is already comprehensive and returns PASS, the
+review requirement is satisfied without spending launch #2.
+
+All Sol launches are sequential. `.codex/config.toml` limits the session to one
+concurrent agent thread. Sol uses `high` reasoning by default. `xhigh` may be
+used only with explicit authorization for an exceptionally critical review; it
+is not the normal automatic setting.
 
 A launch counts when the reviewer is started, even if it times out, hits a
 platform usage limit, crashes, or returns no verdict. Failed launches must not
-be retried automatically.
+be retried beyond the recorded total tier budget. Sol is never triggered by
+commit count, an implementation stage, an individual test fix, or an
+incremental refactor.
 
 The repository cannot read or enforce the user's live Plus quota. Launch count
 is the deterministic budget proxy and must be recorded in
@@ -123,14 +156,16 @@ is the deterministic budget proxy and must be recorded in
 Do not spend the review budget until all of the following are true:
 
 1. the milestone scope is stable;
-2. the implementation is committed as an exact Candidate SHA;
-3. the checked-out branch has no tracked changes;
-4. relevant local validation is green;
-5. mandatory remote CI is green for that Candidate SHA;
-6. user, Agent, and visual QA required by the Cycle are complete;
-7. the primary thread has performed one consolidated preflight against the
+2. the Cycle Plan records its Review Tier, total authorized Sol budget, and any
+   `TIER_2` reviewer order;
+3. the implementation is committed as an exact Candidate SHA;
+4. the checked-out branch has no tracked changes from the milestone;
+5. relevant local validation is green;
+6. mandatory remote CI is green for that Candidate SHA;
+7. user, Agent, and visual QA required by the Cycle are complete;
+8. the primary thread has performed one consolidated preflight against the
    acceptance criteria;
-8. no known blocker is intentionally deferred to the reviewers.
+9. no known blocker is intentionally deferred to the reviewers.
 
 Reviewers must inspect the actual Base..Candidate diff and relevant evidence.
 They should receive a concise review packet and perform one comprehensive pass,
@@ -138,20 +173,36 @@ reporting all known P0/P1 blockers rather than stopping at the first finding.
 
 ## Corrective review behavior
 
-If either reviewer returns `CORRECTIVE_REQUIRED`:
+If a reviewer returns `CORRECTIVE_REQUIRED`:
 
 1. preserve and consolidate all findings;
 2. fix them in the primary thread without spawning more reviewers;
 3. rerun affected validation;
 4. create a new clean Candidate SHA;
-5. set the state to `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`;
-6. stop.
+5. set the state according to the remaining tier budget.
 
-No reviewer is relaunched automatically. A fresh review requires explicit user
-authorization and a newly recorded review budget. When exact-SHA Freeze policy
-requires both reviewers again, say so before spending that budget.
+For `TIER_1`, Luna may persist the corrected Candidate, then must set
+`CORRECTED_AWAITING_REVIEW_AUTHORIZATION` and stop. A second Sol launch requires
+an explicit user budget grant or explicit upgrade to `TIER_2`.
 
-If a reviewer launch fails without a verdict, set the state to
+For `TIER_2`, one unattended correction sequence is permitted when budget
+remains:
+
+```text
+Luna implementation
+  -> Sol #1
+  -> CORRECTIVE_REQUIRED
+  -> Luna corrective + validation + new exact Candidate and CI
+  -> Sol #2
+  -> PASS or STOP
+```
+
+Never launch Sol #3 automatically. If Sol #2 does not PASS the exact corrected
+Candidate, persist the result and stop.
+
+If a reviewer launch fails without a verdict, count it against the total tier
+budget. Continue only when `TIER_2` has an explicitly planned remaining launch
+that can still satisfy its final review requirement; otherwise set the state to
 `PAUSED_REVIEW_BUDGET_EXHAUSTED` and stop. Do not loop on platform limits.
 
 ## Milestone state machine
@@ -163,12 +214,22 @@ PLANNED
   -> IMPLEMENTING
   -> VALIDATING
   -> CANDIDATE_READY
+
+TIER_0: CANDIDATE_READY
+  -> FROZEN_GOAL_COMPLETE
+
+TIER_1 or TIER_2: CANDIDATE_READY
   -> REVIEW_AUTHORIZED
   -> FROZEN_GOAL_COMPLETE
 
-REVIEW_AUTHORIZED
+TIER_1: REVIEW_AUTHORIZED
   -> CORRECTING
   -> CORRECTED_AWAITING_REVIEW_AUTHORIZATION
+
+TIER_2 with one launch remaining: REVIEW_AUTHORIZED
+  -> CORRECTING
+  -> CORRECTED_CANDIDATE_READY
+  -> REVIEW_AUTHORIZED
 
 REVIEW_AUTHORIZED
   -> PAUSED_REVIEW_BUDGET_EXHAUSTED
@@ -182,13 +243,14 @@ Goal.
 `docs/product/loop-status.md` must keep these fields current:
 
 - Goal scope and stopping condition;
+- explicit non-scope;
 - current milestone state;
-- primary-thread strategy;
+- primary model and reasoning effort;
 - generic subagent launches authorized / consumed;
-- Sol review launches authorized / consumed, by reviewer;
-- Candidate SHA and CI evidence;
+- Review Tier and total Sol launches authorized / consumed;
+- Candidate SHA and exact-SHA CI evidence;
 - next action;
-- whether human authorization is required.
+- human authorization state.
 
 Update the ledger before interruption, before any reviewer launch, after every
 reviewer result or failure, and when the Goal stops.
@@ -199,7 +261,7 @@ The user may explicitly authorize:
 
 - a frontier-model primary thread;
 - a specific bounded subagent task;
-- an additional review launch or fresh review pair;
+- an additional review launch or a Review Tier change;
 - a new Product Cycle or multi-milestone program.
 
 Authorization applies only to the stated action. It does not permanently raise
