@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `REVIEWER_RUNNING`
+Status: `FROZEN`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -233,18 +233,32 @@ green`
   `Sol #2 of 2`, is authorized against this exact corrected Candidate.
 - Budget transition: `2 authorized / 1 consumed / 1 remaining`; Sol #3 is
   prohibited.
-- Sol #2 runtime: `REVIEWER_RUNNING`; agent
+- Sol #2 runtime: `COMPLETED_PASS`; agent
   `019ff108-75fb-76c3-99ca-41363153cc1e`; launched `2026-08-11T13:34:57Z`;
   deadline `2026-08-11T15:34:57Z`.
 
+## Sol #2 result and Freeze
+
+- Review report:
+  `docs/product/reviews/PR-7H-recovery-discovery-renderer/sol-2-review.md`
+- Verdict: `PASS` (0 P0, 0 P1; no protected human-review boundary)
+- Sol budget: `2 authorized / 2 consumed / 0 remaining`; Sol #3 is prohibited.
+- Implementation Frozen SHA:
+  `de09c0ec3b0eab3325168ec7177b835dd25e9651`
+- Exact Candidate CI: `PASS — run 31496325070`
+- Candidate-to-HEAD difference after review is governance-only; no production
+  or test change is authorized after this Freeze.
+- Freeze state: `FROZEN`; integration remains pending under
+  `AUTO_MERGE_AFTER_FREEZE`.
+
 ## Current execution state
 
-- Current state: `REVIEWER_RUNNING`
+- Current state: `FROZEN`
 - Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 - Exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs green`
-- Implementation Frozen SHA: `N/A`
-- Governance Record SHA: `N/A`
+- Implementation Frozen SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
+- Governance Record SHA: `PENDING_FREEZE_RECORD`
 - Merge Commit SHA: `N/A`
-- Next action: wait on the same Sol #2 `sol_milestone_reviewer`; do not mutate
-  the repository, rerun CI, change the Candidate, push, or launch another
-  reviewer while it is running.
+- Next action: persist the Freeze Record, then execute the recorded
+  AUTO_MERGE_AFTER_FREEZE integration gates without changing the frozen
+  Candidate.

@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEWER_RUNNING`
+`FROZEN`
 
 Current Product Review Epoch:
 
@@ -93,7 +93,8 @@ Current Work Packages / `LUNA_STABLE` Summary:
 
 `ViewModel; discovery-results renderer; render_query_subjects Agent path;
 catalog/docs/tests reconstructed; Sol #1 P1 corrections closed and LUNA_STABLE
-after targeted/full validation, Agent QA, and realistic Renderer QA.`
+after targeted/full validation, Agent QA, and realistic Renderer QA; Sol #2
+passed with no P0/P1 findings.`
 
 Review Boundary Rationale:
 
@@ -103,7 +104,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`REVIEWER_RUNNING`
+`FROZEN`
 
 Primary Model / Reasoning:
 
@@ -123,7 +124,7 @@ evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 2 — 0 remaining; Sol #2 is running`
+`2 / 2 — 0 remaining; Sol #2 completed PASS`
 
 Reviewer Runtime Checkpoint:
 
@@ -138,21 +139,28 @@ Reviewer Result:
 `Sol #1 completed CORRECTIVE_REQUIRED` with `0` P0 and `2` P1 findings; see
 `docs/product/reviews/PR-7H-recovery-discovery-renderer/milestone-review.md`.
 The reviewer is closed. Sol #2 remains reserved for the same reviewer only
-after correction, a new Candidate, and exact-SHA CI.
+after correction, a new Candidate, and exact-SHA CI; Sol #2 then completed
+`PASS` with no P0/P1 findings.
 
 Corrected Candidate Checkpoint:
 
 `de09c0ec3b0eab3325168ec7177b835dd25e9651`, exact-SHA CI PASS on run
 `31496325070`; local validation, negative/end-to-end tests, and realistic
 unsupported/unavailable 640/960 QA passed. Sol #2 is authorized against this
-Candidate and has not yet launched.
+Candidate and completed PASS with no P0/P1 findings.
 
 Current Reviewer Runtime:
 
 `sol_milestone_reviewer`, launch ordinal `Sol #2 of 2`, agent
 `019ff108-75fb-76c3-99ca-41363153cc1e`, launched `2026-08-11T13:34:57Z`,
 deadline `2026-08-11T15:34:57Z`, Candidate
-`de09c0ec3b0eab3325168ec7177b835dd25e9651`, runtime `REVIEWER_RUNNING`.
+`de09c0ec3b0eab3325168ec7177b835dd25e9651`, runtime `COMPLETED_PASS`.
+
+Final Review Result:
+
+`Sol #2 PASS` with `0` P0 and `0` P1 findings; report
+`docs/product/reviews/PR-7H-recovery-discovery-renderer/sol-2-review.md`.
+The TIER_2 review budget is exhausted and Sol #3 is prohibited.
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -206,11 +214,11 @@ branch/history as evidence.`
 
 Integration State:
 
-`NOT_STARTED`
+`INTEGRATION_PENDING`
 
 Implementation Frozen SHA:
 
-`N/A — no Candidate/review yet`
+`de09c0ec3b0eab3325168ec7177b835dd25e9651`
 
 Merge Commit SHA:
 
@@ -218,9 +226,8 @@ Merge Commit SHA:
 
 Next Action:
 
-`WAIT on the same Sol #2 sol_milestone_reviewer. While it is running, perform
-no repository mutation, CI rerun, Candidate change, push, or additional
-reviewer launch.`
+`PERSIST the Freeze Record, then execute the recorded AUTO_MERGE_AFTER_FREEZE
+integration gates without changing the frozen Candidate.`
 
 Human Authorization State:
 
