@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `REVIEWER_RUNNING`
+Status: `CORRECTIVE_REQUIRED`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -200,13 +200,27 @@ fields, and internal budget controls are not rendered or exposed.
   safely inapplicable/blocked under the recorded policy, or a genuine
   documented blocker. Do not begin PR-7G recovery.
 
+## Sol #1 review result
+
+- Review report:
+  `docs/product/reviews/PR-7H-recovery-discovery-renderer/milestone-review.md`
+- Reviewer: `sol_milestone_reviewer`, launch ordinal `Sol #1`
+- Verdict: `CORRECTIVE_REQUIRED` (0 P0, 2 P1)
+- P1 blockers: enforce the 12-item/12-image ceiling at the trusted renderer
+  boundary; separate plan-only operations from evidence-backed provenance and
+  test genuine unsupported/unavailable engine outputs.
+- Budget transition: `2 authorized / 1 consumed / 1 remaining`
+- Sol #2: reserved for the same reviewer only after all corrections, a new
+  exact Candidate, and exact-SHA mandatory CI.
+
 ## Current execution state
 
-- Current state: `REVIEWER_RUNNING`
+- Current state: `CORRECTING`
 - Candidate SHA: `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
 - Exact-SHA CI: `PASS — run 31493891023; all six mandatory jobs green`
 - Implementation Frozen SHA: `N/A`
 - Governance Record SHA: `N/A`
 - Merge Commit SHA: `N/A`
-- Next action: launch Sol #1 `sol_milestone_reviewer` against the exact
-  Candidate; do not mutate the implementation while it is running.
+- Next action: correct both recorded P1 blockers, add the required negative and
+  end-to-end tests, regenerate realistic degraded-state QA, and obtain a new
+  exact-SHA CI pass before considering Sol #2.

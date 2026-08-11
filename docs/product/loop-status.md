@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEWER_RUNNING`
+`CORRECTING`
 
 Current Product Review Epoch:
 
@@ -103,7 +103,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`REVIEWER_RUNNING`
+`CORRECTING`
 
 Primary Model / Reasoning:
 
@@ -123,14 +123,22 @@ evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — 1 remaining; Sol #1 is running`
+`2 / 1 — 1 remaining; Sol #1 completed CORRECTIVE_REQUIRED`
 
 Reviewer Runtime Checkpoint:
 
 `sol_milestone_reviewer`, launch ordinal `Sol #1 of 2`, agent
 `019ff0ee-caf8-77b3-ada6-5c72cfe8254f`, launched
 `2026-08-11T13:06:54Z`, deadline `2026-08-11T15:06:54Z`, Candidate
-`043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`, runtime `REVIEWER_RUNNING`.
+`043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`, runtime
+`COMPLETED_CORRECTIVE_REQUIRED`.
+
+Reviewer Result:
+
+`Sol #1 completed CORRECTIVE_REQUIRED` with `0` P0 and `2` P1 findings; see
+`docs/product/reviews/PR-7H-recovery-discovery-renderer/milestone-review.md`.
+The reviewer is closed. Sol #2 remains reserved for the same reviewer only
+after correction, a new Candidate, and exact-SHA CI.
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -196,9 +204,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`WAIT on the same Sol #1 sol_milestone_reviewer. While it is running, perform
-no repository mutation, CI rerun, Candidate change, push, or additional
-reviewer launch.`
+`CORRECT both P1 findings: enforce the trusted 12-item/12-image renderer cap;
+separate plan-only operations from evidence provenance and add genuine
+unsupported/unavailable engine tests and QA. Then create a new Candidate and
+obtain exact-SHA CI before considering Sol #2.`
 
 Human Authorization State:
 

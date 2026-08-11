@@ -1,6 +1,6 @@
 # PR-7H Recovery Review Readiness
 
-Status: `REVIEWER_RUNNING`
+Status: `CORRECTIVE_REQUIRED`
 
 ## Exact Candidate and remote CI
 
@@ -98,7 +98,7 @@ manifest records all 14 outputs and their dimensions/byte sizes.
 ## Review gate
 
 - Review Tier: `TIER_2`
-- Milestone Sol budget: `2 authorized / 0 consumed / 2 remaining`
+- Milestone Sol budget: `2 authorized / 1 consumed / 1 remaining`
 - Expected Sol: `1`
 - Automatic maximum: `2`
 - Reviewer order: sequential `sol_milestone_reviewer` #1; if it returns
@@ -108,7 +108,8 @@ manifest records all 14 outputs and their dimensions/byte sizes.
 - Outer self-evolution Sol ledger: `N/A`
 - Reviewer reasoning: `high`
 - Reviewer overall wall-clock limit: 120 minutes from launch.
-- No known P0/P1 blocker is intentionally deferred.
+- Sol #1 verdict: `CORRECTIVE_REQUIRED` (0 P0, 2 P1); see the milestone review
+  report below.
 
 ## Reviewer runtime checkpoint
 
@@ -119,8 +120,12 @@ manifest records all 14 outputs and their dimensions/byte sizes.
 - Overall deadline: `2026-08-11T15:06:54Z`
 - Milestone Sol budget at launch: `2 authorized / 1 consumed / 1 remaining`
 - Review Candidate: `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
-- Runtime state: `REVIEWER_RUNNING`
+- Runtime state: `COMPLETED_CORRECTIVE_REQUIRED`
 
-Next action is to wait on this same Sol #1 reviewer. While it is running, no
-repository mutation, CI rerun, Candidate change, push, or additional reviewer
-launch is permitted.
+## Sol #1 result
+
+The independent reviewer returned `CORRECTIVE_REQUIRED`. The two P1 blockers
+and acceptance criteria are recorded in
+`docs/product/reviews/PR-7H-recovery-discovery-renderer/milestone-review.md`.
+The next action is to correct them and produce a new exact Candidate and
+exact-SHA mandatory CI result before using the one remaining Sol slot.
