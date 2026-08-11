@@ -1,6 +1,6 @@
 # PR-7H Recovery Review Readiness
 
-Status: `FROZEN`
+Status: `MERGED_GOAL_COMPLETE`
 
 ## Exact Candidate and remote CI
 
@@ -160,8 +160,9 @@ The corrected Candidate passed exact-SHA CI run 31496325070.
 - Freeze Record:
   `docs/product/reviews/PR-7H-recovery-discovery-renderer/freeze-record.md`
 - Governance Record SHA: `f81333bb1ca3da936c8d91286d5bc84d4f760fd9`
-- Freeze state: `FROZEN`; integration remains pending under the recorded
-  `AUTO_MERGE_AFTER_FREEZE` policy.
+- Freeze state: `FROZEN`; integration completed under the recorded
+  `AUTO_MERGE_AFTER_FREEZE` policy at merge commit
+  `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`.
 
-Next action is to execute only the authorized integration lifecycle. No
-production or test change is permitted after this Freeze.
+The execute-only Goal is complete. No PR-7G recovery or unrelated Product
+Cycle is authorized by this record.

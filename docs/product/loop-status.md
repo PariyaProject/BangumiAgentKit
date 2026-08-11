@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`FROZEN`
+`MERGED_GOAL_COMPLETE`
 
 Current Product Review Epoch:
 
@@ -94,7 +94,7 @@ Current Work Packages / `LUNA_STABLE` Summary:
 `ViewModel; discovery-results renderer; render_query_subjects Agent path;
 catalog/docs/tests reconstructed; Sol #1 P1 corrections closed and LUNA_STABLE
 after targeted/full validation, Agent QA, and realistic Renderer QA; Sol #2
-passed with no P0/P1 findings.`
+passed with no P0/P1 findings; PR #4 integrated and recovery branch retired.`
 
 Review Boundary Rationale:
 
@@ -104,7 +104,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`FROZEN`
+`MERGED_GOAL_COMPLETE`
 
 Primary Model / Reasoning:
 
@@ -192,7 +192,7 @@ Base SHA:
 
 Current Target Base SHA:
 
-`N/A — integration not attempted`
+`5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
 
 Feature Branch:
 
@@ -214,7 +214,7 @@ branch/history as evidence.`
 
 Integration State:
 
-`INTEGRATION_PENDING`
+`MERGED_GOAL_COMPLETE`
 
 Implementation Frozen SHA:
 
@@ -222,12 +222,12 @@ Implementation Frozen SHA:
 
 Merge Commit SHA:
 
-`N/A — not integrated`
+`5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
 
 Next Action:
 
-`EXECUTE the recorded AUTO_MERGE_AFTER_FREEZE integration gates without
-changing the frozen Candidate.`
+`STOP: MERGED_GOAL_COMPLETE. The execute-only Goal is complete; do not begin
+PR-7G recovery or another Product Cycle.`
 
 Human Authorization State:
 

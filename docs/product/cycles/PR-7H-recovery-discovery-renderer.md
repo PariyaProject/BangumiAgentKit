@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `FROZEN`
+Status: `MERGED_GOAL_COMPLETE`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -248,16 +248,29 @@ green`
 - Exact Candidate CI: `PASS — run 31496325070`
 - Candidate-to-HEAD difference after review is governance-only; no production
   or test change is authorized after this Freeze.
-- Freeze state: `FROZEN`; integration remains pending under
+- Freeze state: `FROZEN`; integration completed under
   `AUTO_MERGE_AFTER_FREEZE`.
 
 ## Current execution state
 
-- Current state: `FROZEN`
+- Current state: `MERGED_GOAL_COMPLETE`
 - Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 - Exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs green`
 - Implementation Frozen SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
-- Governance Record SHA: `f81333bb1ca3da936c8d91286d5bc84d4f760fd9`
-- Merge Commit SHA: `N/A`
-- Next action: execute the recorded AUTO_MERGE_AFTER_FREEZE integration gates
-  without changing the frozen Candidate.
+- Governance Record SHA: `PENDING_FINAL_INTEGRATION_RECORD`
+- Merge Commit SHA: `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
+- Final state: `MERGED_GOAL_COMPLETE`
+- Next action: stop the execute-only Goal. PR-7G recovery and unrelated
+  opportunities are not authorized.
+
+## Integration result
+
+- PR #4 merged with the recorded `MERGE_COMMIT` strategy at
+  `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`.
+- `origin/master` was verified at the recorded Base before merge and now points
+  to the merge commit; the frozen Candidate and governance tip are ancestors.
+- Local `master` is synchronized with `origin/master`.
+- Recovery feature branch `codex/recovery-pr-7h-discovery-renderer` was safely
+  retired locally and remotely after ancestry verification.
+- Historical PR #3 was commented and closed as `SUPERSEDED`; its branch and
+  history remain preserved as read-only provenance.

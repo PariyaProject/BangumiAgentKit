@@ -70,10 +70,14 @@ SSRF boundary, or PR-7G behavior changed.
 - Integration Policy: `AUTO_MERGE_AFTER_FREEZE`
 - Target Base: `master`
 - Recorded Base SHA: `be89a2699ed7ccc85fc2e23718319bc57e1e16b6`
-- Integration state at Freeze: `INTEGRATION_PENDING`
-- Merge Commit SHA: `PENDING`
-- Historical PR #3: preserve branch/history and close as `SUPERSEDED` only
-  after successful recovery integration.
+- Integration state: `MERGED_GOAL_COMPLETE`
+- Merge Commit SHA: `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
+- Final Integration Record SHA: `PENDING_FINAL_INTEGRATION_RECORD`
+- Target `master` after merge: `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
+- Recovery feature branch was retired locally and remotely after frozen-SHA
+  ancestry verification.
+- Historical PR #3 was commented and closed as `SUPERSEDED`; its branch and
+  history remain preserved as read-only provenance.
 
 The frozen production implementation is exact SHA `de09c0e…`; subsequent
 changes may only be governance metadata or the authorized master-side
