@@ -86,7 +86,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEW_READY`
+`REVIEWING`
 
 Current Product Review Epoch:
 
@@ -107,7 +107,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`REVIEW_READY`
+`REVIEWING`
 
 Primary Model / Reasoning:
 
@@ -127,25 +127,23 @@ evidence-sensitive traversal/renderer recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — 1 remaining; Sol #1 completed CORRECTIVE_REQUIRED; Sol #2 is
-reserved and not launched`
+`2 / 2 — 0 remaining; Sol #2 is running; Sol #3 is prohibited`
 
 Reviewer Runtime Checkpoint:
 
-`sol_milestone_reviewer`, launch ordinal `Sol #1 of 2`, agent
-`019ff168-57d1-7332-bddb-7cd1ae01a286`, launched
-`2026-08-11T15:19:45Z`, Candidate
-`c9de0a46a1445650c6b2699f7c0cd35adf5daef5`, runtime
-`COMPLETED_CORRECTIVE_REQUIRED`; corrected Candidate is recorded below.`
+`sol_milestone_reviewer`, launch ordinal `Sol #2 of 2`, agent
+`019ff187-e693-7952-b5cd-99dcb9369812`, launched
+`2026-08-11T15:53:46Z`, deadline `2026-08-11T17:53:46Z`, Candidate
+`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`, runtime `RUNNING`.
+Sol #1 closed `COMPLETED_CORRECTIVE_REQUIRED` and consumed the first launch.`
 Historical launches are not current budget consumption.`
 
 Reviewer Result:
 
 `Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings;
-all accepted P1 findings are addressed in corrected Candidate
-1e0cbd97fcdd0859187534fda67ae797c33e5d0e. See
-docs/product/reviews/PR-7G-recovery-series-watch-order/sol-1-review.md and
-the corrected Sol #2 readiness packet.`
+all accepted findings are addressed in corrected Candidate
+1e0cbd97fcdd0859187534fda67ae797c33e5d0e. Sol #2 is independently reviewing
+the corrected Candidate; no final verdict is available yet.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -217,10 +215,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`Launch Sol #2, the final reserved sequential comprehensive
-sol_milestone_reviewer, against corrected Candidate
-1e0cbd97fcdd0859187534fda67ae797c33e5d0e using the corrected readiness packet.
-Do not launch Sol #3.`
+`Wait for Sol #2 to terminate. Do not edit the implementation, spend another
+review launch, or change the corrected Candidate while this final reviewer is
+running. Sol #3 is prohibited.`
 
 Human Authorization State:
 
