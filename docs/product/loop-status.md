@@ -61,13 +61,13 @@ Current Milestone State:
 
 Current Phase:
 
-`MASTER_MERGE_CREATED`
+`MASTER_INTEGRATED`
 
 Execution Runtime:
 
 The one-off manual finalization review returned PASS. The cumulative PR-7D,
-PR-7E, and PR-7F implementation Candidate is frozen and the non-squashed
-master merge commit has been created; final remote validation remains.
+PR-7E, and PR-7F implementation Candidate is frozen and integrated into
+`master`; PR #1 is merged and the feature branch is retired.
 
 Primary Model:
 
@@ -200,9 +200,9 @@ are complete. No different Cycle or Sol launch is authorized by this ledger.
 
 Next Action:
 
-Validate the merged tree, push `master`, verify PR #1 is merged, retire the
-feature branch safely, and then stop. Do not modify the frozen production
-implementation or start another Product Cycle.
+`MASTER-ONLY HARNESS CORRECTIVE` — recommended follow-up only; do not perform
+it in this completed Goal. Do not modify the frozen production implementation
+or start another Product Cycle.
 
 ---
 
@@ -249,7 +249,7 @@ new user-authorized `UNATTENDED_TIER2` profile.
 
 Integration state:
 
-`MASTER_MERGE_CREATED`
+`MASTER_INTEGRATED`
 
 PR:
 
@@ -257,6 +257,8 @@ PR:
 - title: `feat: add person, calendar and revision intelligence`
 - base: `master`
 - head: `codex/pr-7d-person-staff`
+- state: `MERGED`
+- merge commit: `5424131e124b5f2927fb3abb7f2fcb1942745ce3`
 
 Implementation Candidate / Frozen SHA:
 
@@ -276,8 +278,24 @@ Merge commit SHA:
 
 The merge is a non-squashed `--no-ff` merge. Master-side Harness content is
 authoritative; only the three documented governance-ledger conflicts were
-reconciled manually. Final validation, push, PR merge verification, and safe
-feature-branch retirement remain part of this integration record.
+reconciled manually. GitHub PR #1 was verified `MERGED` with this merge commit.
+
+Remote integration:
+
+- master was pushed and verified at `5bd629b424fc59e3645782a38501160f13b981b9`;
+- the feature tip `683f78d98c809f58d525ccf2536df4ab72af2ee4` and frozen
+  Candidate are ancestors of pushed master;
+- remote and local `codex/pr-7d-person-staff` branches were deleted only after
+  the ancestry proof and PR merge verification.
+
+Post-merge validation:
+
+- typecheck, lint, build, unit/render, contract, semantic, provider, discovery,
+  SQLite integration, standalone, SQLite runtime smoke, standalone smoke,
+  OpenAPI verification, and version checks passed;
+- the reconciled governance documents pass targeted Prettier validation;
+- repository-wide `format:check` remains non-blocking red on 47 existing or
+  frozen-Candidate files, so no frozen production/test file was reformatted.
 
 ---
 
