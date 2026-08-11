@@ -90,9 +90,10 @@ Candidate SHA.
   `019ff266-17c0-7050-aa84-969263f204cf`; exactly one launch consumed)
 - Freeze status: `NOT_FROZEN`
 - Merge commit: `NOT_CREATED`
-- Current branch state: governance tip
-  `42c22e05317748f540dfdcbef67d720194de90e8` is pushed to existing PR #5;
-  PR #5 remains open and unmerged; historical branch untouched.
+- Current branch state: the finalization review record is pushed as a
+  governance-only follow-up on existing PR #5; PR #5 remains open and
+  unmerged; historical branch untouched. The exact post-review tip is reported
+  by the final handoff because it is the commit containing this ledger record.
 
 ## Finalization readiness evidence
 
