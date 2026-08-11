@@ -6,9 +6,11 @@ Default:
 
 `BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_MILESTONE + HUMAN_ON_EXCEPTION`
 
-The implementation/orchestration agent must never approve its own Product
-Cycle Freeze Candidate. Independent review remains a Freeze requirement, but
-review agents are scarce milestone gates rather than an implementation loop.
+The implementation/orchestration agent must never approve its own `TIER_1` or
+`TIER_2` Product Cycle Freeze Candidate. `TIER_0` may complete without Sol only
+when its Cycle Plan proves that product behavior and frozen contracts cannot
+change. Review agents are scarce milestone gates rather than an implementation
+loop.
 
 `docs/agent/BUDGET_FIRST_EXECUTION.md` defines the Goal boundary, launch budget,
 model routing, failure behavior, and stopping rules.
@@ -33,7 +35,23 @@ The primary agent works in one thread by default. It does not use independent
 reviewers as incremental debuggers and does not select the next Product Cycle
 after Freeze.
 
-### `sol_code_reviewer`
+### `sol_milestone_reviewer`
+
+The default `TIER_1` comprehensive read-only milestone reviewer. One pass
+covers:
+
+- correctness and architecture;
+- security and protected boundaries;
+- frozen contracts and compatibility;
+- tests, negative tests, and exact-Candidate CI;
+- source evidence, provenance, coverage, and resource bounds;
+- real user value and information richness;
+- Agent UX and semantic usefulness;
+- Renderer quality when applicable.
+
+It reports all known P0/P1 blockers in one pass.
+
+### `sol_code_reviewer` (`TIER_2` only)
 
 Independent read-only milestone reviewer for:
 
@@ -46,7 +64,7 @@ Independent read-only milestone reviewer for:
 - regressions and negative tests;
 - exact-Candidate CI completeness.
 
-### `sol_product_reviewer`
+### `sol_product_reviewer` (`TIER_2` only)
 
 Independent read-only milestone reviewer for:
 
@@ -57,50 +75,71 @@ Independent read-only milestone reviewer for:
 - Renderer quality;
 - missing product blockers inside the defined Cycle.
 
-The product reviewer is required when the Cycle changes a user-facing,
-Agent-facing, semantic, analytics, or Renderer surface. A purely internal
-maintenance milestone may omit it only when the Cycle Plan records why product
-behavior cannot change.
+The specialized reviewers remain available for an explicitly planned `TIER_2`
+sequence. They are never an automatic pair and are not the default for ordinary
+product milestones.
 
-## Automatic review budget
+## Review tiers and hard launch budgets
 
-For one Product Cycle, the default automatic Sol budget is:
+Every Cycle Plan must select and justify its Review Tier before implementation:
 
-- one `sol_code_reviewer` launch;
-- one `sol_product_reviewer` launch when applicable;
-- zero other Sol launches.
+- `TIER_0`: zero Sol launches; documentation, tests, non-behavioral maintenance,
+  and trivial internal work only;
+- `TIER_1`: one comprehensive `sol_milestone_reviewer` launch; default for a
+  normal product milestone;
+- `TIER_2`: at most two Sol launches total; unusually high-risk or high-value
+  milestones only, with reviewer identities and order recorded in advance.
+
+A `TIER_2` sequence must end with a comprehensive
+`sol_milestone_reviewer` PASS on the exact final Candidate. A specialized role
+may occupy launch #1 for a narrow high-risk lane; launch #2 is then the final
+comprehensive gate. If launch #1 is comprehensive and returns PASS, the review
+requirement is satisfied without spending launch #2.
+
+Reviews are sequential and never parallel. The budget is total launches, not a
+per-role allowance. Sol reasoning is `high` by default. `xhigh` requires
+explicit authorization for an exceptionally critical review and is not the
+normal automatic setting.
 
 Every launch consumes budget, including a timeout, platform usage-limit error,
 crash, cancellation, or run that returns no verdict.
 
-Do not retry a failed launch. Do not replace a failed required reviewer with the
-implementation agent's judgment. Set the Cycle to
-`PAUSED_REVIEW_BUDGET_EXHAUSTED`, persist the failure, and stop.
+Never launch Sol #3 automatically. Do not replace a failed required reviewer
+with the implementation agent's judgment. Any launch beyond the recorded tier
+budget requires explicit user authorization and an updated total budget in
+`docs/product/loop-status.md`.
 
-Additional review calls require explicit user authorization and a newly
-recorded budget in `docs/product/loop-status.md`.
+A failed `TIER_1` launch consumes its only call and pauses the Cycle. A failed
+`TIER_2` launch also consumes one call; the remaining launch may proceed only
+when the pre-recorded sequence can still end in a comprehensive PASS for the
+exact final Candidate. Otherwise persist
+`PAUSED_REVIEW_BUDGET_EXHAUSTED` and stop.
 
 ## Review readiness
 
 The implementation agent must not launch reviewers until:
 
 1. Cycle acceptance criteria are believed satisfied;
-2. the implementation is committed at an exact Candidate SHA;
-3. the tracked worktree is clean;
-4. relevant local validation is green;
-5. mandatory remote CI is green for the exact Candidate SHA;
-6. required user, Agent, and visual QA are complete;
-7. a consolidated preflight has checked failure states, resource bounds,
+2. the Cycle Plan records Review Tier, total authorized Sol launches, and any
+   `TIER_2` reviewer order;
+3. the implementation is committed at an exact Candidate SHA;
+4. the checked-out branch has no milestone changes pending;
+5. relevant local validation is green;
+6. mandatory remote CI is green for the exact Candidate SHA;
+7. required user, Agent, and visual QA are complete;
+8. a consolidated preflight has checked failure states, resource bounds,
    compatibility, evidence, and representative product output;
-8. the execution ledger records reviewer authorization and remaining calls.
+9. the execution ledger records reviewer authorization and remaining calls.
 
 A reviewer receives the Base SHA, Candidate SHA, active Cycle Plan, concise
 evidence packet, and relevant repository paths. Review should focus on the
 actual Base..Candidate diff and affected execution paths. Historical review
 narratives and the full long-term Charter are read only when directly relevant.
 
-Each reviewer must make one comprehensive pass and report all known P0/P1
-blockers, rather than returning after the first finding.
+Each launch must make one comprehensive pass within its recorded lane and report
+all known P0/P1 blockers, rather than returning after the first finding. Sol is
+not triggered by commit count, stage completion, individual test fixes, or
+incremental refactors.
 
 ## Reviewer verdicts
 
@@ -116,19 +155,25 @@ No known P0/P1 blocker remains in that review lane for the exact Candidate SHA.
 
 ### `CORRECTIVE_REQUIRED`
 
-The Cycle remains open. The primary agent must:
+The Cycle remains open. The primary Luna agent must:
 
 1. preserve and consolidate all findings;
 2. fix the blockers without launching reviewers;
 3. rerun affected validation and QA;
 4. create a new clean Candidate SHA;
-5. mark the Cycle `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`;
-6. stop.
+5. follow its tier-specific remaining budget.
 
-The implementation agent may not override a reviewer blocker. It also may not
-automatically relaunch either reviewer. Because the implementation Candidate
-changed, a later Freeze normally needs fresh exact-SHA independent reviews;
-the user decides whether and when to spend that additional budget.
+For `TIER_1`, persist the corrected Candidate, mark the Cycle
+`CORRECTED_AWAITING_REVIEW_AUTHORIZATION`, and stop. A second Sol launch is not
+allowed unless the user explicitly grants new budget or upgrades the Cycle to
+`TIER_2`.
+
+For `TIER_2`, if one launch remains, Luna may complete validation and exact-SHA
+CI for the corrected Candidate and then launch Sol #2 sequentially. Sol #2 must
+return `PASS` for the exact corrected Candidate or the Cycle stops. Sol #3 is
+never automatic.
+
+The implementation agent may not override a reviewer blocker.
 
 ### `HUMAN_REVIEW_REQUIRED`
 
@@ -145,15 +190,20 @@ the same Goal.
 
 ## Freeze requirements
 
-A Product Cycle may be frozen only when:
+A milestone may be frozen or completed only when:
 
 1. Cycle acceptance criteria are satisfied;
 2. required local validation is green;
 3. mandatory remote CI is green for the exact implementation Candidate SHA;
-4. the required independent reviewers return `PASS` for that Candidate SHA;
+4. its recorded Review Tier is satisfied:
+   - `TIER_0`: the Plan's non-behavioral eligibility and primary preflight are
+     recorded; or
+   - `TIER_1`: the comprehensive reviewer returns `PASS` for that Candidate; or
+   - `TIER_2`: the pre-recorded review sequence is satisfied and the
+     comprehensive reviewer returns `PASS` for the exact final Candidate;
 5. no unresolved P0/P1 blocker remains;
 6. no protected human-only boundary was crossed;
-7. the tracked implementation state is clean;
+7. the milestone implementation state is clean;
 8. review-call usage is recorded truthfully.
 
 After Freeze, persist the governance record and set the Goal to
@@ -161,12 +211,12 @@ After Freeze, persist the governance record and set the Goal to
 
 ## Two-SHA Freeze model
 
-Review artifacts change repository contents after reviewers inspect a
-Candidate SHA. Therefore distinguish:
+Review or Freeze artifacts can change repository contents after a Candidate is
+validated. Therefore distinguish:
 
 ### Implementation Frozen SHA
 
-The exact implementation Candidate independently reviewed and validated.
+The exact implementation Candidate validated under its recorded Review Tier.
 
 ### Governance Record SHA
 
@@ -177,8 +227,8 @@ A later documentation-only commit containing:
 - loop-status update;
 - opportunity-log update.
 
-Never pretend the Governance Record SHA was the implementation SHA inspected by
-the reviewers.
+Never pretend the Governance Record SHA was the implementation SHA validated or,
+when applicable, inspected by reviewers.
 
 ## Review artifacts
 
@@ -188,14 +238,19 @@ For each Product Cycle create:
 
 At minimum:
 
-- `code-review.md`;
-- `product-review.md` when applicable;
-- `freeze-record.md`.
+- `freeze-record.md`;
+- `milestone-review.md` for the comprehensive `TIER_1` review;
+- the explicitly planned review report or reports for `TIER_2`;
+- no Sol report for `TIER_0`; record its eligibility evidence in the Freeze
+  record.
+
+A `TIER_2` specialized first pass may use `code-review.md` or
+`product-review.md`; its final comprehensive pass uses `milestone-review.md`.
 
 Reports must preserve:
 
 - reviewed Base and Candidate SHAs;
-- reviewer identity and review lane;
+- Review Tier, reviewer identity, and review lane;
 - verdict;
 - all P0/P1 blockers reported in the pass;
 - non-blocking recommendations;
@@ -211,7 +266,7 @@ Reports must preserve:
 - Base SHA;
 - Implementation Frozen SHA;
 - Governance Record SHA if already known;
-- independent reviewer verdicts;
+- Review Tier and required reviewer verdicts, or `TIER_0` eligibility evidence;
 - review launches authorized and consumed;
 - mandatory CI evidence;
 - major capabilities;

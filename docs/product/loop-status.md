@@ -11,6 +11,8 @@ Primary governance:
 - `docs/agent/BUDGET_FIRST_EXECUTION.md`
 - `docs/agent/AUTONOMOUS_PRODUCT_EVOLUTION.md`
 - `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`
+- `docs/agent/goals/AUTONOMOUS_MILESTONE.md`
+- `docs/agent/goals/UNATTENDED_TIER2.md`
 
 ---
 
@@ -18,75 +20,165 @@ Primary governance:
 
 `BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_MILESTONE + HUMAN_ON_EXCEPTION`
 
-Default implementation strategy:
+Standing execution defaults:
 
-- GPT-5.6 Luna `max` as the standing primary model in one thread;
-- Luna `xhigh` only when `max` is unavailable; never a lower Luna effort;
-- no automatic implementation or exploration subagents;
-- Sol reviewers used only at a recorded milestone gate;
-- no automatic reviewer retry;
+- one GPT-5.6 Luna primary thread at `max` reasoning;
+- Luna `xhigh` only as the minimum availability fallback;
+- generic implementation and research subagents disabled;
+- sequential milestone review only; never parallel;
 - no automatic continuation into another Product Cycle.
 
 ---
 
-## Goal Contract
+## Persistent Goal Ledger
 
-Goal scope:
+Goal Scope:
 
-PR-7F Revision / Change History Intelligence only.
+Complete PR-7F Revision / Change History Intelligence as one substantial
+vertical milestone. Resume its persisted post-Candidate corrective work; do not
+select another Cycle.
 
-Explicit non-scope:
+Explicit Non-Scope:
 
 - PR-7G or any later Product Cycle;
-- snapshots or historical trend claims;
-- OAuth, authorization, or write expansion;
+- snapshots, scheduled ingestion, or unsupported historical trend claims;
+- authentication, authorization, credentials, or write expansion;
 - HTML or Structured Web activation;
+- destructive migration, release, package, or tag publication;
 - unrelated opportunity-log work.
 
-Verifiable stopping condition:
+Stopping Condition:
 
-- PR-7F is frozen on an exact independently reviewed Candidate SHA; or
-- a corrected Candidate needs new review authorization; or
-- review/platform budget is unavailable; or
-- a protected human decision is reached.
+- PR-7F reaches `FROZEN_GOAL_COMPLETE` under its recorded `TIER_2` contract; or
+- the two-launch Sol budget is exhausted without a valid Freeze; or
+- a protected human-only decision, infrastructure blocker, or another
+  documented profile stop condition is reached.
 
-Goal continuation rule:
+Current Milestone State:
 
-Freezing PR-7F completes this Goal. Selecting PR-7G requires a new explicit user
-request. The former multi-Cycle “2 of up to 3” outer Goal is retired.
+`IMPLEMENTING`
 
-Codex Goal runtime:
+Current Phase:
 
-No active Codex Goal is currently running. Do not create or resume one without
-an explicit user request.
+`POST_CANDIDATE_CORRECTIVE_READY_TO_RESUME`
+
+Execution Runtime:
+
+No Codex Goal is running during this governance synchronization. The portable
+unattended profile is authorized for the next explicit `/goal` invocation.
+
+Primary Model:
+
+GPT-5.6 Luna
+
+Reasoning:
+
+- preferred: `max`
+- minimum fallback: `xhigh`
+- lower Luna reasoning is prohibited
+
+Generic Subagents Authorized:
+
+0
+
+Generic Subagents Consumed:
+
+0
+
+Review Tier:
+
+`TIER_2`
+
+Sol Launches Authorized:
+
+2 total
+
+Sol Launches Consumed:
+
+0 under the current portable `UNATTENDED_TIER2` authorization
+
+Sol Launches Remaining:
+
+2
+
+Review Execution:
+
+`SEQUENTIAL_ONLY`
+
+Automatic Sol #3:
+
+`PROHIBITED`
+
+Standing Reviewer:
+
+`sol_milestone_reviewer` at `high` reasoning
+
+Candidate SHA:
+
+`NONE`
+
+The last committed implementation Candidate was
+`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`, but later corrective work exists
+and no current clean Candidate has been created.
+
+Exact-SHA CI:
+
+- last Candidate `e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`:
+  GitHub Actions run `31356297264`, SUCCESS across all six jobs;
+- current Candidate: none, therefore current exact-SHA CI is not yet available.
+
+Human Authorization State:
+
+`UNATTENDED_TIER2_AUTHORIZED`
+
+This authorizes only the recorded PR-7F milestone and two sequential
+`sol_milestone_reviewer` launches under the portable profile. It does not
+authorize a different Cycle or Sol #3.
+
+Next Action:
+
+Resume and complete the active PR-7F milestone under
+`docs/agent/goals/UNATTENDED_TIER2.md`. Reconstruct state from this ledger and
+the active Cycle Plan, restore and inspect only the recorded PR-7F corrective
+work, finish implementation and validation with Luna Max, and spend Sol only
+after the complete milestone reaches the Review Readiness Gate.
 
 ---
 
-## Execution Budget
+## Active Product Cycle
 
-Primary thread:
+Cycle:
 
-Single-thread GPT-5.6 Luna `max` implementation. Luna `xhigh` is the minimum
-fallback if `max` is unavailable. Cost controls apply to agent launches and Sol
-gates, not to Luna reasoning depth.
+PR-7F Revision / Change History Intelligence
 
-Generic subagents under the new harness:
+Active Cycle Plan:
 
-- authorized: 0
-- consumed: 0
-- remaining: 0
+`docs/product/cycles/PR-7F-revision-change-intelligence.md`
 
-Known PR-7F Sol review launches:
+Current objective:
 
-- authorized automatic milestone budget: 2
-- `sol_code_reviewer`: 1 launch, no verdict because the platform usage limit was hit
-- `sol_product_reviewer`: 1 launch, no verdict because the platform usage limit was hit
-- consumed: 2
-- automatic remaining: 0
+Provide bounded official revision/change-history intelligence with truthful
+timestamps, summaries, evidence, coverage, partial/unavailable states, Agent UX,
+and Renderer output without unsupported historical claims.
 
-Each failed launch consumes budget. Do not retry either reviewer automatically.
-Any additional review launch requires explicit user authorization and a newly
-recorded budget.
+Existing unfinished implementation:
+
+The user preserved six post-Candidate PR-7F files in Git stash commit
+`8df0121`. Their stable binary patch fingerprint is:
+
+`ac421b1afb521d85ef9c3162f2ca192ccd07379ad9f3607b6386ea743abf57f7`
+
+The governance synchronization must not modify or consume that stash.
+
+---
+
+## Historical Review Attempts
+
+Before the portable Review Tier migration, one `sol_code_reviewer` launch and
+one `sol_product_reviewer` launch both failed at the platform usage limit and
+returned no verdict. They consumed the retired policy's budget and remain
+historical evidence; they are not PASS and are not counted as calls under the
+new user-authorized `UNATTENDED_TIER2` profile.
 
 ---
 
@@ -98,7 +190,7 @@ PR-7E Calendar / Schedule Intelligence
 
 Status:
 
-FROZEN
+`FROZEN`
 
 Implementation Frozen SHA:
 
@@ -106,7 +198,8 @@ Implementation Frozen SHA:
 
 Freeze Review:
 
-PASSED — exact-head CI 31354128241; both independent reviewers PASS
+PASSED — exact-head CI `31354128241`; both historical independent reviewers
+returned PASS.
 
 Governance Record SHA:
 
@@ -114,93 +207,22 @@ Governance Record SHA:
 
 ---
 
-## Current Cycle
-
-Cycle:
-
-PR-7F Revision / Change History Intelligence
-
-State:
-
-`PAUSED_REVIEW_BUDGET_EXHAUSTED`
-
-Implementation phase:
-
-The last committed Candidate was implemented and validated, reviewer launches
-failed without verdicts, and post-Candidate corrective work is present but not
-yet committed as a new Candidate.
-
-Active Workplan:
-
-`docs/product/cycles/PR-7F-revision-change-intelligence.md`
-
-Current objective:
-
-Implement a bounded official revision/change-history intelligence result using
-the existing read-only revisions source, preserving observed timestamps,
-summaries, coverage, evidence, and unavailable states without claiming
-unsupported historical trends or changing auth, write, snapshot, HTML, or
-source-activation boundaries.
-
----
-
-## Candidate and Validation State
-
-Last committed Candidate SHA:
-
-`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`
-
-Current Candidate SHA:
-
-None. The working tree contains post-Candidate changes and is not a Freeze
-Candidate.
-
-Remote CI for the last Candidate:
-
-PR-7F exact Candidate CI 31356297264: SUCCESS across all six jobs.
-
-Independent verdicts:
-
-- `sol_code_reviewer`: no verdict; launch failed at platform usage limit
-- `sol_product_reviewer`: no verdict; launch failed at platform usage limit
-
-PR-7F is not frozen. Failed launches must never be converted into PASS.
-
----
-
 ## Human Review Queue
 
 Open protected-decision items: 0
 
-Human review authorization currently required:
+Human-gated opportunities must be parked under:
 
-- any additional Sol reviewer launch for PR-7F;
-- creation or start of a Product Cycle after PR-7F.
+`docs/product/human-review-queue/`
 
----
-
-## Next Action
-
-Do not launch a reviewer or subagent.
-
-When the user explicitly resumes PR-7F implementation:
-
-1. use one primary thread to inspect and finish the existing post-Candidate changes;
-2. run affected local validation and required QA;
-3. commit a clean new Candidate and run exact-SHA mandatory CI;
-4. set the state to `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`;
-5. stop and report the review cost decision to the user.
-
-Do not enable HTML/Structured Web, introduce a snapshot store, expand auth or
-writes, retry the failed reviewers, or start the next Product Cycle.
+Parking an item stops this Goal and does not authorize another Cycle.
 
 ---
 
-## Goal Status
+## Exact Next Goal Command
 
-`PAUSED_REVIEW_BUDGET_EXHAUSTED`
-
-Reason:
-
-The recorded automatic Sol budget was consumed by two failed reviewer launches.
-The project is preserved at PR-7F and will not continue autonomously.
+```text
+/goal Read docs/agent/goals/UNATTENDED_TIER2.md and execute the current
+active milestone exactly as defined there. Continue until
+FROZEN_GOAL_COMPLETE or a documented stop condition.
+```

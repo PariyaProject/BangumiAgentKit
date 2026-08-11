@@ -20,6 +20,14 @@ Before substantial product work, always read:
 
 If an active cycle plan is referenced by `loop-status.md`, read it too.
 
+Reusable Goal execution profiles live under `docs/agent/goals/`. When a
+`/goal` invocation selects a profile, read it after the mandatory governance
+documents above and before acting. A profile may narrow execution mode or
+specialize an explicitly authorized model, subagent, or review budget, but it
+must never weaken this file's security, source, Git, human-approval, Freeze, or
+governance rules. Goal profiles are execution overlays, not competing sources
+of repository policy or runtime progress.
+
 ## Budget-First Development Model
 
 The default governance mode is:
@@ -41,9 +49,9 @@ OBSERVE
 → VISUAL QA when applicable
 → CREATE FREEZE CANDIDATE
 → STOP FOR THE REVIEW GATE
-→ REQUEST INDEPENDENT AI REVIEWS ONLY WITHIN THE RECORDED BUDGET
+→ SATISFY THE RECORDED REVIEW TIER WITHIN ITS TOTAL BUDGET
 → FIX REVIEW FINDINGS
-→ AUTO FREEZE WHEN APPROVED
+→ FREEZE WHEN THE RECORDED TIER IS SATISFIED
 → STOP THE GOAL
 
 Follow:
@@ -58,44 +66,61 @@ for exact Goal, review-budget, freeze and stopping rules.
 
 ## Goal and Agent Budget
 
-A Goal covers one coherent Product Cycle or milestone and must have a verifiable
-stopping condition. Freezing that milestone completes the Goal. Never select or
-implement the next Product Cycle inside the same Goal without fresh user
-authorization.
+A Goal covers one substantial vertical Product Cycle or milestone and must have
+a verifiable stopping condition. It may contain many commits and several hours
+of Luna Max work. Commit count, stage completion, individual test fixes, and
+incremental refactors are never review triggers. Freezing that milestone
+completes the Goal. Never select or implement the next Product Cycle inside the
+same Goal without fresh user authorization.
 
-Use one primary thread by default. Do not spawn implementation, exploration, or
-review subagents unless the user explicitly authorizes the specific use or a
-repository skill requires it.
+Use one primary thread by default. Do not spawn implementation or exploration
+subagents unless the user explicitly authorizes the specific use or a repository
+skill requires it. A Sol review launch additionally requires the user-authorized
+Cycle Plan and ledger to record its Review Tier, total budget, and readiness.
 
 The standing implementation model is GPT-5.6 Luna at `max` reasoning. If `max`
 is temporarily unavailable, `xhigh` is the minimum acceptable Luna effort.
 Never lower Luna to `medium`, `high`, `low`, or `none` for cost control. Control
 cost by reducing agent launches and reserving Sol for milestone gates.
 
-The default automatic Sol budget for a Product Cycle is at most two launches:
-one `sol_code_reviewer` and, when product-facing review is applicable, one
-`sol_product_reviewer`. Every launch counts, including platform-limit failures.
-Never retry a failed reviewer launch automatically.
+Every Cycle Plan must select a Review Tier before implementation:
+
+- `TIER_0`: zero Sol launches for documentation, tests, non-behavioral
+  maintenance, and trivial internal work;
+- `TIER_1`: one comprehensive `sol_milestone_reviewer` launch; this is the
+  default for normal product milestones;
+- `TIER_2`: at most two sequential Sol launches total, reserved for unusually
+  high-risk or high-value milestones.
+
+Reviews are never parallel. Every launch counts, including platform-limit
+failures. Sol uses `high` reasoning by default; `xhigh` requires explicit
+authorization for an exceptionally critical review. Never launch Sol beyond the
+recorded tier budget.
 
 ## Independent Review
 
-The implementation agent MUST NOT approve its own Freeze Candidate.
+The implementation agent MUST NOT approve its own `TIER_1` or `TIER_2` Freeze
+Candidate. `TIER_0` may complete without Sol only when the Cycle Plan establishes
+that product behavior and frozen contracts cannot change.
 
-Every Product Cycle Freeze Candidate must be independently reviewed by:
+For `TIER_1`, one independent `sol_milestone_reviewer` performs a comprehensive
+review of correctness, architecture, security, frozen contracts, tests,
+evidence and coverage, resource bounds, user value, Agent UX, and Renderer when
+applicable. Existing `sol_code_reviewer` and `sol_product_reviewer` roles remain
+available only for an explicitly planned `TIER_2` sequence. Every reviewer must
+inspect the actual repository and evidence and must not trust the implementation
+report alone.
 
-- `sol_code_reviewer`
-- `sol_product_reviewer`
+For `TIER_1`, `CORRECTIVE_REQUIRED` allows Luna to fix findings and persist a
+corrected Candidate, but no second Sol launch is automatic. Stop at
+`CORRECTED_AWAITING_REVIEW_AUTHORIZATION` unless the user explicitly grants new
+budget or upgrades the Cycle to `TIER_2`.
 
-Both reviewers must inspect the actual repository and evidence.
+For `TIER_2`, an unattended sequence may use Sol #1, Luna correction, then Sol
+#2. Sol #3 is never automatic. If the total two-launch ceiling is exhausted
+without a PASS on the final Candidate, stop.
 
-They must not trust the implementation report alone.
-
-If either reviewer returns `CORRECTIVE_REQUIRED`,
-the implementation agent must consolidate and fix the findings, validate a new
-Candidate, mark it `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`, and stop. Fresh
-reviews require explicit user authorization and a newly recorded budget.
-
-If either returns `HUMAN_REVIEW_REQUIRED`,
+If a reviewer returns `HUMAN_REVIEW_REQUIRED`,
 the affected decision must be parked under:
 
 `docs/product/human-review-queue/`
@@ -195,11 +220,11 @@ not blindly duplicate its visual design.
 ## Git / CI
 
 Never use `git worktree` or create an additional Git working tree for this
-repository. Use the existing checkout and ordinary branches only. When branch
-switching is blocked by uncommitted work, preserve that work explicitly on a
-temporary branch, complete the branch operation in the existing checkout, then
-restore the original uncommitted state and remove the temporary branch only
-after verification.
+repository. Use the existing checkout and ordinary branches only. Never
+automatically commit, stash, reset, rewrite, or otherwise relocate unrelated
+user work. Preserve unrelated dirty files untouched and work safely on the
+current branch when possible. If a required branch operation cannot be
+performed without touching that work, record the blocker and stop.
 
 Before moving, merging, resetting, or pushing `master`, inspect its relationship
 to `origin/master`, all unpublished local commits, and the active feature branch.
@@ -217,7 +242,7 @@ Every implementation Freeze Candidate requires:
 - exact Candidate SHA
 - relevant local tests
 - mandatory remote CI on the exact Candidate SHA
-- independent AI review
+- the review evidence required by its recorded Review Tier
 - no unresolved P0/P1 blockers
 
 Do not spend the review budget until the Candidate SHA is clean, locally

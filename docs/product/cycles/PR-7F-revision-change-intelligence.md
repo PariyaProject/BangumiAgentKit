@@ -1,158 +1,224 @@
 # PR-7F Revision / Change History Intelligence
 
-Status: PAUSED_REVIEW_BUDGET_EXHAUSTED
+Status: `IMPLEMENTING — POST_CANDIDATE_CORRECTIVE_READY_TO_RESUME`
 
-Base: PR-7E implementation frozen SHA `d53d800c5497cacd156792b1139ab7f2a696cdbe`
+Base: PR-7E implementation frozen SHA
+`d53d800c5497cacd156792b1139ab7f2a696cdbe`
 
-## Execution evidence
+## Objective
 
-Last committed Implementation Candidate SHA:
-`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`
+Complete one bounded, read-only, official revision/change-history intelligence
+milestone for subjects, episodes, characters, and persons. Preserve useful edit
+facts, source timestamps, evidence, coverage, and honest degraded states without
+claiming a complete continuously captured history.
 
-Current Candidate SHA: none. Post-Candidate changes remain in the working tree
-and have not been committed or presented as a new Candidate.
+## User Problem
 
-Exact remote CI: GitHub Actions run `31356297264` — SUCCESS across all six jobs.
+The repository has official v0 revision list/detail operations, but their raw
+transport-shaped output does not directly answer why an entity changed, what
+recent official revision records were observed, how much history the bounded
+page covers, or whether missing data makes the result partial.
 
-Local validation passed: `pnpm test` (177 tests), `pnpm test:semantic` (31),
-`pnpm test:provider` (33), `pnpm test:discovery` (48), `pnpm test:contract` (22),
-`pnpm test:integration:sqlite` (33), `pnpm test:standalone` (18), focused MCP schema /
-renderer / service / Standalone tests (83), `pnpm typecheck`, `pnpm lint`, and
-`pnpm openapi:verify`.
-
-Read-only official QA against `GET /v0/revisions/subjects` for subject `218707` returned
-10 records with `total=21`, so the result was `partial` with exact official-v0 provenance;
-no credentials or writes were used. Representative rendered artifacts were inspected at
-640px and 960px (`/tmp/bangumi-pr7f-revision-640.png` and
-`/tmp/bangumi-pr7f-revision-960.png`).
-
-Required `sol_code_reviewer` and `sol_product_reviewer` verdicts are still pending: both
-reviewer launches hit the platform usage limit before returning a report. This is not a
-freeze and must not be converted into PASS by the implementation agent. Each failed launch
-consumed one call under the new budget ledger; neither may be retried automatically.
-
-## Goal and execution harness
-
-Goal scope: PR-7F only.
-
-Stopping condition: PR-7F freezes on an exact independently reviewed Candidate SHA, or the
-Cycle stops when a corrected Candidate needs review authorization, review budget is
-unavailable, or a protected decision is reached.
-
-Primary-thread strategy: one GPT-5.6 Luna `max` implementation thread; Luna `xhigh` only
-if `max` is unavailable; no automatic implementation, exploration, or QA subagents.
-
-Generic subagent budget: 0 authorized / 0 consumed.
-
-Automatic Sol review budget:
-
-- `sol_code_reviewer`: 1 authorized / 1 consumed / no verdict;
-- `sol_product_reviewer`: 1 authorized / 1 consumed / no verdict;
-- remaining automatic Sol launches: 0.
-
-Next execution checkpoint: after explicit user authorization to resume implementation,
-finish and validate the current post-Candidate work in one primary thread, commit a clean
-Candidate, run exact-SHA CI, mark `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`, and stop.
-
-Freezing PR-7F completes the Goal. Do not select or begin another Product Cycle.
-
-## Cycle title
-
-Revision / Change History Intelligence — bounded official edit facts without snapshot claims
-
-## Opportunity selection
-
-The repository already has official v0 revision operations, a domain model, a service, and
-read-only tools, but their output is a shallow transport-shaped page. A bounded semantic
-result can answer why an entity changed and what official edit records were observed without
-introducing a snapshot store or pretending that a current page proves a historical trend.
-
-Representative user questions:
+## Representative Questions
 
 - “这个条目的标题或简介为什么变了？”
 - “最近有哪些官方修订记录？”
 - “这条修订记录具体改了什么？”
 
+## Existing Implementation State
+
+Last committed implementation Candidate:
+
+`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`
+
+Exact remote CI for that Candidate:
+
+GitHub Actions run `31356297264` — SUCCESS across all six jobs.
+
+Completed work already includes the bounded semantic result, official entity
+routing, coverage and evidence states, tool exposure, Standalone integration,
+Renderer output, tests, read-only official QA, and representative 640px/960px
+visual QA.
+
+Post-Candidate corrective work exists in six user-stashed files and has not been
+committed or presented as a new Candidate. Stash commit: `8df0121`. Stable binary
+patch fingerprint:
+
+`ac421b1afb521d85ef9c3162f2ca192ccd07379ad9f3607b6386ea743abf57f7`
+
+Current Candidate SHA: `NONE`.
+
+Historical pre-migration review attempts: one code reviewer and one product
+reviewer launch both failed at the platform usage limit with no verdict. They
+are not PASS and do not consume the newly authorized portable `TIER_2` budget.
+
 ## Scope
 
-Build a read-only revision-intelligence result on top of the existing official v0 revision
-operations without removing or breaking `bangumi.list_revisions` or `bangumi.get_revision`:
+- support one bounded entity-scoped official revision list request for subject,
+  episode, character, or person;
+- preserve revision ID, raw revision type, official summary, official creation
+  time, and creator fields when available;
+- expose observed/returned/total coverage, pagination, missing/truncated fields,
+  source evidence, warnings, and `complete`/`partial`/`unavailable` states;
+- make unsupported growth, popularity, continuity, and complete-lifetime claims
+  explicitly not-computable;
+- retain `bangumi.list_revisions` for raw pagination and
+  `bangumi.get_revision` for explicit detail;
+- provide useful compact Agent-facing and human-facing revision intelligence and
+  Renderer output.
 
-- support one bounded entity-scoped revision list request for subject, episode, character,
-  or person;
-- preserve revision ID, raw revision type, official summary, and official creation time;
-- expose observed/returned/total coverage, pagination semantics, missing fields, source
-  evidence, and `complete`/`partial`/`unavailable` states;
-- make unsupported date-window growth, popularity, or “all historical changes” claims
-  explicitly not-computable when the bounded page cannot prove them;
-- provide a compact human-facing revision timeline/detail renderer or equivalent useful
-  Standalone output while retaining raw detail through the existing tool path.
+## Explicit Non-Scope
 
-## Explicit non-scope
+- snapshot database, scheduled ingestion, or historical trend calculation;
+- HTML/Structured Web fallback or community-source activation;
+- authentication, OAuth, credentials, personal edit expansion, or writes;
+- claiming a bounded page is complete lifetime history when the source cannot
+  prove it;
+- unbounded detail hydration or request fan-out;
+- PR-7G or any unrelated Product Cycle;
+- release, package, tag, or destructive migration work.
 
-- no snapshot database, scheduled ingestion, or historical trend calculation;
-- no HTML/Structured Web fallback and no community source activation;
-- no authentication, personal edit attribution expansion, OAuth, or write actions;
-- no claim that a bounded page is the complete lifetime revision history when `total` exceeds
-  the requested page or the source omits fields;
-- no unbounded hydration of each revision detail from a list page.
+## Data / Source Dependencies
 
-## Evidence and failure contract
+- official Bangumi v0 revision list routes for subjects, episodes, characters,
+  and persons;
+- existing official revision detail operation for explicit selected records;
+- injected repository HTTP/client abstractions and their existing public error
+  mapping;
+- no credentials, cookies, HTML parsing, community fallback, or new persistent
+  data store.
 
-The result must distinguish the official revisions page observed from the total advertised
-by that endpoint, preserve unknown summary/created-at fields as unknown, identify the exact
-official operation and retrieval timestamp, and preserve public 404/429/503/schema errors.
-If a bounded page is truncated, coverage is `partial` and historical-growth capability is
-`not_computable`; it must not silently become an empty or complete result.
+## Evidence and Failure Contract
+
+The result must distinguish records observed in the returned page from the
+total advertised by the source, preserve unknown or nullable fields as unknown,
+record the exact official operation and attempted/retrieved timestamps, and
+represent public not-found, rate-limit, network/upstream, and schema failures
+truthfully. Bounded, missing, inconsistent, or truncated data must never become
+false completeness.
+
+## Frozen Foundation Constraints
+
+- preserve existing public list/detail revision tools and schemas;
+- do not reopen authentication, authorization, SSRF, credential, write, source
+  activation, cache, or database foundations;
+- do not break frozen contracts without a separately authorized compatibility
+  path;
+- keep official-source work bounded and read-only;
+- do not interpret arbitrary revision content as trusted HTML.
 
 ## Agent UX
 
-- use a clear entity type/id input with an explicit 1–20 result cap and non-negative offset;
-- describe the four supported entity types and explain that `createdAt` is source time, not
-  proof of a complete or continuously captured history;
-- keep `bangumi.list_revisions` available for raw pagination and `bangumi.get_revision` for
-  one selected detail record;
-- expose machine-readable `capabilityStates`, `coverage`, `warnings`, `limitations`, and
-  evidence before verbose revision data.
+- clear entity type/id input, limit `1–20`, and non-negative bounded offset;
+- explain that `createdAt` is official revision-source time, not broadcast time
+  or evidence of continuous capture;
+- expose machine-readable capability, coverage, warning, limitation, and source
+  evidence before verbose record data;
+- make partial, unknown, not-computable, and unavailable states discoverable
+  without low-level orchestration.
 
-## Renderer opportunity
+## Renderer QA
 
-Render a compact `RevisionTimeline`/`ChangeHistoryCard` with entity identity, observed vs
-total counts, bounded/partial state, source time, wrapped CJK summaries, explicit unknowns,
-and an unavailable state. Do not render raw arbitrary `data` as trusted HTML or imply a
-field-level diff unless the source supplies one.
+Render a compact revision timeline/change-history card with entity identity,
+observed versus total counts, bounded/partial state, source time, wrapped CJK
+summaries, explicit unknowns, field truncation evidence, and unavailable output.
 
-## Tests and QA
+Before readiness, inspect representative 640px and 960px output for complete,
+partial, empty, long-CJK, nullable/missing, truncated, and unavailable states.
+Do not imply field-level diffs unless supplied by the source.
 
-- unit tests for mapping, unknown fields, entity routing, bounded limit/offset behavior,
-  total-vs-returned coverage, unsupported entities, and 404/429/503/schema failures;
-- semantic tests for injected transport, tool descriptions, capability states, and
-  `not_computable` historical claims;
-- contract tests preserving existing list/detail tool schemas and OpenAPI routing;
-- Standalone tests for raw list/detail commands and the new bounded summary route;
-- renderer tests for narrow 640px and 960px partial, complete, empty, long-CJK, and
-  unavailable states, including wrapped summaries and no raw-HTML injection;
-- live read-only QA against an official revision endpoint when a stable public entity is
-  available, with no writes or credentials.
+## Tests
 
-## Resource and security limits
+- unit tests for mapping, nullable/unknown fields, entity routing, bounded
+  limit/offset, total-versus-returned coverage, field truncation, unsupported
+  entities, and public 404/429/network/upstream/schema failures;
+- semantic tests for injected transport, tool descriptions, capability states,
+  evidence, and not-computable historical claims;
+- contract and MCP schema tests preserving list/detail compatibility and route
+  semantics;
+- Standalone tests for raw list/detail commands and bounded intelligence output;
+- Renderer tests for representative widths and complete, partial, empty,
+  long/missing/truncated, unavailable, and raw-HTML-safe states;
+- affected typecheck, lint, OpenAPI verification, and broader regression suites.
 
-- one official list request per bounded intelligence result;
-- `limit` is clamped to a maximum of 20 and `offset` remains non-negative;
-- no detail hydration fan-out from the list result; a detail request is explicit and separate;
-- summaries and opaque data are bounded before rendering, with no raw HTML interpretation;
-- existing SSRF-constrained asset resolution and renderer output/timeout limits remain in
-  force;
-- no credentials, cookies, database migration, snapshot store, or public/shared cache
-  expansion.
+## User QA
 
-## Acceptance criteria
+Use the bounded capability against representative read-only official revision
+data and verify that it answers the three user questions without exaggerating
+history or completeness. No credentials or writes are permitted.
 
-1. Revision facts useful for “what changed?” are preserved with truthful source semantics.
-2. Bounded page coverage, missing fields, failures, and not-computable history claims are
-   machine-readable and human-readable.
-3. Existing list/detail revision tools remain backward compatible.
-4. Local gates, exact-SHA remote CI, Agent QA, and representative visual QA pass.
-5. Both independent Freeze reviewers return PASS for the exact final Candidate before
-   PR-7F is frozen; any fresh reviewer budget is explicitly authorized and recorded.
-6. Freeze ends the Goal without automatically selecting or starting another Product Cycle.
+## Agent QA
+
+Verify that an external Agent can discover the semantic tool, select the right
+entity, understand coverage and source time, distinguish raw list/detail paths,
+and handle partial, unknown, not-computable, and unavailable results correctly.
+
+## Resource Bounds
+
+- one official list request per intelligence result;
+- limit clamped to a maximum of 20 and offset bounded/non-negative;
+- no automatic detail hydration fan-out;
+- bounded summaries, timestamps, creator fields, opaque data, and rendered
+  output;
+- existing SSRF-constrained asset handling and Renderer timeout/output limits
+  remain in force;
+- no new shared cache, snapshot store, credentials, cookies, or migration.
+
+## Review Contract
+
+- Review Tier: `TIER_2`
+- Generic subagent budget: `0` authorized / `0` consumed
+- Total Sol budget: `2` authorized / `0` consumed / `2` remaining
+- Review execution: `SEQUENTIAL_ONLY`
+- Automatic Sol #3: `PROHIBITED`
+- Standing reviewer: `sol_milestone_reviewer`
+- Sol reasoning: `high`
+- Portable profile: `docs/agent/goals/UNATTENDED_TIER2.md`
+
+Many commits, implementation stages, test failures, test fixes, and internal
+refactors are Luna work, not Sol triggers. Sol #1 is allowed only after the
+complete PR-7F milestone passes the Review Readiness Gate. If Sol #1 passes,
+Freeze without spending Sol #2. If it returns `CORRECTIVE_REQUIRED`, Luna fixes
+all P0/P1 findings, creates and validates a new exact Candidate, then may spend
+Sol #2. Any other Sol #2 result stops; Sol #3 is prohibited.
+
+## Acceptance Criteria
+
+1. Revision facts useful for “what changed?” are preserved with truthful source
+   semantics.
+2. Bounded coverage, missing/truncated fields, failures, and not-computable
+   history claims are machine-readable and human-readable.
+3. Existing raw list/detail revision tools remain backward compatible.
+4. Resource limits and no-fan-out behavior are real and tested.
+5. Local validation, exact-SHA remote CI, User QA, Agent QA, and representative
+   Renderer QA pass for the final Candidate.
+6. The recorded `TIER_2` review sequence is satisfied by a comprehensive
+   `sol_milestone_reviewer` PASS on the exact final Candidate.
+7. No unresolved P0/P1 blocker or protected human-only boundary remains.
+8. Freeze ends the Goal without selecting or starting another Product Cycle.
+
+## Review Readiness Gate
+
+Before Sol #1, complete the gate defined by the canonical Budget-First and
+Review Policy documents: stable scope, clean exact Candidate SHA, green local
+validation, exact-SHA mandatory CI, completed User/Agent/Renderer QA, Luna
+consolidated self-review, truthful evidence, and persisted budget accounting.
+
+## Stopping Condition
+
+- set `FROZEN_GOAL_COMPLETE` only after all acceptance and tier-specific Freeze
+  requirements pass for the exact final Candidate; or
+- stop when the total two-launch Sol budget is exhausted without PASS; or
+- stop when a protected human-only decision, infrastructure/permission blocker,
+  unrelated dirty-work blocker, or another portable-profile stop condition is
+  reached.
+
+Never start PR-7G or another Cycle inside this Goal.
+
+## Exact Next Goal Command
+
+```text
+/goal Read docs/agent/goals/UNATTENDED_TIER2.md and execute the current
+active milestone exactly as defined there. Continue until
+FROZEN_GOAL_COMPLETE or a documented stop condition.
+```
