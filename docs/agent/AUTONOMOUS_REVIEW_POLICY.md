@@ -1,126 +1,168 @@
-# BangumiAgentKit Autonomous Review Policy
+# BangumiAgentKit Milestone Review Policy
 
-## Governance Model
+## Governance model
 
 Default:
 
-AI_REVIEW_IN_LOOP
-+
-HUMAN_ON_EXCEPTION
+`BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_MILESTONE + HUMAN_ON_EXCEPTION`
 
-The implementation/orchestration agent must never approve its own
-Product Cycle Freeze Candidate.
+The implementation/orchestration agent must never approve its own Product
+Cycle Freeze Candidate. Independent review remains a Freeze requirement, but
+review agents are scarce milestone gates rather than an implementation loop.
+
+`docs/agent/BUDGET_FIRST_EXECUTION.md` defines the Goal boundary, launch budget,
+model routing, failure behavior, and stopping rules.
 
 ## Roles
 
-### Implementation / Orchestration Agent
+### Primary implementation agent
 
 Responsibilities:
 
-- product opportunity discovery
-- targeted research
-- cycle planning
-- implementation
-- tests
-- user QA
-- Agent QA
-- visual QA
-- corrective implementation
-- progress persistence
-- next-cycle selection
+- product opportunity discovery within the authorized milestone;
+- targeted research;
+- cycle planning;
+- implementation;
+- tests and negative tests;
+- user, Agent, and visual QA;
+- consolidated preflight review;
+- corrective implementation;
+- progress and budget persistence.
 
-### sol_code_reviewer
+The primary agent works in one thread by default. It does not use independent
+reviewers as incremental debuggers and does not select the next Product Cycle
+after Freeze.
 
-Independent read-only Freeze reviewer.
+### `sol_code_reviewer`
 
-Primary responsibility:
+Independent read-only milestone reviewer for:
 
-- correctness
-- architecture
-- frozen-contract compatibility
-- source/evidence semantics
-- resource bounds
-- security
-- regressions
-- negative tests
-- CI completeness
+- correctness;
+- architecture;
+- frozen-contract compatibility;
+- source and evidence semantics;
+- resource bounds;
+- security;
+- regressions and negative tests;
+- exact-Candidate CI completeness.
 
-### sol_product_reviewer
+### `sol_product_reviewer`
 
-Independent read-only Product Freeze reviewer.
+Independent read-only milestone reviewer for:
 
-Primary responsibility:
+- real user value;
+- Bangumi parity and information richness;
+- Agent UX and semantic-tool usefulness;
+- analytics truthfulness;
+- Renderer quality;
+- missing product blockers inside the defined Cycle.
 
-- real user value
-- Bangumi parity
-- information richness
-- Agent UX
-- semantic-tool usefulness
-- analytics value
-- Renderer quality
-- missing product opportunities inside the defined Cycle
+The product reviewer is required when the Cycle changes a user-facing,
+Agent-facing, semantic, analytics, or Renderer surface. A purely internal
+maintenance milestone may omit it only when the Cycle Plan records why product
+behavior cannot change.
 
-## Reviewer Verdicts
+## Automatic review budget
 
-Each reviewer must return exactly one final verdict:
+For one Product Cycle, the default automatic Sol budget is:
 
-PASS
+- one `sol_code_reviewer` launch;
+- one `sol_product_reviewer` launch when applicable;
+- zero other Sol launches.
 
-CORRECTIVE_REQUIRED
+Every launch consumes budget, including a timeout, platform usage-limit error,
+crash, cancellation, or run that returns no verdict.
 
-HUMAN_REVIEW_REQUIRED
+Do not retry a failed launch. Do not replace a failed required reviewer with the
+implementation agent's judgment. Set the Cycle to
+`PAUSED_REVIEW_BUDGET_EXHAUSTED`, persist the failure, and stop.
 
-### PASS
+Additional review calls require explicit user authorization and a newly
+recorded budget in `docs/product/loop-status.md`.
 
-No known P0/P1 Freeze blocker remains.
+## Review readiness
 
-### CORRECTIVE_REQUIRED
+The implementation agent must not launch reviewers until:
 
-The Cycle remains open.
+1. Cycle acceptance criteria are believed satisfied;
+2. the implementation is committed at an exact Candidate SHA;
+3. the tracked worktree is clean;
+4. relevant local validation is green;
+5. mandatory remote CI is green for the exact Candidate SHA;
+6. required user, Agent, and visual QA are complete;
+7. a consolidated preflight has checked failure states, resource bounds,
+   compatibility, evidence, and representative product output;
+8. the execution ledger records reviewer authorization and remaining calls.
 
-The implementation agent must:
+A reviewer receives the Base SHA, Candidate SHA, active Cycle Plan, concise
+evidence packet, and relevant repository paths. Review should focus on the
+actual Base..Candidate diff and affected execution paths. Historical review
+narratives and the full long-term Charter are read only when directly relevant.
 
-1. preserve the findings
-2. fix the blockers
-3. rerun affected validation
-4. create a new Candidate SHA
-5. invoke BOTH independent reviewers again
+Each reviewer must make one comprehensive pass and report all known P0/P1
+blockers, rather than returning after the first finding.
 
-The implementation agent may not override a reviewer blocker.
+## Reviewer verdicts
 
-### HUMAN_REVIEW_REQUIRED
+Each reviewer returns exactly one final verdict:
 
-The requested change crosses a protected governance boundary.
+- `PASS`
+- `CORRECTIVE_REQUIRED`
+- `HUMAN_REVIEW_REQUIRED`
 
-The implementation agent must:
+### `PASS`
 
-1. NOT implement the protected change
-2. create a proposal under
-   `docs/product/human-review-queue/`
-3. mark the affected opportunity `PARKED_FOR_HUMAN`
-4. continue with another independent safe opportunity if one exists
+No known P0/P1 blocker remains in that review lane for the exact Candidate SHA.
 
-The entire Autonomous Goal stops only when no meaningful safe work remains.
+### `CORRECTIVE_REQUIRED`
 
-## Freeze Requirements
+The Cycle remains open. The primary agent must:
 
-A Product Cycle may be automatically frozen only when:
+1. preserve and consolidate all findings;
+2. fix the blockers without launching reviewers;
+3. rerun affected validation and QA;
+4. create a new clean Candidate SHA;
+5. mark the Cycle `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`;
+6. stop.
 
-1. Cycle acceptance criteria are satisfied
-2. required local validation is green
-3. mandatory remote CI is green for the exact implementation Candidate SHA
-4. sol_code_reviewer returns PASS
-5. sol_product_reviewer returns PASS
-6. no unresolved P0/P1 blockers remain
-7. no HUMAN_ONLY boundary was crossed
-8. tracked implementation state is clean
+The implementation agent may not override a reviewer blocker. It also may not
+automatically relaunch either reviewer. Because the implementation Candidate
+changed, a later Freeze normally needs fresh exact-SHA independent reviews;
+the user decides whether and when to spend that additional budget.
 
-## Two-SHA Freeze Model
+### `HUMAN_REVIEW_REQUIRED`
+
+The requested change crosses a protected governance boundary. The primary
+agent must:
+
+1. not implement the protected change;
+2. create a proposal under `docs/product/human-review-queue/`;
+3. mark the affected opportunity `PARKED_FOR_HUMAN`;
+4. persist the state and stop the current Goal.
+
+Parking one decision does not authorize starting another opportunity inside
+the same Goal.
+
+## Freeze requirements
+
+A Product Cycle may be frozen only when:
+
+1. Cycle acceptance criteria are satisfied;
+2. required local validation is green;
+3. mandatory remote CI is green for the exact implementation Candidate SHA;
+4. the required independent reviewers return `PASS` for that Candidate SHA;
+5. no unresolved P0/P1 blocker remains;
+6. no protected human-only boundary was crossed;
+7. the tracked implementation state is clean;
+8. review-call usage is recorded truthfully.
+
+After Freeze, persist the governance record and set the Goal to
+`FROZEN_GOAL_COMPLETE`. Do not select or begin another Product Cycle.
+
+## Two-SHA Freeze model
 
 Review artifacts change repository contents after reviewers inspect a
-Candidate SHA.
-
-Therefore distinguish:
+Candidate SHA. Therefore distinguish:
 
 ### Implementation Frozen SHA
 
@@ -130,131 +172,99 @@ The exact implementation Candidate independently reviewed and validated.
 
 A later documentation-only commit containing:
 
-- reviewer reports
-- freeze record
-- loop-status update
-- opportunity-log update
+- reviewer reports;
+- Freeze record;
+- loop-status update;
+- opportunity-log update.
 
-The next Product Cycle may start from the Governance Record SHA.
+Never pretend the Governance Record SHA was the implementation SHA inspected by
+the reviewers.
 
-Never pretend the Governance Record SHA was the implementation SHA
-reviewed by the reviewers.
-
-## Review Artifacts
+## Review artifacts
 
 For each Product Cycle create:
 
-docs/product/reviews/<cycle-id>/
+`docs/product/reviews/<cycle-id>/`
 
 At minimum:
 
-- code-review.md
-- product-review.md
-- freeze-record.md
+- `code-review.md`;
+- `product-review.md` when applicable;
+- `freeze-record.md`.
 
-The implementation agent writes these files from the reviewers'
-returned verdicts because reviewer agents are read-only.
+Reports must preserve:
 
-The reports must preserve:
+- reviewed Base and Candidate SHAs;
+- reviewer identity and review lane;
+- verdict;
+- all P0/P1 blockers reported in the pass;
+- non-blocking recommendations;
+- evidence and tests/CI inspected;
+- launch ordinal and budget consumed;
+- failures that produced no verdict.
 
-- reviewed Candidate SHA
-- reviewer identity
-- verdict
-- blockers
-- non-blocking recommendations
-- evidence inspected
-- tests/CI inspected
+## Freeze record
 
-## Freeze Record
+`freeze-record.md` must include:
 
-freeze-record.md must include:
+- Cycle and Goal scope;
+- Base SHA;
+- Implementation Frozen SHA;
+- Governance Record SHA if already known;
+- independent reviewer verdicts;
+- review launches authorized and consumed;
+- mandatory CI evidence;
+- major capabilities;
+- known limitations;
+- deferred opportunities;
+- human-review queue references;
+- confirmation that the Goal stopped at this milestone.
 
-Cycle
-
-Base SHA
-
-Implementation Frozen SHA
-
-Governance Record SHA if already known
-
-sol_code_reviewer verdict
-
-sol_product_reviewer verdict
-
-mandatory CI evidence
-
-major capabilities
-
-known limitations
-
-deferred opportunities
-
-human-review queue references
-
-## Protected Human Decisions
+## Protected human decisions
 
 The following may not be autonomously approved:
 
-- Auth trust-model changes
-- Principal/authorization changes
-- weakening SSRF/security boundaries
-- token/cookie/credential expansion
-- destructive/write authority expansion
-- broad default Structured Web enablement
-- broad default HTML enablement
-- aggressive crawling
-- major irreversible semantic DB migrations
-- licensing/legal uncertainty
-- breaking frozen public contracts without safe compatibility
-- publishing packages/releases/tags
+- authentication trust-model changes;
+- principal or authorization changes;
+- weakening SSRF or security boundaries;
+- token, cookie, or credential expansion;
+- destructive or write-authority expansion;
+- broad default Structured Web or HTML enablement;
+- aggressive crawling;
+- major irreversible semantic database migrations;
+- licensing or legal uncertainty;
+- breaking frozen public contracts without a compatibility path;
+- publishing packages, releases, or tags.
 
-When encountered:
+When encountered: park the proposal, persist the state, and stop the Goal.
 
-PARK, DO NOT IMPLEMENT, CONTINUE ELSEWHERE.
+## Opportunity selection
 
-## Autonomous Continuation
+The opportunity log remains a backlog. It may be updated with observations, but
+it is not execution authority.
 
-After an AI-reviewed Freeze:
+After a Freeze, the user may authorize a new Goal. At that time evaluate:
 
-1. persist review artifacts
-2. update loop-status
-3. update opportunity-log
-4. commit Governance Record
-5. perform Product Opportunity Selection
-6. select the next highest-value independent safe Cycle
-7. create its Cycle Plan
-8. continue
+- User Value;
+- Agent Leverage;
+- Information Gain;
+- Data Availability;
+- Reliability;
+- Implementation Cost;
+- Maintenance Risk;
+- Source Risk.
 
-The old roadmap is advisory, not mandatory.
+## Stop conditions
 
-## Opportunity Selection
+Stop the current Goal when:
 
-Evaluate candidate Cycles by:
+- the authorized milestone is frozen;
+- the review launch budget is exhausted;
+- a corrected Candidate needs fresh review authorization;
+- a protected decision is parked;
+- required infrastructure or permission is unavailable;
+- runtime or system budget is exhausted;
+- the user pauses, stops, or changes the Goal.
 
-- User Value
-- Agent Leverage
-- Information Gain
-- Data Availability
-- Reliability
-- Implementation Cost
-- Maintenance Risk
-- Source Risk
-
-Prefer high-value reliable capabilities over high novelty.
-
-## Stop Conditions
-
-Stop the outer Autonomous Goal when:
-
-- configured maximum cycle count is reached
-- no valuable independent safe opportunity remains
-- repeated reviewer failures reveal no defensible path
-- required infrastructure/permission is unavailable
-- runtime/system budget is exhausted
-- user explicitly pauses/stops the Goal
-
-Before stopping or interruption:
-
-update `docs/product/loop-status.md`.
-
-Never fabricate completion.
+Before stopping, update `docs/product/loop-status.md`. Never fabricate review,
+budget, CI, or completion evidence.
