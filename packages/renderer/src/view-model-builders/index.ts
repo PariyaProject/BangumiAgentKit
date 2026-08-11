@@ -4,6 +4,7 @@ import type {
   DomainRelatedCharacter,
   CalendarIntelligenceResult,
   RevisionIntelligenceResult,
+  SeriesWatchOrderResult,
   PersonActivityProfile,
   SubjectSearchResult,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -19,6 +20,7 @@ import type {
   CalendarDayViewModel,
   PersonProfileCreditViewModel,
   PersonProfileViewModel,
+  SeriesRelationsViewModel,
 } from '../view-models/index.js';
 
 export function truncateText(
@@ -287,6 +289,64 @@ export function buildRevisionTimelineViewModel(
     },
     limitations: result.limitations,
     warnings: result.warnings,
+  };
+}
+
+export function buildSeriesRelationsViewModel(
+  result: SeriesWatchOrderResult,
+): SeriesRelationsViewModel {
+  const mapNode = (node: SeriesWatchOrderResult['root']) => ({
+    id: node.id,
+    name: node.name,
+    nameCn: node.nameCn || node.name,
+    type: node.type,
+    date: node.date,
+    image: node.image,
+  });
+  const mapOrderedNode = (node: SeriesWatchOrderResult['watchOrder'][number]) => ({
+    ...mapNode(node),
+    position: node.position,
+    relationLabels: node.relationLabels,
+    relationKinds: node.relationKinds,
+    isRoot: node.isRoot,
+    placementReason: node.placementReason,
+  });
+  const warnings = result.warnings.map((message, index) => ({
+    code:
+      result.capabilityStates.watchOrder === 'not_computable' && index === 0
+        ? 'NOT_COMPUTABLE'
+        : 'SOURCE_LIMITATION',
+    state:
+      result.capabilityStates.watchOrder === 'not_computable' && index === 0
+        ? ('not_computable' as const)
+        : ('partial' as const),
+    message,
+  }));
+
+  return {
+    template: 'series-relations',
+    version: 1,
+    state: result.state,
+    root: mapNode(result.root),
+    watchOrder: result.watchOrder.map(mapOrderedNode),
+    related: result.related.map((node) => ({
+      ...mapNode(node),
+      relationLabels: node.relationLabels,
+      relationKinds: node.relationKinds,
+      includedInWatchOrder: node.includedInWatchOrder,
+      exclusionReason: node.exclusionReason,
+    })),
+    excluded: result.excluded,
+    coverage: result.coverage,
+    capabilityStates: result.capabilityStates,
+    evidence: {
+      label: 'Bangumi official v0 subject relations',
+      operations: result.evidence.sources.map((source) => source.path),
+      derivation: result.evidence.derivation,
+      retrievedAt: result.evidence.retrievedAt,
+    },
+    limitations: result.limitations,
+    warnings,
   };
 }
 

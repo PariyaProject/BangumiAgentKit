@@ -4,6 +4,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiClientProvider } from '@bangumi-agent-kit/auth';
 import {
   SubjectService,
+  SeriesService,
   EpisodeService,
   CharacterService,
   PersonService,
@@ -129,6 +130,40 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectRelations(input.subjectId);
+    },
+  });
+
+  const getSeriesWatchOrder = defineTool({
+    name: 'bangumi.get_series_watch_order',
+    description:
+      '根据官方 v0 关系数据生成有界的系列观看顺序建议。保留原始关系标签、媒介排除、覆盖范围和不确定性；这不是 Bangumi 发布的唯一官方顺序。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
+      depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),
+      maxNodes: z
+        .number()
+        .int()
+        .min(1)
+        .max(16)
+        .optional()
+        .describe('最多返回的关联节点数，1-16；默认 8'),
+      media: z
+        .enum(['anime', 'all'])
+        .optional()
+        .describe('默认只推荐动画；all 会保留其他媒介的关联证据与排除统计'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      const activeService = new SeriesService(activeClient);
+      return await activeService.getSeriesWatchOrder(input.subjectId, {
+        depth: input.depth,
+        maxNodes: input.maxNodes,
+        media: input.media,
+      });
     },
   });
 
@@ -815,5 +850,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubjectStats,
     getCalendarIntelligence,
     getRevisionIntelligence,
+    getSeriesWatchOrder,
   ] as const;
 }

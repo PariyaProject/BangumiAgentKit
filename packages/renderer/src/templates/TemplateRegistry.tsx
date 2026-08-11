@@ -8,6 +8,7 @@ import {
   CalendarViewModel,
   RevisionTimelineViewModel,
   PersonProfileViewModel,
+  SeriesRelationsViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -18,6 +19,7 @@ import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
 import { RevisionTimelineCard } from './RevisionTimelineCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
+import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
@@ -37,7 +39,7 @@ export function registerTemplate<T extends RenderViewModel>(template: CardTempla
   templates.set(template.id, template);
 }
 
-// Register default 5 cards
+// Register default card templates
 registerTemplate<SubjectCardViewModel>({
   id: 'subject-card',
   version: 1,
@@ -91,6 +93,19 @@ registerTemplate<PersonProfileViewModel>({
   version: 1,
   render: (vm, theme, resolvedImages, width) => (
     <PersonProfileCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
+  ),
+});
+
+registerTemplate<SeriesRelationsViewModel>({
+  id: 'series-relations',
+  version: 1,
+  render: (vm, theme, resolvedImages, width) => (
+    <SeriesRelationsCard
+      viewModel={vm}
+      theme={theme}
+      resolvedImages={resolvedImages}
+      width={width}
+    />
   ),
 });
 

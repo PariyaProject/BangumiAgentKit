@@ -275,6 +275,86 @@ export interface RevisionTimelineViewModel {
   }>;
 }
 
+export interface SeriesRelationsViewModel {
+  template: 'series-relations';
+  version: 1;
+  state: 'complete' | 'partial';
+  root: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    type: string;
+    date?: string;
+    image?: string;
+  };
+  watchOrder: Array<{
+    id: number;
+    position: number;
+    name: string;
+    nameCn?: string;
+    type: string;
+    date?: string;
+    image?: string;
+    relationLabels: string[];
+    relationKinds: string[];
+    isRoot: boolean;
+    placementReason: string;
+  }>;
+  related: Array<{
+    id: number;
+    name: string;
+    nameCn?: string;
+    type: string;
+    date?: string;
+    image?: string;
+    relationLabels: string[];
+    relationKinds: string[];
+    includedInWatchOrder: boolean;
+    exclusionReason?: string;
+  }>;
+  excluded: {
+    count: number;
+    byReason: Array<{ reason: string; count: number }>;
+    samples: Array<{
+      id: number;
+      name: string;
+      nameCn?: string;
+      type: string;
+      reason: string;
+    }>;
+  };
+  coverage: {
+    depth: number;
+    maxNodes: number;
+    media: 'anime' | 'all';
+    relationRequests: number;
+    relationRowsObserved: number;
+    uniqueRelatedObserved: number;
+    uniqueRelatedReturned: number;
+    detailsFetched: number;
+    detailsFailed: number;
+    relationFailures: number;
+    truncated: boolean;
+    truncationReasons: string[];
+    retrievedAt: string;
+  };
+  capabilityStates: {
+    watchOrder: 'bounded_recommendation' | 'not_computable';
+  };
+  evidence: {
+    label: string;
+    operations: string[];
+    derivation: string;
+    retrievedAt?: string;
+  };
+  limitations: string[];
+  warnings: Array<{
+    code: string;
+    state: 'partial' | 'not_computable';
+    message: string;
+  }>;
+}
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
@@ -282,4 +362,5 @@ export type RenderViewModel =
   | CollectionProgressViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
-  | PersonProfileViewModel;
+  | PersonProfileViewModel
+  | SeriesRelationsViewModel;

@@ -238,6 +238,72 @@ describe('PR-6R-C standalone runtime', () => {
     await host.close();
   });
 
+  it('PR-7G: standalone exposes semantic and rendered watch-order routes', async () => {
+    const host = await createTestHost();
+    let semanticExecutions = 0;
+    let renderExecutions = 0;
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.get_series_watch_order',
+        description: 'watch-order route fixture',
+        input: z.object({ subjectId: z.number().int().positive() }),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          semanticExecutions += 1;
+          return {
+            subjectId: input.subjectId,
+            capabilityStates: { watchOrder: 'bounded_recommendation' },
+          };
+        },
+      }),
+    );
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.render_series_watch_order',
+        description: 'watch-order render route fixture',
+        input: z.object({ subjectId: z.number().int().positive() }),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          renderExecutions += 1;
+          return {
+            artifact: {
+              id: `series-${input.subjectId}`,
+              mimeType: 'image/png',
+              width: 640,
+              height: 480,
+            },
+          };
+        },
+      }),
+    );
+
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const context = {
+      host,
+      flags: parseCliArgs(['--json', 'watch-order', '218707']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+
+    await expect(registry.execute(['watch-order', '218707'], context)).resolves.toMatchObject({
+      value: { subjectId: 218707 },
+    });
+    await expect(
+      registry.execute(['render', 'watch-order', '218707'], {
+        ...context,
+        flags: parseCliArgs(['--json', 'render', 'watch-order', '218707']).flags,
+      }),
+    ).resolves.toMatchObject({ value: { artifact: { id: 'series-218707' } } });
+    expect(semanticExecutions).toBe(1);
+    expect(renderExecutions).toBe(1);
+    await host.close();
+  });
+
   it('ST-07/ST-08/ST-13-ST-19: raw and high-level writes preserve validation, identity, and confirmation', async () => {
     let executions = 0;
     const host = await createTestHost();

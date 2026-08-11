@@ -85,6 +85,14 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
     }
   } else if (viewModel.template === 'person-profile') {
     if (viewModel.person.image) urls.add(viewModel.person.image);
+  } else if (viewModel.template === 'series-relations') {
+    if (viewModel.root.image) urls.add(viewModel.root.image);
+    for (const item of viewModel.watchOrder) {
+      if (item.image) urls.add(item.image);
+    }
+    for (const item of viewModel.related) {
+      if (item.image) urls.add(item.image);
+    }
   }
 
   return Array.from(urls);

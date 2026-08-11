@@ -70,15 +70,15 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`MILESTONE_PLANNING`
+`MILESTONE_ACTIVE`
 
 Current Milestone State:
 
-`PLANNED`
+`ACTIVE`
 
 Current Phase:
 
-`MILESTONE_PLANNING`
+`VALIDATING`
 
 Current Milestone:
 
@@ -117,11 +117,11 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`N/A — no implementation Candidate`
+`N/A — implementation is locally validated; create the exact Candidate commit next`
 
 Exact-SHA CI:
 
-`N/A — no implementation Candidate`
+`N/A — Candidate not yet created or pushed`
 
 Integration Policy:
 
@@ -163,7 +163,7 @@ Integration State:
 
 Implementation Frozen SHA:
 
-`N/A — Candidate not yet created`
+`N/A — Candidate commit not yet created`
 
 Merge Commit SHA:
 
@@ -171,10 +171,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`CREATE the documentation checkpoint commit, then implement the bounded PR-7G
-semantic service/tool, renderer, Standalone routes, and tests. Do not launch Sol
-until the exact Candidate is clean, locally validated, and green in mandatory
-remote CI.`
+`CREATE the exact implementation Candidate from the locally validated tree,
+then push it, open/update the PR, and wait for mandatory CI on that exact SHA.
+Only after the clean Candidate and CI are green may the recorded TIER_2 Sol
+review launch.`
 
 Human Authorization State:
 

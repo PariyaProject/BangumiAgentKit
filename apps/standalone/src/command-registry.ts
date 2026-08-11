@@ -38,6 +38,7 @@ Bangumi:
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
+  watch-order <subjectId>
   cast <subjectId>
   person <personId>
   staff <subjectId>
@@ -53,7 +54,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
+  render subject|watch-order|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -216,6 +217,13 @@ export class StandaloneCommandRegistry {
     if (command === 'subject') {
       return {
         value: await runTool(ctx, 'bangumi.get_subject', {
+          subjectId: parsePositiveInteger(args[1], 'subject id'),
+        }),
+      };
+    }
+    if (command === 'watch-order') {
+      return {
+        value: await runTool(ctx, 'bangumi.get_series_watch_order', {
           subjectId: parsePositiveInteger(args[1], 'subject id'),
         }),
       };
@@ -498,6 +506,9 @@ export class StandaloneCommandRegistry {
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
     } else if (kind === 'cast') {
       name = 'bangumi.render_cast_card';
+      input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'watch-order') {
+      name = 'bangumi.render_series_watch_order';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
     } else if (kind === 'person') {
       name = 'bangumi.render_person_profile';

@@ -3,6 +3,7 @@ import { defineTool } from '../define-tool.js';
 import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import {
   SubjectService,
+  SeriesService,
   UserService,
   CharacterService,
   CalendarService,
@@ -21,6 +22,7 @@ import {
   buildSearchListViewModel,
   buildPersonProfileViewModel,
   buildRevisionTimelineViewModel,
+  buildSeriesRelationsViewModel,
 } from '@bangumi-agent-kit/renderer';
 
 let globalArtifactStore: ArtifactStore | null = null;
@@ -264,6 +266,34 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSeriesWatchOrder = defineTool({
+    name: 'bangumi.render_series_watch_order',
+    description:
+      '生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、推荐步骤、原始关系标签、媒介排除、覆盖和限制。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
+      depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，默认 1'),
+      maxNodes: z.number().int().min(1).max(16).optional().describe('最多返回关联节点数，默认 8'),
+      media: z.enum(['anime', 'all']).optional().describe('动画推荐或全部媒介证据，默认 anime'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const publicClient = deps?.publicHttpClient;
+      if (!publicClient) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const seriesService = new SeriesService(publicClient);
+      const result = await seriesService.getSeriesWatchOrder(input.subjectId, {
+        depth: input.depth,
+        maxNodes: input.maxNodes,
+        media: input.media,
+      });
+      return await executeRenderAndSave(buildSeriesRelationsViewModel(result));
+    },
+  });
+
   const renderSearch = defineTool({
     name: 'bangumi.render_search',
     description: '生成 Bangumi 搜索结果列表图片卡片 Artifact。',
@@ -346,5 +376,6 @@ export function createRenderPresentationTools(
     renderSearch,
     renderPersonProfile,
     renderRevisionTimeline,
+    renderSeriesWatchOrder,
   ] as const;
 }
