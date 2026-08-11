@@ -39,7 +39,7 @@ is bounded.
 ## OP-002 Franchise Watch Order
 
 Status:
-REVIEW_READY_IN_PR-7G_AFTER_CORRECTION
+SOL_2_RUNNING_IN_PR-7G
 
 User question:
 

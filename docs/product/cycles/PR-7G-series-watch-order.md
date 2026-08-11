@@ -1,6 +1,6 @@
 # PR-7G Series Relations & Watch-Order Intelligence
 
-Status: `REVIEW_READY_FOR_SOL_2`
+Status: `SOL_2_RUNNING`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget

@@ -96,7 +96,9 @@ authorizes:
 
 Readiness gate: exact-Candidate CI run 31480599124 is green, local and visual
 QA above are current, the corrected Candidate is clean and pushed, and Sol #2
-is now authorized as the final milestone review launch.
+is now authorized as the final milestone review launch. Sol #2 was launched as
+agent `019ff04c-276c-7aa0-8728-311142ababed` (`Aquinas`); no third launch is
+authorized.
 
 The complete Sol #1 verdict and P1 correction requirements are recorded in
 [`sol-1-corrective.md`](sol-1-corrective.md). The prior Candidate's exact CI is

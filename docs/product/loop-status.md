@@ -70,11 +70,11 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`SOL_REVIEW_READY`
+`SOL_REVIEW`
 
 Current Milestone State:
 
-`SOL_REVIEW_READY`
+`SOL_REVIEW_RUNNING`
 
 Current Phase:
 
@@ -105,7 +105,7 @@ Review Tier:
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — Sol #1 launched; Sol #2 remains only for CORRECTIVE_REQUIRED`
+`2 / 2 — Sol #1 corrective review and final Sol #2 launched; no third launch`
 
 Milestone Review Runtime:
 
@@ -113,19 +113,18 @@ Milestone Review Runtime:
 019ff01d-dfae-7d80-9d24-5cff183ecd8a` returned `CORRECTIVE_REQUIRED`; record:
 `docs/product/reviews/PR-7G/sol-1-corrective.md`
 Corrected Candidate `08e1c4bc14269b110c24b4694819b652284aae46` now contains all
-four P1 fixes and the refreshed local/visual test evidence; Sol #2 is not yet
-launched.
-Exact Candidate CI is green; the readiness record is now eligible for the
-final authorized Sol #2 launch.
+four P1 fixes and the refreshed local/visual test evidence; Sol #2 is now
+running as agent `019ff04c-276c-7aa0-8728-311142ababed` (`Aquinas`). No third
+launch is authorized.
 
 Latest Reviewer Runtime Event:
 
-`EXACT_CANDIDATE_CI_PASS — run 31480599124 passed all six mandatory jobs on
-Candidate `08e1c4bc`; Sol #2 is the final authorized launch.`
+`SOL_2_LAUNCHED — final authorized `sol_milestone_reviewer` agent
+019ff04c-276c-7aa0-8728-311142ababed; no third launch is permitted.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`4 / 1`
+`4 / 2`
 
 Current Outer Review Budget State:
 
@@ -147,7 +146,7 @@ Exact-SHA CI:
 Current PR Head CI:
 
 `PASS — exact Candidate run 31480599124 is green; current head after it is
-governance-only metadata commit e82e9644`
+governance-only metadata commit 160f10df`
 
 Integration Policy:
 
@@ -197,9 +196,11 @@ Merge Commit SHA:
 
 Next Action:
 
-`Commit/push this CI-pass checkpoint, then launch the one remaining authorized
-Sol #2 comprehensive review against the corrected Candidate and current
-governance head. Do not launch a third reviewer.`
+`Wait on the same Sol #2 reviewer. Do not launch another reviewer. If PASS,
+create the exact Freeze record and follow AUTO_MERGE_AFTER_FREEZE integration
+gates; if CORRECTIVE_REQUIRED, park at PARKED_REVIEW_LIMIT because the
+milestone's two-launch budget is exhausted; if HUMAN_REVIEW_REQUIRED, park the
+protected decision in the human-review queue.`
 
 Human Authorization State:
 
