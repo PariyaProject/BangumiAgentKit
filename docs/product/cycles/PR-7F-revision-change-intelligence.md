@@ -173,7 +173,7 @@ and handle partial, unknown, not-computable, and unavailable results correctly.
 
 - Review Tier: `TIER_2`
 - Generic subagent budget: `0` authorized / `0` consumed
-- Total Sol budget: `2` authorized / `0` consumed / `2` remaining
+- Total Sol budget: `2` authorized / `1` consumed / `1` remaining
 - Review execution: `SEQUENTIAL_ONLY`
 - Automatic Sol #3: `PROHIBITED`
 - Standing reviewer: `sol_milestone_reviewer`
@@ -207,12 +207,12 @@ The Review Readiness Gate is complete for Candidate
   protected human-only blocker;
 - mandatory exact-SHA CI run `31463062377` passed all six jobs.
 
-Sol #1 is now authorized but not consumed: standing reviewer
-`sol_milestone_reviewer`, `high` reasoning, next launch ordinal `#1`. The
-reviewer must inspect the actual Base..Candidate diff and return one of the
-recorded verdicts. A `PASS` freezes this Candidate without Sol #2; a
-`CORRECTIVE_REQUIRED` permits one sequential Sol #2 only after Luna creates a
-new validated Candidate.
+Sol #1 has been launched: reviewer agent
+`019fef66-d5dd-7901-9a92-7b4a04039c31` (`Locke`), standing reviewer
+`sol_milestone_reviewer`, `high` reasoning. The reviewer must inspect the actual
+Base..Candidate diff and return one of the recorded verdicts. A `PASS` freezes
+this Candidate without Sol #2; a `CORRECTIVE_REQUIRED` permits one sequential
+Sol #2 only after Luna creates a new validated Candidate.
 
 ## Acceptance Criteria
 

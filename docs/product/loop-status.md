@@ -60,7 +60,7 @@ Current Milestone State:
 
 Current Phase:
 
-`PRE_SOL_1_REVIEW_READINESS_COMPLETE`
+`SOL_1_IN_PROGRESS`
 
 Execution Runtime:
 
@@ -96,11 +96,11 @@ Sol Launches Authorized:
 
 Sol Launches Consumed:
 
-0 under the current portable `UNATTENDED_TIER2` authorization
+1 under the current portable `UNATTENDED_TIER2` authorization (`Sol #1`)
 
 Sol Launches Remaining:
 
-2
+1
 
 Review Execution:
 
@@ -151,9 +151,10 @@ Review Readiness Evidence:
 
 Review Launch Readiness:
 
-- next launch ordinal: `Sol #1`;
+- launched ordinal: `Sol #1`;
+- reviewer agent: `019fef66-d5dd-7901-9a92-7b4a04039c31` (`Locke`);
 - reviewer: `sol_milestone_reviewer` at `high` reasoning;
-- accounting before launch: `2 authorized / 0 consumed / 2 remaining`;
+- accounting after launch: `2 authorized / 1 consumed / 1 remaining`;
 - if Sol #1 returns `PASS`, freeze this exact Candidate without Sol #2; if it
   returns `CORRECTIVE_REQUIRED`, use the one remaining sequential launch only
   after a new corrected Candidate and exact-SHA CI.
@@ -168,10 +169,10 @@ authorize a different Cycle or Sol #3.
 
 Next Action:
 
-Launch the recorded Sol #1 `sol_milestone_reviewer` comprehensive review
-against Base `d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
-`433e80cf1da7a5994513053c3391487d1c911a3e`. Persist the verdict and budget
-usage before taking the tier-specific next action.
+Await the recorded Sol #1 `sol_milestone_reviewer` verdict for Base
+`d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
+`433e80cf1da7a5994513053c3391487d1c911a3e`; persist the verdict before taking
+the tier-specific next action.
 
 ---
 
