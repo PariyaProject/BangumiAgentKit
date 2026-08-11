@@ -119,7 +119,7 @@ launch is authorized.
 
 Latest Reviewer Runtime Event:
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — two bounded waits on final authorized
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — five bounded waits on final authorized
 Sol #2 agent 019ff04c-276c-7aa0-8728-311142ababed returned no terminal status;
 the same reviewer remains open and launch accounting is unchanged.`
 
