@@ -20,6 +20,14 @@ Before substantial product work, always read:
 
 If an active cycle plan is referenced by `loop-status.md`, read it too.
 
+Reusable Goal execution profiles live under `docs/agent/goals/`. When a
+`/goal` invocation selects a profile, read it after the mandatory governance
+documents above and before acting. A profile may narrow execution mode or
+specialize an explicitly authorized model, subagent, or review budget, but it
+must never weaken this file's security, source, Git, human-approval, Freeze, or
+governance rules. Goal profiles are execution overlays, not competing sources
+of repository policy or runtime progress.
+
 ## Budget-First Development Model
 
 The default governance mode is:
