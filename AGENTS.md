@@ -194,6 +194,20 @@ not blindly duplicate its visual design.
 
 ## Git / CI
 
+Never use `git worktree` or create an additional Git working tree for this
+repository. Use the existing checkout and ordinary branches only. When branch
+switching is blocked by uncommitted work, preserve that work explicitly on a
+temporary branch, complete the branch operation in the existing checkout, then
+restore the original uncommitted state and remove the temporary branch only
+after verification.
+
+Before moving, merging, resetting, or pushing `master`, inspect its relationship
+to `origin/master`, all unpublished local commits, and the active feature branch.
+Do not publish unrelated local commits merely to deliver a governance change.
+Any intentional rewrite or removal of an unpublished local `master` commit
+requires explicit human authorization after reporting where that commit remains
+recoverable.
+
 Never force-push shared frozen history.
 
 Never create release tags or publish packages autonomously.
