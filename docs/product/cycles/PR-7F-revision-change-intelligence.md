@@ -238,7 +238,8 @@ the historical Sol timeout above.
 - implementation Candidate SHA:
   `433e80cf1da7a5994513053c3391487d1c911a3e`;
 - exact Candidate CI: run `31463062377`, successful across all six jobs;
-- new-task budget before launch: `1 authorized / 0 consumed / 1 remaining`;
+- reviewer agent: `019fef85-b436-7812-b8a0-3fc13d89dde1` (`Popper`);
+- new-task budget after launch: `1 authorized / 1 consumed / 0 remaining`;
 - maximum new launches in this task: `1`.
 
 If this fresh review does not return `PASS`, the feature must not be merged;

@@ -60,7 +60,7 @@ Current Milestone State:
 
 Current Phase:
 
-`MANUAL_FINALIZATION_REVIEW_READY`
+`MANUAL_FINALIZATION_SOL_IN_PROGRESS`
 
 Execution Runtime:
 
@@ -166,7 +166,8 @@ Manual Finalization Review Authorization:
 
 - user-authorized new budget for this one-off task: `1` launch;
 - reviewer: `sol_milestone_reviewer` at `high` reasoning;
-- new-task accounting before launch: `1 authorized / 0 consumed / 1 remaining`;
+- reviewer agent: `019fef85-b436-7812-b8a0-3fc13d89dde1` (`Popper`);
+- new-task accounting after launch: `1 authorized / 1 consumed / 0 remaining`;
 - this is a fresh manual-finalization call and does not erase the historical
   timeout record above;
 - no additional Sol launch is authorized by this task.
@@ -181,7 +182,7 @@ authorize a different Cycle or Sol #3.
 
 Next Action:
 
-Launch the one newly authorized manual-finalization
+Await the one newly authorized manual-finalization
 `sol_milestone_reviewer` review against Base
 `d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
 `433e80cf1da7a5994513053c3391487d1c911a3e`. If it does not return `PASS`, do
