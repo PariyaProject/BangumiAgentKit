@@ -230,6 +230,38 @@ const DISCOVERY_FIELD_LABELS: Record<string, string> = {
   'sort:date': '排序·日期',
 };
 
+const DISCOVERY_OPERATOR_LABELS: Record<string, string> = {
+  eq: '等于',
+  in: '属于',
+  contains_all: '包含全部',
+  contains_any: '包含任一',
+  gte: '至少',
+  lte: '至多',
+  lt: '小于',
+  range: '范围',
+};
+
+const DISCOVERY_SORT_LABELS: Record<string, string> = {
+  relevance: '匹配度',
+  heat: '热度',
+  rank: '排名',
+  score: '评分',
+  date: '日期',
+};
+
+const DISCOVERY_ORDER_LABELS: Record<string, string> = {
+  asc: '升序',
+  desc: '降序',
+};
+
+const DISCOVERY_MAX_FACETS = 12;
+const DISCOVERY_MAX_VALUES_PER_FACET = 6;
+const DISCOVERY_MAX_FACET_VALUE_LENGTH = 32;
+const DISCOVERY_MAX_FACET_LENGTH = 128;
+const DISCOVERY_MAX_PLAN_FILTERS_PER_GROUP = 8;
+const DISCOVERY_MAX_PLAN_FILTER_LENGTH = 128;
+const DISCOVERY_MAX_RENDERED_ITEMS = 12;
+
 function asList(value: string | readonly string[] | undefined): string[] {
   if (value === undefined) return [];
   return typeof value === 'string' ? [value] : [...value];
@@ -239,9 +271,48 @@ function labelList(
   value: string | readonly string[] | undefined,
   labels: Record<string, string>,
 ): string {
-  return asList(value)
-    .map((item) => labels[item] || item)
-    .join('、');
+  return boundedValuesLabel(asList(value).map((item) => labels[item] || item));
+}
+
+function boundedListLabel(value: readonly string[]): string {
+  return boundedValuesLabel(value);
+}
+
+function boundedValuesLabel(values: readonly string[]): string {
+  const normalized = values
+    .slice(0, DISCOVERY_MAX_VALUES_PER_FACET)
+    .map((item) => truncateText(item, DISCOVERY_MAX_FACET_VALUE_LENGTH).text);
+  const visible: string[] = [];
+
+  for (const value of normalized) {
+    const omittedAfter = Math.max(0, values.length - visible.length - 1);
+    const candidate = [
+      ...visible,
+      value,
+      ...(omittedAfter > 0 ? [`另有 ${omittedAfter} 项`] : []),
+    ].join('、');
+    if (Array.from(candidate).length > DISCOVERY_MAX_FACET_LENGTH) break;
+    visible.push(value);
+  }
+
+  const omitted = Math.max(0, values.length - visible.length);
+  const result = [...visible, ...(omitted > 0 ? [`另有 ${omitted} 项`] : [])].join('、');
+  return boundedFacet(result);
+}
+
+function boundedFacet(value: string): string {
+  return truncateText(value, DISCOVERY_MAX_FACET_LENGTH).text;
+}
+
+function boundedPlanLabels(values: string[]): string[] {
+  const visible = values
+    .slice(0, DISCOVERY_MAX_PLAN_FILTERS_PER_GROUP)
+    .map((value) => truncateText(value, DISCOVERY_MAX_PLAN_FILTER_LENGTH).text);
+  const omitted = Math.max(0, values.length - visible.length);
+  if (omitted > 0) {
+    visible.push(`另有 ${omitted} 项计划条件未展开`);
+  }
+  return visible;
 }
 
 function rangeLabel(value: { min?: number; max?: number } | undefined): string | undefined {
@@ -254,23 +325,23 @@ function rangeLabel(value: { min?: number; max?: number } | undefined): string |
 
 function queryFacets(input: DiscoveryQueryInputLike): string[] {
   const facets: string[] = [];
-  if (input.keyword) facets.push(`关键词：${input.keyword}`);
+  if (input.keyword) facets.push(`关键词：${boundedFacet(input.keyword)}`);
   if (input.media) facets.push(`媒介：${labelList(input.media, DISCOVERY_MEDIA_LABELS)}`);
   if (input.categories)
     facets.push(`分类：${labelList(input.categories, DISCOVERY_CATEGORY_LABELS)}`);
-  if (input.season) facets.push(`季度：${input.season}`);
+  if (input.season) facets.push(`季度：${boundedFacet(input.season)}`);
   else if (input.year !== undefined && input.month !== undefined)
     facets.push(`日期：${input.year}-${String(input.month).padStart(2, '0')}`);
   else if (input.year !== undefined) facets.push(`年份：${input.year}`);
   if (input.from || input.to)
     facets.push(`日期：${input.from || '起始未知'} 至 ${input.to || '结束未知'}`);
-  if (input.tags && input.tags.length > 0) facets.push(`标签：${input.tags.join('、')}`);
+  if (input.tags && input.tags.length > 0) facets.push(`标签：${boundedListLabel(input.tags)}`);
   if (input.metaTags && input.metaTags.length > 0)
-    facets.push(`元标签：${input.metaTags.join('、')}`);
+    facets.push(`元标签：${boundedListLabel(input.metaTags)}`);
   if (input.excludeMetaTags && input.excludeMetaTags.length > 0)
-    facets.push(`排除：${input.excludeMetaTags.join('、')}`);
+    facets.push(`排除：${boundedListLabel(input.excludeMetaTags)}`);
   if (input.concepts && input.concepts.length > 0)
-    facets.push(`概念：${input.concepts.join('、')}`);
+    facets.push(`概念：${boundedListLabel(input.concepts)}`);
   for (const [label, value] of [
     ['评分', rangeLabel(input.rating)],
     ['评分人数', rangeLabel(input.ratingCount)],
@@ -283,27 +354,56 @@ function queryFacets(input: DiscoveryQueryInputLike): string[] {
     facets.push(
       `NSFW：${typeof input.nsfw === 'boolean' ? (input.nsfw ? '包含' : '排除') : input.nsfw}`,
     );
-  if (input.sort) facets.push(`排序：${input.sort}${input.order ? ` / ${input.order}` : ''}`);
+  if (input.sort)
+    facets.push(
+      `排序：${DISCOVERY_SORT_LABELS[input.sort] || input.sort}${
+        input.order ? ` / ${DISCOVERY_ORDER_LABELS[input.order] || input.order}` : ''
+      }`,
+    );
   if (input.resultMode) facets.push(`模式：${input.resultMode === 'all' ? '尽量完整' : 'Top'}`);
   if (input.limit !== undefined) facets.push(`上限：${input.limit}`);
-  return facets;
+  const bounded = facets.slice(0, DISCOVERY_MAX_FACETS);
+  const omitted = Math.max(0, facets.length - bounded.length);
+  if (omitted > 0) {
+    bounded[DISCOVERY_MAX_FACETS - 1] = `另有 ${omitted} 个查询条件未展开`;
+  }
+  return bounded.map(boundedFacet);
 }
 
-function filterValueLabel(value: unknown): string {
-  if (Array.isArray(value)) return value.join('、');
+function filterValueLabel(value: unknown, field?: string): string {
+  const labels =
+    field === 'media'
+      ? DISCOVERY_MEDIA_LABELS
+      : field === 'categories'
+        ? DISCOVERY_CATEGORY_LABELS
+        : field?.startsWith('sort:')
+          ? DISCOVERY_SORT_LABELS
+          : field === 'order'
+            ? DISCOVERY_ORDER_LABELS
+            : undefined;
+  const mapValue = (item: unknown): string => {
+    const stringValue = String(item);
+    return labels?.[stringValue] || stringValue;
+  };
+
+  if (Array.isArray(value)) return boundedListLabel(value.map(mapValue));
   if (value && typeof value === 'object') {
     const range = value as { min?: number; max?: number; from?: string; to?: string };
     if (range.from !== undefined || range.to !== undefined)
-      return `${range.from || '?'} 至 ${range.to || '?'}`;
-    return rangeLabel(range) || '范围已指定';
+      return boundedFacet(`${range.from || '?'} 至 ${range.to || '?'}`);
+    return boundedFacet(rangeLabel(range) || '范围已指定');
   }
   if (typeof value === 'boolean') return value ? '是' : '否';
-  return String(value);
+  return boundedFacet(mapValue(value));
 }
 
 function filterLabel(filter: DiscoveryPlanFilterLike): string {
   const field = DISCOVERY_FIELD_LABELS[filter.field] || filter.field;
-  return `${field} ${filter.operator} ${filterValueLabel(filter.value)}`;
+  const operator = DISCOVERY_OPERATOR_LABELS[filter.operator] || filter.operator;
+  return truncateText(
+    `${field} ${operator} ${filterValueLabel(filter.value, filter.field)}`,
+    DISCOVERY_MAX_PLAN_FILTER_LENGTH,
+  ).text;
 }
 
 function uniqueStrings(values: string[]): string[] {
@@ -335,8 +435,11 @@ export function buildDiscoveryResultsViewModel(
   maxItems = 12,
 ): DiscoveryResultsViewModel {
   const facets = queryFacets(input);
+  const itemCap = Number.isFinite(maxItems)
+    ? Math.min(DISCOVERY_MAX_RENDERED_ITEMS, Math.max(1, Math.floor(maxItems)))
+    : DISCOVERY_MAX_RENDERED_ITEMS;
   const cappedItems: DiscoveryResultsItemViewModel[] = result.items
-    .slice(0, maxItems)
+    .slice(0, itemCap)
     .map((item) => ({
       id: item.id,
       name: item.name,
@@ -353,9 +456,10 @@ export function buildDiscoveryResultsViewModel(
       image: item.image,
     }));
   const coverage = result.coverage;
-  const hiddenCount = Math.max(
+  const hiddenCount = Math.max(0, result.items.length - cappedItems.length);
+  const observedNotReturnedCount = Math.max(
     0,
-    (coverage.matched ?? result.items.length) - cappedItems.length,
+    (coverage.matched ?? result.items.length) - (coverage.returned ?? result.items.length),
   );
   const evidenceOperations = result.evidence
     .map((item) => item.source?.operation)
@@ -374,7 +478,7 @@ export function buildDiscoveryResultsViewModel(
     ...(result.explanation?.limitations || []),
     ...(result.limitations || []),
   ]);
-  const queryLabel = input.keyword ? `搜索：${input.keyword}` : '受控条目发现';
+  const queryLabel = input.keyword ? `搜索：${boundedFacet(input.keyword)}` : '受控条目发现';
 
   return {
     template: 'discovery-results',
@@ -386,12 +490,13 @@ export function buildDiscoveryResultsViewModel(
     },
     items: cappedItems,
     hiddenCount: hiddenCount > 0 ? hiddenCount : undefined,
+    observedNotReturnedCount: observedNotReturnedCount > 0 ? observedNotReturnedCount : undefined,
     plan: {
       operation: result.plan.operation,
       quality: result.plan.quality,
-      pushdown: result.plan.pushdown.map(filterLabel),
-      postFilters: result.plan.postFilters.map(filterLabel),
-      derivedFilters: result.plan.derivedFilters.map(filterLabel),
+      pushdown: boundedPlanLabels(result.plan.pushdown.map(filterLabel)),
+      postFilters: boundedPlanLabels(result.plan.postFilters.map(filterLabel)),
+      derivedFilters: boundedPlanLabels(result.plan.derivedFilters.map(filterLabel)),
       limitations,
     },
     coverage: {
@@ -411,7 +516,7 @@ export function buildDiscoveryResultsViewModel(
       reason: coverage.reason,
     },
     source: {
-      label: 'Bangumi official v0',
+      label: 'Bangumi 官方来源',
       operations,
       evidenceCount: result.evidence.length,
       retrievedAt: evidenceRetrievedAt,

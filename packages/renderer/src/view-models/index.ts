@@ -82,6 +82,7 @@ export interface DiscoveryResultsViewModel {
   };
   items: DiscoveryResultsItemViewModel[];
   hiddenCount?: number;
+  observedNotReturnedCount?: number;
   plan: {
     operation: string;
     quality: string;

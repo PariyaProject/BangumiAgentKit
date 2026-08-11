@@ -55,6 +55,33 @@ function numberLabel(value: number | undefined, suffix = ''): string {
   return value === undefined ? `未知${suffix}` : `${value}${suffix}`;
 }
 
+function operationLabel(operation: string): string {
+  if (operation === 'searchSubjects') return '条目搜索';
+  if (operation === 'browseSubjects') return '条目浏览';
+  return '来源操作';
+}
+
+function qualityLabel(quality: string): string {
+  if (quality === 'exact') return '条件精确';
+  if (quality === 'bounded_exact') return '有界精确';
+  if (quality === 'partial_possible') return '可能部分覆盖';
+  if (quality === 'unsupported') return '条件不支持';
+  return '质量未知';
+}
+
+function warningLabel(code: string): string {
+  const labels: Record<string, string> = {
+    DISCOVERY_AMBIGUOUS_CONCEPT: '概念存在歧义',
+    DISCOVERY_UNKNOWN_CONCEPT: '概念未解析',
+    DISCOVERY_BUDGET_EXCEEDED: '执行预算达到',
+    DISCOVERY_HYDRATION_BUDGET_EXCEEDED: '详情预算达到',
+    DISCOVERY_HYDRATION_UNRESOLVED: '详情字段未解析',
+    DISCOVERY_OUTPUT_TRUNCATED: '结果输出已截断',
+    DISCOVERY_UNSUPPORTED_FILTER: '条件不受支持',
+  };
+  return labels[code] || '发现告警';
+}
+
 const FilterGroup: React.FC<{
   label: string;
   values: string[];
@@ -120,7 +147,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         }}
       >
         状态：{stateLabel(viewModel.state)} · 来源：{viewModel.source.label}
-        {viewModel.source.experimental ? ' · 搜索接口标记为 experimental' : ''}
+        {viewModel.source.experimental ? ' · 搜索源标记为实验性' : ''}
       </div>
 
       <div
@@ -173,9 +200,13 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
           {viewModel.coverage.hydrationsUnresolved > 0
             ? ` · 未解析 ${viewModel.coverage.hydrationsUnresolved}`
             : ''}
-          {viewModel.coverage.reason ? ` · ${viewModel.coverage.reason}` : ''}
         </div>
       )}
+      {viewModel.coverage.reason ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          覆盖说明：{viewModel.coverage.reason}
+        </div>
+      ) : null}
 
       {viewModel.items.length === 0 ? (
         <div
@@ -295,8 +326,13 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 
       {viewModel.hiddenCount ? (
         <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-          另有 {viewModel.hiddenCount} 条匹配结果未在卡片中展开；完整结构化结果仍由{' '}
-          `bangumi.query_subjects` 提供。
+          另有 {viewModel.hiddenCount} 条本次结构化结果已返回的条目未在卡片中展开。
+        </div>
+      ) : null}
+      {viewModel.observedNotReturnedCount ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          另有 {viewModel.observedNotReturnedCount}{' '}
+          个匹配候选已被引擎观察到但未纳入本次结构化返回；此处仅显示计数，不代表其字段事实可用。
         </div>
       ) : null}
 
@@ -312,11 +348,11 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         }}
       >
         <div style={{ color: theme.accent, fontWeight: 700, fontSize: '13px' }}>计划与证据边界</div>
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          {viewModel.plan.operation} · 质量 {viewModel.plan.quality} ·{' '}
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          {operationLabel(viewModel.plan.operation)} · 质量 {qualityLabel(viewModel.plan.quality)} ·{' '}
           {viewModel.source.evidenceCount} 条字段证据
           {viewModel.source.operations.length > 0
-            ? ` · 操作 ${viewModel.source.operations.join('、')}`
+            ? ` · 来源路径 ${viewModel.source.operations.map(operationLabel).join('、')}`
             : ' · 操作未知'}
           {viewModel.source.retrievedAt ? ` · 获取于 ${viewModel.source.retrievedAt}` : ''}
         </div>
@@ -327,12 +363,15 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 
       {visibleWarnings.length > 0 ? (
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-          警告：{visibleWarnings.map((warning) => `${warning.code}：${warning.message}`).join('；')}
+          警告：
+          {visibleWarnings
+            .map((warning) => `${warningLabel(warning.code)}：${warning.message}`)
+            .join('；')}
           {hiddenWarnings > 0 ? `；另有 ${hiddenWarnings} 条警告` : ''}
         </div>
       ) : null}
       {visibleLimitations.length > 0 ? (
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
           限制：{visibleLimitations.join('；')}
           {hiddenLimitations > 0 ? `；另有 ${hiddenLimitations} 条限制` : ''}
         </div>
