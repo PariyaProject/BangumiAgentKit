@@ -113,6 +113,12 @@ Milestone Review Runtime:
 019ff01d-dfae-7d80-9d24-5cff183ecd8a`; waits on this same agent consume zero
 additional launches`
 
+Latest Reviewer Runtime Event:
+
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — one bounded wait returned timed_out with
+no final status; the same reviewer remains open, so launch consumption is
+unchanged and waiting continues.`
+
 Outer Sol Review Budget Authorized / Consumed:
 
 `4 / 1`
