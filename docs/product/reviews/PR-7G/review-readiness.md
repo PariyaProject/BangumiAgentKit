@@ -13,29 +13,27 @@ Feature branch: `codex/pr-7g-series-watch-order`
 Pull request: [#2](https://github.com/PariyaProject/BangumiAgentKit/pull/2)
 
 Implementation Candidate SHA:
-`PENDING_CORRECTED_CANDIDATE` (prior Candidate
-`3459689e69c8c14774d31a967b2161ed1e686a9d` was rejected by Sol #1 for
-correction; the corrected implementation is now validated in the working tree)
+`08e1c4bc14269b110c24b4694819b652284aae46`
 
 Governance record before reviewer launch:
-`de9c2264173937c506eaec93cd88515d5e99d897`
+`PENDING_CORRECTED_REVIEW_RECORD`
 
 The metadata head also passed [GitHub Actions run
 31476551304](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476551304)
 across all six mandatory jobs; this does not replace the exact Candidate CI
 evidence above.
 
-The prior Candidate's exact CI is historical evidence only. The corrected
-production/test tree is not review-ready until its exact commit SHA is
-recorded below and mandatory remote CI is green for that SHA. After that point,
-later commits must remain governance metadata unless the one authorized
-corrective Candidate changes again.
+This corrected Candidate contains the production, test, renderer, and
+correction-record tree validated below. The prior Candidate's exact CI is
+historical evidence only. Later commits must remain governance metadata unless
+the one authorized corrective Candidate changes again.
 
 ## Exact-Candidate CI
 
 [GitHub Actions run 31476188502](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476188502)
 passed all six mandatory jobs for the prior Candidate SHA; this is historical
-evidence and does not authorize Sol #2. Corrected-Candidate CI is pending.
+evidence and does not authorize Sol #2. Corrected-Candidate CI is pending
+until the Candidate is pushed.
 
 - `sqlite-default`
 - `host-integration`
@@ -46,7 +44,7 @@ evidence and does not authorize Sol #2. Corrected-Candidate CI is pending.
 
 ## Local validation
 
-The corrected working tree passed:
+The corrected Candidate passed locally:
 
 - `pnpm build`
 - `pnpm typecheck`
@@ -92,8 +90,9 @@ authorizes:
 
 1. one comprehensive `sol_milestone_reviewer` launch at the Candidate above;
 2. Sol #1 returned `CORRECTIVE_REQUIRED`; one and only one further
-   comprehensive launch is authorized after Luna creates a corrected Candidate
-   and refreshes all evidence;
+   comprehensive launch is authorized after Candidate
+   `08e1c4bc14269b110c24b4694819b652284aae46` has green exact-SHA CI and the
+   refreshed readiness record is committed;
 3. no automatic third launch.
 
 The complete Sol #1 verdict and P1 correction requirements are recorded in

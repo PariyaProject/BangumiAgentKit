@@ -70,15 +70,15 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`MILESTONE_CORRECTION`
+`CORRECTED_CANDIDATE_CI`
 
 Current Milestone State:
 
-`CORRECTIVE_REQUIRED`
+`CORRECTED_AWAITING_CI`
 
 Current Phase:
 
-`CORRECTIVE`
+`CI_PREFLIGHT`
 
 Current Milestone:
 
@@ -112,12 +112,14 @@ Milestone Review Runtime:
 `COMPLETED — Sol #1 `sol_milestone_reviewer` agent
 019ff01d-dfae-7d80-9d24-5cff183ecd8a` returned `CORRECTIVE_REQUIRED`; record:
 `docs/product/reviews/PR-7G/sol-1-corrective.md`
+Corrected Candidate `08e1c4bc14269b110c24b4694819b652284aae46` now contains all
+four P1 fixes and the refreshed local/visual test evidence; Sol #2 is not yet
+launched.
 
 Latest Reviewer Runtime Event:
 
-`TERMINAL_VERDICT — Sol #1 returned `CORRECTIVE_REQUIRED`; four P1 findings are
-recorded in the review artifact. The reviewer is no longer needed and is being
-closed; launch accounting remains milestone 1/2 and outer 1/4.`
+`CORRECTED_CANDIDATE_COMMITTED — Sol #1's four P1 findings are addressed in
+Candidate `08e1c4b`; launch accounting remains milestone 1/2 and outer 1/4.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -129,21 +131,21 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`3459689e69c8c14774d31a967b2161ed1e686a9d` — prior Candidate rejected for
-correction; a new Candidate is required before Sol #2
+`08e1c4bc14269b110c24b4694819b652284aae46`
 
 Governance Record SHA:
 
-`de9c2264173937c506eaec93cd88515d5e99d897` — review-readiness metadata only
+`PENDING — corrected review-readiness metadata must be committed after this
+Candidate and before Sol #2`
 
 Exact-SHA CI:
 
-`PASS — [GitHub Actions run 31476188502](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476188502), all six mandatory jobs green for the exact Candidate SHA`
+`RUNNING — [GitHub Actions run 31480599124](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31480599124) on exact Candidate SHA; wait for all six mandatory jobs`
 
 Current PR Head CI:
 
-`PASS — prior metadata-head run 31476816200; stale for the pending corrected
-Candidate`
+`RUNNING — exact Candidate run 31480599124 is also current PR head; prior
+metadata-head run 31476816200 is stale`
 
 Integration Policy:
 
@@ -185,7 +187,7 @@ Integration State:
 
 Implementation Frozen SHA:
 
-`N/A — Sol #1 requires correction; awaiting a new Candidate and final review`
+`N/A — awaiting Sol #2 after corrected Candidate CI and readiness metadata`
 
 Merge Commit SHA:
 
@@ -193,8 +195,8 @@ Merge Commit SHA:
 
 Next Action:
 
-`Apply all four P1 corrections, persist a new Candidate SHA, rerun the local
-validation/visual QA ladder and exact mandatory remote CI, then request the one
+`Push the corrected Candidate, wait for exact-SHA mandatory CI, commit the
+refreshed readiness metadata with its governance SHA, then launch the one
 remaining authorized Sol #2 review. Do not launch Sol #2 before readiness is
 true; do not launch a third reviewer.`
 
