@@ -61,13 +61,13 @@ Current Milestone State:
 
 Current Phase:
 
-`MASTER_INTEGRATED`
+`MASTER_MERGE_CREATED`
 
 Execution Runtime:
 
 The one-off manual finalization review returned PASS. The cumulative PR-7D,
-PR-7E, and PR-7F implementation Candidate is frozen and has been integrated
-from the master side; no new Product Cycle is active.
+PR-7E, and PR-7F implementation Candidate is frozen and the non-squashed
+master merge commit has been created; final remote validation remains.
 
 Primary Model:
 
@@ -200,9 +200,9 @@ are complete. No different Cycle or Sol launch is authorized by this ledger.
 
 Next Action:
 
-`MASTER-ONLY HARNESS CORRECTIVE` — recommended follow-up only; do not perform
-it in this completed Goal. Do not modify the frozen production implementation
-or start another Product Cycle.
+Validate the merged tree, push `master`, verify PR #1 is merged, retire the
+feature branch safely, and then stop. Do not modify the frozen production
+implementation or start another Product Cycle.
 
 ---
 
@@ -272,12 +272,12 @@ Canonical master Harness SHA:
 
 Merge commit SHA:
 
-`PENDING`
+`5424131e124b5f2927fb3abb7f2fcb1942745ce3`
 
 The merge is a non-squashed `--no-ff` merge. Master-side Harness content is
 authoritative; only the three documented governance-ledger conflicts were
-reconciled manually. Final push, PR merge verification, and safe feature-branch
-retirement remain part of this integration record.
+reconciled manually. Final validation, push, PR merge verification, and safe
+feature-branch retirement remain part of this integration record.
 
 ---
 
