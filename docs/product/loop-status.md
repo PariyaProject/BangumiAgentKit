@@ -192,9 +192,9 @@ this same agent consume no additional launch.`
 
 Latest Reviewer Runtime Event:
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — a bounded wait returned timed_out with
-no terminal verdict; the same Sol #1 agent remains open. No launch was added
-or consumed; continue waiting on 019ff073-7b21-79b3-ae85-6e10676edb96.`
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — two bounded waits returned timed_out
+with no terminal verdict; the same Sol #1 agent remains open. No launch was
+added or consumed; continue waiting on 019ff073-7b21-79b3-ae85-6e10676edb96.`
 
 Execution-budget pause state:
 
