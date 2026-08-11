@@ -252,11 +252,90 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     });
   });
 
+  it('RevisionService preserves nullable revision fields as unknown partial data', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 10,
+          offset: 0,
+          data: [
+            {
+              id: 103,
+              type: 1,
+              summary: null,
+              created_at: null,
+              creator: { username: null, nickname: null },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const result = await new RevisionService(
+      new HttpClient({ fetchFn: mockFetch }),
+    ).getRevisionIntelligence('subject', 123);
+
+    expect(result.state).toBe('partial');
+    expect(result.error).toBeUndefined();
+    expect(result.items[0]).toMatchObject({ id: 103, type: 1 });
+    expect(result.items[0]?.summary).toBeUndefined();
+    expect(result.items[0]?.createdAt).toBeUndefined();
+    expect(result.items[0]?.creator).toBeUndefined();
+    expect(result.coverage.missingFields).toEqual({
+      'revision.summary': 1,
+      'revision.createdAt': 1,
+      'revision.creator.username': 1,
+      'revision.creator.nickname': 1,
+    });
+  });
+
+  it('RevisionService bounds long revision fields before returning renderable data', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 10,
+          offset: 0,
+          data: [
+            {
+              id: 104,
+              type: 1,
+              summary: '摘要'.repeat(1_100),
+              created_at: '2026-01-01T00:00:00Z',
+              creator: { username: 'u'.repeat(200), nickname: 'n'.repeat(200) },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const result = await new RevisionService(
+      new HttpClient({ fetchFn: mockFetch }),
+    ).getRevisionIntelligence('subject', 123);
+    const item = result.items[0]!;
+
+    expect(result.state).toBe('partial');
+    expect(item.summary).toHaveLength(2_000);
+    expect(item.creator?.username).toHaveLength(128);
+    expect(item.creator?.nickname).toHaveLength(128);
+    expect(result.coverage.truncatedFields).toEqual({
+      'revision.summary': 1,
+      'revision.creator.username': 1,
+      'revision.creator.nickname': 1,
+    });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'FIELD_TRUNCATED' })]),
+    );
+  });
+
   it('RevisionService makes one request and preserves public revision failures', async () => {
     const cases = [
-      { status: 404, code: 'NOT_FOUND' },
-      { status: 429, code: 'RATE_LIMITED' },
-      { status: 503, code: 'UPSTREAM_UNAVAILABLE' },
+      { status: 404, code: 'NOT_FOUND', warningCode: 'UPSTREAM_NOT_FOUND' },
+      { status: 429, code: 'RATE_LIMITED', warningCode: 'UPSTREAM_RATE_LIMITED' },
+      { status: 503, code: 'UPSTREAM_UNAVAILABLE', warningCode: 'UPSTREAM_UNAVAILABLE' },
     ] as const;
 
     for (const testCase of cases) {
@@ -270,6 +349,9 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(result.state).toBe('unavailable');
       expect(result.error).toMatchObject({ code: testCase.code });
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: testCase.warningCode })]),
+      );
       expect(result.source.retrievedAt).toBeUndefined();
       expect(result.source.attemptedAt).toBeTruthy();
     }
@@ -288,6 +370,16 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(result.warnings).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
     );
+  });
+
+  it('RevisionService rejects unsupported entity types before making a request', async () => {
+    const mockFetch = vi.fn();
+    const service = new RevisionService(new HttpClient({ fetchFn: mockFetch }));
+
+    await expect(
+      service.getRevisionIntelligence('unsupported' as never, 218707),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('RevisionService routes each supported entity through its official bounded endpoint', async () => {

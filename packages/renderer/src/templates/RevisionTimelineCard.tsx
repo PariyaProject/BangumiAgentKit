@@ -110,6 +110,16 @@ export const RevisionTimelineCard: React.FC<RevisionTimelineCardProps> = ({
         </div>
       ) : null}
 
+      {viewModel.coverage.truncatedFields &&
+      Object.keys(viewModel.coverage.truncatedFields).length > 0 ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          字段已裁剪：
+          {Object.entries(viewModel.coverage.truncatedFields)
+            .map(([field, count]) => `${field} ${count}`)
+            .join('、')}
+        </div>
+      ) : null}
+
       {viewModel.capabilityStates.historical_growth === 'not_computable' ? (
         <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
           历史增长趋势：当前源不支持计算。

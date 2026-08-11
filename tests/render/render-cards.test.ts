@@ -351,6 +351,7 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
           offset: 0,
           truncated,
           missingFields,
+          truncatedFields: {},
         },
         capabilityStates: { historical_growth: 'not_computable' },
         source: {

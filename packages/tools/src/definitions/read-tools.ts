@@ -734,7 +734,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getRevisionIntelligence = defineTool({
     name: 'bangumi.get_revision_intelligence',
     description:
-      '获取指定条目、章节、角色或人物的有界官方修订摘要。返回 observed/returned/total 覆盖、创建时间、修订摘要、来源证据与 partial/unavailable 状态；limit 最大 20。它不宣称完整生命周期历史，也不计算历史增长趋势；需要原始分页请使用 bangumi.list_revisions，需要单条变更详情请使用 bangumi.get_revision。',
+      '获取指定条目、章节、角色或人物的有界官方修订摘要。返回 observed/returned/total 覆盖、创建时间、修订摘要、来源证据与 partial/unavailable 状态；limit 最大 20。createdAt 是官方修订源时间，不是播出时间，也不证明连续采集或完整生命周期历史；本工具不计算历史增长趋势。需要原始分页请使用 bangumi.list_revisions，需要单条变更详情请使用 bangumi.get_revision。',
     input: z.object({
       entityType: z
         .enum(['subject', 'episode', 'character', 'person'])

@@ -256,6 +256,7 @@ export interface RevisionTimelineViewModel {
     truncated: boolean;
     rendered: number;
     missingFields: Record<string, number>;
+    truncatedFields: Record<string, number>;
   };
   capabilityStates: {
     historical_growth: 'not_computable';

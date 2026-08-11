@@ -53,6 +53,7 @@ export interface RevisionIntelligenceResult {
     offset: number;
     truncated: boolean;
     missingFields: Record<string, number>;
+    truncatedFields: Record<string, number>;
   };
   capabilityStates: {
     historical_growth: 'not_computable';
@@ -88,6 +89,9 @@ interface RevisionPagePayload {
 const REVISION_DEFAULT_LIMIT = 10;
 const REVISION_MAX_LIMIT = 20;
 const REVISION_MAX_OFFSET = 1_000_000;
+const REVISION_MAX_SUMMARY_LENGTH = 2_000;
+const REVISION_MAX_TIMESTAMP_LENGTH = 128;
+const REVISION_MAX_CREATOR_FIELD_LENGTH = 128;
 
 const REVISION_LIST_ROUTE: Record<RevisionEntityType, { path: string; idKey: string }> = {
   subject: { path: '/v0/revisions/subjects', idKey: 'subject_id' },
@@ -108,6 +112,18 @@ function boundedRevisionOffset(value: number | undefined): number {
 
 function revisionSchemaError(path: string, expected: string): BangumiError {
   return new BangumiError('PARSER_ERROR', `revision.${path} 应为 ${expected}`, false);
+}
+
+function boundedRevisionText(
+  value: string | undefined,
+  field: string,
+  maxLength: number,
+  truncatedFields: Record<string, number>,
+): string | undefined {
+  if (!value) return undefined;
+  if (value.length <= maxLength) return value;
+  truncatedFields[field] = (truncatedFields[field] || 0) + 1;
+  return `${value.slice(0, maxLength - 1)}…`;
 }
 
 function parseRevisionPage(raw: unknown): RevisionPagePayload {
@@ -137,13 +153,21 @@ function parseRevisionPage(raw: unknown): RevisionPagePayload {
     ) {
       throw revisionSchemaError(`data[${index}].type`, '非负整数');
     }
-    if (revision.summary !== undefined && typeof revision.summary !== 'string') {
+    if (
+      revision.summary !== undefined &&
+      revision.summary !== null &&
+      typeof revision.summary !== 'string'
+    ) {
       throw revisionSchemaError(`data[${index}].summary`, '字符串');
     }
-    if (revision.created_at !== undefined && typeof revision.created_at !== 'string') {
+    if (
+      revision.created_at !== undefined &&
+      revision.created_at !== null &&
+      typeof revision.created_at !== 'string'
+    ) {
       throw revisionSchemaError(`data[${index}].created_at`, '字符串');
     }
-    if (revision.creator !== undefined) {
+    if (revision.creator !== undefined && revision.creator !== null) {
       if (
         !revision.creator ||
         typeof revision.creator !== 'object' ||
@@ -153,8 +177,12 @@ function parseRevisionPage(raw: unknown): RevisionPagePayload {
       }
       const creator = revision.creator as Record<string, unknown>;
       if (
-        (creator.username !== undefined && typeof creator.username !== 'string') ||
-        (creator.nickname !== undefined && typeof creator.nickname !== 'string')
+        (creator.username !== undefined &&
+          creator.username !== null &&
+          typeof creator.username !== 'string') ||
+        (creator.nickname !== undefined &&
+          creator.nickname !== null &&
+          typeof creator.nickname !== 'string')
       ) {
         throw revisionSchemaError(`data[${index}].creator`, '字符串字段对象');
       }
@@ -246,6 +274,14 @@ export class RevisionService {
     const limit = boundedRevisionLimit(options.limit);
     const offset = boundedRevisionOffset(options.offset);
     const route = REVISION_LIST_ROUTE[entityType];
+    if (!route) {
+      throw new BangumiError(
+        'VALIDATION_ERROR',
+        `Unsupported revision entityType: ${String(entityType)}`,
+        false,
+        400,
+      );
+    }
     const attemptedAt = new Date().toISOString();
 
     try {
@@ -278,20 +314,47 @@ export class RevisionService {
       const sourceOffset = Math.min(REVISION_MAX_OFFSET, page.offset ?? offset);
       const totalKind = page.total === undefined ? 'estimated' : 'exact';
       const total = page.total ?? page.data.length;
-      const items = page.data.map((revision) => {
-        const mapped = mapRevision(revision);
-        return {
-          id: mapped.id,
-          type: mapped.type,
-          summary: mapped.summary || undefined,
-          createdAt: mapped.createdAt || undefined,
-          creator: mapped.creator,
-        };
-      });
       const missingFields: Record<string, number> = {};
+      const truncatedFields: Record<string, number> = {};
       const recordMissing = (field: string) => {
         missingFields[field] = (missingFields[field] || 0) + 1;
       };
+      const items = page.data.map((revision) => {
+        const mapped = mapRevision(revision);
+        const creator = mapped.creator
+          ? {
+              username: boundedRevisionText(
+                mapped.creator.username,
+                'revision.creator.username',
+                REVISION_MAX_CREATOR_FIELD_LENGTH,
+                truncatedFields,
+              ),
+              nickname: boundedRevisionText(
+                mapped.creator.nickname,
+                'revision.creator.nickname',
+                REVISION_MAX_CREATOR_FIELD_LENGTH,
+                truncatedFields,
+              ),
+            }
+          : undefined;
+        return {
+          id: mapped.id,
+          type: mapped.type,
+          summary: boundedRevisionText(
+            mapped.summary,
+            'revision.summary',
+            REVISION_MAX_SUMMARY_LENGTH,
+            truncatedFields,
+          ),
+          createdAt: boundedRevisionText(
+            mapped.createdAt,
+            'revision.createdAt',
+            REVISION_MAX_TIMESTAMP_LENGTH,
+            truncatedFields,
+          ),
+          creator: creator && (creator.username || creator.nickname) ? creator : undefined,
+        };
+      });
       for (const item of items) {
         if (!item.summary) recordMissing('revision.summary');
         if (!item.createdAt) recordMissing('revision.createdAt');
@@ -302,7 +365,8 @@ export class RevisionService {
       const truncated =
         total > items.length || sourceOffset > 0 || totalKind === 'estimated' || inconsistentTotal;
       const missing = Object.keys(missingFields).length > 0;
-      const partial = truncated || missing;
+      const fieldTruncated = Object.keys(truncatedFields).length > 0;
+      const partial = truncated || missing || fieldTruncated;
       const operation = `GET ${route.path}`;
       return {
         state: partial ? 'partial' : 'complete',
@@ -319,6 +383,7 @@ export class RevisionService {
           offset: sourceOffset,
           truncated,
           missingFields,
+          truncatedFields,
         },
         capabilityStates: { historical_growth: 'not_computable' },
         source: { class: 'official-v0', operation, retrievedAt, attemptedAt },
@@ -344,6 +409,15 @@ export class RevisionService {
                   code: 'MISSING_FIELD',
                   state: 'partial' as const,
                   message: '部分修订记录缺少摘要、创建时间或修订者字段，已保留为未知。',
+                },
+              ]
+            : []),
+          ...(fieldTruncated
+            ? [
+                {
+                  code: 'FIELD_TRUNCATED',
+                  state: 'partial' as const,
+                  message: '部分修订字段超过渲染边界，已截断并保留字段裁剪计数。',
                 },
               ]
             : []),
@@ -376,6 +450,7 @@ export class RevisionService {
           offset,
           truncated: false,
           missingFields: {},
+          truncatedFields: {},
         },
         capabilityStates: { historical_growth: 'not_computable' },
         source: { class: 'official-v0', operation, attemptedAt },
@@ -386,7 +461,16 @@ export class RevisionService {
         ],
         warnings: [
           {
-            code: publicError.code === 'PARSER_ERROR' ? 'SCHEMA_DRIFT' : 'UPSTREAM_UNAVAILABLE',
+            code:
+              publicError.code === 'PARSER_ERROR'
+                ? 'SCHEMA_DRIFT'
+                : publicError.code === 'NOT_FOUND'
+                  ? 'UPSTREAM_NOT_FOUND'
+                  : publicError.code === 'RATE_LIMITED'
+                    ? 'UPSTREAM_RATE_LIMITED'
+                    : publicError.code === 'NETWORK_ERROR'
+                      ? 'UPSTREAM_NETWORK_ERROR'
+                      : 'UPSTREAM_UNAVAILABLE',
             state: 'unavailable',
             message: '官方修订源暂时不可用，未生成变更历史样本。',
           },
