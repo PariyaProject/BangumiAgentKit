@@ -1,6 +1,6 @@
 # PR-7G Finalization — Existing Recovery PR #5
 
-Status: `IMPLEMENTATION_IN_PROGRESS`
+Status: `REVIEW_READY`
 
 This is one explicitly human-authorized finalization review cycle for the
 existing parked PR-7G Recovery PR. It is not a new Recovery Epoch, Product
@@ -65,12 +65,75 @@ Candidate SHA.
 
 ## Candidate and gate ledger
 
-- Finalization Candidate: `NOT_CREATED`
-- Exact-SHA CI run: `NOT_RUN`
+- Finalization Candidate:
+  `5582f01318619ea8a4797b94b0a9ccec0f32b616`
+- Candidate commit: `fix: finalize PR-7G evidence and renderer QA`
+- Candidate scope: 16 files, 1,131 insertions, 338 deletions from the
+  finalization starting tip `ebcfad4406104aa2a8a7775fcca74efa204db57b`
+- Exact-SHA CI run: `31530076120`
+- Exact-SHA required jobs, all terminal `SUCCESS`:
+  - `sqlite-default` (`93907731886`)
+  - `host-integration` (`93907732071`)
+  - `standalone-release-smoke` (`93907732027`)
+  - `postgres-compat` (`93907731838`)
+  - `provider-foundation` (`93907731871`)
+  - `discovery-foundation` (`93907731920`)
+- Historical run `31508533985` remains unresolved historical evidence and was
+  not reused for this gate.
 - Final Sol verdict: `NOT_RUN`
 - Freeze status: `NOT_FROZEN`
 - Merge commit: `NOT_CREATED`
-- Current branch state: existing PR #5 branch; historical branch untouched.
+- Current branch state: exact Candidate pushed to existing PR #5 branch; PR #5
+  remains open and unmerged; historical branch untouched.
+
+## Finalization readiness evidence
+
+The exact Candidate was validated on the clean Candidate tree with:
+
+- `pnpm typecheck` — passed.
+- `pnpm build` — passed.
+- `pnpm lint` — passed.
+- `pnpm test` — 35 files / 206 tests passed.
+- `pnpm test:contract` — 4 files / 22 tests passed.
+- `pnpm test:semantic` — 2 files / 33 tests passed.
+- `pnpm test:provider` — 8 files / 33 tests passed.
+- `pnpm test:discovery` — 9 files / 51 tests passed.
+- `pnpm test:standalone` — 3 files / 20 tests passed.
+- `pnpm test:integration:sqlite` — 12 files / 33 tests passed; PostgreSQL
+  cases were skipped because `DATABASE_URL` is not configured locally and are
+  covered by the exact remote `postgres-compat` job.
+- `pnpm test:render` — 7 files / 56 tests passed.
+- `pnpm openapi:verify` — passed, including generated tool-catalog
+  verification.
+- `git diff --check` — passed; the Candidate checkout is clean.
+
+Consolidated Luna preflight:
+
+- P1-1 is closed at the fixture/evidence layer with typed, invariant-checked
+  complete, partial, and not-computable service-shaped results; production
+  state/counters are not fabricated by the renderer fixture path.
+- P1-2 is closed by run `31530076120` at the exact Candidate SHA with every
+  required job terminal-success.
+- Root-relation failure semantics remain `NOT_FOUND`, non-retryable, and are
+  regression-tested through SeriesService, the read tool, and Standalone.
+- Renderer caller-created truncation is explicit through omitted step/related/
+  edge counts, renderer truncation reasons, and a warning naming the omitted
+  categories. High-cardinality evidence uses compact rows and a two-column
+  edge layout while retaining the truthful 64-edge cap.
+- `maxNodes` selection is relation-evidence-first; detail dates order only the
+  selected bounded set, with a regression proving an out-of-cap earlier date
+  cannot replace the selected candidate.
+- PR-7H compatibility is covered by the full build/test matrix and the
+  discovery suite (9 files / 51 tests); no PR-7H discovery surface was
+  reverted.
+- Renderer QA inspected complete, partial, and not-computable typed fixtures
+  at 640px and 960px, including long CJK, missing-image/data, exclusions,
+  directed evidence, and partial-state messaging. The high-cardinality
+  artifact measured 640x3631 and 960x3490, versus the historical 640x6925.
+
+The finalization reviewer is now authorized exactly once, sequentially, with
+the historical `2 / 2` budget preserved and the separate finalization ledger
+at `1 authorized / 0 consumed`. No Sol launch has occurred yet.
 
 ## Required finalization gate
 

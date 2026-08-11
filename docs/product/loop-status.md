@@ -254,7 +254,9 @@ Finalization plan:
 `docs/product/cycles/PR-7G-finalization.md`
 
 Finalization state:
-`IMPLEMENTATION_IN_PROGRESS`
+`REVIEW_READY — Candidate 5582f01318619ea8a4797b94b0a9ccec0f32b616; exact-SHA
+CI run 31530076120 is green at the required job level; one final Sol launch
+remains authorized`
 
 Finalization starting branch tip:
 `ebcfad4406104aa2a8a7775fcca74efa204db57b`
