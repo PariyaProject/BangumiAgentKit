@@ -39,67 +39,70 @@ Standing execution defaults:
 
 Goal Scope:
 
-`NONE — NO ACTIVE PRODUCT GOAL OR CYCLE`
+`EXECUTE exactly one PR-7H Recovery Epoch for the evidence-bearing subject-
+discovery presentation capability, then stop at the recorded final state.`
 
-`TIER_0` governance maintenance on `master`. The corrective in the commit
-containing this ledger adopts Product Review Epochs as the sparse Sol boundary,
-defines Work Package and logical `LUNA_STABLE` semantics, prohibits polling Git
-churn, and preserves the accepted four-launch outer Sol ceiling. It does not
-start or resume product evolution. PR-7G and PR-7H remain untouched historical
-product branches for a separate controlled recovery action.
+Current-governance plan:
+`docs/product/cycles/PR-7H-recovery-discovery-renderer.md`
+
+Recovery provenance is historical/read-only only: source branch
+`codex/pr-7h-discovery-renderer`, source tip
+`3ea9ae6521d5cbf35cf955d5f65fe7d950970ebf`, initial Candidate
+`8dd069a0e700161d5a484af378b0ec9eb10e395c`, corrected Candidate
+`3f46a97010fff829ab6cfec132bae07359b34e2c`. Historical runtime governance is
+not current runtime state.
 
 Explicit Non-Scope:
 
-- selecting or implementing the next Product Cycle;
-- reopening PR-7D, PR-7E, PR-7F, PR-7G, or PR-7H;
-- modifying frozen production implementation or tests;
-- launching a generic subagent or Sol reviewer;
-- creating a feature branch, PR, release, package, or tag;
-- stashing, resetting, rewriting, relocating, or committing unrelated user
-  work.
+- discovery query semantics, provider/source policy, Structured Web / HTML,
+  authentication, authorization, credentials, cookies, writes, persistence,
+  migrations, releases, packages, and tags;
+- PR-7G watch-order functionality and unrelated backlog opportunities;
+- frozen foundational contract changes without a separate governance/human
+  escalation;
+- modifying, merging, rebasing, rewriting, deleting, or importing stale
+  historical PR-7H governance state;
+- generic subagents (authorized/consumed remains `0 / 0`) and any Sol launch
+  beyond the recorded TIER_2 budget of two;
+- starting another Product Cycle after this execute-only Goal stops.
 
 Stopping Condition:
 
-This maintenance task ends after the governance-only corrective is validated,
-committed, and pushed to `master`. Future product work requires an explicit Goal
-profile: execute-only mode requires a separately selected active milestone;
-self-evolution mode authorizes discovery and safe milestone selection during
-that outer Goal session.
+Stop at `MERGED_GOAL_COMPLETE`, `FROZEN_GOAL_COMPLETE` only if automatic
+integration is safely inapplicable/blocked under the recorded policy, or a
+truthful documented blocker such as review-limit, protected human decision,
+exact-SHA CI/infrastructure failure, or unsafe repository state.
 
 Selected Product Goal Profile:
 
-`NONE — governance maintenance only`
+`UNATTENDED_TIER2 / EXECUTE_ONLY_UNATTENDED`
 
 Outer Goal State:
 
-`INACTIVE`
+`NOT_APPLICABLE — no AUTONOMOUS_EVOLUTION_TIER2 outer Goal is active`
 
 Current Milestone State:
 
-`BETWEEN_MILESTONES`
+`PLANNED`
 
 Current Product Review Epoch:
 
-`NONE`
+`PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`N/A — runtime-only unless included in an already-required durable checkpoint`
+`ViewModel; discovery-results renderer; render_query_subjects Agent path;
+catalog/docs/tests. No Work Package is yet marked LUNA_STABLE.`
 
 Review Boundary Rationale:
 
-`N/A — TIER_0 governance maintenance; no Product Review Epoch selected`
+`See docs/product/cycles/PR-7H-recovery-discovery-renderer.md. These packages
+complete one tightly coupled semantic-to-renderer-to-tool user journey; query,
+source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`READY_FOR_PROFILE_SELECTION`
-
-Profile-dependent no-cycle semantics:
-
-- `UNATTENDED_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means report missing milestone
-  selection/authorization and stop;
-- `AUTONOMOUS_EVOLUTION_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means enter
-  `OPPORTUNITY_DISCOVERY` and select a substantial safe milestone.
+`PLANNED`
 
 Primary Model / Reasoning:
 
@@ -114,19 +117,20 @@ Generic Subagent Budget Authorized / Consumed:
 
 Review Tier:
 
-`TIER_0` for this governance-only corrective; no Product Cycle is active.
+`TIER_2` — selected before implementation for this unusually high-value,
+evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`0 / 0`
+`2 / 0`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`N/A / 0 — no self-evolution Goal is active`
+`N/A / 0 — execute-only Goal; no outer self-evolution ledger`
 
 Current Outer Review Budget State:
 
-`INACTIVE`
+`NOT_APPLICABLE`
 
 Candidate SHA:
 
@@ -134,11 +138,11 @@ Candidate SHA:
 
 Exact-SHA CI:
 
-`N/A — governance-only maintenance with no production or test change`
+`N/A — no Candidate yet`
 
 Integration Policy:
 
-`N/A — no active feature milestone`
+`AUTO_MERGE_AFTER_FREEZE`
 
 Target Base Branch:
 
@@ -146,15 +150,15 @@ Target Base Branch:
 
 Base SHA:
 
-`23f960ce3a8a8ac3841b791061a648037a53ab19` at this corrective's start.
+`be89a2699ed7ccc85cf2e23718319bc57e1e16b6`
 
 Current Target Base SHA:
 
-`N/A — no active integration attempt`
+`N/A — integration not attempted`
 
 Feature Branch:
 
-`N/A`
+`codex/recovery-pr-7h-discovery-renderer`
 
 Pull Request Number:
 
@@ -162,51 +166,46 @@ Pull Request Number:
 
 Merge Strategy:
 
-`N/A`
+`MERGE_COMMIT`
 
 Branch Cleanup Policy:
 
-`N/A`
+`After verified merge and frozen-SHA ancestry, retire feature branches safely,
+synchronize local `master` with `origin/master`, and preserve historical PR #3
+branch/history as evidence.`
 
 Integration State:
 
-`NOT_APPLICABLE`
+`NOT_STARTED`
 
 Implementation Frozen SHA:
 
-`N/A for the current maintenance task`
+`N/A — no Candidate/review yet`
 
 Merge Commit SHA:
 
-`N/A for the current maintenance task`
+`N/A — not integrated`
 
 Next Action:
 
-`SELECT A GOAL PROFILE`
-
-- Choose `UNATTENDED_TIER2` only after explicitly selecting an active milestone.
-- Choose `AUTONOMOUS_EVOLUTION_TIER2` to authorize continuous discovery,
-  milestone selection, and safe execution during that outer Goal session.
-
-No profile is invoked by this governance corrective, and no opportunity is
-selected now.
+`IMPLEMENT the scoped recovery delta on the dedicated branch; do not import
+historical runtime governance.`
 
 Human Authorization State:
 
-`NO PRODUCT GOAL PROFILE CURRENTLY ACTIVE`
+`USER-AUTHORIZED EXECUTE-ONLY PR-7H RECOVERY; HUMAN-ON-EXCEPTION BOUNDARIES
+REMAIN ACTIVE`
 
 Execution-budget pause state:
 
-`N/A`. When active, `PAUSED_BY_EXECUTION_BUDGET` must persist outer state,
-current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI, review
-and subagent usage, blockers, and exact next action.
+`NOT ACTIVE`. If runtime/system budget forces a stop, persist
+`PAUSED_BY_EXECUTION_BUDGET` with milestone, phase, branch, `HEAD`, latest
+stable commit/Candidate, tests/CI, review/subagent usage, blockers, and next
+action.
 
 Outer review-budget pause state:
 
-`N/A`. When active, `PAUSED_BY_OUTER_REVIEW_BUDGET` must persist selected
-profile, outer Sol authorized/consumed, milestone and phase, milestone Sol
-authorized/consumed, branch, `HEAD`, latest stable Candidate, tests/CI,
-outstanding findings, parked directions, and exact next action.
+`NOT APPLICABLE — no outer self-evolution ledger is active.`
 
 ---
 
