@@ -217,57 +217,81 @@ async function main() {
       })),
     ],
     related: [
-      {
+      seriesStep,
+      ...Array.from({ length: 4 }, (_, index) => ({
         ...seriesStep,
-        id: 200,
-        name: 'Original Book',
-        nameCn: '原作书籍',
-        type: '书籍',
-        relationLabels: ['原作'],
-        relationKinds: ['source'],
+        id: 102 + index,
+        name: `Sequel Original Title ${index + 1}`,
+        nameCn: `续集条目 ${index + 1}：缺失封面与長文本`.repeat(2),
+        relationLabels: ['续集'],
+        relationKinds: ['sequel'],
         relationPaths: [
           {
             ...seriesPath,
-            toId: 200,
-            relation: '原作',
-            relationKind: 'source',
-            pathIds: [100, 200],
-            pathKinds: ['source'],
+            toId: 102 + index,
+            relation: '续集',
+            relationKind: 'sequel',
+            pathIds: [100, 102 + index],
+            pathKinds: ['sequel'],
           },
         ],
-        depth: 0,
-        includedInWatchOrder: false,
-        exclusionReason: 'media_type_not_anime',
-      },
-      {
+        date: undefined,
+        includedInWatchOrder: true,
+        position: index + 3,
+        placement: 'after_root' as const,
+        placementReason: '起点直接关系标记为续集，置于起点后',
+      })),
+      ...Array.from({ length: 3 }, (_, index) => ({
         ...seriesStep,
-        id: 201,
-        name: 'Unknown Relation',
-        nameCn: '未映射关系',
+        id: 201 + index,
+        name: `Unknown Relation ${index + 1}`,
+        nameCn: `未映射关系 ${index + 1}`,
         type: '动画',
         relationLabels: ['相关作品'],
         relationKinds: ['unknown'],
         relationPaths: [
           {
             ...seriesPath,
-            toId: 201,
+            toId: 201 + index,
             relation: '相关作品',
             relationKind: 'unknown',
-            pathIds: [100, 201],
+            pathIds: [100, 201 + index],
             pathKinds: ['unknown'],
           },
         ],
         depth: 0,
         includedInWatchOrder: false,
-        exclusionReason: 'relation_not_watch_step',
-      },
+        exclusionReason: 'relation_not_watch_step' as const,
+      })),
+      ...Array.from({ length: 8 }, (_, index) => ({
+        ...seriesStep,
+        id: 300 + index,
+        name: `Original Book ${index + 1}`,
+        nameCn: `原作书籍 ${index + 1}`,
+        type: '书籍',
+        relationLabels: ['原作'],
+        relationKinds: ['source'],
+        relationPaths: [
+          {
+            ...seriesPath,
+            toId: 300 + index,
+            relation: '原作',
+            relationKind: 'source',
+            pathIds: [100, 300 + index],
+            pathKinds: ['source'],
+          },
+        ],
+        depth: 0,
+        includedInWatchOrder: false,
+        exclusionReason: 'media_type_not_anime' as const,
+      })),
     ],
     edges: [seriesPath],
     excluded: {
-      count: 2,
+      count: 15,
       byReason: [
-        { reason: 'media_type_not_anime', count: 1 },
-        { reason: 'relation_not_watch_step', count: 1 },
+        { reason: 'media_type_not_anime', count: 9 },
+        { reason: 'relation_not_watch_step', count: 6 },
       ],
       samples: [],
     },
@@ -279,13 +303,13 @@ async function main() {
       nonAnimeEvidenceLimit: 8,
       relatedLimit: 16,
       relationRequests: 3,
-      relationRowsObserved: 8,
-      uniqueRelatedObserved: 8,
-      uniqueRelatedReturned: 6,
-      animeNodesObserved: 7,
+      relationRowsObserved: 20,
+      uniqueRelatedObserved: 20,
+      uniqueRelatedReturned: 16,
+      animeNodesObserved: 11,
       animeNodesSelected: 5,
-      nonAnimeRowsObserved: 1,
-      nonAnimeRowsReturned: 1,
+      nonAnimeRowsObserved: 9,
+      nonAnimeRowsReturned: 8,
       detailsAttempted: 5,
       detailsFetched: 5,
       detailsFailed: 0,
@@ -300,31 +324,58 @@ async function main() {
     },
     evidence: {
       operations: ['条目详情', '条目关系'],
-      evidenceCount: 8,
+      evidenceCount: 20,
       derivation: 'series-watch-order-v2',
       retrievedAt: '2026-08-11T00:00:00.000Z',
     },
     warnings: ['共有 1 个可选关系读取失败；未读取的分支不会被假设为完整。'],
     limitations: ['这不是 Bangumi 发布的唯一官方观看顺序。', '关系源不保证覆盖整个系列。'],
   };
-  for (const width of [640, 960]) {
-    const seriesResult = await renderService.renderCard(seriesVm, {
-      width,
-      deviceScaleFactor: 1,
-    });
-    const filename = `series-relations-${width}.png`;
-    fs.writeFileSync(path.join(outputDir, filename), seriesResult.buffer);
-    console.log(
-      `Saved ${filename} (${seriesResult.width}x${seriesResult.height}, ${seriesResult.buffer.length} bytes)`,
-    );
-  }
-  const notComputableSeries: SeriesRelationsViewModel = {
+  const completeSeries: SeriesRelationsViewModel = {
     ...seriesVm,
-    state: 'not_computable',
-    root: { ...seriesVm.root, type: '书籍' },
-    steps: [],
+    state: 'complete',
+    related: seriesVm.related.slice(0, 9),
+    excluded: {
+      count: 4,
+      byReason: [
+        { reason: 'media_type_not_anime', count: 1 },
+        { reason: 'relation_not_watch_step', count: 3 },
+      ],
+      samples: [],
+    },
     coverage: {
       ...seriesVm.coverage,
+      relationRowsObserved: 9,
+      uniqueRelatedObserved: 9,
+      uniqueRelatedReturned: 9,
+      animeNodesObserved: 8,
+      nonAnimeRowsObserved: 1,
+      nonAnimeRowsReturned: 1,
+      relationFailures: 0,
+      relatedEvidenceTruncated: false,
+      truncated: false,
+      truncationReasons: [],
+    },
+    evidence: { ...seriesVm.evidence, evidenceCount: 9 },
+    warnings: [],
+  };
+  const notComputableSeries: SeriesRelationsViewModel = {
+    ...completeSeries,
+    state: 'not_computable',
+    root: { ...completeSeries.root, type: '书籍' },
+    steps: [],
+    related: completeSeries.related.map((item) => ({
+      ...item,
+      includedInWatchOrder: false,
+      exclusionReason: 'root_not_anime' as const,
+    })),
+    excluded: {
+      count: completeSeries.related.length,
+      byReason: [{ reason: 'root_not_anime', count: completeSeries.related.length }],
+      samples: [],
+    },
+    coverage: {
+      ...completeSeries.coverage,
       animeNodesSelected: 0,
       detailsAttempted: 0,
       detailsFetched: 0,
@@ -334,17 +385,24 @@ async function main() {
     },
     warnings: ['起始条目不是动画；本次结果只能展示关系证据，不能计算动画观看步骤。'],
   };
-  const notComputableResult = await renderService.renderCard(notComputableSeries, {
-    width: 640,
-    deviceScaleFactor: 1,
-  });
-  fs.writeFileSync(
-    path.join(outputDir, 'series-relations-not-computable-640.png'),
-    notComputableResult.buffer,
-  );
-  console.log(
-    `Saved series-relations-not-computable-640.png (${notComputableResult.width}x${notComputableResult.height}, ${notComputableResult.buffer.length} bytes)`,
-  );
+  const seriesFixtures: Array<[string, SeriesRelationsViewModel]> = [
+    ['complete', completeSeries],
+    ['partial', seriesVm],
+    ['not-computable', notComputableSeries],
+  ];
+  for (const [variant, viewModel] of seriesFixtures) {
+    for (const width of [640, 960]) {
+      const seriesResult = await renderService.renderCard(viewModel, {
+        width,
+        deviceScaleFactor: 1,
+      });
+      const filename = `series-relations-${variant}-${width}.png`;
+      fs.writeFileSync(path.join(outputDir, filename), seriesResult.buffer);
+      console.log(
+        `Saved ${filename} (${seriesResult.width}x${seriesResult.height}, ${seriesResult.buffer.length} bytes)`,
+      );
+    }
+  }
 
   await renderService.close();
   console.log('Successfully generated all renderer fixture images.');

@@ -180,6 +180,32 @@ describe('SeriesService bounded watch-order intelligence', () => {
     expect(result.watchOrder.map((item) => item.id)).not.toContain(106);
   });
 
+  it('retains every safe direct seed when duplicate after-root labels lead to a deeper sequel', async () => {
+    const { service, calls } = fixture({
+      subjects: [subject(100), subject(110), subject(120)],
+      relations: {
+        100: [relation(110, '外传'), relation(110, '续集')],
+        110: [relation(120, '续集')],
+        120: [],
+      },
+    });
+
+    const result = await service.getSeriesWatchOrder(100, { depth: 2 });
+
+    expect(ids(result)).toEqual([100, 110, 120]);
+    expect(result.watchOrder.find((item) => item.id === 120)).toMatchObject({
+      placement: 'after_root',
+      derivedDepth: 2,
+    });
+    expect(result.watchOrder.find((item) => item.id === 120)?.relationPaths).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ pathKinds: ['sequel', 'sequel'], direct: false }),
+        expect.objectContaining({ pathKinds: ['side_story', 'sequel'], direct: false }),
+      ]),
+    );
+    expect(calls.filter((url) => url.endsWith('/110/subjects'))).toHaveLength(1);
+  });
+
   it('excludes a direct prequel/sequel conflict instead of guessing a side', async () => {
     const { service } = fixture({
       subjects: [subject(100)],
@@ -340,6 +366,16 @@ describe('SeriesService bounded watch-order intelligence', () => {
     });
 
     await expect(service.getSeriesWatchOrder(100)).rejects.toThrow('detail unavailable');
+  });
+
+  it('does not fabricate a series result when the required root relation read fails', async () => {
+    const { service } = fixture({
+      subjects: [subject(100)],
+      relations: {},
+      failedRelations: [100],
+    });
+
+    await expect(service.getSeriesWatchOrder(100)).rejects.toThrow('relation unavailable');
   });
 
   it('handles back-edges with a bounded visited set and keeps a deeper boundary deterministic', async () => {

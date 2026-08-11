@@ -168,8 +168,31 @@ interface RelationCandidate {
 interface TraversalCandidate {
   id: number;
   depth: number;
+  pathSeeds: TraversalPathSeed[];
+}
+
+interface TraversalPathSeed {
   pathIds: number[];
   pathKinds: SeriesRelationKind[];
+}
+
+function traversalSeedKey(seed: TraversalPathSeed): string {
+  return `${seed.pathIds.join(',')}|${seed.pathKinds.join(',')}`;
+}
+
+function mergeTraversalSeeds(
+  existing: TraversalPathSeed[],
+  incoming: TraversalPathSeed[],
+): TraversalPathSeed[] {
+  const merged = new Map(existing.map((seed) => [traversalSeedKey(seed), seed]));
+  for (const seed of incoming) {
+    merged.set(traversalSeedKey(seed), seed);
+  }
+  return [...merged.values()].sort((left, right) => {
+    const pathLength = left.pathIds.length - right.pathIds.length;
+    if (pathLength !== 0) return pathLength;
+    return compareText(traversalSeedKey(left), traversalSeedKey(right));
+  });
 }
 
 interface PlacementCandidate {
@@ -266,7 +289,7 @@ function isComposablePath(pathKinds: readonly SeriesRelationKind[]): boolean {
 }
 
 function pathKey(path: SeriesWatchOrderPath): string {
-  return `${path.pathIds.join(',')}|${path.relation}`;
+  return `${path.pathIds.join(',')}|${path.pathKinds.join(',')}|${path.relation}`;
 }
 
 function comparePath(left: SeriesWatchOrderPath, right: SeriesWatchOrderPath): number {
@@ -640,8 +663,7 @@ export class SeriesService {
     const getRelations = async (
       id: number,
       requestedDepth: number,
-      pathIds: number[],
-      pathKinds: SeriesRelationKind[],
+      pathSeeds: TraversalPathSeed[],
       required: boolean,
     ): Promise<SubjectRelationItem[]> => {
       const source = recordSource(
@@ -656,9 +678,17 @@ export class SeriesService {
         source.status = 'succeeded';
         relationRowsObserved += rows.length;
         for (const relation of rows) {
-          const observation = makePath(id, relation, requestedDepth, pathIds, pathKinds);
-          traversedRelations.push(observation);
-          observeCandidate(candidates, relation, observation, subjectId);
+          for (const pathSeed of pathSeeds) {
+            const observation = makePath(
+              id,
+              relation,
+              requestedDepth,
+              pathSeed.pathIds,
+              pathSeed.pathKinds,
+            );
+            traversedRelations.push(observation);
+            observeCandidate(candidates, relation, observation, subjectId);
+          }
         }
         return rows;
       } catch (error) {
@@ -670,7 +700,12 @@ export class SeriesService {
       }
     };
 
-    const rootRelations = await getRelations(subjectId, 0, [subjectId], [], true);
+    const rootRelations = await getRelations(
+      subjectId,
+      0,
+      [{ pathIds: [subjectId], pathKinds: [] }],
+      true,
+    );
 
     const visitedForTraversal = new Set<number>([subjectId]);
     const scheduledForTraversal = new Set<number>();
@@ -689,18 +724,27 @@ export class SeriesService {
     const scheduleTraversal = (
       relation: SubjectRelationItem,
       nextDepth: number,
-      parentPathIds: number[],
-      parentPathKinds: SeriesRelationKind[],
+      parentPathSeeds: TraversalPathSeed[],
     ): void => {
       if (
         !isStableWatchRelation(relation) ||
         relation.id === subjectId ||
         visitedForTraversal.has(relation.id) ||
-        scheduledForTraversal.has(relation.id) ||
         !canExpandCandidate(relation.id)
       ) {
         return;
       }
+      const relationKind = normalizeRelation(cleanRelationLabel(relation.relation));
+      const pathSeeds = parentPathSeeds.map((parentPathSeed) => ({
+        pathIds: [...parentPathSeed.pathIds, relation.id],
+        pathKinds: [...parentPathSeed.pathKinds, relationKind],
+      }));
+      const pending = pendingTraversal.get(relation.id);
+      if (pending) {
+        pending.pathSeeds = mergeTraversalSeeds(pending.pathSeeds, pathSeeds);
+        return;
+      }
+      if (scheduledForTraversal.has(relation.id)) return;
       scheduledForTraversal.add(relation.id);
       if (traversedAnimeNodes + pendingTraversal.size >= maxNodes) {
         traversalCapTruncated = true;
@@ -709,8 +753,7 @@ export class SeriesService {
       pendingTraversal.set(relation.id, {
         id: relation.id,
         depth: nextDepth,
-        pathIds: [...parentPathIds, relation.id],
-        pathKinds: [...parentPathKinds, normalizeRelation(cleanRelationLabel(relation.relation))],
+        pathSeeds: mergeTraversalSeeds([], pathSeeds),
       });
     };
 
@@ -729,7 +772,7 @@ export class SeriesService {
       );
     } else {
       for (const relation of rootTraversalRows) {
-        scheduleTraversal(relation, 1, [subjectId], []);
+        scheduleTraversal(relation, 1, [{ pathIds: [subjectId], pathKinds: [] }]);
       }
 
       while (pendingTraversal.size > 0) {
@@ -743,8 +786,7 @@ export class SeriesService {
         const childRelations = await getRelations(
           traversal.id,
           traversal.depth,
-          traversal.pathIds,
-          traversal.pathKinds,
+          traversal.pathSeeds,
           false,
         );
 
@@ -755,12 +797,7 @@ export class SeriesService {
         );
         if (traversal.depth < depth) {
           for (const relation of sortedChildRelations) {
-            scheduleTraversal(
-              relation,
-              traversal.depth + 1,
-              traversal.pathIds,
-              traversal.pathKinds,
-            );
+            scheduleTraversal(relation, traversal.depth + 1, traversal.pathSeeds);
           }
         } else if (
           sortedChildRelations.some(

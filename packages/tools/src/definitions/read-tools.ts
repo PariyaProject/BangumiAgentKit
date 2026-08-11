@@ -151,7 +151,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         .enum(['anime', 'all'])
         .optional()
         .describe(
-          'anime 只返回动画关系证据；all 额外返回最多 8 条非动画关系证据；非动画永不进入步骤或详情请求',
+          'anime 的 related 只返回动画证据，但 edges/排除统计仍可保留观察到的非动画关系；all 额外返回最多 8 条非动画 related 证据；非动画永不进入步骤或详情请求',
         ),
     }),
     auth: 'none',

@@ -248,4 +248,62 @@ describe('series-relations renderer', () => {
       await service.close();
     }
   });
+
+  it('renders every valid related and edge item up to the declared evidence caps', async () => {
+    const base = buildSeriesRelationsViewModel(makeResult());
+    const validMaximum = {
+      ...base,
+      state: 'complete' as const,
+      related: Array.from({ length: 24 }, (_, index) => ({
+        ...base.related[0]!,
+        id: 2000 + index,
+        name: `Maximum related ${index}`,
+        nameCn: `最大关系证据 ${index}`,
+        image: `https://img.example/valid-related-${index}.jpg`,
+      })),
+      edges: Array.from({ length: 64 }, (_, index) => ({
+        ...base.edges[0]!,
+        fromId: 5000 + index,
+        toId: 6000 + index,
+        pathIds: [5000 + index, 6000 + index],
+      })),
+      coverage: {
+        ...base.coverage,
+        relatedLimit: 24,
+        uniqueRelatedReturned: 24,
+        edgeEvidenceLimit: 64,
+        edgeEvidenceReturned: 64,
+        relatedEvidenceTruncated: false,
+        edgeEvidenceTruncated: false,
+        truncated: false,
+        truncationReasons: [],
+      },
+      warnings: [],
+    };
+
+    expect(extractImageUrls(validMaximum)).toHaveLength(24);
+
+    let renderedHtml = '';
+    const assetResolver = {
+      resolveAsset: vi.fn(async () => ({ dataUrl: 'data:image/png;base64,AA==' })),
+    };
+    const browserPool = {
+      renderHtmlToBuffer: vi.fn(async (html: string) => {
+        renderedHtml = html;
+        return ONE_PIXEL_PNG;
+      }),
+      close: vi.fn(async () => undefined),
+    };
+    const service = new RenderService(browserPool as never, undefined, assetResolver as never);
+
+    try {
+      await service.renderCard(validMaximum, { width: 960, deviceScaleFactor: 1 });
+      expect(assetResolver.resolveAsset).toHaveBeenCalledTimes(24);
+      expect(renderedHtml).toContain('最大关系证据 23');
+      expect(renderedHtml).toContain('5063 → 6063');
+      expect(renderedHtml).not.toContain('安全显示上限');
+    } finally {
+      await service.close();
+    }
+  });
 });

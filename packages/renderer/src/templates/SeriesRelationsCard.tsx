@@ -23,6 +23,9 @@ const EXCLUSION_LABELS: Record<string, string> = {
   evidence_cap: '达到证据展示上限',
 };
 
+const SERIES_MAX_RENDERED_RELATED = 24;
+const SERIES_MAX_RENDERED_EDGES = 64;
+
 function stateLabel(state: SeriesRelationsViewModel['state']): string {
   if (state === 'complete') return '覆盖完整';
   if (state === 'partial') return '部分覆盖';
@@ -257,11 +260,14 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
   );
   const visibleRelated = viewModel.related.slice(
     0,
-    Math.min(16, Math.max(0, Math.floor(viewModel.coverage.relatedLimit))),
+    Math.min(SERIES_MAX_RENDERED_RELATED, Math.max(0, Math.floor(viewModel.coverage.relatedLimit))),
   );
   const visibleEdges = viewModel.edges.slice(
     0,
-    Math.min(16, Math.max(0, Math.floor(viewModel.coverage.edgeEvidenceLimit))),
+    Math.min(
+      SERIES_MAX_RENDERED_EDGES,
+      Math.max(0, Math.floor(viewModel.coverage.edgeEvidenceLimit)),
+    ),
   );
   const visibleSamples = viewModel.excluded.samples.slice(0, 8);
   const visibleWarnings = viewModel.warnings.slice(0, 4);

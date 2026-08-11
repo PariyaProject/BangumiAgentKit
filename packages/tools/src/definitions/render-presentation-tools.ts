@@ -327,7 +327,9 @@ export function createRenderPresentationTools(
       media: z
         .enum(['anime', 'all'])
         .optional()
-        .describe('anime 动画证据；all 额外展示最多 8 条非动画证据'),
+        .describe(
+          'anime 的 related 只展示动画证据，但边证据/排除统计仍可保留观察到的非动画关系；all 额外展示最多 8 条非动画证据',
+        ),
     }),
     auth: 'none',
     scopes: [],
