@@ -56,7 +56,16 @@ PNG Buffer + RenderResult Metadata
 
 ## Template Registry & Error Model
 
-The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates (`subject-card`, `search-list`, `cast-card`, `collection-progress`, `calendar`).
+The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates
+(`subject-card`, `search-list`, `discovery-results`, `cast-card`,
+`collection-progress`, `calendar`, `revision-timeline`, and `person-profile`).
+
+The `discovery-results` card is the human-facing companion to
+`bangumi.query_subjects`: it preserves controlled query facets, official
+source/operation, pushdown versus local plan filters, matched/observed/returned/
+rendered coverage, warnings, and bounded-result limitations. It does not claim
+that an experimental or budget-bounded search enumerates the complete Bangumi
+database.
 
 All operations use structured `RendererError` types:
 

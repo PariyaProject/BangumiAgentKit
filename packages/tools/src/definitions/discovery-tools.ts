@@ -9,26 +9,41 @@ const range = z
   })
   .strict();
 
-const discoveryQueryInput = z
+export const discoveryQueryInput = z
   .object({
     keyword: z.string().max(200).optional(),
     media: z
       .union([
         z.enum(['anime', 'book', 'music', 'game', 'real']),
-        z.array(z.enum(['anime', 'book', 'music', 'game', 'real'])).min(1).max(5),
+        z
+          .array(z.enum(['anime', 'book', 'music', 'game', 'real']))
+          .min(1)
+          .max(5),
       ])
       .optional(),
     categories: z
       .union([
         z.enum(['tv', 'ova', 'movie', 'web']),
-        z.array(z.enum(['tv', 'ova', 'movie', 'web'])).min(1).max(4),
+        z
+          .array(z.enum(['tv', 'ova', 'movie', 'web']))
+          .min(1)
+          .max(4),
       ])
       .optional(),
     year: z.number().int().min(1900).max(2200).optional(),
     month: z.number().int().min(1).max(12).optional(),
-    season: z.string().regex(/^\d{4}-(winter|spring|summer|autumn)$/u).optional(),
-    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).optional(),
-    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).optional(),
+    season: z
+      .string()
+      .regex(/^\d{4}-(winter|spring|summer|autumn)$/u)
+      .optional(),
+    from: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/u)
+      .optional(),
+    to: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/u)
+      .optional(),
     tags: z.array(z.string().min(1).max(120)).max(50).optional(),
     metaTags: z.array(z.string().min(1).max(120)).max(50).optional(),
     excludeMetaTags: z.array(z.string().min(1).max(120)).max(50).optional(),
@@ -76,3 +91,5 @@ export function createDiscoveryTools() {
 
   return [querySubjects, resolveConcept] as const;
 }
+
+export type DiscoveryQueryToolInput = z.infer<typeof discoveryQueryInput>;

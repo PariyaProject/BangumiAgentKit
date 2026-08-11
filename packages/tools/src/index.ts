@@ -6,5 +6,6 @@ export * from './confirmation.js';
 export * from './definitions/read-tools.js';
 export * from './definitions/write-tools.js';
 export * from './definitions/raw-operation-tools.js';
+export * from './definitions/render-presentation-tools.js';
 
 export const MODULE_NAME = 'tools';
