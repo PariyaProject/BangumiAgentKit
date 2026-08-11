@@ -1,6 +1,6 @@
 # PR-7H Recovery Review Readiness
 
-Status: `REVIEW_AUTHORIZED`
+Status: `REVIEWER_RUNNING`
 
 ## Exact Candidate and remote CI
 
@@ -108,7 +108,7 @@ records four additional actual-engine outputs.
 ## Review gate
 
 - Review Tier: `TIER_2`
-- Milestone Sol budget: `2 authorized / 1 consumed / 1 remaining`
+- Milestone Sol budget: `2 authorized / 2 consumed / 0 remaining`
 - Expected Sol: `1`
 - Automatic maximum: `2`
 - Reviewer order: sequential `sol_milestone_reviewer` #1; if it returns
@@ -144,11 +144,14 @@ The corrected Candidate passed exact-SHA CI run 31496325070.
 
 - Reviewer: `sol_milestone_reviewer`
 - Launch ordinal: `Sol #2 of 2 authorized`
-- Runtime state: `AUTHORIZED_NOT_LAUNCHED`
+- Runtime state: `REVIEWER_RUNNING`
 - Review Candidate: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
-- Remaining budget: `1`
+- Remaining budget: `0`
+- Agent ID: `019ff108-75fb-76c3-99ca-41363153cc1e`
+- Launch time: `2026-08-11T13:34:57Z` (`2026-08-11T22:34:57+09:00`)
+- Overall deadline: `2026-08-11T15:34:57Z`
+- Launch ordinal: `Sol #2 of 2 authorized`
 
-Next action is the single remaining Sol #2 comprehensive review of the
-corrected Candidate. Once launched, no repository mutation, CI rerun,
-Candidate change, push, or additional reviewer launch is permitted while it
-runs.
+Next action is to wait on this same Sol #2 comprehensive review. While it runs,
+no repository mutation, CI rerun, Candidate change, push, or additional
+reviewer launch is permitted.

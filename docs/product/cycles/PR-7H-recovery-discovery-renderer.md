@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `REVIEW_AUTHORIZED`
+Status: `REVIEWER_RUNNING`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -233,14 +233,18 @@ green`
   `Sol #2 of 2`, is authorized against this exact corrected Candidate.
 - Budget transition: `2 authorized / 1 consumed / 1 remaining`; Sol #3 is
   prohibited.
+- Sol #2 runtime: `REVIEWER_RUNNING`; agent
+  `019ff108-75fb-76c3-99ca-41363153cc1e`; launched `2026-08-11T13:34:57Z`;
+  deadline `2026-08-11T15:34:57Z`.
 
 ## Current execution state
 
-- Current state: `REVIEW_AUTHORIZED`
+- Current state: `REVIEWER_RUNNING`
 - Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 - Exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs green`
 - Implementation Frozen SHA: `N/A`
 - Governance Record SHA: `N/A`
 - Merge Commit SHA: `N/A`
-- Next action: launch Sol #2 `sol_milestone_reviewer` against the corrected
-  Candidate; do not mutate the implementation while it is running.
+- Next action: wait on the same Sol #2 `sol_milestone_reviewer`; do not mutate
+  the repository, rerun CI, change the Candidate, push, or launch another
+  reviewer while it is running.

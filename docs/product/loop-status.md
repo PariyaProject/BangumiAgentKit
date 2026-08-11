@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEW_AUTHORIZED`
+`REVIEWER_RUNNING`
 
 Current Product Review Epoch:
 
@@ -103,7 +103,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`REVIEW_AUTHORIZED`
+`REVIEWER_RUNNING`
 
 Primary Model / Reasoning:
 
@@ -123,7 +123,7 @@ evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — 1 remaining; Sol #2 is authorized but not yet launched`
+`2 / 2 — 0 remaining; Sol #2 is running`
 
 Reviewer Runtime Checkpoint:
 
@@ -146,6 +146,13 @@ Corrected Candidate Checkpoint:
 `31496325070`; local validation, negative/end-to-end tests, and realistic
 unsupported/unavailable 640/960 QA passed. Sol #2 is authorized against this
 Candidate and has not yet launched.
+
+Current Reviewer Runtime:
+
+`sol_milestone_reviewer`, launch ordinal `Sol #2 of 2`, agent
+`019ff108-75fb-76c3-99ca-41363153cc1e`, launched `2026-08-11T13:34:57Z`,
+deadline `2026-08-11T15:34:57Z`, Candidate
+`de09c0ec3b0eab3325168ec7177b835dd25e9651`, runtime `REVIEWER_RUNNING`.
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -211,10 +218,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`LAUNCH Sol #2 sol_milestone_reviewer against corrected Candidate
-de09c0ec3b0eab3325168ec7177b835dd25e9651. While it is running, perform no
-repository mutation, CI rerun, Candidate change, push, or additional reviewer
-launch.`
+`WAIT on the same Sol #2 sol_milestone_reviewer. While it is running, perform
+no repository mutation, CI rerun, Candidate change, push, or additional
+reviewer launch.`
 
 Human Authorization State:
 
