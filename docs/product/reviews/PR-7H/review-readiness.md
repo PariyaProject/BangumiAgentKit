@@ -93,5 +93,9 @@ plan/evidence/coverage/limitation sections at both widths.
 - Sol #1 is running as agent `019ff073-7b21-79b3-ae85-6e10676edb96`
   (`Russell`). If corrective findings arrive, Luna may create one corrected
   Candidate and use the final PR-7H Sol #2 launch. Sol #3 is prohibited.
+- One bounded wait returned `timed_out` without a terminal reviewer status;
+  under the canonical policy this is `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`,
+  not a reviewer failure or refunded launch. The same agent remains the only
+  active reviewer and must continue to be awaited.
 - No P0/P1 blockers are known from Luna preflight. The independent reviewer
   must inspect the actual Base..Candidate diff and evidence before Freeze.
