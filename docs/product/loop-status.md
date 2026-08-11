@@ -86,7 +86,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEW_READY`
+`REVIEWING`
 
 Current Product Review Epoch:
 
@@ -107,7 +107,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`REVIEW_READY`
+`REVIEWING`
 
 Primary Model / Reasoning:
 
@@ -127,17 +127,20 @@ evidence-sensitive traversal/renderer recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 0 — 2 remaining; Sol #1 not launched`
+`2 / 1 — 1 remaining; Sol #1 is running`
 
 Reviewer Runtime Checkpoint:
 
-`sol_milestone_reviewer`, not launched; 120-minute overall wall-clock limit.
+`sol_milestone_reviewer`, launch ordinal `Sol #1 of 2`, agent
+`019ff168-57d1-7332-bddb-7cd1ae01a286`, launched
+`2026-08-11T15:19:45Z`, deadline `2026-08-11T17:19:45Z`, Candidate
+`c9de0a46a1445650c6b2699f7c0cd35adf5daef5`, runtime `RUNNING`.
 Historical launches are not current budget consumption.`
 
 Reviewer Result:
 
-`NOT_STARTED — historical Sol #1/#2 findings are read-only inputs; the fresh
-Base..Candidate must resolve them before launch.`
+`RUNNING — Sol #1 is independently inspecting the exact Base..Candidate;
+no verdict is available yet.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -209,10 +212,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`Launch Sol #1, the first sequential comprehensive TIER_2
-sol_milestone_reviewer, against Base..Candidate using the recorded readiness
-packet. No implementation changes are authorized after this Candidate unless
-the reviewer returns CORRECTIVE_REQUIRED.`
+`Wait for Sol #1 to terminate. Do not edit the implementation, spend another
+review launch, rerun CI, or change the Candidate while this reviewer remains
+running.`
 
 Human Authorization State:
 
