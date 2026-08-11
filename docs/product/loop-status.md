@@ -70,15 +70,15 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`MILESTONE_ACTIVE`
+`SOL_REVIEW`
 
 Current Milestone State:
 
-`ACTIVE`
+`REVIEW_READY`
 
 Current Phase:
 
-`VALIDATING`
+`REVIEW_READY`
 
 Current Milestone:
 
@@ -107,6 +107,11 @@ Total Sol Review Budget Authorized / Consumed:
 
 `2 / 0 — comprehensive reviewer #1, then #2 only if corrective findings remain`
 
+Milestone Review Runtime:
+
+`AUTHORIZED — Sol #1 ready to launch; Sol #2 remains reserved only for
+CORRECTIVE_REQUIRED`
+
 Outer Sol Review Budget Authorized / Consumed:
 
 `4 / 0`
@@ -117,11 +122,11 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`N/A — implementation is locally validated; create the exact Candidate commit next`
+`3459689e69c8c14774d31a967b2161ed1e686a9d`
 
 Exact-SHA CI:
 
-`N/A — Candidate not yet created or pushed`
+`PASS — [GitHub Actions run 31476188502](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476188502), all six mandatory jobs green for the exact Candidate SHA`
 
 Integration Policy:
 
@@ -146,7 +151,7 @@ Feature Branch:
 
 Pull Request Number:
 
-`TBD — record after exact Candidate push`
+`#2 — https://github.com/PariyaProject/BangumiAgentKit/pull/2`
 
 Merge Strategy:
 
@@ -163,7 +168,7 @@ Integration State:
 
 Implementation Frozen SHA:
 
-`N/A — Candidate commit not yet created`
+`N/A — awaiting independent TIER_2 review verdict`
 
 Merge Commit SHA:
 
@@ -171,10 +176,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`CREATE the exact implementation Candidate from the locally validated tree,
-then push it, open/update the PR, and wait for mandatory CI on that exact SHA.
-Only after the clean Candidate and CI are green may the recorded TIER_2 Sol
-review launch.`
+`LAUNCH the single authorized comprehensive sol_milestone_reviewer as Sol #1
+against Candidate 3459689e… with review-readiness evidence. If and only if it
+returns CORRECTIVE_REQUIRED, apply findings under the remaining Sol #2 budget;
+otherwise preserve the Candidate unchanged.`
 
 Human Authorization State:
 
