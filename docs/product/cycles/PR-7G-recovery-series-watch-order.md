@@ -1,6 +1,6 @@
 # PR-7G Recovery — Series / Watch-Order Intelligence
 
-Status: `REVIEW_READY`
+Status: `PARKED_REVIEW_LIMIT`
 
 This is exactly one fresh execute-only Product Review Epoch on the current
 post-PR-7H master. The historical PR-7G branch and reports are read-only source
@@ -281,10 +281,19 @@ The exact Candidate is the implementation SHA to review. Later governance
 metadata may be recorded as a separate Governance Record SHA under the
 two-SHA freeze policy.
 
+## Sol #2 terminal outcome
+
+- Sol #1: `CORRECTIVE_REQUIRED`, 0 P0 / 3 P1 / 2 P2; consumed launch 1.
+- Sol #2: `CORRECTIVE_REQUIRED`, 0 P0 / 2 P1 / 4 P2; consumed launch 2.
+- Exact corrected Candidate: `1e0cbd97fcdd0859187534fda67ae797c33e5d0e`.
+- Exact-SHA CI: not accepted as green because run `31508533985` had a
+  contradictory workflow/job state with `postgres-compat` still reported as
+  running in the job-level view.
+- Terminal state: `PARKED_REVIEW_LIMIT`; no freeze, merge, or branch cleanup.
+- Full terminal report: `docs/product/reviews/PR-7G-recovery-series-watch-order/sol-2-review.md`.
+
 ## Current next action
 
-Launch Sol #2, the final reserved sequential comprehensive
-`sol_milestone_reviewer`, against corrected Candidate
-`1e0cbd97fcdd0859187534fda67ae797c33e5d0e` using
-`docs/product/reviews/PR-7G-recovery-series-watch-order/review-readiness-sol-2.md`.
-Sol #3 is prohibited.
+STOP at `PARKED_REVIEW_LIMIT`. Sol #1 and Sol #2 consumed the complete TIER_2
+budget without a PASS. Preserve the corrected Candidate and branch for a
+future explicitly authorized cycle; do not launch Sol #3 or integrate this PR.

@@ -86,7 +86,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEWING`
+`PARKED_REVIEW_LIMIT`
 
 Current Product Review Epoch:
 
@@ -94,10 +94,10 @@ Current Product Review Epoch:
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Directed SeriesService/evidence; semantic tool; series-relations renderer;
-Standalone/catalog/docs/tests — corrected Candidate complete and LUNA_STABLE
-after Sol #1 P1 fixes, focused/full validation, Agent QA, representative
-complete/partial/not-computable 640/960 visual QA, and exact-Candidate CI.`
+`Corrected SeriesService/evidence; semantic tool; series-relations renderer;
+Standalone/catalog/docs/tests — implementation and local validation are stable,
+but the final TIER_2 gate is parked after Sol #2 found 2 P1 blockers and the
+exact-Candidate CI state remained incoherent.`
 
 Review Boundary Rationale:
 
@@ -107,7 +107,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`REVIEWING`
+`PARKED_REVIEW_LIMIT`
 
 Primary Model / Reasoning:
 
@@ -127,23 +127,25 @@ evidence-sensitive traversal/renderer recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 2 — 0 remaining; Sol #2 is running; Sol #3 is prohibited`
+`2 / 2 — 0 remaining; Sol #2 completed CORRECTIVE_REQUIRED; Sol #3 is
+prohibited`
 
 Reviewer Runtime Checkpoint:
 
 `sol_milestone_reviewer`, launch ordinal `Sol #2 of 2`, agent
 `019ff187-e693-7952-b5cd-99dcb9369812`, launched
 `2026-08-11T15:53:46Z`, deadline `2026-08-11T17:53:46Z`, Candidate
-`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`, runtime `RUNNING`.
-Sol #1 closed `COMPLETED_CORRECTIVE_REQUIRED` and consumed the first launch.`
+`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`, runtime
+`COMPLETED_CORRECTIVE_REQUIRED`.
+Sol #1 closed `COMPLETED_CORRECTIVE_REQUIRED` and Sol #3 is prohibited.
 Historical launches are not current budget consumption.`
 
 Reviewer Result:
 
-`Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings;
-all accepted findings are addressed in corrected Candidate
-1e0cbd97fcdd0859187534fda67ae797c33e5d0e. Sol #2 is independently reviewing
-the corrected Candidate; no final verdict is available yet.`
+`Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings.
+Sol #2 completed CORRECTIVE_REQUIRED with 0 P0, 2 P1, and 4 P2 findings; see
+docs/product/reviews/PR-7G-recovery-series-watch-order/sol-2-review.md. The
+final Candidate is not frozen and the milestone is parked at the review limit.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -159,8 +161,10 @@ Candidate SHA:
 
 Exact-SHA CI:
 
-`PASS — GitHub Actions run 31508533985; all six mandatory jobs passed on the
-exact corrected Candidate SHA.`
+`UNRESOLVED — run 31508533985 is tied to the exact corrected Candidate and its
+workflow header reports Success, but the job-level view still reported
+postgres-compat as Currently running; exact-Candidate CI cannot be claimed
+coherently.`
 
 Integration Policy:
 
@@ -185,8 +189,8 @@ Feature Branch:
 
 Feature Branch State:
 
-`ACTIVE — created from the verified Recovery Base; historical branch remains
-read-only and untouched.`
+`PARKED_REVIEW_LIMIT — preserve this branch and historical branch read-only;
+no merge or cleanup was attempted after the final review failed to PASS.`
 
 Pull Request Number:
 
@@ -203,11 +207,12 @@ synchronize local master with origin/master, and preserve historical branches.`
 
 Integration State:
 
-`NOT_STARTED`
+`PARKED_REVIEW_LIMIT — integration was not attempted because no Candidate
+passed the final TIER_2 review and exact-SHA CI evidence was incoherent.`
 
 Implementation Frozen SHA:
 
-`NOT_CREATED`
+`NOT_CREATED — no final PASS Candidate was frozen.`
 
 Merge Commit SHA:
 
@@ -215,9 +220,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`Wait for Sol #2 to terminate. Do not edit the implementation, spend another
-review launch, or change the corrected Candidate while this final reviewer is
-running. Sol #3 is prohibited.`
+`STOP: PARKED_REVIEW_LIMIT. The two-launch TIER_2 budget is exhausted without
+a PASS. Preserve the corrected Candidate and branch for a future explicitly
+authorized cycle; do not launch Sol #3 or integrate this PR.`
 
 Human Authorization State:
 

@@ -1,6 +1,6 @@
 # PR-7G Recovery — Corrected Candidate Review Readiness
 
-Status: `READY_FOR_SOL_2`
+Status: `SUPERSEDED_BY_SOL_2_CORRECTIVE_REQUIRED`
 
 This packet is the final reserved TIER_2 review gate after Sol #1 returned
 `CORRECTIVE_REQUIRED`. Sol #2 must independently inspect the corrected
