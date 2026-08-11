@@ -119,8 +119,9 @@ launch is authorized.
 
 Latest Reviewer Runtime Event:
 
-`SOL_2_LAUNCHED — final authorized `sol_milestone_reviewer` agent
-019ff04c-276c-7aa0-8728-311142ababed; no third launch is permitted.`
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — two bounded waits on final authorized
+Sol #2 agent 019ff04c-276c-7aa0-8728-311142ababed returned no terminal status;
+the same reviewer remains open and launch accounting is unchanged.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
