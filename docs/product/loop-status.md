@@ -73,7 +73,7 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`CORRECTIVE`
+`SOL_REVIEW`
 
 Current Milestone State:
 
@@ -81,7 +81,7 @@ Current Milestone State:
 
 Current Phase:
 
-`CORRECTIVE`
+`REMOTE_CI`
 
 Current Milestone:
 
@@ -120,11 +120,11 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`8dd069a0e700161d5a484af378b0ec9eb10e395c`
+`3f46a97010fff829ab6cfec132bae07359b34e2c`
 
 Exact-SHA CI:
 
-`PASS — [GitHub Actions run 31483703874](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31483703874), all six mandatory jobs green on exact Candidate SHA`
+`RUNNING — [GitHub Actions run 31486111752](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31486111752) on exact corrected Candidate SHA; do not launch Sol #2 until all six mandatory jobs are green`
 
 Integration Policy:
 
@@ -174,10 +174,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`Apply every P1/P2 finding in
-docs/product/reviews/PR-7H/sol-1-corrective.md without changing the protected
-scope. Create a new validated Candidate and exact-SHA CI; only then use the
-final PR-7H Sol #2 launch. Do not reopen PR-7G or launch Sol #3.`
+`Wait for exact corrected Candidate CI run 31486111752. If all six mandatory
+jobs pass, persist REVIEW_READY_FOR_SOL_2 and use the final PR-7H Sol #2
+launch; if CI fails, correct within the existing milestone scope. Do not
+reopen PR-7G or launch Sol #3.`
 
 Human Authorization State:
 
@@ -194,6 +194,12 @@ Latest Reviewer Runtime Event:
 `TERMINAL_VERDICT — Sol #1 returned CORRECTIVE_REQUIRED with no P0; the
 reviewer is closed, milestone review budget remains 1 launch, and no new Sol
 launch is authorized until the corrected Candidate is ready.`
+
+Latest Milestone Runtime Event:
+
+`CORRECTED_CANDIDATE_CREATED — 3f46a97010fff829ab6cfec132bae07359b34e2c;
+local validation passed; exact remote CI run 31486111752 is in progress. The
+final Sol #2 launch remains gated on this exact-SHA run.`
 
 Execution-budget pause state:
 

@@ -1,6 +1,6 @@
 # PR-7H Evidence-Bearing Subject Discovery Presentation
 
-Status: `CORRECTIVE_REQUIRED`
+Status: `REMOTE_CI`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget
@@ -171,8 +171,10 @@ asked, what the engine observed, and what remains uncertain; structured
 - Merge strategy: `MERGE_COMMIT` by default.
 - Branch cleanup: retire local/remote feature branch only after verified
   frozen-SHA ancestry and synchronized `master`.
-- Candidate SHA: `8dd069a0e700161d5a484af378b0ec9eb10e395c`.
-- Exact CI: run `31483703874`, all six mandatory jobs green.
+- Previous Candidate SHA: `8dd069a0e700161d5a484af378b0ec9eb10e395c`.
+- Corrected Candidate SHA: `3f46a97010fff829ab6cfec132bae07359b34e2c`.
+- Exact CI: run `31486111752`, in progress; Sol #2 remains gated on all six
+  mandatory jobs passing on this exact SHA.
 - Readiness record: `docs/product/reviews/PR-7H/review-readiness.md`.
 - Sol #1 reviewer: `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`),
   `CORRECTIVE_REQUIRED`; record:
