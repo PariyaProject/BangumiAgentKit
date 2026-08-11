@@ -53,7 +53,7 @@ The corrected Candidate passed locally:
 - `pnpm test:semantic` — 32 tests
 - `pnpm test:provider` — 33 tests
 - `pnpm test:discovery` — 48 tests
-- `pnpm test:render` — 45 tests
+- `pnpm test:render` — 46 tests
 - `pnpm test:standalone` — 19 tests
 - `pnpm test:integration:sqlite` — 33 tests
 - `pnpm openapi:verify` — pinned-spec validation, generation, formatting, and
@@ -99,6 +99,11 @@ QA above are current, the corrected Candidate is clean and pushed, and Sol #2
 is now authorized as the final milestone review launch. Sol #2 was launched as
 agent `019ff04c-276c-7aa0-8728-311142ababed` (`Aquinas`); no third launch is
 authorized.
+
+Sol #2 returned `CORRECTIVE_REQUIRED` with no P0 and four P1 findings. The
+complete final review record is [`sol-2-corrective.md`](sol-2-corrective.md).
+Because this was launch 2/2, the Candidate is not frozen and PR-7G is parked
+at `PARKED_REVIEW_LIMIT`; no third review launch is authorized.
 
 The complete Sol #1 verdict and P1 correction requirements are recorded in
 [`sol-1-corrective.md`](sol-1-corrective.md). The prior Candidate's exact CI is

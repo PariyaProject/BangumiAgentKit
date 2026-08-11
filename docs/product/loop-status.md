@@ -70,15 +70,15 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`SOL_REVIEW`
+`DISCOVERY`
 
 Current Milestone State:
 
-`SOL_REVIEW_RUNNING`
+`PARKED_REVIEW_LIMIT`
 
 Current Phase:
 
-`SOL_REVIEW`
+`CHECKPOINT_AND_DISCOVERY`
 
 Current Milestone:
 
@@ -105,7 +105,7 @@ Review Tier:
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 2 — Sol #1 corrective review and final Sol #2 launched; no third launch`
+`2 / 2 — Sol #1 corrective review and final Sol #2 returned CORRECTIVE_REQUIRED; no third launch`
 
 Milestone Review Runtime:
 
@@ -113,15 +113,16 @@ Milestone Review Runtime:
 019ff01d-dfae-7d80-9d24-5cff183ecd8a` returned `CORRECTIVE_REQUIRED`; record:
 `docs/product/reviews/PR-7G/sol-1-corrective.md`
 Corrected Candidate `08e1c4bc14269b110c24b4694819b652284aae46` now contains all
-four P1 fixes and the refreshed local/visual test evidence; Sol #2 is now
-running as agent `019ff04c-276c-7aa0-8728-311142ababed` (`Aquinas`). No third
-launch is authorized.
+four P1 fixes and the refreshed local/visual test evidence; Sol #2 completed
+with `CORRECTIVE_REQUIRED` as agent `019ff04c-276c-7aa0-8728-311142ababed`
+(`Aquinas`). Final record: `docs/product/reviews/PR-7G/sol-2-corrective.md`.
+No third launch is authorized.
 
 Latest Reviewer Runtime Event:
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — eight bounded waits on final authorized
-Sol #2 agent 019ff04c-276c-7aa0-8728-311142ababed returned no terminal status;
-the same reviewer remains open and launch accounting is unchanged.`
+`TERMINAL_VERDICT — Sol #2 agent 019ff04c-276c-7aa0-8728-311142ababed returned
+CORRECTIVE_REQUIRED with no P0 and four P1 findings; milestone review budget is
+exhausted and the direction is parked at PARKED_REVIEW_LIMIT.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -189,7 +190,8 @@ Integration State:
 
 Implementation Frozen SHA:
 
-`N/A — awaiting Sol #2 after corrected Candidate CI and readiness metadata`
+`N/A — Candidate rejected by final Sol #2; milestone parked at
+PARKED_REVIEW_LIMIT`
 
 Merge Commit SHA:
 
@@ -197,11 +199,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`Wait on the same Sol #2 reviewer. Do not launch another reviewer. If PASS,
-create the exact Freeze record and follow AUTO_MERGE_AFTER_FREEZE integration
-gates; if CORRECTIVE_REQUIRED, park at PARKED_REVIEW_LIMIT because the
-milestone's two-launch budget is exhausted; if HUMAN_REVIEW_REQUIRED, park the
-protected decision in the human-review queue.`
+`Close the completed Sol #2 agent, preserve the parked PR-7G branch/PR and all
+findings, then resume opportunity discovery. Select only an independent safe
+milestone; do not reopen PR-7G or launch a third reviewer for it. Outer review
+budget remains 2/4 consumed.`
 
 Human Authorization State:
 

@@ -39,7 +39,7 @@ is bounded.
 ## OP-002 Franchise Watch Order
 
 Status:
-SOL_2_RUNNING_IN_PR-7G
+PARKED_REVIEW_LIMIT
 
 User question:
 
@@ -98,6 +98,14 @@ recommendation, not a fact that every viewer must follow. Relation labels remain
 visible, date ties and unknown labels remain ambiguous, traversal is capped,
 and non-anime assets are summarized as excluded rather than silently treated as
 watch steps.
+
+Parking update (2026-08-11): Sol #2 returned `CORRECTIVE_REQUIRED` after the
+single authorized correction cycle. The final findings are recorded in
+`docs/product/reviews/PR-7G/sol-2-corrective.md`: conflicting direct labels,
+depth traversal/order semantics and directed renderer evidence, media/maxNodes
+contract alignment, and explicit edge-evidence truncation remain. No third Sol
+launch is authorized. This direction is parked while the outer Goal resumes
+discovery of an independent safe opportunity.
 
 ---
 

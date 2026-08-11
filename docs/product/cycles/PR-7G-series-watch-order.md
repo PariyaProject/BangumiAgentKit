@@ -1,6 +1,6 @@
 # PR-7G Series Relations & Watch-Order Intelligence
 
-Status: `SOL_2_RUNNING`
+Status: `PARKED_REVIEW_LIMIT`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget
@@ -168,10 +168,12 @@ as partial. No request is made for an excluded non-anime node.
 ## Review, branch, and integration ledger
 
 - Review tier: `TIER_2`.
-- Milestone Sol budget: `2` launches maximum, `0` consumed at plan time.
+- Milestone Sol budget: `2` launches maximum, `2` consumed; final Sol #2
+  returned `CORRECTIVE_REQUIRED` and no third launch is authorized.
 - Reviewer order: comprehensive `sol_milestone_reviewer` #1; if corrective,
   Luna correction followed by comprehensive `sol_milestone_reviewer` #2.
-- Outer Sol budget at plan time: `4` authorized, `0` consumed.
+- Outer Sol budget: `4` authorized, `2` consumed; two launches remain for
+  independent outer-Goal milestones.
 - Feature branch: `codex/pr-7g-series-watch-order`.
 - Target base: `master`.
 - Recorded Base SHA: `23f960ce3a8a8ac3841b791061a648037a53ab19`.
