@@ -56,17 +56,17 @@ Stopping Condition:
 
 Current Milestone State:
 
-`REVIEW_AUTHORIZED`
+`FROZEN_GOAL_COMPLETE`
 
 Current Phase:
 
-`MANUAL_FINALIZATION_SOL_IN_PROGRESS`
+`MANUAL_FINALIZATION_SOL_PASS_INTEGRATION_PENDING`
 
 Execution Runtime:
 
-The current one-off manual finalization task has reconstructed the stopped
-PR-7F state. The historical timeout remains recorded, and the implementation
-Candidate is review-ready under the newly authorized one-launch overlay.
+The one-off manual finalization review returned PASS. PR-7F's implementation
+Candidate is frozen for integration; only PR metadata, governance records, and
+master-side integration remain.
 
 Primary Model:
 
@@ -132,6 +132,14 @@ Exact-SHA CI:
   push trigger did not create a run; the cancelled `master` run `31462981828`
   is unrelated and is not used as evidence.
 
+Implementation Frozen SHA:
+
+`433e80cf1da7a5994513053c3391487d1c911a3e`
+
+The reviewed production implementation is frozen. No production code or tests
+may be changed after this PASS; subsequent work is limited to PR metadata,
+governance records, and master-side integration.
+
 Review Readiness Evidence:
 
 - local validation: affected unit/render tests, typecheck, lint, contract,
@@ -172,6 +180,16 @@ Manual Finalization Review Authorization:
   timeout record above;
 - no additional Sol launch is authorized by this task.
 
+Manual Finalization Review Result:
+
+- reviewer agent: `019fef85-b436-7812-b8a0-3fc13d89dde1` (`Popper`);
+- verdict: `PASS`;
+- new-task accounting after verdict: `1 authorized / 1 consumed / 0 remaining`;
+- P0/P1 findings: none;
+- report: `docs/product/reviews/PR-7F/manual-finalization-review.md`;
+- integration note: master-side governance ledgers require manual
+  reconciliation; this does not alter the reviewed implementation SHA.
+
 Human Authorization State:
 
 `UNATTENDED_TIER2_AUTHORIZED`
@@ -182,11 +200,10 @@ authorize a different Cycle or Sol #3.
 
 Next Action:
 
-Await the one newly authorized manual-finalization
-`sol_milestone_reviewer` review against Base
-`d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
-`433e80cf1da7a5994513053c3391487d1c911a3e`. If it does not return `PASS`, do
-not merge and stop with the exact result.
+Prepare PR #1 truthfully, then integrate the frozen Candidate from the master
+side with canonical master Harness content. Validate, push, verify PR #1 is
+merged, safely clean the retired feature branch, and stop. Do not modify the
+frozen production implementation or start another Product Cycle.
 
 ---
 
