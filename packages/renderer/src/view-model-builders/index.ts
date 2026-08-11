@@ -19,6 +19,8 @@ import type {
   CalendarDayViewModel,
   PersonProfileCreditViewModel,
   PersonProfileViewModel,
+  DiscoveryResultsViewModel,
+  DiscoveryResultsItemViewModel,
 } from '../view-models/index.js';
 
 export function truncateText(
@@ -105,6 +107,318 @@ export function buildSearchListViewModel(
     total: input.total,
     items,
     hasMore,
+  };
+}
+
+interface DiscoveryQueryInputLike {
+  keyword?: string;
+  media?: string | readonly string[];
+  categories?: string | readonly string[];
+  year?: number;
+  month?: number;
+  season?: string;
+  from?: string;
+  to?: string;
+  tags?: readonly string[];
+  metaTags?: readonly string[];
+  excludeMetaTags?: readonly string[];
+  concepts?: readonly string[];
+  rating?: { min?: number; max?: number };
+  ratingCount?: { min?: number; max?: number };
+  rank?: { min?: number; max?: number };
+  collectionCount?: { min?: number; max?: number };
+  nsfw?: string | boolean;
+  sort?: string;
+  order?: string;
+  resultMode?: string;
+  limit?: number;
+  explain?: string;
+}
+
+interface DiscoveryPlanFilterLike {
+  field: string;
+  classification: string;
+  operator: string;
+  value: unknown;
+}
+
+interface DiscoveryResultLike {
+  state: string;
+  items: Array<{
+    id: number;
+    name: string;
+    nameCn?: string;
+    displayName?: string;
+    media: string;
+    category?: string;
+    date?: string;
+    score?: number;
+    rank?: number;
+    ratingCount?: number;
+    collectionTotal?: number;
+    image?: string;
+  }>;
+  plan: {
+    operation: string;
+    quality: string;
+    pushdown: DiscoveryPlanFilterLike[];
+    postFilters: DiscoveryPlanFilterLike[];
+    derivedFilters: DiscoveryPlanFilterLike[];
+    limitations: string[];
+  };
+  coverage: {
+    state: 'complete' | 'partial' | 'unknown' | 'not_applicable';
+    requested?: number;
+    scanned?: number;
+    matched?: number;
+    returned?: number;
+    pagesScanned?: number;
+    totalKind?: string;
+    upstreamExhausted?: boolean;
+    budgetExceeded?: boolean;
+    hydrationsAttempted?: number;
+    hydrationsSucceeded?: number;
+    hydrationsFailed?: number;
+    hydrationsUnresolved?: number;
+    reason?: string;
+  };
+  warnings: Array<{ code: string; message: string }>;
+  limitations?: string[];
+  evidence: Array<{
+    source?: { class?: string; operation?: string; experimental?: boolean };
+    retrievedAt?: string;
+  }>;
+  explanation?: { limitations?: string[] };
+}
+
+const DISCOVERY_MEDIA_LABELS: Record<string, string> = {
+  anime: '动画',
+  book: '书籍',
+  music: '音乐',
+  game: '游戏',
+  real: '三次元',
+};
+
+const DISCOVERY_CATEGORY_LABELS: Record<string, string> = {
+  tv: 'TV',
+  ova: 'OVA',
+  movie: '剧场版',
+  web: '网络动画',
+};
+
+const DISCOVERY_FIELD_LABELS: Record<string, string> = {
+  keyword: '关键词',
+  media: '媒介',
+  categories: '分类',
+  year: '年份',
+  month: '月份',
+  dateRange: '日期',
+  tags: '标签',
+  metaTags: '元标签',
+  excludeMetaTags: '排除元标签',
+  concepts: '概念',
+  rating: '评分',
+  ratingCount: '评分人数',
+  rank: '排名',
+  collectionCount: '收藏人数',
+  nsfw: 'NSFW',
+  order: '顺序',
+  'sort:relevance': '排序·匹配度',
+  'sort:heat': '排序·热度',
+  'sort:rank': '排序·排名',
+  'sort:score': '排序·评分',
+  'sort:date': '排序·日期',
+};
+
+function asList(value: string | readonly string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return typeof value === 'string' ? [value] : [...value];
+}
+
+function labelList(
+  value: string | readonly string[] | undefined,
+  labels: Record<string, string>,
+): string {
+  return asList(value)
+    .map((item) => labels[item] || item)
+    .join('、');
+}
+
+function rangeLabel(value: { min?: number; max?: number } | undefined): string | undefined {
+  if (!value) return undefined;
+  if (value.min !== undefined && value.max !== undefined) return `${value.min}–${value.max}`;
+  if (value.min !== undefined) return `≥${value.min}`;
+  if (value.max !== undefined) return `≤${value.max}`;
+  return undefined;
+}
+
+function queryFacets(input: DiscoveryQueryInputLike): string[] {
+  const facets: string[] = [];
+  if (input.keyword) facets.push(`关键词：${input.keyword}`);
+  if (input.media) facets.push(`媒介：${labelList(input.media, DISCOVERY_MEDIA_LABELS)}`);
+  if (input.categories)
+    facets.push(`分类：${labelList(input.categories, DISCOVERY_CATEGORY_LABELS)}`);
+  if (input.season) facets.push(`季度：${input.season}`);
+  else if (input.year !== undefined && input.month !== undefined)
+    facets.push(`日期：${input.year}-${String(input.month).padStart(2, '0')}`);
+  else if (input.year !== undefined) facets.push(`年份：${input.year}`);
+  if (input.from || input.to)
+    facets.push(`日期：${input.from || '起始未知'} 至 ${input.to || '结束未知'}`);
+  if (input.tags && input.tags.length > 0) facets.push(`标签：${input.tags.join('、')}`);
+  if (input.metaTags && input.metaTags.length > 0)
+    facets.push(`元标签：${input.metaTags.join('、')}`);
+  if (input.excludeMetaTags && input.excludeMetaTags.length > 0)
+    facets.push(`排除：${input.excludeMetaTags.join('、')}`);
+  if (input.concepts && input.concepts.length > 0)
+    facets.push(`概念：${input.concepts.join('、')}`);
+  for (const [label, value] of [
+    ['评分', rangeLabel(input.rating)],
+    ['评分人数', rangeLabel(input.ratingCount)],
+    ['排名', rangeLabel(input.rank)],
+    ['收藏人数', rangeLabel(input.collectionCount)],
+  ] as const) {
+    if (value) facets.push(`${label}：${value}`);
+  }
+  if (input.nsfw !== undefined)
+    facets.push(
+      `NSFW：${typeof input.nsfw === 'boolean' ? (input.nsfw ? '包含' : '排除') : input.nsfw}`,
+    );
+  if (input.sort) facets.push(`排序：${input.sort}${input.order ? ` / ${input.order}` : ''}`);
+  if (input.resultMode) facets.push(`模式：${input.resultMode === 'all' ? '尽量完整' : 'Top'}`);
+  if (input.limit !== undefined) facets.push(`上限：${input.limit}`);
+  return facets;
+}
+
+function filterValueLabel(value: unknown): string {
+  if (Array.isArray(value)) return value.join('、');
+  if (value && typeof value === 'object') {
+    const range = value as { min?: number; max?: number; from?: string; to?: string };
+    if (range.from !== undefined || range.to !== undefined)
+      return `${range.from || '?'} 至 ${range.to || '?'}`;
+    return rangeLabel(range) || '范围已指定';
+  }
+  if (typeof value === 'boolean') return value ? '是' : '否';
+  return String(value);
+}
+
+function filterLabel(filter: DiscoveryPlanFilterLike): string {
+  const field = DISCOVERY_FIELD_LABELS[filter.field] || filter.field;
+  return `${field} ${filter.operator} ${filterValueLabel(filter.value)}`;
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.length > 0))];
+}
+
+function stateValue(value: string): DiscoveryResultsViewModel['state'] {
+  const allowed: DiscoveryResultsViewModel['state'][] = [
+    'ok',
+    'partial',
+    'stale',
+    'conflict',
+    'auth_required',
+    'permission_denied',
+    'unavailable',
+    'not_computable',
+    'unsupported',
+    'not_found',
+    'upstream_error',
+  ];
+  return allowed.includes(value as DiscoveryResultsViewModel['state'])
+    ? (value as DiscoveryResultsViewModel['state'])
+    : 'upstream_error';
+}
+
+export function buildDiscoveryResultsViewModel(
+  result: DiscoveryResultLike,
+  input: DiscoveryQueryInputLike = {},
+  maxItems = 12,
+): DiscoveryResultsViewModel {
+  const facets = queryFacets(input);
+  const cappedItems: DiscoveryResultsItemViewModel[] = result.items
+    .slice(0, maxItems)
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      nameCn: item.nameCn || item.displayName || item.name,
+      media: DISCOVERY_MEDIA_LABELS[item.media] || item.media,
+      category: item.category
+        ? DISCOVERY_CATEGORY_LABELS[item.category] || item.category
+        : undefined,
+      date: item.date,
+      score: item.score,
+      rank: item.rank,
+      ratingCount: item.ratingCount,
+      collectionTotal: item.collectionTotal,
+      image: item.image,
+    }));
+  const coverage = result.coverage;
+  const hiddenCount = Math.max(
+    0,
+    (coverage.matched ?? result.items.length) - cappedItems.length,
+  );
+  const evidenceOperations = result.evidence
+    .map((item) => item.source?.operation)
+    .filter((value): value is string => Boolean(value));
+  const operations = uniqueStrings([result.plan.operation, ...evidenceOperations]);
+  const evidenceRetrievedAt = result.evidence
+    .map((item) => item.retrievedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
+  const experimental =
+    result.evidence.some((item) => item.source?.experimental) ||
+    result.plan.operation === 'searchSubjects';
+  const limitations = uniqueStrings([
+    ...(result.plan.limitations || []),
+    ...(result.explanation?.limitations || []),
+    ...(result.limitations || []),
+  ]);
+  const queryLabel = input.keyword ? `搜索：${input.keyword}` : '受控条目发现';
+
+  return {
+    template: 'discovery-results',
+    version: 1,
+    state: stateValue(result.state),
+    query: {
+      label: queryLabel,
+      facets: facets.length > 0 ? facets : ['未指定额外条件'],
+    },
+    items: cappedItems,
+    hiddenCount: hiddenCount > 0 ? hiddenCount : undefined,
+    plan: {
+      operation: result.plan.operation,
+      quality: result.plan.quality,
+      pushdown: result.plan.pushdown.map(filterLabel),
+      postFilters: result.plan.postFilters.map(filterLabel),
+      derivedFilters: result.plan.derivedFilters.map(filterLabel),
+      limitations,
+    },
+    coverage: {
+      state: coverage.state,
+      requested: coverage.requested ?? input.limit ?? 0,
+      scanned: coverage.scanned ?? 0,
+      matched: coverage.matched ?? 0,
+      returned: coverage.returned ?? result.items.length,
+      pagesScanned: coverage.pagesScanned ?? 0,
+      totalKind: coverage.totalKind || 'unknown',
+      upstreamExhausted: coverage.upstreamExhausted ?? false,
+      budgetExceeded: coverage.budgetExceeded ?? false,
+      hydrationsAttempted: coverage.hydrationsAttempted ?? 0,
+      hydrationsSucceeded: coverage.hydrationsSucceeded ?? 0,
+      hydrationsFailed: coverage.hydrationsFailed ?? 0,
+      hydrationsUnresolved: coverage.hydrationsUnresolved ?? 0,
+      reason: coverage.reason,
+    },
+    source: {
+      label: 'Bangumi official v0',
+      operations,
+      evidenceCount: result.evidence.length,
+      retrievedAt: evidenceRetrievedAt,
+      experimental,
+    },
+    warnings: result.warnings.map((warning) => ({ code: warning.code, message: warning.message })),
+    limitations,
   };
 }
 

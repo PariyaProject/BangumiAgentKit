@@ -37,59 +37,59 @@ Standing execution defaults:
 
 Goal Scope:
 
-`NONE — NO ACTIVE PRODUCT GOAL OR CYCLE`
+`AUTONOMOUS_EVOLUTION_TIER2 — continuous safe, evidence-backed Product North
+Star progress during this explicit outer Goal session`
 
-The master-only governance corrective that introduced reviewer wait
-continuation, post-Freeze integration, one-milestone branch retirement, and
-unambiguous final Goal states is complete. The previous TIER_0 corrective also
-blocks unattended integration when the fetched target-base SHA differs from the
-recorded Base SHA. TIER_0 governance commit
-`a14e905b7a0cd63aaff516cda60115d335852f4f` added a separate true
-self-evolution profile while preserving execute-only behavior. The TIER_0
-corrective in the commit containing this ledger adds its deterministic
-four-launch outer Sol ceiling. None of these tasks started a Product Cycle or
-modified production code.
+This outer Goal was explicitly selected to discover and execute multiple
+bounded, safe Product Cycles. PR-7G was independently audited and executed on
+its parked branch, then truthfully stopped at its exhausted milestone review
+limit. The outer Goal is continuing with PR-7H from synchronized `master`;
+parking PR-7G does not authorize reopening it and does not complete the outer
+Goal.
 
 Explicit Non-Scope:
 
-- selecting or implementing the next Product Cycle;
+- reopening or modifying parked PR-7G;
 - reopening PR-7D, PR-7E, or PR-7F;
-- modifying frozen production implementation or tests;
-- launching a generic subagent or Sol reviewer;
-- creating a feature branch, PR, release, package, or tag;
+- authentication, authorization, credential, SSRF, write-authority, legal,
+  release, package, tag, or broad Structured Web/HTML policy changes;
+- generic implementation/research subagents (`0` authorized);
+- aggressive crawling, destructive real-account tests, or unrelated changes;
 - stashing, resetting, rewriting, relocating, or committing unrelated user
   work.
 
 Stopping Condition:
 
-This maintenance task ends after the governance-only corrective is validated,
-committed, and pushed to `master`. Future product work requires an explicit Goal
-profile: execute-only mode requires a separately selected active milestone;
-self-evolution mode authorizes discovery and safe milestone selection during
-that outer Goal session.
+Stop only for runtime/system/Goal budget exhaustion, exhaustion of the outer
+Sol review budget, user pause or direction change, infrastructure or permission
+blocking all useful safe work, explicit discovery finding no meaningful
+independent safe opportunity, unsafe repository state, or a governance-mandated
+global emergency. A milestone Freeze, parked direction, or exhausted milestone
+review budget is not outer Goal completion.
 
 Selected Product Goal Profile:
 
-`NONE — governance maintenance only`
+`AUTONOMOUS_EVOLUTION_TIER2`
 
 Outer Goal State:
 
-`INACTIVE`
+`VALIDATING`
 
 Current Milestone State:
 
-`BETWEEN_MILESTONES`
+`ACTIVE`
 
 Current Phase:
 
-`READY_FOR_PROFILE_SELECTION`
+`VALIDATING`
 
-Profile-dependent no-cycle semantics:
+Current Milestone:
 
-- `UNATTENDED_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means report missing milestone
-  selection/authorization and stop;
-- `AUTONOMOUS_EVOLUTION_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means enter
-  `OPPORTUNITY_DISCOVERY` and select a substantial safe milestone.
+`PR-7H Evidence-Bearing Subject Discovery Presentation`
+
+Cycle Plan:
+
+`docs/product/cycles/PR-7H-discovery-renderer.md`
 
 Primary Model / Reasoning:
 
@@ -104,31 +104,31 @@ Generic Subagent Budget Authorized / Consumed:
 
 Review Tier:
 
-`TIER_0` for this governance-only corrective; no Product Cycle is active.
+`TIER_2`
 
 Total Sol Review Budget Authorized / Consumed:
 
-`0 / 0`
+`2 / 0 — PR-7H milestone review launches`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`N/A / 0 — no self-evolution Goal is active`
+`4 / 2 — PR-7G Sol #1 and #2 consumed; 2 remain`
 
 Current Outer Review Budget State:
 
-`INACTIVE`
+`AVAILABLE — 2 launches remain`
 
 Candidate SHA:
 
-`N/A — no implementation Candidate`
+`N/A — PR-7H implementation checkpoint; final Candidate not yet review-ready`
 
 Exact-SHA CI:
 
-`N/A — governance-only maintenance with no production or test change`
+`N/A — PR-7H Candidate not yet ready`
 
 Integration Policy:
 
-`N/A — no active feature milestone`
+`AUTO_MERGE_AFTER_FREEZE`
 
 Target Base Branch:
 
@@ -136,7 +136,8 @@ Target Base Branch:
 
 Base SHA:
 
-`a14e905b7a0cd63aaff516cda60115d335852f4f` at this corrective's start.
+`23f960ce3a8a8ac3841b791061a648037a53ab19` — synchronized local and
+`origin/master` before PR-7H branch creation.
 
 Current Target Base SHA:
 
@@ -144,59 +145,78 @@ Current Target Base SHA:
 
 Feature Branch:
 
-`N/A`
+`codex/pr-7h-discovery-renderer`
 
 Pull Request Number:
 
-`N/A`
+`N/A — to be recorded after Candidate push`
 
 Merge Strategy:
 
-`N/A`
+`MERGE_COMMIT`
 
 Branch Cleanup Policy:
 
-`N/A`
+`Delete local and remote feature branch only after verified merge and
+synchronized master; never force-push shared frozen history.`
 
 Integration State:
 
-`NOT_APPLICABLE`
+`NOT_STARTED`
 
 Implementation Frozen SHA:
 
-`N/A for the current maintenance task`
+`N/A — PR-7H Candidate not yet reviewed`
 
 Merge Commit SHA:
 
-`N/A for the current maintenance task`
+`N/A — Freeze and integration not reached`
 
 Next Action:
 
-`SELECT A GOAL PROFILE`
-
-- Choose `UNATTENDED_TIER2` only after explicitly selecting an active milestone.
-- Choose `AUTONOMOUS_EVOLUTION_TIER2` to authorize continuous discovery,
-  milestone selection, and safe execution during that outer Goal session.
-
-No profile is invoked by this governance corrective, and no opportunity is
-selected now.
+`Run the complete PR-7H validation matrix, refresh visual evidence, and create
+the exact Candidate/CI readiness packet before any Sol launch. Do not reopen
+PR-7G or launch a third reviewer for it.`
 
 Human Authorization State:
 
-`NO PRODUCT GOAL PROFILE CURRENTLY ACTIVE`
+`SELF-EVOLUTION PROFILE ACTIVE; protected decisions remain HUMAN-ON-EXCEPTION`
 
 Execution-budget pause state:
 
-`N/A`. When active, `PAUSED_BY_EXECUTION_BUDGET` must persist outer state,
-current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI, review
-and subagent usage, blockers, and exact next action.
+`NOT PAUSED`. If reached, persist `PAUSED_BY_EXECUTION_BUDGET` with outer
+state, current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI,
+review and subagent usage, blockers, and exact next action.
 
 Outer review-budget pause state:
 
-`N/A`. When active, `PAUSED_BY_OUTER_REVIEW_BUDGET` must persist selected
-profile, outer Sol authorized/consumed, milestone and phase, milestone Sol
-authorized/consumed, branch, `HEAD`, latest stable Candidate, tests/CI,
-outstanding findings, parked directions, and exact next action.
+`NOT PAUSED`. If reached, persist `PAUSED_BY_OUTER_REVIEW_BUDGET` with
+selected profile, outer Sol authorized/consumed, milestone and phase,
+milestone Sol authorized/consumed, branch, `HEAD`, latest stable Candidate,
+tests/CI, outstanding findings, parked directions, and exact next action.
+
+---
+
+## Parked Directions
+
+### PR-7G Series Relations & Watch-Order Intelligence
+
+- state: `PARKED_REVIEW_LIMIT`;
+- branch: `codex/pr-7g-series-watch-order`;
+- pull request: `#2 — https://github.com/PariyaProject/BangumiAgentKit/pull/2`;
+- Candidate SHA:
+  `08e1c4bc14269b110c24b4694819b652284aae46`;
+- exact Candidate CI: run `31480599124`, all six mandatory jobs green;
+- milestone Sol budget: `2 / 2` consumed; Sol #2 returned
+  `CORRECTIVE_REQUIRED`; no third launch permitted;
+- integration: not started; no Freeze or merge SHA;
+- findings preserved on the parked branch in
+  `docs/product/reviews/PR-7G/sol-1-corrective.md` and
+  `docs/product/reviews/PR-7G/sol-2-corrective.md`: direct relation-label
+  conflicts, deeper chain/order semantics, media/maxNodes contract alignment,
+  and explicit edge-evidence truncation remain unresolved;
+- PR-7H is independent and must not modify this implementation or spend a
+  third review launch against it.
 
 ---
 

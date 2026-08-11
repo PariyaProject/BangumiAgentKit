@@ -3,6 +3,7 @@ import {
   RenderViewModel,
   SubjectCardViewModel,
   SearchListViewModel,
+  DiscoveryResultsViewModel,
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
@@ -13,6 +14,7 @@ import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
 import { SubjectCard } from './SubjectCard.js';
 import { SearchListCard } from './SearchListCard.js';
+import { DiscoveryResultsCard } from './DiscoveryResultsCard.js';
 import { CastCard } from './CastCard.js';
 import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
@@ -51,6 +53,19 @@ registerTemplate<SearchListViewModel>({
   version: 1,
   render: (vm, theme, resolvedImages) => (
     <SearchListCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  ),
+});
+
+registerTemplate<DiscoveryResultsViewModel>({
+  id: 'discovery-results',
+  version: 1,
+  render: (vm, theme, resolvedImages, width) => (
+    <DiscoveryResultsCard
+      viewModel={vm}
+      theme={theme}
+      resolvedImages={resolvedImages}
+      width={width}
+    />
   ),
 });
 

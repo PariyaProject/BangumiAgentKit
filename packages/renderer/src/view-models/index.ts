@@ -45,6 +45,78 @@ export interface SearchListViewModel {
   hasMore?: boolean;
 }
 
+export type DiscoveryResultsState =
+  | 'ok'
+  | 'partial'
+  | 'stale'
+  | 'conflict'
+  | 'auth_required'
+  | 'permission_denied'
+  | 'unavailable'
+  | 'not_computable'
+  | 'unsupported'
+  | 'not_found'
+  | 'upstream_error';
+
+export interface DiscoveryResultsItemViewModel {
+  id: number;
+  name: string;
+  nameCn?: string;
+  media: string;
+  category?: string;
+  date?: string;
+  score?: number;
+  rank?: number;
+  ratingCount?: number;
+  collectionTotal?: number;
+  image?: string;
+}
+
+export interface DiscoveryResultsViewModel {
+  template: 'discovery-results';
+  version: 1;
+  state: DiscoveryResultsState;
+  query: {
+    label: string;
+    facets: string[];
+  };
+  items: DiscoveryResultsItemViewModel[];
+  hiddenCount?: number;
+  plan: {
+    operation: string;
+    quality: string;
+    pushdown: string[];
+    postFilters: string[];
+    derivedFilters: string[];
+    limitations: string[];
+  };
+  coverage: {
+    state: 'complete' | 'partial' | 'unknown' | 'not_applicable';
+    requested: number;
+    scanned: number;
+    matched: number;
+    returned: number;
+    pagesScanned: number;
+    totalKind: string;
+    upstreamExhausted: boolean;
+    budgetExceeded: boolean;
+    hydrationsAttempted: number;
+    hydrationsSucceeded: number;
+    hydrationsFailed: number;
+    hydrationsUnresolved: number;
+    reason?: string;
+  };
+  source: {
+    label: string;
+    operations: string[];
+    evidenceCount: number;
+    retrievedAt?: string;
+    experimental?: boolean;
+  };
+  warnings: Array<{ code: string; message: string }>;
+  limitations: string[];
+}
+
 export interface CastItemViewModel {
   character: {
     id: number;
@@ -278,6 +350,7 @@ export interface RevisionTimelineViewModel {
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
+  | DiscoveryResultsViewModel
   | CastCardViewModel
   | CollectionProgressViewModel
   | CalendarViewModel
