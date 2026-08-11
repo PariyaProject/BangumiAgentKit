@@ -1,6 +1,6 @@
 # PR-7G Recovery — Series / Watch-Order Intelligence
 
-Status: `CORRECTING`
+Status: `REVIEW_READY`
 
 This is exactly one fresh execute-only Product Review Epoch on the current
 post-PR-7H master. The historical PR-7G branch and reports are read-only source
@@ -283,7 +283,8 @@ two-SHA freeze policy.
 
 ## Current next action
 
-Correct the Sol #1 findings, create a new clean Candidate, rerun affected and
-full validation plus representative visual QA, and obtain exact-SHA CI before
-launching Sol #2. Sol #2 must review the corrected Candidate; Sol #3 is
-prohibited.
+Launch Sol #2, the final reserved sequential comprehensive
+`sol_milestone_reviewer`, against corrected Candidate
+`1e0cbd97fcdd0859187534fda67ae797c33e5d0e` using
+`docs/product/reviews/PR-7G-recovery-series-watch-order/review-readiness-sol-2.md`.
+Sol #3 is prohibited.

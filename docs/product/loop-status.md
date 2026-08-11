@@ -86,7 +86,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`CORRECTING`
+`REVIEW_READY`
 
 Current Product Review Epoch:
 
@@ -95,9 +95,9 @@ Current Product Review Epoch:
 Current Work Packages / `LUNA_STABLE` Summary:
 
 `Directed SeriesService/evidence; semantic tool; series-relations renderer;
-Standalone/catalog/docs/tests — complete and LUNA_STABLE after focused/full
-validation, Agent QA, representative 640/960 visual QA, and exact-Candidate
-preflight.`
+Standalone/catalog/docs/tests — corrected Candidate complete and LUNA_STABLE
+after Sol #1 P1 fixes, focused/full validation, Agent QA, representative
+complete/partial/not-computable 640/960 visual QA, and exact-Candidate CI.`
 
 Review Boundary Rationale:
 
@@ -107,7 +107,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`CORRECTING`
+`REVIEW_READY`
 
 Primary Model / Reasoning:
 
@@ -127,7 +127,8 @@ evidence-sensitive traversal/renderer recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — 1 remaining; Sol #1 is running`
+`2 / 1 — 1 remaining; Sol #1 completed CORRECTIVE_REQUIRED; Sol #2 is
+reserved and not launched`
 
 Reviewer Runtime Checkpoint:
 
@@ -135,14 +136,16 @@ Reviewer Runtime Checkpoint:
 `019ff168-57d1-7332-bddb-7cd1ae01a286`, launched
 `2026-08-11T15:19:45Z`, Candidate
 `c9de0a46a1445650c6b2699f7c0cd35adf5daef5`, runtime
-`COMPLETED_CORRECTIVE_REQUIRED`.
+`COMPLETED_CORRECTIVE_REQUIRED`; corrected Candidate is recorded below.`
 Historical launches are not current budget consumption.`
 
 Reviewer Result:
 
 `Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings;
-see docs/product/reviews/PR-7G-recovery-series-watch-order/sol-1-review.md.
-Sol #2 remains reserved for the corrected Candidate only.`
+all accepted P1 findings are addressed in corrected Candidate
+1e0cbd97fcdd0859187534fda67ae797c33e5d0e. See
+docs/product/reviews/PR-7G-recovery-series-watch-order/sol-1-review.md and
+the corrected Sol #2 readiness packet.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -154,12 +157,12 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`c9de0a46a1445650c6b2699f7c0cd35adf5daef5`
+`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`
 
 Exact-SHA CI:
 
-`PASS — GitHub Actions run 31505310143; all six mandatory jobs passed on the
-exact Candidate SHA.`
+`PASS — GitHub Actions run 31508533985; all six mandatory jobs passed on the
+exact corrected Candidate SHA.`
 
 Integration Policy:
 
@@ -214,9 +217,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`Correct all accepted Sol #1 P1 findings, add regression/visual evidence,
-create a new exact Candidate, and obtain exact-SHA CI before launching Sol #2.
-Do not spend Sol #2 against the old Candidate.`
+`Launch Sol #2, the final reserved sequential comprehensive
+sol_milestone_reviewer, against corrected Candidate
+1e0cbd97fcdd0859187534fda67ae797c33e5d0e using the corrected readiness packet.
+Do not launch Sol #3.`
 
 Human Authorization State:
 
