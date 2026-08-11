@@ -4,16 +4,19 @@
 
 Default:
 
-`BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_MILESTONE + HUMAN_ON_EXCEPTION`
+`BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_PRODUCT_EPOCH + HUMAN_ON_EXCEPTION`
 
 The implementation/orchestration agent must never approve its own `TIER_1` or
 `TIER_2` Product Cycle Freeze Candidate. `TIER_0` may complete without Sol only
 when its Cycle Plan proves that product behavior and frozen contracts cannot
-change. Review agents are scarce milestone gates rather than an implementation
-loop.
+change. Review agents are scarce Product Review Epoch gates rather than an
+implementation loop.
 
-`docs/agent/BUDGET_FIRST_EXECUTION.md` defines the Goal boundary, launch budget,
-model routing, failure behavior, and stopping rules.
+`docs/agent/BUDGET_FIRST_EXECUTION.md` defines the canonical Product Review
+Epoch/Work Package boundary, Goal boundary, launch budget, model routing,
+failure behavior, commit hygiene, and stopping rules. This document owns review
+roles, verdicts, Freeze rules, and reviewer runtime classification without
+redefining Epoch scope.
 
 ## Roles
 
@@ -129,12 +132,17 @@ to discovery for another independent safe milestone.
 
 ## Reviewer runtime and wait semantics
 
-This section is the canonical source for reviewer runtime-state
-classification. Persist the reviewer identity, launch ordinal, launch time,
-current runtime status, and the applicable overall wall-clock deadline.
+This section is the canonical source for reviewer runtime-state classification.
+At reviewer launch, one durable crash/resume checkpoint may persist the Epoch
+ID, Candidate SHA, reviewer identity and role, launch ordinal and time, overall
+wall-clock deadline, milestone/Epoch and outer consumed counts, and
+`REVIEWER_RUNNING`. The launch consumes budget. No later repository mutation is
+allowed solely because that same reviewer remains running.
 
 Use exactly these runtime outcomes:
 
+- `REVIEWER_RUNTIME_UNKNOWN`: a historical `REVIEWER_RUNNING` checkpoint has
+  not yet been reconciled with the current runtime after interruption/resume;
 - `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`: one wait or poll returned without a
   final message and the same reviewer is still `RUNNING`;
 - `REVIEWER_TERMINATED_NO_VERDICT`: the runtime confirms that the reviewer
@@ -154,11 +162,25 @@ safe interval supported by the available Codex runtime while preserving normal
 progress reporting.
 
 When a wait or poll operation times out, inspect the already-launched reviewer.
-If it remains `RUNNING`, record
+If it remains `RUNNING`, classify the ephemeral observation as
 `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`, keep it open, and continue waiting or
 polling that same reviewer. Do not cancel or close it, do not launch a
 replacement, do not mark no-verdict, and do not consume another Sol launch.
 Repeated waits on that same reviewer cost zero launches.
+
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is runtime telemetry, not durable product
+or governance state. It must produce zero tracked-file edits, ledger or Plan
+updates, wait-count artifacts, commits, pushes, Candidate/CI changes, PR text
+changes, or review artifacts. Six or any number of consecutive waits must still
+produce zero repository mutations. Never persist first/second/nth wait,
+heartbeat count, elapsed polling interval, “still running”, or timestamps that
+exist only to show polling activity.
+
+If the Goal genuinely stops while the reviewer is running, persist at most one
+interruption checkpoint when needed for recoverability; do not replay the prior
+waits. On resume, treat a historical `REVIEWER_RUNNING` record as
+`REVIEWER_RUNTIME_UNKNOWN` until actual reviewer/runtime availability is
+reconciled. Never fabricate a verdict or launch an unauthorized replacement.
 
 Classify `REVIEWER_HARD_TIMEOUT` only when the overall recorded deadline is
 actually exceeded. Classify `REVIEWER_TERMINATED_NO_VERDICT` only when runtime
@@ -174,7 +196,9 @@ For self-evolution, the consumed outer launch is likewise never refunded.
 
 ## Review readiness
 
-The implementation agent must not launch reviewers until:
+Apply the canonical Epoch coherence and readiness tests from
+`BUDGET_FIRST_EXECUTION.md`. The implementation agent must not launch reviewers
+until:
 
 1. Cycle acceptance criteria are believed satisfied;
 2. the Cycle Plan records Review Tier, total authorized Sol launches, and any
@@ -196,10 +220,10 @@ evidence packet, and relevant repository paths. Review should focus on the
 actual Base..Candidate diff and affected execution paths. Historical review
 narratives and the full long-term Charter are read only when directly relevant.
 
-Each launch must make one comprehensive pass within its recorded lane and report
-all known P0/P1 blockers, rather than returning after the first finding. Sol is
-not triggered by commit count, stage completion, individual test fixes, or
-incremental refactors.
+Each launch must make one comprehensive pass over the complete Epoch within its
+recorded lane and report all known P0/P1 blockers, rather than returning after
+the first finding. Sol is not triggered by commit count, stage completion, Work
+Package completion, individual test fixes, or incremental refactors.
 
 ## Reviewer verdicts
 
@@ -337,8 +361,8 @@ Reports must preserve:
 - Governance Record SHA if already known;
 - Review Tier and required reviewer verdicts, or `TIER_0` eligibility evidence;
 - review launches authorized and consumed;
-- reviewer runtime outcomes, including wait-continuation evidence or actual
-  terminal failure classification when applicable;
+- reviewer launch checkpoint and actual verdict or terminal failure
+  classification when applicable; ephemeral waits and wait counts are excluded;
 - mandatory CI evidence;
 - major capabilities;
 - known limitations;
@@ -404,8 +428,10 @@ In execute-only mode, stop the current Goal when:
 Before stopping, update `docs/product/loop-status.md`. Never fabricate review,
 budget, CI, or completion evidence.
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition. Continue waiting
-on the same reviewer until a verdict or a genuine terminal runtime outcome.
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition or persistence
+event. Continue waiting on the same reviewer until a verdict or a genuine
+terminal runtime outcome, with zero repository mutation while it remains
+running.
 
 In self-evolution mode, review-limit and protected-decision outcomes park the
 affected milestone or direction rather than stopping the outer Goal. The outer

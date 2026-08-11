@@ -33,7 +33,7 @@ of repository policy or runtime progress.
 The default governance mode is:
 
 BUDGET_FIRST_SINGLE_THREAD +
-AI_REVIEW_AT_MILESTONE +
+AI_REVIEW_AT_PRODUCT_EPOCH +
 HUMAN_ON_EXCEPTION
 
 The default execution path is:
@@ -107,6 +107,16 @@ is temporarily unavailable, `xhigh` is the minimum acceptable Luna effort.
 Never lower Luna to `medium`, `high`, `low`, or `none` for cost control. Control
 cost by reducing agent launches and reserving Sol for milestone gates.
 
+For product work, each substantial milestone is one Product Review Epoch: the
+largest coherent and reviewable increment that completes one related user
+journey, Agent capability, product domain capability, or tightly coupled
+architectural slice. An Epoch may contain multiple Work Packages and many
+meaningful commits. Work Package completion and logical `LUNA_STABLE` status are
+not review, CI, PR, push, ledger-update, or commit triggers. Do not bundle
+unrelated work to delay review or split by numeric commit/file/line thresholds.
+The detailed Epoch boundary, readiness, validation, persistence, and commit
+hygiene rules live only in `BUDGET_FIRST_EXECUTION.md`.
+
 Every Cycle Plan must select a Review Tier before implementation:
 
 - `TIER_0`: zero Sol launches for documentation, tests, non-behavioral
@@ -120,7 +130,9 @@ Every Cycle Plan must select a Review Tier before implementation:
 Reviews are never parallel. A launch counts when a reviewer starts, including
 one that later fails or terminates. Wait and poll calls on that same reviewer do
 not consume launches. A transient wait timeout while the reviewer remains
-running is not reviewer failure and must continue waiting on the same reviewer.
+running is ephemeral runtime telemetry: continue waiting on the same reviewer
+with zero tracked-file edits, ledger changes, commits, pushes, CI reruns, or
+review artifacts.
 Sol uses `high` reasoning by default; `xhigh` requires explicit authorization
 for an exceptionally critical review. Never launch Sol beyond the recorded tier
 budget. `AUTONOMOUS_REVIEW_POLICY.md` owns the canonical reviewer runtime-state
@@ -215,7 +227,9 @@ Then classify it according to the Autonomous Review Policy.
 `docs/product/loop-status.md`
 is the canonical persistent execution ledger.
 
-Update it after meaningful milestones and before interruption.
+Update it only for meaningful durable events and before a genuine interruption.
+Never persist reviewer polling/heartbeat counts or ordinary `LUNA_STABLE`
+events.
 
 `docs/product/opportunity-log.md`
 is the canonical product opportunity backlog.
@@ -282,8 +296,9 @@ Never force-push shared frozen history.
 
 Never create release tags or publish packages autonomously.
 
-An explicitly authorized Product Cycle starts from a clean, current `master`
-and uses one dedicated ordinary feature branch and one PR for that milestone.
+An explicitly authorized Product Review Epoch starts from a clean, current
+`master` and uses one dedicated ordinary feature branch and one PR for that
+coherent milestone. Work Packages do not receive separate branches or PRs.
 Do not implement a new Product Cycle directly on `master`, reuse a completed
 milestone branch, or let one branch silently accumulate later Cycles.
 Governance-only maintenance may run directly on `master` only when explicitly

@@ -18,15 +18,17 @@ Primary governance:
 
 ## Governance Mode
 
-`BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_MILESTONE + HUMAN_ON_EXCEPTION`
+`BUDGET_FIRST_SINGLE_THREAD + AI_REVIEW_AT_PRODUCT_EPOCH + HUMAN_ON_EXCEPTION`
 
 Standing execution defaults:
 
 - one GPT-5.6 Luna primary thread at `max` reasoning;
 - Luna `xhigh` only as the minimum availability fallback;
 - generic implementation and research subagents disabled;
-- sequential milestone review only; never parallel;
-- one substantial product milestone per feature branch and PR;
+- sequential Product Review Epoch review only; never parallel;
+- one coherent Product Review Epoch per feature branch and PR; multiple related
+  Work Packages may live inside it;
+- `LUNA_STABLE` and reviewer polling create zero Git churn;
 - no Git worktree;
 - no cross-milestone continuation unless the user explicitly selects the
   self-evolution profile.
@@ -39,21 +41,17 @@ Goal Scope:
 
 `NONE — NO ACTIVE PRODUCT GOAL OR CYCLE`
 
-The master-only governance corrective that introduced reviewer wait
-continuation, post-Freeze integration, one-milestone branch retirement, and
-unambiguous final Goal states is complete. The previous TIER_0 corrective also
-blocks unattended integration when the fetched target-base SHA differs from the
-recorded Base SHA. TIER_0 governance commit
-`a14e905b7a0cd63aaff516cda60115d335852f4f` added a separate true
-self-evolution profile while preserving execute-only behavior. The TIER_0
-corrective in the commit containing this ledger adds its deterministic
-four-launch outer Sol ceiling. None of these tasks started a Product Cycle or
-modified production code.
+`TIER_0` governance maintenance on `master`. The corrective in the commit
+containing this ledger adopts Product Review Epochs as the sparse Sol boundary,
+defines Work Package and logical `LUNA_STABLE` semantics, prohibits polling Git
+churn, and preserves the accepted four-launch outer Sol ceiling. It does not
+start or resume product evolution. PR-7G and PR-7H remain untouched historical
+product branches for a separate controlled recovery action.
 
 Explicit Non-Scope:
 
 - selecting or implementing the next Product Cycle;
-- reopening PR-7D, PR-7E, or PR-7F;
+- reopening PR-7D, PR-7E, PR-7F, PR-7G, or PR-7H;
 - modifying frozen production implementation or tests;
 - launching a generic subagent or Sol reviewer;
 - creating a feature branch, PR, release, package, or tag;
@@ -79,6 +77,18 @@ Outer Goal State:
 Current Milestone State:
 
 `BETWEEN_MILESTONES`
+
+Current Product Review Epoch:
+
+`NONE`
+
+Current Work Packages / `LUNA_STABLE` Summary:
+
+`N/A — runtime-only unless included in an already-required durable checkpoint`
+
+Review Boundary Rationale:
+
+`N/A — TIER_0 governance maintenance; no Product Review Epoch selected`
 
 Current Phase:
 
@@ -136,7 +146,7 @@ Target Base Branch:
 
 Base SHA:
 
-`a14e905b7a0cd63aaff516cda60115d335852f4f` at this corrective's start.
+`23f960ce3a8a8ac3841b791061a648037a53ab19` at this corrective's start.
 
 Current Target Base SHA:
 
@@ -205,11 +215,15 @@ outstanding findings, parked directions, and exact next action.
 `docs/agent/AUTONOMOUS_REVIEW_POLICY.md` is the canonical source. A wait or
 poll timeout while the same reviewer remains running is
 `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`: keep the reviewer open and continue
-waiting with zero additional milestone or outer launch consumption. Only actual
-termination, overall hard timeout, crash, platform failure, or another
-unrecoverable state may become a terminal reviewer failure. Tier budgets remain
-`0 / 1 / 2` total launches, the Self-Evolution outer ceiling is `4`, reviews
-remain sequential, and Sol #3 is prohibited.
+waiting with zero additional milestone or outer launch consumption and zero
+tracked-file edits, ledger/Plan updates, wait artifacts, commits, pushes, CI
+reruns, PR changes, or Candidate changes. Wait counts are never persisted. Only
+actual termination, overall hard timeout, crash, platform failure, or another
+unrecoverable state may become a terminal reviewer failure. A historical
+`REVIEWER_RUNNING` checkpoint becomes `REVIEWER_RUNTIME_UNKNOWN` until runtime
+availability is reconciled after resume. Tier budgets remain `0 / 1 / 2` total
+launches, the Self-Evolution outer ceiling is `4`, reviews remain sequential,
+and Sol #3 is prohibited.
 
 ---
 

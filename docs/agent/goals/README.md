@@ -31,9 +31,10 @@ exhausted milestone review budget as completion of the outer Goal.
 ```
 
 This entry point authorizes Luna Max to observe the product, evolve the living
-backlog with provenance, select substantial safe milestones, execute their
-separate branch/PR/review/Freeze/integration lifecycles, and then return to
-discovery. Each milestone expects one and permits at most two Sol launches; the
+backlog with provenance, select substantial safe Product Review Epochs, execute
+their separate branch/PR/review/Freeze/integration lifecycles, and then return to
+discovery. Each Epoch may contain multiple related Work Packages and meaningful
+engineering commits, expects one and permits at most two Sol launches; the
 entire invoked outer Goal permits at most four Sol launches total. It does not
 authorize protected human-only decisions, generic subagents, Sol #3, worktrees,
 release/publication, or unsafe Git mutation.
@@ -63,9 +64,10 @@ AUTONOMOUS_EVOLUTION_TIER2.md
   -> active Cycle Plan when one exists
 ```
 
-`AUTONOMOUS_MILESTONE.md` is the reusable canonical execution contract for one
-substantial vertical milestone. `UNATTENDED_TIER2.md` is a small overlay that
-selects unattended execution, a hard two-launch Sol ceiling, same-reviewer wait
+`AUTONOMOUS_MILESTONE.md` is the reusable execution profile for one substantial
+coherent Product Review Epoch. Detailed Epoch and Work Package semantics live
+only in `BUDGET_FIRST_EXECUTION.md`. `UNATTENDED_TIER2.md` is a small overlay
+that selects unattended execution, a hard two-launch Sol ceiling, same-reviewer wait
 continuation, and authorized post-Freeze integration.
 
 `AUTONOMOUS_EVOLUTION_TIER2.md` is the separate outer-loop profile. It may enter

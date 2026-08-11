@@ -17,9 +17,10 @@ Read and obey, in order:
 7. any active Cycle Plan;
 8. this profile.
 
-The canonical policies own security, Git, CI, review accounting, reviewer wait
-semantics, Freeze, and integration. This profile supplies explicit authority to
-discover and select later safe milestones within one outer Goal; it never
+The canonical policies own Product Review Epoch boundaries, security, Git, CI,
+review accounting, reviewer wait semantics, Freeze, and integration. This
+profile supplies explicit authority to discover and select later safe Epochs
+within one outer Goal; it never
 weakens protected human-only boundaries.
 
 ## Selected execution profile
@@ -29,9 +30,9 @@ weakens protected human-only boundaries.
 - Preferred Reasoning: `max`
 - Minimum fallback: `xhigh`
 - Generic subagent budget: `0` per milestone unless separately authorized
-- Review Tier: `TIER_2` per substantial milestone
-- Expected Sol launches: `1` per milestone
-- Maximum automatic Sol launches: `2` total per milestone
+- Review Tier: `TIER_2` per substantial Product Review Epoch
+- Expected Sol launches: `1` per Epoch
+- Maximum automatic Sol launches: `2` total per Epoch
 - Outer Sol Launches Authorized: `4` per explicitly invoked outer Goal
 - Outer Sol Launches Consumed: `0` at new outer Goal invocation
 - Sol execution: `SEQUENTIAL ONLY`
@@ -40,8 +41,8 @@ weakens protected human-only boundaries.
 - Sol reasoning: `high`
 
 Sol is never used for observation, product audits, opportunity discovery,
-prioritization, planning, ordinary implementation, individual commits, stage
-completion, test fixes, or incremental debugging.
+prioritization, planning, ordinary implementation, individual commits, Work
+Package completion, stage completion, test fixes, or incremental debugging.
 
 The outer four-launch ceiling is hard for this invocation. Never raise or reset
 it inside the same outer Goal; a fresh ledger requires a future explicit
@@ -71,10 +72,11 @@ NO_ACTIVE_CYCLE
   -> PRODUCT_AUDIT
   -> OPPORTUNITY_DISCOVERY
   -> PRIORITIZATION
-  -> MILESTONE_SELECTION
-  -> MILESTONE_PLANNING
-  -> MILESTONE_ACTIVE
+  -> EPOCH_SELECTION
+  -> EPOCH_PLANNING
+  -> EPOCH_ACTIVE
   -> IMPLEMENTING
+  -> WORK_PACKAGE_LUNA_STABLE (runtime only; repeat without Git churn)
   -> VALIDATING
   -> REVIEW_READY
   -> SOL_REVIEW
@@ -120,7 +122,10 @@ these perspectives:
 Perform narrow read-only audits around concrete candidate areas such as subject,
 person, character, calendar, statistics, relations, collections, community, or
 Renderer. Do not repeatedly run broad repository or website research passes.
-Research must answer a concrete selection or design question.
+Research must answer a concrete selection or design question. Reuse existing
+research and persisted opportunity state. Once the evidence is sufficient to
+select a defensible high-value Epoch, stop brainstorming, persist its Plan, and
+start engineering.
 
 ## Living backlog and selection
 
@@ -139,14 +144,17 @@ Prioritize substantial vertical milestones using:
 - maintenance, security, and source risk;
 - Renderer opportunity where applicable.
 
-Do not select by roadmap number alone. A milestone may include many related
-tasks and commits, but must remain one coherent PR-level product increment with
-explicit representative questions, acceptance criteria, QA, and resource
-bounds.
+Do not select by roadmap number alone. An Epoch may include multiple related
+Work Packages and many meaningful commits, but must remain one coherent,
+reviewable PR-level product increment with explicit representative questions,
+acceptance criteria, QA, resource bounds, and the canonical Review Boundary
+Rationale. Do not create micro-Epochs for ordinary Work Packages or mega-Epochs
+that combine unrelated product domains.
 
-## Per-milestone lifecycle
+## Per-Epoch lifecycle
 
-Before implementation, create a bounded Cycle Plan and reset the per-milestone
+Before implementation, create a bounded Cycle/Epoch Plan, define its related
+Work Packages and Review Boundary Rationale, and reset the per-milestone
 ledger to `TIER_2`, `2 authorized / 0 consumed` Sol launches and
 `0 authorized / 0 consumed` generic subagents. A corrective commit never resets
 the milestone or outer Sol ledger. A new milestone resets the milestone ledger
@@ -165,9 +173,11 @@ Return to discovery only when the blocked branch can remain preserved and the
 checkout can safely return to current `master` without mutating unrelated user
 work. Otherwise the unsafe repository-state outer stop applies.
 
-Luna Max performs research, planning, implementation, debugging, targeted
-testing, User QA, Agent QA, Renderer inspection, consolidated self-review, and
-backlog evolution. Full validation and Sol occur only at milestone readiness.
+Luna Max performs research, planning, Work Package implementation and
+debugging, targeted testing, User QA, Agent QA, Renderer inspection,
+consolidated self-review, and backlog evolution. `LUNA_STABLE` remains logical
+runtime state with no automatic repository mutation. Full validation and Sol
+occur only at complete Epoch readiness.
 
 ## Sparse Sol sequence
 
@@ -204,9 +214,10 @@ blocking result after Sol #2
 ```
 
 Wait/poll timeouts while the same reviewer remains running continue waiting on
-that reviewer and consume no additional milestone or outer launch. Actual
-reviewer terminal failures consume their started launch in both ledgers. Never
-launch Sol #3.
+that reviewer and consume no additional milestone or outer launch. They create
+zero tracked-file edits, ledger updates, wait artifacts, commits, pushes, CI
+reruns, or PR changes. Actual reviewer terminal failures consume their started
+launch in both ledgers. Never launch Sol #3.
 
 `PARKED_REVIEW_LIMIT` parks only that milestone. Do not override findings or
 reset its budget. Return to discovery and select another independent safe
@@ -265,10 +276,11 @@ existing milestone ledger.
 ## Efficiency and Git discipline
 
 Use one long-lived Luna Max primary context, concise persistent state, targeted
-file reads and product audits, targeted implementation tests, and one full
-readiness validation. Avoid duplicated context, broad repeated summaries, tiny
-milestones, unstable review diffs, parallel reviewers, and repeated corrective
-review loops.
+file reads and product audits, targeted Work Package tests, and one full Epoch
+readiness validation. Avoid duplicated context, broad repeated summaries,
+micro-Epochs, incoherent mega-Epochs, unstable review diffs, parallel reviewers,
+and repeated corrective review loops. Multiple meaningful engineering commits
+are healthy; reviewer polling and status-only Git churn must remain zero.
 
 Never use a Git worktree, mutate unrelated user work, rewrite frozen history,
 reuse a completed milestone branch, or carry one milestone's review budget into

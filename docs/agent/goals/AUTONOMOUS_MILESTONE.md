@@ -1,9 +1,10 @@
-# Autonomous Milestone Goal Profile
+# Autonomous Product Review Epoch Goal Profile
 
 ## Status and precedence
 
-This is the reusable execute-only Goal profile for one substantial vertical
-BangumiAgentKit Product Milestone. It is not a policy replacement and is never
+This is the reusable execute-only Goal profile for one substantial coherent
+BangumiAgentKit Product Review Epoch (the Product Cycle/milestone review unit).
+It is not a policy replacement and is never
 hard-coded to a particular Cycle. Its inner milestone lifecycle may be reused by
 `AUTONOMOUS_EVOLUTION_TIER2`, but its outer stopping clauses apply to
 execute-only mode.
@@ -23,14 +24,15 @@ never weaken a higher-authority rule.
 
 ## Goal unit
 
-Execute exactly one already-authorized substantial vertical milestone from its
-persisted repository state until it reaches the final state selected by its
-Integration Policy or a documented stop condition. A milestone may contain
-many commits, many implementation stages, test failures, internal fixes, and
-several hours of GPT-5.6 Luna Max work.
+Execute exactly one already-authorized substantial coherent Product Review
+Epoch from its persisted repository state until it reaches the final state selected by its
+Integration Policy or a documented stop condition. An Epoch may contain several
+related Work Packages, many meaningful commits and implementation stages, test
+failures, internal fixes, and several hours of GPT-5.6 Luna Max work.
 
-Those events are not Sol review triggers. Sol review is allowed only after the
-complete substantial milestone reaches the Review Readiness Gate.
+Those events and `LUNA_STABLE` Work Package states are not Sol or Git triggers.
+Sol review is allowed only after the complete Epoch passes the canonical
+coherence and Review Readiness gates in `BUDGET_FIRST_EXECUTION.md`.
 
 This execute-only Goal does not select, plan, or begin the next Product Cycle
 after the current milestone stops or freezes. The separate self-evolution
@@ -64,6 +66,7 @@ Confirm that `loop-status.md` and the active Cycle Plan record:
 - Goal scope and explicit non-scope;
 - verifiable stopping condition;
 - current milestone state;
+- Product Review Epoch scope, Work Packages, and Review Boundary Rationale;
 - primary model and reasoning;
 - generic subagent budget authorized and consumed;
 - Review Tier and total Sol launches authorized and consumed;
@@ -72,7 +75,7 @@ Confirm that `loop-status.md` and the active Cycle Plan record:
   `BUDGET_FIRST_EXECUTION.md`;
 - next action and human authorization state.
 
-The active Cycle Plan additionally defines user questions, product gap,
+The active Cycle/Epoch Plan additionally defines user questions, product gap,
 sources, evidence and coverage semantics, Agent UX, Renderer scope, tests, QA,
 resource/security limits, acceptance criteria, and Freeze requirements. Do not
 expand the Goal beyond that contract. Record new opportunities in the backlog.
@@ -90,13 +93,13 @@ expand the Goal beyond that contract. Record new opportunities in the backlog.
   debugger, speculative researcher, or stage-completion checker.
 - Sol launches: sequential only and bounded by the persisted Review Tier.
 
-## Milestone execution loop
+## Epoch execution loop
 
 Use the Luna primary thread to repeat the following within the Cycle scope:
 
 1. inspect persisted progress, evidence, and remaining acceptance criteria;
-2. research only what the current milestone requires;
-3. design the smallest coherent vertical change that advances the milestone;
+2. research only what the current Epoch requires;
+3. design the next coherent Work Package that advances the Epoch;
 4. implement without reopening frozen foundations or protected boundaries;
 5. run focused tests and negative tests, then broader affected validation;
 6. use the capability as a real user and verify representative questions;
@@ -104,9 +107,12 @@ Use the Luna primary thread to repeat the following within the Cycle scope:
    unknown, conflict, not-computable, and unavailable states;
 8. perform Renderer QA when rendering is relevant, including representative
    widths, CJK typography, hierarchy, long/missing data, and degraded states;
-9. update the runtime ledger after meaningful checkpoints and before any stop;
-10. continue Luna work until the complete milestone, not an intermediate stage,
-    is ready for consolidated review.
+9. mark a completed Work Package logically `LUNA_STABLE` after targeted
+   validation and Luna self-review, without creating status-only Git churn;
+10. update the runtime ledger only at meaningful durable checkpoints and before
+    a genuine interruption;
+11. continue Luna work until the complete Epoch, not a Work Package or
+    intermediate stage, is ready for consolidated review.
 
 Tests failing during implementation are Luna work. Fixing tests, refactoring
 internals, completing a sub-stage, or creating another implementation commit
@@ -115,7 +121,7 @@ does not authorize Sol.
 ## Luna consolidated self-review
 
 Before declaring readiness, perform one consolidated primary-thread review of
-the entire Base..Candidate milestone against:
+the entire Base..Candidate Epoch against:
 
 - correctness and important failure states;
 - architecture and frozen-contract compatibility;
@@ -134,7 +140,9 @@ Fix every known in-scope blocker before spending Sol.
 Apply the complete gate from `BUDGET_FIRST_EXECUTION.md` and
 `AUTONOMOUS_REVIEW_POLICY.md`. At minimum, review is prohibited until:
 
-- milestone scope and acceptance criteria are stable;
+- the Epoch passes the canonical coherence/readiness test and its Review
+  Boundary Rationale remains accurate;
+- Epoch scope and acceptance criteria are stable;
 - the Cycle Plan and ledger agree on Review Tier and total launch budget;
 - the entire implementation is committed at an exact Candidate SHA;
 - no milestone changes remain uncommitted;
@@ -150,7 +158,7 @@ as review evidence.
 
 ## Candidate and exact-SHA CI
 
-Create a Candidate only after the complete milestone is ready. Record the exact
+Create a Candidate only after the complete Epoch is ready. Record the exact
 commit SHA in `loop-status.md` and the Cycle Plan. Push only within existing Git
 authority and run mandatory remote CI against that exact SHA. If implementation
 changes after CI or review, it is a new Candidate and requires new exact-SHA
@@ -175,8 +183,9 @@ A reviewer start consumes one launch; wait and poll calls on that same reviewer
 consume zero additional launches. Apply the canonical runtime states and
 120-minute default overall reviewer deadline from
 `AUTONOMOUS_REVIEW_POLICY.md`. A wait timeout while the reviewer remains
-running means continue waiting on that same reviewer; it is not failure, no
-verdict, or authorization for a replacement. Persist authorized, consumed, and
+running means continue waiting on that same reviewer with zero repository
+mutation; it is not failure, a persistence event, a verdict, or authorization
+for a replacement. Persist authorized, consumed, and
 remaining totals before and after each launch and terminal outcome. Never
 exceed the recorded total. Sol #3 is never automatic.
 
@@ -198,7 +207,8 @@ Review Policy defines.
   persist the state, and stop.
 - On failure or no verdict, count the launch and apply the tier's stopping rule.
 - On `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`, keep the reviewer open and continue
-  waiting or polling it without consuming another launch.
+  waiting or polling it without consuming another launch or editing, committing,
+  pushing, rerunning CI, or persisting a wait count.
 
 ## Protected human-only boundaries
 
@@ -267,14 +277,15 @@ Stop after persisting the ledger when any of the following occurs:
 - the user pauses, stops, or changes the Goal;
 - repository state no longer identifies one unambiguous active milestone.
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition. Continue waiting
-on the same reviewer. Stopping is not permission to start another opportunity.
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition or durable state
+transition. Continue waiting on the same reviewer with zero Git churn. Stopping
+is not permission to start another opportunity.
 
 ## Final report
 
 Report concisely:
 
-- Goal and Cycle scope;
+- Goal and Product Review Epoch scope;
 - final milestone state;
 - Base, Candidate, Implementation Frozen, and Governance Record SHAs as
   applicable;

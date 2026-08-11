@@ -1,7 +1,9 @@
 # BangumiAgentKit Budget-First Execution Harness
 
 This file is the canonical execution-cost contract for Codex Goals, subagents,
-milestone reviews, and autonomous continuation in this repository.
+Product Review Epoch boundaries, milestone reviews, and autonomous continuation
+in this repository. It is the only canonical source for the detailed Product
+Review Epoch and Work Package semantics below.
 
 Only the explicitly selected self-evolution profile may keep selecting Product
 Cycles inside one outer Goal. It still obeys this file's per-milestone review
@@ -16,6 +18,201 @@ agent count, commit count, or number of Product Cycles.
 
 The default execution shape is one primary agent working in one thread. A
 subagent is an exception with an explicit, bounded purpose.
+
+The optimization objective is:
+
+```text
+MAXIMIZE MEANINGFUL PRODUCT PROGRESS PER SOL REVIEW
+```
+
+Preserve review quality, correctness, security, traceability, and
+recoverability. Do not mechanically maximize commits, files, Work Packages, or
+lines per review.
+
+## Development hierarchy and review boundary
+
+Use this hierarchy:
+
+```text
+PRODUCT NORTH STAR
+  -> AUTONOMOUS EVOLUTION OUTER GOAL
+  -> PRODUCT REVIEW EPOCH
+  -> WORK PACKAGE
+  -> TASK
+  -> COMMIT
+```
+
+The default Sol boundary is the **Product Review Epoch**, not a commit, task,
+implementation stage, or ordinary Work Package. A Product Review Epoch is one
+coherent, reviewable product increment: a related group of work that completes
+a meaningful user journey, Agent capability, product domain capability, or
+tightly coupled architectural slice. Product coherence—not repository layout
+or numeric size—defines the boundary.
+
+For product development, one substantial milestone or Product Cycle is planned
+as one Product Review Epoch. Existing `MILESTONE_*` runtime state names remain
+valid compatibility names for that Epoch lifecycle. One Epoch normally uses
+one feature branch and one eventual product PR.
+
+### Work Packages and `LUNA_STABLE`
+
+A Work Package is a meaningful implementation slice inside an Epoch, such as a
+semantic capability, provider extension, analytics module, Agent-facing tool,
+Standalone UX, Renderer section, relation traversal, or verification layer. A
+Work Package may contain multiple meaningful engineering commits.
+
+The normal Work Package lifecycle is:
+
+```text
+IMPLEMENT
+  -> TARGETED VALIDATION
+  -> LUNA MAX SELF-REVIEW
+  -> LUNA_STABLE
+  -> CONTINUE THE EPOCH
+```
+
+`LUNA_STABLE` is a logical runtime/project-management state, not a Git event.
+It does not by itself justify editing the ledger or Plan, committing, pushing,
+running remote CI, opening a PR, creating a Candidate, or launching Sol. Keep it
+session-local or include it compactly in an already-required durable
+checkpoint. Never create a standalone “mark Work Package Luna stable” commit.
+
+An Epoch will often contain multiple related Work Packages, but it has no
+numeric minimum. A single Work Package may be an Epoch when it is naturally
+complete, independently high-risk, foundational, sufficiently substantial, or
+unsafe to combine. Never manufacture scope to satisfy a count.
+
+### Coherence and reviewability
+
+Before adding another Work Package, ask:
+
+1. Does it improve the same user journey, Agent capability, product domain, or
+   tightly coupled architecture?
+2. Will reviewing it together clarify cross-component behavior?
+3. Will completing it before review avoid duplicated review work?
+
+If mostly yes, it may belong in the Epoch. If mostly no, record it in the
+opportunity backlog. Never bundle unrelated features merely to delay review.
+
+Before Review Readiness, assess conceptual surface, independent subsystems,
+frozen contracts, cross-cutting risk, test surface, and reviewer cognitive
+load. Split before review when multiple loosely coupled product domains or
+independent architectures make one rigorous review unrealistic. Numeric size
+is only a warning to re-evaluate semantic coherence; commit count, file count,
+and line count are never automatic split or review triggers. The objective is
+the largest **coherent and reviewable** product increment, not the largest diff.
+
+Sparse review does not override safety. An explicitly justified earlier review
+may be required when a Work Package changes security foundations, data
+integrity, persistent migration semantics, source trust boundaries, or a
+foundational public contract on which substantial later work would depend.
+Protected human-only boundaries remain human-only. “This feels important” is
+not sufficient justification.
+
+### Epoch Plan and Review Boundary Rationale
+
+Before implementation, every product Cycle/Epoch Plan must include:
+
+```text
+## Review Boundary Rationale
+```
+
+It must explain why the Work Packages belong together, the user or Agent
+journey they complete, related work intentionally included, adjacent work
+intentionally deferred, why review now is more valuable than earlier review,
+and why extending the Epoch further would reduce coherence or reviewability.
+
+It must also record these expected economics before implementation:
+
+- Review Tier: `TIER_0`, `TIER_1`, or `TIER_2`;
+- Expected Sol: normally `1` for a Sol-reviewed Epoch;
+- Automatic Maximum: the tier maximum, never more than `2`;
+- Outer Remaining Sol when self-evolution is active;
+- Generic Subagents: `0` unless separately authorized.
+
+The second `TIER_2` launch is corrective capacity, not the expected path.
+
+### Epoch readiness test
+
+Do not trigger Sol merely because something finished. Before declaring an
+Epoch `REVIEW_READY`, Luna must establish all of the following:
+
+1. the Epoch forms a meaningful end-to-end product increment;
+2. the major related Work Packages that naturally belong together are done;
+3. another closely related Work Package would not materially improve this same
+   capability, or a recorded safety/reviewability reason requires review first;
+4. one Sol reviewer can reasonably audit the Base..Candidate as one coherent
+   system;
+5. acceptance criteria and required UX are satisfied;
+6. Luna's consolidated self-review has removed known obvious defects.
+
+If a closely related high-value package clearly belongs and no safety reason
+requires early review, continue Luna work. If further work belongs mainly to a
+different theme, enter Review Readiness. Readiness means coherent and stable,
+not theoretically perfect; later improvements may become later Epochs.
+
+Sol reviews the complete Epoch as a system and seeks all known P0/P1 findings
+in one pass. Sol is a final independent falsification layer, never the first
+serious reviewer or an incremental debugger. Do not launch it for a failing
+test, unclear ordinary implementation decision, completed Work Package,
+successful compilation or render, CI failure, reassurance, or normal planning.
+
+### Engineering, validation, and discovery discipline
+
+Luna Max owns implementation, debugging, targeted inspection, edge and
+negative paths, architecture consistency, frozen-contract awareness, Agent UX,
+Renderer QA when applicable, obvious performance/resource issues, and the
+consolidated Base..Candidate self-review.
+
+Use targeted tests and representative checks while developing each Work
+Package, broader affected tests at meaningful integration boundaries, and the
+complete required Epoch validation plus exact-SHA remote CI only at Review
+Readiness. Do not run the full repository pipeline after every commit unless a
+high-risk shared foundation warrants broader early validation. Reducing Sol
+frequency never authorizes skipping correctness validation.
+
+Opportunity discovery exists to select engineering work, not sustain an
+endless research or documentation loop. Reuse persisted research and backlog
+state, investigate only missing facts required for selection or design, and
+start implementation once a defensible high-value Epoch is selected. New
+unrelated ideas go to the mutable opportunity backlog with provenance rather
+than into the active Epoch. Do not use Sol for planning or discovery.
+
+### Commit, persistence, push, and PR hygiene
+
+Every autonomous commit must represent meaningful durable engineering or
+governance change. Meaningful `feat`, `fix`, `test`, `refactor`, and real
+product/support documentation commits are encouraged, and an Epoch may contain
+many of them. The objective is fewer review events, not fewer engineering
+commits.
+
+Never create standalone commits for reviewer waits, heartbeats, wait counts,
+timestamps, “still running”, “checked again”, `LUNA_STABLE`, or phase wording
+without a meaningful durable transition. Do not commit to demonstrate
+activity. Batch closely related governance state when truthful; a healthy
+review lifecycle normally needs planning/activation, many engineering commits,
+an optional Candidate/reviewer-launch checkpoint, and verdict/corrective/Freeze
+records—not one governance commit per transition.
+
+Do not push merely because a local commit exists. Push for durable backup,
+collaboration, Candidate publication, remote CI, or another repository need.
+Avoid status-only pushes that trigger CI. Do not open one branch or PR per Work
+Package.
+
+The following interpretations are explicitly wrong:
+
+- every Work Package or every N commits needs Sol;
+- an Epoch must contain at least N Work Packages;
+- Epochs should be as large as possible or a large diff proves efficiency;
+- `LUNA_STABLE` or a reviewer wait timeout requires a Git commit;
+- more governance commits automatically improve auditability;
+- fewer reviews means fewer tests;
+- unrelated work should be added to postpone review;
+- Sol should select the Epoch during planning;
+- every Work Package needs its own PR;
+- Sol may start while the Candidate is changing or stop after its first finding;
+- review cost permits skipping required review;
+- the Task List is immutable or self-evolution means endless brainstorming.
 
 ## Repository checkout policy
 
@@ -58,13 +255,14 @@ require a pre-existing active Cycle. If one exists, it resumes that milestone
 without replacing it. Otherwise `NO_ACTIVE_PRODUCT_CYCLE` enters
 `OPPORTUNITY_DISCOVERY`.
 
-The outer Goal may contain multiple substantial milestones, but each milestone
-remains a separate bounded Product Cycle with its own Plan, ordinary feature
-branch, PR, Review Tier and launch ledger, Candidate, exact-SHA evidence,
-Freeze, integration, and cleanup lifecycle. A milestone may contain many tasks,
-commits, implementation stages, and several hours of Luna Max work. Commit
-count, stage completion, individual test fixes, and incremental refactors never
-create review boundaries.
+The outer Goal may contain multiple substantial Product Review Epochs. Each
+Epoch remains a separate bounded Product Cycle/milestone with its own Plan,
+ordinary feature branch, PR, Review Tier and launch ledger, Candidate,
+exact-SHA evidence, Freeze, integration, and cleanup lifecycle. An Epoch may
+contain multiple Work Packages, many tasks and commits, and several hours of
+Luna Max work. Commit count, stage completion, Work Package stability,
+individual test fixes, and incremental refactors never create review
+boundaries.
 
 Before either Goal mode acts, record:
 
@@ -78,9 +276,11 @@ When `AUTONOMOUS_EVOLUTION_TIER2` is explicitly invoked as a new outer Goal,
 initialize its independent review ledger to `4 authorized / 0 consumed`. Do not
 pretend this budget exists while no self-evolution Goal is active.
 
-Before each milestone implementation begins, additionally record:
+Before each Epoch implementation begins, additionally record:
 
-- milestone objective, representative user questions, and explicit non-scope;
+- Epoch objective, Work Packages, representative user questions, and explicit
+  non-scope;
+- the required Review Boundary Rationale;
 - acceptance criteria and validation commands or artifacts;
 - Review Tier selected before implementation;
 - total Sol launches authorized and consumed for this milestone;
@@ -133,10 +333,11 @@ NO_ACTIVE_CYCLE
   -> PRODUCT_AUDIT
   -> OPPORTUNITY_DISCOVERY
   -> PRIORITIZATION
-  -> MILESTONE_SELECTION
-  -> MILESTONE_PLANNING
-  -> MILESTONE_ACTIVE
+  -> EPOCH_SELECTION
+  -> EPOCH_PLANNING
+  -> EPOCH_ACTIVE
   -> IMPLEMENTING
+  -> WORK_PACKAGE_LUNA_STABLE (runtime only; repeat without Git churn)
   -> VALIDATING
   -> REVIEW_READY
   -> SOL_REVIEW
@@ -197,7 +398,7 @@ Default:
 - one primary thread;
 - no implementation subagents;
 - no speculative parallel research agents;
-- no reviewer launch before the entire milestone reaches readiness;
+- no reviewer launch before the entire Product Review Epoch reaches readiness;
 - reviews are sequential and never parallel.
 
 The standing implementation model is GPT-5.6 Luna with `max` reasoning. If
@@ -229,14 +430,14 @@ contracts cannot change. Authorized / maximum Sol launches: `0`.
 
 ### `TIER_1` — one comprehensive Sol launch
 
-This is the default for normal product milestones. Authorized / maximum Sol
+This is the default for normal product Review Epochs. Authorized / maximum Sol
 launches: `1`. Use `sol_milestone_reviewer`, which covers correctness,
 architecture, security, frozen contracts, tests, evidence and coverage,
 resource bounds, user value, Agent UX, and Renderer when applicable.
 
 ### `TIER_2` — at most two Sol launches total
 
-Reserve for unusually high-risk or high-value milestones, or select it through
+Reserve for unusually high-risk or high-value Epochs, or select it through
 the explicitly authorized `AUTONOMOUS_EVOLUTION_TIER2` profile. The Cycle Plan
 must record the tier, reviewer identity, and sequential order. Authorized /
 maximum Sol launches: `2` total, not two per role. Existing specialized
@@ -262,7 +463,8 @@ the reviewer is still running is not a reviewer failure and must not trigger a
 replacement launch. `AUTONOMOUS_REVIEW_POLICY.md` is the canonical source for
 reviewer runtime states, the overall wall-clock limit, and failure
 classification. Sol is never triggered by commit count, an implementation
-stage, an individual test fix, or an incremental refactor.
+stage, Work Package completion, an individual test fix, or an incremental
+refactor.
 
 The repository cannot read or enforce the user's live Plus quota. Launch count
 is the deterministic budget proxy and must be recorded in
@@ -327,19 +529,21 @@ active milestone's ledger unless a genuinely new milestone begins.
 
 Do not spend the review budget until all of the following are true:
 
-1. the milestone scope is stable;
-2. the Cycle Plan records its Review Tier, total authorized Sol budget, and any
-   `TIER_2` reviewer order;
-3. for self-evolution, both milestone and outer remaining Sol budgets are
+1. the canonical Epoch readiness test above has passed and its Review Boundary
+   Rationale remains accurate;
+2. the Epoch scope and acceptance criteria are stable;
+3. the Cycle/Epoch Plan records its Review Tier, expected and maximum Sol
+   economics, total authorized budget, and any `TIER_2` reviewer order;
+4. for self-evolution, both milestone and outer remaining Sol budgets are
    greater than zero;
-4. the implementation is committed as an exact Candidate SHA;
-5. the checked-out branch has no tracked changes from the milestone;
-6. relevant local validation is green;
-7. mandatory remote CI is green for that Candidate SHA;
-8. user, Agent, and visual QA required by the Cycle are complete;
-9. the primary thread has performed one consolidated preflight against the
-   acceptance criteria;
-10. no known blocker is intentionally deferred to the reviewers.
+5. the complete Epoch implementation is committed as an exact Candidate SHA;
+6. the checked-out branch has no tracked changes from the Epoch;
+7. relevant local and integration validation is green;
+8. mandatory remote CI is green for that Candidate SHA;
+9. user, Agent, and visual QA required by the Epoch are complete;
+10. the primary thread has performed one consolidated Base..Candidate preflight
+    against the acceptance criteria;
+11. no known blocker is intentionally deferred to the reviewers.
 
 Reviewers must inspect the actual Base..Candidate diff and relevant evidence.
 They should receive a concise review packet and perform one comprehensive pass,
@@ -409,7 +613,8 @@ selected within an active self-evolution Goal:
 This lifecycle is:
 
 ```text
-ONE SUBSTANTIAL PRODUCT MILESTONE
+ONE COHERENT PRODUCT REVIEW EPOCH
+  -> ONE OR MORE RELATED WORK PACKAGES AS NEEDED
   -> ONE FEATURE BRANCH
   -> ONE PR
   -> REVIEW
@@ -567,7 +772,11 @@ milestone.
 - selected execution profile and outer Goal state;
 - Outer Sol Review Budget authorized / consumed and current budget state;
 - explicit non-scope;
-- current milestone identity and phase, or `BETWEEN_MILESTONES`;
+- current Product Review Epoch/milestone identity and phase, or
+  `BETWEEN_MILESTONES`;
+- Work Package summary and logical `LUNA_STABLE` status only when included in
+  an already-required durable checkpoint;
+- Review Boundary Rationale;
 - current milestone state;
 - primary model and reasoning effort;
 - generic subagent launches authorized / consumed;
@@ -583,9 +792,11 @@ For every backlog reprioritization also persist the changed entries, prior
 state, new state, rationale, and evidence provenance. For a budget pause persist
 all `PAUSED_BY_EXECUTION_BUDGET` resume fields from the outer-loop contract.
 
-Update the ledger before interruption, before any reviewer launch, after every
-reviewer result or actual failure, at Freeze, after every integration state
-transition, and when the Goal stops.
+Update the ledger before a genuine interruption, before any reviewer launch,
+after every reviewer verdict or actual terminal failure, at Freeze, after every
+durable integration state transition, and when the Goal stops. Never update the
+ledger for an ordinary `LUNA_STABLE` event, reviewer heartbeat, wait count, or
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`; those are ephemeral runtime telemetry.
 
 ## Human override
 

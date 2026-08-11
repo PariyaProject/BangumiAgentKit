@@ -9,10 +9,13 @@
 > outer session. It never gains automatic review retries beyond the
 > per-milestone tier or authority over protected human-only changes.
 >
-> Each Product Cycle remains one substantial vertical milestone and may contain
-> many commits and several hours of Luna Max work. Review Tier and total Sol
-> budget are selected per milestone before implementation. Sol is spent only
-> after the entire milestone reaches readiness. Execute-only mode requires
+> Each Product Cycle/milestone is one coherent Product Review Epoch and may
+> contain multiple related Work Packages, many meaningful commits, and several
+> hours of Luna Max work. Review Tier and total Sol budget are selected per
+> Epoch before implementation. Sol is spent only after the entire Epoch reaches
+> canonical readiness. `LUNA_STABLE` and reviewer polling are not Git events.
+> Detailed Epoch semantics live only in `BUDGET_FIRST_EXECUTION.md`.
+> Execute-only mode requires
 > fresh authorization for another Cycle; the self-evolution invocation is
 > explicit authority to select later safe milestones until an outer stop
 > condition is reached.
@@ -1562,7 +1565,8 @@ but must remain budgeted and bounded.
 Work in bounded product cycles.
 
 The outer Goal may contain multiple cycles only when the self-evolution profile
-is explicitly selected. Each cycle receives a fresh milestone scope, branch,
+is explicitly selected. Each cycle receives a fresh coherent Product Review
+Epoch scope, branch,
 PR, per-milestone review ledger, and Freeze/integration checkpoint. Milestone
 budget never leaks between cycles; the canonical outer Goal Sol ceiling persists
 across them.
@@ -1577,9 +1581,10 @@ a finite test matrix
 
 a freeze candidate SHA.
 
-Commit count alone is not a review trigger. A cost-efficient primary thread may
-produce many understandable commits inside one coherent milestone, but must not
-expand into unrelated capabilities or an unreviewable giant diff.
+Commit count and Work Package completion are not review triggers. A
+cost-efficient primary thread may produce many understandable commits inside
+one coherent Epoch, but must not expand into unrelated capabilities or an
+unreviewable giant diff.
 
 ==================================================
 49. AUTONOMOUS CYCLE SIZE

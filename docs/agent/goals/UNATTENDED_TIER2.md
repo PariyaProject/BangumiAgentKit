@@ -28,7 +28,8 @@ budget `2`, reviewer identity, and consumed count in the active Cycle Plan and
 
 ```text
 Luna Max implementation
-  -> complete milestone Review Readiness Gate
+  -> complete all related Work Packages
+  -> complete Product Review Epoch Readiness Gate
   -> Sol #1
 ```
 
@@ -52,8 +53,10 @@ If Sol #2 returns `PASS`, Freeze the exact corrected Candidate. Otherwise,
 persist the result and stop.
 
 If a wait or poll call times out while the launched reviewer remains running,
-record `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and continue waiting on that same
-reviewer. Do not close it, launch another reviewer, or consume another launch.
+classify the ephemeral runtime result as
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and continue waiting on that same
+reviewer. Do not persist it, edit tracked files, commit, push, rerun CI, change
+the PR, close the reviewer, launch another reviewer, or consume another launch.
 
 An actual `REVIEWER_HARD_TIMEOUT`, `REVIEWER_TERMINATED_NO_VERDICT`,
 `REVIEWER_FAILED`, `HUMAN_REVIEW_REQUIRED`, missing readiness evidence, or
