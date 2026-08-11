@@ -1,6 +1,6 @@
 # PR-7F Revision / Change History Intelligence
 
-Status: `IMPLEMENTING — POST_CANDIDATE_CORRECTIVE_READY_TO_RESUME`
+Status: `REVIEW_AUTHORIZED — TIER_2 SOL #1 READY`
 
 Base: PR-7E implementation frozen SHA
 `d53d800c5497cacd156792b1139ab7f2a696cdbe`
@@ -29,24 +29,29 @@ page covers, or whether missing data makes the result partial.
 
 Last committed implementation Candidate:
 
-`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`
+`433e80cf1da7a5994513053c3391487d1c911a3e`
 
-Exact remote CI for that Candidate:
+Exact remote CI for the current Candidate:
 
-GitHub Actions run `31356297264` — SUCCESS across all six jobs.
+GitHub Actions run `31463062377` — SUCCESS across all six mandatory jobs.
+
+The cancelled manually dispatched `master` run `31462981828` is unrelated and
+is not used as evidence. Run `31463062377` was manually dispatched against the
+exact Candidate ref because the normal push trigger did not create a run.
 
 Completed work already includes the bounded semantic result, official entity
 routing, coverage and evidence states, tool exposure, Standalone integration,
 Renderer output, tests, read-only official QA, and representative 640px/960px
 visual QA.
 
-Post-Candidate corrective work exists in six user-stashed files and has not been
-committed or presented as a new Candidate. Stash commit: `8df0121`. Stable binary
-patch fingerprint:
+The six post-Candidate corrective files were preserved in user stash commit
+`8df0121` and are incorporated into the current Candidate without modifying or
+consuming that preserved source. Stable binary patch fingerprint:
 
 `ac421b1afb521d85ef9c3162f2ca192ccd07379ad9f3607b6386ea743abf57f7`
 
-Current Candidate SHA: `NONE`.
+Current Candidate SHA:
+`433e80cf1da7a5994513053c3391487d1c911a3e`
 
 Historical pre-migration review attempts: one code reviewer and one product
 reviewer launch both failed at the platform usage limit with no verdict. They
@@ -181,6 +186,33 @@ complete PR-7F milestone passes the Review Readiness Gate. If Sol #1 passes,
 Freeze without spending Sol #2. If it returns `CORRECTIVE_REQUIRED`, Luna fixes
 all P0/P1 findings, creates and validates a new exact Candidate, then may spend
 Sol #2. Any other Sol #2 result stops; Sol #3 is prohibited.
+
+## Review Readiness Record
+
+The Review Readiness Gate is complete for Candidate
+`433e80cf1da7a5994513053c3391487d1c911a3e`:
+
+- local validation passed across affected unit/render tests, typecheck, lint,
+  contract, semantic, provider, discovery, SQLite integration, build,
+  standalone, and OpenAPI verification;
+- bounded read-only official API User QA covered both list and selected detail
+  revision questions without credentials or writes;
+- Agent QA verified Standalone discovery, bounded inputs, evidence semantics,
+  raw list/detail paths, and truthful not-computable trend semantics;
+- Renderer QA inspected complete, partial, empty, long-CJK, nullable/missing,
+  truncated-field, and unavailable fixtures at 640px and 960px;
+- Luna preflight found stable scope, clean implementation state, preserved raw
+  compatibility, one-request/no-fan-out resource bounds, truthful nullable and
+  truncation evidence, mapped failure states, and no deferred P0/P1 or
+  protected human-only blocker;
+- mandatory exact-SHA CI run `31463062377` passed all six jobs.
+
+Sol #1 is now authorized but not consumed: standing reviewer
+`sol_milestone_reviewer`, `high` reasoning, next launch ordinal `#1`. The
+reviewer must inspect the actual Base..Candidate diff and return one of the
+recorded verdicts. A `PASS` freezes this Candidate without Sol #2; a
+`CORRECTIVE_REQUIRED` permits one sequential Sol #2 only after Luna creates a
+new validated Candidate.
 
 ## Acceptance Criteria
 

@@ -56,16 +56,17 @@ Stopping Condition:
 
 Current Milestone State:
 
-`IMPLEMENTING`
+`REVIEW_AUTHORIZED`
 
 Current Phase:
 
-`POST_CANDIDATE_CORRECTIVE_READY_TO_RESUME`
+`PRE_SOL_1_REVIEW_READINESS_COMPLETE`
 
 Execution Runtime:
 
-No Codex Goal is running during this governance synchronization. The portable
-unattended profile is authorized for the next explicit `/goal` invocation.
+The current `/goal` is running under the portable unattended profile. Luna has
+completed the corrective implementation and Review Readiness Gate; Sol #1 is
+authorized and not yet consumed.
 
 Primary Model:
 
@@ -115,17 +116,47 @@ Standing Reviewer:
 
 Candidate SHA:
 
-`NONE`
+`433e80cf1da7a5994513053c3391487d1c911a3e`
 
-The last committed implementation Candidate was
-`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`, but later corrective work exists
-and no current clean Candidate has been created.
+This is the clean implementation Candidate containing the bounded evidence
+corrections and generated tool catalog update.
 
 Exact-SHA CI:
 
-- last Candidate `e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`:
-  GitHub Actions run `31356297264`, SUCCESS across all six jobs;
-- current Candidate: none, therefore current exact-SHA CI is not yet available.
+- Candidate `433e80cf1da7a5994513053c3391487d1c911a3e`:
+  GitHub Actions run `31463062377`, SUCCESS across all six mandatory jobs
+  (`sqlite-default`, `host-integration`, `standalone-release-smoke`,
+  `postgres-compat`, `provider-foundation`, and `discovery-foundation`).
+  The run was manually dispatched against the exact Candidate ref after the
+  push trigger did not create a run; the cancelled `master` run `31462981828`
+  is unrelated and is not used as evidence.
+
+Review Readiness Evidence:
+
+- local validation: affected unit/render tests, typecheck, lint, contract,
+  semantic, provider, discovery, SQLite integration, build, standalone, and
+  OpenAPI verification all passed;
+- User QA: bounded read-only official API list/detail checks answered recent
+  revision and explicit changed-field questions without credentials or writes;
+- Agent QA: Standalone tool discovery showed the bounded entity enum,
+  limit/offset bounds, evidence semantics, and truthful no-trend limitation;
+- Renderer QA: representative complete, partial, empty, long-CJK,
+  nullable/missing, truncated-field, and unavailable fixtures were inspected at
+  640px and 960px with no clipping or unsafe HTML;
+- Luna consolidated preflight: scope and acceptance criteria are stable; the
+  Candidate is clean and pushed; raw list/detail compatibility, one-request/no
+  fan-out bounds, nullable and truncation evidence, failure mapping, source
+  timestamps, security boundaries, and protected human-only boundaries were
+  checked with no deferred blocker.
+
+Review Launch Readiness:
+
+- next launch ordinal: `Sol #1`;
+- reviewer: `sol_milestone_reviewer` at `high` reasoning;
+- accounting before launch: `2 authorized / 0 consumed / 2 remaining`;
+- if Sol #1 returns `PASS`, freeze this exact Candidate without Sol #2; if it
+  returns `CORRECTIVE_REQUIRED`, use the one remaining sequential launch only
+  after a new corrected Candidate and exact-SHA CI.
 
 Human Authorization State:
 
@@ -137,11 +168,10 @@ authorize a different Cycle or Sol #3.
 
 Next Action:
 
-Resume and complete the active PR-7F milestone under
-`docs/agent/goals/UNATTENDED_TIER2.md`. Reconstruct state from this ledger and
-the active Cycle Plan, restore and inspect only the recorded PR-7F corrective
-work, finish implementation and validation with Luna Max, and spend Sol only
-after the complete milestone reaches the Review Readiness Gate.
+Launch the recorded Sol #1 `sol_milestone_reviewer` comprehensive review
+against Base `d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
+`433e80cf1da7a5994513053c3391487d1c911a3e`. Persist the verdict and budget
+usage before taking the tier-specific next action.
 
 ---
 
@@ -161,10 +191,12 @@ Provide bounded official revision/change-history intelligence with truthful
 timestamps, summaries, evidence, coverage, partial/unavailable states, Agent UX,
 and Renderer output without unsupported historical claims.
 
-Existing unfinished implementation:
+Historical corrective source:
 
-The user preserved six post-Candidate PR-7F files in Git stash commit
-`8df0121`. Their stable binary patch fingerprint is:
+The six post-Candidate PR-7F files were preserved in user Git stash commit
+`8df0121` and were incorporated into the clean Candidate above without
+modifying or consuming that preserved source. Their stable binary patch
+fingerprint is:
 
 `ac421b1afb521d85ef9c3162f2ca192ccd07379ad9f3607b6386ea743abf57f7`
 
