@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `IMPLEMENTING`
+Status: `REVIEW_AUTHORIZED`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -188,8 +188,7 @@ fields, and internal budget controls are not rendered or exposed.
 - Target Base Branch: `master`
 - Recorded Base SHA: `be89a2699ed7ccc85cf2e23718319bc57e1e16b6`
 - Feature Branch: `codex/recovery-pr-7h-discovery-renderer`
-- Pull Request: create/update one PR for this Epoch; record number before
-  integration.
+- Pull Request: `#4 — https://github.com/PariyaProject/BangumiAgentKit/pull/4`
 - Merge Strategy: `MERGE_COMMIT`
 - Branch Cleanup Policy: after verified merge and frozen-SHA ancestry, retire
   local/remote feature branches safely, synchronize local `master` with
@@ -203,10 +202,11 @@ fields, and internal budget controls are not rendered or exposed.
 
 ## Current execution state
 
-- Current state: `IMPLEMENTING`
-- Candidate SHA: `N/A`
-- Exact-SHA CI: `N/A`
+- Current state: `REVIEW_AUTHORIZED`
+- Candidate SHA: `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
+- Exact-SHA CI: `PASS — run 31493891023; all six mandatory jobs green`
 - Implementation Frozen SHA: `N/A`
 - Governance Record SHA: `N/A`
 - Merge Commit SHA: `N/A`
-- Next action: complete affected/full validation and Luna consolidated self-review.
+- Next action: launch Sol #1 `sol_milestone_reviewer` against the exact
+  Candidate; do not mutate the implementation while it is running.

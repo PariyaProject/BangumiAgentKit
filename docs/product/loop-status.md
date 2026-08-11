@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`IMPLEMENTING`
+`REVIEW_AUTHORIZED`
 
 Current Product Review Epoch:
 
@@ -92,8 +92,8 @@ Current Product Review Epoch:
 Current Work Packages / `LUNA_STABLE` Summary:
 
 `ViewModel; discovery-results renderer; render_query_subjects Agent path;
-catalog/docs/tests reconstructed; targeted tests and visual QA are green. No
-Work Package is yet marked LUNA_STABLE.`
+catalog/docs/tests reconstructed and LUNA_STABLE after targeted validation,
+full validation, Agent QA, and Renderer QA.`
 
 Review Boundary Rationale:
 
@@ -103,7 +103,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`IMPLEMENTING`
+`REVIEW_AUTHORIZED`
 
 Primary Model / Reasoning:
 
@@ -123,7 +123,7 @@ evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 0`
+`2 / 0 — 2 remaining; Sol #1 is authorized but not yet launched`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -135,11 +135,11 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`N/A — no implementation Candidate`
+`043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
 
 Exact-SHA CI:
 
-`N/A — no Candidate yet`
+`PASS — GitHub Actions run 31493891023; all six mandatory jobs passed`
 
 Integration Policy:
 
@@ -163,7 +163,7 @@ Feature Branch:
 
 Pull Request Number:
 
-`N/A`
+`#4 — https://github.com/PariyaProject/BangumiAgentKit/pull/4`
 
 Merge Strategy:
 
@@ -189,8 +189,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`COMPLETE the validation funnel and Luna consolidated Base..Candidate
-self-review; do not launch Sol until the exact Candidate/CI gate is ready.`
+`LAUNCH Sol #1 sol_milestone_reviewer with high reasoning against the complete
+Base..Candidate recovery epoch. While it is running, perform no repository
+mutation, CI rerun, Candidate change, push, or additional reviewer launch.`
 
 Human Authorization State:
 
