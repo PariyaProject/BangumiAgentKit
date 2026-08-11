@@ -73,7 +73,7 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`SOL_REVIEW`
+`CORRECTIVE`
 
 Current Milestone State:
 
@@ -81,7 +81,7 @@ Current Milestone State:
 
 Current Phase:
 
-`SOL_REVIEW`
+`CORRECTIVE`
 
 Current Milestone:
 
@@ -108,7 +108,7 @@ Review Tier:
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — Sol #1 running; 1 milestone launch remains`
+`2 / 1 — Sol #1 CORRECTIVE_REQUIRED; 1 milestone launch remains`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -174,10 +174,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`Wait for the same Sol #1 reviewer to return a terminal verdict. Do not launch
-another reviewer in parallel or reopen PR-7G. If corrective findings arrive,
-use the final PR-7H launch only after a new validated Candidate; if Sol #1
-passes, proceed to Freeze and the recorded integration gate.`
+`Apply every P1/P2 finding in
+docs/product/reviews/PR-7H/sol-1-corrective.md without changing the protected
+scope. Create a new validated Candidate and exact-SHA CI; only then use the
+final PR-7H Sol #2 launch. Do not reopen PR-7G or launch Sol #3.`
 
 Human Authorization State:
 
@@ -185,16 +185,15 @@ Human Authorization State:
 
 Milestone Review Runtime:
 
-`SOL #1 RUNNING — sol_milestone_reviewer agent
-019ff073-7b21-79b3-ae85-6e10676edb96 (Russell); high reasoning; sequential;
-reviewing exact Candidate 8dd069a0e700161d5a484af378b0ec9eb10e395c. Waits on
-this same agent consume no additional launch.`
+`SOL #1 COMPLETED — sol_milestone_reviewer agent
+019ff073-7b21-79b3-ae85-6e10676edb96 (Russell) returned
+CORRECTIVE_REQUIRED; record: docs/product/reviews/PR-7H/sol-1-corrective.md.`
 
 Latest Reviewer Runtime Event:
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — two bounded waits returned timed_out
-with no terminal verdict; the same Sol #1 agent remains open. No launch was
-added or consumed; continue waiting on 019ff073-7b21-79b3-ae85-6e10676edb96.`
+`TERMINAL_VERDICT — Sol #1 returned CORRECTIVE_REQUIRED with no P0; the
+reviewer is closed, milestone review budget remains 1 launch, and no new Sol
+launch is authorized until the corrected Candidate is ready.`
 
 Execution-budget pause state:
 

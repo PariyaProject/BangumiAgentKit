@@ -1,6 +1,6 @@
 # PR-7H Evidence-Bearing Subject Discovery Presentation
 
-Status: `REVIEW_READY`
+Status: `CORRECTIVE_REQUIRED`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget
@@ -174,7 +174,9 @@ asked, what the engine observed, and what remains uncertain; structured
 - Candidate SHA: `8dd069a0e700161d5a484af378b0ec9eb10e395c`.
 - Exact CI: run `31483703874`, all six mandatory jobs green.
 - Readiness record: `docs/product/reviews/PR-7H/review-readiness.md`.
-- Sol #1 reviewer: `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`), running.
+- Sol #1 reviewer: `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`),
+  `CORRECTIVE_REQUIRED`; record:
+  `docs/product/reviews/PR-7H/sol-1-corrective.md`.
 - Freeze SHA and merge SHA: `N/A` until those gates are reached.
 
 ## Verifiable stopping condition

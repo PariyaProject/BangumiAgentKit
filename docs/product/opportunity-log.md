@@ -197,7 +197,7 @@ with no P0/P1 findings; integration evidence is recorded in
 ## OP-008 Evidence-Bearing Subject Discovery Presentation
 
 Status:
-ACTIVE_IN_PR-7H_SOL_REVIEW
+ACTIVE_IN_PR-7H_CORRECTIVE
 
 User questions:
 

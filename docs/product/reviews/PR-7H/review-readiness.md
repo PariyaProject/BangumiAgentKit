@@ -1,6 +1,6 @@
 # PR-7H Review Readiness
 
-Status: `SOL_1_RUNNING`
+Status: `SOL_1_CORRECTIVE_REQUIRED`
 
 ## Candidate and remote evidence
 
@@ -90,12 +90,14 @@ plan/evidence/coverage/limitation sections at both widths.
 - Outer Goal Sol budget: `4 authorized / 3 consumed`; `1 remaining`.
 - Generic subagent budget: `0 authorized / 0 consumed`.
 - Reviewer: sequential `sol_milestone_reviewer`, `high` reasoning.
-- Sol #1 is running as agent `019ff073-7b21-79b3-ae85-6e10676edb96`
-  (`Russell`). If corrective findings arrive, Luna may create one corrected
-  Candidate and use the final PR-7H Sol #2 launch. Sol #3 is prohibited.
-- Two bounded waits returned `timed_out` without a terminal reviewer status;
-  under the canonical policy this is `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`,
-  not a reviewer failure or refunded launch. The same agent remains the only
-  active reviewer and must continue to be awaited.
+- Sol #1 agent `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`) returned
+  `CORRECTIVE_REQUIRED`; the complete record is
+  `docs/product/reviews/PR-7H/sol-1-corrective.md`.
+- Two earlier bounded waits returned `timed_out` while the reviewer was still
+  running; those were correctly treated as
+  `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and consumed no additional launch.
+- Luna is authorized to correct the findings, then use the final PR-7H Sol #2
+  launch only after a new validated Candidate and exact-SHA CI. Sol #3 is
+  prohibited.
 - No P0/P1 blockers are known from Luna preflight. The independent reviewer
   must inspect the actual Base..Candidate diff and evidence before Freeze.
