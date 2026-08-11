@@ -37,59 +37,56 @@ Standing execution defaults:
 
 Goal Scope:
 
-`NONE — NO ACTIVE PRODUCT GOAL OR CYCLE`
+`AUTONOMOUS_EVOLUTION_TIER2 — continuous safe, evidence-backed Product North
+Star progress during this explicit outer Goal session`
 
-The master-only governance corrective that introduced reviewer wait
-continuation, post-Freeze integration, one-milestone branch retirement, and
-unambiguous final Goal states is complete. The previous TIER_0 corrective also
-blocks unattended integration when the fetched target-base SHA differs from the
-recorded Base SHA. TIER_0 governance commit
-`a14e905b7a0cd63aaff516cda60115d335852f4f` added a separate true
-self-evolution profile while preserving execute-only behavior. The TIER_0
-corrective in the commit containing this ledger adds its deterministic
-four-launch outer Sol ceiling. None of these tasks started a Product Cycle or
-modified production code.
+This outer Goal was explicitly selected to discover and execute multiple
+bounded, safe Product Cycles. It resumed with no active milestone, completed a
+targeted audit, and selected PR-7G under the recorded Cycle Plan
+`docs/product/cycles/PR-7G-series-watch-order.md`.
 
 Explicit Non-Scope:
 
-- selecting or implementing the next Product Cycle;
 - reopening PR-7D, PR-7E, or PR-7F;
-- modifying frozen production implementation or tests;
-- launching a generic subagent or Sol reviewer;
-- creating a feature branch, PR, release, package, or tag;
+- authentication, authorization, credential, SSRF, write-authority, legal,
+  release, package, tag, or broad Structured Web/HTML policy changes;
+- generic implementation/research subagents (`0` authorized);
+- aggressive crawling, destructive real-account tests, or unrelated changes;
 - stashing, resetting, rewriting, relocating, or committing unrelated user
   work.
 
 Stopping Condition:
 
-This maintenance task ends after the governance-only corrective is validated,
-committed, and pushed to `master`. Future product work requires an explicit Goal
-profile: execute-only mode requires a separately selected active milestone;
-self-evolution mode authorizes discovery and safe milestone selection during
-that outer Goal session.
+Stop only for runtime/system/Goal budget exhaustion, exhaustion of the outer
+Sol review budget, user pause or direction change, infrastructure or permission
+blocking all useful safe work, explicit discovery finding no meaningful
+independent safe opportunity, unsafe repository state, or a governance-mandated
+global emergency. A milestone Freeze, parked direction, or exhausted milestone
+review budget is not outer Goal completion.
 
 Selected Product Goal Profile:
 
-`NONE — governance maintenance only`
+`AUTONOMOUS_EVOLUTION_TIER2`
 
 Outer Goal State:
 
-`INACTIVE`
+`MILESTONE_PLANNING`
 
 Current Milestone State:
 
-`BETWEEN_MILESTONES`
+`PLANNED`
 
 Current Phase:
 
-`READY_FOR_PROFILE_SELECTION`
+`MILESTONE_PLANNING`
 
-Profile-dependent no-cycle semantics:
+Current Milestone:
 
-- `UNATTENDED_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means report missing milestone
-  selection/authorization and stop;
-- `AUTONOMOUS_EVOLUTION_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means enter
-  `OPPORTUNITY_DISCOVERY` and select a substantial safe milestone.
+`PR-7G Series Relations & Watch-Order Intelligence`
+
+Cycle Plan:
+
+`docs/product/cycles/PR-7G-series-watch-order.md`
 
 Primary Model / Reasoning:
 
@@ -104,19 +101,19 @@ Generic Subagent Budget Authorized / Consumed:
 
 Review Tier:
 
-`TIER_0` for this governance-only corrective; no Product Cycle is active.
+`TIER_2`
 
 Total Sol Review Budget Authorized / Consumed:
 
-`0 / 0`
+`2 / 0 — comprehensive reviewer #1, then #2 only if corrective findings remain`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`N/A / 0 — no self-evolution Goal is active`
+`4 / 0`
 
 Current Outer Review Budget State:
 
-`INACTIVE`
+`AVAILABLE`
 
 Candidate SHA:
 
@@ -124,11 +121,11 @@ Candidate SHA:
 
 Exact-SHA CI:
 
-`N/A — governance-only maintenance with no production or test change`
+`N/A — no implementation Candidate`
 
 Integration Policy:
 
-`N/A — no active feature milestone`
+`AUTO_MERGE_AFTER_FREEZE`
 
 Target Base Branch:
 
@@ -136,7 +133,8 @@ Target Base Branch:
 
 Base SHA:
 
-`a14e905b7a0cd63aaff516cda60115d335852f4f` at this corrective's start.
+`23f960ce3a8a8ac3841b791061a648037a53ab19` — synchronized local and
+`origin/master` at outer Goal startup.
 
 Current Target Base SHA:
 
@@ -144,56 +142,53 @@ Current Target Base SHA:
 
 Feature Branch:
 
-`N/A`
+`codex/pr-7g-series-watch-order`
 
 Pull Request Number:
 
-`N/A`
+`TBD — record after exact Candidate push`
 
 Merge Strategy:
 
-`N/A`
+`MERGE_COMMIT`
 
 Branch Cleanup Policy:
 
-`N/A`
+`Delete local and remote feature branch only after verified merge and
+synchronized master; never force-push shared frozen history.`
 
 Integration State:
 
-`NOT_APPLICABLE`
+`NOT_STARTED`
 
 Implementation Frozen SHA:
 
-`N/A for the current maintenance task`
+`N/A — Candidate not yet created`
 
 Merge Commit SHA:
 
-`N/A for the current maintenance task`
+`N/A — Freeze and integration not reached`
 
 Next Action:
 
-`SELECT A GOAL PROFILE`
-
-- Choose `UNATTENDED_TIER2` only after explicitly selecting an active milestone.
-- Choose `AUTONOMOUS_EVOLUTION_TIER2` to authorize continuous discovery,
-  milestone selection, and safe execution during that outer Goal session.
-
-No profile is invoked by this governance corrective, and no opportunity is
-selected now.
+`CREATE the documentation checkpoint commit, then implement the bounded PR-7G
+semantic service/tool, renderer, Standalone routes, and tests. Do not launch Sol
+until the exact Candidate is clean, locally validated, and green in mandatory
+remote CI.`
 
 Human Authorization State:
 
-`NO PRODUCT GOAL PROFILE CURRENTLY ACTIVE`
+`SELF-EVOLUTION PROFILE ACTIVE; protected decisions remain HUMAN-ON-EXCEPTION`
 
 Execution-budget pause state:
 
-`N/A`. When active, `PAUSED_BY_EXECUTION_BUDGET` must persist outer state,
-current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI, review
-and subagent usage, blockers, and exact next action.
+`NOT PAUSED`. If reached, persist `PAUSED_BY_EXECUTION_BUDGET` with outer
+state, current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI,
+review and subagent usage, blockers, and exact next action.
 
 Outer review-budget pause state:
 
-`N/A`. When active, `PAUSED_BY_OUTER_REVIEW_BUDGET` must persist selected
+`NOT PAUSED`. If reached, persist `PAUSED_BY_OUTER_REVIEW_BUDGET` with selected
 profile, outer Sol authorized/consumed, milestone and phase, milestone Sol
 authorized/consumed, branch, `HEAD`, latest stable Candidate, tests/CI,
 outstanding findings, parked directions, and exact next action.
