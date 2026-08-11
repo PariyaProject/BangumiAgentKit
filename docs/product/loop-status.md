@@ -73,7 +73,7 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`REVIEW_READY`
+`SOL_REVIEW`
 
 Current Milestone State:
 
@@ -81,7 +81,7 @@ Current Milestone State:
 
 Current Phase:
 
-`REVIEW_READY`
+`SOL_REVIEW`
 
 Current Milestone:
 
@@ -108,15 +108,15 @@ Review Tier:
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 0 — PR-7H milestone review launches`
+`2 / 1 — Sol #1 running; 1 milestone launch remains`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`4 / 2 — PR-7G Sol #1 and #2 consumed; 2 remain`
+`4 / 3 — PR-7G Sol #1/#2 and PR-7H Sol #1 consumed; 1 remains`
 
 Current Outer Review Budget State:
 
-`AVAILABLE — 2 launches remain`
+`AVAILABLE — 1 launch remains`
 
 Candidate SHA:
 
@@ -174,14 +174,25 @@ Merge Commit SHA:
 
 Next Action:
 
-`Review-readiness packet docs/product/reviews/PR-7H/review-readiness.md is
-complete. Launch exactly one sequential Sol #1 review for PR-7H; consume one
-outer launch, then follow the recorded corrective/Freeze gate. Do not reopen
-PR-7G or launch a third reviewer for it.`
+`Wait for the same Sol #1 reviewer to return a terminal verdict. Do not launch
+another reviewer in parallel or reopen PR-7G. If corrective findings arrive,
+use the final PR-7H launch only after a new validated Candidate; if Sol #1
+passes, proceed to Freeze and the recorded integration gate.`
 
 Human Authorization State:
 
 `SELF-EVOLUTION PROFILE ACTIVE; protected decisions remain HUMAN-ON-EXCEPTION`
+
+Milestone Review Runtime:
+
+`SOL #1 RUNNING — sol_milestone_reviewer agent
+019ff073-7b21-79b3-ae85-6e10676edb96 (Russell); high reasoning; sequential;
+reviewing exact Candidate 8dd069a0e700161d5a484af378b0ec9eb10e395c. Waits on
+this same agent consume no additional launch.`
+
+Latest Reviewer Runtime Event:
+
+`LAUNCHED — PR-7H Sol #1 started after clean exact-SHA local/remote readiness.`
 
 Execution-budget pause state:
 

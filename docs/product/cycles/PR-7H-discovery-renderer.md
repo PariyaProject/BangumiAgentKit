@@ -159,10 +159,10 @@ asked, what the engine observed, and what remains uncertain; structured
 ## Review and integration ledger
 
 - Review tier: `TIER_2` (selected by the explicit self-evolution profile).
-- Milestone Sol budget: `2 authorized / 0 consumed` at selection; sequential
+- Milestone Sol budget: `2 authorized / 1 consumed` at selection; sequential
   comprehensive `sol_milestone_reviewer`; no third launch.
 - Generic subagents: `0 authorized / 0 consumed`.
-- Outer Sol budget at selection: `4 authorized / 2 consumed`; `2 remaining`.
+- Outer Sol budget at selection: `4 authorized / 3 consumed`; `1 remaining`.
 - Feature branch: `codex/pr-7h-discovery-renderer`.
 - Target base: `master` at recorded Base SHA
   `23f960ce3a8a8ac3841b791061a648037a53ab19`.
@@ -174,7 +174,8 @@ asked, what the engine observed, and what remains uncertain; structured
 - Candidate SHA: `8dd069a0e700161d5a484af378b0ec9eb10e395c`.
 - Exact CI: run `31483703874`, all six mandatory jobs green.
 - Readiness record: `docs/product/reviews/PR-7H/review-readiness.md`.
-- Reviewer IDs, freeze SHA, and merge SHA: `N/A` until those gates are reached.
+- Sol #1 reviewer: `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`), running.
+- Freeze SHA and merge SHA: `N/A` until those gates are reached.
 
 ## Verifiable stopping condition
 

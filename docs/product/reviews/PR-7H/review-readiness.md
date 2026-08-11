@@ -1,6 +1,6 @@
 # PR-7H Review Readiness
 
-Status: `READY_FOR_SOL_REVIEW`
+Status: `SOL_1_RUNNING`
 
 ## Candidate and remote evidence
 
@@ -86,13 +86,12 @@ plan/evidence/coverage/limitation sections at both widths.
 ## Review budget and gate
 
 - Review tier: `TIER_2`, selected by the explicit self-evolution profile.
-- PR-7H milestone Sol budget: `2 authorized / 0 consumed`.
-- Outer Goal Sol budget: `4 authorized / 2 consumed`; `2 remaining`.
+- PR-7H milestone Sol budget: `2 authorized / 1 consumed`.
+- Outer Goal Sol budget: `4 authorized / 3 consumed`; `1 remaining`.
 - Generic subagent budget: `0 authorized / 0 consumed`.
 - Reviewer: sequential `sol_milestone_reviewer`, `high` reasoning.
-- Sol #1 is authorized now because the Candidate is clean, locally validated,
-  and green on exact remote CI. If corrective findings arrive, Luna may create
-  one corrected Candidate and use the final PR-7H Sol #2 launch. Sol #3 is
-  prohibited.
+- Sol #1 is running as agent `019ff073-7b21-79b3-ae85-6e10676edb96`
+  (`Russell`). If corrective findings arrive, Luna may create one corrected
+  Candidate and use the final PR-7H Sol #2 launch. Sol #3 is prohibited.
 - No P0/P1 blockers are known from Luna preflight. The independent reviewer
   must inspect the actual Base..Candidate diff and evidence before Freeze.
