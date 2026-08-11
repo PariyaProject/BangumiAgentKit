@@ -1,9 +1,11 @@
 # Product Cycles
 
-Each Product Cycle must have a bounded implementation plan and is one Goal
-milestone by default. Freeze satisfies the quality gate; the recorded
-Integration Policy determines whether the Goal stops at Freeze or continues
-through merge and branch cleanup. Neither outcome starts another Cycle.
+Each Product Cycle must have a bounded implementation plan and is one
+execute-only Goal milestone or one inner milestone of a selected self-evolution
+Goal. Freeze satisfies the quality gate; the recorded Integration Policy
+determines whether its branch lifecycle stops at Freeze or continues through
+merge and cleanup. Execute-only mode ends there. Self-evolution checkpoints the
+result, updates backlog/state, and returns to discovery.
 
 A Cycle Plan should define:
 
@@ -47,8 +49,8 @@ comprehensive `sol_milestone_reviewer` launch after the entire milestone passes
 the review-readiness gate. `TIER_0` spends no Sol and is limited to
 documentation, tests, non-behavioral maintenance, and trivial internal work.
 `TIER_2` permits at most two sequential Sol High launches total and must justify
-the unusual risk or value before implementation. Its final Candidate requires a
-comprehensive `sol_milestone_reviewer` PASS. See
+the unusual risk/value or be selected by the explicit self-evolution profile.
+Its final Candidate requires a comprehensive `sol_milestone_reviewer` PASS. See
 `docs/agent/BUDGET_FIRST_EXECUTION.md`.
 
 For product work, one authorized substantial milestone uses one dedicated
@@ -56,3 +58,7 @@ ordinary feature branch and one PR. The canonical startup, automatic-integration
 gate, merge, ancestry proof, cleanup, and final Goal states are defined in
 `docs/agent/BUDGET_FIRST_EXECUTION.md`. Reviewer wait and terminal-failure
 semantics are defined only in `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`.
+
+Review Tier, Sol authorized/consumed, and generic subagent authorized/consumed
+are per-milestone fields. Reset them only when a genuinely new substantial
+milestone begins, never for a corrective commit or implementation stage.

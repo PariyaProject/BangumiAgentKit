@@ -65,23 +65,42 @@ and:
 
 for exact Goal, review-budget, freeze and stopping rules.
 
+Two explicit Goal modes are supported:
+
+- `UNATTENDED_TIER2`: execute exactly one already-selected active milestone and
+  stop at that milestone's final or blocked state;
+- `AUTONOMOUS_EVOLUTION_TIER2`: continuously discover, select, execute, review,
+  integrate, and checkpoint substantial milestones during the active outer
+  Goal session.
+
+The execution path above is the inner lifecycle for one milestone. In the
+self-evolution profile, completing or parking that inner lifecycle returns to
+opportunity discovery when safe; it does not by itself complete the outer Goal.
+
 ## Goal and Agent Budget
 
-A Goal covers one substantial vertical Product Cycle or milestone and must have
-a verifiable stopping condition. It may contain many commits and several hours
-of Luna Max work. Commit count, stage completion, individual test fixes, and
-incremental refactors are never review triggers. `FROZEN` proves the exact
-Candidate satisfied its quality gate; it completes the Goal only when the
-recorded Integration Policy is `STOP_AT_FREEZE` or integration is not
-applicable. `AUTO_MERGE_AFTER_FREEZE` continues through the authorized
-integration and cleanup lifecycle to `MERGED_GOAL_COMPLETE`. Never select or
-implement the next Product Cycle inside the same Goal without fresh user
-authorization.
+An execute-only Goal covers one substantial vertical Product Cycle or milestone
+and must have a verifiable stopping condition. A self-evolution Goal is an
+explicitly selected multi-milestone outer loop; each milestone inside it keeps
+its own bounded Cycle Plan, branch, PR, Review Tier, Sol ledger, Candidate, and
+Freeze/integration evidence. A milestone may contain many commits and several
+hours of Luna Max work. Commit count, stage completion, individual test fixes,
+and incremental refactors are never review triggers.
+
+`FROZEN` proves the exact Candidate satisfied its quality gate.
+`AUTO_MERGE_AFTER_FREEZE` continues through the authorized integration and
+cleanup lifecycle. In execute-only mode, the configured Freeze or merge result
+completes the Goal. In self-evolution mode, it completes one milestone
+checkpoint, updates the backlog and ledger, and returns to observation and
+discovery. The initial self-evolution invocation authorizes safe milestone
+selection for that outer Goal; it does not weaken any protected human-only
+boundary.
 
 Use one primary thread by default. Do not spawn implementation or exploration
 subagents unless the user explicitly authorizes the specific use or a repository
-skill requires it. A Sol review launch additionally requires the user-authorized
-Cycle Plan and ledger to record its Review Tier, total budget, and readiness.
+skill requires it. A Sol review launch additionally requires the selected Goal
+mode plus the active Cycle Plan and ledger to record its Review Tier, total
+budget, and readiness.
 
 The standing implementation model is GPT-5.6 Luna at `max` reasoning. If `max`
 is temporarily unavailable, `xhigh` is the minimum acceptable Luna effort.
@@ -95,7 +114,8 @@ Every Cycle Plan must select a Review Tier before implementation:
 - `TIER_1`: one comprehensive `sol_milestone_reviewer` launch; this is the
   default for normal product milestones;
 - `TIER_2`: at most two sequential Sol launches total, reserved for unusually
-  high-risk or high-value milestones.
+  high-risk/high-value milestones or explicitly selected by the
+  `AUTONOMOUS_EVOLUTION_TIER2` profile.
 
 Reviews are never parallel. A launch counts when a reviewer starts, including
 one that later fails or terminates. Wait and poll calls on that same reviewer do
@@ -127,7 +147,9 @@ budget or upgrades the Cycle to `TIER_2`.
 
 For `TIER_2`, an unattended sequence may use Sol #1, Luna correction, then Sol
 #2. Sol #3 is never automatic. If the total two-launch ceiling is exhausted
-without a PASS on the final Candidate, stop.
+without a PASS on the final Candidate, park that milestone as
+`PARKED_REVIEW_LIMIT`. Execute-only mode then stops; self-evolution mode may
+return to discovery and select another independent safe milestone.
 
 If a reviewer returns `HUMAN_REVIEW_REQUIRED`,
 the affected decision must be parked under:
@@ -136,8 +158,9 @@ the affected decision must be parked under:
 
 Do not implement that protected change.
 
-Stop the current Goal after parking the protected decision. A different safe
-opportunity requires a new user-authorized Goal.
+In execute-only mode, stop the current Goal after parking the protected
+decision. In self-evolution mode, park only the affected direction and return
+to discovery; continue with another independent safe milestone when one exists.
 
 ## Human-On-Exception Boundaries
 
@@ -155,8 +178,10 @@ Human approval remains required before implementing:
 - breaking frozen public contracts without a safe compatibility path
 - release / package / tag publication
 
-Encountering one protected decision stops the current Goal after the decision is
-parked. It does not authorize unrelated continuation.
+Encountering one protected decision never authorizes implementing it. The
+execute-only Goal stops after parking it. A selected self-evolution Goal may
+continue only by choosing an independent safe direction; it stops if no such
+valuable work remains.
 
 ## Frozen Foundations
 
@@ -188,8 +213,11 @@ Update it after meaningful milestones and before interruption.
 is the canonical product opportunity backlog.
 
 New ideas outside the active Cycle belong there rather than expanding
-the active Cycle indefinitely. Backlog entries are not authorization to start
-another Cycle.
+the active Cycle indefinitely. In execute-only mode, backlog entries are not
+authorization to start another Cycle. In the explicitly selected self-evolution
+profile, the backlog is a living hypothesis: Luna may add, split, merge,
+reorder, defer, or supersede entries with recorded provenance, then select the
+highest-value safe substantial milestone.
 
 ## Product Quality
 
@@ -262,8 +290,11 @@ Every implementation Freeze Candidate requires:
 - no unresolved P0/P1 blockers
 
 Do not spend the review budget until the Candidate SHA is clean, locally
-validated, and green in mandatory remote CI. Do not create a follow-on Product
-Cycle after Freeze or merge without fresh user authorization. For an explicitly
+validated, and green in mandatory remote CI. Execute-only mode requires fresh
+user authorization for a follow-on Product Cycle. A selected self-evolution
+Goal may continue only after the prior milestone lifecycle is completed or
+truthfully parked and the repository is safe; every new milestone starts from a
+current `master` on a new dedicated ordinary feature branch. For an explicitly
 recorded `AUTO_MERGE_AFTER_FREEZE` feature milestone, complete the canonical
 integration safety gate. This includes safely fetching the target base and
 requiring its current remote SHA to equal the Cycle's recorded Base SHA; drift

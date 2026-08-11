@@ -2,9 +2,11 @@
 
 ## Status and precedence
 
-This is the reusable canonical Goal execution profile for one substantial
-vertical BangumiAgentKit Product Milestone. It is not a policy replacement and
-is never hard-coded to a particular Cycle.
+This is the reusable execute-only Goal profile for one substantial vertical
+BangumiAgentKit Product Milestone. It is not a policy replacement and is never
+hard-coded to a particular Cycle. Its inner milestone lifecycle may be reused by
+`AUTONOMOUS_EVOLUTION_TIER2`, but its outer stopping clauses apply to
+execute-only mode.
 
 Authority remains, in order:
 
@@ -30,8 +32,9 @@ several hours of GPT-5.6 Luna Max work.
 Those events are not Sol review triggers. Sol review is allowed only after the
 complete substantial milestone reaches the Review Readiness Gate.
 
-This Goal does not select, plan, or begin the next Product Cycle after the
-current milestone stops or freezes.
+This execute-only Goal does not select, plan, or begin the next Product Cycle
+after the current milestone stops or freezes. The separate self-evolution
+profile supplies explicit multi-milestone authority.
 
 ## Startup contract
 

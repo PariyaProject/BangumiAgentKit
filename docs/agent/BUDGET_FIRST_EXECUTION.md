@@ -3,9 +3,11 @@
 This file is the canonical execution-cost contract for Codex Goals, subagents,
 milestone reviews, and autonomous continuation in this repository.
 
-If an older document asks an agent to keep selecting Product Cycles, retry a
-reviewer, or relaunch both reviewers automatically, this file and
-`AUTONOMOUS_REVIEW_POLICY.md` take precedence.
+Only the explicitly selected self-evolution profile may keep selecting Product
+Cycles inside one outer Goal. It still obeys this file's per-milestone review
+budgets and never retries or parallelizes reviewers beyond the recorded tier.
+This file and `AUTONOMOUS_REVIEW_POLICY.md` take precedence over older
+continuation or review-loop wording.
 
 ## Operating principle
 
@@ -37,39 +39,64 @@ record the blocker and stop.
 
 ## Goal contract
 
-A Codex Goal in this repository must cover exactly one substantial vertical
-milestone. A milestone may contain many commits, multiple implementation stages,
-and several hours of Luna Max work. Commit count, stage completion, individual
-test fixes, and incremental refactors do not create review boundaries.
+Every Goal must select one execution profile and persist it in
+`docs/product/loop-status.md`.
 
-Before a Goal starts, record in `docs/product/loop-status.md`:
+### Execute-only Goal
 
-- objective;
-- explicit non-scope;
-- verifiable stopping condition;
-- validation commands or artifacts;
+`UNATTENDED_TIER2` and the generic `AUTONOMOUS_MILESTONE` contract execute
+exactly one already-authorized substantial vertical milestone. If no active
+Cycle Plan exists, they report the missing selection/authorization and stop.
+The configured Freeze/integration result or a documented blocker ends that
+Goal. They never select the next Product Cycle.
+
+### Self-evolution Goal
+
+`AUTONOMOUS_EVOLUTION_TIER2` is an explicitly authorized outer Goal for
+continuous safe product evolution during the current Goal/session. It does not
+require a pre-existing active Cycle. If one exists, it resumes that milestone
+without replacing it. Otherwise `NO_ACTIVE_PRODUCT_CYCLE` enters
+`OPPORTUNITY_DISCOVERY`.
+
+The outer Goal may contain multiple substantial milestones, but each milestone
+remains a separate bounded Product Cycle with its own Plan, ordinary feature
+branch, PR, Review Tier and launch ledger, Candidate, exact-SHA evidence,
+Freeze, integration, and cleanup lifecycle. A milestone may contain many tasks,
+commits, implementation stages, and several hours of Luna Max work. Commit
+count, stage completion, individual test fixes, and incremental refactors never
+create review boundaries.
+
+Before either Goal mode acts, record:
+
+- selected execution profile and outer Goal state;
+- outer objective and explicit non-scope;
+- outer stopping conditions;
+- primary model/reasoning and generic subagent policy;
+- current or most recently completed milestone and exact resumable next action.
+
+Before each milestone implementation begins, additionally record:
+
+- milestone objective, representative user questions, and explicit non-scope;
+- acceptance criteria and validation commands or artifacts;
 - Review Tier selected before implementation;
-- total Sol review-call budget authorized by that tier;
-- whether any non-review subagent use is authorized;
-- Integration Policy and the complete integration contract when integration is
-  applicable.
+- total Sol launches authorized and consumed for this milestone;
+- generic subagent launches authorized and consumed for this milestone;
+- Integration Policy and the complete integration contract.
 
-The stopping condition is one of:
+`FROZEN` means that the exact implementation Candidate satisfied its quality
+and Review Tier gate. In execute-only mode, the configured Freeze or merge
+result completes the Goal. In self-evolution mode, Freeze and integration are
+one mature product checkpoint: persist evidence, update the living backlog and
+runtime state, then return to observation and discovery. Review and subagent
+accounting reset only when a genuinely new substantial milestone begins, never
+for a corrective commit.
 
-- the configured final success state is reached;
-- the implementation is ready but review authorization or budget is required;
-- a protected human decision is reached;
-- required infrastructure is unavailable;
-- the user pauses or changes direction.
-
-`FROZEN` means that the exact implementation Candidate has satisfied its
-quality and Review Tier gate. It completes the Goal only when Integration Policy
-is `STOP_AT_FREEZE` or integration is not applicable. If the recorded policy is
-`AUTO_MERGE_AFTER_FREEZE`, `FROZEN` is intermediate and the Goal continues only
-through the authorized integration and cleanup lifecycle. Neither Freeze nor
-merge authorizes opportunity selection, creation of another Cycle, or
-continuation into unrelated backlog. A new Product Cycle requires fresh user
-authorization.
+Self-evolution does not mean finishing a finite Task List. The Task List and
+opportunity backlog are living implementation hypotheses. Luna may add, split,
+merge, reorder, defer, or mark entries `SUPERSEDED` based on current repository
+evidence, user and Agent value, Bangumi parity, dependencies, reliability, cost,
+and source/maintenance risk. Every mutation must preserve its rationale and
+provenance.
 
 Do not create a Goal merely because a task could take several turns. Use a Goal
 only when the user explicitly requests one and the stopping condition is already
@@ -84,6 +111,77 @@ Use one Luna Max primary thread. Non-review subagent budget: 0. Review Tier:
 [verifiable end state] is reached, a fresh review needs authorization, or the
 recorded budget is exhausted.
 ```
+
+The canonical self-evolution invocation lives in
+`docs/agent/goals/README.md`. Selecting it authorizes autonomous safe
+opportunity discovery and milestone selection for the active outer Goal only;
+it does not authorize protected human-only changes, generic subagents, releases,
+or review launches beyond each milestone's tier.
+
+## Self-evolution outer loop and stopping conditions
+
+The canonical outer loop is:
+
+```text
+NO_ACTIVE_CYCLE
+  -> OBSERVE
+  -> PRODUCT_AUDIT
+  -> OPPORTUNITY_DISCOVERY
+  -> PRIORITIZATION
+  -> MILESTONE_SELECTION
+  -> MILESTONE_PLANNING
+  -> MILESTONE_ACTIVE
+  -> IMPLEMENTING
+  -> VALIDATING
+  -> REVIEW_READY
+  -> SOL_REVIEW
+  -> CORRECTIVE (when required)
+  -> FREEZING
+  -> POST_FREEZE_INTEGRATION (when applicable)
+  -> MILESTONE_CHECKPOINT_COMPLETE
+  -> UPDATE_BACKLOG_AND_STATE
+  -> OBSERVE
+
+SOL_REVIEW
+  -> PARKED_REVIEW_LIMIT
+  -> UPDATE_BACKLOG_AND_STATE
+  -> OBSERVE
+
+ANY_MILESTONE_PHASE
+  -> PARKED_FOR_HUMAN
+  -> UPDATE_BACKLOG_AND_STATE
+  -> OBSERVE
+
+ANY_OUTER_PHASE
+  -> PAUSED_BY_EXECUTION_BUDGET
+```
+
+At startup, an existing active milestone resumes at its persisted phase instead
+of entering selection. Between milestones, Luna performs targeted read-only
+product audits and opportunity discovery rather than repeating huge broad
+research passes. Selection must choose a substantial vertical milestone using
+real user value, Bangumi power-user value, Agent leverage, information richness,
+data/source reliability, dependency fit, implementation cost, and maintenance
+risk. Roadmap order alone is not authority.
+
+A self-evolution Goal must not stop merely because no Cycle is active, one
+milestone froze or merged, the current Task List was exhausted, one direction
+was parked for human review, or one milestone exhausted its Sol budget. Valid
+outer stop conditions are only:
+
+- runtime, system, Codex quota, or explicit Goal budget exhaustion;
+- user pause, stop, or changed direction;
+- infrastructure or permission prevents further useful safe work;
+- explicit opportunity discovery finds no meaningful independent safe work;
+- repository state makes further mutation unsafe;
+- governance mandates a global stop for a protected emergency.
+
+Budget exhaustion is a pause, not product completion. Before stopping for it,
+persist `PAUSED_BY_EXECUTION_BUDGET` with the selected profile, outer state,
+current milestone and phase, branch, `HEAD`, latest stable commit, tests and CI,
+review and subagent usage, blockers, and exact next action. Any outer stop must
+leave repository state sufficient for a later Goal to resume without relying on
+chat history.
 
 ## Model and thread routing
 
@@ -131,8 +229,9 @@ resource bounds, user value, Agent UX, and Renderer when applicable.
 
 ### `TIER_2` — at most two Sol launches total
 
-Reserve for unusually high-risk or high-value milestones. The Cycle Plan must
-justify the tier and record reviewer identity and sequential order. Authorized /
+Reserve for unusually high-risk or high-value milestones, or select it through
+the explicitly authorized `AUTONOMOUS_EVOLUTION_TIER2` profile. The Cycle Plan
+must record the tier, reviewer identity, and sequential order. Authorized /
 maximum Sol launches: `2` total, not two per role. Existing specialized
 `sol_code_reviewer` and `sol_product_reviewer` roles may be selected only here.
 They are not an automatic pair.
@@ -205,25 +304,32 @@ Luna implementation
   -> CORRECTIVE_REQUIRED
   -> Luna corrective + validation + new exact Candidate and CI
   -> Sol #2
-  -> PASS or STOP
+  -> PASS or PARKED_REVIEW_LIMIT
 ```
 
 Never launch Sol #3 automatically. If Sol #2 does not PASS the exact corrected
-Candidate, persist the result and stop.
+Candidate, persist every finding and mark the milestone
+`PARKED_REVIEW_LIMIT`. Execute-only mode stops. Self-evolution mode returns to
+opportunity discovery and may select another independent safe milestone; it
+must not silently bypass or reset the parked milestone's review ledger.
 
 If a reviewer launch fails without a verdict, count it against the total tier
 budget. Continue only when `TIER_2` has an explicitly planned remaining launch
 that can still satisfy its final review requirement; otherwise set the state to
-`PAUSED_REVIEW_BUDGET_EXHAUSTED` and stop. Do not loop on platform limits.
+`PARKED_REVIEW_LIMIT`. Execute-only mode stops; self-evolution mode may continue
+from discovery with another independent safe milestone. Do not loop on
+platform limits.
 
 ## Product branch lifecycle
 
 Product opportunity selection and Product Milestone execution are separate
 activities. The opportunity log is a backlog, not authority to invent an active
-Cycle. If no authorized active Cycle Plan exists, report that selection and
-authorization are required and stop.
+Cycle in execute-only mode. If no active Cycle Plan exists, execute-only mode
+reports that selection and authorization are required and stops;
+self-evolution mode enters its authorized discovery and selection loop.
 
-When a new Product Cycle is explicitly authorized:
+When a new Product Cycle is explicitly authorized by execute-only selection or
+selected within an active self-evolution Goal:
 
 1. start from a clean, current `master` and update it safely;
 2. create one dedicated ordinary feature branch from the recorded Base SHA;
@@ -262,6 +368,11 @@ implementation:
 - `STOP_AT_FREEZE`: stop successfully at `FROZEN_GOAL_COMPLETE`; or
 - `AUTO_MERGE_AFTER_FREEZE`: after Freeze, perform the authorized integration
   lifecycle and stop successfully only at `MERGED_GOAL_COMPLETE`.
+
+Those `*_GOAL_COMPLETE` names are final outer outcomes only for execute-only
+mode. In self-evolution mode the same successful inner lifecycle produces
+`MILESTONE_CHECKPOINT_COMPLETE`, updates backlog/state, and returns to
+`OBSERVE`; it never marks the outer product mission complete.
 
 For unattended feature development, `AUTO_MERGE_AFTER_FREEZE` is preferred only
 when the Cycle Plan and ledger explicitly record it and the selected Goal
@@ -361,7 +472,7 @@ TIER_2 with one launch remaining: REVIEW_AUTHORIZED
   -> REVIEW_AUTHORIZED
 
 REVIEW_AUTHORIZED
-  -> PAUSED_REVIEW_BUDGET_EXHAUSTED
+  -> PARKED_REVIEW_LIMIT
 
 FROZEN + STOP_AT_FREEZE (or integration not applicable)
   -> FROZEN_GOAL_COMPLETE
@@ -379,15 +490,19 @@ INTEGRATING
 
 `FROZEN` is the quality/review fact. `FROZEN_GOAL_COMPLETE` and
 `MERGED_GOAL_COMPLETE` are final Goal outcomes determined by Integration
-Policy. Do not move from either final outcome into a new Product Cycle inside
-the same Goal.
+Policy only for execute-only mode. In self-evolution mode, a completed or
+truthfully parked milestone transitions to `UPDATE_BACKLOG_AND_STATE` and then
+`OBSERVE`, without carrying its branch, scope, or review budget into the next
+milestone.
 
 ## Required ledger fields
 
 `docs/product/loop-status.md` must keep these fields current:
 
 - Goal scope and stopping condition;
+- selected execution profile and outer Goal state;
 - explicit non-scope;
+- current milestone identity and phase, or `BETWEEN_MILESTONES`;
 - current milestone state;
 - primary model and reasoning effort;
 - generic subagent launches authorized / consumed;
@@ -398,6 +513,10 @@ the same Goal.
   Integration State, Implementation Frozen SHA, and Merge Commit SHA;
 - next action;
 - human authorization state.
+
+For every backlog reprioritization also persist the changed entries, prior
+state, new state, rationale, and evidence provenance. For a budget pause persist
+all `PAUSED_BY_EXECUTION_BUDGET` resume fields from the outer-loop contract.
 
 Update the ledger before interruption, before any reviewer launch, after every
 reviewer result or actual failure, at Freeze, after every integration state
@@ -413,4 +532,6 @@ The user may explicitly authorize:
 - a new Product Cycle or multi-milestone program.
 
 Authorization applies only to the stated action. It does not permanently raise
-the repository defaults or revive automatic continuation.
+the repository defaults. Selecting `AUTONOMOUS_EVOLUTION_TIER2` is the explicit
+multi-milestone authorization for that outer Goal session; continuation ends at
+its recorded outer stop conditions.

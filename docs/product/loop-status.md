@@ -12,6 +12,7 @@ Primary governance:
 - `docs/agent/AUTONOMOUS_PRODUCT_EVOLUTION.md`
 - `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`
 - `docs/agent/goals/AUTONOMOUS_MILESTONE.md`
+- `docs/agent/goals/AUTONOMOUS_EVOLUTION_TIER2.md`
 
 ---
 
@@ -27,7 +28,8 @@ Standing execution defaults:
 - sequential milestone review only; never parallel;
 - one substantial product milestone per feature branch and PR;
 - no Git worktree;
-- no automatic continuation into another Product Cycle.
+- no cross-milestone continuation unless the user explicitly selects the
+  self-evolution profile.
 
 ---
 
@@ -39,10 +41,12 @@ Goal Scope:
 
 The master-only governance corrective that introduced reviewer wait
 continuation, post-Freeze integration, one-milestone branch retirement, and
-unambiguous final Goal states is complete. The final TIER_0 corrective in the
-commit containing this ledger additionally blocks unattended integration when
-the fetched target-base SHA differs from the recorded Base SHA. Neither task
-started a Product Cycle or modified production code.
+unambiguous final Goal states is complete. The previous TIER_0 corrective also
+blocks unattended integration when the fetched target-base SHA differs from the
+recorded Base SHA. The TIER_0 governance corrective in the commit containing
+this ledger adds a separate true self-evolution profile while preserving
+execute-only behavior. None of these tasks started a Product Cycle or modified
+production code.
 
 Explicit Non-Scope:
 
@@ -57,17 +61,33 @@ Explicit Non-Scope:
 Stopping Condition:
 
 This maintenance task ends after the governance-only corrective is validated,
-committed, and pushed to `master`. Any future Product Cycle requires separate
-opportunity selection and explicit authorization before
-`AUTONOMOUS_MILESTONE.md` may execute it.
+committed, and pushed to `master`. Future product work requires an explicit Goal
+profile: execute-only mode requires a separately selected active milestone;
+self-evolution mode authorizes discovery and safe milestone selection during
+that outer Goal session.
+
+Selected Product Goal Profile:
+
+`NONE — governance maintenance only`
+
+Outer Goal State:
+
+`INACTIVE`
 
 Current Milestone State:
 
-`READY_FOR_NEXT_CYCLE_SELECTION`
+`BETWEEN_MILESTONES`
 
 Current Phase:
 
-`NO_ACTIVE_PRODUCT_CYCLE`
+`READY_FOR_PROFILE_SELECTION`
+
+Profile-dependent no-cycle semantics:
+
+- `UNATTENDED_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means report missing milestone
+  selection/authorization and stop;
+- `AUTONOMOUS_EVOLUTION_TIER2`: `NO_ACTIVE_PRODUCT_CYCLE` means enter
+  `OPPORTUNITY_DISCOVERY` and select a substantial safe milestone.
 
 Primary Model / Reasoning:
 
@@ -106,7 +126,7 @@ Target Base Branch:
 
 Base SHA:
 
-`9a6675127f1288280f276afd84a33b901878a230` at this corrective's start.
+`304853fec88b581028c9cb37a38808ff6a356958` at this corrective's start.
 
 Current Target Base SHA:
 
@@ -142,16 +162,24 @@ Merge Commit SHA:
 
 Next Action:
 
-`PRODUCT OPPORTUNITY SELECTION REQUIRES EXPLICIT USER AUTHORIZATION`
+`SELECT A GOAL PROFILE`
 
-Use `docs/product/opportunity-log.md` and the existing product-value criteria;
-do not select mechanically by roadmap number. After authorization, create one
-dedicated ordinary feature branch from a clean, current `master`, record the
-new Cycle Plan and integration contract, and only then invoke a milestone Goal.
+- Choose `UNATTENDED_TIER2` only after explicitly selecting an active milestone.
+- Choose `AUTONOMOUS_EVOLUTION_TIER2` to authorize continuous discovery,
+  milestone selection, and safe execution during that outer Goal session.
+
+No profile is invoked by this governance corrective, and no opportunity is
+selected now.
 
 Human Authorization State:
 
-`NO NEXT PRODUCT CYCLE AUTHORIZED`
+`NO PRODUCT GOAL PROFILE CURRENTLY ACTIVE`
+
+Execution-budget pause state:
+
+`N/A`. When active, `PAUSED_BY_EXECUTION_BUDGET` must persist outer state,
+current milestone/phase, branch, `HEAD`, latest stable commit, tests/CI, review
+and subagent usage, blockers, and exact next action.
 
 ---
 
@@ -182,13 +210,14 @@ The cumulative program is complete and must not be reopened by this ledger.
 - Implementation Frozen SHA:
   `433e80cf1da7a5994513053c3391487d1c911a3e`
 - merge commit: `5424131e124b5f2927fb3abb7f2fcb1942745ce3`
-- latest integration/governance record before this corrective:
+- integration/governance record that closed this historical program:
   `f096918354b90feda4971fe5565160705cb6a7ac`
 
 The merge used non-squashed merge history. The frozen Candidate is an ancestor
 of pushed `master`; local and remote feature branches were deleted after the
 merge and ancestry checks. Local `master` and `origin/master` both pointed to
-`f096918354b90feda4971fe5565160705cb6a7ac` at this corrective's start.
+`f096918354b90feda4971fe5565160705cb6a7ac` when that historical integration
+record was completed.
 
 ### Exact-Candidate evidence
 
@@ -258,5 +287,6 @@ Future governance work must not modify or consume that stash.
 Open protected-decision items: `0`
 
 Human-gated opportunities must be parked under
-`docs/product/human-review-queue/`. Parking an item stops the active Goal and
-does not authorize another Cycle.
+`docs/product/human-review-queue/`. Parking an item stops execute-only mode. In
+self-evolution mode it parks that direction and returns to discovery for another
+independent safe milestone; the protected decision remains prohibited.

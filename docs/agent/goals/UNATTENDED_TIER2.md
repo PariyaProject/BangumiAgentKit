@@ -7,7 +7,7 @@ governance.
 
 ## Selected execution profile
 
-- Execution Mode: `UNATTENDED`
+- Execution Mode: `EXECUTE_ONLY_UNATTENDED`
 - Primary Model: GPT-5.6 Luna
 - Preferred Reasoning: `max`
 - Minimum fallback: `xhigh`

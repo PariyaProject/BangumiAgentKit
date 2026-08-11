@@ -21,7 +21,8 @@ model routing, failure behavior, and stopping rules.
 
 Responsibilities:
 
-- product opportunity discovery within the authorized milestone;
+- product opportunity discovery within the authorized milestone, or between
+  milestones when the self-evolution profile is selected;
 - targeted research;
 - cycle planning;
 - implementation;
@@ -32,8 +33,9 @@ Responsibilities:
 - progress and budget persistence.
 
 The primary agent works in one thread by default. It does not use independent
-reviewers as incremental debuggers and does not select the next Product Cycle
-after Freeze.
+reviewers as incremental debuggers. Execute-only mode does not select the next
+Product Cycle after Freeze; self-evolution mode may do so only after the prior
+milestone is frozen/integrated or truthfully parked and its state is persisted.
 
 ### `sol_milestone_reviewer`
 
@@ -87,8 +89,10 @@ Every Cycle Plan must select and justify its Review Tier before implementation:
   and trivial internal work only;
 - `TIER_1`: one comprehensive `sol_milestone_reviewer` launch; default for a
   normal product milestone;
-- `TIER_2`: at most two Sol launches total; unusually high-risk or high-value
-  milestones only, with reviewer identities and order recorded in advance.
+- `TIER_2`: at most two Sol launches total; unusually high-risk/high-value
+  milestones or milestones selected under the explicit
+  `AUTONOMOUS_EVOLUTION_TIER2` profile, with reviewer identities and order
+  recorded in advance.
 
 A `TIER_2` sequence must end with a comprehensive
 `sol_milestone_reviewer` PASS on the exact final Candidate. A specialized role
@@ -115,7 +119,8 @@ A failed `TIER_1` launch consumes its only call and pauses the Cycle. A failed
 `TIER_2` launch also consumes one call; the remaining launch may proceed only
 when the pre-recorded sequence can still end in a comprehensive PASS for the
 exact final Candidate. Otherwise persist
-`PAUSED_REVIEW_BUDGET_EXHAUSTED` and stop.
+`PARKED_REVIEW_LIMIT`. Execute-only mode stops; self-evolution mode may return
+to discovery for another independent safe milestone.
 
 ## Reviewer runtime and wait semantics
 
@@ -216,8 +221,10 @@ allowed unless the user explicitly grants new budget or upgrades the Cycle to
 
 For `TIER_2`, if one launch remains, Luna may complete validation and exact-SHA
 CI for the corrected Candidate and then launch Sol #2 sequentially. Sol #2 must
-return `PASS` for the exact corrected Candidate or the Cycle stops. Sol #3 is
-never automatic.
+return `PASS` for the exact corrected Candidate or the Cycle is marked
+`PARKED_REVIEW_LIMIT`. Sol #3 is never automatic. A self-evolution outer Goal
+may then select another independent safe milestone without resetting or
+overriding the parked findings.
 
 The implementation agent may not override a reviewer blocker.
 
@@ -229,10 +236,11 @@ agent must:
 1. not implement the protected change;
 2. create a proposal under `docs/product/human-review-queue/`;
 3. mark the affected opportunity `PARKED_FOR_HUMAN`;
-4. persist the state and stop the current Goal.
+4. persist the state.
 
-Parking one decision does not authorize starting another opportunity inside
-the same Goal.
+Execute-only mode then stops. In a selected self-evolution Goal, park only the
+affected direction and return to discovery; continue with another independent
+safe milestone when one exists. The protected change remains prohibited.
 
 ## Freeze requirements
 
@@ -257,8 +265,9 @@ Candidate to `FROZEN`. Then follow the Integration Policy and Goal-state
 lifecycle defined canonically in `BUDGET_FIRST_EXECUTION.md`. `FROZEN` becomes
 `FROZEN_GOAL_COMPLETE` only for `STOP_AT_FREEZE` or when integration is not
 applicable; `AUTO_MERGE_AFTER_FREEZE` must continue through authorized
-integration to `MERGED_GOAL_COMPLETE`. Neither outcome authorizes selecting or
-beginning another Product Cycle.
+integration to `MERGED_GOAL_COMPLETE`. Those outcomes end execute-only mode. In
+self-evolution mode they are inner milestone checkpoints: update the backlog and
+ledger, then return to observation and opportunity discovery.
 
 ## Two-SHA Freeze model
 
@@ -327,8 +336,10 @@ Reports must preserve:
 - deferred opportunities;
 - human-review queue references;
 - Integration Policy and final integration state;
-- confirmation that the Goal stopped at this milestone and did not select the
-  next Cycle.
+- selected execution profile;
+- confirmation that execute-only mode stopped at this milestone, or that
+  self-evolution recorded the milestone checkpoint before returning to
+  discovery.
 
 ## Protected human decisions
 
@@ -346,14 +357,19 @@ The following may not be autonomously approved:
 - breaking frozen public contracts without a compatibility path;
 - publishing packages, releases, or tags.
 
-When encountered: park the proposal, persist the state, and stop the Goal.
+When encountered: park the proposal and persist the state. Execute-only mode
+stops. Self-evolution may continue only with a different independent safe
+direction, and stops if none remains.
 
 ## Opportunity selection
 
-The opportunity log remains a backlog. It may be updated with observations, but
-it is not execution authority.
+The opportunity log remains a living backlog. It may be updated with
+observations. It is not execution authority in execute-only mode; the selected
+self-evolution profile is explicit authority to discover, reprioritize with
+provenance, and select safe substantial milestones during that outer Goal.
 
-After a Freeze, the user may authorize a new Goal. At that time evaluate:
+At a self-evolution checkpoint, or when the user authorizes a new execute-only
+Goal, evaluate:
 
 - User Value;
 - Agent Leverage;
@@ -366,7 +382,7 @@ After a Freeze, the user may authorize a new Goal. At that time evaluate:
 
 ## Stop conditions
 
-Stop the current Goal when:
+In execute-only mode, stop the current Goal when:
 
 - the configured final success state is reached;
 - the review launch budget is exhausted;
@@ -381,3 +397,8 @@ budget, CI, or completion evidence.
 
 `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition. Continue waiting
 on the same reviewer until a verdict or a genuine terminal runtime outcome.
+
+In self-evolution mode, review-limit and protected-decision outcomes park the
+affected milestone or direction rather than stopping the outer Goal. The outer
+stop and `PAUSED_BY_EXECUTION_BUDGET` rules are defined canonically in
+`BUDGET_FIRST_EXECUTION.md`.

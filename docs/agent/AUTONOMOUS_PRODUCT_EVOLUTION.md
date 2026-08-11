@@ -3,15 +3,19 @@
 > `docs/agent/BUDGET_FIRST_EXECUTION.md` and
 > `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`.
 >
-> If older sections of this Charter describe continuous unattended execution,
-> automatic review retries, or continuation into another Product Cycle, the
-> Budget-First Execution Harness supersedes that behavior.
+> The Harness supports two explicit modes. Execute-only Goals run one already
+> selected milestone and stop. A selected `AUTONOMOUS_EVOLUTION_TIER2` Goal may
+> continuously discover and select substantial milestones during the active
+> outer session. It never gains automatic review retries beyond the
+> per-milestone tier or authority over protected human-only changes.
 >
-> A Goal covers one substantial vertical Product Cycle or milestone and may
-> contain many commits and several hours of Luna Max work. Review Tier and total
-> Sol budget are selected before implementation. Sol is spent only after the
-> entire milestone reaches readiness. A new Cycle requires fresh user
-> authorization.
+> Each Product Cycle remains one substantial vertical milestone and may contain
+> many commits and several hours of Luna Max work. Review Tier and total Sol
+> budget are selected per milestone before implementation. Sol is spent only
+> after the entire milestone reaches readiness. Execute-only mode requires
+> fresh authorization for another Cycle; the self-evolution invocation is
+> explicit authority to select later safe milestones until an outer stop
+> condition is reached.
 >
 > Protected architectural/security/legal decisions remain Human-On-Exception
 > and must be parked rather than autonomously approved.
@@ -772,7 +776,8 @@ just because an endpoint exists.
 19. DEVELOPMENT LOOP
 ==================================================
 
-Within one bounded, user-authorized milestone, use:
+Within each bounded milestone authorized directly or selected by the active
+self-evolution profile, use:
 
 OBSERVE
 
@@ -1049,8 +1054,12 @@ migration risk
 
 alternatives.
 
-Then STOP that architectural change
+Then PARK that architectural direction
 for human review.
+
+Execute-only mode stops. Self-evolution mode may return to discovery and choose
+another independent safe direction; it must never implement around the parked
+boundary.
 
 ==================================================
 30. AUTONOMOUS IMPLEMENTATION AUTHORITY
@@ -1537,6 +1546,12 @@ research findings
 
 newly discovered opportunities.
 
+The roadmap and opportunity log are living implementation hypotheses, not the
+North Star. In self-evolution mode Luna may add missing work, split oversized
+items, merge artificial fragments, reorder priorities, defer low-value work,
+and mark obsolete entries `SUPERSEDED`. Persist the previous state, new state,
+evidence, and rationale for every material change.
+
 ==================================================
 48. DO NOT RUN FOREVER WITHOUT CHECKPOINTS
 ==================================================
@@ -1545,6 +1560,11 @@ Long-run mode may be autonomous inside one Goal,
 but must remain budgeted and bounded.
 
 Work in bounded product cycles.
+
+The outer Goal may contain multiple cycles only when the self-evolution profile
+is explicitly selected. Each cycle receives a fresh milestone scope, branch,
+PR, review ledger, and Freeze/integration checkpoint; review budget never leaks
+between cycles.
 
 Each cycle should have:
 
@@ -2039,7 +2059,7 @@ Make these states understandable rather than ugly.
 67. AUTONOMOUS LOOP DECISION RULE
 ==================================================
 
-At the end of each user-authorized cycle:
+At the end of each directly authorized or self-evolution-selected cycle:
 
 1.
 Run all required tests.
@@ -2094,8 +2114,15 @@ STOP implementation and run the budget/readiness gate.
 
 Do not keep polishing it indefinitely.
 
-Do not start research, planning, or implementation for the next Cycle inside
-the current Goal. Record follow-up ideas in the opportunity log and stop.
+In execute-only mode, do not start research, planning, or implementation for
+the next Cycle inside the current Goal. Record follow-up ideas and stop at the
+configured milestone outcome.
+
+In self-evolution mode, finish the current milestone's review, Freeze,
+integration, and branch-cleanup contract first. Then persist the checkpoint,
+update the living backlog with provenance, and return to `OBSERVE` and targeted
+opportunity discovery. Do not carry unfinished scope or review budget into the
+next milestone.
 
 ==================================================
 69. SAFE UNATTENDED MODE
@@ -2137,7 +2164,7 @@ Never perform destructive real-account tests.
 70. HUMAN CHECKPOINT TRIGGERS
 ==================================================
 
-STOP and request review when:
+PARK the affected direction and request review when:
 
 a frozen public contract must change
 
@@ -2161,6 +2188,10 @@ large-scale scraping is proposed
 
 release/tag/publish is proposed.
 
+Execute-only mode stops after parking. Self-evolution mode may continue only
+with another independent safe milestone; it stops if the protected issue is a
+global emergency or no meaningful safe work remains.
+
 ==================================================
 71. CURRENT EXECUTION AUTHORITY
 ==================================================
@@ -2169,12 +2200,15 @@ release/tag/publish is proposed.
 
 Do not infer authority from historical sequences in this Charter.
 
-Before implementation, the user must authorize one substantial vertical
-milestone and its Cycle Plan must record scope, non-scope, stopping condition,
-validation, Review Tier, total Sol launch budget, and any TIER_2 reviewer order.
+Before implementation, either the user must authorize one substantial vertical
+execute-only milestone or explicitly select the self-evolution profile. Every
+selected milestone's Cycle Plan must record scope, non-scope, acceptance and
+stopping conditions, validation, Review Tier, total Sol launch budget, and any
+`TIER_2` reviewer order.
 
-After that milestone stops or freezes, do not select or begin another Cycle
-inside the same Goal.
+After that milestone stops or freezes, execute-only mode does not select another
+Cycle. Self-evolution mode checkpoints or parks the milestone, then returns to
+discovery and may select another independent safe substantial milestone.
 
 ==================================================
 72. FIRST AUTONOMOUS PRODUCT QUESTION
