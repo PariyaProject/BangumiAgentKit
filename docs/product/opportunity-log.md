@@ -142,7 +142,7 @@ adding OAuth, personal watchlists, HTML, Structured Web, snapshots, or write aut
 ## OP-007 Revision / Change History Intelligence
 
 Status:
-SELECTED_FOR_PR-7F
+IN_PROGRESS_PR-7F_BUDGET_PAUSED
 
 User questions:
 
@@ -178,4 +178,7 @@ does not yet provide bounded entity-scoped change summaries, field-level unknown
 human-readable timeline. PR-7F will preserve official revision timestamps and summaries,
 bound list/detail work, and distinguish observed history from unsupported trend claims.
 No snapshot store, HTML/Structured Web source, authentication, or write authority is
-needed for the bounded read-only cycle.
+needed for the bounded read-only cycle. PR-7F is paused after its two recorded Sol review
+launches failed at the platform usage limit. It must not trigger automatic retries or
+selection of another opportunity; resumption requires the PR-7F Goal contract and budget
+recorded in `docs/product/loop-status.md`.

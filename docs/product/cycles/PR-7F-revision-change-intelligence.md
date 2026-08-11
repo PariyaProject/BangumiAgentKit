@@ -1,8 +1,60 @@
 # PR-7F Revision / Change History Intelligence
 
-Status: PLAN_CREATED
+Status: PAUSED_REVIEW_BUDGET_EXHAUSTED
 
 Base: PR-7E implementation frozen SHA `d53d800c5497cacd156792b1139ab7f2a696cdbe`
+
+## Execution evidence
+
+Last committed Implementation Candidate SHA:
+`e8fbf1e6012c2bbdf59d9b170d0a898d096c2922`
+
+Current Candidate SHA: none. Post-Candidate changes remain in the working tree
+and have not been committed or presented as a new Candidate.
+
+Exact remote CI: GitHub Actions run `31356297264` — SUCCESS across all six jobs.
+
+Local validation passed: `pnpm test` (177 tests), `pnpm test:semantic` (31),
+`pnpm test:provider` (33), `pnpm test:discovery` (48), `pnpm test:contract` (22),
+`pnpm test:integration:sqlite` (33), `pnpm test:standalone` (18), focused MCP schema /
+renderer / service / Standalone tests (83), `pnpm typecheck`, `pnpm lint`, and
+`pnpm openapi:verify`.
+
+Read-only official QA against `GET /v0/revisions/subjects` for subject `218707` returned
+10 records with `total=21`, so the result was `partial` with exact official-v0 provenance;
+no credentials or writes were used. Representative rendered artifacts were inspected at
+640px and 960px (`/tmp/bangumi-pr7f-revision-640.png` and
+`/tmp/bangumi-pr7f-revision-960.png`).
+
+Required `sol_code_reviewer` and `sol_product_reviewer` verdicts are still pending: both
+reviewer launches hit the platform usage limit before returning a report. This is not a
+freeze and must not be converted into PASS by the implementation agent. Each failed launch
+consumed one call under the new budget ledger; neither may be retried automatically.
+
+## Goal and execution harness
+
+Goal scope: PR-7F only.
+
+Stopping condition: PR-7F freezes on an exact independently reviewed Candidate SHA, or the
+Cycle stops when a corrected Candidate needs review authorization, review budget is
+unavailable, or a protected decision is reached.
+
+Primary-thread strategy: one GPT-5.6 Luna `max` implementation thread; Luna `xhigh` only
+if `max` is unavailable; no automatic implementation, exploration, or QA subagents.
+
+Generic subagent budget: 0 authorized / 0 consumed.
+
+Automatic Sol review budget:
+
+- `sol_code_reviewer`: 1 authorized / 1 consumed / no verdict;
+- `sol_product_reviewer`: 1 authorized / 1 consumed / no verdict;
+- remaining automatic Sol launches: 0.
+
+Next execution checkpoint: after explicit user authorization to resume implementation,
+finish and validate the current post-Candidate work in one primary thread, commit a clean
+Candidate, run exact-SHA CI, mark `CORRECTED_AWAITING_REVIEW_AUTHORIZATION`, and stop.
+
+Freezing PR-7F completes the Goal. Do not select or begin another Product Cycle.
 
 ## Cycle title
 
@@ -101,4 +153,6 @@ field-level diff unless the source supplies one.
    machine-readable and human-readable.
 3. Existing list/detail revision tools remain backward compatible.
 4. Local gates, exact-SHA remote CI, Agent QA, and representative visual QA pass.
-5. Both independent Freeze reviewers return PASS before PR-7F is frozen.
+5. Both independent Freeze reviewers return PASS for the exact final Candidate before
+   PR-7F is frozen; any fresh reviewer budget is explicitly authorized and recorded.
+6. Freeze ends the Goal without automatically selecting or starting another Product Cycle.
