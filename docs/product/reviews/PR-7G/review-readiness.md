@@ -80,7 +80,9 @@ Standalone semantic/render dispatch.
 
 ## Review launch authorization
 
-No Sol reviewer has been launched for PR-7G. The recorded sequence authorizes:
+Sol #1 has now been launched as agent
+`019ff01d-dfae-7d80-9d24-5cff183ecd8a` (`Poincare`). The recorded sequence
+authorizes:
 
 1. one comprehensive `sol_milestone_reviewer` launch at the Candidate above;
 2. one and only one further comprehensive launch if Sol #1 returns

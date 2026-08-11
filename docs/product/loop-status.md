@@ -74,11 +74,11 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEW_READY`
+`SOL_REVIEW_RUNNING`
 
 Current Phase:
 
-`REVIEW_READY`
+`SOL_REVIEW`
 
 Current Milestone:
 
@@ -105,16 +105,17 @@ Review Tier:
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 0 — comprehensive reviewer #1, then #2 only if corrective findings remain`
+`2 / 1 — Sol #1 launched; Sol #2 remains only for CORRECTIVE_REQUIRED`
 
 Milestone Review Runtime:
 
-`AUTHORIZED — Sol #1 ready to launch; Sol #2 remains reserved only for
-CORRECTIVE_REQUIRED`
+`RUNNING — Sol #1 `sol_milestone_reviewer` agent
+019ff01d-dfae-7d80-9d24-5cff183ecd8a`; waits on this same agent consume zero
+additional launches`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`4 / 0`
+`4 / 1`
 
 Current Outer Review Budget State:
 
@@ -184,10 +185,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`LAUNCH the single authorized comprehensive sol_milestone_reviewer as Sol #1
-against Candidate 3459689e… with review-readiness evidence. If and only if it
-returns CORRECTIVE_REQUIRED, apply findings under the remaining Sol #2 budget;
-otherwise preserve the Candidate unchanged.`
+`WAIT on the same Sol #1 reviewer. A transient wait timeout while this agent
+remains running is non-terminal and consumes no additional launch. Do not edit
+production code or launch Sol #2 unless Sol #1 returns CORRECTIVE_REQUIRED.`
 
 Human Authorization State:
 
