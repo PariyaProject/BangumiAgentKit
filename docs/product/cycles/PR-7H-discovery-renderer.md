@@ -1,6 +1,6 @@
 # PR-7H Evidence-Bearing Subject Discovery Presentation
 
-Status: `ACTIVE — VALIDATING`
+Status: `REVIEW_READY`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget
@@ -166,13 +166,15 @@ asked, what the engine observed, and what remains uncertain; structured
 - Feature branch: `codex/pr-7h-discovery-renderer`.
 - Target base: `master` at recorded Base SHA
   `23f960ce3a8a8ac3841b791061a648037a53ab19`.
-- Pull Request: to be recorded after the Candidate is pushed.
+- Pull Request: `#3 — https://github.com/PariyaProject/BangumiAgentKit/pull/3`.
 - Integration policy: `AUTO_MERGE_AFTER_FREEZE`.
 - Merge strategy: `MERGE_COMMIT` by default.
 - Branch cleanup: retire local/remote feature branch only after verified
   frozen-SHA ancestry and synchronized `master`.
-- Candidate, exact CI run, reviewer IDs, freeze SHA, and merge SHA: `N/A` until
-  those gates are reached.
+- Candidate SHA: `8dd069a0e700161d5a484af378b0ec9eb10e395c`.
+- Exact CI: run `31483703874`, all six mandatory jobs green.
+- Readiness record: `docs/product/reviews/PR-7H/review-readiness.md`.
+- Reviewer IDs, freeze SHA, and merge SHA: `N/A` until those gates are reached.
 
 ## Verifiable stopping condition
 

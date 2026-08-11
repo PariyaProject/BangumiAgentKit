@@ -73,7 +73,7 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`VALIDATING`
+`REVIEW_READY`
 
 Current Milestone State:
 
@@ -81,7 +81,7 @@ Current Milestone State:
 
 Current Phase:
 
-`VALIDATING`
+`REVIEW_READY`
 
 Current Milestone:
 
@@ -120,11 +120,11 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`N/A — PR-7H implementation checkpoint; final Candidate not yet review-ready`
+`8dd069a0e700161d5a484af378b0ec9eb10e395c`
 
 Exact-SHA CI:
 
-`N/A — PR-7H Candidate not yet ready`
+`PASS — [GitHub Actions run 31483703874](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31483703874), all six mandatory jobs green on exact Candidate SHA`
 
 Integration Policy:
 
@@ -149,7 +149,7 @@ Feature Branch:
 
 Pull Request Number:
 
-`N/A — to be recorded after Candidate push`
+`#3 — https://github.com/PariyaProject/BangumiAgentKit/pull/3`
 
 Merge Strategy:
 
@@ -166,7 +166,7 @@ Integration State:
 
 Implementation Frozen SHA:
 
-`N/A — PR-7H Candidate not yet reviewed`
+`N/A — Candidate is review-ready; Freeze not reached`
 
 Merge Commit SHA:
 
@@ -174,8 +174,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`Run the complete PR-7H validation matrix, refresh visual evidence, and create
-the exact Candidate/CI readiness packet before any Sol launch. Do not reopen
+`Review-readiness packet docs/product/reviews/PR-7H/review-readiness.md is
+complete. Launch exactly one sequential Sol #1 review for PR-7H; consume one
+outer launch, then follow the recorded corrective/Freeze gate. Do not reopen
 PR-7G or launch a third reviewer for it.`
 
 Human Authorization State:
