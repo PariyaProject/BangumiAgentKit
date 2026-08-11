@@ -15,6 +15,25 @@ agent count, commit count, or number of Product Cycles.
 The default execution shape is one primary agent working in one thread. A
 subagent is an exception with an explicit, bounded purpose.
 
+## Repository checkout policy
+
+Never use `git worktree` or create an additional Git working tree. All Git work
+must use the repository's existing checkout and ordinary branches.
+
+Before changing `master`, first inspect and report:
+
+- the current branch and dirty files;
+- local `master` versus `origin/master`;
+- unpublished commits on local `master`;
+- whether those commits are already reachable from a pushed feature branch;
+- the exact commits that the proposed push would publish.
+
+Do not push unrelated unpublished commits as a side effect of carrying a harness
+or documentation change to `master`. If dirty feature work prevents a normal
+branch switch, preserve it in an explicit temporary branch commit, perform the
+operation in the existing checkout, and restore the feature changes to their
+previous committed or uncommitted state before removing the temporary branch.
+
 ## Goal contract
 
 A Codex Goal in this repository must cover exactly one coherent milestone.
@@ -105,7 +124,7 @@ Do not spend the review budget until all of the following are true:
 
 1. the milestone scope is stable;
 2. the implementation is committed as an exact Candidate SHA;
-3. the tracked worktree is clean;
+3. the checked-out branch has no tracked changes;
 4. relevant local validation is green;
 5. mandatory remote CI is green for that Candidate SHA;
 6. user, Agent, and visual QA required by the Cycle are complete;
