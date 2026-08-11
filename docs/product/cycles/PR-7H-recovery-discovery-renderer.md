@@ -257,7 +257,7 @@ green`
 - Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 - Exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs green`
 - Implementation Frozen SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
-- Governance Record SHA: `PENDING_FINAL_INTEGRATION_RECORD`
+- Governance Record SHA: `cc70ffc13e819ecb652fe067af6f6c40354cf15c`
 - Merge Commit SHA: `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
 - Final state: `MERGED_GOAL_COMPLETE`
 - Next action: stop the execute-only Goal. PR-7G recovery and unrelated

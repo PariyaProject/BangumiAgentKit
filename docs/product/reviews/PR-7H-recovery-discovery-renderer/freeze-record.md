@@ -72,7 +72,7 @@ SSRF boundary, or PR-7G behavior changed.
 - Recorded Base SHA: `be89a2699ed7ccc85fc2e23718319bc57e1e16b6`
 - Integration state: `MERGED_GOAL_COMPLETE`
 - Merge Commit SHA: `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
-- Final Integration Record SHA: `PENDING_FINAL_INTEGRATION_RECORD`
+- Final Integration Record SHA: `cc70ffc13e819ecb652fe067af6f6c40354cf15c`
 - Target `master` after merge: `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
 - Recovery feature branch was retired locally and remotely after frozen-SHA
   ancestry verification.
