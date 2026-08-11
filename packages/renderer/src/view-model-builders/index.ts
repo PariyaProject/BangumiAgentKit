@@ -473,15 +473,13 @@ export function buildDiscoveryResultsViewModel(
   const evidenceOperations = result.evidence
     .map((item) => item.source?.operation)
     .filter((value): value is string => Boolean(value));
-  const operations = uniqueStrings([result.plan.operation, ...evidenceOperations]);
+  const operations = uniqueStrings(evidenceOperations);
   const evidenceRetrievedAt = result.evidence
     .map((item) => item.retrievedAt)
     .filter((value): value is string => Boolean(value))
     .sort()
     .at(-1);
-  const experimental =
-    result.evidence.some((item) => item.source?.experimental) ||
-    result.plan.operation === 'searchSubjects';
+  const experimental = result.evidence.some((item) => item.source?.experimental);
   const limitations = uniqueStrings([
     ...(result.plan.limitations || []),
     ...(result.explanation?.limitations || []),
@@ -534,7 +532,7 @@ export function buildDiscoveryResultsViewModel(
       operations,
       evidenceCount: result.evidence.length,
       retrievedAt: evidenceRetrievedAt,
-      experimental,
+      ...(experimental ? { experimental: true } : {}),
     },
     warnings: result.warnings.map((warning) => ({
       code: warning.code,

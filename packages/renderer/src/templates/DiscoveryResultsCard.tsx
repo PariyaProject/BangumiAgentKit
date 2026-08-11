@@ -76,6 +76,8 @@ function numberLabel(value: number | undefined, suffix = ''): string {
   return value === undefined ? `未知${suffix}` : `${value}${suffix}`;
 }
 
+const DISCOVERY_MAX_RENDERED_ITEMS = 12;
+
 const FilterGroup: React.FC<{
   label: string;
   values: string[];
@@ -121,6 +123,10 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
   const hiddenWarnings = Math.max(0, viewModel.warnings.length - visibleWarnings.length);
   const hiddenLimitations = Math.max(0, viewModel.limitations.length - visibleLimitations.length);
   const coverage = viewModel.coverage;
+  const visibleItems = viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS);
+  const overflowItemCount = Math.max(0, viewModel.items.length - visibleItems.length);
+  const effectiveHiddenCount = Math.max(0, (viewModel.hiddenCount ?? 0) + overflowItemCount);
+  const renderedCount = visibleItems.length;
   const sourceOperations = viewModel.source.operations.map(operationLabel);
 
   return (
@@ -181,7 +187,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
 
       <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
         覆盖：观察 {coverage.observed} · 匹配 {coverage.matched} · 返回 {coverage.returned} · 展示{' '}
-        {coverage.rendered} · 页面 {coverage.pagesScanned} · {totalLabel(coverage.totalKind)}
+        {renderedCount} · 页面 {coverage.pagesScanned} · {totalLabel(coverage.totalKind)}
         {coverage.requested > 0 ? ` · 请求上限 ${coverage.requested}` : ''}
         {coverage.budgetExceeded ? ' · 达到执行预算' : ''}
         {coverage.outputCap !== undefined ? ` · 输出上限 ${coverage.outputCap}` : ''}
@@ -200,7 +206,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         </div>
       ) : null}
 
-      {viewModel.items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <div
           style={{
             color: stateTone,
@@ -221,7 +227,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
       ) : null}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-        {viewModel.items.map((item) => {
+        {visibleItems.map((item) => {
           const image = item.image ? resolvedImages[item.image] || item.image : undefined;
           return (
             <div
@@ -316,9 +322,9 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         })}
       </div>
 
-      {viewModel.hiddenCount ? (
+      {effectiveHiddenCount > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          另有 {viewModel.hiddenCount} 条本次已返回的结构化条目未在卡片中展开；卡片最多展示 12 条。
+          另有 {effectiveHiddenCount} 条本次已返回的结构化条目未在卡片中展开；卡片最多展示 12 条。
         </div>
       ) : null}
       {viewModel.observedNotReturnedCount ? (
@@ -341,11 +347,11 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
       >
         <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>计划与证据边界</div>
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          {operationLabel(viewModel.plan.operation)} · {qualityLabel(viewModel.plan.quality)} ·{' '}
-          {viewModel.source.evidenceCount} 条字段证据
+          计划操作：{operationLabel(viewModel.plan.operation)} ·{' '}
+          {qualityLabel(viewModel.plan.quality)} · {viewModel.source.evidenceCount} 条字段证据
           {sourceOperations.length > 0
-            ? ` · 来源路径 ${sourceOperations.join('、')}`
-            : ' · 操作未知'}
+            ? ` · 证据来源路径 ${sourceOperations.join('、')}`
+            : ' · 无证据来源路径'}
           {viewModel.source.retrievedAt ? ` · 获取于 ${viewModel.source.retrievedAt}` : ''}
         </div>
         <FilterGroup label="上游直接支持" values={viewModel.plan.pushdown} theme={theme} />

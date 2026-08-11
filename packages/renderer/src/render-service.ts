@@ -28,6 +28,8 @@ export interface RenderResult {
 
 export const RENDERER_VERSION = '1.0.0';
 
+const DISCOVERY_MAX_RENDERED_ITEMS = 12;
+
 export function canonicalizeJson(obj: unknown): string {
   if (obj === null || typeof obj !== 'object') {
     return JSON.stringify(obj);
@@ -69,7 +71,7 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
       if (item.image) urls.add(item.image);
     }
   } else if (viewModel.template === 'discovery-results') {
-    for (const item of viewModel.items) {
+    for (const item of viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS)) {
       if (item.image) urls.add(item.image);
     }
   } else if (viewModel.template === 'cast-card') {
@@ -92,6 +94,24 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
   }
 
   return Array.from(urls);
+}
+
+function normalizeRenderViewModel(viewModel: RenderViewModel): RenderViewModel {
+  if (viewModel.template !== 'discovery-results') return viewModel;
+
+  const items = viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS);
+  const overflow = Math.max(0, viewModel.items.length - items.length);
+  const hiddenCount = Math.max(0, (viewModel.hiddenCount ?? 0) + overflow);
+
+  return {
+    ...viewModel,
+    items,
+    ...(hiddenCount > 0 ? { hiddenCount } : { hiddenCount: undefined }),
+    coverage: {
+      ...viewModel.coverage,
+      rendered: items.length,
+    },
+  };
 }
 
 async function mapConcurrent<T, R>(
@@ -140,6 +160,7 @@ export class RenderService {
   }
 
   async renderCard(viewModel: RenderViewModel, options: RenderOptions = {}): Promise<RenderResult> {
+    const normalizedViewModel = normalizeRenderViewModel(viewModel);
     const width = options.width ?? 960;
     const dpr = options.deviceScaleFactor ?? 2;
     const theme = options.theme ?? 'bangumi-dark';
@@ -163,7 +184,7 @@ export class RenderService {
     }, this.timeoutMs);
 
     try {
-      const imageUrls = extractImageUrls(viewModel);
+      const imageUrls = extractImageUrls(normalizedViewModel);
       const resolvedAssets = await mapConcurrent(
         imageUrls,
         this.maxAssetConcurrency,
@@ -190,7 +211,7 @@ export class RenderService {
       }
 
       const cacheKey = computeRenderCacheKey(
-        viewModel,
+        normalizedViewModel,
         { ...options, theme, width, deviceScaleFactor: dpr },
         resolvedImages,
       );
@@ -206,7 +227,7 @@ export class RenderService {
         );
       }
 
-      const html = renderHtmlTemplate(viewModel, theme, resolvedImages, width);
+      const html = renderHtmlTemplate(normalizedViewModel, theme, resolvedImages, width);
       const buffer = await this.browserPool.renderHtmlToBuffer(html, {
         width,
         deviceScaleFactor: dpr,
@@ -226,8 +247,8 @@ export class RenderService {
         mimeType: 'image/png',
         width: imageMetadata.width || width,
         height: imageMetadata.height || 0,
-        template: viewModel.template,
-        templateVersion: viewModel.version,
+        template: normalizedViewModel.template,
+        templateVersion: normalizedViewModel.version,
         cacheKey,
         warnings,
       };

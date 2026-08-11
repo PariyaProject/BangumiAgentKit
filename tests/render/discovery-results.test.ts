@@ -1,11 +1,18 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { DiscoveryEngine } from '@bangumi-agent-kit/discovery';
+import { ProviderRegistry } from '@bangumi-agent-kit/provider-core';
 import {
   buildDiscoveryResultsViewModel,
+  extractImageUrls,
   renderHtmlTemplate,
   RenderService,
 } from '@bangumi-agent-kit/renderer';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+6R0JggAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 type FixtureState = 'ok' | 'partial' | 'unsupported' | 'unavailable';
 
@@ -177,6 +184,105 @@ describe('discovery-results renderer', () => {
       640,
     );
     expect(html).toContain('覆盖说明：Output cap was reached.');
+  });
+
+  it('enforces the 12-item renderer and asset-resolution ceiling for caller-created view models', async () => {
+    const baseViewModel = buildDiscoveryResultsViewModel(makeResult('partial', 1), {});
+    const oversizedViewModel = {
+      ...baseViewModel,
+      items: Array.from({ length: 13 }, (_, index) => ({
+        ...baseViewModel.items[0]!,
+        id: index + 100,
+        name: `Oversized title ${index + 1}`,
+        nameCn: `超出边界 ${index + 1}`,
+        image: `https://img.example/${index + 1}.jpg`,
+      })),
+      hiddenCount: undefined,
+      coverage: {
+        ...baseViewModel.coverage,
+        matched: 13,
+        returned: 13,
+        rendered: 13,
+      },
+    };
+
+    expect(extractImageUrls(oversizedViewModel)).toHaveLength(12);
+
+    let renderedHtml = '';
+    const assetResolver = {
+      resolveAsset: vi.fn(async () => ({
+        dataUrl: 'data:image/png;base64,AA==',
+      })),
+    };
+    const browserPool = {
+      renderHtmlToBuffer: vi.fn(async (html: string) => {
+        renderedHtml = html;
+        return ONE_PIXEL_PNG;
+      }),
+      close: vi.fn(async () => undefined),
+    };
+    const service = new RenderService(browserPool as never, undefined, assetResolver as never);
+
+    try {
+      await service.renderCard(oversizedViewModel, { width: 640, deviceScaleFactor: 1 });
+      expect(assetResolver.resolveAsset).toHaveBeenCalledTimes(12);
+      expect(browserPool.renderHtmlToBuffer).toHaveBeenCalledTimes(1);
+      expect(renderedHtml).toContain('另有 1 条本次已返回的结构化条目');
+      expect(renderedHtml).toMatch(/展示(?:<!-- -->)?\s*12/u);
+      expect(renderedHtml).not.toContain('Oversized title 13');
+    } finally {
+      await service.close();
+    }
+  });
+
+  it('keeps genuine unsupported and unavailable engine results evidence-honest', async () => {
+    const searchSubjects = vi.fn(async () => ({
+      state: 'unavailable' as const,
+      error: { code: 'upstream_unavailable' as const, retryable: true },
+      warnings: [{ code: 'UPSTREAM_ERROR' as const, message: 'fixture provider unavailable' }],
+    }));
+    const unavailableRegistry = new ProviderRegistry({
+      v0: {
+        getSubject: vi.fn(async () => ({ state: 'not_found' as const })),
+        getSubjectStats: vi.fn(async () => ({ state: 'not_found' as const })),
+        searchSubjects,
+        browseSubjects: vi.fn(async () => ({
+          state: 'ok' as const,
+          data: { items: [], total: 0, totalKind: 'exact' as const, limit: 20, offset: 0 },
+          evidence: {},
+        })),
+      },
+    });
+    const unknownConceptRegistry = new ProviderRegistry({
+      v0: {
+        getSubject: vi.fn(async () => ({ state: 'not_found' as const })),
+        getSubjectStats: vi.fn(async () => ({ state: 'not_found' as const })),
+        searchSubjects: vi.fn(),
+        browseSubjects: vi.fn(),
+      },
+    });
+
+    const unsupportedResult = await new DiscoveryEngine(unknownConceptRegistry).query({
+      concepts: ['not-in-vocabulary'],
+      explain: 'compact',
+    });
+    const unavailableResult = await new DiscoveryEngine(unavailableRegistry).query({
+      keyword: 'fixture unavailable',
+      explain: 'compact',
+    });
+
+    expect(unsupportedResult.state).toBe('unsupported');
+    expect(unavailableResult.state).toBe('unavailable');
+    expect(searchSubjects).toHaveBeenCalledTimes(1);
+
+    for (const result of [unsupportedResult, unavailableResult]) {
+      const viewModel = buildDiscoveryResultsViewModel(result, {});
+      expect(viewModel.source.operations).toEqual([]);
+      expect(viewModel.source.experimental).toBeUndefined();
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
+      expect(html).toContain('无证据来源路径');
+      expect(html).not.toContain('证据来源路径<!-- --> 条目搜索');
+    }
   });
 
   it('escapes query text and keeps unsupported/unavailable states explicit', () => {
