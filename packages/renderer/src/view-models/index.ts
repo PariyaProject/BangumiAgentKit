@@ -309,6 +309,7 @@ export interface SeriesRelationsViewModel {
     image?: string;
     relationLabels: string[];
     relationKinds: string[];
+    depth: number;
     includedInWatchOrder: boolean;
     exclusionReason?: string;
   }>;
@@ -321,6 +322,7 @@ export interface SeriesRelationsViewModel {
       nameCn?: string;
       type: string;
       reason: string;
+      relationLabels: string[];
     }>;
   };
   coverage: {

@@ -53,8 +53,10 @@ export interface SeriesWatchOrderEdge {
 }
 
 export interface SeriesWatchOrderRelated extends SeriesWatchOrderNode {
+  depth: number;
   includedInWatchOrder: boolean;
-  exclusionReason?: 'media_type_not_anime' | 'relation_not_watch_step' | 'node_cap';
+  exclusionReason?:
+    'media_type_not_anime' | 'relation_not_watch_step' | 'node_cap' | 'depth_evidence_only';
 }
 
 export interface SeriesWatchOrderExclusionSummary {
@@ -68,6 +70,7 @@ export interface SeriesWatchOrderExclusionSummary {
     type: SubjectType;
     name: string;
     nameCn: string;
+    relationLabels: string[];
     reason: NonNullable<SeriesWatchOrderRelated['exclusionReason']>;
   }>;
 }
@@ -118,6 +121,10 @@ interface RelationCandidate {
   image?: string;
   relationLabels: Set<string>;
   relationKinds: Set<SeriesRelationKind>;
+  directRelationLabels: Set<string>;
+  directRelationKinds: Set<SeriesRelationKind>;
+  depths: Set<number>;
+  direct: boolean;
 }
 
 interface TraversedRelation {
@@ -135,6 +142,8 @@ const DEFAULT_DEPTH = 1;
 const DEFAULT_MAX_NODES = 8;
 const MAX_DEPTH = 2;
 const MAX_NODES = 16;
+const MAX_RELATED_EVIDENCE = 48;
+const MAX_EDGE_EVIDENCE = 64;
 
 const EXACT_RELATION_KINDS: Record<string, SeriesRelationKind> = {
   前传: 'prequel',
@@ -161,14 +170,11 @@ const EXACT_RELATION_KINDS: Record<string, SeriesRelationKind> = {
   其他: 'other',
 };
 
-const NON_WATCH_KINDS = new Set<SeriesRelationKind>([
-  'source',
-  'adaptation',
-  'book',
-  'music',
-  'game',
-  'real',
-  'other',
+const ORDERABLE_WATCH_KINDS = new Set<SeriesRelationKind>([
+  'prequel',
+  'sequel',
+  'side_story',
+  'recap',
 ]);
 
 function normalizeRelation(relation: string): SeriesRelationKind {
@@ -179,8 +185,13 @@ function pickImage(images?: Record<string, string>): string | undefined {
   return images?.large || images?.common || images?.medium || images?.small || images?.grid;
 }
 
-function makeCandidate(item: SubjectRelationItem): RelationCandidate {
+function isExpandableRelation(item: SubjectRelationItem): boolean {
+  return item.type === 'anime' && ORDERABLE_WATCH_KINDS.has(normalizeRelation(item.relation));
+}
+
+function makeCandidate(item: SubjectRelationItem, depth: number): RelationCandidate {
   const relation = item.relation.trim() || '关联条目';
+  const kind = normalizeRelation(relation);
   return {
     id: item.id,
     type: item.type,
@@ -188,23 +199,58 @@ function makeCandidate(item: SubjectRelationItem): RelationCandidate {
     nameCn: item.nameCn,
     image: pickImage(item.images),
     relationLabels: new Set([relation]),
-    relationKinds: new Set([normalizeRelation(relation)]),
+    relationKinds: new Set([kind]),
+    directRelationLabels: depth === 0 ? new Set([relation]) : new Set(),
+    directRelationKinds: depth === 0 ? new Set([kind]) : new Set(),
+    depths: new Set([depth]),
+    direct: depth === 0,
   };
 }
 
-function addRelationToCandidate(candidate: RelationCandidate, item: SubjectRelationItem): void {
+function addRelationToCandidate(
+  candidate: RelationCandidate,
+  item: SubjectRelationItem,
+  depth: number,
+): void {
   const relation = item.relation.trim() || '关联条目';
+  const kind = normalizeRelation(relation);
   candidate.relationLabels.add(relation);
-  candidate.relationKinds.add(normalizeRelation(relation));
+  candidate.relationKinds.add(kind);
+  candidate.depths.add(depth);
+  if (depth === 0) {
+    candidate.direct = true;
+    candidate.directRelationLabels.add(relation);
+    candidate.directRelationKinds.add(kind);
+  }
   if (!candidate.name && item.name) candidate.name = item.name;
   if (!candidate.nameCn && item.nameCn) candidate.nameCn = item.nameCn;
   if (!candidate.image) candidate.image = pickImage(item.images);
 }
 
+function observeCandidate(
+  candidates: Map<number, RelationCandidate>,
+  item: SubjectRelationItem,
+  depth: number,
+  rootId: number,
+): void {
+  if (item.id === rootId) return;
+  const existing = candidates.get(item.id);
+  if (existing) {
+    addRelationToCandidate(existing, item, depth);
+  } else {
+    candidates.set(item.id, makeCandidate(item, depth));
+  }
+}
+
 function nodeFromCandidate(
   candidate: RelationCandidate,
   detail?: DomainSubject,
+  directOnly = false,
 ): SeriesWatchOrderNode {
+  const relationLabels =
+    directOnly && candidate.direct ? candidate.directRelationLabels : candidate.relationLabels;
+  const relationKinds =
+    directOnly && candidate.direct ? candidate.directRelationKinds : candidate.relationKinds;
   return {
     id: candidate.id,
     type: detail?.type || candidate.type,
@@ -212,8 +258,8 @@ function nodeFromCandidate(
     nameCn: detail?.nameCn || candidate.nameCn || candidate.name,
     date: detail?.date,
     image: pickImage(detail?.images) || candidate.image,
-    relationLabels: [...candidate.relationLabels].sort((left, right) => left.localeCompare(right)),
-    relationKinds: [...candidate.relationKinds].sort(),
+    relationLabels: [...relationLabels].sort((left, right) => left.localeCompare(right)),
+    relationKinds: [...relationKinds].sort(),
   };
 }
 
@@ -233,7 +279,7 @@ function rootNodeFromSubject(subject: DomainSubject): SeriesWatchOrderNode {
 function relationPriority(node: SeriesWatchOrderNode, isRoot: boolean): number {
   if (isRoot) return 0;
   if (node.relationKinds.includes('prequel')) return -30;
-  if (node.relationKinds.includes('recap')) return -10;
+  if (node.relationKinds.includes('recap')) return 10;
   if (node.relationKinds.includes('sequel')) return 30;
   if (node.relationKinds.includes('side_story')) return 50;
   return 70;
@@ -258,15 +304,18 @@ function compareNodes(
 function placementReason(node: SeriesWatchOrderNode, isRoot: boolean): string {
   if (isRoot) return '请求的起始条目';
   if (node.relationKinds.includes('prequel')) return '关系标签标记为前传，置于起始条目前';
-  if (node.relationKinds.includes('recap')) return '关系标签标记为总集篇，置于核心条目前';
+  if (node.relationKinds.includes('recap')) return '关系标签标记为总集篇，置于核心条目后';
   if (node.relationKinds.includes('sequel')) return '关系标签标记为续集，置于起始条目后';
   if (node.relationKinds.includes('side_story')) return '关系标签标记为衍生/番外，置于核心条目后';
-  return '关系标签未映射到稳定顺序，使用日期与条目 ID 作为并列时的确定性排序';
+  return '关系标签未映射到稳定顺序，未纳入观看步骤';
 }
 
 function isWatchStep(node: SeriesWatchOrderNode): boolean {
-  if (node.type !== 'anime') return false;
-  return node.relationKinds.every((kind) => !NON_WATCH_KINDS.has(kind));
+  return (
+    node.type === 'anime' &&
+    node.relationKinds.length > 0 &&
+    node.relationKinds.every((kind) => ORDERABLE_WATCH_KINDS.has(kind))
+  );
 }
 
 function addCount(
@@ -303,104 +352,126 @@ export class SeriesService {
       'Bangumi 的关系接口没有发布统一的官方观看顺序；本结果是有限深度、有限节点的确定性推荐。',
       '关系标签和日期缺失时，系统不会把推断结果表述为唯一正确顺序。',
     ];
+    const evidenceSources: SeriesWatchOrderResult['evidence']['sources'] = [];
 
+    const rootDetailPath = `/v0/subjects/${subjectId}`;
+    evidenceSources.push({ operation: 'getSubjectById', path: rootDetailPath });
     const rootSubject = await this.subjectService.getSubjectById(subjectId);
     const root = rootNodeFromSubject(rootSubject);
-    const rootRelations = await this.subjectService.getSubjectRelations(subjectId);
+
+    let relationRequests = 0;
+    let relationFailures = 0;
+    const getRelations = async (id: number, required: boolean): Promise<SubjectRelationItem[]> => {
+      const path = `/v0/subjects/${id}/subjects`;
+      evidenceSources.push({ operation: 'getRelatedSubjectsBySubjectId', path });
+      relationRequests += 1;
+      try {
+        return await this.subjectService.getSubjectRelations(id);
+      } catch (error) {
+        if (required) throw error;
+        relationFailures += 1;
+        warnings.push(`关联条目 ${id} 的关系读取失败，未继续展开：${errorText(error)}`);
+        return [];
+      }
+    };
+
+    const rootRelations = await getRelations(subjectId, true);
     const traversedRelations: TraversedRelation[] = rootRelations.map((relation) => ({
       fromId: subjectId,
       depth: 0,
       relation,
     }));
     const candidates = new Map<number, RelationCandidate>();
-    const addCandidate = (relation: SubjectRelationItem): void => {
-      if (relation.id === subjectId) return;
-      const existing = candidates.get(relation.id);
-      if (existing) {
-        addRelationToCandidate(existing, relation);
-      } else {
-        candidates.set(relation.id, makeCandidate(relation));
-      }
-    };
-    rootRelations.forEach(addCandidate);
+    rootRelations.forEach((relation) => observeCandidate(candidates, relation, 0, subjectId));
 
     const visitedForTraversal = new Set<number>([subjectId]);
+    const scheduledForTraversal = new Set<number>();
     const nextTraversal = new Map<number, ChildTraversalCandidate>();
-    rootRelations
-      .filter((relation) => relation.type === 'anime')
-      .sort((left, right) => left.id - right.id)
-      .forEach((relation) => {
-        if (!nextTraversal.has(relation.id)) {
-          nextTraversal.set(relation.id, { id: relation.id, depth: 1 });
-        }
-      });
-
-    let relationRequests = 1;
-    let relationFailures = 0;
+    let traversedAnimeNodes = 0;
+    let traversalCapTruncated = false;
     let depthTruncated = false;
 
-    if (depth > 0) {
+    const scheduleTraversal = (relation: SubjectRelationItem, nextDepth: number): void => {
+      if (
+        !isExpandableRelation(relation) ||
+        relation.id === subjectId ||
+        visitedForTraversal.has(relation.id) ||
+        scheduledForTraversal.has(relation.id)
+      ) {
+        return;
+      }
+      scheduledForTraversal.add(relation.id);
+      if (traversedAnimeNodes + nextTraversal.size >= maxNodes) {
+        traversalCapTruncated = true;
+        return;
+      }
+      nextTraversal.set(relation.id, { id: relation.id, depth: nextDepth });
+    };
+
+    if (depth === 0) {
+      depthTruncated = rootRelations.some(
+        (relation) => isExpandableRelation(relation) && relation.id !== subjectId,
+      );
+    } else {
+      [...rootRelations]
+        .sort((left, right) => left.id - right.id)
+        .forEach((relation) => scheduleTraversal(relation, 1));
+
       while (nextTraversal.size > 0) {
         const traversal = nextTraversal.values().next().value as
           ChildTraversalCandidate | undefined;
         if (!traversal) break;
         nextTraversal.delete(traversal.id);
         if (visitedForTraversal.has(traversal.id)) continue;
-        if (visitedForTraversal.size - 1 >= maxNodes) {
-          depthTruncated = true;
-          break;
-        }
         visitedForTraversal.add(traversal.id);
-        try {
-          const childRelations = await this.subjectService.getSubjectRelations(traversal.id);
-          relationRequests += 1;
-          childRelations.forEach(addCandidate);
-          traversedRelations.push(
-            ...childRelations.map((relation) => ({
-              fromId: traversal.id,
-              depth: traversal.depth,
-              relation,
-            })),
-          );
+        traversedAnimeNodes += 1;
 
-          if (traversal.depth < depth) {
-            childRelations
-              .filter((relation) => relation.type === 'anime')
-              .sort((left, right) => left.id - right.id)
-              .forEach((relation) => {
-                if (!visitedForTraversal.has(relation.id) && !nextTraversal.has(relation.id)) {
-                  nextTraversal.set(relation.id, {
-                    id: relation.id,
-                    depth: traversal.depth + 1,
-                  });
-                }
-              });
-          } else if (childRelations.some((relation) => relation.type === 'anime')) {
-            depthTruncated = true;
-          }
-        } catch (error) {
-          relationRequests += 1;
-          relationFailures += 1;
-          warnings.push(`关联条目 ${traversal.id} 的关系读取失败，未继续展开：${errorText(error)}`);
+        const childRelations = await getRelations(traversal.id, false);
+        childRelations.forEach((relation) =>
+          observeCandidate(candidates, relation, traversal.depth, subjectId),
+        );
+        traversedRelations.push(
+          ...childRelations.map((relation) => ({
+            fromId: traversal.id,
+            depth: traversal.depth,
+            relation,
+          })),
+        );
+
+        if (traversal.depth < depth) {
+          [...childRelations]
+            .sort((left, right) => left.id - right.id)
+            .forEach((relation) => scheduleTraversal(relation, traversal.depth + 1));
+        } else if (
+          childRelations.some(
+            (relation) =>
+              isExpandableRelation(relation) &&
+              relation.id !== subjectId &&
+              !visitedForTraversal.has(relation.id) &&
+              !scheduledForTraversal.has(relation.id),
+          )
+        ) {
+          depthTruncated = true;
         }
       }
     }
 
-    if (depth > 0 && nextTraversal.size > 0) depthTruncated = true;
-
     const candidateIds = [...candidates.keys()].sort((left, right) => left - right);
-    const eligibleCandidateIds = candidateIds.filter((id) => {
+    const directAnimeCandidateIds = candidateIds.filter((id) => {
       const candidate = candidates.get(id);
-      return candidate && (media === 'all' || candidate.type === 'anime');
+      return candidate?.direct && candidate.type === 'anime';
     });
-    const returnedCandidateIds = new Set(eligibleCandidateIds.slice(0, maxNodes));
-    const capTruncated = eligibleCandidateIds.length > returnedCandidateIds.size;
+    const returnedAnimeIds = new Set(directAnimeCandidateIds.slice(0, maxNodes));
+    const animeCapTruncated = directAnimeCandidateIds.length > returnedAnimeIds.size;
+
     const details = new Map<number, DomainSubject>();
     let detailsFetched = 0;
     let detailsFailed = 0;
     const detailFailureIds: number[] = [];
 
-    for (const candidateId of returnedCandidateIds) {
+    for (const candidateId of [...returnedAnimeIds].sort((left, right) => left - right)) {
+      const path = `/v0/subjects/${candidateId}`;
+      evidenceSources.push({ operation: 'getSubjectById', path });
       try {
         const detail = await this.subjectService.getSubjectById(candidateId);
         details.set(candidateId, detail);
@@ -414,27 +485,21 @@ export class SeriesService {
       }
     }
 
-    const relatedNodes = new Map<number, SeriesWatchOrderNode>();
-    for (const candidateId of returnedCandidateIds) {
-      const candidate = candidates.get(candidateId);
-      if (!candidate) continue;
-      relatedNodes.set(candidateId, nodeFromCandidate(candidate, details.get(candidateId)));
-    }
-
-    const edges: SeriesWatchOrderEdge[] = traversedRelations
-      .filter((entry) => returnedCandidateIds.has(entry.relation.id))
-      .map((entry) => ({
-        fromId: entry.fromId,
-        toId: entry.relation.id,
-        depth: entry.depth,
-        relation: entry.relation.relation.trim() || '关联条目',
-        relationKind: normalizeRelation(entry.relation.relation),
-      }))
-      .sort((left, right) => {
-        if (left.fromId !== right.fromId) return left.fromId - right.fromId;
-        if (left.toId !== right.toId) return left.toId - right.toId;
-        return left.relation.localeCompare(right.relation);
-      });
+    const relatedEvidenceLimit = Math.min(MAX_RELATED_EVIDENCE, Math.max(8, maxNodes * 3));
+    const returnedRelatedIds = new Set<number>();
+    const addRelatedEvidence = (predicate: (candidate: RelationCandidate) => boolean): void => {
+      for (const candidateId of candidateIds) {
+        const candidate = candidates.get(candidateId);
+        if (!candidate || !predicate(candidate) || returnedRelatedIds.has(candidateId)) continue;
+        if (returnedRelatedIds.size >= relatedEvidenceLimit) return;
+        returnedRelatedIds.add(candidateId);
+      }
+    };
+    addRelatedEvidence((candidate) => candidate.direct && returnedAnimeIds.has(candidate.id));
+    addRelatedEvidence((candidate) => candidate.direct && candidate.type !== 'anime');
+    addRelatedEvidence((candidate) => !candidate.direct && candidate.type === 'anime');
+    addRelatedEvidence((candidate) => !candidate.direct && candidate.type !== 'anime');
+    const relatedEvidenceTruncated = returnedRelatedIds.size < candidateIds.length;
 
     const exclusionCounts = new Map<
       NonNullable<SeriesWatchOrderRelated['exclusionReason']>,
@@ -454,6 +519,7 @@ export class SeriesService {
         type: node.type,
         name: node.name,
         nameCn: node.nameCn,
+        relationLabels: node.relationLabels,
         reason,
       });
     };
@@ -461,33 +527,36 @@ export class SeriesService {
     for (const candidateId of candidateIds) {
       const candidate = candidates.get(candidateId);
       if (!candidate) continue;
-      const node = relatedNodes.get(candidateId) || nodeFromCandidate(candidate);
+      const detail = details.get(candidateId);
+      const relatedNode = nodeFromCandidate(candidate, detail);
+      const directNode = candidate.direct ? nodeFromCandidate(candidate, detail, true) : undefined;
       let exclusionReason: SeriesWatchOrderRelated['exclusionReason'];
-      if (media === 'anime' && node.type !== 'anime') {
+      if (relatedNode.type !== 'anime') {
         exclusionReason = 'media_type_not_anime';
-      } else if (!returnedCandidateIds.has(candidateId)) {
+      } else if (!candidate.direct) {
+        exclusionReason = 'depth_evidence_only';
+      } else if (!returnedAnimeIds.has(candidateId)) {
         exclusionReason = 'node_cap';
-      } else if (!isWatchStep(node)) {
-        exclusionReason =
-          node.type === 'anime' ? 'relation_not_watch_step' : 'media_type_not_anime';
+      } else if (!directNode || !isWatchStep(directNode)) {
+        exclusionReason = 'relation_not_watch_step';
       }
 
       const relatedItem: SeriesWatchOrderRelated = {
-        ...node,
+        ...relatedNode,
+        depth: Math.min(...candidate.depths),
         includedInWatchOrder: !exclusionReason,
         exclusionReason,
       };
-      if (returnedCandidateIds.has(candidateId)) related.push(relatedItem);
+      if (returnedRelatedIds.has(candidateId)) related.push(relatedItem);
       if (exclusionReason) {
         addCount(exclusionCounts, exclusionReason);
-        excludedSample(node, exclusionReason);
-      } else {
-        watchOrderCandidates.push({ node, isRoot: false });
+        excludedSample(relatedNode, exclusionReason);
+      } else if (directNode) {
+        watchOrderCandidates.push({ node: directNode, isRoot: false });
       }
     }
 
-    const rootIsWatchStep = root.type === 'anime';
-    if (rootIsWatchStep) {
+    if (root.type === 'anime') {
       watchOrderCandidates.push({ node: root, isRoot: true });
     }
     watchOrderCandidates.sort(compareNodes);
@@ -498,23 +567,52 @@ export class SeriesService {
       placementReason: placementReason(entry.node, entry.isRoot),
     }));
 
+    const edges: SeriesWatchOrderEdge[] = traversedRelations
+      .slice(0, MAX_EDGE_EVIDENCE)
+      .map((entry) => ({
+        fromId: entry.fromId,
+        toId: entry.relation.id,
+        depth: entry.depth,
+        relation: entry.relation.relation.trim() || '关联条目',
+        relationKind: normalizeRelation(entry.relation.relation),
+      }))
+      .sort((left, right) => {
+        if (left.fromId !== right.fromId) return left.fromId - right.fromId;
+        if (left.toId !== right.toId) return left.toId - right.toId;
+        if (left.depth !== right.depth) return left.depth - right.depth;
+        return left.relation.localeCompare(right.relation);
+      });
+
     const truncationReasons: string[] = [];
-    if (capTruncated) truncationReasons.push(`maxNodes=${maxNodes}`);
+    if (animeCapTruncated || traversalCapTruncated) truncationReasons.push(`maxNodes=${maxNodes}`);
     if (depthTruncated) truncationReasons.push(`depth=${depth}`);
+    if (relatedEvidenceTruncated)
+      truncationReasons.push(`related-evidence=${relatedEvidenceLimit}`);
     if (detailsFailed > 0) truncationReasons.push('subject-detail-failure');
     if (relationFailures > 0) truncationReasons.push('relation-read-failure');
 
     if (detailsFailed > 0) {
       warnings.push(`共有 ${detailsFailed} 个条目的详情不可用；名称和关系仍来自关系接口。`);
     }
-    if (capTruncated) {
-      warnings.push(`关联节点超过上限 ${maxNodes}，结果只保留确定性选择的一部分。`);
+    if (animeCapTruncated || traversalCapTruncated) {
+      warnings.push(`动画关联节点超过上限 ${maxNodes}，结果只保留确定性选择的一部分。`);
     }
     if (depthTruncated) {
-      warnings.push(`关系遍历达到深度上限 ${depth} 或节点预算，未继续展开。`);
+      warnings.push(`关系遍历达到深度上限 ${depth}，未继续展开所有可达的观看关系。`);
+    }
+    if (relatedEvidenceTruncated) {
+      warnings.push(`关联证据超过展示上限 ${relatedEvidenceLimit}，覆盖统计仍保留观察总数。`);
     }
     if (candidateIds.some((id) => candidates.get(id)?.relationKinds.has('unknown'))) {
-      warnings.push('存在未映射的原始关系标签；这些条目的排序只使用透明的并列规则。');
+      warnings.push('存在未映射的原始关系标签；这些标签不会创建观看步骤或继续扩展关系。');
+    }
+    if (
+      candidateIds.some((id) => {
+        const candidate = candidates.get(id);
+        return Boolean(candidate && candidate.directRelationKinds.size > 1);
+      })
+    ) {
+      warnings.push('部分条目从起点观察到多个关系标签；系统保留原始标签并使用确定性提示。');
     }
     if (watchOrderCandidates.some((entry) => !entry.node.date)) {
       warnings.push('部分观看步骤没有可用日期；同一关系类别内使用条目 ID 作为确定性并列规则。');
@@ -566,16 +664,7 @@ export class SeriesService {
       },
       capabilityStates,
       evidence: {
-        sources: [
-          {
-            operation: 'getSubjectById',
-            path: `/v0/subjects/${subjectId}`,
-          },
-          {
-            operation: 'getRelatedSubjectsBySubjectId',
-            path: `/v0/subjects/${subjectId}/subjects`,
-          },
-        ],
+        sources: evidenceSources,
         derivation: 'series-watch-order-v1',
         retrievedAt,
       },

@@ -333,6 +333,7 @@ export function buildSeriesRelationsViewModel(
       ...mapNode(node),
       relationLabels: node.relationLabels,
       relationKinds: node.relationKinds,
+      depth: node.depth,
       includedInWatchOrder: node.includedInWatchOrder,
       exclusionReason: node.exclusionReason,
     })),

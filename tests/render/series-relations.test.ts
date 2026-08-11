@@ -63,6 +63,7 @@ const viewModel: SeriesRelationsViewModel = {
       type: 'book',
       relationLabels: ['书籍'],
       relationKinds: ['book'],
+      depth: 0,
       includedInWatchOrder: false,
       exclusionReason: 'media_type_not_anime',
     },
@@ -77,6 +78,7 @@ const viewModel: SeriesRelationsViewModel = {
         nameCn: '原作小说',
         type: 'book',
         reason: 'media_type_not_anime',
+        relationLabels: ['书籍'],
       },
     ],
   },
@@ -108,6 +110,40 @@ const viewModel: SeriesRelationsViewModel = {
   ],
 };
 
+const notComputableViewModel: SeriesRelationsViewModel = {
+  ...viewModel,
+  state: 'partial',
+  watchOrder: [],
+  related: [
+    {
+      id: 70000,
+      name: '原作小说',
+      nameCn: '原作小说',
+      type: 'book',
+      relationLabels: ['书籍'],
+      relationKinds: ['book'],
+      depth: 0,
+      includedInWatchOrder: false,
+      exclusionReason: 'media_type_not_anime',
+    },
+  ],
+  excluded: {
+    count: 1,
+    byReason: [{ reason: 'media_type_not_anime', count: 1 }],
+    samples: [
+      {
+        id: 70000,
+        name: '原作小说',
+        nameCn: '原作小说',
+        type: 'book',
+        reason: 'media_type_not_anime',
+        relationLabels: ['书籍'],
+      },
+    ],
+  },
+  capabilityStates: { watchOrder: 'not_computable' },
+};
+
 describe('Series relations renderer card', () => {
   let renderService: RenderService;
 
@@ -126,6 +162,8 @@ describe('Series relations renderer card', () => {
     expect(html).toContain('部分覆盖');
     expect(html).toContain('series-watch-order-v1');
     expect(html).toContain('原作小说');
+    expect(html).toContain('关联证据');
+    expect(html).toContain('非动画媒介');
 
     const result = await renderService.renderCard(viewModel, { width: 640 });
     expect(result.buffer.subarray(0, 8).equals(PNG_MAGIC)).toBe(true);
@@ -138,5 +176,15 @@ describe('Series relations renderer card', () => {
     expect(result.template).toBe('series-relations');
     expect(result.width).toBe(1920);
     expect(result.height).toBeGreaterThan(300);
+  });
+
+  it('renders an honest not-computable state with raw related evidence', async () => {
+    const html = renderHtmlTemplate(notComputableViewModel, 'bangumi-dark', {}, 640);
+    expect(html).toContain('无法计算');
+    expect(html).toContain('没有可展示的观看步骤');
+    expect(html).toContain('书籍');
+    const result = await renderService.renderCard(notComputableViewModel, { width: 640 });
+    expect(result.buffer.subarray(0, 8).equals(PNG_MAGIC)).toBe(true);
+    expect(result.height).toBeGreaterThan(250);
   });
 });

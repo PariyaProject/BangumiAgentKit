@@ -70,15 +70,15 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`SOL_REVIEW`
+`MILESTONE_CORRECTION`
 
 Current Milestone State:
 
-`SOL_REVIEW_RUNNING`
+`CORRECTIVE_REQUIRED`
 
 Current Phase:
 
-`SOL_REVIEW`
+`CORRECTIVE`
 
 Current Milestone:
 
@@ -109,15 +109,15 @@ Total Sol Review Budget Authorized / Consumed:
 
 Milestone Review Runtime:
 
-`RUNNING — Sol #1 `sol_milestone_reviewer` agent
-019ff01d-dfae-7d80-9d24-5cff183ecd8a`; waits on this same agent consume zero
-additional launches`
+`COMPLETED — Sol #1 `sol_milestone_reviewer` agent
+019ff01d-dfae-7d80-9d24-5cff183ecd8a` returned `CORRECTIVE_REQUIRED`; record:
+`docs/product/reviews/PR-7G/sol-1-corrective.md`
 
 Latest Reviewer Runtime Event:
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — three bounded waits returned timed_out
-with no final status; the same reviewer remains open, so launch consumption is
-unchanged and waiting continues.`
+`TERMINAL_VERDICT — Sol #1 returned `CORRECTIVE_REQUIRED`; four P1 findings are
+recorded in the review artifact. The reviewer is no longer needed and is being
+closed; launch accounting remains milestone 1/2 and outer 1/4.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -129,7 +129,8 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`3459689e69c8c14774d31a967b2161ed1e686a9d`
+`3459689e69c8c14774d31a967b2161ed1e686a9d` — prior Candidate rejected for
+correction; a new Candidate is required before Sol #2
 
 Governance Record SHA:
 
@@ -141,7 +142,8 @@ Exact-SHA CI:
 
 Current PR Head CI:
 
-`PASS — [GitHub Actions run 31476551304](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476551304), all six mandatory jobs green for the metadata head`
+`PASS — prior metadata-head run 31476816200; stale for the pending corrected
+Candidate`
 
 Integration Policy:
 
@@ -183,7 +185,7 @@ Integration State:
 
 Implementation Frozen SHA:
 
-`N/A — awaiting independent TIER_2 review verdict`
+`N/A — Sol #1 requires correction; awaiting a new Candidate and final review`
 
 Merge Commit SHA:
 
@@ -191,9 +193,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`WAIT on the same Sol #1 reviewer. A transient wait timeout while this agent
-remains running is non-terminal and consumes no additional launch. Do not edit
-production code or launch Sol #2 unless Sol #1 returns CORRECTIVE_REQUIRED.`
+`Apply all four P1 corrections, persist a new Candidate SHA, rerun the local
+validation/visual QA ladder and exact mandatory remote CI, then request the one
+remaining authorized Sol #2 review. Do not launch Sol #2 before readiness is
+true; do not launch a third reviewer.`
 
 Human Authorization State:
 

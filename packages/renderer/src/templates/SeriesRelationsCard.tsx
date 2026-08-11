@@ -25,6 +25,7 @@ const EXCLUSION_LABELS: Record<string, string> = {
   media_type_not_anime: '非动画媒介',
   relation_not_watch_step: '关系不是观看步骤',
   node_cap: '节点上限',
+  depth_evidence_only: '深度关系证据',
 };
 
 function displayName(item: { id?: number; name: string; nameCn?: string }): string {
@@ -237,6 +238,46 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
         )}
       </div>
 
+      {viewModel.related.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
+          <div style={{ color: theme.accent, fontSize: '14px', fontWeight: 700 }}>
+            关联证据 · {viewModel.related.length} 项
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: theme.spacing.xs,
+              color: theme.textMuted,
+              fontSize: '10px',
+              lineHeight: 1.45,
+            }}
+          >
+            {viewModel.related.slice(0, isWide ? 16 : 8).map((item) => (
+              <div
+                key={`${item.id}-${item.depth}`}
+                style={{
+                  padding: theme.spacing.xs,
+                  backgroundColor: theme.surfaceAlt,
+                  borderRadius: theme.radius.sm,
+                  overflowWrap: 'anywhere',
+                  wordBreak: 'break-word',
+                }}
+              >
+                <span style={{ color: theme.text, fontWeight: 600 }}>{displayName(item)}</span> ·{' '}
+                {TYPE_LABELS[item.type] || '类型未知'} · 深度 {item.depth} · 关系{' '}
+                {item.relationLabels.join(' / ') || '未提供'} ·{' '}
+                {item.includedInWatchOrder
+                  ? '已进入观看建议'
+                  : EXCLUSION_LABELS[item.exclusionReason || ''] ||
+                    item.exclusionReason ||
+                    '未纳入'}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {viewModel.excluded.count > 0 ? (
         <div
           style={{
@@ -266,7 +307,12 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
               示例：
               {viewModel.excluded.samples
                 .slice(0, isWide ? 4 : 3)
-                .map((item) => displayName(item))
+                .map(
+                  (item) =>
+                    `${displayName(item)}（${item.relationLabels?.join(' / ') || '未提供'} · ${
+                      EXCLUSION_LABELS[item.reason] || item.reason
+                    }）`,
+                )
                 .join('、')}
             </div>
           ) : null}
