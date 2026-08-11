@@ -57,6 +57,13 @@ Historical recovery provenance is read-only: branch
 `08e1c4bc14269b110c24b4694819b652284aae46`. Historical review consumption and
 the historical `PARKED_REVIEW_LIMIT` state are not current runtime state.
 
+Historical PR #2 disposition:
+
+`CLOSED_SUPERSEDED_WITHOUT_MERGE — https://github.com/PariyaProject/BangumiAgentKit/pull/2`
+
+The supersession comment points to fresh Recovery PR #5. The historical branch
+`codex/pr-7g-series-watch-order` remains preserved and untouched.
+
 Explicit Non-Scope:
 
 - broad recovery-planning re-audit, discovery query semantics, provider/source
@@ -195,6 +202,13 @@ no merge or cleanup was attempted after the final review failed to PASS.`
 Pull Request Number:
 
 `#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
+
+Historical PR #2:
+
+`CLOSED_SUPERSEDED_WITHOUT_MERGE — https://github.com/PariyaProject/BangumiAgentKit/pull/2`
+
+The historical branch `codex/pr-7g-series-watch-order` remains preserved
+read-only.
 
 Merge Strategy:
 

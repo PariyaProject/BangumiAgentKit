@@ -23,6 +23,9 @@ material; no historical runtime or governance state is imported.
   `sol-1-corrective.md`, and `sol-2-corrective.md`.
 - Fresh feature branch: `codex/recovery-pr-7g-series-watch-order`
 - Pull request: `#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
+- Historical PR #2: closed without merge after the supersession comment was
+  posted; `codex/pr-7g-series-watch-order` remains preserved read-only:
+  `https://github.com/PariyaProject/BangumiAgentKit/pull/2`
 
 ## Epoch objective
 
