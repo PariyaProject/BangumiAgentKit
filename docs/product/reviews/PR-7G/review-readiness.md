@@ -16,12 +16,12 @@ Implementation Candidate SHA:
 `08e1c4bc14269b110c24b4694819b652284aae46`
 
 Governance record before reviewer launch:
-`PENDING_CORRECTED_REVIEW_RECORD`
+`e82e9644da0208e4f023a04fe6bbba97b3c52cc1`
 
-The metadata head also passed [GitHub Actions run
+The prior metadata head passed [GitHub Actions run
 31476551304](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476551304)
-across all six mandatory jobs; this does not replace the exact Candidate CI
-evidence above.
+across all six mandatory jobs. The current metadata-only head is a governance
+record after the exact Candidate and does not replace that exact-Candidate CI.
 
 This corrected Candidate contains the production, test, renderer, and
 correction-record tree validated below. The prior Candidate's exact CI is
@@ -30,10 +30,9 @@ the one authorized corrective Candidate changes again.
 
 ## Exact-Candidate CI
 
-[GitHub Actions run 31476188502](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476188502)
-passed all six mandatory jobs for the prior Candidate SHA; this is historical
-evidence and does not authorize Sol #2. Corrected-Candidate CI is pending
-until the Candidate is pushed.
+[GitHub Actions run 31480599124](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31480599124)
+passed all six mandatory jobs for the exact corrected Candidate SHA
+`08e1c4bc14269b110c24b4694819b652284aae46`.
 
 - `sqlite-default`
 - `host-integration`
@@ -94,6 +93,10 @@ authorizes:
    `08e1c4bc14269b110c24b4694819b652284aae46` has green exact-SHA CI and the
    refreshed readiness record is committed;
 3. no automatic third launch.
+
+Readiness gate: exact-Candidate CI run 31480599124 is green, local and visual
+QA above are current, the corrected Candidate is clean and pushed, and Sol #2
+is now authorized as the final milestone review launch.
 
 The complete Sol #1 verdict and P1 correction requirements are recorded in
 [`sol-1-corrective.md`](sol-1-corrective.md). The prior Candidate's exact CI is

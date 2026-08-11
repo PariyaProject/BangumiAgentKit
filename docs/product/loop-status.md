@@ -70,15 +70,15 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`CORRECTED_CANDIDATE_CI`
+`SOL_REVIEW_READY`
 
 Current Milestone State:
 
-`CORRECTED_AWAITING_CI`
+`SOL_REVIEW_READY`
 
 Current Phase:
 
-`CI_PREFLIGHT`
+`SOL_REVIEW`
 
 Current Milestone:
 
@@ -115,11 +115,13 @@ Milestone Review Runtime:
 Corrected Candidate `08e1c4bc14269b110c24b4694819b652284aae46` now contains all
 four P1 fixes and the refreshed local/visual test evidence; Sol #2 is not yet
 launched.
+Exact Candidate CI is green; the readiness record is now eligible for the
+final authorized Sol #2 launch.
 
 Latest Reviewer Runtime Event:
 
-`CORRECTED_CANDIDATE_COMMITTED — Sol #1's four P1 findings are addressed in
-Candidate `08e1c4b`; launch accounting remains milestone 1/2 and outer 1/4.`
+`EXACT_CANDIDATE_CI_PASS — run 31480599124 passed all six mandatory jobs on
+Candidate `08e1c4bc`; Sol #2 is the final authorized launch.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -135,17 +137,17 @@ Candidate SHA:
 
 Governance Record SHA:
 
-`PENDING — corrected review-readiness metadata must be committed after this
-Candidate and before Sol #2`
+`e82e9644da0208e4f023a04fe6bbba97b3c52cc1` — corrected review-readiness
+metadata
 
 Exact-SHA CI:
 
-`RUNNING — [GitHub Actions run 31480599124](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31480599124) on exact Candidate SHA; wait for all six mandatory jobs`
+`PASS — [GitHub Actions run 31480599124](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31480599124), all six mandatory jobs green on exact Candidate SHA`
 
 Current PR Head CI:
 
-`RUNNING — exact Candidate run 31480599124 is also current PR head; prior
-metadata-head run 31476816200 is stale`
+`PASS — exact Candidate run 31480599124 is green; current head after it is
+governance-only metadata commit e82e9644`
 
 Integration Policy:
 
@@ -195,10 +197,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`Push the corrected Candidate, wait for exact-SHA mandatory CI, commit the
-refreshed readiness metadata with its governance SHA, then launch the one
-remaining authorized Sol #2 review. Do not launch Sol #2 before readiness is
-true; do not launch a third reviewer.`
+`Commit/push this CI-pass checkpoint, then launch the one remaining authorized
+Sol #2 comprehensive review against the corrected Candidate and current
+governance head. Do not launch a third reviewer.`
 
 Human Authorization State:
 
