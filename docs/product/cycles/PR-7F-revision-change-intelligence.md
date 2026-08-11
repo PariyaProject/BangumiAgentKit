@@ -214,18 +214,20 @@ Base..Candidate diff and return one of the recorded verdicts. A `PASS` freezes
 this Candidate without Sol #2; a `CORRECTIVE_REQUIRED` permits one sequential
 Sol #2 only after Luna creates a new validated Candidate.
 
-## Review Stop Record
+## Historical Review Stop Record
 
-Sol #1 returned no verdict. The wait operation returned `timed_out: true` with
-no reviewer status or review message; the still-running reviewer agent was
-closed after the timeout. No PASS, `CORRECTIVE_REQUIRED`, or
-`HUMAN_REVIEW_REQUIRED` finding is available, and the Candidate is not frozen.
+Sol #1 returned no verdict. One wait operation returned `timed_out: true` with
+no reviewer status or review message while the reviewer was still running. The
+old harness incorrectly treated that poll event as terminal and then closed the
+reviewer. No `PASS`, `CORRECTIVE_REQUIRED`, or `HUMAN_REVIEW_REQUIRED` finding
+was available at that point.
 
-The selected `UNATTENDED_TIER2` profile mandates stopping after any timeout or
-no-verdict outcome and does not authorize a retry or another reviewer. The
-nominal accounting is therefore `2 authorized / 1 consumed / 1 remaining`, but
-the remaining launch is not spendable in this stopped execution. No Sol #2,
-corrective implementation, or next Product Cycle may begin in this Goal.
+Under the corrected policy, the wait event is
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and should have continued waiting on the
+same reviewer at zero additional launch cost. The subsequent close created the
+actual terminal state `REVIEWER_TERMINATED_NO_VERDICT`; the one started launch
+remained consumed. This historical clarification does not fabricate a verdict,
+refund a launch, or reopen the completed Cycle.
 
 ## One-Off Manual Finalization Authorization
 
@@ -264,8 +266,28 @@ OpenAPI alignment, renderer quality, and protected-boundary preservation. The
 reviewed production implementation is frozen; only PR metadata, governance
 records, and master-side integration may follow.
 
-Next action: update PR #1 truthfully, then merge from master with canonical
-master Harness content preserved. Do not modify this frozen implementation.
+The historical next action was to update and merge PR #1 while preserving the
+canonical master Harness. That action is now complete; this frozen
+implementation remains unchanged.
+
+## Historical Integration Record
+
+This Cycle predates the mandatory pre-implementation Integration Policy field.
+Its later integration was separately authorized and completed with truthful
+runtime values:
+
+- Integration Policy: not pre-recorded because this is a legacy Cycle; the
+  later integration was separately authorized;
+- Target Base Branch: `master`;
+- Feature Branch: `codex/pr-7d-person-staff` (retired);
+- Pull Request Number: `#1`;
+- Merge Strategy: `MERGE_COMMIT`;
+- Branch Cleanup Policy: remote and local deletion after merge and ancestry
+  proof;
+- Integration State: `MERGED_GOAL_COMPLETE`;
+- Implementation Frozen SHA:
+  `433e80cf1da7a5994513053c3391487d1c911a3e`;
+- Merge Commit SHA: `5424131e124b5f2927fb3abb7f2fcb1942745ce3`.
 
 ## Acceptance Criteria
 
@@ -280,7 +302,8 @@ master Harness content preserved. Do not modify this frozen implementation.
 6. The recorded `TIER_2` review sequence is satisfied by a comprehensive
    `sol_milestone_reviewer` PASS on the exact final Candidate.
 7. No unresolved P0/P1 blocker or protected human-only boundary remains.
-8. Freeze ends the Goal without selecting or starting another Product Cycle.
+8. Integration and branch cleanup complete without selecting or starting
+   another Product Cycle.
 
 ## Review Readiness Gate
 
@@ -291,8 +314,7 @@ consolidated self-review, truthful evidence, and persisted budget accounting.
 
 ## Stopping Condition
 
-- set `FROZEN_GOAL_COMPLETE` only after all acceptance and tier-specific Freeze
-  requirements pass for the exact final Candidate; or
+- reach the completed historical integration state `MERGED_GOAL_COMPLETE`; or
 - stop when the total two-launch Sol budget is exhausted without PASS; or
 - stop when a protected human-only decision, infrastructure/permission blocker,
   unrelated dirty-work blocker, or another portable-profile stop condition is
@@ -300,10 +322,7 @@ consolidated self-review, truthful evidence, and persisted budget accounting.
 
 Never start PR-7G or another Cycle inside this Goal.
 
-## Exact Next Goal Command
+## Next Goal Boundary
 
-```text
-/goal Read docs/agent/goals/UNATTENDED_TIER2.md and execute the current
-active milestone exactly as defined there. Continue until
-FROZEN_GOAL_COMPLETE or a documented stop condition.
-```
+There is no active next Goal command. PR-7F is complete. Future opportunity
+selection and Cycle authorization are separate from this historical Plan.

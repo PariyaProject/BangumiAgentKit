@@ -8,8 +8,10 @@ repository governance, select a Product Cycle, or store runtime progress.
 
 ```text
 /goal Read docs/agent/goals/UNATTENDED_TIER2.md and execute the current
-active milestone exactly as defined there. Continue until
-FROZEN_GOAL_COMPLETE or a documented stop condition.
+active milestone exactly as defined there. Continue through review,
+freeze, and authorized post-freeze integration until
+MERGED_GOAL_COMPLETE, FROZEN_GOAL_COMPLETE, or a documented stop
+condition.
 ```
 
 The selected profile resolves through this authority chain:
@@ -26,7 +28,8 @@ UNATTENDED_TIER2.md
 
 `AUTONOMOUS_MILESTONE.md` is the reusable canonical execution contract for one
 substantial vertical milestone. `UNATTENDED_TIER2.md` is a small overlay that
-selects unattended execution and a hard two-launch Sol ceiling.
+selects unattended execution, a hard two-launch Sol ceiling, same-reviewer wait
+continuation, and authorized post-Freeze integration.
 
 Profiles may specialize an execution budget only when the user invocation,
 Cycle Plan, and runtime ledger record that authorization. They may never weaken

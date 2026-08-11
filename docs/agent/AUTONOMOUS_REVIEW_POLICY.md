@@ -101,8 +101,10 @@ per-role allowance. Sol reasoning is `high` by default. `xhigh` requires
 explicit authorization for an exceptionally critical review and is not the
 normal automatic setting.
 
-Every launch consumes budget, including a timeout, platform usage-limit error,
-crash, cancellation, or run that returns no verdict.
+Every reviewer start consumes one launch. A launch remains consumed if that
+reviewer later hard-times-out, hits a platform usage-limit error, crashes, is
+terminated, or returns no verdict. Wait and poll calls on the same launched
+reviewer consume zero additional launches.
 
 Never launch Sol #3 automatically. Do not replace a failed required reviewer
 with the implementation agent's judgment. Any launch beyond the recorded tier
@@ -114,6 +116,50 @@ A failed `TIER_1` launch consumes its only call and pauses the Cycle. A failed
 when the pre-recorded sequence can still end in a comprehensive PASS for the
 exact final Candidate. Otherwise persist
 `PAUSED_REVIEW_BUDGET_EXHAUSTED` and stop.
+
+## Reviewer runtime and wait semantics
+
+This section is the canonical source for reviewer runtime-state
+classification. Persist the reviewer identity, launch ordinal, launch time,
+current runtime status, and the applicable overall wall-clock deadline.
+
+Use exactly these runtime outcomes:
+
+- `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`: one wait or poll returned without a
+  final message and the same reviewer is still `RUNNING`;
+- `REVIEWER_TERMINATED_NO_VERDICT`: the runtime confirms that the reviewer
+  terminated or was closed before returning a verdict;
+- `REVIEWER_HARD_TIMEOUT`: the same reviewer exceeded the overall reviewer
+  wall-clock deadline without a verdict;
+- `REVIEWER_FAILED`: the runtime reports a crash, platform-limit failure, or
+  another unrecoverable failure;
+- `REVIEWER_VERDICT_RECEIVED`: the same reviewer returned one of the three
+  canonical final verdicts.
+
+Before launch, record a bounded overall reviewer wall-clock limit. The default
+is `120 minutes from reviewer launch`; a different bounded limit requires an
+explicit pre-launch justification in the Cycle Plan and ledger. Runtime wait
+calls may be much shorter than this overall deadline and should use the longest
+safe interval supported by the available Codex runtime while preserving normal
+progress reporting.
+
+When a wait or poll operation times out, inspect the already-launched reviewer.
+If it remains `RUNNING`, record
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`, keep it open, and continue waiting or
+polling that same reviewer. Do not cancel or close it, do not launch a
+replacement, do not mark no-verdict, and do not consume another Sol launch.
+Repeated waits on that same reviewer cost zero launches.
+
+Classify `REVIEWER_HARD_TIMEOUT` only when the overall recorded deadline is
+actually exceeded. Classify `REVIEWER_TERMINATED_NO_VERDICT` only when runtime
+state confirms termination without a verdict. Classify `REVIEWER_FAILED` only
+for a reported crash, platform-limit failure, or other unrecoverable state. A
+transient wait timeout alone can never produce any of those outcomes.
+
+An actual hard timeout, termination, or failure does not refund the launch. For
+`TIER_1`, no replacement reviewer is automatic. For `TIER_2`, one remaining
+launch may be used only when the recorded sequence can still produce a valid
+comprehensive `PASS` on the exact Candidate. Sol #3 remains prohibited.
 
 ## Review readiness
 
@@ -206,8 +252,13 @@ A milestone may be frozen or completed only when:
 7. the milestone implementation state is clean;
 8. review-call usage is recorded truthfully.
 
-After Freeze, persist the governance record and set the Goal to
-`FROZEN_GOAL_COMPLETE`. Do not select or begin another Product Cycle.
+After the gate is satisfied, persist the governance record and set the exact
+Candidate to `FROZEN`. Then follow the Integration Policy and Goal-state
+lifecycle defined canonically in `BUDGET_FIRST_EXECUTION.md`. `FROZEN` becomes
+`FROZEN_GOAL_COMPLETE` only for `STOP_AT_FREEZE` or when integration is not
+applicable; `AUTO_MERGE_AFTER_FREEZE` must continue through authorized
+integration to `MERGED_GOAL_COMPLETE`. Neither outcome authorizes selecting or
+beginning another Product Cycle.
 
 ## Two-SHA Freeze model
 
@@ -268,12 +319,16 @@ Reports must preserve:
 - Governance Record SHA if already known;
 - Review Tier and required reviewer verdicts, or `TIER_0` eligibility evidence;
 - review launches authorized and consumed;
+- reviewer runtime outcomes, including wait-continuation evidence or actual
+  terminal failure classification when applicable;
 - mandatory CI evidence;
 - major capabilities;
 - known limitations;
 - deferred opportunities;
 - human-review queue references;
-- confirmation that the Goal stopped at this milestone.
+- Integration Policy and final integration state;
+- confirmation that the Goal stopped at this milestone and did not select the
+  next Cycle.
 
 ## Protected human decisions
 
@@ -313,7 +368,7 @@ After a Freeze, the user may authorize a new Goal. At that time evaluate:
 
 Stop the current Goal when:
 
-- the authorized milestone is frozen;
+- the configured final success state is reached;
 - the review launch budget is exhausted;
 - a corrected Candidate needs fresh review authorization;
 - a protected decision is parked;
@@ -323,3 +378,6 @@ Stop the current Goal when:
 
 Before stopping, update `docs/product/loop-status.md`. Never fabricate review,
 budget, CI, or completion evidence.
+
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition. Continue waiting
+on the same reviewer until a verdict or a genuine terminal runtime outcome.

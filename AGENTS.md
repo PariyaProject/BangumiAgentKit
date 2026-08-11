@@ -51,8 +51,9 @@ OBSERVE
 → STOP FOR THE REVIEW GATE
 → SATISFY THE RECORDED REVIEW TIER WITHIN ITS TOTAL BUDGET
 → FIX REVIEW FINDINGS
-→ FREEZE WHEN THE RECORDED TIER IS SATISFIED
-→ STOP THE GOAL
+→ FREEZE THE EXACT CANDIDATE WHEN THE RECORDED TIER IS SATISFIED
+→ APPLY THE RECORDED POST-FREEZE INTEGRATION POLICY
+→ COMPLETE THE BRANCH LIFECYCLE OR STOP AT A DOCUMENTED BLOCKER
 
 Follow:
 
@@ -69,9 +70,13 @@ for exact Goal, review-budget, freeze and stopping rules.
 A Goal covers one substantial vertical Product Cycle or milestone and must have
 a verifiable stopping condition. It may contain many commits and several hours
 of Luna Max work. Commit count, stage completion, individual test fixes, and
-incremental refactors are never review triggers. Freezing that milestone
-completes the Goal. Never select or implement the next Product Cycle inside the
-same Goal without fresh user authorization.
+incremental refactors are never review triggers. `FROZEN` proves the exact
+Candidate satisfied its quality gate; it completes the Goal only when the
+recorded Integration Policy is `STOP_AT_FREEZE` or integration is not
+applicable. `AUTO_MERGE_AFTER_FREEZE` continues through the authorized
+integration and cleanup lifecycle to `MERGED_GOAL_COMPLETE`. Never select or
+implement the next Product Cycle inside the same Goal without fresh user
+authorization.
 
 Use one primary thread by default. Do not spawn implementation or exploration
 subagents unless the user explicitly authorizes the specific use or a repository
@@ -92,10 +97,14 @@ Every Cycle Plan must select a Review Tier before implementation:
 - `TIER_2`: at most two sequential Sol launches total, reserved for unusually
   high-risk or high-value milestones.
 
-Reviews are never parallel. Every launch counts, including platform-limit
-failures. Sol uses `high` reasoning by default; `xhigh` requires explicit
-authorization for an exceptionally critical review. Never launch Sol beyond the
-recorded tier budget.
+Reviews are never parallel. A launch counts when a reviewer starts, including
+one that later fails or terminates. Wait and poll calls on that same reviewer do
+not consume launches. A transient wait timeout while the reviewer remains
+running is not reviewer failure and must continue waiting on the same reviewer.
+Sol uses `high` reasoning by default; `xhigh` requires explicit authorization
+for an exceptionally critical review. Never launch Sol beyond the recorded tier
+budget. `AUTONOMOUS_REVIEW_POLICY.md` owns the canonical reviewer runtime-state
+semantics.
 
 ## Independent Review
 
@@ -237,6 +246,13 @@ Never force-push shared frozen history.
 
 Never create release tags or publish packages autonomously.
 
+An explicitly authorized Product Cycle starts from a clean, current `master`
+and uses one dedicated ordinary feature branch and one PR for that milestone.
+Do not implement a new Product Cycle directly on `master`, reuse a completed
+milestone branch, or let one branch silently accumulate later Cycles.
+Governance-only maintenance may run directly on `master` only when explicitly
+scoped and safe.
+
 Every implementation Freeze Candidate requires:
 
 - exact Candidate SHA
@@ -247,7 +263,12 @@ Every implementation Freeze Candidate requires:
 
 Do not spend the review budget until the Candidate SHA is clean, locally
 validated, and green in mandatory remote CI. Do not create a follow-on Product
-Cycle after Freeze without fresh user authorization.
+Cycle after Freeze or merge without fresh user authorization. For an explicitly
+recorded `AUTO_MERGE_AFTER_FREEZE` feature milestone, complete the canonical
+integration safety gate, use a merge commit by default, prove the frozen SHA is
+an ancestor of the pushed base, retire the feature branch safely, and return to
+a synchronized `master`. If any gate fails, record `INTEGRATION_BLOCKED` and
+stop.
 
 Review metadata may be committed after the implementation Candidate
 according to the two-SHA freeze model in

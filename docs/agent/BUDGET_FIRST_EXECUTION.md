@@ -50,19 +50,26 @@ Before a Goal starts, record in `docs/product/loop-status.md`:
 - validation commands or artifacts;
 - Review Tier selected before implementation;
 - total Sol review-call budget authorized by that tier;
-- whether any non-review subagent use is authorized.
+- whether any non-review subagent use is authorized;
+- Integration Policy and the complete integration contract when integration is
+  applicable.
 
-The default stopping condition is one of:
+The stopping condition is one of:
 
-- the milestone is frozen;
+- the configured final success state is reached;
 - the implementation is ready but review authorization or budget is required;
 - a protected human decision is reached;
 - required infrastructure is unavailable;
 - the user pauses or changes direction.
 
-Freezing a milestone completes the Goal. It does not authorize opportunity
-selection, creation of another Cycle, or continuation into unrelated backlog.
-A new Product Cycle requires a new user-authorized Goal or normal task.
+`FROZEN` means that the exact implementation Candidate has satisfied its
+quality and Review Tier gate. It completes the Goal only when Integration Policy
+is `STOP_AT_FREEZE` or integration is not applicable. If the recorded policy is
+`AUTO_MERGE_AFTER_FREEZE`, `FROZEN` is intermediate and the Goal continues only
+through the authorized integration and cleanup lifecycle. Neither Freeze nor
+merge authorizes opportunity selection, creation of another Cycle, or
+continuation into unrelated backlog. A new Product Cycle requires fresh user
+authorization.
 
 Do not create a Goal merely because a task could take several turns. Use a Goal
 only when the user explicitly requests one and the stopping condition is already
@@ -141,11 +148,15 @@ concurrent agent thread. Sol uses `high` reasoning by default. `xhigh` may be
 used only with explicit authorization for an exceptionally critical review; it
 is not the normal automatic setting.
 
-A launch counts when the reviewer is started, even if it times out, hits a
-platform usage limit, crashes, or returns no verdict. Failed launches must not
-be retried beyond the recorded total tier budget. Sol is never triggered by
-commit count, an implementation stage, an individual test fix, or an
-incremental refactor.
+A launch counts when the reviewer is started. If that launched reviewer later
+hard-times-out, hits a platform usage limit, crashes, is terminated, or returns
+no verdict, the launch remains consumed. Wait or poll calls on the same reviewer
+consume zero additional launches. In particular, a transient wait timeout while
+the reviewer is still running is not a reviewer failure and must not trigger a
+replacement launch. `AUTONOMOUS_REVIEW_POLICY.md` is the canonical source for
+reviewer runtime states, the overall wall-clock limit, and failure
+classification. Sol is never triggered by commit count, an implementation
+stage, an individual test fix, or an incremental refactor.
 
 The repository cannot read or enforce the user's live Plus quota. Launch count
 is the deterministic budget proxy and must be recorded in
@@ -205,6 +216,104 @@ budget. Continue only when `TIER_2` has an explicitly planned remaining launch
 that can still satisfy its final review requirement; otherwise set the state to
 `PAUSED_REVIEW_BUDGET_EXHAUSTED` and stop. Do not loop on platform limits.
 
+## Product branch lifecycle
+
+Product opportunity selection and Product Milestone execution are separate
+activities. The opportunity log is a backlog, not authority to invent an active
+Cycle. If no authorized active Cycle Plan exists, report that selection and
+authorization are required and stop.
+
+When a new Product Cycle is explicitly authorized:
+
+1. start from a clean, current `master` and update it safely;
+2. create one dedicated ordinary feature branch from the recorded Base SHA;
+3. record the base, branch, Integration Policy, and remaining integration
+   contract in the Cycle Plan and ledger;
+4. perform exactly that substantial milestone on the feature branch;
+5. create or update one PR for the milestone;
+6. review and Freeze the exact Candidate;
+7. integrate according to the recorded policy;
+8. retire the branch after a verified merge and return to synchronized
+   `master`.
+
+This lifecycle is:
+
+```text
+ONE SUBSTANTIAL PRODUCT MILESTONE
+  -> ONE FEATURE BRANCH
+  -> ONE PR
+  -> REVIEW
+  -> FREEZE
+  -> MERGE
+  -> CLEANUP
+  -> RETURN TO MASTER
+```
+
+Never use a Git worktree, implement a new Product Cycle directly on `master`,
+reuse a completed Cycle branch for another milestone, or silently accumulate
+later Cycles on the same branch. Explicitly scoped and safe governance or
+documentation maintenance may run directly on `master`.
+
+## Post-Freeze integration contract
+
+Every Cycle Plan and ledger must select one Integration Policy before
+implementation:
+
+- `STOP_AT_FREEZE`: stop successfully at `FROZEN_GOAL_COMPLETE`; or
+- `AUTO_MERGE_AFTER_FREEZE`: after Freeze, perform the authorized integration
+  lifecycle and stop successfully only at `MERGED_GOAL_COMPLETE`.
+
+For unattended feature development, `AUTO_MERGE_AFTER_FREEZE` is preferred only
+when the Cycle Plan and ledger explicitly record it and the selected Goal
+profile permits it. It is never inferred from unattended mode alone.
+
+Record these truthful runtime fields:
+
+- Integration Policy;
+- Target Base Branch;
+- Base SHA;
+- Feature Branch;
+- Pull Request Number;
+- Merge Strategy;
+- Branch Cleanup Policy;
+- Integration State;
+- Implementation Frozen SHA;
+- Merge Commit SHA.
+
+Automatic integration is allowed only when all of these gates are true:
+
+1. the exact Implementation Frozen SHA is known;
+2. required local validation passed;
+3. mandatory remote CI passed for that exact SHA;
+4. the recorded Review Tier is satisfied;
+5. the required independent reviewer returned `PASS` when applicable;
+6. no unresolved P0/P1 blocker remains;
+7. no `HUMAN_REVIEW_REQUIRED` item blocks integration;
+8. the PR targets the recorded base branch;
+9. the PR is not a draft;
+10. repository-host merge requirements are satisfied;
+11. production implementation has not changed after independent `PASS`;
+12. no unrelated dirty user work would be destroyed or relocated.
+
+If any gate fails, do not merge. Record `INTEGRATION_BLOCKED` with the exact
+failed gate and stop. Any production implementation change after `PASS`
+invalidates that review and creates a new Candidate; never integrate a
+materially different implementation under the old PASS.
+
+The default strategy for reviewed feature milestones is `MERGE_COMMIT`. Do not
+squash or rebase independently reviewed Candidate history by default. The
+Implementation Frozen SHA must remain an ancestor of the final pushed base and
+must be verified with:
+
+```sh
+git merge-base --is-ancestor <ImplementationFrozenSHA> origin/<TargetBaseBranch>
+```
+
+After a successful merge, verify the PR state is `MERGED`, verify frozen-SHA
+ancestry, delete the remote and local feature branches only when safe, switch to
+`master`, fetch/pull safely, and verify local `master == origin/master`. Only
+then is branch cleanup complete.
+
 ## Milestone state machine
 
 Use these states in the execution ledger:
@@ -216,11 +325,11 @@ PLANNED
   -> CANDIDATE_READY
 
 TIER_0: CANDIDATE_READY
-  -> FROZEN_GOAL_COMPLETE
+  -> FROZEN
 
 TIER_1 or TIER_2: CANDIDATE_READY
   -> REVIEW_AUTHORIZED
-  -> FROZEN_GOAL_COMPLETE
+  -> FROZEN
 
 TIER_1: REVIEW_AUTHORIZED
   -> CORRECTING
@@ -233,10 +342,24 @@ TIER_2 with one launch remaining: REVIEW_AUTHORIZED
 
 REVIEW_AUTHORIZED
   -> PAUSED_REVIEW_BUDGET_EXHAUSTED
+
+FROZEN + STOP_AT_FREEZE (or integration not applicable)
+  -> FROZEN_GOAL_COMPLETE
+
+FROZEN + AUTO_MERGE_AFTER_FREEZE
+  -> INTEGRATING
+  -> MERGED
+  -> CLEANUP
+  -> MERGED_GOAL_COMPLETE
+
+INTEGRATING
+  -> INTEGRATION_BLOCKED
 ```
 
-Do not move from `FROZEN_GOAL_COMPLETE` into a new Product Cycle inside the same
-Goal.
+`FROZEN` is the quality/review fact. `FROZEN_GOAL_COMPLETE` and
+`MERGED_GOAL_COMPLETE` are final Goal outcomes determined by Integration
+Policy. Do not move from either final outcome into a new Product Cycle inside
+the same Goal.
 
 ## Required ledger fields
 
@@ -249,11 +372,15 @@ Goal.
 - generic subagent launches authorized / consumed;
 - Review Tier and total Sol launches authorized / consumed;
 - Candidate SHA and exact-SHA CI evidence;
+- Integration Policy, Target Base Branch, Base SHA, Feature Branch, Pull Request
+  Number, Merge Strategy, Branch Cleanup Policy, Integration State,
+  Implementation Frozen SHA, and Merge Commit SHA;
 - next action;
 - human authorization state.
 
 Update the ledger before interruption, before any reviewer launch, after every
-reviewer result or failure, and when the Goal stops.
+reviewer result or actual failure, at Freeze, after every integration state
+transition, and when the Goal stops.
 
 ## Human override
 

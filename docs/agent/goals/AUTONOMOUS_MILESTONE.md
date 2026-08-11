@@ -21,10 +21,11 @@ never weaken a higher-authority rule.
 
 ## Goal unit
 
-Execute exactly one substantial vertical milestone from its persisted
-repository state until it freezes or reaches a documented stop condition. A
-milestone may contain many commits, many implementation stages, test failures,
-internal fixes, and several hours of GPT-5.6 Luna Max work.
+Execute exactly one already-authorized substantial vertical milestone from its
+persisted repository state until it reaches the final state selected by its
+Integration Policy or a documented stop condition. A milestone may contain
+many commits, many implementation stages, test failures, internal fixes, and
+several hours of GPT-5.6 Luna Max work.
 
 Those events are not Sol review triggers. Sol review is allowed only after the
 complete substantial milestone reaches the Review Readiness Gate.
@@ -64,6 +65,8 @@ Confirm that `loop-status.md` and the active Cycle Plan record:
 - generic subagent budget authorized and consumed;
 - Review Tier and total Sol launches authorized and consumed;
 - Candidate SHA and exact-SHA CI state;
+- Integration Policy and the complete integration contract required by
+  `BUDGET_FIRST_EXECUTION.md`;
 - next action and human authorization state.
 
 The active Cycle Plan additionally defines user questions, product gap,
@@ -165,10 +168,14 @@ The profile itself does not upgrade the tier or grant Sol calls. An explicitly
 selected overlay may specialize the budget only when the user invocation
 authorizes it and the Cycle Plan plus ledger are updated before expenditure.
 
-Every launch counts, including timeout, usage-limit failure, crash,
-cancellation, or no verdict. Persist authorized, consumed, and remaining totals
-before and after each launch. Never exceed the recorded total. Sol #3 is never
-automatic.
+A reviewer start consumes one launch; wait and poll calls on that same reviewer
+consume zero additional launches. Apply the canonical runtime states and
+120-minute default overall reviewer deadline from
+`AUTONOMOUS_REVIEW_POLICY.md`. A wait timeout while the reviewer remains
+running means continue waiting on that same reviewer; it is not failure, no
+verdict, or authorization for a replacement. Persist authorized, consumed, and
+remaining totals before and after each launch and terminal outcome. Never
+exceed the recorded total. Sol #3 is never automatic.
 
 ## Corrective loop
 
@@ -187,6 +194,8 @@ Review Policy defines.
 - On `HUMAN_REVIEW_REQUIRED`, do not implement the protected decision; park it,
   persist the state, and stop.
 - On failure or no verdict, count the launch and apply the tier's stopping rule.
+- On `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`, keep the reviewer open and continue
+  waiting or polling it without consuming another launch.
 
 ## Protected human-only boundaries
 
@@ -211,10 +220,11 @@ ledger, and stop. A parked decision does not authorize unrelated continuation.
   work, record the blocker and stop.
 - Never force-push shared or frozen history.
 - Inspect the exact commits a push would publish before pushing.
-- Never merge to `master`, release, publish, or tag unless explicitly
-  authorized.
+- Never merge to `master` unless the Cycle's recorded
+  `AUTO_MERGE_AFTER_FREEZE` policy and all canonical integration gates authorize
+  it. Never release, publish, or tag unless separately explicitly authorized.
 
-## Freeze requirements
+## Freeze and integration lifecycle
 
 Freeze only when every Cycle acceptance criterion and the Review Policy's
 tier-specific Freeze requirements are satisfied for the exact final Candidate.
@@ -222,14 +232,26 @@ Persist the Implementation Frozen SHA separately from any later Governance
 Record SHA. Record validation, exact-SHA CI, QA, Review Tier, launch usage,
 verdicts or `TIER_0` eligibility, limitations, and deferred opportunities.
 
-Set the milestone to `FROZEN_GOAL_COMPLETE` and stop. Do not select or start the
-next Product Cycle.
+Set the milestone to `FROZEN`, then apply the canonical Integration Policy and
+branch lifecycle in `BUDGET_FIRST_EXECUTION.md`:
+
+- `STOP_AT_FREEZE` or no applicable integration:
+  `FROZEN -> FROZEN_GOAL_COMPLETE`;
+- `AUTO_MERGE_AFTER_FREEZE`:
+  `FROZEN -> INTEGRATING -> MERGED -> CLEANUP -> MERGED_GOAL_COMPLETE`.
+
+For automatic integration, verify every safety gate, preserve the reviewed SHA
+as an ancestor through the default `MERGE_COMMIT` strategy, verify the PR is
+merged, retire the branch safely, and return to synchronized `master`. A failed
+gate becomes `INTEGRATION_BLOCKED` and stops. Do not select or start the next
+Product Cycle after either successful final state.
 
 ## Stopping conditions
 
 Stop after persisting the ledger when any of the following occurs:
 
-- `FROZEN_GOAL_COMPLETE`;
+- `FROZEN_GOAL_COMPLETE` or `MERGED_GOAL_COMPLETE`;
+- `INTEGRATION_BLOCKED`;
 - the Review Tier budget is exhausted without a valid Freeze;
 - a corrected Candidate requires fresh human review authorization;
 - a protected human-only decision is parked;
@@ -239,7 +261,8 @@ Stop after persisting the ledger when any of the following occurs:
 - the user pauses, stops, or changes the Goal;
 - repository state no longer identifies one unambiguous active milestone.
 
-Stopping is not permission to start another opportunity.
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` is not a stop condition. Continue waiting
+on the same reviewer. Stopping is not permission to start another opportunity.
 
 ## Final report
 
@@ -249,6 +272,8 @@ Report concisely:
 - final milestone state;
 - Base, Candidate, Implementation Frozen, and Governance Record SHAs as
   applicable;
+- Integration Policy, PR, Merge Commit SHA, cleanup result, and final base
+  synchronization as applicable;
 - local validation and exact-SHA CI evidence;
 - User, Agent, and Renderer QA performed;
 - Review Tier and total Sol launches authorized, consumed, and remaining;

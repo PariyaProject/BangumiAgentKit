@@ -51,9 +51,21 @@ If Sol #1 returns `CORRECTIVE_REQUIRED`:
 If Sol #2 returns `PASS`, Freeze the exact corrected Candidate. Otherwise,
 persist the result and stop.
 
-Any timeout, usage-limit failure, crash, cancellation, no verdict,
-`HUMAN_REVIEW_REQUIRED`, missing readiness evidence, or protected decision
-stops the unattended sequence after truthful budget accounting. It does not
-authorize another reviewer.
+If a wait or poll call times out while the launched reviewer remains running,
+record `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and continue waiting on that same
+reviewer. Do not close it, launch another reviewer, or consume another launch.
+
+An actual `REVIEWER_HARD_TIMEOUT`, `REVIEWER_TERMINATED_NO_VERDICT`,
+`REVIEWER_FAILED`, `HUMAN_REVIEW_REQUIRED`, missing readiness evidence, or
+protected decision applies the canonical stop/budget rule. If one `TIER_2`
+launch remains and the recorded sequence can still produce a comprehensive
+PASS on the exact Candidate, that remaining launch may be used; never exceed
+two launches total.
+
+After `FROZEN`, continue through post-Freeze integration only when the Cycle
+Plan and ledger explicitly record `AUTO_MERGE_AFTER_FREEZE`. Apply every
+canonical integration gate and stop at `MERGED_GOAL_COMPLETE` or
+`INTEGRATION_BLOCKED`. With `STOP_AT_FREEZE`, stop at
+`FROZEN_GOAL_COMPLETE`.
 
 Never launch Sol #3. Never start the next Product Cycle.
