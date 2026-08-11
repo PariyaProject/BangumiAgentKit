@@ -1,6 +1,6 @@
 # PR-7H Recovery — Evidence-Bearing Subject Discovery Presentation
 
-Status: `CORRECTIVE_REQUIRED`
+Status: `REVIEW_AUTHORIZED`
 
 This is exactly one execute-only Product Review Epoch. It reconstructs the
 meaningful PR-7H product capability on current `master`; it does not reopen or
@@ -213,14 +213,34 @@ fields, and internal budget controls are not rendered or exposed.
 - Sol #2: reserved for the same reviewer only after all corrections, a new
   exact Candidate, and exact-SHA mandatory CI.
 
+## Corrected Candidate and Sol #2 readiness
+
+- Corrected Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
+- Corrected Candidate commit: `fix(renderer): close PR-7H review blockers`
+- Corrected exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs
+green`
+- Corrective validation: `pnpm build`, `pnpm typecheck`, `pnpm lint`, full
+  `pnpm test` (33 files / 188 tests), render (6 files / 51 tests), discovery
+  (9 files / 51 tests), contract (22), semantic (31), provider (33), SQLite
+  integration (12 files / 33 tests), standalone (3 files / 18 tests), and
+  `pnpm openapi:verify` passed.
+- Corrective QA: the trusted renderer boundary caps caller-created
+  discovery-results ViewModels and image resolution at 12; genuine
+  unsupported/unavailable `DiscoveryEngine` results now expose zero evidence
+  operations; negative and end-to-end tests pass; realistic degraded fixtures
+  were regenerated and inspected at 640/960.
+- Sol #2 authorization: the same `sol_milestone_reviewer`, launch ordinal
+  `Sol #2 of 2`, is authorized against this exact corrected Candidate.
+- Budget transition: `2 authorized / 1 consumed / 1 remaining`; Sol #3 is
+  prohibited.
+
 ## Current execution state
 
-- Current state: `CORRECTING`
-- Candidate SHA: `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
-- Exact-SHA CI: `PASS — run 31493891023; all six mandatory jobs green`
+- Current state: `REVIEW_AUTHORIZED`
+- Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
+- Exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs green`
 - Implementation Frozen SHA: `N/A`
 - Governance Record SHA: `N/A`
 - Merge Commit SHA: `N/A`
-- Next action: correct both recorded P1 blockers, add the required negative and
-  end-to-end tests, regenerate realistic degraded-state QA, and obtain a new
-  exact-SHA CI pass before considering Sol #2.
+- Next action: launch Sol #2 `sol_milestone_reviewer` against the corrected
+  Candidate; do not mutate the implementation while it is running.

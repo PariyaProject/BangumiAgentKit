@@ -83,7 +83,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`CORRECTING`
+`REVIEW_AUTHORIZED`
 
 Current Product Review Epoch:
 
@@ -92,8 +92,8 @@ Current Product Review Epoch:
 Current Work Packages / `LUNA_STABLE` Summary:
 
 `ViewModel; discovery-results renderer; render_query_subjects Agent path;
-catalog/docs/tests reconstructed and LUNA_STABLE after targeted validation,
-full validation, Agent QA, and Renderer QA.`
+catalog/docs/tests reconstructed; Sol #1 P1 corrections closed and LUNA_STABLE
+after targeted/full validation, Agent QA, and realistic Renderer QA.`
 
 Review Boundary Rationale:
 
@@ -103,7 +103,7 @@ source, PR-7G, and unrelated renderer work is deferred.`
 
 Current Phase:
 
-`CORRECTING`
+`REVIEW_AUTHORIZED`
 
 Primary Model / Reasoning:
 
@@ -123,7 +123,7 @@ evidence-sensitive renderer/tool recovery.
 
 Total Sol Review Budget Authorized / Consumed:
 
-`2 / 1 — 1 remaining; Sol #1 completed CORRECTIVE_REQUIRED`
+`2 / 1 — 1 remaining; Sol #2 is authorized but not yet launched`
 
 Reviewer Runtime Checkpoint:
 
@@ -140,6 +140,13 @@ Reviewer Result:
 The reviewer is closed. Sol #2 remains reserved for the same reviewer only
 after correction, a new Candidate, and exact-SHA CI.
 
+Corrected Candidate Checkpoint:
+
+`de09c0ec3b0eab3325168ec7177b835dd25e9651`, exact-SHA CI PASS on run
+`31496325070`; local validation, negative/end-to-end tests, and realistic
+unsupported/unavailable 640/960 QA passed. Sol #2 is authorized against this
+Candidate and has not yet launched.
+
 Outer Sol Review Budget Authorized / Consumed:
 
 `N/A / 0 — execute-only Goal; no outer self-evolution ledger`
@@ -150,11 +157,11 @@ Current Outer Review Budget State:
 
 Candidate SHA:
 
-`043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
+`de09c0ec3b0eab3325168ec7177b835dd25e9651`
 
 Exact-SHA CI:
 
-`PASS — GitHub Actions run 31493891023; all six mandatory jobs passed`
+`PASS — GitHub Actions run 31496325070; all six mandatory jobs passed`
 
 Integration Policy:
 
@@ -204,10 +211,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`CORRECT both P1 findings: enforce the trusted 12-item/12-image renderer cap;
-separate plan-only operations from evidence provenance and add genuine
-unsupported/unavailable engine tests and QA. Then create a new Candidate and
-obtain exact-SHA CI before considering Sol #2.`
+`LAUNCH Sol #2 sol_milestone_reviewer against corrected Candidate
+de09c0ec3b0eab3325168ec7177b835dd25e9651. While it is running, perform no
+repository mutation, CI rerun, Candidate change, push, or additional reviewer
+launch.`
 
 Human Authorization State:
 

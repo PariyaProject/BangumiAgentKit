@@ -1,6 +1,6 @@
 # PR-7H Recovery Review Readiness
 
-Status: `CORRECTIVE_REQUIRED`
+Status: `REVIEW_AUTHORIZED`
 
 ## Exact Candidate and remote CI
 
@@ -8,20 +8,24 @@ Status: `CORRECTIVE_REQUIRED`
 - Feature branch: `codex/recovery-pr-7h-discovery-renderer`
 - Pull request: `#4 — https://github.com/PariyaProject/BangumiAgentKit/pull/4`
 - Implementation Candidate SHA:
-  `043a5a02cff8e596d435bedd7e0bc37ab8a3ebce`
+  `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 - Exact mandatory CI run:
-  [31493891023](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31493891023)
+  [31496325070](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31496325070)
 - Exact-SHA CI result: `PASS`
 - Mandatory jobs passed: `provider-foundation`, `sqlite-default`,
   `host-integration`, `postgres-compat`, `standalone-release-smoke`, and
   `discovery-foundation`.
-- Candidate worktree: clean after the implementation commit and before this
-  governance-only readiness record.
+- Candidate worktree: clean after the corrected implementation commit and
+  before this governance-only readiness record.
 - `git diff --check`: passed.
 
-The implementation Candidate is the exact code reviewed by local validation
-and remote CI. This readiness record is governance metadata and must not be
-confused with the Implementation Frozen SHA.
+The corrected implementation Candidate is the exact code reviewed by local
+validation and remote CI. This readiness record is governance metadata and
+must not be confused with the Implementation Frozen SHA.
+
+Sol #1 required two P1 corrections: the trusted renderer boundary now caps
+caller-created discovery ViewModels and image resolution at 12, and source
+operations now come only from evidence-backed results rather than the plan.
 
 ## Product and implementation evidence
 
@@ -48,14 +52,14 @@ All required validation passed against the Candidate before review readiness:
 - `pnpm build`
 - `pnpm typecheck`
 - `pnpm lint`
-- `pnpm test` — 33 files, 186 tests
+- `pnpm test` — 33 files, 188 tests
 - `pnpm test:contract` — 22 tests
 - `pnpm test:semantic` — 31 tests
 - `pnpm test:provider` — 33 tests
 - `pnpm test:discovery` — 9 files, 51 tests
 - `pnpm test:standalone` — 18 tests
 - `pnpm test:integration:sqlite` — 12 files, 33 tests
-- `pnpm test:render` — 6 files, 49 tests
+- `pnpm test:render` — 6 files, 51 tests
 - `pnpm openapi:verify` — pinned spec validation, generated client/registry,
   build, catalog generation, and exact generated-file diff all passed
 - `git diff --check`
@@ -63,6 +67,9 @@ All required validation passed against the Candidate before review readiness:
 The normal security/error regression fixtures emit expected diagnostic output;
 PostgreSQL-only integration cases are skipped when `DATABASE_URL` is absent.
 Neither condition caused a failure.
+
+The corrective run also passed the 13-item direct-ViewModel cap probe and the
+real `DiscoveryEngine` unsupported/unavailable evidence-honesty tests.
 
 ## User and Agent QA
 
@@ -93,7 +100,10 @@ artifacts were also generated and inspected at:
 Inspection confirmed readable hierarchy and density at both widths, CJK
 wrapping without clipping, explicit unknown values, bounded criteria with
 omitted counts, missing-image fallback, and distinct degraded states. The
-manifest records all 14 outputs and their dimensions/byte sizes.
+original manifest records 14 outputs; the realistic degraded-state manifest
+at
+`/Users/wuzhao/.codex/visualizations/2026/08/11/019ff0d1-278d-78f0-a85c-4e7d82a5d9f6/pr7h-recovery-qa/realistic-degraded-manifest.json`
+records four additional actual-engine outputs.
 
 ## Review gate
 
@@ -124,8 +134,21 @@ manifest records all 14 outputs and their dimensions/byte sizes.
 
 ## Sol #1 result
 
-The independent reviewer returned `CORRECTIVE_REQUIRED`. The two P1 blockers
-and acceptance criteria are recorded in
+The independent reviewer returned `CORRECTIVE_REQUIRED`; both P1 blockers were
+corrected in Candidate `de09c0ec3b0eab3325168ec7177b835dd25e9651`. The original
+findings and acceptance criteria remain recorded in
 `docs/product/reviews/PR-7H-recovery-discovery-renderer/milestone-review.md`.
-The next action is to correct them and produce a new exact Candidate and
-exact-SHA mandatory CI result before using the one remaining Sol slot.
+The corrected Candidate passed exact-SHA CI run 31496325070.
+
+## Sol #2 authorization checkpoint
+
+- Reviewer: `sol_milestone_reviewer`
+- Launch ordinal: `Sol #2 of 2 authorized`
+- Runtime state: `AUTHORIZED_NOT_LAUNCHED`
+- Review Candidate: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
+- Remaining budget: `1`
+
+Next action is the single remaining Sol #2 comprehensive review of the
+corrected Candidate. Once launched, no repository mutation, CI rerun,
+Candidate change, push, or additional reviewer launch is permitted while it
+runs.
