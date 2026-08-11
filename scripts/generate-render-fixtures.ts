@@ -12,7 +12,7 @@ import {
 import type { SeriesRelationsViewModel } from '../packages/renderer/dist/index.js';
 import {
   assertSeriesWatchOrderFixture,
-  buildSeriesWatchOrderFixtureResults,
+  buildSeriesWatchOrderFixtureRuns,
   SERIES_FIXTURE_VARIANTS,
 } from './series-watch-order-fixtures.js';
 
@@ -146,11 +146,11 @@ async function main() {
 
   // 6. Series / Watch-Order evidence fixtures. Each ViewModel is derived from
   // a typed SeriesWatchOrderResult and checked before it reaches the renderer.
-  const seriesResults = buildSeriesWatchOrderFixtureResults();
+  const seriesFixtures = await buildSeriesWatchOrderFixtureRuns();
   for (const variant of SERIES_FIXTURE_VARIANTS) {
-    const seriesResult = seriesResults[variant];
-    assertSeriesWatchOrderFixture(seriesResult);
-    const viewModel = buildSeriesRelationsViewModel(seriesResult);
+    const fixture = seriesFixtures[variant];
+    assertSeriesWatchOrderFixture(fixture);
+    const viewModel = buildSeriesRelationsViewModel(fixture.result);
     for (const width of [640, 960]) {
       const renderResult = await renderService.renderCard(viewModel, {
         width,
@@ -168,7 +168,7 @@ async function main() {
   // service's 64-edge evidence boundary. This is a valid partial VM because
   // the related evidence cap is explicit; the PNG is used for visual height
   // and mobile/chat readability QA, not as a substitute for service fixtures.
-  const completeViewModel = buildSeriesRelationsViewModel(seriesResults.complete);
+  const completeViewModel = buildSeriesRelationsViewModel(seriesFixtures.complete.result);
   const maximumRootId = 900;
   const maximumSteps = Array.from({ length: 17 }, (_, index) => {
     const isRoot = index === 8;

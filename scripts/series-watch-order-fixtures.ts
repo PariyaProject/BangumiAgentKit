@@ -1,520 +1,771 @@
-import type {
-  SeriesRelationKind,
-  SeriesWatchOrderExclusionReason,
-  SeriesWatchOrderNode,
-  SeriesWatchOrderPath,
-  SeriesWatchOrderResult,
-} from '../packages/bangumi-core/src/index.js';
+import { SeriesService, type SeriesWatchOrderResult } from '../packages/bangumi-core/src/index.js';
+import { HttpClient } from '../packages/bangumi-transport/src/index.js';
 
 export const SERIES_FIXTURE_VARIANTS = ['complete', 'partial', 'not-computable'] as const;
 export type SeriesFixtureVariant = (typeof SERIES_FIXTURE_VARIANTS)[number];
 
-const RETRIEVED_AT = '2026-08-12T00:00:00.000Z';
+type RawSubjectType = 1 | 2 | 3 | 4 | 6;
+type FixtureOperation = 'getSubjectById' | 'getRelatedSubjectsBySubjectId';
+type FixtureStatus = 'succeeded' | 'failed';
 
-function node(
-  id: number,
-  type: SeriesWatchOrderNode['type'],
-  name: string,
-  nameCn: string,
-  date?: string,
-): SeriesWatchOrderNode {
+interface RawSubject {
+  id: number;
+  type: RawSubjectType;
+  name: string;
+  name_cn: string;
+  date?: string;
+}
+
+interface RawRelation extends RawSubject {
+  relation: string;
+}
+
+export interface SeriesWatchOrderFixtureRequest {
+  operation: FixtureOperation;
+  subjectId: number;
+  status: FixtureStatus;
+  rowCount?: number;
+}
+
+type FixtureEvidenceSource = SeriesWatchOrderResult['evidence']['sources'][number];
+type FixtureEdgeSpec = Pick<
+  SeriesWatchOrderResult['edges'][number],
+  'fromId' | 'toId' | 'depth' | 'relation' | 'relationKind' | 'pathIds' | 'pathKinds' | 'direct'
+>;
+
+interface FixtureOptions {
+  depth: number;
+  maxNodes: number;
+  media: 'anime' | 'all';
+}
+
+type ExpectedFixtureSource = FixtureEvidenceSource;
+
+interface FixtureExpectation {
+  state: SeriesWatchOrderResult['state'];
+  requests: readonly SeriesWatchOrderFixtureRequest[];
+  sources: readonly ExpectedFixtureSource[];
+  edges: readonly FixtureEdgeSpec[];
+  observedIds: readonly number[];
+  selectedIds: readonly number[];
+  excludedCount: number;
+  excludedByReason: ReadonlyArray<{
+    reason: string;
+    count: number;
+  }>;
+  relationRowsObserved: number;
+  edgeEvidenceReturned: number;
+  animeNodesObserved: number;
+  animeNodesSelected: number;
+  nonAnimeRowsObserved: number;
+  nonAnimeRowsReturned: number;
+  detailsAttempted: number;
+  detailsFetched: number;
+  detailsFailed: number;
+  relationFailures: number;
+  truncationReasons: readonly string[];
+}
+
+interface FixtureScenario {
+  variant: SeriesFixtureVariant;
+  subjectId: number;
+  options: FixtureOptions;
+  subjects: ReadonlyMap<number, RawSubject>;
+  relations: ReadonlyMap<number, readonly RawRelation[]>;
+  failedDetails: ReadonlySet<number>;
+  failedRelations: ReadonlySet<number>;
+  expected: FixtureExpectation;
+}
+
+export interface SeriesWatchOrderFixtureRun {
+  variant: SeriesFixtureVariant;
+  options: FixtureOptions;
+  result: SeriesWatchOrderResult;
+  requests: SeriesWatchOrderFixtureRequest[];
+  expected: FixtureExpectation;
+}
+
+function subject(id: number, type: RawSubjectType, nameCn: string, date?: string): RawSubject {
   return {
     id,
     type,
-    name,
-    nameCn,
+    name: `Fixture Original Title ${id}`,
+    name_cn: nameCn,
     ...(date ? { date } : {}),
-    relationLabels: [],
-    relationKinds: [],
-    relationPaths: [],
   };
 }
 
-function path(
-  fromId: number,
-  toId: number,
-  relation: string,
-  relationKind: SeriesRelationKind,
-  depth: number,
-  pathIds: number[],
-  pathKinds: SeriesRelationKind[],
-): SeriesWatchOrderPath {
+function relation(
+  id: number,
+  type: RawSubjectType,
+  relationLabel: string,
+  nameCn: string,
+): RawRelation {
   return {
-    fromId,
-    toId,
-    depth,
-    relation,
-    relationKind,
-    pathIds,
-    pathKinds,
-    direct: depth === 0,
+    ...subject(id, type, nameCn),
+    relation: relationLabel,
   };
 }
 
-function related(
-  subject: SeriesWatchOrderNode,
-  relationPath: SeriesWatchOrderPath,
-  depth: number,
-  includedInWatchOrder: boolean,
-  exclusionReason?: SeriesWatchOrderExclusionReason,
-) {
-  return {
-    ...subject,
-    relationLabels: [relationPath.relation],
-    relationKinds: [relationPath.relationKind],
-    relationPaths: [relationPath],
-    depth,
-    includedInWatchOrder,
-    ...(exclusionReason ? { exclusionReason } : {}),
-  };
-}
-
-function sample(
-  subject: SeriesWatchOrderNode,
-  relationPath: SeriesWatchOrderPath,
-  reason: SeriesWatchOrderExclusionReason,
-) {
-  return {
-    ...related(subject, relationPath, relationPath.depth, false, reason),
-    reason,
-  };
-}
-
-function source(
-  operation: 'getSubjectById' | 'getRelatedSubjectsBySubjectId',
+function detailSource(
   subjectId: number,
-  status: 'succeeded' | 'failed',
+  status: FixtureStatus,
   depth?: number,
-) {
+): ExpectedFixtureSource {
   return {
-    operation,
-    path:
-      operation === 'getSubjectById'
-        ? `/v0/subjects/${subjectId}`
-        : `/v0/subjects/${subjectId}/subjects`,
+    operation: 'getSubjectById',
+    path: `/v0/subjects/${subjectId}`,
     status,
     subjectId,
     ...(depth === undefined ? {} : { depth }),
   };
 }
 
-function baseCoverage(overrides: Partial<SeriesWatchOrderResult['coverage']> = {}) {
+function relationSource(
+  subjectId: number,
+  depth: number,
+  status: FixtureStatus,
+): ExpectedFixtureSource {
   return {
-    depth: 1,
-    maxNodes: 8,
-    media: 'all' as const,
-    animeNodeLimit: 8,
-    nonAnimeEvidenceLimit: 8,
-    relatedLimit: 16,
-    relationRequests: 1,
-    relationRowsObserved: 0,
-    uniqueRelatedObserved: 0,
-    uniqueRelatedReturned: 0,
-    animeNodesObserved: 0,
-    animeNodesSelected: 0,
-    nonAnimeRowsObserved: 0,
-    nonAnimeRowsReturned: 0,
-    detailsAttempted: 0,
-    detailsFetched: 0,
-    detailsFailed: 0,
-    relationFailures: 0,
-    edgeEvidenceLimit: 64,
-    edgeEvidenceReturned: 0,
-    edgeEvidenceTruncated: false,
-    relatedEvidenceTruncated: false,
-    truncated: false,
-    truncationReasons: [],
-    retrievedAt: RETRIEVED_AT,
-    ...overrides,
+    operation: 'getRelatedSubjectsBySubjectId',
+    path: `/v0/subjects/${subjectId}/subjects`,
+    status,
+    subjectId,
+    depth,
   };
 }
 
-function result(
-  state: SeriesWatchOrderResult['state'],
-  root: SeriesWatchOrderNode,
-  watchOrder: SeriesWatchOrderResult['watchOrder'],
-  relatedItems: SeriesWatchOrderResult['related'],
-  edges: SeriesWatchOrderResult['edges'],
-  excluded: SeriesWatchOrderResult['excluded'],
-  coverage: SeriesWatchOrderResult['coverage'],
-  sources: SeriesWatchOrderResult['evidence']['sources'],
-  warnings: string[] = [],
-): SeriesWatchOrderResult {
+function detailRequest(subjectId: number, status: FixtureStatus): SeriesWatchOrderFixtureRequest {
+  return { operation: 'getSubjectById', subjectId, status };
+}
+
+function relationRequest(
+  subjectId: number,
+  status: FixtureStatus,
+  rowCount: number,
+): SeriesWatchOrderFixtureRequest {
   return {
-    state,
-    subjectId: root.id,
-    root,
-    watchOrder,
-    related: relatedItems,
-    edges,
-    excluded,
-    coverage,
-    capabilityStates: {
-      watchOrder: root.type === 'anime' ? 'bounded_recommendation' : 'not_computable',
-    },
-    evidence: {
+    operation: 'getRelatedSubjectsBySubjectId',
+    subjectId,
+    status,
+    rowCount,
+  };
+}
+
+function edgeSpec(
+  fromId: number,
+  toId: number,
+  depth: number,
+  relation: string,
+  relationKind: FixtureEdgeSpec['relationKind'],
+  pathIds: number[],
+  pathKinds: FixtureEdgeSpec['pathKinds'],
+  direct: boolean,
+): FixtureEdgeSpec {
+  return { fromId, toId, depth, relation, relationKind, pathIds, pathKinds, direct };
+}
+
+function toMap<T extends { id: number }>(items: readonly T[]): Map<number, T> {
+  return new Map(items.map((item) => [item.id, item] as const));
+}
+
+function completeScenario(): FixtureScenario {
+  const subjects = toMap([
+    subject(100, 2, '超长中文起点条目與日本語タイトル', '2020-01-01'),
+    subject(101, 2, '前传条目：長い日本語タイトル與中文说明', '2019-01-01'),
+    subject(102, 2, '续集条目：缺失封面与長文本'),
+    subject(103, 2, '未映射关系条目', '2021-01-01'),
+    subject(201, 1, '原作书籍'),
+    subject(202, 3, '原声音乐'),
+  ]);
+  const relations = new Map<number, readonly RawRelation[]>([
+    [
+      100,
+      [
+        relation(101, 2, '前传', '前传条目：長い日本語タイトル與中文说明'),
+        relation(102, 2, '续集', '续集条目：缺失封面与長文本'),
+        relation(103, 2, '相关作品', '未映射关系条目'),
+        relation(201, 1, '原作', '原作书籍'),
+        relation(202, 3, '音乐', '原声音乐'),
+      ],
+    ],
+    [101, []],
+    [102, []],
+  ]);
+  const sources = [
+    detailSource(100, 'succeeded'),
+    relationSource(100, 0, 'succeeded'),
+    relationSource(101, 1, 'succeeded'),
+    relationSource(102, 1, 'succeeded'),
+    detailSource(101, 'succeeded', 0),
+    detailSource(102, 'succeeded', 0),
+  ] as const;
+
+  return {
+    variant: 'complete',
+    subjectId: 100,
+    options: { depth: 1, maxNodes: 8, media: 'all' },
+    subjects,
+    relations,
+    failedDetails: new Set(),
+    failedRelations: new Set(),
+    expected: {
+      state: 'complete',
+      requests: [
+        detailRequest(100, 'succeeded'),
+        relationRequest(100, 'succeeded', 5),
+        relationRequest(101, 'succeeded', 0),
+        relationRequest(102, 'succeeded', 0),
+        detailRequest(101, 'succeeded'),
+        detailRequest(102, 'succeeded'),
+      ],
       sources,
-      derivation: 'series-watch-order-v2',
-      retrievedAt: RETRIEVED_AT,
-    },
-    warnings,
-    limitations: [
-      'Bangumi 的关系接口没有发布统一的官方观看顺序；本结果是有限深度、有限节点的确定性推荐。',
-      '日期、关系标签和源覆盖可能不完整；本结果不等同于唯一正确或官方 canonical 顺序。',
-    ],
-  };
-}
-
-function completeFixture(): SeriesWatchOrderResult {
-  const root = node(
-    100,
-    'anime',
-    'Long Original Title',
-    '超长中文起点条目與日本語タイトル',
-    '2020-01-01',
-  );
-  const prequel = node(
-    101,
-    'anime',
-    'Prequel Original Title',
-    '前传条目：長い日本語タイトル與中文说明',
-    '2019-01-01',
-  );
-  const sequel = node(102, 'anime', 'Sequel Original Title', '续集条目：缺失封面与長文本');
-  const unknown = node(103, 'anime', 'Unknown Relation', '未映射关系条目', '2021-01-01');
-  const sourceBook = node(201, 'book', 'Original Book', '原作书籍');
-  const soundtrack = node(202, 'music', 'Original Soundtrack', '原声音乐');
-  const prequelPath = path(100, 101, '前传', 'prequel', 0, [100, 101], ['prequel']);
-  const sequelPath = path(100, 102, '续集', 'sequel', 0, [100, 102], ['sequel']);
-  const unknownPath = path(100, 103, '相关作品', 'unknown', 0, [100, 103], ['unknown']);
-  const sourcePath = path(100, 201, '原作', 'source', 0, [100, 201], ['source']);
-  const musicPath = path(100, 202, '音乐', 'music', 0, [100, 202], ['music']);
-  const edges = [prequelPath, sequelPath, unknownPath, sourcePath, musicPath];
-
-  return result(
-    'complete',
-    root,
-    [
-      {
-        ...related(prequel, prequelPath, 0, true),
-        position: 1,
-        isRoot: false,
-        placement: 'before_root',
-        placementReason: '起点直接关系标记为前传，置于起点前',
-      },
-      {
-        ...root,
-        position: 2,
-        isRoot: true,
-        placement: 'root',
-        placementReason: '请求的起始条目',
-      },
-      {
-        ...related(sequel, sequelPath, 0, true),
-        position: 3,
-        isRoot: false,
-        placement: 'after_root',
-        placementReason: '起点直接关系标记为续集，置于起点后',
-      },
-    ],
-    [
-      related(prequel, prequelPath, 0, true),
-      related(sequel, sequelPath, 0, true),
-      related(unknown, unknownPath, 0, false, 'relation_not_watch_step'),
-      related(sourceBook, sourcePath, 0, false, 'media_type_not_anime'),
-      related(soundtrack, musicPath, 0, false, 'media_type_not_anime'),
-    ],
-    edges,
-    {
-      count: 3,
-      byReason: [
+      edges: [
+        edgeSpec(100, 101, 0, '前传', 'prequel', [100, 101], ['prequel'], true),
+        edgeSpec(100, 102, 0, '续集', 'sequel', [100, 102], ['sequel'], true),
+        edgeSpec(100, 103, 0, '相关作品', 'unknown', [100, 103], ['unknown'], true),
+        edgeSpec(100, 201, 0, '原作', 'source', [100, 201], ['source'], true),
+        edgeSpec(100, 202, 0, '音乐', 'music', [100, 202], ['music'], true),
+      ],
+      observedIds: [101, 102, 103, 201, 202],
+      selectedIds: [101, 102],
+      excludedCount: 3,
+      excludedByReason: [
         { reason: 'relation_not_watch_step', count: 1 },
         { reason: 'media_type_not_anime', count: 2 },
       ],
-      samples: [
-        sample(unknown, unknownPath, 'relation_not_watch_step'),
-        sample(sourceBook, sourcePath, 'media_type_not_anime'),
-        sample(soundtrack, musicPath, 'media_type_not_anime'),
-      ],
-    },
-    baseCoverage({
       relationRowsObserved: 5,
-      uniqueRelatedObserved: 5,
-      uniqueRelatedReturned: 5,
+      edgeEvidenceReturned: 5,
       animeNodesObserved: 3,
       animeNodesSelected: 2,
       nonAnimeRowsObserved: 2,
       nonAnimeRowsReturned: 2,
       detailsAttempted: 2,
       detailsFetched: 2,
-      edgeEvidenceReturned: 5,
-    }),
-    [
-      source('getSubjectById', 100, 'succeeded'),
-      source('getRelatedSubjectsBySubjectId', 100, 'succeeded', 0),
-      source('getSubjectById', 101, 'succeeded', 0),
-      source('getSubjectById', 102, 'succeeded', 0),
-    ],
-  );
+      detailsFailed: 0,
+      relationFailures: 0,
+      truncationReasons: [],
+    },
+  };
 }
 
-function partialFixture(): SeriesWatchOrderResult {
-  const root = node(300, 'anime', 'Partial Root', '部分覆盖起点', '2020-01-01');
-  const deepPrequel = node(304, 'anime', 'Deep Prequel', '更深前传', '2017-01-01');
-  const prequel = node(301, 'anime', 'Prequel', '前传', '2018-01-01');
-  const sequel = node(302, 'anime', 'Sequel', '续集', '2021-01-01');
-  const sequelWithoutDetail = node(303, 'anime', 'Sequel Without Detail', '详情暂不可用续集');
-  const sourceBook = node(401, 'book', 'Source Book', '原作书籍');
-  const paths = [
-    path(300, 304, '前传', 'prequel', 1, [300, 301, 304], ['prequel', 'prequel']),
-    path(300, 301, '前传', 'prequel', 0, [300, 301], ['prequel']),
-    path(300, 302, '续集', 'sequel', 0, [300, 302], ['sequel']),
-    path(300, 303, '续集', 'sequel', 0, [300, 303], ['sequel']),
-    path(300, 401, '原作', 'source', 0, [300, 401], ['source']),
-  ];
+function partialScenario(): FixtureScenario {
+  const subjects = toMap([
+    subject(300, 2, '部分覆盖起点', '2020-01-01'),
+    subject(301, 2, '前传：長い日本語タイトル', '2018-01-01'),
+    subject(302, 2, '续集：CJK 详情', '2021-01-01'),
+    subject(303, 2, '详情暂不可用续集'),
+    subject(304, 2, '更深前传：深层证据', '2017-01-01'),
+    subject(306, 2, '深度边界前传', '2016-01-01'),
+    subject(401, 1, '原作书籍'),
+  ]);
+  const relations = new Map<number, readonly RawRelation[]>([
+    [
+      300,
+      [
+        relation(301, 2, '前传', '前传：長い日本語タイトル'),
+        relation(302, 2, '续集', '续集：CJK 详情'),
+        relation(303, 2, '续集', '详情暂不可用续集'),
+        relation(401, 1, '原作', '原作书籍'),
+      ],
+    ],
+    [301, [relation(304, 2, '前传', '更深前传：深层证据')]],
+    [303, []],
+    [304, [relation(306, 2, '前传', '深度边界前传')]],
+  ]);
+  const sources = [
+    detailSource(300, 'succeeded'),
+    relationSource(300, 0, 'succeeded'),
+    relationSource(301, 1, 'succeeded'),
+    relationSource(302, 1, 'failed'),
+    relationSource(303, 1, 'succeeded'),
+    relationSource(304, 2, 'succeeded'),
+    detailSource(301, 'succeeded', 0),
+    detailSource(302, 'succeeded', 0),
+    detailSource(303, 'failed', 0),
+    detailSource(304, 'succeeded', 1),
+    detailSource(306, 'succeeded', 2),
+  ] as const;
 
-  return result(
-    'partial',
-    root,
-    [
-      {
-        ...related(deepPrequel, paths[0]!, 1, true),
-        position: 1,
-        isRoot: false,
-        placement: 'before_root',
-        placementReason: '沿连续前传路径推导（距起点 2 条关系）',
-        derivedDepth: 2,
-      },
-      {
-        ...related(prequel, paths[1]!, 0, true),
-        position: 2,
-        isRoot: false,
-        placement: 'before_root',
-        placementReason: '起点直接关系标记为前传，置于起点前',
-        derivedDepth: 1,
-      },
-      {
-        ...root,
-        position: 3,
-        isRoot: true,
-        placement: 'root',
-        placementReason: '请求的起始条目',
-      },
-      {
-        ...related(sequel, paths[2]!, 0, true),
-        position: 4,
-        isRoot: false,
-        placement: 'after_root',
-        placementReason: '起点直接关系标记为续集，置于起点后',
-        derivedDepth: 1,
-      },
-      {
-        ...related(sequelWithoutDetail, paths[3]!, 0, true),
-        position: 5,
-        isRoot: false,
-        placement: 'after_root',
-        placementReason: '起点直接关系标记为续集，置于起点后',
-        derivedDepth: 1,
-      },
-    ],
-    [
-      related(deepPrequel, paths[0]!, 1, true),
-      related(prequel, paths[1]!, 0, true),
-      related(sequel, paths[2]!, 0, true),
-      related(sequelWithoutDetail, paths[3]!, 0, true),
-      related(sourceBook, paths[4]!, 0, false, 'media_type_not_anime'),
-    ],
-    paths,
-    {
-      count: 1,
-      byReason: [{ reason: 'media_type_not_anime', count: 1 }],
-      samples: [sample(sourceBook, paths[4]!, 'media_type_not_anime')],
-    },
-    baseCoverage({
-      depth: 2,
-      relationRequests: 3,
-      relationRowsObserved: 5,
-      uniqueRelatedObserved: 5,
-      uniqueRelatedReturned: 5,
-      animeNodesObserved: 4,
-      animeNodesSelected: 4,
+  return {
+    variant: 'partial',
+    subjectId: 300,
+    options: { depth: 2, maxNodes: 8, media: 'all' },
+    subjects,
+    relations,
+    failedDetails: new Set([303]),
+    failedRelations: new Set([302]),
+    expected: {
+      state: 'partial',
+      requests: [
+        detailRequest(300, 'succeeded'),
+        relationRequest(300, 'succeeded', 4),
+        relationRequest(301, 'succeeded', 1),
+        relationRequest(302, 'failed', 0),
+        relationRequest(303, 'succeeded', 0),
+        relationRequest(304, 'succeeded', 1),
+        detailRequest(301, 'succeeded'),
+        detailRequest(302, 'succeeded'),
+        detailRequest(303, 'failed'),
+        detailRequest(304, 'succeeded'),
+        detailRequest(306, 'succeeded'),
+      ],
+      sources,
+      edges: [
+        edgeSpec(300, 301, 0, '前传', 'prequel', [300, 301], ['prequel'], true),
+        edgeSpec(300, 302, 0, '续集', 'sequel', [300, 302], ['sequel'], true),
+        edgeSpec(300, 303, 0, '续集', 'sequel', [300, 303], ['sequel'], true),
+        edgeSpec(300, 401, 0, '原作', 'source', [300, 401], ['source'], true),
+        edgeSpec(301, 304, 1, '前传', 'prequel', [300, 301, 304], ['prequel', 'prequel'], false),
+        edgeSpec(
+          304,
+          306,
+          2,
+          '前传',
+          'prequel',
+          [300, 301, 304, 306],
+          ['prequel', 'prequel', 'prequel'],
+          false,
+        ),
+      ],
+      observedIds: [301, 302, 303, 304, 306, 401],
+      selectedIds: [301, 302, 303, 304, 306],
+      excludedCount: 1,
+      excludedByReason: [{ reason: 'media_type_not_anime', count: 1 }],
+      relationRowsObserved: 6,
+      edgeEvidenceReturned: 6,
+      animeNodesObserved: 5,
+      animeNodesSelected: 5,
       nonAnimeRowsObserved: 1,
       nonAnimeRowsReturned: 1,
-      detailsAttempted: 4,
-      detailsFetched: 3,
+      detailsAttempted: 5,
+      detailsFetched: 4,
       detailsFailed: 1,
       relationFailures: 1,
-      edgeEvidenceReturned: 5,
-      truncated: true,
-      truncationReasons: ['subject-detail-failure', 'relation-read-failure'],
-    }),
-    [
-      source('getSubjectById', 300, 'succeeded'),
-      source('getRelatedSubjectsBySubjectId', 300, 'succeeded', 0),
-      source('getRelatedSubjectsBySubjectId', 301, 'succeeded', 1),
-      source('getRelatedSubjectsBySubjectId', 302, 'failed', 1),
-      source('getSubjectById', 301, 'succeeded', 0),
-      source('getSubjectById', 302, 'succeeded', 0),
-      source('getSubjectById', 303, 'failed', 0),
-      source('getSubjectById', 304, 'succeeded', 1),
-    ],
-    [
-      '共有 1 个可选关系读取失败；未读取的分支不会被假设为完整。',
-      '共有 1 个条目的详情不可用；名称和关系仍来自关系接口。',
-    ],
-  );
+      truncationReasons: ['depth=2', 'subject-detail-failure', 'relation-read-failure'],
+    },
+  };
 }
 
-function notComputableFixture(): SeriesWatchOrderResult {
-  const root = node(500, 'book', 'Source Novel', '非动画起点：原作小说');
-  const animeRelation = node(501, 'anime', 'Adaptation', '动画改编');
-  const musicRelation = node(502, 'music', 'Soundtrack', '音乐证据');
-  const bookRelation = node(503, 'book', 'Companion Book', '关联书籍');
-  const paths = [
-    path(500, 501, '改编', 'adaptation', 0, [500, 501], ['adaptation']),
-    path(500, 502, '音乐', 'music', 0, [500, 502], ['music']),
-    path(500, 503, '相关作品', 'unknown', 0, [500, 503], ['unknown']),
-  ];
-
-  return result(
-    'not_computable',
-    root,
-    [],
+function notComputableScenario(): FixtureScenario {
+  const subjects = toMap([
+    subject(500, 1, '非动画起点：原作小说'),
+    subject(501, 2, '动画改编'),
+    subject(502, 3, '音乐证据'),
+    subject(503, 1, '关联书籍'),
+  ]);
+  const relations = new Map<number, readonly RawRelation[]>([
     [
-      related(animeRelation, paths[0]!, 0, false, 'root_not_anime'),
-      related(musicRelation, paths[1]!, 0, false, 'root_not_anime'),
-      related(bookRelation, paths[2]!, 0, false, 'root_not_anime'),
-    ],
-    paths,
-    {
-      count: 3,
-      byReason: [{ reason: 'root_not_anime', count: 3 }],
-      samples: [
-        sample(animeRelation, paths[0]!, 'root_not_anime'),
-        sample(musicRelation, paths[1]!, 'root_not_anime'),
-        sample(bookRelation, paths[2]!, 'root_not_anime'),
+      500,
+      [
+        relation(501, 2, '改编', '动画改编'),
+        relation(502, 3, '音乐', '音乐证据'),
+        relation(503, 1, '相关作品', '关联书籍'),
       ],
-    },
-    baseCoverage({
+    ],
+  ]);
+  const sources = [detailSource(500, 'succeeded'), relationSource(500, 0, 'succeeded')] as const;
+
+  return {
+    variant: 'not-computable',
+    subjectId: 500,
+    options: { depth: 1, maxNodes: 8, media: 'all' },
+    subjects,
+    relations,
+    failedDetails: new Set(),
+    failedRelations: new Set(),
+    expected: {
+      state: 'not_computable',
+      requests: [detailRequest(500, 'succeeded'), relationRequest(500, 'succeeded', 3)],
+      sources,
+      edges: [
+        edgeSpec(500, 501, 0, '改编', 'adaptation', [500, 501], ['adaptation'], true),
+        edgeSpec(500, 502, 0, '音乐', 'music', [500, 502], ['music'], true),
+        edgeSpec(500, 503, 0, '相关作品', 'unknown', [500, 503], ['unknown'], true),
+      ],
+      observedIds: [501, 502, 503],
+      selectedIds: [],
+      excludedCount: 3,
+      excludedByReason: [{ reason: 'root_not_anime', count: 3 }],
       relationRowsObserved: 3,
-      uniqueRelatedObserved: 3,
-      uniqueRelatedReturned: 3,
+      edgeEvidenceReturned: 3,
       animeNodesObserved: 1,
       animeNodesSelected: 0,
       nonAnimeRowsObserved: 2,
       nonAnimeRowsReturned: 2,
       detailsAttempted: 0,
       detailsFetched: 0,
-      edgeEvidenceReturned: 3,
-    }),
-    [
-      source('getSubjectById', 500, 'succeeded'),
-      source('getRelatedSubjectsBySubjectId', 500, 'succeeded', 0),
-    ],
-    ['起始条目不是动画；本次结果只能展示关系证据，不能计算动画观看步骤。'],
-  );
-}
-
-export function buildSeriesWatchOrderFixtureResults(): Record<
-  SeriesFixtureVariant,
-  SeriesWatchOrderResult
-> {
-  return {
-    complete: completeFixture(),
-    partial: partialFixture(),
-    'not-computable': notComputableFixture(),
+      detailsFailed: 0,
+      relationFailures: 0,
+      truncationReasons: [],
+    },
   };
 }
 
-export function assertSeriesWatchOrderFixture(result: SeriesWatchOrderResult): void {
+function scenarios(): readonly FixtureScenario[] {
+  return [completeScenario(), partialScenario(), notComputableScenario()];
+}
+
+function response(body: unknown, status = 200): Response {
+  return new Response(status === 200 ? JSON.stringify(body) : 'fixture failure', {
+    status,
+    headers: status === 200 ? { 'content-type': 'application/json' } : undefined,
+  });
+}
+
+async function runScenario(scenario: FixtureScenario): Promise<SeriesWatchOrderFixtureRun> {
+  const requests: SeriesWatchOrderFixtureRequest[] = [];
+  const fetchFn = async (input: string | URL): Promise<Response> => {
+    const url = String(input);
+    const relationMatch = url.match(/\/v0\/subjects\/(\d+)\/subjects$/u);
+    if (relationMatch) {
+      const subjectId = Number(relationMatch[1]);
+      const failed = scenario.failedRelations.has(subjectId);
+      const rows = scenario.relations.get(subjectId) || [];
+      requests.push({
+        operation: 'getRelatedSubjectsBySubjectId',
+        subjectId,
+        status: failed ? 'failed' : 'succeeded',
+        rowCount: failed ? 0 : rows.length,
+      });
+      return failed ? response(undefined, 404) : response(rows);
+    }
+
+    const detailMatch = url.match(/\/v0\/subjects\/(\d+)$/u);
+    if (detailMatch) {
+      const subjectId = Number(detailMatch[1]);
+      const failed = scenario.failedDetails.has(subjectId) || !scenario.subjects.has(subjectId);
+      requests.push({
+        operation: 'getSubjectById',
+        subjectId,
+        status: failed ? 'failed' : 'succeeded',
+      });
+      return failed ? response(undefined, 404) : response(scenario.subjects.get(subjectId));
+    }
+
+    throw new Error(`Unexpected fixture request: ${url}`);
+  };
+
+  const result = await new SeriesService(
+    new HttpClient({ fetchFn: fetchFn as typeof fetch }),
+  ).getSeriesWatchOrder(scenario.subjectId, scenario.options);
+
+  return {
+    variant: scenario.variant,
+    options: scenario.options,
+    result,
+    requests,
+    expected: scenario.expected,
+  };
+}
+
+export async function buildSeriesWatchOrderFixtureRuns(): Promise<
+  Record<SeriesFixtureVariant, SeriesWatchOrderFixtureRun>
+> {
+  const runs = await Promise.all(scenarios().map((scenario) => runScenario(scenario)));
+  return Object.fromEntries(runs.map((run) => [run.variant, run])) as Record<
+    SeriesFixtureVariant,
+    SeriesWatchOrderFixtureRun
+  >;
+}
+
+export async function buildSeriesWatchOrderFixtureResults(): Promise<
+  Record<SeriesFixtureVariant, SeriesWatchOrderResult>
+> {
+  const runs = await buildSeriesWatchOrderFixtureRuns();
+  return Object.fromEntries(
+    SERIES_FIXTURE_VARIANTS.map((variant) => [variant, runs[variant].result]),
+  ) as Record<SeriesFixtureVariant, SeriesWatchOrderResult>;
+}
+
+function comparableSource(source: FixtureEvidenceSource) {
+  return {
+    operation: source.operation,
+    path: source.path,
+    status: source.status,
+    subjectId: source.subjectId,
+    depth: source.depth ?? null,
+  };
+}
+
+function comparableRequest(request: SeriesWatchOrderFixtureRequest) {
+  return {
+    operation: request.operation,
+    subjectId: request.subjectId,
+    status: request.status,
+    rowCount: request.rowCount ?? null,
+  };
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function requireInvariant(condition: boolean, label: string): void {
+  if (!condition) throw new Error(`Invalid SeriesWatchOrder fixture: ${label}`);
+}
+
+function sortedUnique(ids: Iterable<number>): number[] {
+  return [...new Set(ids)].sort((left, right) => left - right);
+}
+
+function pathKey(path: SeriesWatchOrderResult['edges'][number]): string {
+  return [
+    path.fromId,
+    path.toId,
+    path.depth,
+    path.relation,
+    path.relationKind,
+    path.pathIds.join(','),
+    path.pathKinds.join(','),
+    path.direct,
+  ].join('|');
+}
+
+export function assertSeriesWatchOrderFixture(run: SeriesWatchOrderFixtureRun): void {
+  const { result, expected } = run;
   const relationSources = result.evidence.sources.filter(
     (source) => source.operation === 'getRelatedSubjectsBySubjectId',
   );
   const detailSources = result.evidence.sources.filter(
     (source) => source.operation === 'getSubjectById',
   );
-  const edgeTargetIds = new Set(result.edges.map((edge) => edge.toId));
-  const relatedIds = new Set(result.related.map((item) => item.id));
-  const selectedIds = new Set(
+  const expectedRelationSources = expected.sources.filter(
+    (source) => source.operation === 'getRelatedSubjectsBySubjectId',
+  );
+  const expectedDetailSources = expected.sources.filter(
+    (source) => source.operation === 'getSubjectById',
+  );
+  const childDetailSources = detailSources.filter((source) => source.subjectId !== result.root.id);
+  const selectedIds = sortedUnique(
     result.watchOrder.filter((item) => !item.isRoot).map((item) => item.id),
   );
-  const animeRelated = result.related.filter((item) => item.type === 'anime');
-  const nonAnimeRelated = result.related.filter((item) => item.type !== 'anime');
-  const failedRelations = relationSources.filter((source) => source.status === 'failed').length;
-  const childDetailSources = detailSources.filter((source) => source.subjectId !== result.root.id);
-  const failedDetails = childDetailSources.filter((source) => source.status === 'failed').length;
+  const relatedIds = sortedUnique(result.related.map((item) => item.id));
+  const edgeTargetIds = sortedUnique(result.edges.map((edge) => edge.toId));
+  const relatedPathKeys = new Set(result.edges.map(pathKey));
+  const actualRelationRequests = run.requests.filter(
+    (request) => request.operation === 'getRelatedSubjectsBySubjectId',
+  );
+  const actualDetailRequests = run.requests.filter(
+    (request) => request.operation === 'getSubjectById',
+  );
+  const actualChildDetailRequests = actualDetailRequests.filter(
+    (request) => request.subjectId !== result.root.id,
+  );
 
-  const checks: Array<[string, boolean]> = [
-    [
-      'every edge target is represented by related evidence',
-      [...edgeTargetIds].every((id) => relatedIds.has(id)),
-    ],
-    [
-      'uniqueRelatedObserved matches edge targets',
-      result.coverage.uniqueRelatedObserved === edgeTargetIds.size,
-    ],
-    [
-      'uniqueRelatedReturned matches related evidence',
-      result.coverage.uniqueRelatedReturned === result.related.length,
-    ],
-    [
-      'anime observed/selected counts match fixture rows',
-      result.coverage.animeNodesObserved === animeRelated.length &&
-        result.coverage.animeNodesSelected === selectedIds.size,
-    ],
-    [
-      'non-anime observed/returned counts match fixture rows',
-      result.coverage.nonAnimeRowsObserved === nonAnimeRelated.length &&
-        result.coverage.nonAnimeRowsReturned === nonAnimeRelated.length,
-    ],
-    [
-      'relation request evidence matches coverage',
-      result.coverage.relationRequests === relationSources.length,
-    ],
-    [
-      'detail attempt evidence matches coverage',
-      result.coverage.detailsAttempted === childDetailSources.length,
-    ],
-    ['detail failure evidence matches coverage', result.coverage.detailsFailed === failedDetails],
-    [
-      'relation failure evidence matches coverage',
-      result.coverage.relationFailures === failedRelations,
-    ],
-    [
-      'excluded count matches observed candidates outside selected steps',
-      result.excluded.count === edgeTargetIds.size - selectedIds.size,
-    ],
-    [
-      'watch-order selected rows match coverage',
-      result.coverage.animeNodesSelected === selectedIds.size,
-    ],
-  ];
+  requireInvariant(result.subjectId === result.root.id, 'root id matches requested subject id');
+  requireInvariant(
+    result.coverage.depth === run.options.depth &&
+      result.coverage.maxNodes === run.options.maxNodes &&
+      result.coverage.media === run.options.media,
+    'coverage preserves the configured traversal options',
+  );
+  requireInvariant(result.state === expected.state, 'state matches deterministic scenario');
+  requireInvariant(
+    sameJson(run.requests.map(comparableRequest), expected.requests.map(comparableRequest)),
+    'mocked API requests match the configured traversal scenario',
+  );
+  requireInvariant(
+    sameJson(result.evidence.sources.map(comparableSource), expected.sources.map(comparableSource)),
+    'evidence sources exactly match the actual mocked API attempts',
+  );
+  requireInvariant(
+    sameJson(relationSources.map(comparableSource), expectedRelationSources.map(comparableSource)),
+    'relation attempt subjects, depths, statuses, and order are truthful',
+  );
+  requireInvariant(
+    sameJson(detailSources.map(comparableSource), expectedDetailSources.map(comparableSource)),
+    'detail attempt subjects, depths, statuses, and order are truthful',
+  );
+  requireInvariant(
+    sameJson(result.edges.map(pathKey).sort(), expected.edges.map(pathKey).sort()),
+    'every returned edge has the expected truthful topology and relation evidence',
+  );
+  requireInvariant(
+    sameJson(edgeTargetIds, sortedUnique(expected.observedIds)),
+    'edge targets match every observed relation candidate',
+  );
+  requireInvariant(
+    sameJson(relatedIds, sortedUnique(expected.observedIds)),
+    'related evidence retains every observed candidate for this uncapped fixture',
+  );
+  requireInvariant(
+    edgeTargetIds.every((id) => relatedIds.includes(id)),
+    'every edge target is represented by related evidence',
+  );
 
-  if (result.state === 'not_computable') {
-    checks.push(
-      ['not-computable root is non-anime', result.root.type !== 'anime'],
-      ['not-computable has no watch-order steps', result.watchOrder.length === 0],
-      ['not-computable performs no child detail reads', result.coverage.detailsAttempted === 0],
-      [
-        'not-computable performs only the root relation read',
-        result.coverage.relationRequests === 1,
-      ],
+  for (const edge of result.edges) {
+    requireInvariant(
+      edge.pathIds[0] === result.subjectId,
+      `edge ${pathKey(edge)} is root-relative`,
     );
-  } else {
-    checks.push(
-      [
-        'anime result contains the root step',
-        result.watchOrder.some((item) => item.isRoot && item.id === result.root.id),
-      ],
-      [
-        'partial state has an explicit truncation reason',
-        result.state === 'complete' || result.coverage.truncationReasons.length > 0,
-      ],
+    requireInvariant(
+      edge.pathIds[edge.pathIds.length - 1] === edge.toId,
+      `edge ${pathKey(edge)} ends at toId`,
     );
+    requireInvariant(
+      edge.pathIds[edge.pathIds.length - 2] === edge.fromId,
+      `edge ${pathKey(edge)} has truthful immediate fromId`,
+    );
+    requireInvariant(
+      edge.pathIds.length === edge.depth + 2,
+      `edge ${pathKey(edge)} depth matches path length`,
+    );
+    requireInvariant(
+      edge.pathKinds.length === edge.pathIds.length - 1,
+      `edge ${pathKey(edge)} path kinds match path ids`,
+    );
+    requireInvariant(
+      edge.pathKinds[edge.pathKinds.length - 1] === edge.relationKind,
+      `edge ${pathKey(edge)} terminal kind matches relation kind`,
+    );
+    requireInvariant(
+      edge.direct === (edge.depth === 0),
+      `edge ${pathKey(edge)} direct flag is truthful`,
+    );
+    requireInvariant(
+      relationSources.some(
+        (source) =>
+          source.subjectId === edge.fromId &&
+          source.depth === edge.depth &&
+          source.status === 'succeeded',
+      ),
+      `edge ${pathKey(edge)} originates at a successful relation attempt at its depth`,
+    );
+    if (edge.depth > 0) {
+      requireInvariant(
+        result.edges.some(
+          (candidate) =>
+            sameJson(candidate.pathIds, edge.pathIds.slice(0, -1)) &&
+            sameJson(candidate.pathKinds, edge.pathKinds.slice(0, -1)),
+        ),
+        `edge ${pathKey(edge)} has a returned parent traversal path`,
+      );
+    }
   }
 
-  const failed = checks.filter(([, passed]) => !passed).map(([label]) => label);
-  if (failed.length > 0) {
-    throw new Error(`Invalid SeriesWatchOrder fixture: ${failed.join('; ')}`);
+  for (const item of [...result.related, ...result.watchOrder.filter((entry) => !entry.isRoot)]) {
+    for (const path of item.relationPaths) {
+      requireInvariant(path.toId === item.id, `item ${item.id} path target is truthful`);
+      requireInvariant(
+        relatedPathKeys.has(pathKey(path)),
+        `item ${item.id} path is retained in returned edge evidence`,
+      );
+    }
+  }
+
+  requireInvariant(
+    result.coverage.relationRequests === relationSources.length,
+    'relation request count',
+  );
+  requireInvariant(
+    result.coverage.relationRowsObserved === expected.relationRowsObserved,
+    'relationRowsObserved matches successful mocked response rows',
+  );
+  requireInvariant(
+    result.coverage.relationRowsObserved ===
+      actualRelationRequests
+        .filter((request) => request.status === 'succeeded')
+        .reduce((total, request) => total + (request.rowCount ?? 0), 0),
+    'relationRowsObserved matches the actual successful request row counts',
+  );
+  requireInvariant(
+    result.coverage.uniqueRelatedObserved === expected.observedIds.length,
+    'uniqueRelatedObserved matches observed candidates',
+  );
+  requireInvariant(
+    result.coverage.uniqueRelatedReturned === result.related.length,
+    'uniqueRelatedReturned matches related evidence',
+  );
+  requireInvariant(
+    result.coverage.edgeEvidenceReturned === result.edges.length &&
+      result.edges.length === expected.edgeEvidenceReturned,
+    'edgeEvidenceReturned matches returned edge evidence',
+  );
+  requireInvariant(
+    result.coverage.animeNodesObserved === expected.animeNodesObserved,
+    'animeNodesObserved matches classified anime candidates',
+  );
+  requireInvariant(
+    result.coverage.animeNodesSelected === expected.animeNodesSelected &&
+      sameJson(selectedIds, sortedUnique(expected.selectedIds)),
+    'anime selection matches the service-emitted watch order',
+  );
+  requireInvariant(
+    result.coverage.nonAnimeRowsObserved === expected.nonAnimeRowsObserved &&
+      result.coverage.nonAnimeRowsReturned === expected.nonAnimeRowsReturned &&
+      result.coverage.nonAnimeRowsReturned ===
+        result.related.filter((item) => item.type !== 'anime').length,
+    'non-anime observed/returned counts match related evidence',
+  );
+  requireInvariant(
+    result.coverage.detailsAttempted === expected.detailsAttempted &&
+      childDetailSources.length === expected.detailsAttempted &&
+      actualChildDetailRequests.length === expected.detailsAttempted,
+    'detailsAttempted matches actual detail requests',
+  );
+  requireInvariant(
+    result.coverage.detailsFetched === expected.detailsFetched &&
+      result.coverage.detailsFailed === expected.detailsFailed &&
+      result.coverage.detailsFetched ===
+        actualChildDetailRequests.filter((request) => request.status === 'succeeded').length &&
+      result.coverage.detailsFailed ===
+        actualChildDetailRequests.filter((request) => request.status === 'failed').length,
+    'detail fetched/failed counts match actual statuses',
+  );
+  requireInvariant(
+    result.coverage.relationFailures === expected.relationFailures &&
+      result.coverage.relationFailures ===
+        actualRelationRequests.filter((request) => request.status === 'failed').length,
+    'relation failure count matches actual statuses',
+  );
+  requireInvariant(
+    result.excluded.count === expected.excludedCount &&
+      result.excluded.count === result.related.length - selectedIds.length,
+    'excluded count matches unselected observed candidates',
+  );
+  requireInvariant(
+    sameJson(result.excluded.byReason, expected.excludedByReason),
+    'excluded reason totals match the service-emitted result',
+  );
+  requireInvariant(
+    result.excluded.byReason.reduce((total, item) => total + item.count, 0) ===
+      result.excluded.count,
+    'excluded reason totals sum to excluded count',
+  );
+  requireInvariant(
+    sameJson(result.coverage.truncationReasons, expected.truncationReasons),
+    'truncation reasons match the deterministic failure/depth scenario',
+  );
+  requireInvariant(
+    result.coverage.truncated === (expected.state === 'partial'),
+    'coverage truncated state is truthful',
+  );
+  requireInvariant(
+    result.coverage.edgeEvidenceTruncated === false &&
+      result.coverage.relatedEvidenceTruncated === false,
+    'these representative fixtures do not claim unexercised output caps',
+  );
+
+  if (expected.state === 'not_computable') {
+    requireInvariant(result.root.type !== 'anime', 'not-computable root is non-anime');
+    requireInvariant(result.watchOrder.length === 0, 'not-computable has no watch-order steps');
+    requireInvariant(
+      result.coverage.relationRequests === 1,
+      'not-computable reads only root relations',
+    );
+    requireInvariant(
+      result.coverage.detailsAttempted === 0,
+      'not-computable reads no child details',
+    );
+  } else {
+    requireInvariant(
+      result.watchOrder.some((item) => item.isRoot && item.id === result.root.id),
+      'anime result contains the root step',
+    );
+    requireInvariant(
+      result.capabilityStates.watchOrder === 'bounded_recommendation',
+      'anime result exposes bounded recommendation capability',
+    );
   }
 }

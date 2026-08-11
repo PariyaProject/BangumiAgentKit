@@ -5,10 +5,9 @@ import {
   renderHtmlTemplate,
   RenderService,
 } from '@bangumi-agent-kit/renderer';
-import type { SeriesWatchOrderResult } from '@bangumi-agent-kit/bangumi-core';
 import {
   assertSeriesWatchOrderFixture,
-  buildSeriesWatchOrderFixtureResults,
+  buildSeriesWatchOrderFixtureRuns,
   SERIES_FIXTURE_VARIANTS,
 } from '../../scripts/series-watch-order-fixtures.js';
 
@@ -17,182 +16,34 @@ const ONE_PIXEL_PNG = Buffer.from(
   'base64',
 );
 
-function makeResult(rootType: 'anime' | 'book' = 'anime'): SeriesWatchOrderResult {
-  const path = {
-    fromId: 100,
-    toId: 101,
-    depth: 0,
-    relation: '前传',
-    relationKind: 'prequel' as const,
-    pathIds: [100, 101],
-    pathKinds: ['prequel' as const],
-    direct: true,
-  };
-  const root = {
-    id: 100,
-    type: rootType,
-    name: 'Long Original Title',
-    nameCn: '超长中文起点条目與日本語タイトル',
-    date: '2020-01-01',
-    relationLabels: [],
-    relationKinds: [],
-    relationPaths: [],
-  };
-  const step = {
-    ...root,
-    id: 101,
-    type: 'anime' as const,
-    name: 'Prequel Original Title',
-    nameCn: '前传条目',
-    date: '2019-01-01',
-    relationLabels: ['前传'],
-    relationKinds: ['prequel' as const],
-    relationPaths: [path],
-    position: 1,
-    isRoot: false,
-    placement: 'before_root' as const,
-    placementReason: '起点直接关系标记为前传，置于起点前',
-  };
-
-  return {
-    state: rootType === 'anime' ? 'partial' : 'not_computable',
-    subjectId: 100,
-    root,
-    watchOrder:
-      rootType === 'anime'
-        ? [step, { ...root, position: 2, isRoot: true, placement: 'root', placementReason: '起点' }]
-        : [],
-    related: [
-      { ...step, depth: 0, includedInWatchOrder: rootType === 'anime' },
-      {
-        ...root,
-        id: 102,
-        type: 'book',
-        name: 'Source Book',
-        nameCn: '原作书',
-        relationLabels: ['原作'],
-        relationKinds: ['source'],
-        relationPaths: [
-          {
-            ...path,
-            toId: 102,
-            relation: '原作',
-            relationKind: 'source',
-            pathIds: [100, 102],
-            pathKinds: ['source'],
-          },
-        ],
-        depth: 0,
-        includedInWatchOrder: false,
-        exclusionReason: 'media_type_not_anime',
-      },
-    ],
-    edges: [path],
-    excluded: {
-      count: 1,
-      byReason: [{ reason: 'media_type_not_anime', count: 1 }],
-      samples: [
-        {
-          id: 102,
-          type: 'book',
-          name: 'Source Book',
-          nameCn: '原作书',
-          relationLabels: ['原作'],
-          relationKinds: ['source'],
-          relationPaths: [
-            {
-              ...path,
-              toId: 102,
-              relation: '原作',
-              relationKind: 'source',
-              pathIds: [100, 102],
-              pathKinds: ['source'],
-            },
-          ],
-          reason: 'media_type_not_anime',
-        },
-      ],
-    },
-    coverage: {
-      depth: 1,
-      maxNodes: 8,
-      media: 'all',
-      animeNodeLimit: 8,
-      nonAnimeEvidenceLimit: 8,
-      relatedLimit: 16,
-      relationRequests: 1,
-      relationRowsObserved: 2,
-      uniqueRelatedObserved: 2,
-      uniqueRelatedReturned: 2,
-      animeNodesObserved: 1,
-      animeNodesSelected: 1,
-      nonAnimeRowsObserved: 1,
-      nonAnimeRowsReturned: 1,
-      detailsAttempted: 1,
-      detailsFetched: 1,
-      detailsFailed: 0,
-      relationFailures: 0,
-      edgeEvidenceLimit: 64,
-      edgeEvidenceReturned: 1,
-      edgeEvidenceTruncated: false,
-      relatedEvidenceTruncated: false,
-      truncated: rootType === 'anime',
-      truncationReasons: rootType === 'anime' ? ['semantic-conflict'] : [],
-      retrievedAt: '2026-08-11T00:00:00.000Z',
-    },
-    capabilityStates: {
-      watchOrder: rootType === 'anime' ? 'bounded_recommendation' : 'not_computable',
-    },
-    evidence: {
-      sources: [
-        {
-          operation: 'getSubjectById',
-          path: '/v0/subjects/100',
-          status: 'succeeded',
-          subjectId: 100,
-        },
-        {
-          operation: 'getRelatedSubjectsBySubjectId',
-          path: '/v0/subjects/100/subjects',
-          status: 'succeeded',
-          subjectId: 100,
-          depth: 0,
-        },
-      ],
-      derivation: 'series-watch-order-v2',
-      retrievedAt: '2026-08-11T00:00:00.000Z',
-    },
-    warnings:
-      rootType === 'anime'
-        ? ['存在方向冲突的关系证据；冲突条目不会进入 definitive 观看步骤。']
-        : [],
-    limitations: ['这不是 Bangumi 发布的唯一官方观看顺序。'],
-  };
-}
-
 describe('series-relations renderer', () => {
-  it('accepts only service-shaped complete, partial, and not-computable QA fixtures', () => {
-    const fixtures = buildSeriesWatchOrderFixtureResults();
+  it('accepts only service-emittable complete, partial, and not-computable QA fixtures', async () => {
+    const fixtures = await buildSeriesWatchOrderFixtureRuns();
 
     for (const variant of SERIES_FIXTURE_VARIANTS) {
-      const result = fixtures[variant];
-      expect(() => assertSeriesWatchOrderFixture(result), variant).not.toThrow();
-      const viewModel = buildSeriesRelationsViewModel(result);
+      const fixture = fixtures[variant];
+      expect(() => assertSeriesWatchOrderFixture(fixture), variant).not.toThrow();
+      const viewModel = buildSeriesRelationsViewModel(fixture.result);
       expect(viewModel.state).toBe(variant === 'not-computable' ? 'not_computable' : variant);
-      expect(viewModel.coverage.uniqueRelatedObserved).toBe(result.coverage.uniqueRelatedObserved);
-      expect(viewModel.evidence.evidenceCount).toBe(result.evidence.sources.length);
+      expect(viewModel.coverage.uniqueRelatedObserved).toBe(
+        fixture.result.coverage.uniqueRelatedObserved,
+      );
+      expect(viewModel.evidence.evidenceCount).toBe(fixture.result.evidence.sources.length);
     }
   });
 
-  it('renders CJK, raw labels, exclusions, paths, coverage, and partial state at both target widths', () => {
-    const viewModel = buildSeriesRelationsViewModel(makeResult());
+  it('renders service-emittable CJK, raw labels, exclusions, paths, coverage, and partial state at both target widths', async () => {
+    const fixtures = await buildSeriesWatchOrderFixtureRuns();
+    const fixture = fixtures.partial;
+    assertSeriesWatchOrderFixture(fixture);
+    const viewModel = buildSeriesRelationsViewModel(fixture.result);
 
     for (const width of [640, 960]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
       expect(html).toContain('系列关系与观看顺序');
-      expect(html).toContain('超长中文起点条目');
+      expect(html).toContain('部分覆盖起点');
       expect(html).toContain('前传');
-      expect(html).toContain('100 → 101');
+      expect(html).toContain('300 → 301');
       expect(html).toContain('非动画媒介');
       expect(html).toContain('部分覆盖');
       expect(html).toContain('关系请求');
@@ -201,8 +52,11 @@ describe('series-relations renderer', () => {
     }
   });
 
-  it('keeps a non-anime root explicitly not computable while retaining evidence sections', () => {
-    const viewModel = buildSeriesRelationsViewModel(makeResult('book'));
+  it('keeps a service-emittable non-anime root explicitly not computable while retaining evidence sections', async () => {
+    const fixtures = await buildSeriesWatchOrderFixtureRuns();
+    const fixture = fixtures['not-computable'];
+    assertSeriesWatchOrderFixture(fixture);
+    const viewModel = buildSeriesRelationsViewModel(fixture.result);
     const html = renderHtmlTemplate(viewModel, 'bangumi-light', {}, 640);
 
     expect(viewModel.state).toBe('not_computable');
@@ -212,7 +66,9 @@ describe('series-relations renderer', () => {
   });
 
   it('caps caller-created series view models before asset resolution and screenshot rendering', async () => {
-    const base = buildSeriesRelationsViewModel(makeResult());
+    const fixtures = await buildSeriesWatchOrderFixtureRuns();
+    assertSeriesWatchOrderFixture(fixtures.complete);
+    const base = buildSeriesRelationsViewModel(fixtures.complete.result);
     const oversized = {
       ...base,
       steps: Array.from({ length: 20 }, (_, index) => ({
@@ -269,7 +125,9 @@ describe('series-relations renderer', () => {
   });
 
   it('renders every valid related and edge item up to the declared evidence caps', async () => {
-    const base = buildSeriesRelationsViewModel(makeResult());
+    const fixtures = await buildSeriesWatchOrderFixtureRuns();
+    assertSeriesWatchOrderFixture(fixtures.complete);
+    const base = buildSeriesRelationsViewModel(fixtures.complete.result);
     const validMaximum = {
       ...base,
       state: 'complete' as const,
