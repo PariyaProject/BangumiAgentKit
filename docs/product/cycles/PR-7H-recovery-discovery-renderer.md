@@ -257,8 +257,7 @@ green`
 - Candidate SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 - Exact-SHA CI: `PASS — run 31496325070; all six mandatory jobs green`
 - Implementation Frozen SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
-- Governance Record SHA: `PENDING_FREEZE_RECORD`
+- Governance Record SHA: `f81333bb1ca3da936c8d91286d5bc84d4f760fd9`
 - Merge Commit SHA: `N/A`
-- Next action: persist the Freeze Record, then execute the recorded
-  AUTO_MERGE_AFTER_FREEZE integration gates without changing the frozen
-  Candidate.
+- Next action: execute the recorded AUTO_MERGE_AFTER_FREEZE integration gates
+  without changing the frozen Candidate.

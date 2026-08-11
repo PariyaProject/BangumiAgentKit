@@ -226,8 +226,8 @@ Merge Commit SHA:
 
 Next Action:
 
-`PERSIST the Freeze Record, then execute the recorded AUTO_MERGE_AFTER_FREEZE
-integration gates without changing the frozen Candidate.`
+`EXECUTE the recorded AUTO_MERGE_AFTER_FREEZE integration gates without
+changing the frozen Candidate.`
 
 Human Authorization State:
 

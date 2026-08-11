@@ -157,9 +157,11 @@ The corrected Candidate passed exact-SHA CI run 31496325070.
   `docs/product/reviews/PR-7H-recovery-discovery-renderer/sol-2-review.md`.
 - Implementation Frozen SHA:
   `de09c0ec3b0eab3325168ec7177b835dd25e9651`
+- Freeze Record:
+  `docs/product/reviews/PR-7H-recovery-discovery-renderer/freeze-record.md`
+- Governance Record SHA: `f81333bb1ca3da936c8d91286d5bc84d4f760fd9`
 - Freeze state: `FROZEN`; integration remains pending under the recorded
   `AUTO_MERGE_AFTER_FREEZE` policy.
 
-Next action is to persist the Freeze Record and execute only the authorized
-integration lifecycle. No production or test change is permitted after this
-Freeze.
+Next action is to execute only the authorized integration lifecycle. No
+production or test change is permitted after this Freeze.

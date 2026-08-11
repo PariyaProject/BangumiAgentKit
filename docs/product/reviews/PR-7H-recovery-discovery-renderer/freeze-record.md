@@ -6,7 +6,7 @@ Recovery Base SHA: `be89a2699ed7ccc85fc2e23718319bc57e1e16b6`
 
 Implementation Frozen SHA: `de09c0ec3b0eab3325168ec7177b835dd25e9651`
 
-Governance Record SHA: `PENDING_AFTER_FREEZE_COMMIT`
+Governance Record SHA: `f81333bb1ca3da936c8d91286d5bc84d4f760fd9`
 
 Feature Branch: `codex/recovery-pr-7h-discovery-renderer`
 
