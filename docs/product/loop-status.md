@@ -254,23 +254,34 @@ Finalization plan:
 `docs/product/cycles/PR-7G-finalization.md`
 
 Finalization state:
-`CORRECTIVE_REQUIRED_STOPPED — Candidate
-5582f01318619ea8a4797b94b0a9ccec0f32b616; exact-SHA CI run 31530076120 is
-green; final Sol 1/1 returned CORRECTIVE_REQUIRED; PR #5 remains unmerged and
-no second final Sol is authorized`
+`HUMAN_REVIEW_READY — corrective Candidate
+fd48eb626b6b027031cc3884444963018beef2ed; exact-SHA CI run 31542758003 is
+green with all six mandatory jobs terminal SUCCESS; historical final Sol
+Candidate 5582f013... remains CORRECTIVE_REQUIRED; PR #5 remains unmerged`
 
-Finalization starting branch tip:
+Historical finalization starting branch tip:
 `ebcfad4406104aa2a8a7775fcca74efa204db57b`
+
+Human-directed corrective starting branch tip:
+`6aa30f83eae94975787b6f81dc8d005ce600cd35`
 
 Finalization Sol budget:
 `1 authorized / 1 consumed; the sole sequential sol_milestone_reviewer
-returned CORRECTIVE_REQUIRED; no second launch is permitted`
+returned CORRECTIVE_REQUIRED; no second launch is permitted. Corrective Sol
+launches: 0`
 
 Finalization branch and PR:
 `codex/recovery-pr-7g-series-watch-order` / `#5`; no new branch or PR.
 
 Historical branch protection:
 `codex/pr-7g-series-watch-order` remains preserved and untouched.
+
+Human-review readiness record:
+`docs/product/reviews/PR-7G-recovery-series-watch-order/human-review-ready.md`
+
+Next action:
+`STOP at HUMAN_REVIEW_READY for human independent review; do not launch Sol,
+merge PR #5, close PR #5, freeze the Candidate, or start Self-Evolution.`
 
 ---
 

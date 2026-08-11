@@ -1,6 +1,6 @@
 # PR-7G Finalization — Existing Recovery PR #5
 
-Status: `CORRECTIVE_REQUIRED_STOPPED`
+Status: `HUMAN_REVIEW_READY`
 
 This is one explicitly human-authorized finalization review cycle for the
 existing parked PR-7G Recovery PR. It is not a new Recovery Epoch, Product
@@ -11,7 +11,10 @@ Review Epoch, branch, PR, or self-evolution cycle.
 - Recovery Base: `5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e`
 - Existing PR: `#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
 - Existing branch: `codex/recovery-pr-7g-series-watch-order`
-- Starting branch tip: `ebcfad4406104aa2a8a7775fcca74efa204db57b`
+- Historical finalization starting branch tip:
+  `ebcfad4406104aa2a8a7775fcca74efa204db57b`
+- Human-directed corrective starting branch tip:
+  `6aa30f83eae94975787b6f81dc8d005ce600cd35`
 - Historical Sol #2 implementation Candidate:
   `1e0cbd97fcdd0859187534fda67ae797c33e5d0e`
 - Historical PR #2: closed without merge and superseded; its branch remains
@@ -147,10 +150,40 @@ Per the request, no second Sol launch, corrective Candidate, Freeze, or merge
 is performed. The complete report is recorded at
 `docs/product/reviews/PR-7G-recovery-series-watch-order/finalization-sol-1-review.md`.
 
-## Required finalization gate
+## Historical finalization gate
 
 After the final Candidate, exact job-level CI evidence, renderer QA, local
 validation, PR-7H compatibility evidence, and Luna consolidated audit were
 complete before the one independent Sol review. That review returned
 `CORRECTIVE_REQUIRED`; therefore PR #5 remains unmerged and the finalization
-stops for human decision with no remaining finalization review allowance.
+was historically stopped for human decision with no remaining Sol allowance.
+
+## One-time human-directed corrective terminal record
+
+This record is the explicitly authorized Luna-only corrective on the existing
+PR #5 branch. It is not a new Recovery Epoch, Product Review Epoch, branch, PR,
+Sol review cycle, or merge authorization.
+
+- Corrective Candidate: `fd48eb626b6b027031cc3884444963018beef2ed`
+- Candidate label: `HUMAN_REVIEW_CANDIDATE`
+- Previous Candidate: `5582f01318619ea8a4797b94b0a9ccec0f32b616`, preserved as
+  historical `CORRECTIVE_REQUIRED`
+- Exact-SHA CI run: `31542758003`
+- Mandatory jobs: all six terminal `SUCCESS`; job-level evidence is recorded
+  in `docs/product/reviews/PR-7G-recovery-series-watch-order/human-review-ready.md`.
+- Sol launches during this corrective: `0`
+- Freeze status: `NOT_FROZEN`
+- Merge status: `NOT_CREATED`
+- PR #5 status: `OPEN` and unmerged
+
+The production `SeriesService` was not changed. The P1 was caused by
+hand-authored Freeze-level renderer fixtures and an incomplete validator. The
+corrective now runs deterministic mocked transport through the real service,
+asserts the service's actual request/evidence result, builds the ViewModel from
+that result, and generates the complete, partial, and not-computable PNGs at
+640px and 960px. The detailed self-review, validation, visual QA, CI job IDs,
+and remaining limitations are recorded in the linked human-review report.
+
+The post-Candidate governance record is the metadata commit containing this
+ledger update and the linked report; its exact SHA is reported in the final
+handoff. The branch stops here for human independent review.
