@@ -15,6 +15,14 @@ Pull request: [#2](https://github.com/PariyaProject/BangumiAgentKit/pull/2)
 Implementation Candidate SHA:
 `3459689e69c8c14774d31a967b2161ed1e686a9d`
 
+Governance record before reviewer launch:
+`de9c2264173937c506eaec93cd88515d5e99d897`
+
+The metadata head also passed [GitHub Actions run
+31476551304](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476551304)
+across all six mandatory jobs; this does not replace the exact Candidate CI
+evidence above.
+
 The implementation Candidate is the exact production/test/docs tree reviewed
 by the local validation and remote CI below. Any later commit in this branch
 is governance metadata only unless a corrective review explicitly creates a

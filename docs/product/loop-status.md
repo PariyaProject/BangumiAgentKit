@@ -124,9 +124,17 @@ Candidate SHA:
 
 `3459689e69c8c14774d31a967b2161ed1e686a9d`
 
+Governance Record SHA:
+
+`de9c2264173937c506eaec93cd88515d5e99d897` — review-readiness metadata only
+
 Exact-SHA CI:
 
 `PASS — [GitHub Actions run 31476188502](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476188502), all six mandatory jobs green for the exact Candidate SHA`
+
+Current PR Head CI:
+
+`PASS — [GitHub Actions run 31476551304](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31476551304), all six mandatory jobs green for the metadata head`
 
 Integration Policy:
 
