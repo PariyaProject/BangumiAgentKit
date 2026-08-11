@@ -192,15 +192,23 @@ Base SHA:
 
 Current Target Base SHA:
 
-`5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`
+`69a9b5978b3494f3a08ddbce690388d34643f091`
 
 Feature Branch:
 
 `codex/recovery-pr-7h-discovery-renderer`
 
+Feature Branch State:
+
+`RETIRED locally and remotely after verified merge and frozen-SHA ancestry`
+
 Pull Request Number:
 
 `#4 — https://github.com/PariyaProject/BangumiAgentKit/pull/4`
+
+Historical PR #3:
+
+`CLOSED_SUPERSEDED; branch/history preserved as read-only provenance`
 
 Merge Strategy:
 

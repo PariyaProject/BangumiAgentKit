@@ -267,8 +267,10 @@ green`
 
 - PR #4 merged with the recorded `MERGE_COMMIT` strategy at
   `5e08fa6bc30b1a1a821806d8ffa0fda59bf1ad3f`.
-- `origin/master` was verified at the recorded Base before merge and now points
-  to the merge commit; the frozen Candidate and governance tip are ancestors.
+- `origin/master` was verified at the recorded Base before merge and now
+  contains merge commit `5e08fa6…` plus the final integration governance
+  records at `69a9b5978b3494f3a08ddbce690388d34643f091`; the frozen Candidate
+  and merge commit are ancestors.
 - Local `master` is synchronized with `origin/master`.
 - Recovery feature branch `codex/recovery-pr-7h-discovery-renderer` was safely
   retired locally and remotely after ancestry verification.
