@@ -81,7 +81,7 @@ Current Milestone State:
 
 Current Phase:
 
-`REMOTE_CI`
+`SOL_REVIEW`
 
 Current Milestone:
 
@@ -124,7 +124,7 @@ Candidate SHA:
 
 Exact-SHA CI:
 
-`RUNNING — [GitHub Actions run 31486111752](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31486111752) on exact corrected Candidate SHA; do not launch Sol #2 until all six mandatory jobs are green`
+`PASS — [GitHub Actions run 31486111752](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31486111752), all six mandatory jobs green on exact corrected Candidate SHA`
 
 Integration Policy:
 
@@ -174,10 +174,10 @@ Merge Commit SHA:
 
 Next Action:
 
-`Wait for exact corrected Candidate CI run 31486111752. If all six mandatory
-jobs pass, persist REVIEW_READY_FOR_SOL_2 and use the final PR-7H Sol #2
-launch; if CI fails, correct within the existing milestone scope. Do not
-reopen PR-7G or launch Sol #3.`
+`Launch the final sequential PR-7H Sol #2 comprehensive reviewer against exact
+Candidate 3f46a97010fff829ab6cfec132bae07359b34e2c, with Sol #1 findings and
+corrective evidence in scope. Persist the launch immediately; do not launch
+Sol #3 or reopen PR-7G.`
 
 Human Authorization State:
 
@@ -197,9 +197,10 @@ launch is authorized until the corrected Candidate is ready.`
 
 Latest Milestone Runtime Event:
 
-`CORRECTED_CANDIDATE_CREATED — 3f46a97010fff829ab6cfec132bae07359b34e2c;
-local validation passed; exact remote CI run 31486111752 is in progress. The
-final Sol #2 launch remains gated on this exact-SHA run.`
+`REVIEW_READY_FOR_SOL_2 — corrected Candidate
+3f46a97010fff829ab6cfec132bae07359b34e2c passed exact run 31486111752; all
+local validation and visual matrix evidence are persisted. The final Sol #2
+launch is authorized and consumes the last milestone/outer launch.`
 
 Execution-budget pause state:
 

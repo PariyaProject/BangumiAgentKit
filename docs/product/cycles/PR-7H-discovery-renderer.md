@@ -1,6 +1,6 @@
 # PR-7H Evidence-Bearing Subject Discovery Presentation
 
-Status: `REMOTE_CI`
+Status: `REVIEW_READY_FOR_SOL_2`
 
 This is one bounded milestone inside the active
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. Completion, parking, or review-budget
@@ -173,8 +173,8 @@ asked, what the engine observed, and what remains uncertain; structured
   frozen-SHA ancestry and synchronized `master`.
 - Previous Candidate SHA: `8dd069a0e700161d5a484af378b0ec9eb10e395c`.
 - Corrected Candidate SHA: `3f46a97010fff829ab6cfec132bae07359b34e2c`.
-- Exact CI: run `31486111752`, in progress; Sol #2 remains gated on all six
-  mandatory jobs passing on this exact SHA.
+- Exact CI: run `31486111752`, all six mandatory jobs green on the exact
+  corrected Candidate.
 - Readiness record: `docs/product/reviews/PR-7H/review-readiness.md`.
 - Sol #1 reviewer: `019ff073-7b21-79b3-ae85-6e10676edb96` (`Russell`),
   `CORRECTIVE_REQUIRED`; record:

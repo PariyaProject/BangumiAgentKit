@@ -1,6 +1,6 @@
 # PR-7H Review Readiness
 
-Status: `REMOTE_CI`
+Status: `REVIEW_READY_FOR_SOL_2`
 
 ## Candidate and remote evidence
 
@@ -12,12 +12,13 @@ Status: `REMOTE_CI`
   `3f46a97010fff829ab6cfec132bae07359b34e2c`
 - Exact mandatory CI run:
   [31486111752](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31486111752)
-- CI result: `RUNNING`; Sol #2 remains gated until
-  `provider-foundation`, `sqlite-default`, `host-integration`,
-  `postgres-compat`, `standalone-release-smoke`, and `discovery-foundation`
-  all pass on this exact Candidate.
+- CI result: `PASS`; `provider-foundation`, `sqlite-default`,
+  `host-integration`, `postgres-compat`, `standalone-release-smoke`, and
+  `discovery-foundation` all completed successfully on the exact corrected
+  Candidate.
 - Candidate worktree state: clean after the corrected implementation commit;
-  this record is governance-only.
+  current branch tip may contain governance-only readiness commits after the
+  Candidate; this record is governance-only.
 - `git diff --check`: passed.
 
 ## Product and implementation evidence
@@ -116,8 +117,7 @@ plan/evidence/coverage/limitation sections at both widths.
   running; those were correctly treated as
   `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING` and consumed no additional launch.
 - Luna corrected the findings in Candidate
-  `3f46a97010fff829ab6cfec132bae07359b34e2c`; the final PR-7H Sol #2 launch
-  is authorized only after exact run `31486111752` passes. Sol #3 is
-  prohibited.
+  `3f46a97010fff829ab6cfec132bae07359b34e2c`; exact run `31486111752` passed,
+  so the final PR-7H Sol #2 launch is authorized. Sol #3 is prohibited.
 - No P0/P1 blockers are known from Luna preflight. The independent reviewer
   must inspect the actual Base..Candidate diff and evidence before Freeze.
