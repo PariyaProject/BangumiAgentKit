@@ -1,6 +1,6 @@
 # PR-7G Recovery — Series / Watch-Order Intelligence
 
-Status: `REVIEW_READY`
+Status: `CORRECTING`
 
 This is exactly one fresh execute-only Product Review Epoch on the current
 post-PR-7H master. The historical PR-7G branch and reports are read-only source
@@ -283,8 +283,7 @@ two-SHA freeze policy.
 
 ## Current next action
 
-Launch Sol #1, the sequential comprehensive `sol_milestone_reviewer`, against
-the exact Base..Candidate range and this readiness packet. If it passes, create
-the freeze record and follow `AUTO_MERGE_AFTER_FREEZE`; if it requires
-correction, consume no additional review launch until a new Candidate and
-exact-SHA CI are ready.
+Correct the Sol #1 findings, create a new clean Candidate, rerun affected and
+full validation plus representative visual QA, and obtain exact-SHA CI before
+launching Sol #2. Sol #2 must review the corrected Candidate; Sol #3 is
+prohibited.

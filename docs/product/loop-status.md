@@ -86,7 +86,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`REVIEWING`
+`CORRECTING`
 
 Current Product Review Epoch:
 
@@ -107,7 +107,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`REVIEWING`
+`CORRECTING`
 
 Primary Model / Reasoning:
 
@@ -133,14 +133,16 @@ Reviewer Runtime Checkpoint:
 
 `sol_milestone_reviewer`, launch ordinal `Sol #1 of 2`, agent
 `019ff168-57d1-7332-bddb-7cd1ae01a286`, launched
-`2026-08-11T15:19:45Z`, deadline `2026-08-11T17:19:45Z`, Candidate
-`c9de0a46a1445650c6b2699f7c0cd35adf5daef5`, runtime `RUNNING`.
+`2026-08-11T15:19:45Z`, Candidate
+`c9de0a46a1445650c6b2699f7c0cd35adf5daef5`, runtime
+`COMPLETED_CORRECTIVE_REQUIRED`.
 Historical launches are not current budget consumption.`
 
 Reviewer Result:
 
-`RUNNING — Sol #1 is independently inspecting the exact Base..Candidate;
-no verdict is available yet.`
+`Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings;
+see docs/product/reviews/PR-7G-recovery-series-watch-order/sol-1-review.md.
+Sol #2 remains reserved for the corrected Candidate only.`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -212,9 +214,9 @@ Merge Commit SHA:
 
 Next Action:
 
-`Wait for Sol #1 to terminate. Do not edit the implementation, spend another
-review launch, rerun CI, or change the Candidate while this reviewer remains
-running.`
+`Correct all accepted Sol #1 P1 findings, add regression/visual evidence,
+create a new exact Candidate, and obtain exact-SHA CI before launching Sol #2.
+Do not spend Sol #2 against the old Candidate.`
 
 Human Authorization State:
 
