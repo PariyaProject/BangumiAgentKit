@@ -4,6 +4,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiClientProvider } from '@bangumi-agent-kit/auth';
 import {
   SubjectService,
+  SeriesService,
   EpisodeService,
   CharacterService,
   PersonService,
@@ -129,6 +130,42 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectRelations(input.subjectId);
+    },
+  });
+
+  const getSeriesWatchOrder = defineTool({
+    name: 'bangumi.get_series_watch_order',
+    description:
+      '根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，media=all 额外展示有界的非动画证据。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
+      depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),
+      maxNodes: z
+        .number()
+        .int()
+        .min(1)
+        .max(16)
+        .optional()
+        .describe('动画推荐/遍历节点上限，1-16；根条目和非动画证据不消耗此上限；默认 8'),
+      media: z
+        .enum(['anime', 'all'])
+        .optional()
+        .describe(
+          'anime 只返回动画关系证据；all 额外返回最多 8 条非动画关系证据；非动画永不进入步骤或详情请求',
+        ),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      const activeService = new SeriesService(activeClient);
+      return await activeService.getSeriesWatchOrder(input.subjectId, {
+        depth: input.depth,
+        maxNodes: input.maxNodes,
+        media: input.media,
+      });
     },
   });
 
@@ -795,6 +832,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     searchSubjects,
     getSubject,
     getSubjectRelations,
+    getSeriesWatchOrder,
     getSubjectCastTool,
     getSubjectStaff,
     getCalendar,

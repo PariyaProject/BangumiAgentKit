@@ -38,11 +38,53 @@ is bounded.
 
 ## OP-002 Franchise Watch Order
 
+Status:
+IN_PROGRESS_PR-7G_RECOVERY
+
 User question:
 
 “物语系列到底应该怎么看？”
 
-...
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+5/5
+
+Data Availability:
+4/5
+
+Reliability:
+4/5
+
+Implementation Cost:
+4/5
+
+Maintenance Risk:
+3/5
+
+Source Risk:
+2/5
+
+Possible Sources:
+Official v0 subject relations and bounded subject details
+
+Potential Capability:
+get_series_watch_order
+
+Potential Renderer:
+SeriesRelations / WatchOrder
+
+Notes:
+The fresh PR-7G Recovery Epoch starts from current post-PR-7H master. It must
+preserve directed paths, distinguish deterministic bounded recommendation from
+official canonical order, keep non-anime evidence from consuming anime node or
+hydration budgets, and expose historical review blockers as explicit conflict,
+coverage, evidence, and limitation states. Historical PR-7G branch/reports are
+read-only provenance only.
 
 ---
 

@@ -35,7 +35,190 @@ Standing execution defaults:
 
 ---
 
-## Persistent Goal Ledger
+## Current Active Goal Ledger
+
+Goal Scope:
+
+`EXECUTE exactly one fresh PR-7G Recovery Epoch for Series / Watch-Order
+Intelligence, then stop at the recorded final state.`
+
+Current-governance plan:
+`docs/product/cycles/PR-7G-recovery-series-watch-order.md`
+
+Recovery Base SHA:
+
+`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e` — independently verified before
+mutation as `HEAD == master == origin/master` with a clean working tree.
+
+Historical recovery provenance is read-only: branch
+`codex/pr-7g-series-watch-order`, tip
+`15c08455731ac1b1acafd12feecb5683a2af9384`, initial Candidate
+`3459689e69c8c14774d31a967b2161ed1e686a9d`, corrected Candidate
+`08e1c4bc14269b110c24b4694819b652284aae46`. Historical review consumption and
+the historical `PARKED_REVIEW_LIMIT` state are not current runtime state.
+
+Explicit Non-Scope:
+
+- broad recovery-planning re-audit, discovery query semantics, provider/source
+  policy, Structured Web / HTML, authentication, authorization, credentials,
+  cookies, writes, persistence, migrations, releases, packages, and tags;
+- universal franchise ontology, full graph crawling, personalization,
+  snapshots, episode scheduling, and unrelated backlog opportunities;
+- changing frozen foundations or the merged PR-7H discovery presentation;
+- modifying, merging, rebasing, rewriting, deleting, or importing historical
+  PR-7G/PR-7H branch governance state;
+- generic subagents (`0 / 0`) and any Sol launch beyond this TIER_2 budget;
+- starting another Product Cycle after this execute-only Goal stops.
+
+Stopping Condition:
+
+Stop at `MERGED_GOAL_COMPLETE`, `FROZEN_GOAL_COMPLETE` only if integration is
+safely inapplicable/blocked, or a truthful documented review-limit, protected
+decision, exact-SHA CI/infrastructure, or unsafe-repository blocker.
+
+Selected Product Goal Profile:
+
+`UNATTENDED_TIER2 / EXECUTE_ONLY_UNATTENDED`
+
+Outer Goal State:
+
+`NOT_APPLICABLE — no AUTONOMOUS_EVOLUTION_TIER2 outer Goal is active`
+
+Current Milestone State:
+
+`IMPLEMENTING`
+
+Current Product Review Epoch:
+
+`PR-7G Recovery — Series / Watch-Order Intelligence`
+
+Current Work Packages / `LUNA_STABLE` Summary:
+
+`Directed SeriesService/evidence; semantic tool; series-relations renderer;
+Standalone/catalog/docs/tests — in progress; no Work Package is yet declared
+LUNA_STABLE.`
+
+Review Boundary Rationale:
+
+`See docs/product/cycles/PR-7G-recovery-series-watch-order.md. These packages
+complete one tightly coupled series-question journey; source expansion,
+personalization, persistence, and unrelated renderer work are deferred.`
+
+Current Phase:
+
+`IMPLEMENTING`
+
+Primary Model / Reasoning:
+
+- primary: GPT-5.6 Luna;
+- preferred reasoning: `max`;
+- minimum availability fallback: `xhigh`;
+- lower Luna reasoning: prohibited.
+
+Generic Subagent Budget Authorized / Consumed:
+
+`0 / 0`
+
+Review Tier:
+
+`TIER_2` — selected before implementation for this high-value,
+evidence-sensitive traversal/renderer recovery.
+
+Total Sol Review Budget Authorized / Consumed:
+
+`2 / 0 — 2 remaining; Sol #1 not launched`
+
+Reviewer Runtime Checkpoint:
+
+`sol_milestone_reviewer`, not launched; 120-minute overall wall-clock limit.
+Historical launches are not current budget consumption.`
+
+Reviewer Result:
+
+`NOT_STARTED — historical Sol #1/#2 findings are read-only inputs; the fresh
+Base..Candidate must resolve them before launch.`
+
+Outer Sol Review Budget Authorized / Consumed:
+
+`N/A / 0 — execute-only Goal; no outer self-evolution ledger`
+
+Current Outer Review Budget State:
+
+`NOT_APPLICABLE`
+
+Candidate SHA:
+
+`NOT_CREATED`
+
+Exact-SHA CI:
+
+`NOT_RUN — implementation is in progress`
+
+Integration Policy:
+
+`AUTO_MERGE_AFTER_FREEZE`
+
+Target Base Branch:
+
+`master`
+
+Base SHA:
+
+`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e`
+
+Current Target Base SHA:
+
+`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e` at activation; re-fetch before
+integration.
+
+Feature Branch:
+
+`codex/recovery-pr-7g-series-watch-order`
+
+Feature Branch State:
+
+`ACTIVE — created from the verified Recovery Base; historical branch remains
+read-only and untouched.`
+
+Pull Request Number:
+
+`NOT_CREATED — create one PR only after the exact Candidate is ready.`
+
+Merge Strategy:
+
+`MERGE_COMMIT`
+
+Branch Cleanup Policy:
+
+`After verified merge and frozen-SHA ancestry, retire the fresh branch safely,
+synchronize local master with origin/master, and preserve historical branches.`
+
+Integration State:
+
+`NOT_STARTED`
+
+Implementation Frozen SHA:
+
+`NOT_CREATED`
+
+Merge Commit SHA:
+
+`NOT_CREATED`
+
+Next Action:
+
+`Continue current-master implementation, close the historical P1 resolution
+matrix with tests/QA, then create a clean exact Candidate and pass readiness
+before launching Sol #1.`
+
+Human Authorization State:
+
+`USER-AUTHORIZED EXECUTE-ONLY FRESH PR-7G RECOVERY; HUMAN-ON-EXCEPTION
+BOUNDARIES REMAIN ACTIVE`
+
+---
+
+## Completed PR-7H Goal Ledger (historical record)
 
 Goal Scope:
 
@@ -217,7 +400,7 @@ Merge Strategy:
 Branch Cleanup Policy:
 
 `After verified merge and frozen-SHA ancestry, retire feature branches safely,
-synchronize local `master` with `origin/master`, and preserve historical PR #3
+synchronize local `master`with`origin/master`, and preserve historical PR #3
 branch/history as evidence.`
 
 Integration State:

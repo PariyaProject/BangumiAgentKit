@@ -7,6 +7,7 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  SeriesRelationsViewModel,
 } from '../packages/renderer/dist/index.js';
 
 async function main() {
@@ -137,8 +138,216 @@ async function main() {
     `Saved calendar.png (${calendarResult.width}x${calendarResult.height}, ${calendarResult.buffer.length} bytes)`,
   );
 
+  // 6. Series / Watch-Order evidence fixtures
+  const seriesPath: SeriesRelationsViewModel['edges'][number] = {
+    fromId: 100,
+    toId: 101,
+    depth: 0,
+    relation: '前传',
+    relationKind: 'prequel',
+    pathIds: [100, 101],
+    pathKinds: ['prequel'],
+    direct: true,
+  };
+  const seriesStep: SeriesRelationsViewModel['steps'][number] = {
+    id: 101,
+    name: 'Prequel Original Title',
+    nameCn: '前传条目：長い日本語タイトル與中文说明',
+    type: '动画',
+    date: '2019-01-01',
+    relationLabels: ['前传'],
+    relationKinds: ['prequel'],
+    relationPaths: [seriesPath],
+    depth: 0,
+    includedInWatchOrder: true,
+    position: 1,
+    isRoot: false,
+    placement: 'before_root' as const,
+    placementReason: '起点直接关系标记为前传，置于起点前',
+  };
+  const seriesVm: SeriesRelationsViewModel = {
+    template: 'series-relations',
+    version: 1,
+    state: 'partial',
+    subjectId: 100,
+    root: {
+      id: 100,
+      name: 'Long Original Title',
+      nameCn: '超长中文起点条目與日本語タイトル',
+      type: '动画',
+      date: '2020-01-01',
+    },
+    steps: [
+      seriesStep,
+      {
+        ...seriesStep,
+        id: 100,
+        name: 'Long Original Title',
+        nameCn: '超长中文起点条目與日本語タイトル',
+        relationLabels: [],
+        relationKinds: [],
+        relationPaths: [],
+        depth: 0,
+        position: 2,
+        isRoot: true,
+        placement: 'root' as const,
+        placementReason: '请求的起始条目',
+      },
+      ...Array.from({ length: 4 }, (_, index) => ({
+        ...seriesStep,
+        id: 102 + index,
+        name: `Sequel Original Title ${index + 1}`,
+        nameCn: `续集条目 ${index + 1}：缺失封面与長文本`.repeat(2),
+        relationLabels: ['续集'],
+        relationKinds: ['sequel'],
+        relationPaths: [
+          {
+            ...seriesPath,
+            toId: 102 + index,
+            relation: '续集',
+            relationKind: 'sequel',
+            pathIds: [100, 102 + index],
+            pathKinds: ['sequel'],
+          },
+        ],
+        date: undefined,
+        position: index + 3,
+        placement: 'after_root' as const,
+        placementReason: '起点直接关系标记为续集，置于起点后',
+      })),
+    ],
+    related: [
+      {
+        ...seriesStep,
+        id: 200,
+        name: 'Original Book',
+        nameCn: '原作书籍',
+        type: '书籍',
+        relationLabels: ['原作'],
+        relationKinds: ['source'],
+        relationPaths: [
+          {
+            ...seriesPath,
+            toId: 200,
+            relation: '原作',
+            relationKind: 'source',
+            pathIds: [100, 200],
+            pathKinds: ['source'],
+          },
+        ],
+        depth: 0,
+        includedInWatchOrder: false,
+        exclusionReason: 'media_type_not_anime',
+      },
+      {
+        ...seriesStep,
+        id: 201,
+        name: 'Unknown Relation',
+        nameCn: '未映射关系',
+        type: '动画',
+        relationLabels: ['相关作品'],
+        relationKinds: ['unknown'],
+        relationPaths: [
+          {
+            ...seriesPath,
+            toId: 201,
+            relation: '相关作品',
+            relationKind: 'unknown',
+            pathIds: [100, 201],
+            pathKinds: ['unknown'],
+          },
+        ],
+        depth: 0,
+        includedInWatchOrder: false,
+        exclusionReason: 'relation_not_watch_step',
+      },
+    ],
+    edges: [seriesPath],
+    excluded: {
+      count: 2,
+      byReason: [
+        { reason: 'media_type_not_anime', count: 1 },
+        { reason: 'relation_not_watch_step', count: 1 },
+      ],
+      samples: [],
+    },
+    coverage: {
+      depth: 1,
+      maxNodes: 8,
+      media: 'all',
+      animeNodeLimit: 8,
+      nonAnimeEvidenceLimit: 8,
+      relatedLimit: 16,
+      relationRequests: 3,
+      relationRowsObserved: 8,
+      uniqueRelatedObserved: 8,
+      uniqueRelatedReturned: 6,
+      animeNodesObserved: 7,
+      animeNodesSelected: 5,
+      nonAnimeRowsObserved: 1,
+      nonAnimeRowsReturned: 1,
+      detailsAttempted: 5,
+      detailsFetched: 5,
+      detailsFailed: 0,
+      relationFailures: 1,
+      edgeEvidenceLimit: 64,
+      edgeEvidenceReturned: 1,
+      edgeEvidenceTruncated: false,
+      relatedEvidenceTruncated: true,
+      truncated: true,
+      truncationReasons: ['relation-read-failure', 'related-evidence=16'],
+      retrievedAt: '2026-08-11T00:00:00.000Z',
+    },
+    evidence: {
+      operations: ['条目详情', '条目关系'],
+      evidenceCount: 8,
+      derivation: 'series-watch-order-v2',
+      retrievedAt: '2026-08-11T00:00:00.000Z',
+    },
+    warnings: ['共有 1 个可选关系读取失败；未读取的分支不会被假设为完整。'],
+    limitations: ['这不是 Bangumi 发布的唯一官方观看顺序。', '关系源不保证覆盖整个系列。'],
+  };
+  for (const width of [640, 960]) {
+    const seriesResult = await renderService.renderCard(seriesVm, {
+      width,
+      deviceScaleFactor: 1,
+    });
+    const filename = `series-relations-${width}.png`;
+    fs.writeFileSync(path.join(outputDir, filename), seriesResult.buffer);
+    console.log(
+      `Saved ${filename} (${seriesResult.width}x${seriesResult.height}, ${seriesResult.buffer.length} bytes)`,
+    );
+  }
+  const notComputableSeries: SeriesRelationsViewModel = {
+    ...seriesVm,
+    state: 'not_computable',
+    root: { ...seriesVm.root, type: '书籍' },
+    steps: [],
+    coverage: {
+      ...seriesVm.coverage,
+      animeNodesSelected: 0,
+      detailsAttempted: 0,
+      detailsFetched: 0,
+      relatedEvidenceTruncated: false,
+      truncated: false,
+      truncationReasons: [],
+    },
+    warnings: ['起始条目不是动画；本次结果只能展示关系证据，不能计算动画观看步骤。'],
+  };
+  const notComputableResult = await renderService.renderCard(notComputableSeries, {
+    width: 640,
+    deviceScaleFactor: 1,
+  });
+  fs.writeFileSync(
+    path.join(outputDir, 'series-relations-not-computable-640.png'),
+    notComputableResult.buffer,
+  );
+  console.log(
+    `Saved series-relations-not-computable-640.png (${notComputableResult.width}x${notComputableResult.height}, ${notComputableResult.buffer.length} bytes)`,
+  );
+
   await renderService.close();
-  console.log('Successfully generated all 5 fixture images.');
+  console.log('Successfully generated all renderer fixture images.');
 }
 
 main().catch((err) => {

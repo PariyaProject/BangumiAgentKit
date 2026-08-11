@@ -6,6 +6,7 @@ import type {
   RevisionIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
+  SeriesWatchOrderResult,
 } from '@bangumi-agent-kit/bangumi-core';
 import type {
   SubjectCardViewModel,
@@ -21,6 +22,9 @@ import type {
   CalendarDayViewModel,
   PersonProfileCreditViewModel,
   PersonProfileViewModel,
+  SeriesRelationsViewModel,
+  SeriesRelationsRelatedViewModel,
+  SeriesRelationPathViewModel,
 } from '../view-models/index.js';
 
 export function truncateText(
@@ -540,6 +544,133 @@ export function buildDiscoveryResultsViewModel(
       state: warning.state,
     })),
     limitations,
+  };
+}
+
+const SERIES_RELATION_TYPE_LABELS: Record<string, string> = {
+  anime: '动画',
+  book: '书籍',
+  music: '音乐',
+  game: '游戏',
+  real: '三次元',
+  other: '其他',
+};
+
+const SERIES_MAX_RENDERED_PATHS = 8;
+const SERIES_MAX_RENDERED_EDGES = 64;
+
+function seriesTypeLabel(type: string): string {
+  return SERIES_RELATION_TYPE_LABELS[type] || type;
+}
+
+function seriesPathViewModel(
+  path: SeriesWatchOrderResult['edges'][number],
+): SeriesRelationPathViewModel {
+  return {
+    fromId: path.fromId,
+    toId: path.toId,
+    depth: path.depth,
+    relation: path.relation,
+    relationKind: path.relationKind,
+    pathIds: path.pathIds.slice(0, SERIES_MAX_RENDERED_PATHS + 1),
+    pathKinds: path.pathKinds.slice(0, SERIES_MAX_RENDERED_PATHS),
+    direct: path.direct,
+  };
+}
+
+function seriesRelatedViewModel(
+  item: SeriesWatchOrderResult['related'][number],
+): SeriesRelationsRelatedViewModel {
+  return {
+    id: item.id,
+    name: item.name,
+    nameCn: item.nameCn || item.name,
+    type: seriesTypeLabel(item.type),
+    date: item.date,
+    image: item.image,
+    relationLabels: item.relationLabels,
+    relationKinds: item.relationKinds,
+    relationPaths: item.relationPaths.slice(0, SERIES_MAX_RENDERED_PATHS).map(seriesPathViewModel),
+    depth: item.depth,
+    includedInWatchOrder: item.includedInWatchOrder,
+    ...(item.exclusionReason ? { exclusionReason: item.exclusionReason } : {}),
+  };
+}
+
+export function buildSeriesRelationsViewModel(
+  result: SeriesWatchOrderResult,
+): SeriesRelationsViewModel {
+  const relatedLimit = Math.max(1, result.coverage.relatedLimit);
+  const related = result.related.slice(0, relatedLimit).map(seriesRelatedViewModel);
+  const steps = result.watchOrder.slice(0, result.coverage.maxNodes + 1).map((item) => ({
+    ...seriesRelatedViewModel({
+      ...item,
+      depth: item.derivedDepth ? item.derivedDepth - 1 : 0,
+      includedInWatchOrder: true,
+    }),
+    position: item.position,
+    isRoot: item.isRoot,
+    placement: item.placement,
+    placementReason: item.placementReason,
+    ...(item.derivedDepth === undefined ? {} : { derivedDepth: item.derivedDepth }),
+  }));
+  const edges = result.edges.slice(0, SERIES_MAX_RENDERED_EDGES).map(seriesPathViewModel);
+  const samples = result.excluded.samples.slice(0, 12).map((sample) => ({
+    id: sample.id,
+    name: sample.name,
+    nameCn: sample.nameCn || sample.name,
+    type: seriesTypeLabel(sample.type),
+    relationLabels: sample.relationLabels,
+    relationKinds: sample.relationKinds,
+    relationPaths: sample.relationPaths
+      .slice(0, SERIES_MAX_RENDERED_PATHS)
+      .map(seriesPathViewModel),
+    depth: sample.relationPaths[0]?.depth ?? 0,
+    includedInWatchOrder: false,
+    exclusionReason: sample.reason,
+  }));
+  const sourceOperations = [
+    ...new Set(
+      result.evidence.sources.map((source) =>
+        source.operation === 'getSubjectById' ? '条目详情' : '条目关系',
+      ),
+    ),
+  ];
+
+  return {
+    template: 'series-relations',
+    version: 1,
+    state:
+      result.capabilityStates.watchOrder === 'not_computable' ? 'not_computable' : result.state,
+    subjectId: result.subjectId,
+    root: {
+      id: result.root.id,
+      name: result.root.name,
+      nameCn: result.root.nameCn || result.root.name,
+      type: seriesTypeLabel(result.root.type),
+      date: result.root.date,
+      image: result.root.image,
+    },
+    steps,
+    related,
+    edges,
+    excluded: {
+      count: result.excluded.count,
+      byReason: result.excluded.byReason.map((item) => ({
+        reason: item.reason,
+        count: item.count,
+      })),
+      samples,
+    },
+    coverage: { ...result.coverage },
+    evidence: {
+      operations: sourceOperations,
+      evidenceCount: result.evidence.sources.length,
+      derivation: result.evidence.derivation,
+      retrievedAt: result.evidence.retrievedAt,
+    },
+    warnings: result.warnings,
+    limitations: result.limitations,
   };
 }
 

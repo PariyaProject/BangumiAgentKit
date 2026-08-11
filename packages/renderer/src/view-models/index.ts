@@ -123,6 +123,112 @@ export interface DiscoveryResultsViewModel {
   limitations: string[];
 }
 
+export type SeriesRelationsState = 'complete' | 'partial' | 'not_computable';
+
+export type SeriesRelationsExclusionReason =
+  | 'media_type_not_anime'
+  | 'root_not_anime'
+  | 'relation_not_watch_step'
+  | 'conflicting_direct_relations'
+  | 'conflicting_paths'
+  | 'node_cap'
+  | 'depth_evidence_only'
+  | 'evidence_cap';
+
+export interface SeriesRelationPathViewModel {
+  fromId: number;
+  toId: number;
+  depth: number;
+  relation: string;
+  relationKind: string;
+  pathIds: number[];
+  pathKinds: string[];
+  direct: boolean;
+}
+
+export interface SeriesRelationsRelatedViewModel {
+  id: number;
+  name: string;
+  nameCn?: string;
+  type: string;
+  date?: string;
+  image?: string;
+  relationLabels: string[];
+  relationKinds: string[];
+  relationPaths: SeriesRelationPathViewModel[];
+  depth: number;
+  includedInWatchOrder: boolean;
+  exclusionReason?: SeriesRelationsExclusionReason;
+}
+
+export interface SeriesRelationsStepViewModel extends SeriesRelationsRelatedViewModel {
+  position: number;
+  isRoot: boolean;
+  placement: 'root' | 'before_root' | 'after_root';
+  placementReason: string;
+  derivedDepth?: number;
+}
+
+export interface SeriesRelationsViewModel {
+  template: 'series-relations';
+  version: 1;
+  state: SeriesRelationsState;
+  subjectId: number;
+  root: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    type: string;
+    date?: string;
+    image?: string;
+  };
+  steps: SeriesRelationsStepViewModel[];
+  related: SeriesRelationsRelatedViewModel[];
+  edges: SeriesRelationPathViewModel[];
+  excluded: {
+    count: number;
+    byReason: Array<{ reason: SeriesRelationsExclusionReason; count: number }>;
+    samples: Array<
+      SeriesRelationsRelatedViewModel & { exclusionReason: SeriesRelationsExclusionReason }
+    >;
+  };
+  coverage: {
+    depth: number;
+    maxNodes: number;
+    media: 'anime' | 'all';
+    animeNodeLimit: number;
+    nonAnimeEvidenceLimit: number;
+    relatedLimit: number;
+    relationRequests: number;
+    relationRowsObserved: number;
+    uniqueRelatedObserved: number;
+    uniqueRelatedReturned: number;
+    animeNodesObserved: number;
+    animeNodesSelected: number;
+    nonAnimeRowsObserved: number;
+    nonAnimeRowsReturned: number;
+    detailsAttempted: number;
+    detailsFetched: number;
+    detailsFailed: number;
+    relationFailures: number;
+    edgeEvidenceLimit: number;
+    edgeEvidenceReturned: number;
+    edgeEvidenceTruncated: boolean;
+    relatedEvidenceTruncated: boolean;
+    truncated: boolean;
+    truncationReasons: string[];
+    retrievedAt: string;
+  };
+  evidence: {
+    operations: string[];
+    evidenceCount: number;
+    derivation: string;
+    retrievedAt: string;
+  };
+  warnings: string[];
+  limitations: string[];
+}
+
 export interface CastItemViewModel {
   character: {
     id: number;
@@ -357,6 +463,7 @@ export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
   | DiscoveryResultsViewModel
+  | SeriesRelationsViewModel
   | CastCardViewModel
   | CollectionProgressViewModel
   | CalendarViewModel

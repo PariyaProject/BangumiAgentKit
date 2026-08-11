@@ -59,6 +59,16 @@ PNG Buffer + RenderResult Metadata
 The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates
 (`subject-card`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `calendar`, `revision-timeline`, and `person-profile`).
+It also includes `series-relations` for bounded Series / Watch-Order evidence.
+
+`series-relations` is the bounded Series / Watch-Order companion card. It shows
+the selected steps separately from directed relation evidence, preserves raw
+labels and exclusion reasons, and reports depth, anime-node, non-anime, edge,
+failure, and truncation coverage. The renderer caps visible steps, related
+evidence, and edges and marks an otherwise complete model partial when those
+display caps hide data. Representative QA must include 640px and 960px widths,
+CJK text, missing images, conflicts, partial failures, and a non-computable
+non-anime root.
 
 The `discovery-results` card is the human-facing companion to
 `bangumi.query_subjects`: it preserves controlled query facets, official

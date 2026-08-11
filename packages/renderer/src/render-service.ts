@@ -29,6 +29,9 @@ export interface RenderResult {
 export const RENDERER_VERSION = '1.0.0';
 
 const DISCOVERY_MAX_RENDERED_ITEMS = 12;
+const SERIES_MAX_RENDERED_STEPS = 17;
+const SERIES_MAX_RENDERED_RELATED = 24;
+const SERIES_MAX_RENDERED_EDGES = 64;
 
 export function canonicalizeJson(obj: unknown): string {
   if (obj === null || typeof obj !== 'object') {
@@ -74,6 +77,22 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
     for (const item of viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS)) {
       if (item.image) urls.add(item.image);
     }
+  } else if (viewModel.template === 'series-relations') {
+    if (viewModel.root.image) urls.add(viewModel.root.image);
+    const stepLimit = Math.min(
+      SERIES_MAX_RENDERED_STEPS,
+      Math.max(1, Math.floor(viewModel.coverage.maxNodes) + 1),
+    );
+    for (const item of viewModel.steps.slice(0, stepLimit)) {
+      if (item.image) urls.add(item.image);
+    }
+    const relatedLimit = Math.min(
+      SERIES_MAX_RENDERED_RELATED,
+      Math.max(0, Math.floor(viewModel.coverage.relatedLimit)),
+    );
+    for (const item of viewModel.related.slice(0, relatedLimit)) {
+      if (item.image) urls.add(item.image);
+    }
   } else if (viewModel.template === 'cast-card') {
     for (const item of viewModel.items) {
       if (item.character.image) urls.add(item.character.image);
@@ -97,6 +116,54 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
 }
 
 function normalizeRenderViewModel(viewModel: RenderViewModel): RenderViewModel {
+  if (viewModel.template === 'series-relations') {
+    const stepLimit = Math.min(
+      SERIES_MAX_RENDERED_STEPS,
+      Math.max(1, Math.floor(viewModel.coverage.maxNodes) + 1),
+    );
+    const relatedLimit = Math.min(
+      SERIES_MAX_RENDERED_RELATED,
+      Math.max(0, Math.floor(viewModel.coverage.relatedLimit)),
+    );
+    const edgeLimit = Math.min(
+      SERIES_MAX_RENDERED_EDGES,
+      Math.max(0, Math.floor(viewModel.coverage.edgeEvidenceLimit)),
+    );
+    const steps = viewModel.steps.slice(0, stepLimit);
+    const related = viewModel.related.slice(0, relatedLimit);
+    const edges = viewModel.edges.slice(0, edgeLimit);
+    const renderTruncated =
+      steps.length < viewModel.steps.length ||
+      related.length < viewModel.related.length ||
+      edges.length < viewModel.edges.length;
+
+    return {
+      ...viewModel,
+      steps,
+      related,
+      edges,
+      ...(renderTruncated
+        ? {
+            state:
+              viewModel.state === 'not_computable'
+                ? ('not_computable' as const)
+                : ('partial' as const),
+            warnings: [...new Set([...viewModel.warnings, '渲染器对关系证据应用了安全显示上限。'])],
+          }
+        : {}),
+      coverage: {
+        ...viewModel.coverage,
+        uniqueRelatedReturned: related.length,
+        edgeEvidenceReturned: edges.length,
+        relatedEvidenceTruncated:
+          viewModel.coverage.relatedEvidenceTruncated || related.length < viewModel.related.length,
+        edgeEvidenceTruncated:
+          viewModel.coverage.edgeEvidenceTruncated || edges.length < viewModel.edges.length,
+        truncated: viewModel.coverage.truncated || renderTruncated,
+      },
+    };
+  }
+
   if (viewModel.template !== 'discovery-results') return viewModel;
 
   const items = viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS);
