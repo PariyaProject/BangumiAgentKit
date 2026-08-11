@@ -115,7 +115,7 @@ additional launches`
 
 Latest Reviewer Runtime Event:
 
-`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — two bounded waits returned timed_out
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — three bounded waits returned timed_out
 with no final status; the same reviewer remains open, so launch consumption is
 unchanged and waiting continues.`
 
