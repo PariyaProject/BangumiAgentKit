@@ -1,6 +1,6 @@
 # PR-7G Finalization — Existing Recovery PR #5
 
-Status: `REVIEW_READY`
+Status: `CORRECTIVE_REQUIRED_STOPPED`
 
 This is one explicitly human-authorized finalization review cycle for the
 existing parked PR-7G Recovery PR. It is not a new Recovery Epoch, Product
@@ -26,7 +26,7 @@ The historical Recovery Epoch remains terminal and immutable:
 This finalization allowance is separate:
 
 - Finalization reviewer: `sol_milestone_reviewer`
-- Finalization Sol budget: `1 authorized / 0 consumed`
+- Finalization Sol budget: `1 authorized / 1 consumed`
 - Maximum finalization launches: `1`
 - Generic subagents: `0 authorized / 0 launched`
 - Integration policy: `AUTO_MERGE_AFTER_FREEZE`
@@ -39,12 +39,18 @@ Root cause: fixture/evidence construction only. The production
 `SeriesWatchOrderResult` path was not found to fabricate the contradictory
 states; the old hand-authored renderer fixtures did.
 
-Resolution: `scripts/series-watch-order-fixtures.ts` constructs typed,
-service-shaped complete, partial, and not-computable results. The fixture
-generator converts each result through `buildSeriesRelationsViewModel`, and
-`assertSeriesWatchOrderFixture` checks request/source, relation-row/edge,
-selected/excluded, media, detail, state, and truncation invariants before PNG
-generation. Renderer regression tests run the same invariant-checked fixtures.
+Attempted resolution: `scripts/series-watch-order-fixtures.ts` constructs
+typed complete, partial, and not-computable results. The fixture generator
+converts each result through `buildSeriesRelationsViewModel`, and
+`assertSeriesWatchOrderFixture` checks several request/source, selected/
+excluded, media, detail, state, and truncation invariants before PNG
+generation. Renderer regression tests run the same fixtures.
+
+Final Sol disposition: `CORRECTIVE_REQUIRED`. The fixtures still do not match
+production relation-request topology and one deep edge has inconsistent
+`fromId`/`pathIds`; the validator also misses required topology, row, detail,
+and depth-driven attempt invariants. See
+`docs/product/reviews/PR-7G-recovery-series-watch-order/finalization-sol-1-review.md`.
 
 ### P1-2 — exact-SHA CI coherence
 
@@ -80,11 +86,13 @@ Candidate SHA.
   - `discovery-foundation` (`93907731920`)
 - Historical run `31508533985` remains unresolved historical evidence and was
   not reused for this gate.
-- Final Sol verdict: `NOT_RUN`
+- Final Sol verdict: `CORRECTIVE_REQUIRED` (reviewer
+  `019ff266-17c0-7050-aa84-969263f204cf`; exactly one launch consumed)
 - Freeze status: `NOT_FROZEN`
 - Merge commit: `NOT_CREATED`
-- Current branch state: exact Candidate pushed to existing PR #5 branch; PR #5
-  remains open and unmerged; historical branch untouched.
+- Current branch state: governance tip
+  `42c22e05317748f540dfdcbef67d720194de90e8` is pushed to existing PR #5;
+  PR #5 remains open and unmerged; historical branch untouched.
 
 ## Finalization readiness evidence
 
@@ -109,9 +117,9 @@ The exact Candidate was validated on the clean Candidate tree with:
 
 Consolidated Luna preflight:
 
-- P1-1 is closed at the fixture/evidence layer with typed, invariant-checked
-  complete, partial, and not-computable service-shaped results; production
-  state/counters are not fabricated by the renderer fixture path.
+- P1-1 was the intended fixture/evidence correction, but the final Sol found
+  it remains unresolved: the typed fixtures are not yet fully
+  service-emittable, and the invariant set is incomplete.
 - P1-2 is closed by run `31530076120` at the exact Candidate SHA with every
   required job terminal-success.
 - Root-relation failure semantics remain `NOT_FOUND`, non-retryable, and are
@@ -131,14 +139,17 @@ Consolidated Luna preflight:
   directed evidence, and partial-state messaging. The high-cardinality
   artifact measured 640x3631 and 960x3490, versus the historical 640x6925.
 
-The finalization reviewer is now authorized exactly once, sequentially, with
-the historical `2 / 2` budget preserved and the separate finalization ledger
-at `1 authorized / 0 consumed`. No Sol launch has occurred yet.
+The finalization reviewer was authorized exactly once, sequentially, with the
+historical `2 / 2` budget preserved. The separate finalization ledger is now
+`1 authorized / 1 consumed`; its sole verdict is `CORRECTIVE_REQUIRED`.
+Per the request, no second Sol launch, corrective Candidate, Freeze, or merge
+is performed. The complete report is recorded at
+`docs/product/reviews/PR-7G-recovery-series-watch-order/finalization-sol-1-review.md`.
 
 ## Required finalization gate
 
 After the final Candidate, exact job-level CI evidence, renderer QA, local
-validation, PR-7H compatibility evidence, and Luna consolidated audit are
-complete, launch exactly one independent Sol review. Merge PR #5 only if that
-review returns `PASS`; otherwise persist the findings and stop with PR #5
-unmerged for human decision.
+validation, PR-7H compatibility evidence, and Luna consolidated audit were
+complete before the one independent Sol review. That review returned
+`CORRECTIVE_REQUIRED`; therefore PR #5 remains unmerged and the finalization
+stops for human decision with no remaining finalization review allowance.

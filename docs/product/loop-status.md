@@ -254,16 +254,17 @@ Finalization plan:
 `docs/product/cycles/PR-7G-finalization.md`
 
 Finalization state:
-`REVIEW_READY — Candidate 5582f01318619ea8a4797b94b0a9ccec0f32b616; exact-SHA
-CI run 31530076120 is green at the required job level; one final Sol launch
-remains authorized`
+`CORRECTIVE_REQUIRED_STOPPED — Candidate
+5582f01318619ea8a4797b94b0a9ccec0f32b616; exact-SHA CI run 31530076120 is
+green; final Sol 1/1 returned CORRECTIVE_REQUIRED; PR #5 remains unmerged and
+no second final Sol is authorized`
 
 Finalization starting branch tip:
 `ebcfad4406104aa2a8a7775fcca74efa204db57b`
 
 Finalization Sol budget:
-`1 authorized / 0 consumed; exactly one sequential sol_milestone_reviewer
-launch is permitted`
+`1 authorized / 1 consumed; the sole sequential sol_milestone_reviewer
+returned CORRECTIVE_REQUIRED; no second launch is permitted`
 
 Finalization branch and PR:
 `codex/recovery-pr-7g-series-watch-order` / `#5`; no new branch or PR.
