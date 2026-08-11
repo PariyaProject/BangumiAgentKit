@@ -7,6 +7,7 @@ export interface PersonAvatarProps {
   subName?: string;
   theme: ThemeTokens;
   size?: number;
+  showName?: boolean;
 }
 
 export const PersonAvatar: React.FC<PersonAvatarProps> = ({
@@ -15,6 +16,7 @@ export const PersonAvatar: React.FC<PersonAvatarProps> = ({
   subName,
   theme,
   size = 48,
+  showName = true,
 }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
@@ -49,12 +51,14 @@ export const PersonAvatar: React.FC<PersonAvatarProps> = ({
           {Array.from(name)[0] || '?'}
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontSize: '14px', fontWeight: 600, color: theme.text }}>{name}</span>
-        {subName && (
-          <span style={{ fontSize: '12px', color: theme.textMuted }}>{subName}</span>
-        )}
-      </div>
+      {(showName || subName) && (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {showName && (
+            <span style={{ fontSize: '14px', fontWeight: 600, color: theme.text }}>{name}</span>
+          )}
+          {subName && <span style={{ fontSize: '12px', color: theme.textMuted }}>{subName}</span>}
+        </div>
+      )}
     </div>
   );
 };

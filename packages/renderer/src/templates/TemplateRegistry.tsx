@@ -6,6 +6,8 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  RevisionTimelineViewModel,
+  PersonProfileViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -14,11 +16,18 @@ import { SearchListCard } from './SearchListCard.js';
 import { CastCard } from './CastCard.js';
 import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
+import { RevisionTimelineCard } from './RevisionTimelineCard.js';
+import { PersonProfileCard } from './PersonProfileCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
   version: number;
-  render(viewModel: T, theme: ThemeTokens, resolvedImages?: Record<string, string>): React.ReactNode;
+  render(
+    viewModel: T,
+    theme: ThemeTokens,
+    resolvedImages?: Record<string, string>,
+    width?: number,
+  ): React.ReactNode;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,15 +73,34 @@ registerTemplate<CollectionProgressViewModel>({
 registerTemplate<CalendarViewModel>({
   id: 'calendar',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <CalendarCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <CalendarCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
+  ),
+});
+
+registerTemplate<RevisionTimelineViewModel>({
+  id: 'revision-timeline',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <RevisionTimelineCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<PersonProfileViewModel>({
+  id: 'person-profile',
+  version: 1,
+  render: (vm, theme, resolvedImages, width) => (
+    <PersonProfileCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 
 export function getTemplate(templateId: string): CardTemplate {
   const t = templates.get(templateId);
   if (!t) {
-    throw new RendererError('RENDER_TEMPLATE_NOT_FOUND', `Template "${templateId}" is not registered.`);
+    throw new RendererError(
+      'RENDER_TEMPLATE_NOT_FOUND',
+      `Template "${templateId}" is not registered.`,
+    );
   }
   return t;
 }

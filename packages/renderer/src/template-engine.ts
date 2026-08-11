@@ -7,11 +7,12 @@ export function renderHtmlTemplate(
   viewModel: RenderViewModel,
   themeName: RenderThemeName = 'bangumi-dark',
   resolvedImages?: Record<string, string>,
+  width?: number,
 ): string {
   const theme = getThemeTokens(themeName);
   const template = getTemplate(viewModel.template);
 
-  const reactElement = template.render(viewModel, theme, resolvedImages);
+  const reactElement = template.render(viewModel, theme, resolvedImages, width);
   const staticMarkup = ReactDOMServer.renderToStaticMarkup(reactElement);
 
   const cspMeta = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none';" />`;

@@ -178,6 +178,38 @@
     }
   },
   {
+    "name": "bangumi.get_calendar_intelligence",
+    "description": "获取带播出日期、评分、类型、排名、来源证据与覆盖状态的有界 Bangumi 日历摘要。weekday 使用 1=周一至 7=周日；官方源不提供具体时区或播出时刻。适合回答“本周哪些作品什么时候播”；不把源顺序当作推荐，也不读取个人收藏状态。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "weekday": {
+          "description": "限定星期：1=周一、2=周二、3=周三、4=周四、5=周五、6=周六、7=周日；不传返回整周",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "maxPerDay": {
+          "description": "每天最多返回条数，默认 3",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "maxTotal": {
+          "description": "最多返回总条数，默认 21",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 56
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_character",
     "description": "获取指定虚拟角色的详细信息（简介、相关条目、声优等）。",
     "auth": "none",
@@ -351,6 +383,43 @@
     }
   },
   {
+    "name": "bangumi.get_person_profile",
+    "description": "生成一个现实人物/声优/制作人员的结构化履历摘要：身份、媒介分布、原始职位/角色标签、去重作品/角色计数和受限关系明细。用于 Agent 一次回答“这个人参与过什么”；时间窗口、最近活动、工作量趋势和合作次数需要额外数据，本工具不会猜测。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "includeCredits": {
+          "description": "是否返回受限的作品/角色关系明细；默认 true",
+          "type": "boolean"
+        },
+        "maxSubjects": {
+          "description": "作品关系最多返回条数",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "maxCharacters": {
+          "description": "角色关系最多返回条数",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": ["personId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_revision",
     "description": "查看单条编辑修订记录的详细变更。",
     "auth": "none",
@@ -373,6 +442,44 @@
         }
       },
       "required": ["entityType", "revisionId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.get_revision_intelligence",
+    "description": "获取指定条目、章节、角色或人物的有界官方修订摘要。返回 observed/returned/total 覆盖、创建时间、修订摘要、来源证据与 partial/unavailable 状态；limit 最大 20。createdAt 是官方修订源时间，不是播出时间，也不证明连续采集或完整生命周期历史；本工具不计算历史增长趋势。需要原始分页请使用 bangumi.list_revisions，需要单条变更详情请使用 bangumi.get_revision。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "enum": ["subject", "episode", "character", "person"],
+          "description": "实体类型：subject 条目、episode 章节、character 角色、person 人物"
+        },
+        "entityId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "实体 ID"
+        },
+        "limit": {
+          "description": "最多返回修订条数，默认 10",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "offset": {
+          "description": "官方分页偏移量，默认 0；不代表已读取全部历史",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": ["entityType", "entityId"],
       "additionalProperties": false
     }
   },
@@ -439,6 +546,33 @@
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991,
           "description": "Bangumi 条目 ID"
+        }
+      },
+      "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.get_subject_staff",
+    "description": "获取作品的制作人员与角色声优关系，并明确分为 productionStaff 与 cast；制作人员按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 条目 ID"
+        },
+        "limit": {
+          "description": "productionStaff 与 cast 各自的显示条数上限；默认 200",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
         }
       },
       "required": ["subjectId"],
@@ -546,7 +680,7 @@
   },
   {
     "name": "bangumi.list_revisions",
-    "description": "获取指定实体（条目、章节、角色、人物）的编辑修订历史列表。",
+    "description": "获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -951,8 +1085,20 @@
       "type": "object",
       "properties": {
         "weekday": {
-          "description": "限定特定星期 (1-7)",
+          "description": "兼容旧参数：1=周一、2=周二、3=周三、4=周四、5=周五、6=周六、7=周日",
           "type": "number"
+        },
+        "maxPerDay": {
+          "description": "每天最多展示条数，默认 3",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "maxTotal": {
+          "description": "最多展示总条数，默认 21",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 56
         }
       },
       "additionalProperties": false
@@ -993,6 +1139,83 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_person_profile",
+    "description": "生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "maxSubjects": {
+          "description": "作品关系读取上限",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "maxCharacters": {
+          "description": "角色关系读取上限",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "maxCredits": {
+          "description": "每类关系最多展示条数",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "required": ["personId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_revision_timeline",
+    "description": "生成官方修订历史摘要图片卡片 Artifact。结果是有界样本，不宣称完整生命周期历史；支持 subject、episode、character、person。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "enum": ["subject", "episode", "character", "person"],
+          "description": "实体类型：subject 条目、episode 章节、character 角色、person 人物"
+        },
+        "entityId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "实体 ID"
+        },
+        "limit": {
+          "description": "最多展示修订条数，默认 10",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "offset": {
+          "description": "官方分页偏移量，默认 0",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": ["entityType", "entityId"],
       "additionalProperties": false
     }
   },

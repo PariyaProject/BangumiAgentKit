@@ -17,6 +17,9 @@ export interface SubjectCastResult {
   status: 'ok';
   subjectId: number;
   cast: SubjectCastItem[];
+  observed: number;
+  returned: number;
+  truncated: boolean;
 }
 
 export async function getSubjectCast(
@@ -39,5 +42,8 @@ export async function getSubjectCast(
     status: 'ok',
     subjectId,
     cast,
+    observed: characters.length,
+    returned: targetCharacters.length,
+    truncated: characters.length > targetCharacters.length,
   };
 }

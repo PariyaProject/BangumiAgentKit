@@ -10,6 +10,7 @@ export {
   extractImageUrls,
 } from './render-service.js';
 export type { RenderResult, RenderOptions } from './render-service.js';
+export { renderHtmlTemplate } from './template-engine.js';
 
 export * from './artifact-store.js';
 

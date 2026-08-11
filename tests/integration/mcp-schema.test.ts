@@ -50,6 +50,46 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
     const calendarSchema = calendarTool?.inputSchema as any;
     expect(calendarSchema.type).toBe('object');
 
+    const calendarIntelligenceTool = tools.find(
+      (t: any) => t.name === 'bangumi.get_calendar_intelligence',
+    );
+    expect(calendarIntelligenceTool).toBeDefined();
+    const calendarIntelligenceSchema = calendarIntelligenceTool?.inputSchema as any;
+    expect(calendarIntelligenceSchema.properties.weekday).toBeDefined();
+    expect(calendarIntelligenceSchema.properties.maxPerDay.maximum).toBe(8);
+    expect(calendarIntelligenceSchema.properties.maxTotal.maximum).toBe(56);
+
+    const renderCalendarTool = tools.find((t: any) => t.name === 'bangumi.render_calendar');
+    expect(renderCalendarTool).toBeDefined();
+    const renderCalendarSchema = renderCalendarTool?.inputSchema as any;
+    expect(renderCalendarSchema.properties.weekday.type).toBe('number');
+    expect(renderCalendarSchema.properties.weekday.minimum).toBeUndefined();
+    expect(renderCalendarSchema.properties.weekday.maximum).toBeUndefined();
+
+    const revisionIntelligenceTool = tools.find(
+      (t: any) => t.name === 'bangumi.get_revision_intelligence',
+    );
+    expect(revisionIntelligenceTool).toBeDefined();
+    const revisionIntelligenceSchema = revisionIntelligenceTool?.inputSchema as any;
+    expect(revisionIntelligenceSchema.properties.entityType.enum).toEqual([
+      'subject',
+      'episode',
+      'character',
+      'person',
+    ]);
+    expect(revisionIntelligenceSchema.properties.limit.maximum).toBe(20);
+    expect(revisionIntelligenceSchema.properties.offset.maximum).toBe(1_000_000);
+
+    const renderRevisionTool = tools.find(
+      (t: any) => t.name === 'bangumi.render_revision_timeline',
+    );
+    expect(renderRevisionTool).toBeDefined();
+    const renderRevisionSchema = renderRevisionTool?.inputSchema as any;
+    const revisionEntityIdMin =
+      renderRevisionSchema.properties.entityId.minimum ??
+      renderRevisionSchema.properties.entityId.exclusiveMinimum;
+    expect(revisionEntityIdMin).toBeGreaterThanOrEqual(0);
+
     await client.close();
   });
 });

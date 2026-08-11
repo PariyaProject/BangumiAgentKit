@@ -39,7 +39,17 @@ describe('Standalone discovery and raw tool playground', () => {
     const executeTool = vi.fn().mockResolvedValue({ state: 'ok', items: [], coverage: {} });
     const host = { executeTool } as unknown as StandaloneHost;
     await new StandaloneCommandRegistry().execute(
-      ['discover', '--media', 'anime', '--season', '2026-summer', '--concept', '后宫', '--all', '--explain'],
+      [
+        'discover',
+        '--media',
+        'anime',
+        '--season',
+        '2026-summer',
+        '--concept',
+        '后宫',
+        '--all',
+        '--explain',
+      ],
       context(host),
     );
     expect(executeTool).toHaveBeenCalledWith(
@@ -56,16 +66,40 @@ describe('Standalone discovery and raw tool playground', () => {
     );
   });
 
+  it('PR-7D: person, staff, and person renderer commands route to semantic tools', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'ok' });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(['person', '10868'], context(host));
+    await registry.execute(['staff', '226998'], context(host));
+    await registry.execute(['render', 'person', '10868'], context(host));
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_person_profile',
+      { personId: 10868 },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.get_subject_staff',
+      { subjectId: 226998 },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      3,
+      'bangumi.render_person_profile',
+      { personId: 10868 },
+      expect.anything(),
+    );
+  });
+
   it('preserves the documented single-quoted raw JSON form and executes it through ToolRegistry', async () => {
     const tokens = tokenizeCommandLine(
       `tool call bangumi.search_subjects '{"query":"少女终末旅行"}'`,
     );
-    expect(tokens).toEqual([
-      'tool',
-      'call',
-      'bangumi.search_subjects',
-      '{"query":"少女终末旅行"}',
-    ]);
+    expect(tokens).toEqual(['tool', 'call', 'bangumi.search_subjects', '{"query":"少女终末旅行"}']);
     const input = JSON.parse(tokens[3]!);
     const fetchFn = vi.fn().mockResolvedValue(
       new Response(

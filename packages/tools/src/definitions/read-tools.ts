@@ -13,6 +13,7 @@ import {
   CalendarService,
   resolveSubject,
   getSubjectCast,
+  groupSubjectStaff,
   RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 
@@ -31,9 +32,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const characterService = new CharacterService(publicHttpClient);
   const personService = new PersonService(publicHttpClient);
   const userService = new UserService(publicHttpClient);
-  const revisionService = new RevisionService(publicHttpClient);
   const indexService = new IndexReadService(publicHttpClient);
-  const calendarService = new CalendarService(publicHttpClient);
 
   const subjectTypeMap: Record<string, number> = {
     book: 1,
@@ -153,6 +152,93 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getSubjectStaff = defineTool({
+    name: 'bangumi.get_subject_staff',
+    description:
+      '获取作品的制作人员与角色声优关系，并明确分为 productionStaff 与 cast；制作人员按 Bangumi 返回的原始职位标签分组。适合回答“谁负责导演、脚本、音乐或配音”；不会猜测未提供的职位语义。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe('productionStaff 与 cast 各自的显示条数上限；默认 200'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      const activePersonService = new PersonService(activeClient);
+      const activeCharacterService = new CharacterService(activeClient);
+      const limit = input.limit ?? 200;
+      const [collection, castResult] = await Promise.all([
+        activePersonService.getSubjectStaff(input.subjectId, limit),
+        getSubjectCast(activeCharacterService, input.subjectId, { limit }),
+      ]);
+      const retrievedAt = new Date().toISOString();
+      const partial = collection.truncated || castResult.truncated;
+      return {
+        state: partial ? 'partial' : 'complete',
+        subjectId: input.subjectId,
+        productionStaff: collection.items,
+        cast: castResult.cast,
+        groups: groupSubjectStaff(collection.items),
+        coverage: {
+          state: partial ? 'partial' : 'complete',
+          retrievedAt,
+          productionStaff: {
+            observed: collection.observed,
+            returned: collection.returned,
+            truncated: collection.truncated,
+          },
+          cast: {
+            observed: castResult.observed,
+            returned: castResult.returned,
+            truncated: castResult.truncated,
+          },
+          limit,
+        },
+        evidence: [
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/subjects/{subject_id}/persons',
+            retrievedAt,
+          },
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/subjects/{subject_id}/characters',
+            retrievedAt,
+          },
+          {
+            source: 'derived-s7',
+            formulaVersion: 'subject-staff-grouping-v1',
+            description: '按原始 relation 标签分组；空标签归入未知。',
+            retrievedAt,
+          },
+        ],
+        warnings: partial
+          ? [
+              {
+                code: 'OUTPUT_TRUNCATED',
+                state: 'partial',
+                message: '制作人员或角色声优关系达到显示上限。',
+              },
+            ]
+          : [],
+        capabilityStates: {
+          productionStaff: collection.truncated ? 'partial' : 'complete',
+          cast: castResult.truncated ? 'partial' : 'complete',
+          recent_activity: 'not_computable',
+          workload_trend: 'not_computable',
+          historical_growth: 'not_computable',
+        },
+      };
+    },
+  });
+
   const getCalendar = defineTool({
     name: 'bangumi.get_calendar',
     description: '获取 Bangumi 每日放送（周一至周日）的新番动画计划与更新列表。',
@@ -160,8 +246,33 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async () => {
-      return await calendarService.getCalendar();
+    execute: async (_input, _context, deps) => {
+      const activeService = new CalendarService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getCalendar();
+    },
+  });
+
+  const getCalendarIntelligence = defineTool({
+    name: 'bangumi.get_calendar_intelligence',
+    description:
+      '获取带播出日期、评分、类型、排名、来源证据与覆盖状态的有界 Bangumi 日历摘要。weekday 使用 1=周一至 7=周日；官方源不提供具体时区或播出时刻。适合回答“本周哪些作品什么时候播”；不把源顺序当作推荐，也不读取个人收藏状态。',
+    input: z.object({
+      weekday: z
+        .number()
+        .int()
+        .min(1)
+        .max(7)
+        .optional()
+        .describe('限定星期：1=周一、2=周二、3=周三、4=周四、5=周五、6=周六、7=周日；不传返回整周'),
+      maxPerDay: z.number().int().min(1).max(8).optional().describe('每天最多返回条数，默认 3'),
+      maxTotal: z.number().int().min(1).max(56).optional().describe('最多返回总条数，默认 21'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeService = new CalendarService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getCalendarIntelligence(input);
     },
   });
 
@@ -292,6 +403,129 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         ...detail,
         relatedSubjects: subjects,
         relatedCharacters: characters,
+      };
+    },
+  });
+
+  const getPersonProfile = defineTool({
+    name: 'bangumi.get_person_profile',
+    description:
+      '生成一个现实人物/声优/制作人员的结构化履历摘要：身份、媒介分布、原始职位/角色标签、去重作品/角色计数和受限关系明细。用于 Agent 一次回答“这个人参与过什么”；时间窗口、最近活动、工作量趋势和合作次数需要额外数据，本工具不会猜测。',
+    input: z.object({
+      personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+      includeCredits: z.boolean().optional().describe('是否返回受限的作品/角色关系明细；默认 true'),
+      maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系最多返回条数'),
+      maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系最多返回条数'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      const activePersonService = new PersonService(activeClient);
+      const profile = await activePersonService.getPersonProfile(input.personId, {
+        maxSubjects: input.maxSubjects ?? 500,
+        maxCharacters: input.maxCharacters ?? 500,
+      });
+      const retrievedAt = new Date().toISOString();
+      const identityMissingFields = [
+        profile.person.gender ? undefined : 'person.gender',
+        profile.person.birthYear === undefined ? 'person.birth_year' : undefined,
+        profile.person.bloodType === undefined ? 'person.blood_type' : undefined,
+      ].filter((field): field is string => field !== undefined);
+      const relationPartial = profile.subjects.truncated || profile.characters.truncated;
+      const partial = relationPartial || identityMissingFields.length > 0;
+      const notComputable = [
+        'recent_activity',
+        'voice_actor_workload_window',
+        'historical_growth',
+        'collaboration_count',
+      ];
+      return {
+        state: partial ? 'partial' : 'complete',
+        person: profile.person,
+        summary: profile.summary,
+        credits:
+          input.includeCredits === false
+            ? undefined
+            : {
+                subjects: profile.subjects.items,
+                characters: profile.characters.items,
+              },
+        coverage: {
+          state: partial ? 'partial' : 'complete',
+          retrievedAt,
+          identity: {
+            state: identityMissingFields.length > 0 ? 'partial' : 'complete',
+            missingFields: identityMissingFields,
+          },
+          subjects: {
+            observed: profile.subjects.observed,
+            returned: profile.subjects.returned,
+            truncated: profile.subjects.truncated,
+          },
+          characters: {
+            observed: profile.characters.observed,
+            returned: profile.characters.returned,
+            truncated: profile.characters.truncated,
+          },
+          missingFields: [
+            'person-related-subject.date',
+            'person-related-subject.score',
+            'person-related-character.airDate',
+            ...identityMissingFields,
+          ],
+        },
+        evidence: [
+          { source: 'official-v0', operation: 'GET /v0/persons/{person_id}', retrievedAt },
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/persons/{person_id}/subjects',
+            retrievedAt,
+          },
+          {
+            source: 'official-v0',
+            operation: 'GET /v0/persons/{person_id}/characters',
+            retrievedAt,
+          },
+          {
+            source: 'derived-s7',
+            formulaVersion: 'person-activity-v1',
+            description: '作品/角色按稳定 ID 去重；媒介和职位分布按官方关系行确定性计数。',
+            retrievedAt,
+          },
+        ],
+        limitations: [
+          '人物关系接口不提供作品日期，不能从本结果计算最近作品或 3/6/12 个月工作量。',
+          '本仓库没有兼容历史快照，不能计算增长、趋势或前后窗口比较。',
+          '合作人数和共同作品需要额外的 subject→persons 图遍历，本工具不伪造该统计。',
+        ],
+        notComputable,
+        warnings: [
+          ...(identityMissingFields.length > 0
+            ? [
+                {
+                  code: 'MISSING_IDENTITY_FIELDS',
+                  state: 'partial',
+                  fields: identityMissingFields,
+                  message: '人物资料中的部分身份字段由官方源缺失。',
+                },
+              ]
+            : []),
+          {
+            code: 'NOT_COMPUTABLE',
+            state: 'not_computable',
+            fields: notComputable,
+            message: '当前官方关系源没有日期或历史快照，不能计算时间窗口、趋势或合作人数。',
+          },
+        ],
+        capabilityStates: {
+          profile: partial ? 'partial' : 'complete',
+          recent_activity: 'not_computable',
+          voice_actor_workload_window: 'not_computable',
+          historical_growth: 'not_computable',
+          collaboration_count: 'not_computable',
+        },
       };
     },
   });
@@ -455,7 +689,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
-    description: '获取指定实体（条目、章节、角色、人物）的编辑修订历史列表。',
+    description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
     input: z.object({
       entityType: z.enum(['subject', 'episode', 'character', 'person']).describe('实体类型'),
       entityId: z.number().int().positive().describe('实体 ID'),
@@ -465,8 +699,9 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await revisionService.listRevisions(
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.listRevisions(
         input.entityType as RevisionEntityType,
         input.entityId,
         {
@@ -487,10 +722,42 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await revisionService.getRevision(
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getRevision(
         input.entityType as RevisionEntityType,
         input.revisionId,
+      );
+    },
+  });
+
+  const getRevisionIntelligence = defineTool({
+    name: 'bangumi.get_revision_intelligence',
+    description:
+      '获取指定条目、章节、角色或人物的有界官方修订摘要。返回 observed/returned/total 覆盖、创建时间、修订摘要、来源证据与 partial/unavailable 状态；limit 最大 20。createdAt 是官方修订源时间，不是播出时间，也不证明连续采集或完整生命周期历史；本工具不计算历史增长趋势。需要原始分页请使用 bangumi.list_revisions，需要单条变更详情请使用 bangumi.get_revision。',
+    input: z.object({
+      entityType: z
+        .enum(['subject', 'episode', 'character', 'person'])
+        .describe('实体类型：subject 条目、episode 章节、character 角色、person 人物'),
+      entityId: z.number().int().positive().describe('实体 ID'),
+      limit: z.number().int().min(1).max(20).optional().describe('最多返回修订条数，默认 10'),
+      offset: z
+        .number()
+        .int()
+        .min(0)
+        .max(1_000_000)
+        .optional()
+        .describe('官方分页偏移量，默认 0；不代表已读取全部历史'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getRevisionIntelligence(
+        input.entityType as RevisionEntityType,
+        input.entityId,
+        { limit: input.limit, offset: input.offset },
       );
     },
   });
@@ -529,6 +796,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubject,
     getSubjectRelations,
     getSubjectCastTool,
+    getSubjectStaff,
     getCalendar,
     getEpisodes,
     getEpisode,
@@ -536,6 +804,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCharacter,
     searchPersons,
     getPerson,
+    getPersonProfile,
     getUser,
     getMyProfile,
     listCollections,
@@ -544,5 +813,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getRevision,
     getIndex,
     getSubjectStats,
+    getCalendarIntelligence,
+    getRevisionIntelligence,
   ] as const;
 }

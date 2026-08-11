@@ -54,6 +54,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getSubjectTool,
     getSubjectRelationsTool,
     castTool,
+    getSubjectStaffTool,
     getCalendarTool,
     getEpTool,
     getEpisodeTool,
@@ -61,6 +62,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getCharTool,
     searchPersonTool,
     getPersonTool,
+    getPersonProfileTool,
     getUserTool,
     getMyProfileTool,
     listColTool,
@@ -68,12 +70,16 @@ function getReadToolMap(httpClient?: HttpClient) {
     listRevisionsTool,
     getRevisionTool,
     getIndexTool,
+    getSubjectStatsTool,
+    getCalendarIntelligenceTool,
+    getRevisionIntelligenceTool,
   ] = createReadTools(httpClient);
   return {
     searchTool,
     getSubjectTool,
     getSubjectRelationsTool,
     castTool,
+    getSubjectStaffTool,
     getCalendarTool,
     getEpTool,
     getEpisodeTool,
@@ -81,6 +87,7 @@ function getReadToolMap(httpClient?: HttpClient) {
     getCharTool,
     searchPersonTool,
     getPersonTool,
+    getPersonProfileTool,
     getUserTool,
     getMyProfileTool,
     listColTool,
@@ -88,6 +95,9 @@ function getReadToolMap(httpClient?: HttpClient) {
     listRevisionsTool,
     getRevisionTool,
     getIndexTool,
+    getSubjectStatsTool,
+    getCalendarIntelligenceTool,
+    getRevisionIntelligenceTool,
   };
 }
 
@@ -356,6 +366,496 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     expect(res.cast[0]!.relation).toBe('主角');
     expect(res.cast[0]!.actors[0]!.name).toBe('声优A');
   });
+
+  it('PR-7E: get_calendar_intelligence preserves schedule facts and explicit caps', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+            items: [
+              {
+                id: 100,
+                type: 2,
+                name: 'Anime A',
+                name_cn: '动画甲',
+                summary: 'summary',
+                air_date: '2026-08-10',
+                air_weekday: 1,
+                rating: { score: 8.4 },
+                rank: 12,
+                collection: { doing: 345 },
+              },
+              { id: 101, name: 'Anime B', name_cn: '动画乙', air_date: '2026-08-10' },
+            ],
+          },
+          {
+            weekday: { en: 'Tue', cn: '星期二', ja: '火曜日', id: 2 },
+            items: [{ id: 102, name: 'Anime C', name_cn: '动画丙' }],
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getCalendarIntelligenceTool } = getReadToolMap(httpClient);
+
+    const result = (await executeTestTool(
+      getCalendarIntelligenceTool,
+      { weekday: 1, maxPerDay: 1, maxTotal: 1 },
+      context,
+    )) as any;
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      observed: 2,
+      returned: 1,
+      selectedDays: 1,
+      maxPerDay: 1,
+      maxTotal: 1,
+    });
+    expect(result.days[0]).toMatchObject({ observed: 2, returned: 1, overflowCount: 1 });
+    expect(result.days[0].items[0]).toMatchObject({
+      id: 100,
+      type: 2,
+      typeLabel: 'anime',
+      airDate: '2026-08-10',
+      score: 8.4,
+      rank: 12,
+      collectionDoing: 345,
+    });
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'official-legacy', operation: 'GET /calendar' }),
+        expect.objectContaining({ source: 'derived-s7', formulaVersion: 'calendar-schedule-v1' }),
+      ]),
+    );
+    expect(result.limitations[0]).toContain('具体播出时间');
+    expect(result.coverage.weekdaySemantics).toContain('1=Monday');
+    expect(getCalendarIntelligenceTool.description).toContain('1=周一');
+  });
+
+  it('PR-7E: get_calendar_intelligence preserves public upstream failure state', async () => {
+    for (const [status, code, warningCode] of [
+      [404, 'NOT_FOUND', 'UPSTREAM_NOT_FOUND'],
+      [429, 'RATE_LIMITED', 'UPSTREAM_RATE_LIMITED'],
+      [503, 'UPSTREAM_UNAVAILABLE', 'UPSTREAM_UNAVAILABLE'],
+    ] as const) {
+      const httpClient = new HttpClient({
+        fetchFn: vi.fn().mockResolvedValue(new Response('calendar failure', { status })),
+      });
+      const { getCalendarIntelligenceTool } = getReadToolMap(httpClient);
+      const result = (await executeTestTool(getCalendarIntelligenceTool, {}, context)) as any;
+
+      expect(result.state).toBe('unavailable');
+      expect(result.error).toMatchObject({ code, retryable: status !== 404 });
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: warningCode })]),
+      );
+    }
+  });
+
+  it('PR-7F: get_revision_intelligence exposes bounded official history semantics', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 2,
+          limit: 2,
+          offset: 0,
+          data: [
+            {
+              id: 11,
+              type: 1,
+              summary: '修改条目中文名',
+              created_at: '2026-08-01T00:00:00Z',
+              creator: { username: 'editor', nickname: '编辑者' },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getRevisionIntelligenceTool } = getReadToolMap(httpClient);
+
+    const result = (await executeTestTool(
+      getRevisionIntelligenceTool,
+      { entityType: 'subject', entityId: 218707, limit: 20 },
+      context,
+    )) as any;
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(result.state).toBe('partial');
+    expect(result.items[0]).toMatchObject({ id: 11, summary: '修改条目中文名' });
+    expect(result.coverage).toMatchObject({
+      observed: 1,
+      returned: 1,
+      total: 2,
+      truncated: true,
+    });
+    expect(result.capabilityStates.historical_growth).toBe('not_computable');
+    expect(result.limitations[0]).toContain('有界页面');
+    expect(getRevisionIntelligenceTool.description).toContain('完整生命周期历史');
+  });
+
+  it('PR-7D: get_person_profile aggregates official person relationships with explicit coverage', async () => {
+    const capturedUrls: string[] = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      capturedUrls.push(url);
+      if (url.endsWith('/persons/20')) {
+        return new Response(
+          JSON.stringify({
+            id: 20,
+            name: 'Yoshino',
+            type: 1,
+            career: ['seiyu'],
+            images: {},
+            summary: 'A bounded profile fixture.',
+            gender: '女性',
+            blood_type: 1,
+            birth_year: 1995,
+            birth_mon: 12,
+            birth_day: 2,
+            infobox: [
+              { key: '简体中文名', value: '吉野' },
+              { key: '别名', value: [{ v: 'Yoshi' }] },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith('/persons/20/subjects')) {
+        return new Response(
+          JSON.stringify([
+            { id: 100, type: 2, name: '作品A', name_cn: '作品甲', staff: '艺术家', eps: '' },
+            { id: 101, type: 3, name: '作品B', name_cn: '', staff: '艺术家', eps: '' },
+          ]),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify([
+          {
+            id: 1000,
+            name: '角色A',
+            type: 1,
+            subject_id: 100,
+            subject_type: 2,
+            subject_name: '作品A',
+            subject_name_cn: '作品甲',
+            staff: '主角',
+          },
+          {
+            id: 1001,
+            name: '角色B',
+            type: 1,
+            subject_id: 101,
+            subject_type: 3,
+            subject_name: '作品B',
+            staff: '配角',
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getPersonProfileTool } = getReadToolMap(httpClient);
+
+    const res = await executeTestTool(
+      getPersonProfileTool,
+      { personId: 20, includeCredits: false, maxSubjects: 1, maxCharacters: 2 },
+      context,
+    );
+    const profile = res as any;
+
+    expect(capturedUrls).toHaveLength(3);
+    expect(capturedUrls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('/v0/persons/20'),
+        expect.stringContaining('/v0/persons/20/subjects'),
+        expect.stringContaining('/v0/persons/20/characters'),
+      ]),
+    );
+    expect(profile.person.name).toBe('Yoshino');
+    expect(profile.state).toBe('partial');
+    expect(profile.person).toMatchObject({ typeLabel: '个人', nameCn: '吉野', aliases: ['Yoshi'] });
+    expect(profile.credits).toBeUndefined();
+    expect(profile.summary).toMatchObject({
+      subjectCredits: 1,
+      uniqueSubjects: 1,
+      characterCredits: 2,
+      uniqueCharacters: 2,
+      characterSubjects: 2,
+    });
+    expect(profile.coverage.state).toBe('partial');
+    expect(profile.coverage.subjects).toMatchObject({ observed: 2, returned: 1, truncated: true });
+    expect(profile.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ operation: 'GET /v0/persons/{person_id}/subjects' }),
+        expect.objectContaining({ source: 'derived-s7', formulaVersion: 'person-activity-v1' }),
+      ]),
+    );
+    expect(profile.notComputable).toContain('voice_actor_workload_window');
+    expect(profile.capabilityStates.recent_activity).toBe('not_computable');
+    expect(profile.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'NOT_COMPUTABLE' })]),
+    );
+  });
+
+  it('PR-7D: get_subject_staff preserves raw relation labels and groups them', async () => {
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/persons')) {
+        const staff = Array.from({ length: 157 }, (_, index) => ({
+          id: index + 1,
+          name: index === 136 ? '导演A' : `制作人员${index + 1}`,
+          type: 1,
+          career: index === 136 ? ['director'] : ['producer'],
+          relation: index === 136 ? '导演' : '制作',
+          eps: '',
+        }));
+        return new Response(JSON.stringify(staff), { status: 200 });
+      }
+      return new Response(
+        JSON.stringify([
+          {
+            id: 101,
+            name: '角色A',
+            type: 1,
+            summary: '',
+            relation: '主角',
+            actors: [{ id: 3, name: '声优C', type: 1, career: ['seiyu'] }],
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+    const httpClient = new HttpClient({ fetchFn: mockFetch });
+    const { getSubjectStaffTool } = getReadToolMap(httpClient);
+
+    const res = await executeTestTool(getSubjectStaffTool, { subjectId: 226998 }, context);
+    const staff = res as any;
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(staff.state).toBe('complete');
+    expect(staff.productionStaff).toHaveLength(157);
+    expect(staff.productionStaff[136]).toMatchObject({ relation: '导演' });
+    expect(staff.cast[0].actors[0]).toMatchObject({ name: '声优C' });
+    expect(staff.productionStaff.some((item: { relation: string }) => item.relation === 'CV')).toBe(
+      false,
+    );
+    expect(staff.groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ relation: '导演', count: 1, memberIds: [137] }),
+        expect.objectContaining({ relation: '制作', count: 156 }),
+      ]),
+    );
+    expect(staff.coverage.state).toBe('complete');
+    expect(staff.coverage.cast).toMatchObject({ observed: 1, returned: 1, truncated: false });
+  });
+
+  it('PR-7D: get_subject_staff reports independent source caps and machine-readable partial state', async () => {
+    let cappedSource: 'productionStaff' | 'cast' = 'productionStaff';
+    const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('/persons')) {
+        const count = cappedSource === 'productionStaff' ? 201 : 1;
+        return new Response(
+          JSON.stringify(
+            Array.from({ length: count }, (_, index) => ({
+              id: index + 1,
+              name: `制作人员${index + 1}`,
+              type: 1,
+              relation: '制作',
+              eps: '',
+            })),
+          ),
+          { status: 200 },
+        );
+      }
+      const count = cappedSource === 'cast' ? 201 : 1;
+      return new Response(
+        JSON.stringify(
+          Array.from({ length: count }, (_, index) => ({
+            id: index + 1000,
+            name: `角色${index + 1}`,
+            type: 1,
+            relation: '主角',
+            actors: [],
+          })),
+        ),
+        { status: 200 },
+      );
+    });
+    const { getSubjectStaffTool } = getReadToolMap(new HttpClient({ fetchFn: mockFetch }));
+
+    const productionPartial = (await executeTestTool(
+      getSubjectStaffTool,
+      { subjectId: 226998 },
+      context,
+    )) as any;
+    expect(productionPartial.state).toBe('partial');
+    expect(productionPartial.coverage.productionStaff).toMatchObject({
+      observed: 201,
+      returned: 200,
+      truncated: true,
+    });
+    expect(productionPartial.coverage.cast).toMatchObject({
+      observed: 1,
+      returned: 1,
+      truncated: false,
+    });
+    expect(productionPartial.capabilityStates.productionStaff).toBe('partial');
+    expect(productionPartial.capabilityStates.cast).toBe('complete');
+
+    cappedSource = 'cast';
+    const castPartial = (await executeTestTool(
+      getSubjectStaffTool,
+      { subjectId: 226998, limit: 200 },
+      context,
+    )) as any;
+    expect(castPartial.state).toBe('partial');
+    expect(castPartial.coverage.productionStaff).toMatchObject({
+      observed: 1,
+      returned: 1,
+      truncated: false,
+    });
+    expect(castPartial.coverage.cast).toMatchObject({
+      observed: 201,
+      returned: 200,
+      truncated: true,
+    });
+    expect(castPartial.capabilityStates.productionStaff).toBe('complete');
+    expect(castPartial.capabilityStates.cast).toBe('partial');
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+  });
+
+  it('PR-7D: ToolRegistry uses injected transport and preserves machine-readable upstream failures', async () => {
+    const secretKey = 'test-secret-key-123456789012345678901234';
+    const injectedFetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith('/persons/20')) {
+        return new Response(
+          JSON.stringify({
+            id: 20,
+            name: 'Injected',
+            type: 1,
+            career: ['seiyu'],
+            gender: '女性',
+            blood_type: 1,
+            birth_year: 1995,
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+    const injectedClient = new HttpClient({ fetchFn: injectedFetch });
+    const storage = new MemoryStorage();
+    const registry = new ToolRegistry(
+      createRuntimeDependencies({ storage, secretKey, publicHttpClient: injectedClient }),
+    );
+    const globalFetch = vi.fn().mockRejectedValue(new Error('GLOBAL_FETCH_USED'));
+    vi.stubGlobal('fetch', globalFetch);
+
+    try {
+      const profile = (await registry.executeTool(
+        'bangumi.get_person_profile',
+        { personId: 20, includeCredits: false, maxSubjects: 1, maxCharacters: 1 },
+        context,
+      )) as { state: string };
+      expect(profile.state).toBe('complete');
+      expect(injectedFetch).toHaveBeenCalledTimes(3);
+      expect(globalFetch).not.toHaveBeenCalled();
+
+      const staff = (await registry.executeTool(
+        'bangumi.get_subject_staff',
+        { subjectId: 226998 },
+        context,
+      )) as { state: string };
+      expect(staff.state).toBe('complete');
+      expect(injectedFetch).toHaveBeenCalledTimes(5);
+      expect(globalFetch).not.toHaveBeenCalled();
+
+      await expect(
+        registry.executeTool(
+          'bangumi.get_person_profile',
+          { personId: 20, maxSubjects: 501 },
+          context,
+        ),
+      ).rejects.toThrow('VALIDATION_ERROR');
+      await expect(
+        registry.executeTool('bangumi.get_person_profile', { personId: 0 }, context),
+      ).rejects.toThrow('VALIDATION_ERROR');
+      await expect(
+        registry.executeTool(
+          'bangumi.get_subject_staff',
+          { subjectId: 226998, limit: 201 },
+          context,
+        ),
+      ).rejects.toThrow('VALIDATION_ERROR');
+      await expect(
+        registry.executeTool('bangumi.get_subject_staff', { subjectId: 0 }, context),
+      ).rejects.toThrow('VALIDATION_ERROR');
+      await expect(
+        registry.executeTool(
+          'bangumi.get_calendar_intelligence',
+          { weekday: 8, maxPerDay: 9, maxTotal: 57 },
+          context,
+        ),
+      ).rejects.toThrow('VALIDATION_ERROR');
+    } finally {
+      vi.unstubAllGlobals();
+      await registry.close();
+    }
+
+    for (const [status, code] of [
+      [404, 'NOT_FOUND'],
+      [429, 'RATE_LIMITED'],
+      [503, 'UPSTREAM_UNAVAILABLE'],
+    ] as const) {
+      const errorClient = new HttpClient({
+        fetchFn: vi.fn().mockResolvedValue(new Response('upstream failure', { status })),
+      });
+      const errorRegistry = new ToolRegistry(
+        createRuntimeDependencies({
+          storage: new MemoryStorage(),
+          secretKey,
+          publicHttpClient: errorClient,
+        }),
+      );
+      await expect(
+        errorRegistry.executeTool('bangumi.get_person_profile', { personId: 20 }, context),
+      ).rejects.toMatchObject({ code });
+      await errorRegistry.close();
+    }
+
+    for (const failedSource of ['persons', 'characters'] as const) {
+      for (const [status, code] of [
+        [404, 'NOT_FOUND'],
+        [429, 'RATE_LIMITED'],
+        [503, 'UPSTREAM_UNAVAILABLE'],
+      ] as const) {
+        const errorClient = new HttpClient({
+          fetchFn: vi.fn().mockImplementation(async (url: string) => {
+            const failed = url.includes(`/subjects/226998/${failedSource}`);
+            return failed
+              ? new Response('upstream failure', { status })
+              : new Response(JSON.stringify([]), { status: 200 });
+          }),
+        });
+        const errorRegistry = new ToolRegistry(
+          createRuntimeDependencies({
+            storage: new MemoryStorage(),
+            secretKey,
+            publicHttpClient: errorClient,
+          }),
+        );
+        await expect(
+          errorRegistry.executeTool('bangumi.get_subject_staff', { subjectId: 226998 }, context),
+        ).rejects.toMatchObject({ code });
+        await errorRegistry.close();
+      }
+    }
+  }, 30000);
 
   it('S10 regression: CharacterPerson numeric type does not leak into roleName string', async () => {
     const mockFetch = vi.fn().mockImplementation(async () => {

@@ -11,6 +11,8 @@ Primary governance:
 - `docs/agent/BUDGET_FIRST_EXECUTION.md`
 - `docs/agent/AUTONOMOUS_PRODUCT_EVOLUTION.md`
 - `docs/agent/AUTONOMOUS_REVIEW_POLICY.md`
+- `docs/agent/goals/AUTONOMOUS_MILESTONE.md`
+- `docs/agent/goals/UNATTENDED_TIER2.md`
 
 ---
 
@@ -22,80 +24,284 @@ Standing execution defaults:
 
 - one GPT-5.6 Luna primary thread at `max` reasoning;
 - Luna `xhigh` only as the minimum availability fallback;
-- generic implementation and research subagents disabled by default;
+- generic implementation and research subagents disabled;
 - sequential milestone review only; never parallel;
-- Review Tier selected in the Cycle Plan before implementation;
 - no automatic continuation into another Product Cycle.
 
 ---
 
 ## Persistent Goal Ledger
 
-Goal scope:
+Goal Scope:
 
-None. No Product Cycle or Codex Goal is currently authorized on `master`.
+Complete the cumulative PR-7D Person / Seiyuu / Staff Intelligence, PR-7E
+Calendar / Schedule Intelligence, and PR-7F Revision / Change History
+Intelligence milestone. The implementation is frozen and the resulting PR is
+being integrated; do not select another Cycle.
 
-Explicit non-scope:
+Explicit Non-Scope:
 
-- autonomous opportunity selection or implementation;
-- any change to frozen PR-7C production code;
-- authentication, authorization, write, source-activation, migration, release,
-  package, or tag changes;
-- starting a follow-on Product Cycle without a fresh user-authorized Goal.
+- PR-7G or any later Product Cycle;
+- snapshots, scheduled ingestion, or unsupported historical trend claims;
+- authentication, authorization, credentials, or write expansion;
+- HTML or Structured Web activation;
+- destructive migration, release, package, or tag publication;
+- unrelated opportunity-log work.
 
-Stopping condition:
+Stopping Condition:
 
-Remain idle until the user authorizes one substantial vertical milestone with a
-verifiable end state and a Cycle Plan that records its Review Tier.
+- the cumulative PR-7D/PR-7E/PR-7F Candidate is frozen, independently reviewed,
+  integrated into `master`, and the PR is verified merged; or
+- a protected human-only decision, infrastructure blocker, or another
+  documented profile stop condition is reached.
 
-Current milestone state:
+Current Milestone State:
 
-`IDLE_AWAITING_GOAL_AUTHORIZATION`
+`FROZEN_GOAL_COMPLETE`
 
-Primary model / reasoning:
+Current Phase:
 
-- model: GPT-5.6 Luna
-- reasoning: `max`
-- availability fallback: `xhigh`; no lower Luna effort is permitted
+`MASTER_INTEGRATED`
 
-Generic subagent budget:
+Execution Runtime:
 
-- authorized: 0
-- consumed: 0
+The one-off manual finalization review returned PASS. The cumulative PR-7D,
+PR-7E, and PR-7F implementation Candidate is frozen and has been integrated
+from the master side; no new Product Cycle is active.
+
+Primary Model:
+
+GPT-5.6 Luna
+
+Reasoning:
+
+- preferred: `max`
+- minimum fallback: `xhigh`
+- lower Luna reasoning is prohibited
+
+Generic Subagents Authorized:
+
+0
+
+Generic Subagents Consumed:
+
+0
 
 Review Tier:
 
-`NOT_SELECTED`
+`TIER_2`
 
-Total Sol review budget:
+Sol Launches Authorized:
 
-- authorized: 0 launches
-- consumed: 0 launches
-- remaining: 0 launches
-- reasoning default: `high`
-- reviews must be sequential
+2 total
+
+Sol Launches Consumed:
+
+1 under the current portable `UNATTENDED_TIER2` authorization (`Sol #1`)
+
+Sol Launches Remaining:
+
+1 nominally remains in the TIER_2 allocation, but the selected unattended
+profile prohibits spending it after a timeout or no-verdict stop.
+
+Review Execution:
+
+`SEQUENTIAL_ONLY`
+
+Automatic Sol #3:
+
+`PROHIBITED`
+
+Standing Reviewer:
+
+`sol_milestone_reviewer` at `high` reasoning
 
 Candidate SHA:
 
-None.
+`433e80cf1da7a5994513053c3391487d1c911a3e`
+
+This is the clean implementation Candidate containing the bounded evidence
+corrections and generated tool catalog update.
 
 Exact-SHA CI:
 
-Not applicable; no Candidate is active.
+- Candidate `433e80cf1da7a5994513053c3391487d1c911a3e`:
+  GitHub Actions run `31463062377`, SUCCESS across all six mandatory jobs
+  (`sqlite-default`, `host-integration`, `standalone-release-smoke`,
+  `postgres-compat`, `provider-foundation`, and `discovery-foundation`).
+  The run was manually dispatched against the exact Candidate ref after the
+  push trigger did not create a run; the cancelled `master` run `31462981828`
+  is unrelated and is not used as evidence.
 
-Next action:
+Implementation Frozen SHA:
 
-Wait for the user to authorize one substantial vertical milestone. Before
-implementation, create or update its Cycle Plan with explicit scope, non-scope,
-stopping condition, validation, Review Tier, total Sol budget, and any `TIER_2`
-reviewer order. Do not start implementation or launch Sol before that record
-exists.
+`433e80cf1da7a5994513053c3391487d1c911a3e`
 
-Human authorization state:
+The reviewed production implementation is frozen. No production code or tests
+may be changed after this PASS; subsequent work is limited to PR metadata,
+governance records, and master-side integration.
 
-- required to start the next Product Cycle: yes
-- required to spend Sol budget: yes, through the recorded Cycle Review Tier
-- protected-decision items open: 0
+Review Readiness Evidence:
+
+- local validation: affected unit/render tests, typecheck, lint, contract,
+  semantic, provider, discovery, SQLite integration, build, standalone, and
+  OpenAPI verification all passed;
+- User QA: bounded read-only official API list/detail checks answered recent
+  revision and explicit changed-field questions without credentials or writes;
+- Agent QA: Standalone tool discovery showed the bounded entity enum,
+  limit/offset bounds, evidence semantics, and truthful no-trend limitation;
+- Renderer QA: representative complete, partial, empty, long-CJK,
+  nullable/missing, truncated-field, and unavailable fixtures were inspected at
+  640px and 960px with no clipping or unsafe HTML;
+- Luna consolidated preflight: scope and acceptance criteria are stable; the
+  Candidate is clean and pushed; raw list/detail compatibility, one-request/no
+  fan-out bounds, nullable and truncation evidence, failure mapping, source
+  timestamps, security boundaries, and protected human-only boundaries were
+  checked with no deferred blocker.
+
+Review Launch Readiness:
+
+- launched ordinal: `Sol #1`;
+- reviewer agent: `019fef66-d5dd-7901-9a92-7b4a04039c31` (`Locke`);
+- reviewer: `sol_milestone_reviewer` at `high` reasoning;
+- accounting after launch: `2 authorized / 1 consumed / 1 remaining`;
+- outcome: `NO_VERDICT_TIMEOUT`; the wait returned `timed_out: true` with no
+  reviewer status or verdict, and the still-running reviewer was closed;
+- profile stop: `UNATTENDED_TIER2.md` mandates stopping after any timeout,
+  usage-limit failure, crash, cancellation, or no verdict, so the nominal
+  remaining call is not spent and no reviewer retry is authorized.
+
+Manual Finalization Review Authorization:
+
+- user-authorized new budget for this one-off task: `1` launch;
+- reviewer: `sol_milestone_reviewer` at `high` reasoning;
+- reviewer agent: `019fef85-b436-7812-b8a0-3fc13d89dde1` (`Popper`);
+- new-task accounting after launch: `1 authorized / 1 consumed / 0 remaining`;
+- this is a fresh manual-finalization call and does not erase the historical
+  timeout record above;
+- no additional Sol launch is authorized by this task.
+
+Manual Finalization Review Result:
+
+- reviewer agent: `019fef85-b436-7812-b8a0-3fc13d89dde1` (`Popper`);
+- verdict: `PASS`;
+- new-task accounting after verdict: `1 authorized / 1 consumed / 0 remaining`;
+- P0/P1 findings: none;
+- report: `docs/product/reviews/PR-7F/manual-finalization-review.md`;
+- integration note: master-side governance ledgers require manual
+  reconciliation; this does not alter the reviewed implementation SHA.
+
+Human Authorization State:
+
+`COMPLETED — NO FURTHER CYCLE AUTHORIZED`
+
+The recorded PR-7D/PR-7E/PR-7F milestone and its one-off manual finalization
+are complete. No different Cycle or Sol launch is authorized by this ledger.
+
+Next Action:
+
+`MASTER-ONLY HARNESS CORRECTIVE` — recommended follow-up only; do not perform
+it in this completed Goal. Do not modify the frozen production implementation
+or start another Product Cycle.
+
+---
+
+## Completed Product Cycle
+
+Cycle:
+
+PR-7F Revision / Change History Intelligence
+
+Active Cycle Plan:
+
+`docs/product/cycles/PR-7F-revision-change-intelligence.md`
+
+Completed objective:
+
+Provide bounded official revision/change-history intelligence with truthful
+timestamps, summaries, evidence, coverage, partial/unavailable states, Agent UX,
+and Renderer output without unsupported historical claims.
+
+Historical corrective source:
+
+The six post-Candidate PR-7F files were preserved in user Git stash commit
+`8df0121` and were incorporated into the clean Candidate above without
+modifying or consuming that preserved source. Their stable binary patch
+fingerprint is:
+
+`ac421b1afb521d85ef9c3162f2ca192ccd07379ad9f3607b6386ea743abf57f7`
+
+The governance synchronization must not modify or consume that stash.
+
+---
+
+## Historical Review Attempts
+
+Before the portable Review Tier migration, one `sol_code_reviewer` launch and
+one `sol_product_reviewer` launch both failed at the platform usage limit and
+returned no verdict. They consumed the retired policy's budget and remain
+historical evidence; they are not PASS and are not counted as calls under the
+new user-authorized `UNATTENDED_TIER2` profile.
+
+---
+
+## Integration Record
+
+Integration state:
+
+`MASTER_MERGE_CREATED`
+
+PR:
+
+- number: `#1`
+- title: `feat: add person, calendar and revision intelligence`
+- base: `master`
+- head: `codex/pr-7d-person-staff`
+
+Implementation Candidate / Frozen SHA:
+
+`433e80cf1da7a5994513053c3391487d1c911a3e`
+
+Pre-merge `master` SHA:
+
+`85b07f2df2968f7880a9be6950b6d479a895234d`
+
+Canonical master Harness SHA:
+
+`85b07f2df2968f7880a9be6950b6d479a895234d`
+
+Merge commit SHA:
+
+`PENDING`
+
+The merge is a non-squashed `--no-ff` merge. Master-side Harness content is
+authoritative; only the three documented governance-ledger conflicts were
+reconciled manually. Final push, PR merge verification, and safe feature-branch
+retirement remain part of this integration record.
+
+---
+
+## Completed Product Cycles
+
+### PR-7D — Person / Seiyuu / Staff Intelligence
+
+- status: `FROZEN`
+- implementation frozen SHA: `84e32b3366c62346e14d154bb740fb5c480e96f9`
+- freeze record: `docs/product/reviews/PR-7D/freeze-record.md`
+
+### PR-7E — Calendar / Schedule Intelligence
+
+- status: `FROZEN`
+- implementation frozen SHA: `d53d800c5497cacd156792b1139ab7f2a696cdbe`
+- freeze record: `docs/product/reviews/PR-7E/freeze-record.md`
+
+### PR-7F — Revision / Change History Intelligence
+
+- status: `FROZEN`
+- implementation frozen SHA: `433e80cf1da7a5994513053c3391487d1c911a3e`
+- exact Candidate CI: run `31463062377`, all six mandatory jobs successful
+- manual finalization review: PASS, no P0/P1 findings
+- review record: `docs/product/reviews/PR-7F/manual-finalization-review.md`
 
 ---
 
@@ -113,29 +319,6 @@ Every launch counts even when it fails, times out, or returns no verdict. Sol
 
 ---
 
-## Last Frozen Product Cycle
-
-Cycle:
-
-PR-7C Advanced Discovery & Query Planner
-
-Status:
-
-`FROZEN`
-
-Implementation Frozen SHA:
-
-`9ae07d5a8ad5517da5dc9c33a999e174e71a86c9`
-
-Freeze Review:
-
-`PASSED`
-
-Historical review evidence predates the Review Tier harness and must not be
-reinterpreted as current launch authorization.
-
----
-
 ## Human Review Queue
 
 Open protected-decision items: 0
@@ -144,4 +327,4 @@ Human-gated opportunities must be parked under:
 
 `docs/product/human-review-queue/`
 
-Parking an item does not authorize another Cycle inside the same Goal.
+Parking an item stops this Goal and does not authorize another Cycle.

@@ -6,6 +6,9 @@ import {
   UserService,
   CharacterService,
   CalendarService,
+  PersonService,
+  RevisionService,
+  RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
@@ -14,8 +17,10 @@ import {
   buildSubjectCardViewModel,
   buildCastCardViewModel,
   buildCollectionProgressViewModel,
-  buildCalendarViewModel,
+  buildCalendarIntelligenceViewModel,
   buildSearchListViewModel,
+  buildPersonProfileViewModel,
+  buildRevisionTimelineViewModel,
 } from '@bangumi-agent-kit/renderer';
 
 let globalArtifactStore: ArtifactStore | null = null;
@@ -204,7 +209,13 @@ export function createRenderPresentationTools(
     name: 'bangumi.render_calendar',
     description: '生成 Bangumi 每日放送/追番日历卡片 Artifact。',
     input: z.object({
-      weekday: z.number().optional().describe('限定特定星期 (1-7)'),
+      // Keep the legacy weekday number schema. The new caps are additive fields.
+      weekday: z
+        .number()
+        .optional()
+        .describe('兼容旧参数：1=周一、2=周二、3=周三、4=周四、5=周五、6=周六、7=周日'),
+      maxPerDay: z.number().int().min(1).max(8).optional().describe('每天最多展示条数，默认 3'),
+      maxTotal: z.number().int().min(1).max(56).optional().describe('最多展示总条数，默认 21'),
     }),
     auth: 'none',
     scopes: [],
@@ -217,30 +228,39 @@ export function createRenderPresentationTools(
 
       const calendarService = new CalendarService(publicHttpClient);
 
-      let calendarData = await calendarService.getCalendar();
-
-      if (input.weekday) {
-        calendarData = calendarData.filter((day) => day.weekday.id === input.weekday);
-      }
-
-      const domainDays = calendarData.map((day) => ({
-        weekday: {
-          id: day.weekday.id || 1,
-          en: day.weekday.en || 'Mon',
-          cn: day.weekday.cn || '星期一',
-          ja: day.weekday.ja || '月曜日',
-        },
-        items: (day.items || []).map((item) => ({
-          id: item.id,
-          name: item.name,
-          nameCn: item.nameCn,
-          images: item.images,
-          score: item.score,
-        })),
-      }));
-
-      const viewModel = buildCalendarViewModel(domainDays as any);
+      const calendarResult = await calendarService.getCalendarIntelligence(input);
+      const viewModel = buildCalendarIntelligenceViewModel(calendarResult);
       return await executeRenderAndSave(viewModel);
+    },
+  });
+
+  const renderRevisionTimeline = defineTool({
+    name: 'bangumi.render_revision_timeline',
+    description:
+      '生成官方修订历史摘要图片卡片 Artifact。结果是有界样本，不宣称完整生命周期历史；支持 subject、episode、character、person。',
+    input: z.object({
+      entityType: z
+        .enum(['subject', 'episode', 'character', 'person'])
+        .describe('实体类型：subject 条目、episode 章节、character 角色、person 人物'),
+      entityId: z.number().int().positive().describe('实体 ID'),
+      limit: z.number().int().min(1).max(20).optional().describe('最多展示修订条数，默认 10'),
+      offset: z.number().int().min(0).max(1_000_000).optional().describe('官方分页偏移量，默认 0'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const publicClient = deps?.publicHttpClient;
+      if (!publicClient) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const revisionService = new RevisionService(publicClient);
+      const revisionResult = await revisionService.getRevisionIntelligence(
+        input.entityType as RevisionEntityType,
+        input.entityId,
+        { limit: input.limit, offset: input.offset },
+      );
+      return await executeRenderAndSave(buildRevisionTimelineViewModel(revisionResult));
     },
   });
 
@@ -249,7 +269,10 @@ export function createRenderPresentationTools(
     description: '生成 Bangumi 搜索结果列表图片卡片 Artifact。',
     input: z.object({
       query: z.string().describe('搜索关键词'),
-      subjectType: z.number().optional().describe('条目类型: 1-Book, 2-Anime, 3-Music, 4-Game, 6-Real'),
+      subjectType: z
+        .number()
+        .optional()
+        .describe('条目类型: 1-Book, 2-Anime, 3-Music, 4-Game, 6-Real'),
       limit: z.number().optional().describe('最多渲染条目数 (默认 10)'),
     }),
     auth: 'none',
@@ -282,11 +305,46 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderPersonProfile = defineTool({
+    name: 'bangumi.render_person_profile',
+    description: '生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。',
+    input: z.object({
+      personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+      maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系读取上限'),
+      maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系读取上限'),
+      maxCredits: z.number().int().min(1).max(20).optional().describe('每类关系最多展示条数'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const clientProvider = deps?.clientProvider;
+      if (!clientProvider) {
+        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
+      }
+
+      const client = await clientProvider.getPublicClient();
+      const personService = new PersonService(client);
+      const profile = await personService.getPersonProfile(input.personId, {
+        maxSubjects: input.maxSubjects ?? 500,
+        maxCharacters: input.maxCharacters ?? 500,
+      });
+      const viewModel = buildPersonProfileViewModel(profile, {
+        retrievedAt: new Date().toISOString(),
+        maxSubjectCredits: input.maxCredits ?? 8,
+        maxCharacterCredits: input.maxCredits ?? 8,
+      });
+      return await executeRenderAndSave(viewModel);
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
     renderCollectionProgress,
     renderCalendar,
     renderSearch,
+    renderPersonProfile,
+    renderRevisionTimeline,
   ] as const;
 }
