@@ -122,5 +122,8 @@ plan/evidence/coverage/limitation sections at both widths.
   and final PR-7H Sol #2 agent `019ff090-bf00-7b00-865f-0e65ef3fe018`
   (`Tesla`) is now running. Sol #3 is prohibited; after the terminal verdict,
   persist the outer `PAUSED_BY_OUTER_REVIEW_BUDGET` checkpoint.
+- A bounded wait returned `timed_out` while Tesla remained active; this is
+  `WAIT_TIMEOUT_REVIEWER_STILL_RUNNING`, not a reviewer failure or refunded
+  launch. Continue waiting on the same agent.
 - No P0/P1 blockers are known from Luna preflight. The independent reviewer
   must inspect the actual Base..Candidate diff and evidence before Freeze.

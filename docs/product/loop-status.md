@@ -198,16 +198,18 @@ scope. Waits on this same agent consume no additional launch.`
 
 Latest Reviewer Runtime Event:
 
-`REVIEW_LAUNCHED — final authorized PR-7H Sol #2 started as
-019ff090-bf00-7b00-865f-0e65ef3fe018 (Tesla) against exact Candidate
-3f46a97010fff829ab6cfec132bae07359b34e2c after exact CI run 31486111752
-passed. No Sol #3 is permitted.`
+`WAIT_TIMEOUT_REVIEWER_STILL_RUNNING — bounded wait returned timed_out with no
+terminal verdict; the same final authorized Sol #2 agent
+019ff090-bf00-7b00-865f-0e65ef3fe018 (Tesla) remains active. No launch was
+added or consumed; continue waiting on this same reviewer. No Sol #3 is
+permitted.`
 
 Latest Milestone Runtime Event:
 
-`REVIEW_RUNNING — the final PR-7H review is active. Its terminal result must
-be persisted before Freeze/parking/integration, followed by the mandatory
-outer PAUSED_BY_OUTER_REVIEW_BUDGET checkpoint.`
+`REVIEW_RUNNING — the final PR-7H review remains active after a bounded wait
+timeout. Its terminal result must be persisted before Freeze/parking/
+integration, followed by the mandatory outer PAUSED_BY_OUTER_REVIEW_BUDGET
+checkpoint.`
 
 Execution-budget pause state:
 
