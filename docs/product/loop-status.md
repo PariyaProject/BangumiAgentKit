@@ -56,17 +56,17 @@ Stopping Condition:
 
 Current Milestone State:
 
-`PAUSED_REVIEW_BUDGET_EXHAUSTED`
+`REVIEW_AUTHORIZED`
 
 Current Phase:
 
-`SOL_1_NO_VERDICT_STOP`
+`MANUAL_FINALIZATION_REVIEW_READY`
 
 Execution Runtime:
 
-The current `/goal` stopped under the portable unattended profile after Sol #1
-returned no verdict before the review wait timed out. The implementation
-Candidate remains un-frozen; no corrective work or second review was started.
+The current one-off manual finalization task has reconstructed the stopped
+PR-7F state. The historical timeout remains recorded, and the implementation
+Candidate is review-ready under the newly authorized one-launch overlay.
 
 Primary Model:
 
@@ -162,6 +162,15 @@ Review Launch Readiness:
   usage-limit failure, crash, cancellation, or no verdict, so the nominal
   remaining call is not spent and no reviewer retry is authorized.
 
+Manual Finalization Review Authorization:
+
+- user-authorized new budget for this one-off task: `1` launch;
+- reviewer: `sol_milestone_reviewer` at `high` reasoning;
+- new-task accounting before launch: `1 authorized / 0 consumed / 1 remaining`;
+- this is a fresh manual-finalization call and does not erase the historical
+  timeout record above;
+- no additional Sol launch is authorized by this task.
+
 Human Authorization State:
 
 `UNATTENDED_TIER2_AUTHORIZED`
@@ -172,9 +181,11 @@ authorize a different Cycle or Sol #3.
 
 Next Action:
 
-Stop the current Goal at the documented unattended no-verdict condition. Do
-not launch Sol #2, start corrective implementation, freeze the Candidate, or
-select another Product Cycle in this Goal.
+Launch the one newly authorized manual-finalization
+`sol_milestone_reviewer` review against Base
+`d53d800c5497cacd156792b1139ab7f2a696cdbe` and Candidate
+`433e80cf1da7a5994513053c3391487d1c911a3e`. If it does not return `PASS`, do
+not merge and stop with the exact result.
 
 ---
 

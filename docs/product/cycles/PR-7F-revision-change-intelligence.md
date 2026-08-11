@@ -1,6 +1,6 @@
 # PR-7F Revision / Change History Intelligence
 
-Status: `PAUSED_REVIEW_BUDGET_EXHAUSTED — SOL #1 NO VERDICT`
+Status: `REVIEW_AUTHORIZED — MANUAL FINALIZATION SOL READY`
 
 Base: PR-7E implementation frozen SHA
 `d53d800c5497cacd156792b1139ab7f2a696cdbe`
@@ -226,6 +226,23 @@ no-verdict outcome and does not authorize a retry or another reviewer. The
 nominal accounting is therefore `2 authorized / 1 consumed / 1 remaining`, but
 the remaining launch is not spendable in this stopped execution. No Sol #2,
 corrective implementation, or next Product Cycle may begin in this Goal.
+
+## One-Off Manual Finalization Authorization
+
+The user has explicitly authorized one fresh `sol_milestone_reviewer` launch
+for this manual finalization task. This overlay does not erase or reinterpret
+the historical Sol timeout above.
+
+- reviewer: `sol_milestone_reviewer` at `high` reasoning;
+- Base SHA: `d53d800c5497cacd156792b1139ab7f2a696cdbe`;
+- implementation Candidate SHA:
+  `433e80cf1da7a5994513053c3391487d1c911a3e`;
+- exact Candidate CI: run `31463062377`, successful across all six jobs;
+- new-task budget before launch: `1 authorized / 0 consumed / 1 remaining`;
+- maximum new launches in this task: `1`.
+
+If this fresh review does not return `PASS`, the feature must not be merged;
+the exact outcome and any findings must be persisted and this task must stop.
 
 ## Acceptance Criteria
 
