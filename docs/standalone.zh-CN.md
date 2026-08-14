@@ -72,6 +72,8 @@ collection status <subjectId>
 collection intelligence [--max-items 1..200]
 collection backlog [--max-items 1..100] [--max-subjects 1..30]
                   [--max-episodes 1..1000] [--status wish,doing,on_hold]
+collection schedule [--max-items 1..200] [--max-rows 1..100]
+                   [--status wish,doing,done,on_hold,dropped]
 collection list
 collection set <subjectId> <wish|watching|watched|dropped|...>
 ```
@@ -154,10 +156,19 @@ render collection <id>
 render collection-intelligence [--max-items 1..200]
 render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
                          [--max-episodes 1..1000] [--status wish,doing,on_hold]
+render collection-schedule [--max-items 1..200] [--max-rows 1..100]
+                           [--status wish,doing,done,on_hold,dropped]
 ```
 
 `collection backlog` 只读取当前绑定账号的官方 v0 动画收藏和正篇 episode
 collection。默认筛选 `wish`、`doing`、`on_hold`，并在安全上限内显示已看章节、episode sourceTotal 分母、SlimSubject.eps 原始值及 validity、剩余集数、完成度和基于严格 airing certification 的 `finished`/`ongoing`/`unknown` 状态。`finished` 只表示当前报告的完整、去重正篇 episode airdate 均已过去，不证明未发布后续或排除 hiatus；重复、非正篇、缺失/非法 ID、缺失/非法日期、分页失败、sourceTotal 变化或截断都会保留为未知/部分覆盖。条目级 auth、过期、权限、限流、上游和网络错误会保留 code、message 与 nextAction。人类可读输出按字段、行数、字符和 UTF-8 字节数有界；JSON 模式保留结构化证据。该视图不读取评论、不做日历/推荐/历史推断，也不执行写入。
+
+`collection schedule` 只读取当前绑定账号的有界动画收藏，并与官方七日
+legacy `/calendar` 按 `subjectId` 对齐。它展示匹配条目的星期、官方
+`air_date`、收藏状态、`ep_status`/`subject.eps` 收藏信封进度，以及未匹配的
+收藏或日历行；`air_date` 不是具体播出时刻，官方源不提供时区。分页、重复、
+缺失、进度 unknown/conflict、auth、上游错误和 partial/unavailable 状态均保留在
+JSON 与人类输出中；不读取评论，不读取 episode collection，不执行收藏写入。
 
 Renderer Tool 返回 `ArtifactRef`。`--output` 只接受用户明确指定的本地目标，
 Standalone 会从 ArtifactStore 校验 ID、mime、expiry、PNG signature 后复制

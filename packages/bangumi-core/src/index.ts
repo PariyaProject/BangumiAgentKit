@@ -21,6 +21,7 @@ export * from './services/index-write-service.js';
 export * from './services/collection-service.js';
 export * from './services/collection-intelligence-service.js';
 export * from './services/collection-backlog-service.js';
+export * from './services/collection-schedule-service.js';
 export * from './services/audit-service.js';
 export * from './services/calendar-service.js';
 

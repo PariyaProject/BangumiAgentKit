@@ -180,6 +180,43 @@ describe('Standalone discovery and raw tool playground', () => {
     );
   });
 
+  it('collection schedule commands route to the account-bound schedule tools', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'complete' });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      [
+        'collection',
+        'schedule',
+        '--max-items',
+        '25',
+        '--max-rows',
+        '12',
+        '--status',
+        'doing,on_hold',
+      ],
+      context(host),
+    );
+    await registry.execute(
+      ['render', 'collection-schedule', '--max-items', '20', '--max-rows', '8', '--status', 'wish'],
+      context(host),
+    );
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_collection_schedule',
+      { maxCollectionItems: 25, maxRows: 12, statuses: ['doing', 'on_hold'] },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_collection_schedule',
+      { maxCollectionItems: 20, maxRows: 8, statuses: ['wish'] },
+      expect.anything(),
+    );
+  });
+
   it('preserves the documented single-quoted raw JSON form and executes it through ToolRegistry', async () => {
     const tokens = tokenizeCommandLine(
       `tool call bangumi.search_subjects '{"query":"少女终末旅行"}'`,

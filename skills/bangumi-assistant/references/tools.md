@@ -20,6 +20,7 @@
 | `bangumi.get_user`                    | none            | read     | 查看用户公开主页与收藏                                                                                  |
 | `bangumi.get_collection_intelligence` | read:collection | read     | 当前账号有界收藏状态、评分、标签和进度概览                                                              |
 | `bangumi.get_collection_backlog`      | read:collection | read     | 当前账号动画 backlog、正篇 sourceTotal、SlimSubject.eps validity、严格 airdate 证据、剩余集数与冲突状态 |
+| `bangumi.get_collection_schedule`     | read:collection | read     | 当前账号收藏与官方七日 legacy 日历的 subject ID 对齐、星期、首播日期、收藏信封进度与未匹配覆盖          |
 | `bangumi.get_revision`                | none            | read     | 查看条目修改修订日志                                                                                    |
 | `bangumi.get_index`                   | none            | read     | 查看目录及其包含条目                                                                                    |
 | `bangumi.auth_status`                 | none            | read     | 查看当前用户 Bangumi 绑定状态                                                                           |
@@ -40,6 +41,14 @@ completion as finished/ongoing/unknown evidence. Finished is explicitly
 qualified as “all currently reported main episodes have past airdates” rather
 than an official no-more-episodes claim. Row-level errors retain code, message,
 and nextAction.
+
+The collection-schedule semantic tool and renderer are current-account-only,
+image-free, and bounded. They join the official seven-day legacy calendar to
+the selected current-account animation collection by subject ID, keep
+unmatched calendar/collection rows visible, and expose `ep_status` plus
+`subject.eps` only as collection-envelope evidence. They do not infer an
+airing time, timezone, episode-level completion, history, or recommendation,
+and do not render collection comments or perform writes.
 
 ## 保底 Operation 工具
 

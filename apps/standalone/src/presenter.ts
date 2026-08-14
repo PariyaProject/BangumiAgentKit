@@ -306,6 +306,130 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
   return boundHumanLines(lines);
 }
 
+function presentCollectionSchedule(value: Record<string, unknown>): string | undefined {
+  const data = value.data;
+  if (!data || typeof data !== 'object') return undefined;
+  const details = data as Record<string, unknown>;
+  const summary = details.summary;
+  if (
+    !Array.isArray(details.items) ||
+    !summary ||
+    typeof summary !== 'object' ||
+    !('matchedRows' in (summary as Record<string, unknown>))
+  ) {
+    return undefined;
+  }
+
+  const summaryDetails = summary as Record<string, unknown>;
+  const lines = [
+    `收藏本周播出计划 · 状态: ${humanField(value.state || 'unknown', 64)}`,
+    `摘要: 匹配播出 ${humanField(summaryDetails.matchedRows ?? '?', 32)} · 符合收藏状态 ${humanField(summaryDetails.eligibleCollectionRows ?? '?', 32)} · 未匹配日历 ${humanField(summaryDetails.unmatchedCollectionRows ?? '?', 32)} · 未收藏日历 ${humanField(summaryDetails.unmatchedCalendarRows ?? '?', 32)}`,
+    '说明：按 subject ID 对齐；日期是官方日历的首播日期证据，不等同于具体播出时刻或时区。',
+  ];
+
+  const error = value.error;
+  if (error && typeof error === 'object') {
+    const errorDetails = error as Record<string, unknown>;
+    lines.push(
+      `错误: ${humanField(errorDetails.code || 'UNKNOWN_ERROR', 64)} · ${humanField(errorDetails.message || '请求不可用')}${errorDetails.nextAction ? ` · ${humanField(errorDetails.nextAction)}` : ''}`,
+    );
+  }
+
+  const coverage = value.coverage;
+  if (coverage && typeof coverage === 'object') {
+    const coverageDetails = coverage as Record<string, unknown>;
+    const calendar = coverageDetails.calendar;
+    const collection = coverageDetails.collection;
+    const join = coverageDetails.join;
+    const calendarDetails =
+      calendar && typeof calendar === 'object' ? (calendar as Record<string, unknown>) : undefined;
+    const collectionDetails =
+      collection && typeof collection === 'object'
+        ? (collection as Record<string, unknown>)
+        : undefined;
+    const joinDetails =
+      join && typeof join === 'object' ? (join as Record<string, unknown>) : undefined;
+    if (calendarDetails || collectionDetails || joinDetails) {
+      lines.push(
+        `覆盖: 日历 ${humanField(calendarDetails?.observedRows ?? '?', 32)} · 收藏 ${humanField(collectionDetails?.observedRows ?? '?', 32)}/${humanField(collectionDetails?.sourceTotal ?? '?', 32)} · 对齐返回 ${humanField(joinDetails?.returnedRows ?? '?', 32)}/${humanField(joinDetails?.maxRows ?? '?', 32)}`,
+      );
+    }
+  }
+
+  const items = details.items as unknown[];
+  if (items.length === 0) {
+    lines.push('条目: 没有返回匹配的收藏播出条目；空结果不证明本周没有播出。');
+  } else {
+    for (const [index, candidate] of items.slice(0, 12).entries()) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const item = candidate as Record<string, unknown>;
+      const title = humanField(item.nameCn || item.name || `#${item.subjectId || '?'}`);
+      const status = humanField(item.statusLabel || item.status || '状态未知', 96);
+      const schedule =
+        item.schedule && typeof item.schedule === 'object'
+          ? (item.schedule as Record<string, unknown>)
+          : {};
+      const weekday =
+        schedule.weekday && typeof schedule.weekday === 'object'
+          ? (schedule.weekday as Record<string, unknown>)
+          : {};
+      const weekdayLabel = humanField(
+        weekday.cn || weekday.en || weekday.ja || `星期 ${weekday.id || '?'}`,
+        64,
+      );
+      const progress =
+        item.progress && typeof item.progress === 'object'
+          ? (item.progress as Record<string, unknown>)
+          : {};
+      const progressState = progress.state;
+      const progressLabel =
+        progressState === 'reported'
+          ? `已看 ${humanField(progress.watchedEpisodes ?? '?', 32)}/${humanField(progress.reportedTotalEpisodes ?? '?', 32)} · 信封剩余 ${humanField(progress.reportedRemainingEpisodes ?? '?', 32)} 集`
+          : `${humanField(progressState || 'unknown', 64)} · ${humanField(Array.isArray(progress.reasons) ? progress.reasons[0] || '进度无法计算' : '进度无法计算')}`;
+      lines.push(
+        `${index + 1}. ${title} · ${status} · ${weekdayLabel}${schedule.airDate ? ` · ${humanField(schedule.airDate, 32)}` : ''}`,
+      );
+      lines.push(`   ${progressLabel}`);
+    }
+    if (items.length > 12)
+      lines.push(`另有 ${humanField(items.length - 12, 32)} 条匹配条目未展开。`);
+  }
+
+  const unmatchedCollection = details.unmatchedCollection;
+  if (Array.isArray(unmatchedCollection) && unmatchedCollection.length > 0) {
+    lines.push(`收藏中未匹配日历: ${humanField(unmatchedCollection.length, 32)} 条`);
+    for (const candidate of unmatchedCollection.slice(0, 4)) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const item = candidate as Record<string, unknown>;
+      lines.push(
+        `- ${humanField(item.nameCn || item.name || `#${item.subjectId || '?'}`)} · ${humanField(item.statusLabel || item.status || '状态未知', 96)}`,
+      );
+    }
+    if (unmatchedCollection.length > 4) {
+      lines.push(`- 另有 ${humanField(unmatchedCollection.length - 4, 32)} 条未匹配收藏未展开。`);
+    }
+  }
+
+  const warnings = value.warnings;
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    lines.push('告警：');
+    for (const warning of warnings.slice(0, 3)) {
+      if (!warning || typeof warning !== 'object') {
+        lines.push(`- ${humanField(warning)}`);
+        continue;
+      }
+      const warningDetails = warning as Record<string, unknown>;
+      lines.push(
+        `- ${humanField(warningDetails.code || 'WARNING', 64)} · ${humanField(warningDetails.message || '')}`,
+      );
+    }
+    if (warnings.length > 3)
+      lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条告警未展开。`);
+  }
+
+  return boundHumanLines(lines);
+}
+
 function presentArtifact(value: Record<string, unknown>): string | undefined {
   const artifact = value.artifact;
   if (!artifact || typeof artifact !== 'object') return undefined;
@@ -319,6 +443,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const collectionSchedule = presentCollectionSchedule(safe as Record<string, unknown>);
+    if (collectionSchedule) return collectionSchedule;
     const collectionBacklog = presentCollectionBacklog(safe as Record<string, unknown>);
     if (collectionBacklog) return collectionBacklog;
     const discovery = presentDiscovery(safe as Record<string, unknown>);

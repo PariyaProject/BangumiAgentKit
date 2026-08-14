@@ -5,6 +5,7 @@ import type {
   CalendarIntelligenceResult,
   CollectionIntelligenceResult,
   CollectionBacklogResult,
+  CollectionScheduleResult,
   RevisionIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
@@ -18,6 +19,7 @@ import type {
   CollectionProgressViewModel,
   CollectionIntelligenceViewModel,
   CollectionBacklogViewModel,
+  CollectionScheduleViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SearchItemViewModel,
@@ -208,6 +210,52 @@ export function buildCollectionBacklogViewModel(
       operations: result.source.operations,
       formulaVersion: formulaEvidence?.formulaVersion,
       authScope: result.source.authScope,
+      retrievedAt,
+    },
+    warnings: result.warnings,
+    limitations: result.limitations,
+    error: result.error,
+  };
+}
+
+export function buildCollectionScheduleViewModel(
+  result: CollectionScheduleResult,
+  options: { sourceLabel?: string; maxItems?: number; maxUnmatched?: number } = {},
+): CollectionScheduleViewModel {
+  const maxItems = Math.min(20, Math.max(0, Math.trunc(options.maxItems ?? 12)));
+  const maxUnmatched = Math.min(8, Math.max(0, Math.trunc(options.maxUnmatched ?? 4)));
+  const items = result.data.items.slice(0, maxItems);
+  const unmatchedCalendar = result.data.unmatchedCalendar.slice(0, maxUnmatched);
+  const unmatchedCollection = result.data.unmatchedCollection.slice(0, maxUnmatched);
+  const renderedRows = items.length + unmatchedCalendar.length + unmatchedCollection.length;
+  const omittedRows = Math.max(0, result.coverage.join.returnedRows - renderedRows);
+  const formulaEvidence = result.evidence.find((item) => item.source === 'derived');
+  const retrievedAt = result.source.collection.retrievedAt || result.source.calendar.retrievedAt;
+
+  return {
+    template: 'collection-schedule',
+    version: 1,
+    state: result.state,
+    filters: result.filters,
+    items,
+    unmatchedCalendar,
+    unmatchedCollection,
+    summary: result.data.summary,
+    coverage: {
+      ...result.coverage,
+      renderedItems: items.length,
+      renderedUnmatchedCalendar: unmatchedCalendar.length,
+      renderedUnmatchedCollection: unmatchedCollection.length,
+      omittedRows,
+    },
+    source: {
+      ...result.source,
+      label: options.sourceLabel || 'Bangumi legacy 日历 · 当前账号 v0 收藏',
+    },
+    evidence: {
+      operations: ['GET /calendar', 'GET /v0/users/{username}/collections'],
+      formulaVersion: formulaEvidence?.formulaVersion,
+      authScope: 'account',
       retrievedAt,
     },
     warnings: result.warnings,

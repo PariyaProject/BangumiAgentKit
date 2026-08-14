@@ -14,6 +14,7 @@ import {
   CalendarService,
   CollectionIntelligenceService,
   CollectionBacklogService,
+  CollectionScheduleService,
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
@@ -889,6 +890,76 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCollectionSchedule = defineTool({
+    name: 'bangumi.get_collection_schedule',
+    description:
+      '获取当前绑定 Bangumi 账号的有界动画播出计划：将官方七日 legacy 日历与当前账号收藏的动画按 subject ID 对齐，显示星期、首播日期、收藏状态和收藏接口报告的进度。只接受当前账号，不读取评论、不执行写入；分页、重复、未匹配、进度 unknown/conflict、auth、partial 和 unavailable 状态都会显式返回；官方日历不提供具体时区或播出时刻。',
+    input: z
+      .object({
+        maxCollectionItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多扫描当前账号动画收藏条目数，默认 100'),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('匹配和未匹配条目最多返回行数，默认 56'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('收藏状态过滤，默认 wish/doing/on_hold；不表示优先级'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能获取收藏播出计划。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能获取收藏播出计划。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      return await new CollectionScheduleService(
+        client,
+        deps?.publicHttpClient,
+      ).getCollectionSchedule(username, {
+        maxCollectionItems: input.maxCollectionItems,
+        maxRows: input.maxRows,
+        statuses: input.statuses,
+      });
+    },
+  });
+
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
     description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
@@ -1021,5 +1092,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubjectOverviewTool,
     getCollectionIntelligence,
     getCollectionBacklog,
+    getCollectionSchedule,
   ] as const;
 }

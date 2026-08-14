@@ -10,6 +10,7 @@ import {
   CalendarService,
   CollectionIntelligenceService,
   CollectionBacklogService,
+  CollectionScheduleService,
   PersonService,
   RevisionService,
   RevisionEntityType,
@@ -30,6 +31,7 @@ import {
   buildSubjectOverviewViewModel,
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
+  buildCollectionScheduleViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -567,6 +569,77 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionSchedule = defineTool({
+    name: 'bangumi.render_collection_schedule',
+    description:
+      '生成当前绑定 Bangumi 账号有界本周播出计划图片卡片 Artifact。卡片将官方七日 legacy 日历与当前账号动画收藏按 subject ID 对齐，显示星期、日期、收藏状态、收藏接口报告的进度以及未匹配/partial/unavailable/auth 状态；不接受任意用户名、不显示评论、不执行写入，不把日期当作具体时刻。',
+    input: z
+      .object({
+        maxCollectionItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多扫描当前账号动画收藏条目数，默认 100'),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('匹配和未匹配条目最多返回行数，默认 56'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('收藏状态过滤，默认 wish/doing/on_hold'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能渲染收藏播出计划。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能渲染收藏播出计划。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      const result = await new CollectionScheduleService(
+        client,
+        deps?.publicHttpClient,
+      ).getCollectionSchedule(username, {
+        maxCollectionItems: input.maxCollectionItems,
+        maxRows: input.maxRows,
+        statuses: input.statuses,
+      });
+      return await executeRenderAndSave(buildCollectionScheduleViewModel(result));
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -580,5 +653,6 @@ export function createRenderPresentationTools(
     renderSubjectOverview,
     renderCollectionIntelligence,
     renderCollectionBacklog,
+    renderCollectionSchedule,
   ] as const;
 }

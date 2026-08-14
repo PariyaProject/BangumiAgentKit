@@ -183,6 +183,75 @@ which supports the user-value hypothesis without authorizing broader crawling.
 
 ---
 
+## OP-010 Collection Weekly Schedule
+
+Status:
+SELECTED_IN_HARNESS_V3_EPOCH / COLLECTION-WEEKLY-SCHEDULE-V1
+
+User questions:
+
+“我收藏的动画本周哪几天更新？”
+
+“本周有哪些我在看或想看的收藏条目会播出？当前进度和播出计划能否对应上？”
+
+“为什么某些收藏条目没有出现在本周计划中，哪些信息无法计算？”
+
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+5/5
+
+Data Availability:
+4/5 — official legacy `/calendar` supplies a bounded seven-day airing
+surface and the authenticated v0 collection envelope supplies current-account
+status, `ep_status`, and `subject.eps`; the source does not provide a concrete
+airing time or timezone and does not certify episode-level completion.
+
+Reliability:
+4/5
+
+Implementation Cost:
+3/5 — bounded join over existing calendar and account-collection seams, plus
+an image-free card.
+
+Maintenance Risk:
+2/5
+
+Source Risk:
+1/5
+
+Possible Sources:
+Official legacy `/calendar` and current-account official v0
+`GET /v0/users/{username}/collections`; no HTML, Structured Web, snapshots,
+or per-subject episode hydration.
+
+Potential Capability:
+`get_collection_schedule`
+
+Potential Renderer:
+`CollectionSchedule`
+
+Derived Logic:
+`collection-schedule-v1` matches only stable `subjectId` values, preserves
+calendar and collection source order, exposes unmatched calendar and collection
+rows, and labels `ep_status`/`subject.eps` progress as collection-envelope
+evidence. Missing, invalid, duplicate, conflicting, truncated, and unavailable
+source observations remain explicit; no timezone, historical trend, airing
+time, recommendation, or episode-completion claim is inferred.
+
+Provenance:
+Selected from synchronized Harness V3 `master` in Outer Run Issue #14 after
+the six-lane discovery audit. The live Bangumi calendar exposes a seven-day
+airing plan, while the merged collection-backlog Epoch explicitly excluded a
+calendar/weekly-schedule join. The slice reuses the existing current-account
+`read:collection` seam without changing authentication or write authority.
+
+---
+
 ## OP-001 Voice Actor Workload
 
 Status:
