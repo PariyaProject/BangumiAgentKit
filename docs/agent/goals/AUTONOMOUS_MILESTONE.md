@@ -33,6 +33,10 @@ failures, internal fixes, and several hours of GPT-5.6 Luna Max work.
 Those events and `LUNA_STABLE` Work Package states are not Sol or Git triggers.
 Sol review is allowed only after the complete Epoch passes the canonical
 coherence and Review Readiness gates in `BUDGET_FIRST_EXECUTION.md`.
+A coherent end-to-end vertical slice may be one Work Package, but it is an
+implementation slice rather than an automatic Epoch boundary. After it becomes
+`LUNA_STABLE`, evaluate the remaining closely related high-value Work Packages
+before declaring review readiness.
 
 This execute-only Goal does not select, plan, or begin the next Product Cycle
 after the current milestone stops or freezes. The separate self-evolution
@@ -111,7 +115,9 @@ Use the Luna primary thread to repeat the following within the Cycle scope:
    validation and Luna self-review, without creating status-only Git churn;
 10. update the runtime ledger only at meaningful durable checkpoints and before
     a genuine interruption;
-11. continue Luna work until the complete Epoch, not a Work Package or
+11. perform the canonical consolidated `PRE-SOL FALSIFICATION` against the
+    complete Base..Candidate Epoch and fix any blocker before review launch;
+12. continue Luna work until the complete Epoch, not a Work Package or
     intermediate stage, is ready for consolidated review.
 
 Tests failing during implementation are Luna work. Fixing tests, refactoring
@@ -132,6 +138,11 @@ the entire Base..Candidate Epoch against:
 - user value and the Cycle's representative questions;
 - Agent UX and semantic usability;
 - Renderer quality when applicable.
+
+This review includes the canonical `PRE-SOL FALSIFICATION`; tests and green CI
+alone are not sufficient evidence of readiness. Keep the falsification summary
+compact and batch it with existing readiness or launch evidence rather than
+creating a separate checklist commit.
 
 Fix every known in-scope blocker before spending Sol.
 
@@ -179,7 +190,10 @@ The profile itself does not upgrade the tier or grant Sol calls. An explicitly
 selected overlay may specialize the budget only when the user invocation
 authorizes it and the Cycle Plan plus ledger are updated before expenditure.
 
-A reviewer start consumes one launch; wait and poll calls on that same reviewer
+A reviewer start consumes one launch; `REVIEW_AUTHORIZED` alone consumes zero
+and does not imply `REVIEWER_RUNNING`. A persisted running state requires an
+actual start plus the identity, ordinal, exact Candidate, validation/CI, and
+incremented applicable ledgers. Wait and poll calls on that same reviewer
 consume zero additional launches. Apply the canonical runtime states and
 120-minute default overall reviewer deadline from
 `AUTONOMOUS_REVIEW_POLICY.md`. A wait timeout while the reviewer remains

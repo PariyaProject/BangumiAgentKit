@@ -12,6 +12,8 @@ result, updates backlog/state, and returns to discovery.
 A Cycle Plan should define:
 
 - Epoch objective and related Work Packages
+- initial vertical slice / first Work Package, if applicable
+- Product Review Epoch boundary after the related-scope assessment
 - user problem
 - representative questions
 - product gap
@@ -53,12 +55,18 @@ Every new product Cycle/Epoch Plan must contain:
 ```markdown
 ## Review Boundary Rationale
 
+The initial vertical slice or first Work Package is implementation evidence,
+not an automatic review boundary. Apply the canonical coherence and
+reviewability test before setting `REVIEW_READY`.
+
 - Why these Work Packages belong together:
 - User / Agent journey completed:
 - Related work intentionally included:
 - Adjacent work intentionally deferred:
-- Why reviewing now has higher value than reviewing earlier:
-- Why extending further would reduce coherence or reviewability:
+- WHY NOT REVIEW EARLIER? Why reviewing now has higher value than reviewing
+  earlier:
+- WHY NOT EXTEND FURTHER? Why extending further would reduce coherence or
+  reviewability:
 
 ## Review Economics
 

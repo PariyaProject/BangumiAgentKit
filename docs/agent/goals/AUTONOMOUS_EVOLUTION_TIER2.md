@@ -148,8 +148,11 @@ Do not select by roadmap number alone. An Epoch may include multiple related
 Work Packages and many meaningful commits, but must remain one coherent,
 reviewable PR-level product increment with explicit representative questions,
 acceptance criteria, QA, resource bounds, and the canonical Review Boundary
-Rationale. Do not create micro-Epochs for ordinary Work Packages or mega-Epochs
-that combine unrelated product domains.
+Rationale. A usable initial vertical slice may be one Work Package, but it is
+not automatically the Product Review Epoch boundary; examine closely related
+high-value Work Packages before entering review readiness. Do not create
+micro-Epochs for ordinary Work Packages or mega-Epochs that combine unrelated
+product domains.
 
 ## Per-Epoch lifecycle
 
@@ -193,7 +196,7 @@ Starting a reviewer consumes one launch from each ledger. If either remaining
 count is zero, do not launch.
 
 ```text
-stable Candidate + exact-SHA evidence
+stable Candidate + canonical Pre-Sol Falsification + exact-SHA evidence
   -> Sol #1 comprehensive review
 
 PASS
