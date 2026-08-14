@@ -49,8 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`HUMAN_REVIEW_READY / OUTER_LOOP_STOPPED — user-directed PR-8A corrective
-checkpoint persisted; no new Epoch was selected`
+`INTEGRATION_BLOCKED_BASE_DRIFT / OUTER_LOOP_STOPPED — explicit merge request
+could not pass the recorded-base safety gate`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -58,7 +58,7 @@ Outer Sol Review Budget Authorized / Consumed:
 
 Outer Review Budget State:
 
-`STOPPED_AT_HUMAN_REVIEW_READY — 2 consumed of 4 authorized; 2 remain
+`STOPPED_AT_INTEGRATION_BLOCKER — 2 consumed of 4 authorized; 2 remain
 unspent and no additional Sol launch was made`
 
 Explicit Outer Non-Scope:
@@ -90,12 +90,13 @@ Current-governance plan:
 
 Current Milestone State:
 
-`HUMAN_REVIEW_READY (historical independent-review state remains
+`INTEGRATION_BLOCKED_BASE_DRIFT (human-review Candidate remains
+HUMAN_REVIEW_READY; historical independent-review state remains
 PARKED_REVIEW_LIMIT)`
 
 Current Phase:
 
-`HUMAN_REVIEW_READY / PERSISTED`
+`INTEGRATION_BLOCKED_BASE_DRIFT / PERSISTED`
 
 Review Boundary Rationale:
 
@@ -161,22 +162,22 @@ Integration Contract:
 - Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
   the dedicated feature branch, and return to synchronized `master` without
   touching historical branches;
-- Integration State: `NOT_STARTED / HUMAN_REVIEW_READY`;
+- Integration State: `INTEGRATION_BLOCKED_BASE_DRIFT`;
 - Implementation Frozen SHA: `N/A`;
 - Merge Commit SHA: `N/A`.
 
 Human Authorization State:
 
-`USER-AUTHORIZED HUMAN-DIRECTED LUNA-ONLY CORRECTIVE on existing PR-8A;
-protected Human-On-Exception boundaries remain active; no Sol, subagent,
-Freeze, merge, or new Epoch authorization was used.`
+`USER-AUTHORIZED MERGE ATTEMPT on existing PR-8A; protected Human-On-Exception
+boundaries remain active; the recorded-base gate blocked integration before any
+merge, rebase, Freeze, Sol, or subagent action.`
 
 Next Action:
 
-`STOP at HUMAN_REVIEW_READY. Await human review of Candidate
-05288aecf80f040213dc4fdc938f2838775b9829 on PR #6. Do not launch Sol, Freeze,
-merge, close, reset, start recovery, select a new Epoch, or enter opportunity
-discovery.`
+`STOP at INTEGRATION_BLOCKED_BASE_DRIFT. Resolve the recorded Base SHA drift
+with explicit direction, then rerun the required integration safety gate. Do
+not automatically rebase, merge, close, reset, start recovery, select a new
+Epoch, or enter opportunity discovery.`
 
 Sol #1 Runtime Checkpoint:
 
@@ -217,6 +218,15 @@ Outer-loop stop rationale:
 `The user explicitly stopped the self-evolution outer loop before any further
 opportunity discovery or Epoch selection. The two remaining outer Sol launches
 remain unspent.`
+
+Integration Attempt Checkpoint — 2026-08-14:
+
+`The user authorized merge. The recorded PR-8A Base SHA is
+cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e, while the fetched current
+origin/master is 0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc. The recorded Base is
+not the current remote base; the branch merge-base remains cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e.
+Per policy this is INTEGRATION_BLOCKED_BASE_DRIFT: no automatic rebase or merge
+was performed. PR #6 remains open and the working tree is clean.`
 
 ---
 

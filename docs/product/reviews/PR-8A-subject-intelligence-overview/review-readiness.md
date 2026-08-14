@@ -1,8 +1,10 @@
 # PR-8A — Review Readiness
 
-Status: `HUMAN_REVIEW_READY`
+Status: `INTEGRATION_BLOCKED_BASE_DRIFT`
 
 Historical independent-review status: `PARKED_REVIEW_LIMIT`
+
+Candidate status before integration attempt: `HUMAN_REVIEW_READY`
 
 This packet records the final sequential comprehensive TIER_2 review of the
 PR-8A Subject Intelligence Overview Epoch. The exact implementation Candidate
@@ -158,3 +160,19 @@ launch was made for this corrective.
 - Current state: `HUMAN_REVIEW_READY`. PR #6 is open on
   `codex/pr-8a-subject-intelligence-overview`; the Candidate is not frozen,
   merged, closed, or independently approved. Await human review and stop.
+
+## Integration safety checkpoint — 2026-08-14
+
+The user authorized merge after the human-review handoff. The required
+pre-merge base check found a policy blocker before any merge action:
+
+- Recorded Cycle Base SHA:
+  `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`.
+- Fetched current `origin/master`:
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`.
+- The recorded Base is not the current remote base; the recorded Base remains
+  the PR branch merge-base.
+- Result: `INTEGRATION_BLOCKED_BASE_DRIFT`. No automatic rebase or merge was
+  performed. PR #6 remains open and the Candidate remains unfrozen.
+- Resume requires explicit resolution of the Base SHA drift followed by a
+  fresh integration safety gate; no Sol launch was spent.

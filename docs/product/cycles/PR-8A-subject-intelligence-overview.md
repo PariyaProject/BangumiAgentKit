@@ -1,8 +1,10 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `HUMAN_REVIEW_READY`
+Status: `INTEGRATION_BLOCKED_BASE_DRIFT`
 
 Historical independent-review status: `PARKED_REVIEW_LIMIT`
+
+Candidate status before integration attempt: `HUMAN_REVIEW_READY`
 
 Sol #2 returned `CORRECTIVE_REQUIRED` against the corrected Candidate. The
 milestone exhausted its TIER_2 review budget without a PASS and is parked
@@ -347,3 +349,20 @@ verdict above remains unchanged.
 - Stop: do not launch Sol, Freeze, merge, close, reset, start recovery, select
   a new Epoch, or enter opportunity discovery until the user changes this
   instruction.
+
+## Integration safety checkpoint — 2026-08-14
+
+The user subsequently authorized merge of PR #6. Before any merge action, the
+canonical integration gate fetched the target base and compared it with the
+recorded Cycle Base SHA.
+
+- Recorded Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`.
+- Current `origin/master`: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`.
+- Divergence: `origin/master` contains the later governance commit
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`; the recorded Base remains the
+  branch merge-base.
+- Result: `INTEGRATION_BLOCKED_BASE_DRIFT`. Policy forbids automatic rebase or
+  merge after this mismatch, so no merge action was performed.
+- PR #6 remains open; Candidate `05288aecf80f040213dc4fdc938f2838775b9829`
+  remains a human-review Candidate, not frozen or merged. Resume requires
+  explicit resolution of the base drift and a fresh safety-gate evaluation.
