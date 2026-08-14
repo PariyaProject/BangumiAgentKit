@@ -49,12 +49,12 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / REVIEW_RUNNING — Sol #1 launch checkpoint authorized against
-exact Candidate aeb2b34; outer ledger remains at 4 authorized / 0 consumed`
+`EPOCH_ACTIVE / CORRECTIVE_REQUIRED — Sol #1 found four P1 and three P2
+findings; outer ledger is 1 consumed of 4 authorized`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`4 / 0 — 4 remaining; sequential only; automatic Sol #5 prohibited`
+`4 / 1 — 3 remaining; sequential only; automatic Sol #5 prohibited`
 
 Outer Review Budget State:
 
@@ -89,11 +89,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`REVIEW_RUNNING`
+`CORRECTIVE_REQUIRED`
 
 Current Phase:
 
-`EPOCH_ACTIVE / REVIEW`
+`EPOCH_ACTIVE / CORRECTION`
 
 Review Boundary Rationale:
 
@@ -104,10 +104,11 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Work Packages 1–4 are stable: bounded composition, semantic tool, renderer,
-Standalone/catalog/docs, focused tests, full local suites, representative
-640px/960px visual QA, and canonical generated catalog output are complete.
-The exact Candidate is ready for the first independent comprehensive review.`
+`Sol #1 completed with four P1 blockers: nested actor caps, per-operation
+evidence timestamps, exhaustive stats failure/accounting semantics, and full
+visual-state QA. Three P2 findings also require safe correction: raw staff
+label grouping, hidden warning/limitation counts, and consumed-ledger truth.
+Correction is active; the existing Candidate is not frozen.`
 
 Primary Model / Reasoning:
 
@@ -122,8 +123,8 @@ Generic Subagent Budget Authorized / Consumed:
 
 Milestone Review Tier / Sol Review Budget Authorized / Consumed:
 
-`TIER_2 — 2 / 0; 2 remaining; Sol #1 expected and Sol #2 only for corrective
-review; Sol #3 prohibited`
+`TIER_2 — 2 / 1; 1 remaining; Sol #1 CORRECTIVE_REQUIRED; Sol #2 only after
+corrected Candidate and fresh exact-SHA CI; Sol #3 prohibited`
 
 Milestone Reviewer Order:
 
@@ -142,12 +143,10 @@ Latest Stable Commit / Candidate SHA:
 
 Tests and Exact-SHA CI:
 
-`Local validation is green as recorded below. The earlier exact Candidate
-968d20e failed only on generated-catalog formatting; the corrected Candidate
-aeb2b34d127e49dbe09f81ce80b0b53873ff1a3c includes canonical generated output.
-Mandatory remote CI run 31764720966 passed all six jobs on this Candidate:
-discovery-foundation, host-integration, postgres-compat, provider-foundation,
-sqlite-default, and standalone-release-smoke.`
+`Candidate aeb2b34 local validation and mandatory CI run 31764720966 passed,
+but Sol #1 returned CORRECTIVE_REQUIRED (0 P0, 4 P1, 3 P2). The full finding
+record is docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.
+Corrective implementation, fresh Candidate validation, and Sol #2 remain.`
 
 Integration Contract:
 
@@ -171,9 +170,16 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Sol #1 comprehensive milestone reviewer is launching against exact Candidate
-aeb2b34; do not edit tracked files while it runs. Record the runtime result,
-then either correct under the remaining Sol #2 budget or freeze.`
+`Implement and test all P1 corrections plus safe P2 corrections, complete the
+full six-state visual matrix at 640px/960px, create a fresh exact Candidate and
+green remote CI, then use the remaining Sol #2 review gate.`
+
+Sol #1 Runtime Checkpoint:
+
+`sol_milestone_reviewer / agent 019ffe30-5db9-7950-b4b0-eeb4e5238067 /
+COMPLETED_CORRECTIVE_REQUIRED at 2026-08-14T03:04:55Z; milestone Sol budget
+1/2 consumed, outer budget 1/4 consumed; report persisted at
+docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.`
 
 ---
 

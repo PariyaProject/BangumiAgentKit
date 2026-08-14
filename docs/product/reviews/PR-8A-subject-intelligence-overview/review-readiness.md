@@ -1,6 +1,6 @@
 # PR-8A — Review Readiness
 
-Status: `SOL_1_RUNNING`
+Status: `SOL_1_CORRECTIVE_REQUIRED`
 
 This packet authorizes the first sequential comprehensive TIER_2 review of the
 PR-8A Subject Intelligence Overview Epoch. It records evidence for the exact
@@ -91,6 +91,10 @@ pre-existing files outside this Epoch; no unrelated files were reformatted.
 - Generic subagents: `0 / 0`
 - Sol #2 is reserved only for a corrected Candidate after a
   `CORRECTIVE_REQUIRED` result. Sol #3 is prohibited.
+
+Sol #1 returned `CORRECTIVE_REQUIRED`; one of two milestone launches and one
+of four outer launches are now consumed. The complete report is recorded at
+`docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md`.
 
 The review should falsify the public semantic contract, section-state and
 evidence honesty, source request/resource caps, provider absence/failure paths,
