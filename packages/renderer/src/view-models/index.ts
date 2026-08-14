@@ -370,6 +370,35 @@ export interface CollectionBacklogViewModel {
   error?: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['error'];
 }
 
+export interface CollectionScheduleViewModel {
+  template: 'collection-schedule';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['state'];
+  filters: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['filters'];
+  items: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['data']['items'];
+  unmatchedCalendar: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['data']['unmatchedCalendar'];
+  unmatchedCollection: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['data']['unmatchedCollection'];
+  summary: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['data']['summary'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['coverage'] & {
+    renderedItems: number;
+    renderedUnmatchedCalendar: number;
+    renderedUnmatchedCollection: number;
+    omittedRows: number;
+  };
+  source: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['source'] & {
+    label: string;
+  };
+  evidence: {
+    operations: string[];
+    formulaVersion?: string;
+    authScope: 'account';
+    retrievedAt?: string;
+  };
+  warnings: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['warnings'];
+  limitations: string[];
+  error?: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['error'];
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -652,6 +681,7 @@ export type RenderViewModel =
   | CollectionProgressViewModel
   | CollectionIntelligenceViewModel
   | CollectionBacklogViewModel
+  | CollectionScheduleViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | PersonProfileViewModel

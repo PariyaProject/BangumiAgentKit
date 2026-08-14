@@ -21,6 +21,7 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     expect(toolNames).toContain('bangumi.search_subjects');
     expect(toolNames).toContain('bangumi.get_subject');
     expect(toolNames).toContain('bangumi.get_calendar');
+    expect(toolNames).toContain('bangumi.get_collection_schedule');
     expect(toolNames).toContain('bangumi.get_subject_cast');
     expect(toolNames).toContain('bangumi.list_operations');
     expect(toolNames).toContain('bangumi.call_operation');

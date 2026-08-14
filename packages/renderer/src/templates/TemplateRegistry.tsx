@@ -13,6 +13,7 @@ import {
   SubjectOverviewViewModel,
   CollectionIntelligenceViewModel,
   CollectionBacklogViewModel,
+  CollectionScheduleViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -28,6 +29,7 @@ import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
 import { CollectionBacklogCard } from './CollectionBacklogCard.js';
+import { CollectionScheduleCard } from './CollectionScheduleCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
@@ -156,6 +158,14 @@ registerTemplate<CollectionBacklogViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <CollectionBacklogCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<CollectionScheduleViewModel>({
+  id: 'collection-schedule',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <CollectionScheduleCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

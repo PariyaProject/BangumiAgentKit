@@ -1,0 +1,515 @@
+import { describe, expect, it } from 'vitest';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import {
+  CollectionScheduleService,
+  type CollectionScheduleStatus,
+} from '@bangumi-agent-kit/bangumi-core';
+import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+
+const weekdayNames = [
+  ['Mon', '星期一', '月曜日'],
+  ['Tue', '星期二', '火曜日'],
+  ['Wed', '星期三', '水曜日'],
+  ['Thu', '星期四', '木曜日'],
+  ['Fri', '星期五', '金曜日'],
+  ['Sat', '星期六', '土曜日'],
+  ['Sun', '星期日', '日曜日'],
+] as const;
+
+function calendarPayload(
+  itemsByWeekday: Record<number, Array<Record<string, unknown>>> = {},
+): Array<Record<string, unknown>> {
+  return weekdayNames.map(([en, cn, ja], index) => ({
+    weekday: { en, cn, ja, id: index + 1 },
+    items: itemsByWeekday[index + 1] || [],
+  }));
+}
+
+function calendarItem(subjectId: number, weekday = 1): Record<string, unknown> {
+  return {
+    id: subjectId,
+    type: 2,
+    name: `Original ${subjectId}`,
+    name_cn: `动画 ${subjectId}`,
+    air_date: '2026-08-10',
+    air_weekday: weekday,
+  };
+}
+
+function collectionRow(
+  subjectId: number,
+  type: number | string | null,
+  options: { eps?: number | string | null; epStatus?: number; name?: string } = {},
+): Record<string, unknown> {
+  return {
+    subject_id: subjectId,
+    subject_type: 2,
+    type,
+    ep_status: options.epStatus ?? 3,
+    comment: 'private comment must not be copied into schedule output',
+    subject: {
+      id: subjectId,
+      type: 2,
+      name: options.name || `Original ${subjectId}`,
+      name_cn: `动画 ${subjectId}`,
+      date: '2026-08-10',
+      eps: options.eps ?? 12,
+    },
+  };
+}
+
+function response(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+function buildClient(fetchFn: typeof fetch): GeneratedBangumiOpenApiClient {
+  return new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn }));
+}
+
+function collectionService(fetchFn: typeof fetch): CollectionScheduleService {
+  const transport = new HttpClient({ fetchFn });
+  return new CollectionScheduleService(buildClient(fetchFn), transport);
+}
+
+describe('CollectionScheduleService', () => {
+  it('joins the official seven-day calendar to the selected current-account collection', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(
+          calendarPayload({
+            1: [calendarItem(1), calendarItem(99)],
+          }),
+        );
+      }
+      return response({
+        total: 3,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 3), collectionRow(2, 1), collectionRow(3, 2)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.state).toBe('complete');
+    expect(result.filters.statuses).toEqual(['wish', 'doing', 'on_hold']);
+    expect(result.data.items).toHaveLength(1);
+    expect(result.data.items[0]).toMatchObject({
+      subjectId: 1,
+      status: 'doing',
+      schedule: { weekday: { id: 1, cn: '星期一' }, sourceIndex: 0 },
+      progress: {
+        state: 'reported',
+        watchedEpisodes: 3,
+        reportedTotalEpisodes: 12,
+        reportedRemainingEpisodes: 9,
+      },
+    });
+    expect(result.data.unmatchedCalendar).toMatchObject([
+      { subjectId: 99, reason: 'not_collected', weekday: { id: 1 } },
+    ]);
+    expect(result.data.unmatchedCollection).toMatchObject([
+      { subjectId: 2, status: 'wish', reason: 'not_on_calendar' },
+    ]);
+    expect(result.data.summary).toMatchObject({
+      calendarRowsObserved: 2,
+      eligibleCollectionRows: 2,
+      matchedRows: 1,
+      unmatchedCalendarRows: 1,
+      unmatchedCollectionRows: 1,
+      progressReportedRows: 2,
+      progressUnknownRows: 0,
+    });
+    expect(result.source.collection.authScope).toBe('account');
+    expect(JSON.stringify(result)).not.toContain('private comment');
+  });
+
+  it('retains successful collection pages and marks a later upstream failure partial', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      if (url.searchParams.get('offset') === '0') {
+        return response({
+          total: 2,
+          limit: 1,
+          offset: 0,
+          data: [collectionRow(1, 3)],
+        });
+      }
+      return response({ message: 'temporary failure' }, 503);
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user', {
+      maxCollectionItems: 2,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.data.items).toHaveLength(1);
+    expect(result.coverage.collection).toMatchObject({
+      observedRows: 1,
+      pagesSucceeded: 1,
+      pageFailureOffset: 1,
+      pageFailureCode: 'UPSTREAM_UNAVAILABLE',
+    });
+    expect(result.warnings.some((warning) => warning.code === 'COLLECTION_PAGE_FAILURE')).toBe(
+      true,
+    );
+    expect(result.data.unmatchedCollection).toEqual([]);
+  });
+
+  it('returns unavailable without fabricated personal schedule when collection auth fails initially', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      return response({ message: 'unauthorized' }, 401);
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.state).toBe('auth_required');
+    expect(result.data.items).toEqual([]);
+    expect(result.coverage.collection.pagesSucceeded).toBe(0);
+    expect(result.coverage.calendar.state).toBe('complete');
+    expect(result.coverage.collection.state).toBe('auth_required');
+    expect(result.error?.code).toBe('AUTH_REQUIRED');
+    expect(result.source.collection.retrievedAt).toBeUndefined();
+    expect(result.data.summary.noMatch).toBe(true);
+  });
+
+  it('keeps invalid, unknown, and conflicting progress explicit', async () => {
+    const statuses: CollectionScheduleStatus[] = ['doing'];
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(
+          calendarPayload({
+            1: [calendarItem(1), calendarItem(2), calendarItem(3)],
+          }),
+        );
+      }
+      return response({
+        total: 3,
+        limit: 50,
+        offset: 0,
+        data: [
+          collectionRow(1, 3, { eps: 0, epStatus: 3 }),
+          collectionRow(2, 3, { eps: 12, epStatus: 20 }),
+          collectionRow(3, 3, { eps: 'TBD', epStatus: 3 }),
+        ],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user', {
+      statuses,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.data.items.map((item) => item.progress.state)).toEqual([
+      'unknown',
+      'conflict',
+      'invalid',
+    ]);
+    expect(
+      result.data.items.every((item) => item.progress.reportedRemainingEpisodes === undefined),
+    ).toBe(true);
+    expect(result.data.summary).toMatchObject({
+      progressUnknownRows: 1,
+      progressConflictRows: 1,
+      progressInvalidRows: 1,
+    });
+    expect(result.warnings.some((warning) => warning.code === 'COLLECTION_PROGRESS_CONFLICT')).toBe(
+      true,
+    );
+    expect(result.warnings.some((warning) => warning.code === 'COLLECTION_PROGRESS_UNKNOWN')).toBe(
+      true,
+    );
+  });
+
+  it('never derives remaining episodes from conflicting progress evidence', async () => {
+    async function run(
+      rows: Array<Record<string, unknown>>,
+    ): Promise<Awaited<ReturnType<CollectionScheduleService['getCollectionSchedule']>>> {
+      const fetchFn: typeof fetch = async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname === '/calendar') {
+          return response(calendarPayload({ 1: [calendarItem(1)] }));
+        }
+        const offset = Number(url.searchParams.get('offset') || 0);
+        return response({
+          total: rows.length,
+          limit: 1,
+          offset,
+          data: rows[offset] ? [rows[offset]] : [],
+        });
+      };
+      return collectionService(fetchFn).getCollectionSchedule('bound-user', {
+        maxCollectionItems: rows.length,
+      });
+    }
+
+    const conflictCases = [
+      [
+        collectionRow(1, 3, { eps: 12, epStatus: 3 }),
+        collectionRow(1, 3, { eps: 12, epStatus: 5 }),
+      ],
+      [
+        collectionRow(1, 3, { eps: 12, epStatus: 3 }),
+        collectionRow(1, 3, { eps: 24, epStatus: 3 }),
+      ],
+      [
+        collectionRow(1, 3, { eps: 'TBD', epStatus: 3 }),
+        collectionRow(1, 3, { eps: 12, epStatus: 3 }),
+      ],
+    ];
+
+    for (const rows of conflictCases) {
+      for (const orderedRows of [rows, [...rows].reverse()]) {
+        const result = await run(orderedRows);
+        expect(result.state).toBe('partial');
+        expect(result.data.items[0]?.progress.state).toBe('conflict');
+        expect(result.data.items[0]?.progress.reportedRemainingEpisodes).toBeUndefined();
+      }
+    }
+  });
+
+  it('keeps malformed collection statuses explicit and out of the frozen status contract', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(
+          calendarPayload({
+            1: [
+              calendarItem(1),
+              calendarItem(2),
+              calendarItem(3),
+              calendarItem(4),
+              calendarItem(5),
+              calendarItem(6),
+            ],
+          }),
+        );
+      }
+      return response({
+        total: 7,
+        limit: 50,
+        offset: 0,
+        data: [
+          collectionRow(1, null),
+          collectionRow(2, 0),
+          collectionRow(3, 6),
+          collectionRow(4, 99),
+          collectionRow(5, 'not-a-status'),
+          collectionRow(6, 3),
+          collectionRow(6, 99),
+        ],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.collection).toMatchObject({
+      observedRows: 7,
+      uniqueRows: 1,
+      invalidStatusRows: 6,
+    });
+    expect(result.data.items.map((item) => item.subjectId)).toEqual([6]);
+    expect(result.data.unmatchedCalendar).toMatchObject([
+      { subjectId: 1, reason: 'invalid_collection_status' },
+      { subjectId: 2, reason: 'invalid_collection_status' },
+      { subjectId: 3, reason: 'invalid_collection_status' },
+      { subjectId: 4, reason: 'invalid_collection_status' },
+      { subjectId: 5, reason: 'invalid_collection_status' },
+    ]);
+    expect(result.data.unmatchedCalendar.every((item) => item.reason !== 'status_filtered')).toBe(
+      true,
+    );
+    expect(result.data.unmatchedCalendar.every((item) => item.collectionStatus === undefined)).toBe(
+      true,
+    );
+    expect(result.warnings.some((warning) => warning.code === 'COLLECTION_INVALID_STATUSES')).toBe(
+      true,
+    );
+    expect(JSON.stringify(result)).not.toContain('"collectionStatus":"unknown"');
+  });
+
+  it('rejects malformed collection IDs and never turns them into complete join evidence', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1), calendarItem(2)] }));
+      }
+      return response({
+        total: 2,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 3), { ...collectionRow(2, 3), subject_id: null }],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user', {
+      maxCollectionItems: 2,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.collection).toMatchObject({
+      observedRows: 2,
+      uniqueRows: 1,
+      invalidSubjectIdRows: 1,
+    });
+    expect(result.data.items.map((item) => item.subjectId)).toEqual([1]);
+    expect(result.data.unmatchedCalendar).toMatchObject([{ subjectId: 2, reason: 'not_observed' }]);
+    expect(
+      result.warnings.some((warning) => warning.code === 'COLLECTION_INVALID_SUBJECT_IDS'),
+    ).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('"subjectId":null');
+  });
+
+  it('distinguishes an excluded collection status from a proven absent collection row', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      return response({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 2)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.state).toBe('complete');
+    expect(result.data.items).toEqual([]);
+    expect(result.data.unmatchedCalendar).toMatchObject([
+      { subjectId: 1, reason: 'status_filtered', collectionStatus: 'done' },
+    ]);
+    expect(result.data.unmatchedCalendar[0]?.reason).not.toBe('not_collected');
+  });
+
+  it('does not call an incomplete collection scan an absent collection', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      if (url.searchParams.get('offset') === '0') {
+        return response({
+          total: 2,
+          limit: 1,
+          offset: 0,
+          data: [collectionRow(2, 3)],
+        });
+      }
+      return response({ message: 'temporary failure' }, 503);
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user', {
+      maxCollectionItems: 2,
+    });
+
+    expect(result.data.unmatchedCalendar).toMatchObject([{ subjectId: 1, reason: 'not_observed' }]);
+    expect(result.data.unmatchedCalendar[0]?.reason).not.toBe('not_collected');
+  });
+
+  it('does not call a collection row absent from an incomplete calendar scan', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response([
+          {
+            weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+            items: [],
+          },
+        ]);
+      }
+      return response({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(2, 3)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.data.unmatchedCollection).toMatchObject([
+      { subjectId: 2, reason: 'calendar_not_observed' },
+    ]);
+    expect(result.data.unmatchedCollection[0]?.reason).not.toBe('not_on_calendar');
+  });
+
+  it('makes duplicate status eligibility and conflict evidence independent of source order', async () => {
+    async function run(
+      order: number[],
+    ): Promise<Awaited<ReturnType<CollectionScheduleService['getCollectionSchedule']>>> {
+      const fetchFn: typeof fetch = async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname === '/calendar') {
+          return response(calendarPayload({ 1: [calendarItem(1)] }));
+        }
+        return response({
+          total: 2,
+          limit: 50,
+          offset: 0,
+          data: order.map((type) => collectionRow(1, type)),
+        });
+      };
+      return collectionService(fetchFn).getCollectionSchedule('bound-user');
+    }
+
+    const doneThenDoing = await run([2, 3]);
+    const doingThenDone = await run([3, 2]);
+
+    expect(doneThenDoing.state).toBe('partial');
+    expect(doingThenDone.state).toBe('partial');
+    expect(doneThenDoing.data.items[0]).toMatchObject({
+      subjectId: 1,
+      status: 'doing',
+      progress: { state: 'conflict' },
+    });
+    expect(doingThenDone.data.items[0]).toMatchObject({
+      subjectId: 1,
+      status: 'doing',
+      progress: { state: 'conflict' },
+    });
+    expect(doneThenDoing.data.summary).toMatchObject({ matchedRows: 1, progressConflictRows: 1 });
+    expect(doingThenDone.data.summary).toMatchObject({ matchedRows: 1, progressConflictRows: 1 });
+  });
+
+  it('uses the latest successful source retrieval for derived evidence', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      return response({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 3)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+    const derived = result.evidence.find((item) => item.source === 'derived');
+    const latestSourceRetrieval = Math.max(
+      Date.parse(result.source.calendar.retrievedAt || ''),
+      Date.parse(result.source.collection.retrievedAt || ''),
+    );
+
+    expect(derived?.retrievedAt).toBeDefined();
+    expect(Date.parse(derived?.retrievedAt || '')).toBeGreaterThanOrEqual(latestSourceRetrieval);
+  });
+});

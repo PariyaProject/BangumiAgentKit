@@ -319,6 +319,42 @@
     }
   },
   {
+    "name": "bangumi.get_collection_schedule",
+    "description": "获取当前绑定 Bangumi 账号的有界动画播出计划：将官方七日 legacy 日历与当前账号收藏的动画按 subject ID 对齐，显示星期、首播日期、收藏状态和收藏接口报告的进度。只接受当前账号，不读取评论、不执行写入；分页、重复、未匹配、进度 unknown/conflict、auth、partial 和 unavailable 状态都会显式返回；官方日历不提供具体时区或播出时刻。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "maxCollectionItems": {
+          "description": "最多扫描当前账号动画收藏条目数，默认 100",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "maxRows": {
+          "description": "匹配和未匹配条目最多返回行数，默认 56",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "statuses": {
+          "description": "收藏状态过滤，默认 wish/doing/on_hold；不表示优先级",
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_episode",
     "description": "获取单个章节的详细信息。",
     "auth": "none",
@@ -1340,6 +1376,42 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_collection_schedule",
+    "description": "生成当前绑定 Bangumi 账号有界本周播出计划图片卡片 Artifact。卡片将官方七日 legacy 日历与当前账号动画收藏按 subject ID 对齐，显示星期、日期、收藏状态、收藏接口报告的进度以及未匹配/partial/unavailable/auth 状态；不接受任意用户名、不显示评论、不执行写入，不把日期当作具体时刻。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "maxCollectionItems": {
+          "description": "最多扫描当前账号动画收藏条目数，默认 100",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "maxRows": {
+          "description": "匹配和未匹配条目最多返回行数，默认 56",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "statuses": {
+          "description": "收藏状态过滤，默认 wish/doing/on_hold",
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
+          }
+        }
+      },
       "additionalProperties": false
     }
   },
