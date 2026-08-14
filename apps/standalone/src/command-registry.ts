@@ -46,6 +46,7 @@ Bangumi:
   calendar
   episodes <subjectId>
   collection status <subjectId>
+  collection intelligence [--max-items 1..200]
   collection list
   collection set <subjectId> <status>
 
@@ -484,6 +485,12 @@ export class StandaloneCommandRegistry {
         subjectId: parsePositiveInteger(args[1], 'subject id'),
       });
     }
+    if (subcommand === 'intelligence' || subcommand === 'summary') {
+      const maxItems = takeOption(args, '--max-items');
+      const input: Record<string, unknown> = {};
+      if (maxItems !== undefined) input.maxItems = optionNumber(maxItems, 'max-items', true);
+      return runTool(ctx, 'bangumi.get_collection_intelligence', input);
+    }
     if (subcommand === 'set') {
       return runTool(ctx, 'bangumi.update_collection', {
         subjectId: parsePositiveInteger(args[1], 'subject id'),
@@ -571,6 +578,10 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'collection') {
       name = 'bangumi.render_collection_progress';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'collection-intelligence' || kind === 'collection-summary') {
+      name = 'bangumi.render_collection_intelligence';
+      const maxItems = takeOption(args, '--max-items');
+      if (maxItems !== undefined) input.maxItems = optionNumber(maxItems, 'max-items', true);
     } else if (kind === 'calendar') {
       name = 'bangumi.render_calendar';
     } else if (kind === 'revision') {

@@ -257,6 +257,26 @@
     }
   },
   {
+    "name": "bangumi.get_collection_intelligence",
+    "description": "获取当前绑定 Bangumi 账号的有界收藏智能概览：状态/媒介分布、backlog、评分、进度、标签频率和观察样本中的最近更新。仅读取当前账号的官方 v0 收藏，不接受任意用户名；返回 sourceTotal、观察覆盖、证据、公式版本和 partial/unavailable 限制，不宣称全量趋势或推荐。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "maxItems": {
+          "description": "最多扫描当前账号收藏条目数，默认 100；超过上限的记录不会被猜测补全",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_episode",
     "description": "获取单个章节的详细信息。",
     "auth": "none",
@@ -1197,6 +1217,26 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_collection_intelligence",
+    "description": "生成当前绑定 Bangumi 账号有界收藏智能概览图片卡片 Artifact。卡片显示状态/backlog、评分、进度、标签和观察样本中的最近更新，并明确 sourceTotal、覆盖、partial/unavailable、公式和限制；不接受任意用户名，不显示评论，不宣称历史趋势或推荐。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "maxItems": {
+          "description": "最多扫描当前账号收藏条目数，默认 100",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
       "additionalProperties": false
     }
   },

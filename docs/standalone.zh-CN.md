@@ -69,6 +69,7 @@ cast <subjectId>
 calendar
 episodes <subjectId>
 collection status <subjectId>
+collection intelligence [--max-items 1..200]
 collection list
 collection set <subjectId> <wish|watching|watched|dropped|...>
 ```
@@ -148,6 +149,7 @@ render cast <id>
 render calendar
 render search <query>
 render collection <id>
+render collection-intelligence [--max-items 1..200]
 ```
 
 Renderer Tool 返回 `ArtifactRef`。`--output` 只接受用户明确指定的本地目标，

@@ -8,6 +8,7 @@ import {
   UserService,
   CharacterService,
   CalendarService,
+  CollectionIntelligenceService,
   PersonService,
   RevisionService,
   RevisionEntityType,
@@ -26,6 +27,7 @@ import {
   buildDiscoveryResultsViewModel,
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
+  buildCollectionIntelligenceViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -441,6 +443,56 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionIntelligence = defineTool({
+    name: 'bangumi.render_collection_intelligence',
+    description:
+      '生成当前绑定 Bangumi 账号有界收藏智能概览图片卡片 Artifact。卡片显示状态/backlog、评分、进度、标签和观察样本中的最近更新，并明确 sourceTotal、覆盖、partial/unavailable、公式和限制；不接受任意用户名，不显示评论，不宣称历史趋势或推荐。',
+    input: z
+      .object({
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多扫描当前账号收藏条目数，默认 100'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            'Must bind a Bangumi account to render collection intelligence',
+            false,
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          'Must bind a Bangumi account to render collection intelligence',
+          false,
+        );
+      }
+      const result = await new CollectionIntelligenceService(client).getCollectionIntelligence(
+        username,
+        { maxItems: input.maxItems },
+      );
+      return await executeRenderAndSave(buildCollectionIntelligenceViewModel(result));
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -452,5 +504,6 @@ export function createRenderPresentationTools(
     renderPersonProfile,
     renderRevisionTimeline,
     renderSubjectOverview,
+    renderCollectionIntelligence,
   ] as const;
 }

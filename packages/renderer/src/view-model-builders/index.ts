@@ -3,6 +3,7 @@ import type {
   DomainCalendarDay,
   DomainRelatedCharacter,
   CalendarIntelligenceResult,
+  CollectionIntelligenceResult,
   RevisionIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
@@ -14,6 +15,7 @@ import type {
   SearchListViewModel,
   CastCardViewModel,
   CollectionProgressViewModel,
+  CollectionIntelligenceViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SearchItemViewModel,
@@ -81,6 +83,80 @@ export function buildSubjectCardViewModel(
     collection: options?.collection,
     source: {
       label: options?.sourceLabel || 'Bangumi Agent Kit',
+    },
+  };
+}
+
+const COLLECTION_STATUS_LABELS: Record<string, string> = {
+  wish: '想看/想读',
+  doing: '进行中',
+  done: '已完成',
+  on_hold: '搁置',
+  dropped: '抛弃',
+  unknown: '未知状态',
+};
+
+const COLLECTION_TYPE_LABELS: Record<string, string> = {
+  anime: '动画',
+  book: '书籍',
+  music: '音乐',
+  game: '游戏',
+  real: '三次元',
+  other: '其他',
+  unknown: '未知媒介',
+};
+
+export function buildCollectionIntelligenceViewModel(
+  result: CollectionIntelligenceResult,
+  options: {
+    sourceLabel?: string;
+    maxTags?: number;
+    maxRecentUpdates?: number;
+  } = {},
+): CollectionIntelligenceViewModel {
+  const maxTags = Math.min(12, Math.max(0, Math.trunc(options.maxTags ?? 8)));
+  const maxRecentUpdates = Math.min(10, Math.max(0, Math.trunc(options.maxRecentUpdates ?? 8)));
+  const statusCounts = Object.entries(result.data.statusCounts).map(([status, count]) => ({
+    status,
+    label: COLLECTION_STATUS_LABELS[status] || '未知状态',
+    count,
+  }));
+  const subjectTypeCounts = Object.entries(result.data.subjectTypeCounts)
+    .map(([type, count]) => ({ type, label: COLLECTION_TYPE_LABELS[type] || type, count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+  const tags = result.data.tags.top.slice(0, maxTags);
+  const latestObservedUpdates = result.data.latestObservedUpdates.slice(0, maxRecentUpdates);
+  const formulaEvidence = result.evidence.find((item) => item.source === 'derived');
+  const retrievedAt = result.source.retrievedAt;
+
+  return {
+    template: 'collection-intelligence',
+    version: 1,
+    state: result.state,
+    statusCounts,
+    subjectTypeCounts,
+    backlog: result.data.backlog,
+    ratings: result.data.ratings,
+    progress: result.data.progress,
+    tags: { ...result.data.tags, top: tags },
+    latestObservedUpdates,
+    coverage: {
+      ...result.coverage,
+      renderedStatusCount: statusCounts.length,
+      renderedTagCount: tags.length,
+      renderedRecentCount: latestObservedUpdates.length,
+    },
+    evidence: {
+      operation: result.source.operation,
+      formulaVersion: formulaEvidence?.formulaVersion,
+      authScope: result.source.authScope,
+      retrievedAt,
+    },
+    warnings: result.warnings,
+    limitations: result.limitations,
+    source: {
+      label: options.sourceLabel || 'Bangumi v0 · 当前账号收藏',
+      retrievedAt,
     },
   };
 }

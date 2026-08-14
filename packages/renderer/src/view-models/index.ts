@@ -278,6 +278,69 @@ export interface CollectionProgressViewModel {
   progressPercentage?: number;
 }
 
+export interface CollectionIntelligenceViewModel {
+  template: 'collection-intelligence';
+  version: 1;
+  state: 'complete' | 'partial' | 'unavailable';
+  statusCounts: Array<{ status: string; label: string; count: number }>;
+  subjectTypeCounts: Array<{ type: string; label: string; count: number }>;
+  backlog: { total: number; wish: number; doing: number; onHold: number };
+  ratings: {
+    rated: number;
+    average?: number;
+    distribution: Array<{ rating: number; count: number }>;
+  };
+  progress: { itemsWithProgress: number; completedEpisodes: number };
+  tags: {
+    distinct: number;
+    itemsWithTags: number;
+    top: Array<{ tag: string; count: number }>;
+  };
+  latestObservedUpdates: Array<{
+    subjectId: number;
+    name: string;
+    nameCn?: string;
+    subjectType?: string;
+    status: string;
+    rating?: number;
+    epStatus?: number;
+    updatedAt: string;
+  }>;
+  coverage: {
+    state: 'complete' | 'partial' | 'unavailable';
+    sourceTotal: number;
+    requestedMaxItems: number;
+    observedRows: number;
+    uniqueItems: number;
+    returned: number;
+    pageSize: number;
+    pagesAttempted: number;
+    pagesSucceeded: number;
+    maxPages: number;
+    truncated: boolean;
+    sourceExhausted: boolean;
+    duplicateRows: number;
+    pageFailureOffset?: number;
+    pageFailureCode?: string;
+    paginationStalled: boolean;
+    sourceTotalChanged: boolean;
+    missingFields: Record<string, number>;
+    skippedTagValues: number;
+    renderedStatusCount: number;
+    renderedTagCount: number;
+    renderedRecentCount: number;
+  };
+  evidence: {
+    operation: string;
+    formulaVersion?: string;
+    authScope: 'account';
+    retrievedAt?: string;
+  };
+  warnings: Array<{ code: string; state: 'partial' | 'unavailable'; message: string }>;
+  limitations: string[];
+  source: { label: string; retrievedAt?: string };
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -558,6 +621,7 @@ export type RenderViewModel =
   | SeriesRelationsViewModel
   | CastCardViewModel
   | CollectionProgressViewModel
+  | CollectionIntelligenceViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | PersonProfileViewModel

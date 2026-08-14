@@ -11,6 +11,7 @@ import {
   PersonProfileViewModel,
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
+  CollectionIntelligenceViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -24,6 +25,7 @@ import { RevisionTimelineCard } from './RevisionTimelineCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
+import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
@@ -136,6 +138,14 @@ registerTemplate<SubjectOverviewViewModel>({
       resolvedImages={resolvedImages}
       width={width}
     />
+  ),
+});
+
+registerTemplate<CollectionIntelligenceViewModel>({
+  id: 'collection-intelligence',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <CollectionIntelligenceCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 
