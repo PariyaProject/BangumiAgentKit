@@ -95,6 +95,31 @@ describe('Standalone discovery and raw tool playground', () => {
     );
   });
 
+  it('PR-8B: collection intelligence commands route with bounded account input', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'complete' });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(['collection', 'intelligence', '--max-items', '25'], context(host));
+    await registry.execute(
+      ['render', 'collection-intelligence', '--max-items', '30'],
+      context(host),
+    );
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_collection_intelligence',
+      { maxItems: 25 },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_collection_intelligence',
+      { maxItems: 30 },
+      expect.anything(),
+    );
+  });
+
   it('preserves the documented single-quoted raw JSON form and executes it through ToolRegistry', async () => {
     const tokens = tokenizeCommandLine(
       `tool call bangumi.search_subjects '{"query":"少女终末旅行"}'`,

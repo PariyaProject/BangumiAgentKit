@@ -115,6 +115,74 @@ Selection evidence:
 
 ---
 
+## OP-009 Collection Intelligence
+
+Status:
+SELECTED_IN_HARNESS_V3_EPOCH / COLLECTION-INTELLIGENCE-V1
+
+User questions:
+
+“我的收藏中各状态、评分和标签如何分布？”
+
+“我当前待看或搁置的 backlog 有多大，最近更新了哪些条目？”
+
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+4/5
+
+Data Availability:
+4/5 — the official v0 collection page exposes status, rating, tags,
+episode progress, names, and updated timestamps, but not per-item total episode
+denominators in the collection envelope.
+
+Reliability:
+4/5
+
+Implementation Cost:
+3/5 — bounded pagination and deterministic aggregation over an existing
+authenticated read seam, plus an image-free card.
+
+Maintenance Risk:
+2/5
+
+Source Risk:
+1/5
+
+Possible Sources:
+Official v0 `GET /v0/users/{username}/collections`, restricted to the currently
+bound account; no HTML, Structured Web, snapshots, or per-subject hydration.
+
+Potential Capability:
+get_collection_intelligence
+
+Potential Renderer:
+CollectionIntelligence
+
+Derived Logic:
+`collection-intelligence-v1` computes status and subject-type counts, a
+`wish + on_hold` backlog (with `doing` reported separately), valid 1–10 rating
+distribution/average with `0` treated as unrated, completed `ep_status` totals,
+bounded tag frequency, and source-reported `updated_at` ordering within the
+observed sample. Source total may be unknown on an unavailable first page;
+long-tag skips, page failures, missing fields, deduplication, scan caps,
+retrieval time, and the upstream `updated_at` reliability limitation remain
+explicit. The result does not infer taste, recommendations, full-collection
+recency, or historical trends.
+
+Provenance:
+Selected from synchronized Harness V3 `master` in Outer Run Issue #8 after a
+narrow audit of the existing collection tools and the [official Bangumi API
+surface](https://bangumi.github.io/api/). The current public Bangumi experience
+and ecosystem also expose collection progress and collection-oriented analysis,
+which supports the user-value hypothesis without authorizing broader crawling.
+
+---
+
 ## OP-001 Voice Actor Workload
 
 Status:

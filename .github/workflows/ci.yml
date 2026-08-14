@@ -29,6 +29,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           HARNESS_BASE_REF: origin/${{ github.base_ref }}
+          HARNESS_HEAD_REF: ${{ github.event.pull_request.head.sha }}
         run: pnpm harness:guard
 
   sqlite-default:

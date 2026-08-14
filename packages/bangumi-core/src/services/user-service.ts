@@ -48,7 +48,7 @@ export class UserService {
       offset?: number;
     } = {},
   ): Promise<{
-    total: number;
+    total?: number;
     limit: number;
     offset: number;
     items: (UserCollectionItem & { statusLabel: string })[];
@@ -82,13 +82,14 @@ export class UserService {
     const data = res.data || [];
     const items = data.map((col) => {
       const status = mapCollectionStatus(col.type);
-      const subjectTypeStr = mapSubjectType(col.subject?.type);
+      const subjectTypeStr = mapSubjectType(col.subject_type ?? col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
         subjectId: col.subject_id,
         subjectName: col.subject?.name,
         subjectNameCn: col.subject?.name_cn || col.subject?.name,
+        subjectType: subjectTypeStr,
         status,
         statusLabel,
         rating: col.rate,
@@ -99,10 +100,17 @@ export class UserService {
       };
     });
 
+    const responseOffset = Number.isInteger(res.offset) && res.offset >= 0 ? res.offset : offset;
+    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : limit;
+    const responseTotal =
+      Number.isInteger(res.total) && res.total >= responseOffset + items.length
+        ? res.total
+        : undefined;
+
     return {
-      total: res.total || items.length,
-      limit: res.limit || limit,
-      offset: res.offset || offset,
+      total: responseTotal,
+      limit: responseLimit,
+      offset: responseOffset,
       items,
     };
   }
@@ -114,7 +122,7 @@ export class UserService {
     try {
       const raw = await this.api.getUserCollection(username, subjectId);
       const status = mapCollectionStatus(raw.type);
-      const subjectTypeStr = mapSubjectType(raw.subject?.type);
+      const subjectTypeStr = mapSubjectType(raw.subject_type ?? raw.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
@@ -123,6 +131,7 @@ export class UserService {
           subjectId: raw.subject_id,
           subjectName: raw.subject?.name,
           subjectNameCn: raw.subject?.name_cn || raw.subject?.name,
+          subjectType: subjectTypeStr,
           status,
           statusLabel,
           rating: raw.rate,

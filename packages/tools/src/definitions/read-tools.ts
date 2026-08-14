@@ -12,6 +12,7 @@ import {
   RevisionService,
   IndexReadService,
   CalendarService,
+  CollectionIntelligenceService,
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
@@ -768,6 +769,50 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCollectionIntelligence = defineTool({
+    name: 'bangumi.get_collection_intelligence',
+    description:
+      '获取当前绑定 Bangumi 账号的有界收藏智能概览：状态/媒介分布、backlog、评分、进度、标签频率和观察样本中的最近更新。仅读取当前账号的官方 v0 收藏，不接受任意用户名；返回 sourceTotal、观察覆盖、证据、公式版本和 partial/unavailable 限制，不宣称全量趋势或推荐。',
+    input: z
+      .object({
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多扫描当前账号收藏条目数，默认 100；超过上限的记录不会被猜测补全'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!clientProvider) {
+          throw new Error(
+            'AUTH_REQUIRED: Must bind a Bangumi account to get collection intelligence.',
+          );
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new Error(
+          'AUTH_REQUIRED: Must bind a Bangumi account to get collection intelligence.',
+        );
+      }
+      return await new CollectionIntelligenceService(client).getCollectionIntelligence(username, {
+        maxItems: input.maxItems,
+      });
+    },
+  });
+
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
     description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
@@ -898,5 +943,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCalendarIntelligence,
     getRevisionIntelligence,
     getSubjectOverviewTool,
+    getCollectionIntelligence,
   ] as const;
 }

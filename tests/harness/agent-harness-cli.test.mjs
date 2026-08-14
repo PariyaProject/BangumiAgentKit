@@ -86,7 +86,7 @@ function createMockEnvironment(overrides = {}) {
     statePath,
     run,
     epoch,
-    execute(args) {
+    execute(args, envOverrides = {}) {
       return spawnSync(process.execPath, [cli, ...args], {
         cwd: root,
         encoding: 'utf8',
@@ -94,6 +94,7 @@ function createMockEnvironment(overrides = {}) {
           ...process.env,
           PATH: `${binDirectory}:${process.env.PATH}`,
           HARNESS_MOCK_STATE: statePath,
+          ...envOverrides,
         },
       });
     },
@@ -148,6 +149,31 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
     assert.ok(
       state.calls.some(
         (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'ready',
+      ),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI product guard uses the actual PR head when GitHub checks out a merge ref', () => {
+  const environment = createMockEnvironment();
+  const prHeadSha = sha('d');
+  try {
+    const result = environment.execute(
+      ['guard:legacy-paths', '--base', 'origin/master', '--product-epoch'],
+      { HARNESS_HEAD_REF: prHeadSha },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const calls = environment.readState().calls.filter((call) => call.tool === 'git');
+    assert.ok(
+      calls.some(
+        (call) => call.args[0] === 'diff' && call.args.at(-1) === `origin/master...${prHeadSha}`,
+      ),
+    );
+    assert.ok(
+      calls.some(
+        (call) => call.args[0] === 'log' && call.args.at(-1) === `origin/master..${prHeadSha}`,
       ),
     );
   } finally {
