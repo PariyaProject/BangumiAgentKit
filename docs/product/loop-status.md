@@ -49,7 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_PLANNING — fresh outer ledger initialized at 4 authorized / 0 consumed`
+`EPOCH_ACTIVE / VALIDATING — PR-8A implementation checkpoint recorded; outer
+ledger remains at 4 authorized / 0 consumed`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -88,11 +89,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`IMPLEMENTING`
+`VALIDATING`
 
 Current Phase:
 
-`EPOCH_ACTIVE / IMPLEMENTING`
+`EPOCH_ACTIVE / VALIDATING`
 
 Review Boundary Rationale:
 
@@ -103,9 +104,10 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Work Package 1 in progress: bounded subject-overview composition and shared
-result types. Semantic tool, renderer, Standalone/catalog/docs/tests remain
-pending; no Work Package is yet LUNA_STABLE.`
+`Work Packages 1–4 implementation checkpoint is stable in a728de0: bounded
+composition, semantic tool, renderer, Standalone/catalog/docs, and focused
+tests are present. Broad validation, representative visual QA, exact-SHA CI,
+and review readiness remain pending.`
 
 Primary Model / Reasoning:
 
@@ -135,11 +137,14 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`709bfc8 docs(product): plan PR-8A subject intelligence overview` / `N/A`
+`a728de0 feat: add subject intelligence overview capability` / `N/A`
 
 Tests and Exact-SHA CI:
 
-`Baseline pending; no Candidate or exact-SHA CI run yet.`
+`Focused typechecks, semantic/renderer tests, Standalone tests, adjacent
+semantic/provider/renderer/Standalone regression (58 tests), build, and
+catalog generation are green on the checkpoint; broad validation, exact-SHA
+CI, and final QA are pending.`
 
 Integration Contract:
 
@@ -163,8 +168,8 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Implement the shared bounded SubjectOverview result and composition over the
-existing official-v0 services; add focused tests before renderer work.`
+`Run the affected/full validation matrix and representative 640px/960px visual
+QA, then prepare the exact Candidate and remote CI checkpoint.`
 
 ---
 
