@@ -38,7 +38,7 @@ function calendarItem(subjectId: number, weekday = 1): Record<string, unknown> {
 
 function collectionRow(
   subjectId: number,
-  type: number,
+  type: number | string | null,
   options: { eps?: number | string | null; epStatus?: number; name?: string } = {},
 ): Record<string, unknown> {
   return {
@@ -231,6 +231,114 @@ describe('CollectionScheduleService', () => {
     expect(result.warnings.some((warning) => warning.code === 'COLLECTION_PROGRESS_UNKNOWN')).toBe(
       true,
     );
+  });
+
+  it('never derives remaining episodes from conflicting progress evidence', async () => {
+    async function run(
+      rows: Array<Record<string, unknown>>,
+    ): Promise<Awaited<ReturnType<CollectionScheduleService['getCollectionSchedule']>>> {
+      const fetchFn: typeof fetch = async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname === '/calendar') {
+          return response(calendarPayload({ 1: [calendarItem(1)] }));
+        }
+        const offset = Number(url.searchParams.get('offset') || 0);
+        return response({
+          total: rows.length,
+          limit: 1,
+          offset,
+          data: rows[offset] ? [rows[offset]] : [],
+        });
+      };
+      return collectionService(fetchFn).getCollectionSchedule('bound-user', {
+        maxCollectionItems: rows.length,
+      });
+    }
+
+    const conflictCases = [
+      [
+        collectionRow(1, 3, { eps: 12, epStatus: 3 }),
+        collectionRow(1, 3, { eps: 12, epStatus: 5 }),
+      ],
+      [
+        collectionRow(1, 3, { eps: 12, epStatus: 3 }),
+        collectionRow(1, 3, { eps: 24, epStatus: 3 }),
+      ],
+      [
+        collectionRow(1, 3, { eps: 'TBD', epStatus: 3 }),
+        collectionRow(1, 3, { eps: 12, epStatus: 3 }),
+      ],
+    ];
+
+    for (const rows of conflictCases) {
+      for (const orderedRows of [rows, [...rows].reverse()]) {
+        const result = await run(orderedRows);
+        expect(result.state).toBe('partial');
+        expect(result.data.items[0]?.progress.state).toBe('conflict');
+        expect(result.data.items[0]?.progress.reportedRemainingEpisodes).toBeUndefined();
+      }
+    }
+  });
+
+  it('keeps malformed collection statuses explicit and out of the frozen status contract', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(
+          calendarPayload({
+            1: [
+              calendarItem(1),
+              calendarItem(2),
+              calendarItem(3),
+              calendarItem(4),
+              calendarItem(5),
+              calendarItem(6),
+            ],
+          }),
+        );
+      }
+      return response({
+        total: 7,
+        limit: 50,
+        offset: 0,
+        data: [
+          collectionRow(1, null),
+          collectionRow(2, 0),
+          collectionRow(3, 6),
+          collectionRow(4, 99),
+          collectionRow(5, 'not-a-status'),
+          collectionRow(6, 3),
+          collectionRow(6, 99),
+        ],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.collection).toMatchObject({
+      observedRows: 7,
+      uniqueRows: 1,
+      invalidStatusRows: 6,
+    });
+    expect(result.data.items.map((item) => item.subjectId)).toEqual([6]);
+    expect(result.data.unmatchedCalendar).toMatchObject([
+      { subjectId: 1, reason: 'invalid_collection_status' },
+      { subjectId: 2, reason: 'invalid_collection_status' },
+      { subjectId: 3, reason: 'invalid_collection_status' },
+      { subjectId: 4, reason: 'invalid_collection_status' },
+      { subjectId: 5, reason: 'invalid_collection_status' },
+    ]);
+    expect(result.data.unmatchedCalendar.every((item) => item.reason !== 'status_filtered')).toBe(
+      true,
+    );
+    expect(result.data.unmatchedCalendar.every((item) => item.collectionStatus === undefined)).toBe(
+      true,
+    );
+    expect(result.warnings.some((warning) => warning.code === 'COLLECTION_INVALID_STATUSES')).toBe(
+      true,
+    );
+    expect(JSON.stringify(result)).not.toContain('"collectionStatus":"unknown"');
   });
 
   it('rejects malformed collection IDs and never turns them into complete join evidence', async () => {

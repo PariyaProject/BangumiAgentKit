@@ -92,7 +92,7 @@ calendar to the current account's bounded animation collection by subject ID,
 keeps unmatched rows and collection-envelope progress evidence visible, and
 labels pagination, source failure, auth, duplicate, conflict, and unknown
 states. Unmatched rows distinguish a complete-scan absence from a filtered
-status or incomplete source observation. It does not infer an airing time,
+status, malformed collection status, or incomplete source observation. It does not infer an airing time,
 timezone, episode-level completion, history, or recommendation, and it never
 renders collection comments.
 

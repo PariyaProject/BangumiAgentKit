@@ -368,6 +368,7 @@ function presentCollectionSchedule(value: Record<string, unknown>): string | und
       not_collected: '完整收藏扫描未发现',
       status_filtered: '收藏状态被筛选排除',
       not_observed: '收藏扫描覆盖不完整',
+      invalid_collection_status: '收藏状态源值无效',
     };
     lines.push(
       `日历未匹配原因: ${[...reasonCounts.entries()]

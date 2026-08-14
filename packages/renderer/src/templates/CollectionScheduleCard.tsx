@@ -35,6 +35,7 @@ function calendarReasonLabel(
 ): string {
   if (reason === 'not_collected') return '完整收藏扫描中未发现';
   if (reason === 'status_filtered') return '收藏状态被当前筛选排除';
+  if (reason === 'invalid_collection_status') return '收藏状态源值无效';
   return '收藏扫描覆盖不完整';
 }
 

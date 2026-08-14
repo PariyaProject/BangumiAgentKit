@@ -17,6 +17,18 @@ export const COLLECTION_SCHEDULE_MAX_CALENDAR_ROWS = 512;
 
 export type CollectionScheduleStatus = Exclude<CollectionStatus, 'unknown'>;
 
+type ValidCollectionItem = Omit<UserCollectionItem, 'status'> & {
+  status: CollectionScheduleStatus;
+};
+
+const COLLECTION_SCHEDULE_STATUSES = new Set<CollectionScheduleStatus>([
+  'wish',
+  'doing',
+  'done',
+  'on_hold',
+  'dropped',
+]);
+
 export type CollectionScheduleState =
   | 'complete'
   | 'partial'
@@ -80,7 +92,7 @@ export interface CollectionScheduleUnmatchedCalendarItem {
   sourceIndex: number;
   collectionStatus?: CollectionScheduleStatus;
   collectionStatusLabel?: string;
-  reason: 'not_collected' | 'status_filtered' | 'not_observed';
+  reason: 'not_collected' | 'status_filtered' | 'not_observed' | 'invalid_collection_status';
 }
 
 export interface CollectionScheduleUnmatchedCollectionItem {
@@ -144,6 +156,7 @@ export interface CollectionScheduleCollectionCoverage {
   truncated: boolean;
   duplicateRows: number;
   invalidSubjectIdRows: number;
+  invalidStatusRows: number;
   pageFailureOffset?: number;
   pageFailureCode?: string;
   paginationStalled: boolean;
@@ -221,7 +234,8 @@ interface CalendarScan {
 }
 
 interface CollectionScan {
-  items: UserCollectionItem[];
+  items: ValidCollectionItem[];
+  invalidStatusItems: UserCollectionItem[];
   observedRows: number;
   sourceTotal?: number;
   requestedMaxItems: number;
@@ -231,6 +245,7 @@ interface CollectionScan {
   truncated: boolean;
   duplicateRows: number;
   invalidSubjectIdRows: number;
+  invalidStatusRows: number;
   pageFailureOffset?: number;
   pageFailureCode?: string;
   paginationStalled: boolean;
@@ -242,8 +257,8 @@ interface CollectionScan {
 }
 
 interface CollectionObservation {
-  item: UserCollectionItem;
-  items: UserCollectionItem[];
+  item: ValidCollectionItem;
+  items: ValidCollectionItem[];
   duplicateCount: number;
   conflictReasons: string[];
 }
@@ -258,14 +273,7 @@ function boundedStatuses(
 ): CollectionScheduleStatus[] {
   const defaults: CollectionScheduleStatus[] = ['wish', 'doing', 'on_hold'];
   if (!Array.isArray(value) || value.length === 0) return defaults;
-  const allowed = new Set<CollectionScheduleStatus>([
-    'wish',
-    'doing',
-    'done',
-    'on_hold',
-    'dropped',
-  ]);
-  const statuses = [...new Set(value.filter((status) => allowed.has(status)))];
+  const statuses = [...new Set(value.filter((status) => COLLECTION_SCHEDULE_STATUSES.has(status)))];
   return statuses.length > 0 ? statuses : defaults;
 }
 
@@ -352,6 +360,13 @@ function isValidSubjectId(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
+function isValidCollectionStatus(value: unknown): value is CollectionScheduleStatus {
+  return (
+    typeof value === 'string' &&
+    COLLECTION_SCHEDULE_STATUSES.has(value as CollectionScheduleStatus)
+  );
+}
+
 function collectionItemSortKey(item: UserCollectionItem): string {
   return [
     item.status,
@@ -370,16 +385,16 @@ function compareCollectionItems(left: UserCollectionItem, right: UserCollectionI
 function chooseCollectionItem(
   observation: CollectionObservation,
   statuses?: readonly CollectionScheduleStatus[],
-): UserCollectionItem {
+): ValidCollectionItem {
   const candidates = statuses
-    ? observation.items.filter((item) => statuses.includes(item.status as CollectionScheduleStatus))
+    ? observation.items.filter((item) => statuses.includes(item.status))
     : observation.items;
   return [...(candidates.length > 0 ? candidates : observation.items)].sort(
     compareCollectionItems,
-  )[0] as UserCollectionItem;
+  )[0] as ValidCollectionItem;
 }
 
-function buildCollectionObservations(items: readonly UserCollectionItem[]): {
+function buildCollectionObservations(items: readonly ValidCollectionItem[]): {
   observations: CollectionObservation[];
   duplicateRows: number;
 } {
@@ -398,7 +413,7 @@ function buildCollectionObservations(items: readonly UserCollectionItem[]): {
   return {
     observations: [...byId.values()].map((observation) => {
       const orderedItems = [...observation.items].sort(compareCollectionItems);
-      const reference = orderedItems[0] as UserCollectionItem;
+      const reference = orderedItems[0] as ValidCollectionItem;
       const conflictReasons = [...observation.conflictReasons];
       if (orderedItems.some((item) => item.status !== reference.status)) {
         conflictReasons.push('重复收藏行的 status 不一致');
@@ -428,7 +443,7 @@ function buildCollectionObservations(items: readonly UserCollectionItem[]): {
 
 function progressForCollection(
   observation: CollectionObservation,
-  selectedItem = observation.item,
+  selectedItem: ValidCollectionItem = observation.item,
 ): CollectionScheduleProgress {
   const item = selectedItem;
   const reasons = [...observation.conflictReasons];
@@ -456,6 +471,7 @@ function progressForCollection(
     validity === 'invalid' ||
     (watched !== undefined && (!Number.isSafeInteger(watched) || watched < 0));
   const validReportedProgress =
+    !conflict &&
     validity === 'valid' &&
     total !== undefined &&
     Number.isSafeInteger(total) &&
@@ -610,9 +626,11 @@ async function scanCollection(
   maxItems: number,
 ): Promise<CollectionScan> {
   const attemptedAt = new Date().toISOString();
-  const items: UserCollectionItem[] = [];
+  const items: ValidCollectionItem[] = [];
+  const invalidStatusItems: UserCollectionItem[] = [];
   let observedRows = 0;
   let invalidSubjectIdRows = 0;
+  let invalidStatusRows = 0;
   const missingFields: Record<string, number> = {};
   let sourceTotal: number | undefined;
   let pagesAttempted = 0;
@@ -649,14 +667,19 @@ async function scanCollection(
       }
       const pageItems = page.items.slice(0, requested);
       observedRows += pageItems.length;
-      const validPageItems: UserCollectionItem[] = [];
+      const validPageItems: ValidCollectionItem[] = [];
       for (const item of pageItems) {
         if (!isValidSubjectId((item as { subjectId?: unknown }).subjectId)) {
           invalidSubjectIdRows += 1;
           continue;
         }
+        if (!isValidCollectionStatus(item.status)) {
+          invalidStatusRows += 1;
+          invalidStatusItems.push(item);
+          continue;
+        }
         markCollectionMissingFields(missingFields, item);
-        validPageItems.push(item);
+        validPageItems.push({ ...item, status: item.status });
       }
       items.push(...validPageItems);
       if (pageItems.length === 0 || (sourceTotal !== undefined && sourceTotal <= observedRows)) {
@@ -683,6 +706,7 @@ async function scanCollection(
     (observedRows >= maxItems || pagesAttempted >= COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES);
   return {
     items,
+    invalidStatusItems,
     observedRows,
     sourceTotal,
     requestedMaxItems: maxItems,
@@ -692,6 +716,7 @@ async function scanCollection(
     truncated,
     duplicateRows: buildCollectionObservations(items).duplicateRows,
     invalidSubjectIdRows,
+    invalidStatusRows,
     pageFailureOffset,
     pageFailureCode,
     paginationStalled,
@@ -724,7 +749,7 @@ function makeUnmatchedCollectionItem(
     name: item.subjectName || `Subject ${item.subjectId}`,
     nameCn: item.subjectNameCn,
     subjectDate: item.subjectDate,
-    status: item.status as CollectionScheduleStatus,
+    status: item.status,
     statusLabel: item.statusLabel,
     progress: progressForCollection(observation, item),
     reason,
@@ -747,7 +772,7 @@ function makeUnmatchedCalendarItem(
     sourceIndex: row.sourceIndex,
     ...(item
       ? {
-          collectionStatus: item.status as CollectionScheduleStatus,
+          collectionStatus: item.status,
           collectionStatusLabel: item.statusLabel,
         }
       : {}),
@@ -808,6 +833,7 @@ function baseResult(
         truncated: collection.truncated,
         duplicateRows: collection.duplicateRows,
         invalidSubjectIdRows: collection.invalidSubjectIdRows,
+        invalidStatusRows: collection.invalidStatusRows,
         pageFailureOffset: collection.pageFailureOffset,
         pageFailureCode: collection.pageFailureCode,
         paginationStalled: collection.paginationStalled,
@@ -911,10 +937,13 @@ function finalizeSchedule(
 
   const { observations, duplicateRows } = buildCollectionObservations(collection.items);
   const eligible = observations.filter((observation) =>
-    observation.items.some((item) => statuses.includes(item.status as CollectionScheduleStatus)),
+    observation.items.some((item) => statuses.includes(item.status)),
   );
   const bySubjectId = new Map(
     observations.map((observation) => [observation.item.subjectId, observation]),
+  );
+  const invalidStatusSubjectIds = new Set(
+    collection.invalidStatusItems.map((item) => item.subjectId),
   );
   const eligibleSubjectIds = new Set(eligible.map((observation) => observation.item.subjectId));
   const collectionScanComplete =
@@ -923,7 +952,8 @@ function finalizeSchedule(
     collection.pageFailureCode === undefined &&
     !collection.paginationStalled &&
     !collection.sourceTotalChanged &&
-    collection.invalidSubjectIdRows === 0;
+    collection.invalidSubjectIdRows === 0 &&
+    collection.invalidStatusRows === 0;
   const calendarScanComplete = calendar.coverage.state === 'complete';
   const calendarSubjectIds = new Set(calendar.rows.map((row) => row.item.id));
   const matched: CollectionScheduleItem[] = [];
@@ -932,12 +962,25 @@ function finalizeSchedule(
     const observation = bySubjectId.get(row.item.id);
     if (!observation) {
       unmatchedCalendar.push(
-        makeUnmatchedCalendarItem(row, collectionScanComplete ? 'not_collected' : 'not_observed'),
+        makeUnmatchedCalendarItem(
+          row,
+          invalidStatusSubjectIds.has(row.item.id)
+            ? 'invalid_collection_status'
+            : collectionScanComplete
+              ? 'not_collected'
+              : 'not_observed',
+        ),
       );
       continue;
     }
     if (!eligibleSubjectIds.has(row.item.id)) {
-      unmatchedCalendar.push(makeUnmatchedCalendarItem(row, 'status_filtered', observation));
+      unmatchedCalendar.push(
+        makeUnmatchedCalendarItem(
+          row,
+          invalidStatusSubjectIds.has(row.item.id) ? 'invalid_collection_status' : 'status_filtered',
+          invalidStatusSubjectIds.has(row.item.id) ? undefined : observation,
+        ),
+      );
       continue;
     }
     const item = chooseCollectionItem(observation, statuses);
@@ -955,7 +998,7 @@ function finalizeSchedule(
       subjectId: row.item.id,
       name: row.item.name || item.subjectName || `Subject ${row.item.id}`,
       nameCn: row.item.nameCn || item.subjectNameCn,
-      status: item.status as CollectionScheduleStatus,
+      status: item.status,
       statusLabel: item.statusLabel,
       schedule: {
         weekday: row.weekday,
@@ -1021,6 +1064,7 @@ function finalizeSchedule(
     collection.sourceTotalChanged ||
     duplicateRows > 0 ||
     collection.invalidSubjectIdRows > 0 ||
+    collection.invalidStatusRows > 0 ||
     Object.keys(collection.missingFields).length > 0 ||
     data.summary.progressInvalidRows > 0 ||
     data.summary.progressConflictRows > 0 ||
@@ -1034,6 +1078,7 @@ function finalizeSchedule(
     collection.sourceTotalChanged ||
     duplicateRows > 0 ||
     collection.invalidSubjectIdRows > 0 ||
+    collection.invalidStatusRows > 0 ||
     Object.keys(collection.missingFields).length > 0 ||
     data.summary.progressInvalidRows > 0 ||
     data.summary.progressConflictRows > 0 ||
@@ -1163,6 +1208,14 @@ function finalizeSchedule(
         'COLLECTION_INVALID_SUBJECT_IDS',
         'partial',
         `官方收藏分页返回 ${collection.invalidSubjectIdRows} 条无效 subject_id；这些行未参与匹配。`,
+      );
+    }
+    if (collection.invalidStatusRows > 0) {
+      addWarning(
+        result,
+        'COLLECTION_INVALID_STATUSES',
+        'partial',
+        `官方收藏分页返回 ${collection.invalidStatusRows} 条无效 status；这些行未参与状态筛选或匹配。`,
       );
     }
     if (Object.keys(collection.missingFields).length > 0) {
