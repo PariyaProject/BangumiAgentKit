@@ -49,8 +49,9 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / REVIEW_GATE_WAITING_FOR_CI — exact Candidate pushed in PR #6;
-outer ledger remains at 4 authorized / 0 consumed`
+`EPOCH_ACTIVE / REVIEW_GATE_WAITING_FOR_CI — corrected exact Candidate prepared
+after CI diagnosed generated-catalog drift; outer ledger remains at 4
+authorized / 0 consumed`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -137,15 +138,17 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`968d20e docs(product): record PR-8A review readiness` /
-`968d20e2bf6f0927c5d8a4d2b1347bfc48fa43fe`
+`8ee9483 chore: normalize generated tool catalog` /
+`8ee9483d7e5dee3a9fe373c469294293d904d60b`
 
 Tests and Exact-SHA CI:
 
-`Local validation is green as recorded below. Mandatory remote CI for exact
-Candidate 968d20e2bf6f0927c5d8a4d2b1347bfc48fa43fe is queued in PR #6: six
-jobs (discovery-foundation, host-integration, postgres-compat,
-provider-foundation, sqlite-default, standalone-release-smoke) pending.`
+`Local validation is green as recorded below. The first exact Candidate
+968d20e2 failed only at Verify OpenAPI generated outputs because the tracked
+catalog used a pre-existing multiline array style; five other jobs passed.
+Corrected exact Candidate 8ee9483d7e5dee3a9fe373c469294293d904d60b now contains
+the generator's canonical catalog output and is queued for a fresh six-job PR
+#6 run.`
 
 Integration Contract:
 
@@ -169,8 +172,8 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Wait for all six mandatory PR #6 checks on exact Candidate 968d20e2 to pass;
-record their result, then launch the recorded TIER_2 Sol #1 reviewer.`
+`Verify all six mandatory PR #6 checks on corrected exact Candidate 8ee9483 to
+pass, record their result, then launch the recorded TIER_2 Sol #1 reviewer.`
 
 ---
 

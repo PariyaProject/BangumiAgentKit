@@ -239,13 +239,14 @@ milestone or outer launch ledgers.
 - Semantic/provider/discovery/contract suites pass 36/33/51/22 tests.
 - Renderer/Standalone/SQLite integration suites pass 58/21/33 tests.
 - OpenAPI spec validation, client generation, operation registry generation,
-  build, and catalog generation pass. `openapi:verify` reports only the
-  repository's existing generated-catalog Prettier array-style mismatch after
-  generation; no semantic catalog difference was reported.
+  build, catalog generation, and `openapi:verify` pass after normalizing the
+  generated catalog to the generator's canonical Prettier output.
 - Representative complete/partial/no-image long-CJK fixtures were rendered
   and inspected at 640px and 960px under `.artifacts/render/`; section states,
   coverage, warnings, wrapping, and footer remained readable with no clipping.
 - Exact Candidate, mandatory remote CI, User/Agent preflight record, and
   independent review remain pending. The exact Candidate is
-  `968d20e2bf6f0927c5d8a4d2b1347bfc48fa43fe` and is under PR #6; six mandatory
-  checks are queued before review expenditure.
+  `8ee9483d7e5dee3a9fe373c469294293d904d60b` and is under PR #6 after the
+  previous candidate's OpenAPI generated-output check exposed the tracked
+  catalog formatting drift. The corrected catalog now matches generator
+  output and six mandatory checks are queued before review expenditure.
