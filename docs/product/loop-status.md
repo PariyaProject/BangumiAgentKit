@@ -49,16 +49,16 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / SOL_2_READY — corrected Candidate passed local validation and
-exact CI; outer ledger is 1 consumed of 4 authorized`
+`MILESTONE_PARKED_REVIEW_LIMIT / DISCOVERY_READY — PR-8A Sol #2 returned
+CORRECTIVE_REQUIRED; outer ledger is 2 consumed of 4 authorized`
 
 Outer Sol Review Budget Authorized / Consumed:
 
-`4 / 1 — 3 remaining; sequential only; automatic Sol #5 prohibited`
+`4 / 2 — 2 remaining; sequential only; automatic Sol #5 prohibited`
 
 Outer Review Budget State:
 
-`ACTIVE`
+`ACTIVE / DISCOVERY_READY`
 
 Explicit Outer Non-Scope:
 
@@ -89,11 +89,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`CORRECTIVE_REQUIRED`
+`PARKED_REVIEW_LIMIT`
 
 Current Phase:
 
-`EPOCH_ACTIVE / REVIEW_READY_FOR_SOL_2`
+`MILESTONE_PARKED_REVIEW_LIMIT / PERSISTED`
 
 Review Boundary Rationale:
 
@@ -104,11 +104,11 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Sol #1's four P1 blockers and three safe P2 findings are corrected: nested
-actor caps and coverage, per-operation evidence timestamps, exhaustive stats
-failure/accounting semantics, full visual-state QA, raw staff-label grouping,
-and hidden warning/limitation counts. The corrected Candidate passed local
-validation and exact CI; it is ready for Sol #2 and is not frozen.`
+`Sol #2 found four P1 blockers: subject-overview images bypass the renderer
+asset pipeline; successful stats evidence can use a pre-dispatch timestamp;
+versioned deterministic composition-formula provenance is absent; and the
+corrected visual matrix uses semantically contradictory degraded fixtures. The
+Candidate is not frozen or merged; PR-8A is parked at its TIER_2 review limit.`
 
 Primary Model / Reasoning:
 
@@ -123,8 +123,8 @@ Generic Subagent Budget Authorized / Consumed:
 
 Milestone Review Tier / Sol Review Budget Authorized / Consumed:
 
-`TIER_2 — 2 / 1; 1 remaining; Sol #1 CORRECTIVE_REQUIRED; Sol #2 only after
-corrected Candidate and fresh exact-SHA CI; Sol #3 prohibited`
+`TIER_2 — 2 / 2; 0 remaining; Sol #1 and Sol #2 CORRECTIVE_REQUIRED; Sol #3
+prohibited`
 
 Milestone Reviewer Order:
 
@@ -143,12 +143,11 @@ Latest Stable Commit / Candidate SHA:
 
 Tests and Exact-SHA CI:
 
-`Corrected Candidate 998d4c4 local validation and mandatory exact-SHA CI run
-31766543465 passed all six required jobs. Sol #1's 0 P0 / 4 P1 / 3 P2 findings
-are addressed; the full finding record is
-docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.
-The corrected Candidate is ready for the single remaining Sol #2 launch, but
-is not frozen.`
+`Candidate 998d4c4935f52d4cdf1543ca1663d68d137065fc passed local validation and
+mandatory exact-SHA CI run 31766543465 (6/6), but Sol #2 returned
+CORRECTIVE_REQUIRED with 0 P0 / 4 P1 / 0 P2 findings. Full reports are at
+docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md and
+sol-2-review.md. The Candidate is not frozen.`
 
 Integration Contract:
 
@@ -161,7 +160,7 @@ Integration Contract:
 - Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
   the dedicated feature branch, and return to synchronized `master` without
   touching historical branches;
-- Integration State: `NOT_STARTED`;
+- Integration State: `NOT_STARTED / PARKED_REVIEW_LIMIT`;
 - Implementation Frozen SHA: `N/A`;
 - Merge Commit SHA: `N/A`.
 
@@ -172,10 +171,10 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Launch exactly the remaining Sol #2 comprehensive review against corrected
-Candidate 998d4c4. If PASS, freeze this exact SHA and complete the recorded
-AUTO_MERGE_AFTER_FREEZE integration lifecycle; if corrective, park at the
-TIER_2 review limit and return to safe opportunity discovery.`
+`Persist Sol #2's full report and parked state, push governance metadata, then
+verify the recorded base is still current, return to synchronized master, and
+enter opportunity discovery for an independent safe Epoch. Do not alter PR-8A,
+freeze Candidate 998d4c4, merge PR #6, or launch Sol #3.`
 
 Sol #1 Runtime Checkpoint:
 
@@ -189,6 +188,13 @@ Corrected Candidate Checkpoint:
 `998d4c4935f52d4cdf1543ca1663d68d137065fc / local validation green / exact
 CI 31766543465 green (6/6) / visual QA matrix complete / ready for Sol #2 at
 2026-08-14T03:24:24Z.`
+
+Sol #2 Runtime Checkpoint:
+
+`sol_milestone_reviewer / agent 019ffe4f-6b46-7c20-96a4-31147a981e66 /
+COMPLETED_CORRECTIVE_REQUIRED observed at 2026-08-14T03:39:50Z; milestone Sol
+budget 2/2 consumed, outer budget 2/4 consumed; report persisted at
+docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md.`
 
 ---
 

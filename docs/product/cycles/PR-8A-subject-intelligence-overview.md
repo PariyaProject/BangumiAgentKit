@@ -1,6 +1,12 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `SOL_2_READY`
+Status: `PARKED_REVIEW_LIMIT`
+
+Sol #2 returned `CORRECTIVE_REQUIRED` against the corrected Candidate. The
+milestone exhausted its TIER_2 review budget without a PASS and is parked
+without freeze or merge; Sol #3 is prohibited. The full independent report is
+persisted at
+`docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md`.
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized
@@ -280,5 +286,26 @@ milestone or outer launch ledgers.
   `.artifacts/render/pr8a-corrected/`.
 - Mandatory exact-SHA CI run
   [31766543465](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31766543465)
-  passed all six required jobs. The milestone is ready for the single
-  remaining Sol #2 review launch; it is not frozen yet.
+  passed all six required jobs. The milestone was ready for the single
+  remaining Sol #2 review launch at this checkpoint; it is not frozen.
+
+## Sol #2 review checkpoint — 2026-08-14
+
+- Reviewer: `sol_milestone_reviewer`, agent
+  `019ffe4f-6b46-7c20-96a4-31147a981e66`, launch ordinal `Sol #2 of 2`.
+- Review Base SHA:
+  `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`.
+- Review Candidate SHA:
+  `998d4c4935f52d4cdf1543ca1663d68d137065fc`.
+- Governance-only review tip: `be62c7c`.
+- Exact-SHA CI run
+  [31766543465](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31766543465)
+  remained green across all six required jobs.
+- Verdict: `CORRECTIVE_REQUIRED`, with `P0 0 / P1 4 / P2 0 / P3 0`.
+- Findings: subject-overview images bypass the renderer asset pipeline;
+  successful stats evidence can use a pre-dispatch timestamp; required
+  versioned composition-formula provenance is absent; and the corrected visual
+  matrix contains semantically contradictory degraded fixtures.
+- State: `PARKED_REVIEW_LIMIT`; implementation is not frozen, integration is
+  not started, and Sol #3 is prohibited. The outer ledger consumed two of four
+  authorized Sol launches and may return to independent opportunity discovery.

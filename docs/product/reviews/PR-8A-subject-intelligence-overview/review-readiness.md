@@ -1,10 +1,11 @@
 # PR-8A — Review Readiness
 
-Status: `SOL_2_READY`
+Status: `PARKED_REVIEW_LIMIT`
 
-This packet authorizes the first sequential comprehensive TIER_2 review of the
-PR-8A Subject Intelligence Overview Epoch. It records evidence for the exact
-implementation Candidate and does not substitute for independent inspection.
+This packet records the final sequential comprehensive TIER_2 review of the
+PR-8A Subject Intelligence Overview Epoch. The exact implementation Candidate
+passed mandatory CI but did not pass independent review; the milestone is
+parked at its review limit and is not frozen.
 
 ## Candidate and integration identity
 
@@ -91,23 +92,30 @@ pre-existing files outside this Epoch; no unrelated files were reformatted.
 - Review tier: `TIER_2`
 - Reviewer: `sol_milestone_reviewer`
 - Launch ordinal: `Sol #2 of 2`
-- Milestone Sol launches consumed: `1 / 2`
-- Outer Sol launches consumed: `1 / 4`
+- Milestone Sol launches consumed: `2 / 2`
+- Outer Sol launches consumed: `2 / 4`
 - Generic subagents: `0 / 0`
-- Sol #2 is authorized for the corrected Candidate above as the final
-  comprehensive review launch. Sol #3 is prohibited.
+- Sol #2 completed `CORRECTIVE_REQUIRED` with four P1 findings. Sol #3 is
+  prohibited; the full report is
+  `docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md`.
 
-Sol #1 returned `CORRECTIVE_REQUIRED`; one of two milestone launches and one
-of four outer launches are consumed. All four P1 and three safe P2 findings
-are corrected in Candidate `998d4c4`, with fresh local validation, full visual
-matrix evidence, and exact-SHA CI run `31766543465` green. Sol #2 is now
-authorized as the final review launch for this milestone. The complete Sol #1
-report is recorded at
-`docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md`.
+Sol #1 returned `CORRECTIVE_REQUIRED`; its four P1 and three safe P2 findings
+were addressed in Candidate `998d4c4`, with fresh local validation, full
+visual matrix evidence, and exact-SHA CI run `31766543465` green. Sol #2 then
+returned `CORRECTIVE_REQUIRED` with four P1 findings, exhausting the milestone
+review budget. The complete reports are recorded at
+`docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md` and
+`docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md`.
 
-The review should falsify the public semantic contract, section-state and
-evidence honesty, source request/resource caps, provider absence/failure paths,
-raw Bangumi role/relation label preservation, renderer boundaries and visual
-density, Standalone/catalog integration, zero-network/security regressions,
-and the deferred-scope boundary. It must inspect the actual repository and
-Candidate rather than relying on this report.
+The final review falsified the renderer asset path, timestamp ordering,
+composition provenance, and visual-fixture truthfulness. Candidate
+`998d4c4935f52d4cdf1543ca1663d68d137065fc` is therefore not freeze-ready or
+mergeable in this Goal. The exact CI run remains green, but the milestone is
+parked at `PARKED_REVIEW_LIMIT`.
+
+## Sol #2 result
+
+The four P1 findings are recorded in the complete independent report linked
+above. This outer Goal must not modify PR-8A's implementation or spend a third
+review launch. The next safe action is to persist the parked state and select a
+new independent coherent Epoch from the backlog.
