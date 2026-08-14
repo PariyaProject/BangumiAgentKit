@@ -49,7 +49,7 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / PREPARE_REVIEW — PR-8A local validation and visual QA passed;
+`EPOCH_ACTIVE / REVIEW_GATE_WAITING_FOR_CI — exact Candidate pushed in PR #6;
 outer ledger remains at 4 authorized / 0 consumed`
 
 Outer Sol Review Budget Authorized / Consumed:
@@ -89,11 +89,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`REVIEW_PREPARING`
+`REVIEW_GATE_WAITING_FOR_CI`
 
 Current Phase:
 
-`EPOCH_ACTIVE / PREPARE_REVIEW`
+`EPOCH_ACTIVE / REVIEW_GATE`
 
 Review Boundary Rationale:
 
@@ -137,16 +137,15 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`a728de0 feat: add subject intelligence overview capability` / `N/A`
+`968d20e docs(product): record PR-8A review readiness` /
+`968d20e2bf6f0927c5d8a4d2b1347bfc48fa43fe`
 
 Tests and Exact-SHA CI:
 
-`Green: typecheck, lint, 208 unit/full tests, 36 semantic tests, 33 provider
-tests, 51 discovery tests, 22 contract tests, 58 renderer tests, 21
-Standalone tests, 33 SQLite integration tests, and touched-file formatting.
-OpenAPI validation/generation and catalog semantic generation are green; the
-repository openapi:verify command still fails only because its Prettier step
-rewrites the pre-existing catalog array style. Exact-SHA remote CI is pending.`
+`Local validation is green as recorded below. Mandatory remote CI for exact
+Candidate 968d20e2bf6f0927c5d8a4d2b1347bfc48fa43fe is queued in PR #6: six
+jobs (discovery-foundation, host-integration, postgres-compat,
+provider-foundation, sqlite-default, standalone-release-smoke) pending.`
 
 Integration Contract:
 
@@ -154,7 +153,7 @@ Integration Contract:
 - Target Base Branch: `master`;
 - Recorded Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`;
 - Current Target Base SHA: resolve immediately before integration;
-- Pull Request: `to create after Candidate readiness`;
+- Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`;
 - Merge Strategy: `MERGE_COMMIT`;
 - Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
   the dedicated feature branch, and return to synchronized `master` without
@@ -170,9 +169,8 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Run the consolidated Base..Candidate preflight, push the clean exact
-Candidate, create the dedicated PR, and verify mandatory remote CI before any
-Sol launch.`
+`Wait for all six mandatory PR #6 checks on exact Candidate 968d20e2 to pass;
+record their result, then launch the recorded TIER_2 Sol #1 reviewer.`
 
 ---
 

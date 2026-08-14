@@ -213,7 +213,7 @@ arranges already-derived values and displays state/coverage honestly.
 - Recorded Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`
 - Current Target Base SHA: resolve immediately before integration
 - Feature Branch: `codex/pr-8a-subject-intelligence-overview`
-- Pull Request: to create after Candidate readiness
+- Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`
 - Merge Strategy: `MERGE_COMMIT`
 - Branch Cleanup Policy: after verified frozen-SHA ancestry and merged PR,
   safely retire local/remote feature branches and return to synchronized
@@ -246,4 +246,6 @@ milestone or outer launch ledgers.
   and inspected at 640px and 960px under `.artifacts/render/`; section states,
   coverage, warnings, wrapping, and footer remained readable with no clipping.
 - Exact Candidate, mandatory remote CI, User/Agent preflight record, and
-  independent review remain pending.
+  independent review remain pending. The exact Candidate is
+  `968d20e2bf6f0927c5d8a4d2b1347bfc48fa43fe` and is under PR #6; six mandatory
+  checks are queued before review expenditure.
