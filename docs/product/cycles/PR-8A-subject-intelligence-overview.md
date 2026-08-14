@@ -1,6 +1,6 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `REVIEW_PREPARING`
+Status: `REVIEW_AUTHORIZED`
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized
@@ -245,8 +245,8 @@ milestone or outer launch ledgers.
   and inspected at 640px and 960px under `.artifacts/render/`; section states,
   coverage, warnings, wrapping, and footer remained readable with no clipping.
 - Exact Candidate, mandatory remote CI, User/Agent preflight record, and
-  independent review remain pending. The exact Candidate is
-  `8ee9483d7e5dee3a9fe373c469294293d904d60b` and is under PR #6 after the
-  previous candidate's OpenAPI generated-output check exposed the tracked
-  catalog formatting drift. The corrected catalog now matches generator
-  output and six mandatory checks are queued before review expenditure.
+  independent review readiness are complete. The exact Candidate is
+  `aeb2b34d127e49dbe09f81ce80b0b53873ff1a3c` under PR #6. Mandatory CI run
+  `31764720966` passed all six required jobs after the generated catalog was
+  normalized to canonical output. The readiness packet is persisted at
+  `docs/product/reviews/PR-8A-subject-intelligence-overview/review-readiness.md`.

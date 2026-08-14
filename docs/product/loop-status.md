@@ -49,9 +49,9 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / REVIEW_GATE_WAITING_FOR_CI — corrected exact Candidate prepared
-after CI diagnosed generated-catalog drift; outer ledger remains at 4
-authorized / 0 consumed`
+`EPOCH_ACTIVE / REVIEW_AUTHORIZED — exact Candidate passed local validation and
+all six mandatory remote CI jobs; outer ledger remains at 4 authorized / 0
+consumed`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -90,11 +90,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`REVIEW_GATE_WAITING_FOR_CI`
+`REVIEW_AUTHORIZED`
 
 Current Phase:
 
-`EPOCH_ACTIVE / REVIEW_GATE`
+`EPOCH_ACTIVE / REVIEW`
 
 Review Boundary Rationale:
 
@@ -105,10 +105,10 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Work Packages 1–4 are stable in a728de0: bounded composition, semantic tool,
-renderer, Standalone/catalog/docs, focused tests, full local suites, and
-representative 640px/960px visual QA are complete. Exact-Candidate preflight,
-remote CI, and independent review remain pending.`
+`Work Packages 1–4 are stable: bounded composition, semantic tool, renderer,
+Standalone/catalog/docs, focused tests, full local suites, representative
+640px/960px visual QA, and canonical generated catalog output are complete.
+The exact Candidate is ready for the first independent comprehensive review.`
 
 Primary Model / Reasoning:
 
@@ -138,17 +138,17 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`8ee9483 chore: normalize generated tool catalog` /
-`8ee9483d7e5dee3a9fe373c469294293d904d60b`
+`aeb2b34 docs(product): record PR-8A corrected Candidate` /
+`aeb2b34d127e49dbe09f81ce80b0b53873ff1a3c`
 
 Tests and Exact-SHA CI:
 
-`Local validation is green as recorded below. The first exact Candidate
-968d20e2 failed only at Verify OpenAPI generated outputs because the tracked
-catalog used a pre-existing multiline array style; five other jobs passed.
-Corrected exact Candidate 8ee9483d7e5dee3a9fe373c469294293d904d60b now contains
-the generator's canonical catalog output and is queued for a fresh six-job PR
-#6 run.`
+`Local validation is green as recorded below. The earlier exact Candidate
+968d20e failed only on generated-catalog formatting; the corrected Candidate
+aeb2b34d127e49dbe09f81ce80b0b53873ff1a3c includes canonical generated output.
+Mandatory remote CI run 31764720966 passed all six jobs on this Candidate:
+discovery-foundation, host-integration, postgres-compat, provider-foundation,
+sqlite-default, and standalone-release-smoke.`
 
 Integration Contract:
 
@@ -172,8 +172,9 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Verify all six mandatory PR #6 checks on corrected exact Candidate 8ee9483 to
-pass, record their result, then launch the recorded TIER_2 Sol #1 reviewer.`
+`Launch the recorded sequential TIER_2 Sol #1 comprehensive milestone
+reviewer against exact Candidate aeb2b34; do not edit tracked files while it
+runs.`
 
 ---
 
