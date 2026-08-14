@@ -12,6 +12,12 @@ export interface SubjectOverviewSectionCoverage {
   truncated: boolean;
 }
 
+export interface SubjectOverviewActorCoverage {
+  observed: number;
+  returned: number;
+  truncated: boolean;
+}
+
 export interface SubjectOverviewStats {
   score: number;
   rank: number;
@@ -41,6 +47,7 @@ export interface SubjectOverviewCastItem {
     career: string[];
     image?: string;
   }>;
+  actorCoverage: SubjectOverviewActorCoverage;
 }
 
 export interface SubjectOverviewEvidence {
@@ -72,6 +79,7 @@ export interface SubjectOverviewResult {
     state: SubjectOverviewSectionState;
     items: SubjectOverviewCastItem[];
     coverage: SubjectOverviewSectionCoverage;
+    actorCoverage: SubjectOverviewActorCoverage;
   };
   staff: {
     state: SubjectOverviewSectionState;
@@ -96,6 +104,10 @@ export interface SubjectOverviewResult {
       maxCast: number;
       maxStaff: number;
       maxRelations: number;
+    };
+    actorLimits: {
+      perCharacter: number;
+      total: number;
     };
   };
   evidence: SubjectOverviewEvidence[];

@@ -257,6 +257,11 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
     subject.nameCn && subject.nameCn !== subject.name ? subject.name : `Subject ID: ${subject.id}`;
   const visibleWarnings = viewModel.warnings.slice(0, 4);
   const visibleLimitations = viewModel.limitations.slice(0, 3);
+  const hiddenWarningCount = Math.max(0, viewModel.warnings.length - visibleWarnings.length);
+  const hiddenLimitationCount = Math.max(
+    0,
+    viewModel.limitations.length - visibleLimitations.length,
+  );
   const sourceLabel = viewModel.source.retrievedAt
     ? `${viewModel.source.label} · ${viewModel.source.retrievedAt}`
     : viewModel.source.label;
@@ -377,6 +382,14 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
             </div>
           )}
           <CoverageLine {...viewModel.cast.coverage} theme={theme} />
+          {viewModel.cast.actorCoverage.truncated ? (
+            <div style={{ color: theme.warning, fontSize: '11px', overflowWrap: 'anywhere' }}>
+              声优引用观察 {viewModel.cast.actorCoverage.observed} 条 · 返回{' '}
+              {viewModel.cast.actorCoverage.returned} 条 · 每角色最多{' '}
+              {viewModel.coverage.actorLimits.perCharacter} 条、全区段最多{' '}
+              {viewModel.coverage.actorLimits.total} 条。
+            </div>
+          ) : null}
         </Panel>
       </div>
 
@@ -457,7 +470,10 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
         </Panel>
       </div>
 
-      {(visibleWarnings.length > 0 || visibleLimitations.length > 0) && (
+      {(visibleWarnings.length > 0 ||
+        visibleLimitations.length > 0 ||
+        hiddenWarningCount > 0 ||
+        hiddenLimitationCount > 0) && (
         <div
           style={{
             backgroundColor: theme.surfaceAlt,
@@ -485,6 +501,16 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
               限制：{limitation}
             </div>
           ))}
+          {hiddenWarningCount > 0 ? (
+            <div style={{ color: theme.warning, fontSize: '11px' }}>
+              另有 {hiddenWarningCount} 条警告未展示。
+            </div>
+          ) : null}
+          {hiddenLimitationCount > 0 ? (
+            <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+              另有 {hiddenLimitationCount} 条限制未展示。
+            </div>
+          ) : null}
         </div>
       )}
 

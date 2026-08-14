@@ -509,6 +509,7 @@ export interface SubjectOverviewViewModel {
     }>;
     hiddenCount?: number;
     coverage: { observed: number; returned: number; truncated: boolean };
+    actorCoverage: { observed: number; returned: number; truncated: boolean };
   };
   staff: {
     state: SubjectOverviewSectionState;
@@ -542,6 +543,7 @@ export interface SubjectOverviewViewModel {
     sectionsNotComputable: number;
     truncatedSections: string[];
     limits: { maxCast: number; maxStaff: number; maxRelations: number };
+    actorLimits: { perCharacter: number; total: number };
   };
   evidence: { operations: string[]; count: number; retrievedAt?: string };
   warnings: Array<{ code: string; state: string; message: string }>;

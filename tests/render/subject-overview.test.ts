@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import {
   buildSubjectOverviewViewModel,
   renderHtmlTemplate,
@@ -52,8 +54,10 @@ function fixture(state: SubjectOverviewResult['state'] = 'complete'): SubjectOve
         actors: [
           { id: index + 101, name: `声优 ${index + 1}`, career: ['seiyu'], image: undefined },
         ],
+        actorCoverage: { observed: 1, returned: 1, truncated: false },
       })),
       coverage: { state: 'complete', observed: 8, returned: 8, truncated: false },
+      actorCoverage: { observed: 8, returned: 8, truncated: false },
     },
     staff: {
       state: 'partial',
@@ -94,6 +98,7 @@ function fixture(state: SubjectOverviewResult['state'] = 'complete'): SubjectOve
       sectionsNotComputable: 0,
       truncatedSections: ['staff'],
       limits: { maxCast: 8, maxStaff: 24, maxRelations: 12 },
+      actorLimits: { perCharacter: 4, total: 32 },
     },
     evidence: [
       {
@@ -110,8 +115,90 @@ function fixture(state: SubjectOverviewResult['state'] = 'complete'): SubjectOve
         section: 'staff',
         message: '职员达到上限。',
       },
+      { code: 'SECOND_WARNING', state: 'partial', message: '第二条警告。' },
+      { code: 'THIRD_WARNING', state: 'partial', message: '第三条警告。' },
+      { code: 'FOURTH_WARNING', state: 'partial', message: '第四条警告。' },
+      { code: 'FIFTH_WARNING', state: 'partial', message: '第五条警告。' },
+      { code: 'SIXTH_WARNING', state: 'partial', message: '第六条警告。' },
     ],
-    limitations: ['这是有界官方 v0 观察，不宣称完整职员表。'],
+    limitations: [
+      '这是有界官方 v0 观察，不宣称完整职员表。',
+      '第二条限制。',
+      '第三条限制。',
+      '第四条限制。',
+      '第五条限制。',
+    ],
+  };
+}
+
+function completeFixture(): SubjectOverviewResult {
+  const base = fixture('complete');
+  return {
+    ...base,
+    cast: {
+      ...base.cast,
+      state: 'complete',
+      coverage: { ...base.cast.coverage, state: 'complete', truncated: false },
+    },
+    staff: {
+      ...base.staff,
+      state: 'complete',
+      coverage: { ...base.staff.coverage, state: 'complete', truncated: false },
+    },
+    coverage: { ...base.coverage, sectionsComplete: 4, sectionsPartial: 0, truncatedSections: [] },
+    warnings: [],
+    limitations: ['这是有界官方 v0 观察，不宣称完整历史。'],
+  };
+}
+
+function degradedFixture(state: 'unavailable' | 'not_found'): SubjectOverviewResult {
+  const base = fixture(state);
+  return {
+    ...base,
+    subject: undefined,
+    stats: {
+      state: 'unavailable',
+      coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
+    },
+    cast: {
+      state: 'unavailable',
+      items: [],
+      coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
+      actorCoverage: { observed: 0, returned: 0, truncated: false },
+    },
+    staff: {
+      state: 'unavailable',
+      items: [],
+      groups: [],
+      coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
+    },
+    relations: {
+      state: 'unavailable',
+      items: [],
+      coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
+    },
+    coverage: {
+      ...base.coverage,
+      sectionsComplete: 0,
+      sectionsPartial: 0,
+      sectionsUnavailable: 4,
+      truncatedSections: [],
+    },
+    evidence: [
+      {
+        source: 'official-v0',
+        operation: 'GET /v0/subjects/{subject_id}',
+        attemptedAt: '2026-08-14T00:00:00Z',
+      },
+    ],
+    warnings: [
+      {
+        code: state === 'not_found' ? 'UPSTREAM_NOT_FOUND' : 'UPSTREAM_SUBJECT_UNAVAILABLE',
+        state,
+        message: state === 'not_found' ? '条目不存在。' : '条目详情暂不可用。',
+      },
+    ],
+    limitations: ['未请求其他区段，未对缺失内容做猜测。'],
   };
 }
 
@@ -140,40 +227,39 @@ describe('Subject Overview renderer', () => {
     expect(html).toContain('部分覆盖');
     expect(html).toContain('STAFF_OUTPUT_TRUNCATED');
     expect(html).toContain('限制：这是有界官方 v0 观察');
+    expect(html).toContain('另有 2 条警告未展示');
+    expect(html).toContain('另有 2 条限制未展示');
 
-    const unavailable = buildSubjectOverviewViewModel({
-      ...fixture('unavailable'),
-      subject: undefined,
-      stats: {
-        state: 'unavailable',
-        coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
-      },
-      cast: {
-        state: 'unavailable',
-        items: [],
-        coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
-      },
-      staff: {
-        state: 'unavailable',
-        items: [],
-        groups: [],
-        coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
-      },
-      relations: {
-        state: 'unavailable',
-        items: [],
-        coverage: { state: 'unavailable', observed: 0, returned: 0, truncated: false },
-      },
-    });
+    const unavailable = buildSubjectOverviewViewModel(degradedFixture('unavailable'));
     expect(renderHtmlTemplate(unavailable, 'bangumi-light', {}, 960)).toContain('不可用');
+    const notFound = buildSubjectOverviewViewModel(degradedFixture('not_found'));
+    expect(renderHtmlTemplate(notFound, 'bangumi-light', {}, 960)).toContain('未找到');
   });
 
-  it('renders a valid PNG at the narrow representative width', async () => {
-    const vm = buildSubjectOverviewViewModel(fixture());
-    const result = await renderService.renderCard(vm, { width: 640 });
-    expect(result.template).toBe('subject-overview');
-    expect(result.width).toBe(1280);
-    expect(result.buffer.subarray(0, 8).equals(PNG_MAGIC)).toBe(true);
-    expect(result.buffer.length).toBeGreaterThan(1000);
+  it('renders complete, partial, unavailable, and not-found PNGs at both representative widths', async () => {
+    const variants = {
+      complete: completeFixture(),
+      partial: fixture('partial'),
+      unavailable: degradedFixture('unavailable'),
+      notFound: degradedFixture('not_found'),
+    };
+    const visualQaDir = process.env.SUBJECT_OVERVIEW_VISUAL_QA_DIR;
+    if (visualQaDir) await mkdir(visualQaDir, { recursive: true });
+    for (const [name, result] of Object.entries(variants)) {
+      const vm = buildSubjectOverviewViewModel(result);
+      for (const width of [640, 960]) {
+        const rendered = await renderService.renderCard(vm, { width });
+        expect(rendered.template, `${name} template`).toBe('subject-overview');
+        expect(rendered.width, `${name} width`).toBe(width * 2);
+        expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC), `${name} PNG`).toBe(true);
+        expect(rendered.buffer.length, `${name} bytes`).toBeGreaterThan(1000);
+        if (visualQaDir) {
+          await writeFile(
+            path.join(visualQaDir, `subject-overview-${name}-${width}.png`),
+            rendered.buffer,
+          );
+        }
+      }
+    }
   });
 });

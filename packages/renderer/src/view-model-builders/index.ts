@@ -192,6 +192,7 @@ export function buildSubjectOverviewViewModel(
         returned: result.cast.coverage.returned,
         truncated: result.cast.coverage.truncated,
       },
+      actorCoverage: result.cast.actorCoverage,
     },
     staff: {
       state: result.staff.state,

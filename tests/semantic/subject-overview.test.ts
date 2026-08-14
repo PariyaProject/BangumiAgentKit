@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { ProviderRegistry, type SubjectStatsData } from '@bangumi-agent-kit/provider-core';
+import {
+  ProviderRegistry,
+  type CapabilityResult,
+  type CapabilityState,
+  type SubjectStatsData,
+} from '@bangumi-agent-kit/provider-core';
 import { createReadTools, type ToolContext, type ToolDefinition } from '@bangumi-agent-kit/tools';
 
 const context: ToolContext = {
@@ -86,12 +91,29 @@ function getTool(client: HttpClient): ToolDefinition {
   return tool;
 }
 
-function buildClient(options: { subjectStatus?: number; fail?: string } = {}) {
+function buildClient(
+  options: {
+    subjectStatus?: number;
+    fail?: string;
+    characters?: unknown[];
+    persons?: unknown[];
+    delays?: Partial<Record<'characters' | 'persons' | 'subjects', number>>;
+  } = {},
+) {
   const requests: string[] = [];
   const client = new HttpClient({
     fetchFn: async (input) => {
       const url = String(input);
       requests.push(url);
+      const delayKey = url.includes('/characters')
+        ? 'characters'
+        : url.includes('/persons')
+          ? 'persons'
+          : url.includes('/subjects/123/subjects')
+            ? 'subjects'
+            : undefined;
+      const delay = delayKey ? options.delays?.[delayKey] : undefined;
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       if (options.fail && url.includes(options.fail)) {
         return new Response(JSON.stringify({ error: 'fixture failure' }), { status: 503 });
       }
@@ -101,10 +123,12 @@ function buildClient(options: { subjectStatus?: number; fail?: string } = {}) {
         });
       }
       if (url.endsWith('/v0/subjects/123/characters')) {
-        return new Response(JSON.stringify(charactersPayload), { status: 200 });
+        return new Response(JSON.stringify(options.characters || charactersPayload), {
+          status: 200,
+        });
       }
       if (url.endsWith('/v0/subjects/123/persons')) {
-        return new Response(JSON.stringify(personsPayload), { status: 200 });
+        return new Response(JSON.stringify(options.persons || personsPayload), { status: 200 });
       }
       if (url.endsWith('/v0/subjects/123/subjects')) {
         return new Response(JSON.stringify(relationsPayload), { status: 200 });
@@ -115,13 +139,14 @@ function buildClient(options: { subjectStatus?: number; fail?: string } = {}) {
   return { client, requests };
 }
 
-function buildProviderRegistry() {
+function buildProviderRegistry(state: CapabilityState = 'ok') {
   return new ProviderRegistry({
     v0: {
       async getSubject() {
         return { state: 'ok' as const, data: undefined };
       },
-      async getSubjectStats() {
+      async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+        if (state !== 'ok') return { state };
         return {
           state: 'ok' as const,
           data: stats,
@@ -170,6 +195,39 @@ describe('Subject Intelligence Overview semantic contract', () => {
       ]),
     );
     expect(requests).toHaveLength(4);
+  });
+
+  it('bounds nested actor references and exposes truthful nested coverage', async () => {
+    const oversizedActors = Array.from({ length: 1000 }, (_, index) => ({
+      id: index + 1000,
+      name: `声优 ${index + 1}`,
+      career: ['seiyu'],
+      images: {},
+    }));
+    const { client } = buildClient({
+      characters: [{ ...charactersPayload[0], actors: oversizedActors }],
+    });
+    const result = await getTool(client).execute({ subjectId: 123, maxCast: 1 }, context, {});
+    const overview = result as {
+      cast: {
+        items: Array<{ actors: unknown[]; actorCoverage: Record<string, unknown> }>;
+        actorCoverage: Record<string, unknown>;
+      };
+      coverage: { actorLimits: { perCharacter: number; total: number } };
+      warnings: Array<{ code: string }>;
+    };
+
+    expect(overview.cast.items[0]!.actors).toHaveLength(4);
+    expect(overview.cast.items[0]!.actorCoverage).toEqual({
+      observed: 1000,
+      returned: 4,
+      truncated: true,
+    });
+    expect(overview.cast.actorCoverage).toEqual({ observed: 1000, returned: 4, truncated: true });
+    expect(overview.coverage.actorLimits).toEqual({ perCharacter: 4, total: 32 });
+    expect(overview.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'CAST_ACTOR_OUTPUT_TRUNCATED' })]),
+    );
   });
 
   it('keeps partial sections honest when caps and an upstream section failure apply', async () => {
@@ -225,5 +283,77 @@ describe('Subject Intelligence Overview semantic contract', () => {
         .sourceRequestsAttempted,
     ).toBe(1);
     expect(requests).toHaveLength(1);
+  });
+
+  it.each([
+    'unavailable',
+    'upstream_error',
+    'auth_required',
+    'permission_denied',
+    'not_found',
+    'not_computable',
+    'unsupported',
+  ] as const)(
+    'maps stats provider state %s without false success or retrieval evidence',
+    async (state) => {
+      const { client } = buildClient();
+      const result = await getTool(client).execute({ subjectId: 123 }, context, {
+        providerRegistry: buildProviderRegistry(state),
+      });
+      const overview = result as {
+        stats: { state: string };
+        coverage: { sourceRequestsSucceeded: number };
+        evidence: Array<Record<string, unknown>>;
+      };
+      const statsEvidence = overview.evidence.find((item) =>
+        String(item.operation).includes('rating/collection'),
+      );
+
+      expect(overview.stats.state).toBe(
+        state === 'not_computable' || state === 'unsupported' ? 'not_computable' : 'unavailable',
+      );
+      expect(overview.coverage.sourceRequestsSucceeded).toBe(4);
+      expect(statsEvidence).toEqual(expect.objectContaining({ attemptedAt: expect.any(String) }));
+      expect(statsEvidence).not.toHaveProperty('retrievedAt');
+    },
+  );
+
+  it('records attempt and retrieval evidence around delayed section operations', async () => {
+    const { client } = buildClient({ delays: { characters: 35, persons: 5, subjects: 15 } });
+    const result = await getTool(client).execute({ subjectId: 123 }, context, {
+      providerRegistry: buildProviderRegistry(),
+    });
+    const evidence = (result as { evidence: Array<Record<string, unknown>> }).evidence;
+    for (const operation of [
+      'GET /v0/subjects/{subject_id}',
+      'GET /v0/subjects/{subject_id}/characters',
+      'GET /v0/subjects/{subject_id}/persons',
+      'GET /v0/subjects/{subject_id}/subjects',
+    ]) {
+      const item = evidence.find((entry) => entry.operation === operation);
+      expect(item).toEqual(
+        expect.objectContaining({
+          attemptedAt: expect.any(String),
+          retrievedAt: expect.any(String),
+        }),
+      );
+      expect(new Date(String(item?.retrievedAt)).getTime()).toBeGreaterThanOrEqual(
+        new Date(String(item?.attemptedAt)).getTime(),
+      );
+    }
+  });
+
+  it('groups staff by the retained raw official relation label', async () => {
+    const { client } = buildClient({
+      persons: [
+        { ...personsPayload[0], relation: '导演 ' },
+        { ...personsPayload[1], relation: '导演' },
+      ],
+    });
+    const result = await getTool(client).execute({ subjectId: 123 }, context, {});
+    const groups = (result as { staff: { groups: Array<{ relation: string }> } }).staff.groups;
+    expect(groups.map((group) => group.relation)).toEqual(
+      expect.arrayContaining(['导演 ', '导演']),
+    );
   });
 });
