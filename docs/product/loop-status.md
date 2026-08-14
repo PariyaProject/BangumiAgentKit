@@ -49,8 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`INTEGRATION_BLOCKED_BASE_DRIFT / OUTER_LOOP_STOPPED — explicit merge request
-could not pass the recorded-base safety gate`
+`INTEGRATION_PENDING_EXACT_REFRESH_CI / OUTER_LOOP_STOPPED — the existing PR
+branch was refreshed from current origin/master and awaits exact-SHA CI`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -90,13 +90,13 @@ Current-governance plan:
 
 Current Milestone State:
 
-`INTEGRATION_BLOCKED_BASE_DRIFT (human-review Candidate remains
+`INTEGRATION_PENDING_EXACT_REFRESH_CI (human-review Candidate remains
 HUMAN_REVIEW_READY; historical independent-review state remains
 PARKED_REVIEW_LIMIT)`
 
 Current Phase:
 
-`INTEGRATION_BLOCKED_BASE_DRIFT / PERSISTED`
+`INTEGRATION_PENDING_EXACT_REFRESH_CI / PERSISTED`
 
 Review Boundary Rationale:
 
@@ -112,7 +112,9 @@ bounded Subject Overview cover/character assets now use AssetResolver with no
 raw URL fallback; stats retrievedAt is post-completion; composition evidence is
 stable derived-s7 with a versioned deterministic formula; and visual fixtures
 now flow from mocked dependencies through semantic result, ViewModel, and
-Renderer. The Candidate is not frozen or merged.`
+Renderer. The corrected Candidate remains without an independent Sol PASS; the
+existing PR branch has now been refreshed from current master and is awaiting
+exact-SHA remote CI before the user-authorized merge.`
 
 Primary Model / Reasoning:
 
@@ -137,47 +139,51 @@ reviewer for Sol #2 only if Sol #1 is CORRECTIVE_REQUIRED.`
 
 Base SHA / Feature Branch:
 
-`cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e` /
+`0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc` /
 `codex/pr-8a-subject-intelligence-overview`
 
 Latest Stable Commit / Candidate SHA:
 
-`05288ae fix: resolve PR-8A human review findings` /
-`05288aecf80f040213dc4fdc938f2838775b9829`
+`0159daa chore: refresh PR-8A base for integration` /
+`0159daa5ce38dbd626458c007a8cf944df3f6454`
 
 Tests and Exact-SHA CI:
 
-`Candidate 05288aecf80f040213dc4fdc938f2838775b9829 passed the final local
-validation matrix and mandatory exact-SHA CI run 31770406756 (6/6). It is a
-HUMAN_REVIEW_CANDIDATE only: no independent PASS, Freeze, or merge is claimed.`
+`Human-review Candidate 05288aecf80f040213dc4fdc938f2838775b9829 passed the
+prior final local matrix and exact-SHA CI run 31770406756 (6/6). Refreshed
+branch tip 0159daa5ce38dbd626458c007a8cf944df3f6454 passed the refreshed local
+matrix; exact-SHA remote CI is pending push. No independent PASS is claimed.`
 
 Integration Contract:
 
 - Integration Policy: `AUTO_MERGE_AFTER_FREEZE`;
 - Target Base Branch: `master`;
-- Recorded Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`;
-- Current Target Base SHA: resolve immediately before integration;
+- Recorded Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`;
+- Previous review Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`;
+- Current Target Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`;
 - Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`;
 - Merge Strategy: `MERGE_COMMIT`;
 - Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
   the dedicated feature branch, and return to synchronized `master` without
   touching historical branches;
-- Integration State: `INTEGRATION_BLOCKED_BASE_DRIFT`;
+- Integration State: `INTEGRATION_PENDING_EXACT_REFRESH_CI`;
 - Implementation Frozen SHA: `N/A`;
 - Merge Commit SHA: `N/A`.
 
 Human Authorization State:
 
-`USER-AUTHORIZED MERGE ATTEMPT on existing PR-8A; protected Human-On-Exception
-boundaries remain active; the recorded-base gate blocked integration before any
-merge, rebase, Freeze, Sol, or subagent action.`
+`USER-AUTHORIZED MERGE on existing PR-8A; protected Human-On-Exception
+boundaries remain active. The branch was refreshed with a no-rewrite merge of
+current origin/master; local validation is green and exact-SHA remote CI is the
+remaining pre-merge gate.`
 
 Next Action:
 
-`STOP at INTEGRATION_BLOCKED_BASE_DRIFT. Resolve the recorded Base SHA drift
-with explicit direction, then rerun the required integration safety gate. Do
-not automatically rebase, merge, close, reset, start recovery, select a new
-Epoch, or enter opportunity discovery.`
+`PUSH the refreshed PR branch and wait for exact-SHA mandatory CI. If green,
+complete the user-authorized PR #6 merge-commit integration, verify ancestry,
+retire only the dedicated feature branch, synchronize master, persist the
+merge result, and stop. Do not start recovery, select a new Epoch, or enter
+opportunity discovery.`
 
 Sol #1 Runtime Checkpoint:
 

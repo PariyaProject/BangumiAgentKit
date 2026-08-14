@@ -1,6 +1,6 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `INTEGRATION_BLOCKED_BASE_DRIFT`
+Status: `INTEGRATION_PENDING_EXACT_REFRESH_CI`
 
 Historical independent-review status: `PARKED_REVIEW_LIMIT`
 
@@ -13,8 +13,9 @@ persisted at
 `docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md`.
 
 The later human-directed corrective checkpoint below does not rewrite either
-Sol verdict, does not spend another Sol launch, and does not claim Freeze or
-merge.
+Sol verdict or spend another Sol launch. The user subsequently authorized a
+controlled integration refresh on the existing PR; that refresh does not claim
+an independent review PASS.
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized
@@ -233,8 +234,9 @@ arranges already-derived values and displays state/coverage honestly.
 
 - Integration Policy: `AUTO_MERGE_AFTER_FREEZE`
 - Target Base Branch: `master`
-- Recorded Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`
-- Current Target Base SHA: resolve immediately before integration
+- Recorded Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`
+- Previous review Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`
+- Current Target Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`
 - Feature Branch: `codex/pr-8a-subject-intelligence-overview`
 - Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`
 - Merge Strategy: `MERGE_COMMIT`
@@ -366,3 +368,29 @@ recorded Cycle Base SHA.
 - PR #6 remains open; Candidate `05288aecf80f040213dc4fdc938f2838775b9829`
   remains a human-review Candidate, not frozen or merged. Resume requires
   explicit resolution of the base drift and a fresh safety-gate evaluation.
+
+## Base refresh and validation checkpoint — 2026-08-14
+
+The user authorized the existing PR to be integrated after the base-drift
+checkpoint. The current remote base was refreshed into the same feature branch
+with a non-rewriting merge:
+
+- Previous recorded/review Base SHA:
+  `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`.
+- Fetched current `origin/master`:
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`.
+- Base-refresh commit and refreshed branch tip:
+  `0159daa5ce38dbd626458c007a8cf944df3f6454`.
+- `git merge-base HEAD origin/master` equals
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`.
+- No rebase, force-push, reset, or unrelated-worktree mutation was used.
+
+On the refreshed branch tip, local validation passed: build, typecheck, lint,
+full tests (36 files / 210 tests), renderer tests (8 files / 60 tests),
+semantic (46), provider (34), discovery (51), contract (22), standalone (21),
+SQLite integration (33), and `openapi:verify`. Postgres-only integration tests
+were skipped locally because `DATABASE_URL` is unset; the mandatory remote
+matrix remains required. Exact-SHA remote CI is pending the push of the
+refreshed branch tip. Current state is
+`INTEGRATION_PENDING_EXACT_REFRESH_CI`; the historical Sol verdicts remain
+`PARKED_REVIEW_LIMIT` and no new Sol launch was made.

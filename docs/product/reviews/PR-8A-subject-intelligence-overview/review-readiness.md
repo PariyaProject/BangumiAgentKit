@@ -1,6 +1,6 @@
 # PR-8A — Review Readiness
 
-Status: `INTEGRATION_BLOCKED_BASE_DRIFT`
+Status: `INTEGRATION_PENDING_EXACT_REFRESH_CI`
 
 Historical independent-review status: `PARKED_REVIEW_LIMIT`
 
@@ -18,8 +18,14 @@ Sol verdicts or claim an independent review PASS.
 ## Candidate and integration identity
 
 - Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`
+- Refreshed integration Base SHA:
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`
 - Implementation Candidate:
   `998d4c4935f52d4cdf1543ca1663d68d137065fc`
+- Human-review corrective Candidate:
+  `05288aecf80f040213dc4fdc938f2838775b9829`
+- Refreshed integration branch tip:
+  `0159daa5ce38dbd626458c007a8cf944df3f6454`
 - Feature branch: `codex/pr-8a-subject-intelligence-overview`
 - Pull request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`
 - Target base: `master`
@@ -176,3 +182,29 @@ pre-merge base check found a policy blocker before any merge action:
   performed. PR #6 remains open and the Candidate remains unfrozen.
 - Resume requires explicit resolution of the Base SHA drift followed by a
   fresh integration safety gate; no Sol launch was spent.
+
+## Base refresh and validation checkpoint — 2026-08-14
+
+The user authorized integration of the existing PR after the recorded-base
+blocker. The current remote base was merged into the existing feature branch
+with a non-rewriting merge; the historical review Base and Sol verdicts remain
+unchanged:
+
+- Previous review Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`.
+- Current `origin/master` / refreshed integration Base SHA:
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`.
+- Base-refresh commit and branch tip:
+  `0159daa5ce38dbd626458c007a8cf944df3f6454`.
+- `git merge-base HEAD origin/master` equals the refreshed Base SHA.
+- The corrected implementation Candidate
+  `05288aecf80f040213dc4fdc938f2838775b9829` remains an ancestor; no rebase,
+  force-push, reset, or unrelated worktree mutation was used.
+
+The refreshed tip passed build, typecheck, lint, full tests (36 files / 210
+tests), renderer tests (8 files / 60 tests), semantic (46), provider (34),
+discovery (51), contract (22), standalone (21), SQLite integration (33), and
+`openapi:verify`. Postgres-only integration tests were skipped locally because
+`DATABASE_URL` is unset. Exact-SHA remote CI is pending the push of this
+refreshed branch tip. Current state is
+`INTEGRATION_PENDING_EXACT_REFRESH_CI`; this is not an independent Sol PASS or
+a new review launch.
