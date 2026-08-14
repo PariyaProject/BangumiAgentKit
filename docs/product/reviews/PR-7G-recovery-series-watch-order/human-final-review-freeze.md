@@ -1,6 +1,6 @@
 # PR-7G Human Final Review and Freeze
 
-Status: `FROZEN_PENDING_INTEGRATION`
+Status: `HUMAN_APPROVED_FINALIZATION / MERGED`
 
 Approval type: `HUMAN_APPROVED_FINALIZATION`
 
@@ -43,9 +43,21 @@ Sol consumption remains `1 / 1` with its truthful historical verdict
 
 ## Freeze and integration authorization
 
-The accepted implementation Candidate is frozen for this legacy finalization.
-The existing `AUTO_MERGE_AFTER_FREEZE` policy authorizes the PR #5 merge commit
-only after the base/head/ancestor/CI safety checks recorded in the execution
-log pass. The expected next state is `PR-7G Recovery COMPLETE` and
-`HUMAN_APPROVED_FINALIZATION / MERGED` after the merge and post-merge
-verification.
+The accepted implementation Candidate was frozen for this legacy finalization.
+The existing `AUTO_MERGE_AFTER_FREEZE` policy was then satisfied: the merge
+commit was created and pushed only after the base/head/ancestor/CI checks
+passed.
+
+- Merge commit:
+  `77bd5b63a20c2043e6a7323f3945a6ed16257c8f`
+- Verified `master` / `origin/master` at integration:
+  `77bd5b63a20c2043e6a7323f3945a6ed16257c8f`; the final synchronized tip also
+  contains this post-merge governance record
+- PR #5: `MERGED`
+- Recovery branch: retired locally and remotely after verification
+- Historical PR #2 branch: preserved read-only
+- Post-merge verification: build passed; combined PR-7G/PR-7H-focused tests
+  passed 45/45; watch-order tools and discovery/series renderer registrations
+  coexist in the merged tree
+
+Terminal state: `PR-7G Recovery COMPLETE`.

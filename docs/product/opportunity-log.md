@@ -39,7 +39,7 @@ is bounded.
 ## OP-002 Franchise Watch Order
 
 Status:
-PARKED_REVIEW_LIMIT_PR-7G_RECOVERY
+DELIVERED_IN_PR-7G_RECOVERY
 
 User question:
 
@@ -84,7 +84,10 @@ preserve directed paths, distinguish deterministic bounded recommendation from
 official canonical order, keep non-anime evidence from consuming anime node or
 hydration budgets, and expose historical review blockers as explicit conflict,
 coverage, evidence, and limitation states. Historical PR-7G branch/reports are
-read-only provenance only.
+read-only provenance only. The accepted implementation Candidate
+`fd48eb626b6b027031cc3884444963018beef2ed` passed Human Final Review, was
+frozen, and was integrated in PR #5 with merge commit
+`77bd5b63a20c2043e6a7323f3945a6ed16257c8f`.
 
 ---
 

@@ -1,6 +1,6 @@
 # PR-7G Finalization — Existing Recovery PR #5
 
-Status: `HUMAN_APPROVED_FINALIZATION / FROZEN_PENDING_INTEGRATION`
+Status: `HUMAN_APPROVED_FINALIZATION / MERGED`
 
 This is one explicitly human-authorized finalization review cycle for the
 existing parked PR-7G Recovery PR. It is not a new Recovery Epoch, Product
@@ -204,7 +204,26 @@ launches.
 - Exact-SHA CI: `31542758003`, all mandatory jobs terminal `SUCCESS`
 - Human Final Review / Freeze record:
   `docs/product/reviews/PR-7G-recovery-series-watch-order/human-final-review-freeze.md`
-- Freeze state: `FROZEN_PENDING_INTEGRATION`
+- Freeze state: `FROZEN`
 - Authorized integration: existing `AUTO_MERGE_AFTER_FREEZE` merge-commit
   policy for PR #5
 - Sol launches added: `0`
+
+## Post-freeze integration record
+
+- Merge commit: `77bd5b63a20c2043e6a7323f3945a6ed16257c8f`
+- Verified `master` / `origin/master` at integration:
+  `77bd5b63a20c2043e6a7323f3945a6ed16257c8f`; the final synchronized tip also
+  contains this post-merge governance record
+- PR #5: `MERGED`
+- Feature branch: safely retired locally and remotely after verifying the
+  frozen Candidate is an ancestor of the merged base
+- Historical PR #2 and branch: `CLOSED / SUPERSEDED / NOT MERGED`, preserved
+  read-only
+- Post-merge verification: build passed; combined PR-7G/PR-7H-focused matrix
+  passed 45/45; both watch-order tools and both renderer template registrations
+  remain present
+
+The active outcome is `PR-7G Recovery COMPLETE` and
+`HUMAN_APPROVED_FINALIZATION / MERGED`. No Self-Evolution or follow-on Product
+Review Epoch begins in this Goal.

@@ -39,8 +39,8 @@ Standing execution defaults:
 
 Goal Scope:
 
-`EXECUTE exactly one fresh PR-7G Recovery Epoch for Series / Watch-Order
-Intelligence, then stop at the recorded final state.`
+`COMPLETED exactly one fresh PR-7G Recovery Epoch for Series / Watch-Order
+Intelligence and its explicitly authorized Human Final Review integration.`
 
 Current-governance plan:
 `docs/product/cycles/PR-7G-recovery-series-watch-order.md`
@@ -93,7 +93,7 @@ Outer Goal State:
 
 Current Milestone State:
 
-`PARKED_REVIEW_LIMIT`
+`MERGED_GOAL_COMPLETE`
 
 Current Product Review Epoch:
 
@@ -102,9 +102,9 @@ Current Product Review Epoch:
 Current Work Packages / `LUNA_STABLE` Summary:
 
 `Corrected SeriesService/evidence; semantic tool; series-relations renderer;
-Standalone/catalog/docs/tests — implementation and local validation are stable,
-but the final TIER_2 gate is parked after Sol #2 found 2 P1 blockers and the
-exact-Candidate CI state remained incoherent.`
+Standalone/catalog/docs/tests — Human Final Review PASS accepted the corrected
+Candidate; Freeze completed; PR #5 merged and post-merge coexistence checks
+passed.`
 
 Review Boundary Rationale:
 
@@ -114,7 +114,7 @@ personalization, persistence, and unrelated renderer work are deferred.`
 
 Current Phase:
 
-`PARKED_REVIEW_LIMIT`
+`MERGED_GOAL_COMPLETE`
 
 Primary Model / Reasoning:
 
@@ -137,7 +137,7 @@ Total Sol Review Budget Authorized / Consumed:
 `2 / 2 — 0 remaining; Sol #2 completed CORRECTIVE_REQUIRED; Sol #3 is
 prohibited`
 
-Reviewer Runtime Checkpoint:
+Historical Reviewer Runtime Checkpoint:
 
 `sol_milestone_reviewer`, launch ordinal `Sol #2 of 2`, agent
 `019ff187-e693-7952-b5cd-99dcb9369812`, launched
@@ -147,7 +147,7 @@ Reviewer Runtime Checkpoint:
 Sol #1 closed `COMPLETED_CORRECTIVE_REQUIRED` and Sol #3 is prohibited.
 Historical launches are not current budget consumption.`
 
-Reviewer Result:
+Historical Reviewer Result:
 
 `Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings.
 Sol #2 completed CORRECTIVE_REQUIRED with 0 P0, 2 P1, and 4 P2 findings; see
@@ -162,16 +162,14 @@ Current Outer Review Budget State:
 
 `NOT_APPLICABLE`
 
-Candidate SHA:
+Accepted Implementation Frozen SHA:
 
-`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`
+`fd48eb626b6b027031cc3884444963018beef2ed`
 
 Exact-SHA CI:
 
-`UNRESOLVED — run 31508533985 is tied to the exact corrected Candidate and its
-workflow header reports Success, but the job-level view still reported
-postgres-compat as Currently running; exact-Candidate CI cannot be claimed
-coherently.`
+`SUCCESS — run 31542758003 is tied to the exact accepted implementation
+Candidate; all six mandatory jobs reached terminal SUCCESS.`
 
 Integration Policy:
 
@@ -187,8 +185,10 @@ Base SHA:
 
 Current Target Base SHA:
 
-`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e` at activation; re-fetch before
-integration.
+`77bd5b63a20c2043e6a7323f3945a6ed16257c8f` as the verified integration merge
+commit; the final synchronized tip also contains this post-merge governance
+record. The pre-merge freshness gate compared `origin/master` to the recorded
+Base SHA `5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e`.
 
 Feature Branch:
 
@@ -196,8 +196,8 @@ Feature Branch:
 
 Feature Branch State:
 
-`PARKED_REVIEW_LIMIT — preserve this branch and historical branch read-only;
-no merge or cleanup was attempted after the final review failed to PASS.`
+`MERGED_AND_RETIRED — the feature branch was verified merged and safely deleted;
+the historical PR #2 branch remains preserved.`
 
 Pull Request Number:
 
@@ -221,43 +221,46 @@ synchronize local master with origin/master, and preserve historical branches.`
 
 Integration State:
 
-`PARKED_REVIEW_LIMIT — integration was not attempted because no Candidate
-passed the final TIER_2 review and exact-SHA CI evidence was incoherent.`
+`MERGED — merge commit 77bd5b63a20c2043e6a7323f3945a6ed16257c8f was pushed to
+origin/master and PR #5 is MERGED.`
 
 Implementation Frozen SHA:
 
-`NOT_CREATED — no final PASS Candidate was frozen.`
+`fd48eb626b6b027031cc3884444963018beef2ed`
 
 Merge Commit SHA:
 
-`NOT_CREATED`
+`77bd5b63a20c2043e6a7323f3945a6ed16257c8f`
 
 Next Action:
 
-`STOP: PARKED_REVIEW_LIMIT. The two-launch TIER_2 budget is exhausted without
-a PASS. Preserve the corrected Candidate and branch for a future explicitly
-authorized cycle; do not launch Sol #3 or integrate this PR.`
+`STOP: MERGED_GOAL_COMPLETE. Do not start Self-Evolution, opportunity
+discovery, or another Product Review Epoch in this Goal.`
 
 Human Authorization State:
 
-`USER-AUTHORIZED EXECUTE-ONLY FRESH PR-7G RECOVERY; HUMAN-ON-EXCEPTION
-BOUNDARIES REMAIN ACTIVE`
+`HUMAN_APPROVED_FINALIZATION — legacy PR-7G integration completed under the
+explicit one-time human decision; no new Sol or generic subagent was used.`
+
+Active legacy Recovery work:
+
+`NONE`
 
 ## Explicit Human-Authorized PR-7G Finalization Overlay
 
-The historical Recovery Epoch above remains immutable at `2 / 2` Sol launches
-and `PARKED_REVIEW_LIMIT`. A separate user-authorized finalization allowance is
-now active for the existing PR #5 branch only; it is not a new Product Review
-Epoch or a reset of the historical budget.
+The historical Recovery Epoch above remains immutable as historical evidence at
+`2 / 2` Sol launches and `PARKED_REVIEW_LIMIT`. The separate user-authorized
+finalization allowance for existing PR #5 is now complete; it was not a new
+Product Review Epoch or a reset of the historical budget.
 
 Finalization plan:
 `docs/product/cycles/PR-7G-finalization.md`
 
 Finalization state:
-`HUMAN_APPROVED_FINALIZATION / FROZEN_PENDING_INTEGRATION — accepted Candidate
+`HUMAN_APPROVED_FINALIZATION / MERGED — accepted Candidate
 fd48eb626b6b027031cc3884444963018beef2ed; exact-SHA CI run 31542758003 is
 green with all six mandatory jobs terminal SUCCESS; historical final Sol
-Candidate 5582f013... remains CORRECTIVE_REQUIRED; PR #5 remains unmerged`
+Candidate 5582f013... remains CORRECTIVE_REQUIRED; PR #5 is MERGED`
 
 Historical finalization starting branch tip:
 `ebcfad4406104aa2a8a7775fcca74efa204db57b`
@@ -271,7 +274,8 @@ returned CORRECTIVE_REQUIRED; no second launch is permitted. Corrective Sol
 launches: 0`
 
 Finalization branch and PR:
-`codex/recovery-pr-7g-series-watch-order` / `#5`; no new branch or PR.
+`codex/recovery-pr-7g-series-watch-order` retired after verified merge / `#5`
+MERGED; no new branch or PR.
 
 Historical branch protection:
 `codex/pr-7g-series-watch-order` remains preserved and untouched.
@@ -283,8 +287,12 @@ Human Final Review / Freeze record:
 `docs/product/reviews/PR-7G-recovery-series-watch-order/human-final-review-freeze.md`
 
 Next action:
-`Complete the authorized post-freeze merge of PR #5, then synchronize and
-record the final merged state. Do not launch Sol or start Self-Evolution.`
+`STOP at MERGED_GOAL_COMPLETE; do not launch Sol, start Self-Evolution, or
+select another Product Review Epoch.`
+
+PR-7G Recovery:
+
+`COMPLETE`
 
 ---
 
