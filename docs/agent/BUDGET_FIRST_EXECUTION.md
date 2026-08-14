@@ -109,6 +109,24 @@ foundational public contract on which substantial later work would depend.
 Protected human-only boundaries remain human-only. “This feels important” is
 not sufficient justification.
 
+### Initial vertical slice versus Epoch boundary
+
+A coherent end-to-end vertical slice may be exactly one Work Package. That is
+an implementation sequencing fact, not an automatic Product Review Epoch
+boundary or a reason to launch Sol. Once that initial slice is `LUNA_STABLE`,
+Luna must actively examine whether closely related, high-value Work Packages
+still belong to the same user or Agent capability. Ask whether they reuse the
+same product context, semantic model, Agent surface, Renderer, or integration
+boundary, and whether reviewing now would force substantially duplicated
+independent review of the next related package.
+
+If the answers support the same capability, continue the Epoch unless adding
+more work would reduce product coherence, reviewer comprehensibility,
+architectural focus, safety, or useful scope discipline. Do not interpret the
+rules as “find the smallest complete vertical slice,” “review as soon as a
+usable capability exists,” or “a planned Work Package count makes an Epoch
+ready.” Do not introduce numeric minimums or create a mega-Epoch in response.
+
 ### Epoch Plan and Review Boundary Rationale
 
 Before implementation, every product Cycle/Epoch Plan must include:
@@ -121,6 +139,9 @@ It must explain why the Work Packages belong together, the user or Agent
 journey they complete, related work intentionally included, adjacent work
 intentionally deferred, why review now is more valuable than earlier review,
 and why extending the Epoch further would reduce coherence or reviewability.
+The rationale must answer both **WHY NOT REVIEW EARLIER?** and **WHY NOT
+EXTEND FURTHER?** explicitly. It must distinguish the initial vertical slice
+or Work Package from the eventual Product Review Epoch boundary.
 
 It must also record these expected economics before implementation:
 
@@ -156,6 +177,33 @@ in one pass. Sol is a final independent falsification layer, never the first
 serious reviewer or an incremental debugger. Do not launch it for a failing
 test, unclear ordinary implementation decision, completed Work Package,
 successful compilation or render, CI failure, reassurance, or normal planning.
+
+### Pre-Sol Falsification
+
+Before `REVIEW_READY`, Luna Max must perform one consolidated adversarial
+`PRE-SOL FALSIFICATION` of the complete Base..Candidate Epoch. The question is
+“What would an independent reviewer most likely reject?”, not merely whether
+tests and CI are green. Challenge, where applicable:
+
+- nested and recursive resource limits, fan-out, concurrency, timeouts,
+  network/asset paths, SSRF boundaries, and output bounds;
+- partial, unavailable, unsupported, failed-dependency, mixed-success,
+  retryability, and missing-value semantics;
+- source identity, timestamps and `retrievedAt`, observed/returned/rendered
+  counts, derived-result and formula/version provenance, confidence, and
+  limitations;
+- public contracts versus runtime behavior, caps/defaults, and compatibility;
+- approved renderer asset pipelines, zero-network assumptions, broken/missing
+  assets, long CJK, high-cardinality output, truncation, and degraded states;
+- fixture realism: whether outputs, counters, topology, and statuses can be
+  emitted by the real semantic/service layer rather than synthetic ViewModels;
+- cross-Work-Package assumptions among providers, semantics, tools,
+  Standalone, Renderer, generated catalogs, and frozen capabilities.
+
+This is Luna work, not Sol or generic-subagent work. Fix any blocker before
+Candidate review launch and rerun affected validation. Keep any durable summary
+compact and batch it with existing readiness or launch evidence; do not create
+a separate report or checklist commit by default.
 
 ### Engineering, validation, and discovery discipline
 
@@ -193,6 +241,15 @@ activity. Batch closely related governance state when truthful; a healthy
 review lifecycle normally needs planning/activation, many engineering commits,
 an optional Candidate/reviewer-launch checkpoint, and verdict/corrective/Freeze
 records—not one governance commit per transition.
+
+Ordinary transient state-machine progression does not require one Git commit
+per validation, readiness, CI, authorization, or launch-preparation state. A
+normal healthy Epoch will usually have, conceptually: one Plan/Activate
+checkpoint; meaningful engineering commits; one durable checkpoint when the
+reviewer actually starts, containing the Candidate and launch evidence; and
+one verdict, corrective, Freeze, or park checkpoint. This is guidance, not a
+hard commit limit. A checkpoint may record an existing implementation
+Candidate SHA, but a governance record commit never becomes that Candidate.
 
 Do not push merely because a local commit exists. Push for durable backup,
 collaboration, Candidate publication, remote CI, or another repository need.
@@ -466,6 +523,16 @@ classification. Sol is never triggered by commit count, an implementation
 stage, Work Package completion, an individual test fix, or an incremental
 refactor.
 
+`REVIEW_AUTHORIZED` is permission and planning state only: it consumes zero
+launches and does not imply that a reviewer is running. A durable
+`REVIEWER_RUNNING` state is valid only after an actual reviewer start
+invocation, and its single launch checkpoint must include the reviewer
+identity, launch ordinal, exact Implementation Candidate SHA, required
+validation/CI evidence, and the incremented Epoch/milestone and applicable
+outer consumed counts. If the start never happened, do not persist
+`REVIEWER_RUNNING`; waits and polls consume zero. Do not split authorization
+and actual start into separate commits by default.
+
 The repository cannot read or enforce the user's live Plus quota. Launch count
 is the deterministic budget proxy and must be recorded in
 `docs/product/loop-status.md`.
@@ -541,8 +608,8 @@ Do not spend the review budget until all of the following are true:
 7. relevant local and integration validation is green;
 8. mandatory remote CI is green for that Candidate SHA;
 9. user, Agent, and visual QA required by the Epoch are complete;
-10. the primary thread has performed one consolidated Base..Candidate preflight
-    against the acceptance criteria;
+10. the primary thread has performed the consolidated Base..Candidate
+    `PRE-SOL FALSIFICATION` and preflight against the acceptance criteria;
 11. no known blocker is intentionally deferred to the reviewers.
 
 Reviewers must inspect the actual Base..Candidate diff and relevant evidence.
@@ -729,18 +796,22 @@ TIER_0: CANDIDATE_READY
 
 TIER_1 or TIER_2: CANDIDATE_READY
   -> REVIEW_AUTHORIZED
+  -> REVIEWER_RUNNING
   -> FROZEN
 
-TIER_1: REVIEW_AUTHORIZED
+TIER_1: REVIEWER_RUNNING
   -> CORRECTING
   -> CORRECTED_AWAITING_REVIEW_AUTHORIZATION
 
-TIER_2 with one launch remaining: REVIEW_AUTHORIZED
+TIER_2 with one launch remaining: REVIEWER_RUNNING
   -> CORRECTING
   -> CORRECTED_CANDIDATE_READY
   -> REVIEW_AUTHORIZED
 
 REVIEW_AUTHORIZED
+  -> REVIEWER_RUNNING (only after the actual start; consume one launch)
+
+REVIEWER_RUNNING
   -> PARKED_REVIEW_LIMIT
 
 FROZEN + STOP_AT_FREEZE (or integration not applicable)

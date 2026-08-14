@@ -113,6 +113,17 @@ reviewer later hard-times-out, hits a platform usage-limit error, crashes, is
 terminated, or returns no verdict. Wait and poll calls on the same launched
 reviewer consume zero additional launches.
 
+`REVIEW_AUTHORIZED` is authorization only. It consumes zero launches and does
+not assert that a reviewer is running. Only an actual reviewer start invocation
+may create a durable `REVIEWER_RUNNING` checkpoint. That checkpoint is one
+logical launch event and must include the reviewer identity, launch ordinal,
+exact Implementation Candidate SHA, required validation/CI evidence, and the
+incremented milestone/Epoch and applicable outer consumed counts. A persisted
+`REVIEWER_RUNNING` record with zero consumed launches, or without an actual
+start, is invalid. If the reviewer never starts, keep the authorization state
+without consumption; waits and polls consume zero. Do not create separate
+authorization and start commits by default.
+
 For an active `AUTONOMOUS_EVOLUTION_TIER2` outer Goal, that same reviewer start
 also consumes one launch from the independent outer Goal ledger. Launch is
 prohibited unless both the milestone and outer remaining counts are positive.
@@ -133,11 +144,12 @@ to discovery for another independent safe milestone.
 ## Reviewer runtime and wait semantics
 
 This section is the canonical source for reviewer runtime-state classification.
-At reviewer launch, one durable crash/resume checkpoint may persist the Epoch
-ID, Candidate SHA, reviewer identity and role, launch ordinal and time, overall
-wall-clock deadline, milestone/Epoch and outer consumed counts, and
-`REVIEWER_RUNNING`. The launch consumes budget. No later repository mutation is
-allowed solely because that same reviewer remains running.
+After the actual reviewer start, one durable crash/resume checkpoint may persist
+the Epoch ID, exact Implementation Candidate SHA, reviewer identity and role,
+launch ordinal and time, overall wall-clock deadline, milestone/Epoch and outer
+consumed counts, and `REVIEWER_RUNNING`. The launch consumes budget. No later
+repository mutation is allowed solely because that same reviewer remains
+running.
 
 Use exactly these runtime outcomes:
 
@@ -210,8 +222,10 @@ until:
 6. relevant local validation is green;
 7. mandatory remote CI is green for the exact Candidate SHA;
 8. required user, Agent, and visual QA are complete;
-9. a consolidated preflight has checked failure states, resource bounds,
-   compatibility, evidence, and representative product output;
+9. Luna's consolidated `PRE-SOL FALSIFICATION` has checked failure states,
+   resource/boundary semantics, compatibility, evidence/provenance,
+   renderer/asset behavior, fixture realism, cross-Work-Package integration,
+   and representative product output;
 10. the execution ledger records reviewer authorization and both applicable
     remaining counts.
 

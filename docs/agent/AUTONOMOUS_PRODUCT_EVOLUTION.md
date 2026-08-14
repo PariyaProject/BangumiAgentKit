@@ -916,7 +916,13 @@ TEST PLAN.
 24. IMPLEMENT
 ==================================================
 
-Prefer vertical slices.
+Prefer end-to-end vertical slices for implementation, but do not confuse the
+initial vertical slice with the Product Review Epoch boundary. One Work
+Package may be a coherent vertical slice and reach `LUNA_STABLE`; before
+`REVIEW_READY`, actively assess closely related high-value Work Packages and
+continue the same Epoch when they improve the same capability without reducing
+coherence or reviewability. Use the canonical boundary and pre-Sol rules in
+`docs/agent/BUDGET_FIRST_EXECUTION.md`.
 
 Example:
 
