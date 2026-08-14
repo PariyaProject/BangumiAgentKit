@@ -182,8 +182,8 @@ function remoteBranchExists(branch) {
   return git('ls-remote', '--heads', 'origin', `refs/heads/${branch}`) !== '';
 }
 
-function changedPaths(base) {
-  const committed = git('diff', '--name-only', `${base}...HEAD`);
+function changedPaths(base, head = 'HEAD') {
+  const committed = git('diff', '--name-only', `${base}...${head}`);
   const working = git('status', '--porcelain=v1')
     .split('\n')
     .filter(Boolean)
@@ -191,8 +191,8 @@ function changedPaths(base) {
   return [...new Set([...committed.split('\n').filter(Boolean), ...working])];
 }
 
-function commitSubjects(base) {
-  const output = git('log', '--format=%s', `${base}..HEAD`);
+function commitSubjects(base, head = 'HEAD') {
+  const output = git('log', '--format=%s', `${base}..${head}`);
   return output.split('\n').filter(Boolean);
 }
 
@@ -392,9 +392,10 @@ function commandGuard(options) {
     return;
   }
   const base = options.base ?? process.env.HARNESS_BASE_REF ?? 'origin/master';
-  assertNoLegacyRuntimeChanges(changedPaths(base));
-  assertProductCommitHygiene(commitSubjects(base));
-  print({ state: 'LEGACY_RUNTIME_PATH_GUARD_PASS', base });
+  const head = process.env.HARNESS_HEAD_REF ?? 'HEAD';
+  assertNoLegacyRuntimeChanges(changedPaths(base, head));
+  assertProductCommitHygiene(commitSubjects(base, head));
+  print({ state: 'LEGACY_RUNTIME_PATH_GUARD_PASS', base, head });
 }
 
 function commandCandidateCheck(options) {
