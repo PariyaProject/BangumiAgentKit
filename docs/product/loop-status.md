@@ -35,7 +35,140 @@ Standing execution defaults:
 
 ---
 
-## Current Active Goal Ledger
+## Current Active AUTONOMOUS_EVOLUTION_TIER2 Goal Ledger
+
+Goal Scope:
+
+`Fresh Autonomous Self-Evolution outer Goal: discover, select, execute,
+review, freeze/integrate, checkpoint, and continue safe coherent Product Review
+Epochs toward the Product North Star until the outer stop condition.`
+
+Selected Product Goal Profile:
+
+`AUTONOMOUS_EVOLUTION_TIER2 / SELF_EVOLUTION`
+
+Outer Goal State:
+
+`EPOCH_PLANNING — fresh outer ledger initialized at 4 authorized / 0 consumed`
+
+Outer Sol Review Budget Authorized / Consumed:
+
+`4 / 0 — 4 remaining; sequential only; automatic Sol #5 prohibited`
+
+Outer Review Budget State:
+
+`ACTIVE`
+
+Explicit Outer Non-Scope:
+
+- authentication trust-model, principal/authorization, credential/cookie,
+  SSRF, destructive/write authority, broad Structured Web/HTML, aggressive
+  crawling, irreversible semantic migrations, legal/license, releases,
+  packages, tags, and other Human-On-Exception directions;
+- generic implementation/research subagents (`0 / 0`), parallel reviewers,
+  and any reviewer launch beyond the outer four-launch ceiling;
+- silently reopening frozen foundations or importing historical PR-7D through
+  PR-7H governance state;
+- unrelated product work that does not belong to the selected coherent Epoch.
+
+Outer Stopping Conditions:
+
+`PAUSED_BY_EXECUTION_BUDGET`, `PAUSED_BY_OUTER_REVIEW_BUDGET`, user stop/change,
+infrastructure or permission blocking all useful safe work, explicit discovery
+finding no meaningful independent safe opportunity, unsafe repository state, or
+governance-mandated global stop. A completed milestone is an inner checkpoint,
+not outer Goal completion.
+
+Current Product Review Epoch / Milestone:
+
+`PR-8A Subject Intelligence Overview`
+
+Current-governance plan:
+`docs/product/cycles/PR-8A-subject-intelligence-overview.md`
+
+Current Milestone State:
+
+`PLANNED`
+
+Current Phase:
+
+`EPOCH_PLANNING`
+
+Review Boundary Rationale:
+
+`One tightly coupled subject-question journey: official-v0 subject detail,
+stats, cast, staff, and relations are composed into one semantic result and
+one readable artifact. Episodes, community/history, personalization, source
+expansion, graph traversal, and unrelated renderer work are deferred.`
+
+Current Work Packages / `LUNA_STABLE` Summary:
+
+`Planned: bounded subject-overview composition; semantic Agent tool; subject-
+overview renderer; Standalone/catalog/docs/tests. No Work Package is yet
+LUNA_STABLE.`
+
+Primary Model / Reasoning:
+
+- primary: GPT-5.6 Luna;
+- preferred reasoning: `max`;
+- minimum availability fallback: `xhigh`;
+- lower Luna reasoning: prohibited.
+
+Generic Subagent Budget Authorized / Consumed:
+
+`0 / 0`
+
+Milestone Review Tier / Sol Review Budget Authorized / Consumed:
+
+`TIER_2 — 2 / 0; 2 remaining; Sol #1 expected and Sol #2 only for corrective
+review; Sol #3 prohibited`
+
+Milestone Reviewer Order:
+
+`Sequential comprehensive sol_milestone_reviewer for Sol #1, then the same
+reviewer for Sol #2 only if Sol #1 is CORRECTIVE_REQUIRED.`
+
+Base SHA / Feature Branch:
+
+`cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e` /
+`codex/pr-8a-subject-intelligence-overview`
+
+Latest Stable Commit / Candidate SHA:
+
+`No implementation commit yet` / `N/A`
+
+Tests and Exact-SHA CI:
+
+`Baseline pending; no Candidate or exact-SHA CI run yet.`
+
+Integration Contract:
+
+- Integration Policy: `AUTO_MERGE_AFTER_FREEZE`;
+- Target Base Branch: `master`;
+- Recorded Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`;
+- Current Target Base SHA: resolve immediately before integration;
+- Pull Request: `to create after Candidate readiness`;
+- Merge Strategy: `MERGE_COMMIT`;
+- Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
+  the dedicated feature branch, and return to synchronized `master` without
+  touching historical branches;
+- Integration State: `NOT_STARTED`;
+- Implementation Frozen SHA: `N/A`;
+- Merge Commit SHA: `N/A`.
+
+Human Authorization State:
+
+`USER-AUTHORIZED fresh AUTONOMOUS_EVOLUTION_TIER2 outer Goal; protected
+Human-On-Exception boundaries remain active.`
+
+Next Action:
+
+`Implement PR-8A from the recorded base/branch after finalizing the bounded
+Cycle Plan; run focused validation before broader readiness work.`
+
+---
+
+## Historical Completed PR-7G Recovery Goal Ledger
 
 Goal Scope:
 
