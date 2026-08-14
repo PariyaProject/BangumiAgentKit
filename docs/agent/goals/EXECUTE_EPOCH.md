@@ -11,7 +11,9 @@ Read [`../PRODUCT_CHARTER.md`](../PRODUCT_CHARTER.md) and
 
 Execute the one explicitly selected Epoch PR through engineering, Scope
 Closure, adversarial preflight, Candidate/CI, review, and the default
-PASS-to-merge cleanup path. Do not discover or select another Epoch.
+PASS-to-merge cleanup path. If Sol #2 returns corrective findings, complete the
+same-PR Luna final-corrective and exact-SHA integration path without Sol #3.
+Do not discover or select another Epoch.
 
 If no specific V3 Epoch PR is selected, or its GitHub control state cannot be
 reconstructed, stop truthfully rather than inventing one or falling back to

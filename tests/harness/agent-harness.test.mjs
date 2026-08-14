@@ -11,6 +11,7 @@ import {
   afterPassBaseAction,
   applyReviewResult,
   assertCandidateInvariant,
+  assertCorrectiveClosure,
   assertMergeReadiness,
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
@@ -25,6 +26,7 @@ import {
   parseControlBlock,
   reconcileReviewReservation,
   recordIntegrationBlocked,
+  resumeReviewLimitForFinalCorrective,
   renderEpochBody,
   renderRunBody,
   reserveReview,
@@ -69,6 +71,17 @@ function startReview(run, epoch, id) {
   return markReviewStarted(reserved.run, reserved.epoch, id);
 }
 
+function closeFindings(findings) {
+  return findings.map((finding) => ({
+    finding_id: finding.id,
+    root_cause: 'A truthy fallback collapsed unknown and valid zero source metadata.',
+    equivalence_class: 'Missing, invalid, contradictory, and zero-valued pagination metadata.',
+    generalized_fix: 'Normalize metadata once and preserve explicit unknown and zero states.',
+    regression_tests: ['missing/invalid totals', 'later-page zero offset'],
+    validation: ['focused regression suite passed', 'full mandatory suite passed'],
+  }));
+}
+
 test('A. NORMAL PASS: engineering Candidate passes once, auto-merges, and adds no runtime commits', () => {
   const { run, epoch } = fixture();
   const engineeringCommits = [
@@ -110,10 +123,11 @@ test('B. CORRECTIVE PASS: one consolidated Luna corrective creates a new Candida
     findings: [{ priority: 'P1', summary: 'Bound nested fan-out' }],
   }));
   assert.equal(epoch.state, 'CORRECTIVE_REQUIRED');
+  epoch.corrective_closure = closeFindings(epoch.findings);
   epoch.candidate_sha = sha('d');
   epoch.ci = { sha: sha('d'), status: 'SUCCESS', url: 'https://example.test/ci-2' };
   epoch.state = 'REVIEW_READY';
-  ({ run, epoch } = startReview(run, epoch, 'sol-2'));
+  ({ run, epoch } = startReview(run, epoch, 'sol-1'));
   ({ run, epoch } = applyReviewResult(run, epoch, { verdict: 'PASS' }));
   assert.equal(epoch.review.consumed, 2);
   assert.equal(epoch.review_pass_sha, sha('d'));
@@ -150,23 +164,110 @@ test('review reservation reconciliation closes a partial write conservatively', 
   assert.equal(reconciled.epoch.review.consumed, 1);
 });
 
-test('D. REVIEW LIMIT: second blocking verdict parks the same PR/branch and trips circuit breaker', () => {
+test('Sol #2 must continue the same reviewer instead of paying to rebuild context', () => {
   let { run, epoch } = fixture();
   ({ run, epoch } = startReview(run, epoch, 'sol-1'));
-  ({ run, epoch } = applyReviewResult(run, epoch, { verdict: 'CORRECTIVE_REQUIRED' }));
+  ({ run, epoch } = applyReviewResult(run, epoch, {
+    verdict: 'CORRECTIVE_REQUIRED',
+    findings: [{ priority: 'P1', summary: 'One blocker' }],
+  }));
+  epoch.corrective_closure = closeFindings(epoch.findings);
   epoch.candidate_sha = sha('d');
   epoch.ci = { sha: sha('d'), status: 'SUCCESS', url: null };
   epoch.state = 'REVIEW_READY';
-  ({ run, epoch } = startReview(run, epoch, 'sol-2'));
+  const reserved = reserveReview(run, epoch);
+  assert.throws(
+    () => markReviewStarted(reserved.run, reserved.epoch, 'new-sol-context'),
+    (error) => error instanceof HarnessInvariantError && error.code === 'SAME_REVIEWER_REQUIRED',
+  );
+  const continued = markReviewStarted(reserved.run, reserved.epoch, 'sol-1');
+  assert.equal(continued.epoch.review.consumed, 2);
+});
+
+test('D. REVIEW LIMIT: Sol #2 findings require one autonomous Luna final corrective, never Sol #3', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-1'));
+  ({ run, epoch } = applyReviewResult(run, epoch, {
+    verdict: 'CORRECTIVE_REQUIRED',
+    findings: [{ priority: 'P1', summary: 'First root-cause class' }],
+  }));
+  epoch.corrective_closure = closeFindings(epoch.findings);
+  epoch.candidate_sha = sha('d');
+  epoch.ci = { sha: sha('d'), status: 'SUCCESS', url: null };
+  epoch.state = 'REVIEW_READY';
+  ({ run, epoch } = startReview(run, epoch, 'sol-1'));
   ({ run, epoch } = applyReviewResult(run, epoch, {
     verdict: 'CORRECTIVE_REQUIRED',
     findings: [{ priority: 'P1', summary: 'Still blocking' }],
   }));
-  assert.equal(epoch.state, 'PARKED_REVIEW_LIMIT');
+  assert.equal(epoch.state, 'FINAL_CORRECTIVE_REQUIRED');
   assert.equal(epoch.pr_number, 42);
   assert.equal(epoch.branch, 'codex/epoch-epoch-test');
-  assert.equal(run.state, 'QUALITY_CIRCUIT_BREAKER');
-  assert.deepEqual(run.parked_epoch_prs, [42]);
+  assert.equal(run.state, 'EPOCH_ACTIVE');
+  assert.equal(run.active_epoch_pr, 42);
+  assert.deepEqual(run.parked_epoch_prs, []);
+  assert.equal(epoch.review_history.length, 2);
+  assert.equal(epoch.findings[0].id, 'sol-2-finding-1');
+  assert.throws(
+    () => reserveReview(run, epoch),
+    (error) => error instanceof HarnessInvariantError && error.code === 'REVIEW_BUDGET_EXHAUSTED',
+  );
+
+  epoch.corrective_closure = closeFindings(epoch.findings);
+  epoch.candidate_sha = sha('e');
+  epoch.ci = { sha: sha('e'), status: 'SUCCESS', url: 'https://example.test/ci-final' };
+  epoch.final_corrective_sha = sha('e');
+  epoch.final_corrective_base_sha = sha('a');
+  epoch.state = 'FINAL_CORRECTIVE_READY';
+  assertMergeReadiness({
+    epoch,
+    branchHeadSha: sha('e'),
+    prHeadSha: sha('e'),
+    currentBaseSha: sha('a'),
+  });
+  const merged = completeMerge(run, epoch, {
+    mergeSha: sha('f'),
+    candidateIsAncestor: true,
+  });
+  assert.equal(merged.epoch.state, 'MERGED');
+  assert.equal(merged.run.next_action, 'DISCOVER_NEXT_EPOCH');
+});
+
+test('corrective closure rejects literal fixes without root-cause and regression evidence', () => {
+  const { epoch } = fixture();
+  epoch.findings = [{ id: 'sol-2-finding-1', priority: 'P1', summary: 'Still blocking' }];
+  assert.throws(
+    () =>
+      assertCorrectiveClosure(epoch, [
+        {
+          finding_id: 'sol-2-finding-1',
+          root_cause: 'Fixed the reported line.',
+          equivalence_class: '',
+          generalized_fix: 'Changed fallback.',
+          regression_tests: [],
+          validation: ['focused test passed'],
+        },
+      ]),
+    (error) =>
+      error instanceof HarnessInvariantError && error.code === 'CORRECTIVE_CLOSURE_INCOMPLETE',
+  );
+});
+
+test('legacy parked review-limit state resumes on the same PR for Luna final corrective', () => {
+  const { run, epoch } = fixture();
+  run.state = 'QUALITY_CIRCUIT_BREAKER';
+  run.active_epoch_pr = null;
+  run.parked_epoch_prs = [42];
+  epoch.state = 'PARKED_REVIEW_LIMIT';
+  epoch.review.consumed = 2;
+  epoch.findings = [{ priority: 'P1', summary: 'Legacy unresolved finding' }];
+
+  const resumed = resumeReviewLimitForFinalCorrective(run, epoch);
+  assert.equal(resumed.epoch.state, 'FINAL_CORRECTIVE_REQUIRED');
+  assert.equal(resumed.epoch.findings[0].id, 'sol-2-finding-1');
+  assert.equal(resumed.run.state, 'EPOCH_ACTIVE');
+  assert.equal(resumed.run.active_epoch_pr, 42);
+  assert.deepEqual(resumed.run.parked_epoch_prs, []);
 });
 
 test('E. BASE DRIFT BEFORE REVIEW: review is rejected until sync, validation, and new Candidate', () => {

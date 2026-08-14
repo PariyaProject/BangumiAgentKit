@@ -22,6 +22,7 @@ import {
   parseControlBlock,
   recordIntegrationBlocked,
   reconcileReviewReservation,
+  resumeReviewLimitForFinalCorrective,
   renderEpochBody,
   renderRunBody,
   reserveReview,
@@ -241,6 +242,7 @@ Usage: pnpm harness <command> [options]
   review:wait --run <issue> --pr <number> --reviewer-id <id>
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
+  epoch:resume-final-corrective --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
   run:stop --run <issue> --state <state> --next-action <text>
 
@@ -405,6 +407,21 @@ function commandCandidateCheck(options) {
   const evidence = readJsonFile(required(options, 'evidence'));
   const epochResult = epochState(prNumber);
   const epoch = structuredClone(epochResult.state);
+  if (
+    ![
+      'IMPLEMENTING',
+      'REVIEW_READY',
+      'CORRECTIVE_REQUIRED',
+      'PASS_INVALIDATED_BASE_DRIFT',
+      'FINAL_CORRECTIVE_REQUIRED',
+    ].includes(epoch.state)
+  ) {
+    throw new HarnessInvariantError(
+      'INVALID_CANDIDATE_STATE',
+      `Epoch state ${epoch.state} cannot establish a Candidate`,
+    );
+  }
+  const finalCorrective = epoch.state === 'FINAL_CORRECTIVE_REQUIRED';
   git('fetch', 'origin', epoch.base_branch, epoch.branch);
   const head = currentHead();
   if (currentBranch() !== epoch.branch) {
@@ -427,6 +444,7 @@ function commandCandidateCheck(options) {
   epoch.validation = evidence.validation ?? epoch.validation;
   epoch.scope_closure = evidence.scope_closure;
   epoch.adversarial_preflight = evidence.adversarial_preflight;
+  epoch.corrective_closure = evidence.corrective_closure ?? [];
   const checksOk = mandatoryChecksSuccessful(epochResult.view.statusCheckRollup);
   epoch.ci = {
     sha: epochResult.view.headRefOid,
@@ -451,8 +469,15 @@ function commandCandidateCheck(options) {
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha: baseSha,
   });
-  epoch.state = 'REVIEW_READY';
-  epoch.next_action = 'RESERVE_SOL_1';
+  if (finalCorrective) {
+    epoch.state = 'FINAL_CORRECTIVE_READY';
+    epoch.final_corrective_sha = head;
+    epoch.final_corrective_base_sha = baseSha;
+    epoch.next_action = 'AUTO_MERGE_AFTER_FINAL_CORRECTIVE';
+  } else {
+    epoch.state = 'REVIEW_READY';
+    epoch.next_action = `RESERVE_SOL_${epoch.review.consumed + 1}`;
+  }
   if (epochResult.view.isDraft) gh('pr', 'ready', String(prNumber));
   updatePr(prNumber, epoch);
   print({ state: epoch.state, candidate_sha: head, base_sha: baseSha });
@@ -569,7 +594,7 @@ function commandEpochPark(options) {
   const prNumber = required(options, 'pr');
   const state = required(options, 'state');
   const reason = required(options, 'reason');
-  if (!['PARKED_FOR_HUMAN', 'PARKED_REVIEW_LIMIT', 'INTEGRATION_BLOCKED'].includes(state)) {
+  if (!['PARKED_FOR_HUMAN', 'INTEGRATION_BLOCKED'].includes(state)) {
     throw new HarnessInvariantError('INVALID_PARK_STATE', `Unsupported park state: ${state}`);
   }
   const runResult = issueState(runNumber);
@@ -582,10 +607,7 @@ function commandEpochPark(options) {
   if (!runState.parked_epoch_prs.includes(Number(prNumber))) {
     runState.parked_epoch_prs.push(Number(prNumber));
   }
-  if (state === 'PARKED_REVIEW_LIMIT') {
-    runState.state = 'QUALITY_CIRCUIT_BREAKER';
-    runState.next_action = 'HUMAN_INSPECTION_REQUIRED';
-  } else if (state === 'PARKED_FOR_HUMAN') {
+  if (state === 'PARKED_FOR_HUMAN') {
     runState.state = 'ACTIVE';
     runState.next_action = 'SELECT_INDEPENDENT_SAFE_EPOCH_OR_STOP';
   } else {
@@ -597,6 +619,30 @@ function commandEpochPark(options) {
   print({ state, same_pr: Number(prNumber), branch: epoch.branch });
 }
 
+function commandEpochResumeFinalCorrective(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  if (currentBranch() !== epochResult.state.branch) {
+    throw new HarnessInvariantError(
+      'WRONG_EPOCH_BRANCH',
+      `Checkout ${epochResult.state.branch} before resuming final corrective`,
+    );
+  }
+  const resumed = resumeReviewLimitForFinalCorrective(runResult.state, epochResult.state);
+  updatePr(prNumber, resumed.epoch);
+  updateIssue(runNumber, resumed.run);
+  print({
+    state: resumed.epoch.state,
+    same_pr: Number(prNumber),
+    branch: resumed.epoch.branch,
+    sol_launches_remaining: 0,
+  });
+}
+
 function commandEpochMerge(options) {
   ensureControlPlane();
   ensureCleanWorkingTree();
@@ -605,43 +651,97 @@ function commandEpochMerge(options) {
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
   const epoch = epochResult.state;
+  if (!['REVIEW_PASSED', 'FINAL_CORRECTIVE_READY'].includes(epoch.state)) {
+    throw new HarnessInvariantError(
+      'INTEGRATION_AUTHORITY_REQUIRED',
+      `Epoch state ${epoch.state} cannot enter automatic integration`,
+    );
+  }
+  if (runResult.state.active_epoch_pr !== Number(prNumber)) {
+    throw new HarnessInvariantError(
+      'ACTIVE_EPOCH_MISMATCH',
+      'The Run Issue does not identify this PR as its active Epoch',
+    );
+  }
   if (currentBranch() !== epoch.branch) {
     throw new HarnessInvariantError('WRONG_EPOCH_BRANCH', `Checkout ${epoch.branch} first`);
   }
   git('fetch', 'origin', epoch.base_branch, epoch.branch);
   const currentBaseSha = git('rev-parse', `origin/${epoch.base_branch}`);
-  const baseAction = afterPassBaseAction({
-    reviewedBaseSha: epoch.reviewed_base_sha,
-    currentBaseSha,
-    epochReview: epoch.review,
-    outerReview: runResult.state.outer_sol,
-  });
-  if (!baseAction.ready) {
+  if (
+    epoch.state === 'FINAL_CORRECTIVE_READY' &&
+    epoch.final_corrective_base_sha !== currentBaseSha
+  ) {
     const driftedEpoch = structuredClone(epoch);
     const driftedRun = structuredClone(runResult.state);
-    if (baseAction.action === 'PARK_SAME_PR') {
-      driftedEpoch.state = 'PARKED_REVIEW_LIMIT';
-      driftedEpoch.next_action = 'AWAIT_HUMAN_FOR_BASE_DRIFT_REVIEW_BUDGET';
-      driftedRun.active_epoch_pr = null;
-      if (!driftedRun.parked_epoch_prs.includes(Number(prNumber))) {
-        driftedRun.parked_epoch_prs.push(Number(prNumber));
-      }
-      driftedRun.state = 'ACTIVE';
-      driftedRun.next_action = 'SELECT_INDEPENDENT_SAFE_EPOCH_OR_STOP';
-    } else {
-      driftedEpoch.state = 'PASS_INVALIDATED_BASE_DRIFT';
-      driftedEpoch.candidate_sha = null;
-      driftedEpoch.review_pass_sha = null;
-      driftedEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
-      driftedEpoch.next_action = 'SYNCHRONIZE_VALIDATE_NEW_CANDIDATE_AND_REVIEW';
-    }
+    driftedEpoch.state = 'FINAL_CORRECTIVE_REQUIRED';
+    driftedEpoch.candidate_sha = null;
+    driftedEpoch.review_pass_sha = null;
+    driftedEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
+    driftedEpoch.corrective_closure = [];
+    driftedEpoch.final_corrective_sha = null;
+    driftedEpoch.final_corrective_base_sha = null;
+    driftedEpoch.next_action = 'SYNCHRONIZE_BASE_REVALIDATE_FINAL_CORRECTIVE';
+    driftedRun.state = 'EPOCH_ACTIVE';
+    driftedRun.active_epoch_pr = Number(prNumber);
+    driftedRun.parked_epoch_prs = driftedRun.parked_epoch_prs.filter(
+      (number) => number !== Number(prNumber),
+    );
+    driftedRun.next_action = `RESUME_PR_${prNumber}_FINAL_CORRECTIVE`;
     updatePr(prNumber, driftedEpoch);
     updateIssue(runNumber, driftedRun);
     throw new HarnessInvariantError(
-      baseAction.code,
-      'The reviewed base advanced; the old PASS cannot authorize integration',
-      { reviewedBaseSha: epoch.reviewed_base_sha, currentBaseSha },
+      'FINAL_CORRECTIVE_BASE_DRIFT',
+      'Synchronize the changed base, rerun closure validation, and establish a new exact Candidate',
+      { finalCorrectiveBaseSha: epoch.final_corrective_base_sha, currentBaseSha },
     );
+  }
+  const finalCorrective = epoch.state === 'FINAL_CORRECTIVE_READY';
+  if (!finalCorrective) {
+    const baseAction = afterPassBaseAction({
+      reviewedBaseSha: epoch.reviewed_base_sha,
+      currentBaseSha,
+      epochReview: epoch.review,
+      outerReview: runResult.state.outer_sol,
+    });
+    if (!baseAction.ready) {
+      const driftedEpoch = structuredClone(epoch);
+      const driftedRun = structuredClone(runResult.state);
+      driftedEpoch.candidate_sha = null;
+      driftedEpoch.review_pass_sha = null;
+      driftedEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
+      if (baseAction.action === 'SYNCHRONIZE_VALIDATE_FINAL_CORRECTIVE') {
+        driftedEpoch.state = 'FINAL_CORRECTIVE_REQUIRED';
+        driftedEpoch.findings = [
+          {
+            id: 'base-drift-after-pass',
+            priority: 'P1',
+            summary:
+              'Revalidate the passed Candidate after synchronizing the advanced target base.',
+            acceptance:
+              'Synchronize the base safely, resolve the full integration class, rerun relevant regression and mandatory validation, and establish exact-SHA CI.',
+          },
+        ];
+        driftedEpoch.corrective_closure = [];
+        driftedEpoch.final_corrective_sha = null;
+        driftedEpoch.final_corrective_base_sha = null;
+        driftedEpoch.final_corrective_reason = 'BASE_DRIFT_AFTER_PASS';
+        driftedEpoch.next_action = 'SYNCHRONIZE_BASE_REVALIDATE_FINAL_CORRECTIVE';
+        driftedRun.state = 'EPOCH_ACTIVE';
+        driftedRun.active_epoch_pr = Number(prNumber);
+        driftedRun.next_action = `RESUME_PR_${prNumber}_FINAL_CORRECTIVE`;
+      } else {
+        driftedEpoch.state = 'PASS_INVALIDATED_BASE_DRIFT';
+        driftedEpoch.next_action = 'SYNCHRONIZE_VALIDATE_NEW_CANDIDATE_AND_REVIEW';
+      }
+      updatePr(prNumber, driftedEpoch);
+      updateIssue(runNumber, driftedRun);
+      throw new HarnessInvariantError(
+        baseAction.code,
+        'The reviewed base advanced; establish separately validated integration authority',
+        { reviewedBaseSha: epoch.reviewed_base_sha, currentBaseSha },
+      );
+    }
   }
   assertMergeReadiness({
     epoch,
@@ -740,6 +840,7 @@ const commands = {
   'review:wait': commandReviewWait,
   'review:result': commandReviewResult,
   'epoch:park': commandEpochPark,
+  'epoch:resume-final-corrective': commandEpochResumeFinalCorrective,
   'epoch:merge': commandEpochMerge,
   'run:stop': commandRunStop,
 };

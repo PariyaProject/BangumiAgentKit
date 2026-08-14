@@ -16,10 +16,12 @@ the largest coherent and reviewable high-value safe Epoch, record it in the Run
 Issue, and follow `HARNESS.md` until a governed stop.
 
 After a successful PASS, merge and clean up by default, update the Run Issue,
-then continue discovery while budget and safety permit. A protected human-only
-direction may be parked while independent safe work continues; unresolved
-engineering P0/P1 at the review limit triggers the quality circuit breaker and
-stops the outer run.
+then continue discovery while budget and safety permit. If Sol #2 returns
+corrective findings, keep the same Epoch active while Luna Max performs the
+governed final corrective, obtains exact-SHA CI, integrates, and then continues
+discovery; never launch Sol #3 or wait for a human on routine engineering
+findings. A genuinely protected human-only direction may be parked while
+independent safe work continues.
 
 Normal invocation:
 

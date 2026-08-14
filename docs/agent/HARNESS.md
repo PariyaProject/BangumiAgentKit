@@ -255,10 +255,28 @@ Luna engineering
 -> Sol #1
 ```
 
-`PASS` proceeds to automatic integration. `CORRECTIVE_REQUIRED` sends all
-consolidated P0/P1 findings back to Luna. Luna fixes them, establishes a new
-Candidate, repeats validation/CI, and may spend Sol #2. If Sol #2 still reports
-blocking P0/P1, park as `PARKED_REVIEW_LIMIT`. Sol #3 is never automatic.
+`PASS` proceeds to automatic integration. `CORRECTIVE_REQUIRED` sends every
+recorded finding back to Luna. Luna fixes the root-cause classes, establishes a
+new Candidate, repeats validation/CI, and may spend Sol #2 by continuing the
+same reviewer identity. A new Sol context for the corrective re-review is
+rejected when the original reviewer identity remains known.
+
+If Sol #2 still returns `CORRECTIVE_REQUIRED`, the review budget is exhausted,
+but Luna's engineering authority is not. Enter `FINAL_CORRECTIVE_REQUIRED` on
+the same PR and branch. Luna Max must:
+
+1. fix every active finding, including any accompanying P2;
+2. record one closure entry per stable finding id with the root cause,
+   neighboring equivalence class, generalized fix, regression tests, and
+   validation evidence;
+3. run the full relevant validation funnel and adversarial regression scan;
+4. establish a fresh Candidate and obtain mandatory exact-SHA CI;
+5. automatically integrate that exact Candidate when the target base remains
+   equal to the recorded final-corrective Base SHA.
+
+No Sol #3 is launched. Sol exhaustion limits further review launches; it does
+not convert routine correctness, pagination, coverage, Renderer, test, or
+maintenance findings into a human decision.
 
 ## 9. Reviewer runtime
 
@@ -277,9 +295,11 @@ produce:
 - zero extra launches;
 - zero budget changes.
 
-Continue waiting on the same id. A reviewer hard failure or missing runtime
-truth is recorded truthfully; reconcile any outstanding reservation before
-another launch.
+Continue waiting on the same id. Any Sol #2 continues that same reviewer id so
+the second launch spends its context on verifying the fix or changed
+integration instead of rebuilding repository understanding. A reviewer hard
+failure or missing runtime truth is recorded truthfully; reconcile any
+outstanding reservation before another launch.
 
 Reviewer verdicts are:
 
@@ -287,27 +307,32 @@ Reviewer verdicts are:
 - `CORRECTIVE_REQUIRED`: consolidated actionable P0/P1 findings;
 - `HUMAN_REVIEW_REQUIRED`: a protected or irreducibly human decision.
 
-Review findings and verdicts live in the PR body or a concise PR comment, never
-in a tracked review file.
+Review history, stable finding ids, verdicts, and corrective closure live in the
+PR control body, never in a tracked review file. Findings should describe the
+root-cause class and likely neighboring cases, not only a single literal
+example.
 
-## 10. Parking and circuit breaker
+## 10. Parking and autonomous correction
 
 Parked work remains on the **same PR and same branch**. Do not automatically
 create Recovery, Finalization, Replacement, or Recovery-of-Recovery chains. A
-later explicit authorization normally resumes the same PR. A replacement
-requires an exceptional recorded reason and explicit human authorization.
+replacement requires an exceptional recorded reason and explicit human
+authorization.
 
 `PARKED_FOR_HUMAN` isolates a protected direction. In autonomous mode, other
 independent safe work may continue when the repository is safe.
 
-`PARKED_REVIEW_LIMIT` with unresolved engineering P0/P1 triggers
-`QUALITY_CIRCUIT_BREAKER` for the outer run by default. Record it in the Run
-Issue and stop. Do not spend remaining outer Sol budget on another Epoch while
-the review/preflight process is demonstrably degraded.
+Routine engineering findings never use `PARKED_FOR_HUMAN`. Sol #2 corrective
+findings enter `FINAL_CORRECTIVE_REQUIRED`, remain the active Epoch, and block
+discovery of another Epoch until Luna completes the final corrective and
+integration. The legacy `PARKED_REVIEW_LIMIT` / `QUALITY_CIRCUIT_BREAKER`
+combination may be migrated in place with
+`epoch:resume-final-corrective`; it is not produced by the normal lifecycle.
 
 Only an Outer Run in `ACTIVE` state with no active or pending Epoch may start a
-new Epoch. Circuit-breaker, stopped, completed, and integration-blocked states
-reject Epoch creation mechanically.
+new Epoch. An Epoch in final corrective remains active. Legacy circuit-breaker,
+stopped, completed, and integration-blocked states reject Epoch creation
+mechanically.
 
 ## 11. Default integration and base freshness
 
@@ -329,8 +354,20 @@ safe, checkout `master`, and synchronize `master` with `origin/master`.
 If the base advanced after PASS, the old PASS does not authorize the new
 combination. Synchronize the base into the feature branch safely, validate,
 establish a new Candidate, and re-review only when both Epoch and outer budget
-remain. Otherwise park on the same PR. Never claim old CI or review evidence
-covers the changed combination.
+remain. If review budget is exhausted, use the same final-corrective gate with
+a durable base-drift finding and root-cause/integration closure, fresh exact-SHA
+CI, and the new Base SHA; do not park for a human. Never claim old CI or review
+evidence covers the changed combination.
+
+For `FINAL_CORRECTIVE_READY`, the integration authority is the exact final
+Candidate, its exact-SHA CI, complete per-finding closure, exhausted Epoch Sol
+ledger, the matching last review record (`CORRECTIVE_REQUIRED` for review-limit
+findings or `PASS` for post-PASS base drift), and the recorded final-corrective
+Base SHA. This authority never claims that Sol passed the final Candidate. If
+the base advances, invalidate the Candidate and closure validation, return to
+`FINAL_CORRECTIVE_REQUIRED`, synchronize safely, rerun the closure regression
+scan and CI, and establish a new final Candidate. Do not park for a human and
+do not launch Sol #3.
 
 When permission, protection, conflict, freshness, ancestry, or another real
 gate prevents integration, update the PR control state to
@@ -370,8 +407,6 @@ Canonical governed stops include:
 
 - `CONTROL_PLANE_UNAVAILABLE`
 - `PARKED_FOR_HUMAN`
-- `PARKED_REVIEW_LIMIT`
-- `QUALITY_CIRCUIT_BREAKER`
 - `INTEGRATION_BLOCKED`
 - explicit user stop/change
 - unsafe repository state
@@ -413,6 +448,12 @@ An Epoch PR block contains:
   "base_sha": "...",
   "candidate_sha": null,
   "review": { "expected": 1, "max": 2, "consumed": 0, "reserved": 0 },
+  "review_history": [],
+  "findings": [],
+  "corrective_closure": [],
+  "final_corrective_sha": null,
+  "final_corrective_base_sha": null,
+  "final_corrective_reason": null,
   "integration": "AUTO_MERGE_AFTER_PASS"
 }
 ```
@@ -435,11 +476,15 @@ help` for exact arguments.
   and exact-SHA CI invariants.
 - `review:reserve`: reserve Epoch and outer review slots.
 - `review:started`: convert a reservation to consumed and record reviewer id.
-- `review:result`: record a verdict and apply park/circuit-breaker semantics.
+- `review:result`: record a verdict/history and enter PASS, correction, final
+  correction, or protected-human semantics.
 - `review:wait`: validate same-reviewer identity and make no durable write.
 - `epoch:park`: park the same PR/branch truthfully.
-- `epoch:merge`: enforce PASS/freshness/CI/Candidate gates, merge, verify, clean
-  branches, synchronize master, and update the Run Issue.
+- `epoch:resume-final-corrective`: migrate an exhausted legacy review-limit PR
+  into the same-branch Luna final-corrective path.
+- `epoch:merge`: enforce PASS or final-corrective authority plus
+  freshness/CI/Candidate gates, merge, verify, clean branches, synchronize
+  master, and update the Run Issue.
 - `run:stop`: record a governed outer stop.
 
 Harness unit/simulation tests and the CI guard are mandatory readiness evidence
