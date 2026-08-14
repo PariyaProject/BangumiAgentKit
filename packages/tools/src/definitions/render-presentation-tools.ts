@@ -498,7 +498,7 @@ export function createRenderPresentationTools(
   const renderCollectionBacklog = defineTool({
     name: 'bangumi.render_collection_backlog',
     description:
-      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示源顺序条目、正篇 episode progress、已知剩余集数、来源冲突与无法计算原因；明确账号范围、覆盖、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
+      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示源顺序条目、正篇 episode progress、episode sourceTotal 分母、已知剩余集数、结构化完结状态、来源冲突与无法计算原因；明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
     input: z
       .object({
         maxItems: z

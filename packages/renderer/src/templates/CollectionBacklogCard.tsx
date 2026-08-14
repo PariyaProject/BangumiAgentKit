@@ -16,6 +16,10 @@ function stateLabel(state: CollectionBacklogViewModel['state']): string {
   if (state === 'partial') return '部分覆盖';
   if (state === 'conflict') return '来源冲突';
   if (state === 'not_computable') return '无法计算';
+  if (state === 'auth_required') return '需要授权';
+  if (state === 'permission_denied') return '无权限';
+  if (state === 'rate_limited') return '请求受限';
+  if (state === 'upstream_error') return '上游错误';
   return '暂不可用';
 }
 
@@ -29,9 +33,16 @@ function rowStateLabel(state: CollectionBacklogViewModel['items'][number]['state
 
 function progressLabel(item: CollectionBacklogViewModel['items'][number]): string {
   if (item.remainingEpisodes !== undefined) {
-    return `剩余 ${item.remainingEpisodes} 集 · 已看 ${item.watchedEpisodes ?? 0}/${item.sourceReportedEpisodes ?? '?'}`;
+    return `剩余 ${item.remainingEpisodes} 集 · 已看 ${item.watchedEpisodes ?? 0}/${item.episodeReportedEpisodes ?? '?'}`;
   }
+  if (item.error?.message) return item.error.message;
   return item.reasons[0] || rowStateLabel(item.state);
+}
+
+function airingLabel(state: CollectionBacklogViewModel['items'][number]['airingState']): string {
+  if (state === 'finished') return '已播完（日期）';
+  if (state === 'ongoing') return '可能在播';
+  return '播出状态未知';
 }
 
 export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
@@ -44,6 +55,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
     ['符合状态', String(viewModel.summary.eligibleItems)],
     ['已返回', String(viewModel.summary.returnedItems)],
     ['已知剩余', `${viewModel.summary.knownRemainingEpisodes} 集`],
+    ['已完结未看完', String(viewModel.summary.finishedIncompleteItems)],
     ['可计算条目', String(viewModel.summary.completeItems)],
   ];
 
@@ -65,7 +77,10 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
         </div>
       ) : null}
 
-      {viewModel.state === 'unavailable' ? (
+      {viewModel.state !== 'complete' &&
+      viewModel.state !== 'partial' &&
+      viewModel.state !== 'conflict' &&
+      viewModel.state !== 'not_computable' ? (
         <div
           style={{
             color: theme.warning,
@@ -77,7 +92,14 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
             lineHeight: 1.5,
           }}
         >
-          官方收藏源暂时不可用，未生成猜测的 backlog 数据。
+          {viewModel.error?.message || '官方收藏源暂时不可用，未生成猜测的 backlog 数据。'}
+          {viewModel.error?.nextAction ? ` ${viewModel.error.nextAction}` : ''}
+        </div>
+      ) : null}
+
+      {viewModel.error ? (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          错误代码：{viewModel.error.code}
         </div>
       ) : null}
 
@@ -140,7 +162,8 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
                     </span>
                   </div>
                   <div style={{ color: theme.textMuted, lineHeight: 1.5, marginTop: '2px' }}>
-                    {progressLabel(item)} · {rowStateLabel(item.state)}
+                    {progressLabel(item)} · {airingLabel(item.airingState)} ·{' '}
+                    {rowStateLabel(item.state)}
                     {item.completionPercentage !== undefined
                       ? ` · ${item.completionPercentage.toFixed(1)}%`
                       : ''}

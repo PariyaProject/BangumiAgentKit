@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, ResolvedToolPolicy } from '../define-tool.js';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiClientProvider } from '@bangumi-agent-kit/auth';
 import {
   SubjectService,
@@ -817,7 +817,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getCollectionBacklog = defineTool({
     name: 'bangumi.get_collection_backlog',
     description:
-      '获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、源报告总集数、已知剩余集数和完成度。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial 和 not_computable 状态都会显式返回。',
+      '获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、已知剩余集数、完成度和结构化完结状态。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial 和 not_computable 状态都会显式返回。',
     input: z
       .object({
         maxItems: z
@@ -857,7 +857,13 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       let username = deps?.executionSession?.account?.username;
       if (!client || !username) {
         if (!clientProvider) {
-          throw new Error('AUTH_REQUIRED: Must bind a Bangumi account to get collection backlog.');
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能获取收藏 backlog。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
         }
         const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
           'read:collection',
@@ -866,7 +872,13 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         username = authed.account.username;
       }
       if (!client || !username) {
-        throw new Error('AUTH_REQUIRED: Must bind a Bangumi account to get collection backlog.');
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能获取收藏 backlog。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
       }
       return await new CollectionBacklogService(client).getCollectionBacklog(username, {
         maxItems: input.maxItems,

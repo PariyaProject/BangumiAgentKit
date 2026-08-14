@@ -73,7 +73,13 @@ describe('CollectionBacklogService', () => {
             total: 2,
             limit: 50,
             offset: 0,
-            data: [collectionRow(1, 3, { ep_status: 1 }), collectionRow(2, 1, { ep_status: 0 })],
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+              collectionRow(2, 1, { ep_status: 0 }),
+            ],
           }),
           { status: 200 },
         );
@@ -90,9 +96,15 @@ describe('CollectionBacklogService', () => {
         );
       }
       if (url.pathname.endsWith('/collections/2/episodes')) {
-        return new Response(JSON.stringify({ total: 0, limit: 100, offset: 0, data: [] }), {
-          status: 200,
-        });
+        return new Response(
+          JSON.stringify({
+            total: 3,
+            limit: 100,
+            offset: 0,
+            data: [episodeRow(3, 0, 1), episodeRow(4, 0, 1), episodeRow(5, 0, 1)],
+          }),
+          { status: 200 },
+        );
       }
       throw new Error(`unexpected request: ${url}`);
     };
@@ -103,44 +115,46 @@ describe('CollectionBacklogService', () => {
 
     expect(result.state).toBe('complete');
     expect(result.coverage.hydration.succeededSubjects).toBe(2);
-    expect(result.data.summary.knownRemainingEpisodes).toBe(5);
+    expect(result.data.summary.knownRemainingEpisodes).toBe(4);
     expect(result.data.items[0]).toMatchObject({
       subjectId: 1,
       watchedEpisodes: 1,
       wishEpisodes: 1,
-      remainingEpisodes: 2,
-      completionPercentage: 33.3,
+      episodeReportedEpisodes: 2,
+      remainingEpisodes: 1,
+      completionPercentage: 50,
+      airingState: 'finished',
       state: 'complete',
     });
     expect(result.data.items[1]).toMatchObject({
       subjectId: 2,
       watchedEpisodes: 0,
       remainingEpisodes: 3,
+      episodeReportedEpisodes: 3,
       completionPercentage: 0,
       state: 'complete',
     });
     expect(JSON.stringify(result)).not.toContain('private comment');
-    expect(result.evidence[1]?.formulaVersion).toBe('collection-backlog-v1');
+    expect(result.evidence[1]?.formulaVersion).toBe('collection-backlog-v2');
   });
 
   it('does not fabricate completion when the source total is missing', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
       if (url.pathname.endsWith('/collections')) {
-        const subject = collectionRow(1, 3).subject as Record<string, unknown>;
         return new Response(
           JSON.stringify({
             total: 1,
             limit: 50,
             offset: 0,
-            data: [collectionRow(1, 3, { ep_status: 1, subject: { ...subject, eps: 0 } })],
+            data: [collectionRow(1, 3, { ep_status: 1 })],
           }),
           { status: 200 },
         );
       }
       if (url.pathname.endsWith('/collections/1/episodes')) {
         return new Response(
-          JSON.stringify({ total: 1, limit: 100, offset: 0, data: [episodeRow(1, 0, 2)] }),
+          JSON.stringify({ limit: 100, offset: 0, data: [episodeRow(1, 0, 2)] }),
           { status: 200 },
         );
       }
@@ -156,9 +170,109 @@ describe('CollectionBacklogService', () => {
 
     expect(result.state).toBe('not_computable');
     expect(row?.state).toBe('not_computable');
+    expect(row?.sourceReportedEpisodes).toBe(3);
+    expect(row?.episodeReportedEpisodes).toBeUndefined();
     expect(row?.remainingEpisodes).toBeUndefined();
     expect(row?.completionPercentage).toBeUndefined();
     expect(result.warnings.some((warning) => warning.code === 'NOT_COMPUTABLE_ROWS')).toBe(true);
+  });
+
+  it('does not certify completion when a malformed source total accompanies episode rows', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [collectionRow(1, 3, { ep_status: 1 })],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.pathname.endsWith('/collections/1/episodes')) {
+        return new Response(
+          JSON.stringify({ total: 0, limit: 100, offset: 0, data: [episodeRow(1, 0, 2)] }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ total: 0, limit: 100, offset: 0, data: [] }), {
+        status: 200,
+      });
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('not_computable');
+    expect(result.data.items[0]).toMatchObject({
+      state: 'not_computable',
+      episodeReportedEpisodes: undefined,
+      remainingEpisodes: undefined,
+    });
+  });
+
+  it('rejects divergent SlimSubject and episode source totals', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 0,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 3 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          total: 2,
+          limit: 100,
+          offset: 0,
+          data: [episodeRow(1, 0, 1), episodeRow(2, 0, 1)],
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('conflict');
+    expect(result.data.items[0]).toMatchObject({
+      sourceReportedEpisodes: 3,
+      episodeReportedEpisodes: 2,
+      denominatorSource: 'none',
+      remainingEpisodes: undefined,
+      state: 'conflict',
+    });
+    expect(result.data.items[0]?.reasons[0]).toContain('SlimSubject.eps');
+  });
+
+  it('preserves permission errors as an actionable top-level state', async () => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(JSON.stringify({ title: 'Forbidden' }), { status: 403 });
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('permission_denied');
+    expect(result.error).toMatchObject({ code: 'PERMISSION_DENIED' });
+    expect(result.warnings[0]).toMatchObject({
+      code: 'PERMISSION_DENIED',
+      state: 'permission_denied',
+    });
   });
 
   it('reports partial when only part of the returned backlog is not computable', async () => {
@@ -171,7 +285,10 @@ describe('CollectionBacklogService', () => {
             limit: 50,
             offset: 0,
             data: [
-              collectionRow(1, 3, { ep_status: 1 }),
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 1 },
+              }),
               collectionRow(2, 3, {
                 ep_status: 0,
                 subject: { ...(collectionRow(2, 3).subject as Record<string, unknown>), eps: 0 },
@@ -201,6 +318,45 @@ describe('CollectionBacklogService', () => {
     expect(result.data.summary.completeItems).toBe(1);
   });
 
+  it('uses a complete episode source total when SlimSubject.eps is missing', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 0 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({ total: 1, limit: 100, offset: 0, data: [episodeRow(1, 0, 2)] }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('complete');
+    expect(result.data.items[0]).toMatchObject({
+      sourceReportedEpisodes: undefined,
+      episodeReportedEpisodes: 1,
+      denominatorSource: 'episode_collection',
+      remainingEpisodes: 0,
+      completionPercentage: 100,
+    });
+  });
+
   it('preserves a conflict when collection ep_status disagrees with episode progress', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
@@ -210,7 +366,12 @@ describe('CollectionBacklogService', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            data: [collectionRow(1, 3, { ep_status: 2 })],
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 2,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 1 },
+              }),
+            ],
           }),
           { status: 200 },
         );
@@ -231,6 +392,83 @@ describe('CollectionBacklogService', () => {
     expect(result.warnings.some((warning) => warning.code === 'PROGRESS_CONFLICT')).toBe(true);
   });
 
+  it('keeps airing completion explicit when episode dates are missing or future', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 0,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      const first = episodeRow(1, 0, 1);
+      const second = episodeRow(2, 0, 1);
+      delete (first.episode as Record<string, unknown>).airdate;
+      (second.episode as Record<string, unknown>).airdate = '2999-01-01';
+      return new Response(
+        JSON.stringify({ total: 2, limit: 100, offset: 0, data: [first, second] }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('complete');
+    expect(result.data.items[0]?.airingState).toBe('unknown');
+    expect(result.data.items[0]?.reasons).toContain(
+      '正篇 episode metadata 缺少 airdate，完结状态无法计算',
+    );
+  });
+
+  it('reports ongoing when every observed main episode has a future airdate', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 0,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      const first = episodeRow(1, 0, 1);
+      const second = episodeRow(2, 0, 1);
+      (first.episode as Record<string, unknown>).airdate = '2999-01-01';
+      (second.episode as Record<string, unknown>).airdate = '2999-01-02';
+      return new Response(
+        JSON.stringify({ total: 2, limit: 100, offset: 0, data: [first, second] }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('complete');
+    expect(result.data.items[0]?.airingState).toBe('ongoing');
+  });
+
   it('marks episode progress partial when the per-subject bound is reached', async () => {
     let episodeRequests = 0;
     const fetchFn: typeof fetch = async (input) => {
@@ -241,7 +479,12 @@ describe('CollectionBacklogService', () => {
             total: 1,
             limit: 50,
             offset: 0,
-            data: [collectionRow(1, 3, { ep_status: 2 })],
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 2,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 5 },
+              }),
+            ],
           }),
           { status: 200 },
         );
@@ -268,6 +511,157 @@ describe('CollectionBacklogService', () => {
     expect(result.data.items[0]?.remainingEpisodes).toBeUndefined();
     expect(result.data.items[0]?.progressCoverage.truncated).toBe(true);
     expect(result.coverage.episodeProgress.maxEpisodesPerSubject).toBe(2);
+  });
+
+  it('does not certify complete coverage when collection pagination repeats a row', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        const row = collectionRow(1, 3, {
+          ep_status: 1,
+          subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 1 },
+        });
+        return new Response(JSON.stringify({ total: 2, limit: 50, offset: 0, data: [row, row] }), {
+          status: 200,
+        });
+      }
+      return new Response(
+        JSON.stringify({ total: 1, limit: 100, offset: 0, data: [episodeRow(1, 0, 2)] }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.collection).toMatchObject({
+      observedRows: 2,
+      uniqueRows: 1,
+      duplicateRows: 1,
+    });
+    expect(result.warnings.some((warning) => warning.code === 'COLLECTION_DUPLICATE_ROWS')).toBe(
+      true,
+    );
+  });
+
+  it('does not certify complete coverage when episode pagination repeats a row', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      const row = episodeRow(1, 0, 2);
+      return new Response(JSON.stringify({ total: 2, limit: 100, offset: 0, data: [row, row] }), {
+        status: 200,
+      });
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.data.items[0]).toMatchObject({
+      state: 'partial',
+      remainingEpisodes: undefined,
+      progressCoverage: { duplicateRows: 1 },
+    });
+    expect(result.warnings.some((warning) => warning.code === 'PARTIAL_EPISODE_PROGRESS')).toBe(
+      true,
+    );
+  });
+
+  it('preserves a per-subject permission failure on the unavailable row', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [collectionRow(1, 3, { ep_status: 0 })],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ title: 'Forbidden' }), { status: 403 });
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.data.items[0]).toMatchObject({
+      state: 'unavailable',
+      error: { code: 'PERMISSION_DENIED' },
+      reasons: ['PERMISSION_DENIED'],
+    });
+  });
+
+  it('preserves a conflict when episode source totals change between pages', async () => {
+    let episodeRequests = 0;
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      episodeRequests += 1;
+      if (episodeRequests === 1) {
+        return new Response(
+          JSON.stringify({ total: 2, limit: 1, offset: 0, data: [episodeRow(1, 0, 2)] }),
+          { status: 200 },
+        );
+      }
+      if (episodeRequests === 2) {
+        return new Response(
+          JSON.stringify({ total: 3, limit: 1, offset: 1, data: [episodeRow(2, 0, 1)] }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ total: 3, limit: 1, offset: 2, data: [] }), {
+        status: 200,
+      });
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('conflict');
+    expect(result.coverage.episodeProgress.sourceTotalChangedSubjects).toBe(1);
+    expect(result.warnings.some((warning) => warning.code === 'EPISODE_SOURCE_TOTAL_CHANGED')).toBe(
+      true,
+    );
   });
 
   it('caps max episode input using the service ceiling', async () => {

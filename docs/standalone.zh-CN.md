@@ -157,7 +157,7 @@ render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
 ```
 
 `collection backlog` 只读取当前绑定账号的官方 v0 动画收藏和正篇 episode
-collection。默认筛选 `wish`、`doing`、`on_hold`，并在安全上限内显示已看章节、源报告总集数、剩余集数和完成度；分页不足、来源冲突、账号权限缺失或缺少总集数时会保留相应状态，不把未知值填成零。该视图不读取评论、不做日历/推荐/历史推断，也不执行写入。
+collection。默认筛选 `wish`、`doing`、`on_hold`，并在安全上限内显示已看章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、剩余集数、完成度和基于完整 episode airdate 的 `finished`/`ongoing`/`unknown` 状态；分页不足、来源冲突、账号权限缺失或缺少总集数时会保留相应状态，不把未知值填成零。该视图不读取评论、不做日历/推荐/历史推断，也不执行写入。
 
 Renderer Tool 返回 `ArtifactRef`。`--output` 只接受用户明确指定的本地目标，
 Standalone 会从 ArtifactStore 校验 ID、mime、expiry、PNG signature 后复制

@@ -212,6 +212,7 @@ export function buildCollectionBacklogViewModel(
     },
     warnings: result.warnings,
     limitations: result.limitations,
+    error: result.error,
   };
 }
 

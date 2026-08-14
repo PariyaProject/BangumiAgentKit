@@ -46,7 +46,7 @@ describe('bangumi.get_collection_backlog', () => {
       }
       return new Response(
         JSON.stringify({
-          total: 1,
+          total: 2,
           limit: 100,
           offset: 0,
           data: [
@@ -61,6 +61,21 @@ describe('bangumi.get_collection_backlog', () => {
                 name_cn: '第一集',
                 sort: 1,
                 ep: 1,
+                airdate: '2026-01-01',
+              },
+            },
+            {
+              type: 1,
+              updated_at: 1_723_600_000,
+              episode: {
+                id: 101,
+                subject_id: 10,
+                type: 0,
+                name: 'Episode 2',
+                name_cn: '第二集',
+                sort: 2,
+                ep: 2,
+                airdate: '2026-01-02',
               },
             },
           ],
@@ -80,7 +95,7 @@ describe('bangumi.get_collection_backlog', () => {
     expect(tool?.input.safeParse({ statuses: [] }).success).toBe(false);
 
     const result = await tool!.execute(
-      { maxItems: 1, maxSubjects: 1, maxEpisodesPerSubject: 1 },
+      { maxItems: 1, maxSubjects: 1, maxEpisodesPerSubject: 2 },
       { principalId: 'principal-1', botInstanceId: 'bot', conversationId: 'conversation' },
       {
         executionSession: {

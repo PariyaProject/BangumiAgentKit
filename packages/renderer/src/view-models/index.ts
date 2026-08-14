@@ -349,7 +349,7 @@ export interface CollectionIntelligenceViewModel {
 export interface CollectionBacklogViewModel {
   template: 'collection-backlog';
   version: 1;
-  state: 'complete' | 'partial' | 'unavailable' | 'not_computable' | 'conflict';
+  state: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['state'];
   items: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['data']['items'];
   summary: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['data']['summary'];
   coverage: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['coverage'] & {
@@ -367,6 +367,7 @@ export interface CollectionBacklogViewModel {
   };
   warnings: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['warnings'];
   limitations: string[];
+  error?: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['error'];
 }
 
 export interface CalendarDayViewModel {

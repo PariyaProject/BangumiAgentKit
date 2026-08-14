@@ -4,7 +4,7 @@ import { CollectionStatus } from './collection-service.js';
 import { UserService } from './user-service.js';
 import { UserCollectionItem, UserEpisodeCollectionItem } from '../models/user.js';
 
-export const COLLECTION_BACKLOG_FORMULA_VERSION = 'collection-backlog-v1';
+export const COLLECTION_BACKLOG_FORMULA_VERSION = 'collection-backlog-v2';
 export const COLLECTION_BACKLOG_DEFAULT_MAX_ITEMS = 50;
 export const COLLECTION_BACKLOG_MAX_ITEMS = 100;
 export const COLLECTION_BACKLOG_DEFAULT_MAX_SUBJECTS = 20;
@@ -18,10 +18,22 @@ export const COLLECTION_BACKLOG_MAX_EPISODE_PAGES = 10;
 export const COLLECTION_BACKLOG_MAX_CONCURRENCY = 3;
 
 export type CollectionBacklogState =
-  'complete' | 'partial' | 'unavailable' | 'not_computable' | 'conflict';
+  | 'complete'
+  | 'partial'
+  | 'unavailable'
+  | 'not_computable'
+  | 'conflict'
+  | 'auth_required'
+  | 'permission_denied'
+  | 'rate_limited'
+  | 'upstream_error';
 
 export type CollectionBacklogRowState =
   'complete' | 'partial' | 'unavailable' | 'not_computable' | 'conflict';
+
+export type CollectionBacklogAiringState = 'finished' | 'ongoing' | 'unknown';
+
+export type CollectionBacklogDenominatorSource = 'episode_collection' | 'none';
 
 export type CollectionBacklogStatus = Exclude<CollectionStatus, 'unknown'>;
 
@@ -42,15 +54,19 @@ export interface CollectionBacklogItem {
   status: CollectionBacklogStatus;
   statusLabel?: string;
   sourceReportedEpisodes?: number;
+  episodeReportedEpisodes?: number;
+  denominatorSource: CollectionBacklogDenominatorSource;
   collectionReportedEpisodes?: number;
   watchedEpisodes?: number;
   wishEpisodes?: number;
   droppedEpisodes?: number;
   observedProgressRows: number;
+  airingState: CollectionBacklogAiringState;
   remainingEpisodes?: number;
   completionPercentage?: number;
   state: CollectionBacklogRowState;
   reasons: string[];
+  error?: PublicErrorInfo;
   progressCoverage: {
     sourceTotal?: number;
     observedRows: number;
@@ -60,6 +76,7 @@ export interface CollectionBacklogItem {
     truncated: boolean;
     duplicateRows: number;
     paginationStalled: boolean;
+    sourceTotalChanged: boolean;
   };
 }
 
@@ -74,6 +91,10 @@ export interface CollectionBacklogData {
     unavailableItems: number;
     conflictItems: number;
     knownRemainingEpisodes: number;
+    finishedItems: number;
+    finishedIncompleteItems: number;
+    ongoingItems: number;
+    airingUnknownItems: number;
   };
 }
 
@@ -111,6 +132,7 @@ export interface CollectionBacklogCoverage {
     pagesSucceeded: number;
     observedRows: number;
     truncatedSubjects: number;
+    sourceTotalChangedSubjects: number;
     failedSubjects: number;
   };
 }
@@ -148,6 +170,7 @@ export interface CollectionBacklogResult {
 
 interface CollectionScan {
   items: UserCollectionItem[];
+  observedRows: number;
   sourceTotal?: number;
   requestedMaxItems: number;
   pagesAttempted: number;
@@ -170,6 +193,7 @@ interface EpisodeProgressScan {
   truncated: boolean;
   duplicateRows: number;
   paginationStalled: boolean;
+  sourceTotalChanged: boolean;
 }
 
 interface HydratedRow {
@@ -203,6 +227,10 @@ function emptyData(): CollectionBacklogData {
       unavailableItems: 0,
       conflictItems: 0,
       knownRemainingEpisodes: 0,
+      finishedItems: 0,
+      finishedIncompleteItems: 0,
+      ongoingItems: 0,
+      airingUnknownItems: 0,
     },
   };
 }
@@ -210,8 +238,9 @@ function emptyData(): CollectionBacklogData {
 function buildLimitations(): string[] {
   return [
     '结果只覆盖当前账号收藏接口观察到的有界动画收藏样本；超过 collection scan 和 hydration 上限的条目不会被猜测补全。',
-    'sourceReportedEpisodes 来自收藏接口的 SlimSubject.eps；它是源报告的集数口径，不等同于 Bangumi 发布的完整观看顺序或未来排播计划。',
-    'remainingEpisodes = sourceReportedEpisodes - watched main episodes；仅在 episode collection 分页完整、总集数有效且来源字段没有冲突时计算。',
+    'episodeReportedEpisodes 来自 episode collection 的 episode_type=0 sourceTotal，是 backlog 分母；SlimSubject.eps 只作为独立交叉证据，二者冲突时不计算。',
+    'remainingEpisodes = episodeReportedEpisodes - watched main episodes；仅在 episode collection 分页完整、总集数有效且来源字段没有冲突时计算。',
+    'airingState 只根据完整正篇 episode metadata 的 airdate 推导；finished 只表示当前报告的章节日期均已过去，不能证明未发布后续或排除 hiatus；缺日期、未完成分页或日期矛盾时保持 unknown，不调用日历或 HTML 猜测。',
     '仅请求正篇（episode_type=0）；SP、OP、ED、PV、MAD 和其他章节不会消耗正篇完成度分子或分母。',
     '结果不读取或返回收藏评论、历史状态、日历计划、推荐、口味推断、跨用户比较或任何收藏写入。',
     'collection.updated_at 与 episode.updated_at 只作为源字段；不能解释为可靠的收藏活动或观看事件时间。',
@@ -257,6 +286,7 @@ function emptyCoverage(
       pagesSucceeded: 0,
       observedRows: 0,
       truncatedSubjects: 0,
+      sourceTotalChangedSubjects: 0,
       failedSubjects: 0,
     },
   };
@@ -278,6 +308,60 @@ function uniqueCollectionItems(items: readonly UserCollectionItem[]): {
     unique.push(item);
   }
   return { items: unique, duplicateRows };
+}
+
+function positiveInteger(value: number | undefined): value is number {
+  return value !== undefined && Number.isInteger(value) && value > 0;
+}
+
+function parseAirdate(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const normalized = /^\d{4}-\d{2}-\d{2}$/u.test(trimmed) ? `${trimmed}T23:59:59.999Z` : trimmed;
+  const timestamp = Date.parse(normalized);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+function deriveAiringState(progress: EpisodeProgressScan): {
+  state: CollectionBacklogAiringState;
+  reason?: string;
+} {
+  if (
+    !progress.sourceExhausted ||
+    progress.truncated ||
+    progress.paginationStalled ||
+    progress.sourceTotalChanged ||
+    progress.sourceTotal === undefined
+  ) {
+    return {
+      state: 'unknown',
+      reason: '正篇 episode coverage 不完整，无法从结构化 airdate 证明完结状态',
+    };
+  }
+  if (progress.sourceTotal <= 0 || progress.items.length !== progress.sourceTotal) {
+    return {
+      state: 'unknown',
+      reason: '没有完整的正篇 episode airdate 证据，无法证明完结状态',
+    };
+  }
+
+  const dates = progress.items.map((row) => row.episode?.airdate);
+  if (dates.some((date) => !date)) {
+    return {
+      state: 'unknown',
+      reason: '正篇 episode metadata 缺少 airdate，完结状态无法计算',
+    };
+  }
+  const timestamps = dates.map((date) => parseAirdate(date as string));
+  if (timestamps.some((timestamp) => timestamp === undefined)) {
+    return {
+      state: 'unknown',
+      reason: '正篇 episode airdate 格式无法验证，完结状态无法计算',
+    };
+  }
+  return timestamps.some((timestamp) => (timestamp as number) > Date.now())
+    ? { state: 'ongoing' }
+    : { state: 'finished' };
 }
 
 function buildRow(
@@ -304,57 +388,86 @@ function buildRow(
   const wishEpisodes = mainRows.filter((row) => row.type === 1).length;
   const droppedEpisodes = mainRows.filter((row) => row.type === 3).length;
   const sourceReportedEpisodes = collection.subjectTotalEpisodes;
+  const episodeReportedEpisodes = progress.sourceTotal;
   const collectionReportedEpisodes = collection.epStatus;
-  const hasInvalidTotal =
-    sourceReportedEpisodes !== undefined &&
-    (!Number.isInteger(sourceReportedEpisodes) || sourceReportedEpisodes <= 0);
+  const hasInvalidEpisodeTotal =
+    episodeReportedEpisodes !== undefined && !positiveInteger(episodeReportedEpisodes);
   const progressMismatch =
     collectionReportedEpisodes !== undefined &&
     Number.isInteger(collectionReportedEpisodes) &&
     collectionReportedEpisodes >= 0 &&
     collectionReportedEpisodes !== watchedEpisodes;
+  const totalsConflict =
+    positiveInteger(sourceReportedEpisodes) &&
+    positiveInteger(episodeReportedEpisodes) &&
+    sourceReportedEpisodes !== episodeReportedEpisodes;
   const progressComplete =
     progress.sourceExhausted &&
     !progress.truncated &&
     !progress.paginationStalled &&
+    !progress.sourceTotalChanged &&
     progress.sourceTotal !== undefined &&
     progress.duplicateRows === 0 &&
+    progressRows.length === progress.sourceTotal &&
     progressRows.every((row) => row.episode?.category === 'main');
 
   let state: CollectionBacklogRowState = 'complete';
+  if (progress.sourceTotalChanged) {
+    state = 'conflict';
+    reasons.push('episode collection 分页期间 sourceTotal 发生变化');
+  }
+  if (totalsConflict) {
+    state = 'conflict';
+    reasons.push(
+      `SlimSubject.eps (${sourceReportedEpisodes}) 与 episode collection sourceTotal (${episodeReportedEpisodes}) 不一致`,
+    );
+  }
   if (progressMismatch) {
     state = 'conflict';
     reasons.push(
       `collection ep_status (${collectionReportedEpisodes}) 与 episode collection 已看正篇数 (${watchedEpisodes}) 不一致`,
     );
   }
-  if (hasInvalidTotal || sourceReportedEpisodes === undefined) {
+  if (positiveInteger(sourceReportedEpisodes) && sourceReportedEpisodes < watchedEpisodes) {
+    state = 'conflict';
+    reasons.push(`SlimSubject.eps (${sourceReportedEpisodes}) 小于已看正篇数 (${watchedEpisodes})`);
+  }
+  if (positiveInteger(episodeReportedEpisodes) && episodeReportedEpisodes < watchedEpisodes) {
+    state = 'conflict';
+    reasons.push(
+      `episode collection sourceTotal (${episodeReportedEpisodes}) 小于已看正篇数 (${watchedEpisodes})`,
+    );
+  }
+  if (hasInvalidEpisodeTotal) {
     state = state === 'conflict' ? state : 'not_computable';
-    reasons.push('收藏记录没有有效的源报告正篇总数');
+    reasons.push('episode collection 没有有效的正篇 sourceTotal');
   }
   if (!progressComplete) {
-    state = state === 'conflict' ? state : 'partial';
+    state =
+      state === 'conflict'
+        ? state
+        : episodeReportedEpisodes === undefined
+          ? 'not_computable'
+          : 'partial';
     if (progress.truncated)
       reasons.push(`episode collection 超过每条目 ${maxEpisodesPerSubject} 行上限`);
     if (progress.paginationStalled) reasons.push('episode collection 分页没有产生新的偏移量');
     if (progress.sourceTotal === undefined) reasons.push('episode collection 没有可验证的源总数');
     if (progress.duplicateRows > 0) reasons.push('episode collection 返回了重复章节');
+    if (progressRows.length !== progress.sourceTotal && progress.sourceTotal !== undefined) {
+      reasons.push(
+        `episode collection 观察到 ${progressRows.length} 行，但 sourceTotal 为 ${progress.sourceTotal}`,
+      );
+    }
   }
-  if (reasons.some((reason) => reason.includes('lacks episode metadata'))) {
-    state = state === 'conflict' ? state : 'partial';
-  }
+
+  const airing = deriveAiringState(progress);
+  if (airing.reason) reasons.push(airing.reason);
 
   const canCompute =
     state === 'complete' &&
-    sourceReportedEpisodes !== undefined &&
-    sourceReportedEpisodes >= watchedEpisodes;
-  if (sourceReportedEpisodes !== undefined && sourceReportedEpisodes < watchedEpisodes) {
-    state = 'conflict';
-    reasons.push(`源报告正篇总数 (${sourceReportedEpisodes}) 小于已看正篇数 (${watchedEpisodes})`);
-  }
-
-  if (state === 'complete' && !canCompute) state = 'not_computable';
-
+    positiveInteger(episodeReportedEpisodes) &&
+    episodeReportedEpisodes >= watchedEpisodes;
   const uniqueReasons = [...new Set(reasons)];
   return {
     subjectId: collection.subjectId,
@@ -366,14 +479,17 @@ function buildRow(
     status: collection.status as CollectionBacklogStatus,
     statusLabel: collection.statusLabel,
     sourceReportedEpisodes,
+    episodeReportedEpisodes,
+    denominatorSource: canCompute ? 'episode_collection' : 'none',
     collectionReportedEpisodes,
     watchedEpisodes,
     wishEpisodes,
     droppedEpisodes,
     observedProgressRows: progressRows.length,
-    remainingEpisodes: canCompute ? sourceReportedEpisodes - watchedEpisodes : undefined,
+    airingState: airing.state,
+    remainingEpisodes: canCompute ? episodeReportedEpisodes - watchedEpisodes : undefined,
     completionPercentage: canCompute
-      ? Number(((watchedEpisodes / sourceReportedEpisodes) * 100).toFixed(1))
+      ? Number(((watchedEpisodes / episodeReportedEpisodes) * 100).toFixed(1))
       : undefined,
     state,
     reasons: uniqueReasons,
@@ -386,6 +502,7 @@ function buildRow(
       truncated: progress.truncated,
       duplicateRows: progress.duplicateRows,
       paginationStalled: progress.paginationStalled,
+      sourceTotalChanged: progress.sourceTotalChanged,
     },
   };
 }
@@ -404,10 +521,13 @@ function buildUnavailableRow(
     status: collection.status as CollectionBacklogStatus,
     statusLabel: collection.statusLabel,
     sourceReportedEpisodes: collection.subjectTotalEpisodes,
+    denominatorSource: 'none',
     collectionReportedEpisodes: collection.epStatus,
     observedProgressRows: 0,
+    airingState: 'unknown',
     state: 'unavailable',
     reasons: [error.code],
+    error,
     progressCoverage: {
       observedRows: 0,
       pagesAttempted: 1,
@@ -416,6 +536,7 @@ function buildUnavailableRow(
       truncated: false,
       duplicateRows: 0,
       paginationStalled: false,
+      sourceTotalChanged: false,
     },
   };
 }
@@ -490,6 +611,7 @@ async function scanCollection(
   const unique = uniqueCollectionItems(items);
   return {
     items: unique.items,
+    observedRows: items.length,
     sourceTotal,
     requestedMaxItems: maxItems,
     pagesAttempted,
@@ -516,6 +638,8 @@ async function scanEpisodeProgress(
   let offset = 0;
   let sourceExhausted = false;
   let paginationStalled = false;
+  let sourceTotalChanged = false;
+  let sourceTotalInvalidated = false;
 
   while (
     items.length < maxEpisodes &&
@@ -530,7 +654,13 @@ async function scanEpisodeProgress(
       offset,
     });
     pagesSucceeded += 1;
-    if (pagesSucceeded === 1) sourceTotal = page.total;
+    if (pagesSucceeded === 1) {
+      sourceTotal = page.total;
+    } else if (!sourceTotalInvalidated && page.total !== sourceTotal) {
+      sourceTotalChanged = true;
+      sourceTotal = undefined;
+      sourceTotalInvalidated = true;
+    }
     const pageItems = page.items.slice(0, requested);
     items.push(...pageItems);
     if (pageItems.length === 0 || (sourceTotal !== undefined && sourceTotal <= items.length)) {
@@ -557,7 +687,8 @@ async function scanEpisodeProgress(
     !sourceExhausted ||
     sourceTotal === undefined ||
     sourceTotal > items.length ||
-    paginationStalled;
+    paginationStalled ||
+    sourceTotalChanged;
   return {
     items,
     sourceTotal,
@@ -567,6 +698,7 @@ async function scanEpisodeProgress(
     truncated,
     duplicateRows,
     paginationStalled,
+    sourceTotalChanged,
   };
 }
 
@@ -603,6 +735,15 @@ function summarize(items: CollectionBacklogItem[], eligibleItems: number): Colle
       (total, item) => total + (item.remainingEpisodes === undefined ? 0 : item.remainingEpisodes),
       0,
     ),
+    finishedItems: items.filter((item) => item.airingState === 'finished').length,
+    finishedIncompleteItems: items.filter(
+      (item) =>
+        item.airingState === 'finished' &&
+        item.remainingEpisodes !== undefined &&
+        item.remainingEpisodes > 0,
+    ).length,
+    ongoingItems: items.filter((item) => item.airingState === 'ongoing').length,
+    airingUnknownItems: items.filter((item) => item.airingState === 'unknown').length,
   };
   return { items, summary };
 }
@@ -621,6 +762,7 @@ function resultState(
     scan.truncated ||
     hydrationBudgetExceeded ||
     scan.pageFailureOffset !== undefined ||
+    scan.duplicateRows > 0 ||
     rows.some(
       (row) =>
         row.state === 'partial' || row.state === 'unavailable' || row.state === 'not_computable',
@@ -637,7 +779,7 @@ function warningForScan(scan: CollectionScan): CollectionBacklogResult['warnings
     warnings.push({
       code: 'PARTIAL_COLLECTION_SCAN',
       state: 'partial',
-      message: `收藏扫描观察到 ${scan.items.length} 行，源报告 ${scan.sourceTotal ?? '未知'} 行；结果受扫描上限或分页边界约束。`,
+      message: `收藏扫描观察到 ${scan.observedRows} 行，去重后 ${scan.items.length} 条，源报告 ${scan.sourceTotal ?? '未知'} 行；结果受扫描上限或分页边界约束。`,
     });
   }
   if (scan.pageFailureOffset !== undefined) {
@@ -669,6 +811,16 @@ function warningForScan(scan: CollectionScan): CollectionBacklogResult['warnings
     });
   }
   return warnings;
+}
+
+function stateForError(error: PublicErrorInfo): CollectionBacklogState {
+  if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_EXPIRED') return 'auth_required';
+  if (error.code === 'PERMISSION_DENIED') return 'permission_denied';
+  if (error.code === 'RATE_LIMITED') return 'rate_limited';
+  if (error.code === 'NETWORK_ERROR' || error.code === 'UPSTREAM_UNAVAILABLE') {
+    return 'upstream_error';
+  }
+  return 'unavailable';
 }
 
 export class CollectionBacklogService {
@@ -705,10 +857,11 @@ export class CollectionBacklogService {
       scan = await scanCollection(this.userService, username, maxItems);
     } catch (error: unknown) {
       const publicError = toPublicError(error);
+      const errorState = stateForError(publicError);
       return {
-        state: 'unavailable',
+        state: errorState,
         data: emptyData(),
-        coverage: emptyCoverage('unavailable', { maxItems, maxSubjects, maxEpisodesPerSubject }),
+        coverage: emptyCoverage(errorState, { maxItems, maxSubjects, maxEpisodesPerSubject }),
         source: {
           class: 'official_v0',
           operations: [
@@ -730,8 +883,8 @@ export class CollectionBacklogService {
         warnings: [
           {
             code: publicError.code,
-            state: 'unavailable',
-            message: '官方收藏源暂时不可用，未生成猜测的 backlog 统计。',
+            state: errorState,
+            message: publicError.message,
           },
         ],
         error: publicError,
@@ -770,6 +923,7 @@ export class CollectionBacklogService {
               truncated: false,
               duplicateRows: 0,
               paginationStalled: false,
+              sourceTotalChanged: false,
             },
             error: publicError,
           } satisfies HydratedRow;
@@ -804,6 +958,16 @@ export class CollectionBacklogService {
         message: `${partialCount} 个条目的 episode collection 覆盖不完整；对应完成度未作为精确值输出。`,
       });
     }
+    const sourceTotalChangedCount = hydrated.filter(
+      (entry) => entry.progress.sourceTotalChanged,
+    ).length;
+    if (sourceTotalChangedCount > 0) {
+      warnings.push({
+        code: 'EPISODE_SOURCE_TOTAL_CHANGED',
+        state: 'conflict',
+        message: `${sourceTotalChangedCount} 个条目的 episode collection sourceTotal 在分页期间发生变化；对应完成度未采用不稳定的分母。`,
+      });
+    }
     const conflictCount = rows.filter((row) => row.state === 'conflict').length;
     if (conflictCount > 0) {
       warnings.push({
@@ -826,7 +990,7 @@ export class CollectionBacklogService {
       collection: {
         sourceTotal: scan.sourceTotal,
         requestedMaxItems: scan.requestedMaxItems,
-        observedRows: scan.items.length,
+        observedRows: scan.observedRows,
         uniqueRows: scan.items.length,
         eligibleRows: eligible.length,
         pagesAttempted: scan.pagesAttempted,
@@ -855,6 +1019,8 @@ export class CollectionBacklogService {
         pagesSucceeded: hydrated.reduce((total, entry) => total + entry.progress.pagesSucceeded, 0),
         observedRows: hydrated.reduce((total, entry) => total + entry.progress.items.length, 0),
         truncatedSubjects: hydrated.filter((entry) => entry.progress.truncated).length,
+        sourceTotalChangedSubjects: hydrated.filter((entry) => entry.progress.sourceTotalChanged)
+          .length,
         failedSubjects: hydrated.filter((entry) => Boolean(entry.error)).length,
       },
     };
@@ -887,8 +1053,8 @@ export class CollectionBacklogService {
         {
           source: 'derived',
           operations: [
-            'sourceReportedEpisodes - watched main episodes',
-            'watched main episodes / sourceReportedEpisodes',
+            'episode collection sourceTotal - watched main episodes',
+            'watched main episodes / episode collection sourceTotal',
           ],
           formulaVersion: COLLECTION_BACKLOG_FORMULA_VERSION,
           authScope: 'account',
