@@ -254,7 +254,7 @@ Finalization plan:
 `docs/product/cycles/PR-7G-finalization.md`
 
 Finalization state:
-`HUMAN_REVIEW_READY — corrective Candidate
+`HUMAN_APPROVED_FINALIZATION / FROZEN_PENDING_INTEGRATION — accepted Candidate
 fd48eb626b6b027031cc3884444963018beef2ed; exact-SHA CI run 31542758003 is
 green with all six mandatory jobs terminal SUCCESS; historical final Sol
 Candidate 5582f013... remains CORRECTIVE_REQUIRED; PR #5 remains unmerged`
@@ -279,9 +279,12 @@ Historical branch protection:
 Human-review readiness record:
 `docs/product/reviews/PR-7G-recovery-series-watch-order/human-review-ready.md`
 
+Human Final Review / Freeze record:
+`docs/product/reviews/PR-7G-recovery-series-watch-order/human-final-review-freeze.md`
+
 Next action:
-`STOP at HUMAN_REVIEW_READY for human independent review; do not launch Sol,
-merge PR #5, close PR #5, freeze the Candidate, or start Self-Evolution.`
+`Complete the authorized post-freeze merge of PR #5, then synchronize and
+record the final merged state. Do not launch Sol or start Self-Evolution.`
 
 ---
 

@@ -1,6 +1,6 @@
 # PR-7G Finalization — Existing Recovery PR #5
 
-Status: `HUMAN_REVIEW_READY`
+Status: `HUMAN_APPROVED_FINALIZATION / FROZEN_PENDING_INTEGRATION`
 
 This is one explicitly human-authorized finalization review cycle for the
 existing parked PR-7G Recovery PR. It is not a new Recovery Epoch, Product
@@ -65,12 +65,12 @@ Candidate SHA.
 
 ## P2 disposition
 
-| Finding | Decision | Finalization result |
-| --- | --- | --- |
-| Public root-relation error code/retryability | `DEFER_WITH_REASON` | Existing transport mapping already yields `NOT_FOUND`, `retryable=false`; service, read-tool, and Standalone regression coverage now proves propagation. No new error architecture is justified. |
-| Oversized caller-created ViewModel normalization | `FIX_NOW` | Renderer normalization records `coverage.renderedOmitted`, explicit renderer truncation reasons, and a warning naming omitted steps/related/edge counts. |
-| `maxNodes` versus detail-date ordering | `FIX_NOW` (bounded clarification) | Tool descriptions, cycle contract, and regression coverage state and prove relation-evidence preselection with ID tie-break, followed by date ordering only within the selected cap. |
-| Extreme Renderer height | `FIX_NOW` | High-cardinality steps and related evidence use dense rows; edge evidence uses compact two-column rows while retaining all 64 records. |
+| Finding                                          | Decision                          | Finalization result                                                                                                                                                                              |
+| ------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public root-relation error code/retryability     | `DEFER_WITH_REASON`               | Existing transport mapping already yields `NOT_FOUND`, `retryable=false`; service, read-tool, and Standalone regression coverage now proves propagation. No new error architecture is justified. |
+| Oversized caller-created ViewModel normalization | `FIX_NOW`                         | Renderer normalization records `coverage.renderedOmitted`, explicit renderer truncation reasons, and a warning naming omitted steps/related/edge counts.                                         |
+| `maxNodes` versus detail-date ordering           | `FIX_NOW` (bounded clarification) | Tool descriptions, cycle contract, and regression coverage state and prove relation-evidence preselection with ID tie-break, followed by date ordering only within the selected cap.             |
+| Extreme Renderer height                          | `FIX_NOW`                         | High-cardinality steps and related evidence use dense rows; edge evidence uses compact two-column rows while retaining all 64 records.                                                           |
 
 ## Candidate and gate ledger
 
@@ -187,3 +187,24 @@ and remaining limitations are recorded in the linked human-review report.
 The post-Candidate governance record is the metadata commit containing this
 ledger update and the linked report; its exact SHA is reported in the final
 handoff. The branch stops here for human independent review.
+
+## Human Final Review and Freeze
+
+The external Human Independent Review returned `HUMAN FINAL REVIEW: PASS` for
+the implementation Candidate `fd48eb626b6b027031cc3884444963018beef2ed`.
+The sole historical P1 is `RESOLVED`; known P0/P1 counts are both zero. The
+historical P2 recommendations remain `DEFERRED / NON_BLOCKING`.
+
+This is recorded as a separate `HUMAN_APPROVED_FINALIZATION` decision. It does
+not rewrite either historical Sol verdict and adds zero Sol or generic-subagent
+launches.
+
+- Accepted implementation Candidate:
+  `fd48eb626b6b027031cc3884444963018beef2ed`
+- Exact-SHA CI: `31542758003`, all mandatory jobs terminal `SUCCESS`
+- Human Final Review / Freeze record:
+  `docs/product/reviews/PR-7G-recovery-series-watch-order/human-final-review-freeze.md`
+- Freeze state: `FROZEN_PENDING_INTEGRATION`
+- Authorized integration: existing `AUTO_MERGE_AFTER_FREEZE` merge-commit
+  policy for PR #5
+- Sol launches added: `0`
