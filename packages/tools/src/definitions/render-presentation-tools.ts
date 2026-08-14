@@ -25,8 +25,10 @@ import {
   buildRevisionTimelineViewModel,
   buildDiscoveryResultsViewModel,
   buildSeriesRelationsViewModel,
+  buildSubjectOverviewViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
+import { getSubjectOverview } from '../subject-overview.js';
 
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
@@ -402,6 +404,43 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectOverview = defineTool({
+    name: 'bangumi.render_subject_overview',
+    description:
+      '生成指定条目的证据型智能概览图片卡片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目以及各区段覆盖和限制；不宣称完整关系或历史趋势。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 8'),
+      maxStaff: z.number().int().min(1).max(80).optional().describe('制作人员读取上限，默认 24'),
+      maxRelations: z
+        .number()
+        .int()
+        .min(1)
+        .max(32)
+        .optional()
+        .describe('关联条目读取上限，默认 12'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.executionSession?.client || deps?.publicHttpClient;
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const result = await getSubjectOverview(
+        input.subjectId,
+        {
+          maxCast: input.maxCast ?? 8,
+          maxStaff: input.maxStaff ?? 24,
+          maxRelations: input.maxRelations ?? 12,
+        },
+        { client, providerRegistry: deps?.providerRegistry },
+      );
+      return await executeRenderAndSave(buildSubjectOverviewViewModel(result));
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -412,5 +451,6 @@ export function createRenderPresentationTools(
     renderSeriesWatchOrder,
     renderPersonProfile,
     renderRevisionTimeline,
+    renderSubjectOverview,
   ] as const;
 }

@@ -38,6 +38,7 @@ Bangumi:
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
+  overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
   cast <subjectId>
   person <personId>
@@ -54,7 +55,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|watch-order|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
+  render subject|overview|watch-order|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -228,6 +229,21 @@ export class StandaloneCommandRegistry {
           subjectId: parsePositiveInteger(args[1], 'subject id'),
         }),
       };
+    }
+    if (command === 'overview') {
+      const overviewArgs = args.slice(1);
+      const input: Record<string, unknown> = {
+        subjectId: parsePositiveInteger(overviewArgs[0], 'subject id'),
+      };
+      const maxCast = takeOption(overviewArgs, '--max-cast');
+      const maxStaff = takeOption(overviewArgs, '--max-staff');
+      const maxRelations = takeOption(overviewArgs, '--max-relations');
+      if (maxCast !== undefined) input.maxCast = parsePositiveInteger(maxCast, 'max-cast');
+      if (maxStaff !== undefined) input.maxStaff = parsePositiveInteger(maxStaff, 'max-staff');
+      if (maxRelations !== undefined) {
+        input.maxRelations = parsePositiveInteger(maxRelations, 'max-relations');
+      }
+      return { value: await runTool(ctx, 'bangumi.get_subject_overview', input) };
     }
     if (command === 'watch-order') {
       const watchArgs = args.slice(1);
@@ -521,6 +537,17 @@ export class StandaloneCommandRegistry {
     if (kind === 'subject') {
       name = 'bangumi.render_subject_card';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'overview') {
+      name = 'bangumi.render_subject_overview';
+      input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+      const maxCast = takeOption(args, '--max-cast');
+      const maxStaff = takeOption(args, '--max-staff');
+      const maxRelations = takeOption(args, '--max-relations');
+      if (maxCast !== undefined) input.maxCast = parsePositiveInteger(maxCast, 'max-cast');
+      if (maxStaff !== undefined) input.maxStaff = parsePositiveInteger(maxStaff, 'max-staff');
+      if (maxRelations !== undefined) {
+        input.maxRelations = parsePositiveInteger(maxRelations, 'max-relations');
+      }
     } else if (kind === 'watch-order') {
       input = {
         subjectId: parsePositiveInteger(args[1], 'subject id'),

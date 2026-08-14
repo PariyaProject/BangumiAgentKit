@@ -35,7 +35,208 @@ Standing execution defaults:
 
 ---
 
-## Current Active Goal Ledger
+## Current Active AUTONOMOUS_EVOLUTION_TIER2 Goal Ledger
+
+Goal Scope:
+
+`Fresh Autonomous Self-Evolution outer Goal: discover, select, execute,
+review, freeze/integrate, checkpoint, and continue safe coherent Product Review
+Epochs toward the Product North Star until the outer stop condition.`
+
+Selected Product Goal Profile:
+
+`AUTONOMOUS_EVOLUTION_TIER2 / SELF_EVOLUTION`
+
+Outer Goal State:
+
+`INTEGRATION_PENDING_EXACT_REFRESH_CI / OUTER_LOOP_STOPPED — the existing PR
+branch was refreshed from current origin/master and awaits exact-SHA CI`
+
+Outer Sol Review Budget Authorized / Consumed:
+
+`4 / 2 — 2 remaining; sequential only; automatic Sol #5 prohibited`
+
+Outer Review Budget State:
+
+`STOPPED_AT_INTEGRATION_BLOCKER — 2 consumed of 4 authorized; 2 remain
+unspent and no additional Sol launch was made`
+
+Explicit Outer Non-Scope:
+
+- authentication trust-model, principal/authorization, credential/cookie,
+  SSRF, destructive/write authority, broad Structured Web/HTML, aggressive
+  crawling, irreversible semantic migrations, legal/license, releases,
+  packages, tags, and other Human-On-Exception directions;
+- generic implementation/research subagents (`0 / 0`), parallel reviewers,
+  and any reviewer launch beyond the outer four-launch ceiling;
+- silently reopening frozen foundations or importing historical PR-7D through
+  PR-7H governance state;
+- unrelated product work that does not belong to the selected coherent Epoch.
+
+Outer Stopping Conditions:
+
+`PAUSED_BY_EXECUTION_BUDGET`, `PAUSED_BY_OUTER_REVIEW_BUDGET`, user stop/change,
+infrastructure or permission blocking all useful safe work, explicit discovery
+finding no meaningful independent safe opportunity, unsafe repository state, or
+governance-mandated global stop. A completed milestone is an inner checkpoint,
+not outer Goal completion.
+
+Current Product Review Epoch / Milestone:
+
+`PR-8A Subject Intelligence Overview`
+
+Current-governance plan:
+`docs/product/cycles/PR-8A-subject-intelligence-overview.md`
+
+Current Milestone State:
+
+`INTEGRATION_PENDING_EXACT_REFRESH_CI (human-review Candidate remains
+HUMAN_REVIEW_READY; historical independent-review state remains
+PARKED_REVIEW_LIMIT)`
+
+Current Phase:
+
+`INTEGRATION_PENDING_EXACT_REFRESH_CI / PERSISTED`
+
+Review Boundary Rationale:
+
+`One tightly coupled subject-question journey: official-v0 subject detail,
+stats, cast, staff, and relations are composed into one semantic result and
+one readable artifact. Episodes, community/history, personalization, source
+expansion, graph traversal, and unrelated renderer work are deferred.`
+
+Current Work Packages / `LUNA_STABLE` Summary:
+
+`A human-directed Luna-only corrective resolved all four historical P1 roots:
+bounded Subject Overview cover/character assets now use AssetResolver with no
+raw URL fallback; stats retrievedAt is post-completion; composition evidence is
+stable derived-s7 with a versioned deterministic formula; and visual fixtures
+now flow from mocked dependencies through semantic result, ViewModel, and
+Renderer. The corrected Candidate remains without an independent Sol PASS; the
+existing PR branch has now been refreshed from current master and is awaiting
+exact-SHA remote CI before the user-authorized merge.`
+
+Primary Model / Reasoning:
+
+- primary: GPT-5.6 Luna;
+- preferred reasoning: `max`;
+- minimum availability fallback: `xhigh`;
+- lower Luna reasoning: prohibited.
+
+Generic Subagent Budget Authorized / Consumed:
+
+`0 / 0`
+
+Milestone Review Tier / Sol Review Budget Authorized / Consumed:
+
+`TIER_2 — 2 / 2; 0 remaining; Sol #1 and Sol #2 CORRECTIVE_REQUIRED; Sol #3
+prohibited`
+
+Milestone Reviewer Order:
+
+`Sequential comprehensive sol_milestone_reviewer for Sol #1, then the same
+reviewer for Sol #2 only if Sol #1 is CORRECTIVE_REQUIRED.`
+
+Base SHA / Feature Branch:
+
+`0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc` /
+`codex/pr-8a-subject-intelligence-overview`
+
+Latest Stable Commit / Candidate SHA:
+
+`0159daa chore: refresh PR-8A base for integration` /
+`0159daa5ce38dbd626458c007a8cf944df3f6454`
+
+Tests and Exact-SHA CI:
+
+`Human-review Candidate 05288aecf80f040213dc4fdc938f2838775b9829 passed the
+prior final local matrix and exact-SHA CI run 31770406756 (6/6). Refreshed
+branch tip 0159daa5ce38dbd626458c007a8cf944df3f6454 passed the refreshed local
+matrix; exact-SHA remote CI is pending push. No independent PASS is claimed.`
+
+Integration Contract:
+
+- Integration Policy: `AUTO_MERGE_AFTER_FREEZE`;
+- Target Base Branch: `master`;
+- Recorded Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`;
+- Previous review Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`;
+- Current Target Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`;
+- Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`;
+- Merge Strategy: `MERGE_COMMIT`;
+- Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
+  the dedicated feature branch, and return to synchronized `master` without
+  touching historical branches;
+- Integration State: `INTEGRATION_PENDING_EXACT_REFRESH_CI`;
+- Implementation Frozen SHA: `N/A`;
+- Merge Commit SHA: `N/A`.
+
+Human Authorization State:
+
+`USER-AUTHORIZED MERGE on existing PR-8A; protected Human-On-Exception
+boundaries remain active. The branch was refreshed with a no-rewrite merge of
+current origin/master; local validation is green and exact-SHA remote CI is the
+remaining pre-merge gate.`
+
+Next Action:
+
+`PUSH the refreshed PR branch and wait for exact-SHA mandatory CI. If green,
+complete the user-authorized PR #6 merge-commit integration, verify ancestry,
+retire only the dedicated feature branch, synchronize master, persist the
+merge result, and stop. Do not start recovery, select a new Epoch, or enter
+opportunity discovery.`
+
+Sol #1 Runtime Checkpoint:
+
+`sol_milestone_reviewer / agent 019ffe30-5db9-7950-b4b0-eeb4e5238067 /
+COMPLETED_CORRECTIVE_REQUIRED at 2026-08-14T03:04:55Z; milestone Sol budget
+1/2 consumed, outer budget 1/4 consumed; report persisted at
+docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.`
+
+Corrected Candidate Checkpoint:
+
+`998d4c4935f52d4cdf1543ca1663d68d137065fc / local validation green / exact
+CI 31766543465 green (6/6) / visual QA matrix complete / ready for Sol #2 at
+2026-08-14T03:24:24Z.`
+
+Sol #2 Runtime Checkpoint:
+
+`sol_milestone_reviewer / agent 019ffe4f-6b46-7c20-96a4-31147a981e66 /
+COMPLETED_CORRECTIVE_REQUIRED observed at 2026-08-14T03:39:50Z; milestone Sol
+budget 2/2 consumed, outer budget 2/4 consumed; report persisted at
+docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md.`
+
+Human-Directed Corrective Checkpoint — 2026-08-14:
+
+`Starting PR-8A tip e0f5416837f60f60b3d37c9cd4be3da3fcf0ea94; implementation
+Candidate 05288aecf80f040213dc4fdc938f2838775b9829; exact-SHA CI
+31770406756 passed sqlite-default, host-integration,
+standalone-release-smoke, postgres-compat, provider-foundation, and
+discovery-foundation. Focused and full local validation, semantic/provider/
+renderer/security/asset checks, OpenAPI/catalog verification, deterministic
+640/960 visual QA, and Luna pre-human falsification all passed. The current
+branch equals origin/codex/pr-8a-subject-intelligence-overview, PR #6 remains
+open, and the truthful resumable stop state is HUMAN_REVIEW_READY. Historical
+Sol #1/#2 verdicts and the milestone PARKED_REVIEW_LIMIT ledger are preserved;
+this corrective did not spend a Sol launch or claim independent review PASS.`
+
+Outer-loop stop rationale:
+
+`The user explicitly stopped the self-evolution outer loop before any further
+opportunity discovery or Epoch selection. The two remaining outer Sol launches
+remain unspent.`
+
+Integration Attempt Checkpoint — 2026-08-14:
+
+`The user authorized merge. The recorded PR-8A Base SHA is
+cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e, while the fetched current
+origin/master is 0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc. The recorded Base is
+not the current remote base; the branch merge-base remains cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e.
+Per policy this is INTEGRATION_BLOCKED_BASE_DRIFT: no automatic rebase or merge
+was performed. PR #6 remains open and the working tree is clean.`
+
+---
+
+## Historical Completed PR-7G Recovery Goal Ledger
 
 Goal Scope:
 

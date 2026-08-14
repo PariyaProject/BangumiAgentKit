@@ -464,6 +464,93 @@ export interface RevisionTimelineViewModel {
   }>;
 }
 
+export type SubjectOverviewState = 'complete' | 'partial' | 'unavailable' | 'not_found';
+export type SubjectOverviewSectionState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
+
+export interface SubjectOverviewViewModel {
+  template: 'subject-overview';
+  version: 1;
+  state: SubjectOverviewState;
+  subject: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    type: string;
+    date?: string;
+    platform?: string;
+    image?: string;
+    score?: number;
+    rank?: number;
+    summary?: string;
+    eps?: number;
+    totalEpisodes?: number;
+  };
+  stats: {
+    state: SubjectOverviewSectionState;
+    score?: number;
+    rank?: number;
+    ratingTotal?: number;
+    histogram: Array<{ score: number; count: number }>;
+    collection?: {
+      wish: number;
+      collect: number;
+      doing: number;
+      onHold: number;
+      dropped: number;
+    };
+    coverage: { observed: number; returned: number; truncated: boolean };
+  };
+  cast: {
+    state: SubjectOverviewSectionState;
+    items: Array<{
+      character: { id: number; name: string; image?: string };
+      relation: string;
+      actors: Array<{ id: number; name: string; image?: string }>;
+    }>;
+    hiddenCount?: number;
+    coverage: { observed: number; returned: number; truncated: boolean };
+    actorCoverage: { observed: number; returned: number; truncated: boolean };
+  };
+  staff: {
+    state: SubjectOverviewSectionState;
+    groups: Array<{
+      relation: string;
+      count: number;
+      members: Array<{ id: number; name: string; image?: string }>;
+    }>;
+    hiddenCount?: number;
+    coverage: { observed: number; returned: number; truncated: boolean };
+  };
+  relations: {
+    state: SubjectOverviewSectionState;
+    items: Array<{
+      id: number;
+      name: string;
+      nameCn?: string;
+      type: string;
+      relation: string;
+      image?: string;
+    }>;
+    hiddenCount?: number;
+    coverage: { observed: number; returned: number; truncated: boolean };
+  };
+  coverage: {
+    sourceRequestsAttempted: number;
+    sourceRequestsSucceeded: number;
+    sectionsComplete: number;
+    sectionsPartial: number;
+    sectionsUnavailable: number;
+    sectionsNotComputable: number;
+    truncatedSections: string[];
+    limits: { maxCast: number; maxStaff: number; maxRelations: number };
+    actorLimits: { perCharacter: number; total: number };
+  };
+  evidence: { operations: string[]; count: number; retrievedAt?: string };
+  warnings: Array<{ code: string; state: string; message: string }>;
+  limitations: string[];
+  source: { label: string; retrievedAt?: string };
+}
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
@@ -473,4 +560,5 @@ export type RenderViewModel =
   | CollectionProgressViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
-  | PersonProfileViewModel;
+  | PersonProfileViewModel
+  | SubjectOverviewViewModel;

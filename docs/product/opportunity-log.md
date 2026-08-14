@@ -1,5 +1,115 @@
 # BangumiAgentKit Product Opportunity Log
 
+## Active self-evolution selection record — 2026-08-14
+
+The fresh `AUTONOMOUS_EVOLUTION_TIER2` outer Goal selected **OP-008 Subject
+Intelligence Overview** as the highest-value safe next Epoch from synchronized
+`master` (`cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`). The selection was based on
+the current tool/renderer audit, existing official-v0 research, and a narrow
+read-only parity check of Bangumi's subject and stats pages. It closes a
+repeated Agent orchestration gap using existing source seams and does not
+require a protected boundary change.
+
+Selection comparison and provenance:
+
+- OP-008 was selected as the highest combination of user value and Agent
+  leverage while remaining bounded and source-reliable. It is now parked at
+  the TIER_2 review limit and is not delivered or frozen.
+- OP-003 Community Discussion Spike remains deferred. Its existing entry
+  requires S3 + S6 + S7; current policy does not broadly enable Structured Web,
+  HTML, or historical snapshot collection, so it is not an immediately safe
+  Epoch.
+- OP-004 Staff Collaboration Graph remains deferred. A useful implementation
+  needs cross-subject graph traversal and materially higher fan-out/resource
+  risk than the selected subject journey; no graph foundation is authorized.
+
+This record is a durable selection checkpoint, not a claim that the deferred
+opportunities are superseded. The completed-but-parked Cycle Plan is
+`docs/product/cycles/PR-8A-subject-intelligence-overview.md`.
+
+Sol #2's full review evidence is
+`docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md`.
+
+---
+
+## OP-008 Subject Intelligence Overview
+
+Status:
+PARKED_REVIEW_LIMIT
+
+User questions:
+
+“介绍一下这部作品；它的评分、角色、制作人员和关联作品怎么样？”
+
+“能不能一次给我这部动画的基本信息、统计、主要角色、职员和关联条目？”
+
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+5/5
+
+Data Availability:
+5/5
+
+Reliability:
+4/5
+
+Implementation Cost:
+4/5 — bounded composition over existing services and provider seams
+
+Maintenance Risk:
+2/5
+
+Source Risk:
+1/5
+
+Possible Sources:
+Official v0 subject detail, subject stats, subject characters, subject persons,
+and subject relations; deterministic derived section coverage and grouping.
+
+Potential Capability:
+get_subject_overview
+
+Potential Renderer:
+SubjectIntelligenceOverview / SubjectOverview
+
+Notes:
+The current AgentKit surface makes a user or Agent orchestrate separate
+`get_subject`, `get_subject_stats`, `get_subject_cast`, `get_subject_staff`,
+and `get_subject_relations` calls. The selected Epoch composes those bounded
+read-only facts into one evidence-bearing result and one dense-but-readable
+card. It deliberately excludes episodes, community/history, personalization,
+HTML/Structured Web, collaboration graphs, inferred role taxonomies, and new
+authentication or persistence semantics. Section failures remain explicit;
+the result never claims complete franchise, cast, staff, or lifetime history.
+
+Parked checkpoint — 2026-08-14: Sol #2 returned `CORRECTIVE_REQUIRED` with
+four P1 blockers: subject-overview images bypass the renderer asset pipeline;
+successful stats evidence can use a pre-dispatch timestamp; required
+versioned composition-formula provenance is absent; and the corrected visual
+fixtures are not semantically truthful in degraded states. Candidate
+`998d4c4935f52d4cdf1543ca1663d68d137065fc` passed exact CI run `31766543465`
+but is not frozen or merged. The milestone review budget is exhausted
+(`2 / 2`); Sol #3 is prohibited. Future remediation requires a separately
+authorized fresh milestone; this outer Goal will select only an independent
+safe opportunity next.
+
+Selection evidence:
+
+- `docs/product/cycles/PR-8A-subject-intelligence-overview.md`
+- `packages/tools/src/definitions/read-tools.ts`
+- `packages/tools/src/definitions/render-presentation-tools.ts`
+- `packages/renderer/src/view-models/index.ts`
+- `docs/research/pr7a2/renderer-data-requirements.md`
+- current read-only Bangumi parity pages: `https://bgm.tv/subject/41529` and
+  `https://bgm.tv/subject/41529/stats`
+
+---
+
 ## OP-001 Voice Actor Workload
 
 Status:

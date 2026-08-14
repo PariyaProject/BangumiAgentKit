@@ -369,6 +369,94 @@ describe('PR-6R-C standalone runtime', () => {
     await host.close();
   });
 
+  it('PR-8A: standalone exposes bounded subject-overview semantic and render routes', async () => {
+    const host = await createTestHost();
+    let semanticInput: Record<string, unknown> | undefined;
+    let renderInput: Record<string, unknown> | undefined;
+    const overviewInput = z.object({
+      subjectId: z.number().int().positive(),
+      maxCast: z.number().int().min(1).max(20).optional(),
+      maxStaff: z.number().int().min(1).max(80).optional(),
+      maxRelations: z.number().int().min(1).max(32).optional(),
+    });
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.get_subject_overview',
+        description: 'subject overview fixture',
+        input: overviewInput,
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          semanticInput = input;
+          return { subjectId: input.subjectId, state: 'complete' };
+        },
+      }),
+    );
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.render_subject_overview',
+        description: 'subject overview render fixture',
+        input: overviewInput,
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          renderInput = input;
+          return {
+            artifact: {
+              id: 'subject-overview-fixture',
+              mimeType: 'image/png',
+              width: 640,
+              height: 800,
+            },
+          };
+        },
+      }),
+    );
+
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const context = {
+      host,
+      flags: parseCliArgs(['--json', 'overview', '218707']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+    await expect(
+      registry.execute(
+        ['overview', '218707', '--max-cast', '4', '--max-staff', '12', '--max-relations', '6'],
+        context,
+      ),
+    ).resolves.toMatchObject({ value: { subjectId: 218707, state: 'complete' } });
+    expect(semanticInput).toEqual({ subjectId: 218707, maxCast: 4, maxStaff: 12, maxRelations: 6 });
+
+    const renderContext = {
+      host,
+      flags: parseCliArgs(['--json', 'render', 'overview', '218707']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+    await expect(
+      registry.execute(
+        [
+          'render',
+          'overview',
+          '218707',
+          '--max-cast',
+          '3',
+          '--max-staff',
+          '10',
+          '--max-relations',
+          '5',
+        ],
+        renderContext,
+      ),
+    ).resolves.toMatchObject({ value: { artifact: { id: 'subject-overview-fixture' } } });
+    expect(renderInput).toEqual({ subjectId: 218707, maxCast: 3, maxStaff: 10, maxRelations: 5 });
+    await host.close();
+  });
+
   it('ST-07/ST-08/ST-13-ST-19: raw and high-level writes preserve validation, identity, and confirmation', async () => {
     let executions = 0;
     const host = await createTestHost();
