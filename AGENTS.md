@@ -23,7 +23,8 @@ context, not runtime authority.
 - Normal reviewed Epoch: one comprehensive Sol reviewer expected, two launches
   maximum, sequential only. Sol uses `high` reasoning by default.
 - Autonomous outer run: four Sol launches maximum.
-- Normal successful Product Epochs use `AUTO_MERGE_AFTER_PASS`.
+- Normal successful Product Epochs automatically integrate after PASS or the
+  governed exhausted-budget Luna final-corrective gate.
 - Product runtime state lives in one Outer Run GitHub Issue and one Epoch
   GitHub PR, never in tracked repository runtime files.
 - Never use Git worktrees.

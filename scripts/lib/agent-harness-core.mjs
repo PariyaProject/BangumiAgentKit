@@ -125,6 +125,11 @@ export function createEpochState({
     },
     adversarial_preflight: { completed: false, summary: '' },
     findings: [],
+    review_history: [],
+    corrective_closure: [],
+    final_corrective_sha: null,
+    final_corrective_base_sha: null,
+    final_corrective_reason: null,
     branch: null,
     pr_number: null,
     next_action: 'IMPLEMENT_FIRST_WORK_PACKAGE',
@@ -212,6 +217,98 @@ export function assertAdversarialPreflight(preflight) {
   return true;
 }
 
+function requireTextArray(value, code, field) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HarnessInvariantError(code, `${field} must be a non-empty array`, { field });
+  }
+  value.forEach((item, index) => requireText(item, code, `${field}[${index}]`));
+}
+
+function normalizeFindings(findings, reviewNumber) {
+  if (!Array.isArray(findings)) {
+    throw new HarnessInvariantError('INVALID_REVIEW_FINDINGS', 'findings must be an array');
+  }
+  const normalized = findings.map((finding, index) => {
+    if (!finding || typeof finding !== 'object' || Array.isArray(finding)) {
+      throw new HarnessInvariantError(
+        'INVALID_REVIEW_FINDINGS',
+        `findings[${index}] must be an object`,
+      );
+    }
+    requireText(finding.summary, 'INVALID_REVIEW_FINDINGS', `findings[${index}].summary`);
+    return {
+      ...finding,
+      id: finding.id || `sol-${reviewNumber}-finding-${index + 1}`,
+    };
+  });
+  if (new Set(normalized.map((finding) => finding.id)).size !== normalized.length) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_FINDINGS',
+      'Finding ids must be unique within one review result',
+    );
+  }
+  return normalized;
+}
+
+export function assertCorrectiveClosure(epoch, closure = epoch?.corrective_closure) {
+  const findings = epoch?.findings ?? [];
+  if (findings.length === 0) return true;
+  if (!Array.isArray(closure)) {
+    throw new HarnessInvariantError(
+      'CORRECTIVE_CLOSURE_INCOMPLETE',
+      'Corrective closure must cover every active finding',
+    );
+  }
+  const findingIds = new Set(findings.map((finding) => finding.id));
+  if (findingIds.has(undefined) || findingIds.size !== findings.length) {
+    throw new HarnessInvariantError(
+      'CORRECTIVE_CLOSURE_INCOMPLETE',
+      'Every active finding must have one stable unique id',
+    );
+  }
+  const seen = new Set();
+  for (const [index, item] of closure.entries()) {
+    requireText(
+      item?.finding_id,
+      'CORRECTIVE_CLOSURE_INCOMPLETE',
+      `corrective_closure[${index}].finding_id`,
+    );
+    if (!findingIds.has(item.finding_id) || seen.has(item.finding_id)) {
+      throw new HarnessInvariantError(
+        'CORRECTIVE_CLOSURE_INCOMPLETE',
+        'Corrective closure must map exactly once to every active finding',
+        { findingId: item.finding_id },
+      );
+    }
+    seen.add(item.finding_id);
+    for (const field of ['root_cause', 'equivalence_class', 'generalized_fix']) {
+      requireText(
+        item[field],
+        'CORRECTIVE_CLOSURE_INCOMPLETE',
+        `corrective_closure[${index}].${field}`,
+      );
+    }
+    requireTextArray(
+      item.regression_tests,
+      'CORRECTIVE_CLOSURE_INCOMPLETE',
+      `corrective_closure[${index}].regression_tests`,
+    );
+    requireTextArray(
+      item.validation,
+      'CORRECTIVE_CLOSURE_INCOMPLETE',
+      `corrective_closure[${index}].validation`,
+    );
+  }
+  if (seen.size !== findingIds.size) {
+    throw new HarnessInvariantError(
+      'CORRECTIVE_CLOSURE_INCOMPLETE',
+      'Corrective closure must cover every active finding',
+      { expected: [...findingIds], actual: [...seen] },
+    );
+  }
+  return true;
+}
+
 export function assertCandidateInvariant({ candidateSha, branchHeadSha, prHeadSha }) {
   requireText(candidateSha, 'CANDIDATE_INVARIANT_FAILED', 'candidate_sha');
   if (candidateSha !== branchHeadSha || candidateSha !== prHeadSha) {
@@ -264,8 +361,8 @@ export function afterPassBaseAction({ reviewedBaseSha, currentBaseSha, epochRevi
       }
     : {
         ready: false,
-        action: 'PARK_SAME_PR',
-        code: 'PARKED_REVIEW_LIMIT',
+        action: 'SYNCHRONIZE_VALIDATE_FINAL_CORRECTIVE',
+        code: 'FINAL_CORRECTIVE_BASE_SYNC_REQUIRED',
       };
 }
 
@@ -279,6 +376,7 @@ export function assertReviewReadiness({
   assertNoLegacyRuntimeChanges(changedPaths);
   assertScopeClosure(epoch.scope_closure);
   assertAdversarialPreflight(epoch.adversarial_preflight);
+  assertCorrectiveClosure(epoch);
   assertCandidateInvariant({
     candidateSha: epoch.candidate_sha,
     branchHeadSha,
@@ -319,6 +417,12 @@ export function reserveReview(run, epoch) {
   ) {
     throw new HarnessInvariantError('REVIEW_BUDGET_EXHAUSTED', 'No review launch remains');
   }
+  if (nextEpoch.state !== 'REVIEW_READY') {
+    throw new HarnessInvariantError(
+      'REVIEW_NOT_READY',
+      `Epoch state ${nextEpoch.state} cannot reserve a reviewer`,
+    );
+  }
   nextRun.outer_sol.reserved = 1;
   nextEpoch.review.reserved = 1;
   nextEpoch.state = 'REVIEW_RESERVED';
@@ -346,6 +450,18 @@ export function markReviewStarted(run, epoch, reviewerId) {
     throw new HarnessInvariantError(
       'REVIEW_RESERVATION_MISMATCH',
       'Epoch and outer reservation ids do not match',
+    );
+  }
+  const previousReview = nextEpoch.review_history?.at(-1);
+  if (
+    nextEpoch.review.consumed > 0 &&
+    previousReview?.reviewer_id &&
+    previousReview.reviewer_id !== reviewerId
+  ) {
+    throw new HarnessInvariantError(
+      'SAME_REVIEWER_REQUIRED',
+      'Sol #2 must continue the same reviewer identity',
+      { expected: previousReview.reviewer_id, actual: reviewerId },
     );
   }
   nextRun.outer_sol.reserved = 0;
@@ -399,8 +515,25 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
       'No running reviewer can return a result',
     );
   }
+  const reviewerId = nextEpoch.review.reviewer_id;
+  const normalizedFindings = normalizeFindings(findings, nextEpoch.review.consumed);
+  if (verdict === 'CORRECTIVE_REQUIRED' && normalizedFindings.length === 0) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_FINDINGS',
+      'A corrective verdict must include at least one actionable finding',
+    );
+  }
+  nextEpoch.review_history ??= [];
+  nextEpoch.review_history.push({
+    review_number: nextEpoch.review.consumed,
+    reviewer_id: reviewerId,
+    candidate_sha: nextEpoch.candidate_sha,
+    reviewed_base_sha: nextEpoch.reviewed_base_sha,
+    verdict,
+    findings: normalizedFindings,
+  });
   nextEpoch.review.reviewer_id = null;
-  nextEpoch.findings = findings;
+  nextEpoch.findings = normalizedFindings;
   if (verdict === 'PASS') {
     nextEpoch.state = 'REVIEW_PASSED';
     nextEpoch.review_pass_sha = nextEpoch.candidate_sha;
@@ -415,20 +548,25 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
     nextRun.next_action = 'SELECT_INDEPENDENT_SAFE_EPOCH_OR_STOP';
     nextRun.state = 'ACTIVE';
   } else if (verdict === 'CORRECTIVE_REQUIRED') {
+    nextEpoch.candidate_sha = null;
+    nextEpoch.review_pass_sha = null;
+    nextEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
+    nextEpoch.corrective_closure = [];
+    nextEpoch.final_corrective_sha = null;
+    nextEpoch.final_corrective_base_sha = null;
+    nextEpoch.final_corrective_reason = null;
     if (nextEpoch.review.consumed >= nextEpoch.review.max) {
-      nextEpoch.state = 'PARKED_REVIEW_LIMIT';
-      nextEpoch.next_action = 'AWAIT_HUMAN';
-      nextRun.state = 'QUALITY_CIRCUIT_BREAKER';
-      nextRun.active_epoch_pr = null;
-      if (!nextRun.parked_epoch_prs.includes(nextEpoch.pr_number)) {
-        nextRun.parked_epoch_prs.push(nextEpoch.pr_number);
-      }
-      nextRun.next_action = 'HUMAN_INSPECTION_REQUIRED';
+      nextEpoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
+      nextEpoch.state = 'FINAL_CORRECTIVE_REQUIRED';
+      nextEpoch.next_action = 'LUNA_FIX_REVIEW_LIMIT_FINDINGS';
+      nextRun.state = 'EPOCH_ACTIVE';
+      nextRun.active_epoch_pr = nextEpoch.pr_number;
+      nextRun.parked_epoch_prs = nextRun.parked_epoch_prs.filter(
+        (number) => number !== nextEpoch.pr_number,
+      );
+      nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}_FINAL_CORRECTIVE`;
     } else {
       nextEpoch.state = 'CORRECTIVE_REQUIRED';
-      nextEpoch.candidate_sha = null;
-      nextEpoch.review_pass_sha = null;
-      nextEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
       nextEpoch.next_action = 'LUNA_FIX_ALL_P0_P1';
     }
   } else {
@@ -437,13 +575,79 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
   return { run: nextRun, epoch: nextEpoch };
 }
 
-export function assertMergeReadiness({ epoch, branchHeadSha, prHeadSha, currentBaseSha }) {
-  if (epoch.state !== 'REVIEW_PASSED' || epoch.review_pass_sha !== epoch.candidate_sha) {
+export function resumeReviewLimitForFinalCorrective(run, epoch) {
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
+  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  if (
+    nextEpoch.state !== 'PARKED_REVIEW_LIMIT' ||
+    nextEpoch.review.consumed < nextEpoch.review.max
+  ) {
     throw new HarnessInvariantError(
-      'REVIEW_PASS_REQUIRED',
-      'The exact Candidate must have a recorded PASS',
+      'REVIEW_LIMIT_RESUME_NOT_APPLICABLE',
+      'Only an exhausted legacy PARKED_REVIEW_LIMIT Epoch can enter final corrective',
     );
   }
+  const legacyCandidateSha = nextEpoch.candidate_sha;
+  nextEpoch.findings = normalizeFindings(nextEpoch.findings ?? [], nextEpoch.review.consumed);
+  if (nextEpoch.findings.length === 0) {
+    throw new HarnessInvariantError(
+      'REVIEW_LIMIT_RESUME_NOT_APPLICABLE',
+      'A legacy review-limit Epoch must contain unresolved findings',
+    );
+  }
+  nextEpoch.review_history ??= [];
+  if (nextEpoch.review_history.at(-1)?.verdict !== 'CORRECTIVE_REQUIRED') {
+    nextEpoch.review_history.push({
+      review_number: nextEpoch.review.consumed,
+      reviewer_id: null,
+      candidate_sha: legacyCandidateSha,
+      reviewed_base_sha: nextEpoch.reviewed_base_sha,
+      verdict: 'CORRECTIVE_REQUIRED',
+      findings: cloneState(nextEpoch.findings),
+      migrated_from_legacy_review_limit: true,
+    });
+  }
+  nextEpoch.corrective_closure = [];
+  nextEpoch.candidate_sha = null;
+  nextEpoch.review_pass_sha = null;
+  nextEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
+  nextEpoch.final_corrective_sha = null;
+  nextEpoch.final_corrective_base_sha = null;
+  nextEpoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
+  nextEpoch.state = 'FINAL_CORRECTIVE_REQUIRED';
+  nextEpoch.next_action = 'LUNA_FIX_REVIEW_LIMIT_FINDINGS';
+  nextRun.state = 'EPOCH_ACTIVE';
+  nextRun.active_epoch_pr = nextEpoch.pr_number;
+  nextRun.pending_epoch = null;
+  nextRun.parked_epoch_prs = nextRun.parked_epoch_prs.filter(
+    (number) => number !== nextEpoch.pr_number,
+  );
+  nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}_FINAL_CORRECTIVE`;
+  return { run: nextRun, epoch: nextEpoch };
+}
+
+export function assertMergeReadiness({ epoch, branchHeadSha, prHeadSha, currentBaseSha }) {
+  const latestReview = epoch.review_history?.at(-1);
+  const passAuthority =
+    epoch.state === 'REVIEW_PASSED' && epoch.review_pass_sha === epoch.candidate_sha;
+  const finalCorrectiveAuthority =
+    epoch.state === 'FINAL_CORRECTIVE_READY' &&
+    epoch.review?.consumed >= epoch.review?.max &&
+    ((epoch.final_corrective_reason === 'REVIEW_LIMIT_FINDINGS' &&
+      latestReview?.verdict === 'CORRECTIVE_REQUIRED') ||
+      (epoch.final_corrective_reason === 'BASE_DRIFT_AFTER_PASS' &&
+        latestReview?.verdict === 'PASS')) &&
+    latestReview?.review_number === epoch.review?.consumed &&
+    epoch.final_corrective_sha === epoch.candidate_sha;
+  if (!passAuthority && !finalCorrectiveAuthority) {
+    throw new HarnessInvariantError(
+      'REVIEW_PASS_REQUIRED',
+      'The exact Candidate needs a PASS or exhausted-budget final-corrective authority',
+    );
+  }
+  if (finalCorrectiveAuthority) assertCorrectiveClosure(epoch);
   assertCandidateInvariant({
     candidateSha: epoch.candidate_sha,
     branchHeadSha,
@@ -454,12 +658,15 @@ export function assertMergeReadiness({ epoch, branchHeadSha, prHeadSha, currentB
     ciSha: epoch.ci?.sha,
     ciStatus: epoch.ci?.status,
   });
-  if (epoch.reviewed_base_sha !== currentBaseSha) {
+  const authorizedBaseSha = passAuthority
+    ? epoch.reviewed_base_sha
+    : epoch.final_corrective_base_sha;
+  if (authorizedBaseSha !== currentBaseSha) {
     throw new HarnessInvariantError(
-      'PASS_INVALIDATED_BASE_DRIFT',
-      'Target base advanced after PASS',
+      finalCorrectiveAuthority ? 'FINAL_CORRECTIVE_BASE_DRIFT' : 'PASS_INVALIDATED_BASE_DRIFT',
+      'Target base advanced after integration authority was recorded',
       {
-        reviewedBaseSha: epoch.reviewed_base_sha,
+        authorizedBaseSha,
         currentBaseSha,
       },
     );
