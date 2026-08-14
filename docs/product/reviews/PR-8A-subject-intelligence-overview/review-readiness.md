@@ -1,11 +1,17 @@
 # PR-8A — Review Readiness
 
-Status: `PARKED_REVIEW_LIMIT`
+Status: `HUMAN_REVIEW_READY`
+
+Historical independent-review status: `PARKED_REVIEW_LIMIT`
 
 This packet records the final sequential comprehensive TIER_2 review of the
 PR-8A Subject Intelligence Overview Epoch. The exact implementation Candidate
 passed mandatory CI but did not pass independent review; the milestone is
 parked at its review limit and is not frozen.
+
+The human-directed corrective checkpoint at the end of this packet is a new
+implementation Candidate for human review. It does not alter the historical
+Sol verdicts or claim an independent review PASS.
 
 ## Candidate and integration identity
 
@@ -116,6 +122,39 @@ parked at `PARKED_REVIEW_LIMIT`.
 ## Sol #2 result
 
 The four P1 findings are recorded in the complete independent report linked
-above. This outer Goal must not modify PR-8A's implementation or spend a third
-review launch. The next safe action is to persist the parked state and select a
-new independent coherent Epoch from the backlog.
+above. This historical Sol #2 packet must not be read as authorizing a third
+review launch. The human-directed corrective checkpoint below is the current
+handoff and does not alter the independent verdict.
+
+## Human-directed corrective checkpoint — 2026-08-14
+
+This is the current human-review handoff for the explicit Luna-only corrective
+authorized on the existing PR-8A branch. The historical TIER_2 review budget
+remains exhausted at `2 / 2`, the outer ledger remains `2 / 4`, and no Sol
+launch was made for this corrective.
+
+- Starting branch tip: `e0f5416837f60f60b3d37c9cd4be3da3fcf0ea94`.
+- New `HUMAN_REVIEW_CANDIDATE`:
+  `05288aecf80f040213dc4fdc938f2838775b9829`.
+- Corrected P1 roots: Subject Overview rendered cover/character images are
+  bounded through AssetResolver with rejected/failed images on the placeholder
+  path and no raw URL fallback; provider stats `retrievedAt` is after source
+  completion; composition emits stable `derived-s7` evidence with
+  `subject-overview-composition-v1` and deterministic state/limit/partial
+  provenance; and visual fixtures use mocked dependencies through the real
+  semantic result, ViewModel, Renderer, and PNG path.
+- Focused tests: provider 9, semantic 13, renderer 4; all passed. Full local
+  validation and the final deterministic 10-image 640/960 visual matrix passed
+  and were manually inspected. The final visual fixtures include complete,
+  missing-character, partial, unavailable, and not-found states with dense
+  long-CJK content.
+- Exact-SHA CI run
+  [31770406756](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31770406756)
+  passed all six required jobs: `sqlite-default`, `host-integration`,
+  `standalone-release-smoke`, `postgres-compat`, `provider-foundation`, and
+  `discovery-foundation`.
+- Luna pre-human falsification found and closed the direct-template raw-image
+  fallback risk; no unresolved P0/P1/P2 blocker is claimed by this checkpoint.
+- Current state: `HUMAN_REVIEW_READY`. PR #6 is open on
+  `codex/pr-8a-subject-intelligence-overview`; the Candidate is not frozen,
+  merged, closed, or independently approved. Await human review and stop.

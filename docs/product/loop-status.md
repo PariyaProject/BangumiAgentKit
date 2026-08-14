@@ -49,8 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`MILESTONE_PARKED_REVIEW_LIMIT / DISCOVERY_READY — PR-8A Sol #2 returned
-CORRECTIVE_REQUIRED; outer ledger is 2 consumed of 4 authorized`
+`HUMAN_REVIEW_READY / OUTER_LOOP_STOPPED — user-directed PR-8A corrective
+checkpoint persisted; no new Epoch was selected`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -58,7 +58,8 @@ Outer Sol Review Budget Authorized / Consumed:
 
 Outer Review Budget State:
 
-`ACTIVE / DISCOVERY_READY`
+`STOPPED_AT_HUMAN_REVIEW_READY — 2 consumed of 4 authorized; 2 remain
+unspent and no additional Sol launch was made`
 
 Explicit Outer Non-Scope:
 
@@ -89,11 +90,12 @@ Current-governance plan:
 
 Current Milestone State:
 
-`PARKED_REVIEW_LIMIT`
+`HUMAN_REVIEW_READY (historical independent-review state remains
+PARKED_REVIEW_LIMIT)`
 
 Current Phase:
 
-`MILESTONE_PARKED_REVIEW_LIMIT / PERSISTED`
+`HUMAN_REVIEW_READY / PERSISTED`
 
 Review Boundary Rationale:
 
@@ -104,11 +106,12 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Sol #2 found four P1 blockers: subject-overview images bypass the renderer
-asset pipeline; successful stats evidence can use a pre-dispatch timestamp;
-versioned deterministic composition-formula provenance is absent; and the
-corrected visual matrix uses semantically contradictory degraded fixtures. The
-Candidate is not frozen or merged; PR-8A is parked at its TIER_2 review limit.`
+`A human-directed Luna-only corrective resolved all four historical P1 roots:
+bounded Subject Overview cover/character assets now use AssetResolver with no
+raw URL fallback; stats retrievedAt is post-completion; composition evidence is
+stable derived-s7 with a versioned deterministic formula; and visual fixtures
+now flow from mocked dependencies through semantic result, ViewModel, and
+Renderer. The Candidate is not frozen or merged.`
 
 Primary Model / Reasoning:
 
@@ -138,16 +141,14 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`998d4c4 fix: harden subject overview evidence and bounds` /
-`998d4c4935f52d4cdf1543ca1663d68d137065fc`
+`05288ae fix: resolve PR-8A human review findings` /
+`05288aecf80f040213dc4fdc938f2838775b9829`
 
 Tests and Exact-SHA CI:
 
-`Candidate 998d4c4935f52d4cdf1543ca1663d68d137065fc passed local validation and
-mandatory exact-SHA CI run 31766543465 (6/6), but Sol #2 returned
-CORRECTIVE_REQUIRED with 0 P0 / 4 P1 / 0 P2 findings. Full reports are at
-docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md and
-sol-2-review.md. The Candidate is not frozen.`
+`Candidate 05288aecf80f040213dc4fdc938f2838775b9829 passed the final local
+validation matrix and mandatory exact-SHA CI run 31770406756 (6/6). It is a
+HUMAN_REVIEW_CANDIDATE only: no independent PASS, Freeze, or merge is claimed.`
 
 Integration Contract:
 
@@ -160,21 +161,22 @@ Integration Contract:
 - Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
   the dedicated feature branch, and return to synchronized `master` without
   touching historical branches;
-- Integration State: `NOT_STARTED / PARKED_REVIEW_LIMIT`;
+- Integration State: `NOT_STARTED / HUMAN_REVIEW_READY`;
 - Implementation Frozen SHA: `N/A`;
 - Merge Commit SHA: `N/A`.
 
 Human Authorization State:
 
-`USER-AUTHORIZED fresh AUTONOMOUS_EVOLUTION_TIER2 outer Goal; protected
-Human-On-Exception boundaries remain active.`
+`USER-AUTHORIZED HUMAN-DIRECTED LUNA-ONLY CORRECTIVE on existing PR-8A;
+protected Human-On-Exception boundaries remain active; no Sol, subagent,
+Freeze, merge, or new Epoch authorization was used.`
 
 Next Action:
 
-`Persist Sol #2's full report and parked state, push governance metadata, then
-verify the recorded base is still current, return to synchronized master, and
-enter opportunity discovery for an independent safe Epoch. Do not alter PR-8A,
-freeze Candidate 998d4c4, merge PR #6, or launch Sol #3.`
+`STOP at HUMAN_REVIEW_READY. Await human review of Candidate
+05288aecf80f040213dc4fdc938f2838775b9829 on PR #6. Do not launch Sol, Freeze,
+merge, close, reset, start recovery, select a new Epoch, or enter opportunity
+discovery.`
 
 Sol #1 Runtime Checkpoint:
 
@@ -195,6 +197,26 @@ Sol #2 Runtime Checkpoint:
 COMPLETED_CORRECTIVE_REQUIRED observed at 2026-08-14T03:39:50Z; milestone Sol
 budget 2/2 consumed, outer budget 2/4 consumed; report persisted at
 docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md.`
+
+Human-Directed Corrective Checkpoint — 2026-08-14:
+
+`Starting PR-8A tip e0f5416837f60f60b3d37c9cd4be3da3fcf0ea94; implementation
+Candidate 05288aecf80f040213dc4fdc938f2838775b9829; exact-SHA CI
+31770406756 passed sqlite-default, host-integration,
+standalone-release-smoke, postgres-compat, provider-foundation, and
+discovery-foundation. Focused and full local validation, semantic/provider/
+renderer/security/asset checks, OpenAPI/catalog verification, deterministic
+640/960 visual QA, and Luna pre-human falsification all passed. The current
+branch equals origin/codex/pr-8a-subject-intelligence-overview, PR #6 remains
+open, and the truthful resumable stop state is HUMAN_REVIEW_READY. Historical
+Sol #1/#2 verdicts and the milestone PARKED_REVIEW_LIMIT ledger are preserved;
+this corrective did not spend a Sol launch or claim independent review PASS.`
+
+Outer-loop stop rationale:
+
+`The user explicitly stopped the self-evolution outer loop before any further
+opportunity discovery or Epoch selection. The two remaining outer Sol launches
+remain unspent.`
 
 ---
 

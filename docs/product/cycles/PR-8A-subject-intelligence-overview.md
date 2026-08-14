@@ -1,12 +1,18 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `PARKED_REVIEW_LIMIT`
+Status: `HUMAN_REVIEW_READY`
+
+Historical independent-review status: `PARKED_REVIEW_LIMIT`
 
 Sol #2 returned `CORRECTIVE_REQUIRED` against the corrected Candidate. The
 milestone exhausted its TIER_2 review budget without a PASS and is parked
 without freeze or merge; Sol #3 is prohibited. The full independent report is
 persisted at
 `docs/product/reviews/PR-8A-subject-intelligence-overview/sol-2-review.md`.
+
+The later human-directed corrective checkpoint below does not rewrite either
+Sol verdict, does not spend another Sol launch, and does not claim Freeze or
+merge.
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized
@@ -309,3 +315,35 @@ milestone or outer launch ledgers.
 - State: `PARKED_REVIEW_LIMIT`; implementation is not frozen, integration is
   not started, and Sol #3 is prohibited. The outer ledger consumed two of four
   authorized Sol launches and may return to independent opportunity discovery.
+
+## Human-directed corrective checkpoint — 2026-08-14
+
+This checkpoint is the current resumable state after an explicit user-directed
+Luna-only corrective on the existing branch and PR. The historical Sol #2
+verdict above remains unchanged.
+
+- Starting branch tip: `e0f5416837f60f60b3d37c9cd4be3da3fcf0ea94`.
+- New implementation Candidate:
+  `05288aecf80f040213dc4fdc938f2838775b9829`.
+- Corrected roots: bounded AssetResolver extraction for only rendered cover and
+  character images with no raw URL fallback; post-completion provider stats
+  retrieval timestamps; stable `derived-s7` composition evidence with
+  `subject-overview-composition-v1`; and semantic-to-PNG visual fixtures with
+  truthful state/coverage invariants.
+- Final local validation is green, including build, typecheck, lint, full
+  unit/render, semantic, provider, discovery, contract, standalone, SQLite
+  integration, OpenAPI/catalog, and renderer security/asset checks.
+- Visual QA rendered and inspected complete, missing-character, partial,
+  unavailable, and not-found states at 640px and 960px with dense long-CJK
+  content.
+- Exact-SHA CI run
+  [31770406756](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31770406756)
+  passed all six required jobs: `sqlite-default`, `host-integration`,
+  `standalone-release-smoke`, `postgres-compat`, `provider-foundation`, and
+  `discovery-foundation`.
+- State: `HUMAN_REVIEW_READY`; PR #6 remains open, the Candidate is not a
+  `SOL_PASS_CANDIDATE` or `FROZEN` Candidate, integration is not started, and
+  no additional Sol or generic subagent was used.
+- Stop: do not launch Sol, Freeze, merge, close, reset, start recovery, select
+  a new Epoch, or enter opportunity discovery until the user changes this
+  instruction.
