@@ -1,6 +1,6 @@
 # PR-8A — Review Readiness
 
-Status: `READY_FOR_SOL_1`
+Status: `SOL_1_RUNNING`
 
 This packet authorizes the first sequential comprehensive TIER_2 review of the
 PR-8A Subject Intelligence Overview Epoch. It records evidence for the exact

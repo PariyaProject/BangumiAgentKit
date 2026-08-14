@@ -49,9 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / REVIEW_AUTHORIZED — exact Candidate passed local validation and
-all six mandatory remote CI jobs; outer ledger remains at 4 authorized / 0
-consumed`
+`EPOCH_ACTIVE / REVIEW_RUNNING — Sol #1 launch checkpoint authorized against
+exact Candidate aeb2b34; outer ledger remains at 4 authorized / 0 consumed`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -90,7 +89,7 @@ Current-governance plan:
 
 Current Milestone State:
 
-`REVIEW_AUTHORIZED`
+`REVIEW_RUNNING`
 
 Current Phase:
 
@@ -172,9 +171,9 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Launch the recorded sequential TIER_2 Sol #1 comprehensive milestone
-reviewer against exact Candidate aeb2b34; do not edit tracked files while it
-runs.`
+`Sol #1 comprehensive milestone reviewer is launching against exact Candidate
+aeb2b34; do not edit tracked files while it runs. Record the runtime result,
+then either correct under the remaining Sol #2 budget or freeze.`
 
 ---
 
