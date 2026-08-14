@@ -1,6 +1,10 @@
 # BangumiAgentKit Product Opportunity Log
 
-## Active self-evolution selection record — 2026-08-14
+## Archived V2 self-evolution selection record — 2026-08-14
+
+This section preserves product-selection provenance; it is not active Harness
+runtime state. Harness V3 runtime truth lives only in its Outer Run Issue and
+Epoch PR. The opportunity entries below remain durable product knowledge.
 
 The fresh `AUTONOMOUS_EVOLUTION_TIER2` outer Goal selected **OP-008 Subject
 Intelligence Overview** as the highest-value safe next Epoch from synchronized
@@ -13,8 +17,9 @@ require a protected boundary change.
 Selection comparison and provenance:
 
 - OP-008 was selected as the highest combination of user value and Agent
-  leverage while remaining bounded and source-reliable. It is now parked at
-  the TIER_2 review limit and is not delivered or frozen.
+  leverage while remaining bounded and source-reliable. Its independent V2
+  review remained parked at the TIER_2 limit; it was later integrated by
+  explicit human authorization without claiming an independent Freeze.
 - OP-003 Community Discussion Spike remains deferred. Its existing entry
   requires S3 + S6 + S7; current policy does not broadly enable Structured Web,
   HTML, or historical snapshot collection, so it is not an immediately safe
@@ -35,7 +40,7 @@ Sol #2's full review evidence is
 ## OP-008 Subject Intelligence Overview
 
 Status:
-PARKED_REVIEW_LIMIT
+MERGED_BY_HUMAN_AUTHORIZATION / HISTORICAL_REVIEW_PARKED
 
 User questions:
 

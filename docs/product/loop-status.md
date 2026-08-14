@@ -1,4 +1,15 @@
-# BangumiAgentKit Product Execution Status
+# Archived Legacy Product Execution Status
+
+> **HARNESS V2 ARCHIVE — DO NOT UPDATE FOR V3 EXECUTION**
+>
+> This file preserves the final tracked runtime ledger from the legacy Harness.
+> It is not active runtime truth and defines no current execution semantics.
+> Harness V3 stores outer runtime state in one GitHub Issue and Epoch runtime
+> state in one GitHub PR, as defined only by
+> [`docs/agent/HARNESS.md`](../agent/HARNESS.md). Normal V3 Product Epochs must
+> never modify this file.
+
+# BangumiAgentKit Product Execution Status (historical content)
 
 ## North Star
 
