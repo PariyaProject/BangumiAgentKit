@@ -21,6 +21,7 @@ import { runCli } from '../../apps/standalone/src/cli.js';
 import { StandaloneOAuthController } from '../../apps/standalone/src/oauth-controller.js';
 import { StandaloneHost } from '../../apps/standalone/src/standalone-host.js';
 import { Presenter, sanitizeOutput } from '../../apps/standalone/src/presenter.js';
+import { toSafeErrorResult } from '../../apps/standalone/src/errors.js';
 
 describe('PR-6R-C standalone runtime', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -40,16 +41,22 @@ describe('PR-6R-C standalone runtime', () => {
   });
 
   async function createTestHost(
-    options: { registry?: ToolRegistry; artifactStore?: LocalArtifactStore } = {},
+    options: {
+      registry?: ToolRegistry;
+      artifactStore?: LocalArtifactStore;
+      publicHttpClient?: HttpClient;
+    } = {},
   ) {
     const storage = new MemoryStorage();
-    const publicHttpClient = new HttpClient({
-      fetchFn: async () =>
-        new Response(JSON.stringify({ data: [], total: 0, limit: 20, offset: 0 }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-    });
+    const publicHttpClient =
+      options.publicHttpClient ||
+      new HttpClient({
+        fetchFn: async () =>
+          new Response(JSON.stringify({ data: [], total: 0, limit: 20, offset: 0 }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      });
     const artifactStore =
       options.artifactStore ||
       new LocalArtifactStore({ artifactDir: path.join(tempDir, 'artifacts') });
@@ -235,6 +242,130 @@ describe('PR-6R-C standalone runtime', () => {
       value: { artifact: { id: 'revision-subject-218707', width: 640 } },
     });
     expect(executions).toBe(1);
+    await host.close();
+  });
+
+  it('PR-7G: standalone exposes semantic and render watch-order routes with bounded inputs', async () => {
+    const host = await createTestHost();
+    let semanticInput: Record<string, unknown> | undefined;
+    let renderInput: Record<string, unknown> | undefined;
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.get_series_watch_order',
+        description: 'series fixture',
+        input: z.object({
+          subjectId: z.number().int().positive(),
+          depth: z.number().int().min(0).max(2).optional(),
+          maxNodes: z.number().int().min(1).max(16).optional(),
+          media: z.enum(['anime', 'all']).optional(),
+        }),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          semanticInput = input;
+          return { subjectId: input.subjectId, coverage: { maxNodes: input.maxNodes } };
+        },
+      }),
+    );
+    host.getRegistry().registerTool(
+      defineTool({
+        name: 'bangumi.render_series_watch_order',
+        description: 'series render fixture',
+        input: z.object({
+          subjectId: z.number().int().positive(),
+          depth: z.number().int().min(0).max(2).optional(),
+          maxNodes: z.number().int().min(1).max(16).optional(),
+          media: z.enum(['anime', 'all']).optional(),
+        }),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async (input) => {
+          renderInput = input;
+          return {
+            artifact: { id: 'series-fixture', mimeType: 'image/png', width: 640, height: 480 },
+          };
+        },
+      }),
+    );
+
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const semanticContext = {
+      host,
+      flags: parseCliArgs(['--json', 'watch-order', '218707']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+    await expect(
+      registry.execute(
+        ['watch-order', '218707', '--depth', '2', '--max-nodes', '4', '--media', 'all'],
+        semanticContext,
+      ),
+    ).resolves.toMatchObject({ value: { subjectId: 218707 } });
+    expect(semanticInput).toEqual({ subjectId: 218707, depth: 2, maxNodes: 4, media: 'all' });
+
+    const renderContext = {
+      host,
+      flags: parseCliArgs(['--json', 'render', 'watch-order', '218707']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+    await expect(
+      registry.execute(
+        ['render', 'watch-order', '218707', '--depth', '0', '--max-nodes', '3', '--media', 'anime'],
+        renderContext,
+      ),
+    ).resolves.toMatchObject({ value: { artifact: { id: 'series-fixture' } } });
+    expect(renderInput).toEqual({ subjectId: 218707, depth: 0, maxNodes: 3, media: 'anime' });
+
+    await expect(registry.execute(['help'], semanticContext)).resolves.toMatchObject({
+      value: expect.stringContaining('watch-order'),
+    });
+    await host.close();
+  });
+
+  it('PR-7G: standalone preserves structured non-retryable root relation failures', async () => {
+    const fetchFn = async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith('/v0/subjects/100')) {
+        return new Response(JSON.stringify({ id: 100, type: 2, name: '起点', name_cn: '起点' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('relation endpoint missing', { status: 404 });
+    };
+    const host = await createTestHost({
+      publicHttpClient: new HttpClient({ fetchFn: fetchFn as typeof fetch }),
+    });
+    const registry = new StandaloneCommandRegistry();
+    const presenter = new Presenter({ stdout: process.stdout, stderr: process.stderr });
+    const context = {
+      host,
+      flags: parseCliArgs(['--json', 'watch-order', '100']).flags,
+      presenter,
+      confirm: async () => false,
+    };
+
+    let thrown: unknown;
+    try {
+      await registry.execute(['watch-order', '100'], context);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toMatchObject({ code: 'NOT_FOUND', retryable: false, upstreamStatus: 404 });
+    expect(toSafeErrorResult(thrown)).toEqual({
+      ok: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: '未找到请求的资源。',
+        retryable: false,
+        nextAction: undefined,
+        confirmationId: undefined,
+      },
+    });
     await host.close();
   });
 

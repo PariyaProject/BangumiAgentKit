@@ -9,6 +9,7 @@ export * from './models/domain-index.js';
 export * from './models/calendar.js';
 
 export * from './services/subject-service.js';
+export * from './services/series-service.js';
 export * from './services/episode-service.js';
 export * from './services/character-service.js';
 export * from './services/person-service.js';

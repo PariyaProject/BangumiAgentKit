@@ -4,6 +4,7 @@ import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import { DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
   SubjectService,
+  SeriesService,
   UserService,
   CharacterService,
   CalendarService,
@@ -23,6 +24,7 @@ import {
   buildPersonProfileViewModel,
   buildRevisionTimelineViewModel,
   buildDiscoveryResultsViewModel,
+  buildSeriesRelationsViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 
@@ -308,6 +310,45 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSeriesWatchOrder = defineTool({
+    name: 'bangumi.render_series_watch_order',
+    description:
+      '生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；maxNodes 先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。非动画证据不会消耗动画节点上限。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
+      depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),
+      maxNodes: z
+        .number()
+        .int()
+        .min(1)
+        .max(16)
+        .optional()
+        .describe('动画推荐/遍历节点上限，1-16；根条目和非动画证据不消耗此上限；默认 8'),
+      media: z
+        .enum(['anime', 'all'])
+        .optional()
+        .describe(
+          'anime 的 related 只展示动画证据，但边证据/排除统计仍可保留观察到的非动画关系；all 额外展示最多 8 条非动画证据',
+        ),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const publicClient = deps?.executionSession?.client || deps?.publicHttpClient;
+      if (!publicClient) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const seriesService = new SeriesService(publicClient);
+      const result = await seriesService.getSeriesWatchOrder(input.subjectId, {
+        depth: input.depth,
+        maxNodes: input.maxNodes,
+        media: input.media,
+      });
+      return await executeRenderAndSave(buildSeriesRelationsViewModel(result));
+    },
+  });
+
   const renderQuerySubjects = defineTool({
     name: 'bangumi.render_query_subjects',
     description:
@@ -368,6 +409,7 @@ export function createRenderPresentationTools(
     renderCalendar,
     renderSearch,
     renderQuerySubjects,
+    renderSeriesWatchOrder,
     renderPersonProfile,
     renderRevisionTimeline,
   ] as const;

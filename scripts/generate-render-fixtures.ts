@@ -7,7 +7,14 @@ import {
   CastCardViewModel,
   CollectionProgressViewModel,
   CalendarViewModel,
+  buildSeriesRelationsViewModel,
 } from '../packages/renderer/dist/index.js';
+import type { SeriesRelationsViewModel } from '../packages/renderer/dist/index.js';
+import {
+  assertSeriesWatchOrderFixture,
+  buildSeriesWatchOrderFixtureRuns,
+  SERIES_FIXTURE_VARIANTS,
+} from './series-watch-order-fixtures.js';
 
 async function main() {
   const outputDir = path.join(process.cwd(), '.artifacts', 'render');
@@ -137,8 +144,131 @@ async function main() {
     `Saved calendar.png (${calendarResult.width}x${calendarResult.height}, ${calendarResult.buffer.length} bytes)`,
   );
 
+  // 6. Series / Watch-Order evidence fixtures. Each ViewModel is derived from
+  // a typed SeriesWatchOrderResult and checked before it reaches the renderer.
+  const seriesFixtures = await buildSeriesWatchOrderFixtureRuns();
+  for (const variant of SERIES_FIXTURE_VARIANTS) {
+    const fixture = seriesFixtures[variant];
+    assertSeriesWatchOrderFixture(fixture);
+    const viewModel = buildSeriesRelationsViewModel(fixture.result);
+    for (const width of [640, 960]) {
+      const renderResult = await renderService.renderCard(viewModel, {
+        width,
+        deviceScaleFactor: 1,
+      });
+      const filename = `series-relations-${variant}-${width}.png`;
+      fs.writeFileSync(path.join(outputDir, filename), renderResult.buffer);
+      console.log(
+        `Saved ${filename} (${renderResult.width}x${renderResult.height}, ${renderResult.buffer.length} bytes)`,
+      );
+    }
+  }
+
+  // 7. Realistic maximum display input: 17 steps, 24 related rows, and the
+  // service's 64-edge evidence boundary. This is a valid partial VM because
+  // the related evidence cap is explicit; the PNG is used for visual height
+  // and mobile/chat readability QA, not as a substitute for service fixtures.
+  const completeViewModel = buildSeriesRelationsViewModel(seriesFixtures.complete.result);
+  const maximumRootId = 900;
+  const maximumSteps = Array.from({ length: 17 }, (_, index) => {
+    const isRoot = index === 8;
+    const base = completeViewModel.steps[isRoot ? 1 : 0]!;
+    return {
+      ...base,
+      id: isRoot ? maximumRootId : maximumRootId + index + 1,
+      name: isRoot ? 'Maximum Input Root' : `Maximum Step ${index + 1}`,
+      nameCn: isRoot ? '最大输入起点' : `最大输入观看步骤 ${index + 1}`,
+      position: index + 1,
+      isRoot,
+      placement: isRoot
+        ? ('root' as const)
+        : index < 8
+          ? ('before_root' as const)
+          : ('after_root' as const),
+      placementReason: isRoot ? '请求的起始条目' : '起点直接关系标记为续集，置于起点后',
+    };
+  });
+  const maximumRelated = Array.from({ length: 24 }, (_, index) => {
+    const isAnime = index < 16;
+    const base = completeViewModel.related[isAnime ? 0 : 3]!;
+    return {
+      ...base,
+      id: maximumRootId + index + 1,
+      name: isAnime ? `Maximum Related ${index + 1}` : `Maximum Non-Anime ${index - 15}`,
+      nameCn: isAnime ? `最大关系证据 ${index + 1}` : `最大非动画证据 ${index - 15}`,
+      type: isAnime ? '动画' : '书籍',
+      includedInWatchOrder: isAnime,
+      ...(isAnime ? {} : { exclusionReason: 'media_type_not_anime' as const }),
+    };
+  });
+  const maximumEdges = Array.from({ length: 64 }, (_, index) => ({
+    ...completeViewModel.edges[0]!,
+    fromId: maximumRootId,
+    toId: maximumRootId + index + 1,
+    pathIds: [maximumRootId, maximumRootId + index + 1],
+  }));
+  const maximumViewModel: SeriesRelationsViewModel = {
+    ...completeViewModel,
+    subjectId: maximumRootId,
+    state: 'partial',
+    root: {
+      ...completeViewModel.root,
+      id: maximumRootId,
+      name: 'Maximum Input Root',
+      nameCn: '最大输入起点',
+    },
+    steps: maximumSteps,
+    related: maximumRelated,
+    edges: maximumEdges,
+    excluded: {
+      count: 48,
+      byReason: [
+        { reason: 'node_cap', count: 40 },
+        { reason: 'media_type_not_anime', count: 8 },
+      ],
+      samples: maximumRelated.slice(16, 20).map((item) => ({
+        ...item,
+        includedInWatchOrder: false,
+        exclusionReason: 'media_type_not_anime' as const,
+      })),
+    },
+    coverage: {
+      ...completeViewModel.coverage,
+      depth: 1,
+      maxNodes: 16,
+      animeNodeLimit: 16,
+      relatedLimit: 24,
+      relationRowsObserved: 64,
+      uniqueRelatedObserved: 64,
+      uniqueRelatedReturned: 24,
+      animeNodesObserved: 56,
+      animeNodesSelected: 16,
+      nonAnimeRowsObserved: 8,
+      nonAnimeRowsReturned: 8,
+      detailsAttempted: 16,
+      detailsFetched: 16,
+      edgeEvidenceReturned: 64,
+      relatedEvidenceTruncated: true,
+      truncated: true,
+      truncationReasons: ['maxNodes=16', 'related-evidence=24'],
+    },
+    evidence: { ...completeViewModel.evidence, evidenceCount: 18 },
+    warnings: ['关系证据达到有界上限 24；未展示的条目通过覆盖和排除统计保留。'],
+  };
+  for (const width of [640, 960]) {
+    const renderResult = await renderService.renderCard(maximumViewModel, {
+      width,
+      deviceScaleFactor: 1,
+    });
+    const filename = `series-relations-maximum-${width}.png`;
+    fs.writeFileSync(path.join(outputDir, filename), renderResult.buffer);
+    console.log(
+      `Saved ${filename} (${renderResult.width}x${renderResult.height}, ${renderResult.buffer.length} bytes)`,
+    );
+  }
+
   await renderService.close();
-  console.log('Successfully generated all 5 fixture images.');
+  console.log('Successfully generated all renderer fixture images.');
 }
 
 main().catch((err) => {

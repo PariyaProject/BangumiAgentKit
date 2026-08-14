@@ -38,6 +38,7 @@ Bangumi:
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
+  watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
   cast <subjectId>
   person <personId>
   staff <subjectId>
@@ -53,7 +54,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
+  render subject|watch-order|cast|person|calendar|revision|search|collection <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -78,6 +79,14 @@ function parsePositiveInteger(value: string | undefined, description: string): n
   const parsed = Number(requireArg(value, description));
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new StandaloneCliError(`USAGE_ERROR: ${description} must be a positive integer.`, 2);
+  }
+  return parsed;
+}
+
+function parseNonNegativeInteger(value: string | undefined, description: string): number {
+  const parsed = Number(requireArg(value, description));
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new StandaloneCliError(`USAGE_ERROR: ${description} must be a non-negative integer.`, 2);
   }
   return parsed;
 }
@@ -219,6 +228,22 @@ export class StandaloneCommandRegistry {
           subjectId: parsePositiveInteger(args[1], 'subject id'),
         }),
       };
+    }
+    if (command === 'watch-order') {
+      const watchArgs = args.slice(1);
+      const input: Record<string, unknown> = {
+        subjectId: parsePositiveInteger(watchArgs[0], 'subject id'),
+      };
+      const depth = takeOption(watchArgs, '--depth');
+      const maxNodes = takeOption(watchArgs, '--max-nodes');
+      const media = takeOption(watchArgs, '--media');
+      if (depth !== undefined) input.depth = parseNonNegativeInteger(depth, 'depth');
+      if (maxNodes !== undefined) input.maxNodes = parsePositiveInteger(maxNodes, 'max-nodes');
+      if (media !== undefined && media !== 'anime' && media !== 'all') {
+        throw new StandaloneCliError('USAGE_ERROR: media must be anime or all.', 2);
+      }
+      if (media !== undefined) input.media = media;
+      return { value: await runTool(ctx, 'bangumi.get_series_watch_order', input) };
     }
     if (command === 'cast') {
       return {
@@ -496,6 +521,20 @@ export class StandaloneCommandRegistry {
     if (kind === 'subject') {
       name = 'bangumi.render_subject_card';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'watch-order') {
+      input = {
+        subjectId: parsePositiveInteger(args[1], 'subject id'),
+      };
+      const depth = takeOption(args, '--depth');
+      const maxNodes = takeOption(args, '--max-nodes');
+      const media = takeOption(args, '--media');
+      if (depth !== undefined) input.depth = parseNonNegativeInteger(depth, 'depth');
+      if (maxNodes !== undefined) input.maxNodes = parsePositiveInteger(maxNodes, 'max-nodes');
+      if (media !== undefined && media !== 'anime' && media !== 'all') {
+        throw new StandaloneCliError('USAGE_ERROR: media must be anime or all.', 2);
+      }
+      if (media !== undefined) input.media = media;
+      name = 'bangumi.render_series_watch_order';
     } else if (kind === 'cast') {
       name = 'bangumi.render_cast_card';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };

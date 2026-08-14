@@ -35,7 +35,260 @@ Standing execution defaults:
 
 ---
 
-## Persistent Goal Ledger
+## Current Active Goal Ledger
+
+Goal Scope:
+
+`EXECUTE exactly one fresh PR-7G Recovery Epoch for Series / Watch-Order
+Intelligence, then stop at the recorded final state.`
+
+Current-governance plan:
+`docs/product/cycles/PR-7G-recovery-series-watch-order.md`
+
+Recovery Base SHA:
+
+`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e` — independently verified before
+mutation as `HEAD == master == origin/master` with a clean working tree.
+
+Historical recovery provenance is read-only: branch
+`codex/pr-7g-series-watch-order`, tip
+`15c08455731ac1b1acafd12feecb5683a2af9384`, initial Candidate
+`3459689e69c8c14774d31a967b2161ed1e686a9d`, corrected Candidate
+`08e1c4bc14269b110c24b4694819b652284aae46`. Historical review consumption and
+the historical `PARKED_REVIEW_LIMIT` state are not current runtime state.
+
+Historical PR #2 disposition:
+
+`CLOSED_SUPERSEDED_WITHOUT_MERGE — https://github.com/PariyaProject/BangumiAgentKit/pull/2`
+
+The supersession comment points to fresh Recovery PR #5. The historical branch
+`codex/pr-7g-series-watch-order` remains preserved and untouched.
+
+Explicit Non-Scope:
+
+- broad recovery-planning re-audit, discovery query semantics, provider/source
+  policy, Structured Web / HTML, authentication, authorization, credentials,
+  cookies, writes, persistence, migrations, releases, packages, and tags;
+- universal franchise ontology, full graph crawling, personalization,
+  snapshots, episode scheduling, and unrelated backlog opportunities;
+- changing frozen foundations or the merged PR-7H discovery presentation;
+- modifying, merging, rebasing, rewriting, deleting, or importing historical
+  PR-7G/PR-7H branch governance state;
+- generic subagents (`0 / 0`) and any Sol launch beyond this TIER_2 budget;
+- starting another Product Cycle after this execute-only Goal stops.
+
+Stopping Condition:
+
+Stop at `MERGED_GOAL_COMPLETE`, `FROZEN_GOAL_COMPLETE` only if integration is
+safely inapplicable/blocked, or a truthful documented review-limit, protected
+decision, exact-SHA CI/infrastructure, or unsafe-repository blocker.
+
+Selected Product Goal Profile:
+
+`UNATTENDED_TIER2 / EXECUTE_ONLY_UNATTENDED`
+
+Outer Goal State:
+
+`NOT_APPLICABLE — no AUTONOMOUS_EVOLUTION_TIER2 outer Goal is active`
+
+Current Milestone State:
+
+`PARKED_REVIEW_LIMIT`
+
+Current Product Review Epoch:
+
+`PR-7G Recovery — Series / Watch-Order Intelligence`
+
+Current Work Packages / `LUNA_STABLE` Summary:
+
+`Corrected SeriesService/evidence; semantic tool; series-relations renderer;
+Standalone/catalog/docs/tests — implementation and local validation are stable,
+but the final TIER_2 gate is parked after Sol #2 found 2 P1 blockers and the
+exact-Candidate CI state remained incoherent.`
+
+Review Boundary Rationale:
+
+`See docs/product/cycles/PR-7G-recovery-series-watch-order.md. These packages
+complete one tightly coupled series-question journey; source expansion,
+personalization, persistence, and unrelated renderer work are deferred.`
+
+Current Phase:
+
+`PARKED_REVIEW_LIMIT`
+
+Primary Model / Reasoning:
+
+- primary: GPT-5.6 Luna;
+- preferred reasoning: `max`;
+- minimum availability fallback: `xhigh`;
+- lower Luna reasoning: prohibited.
+
+Generic Subagent Budget Authorized / Consumed:
+
+`0 / 0`
+
+Review Tier:
+
+`TIER_2` — selected before implementation for this high-value,
+evidence-sensitive traversal/renderer recovery.
+
+Total Sol Review Budget Authorized / Consumed:
+
+`2 / 2 — 0 remaining; Sol #2 completed CORRECTIVE_REQUIRED; Sol #3 is
+prohibited`
+
+Reviewer Runtime Checkpoint:
+
+`sol_milestone_reviewer`, launch ordinal `Sol #2 of 2`, agent
+`019ff187-e693-7952-b5cd-99dcb9369812`, launched
+`2026-08-11T15:53:46Z`, deadline `2026-08-11T17:53:46Z`, Candidate
+`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`, runtime
+`COMPLETED_CORRECTIVE_REQUIRED`.
+Sol #1 closed `COMPLETED_CORRECTIVE_REQUIRED` and Sol #3 is prohibited.
+Historical launches are not current budget consumption.`
+
+Reviewer Result:
+
+`Sol #1 completed CORRECTIVE_REQUIRED with 0 P0, 3 P1, and 2 P2 findings.
+Sol #2 completed CORRECTIVE_REQUIRED with 0 P0, 2 P1, and 4 P2 findings; see
+docs/product/reviews/PR-7G-recovery-series-watch-order/sol-2-review.md. The
+final Candidate is not frozen and the milestone is parked at the review limit.`
+
+Outer Sol Review Budget Authorized / Consumed:
+
+`N/A / 0 — execute-only Goal; no outer self-evolution ledger`
+
+Current Outer Review Budget State:
+
+`NOT_APPLICABLE`
+
+Candidate SHA:
+
+`1e0cbd97fcdd0859187534fda67ae797c33e5d0e`
+
+Exact-SHA CI:
+
+`UNRESOLVED — run 31508533985 is tied to the exact corrected Candidate and its
+workflow header reports Success, but the job-level view still reported
+postgres-compat as Currently running; exact-Candidate CI cannot be claimed
+coherently.`
+
+Integration Policy:
+
+`AUTO_MERGE_AFTER_FREEZE`
+
+Target Base Branch:
+
+`master`
+
+Base SHA:
+
+`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e`
+
+Current Target Base SHA:
+
+`5e7d4ace51a1aa1657a36d78f2c1a54915a4e05e` at activation; re-fetch before
+integration.
+
+Feature Branch:
+
+`codex/recovery-pr-7g-series-watch-order`
+
+Feature Branch State:
+
+`PARKED_REVIEW_LIMIT — preserve this branch and historical branch read-only;
+no merge or cleanup was attempted after the final review failed to PASS.`
+
+Pull Request Number:
+
+`#5 — https://github.com/PariyaProject/BangumiAgentKit/pull/5`
+
+Historical PR #2:
+
+`CLOSED_SUPERSEDED_WITHOUT_MERGE — https://github.com/PariyaProject/BangumiAgentKit/pull/2`
+
+The historical branch `codex/pr-7g-series-watch-order` remains preserved
+read-only.
+
+Merge Strategy:
+
+`MERGE_COMMIT`
+
+Branch Cleanup Policy:
+
+`After verified merge and frozen-SHA ancestry, retire the fresh branch safely,
+synchronize local master with origin/master, and preserve historical branches.`
+
+Integration State:
+
+`PARKED_REVIEW_LIMIT — integration was not attempted because no Candidate
+passed the final TIER_2 review and exact-SHA CI evidence was incoherent.`
+
+Implementation Frozen SHA:
+
+`NOT_CREATED — no final PASS Candidate was frozen.`
+
+Merge Commit SHA:
+
+`NOT_CREATED`
+
+Next Action:
+
+`STOP: PARKED_REVIEW_LIMIT. The two-launch TIER_2 budget is exhausted without
+a PASS. Preserve the corrected Candidate and branch for a future explicitly
+authorized cycle; do not launch Sol #3 or integrate this PR.`
+
+Human Authorization State:
+
+`USER-AUTHORIZED EXECUTE-ONLY FRESH PR-7G RECOVERY; HUMAN-ON-EXCEPTION
+BOUNDARIES REMAIN ACTIVE`
+
+## Explicit Human-Authorized PR-7G Finalization Overlay
+
+The historical Recovery Epoch above remains immutable at `2 / 2` Sol launches
+and `PARKED_REVIEW_LIMIT`. A separate user-authorized finalization allowance is
+now active for the existing PR #5 branch only; it is not a new Product Review
+Epoch or a reset of the historical budget.
+
+Finalization plan:
+`docs/product/cycles/PR-7G-finalization.md`
+
+Finalization state:
+`HUMAN_APPROVED_FINALIZATION / FROZEN_PENDING_INTEGRATION — accepted Candidate
+fd48eb626b6b027031cc3884444963018beef2ed; exact-SHA CI run 31542758003 is
+green with all six mandatory jobs terminal SUCCESS; historical final Sol
+Candidate 5582f013... remains CORRECTIVE_REQUIRED; PR #5 remains unmerged`
+
+Historical finalization starting branch tip:
+`ebcfad4406104aa2a8a7775fcca74efa204db57b`
+
+Human-directed corrective starting branch tip:
+`6aa30f83eae94975787b6f81dc8d005ce600cd35`
+
+Finalization Sol budget:
+`1 authorized / 1 consumed; the sole sequential sol_milestone_reviewer
+returned CORRECTIVE_REQUIRED; no second launch is permitted. Corrective Sol
+launches: 0`
+
+Finalization branch and PR:
+`codex/recovery-pr-7g-series-watch-order` / `#5`; no new branch or PR.
+
+Historical branch protection:
+`codex/pr-7g-series-watch-order` remains preserved and untouched.
+
+Human-review readiness record:
+`docs/product/reviews/PR-7G-recovery-series-watch-order/human-review-ready.md`
+
+Human Final Review / Freeze record:
+`docs/product/reviews/PR-7G-recovery-series-watch-order/human-final-review-freeze.md`
+
+Next action:
+`Complete the authorized post-freeze merge of PR #5, then synchronize and
+record the final merged state. Do not launch Sol or start Self-Evolution.`
+
+---
+
+## Completed PR-7H Goal Ledger (historical record)
 
 Goal Scope:
 
@@ -217,7 +470,7 @@ Merge Strategy:
 Branch Cleanup Policy:
 
 `After verified merge and frozen-SHA ancestry, retire feature branches safely,
-synchronize local `master` with `origin/master`, and preserve historical PR #3
+synchronize local `master`with`origin/master`, and preserve historical PR #3
 branch/history as evidence.`
 
 Integration State:
