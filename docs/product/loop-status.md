@@ -49,8 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`INTEGRATION_PENDING_EXACT_REFRESH_CI / OUTER_LOOP_STOPPED — the existing PR
-branch was refreshed from current origin/master and awaits exact-SHA CI`
+`MILESTONE_CHECKPOINT_COMPLETE / OUTER_LOOP_STOPPED — PR #6 merged and the
+dedicated feature branch was retired; no new Epoch was selected`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -58,7 +58,7 @@ Outer Sol Review Budget Authorized / Consumed:
 
 Outer Review Budget State:
 
-`STOPPED_AT_INTEGRATION_BLOCKER — 2 consumed of 4 authorized; 2 remain
+`STOPPED_AFTER_MILESTONE_CHECKPOINT — 2 consumed of 4 authorized; 2 remain
 unspent and no additional Sol launch was made`
 
 Explicit Outer Non-Scope:
@@ -90,13 +90,13 @@ Current-governance plan:
 
 Current Milestone State:
 
-`INTEGRATION_PENDING_EXACT_REFRESH_CI (human-review Candidate remains
-HUMAN_REVIEW_READY; historical independent-review state remains
+`MILESTONE_CHECKPOINT_COMPLETE / MERGED (human-review Candidate integrated by
+explicit user authorization; historical independent-review state remains
 PARKED_REVIEW_LIMIT)`
 
 Current Phase:
 
-`INTEGRATION_PENDING_EXACT_REFRESH_CI / PERSISTED`
+`MERGED_AND_CLEANED_UP / PERSISTED`
 
 Review Boundary Rationale:
 
@@ -113,8 +113,8 @@ raw URL fallback; stats retrievedAt is post-completion; composition evidence is
 stable derived-s7 with a versioned deterministic formula; and visual fixtures
 now flow from mocked dependencies through semantic result, ViewModel, and
 Renderer. The corrected Candidate remains without an independent Sol PASS; the
-existing PR branch has now been refreshed from current master and is awaiting
-exact-SHA remote CI before the user-authorized merge.`
+existing PR branch was refreshed, exact-SHA CI passed, PR #6 was merged, and
+the dedicated branch was retired under explicit user authorization.`
 
 Primary Model / Reasoning:
 
@@ -140,19 +140,21 @@ reviewer for Sol #2 only if Sol #1 is CORRECTIVE_REQUIRED.`
 Base SHA / Feature Branch:
 
 `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc` /
-`codex/pr-8a-subject-intelligence-overview`
+`codex/pr-8a-subject-intelligence-overview (retired)`
 
 Latest Stable Commit / Candidate SHA:
 
-`0159daa chore: refresh PR-8A base for integration` /
-`0159daa5ce38dbd626458c007a8cf944df3f6454`
+`548bc4c Merge pull request #6 from PariyaProject/codex/pr-8a-subject-intelligence-overview` /
+`05288aecf80f040213dc4fdc938f2838775b9829` (human-review Candidate;
+refreshed branch tip `989262394e81abc71260422be2c51c41d22afdcb`)
 
 Tests and Exact-SHA CI:
 
 `Human-review Candidate 05288aecf80f040213dc4fdc938f2838775b9829 passed the
 prior final local matrix and exact-SHA CI run 31770406756 (6/6). Refreshed
-branch tip 0159daa5ce38dbd626458c007a8cf944df3f6454 passed the refreshed local
-matrix; exact-SHA remote CI is pending push. No independent PASS is claimed.`
+branch tip 989262394e81abc71260422be2c51c41d22afdcb passed the refreshed local
+matrix and exact-SHA remote CI run 31772037697 (6/6). No independent Sol PASS
+is claimed.`
 
 Integration Contract:
 
@@ -160,30 +162,31 @@ Integration Contract:
 - Target Base Branch: `master`;
 - Recorded Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`;
 - Previous review Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`;
-- Current Target Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`;
-- Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`;
+- Current Target Base SHA: `548bc4cd95bce8434de505342054ec6e77290496`;
+- Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6 (MERGED)`;
 - Merge Strategy: `MERGE_COMMIT`;
 - Branch Cleanup Policy: verify frozen-SHA ancestry and merged PR, retire only
   the dedicated feature branch, and return to synchronized `master` without
   touching historical branches;
-- Integration State: `INTEGRATION_PENDING_EXACT_REFRESH_CI`;
-- Implementation Frozen SHA: `N/A`;
-- Merge Commit SHA: `N/A`.
+- Integration State: `MERGED`;
+- Implementation Frozen SHA: `N/A — no independent Sol PASS; user-authorized
+  integration of the human-review Candidate`;
+- Merge Commit SHA: `548bc4cd95bce8434de505342054ec6e77290496`.
 
 Human Authorization State:
 
-`USER-AUTHORIZED MERGE on existing PR-8A; protected Human-On-Exception
+`USER-AUTHORIZED MERGE COMPLETED on existing PR-8A; protected Human-On-Exception
 boundaries remain active. The branch was refreshed with a no-rewrite merge of
-current origin/master; local validation is green and exact-SHA remote CI is the
-remaining pre-merge gate.`
+current origin/master, local validation and exact-SHA remote CI were green, the
+PR was merged as 548bc4cd95bce8434de505342054ec6e77290496, and the dedicated
+branch was retired.`
 
 Next Action:
 
-`PUSH the refreshed PR branch and wait for exact-SHA mandatory CI. If green,
-complete the user-authorized PR #6 merge-commit integration, verify ancestry,
-retire only the dedicated feature branch, synchronize master, persist the
-merge result, and stop. Do not start recovery, select a new Epoch, or enter
-opportunity discovery.`
+`STOP: MILESTONE_CHECKPOINT_COMPLETE / OUTER_LOOP_STOPPED. PR #6 is merged,
+the merge ancestry and synchronized master are verified, and the dedicated
+feature branch is retired. Do not start recovery, select another Epoch, or
+enter opportunity discovery in this stopped Goal.`
 
 Sol #1 Runtime Checkpoint:
 
@@ -233,6 +236,21 @@ origin/master is 0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc. The recorded Base is
 not the current remote base; the branch merge-base remains cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e.
 Per policy this is INTEGRATION_BLOCKED_BASE_DRIFT: no automatic rebase or merge
 was performed. PR #6 remains open and the working tree is clean.`
+
+Merge and Cleanup Checkpoint — 2026-08-14:
+
+`The user-authorized base refresh merged current origin/master into the
+existing PR branch without rewriting history. Refreshed branch tip
+989262394e81abc71260422be2c51c41d22afdcb passed exact-SHA GitHub Actions run
+31772037697 with all six mandatory jobs successful. PR #6 was merged as
+548bc4cd95bce8434de505342054ec6e77290496. The corrected implementation
+Candidate 05288aecf80f040213dc4fdc938f2838775b9829, refreshed Base
+0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc, and final branch tip are ancestors
+of that merge commit. The dedicated local and remote feature branch was
+retired, local master was fast-forwarded to origin/master, and the working
+tree is clean. Historical PARKED_REVIEW_LIMIT and no-independent-Sol-PASS
+facts remain unchanged; the outer loop is stopped and no new Epoch or
+opportunity discovery was started.`
 
 ---
 

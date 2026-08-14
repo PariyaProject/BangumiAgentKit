@@ -1,6 +1,6 @@
 # PR-8A — Review Readiness
 
-Status: `INTEGRATION_PENDING_EXACT_REFRESH_CI`
+Status: `MERGED_BY_USER_AUTHORIZATION`
 
 Historical independent-review status: `PARKED_REVIEW_LIMIT`
 
@@ -26,7 +26,11 @@ Sol verdicts or claim an independent review PASS.
   `05288aecf80f040213dc4fdc938f2838775b9829`
 - Refreshed integration branch tip:
   `0159daa5ce38dbd626458c007a8cf944df3f6454`
-- Feature branch: `codex/pr-8a-subject-intelligence-overview`
+- Final pushed branch tip:
+  `989262394e81abc71260422be2c51c41d22afdcb`
+- Merge commit:
+  `548bc4cd95bce8434de505342054ec6e77290496`
+- Feature branch: `codex/pr-8a-subject-intelligence-overview` (retired)
 - Pull request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`
 - Target base: `master`
 - Integration policy: `AUTO_MERGE_AFTER_FREEZE`
@@ -208,3 +212,26 @@ discovery (51), contract (22), standalone (21), SQLite integration (33), and
 refreshed branch tip. Current state is
 `INTEGRATION_PENDING_EXACT_REFRESH_CI`; this is not an independent Sol PASS or
 a new review launch.
+
+## Merge and cleanup checkpoint — 2026-08-14
+
+The user-authorized integration completed after the refreshed exact-SHA gate:
+
+- Final pushed branch tip:
+  `989262394e81abc71260422be2c51c41d22afdcb`.
+- GitHub Actions run
+  [31772037697](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31772037697)
+  passed all six mandatory jobs on that exact tip.
+- PR #6 is `MERGED` with merge commit
+  `548bc4cd95bce8434de505342054ec6e77290496`.
+- The human-review corrective Candidate
+  `05288aecf80f040213dc4fdc938f2838775b9829`, refreshed Base
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`, and final branch tip are all
+  ancestors of the merge commit.
+- The dedicated local and remote feature branch was retired. Local `master`
+  was fast-forwarded to the merged `origin/master`; historical branches were
+  untouched.
+
+The final state is user-authorized integration, not an independent Sol PASS or
+a rewritten Freeze verdict. The historical `PARKED_REVIEW_LIMIT` remains
+preserved, and no new review launch or Product Review Epoch was started.

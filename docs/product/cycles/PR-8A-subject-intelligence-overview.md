@@ -1,6 +1,6 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `INTEGRATION_PENDING_EXACT_REFRESH_CI`
+Status: `MILESTONE_CHECKPOINT_COMPLETE / MERGED`
 
 Historical independent-review status: `PARKED_REVIEW_LIMIT`
 
@@ -236,8 +236,8 @@ arranges already-derived values and displays state/coverage honestly.
 - Target Base Branch: `master`
 - Recorded Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`
 - Previous review Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`
-- Current Target Base SHA: `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`
-- Feature Branch: `codex/pr-8a-subject-intelligence-overview`
+- Current Target Base SHA: `548bc4cd95bce8434de505342054ec6e77290496`
+- Feature Branch: `codex/pr-8a-subject-intelligence-overview` (retired)
 - Pull Request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`
 - Merge Strategy: `MERGE_COMMIT`
 - Branch Cleanup Policy: after verified frozen-SHA ancestry and merged PR,
@@ -394,3 +394,26 @@ matrix remains required. Exact-SHA remote CI is pending the push of the
 refreshed branch tip. Current state is
 `INTEGRATION_PENDING_EXACT_REFRESH_CI`; the historical Sol verdicts remain
 `PARKED_REVIEW_LIMIT` and no new Sol launch was made.
+
+## Merge and cleanup checkpoint — 2026-08-14
+
+The user-authorized integration completed through PR #6:
+
+- Refreshed branch tip: `989262394e81abc71260422be2c51c41d22afdcb`.
+- Exact-SHA GitHub Actions run
+  [31772037697](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31772037697)
+  passed all six mandatory jobs.
+- PR #6 was merged as merge commit
+  `548bc4cd95bce8434de505342054ec6e77290496`.
+- The corrected implementation Candidate
+  `05288aecf80f040213dc4fdc938f2838775b9829`, refreshed base
+  `0b9893bfec38ecaf53d7377ccb7c9d66f67d38cc`, and refreshed branch tip are
+  all ancestors of the merge commit.
+- The dedicated local and remote feature branch
+  `codex/pr-8a-subject-intelligence-overview` was retired; historical recovery
+  branches were untouched.
+
+This merge is recorded as user-authorized integration of the human-review
+Candidate. It does not rewrite the historical `PARKED_REVIEW_LIMIT` or claim
+an independent Sol PASS. The self-evolution outer loop remains stopped; no
+new Epoch or opportunity discovery was started.
