@@ -35,6 +35,8 @@ export type CollectionBacklogAiringState = 'finished' | 'ongoing' | 'unknown';
 
 export type CollectionBacklogDenominatorSource = 'episode_collection' | 'none';
 
+export type CollectionBacklogSourceEvidenceState = 'valid' | 'missing' | 'unknown' | 'invalid';
+
 export type CollectionBacklogStatus = Exclude<CollectionStatus, 'unknown'>;
 
 export interface CollectionBacklogOptions {
@@ -54,6 +56,8 @@ export interface CollectionBacklogItem {
   status: CollectionBacklogStatus;
   statusLabel?: string;
   sourceReportedEpisodes?: number;
+  sourceReportedEpisodesRaw?: number | string | null;
+  sourceReportedEpisodesValidity: CollectionBacklogSourceEvidenceState;
   episodeReportedEpisodes?: number;
   denominatorSource: CollectionBacklogDenominatorSource;
   collectionReportedEpisodes?: number;
@@ -62,6 +66,7 @@ export interface CollectionBacklogItem {
   droppedEpisodes?: number;
   observedProgressRows: number;
   airingState: CollectionBacklogAiringState;
+  airingReason: string;
   remainingEpisodes?: number;
   completionPercentage?: number;
   state: CollectionBacklogRowState;
@@ -70,6 +75,7 @@ export interface CollectionBacklogItem {
   progressCoverage: {
     sourceTotal?: number;
     observedRows: number;
+    uniqueRows: number;
     pagesAttempted: number;
     pagesSucceeded: number;
     sourceExhausted: boolean;
@@ -77,6 +83,8 @@ export interface CollectionBacklogItem {
     duplicateRows: number;
     paginationStalled: boolean;
     sourceTotalChanged: boolean;
+    pageFailureOffset?: number;
+    pageFailureCode?: string;
   };
 }
 
@@ -131,6 +139,7 @@ export interface CollectionBacklogCoverage {
     pagesAttempted: number;
     pagesSucceeded: number;
     observedRows: number;
+    uniqueRows: number;
     truncatedSubjects: number;
     sourceTotalChangedSubjects: number;
     failedSubjects: number;
@@ -192,8 +201,12 @@ interface EpisodeProgressScan {
   sourceExhausted: boolean;
   truncated: boolean;
   duplicateRows: number;
+  uniqueRows: number;
   paginationStalled: boolean;
   sourceTotalChanged: boolean;
+  pageFailureOffset?: number;
+  pageFailureCode?: string;
+  error?: PublicErrorInfo;
 }
 
 interface HydratedRow {
@@ -238,9 +251,9 @@ function emptyData(): CollectionBacklogData {
 function buildLimitations(): string[] {
   return [
     '结果只覆盖当前账号收藏接口观察到的有界动画收藏样本；超过 collection scan 和 hydration 上限的条目不会被猜测补全。',
-    'episodeReportedEpisodes 来自 episode collection 的 episode_type=0 sourceTotal，是 backlog 分母；SlimSubject.eps 只作为独立交叉证据，二者冲突时不计算。',
+    'episodeReportedEpisodes 来自 episode collection 的 episode_type=0 sourceTotal，是 backlog 分母；SlimSubject.eps 的原始值、validity 和交叉证据会保留，malformed 或二者冲突时不计算。',
     'remainingEpisodes = episodeReportedEpisodes - watched main episodes；仅在 episode collection 分页完整、总集数有效且来源字段没有冲突时计算。',
-    'airingState 只根据完整正篇 episode metadata 的 airdate 推导；finished 只表示当前报告的章节日期均已过去，不能证明未发布后续或排除 hiatus；缺日期、未完成分页或日期矛盾时保持 unknown，不调用日历或 HTML 猜测。',
+    'airingState 只根据完整、稳定、去重且全为正篇的 episode metadata airdate 推导；finished 只表示当前报告的章节日期均已过去，不能证明未发布后续或排除 hiatus；缺日期、未完成分页或日期矛盾时保持 unknown，不调用日历或 HTML 猜测。',
     '仅请求正篇（episode_type=0）；SP、OP、ED、PV、MAD 和其他章节不会消耗正篇完成度分子或分母。',
     '结果不读取或返回收藏评论、历史状态、日历计划、推荐、口味推断、跨用户比较或任何收藏写入。',
     'collection.updated_at 与 episode.updated_at 只作为源字段；不能解释为可靠的收藏活动或观看事件时间。',
@@ -285,6 +298,7 @@ function emptyCoverage(
       pagesAttempted: 0,
       pagesSucceeded: 0,
       observedRows: 0,
+      uniqueRows: 0,
       truncatedSubjects: 0,
       sourceTotalChangedSubjects: 0,
       failedSubjects: 0,
@@ -311,57 +325,116 @@ function uniqueCollectionItems(items: readonly UserCollectionItem[]): {
 }
 
 function positiveInteger(value: number | undefined): value is number {
-  return value !== undefined && Number.isInteger(value) && value > 0;
+  return value !== undefined && Number.isSafeInteger(value) && value > 0;
 }
 
-function parseAirdate(value: string): number | undefined {
+function parseAirdate(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  const normalized = /^\d{4}-\d{2}-\d{2}$/u.test(trimmed) ? `${trimmed}T23:59:59.999Z` : trimmed;
-  const timestamp = Date.parse(normalized);
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(trimmed);
+  if (dateOnlyMatch) {
+    const normalized = `${trimmed}T23:59:59.999Z`;
+    const timestamp = Date.parse(normalized);
+    if (!Number.isFinite(timestamp)) return undefined;
+    const date = new Date(timestamp);
+    if (
+      date.getUTCFullYear() !== Number(dateOnlyMatch[1]) ||
+      date.getUTCMonth() + 1 !== Number(dateOnlyMatch[2]) ||
+      date.getUTCDate() !== Number(dateOnlyMatch[3])
+    ) {
+      return undefined;
+    }
+    return timestamp;
+  }
+  const timestamp = Date.parse(trimmed);
   return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+const AIRING_FINISHED_REASON =
+  '仅表示当前报告的完整正篇 airdate 均已过去，不能证明未发布后续或排除 hiatus';
+const AIRING_ONGOING_REASON = '当前报告存在未来正篇 airdate；这不等同于官方正式播出状态';
+
+interface AiringCertification {
+  certified: boolean;
+  reason?: string;
+  timestamps?: number[];
+}
+
+function hasCompleteEpisodeProgress(progress: EpisodeProgressScan): boolean {
+  return (
+    progress.sourceExhausted &&
+    !progress.truncated &&
+    !progress.paginationStalled &&
+    !progress.sourceTotalChanged &&
+    progress.sourceTotal !== undefined &&
+    positiveInteger(progress.sourceTotal) &&
+    progress.duplicateRows === 0 &&
+    progress.items.length === progress.sourceTotal &&
+    progress.items.every(
+      (row) => positiveInteger(row.episode?.id) && row.episode?.category === 'main',
+    )
+  );
+}
+
+function certifyAiringEvidence(progress: EpisodeProgressScan): AiringCertification {
+  if (hasCompleteEpisodeProgress(progress)) {
+    const dates = progress.items.map((row) => row.episode?.airdate);
+    if (dates.some((date) => !date)) {
+      return {
+        certified: false,
+        reason: '正篇 episode metadata 缺少 airdate，完结状态无法计算',
+      };
+    }
+    const timestamps = dates.map((date) => parseAirdate(date));
+    if (timestamps.some((timestamp) => timestamp === undefined)) {
+      return {
+        certified: false,
+        reason: '正篇 episode airdate 格式无法验证，完结状态无法计算',
+      };
+    }
+    return { certified: true, timestamps: timestamps as number[] };
+  }
+
+  if (progress.duplicateRows > 0) {
+    return {
+      certified: false,
+      reason: '正篇 episode evidence 含重复章节，无法证明完结状态',
+    };
+  }
+  if (progress.items.some((row) => !positiveInteger(row.episode?.id))) {
+    return {
+      certified: false,
+      reason: '正篇 episode evidence 缺少可验证章节 ID，无法证明完结状态',
+    };
+  }
+  if (progress.items.some((row) => row.episode?.category !== 'main')) {
+    return {
+      certified: false,
+      reason: '正篇 episode evidence 含非正篇章节，无法证明完结状态',
+    };
+  }
+  return {
+    certified: false,
+    reason: '正篇 episode coverage 不完整，无法从结构化 airdate 证明完结状态',
+  };
 }
 
 function deriveAiringState(progress: EpisodeProgressScan): {
   state: CollectionBacklogAiringState;
-  reason?: string;
+  reason: string;
 } {
-  if (
-    !progress.sourceExhausted ||
-    progress.truncated ||
-    progress.paginationStalled ||
-    progress.sourceTotalChanged ||
-    progress.sourceTotal === undefined
-  ) {
+  const certification = certifyAiringEvidence(progress);
+  if (!certification.certified || !certification.timestamps) {
     return {
       state: 'unknown',
-      reason: '正篇 episode coverage 不完整，无法从结构化 airdate 证明完结状态',
+      reason: certification.reason || '正篇 episode evidence 不足，无法证明完结状态',
     };
   }
-  if (progress.sourceTotal <= 0 || progress.items.length !== progress.sourceTotal) {
-    return {
-      state: 'unknown',
-      reason: '没有完整的正篇 episode airdate 证据，无法证明完结状态',
-    };
-  }
-
-  const dates = progress.items.map((row) => row.episode?.airdate);
-  if (dates.some((date) => !date)) {
-    return {
-      state: 'unknown',
-      reason: '正篇 episode metadata 缺少 airdate，完结状态无法计算',
-    };
-  }
-  const timestamps = dates.map((date) => parseAirdate(date as string));
-  if (timestamps.some((timestamp) => timestamp === undefined)) {
-    return {
-      state: 'unknown',
-      reason: '正篇 episode airdate 格式无法验证，完结状态无法计算',
-    };
-  }
+  const timestamps = certification.timestamps;
   return timestamps.some((timestamp) => (timestamp as number) > Date.now())
-    ? { state: 'ongoing' }
-    : { state: 'finished' };
+    ? { state: 'ongoing', reason: AIRING_ONGOING_REASON }
+    : { state: 'finished', reason: AIRING_FINISHED_REASON };
 }
 
 function buildRow(
@@ -388,6 +461,10 @@ function buildRow(
   const wishEpisodes = mainRows.filter((row) => row.type === 1).length;
   const droppedEpisodes = mainRows.filter((row) => row.type === 3).length;
   const sourceReportedEpisodes = collection.subjectTotalEpisodes;
+  const sourceReportedEpisodesRaw = collection.subjectTotalEpisodesRaw;
+  const sourceReportedEpisodesValidity: CollectionBacklogSourceEvidenceState =
+    collection.subjectTotalEpisodesValidity ??
+    (sourceReportedEpisodes === undefined ? 'missing' : 'valid');
   const episodeReportedEpisodes = progress.sourceTotal;
   const collectionReportedEpisodes = collection.epStatus;
   const hasInvalidEpisodeTotal =
@@ -398,18 +475,11 @@ function buildRow(
     collectionReportedEpisodes >= 0 &&
     collectionReportedEpisodes !== watchedEpisodes;
   const totalsConflict =
+    sourceReportedEpisodesValidity === 'valid' &&
     positiveInteger(sourceReportedEpisodes) &&
     positiveInteger(episodeReportedEpisodes) &&
     sourceReportedEpisodes !== episodeReportedEpisodes;
-  const progressComplete =
-    progress.sourceExhausted &&
-    !progress.truncated &&
-    !progress.paginationStalled &&
-    !progress.sourceTotalChanged &&
-    progress.sourceTotal !== undefined &&
-    progress.duplicateRows === 0 &&
-    progressRows.length === progress.sourceTotal &&
-    progressRows.every((row) => row.episode?.category === 'main');
+  const progressComplete = hasCompleteEpisodeProgress(progress);
 
   let state: CollectionBacklogRowState = 'complete';
   if (progress.sourceTotalChanged) {
@@ -420,6 +490,12 @@ function buildRow(
     state = 'conflict';
     reasons.push(
       `SlimSubject.eps (${sourceReportedEpisodes}) 与 episode collection sourceTotal (${episodeReportedEpisodes}) 不一致`,
+    );
+  }
+  if (sourceReportedEpisodesValidity === 'invalid') {
+    state = 'conflict';
+    reasons.push(
+      `SlimSubject.eps 原始值 (${sourceReportedEpisodesRaw ?? 'unknown'}) 无法验证为正整数`,
     );
   }
   if (progressMismatch) {
@@ -446,7 +522,7 @@ function buildRow(
     state =
       state === 'conflict'
         ? state
-        : episodeReportedEpisodes === undefined
+        : episodeReportedEpisodes === undefined || hasInvalidEpisodeTotal
           ? 'not_computable'
           : 'partial';
     if (progress.truncated)
@@ -454,6 +530,11 @@ function buildRow(
     if (progress.paginationStalled) reasons.push('episode collection 分页没有产生新的偏移量');
     if (progress.sourceTotal === undefined) reasons.push('episode collection 没有可验证的源总数');
     if (progress.duplicateRows > 0) reasons.push('episode collection 返回了重复章节');
+    if (progress.pageFailureCode) {
+      reasons.push(
+        `episode collection 在偏移 ${progress.pageFailureOffset ?? '?'} 处读取失败 (${progress.pageFailureCode})`,
+      );
+    }
     if (progressRows.length !== progress.sourceTotal && progress.sourceTotal !== undefined) {
       reasons.push(
         `episode collection 观察到 ${progressRows.length} 行，但 sourceTotal 为 ${progress.sourceTotal}`,
@@ -462,7 +543,7 @@ function buildRow(
   }
 
   const airing = deriveAiringState(progress);
-  if (airing.reason) reasons.push(airing.reason);
+  if (airing.state === 'unknown') reasons.push(airing.reason);
 
   const canCompute =
     state === 'complete' &&
@@ -479,6 +560,8 @@ function buildRow(
     status: collection.status as CollectionBacklogStatus,
     statusLabel: collection.statusLabel,
     sourceReportedEpisodes,
+    sourceReportedEpisodesRaw,
+    sourceReportedEpisodesValidity,
     episodeReportedEpisodes,
     denominatorSource: canCompute ? 'episode_collection' : 'none',
     collectionReportedEpisodes,
@@ -487,6 +570,7 @@ function buildRow(
     droppedEpisodes,
     observedProgressRows: progressRows.length,
     airingState: airing.state,
+    airingReason: airing.reason,
     remainingEpisodes: canCompute ? episodeReportedEpisodes - watchedEpisodes : undefined,
     completionPercentage: canCompute
       ? Number(((watchedEpisodes / episodeReportedEpisodes) * 100).toFixed(1))
@@ -496,6 +580,7 @@ function buildRow(
     progressCoverage: {
       sourceTotal: progress.sourceTotal,
       observedRows: progressRows.length,
+      uniqueRows: progressRows.length - progress.duplicateRows,
       pagesAttempted: progress.pagesAttempted,
       pagesSucceeded: progress.pagesSucceeded,
       sourceExhausted: progress.sourceExhausted,
@@ -503,6 +588,8 @@ function buildRow(
       duplicateRows: progress.duplicateRows,
       paginationStalled: progress.paginationStalled,
       sourceTotalChanged: progress.sourceTotalChanged,
+      pageFailureOffset: progress.pageFailureOffset,
+      pageFailureCode: progress.pageFailureCode,
     },
   };
 }
@@ -510,7 +597,9 @@ function buildRow(
 function buildUnavailableRow(
   collection: UserCollectionItem,
   error: PublicErrorInfo,
+  progress: EpisodeProgressScan,
 ): CollectionBacklogItem {
+  const airingReason = 'episode collection 不可用，没有足够的结构化 airdate 证据';
   return {
     subjectId: collection.subjectId,
     name: collection.subjectName || `Subject ${collection.subjectId}`,
@@ -521,22 +610,31 @@ function buildUnavailableRow(
     status: collection.status as CollectionBacklogStatus,
     statusLabel: collection.statusLabel,
     sourceReportedEpisodes: collection.subjectTotalEpisodes,
+    sourceReportedEpisodesRaw: collection.subjectTotalEpisodesRaw,
+    sourceReportedEpisodesValidity:
+      collection.subjectTotalEpisodesValidity ??
+      (collection.subjectTotalEpisodes === undefined ? 'missing' : 'valid'),
     denominatorSource: 'none',
     collectionReportedEpisodes: collection.epStatus,
-    observedProgressRows: 0,
+    observedProgressRows: progress.items.length,
     airingState: 'unknown',
+    airingReason,
     state: 'unavailable',
     reasons: [error.code],
     error,
     progressCoverage: {
-      observedRows: 0,
-      pagesAttempted: 1,
-      pagesSucceeded: 0,
-      sourceExhausted: false,
-      truncated: false,
-      duplicateRows: 0,
-      paginationStalled: false,
-      sourceTotalChanged: false,
+      sourceTotal: progress.sourceTotal,
+      observedRows: progress.items.length,
+      uniqueRows: progress.items.length - progress.duplicateRows,
+      pagesAttempted: progress.pagesAttempted,
+      pagesSucceeded: progress.pagesSucceeded,
+      sourceExhausted: progress.sourceExhausted,
+      truncated: progress.truncated,
+      duplicateRows: progress.duplicateRows,
+      paginationStalled: progress.paginationStalled,
+      sourceTotalChanged: progress.sourceTotalChanged,
+      pageFailureOffset: progress.pageFailureOffset,
+      pageFailureCode: progress.pageFailureCode,
     },
   };
 }
@@ -640,6 +738,9 @@ async function scanEpisodeProgress(
   let paginationStalled = false;
   let sourceTotalChanged = false;
   let sourceTotalInvalidated = false;
+  let pageFailureOffset: number | undefined;
+  let pageFailureCode: string | undefined;
+  let scanError: PublicErrorInfo | undefined;
 
   while (
     items.length < maxEpisodes &&
@@ -648,11 +749,19 @@ async function scanEpisodeProgress(
   ) {
     pagesAttempted += 1;
     const requested = Math.min(COLLECTION_BACKLOG_EPISODE_PAGE_SIZE, maxEpisodes - items.length);
-    const page = await userService.getUserEpisodeCollections(subjectId, {
-      episodeType: 0,
-      limit: requested,
-      offset,
-    });
+    let page;
+    try {
+      page = await userService.getUserEpisodeCollections(subjectId, {
+        episodeType: 0,
+        limit: requested,
+        offset,
+      });
+    } catch (error: unknown) {
+      pageFailureOffset = offset;
+      scanError = toPublicError(error);
+      pageFailureCode = scanError.code;
+      break;
+    }
     pagesSucceeded += 1;
     if (pagesSucceeded === 1) {
       sourceTotal = page.total;
@@ -688,7 +797,9 @@ async function scanEpisodeProgress(
     sourceTotal === undefined ||
     sourceTotal > items.length ||
     paginationStalled ||
-    sourceTotalChanged;
+    sourceTotalChanged ||
+    pageFailureOffset !== undefined;
+  const uniqueRows = items.length - duplicateRows;
   return {
     items,
     sourceTotal,
@@ -697,8 +808,12 @@ async function scanEpisodeProgress(
     sourceExhausted,
     truncated,
     duplicateRows,
+    uniqueRows,
     paginationStalled,
     sourceTotalChanged,
+    pageFailureOffset,
+    pageFailureCode,
+    error: scanError,
   };
 }
 
@@ -907,24 +1022,38 @@ export class CollectionBacklogService {
             item.subjectId,
             maxEpisodesPerSubject,
           );
+          const row =
+            progress.error && progress.pagesSucceeded === 0
+              ? buildUnavailableRow(item, progress.error, progress)
+              : buildRow(item, progress, maxEpisodesPerSubject);
+          if (progress.error && row.state !== 'unavailable') {
+            row.error = progress.error;
+            row.reasons = [...new Set([...row.reasons, progress.error.code])];
+          }
           return {
-            item: buildRow(item, progress, maxEpisodesPerSubject),
+            item: row,
             progress,
+            error: progress.error,
           } satisfies HydratedRow;
         } catch (error: unknown) {
           const publicError = toPublicError(error);
+          const progress: EpisodeProgressScan = {
+            items: [],
+            pagesAttempted: 1,
+            pagesSucceeded: 0,
+            sourceExhausted: false,
+            truncated: true,
+            duplicateRows: 0,
+            uniqueRows: 0,
+            paginationStalled: false,
+            sourceTotalChanged: false,
+            pageFailureOffset: 0,
+            pageFailureCode: publicError.code,
+            error: publicError,
+          };
           return {
-            item: buildUnavailableRow(item, publicError),
-            progress: {
-              items: [],
-              pagesAttempted: 1,
-              pagesSucceeded: 0,
-              sourceExhausted: false,
-              truncated: false,
-              duplicateRows: 0,
-              paginationStalled: false,
-              sourceTotalChanged: false,
-            },
+            item: buildUnavailableRow(item, publicError, progress),
+            progress,
             error: publicError,
           } satisfies HydratedRow;
         }
@@ -948,6 +1077,14 @@ export class CollectionBacklogService {
         code: 'EPISODE_COLLECTION_FAILURE',
         state: 'partial',
         message: `${unavailableCount} 个条目的 episode collection 不可用；对应条目未填充猜测的进度。`,
+      });
+    }
+    const episodeFailureCount = hydrated.filter((entry) => Boolean(entry.progress.error)).length;
+    if (episodeFailureCount > 0) {
+      warnings.push({
+        code: 'EPISODE_COLLECTION_PAGE_FAILURE',
+        state: 'partial',
+        message: `${episodeFailureCount} 个条目的 episode collection 页面读取失败；已保留成功页面的覆盖和失败位置。`,
       });
     }
     const partialCount = rows.filter((row) => row.state === 'partial').length;
@@ -1018,6 +1155,7 @@ export class CollectionBacklogService {
         pagesAttempted: hydrated.reduce((total, entry) => total + entry.progress.pagesAttempted, 0),
         pagesSucceeded: hydrated.reduce((total, entry) => total + entry.progress.pagesSucceeded, 0),
         observedRows: hydrated.reduce((total, entry) => total + entry.progress.items.length, 0),
+        uniqueRows: hydrated.reduce((total, entry) => total + entry.progress.uniqueRows, 0),
         truncatedSubjects: hydrated.filter((entry) => entry.progress.truncated).length,
         sourceTotalChangedSubjects: hydrated.filter((entry) => entry.progress.sourceTotalChanged)
           .length,

@@ -23,6 +23,8 @@ export interface UserCollectionItem {
   subjectDate?: string;
   subjectImage?: string;
   subjectTotalEpisodes?: number;
+  subjectTotalEpisodesRaw?: number | string | null;
+  subjectTotalEpisodesValidity?: 'valid' | 'missing' | 'unknown' | 'invalid';
 }
 
 export interface UserEpisodeCollectionItem {

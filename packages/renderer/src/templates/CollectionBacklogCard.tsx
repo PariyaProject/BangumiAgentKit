@@ -31,17 +31,29 @@ function rowStateLabel(state: CollectionBacklogViewModel['items'][number]['state
   return '不可用';
 }
 
+function boundedText(value: unknown, maximum = 180): string {
+  const normalized = String(value ?? '')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  if (normalized.length <= maximum) return normalized;
+  return `${Array.from(normalized)
+    .slice(0, maximum - 1)
+    .join('')}…`;
+}
+
 function progressLabel(item: CollectionBacklogViewModel['items'][number]): string {
   if (item.remainingEpisodes !== undefined) {
     return `剩余 ${item.remainingEpisodes} 集 · 已看 ${item.watchedEpisodes ?? 0}/${item.episodeReportedEpisodes ?? '?'}`;
   }
-  if (item.error?.message) return item.error.message;
+  if (item.error) {
+    return `${boundedText(item.error.code, 64)} · ${boundedText(item.error.message)}${item.error.nextAction ? ` · ${boundedText(item.error.nextAction)}` : ''}`;
+  }
   return item.reasons[0] || rowStateLabel(item.state);
 }
 
 function airingLabel(state: CollectionBacklogViewModel['items'][number]['airingState']): string {
-  if (state === 'finished') return '已播完（日期）';
-  if (state === 'ongoing') return '可能在播';
+  if (state === 'finished') return '已播完（日期证据；未证明后续/hiatus）';
+  if (state === 'ongoing') return '可能在播（未来日期证据）';
   return '播出状态未知';
 }
 
@@ -55,7 +67,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
     ['符合状态', String(viewModel.summary.eligibleItems)],
     ['已返回', String(viewModel.summary.returnedItems)],
     ['已知剩余', `${viewModel.summary.knownRemainingEpisodes} 集`],
-    ['已完结未看完', String(viewModel.summary.finishedIncompleteItems)],
+    ['已播完未看完*', String(viewModel.summary.finishedIncompleteItems)],
     ['可计算条目', String(viewModel.summary.completeItems)],
   ];
 
@@ -137,6 +149,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
               </div>
             ))}
           </div>
+          <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
+            * “已播完”仅表示当前报告的正篇 airdate 均已过去，不能证明未发布后续或排除 hiatus。
+          </div>
 
           <section>
             <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
@@ -164,6 +179,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
                   <div style={{ color: theme.textMuted, lineHeight: 1.5, marginTop: '2px' }}>
                     {progressLabel(item)} · {airingLabel(item.airingState)} ·{' '}
                     {rowStateLabel(item.state)}
+                    {item.airingState === 'unknown' && item.airingReason
+                      ? ` · ${boundedText(item.airingReason)}`
+                      : ''}
                     {item.completionPercentage !== undefined
                       ? ` · ${item.completionPercentage.toFixed(1)}%`
                       : ''}

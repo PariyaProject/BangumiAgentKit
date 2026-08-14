@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { CollectionBacklogService } from '@bangumi-agent-kit/bangumi-core';
 import {
   buildCollectionBacklogViewModel,
@@ -190,6 +190,7 @@ describe('collection-backlog renderer', () => {
           pagesAttempted: 0,
           pagesSucceeded: 0,
           observedRows: 0,
+          uniqueRows: 0,
           truncatedSubjects: 0,
           sourceTotalChangedSubjects: 0,
           failedSubjects: 0,
@@ -230,5 +231,87 @@ describe('collection-backlog renderer', () => {
     expect(html).toContain('无权限');
     expect(html).toContain('PERMISSION_DENIED');
     expect(html).toContain('请重新授权');
+  });
+
+  it('preserves row-level recovery metadata through the view model and rendered card', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              {
+                subject_id: 1,
+                subject_type: 2,
+                type: 3,
+                ep_status: 1,
+                subject: {
+                  id: 1,
+                  type: 2,
+                  name: 'Auth Expired Row',
+                  name_cn: '凭证失效行',
+                  eps: 101,
+                  date: '2026-01-01',
+                  images: {},
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.searchParams.get('offset') === '100') {
+        throw new BangumiError('AUTH_EXPIRED', 'credential expired', false, 401, '请重新授权');
+      }
+      return new Response(
+        JSON.stringify({
+          total: 101,
+          limit: 100,
+          offset: 0,
+          data: Array.from({ length: 100 }, (_, index) => ({
+            type: index === 0 ? 2 : 1,
+            updated_at: 1_723_600_000,
+            episode: {
+              id: index + 1,
+              subject_id: 1,
+              type: 0,
+              name: `Episode ${index + 1}`,
+              name_cn: `第 ${index + 1} 集`,
+              sort: index + 1,
+              ep: index + 1,
+              airdate: '2026-01-01',
+            },
+          })),
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+    const viewModel = buildCollectionBacklogViewModel(result);
+
+    expect(result.data.items[0]?.error).toMatchObject({
+      code: 'AUTH_EXPIRED',
+      message: 'Bangumi 登录凭证已失效，请重新授权。',
+      nextAction: '请重新授权',
+    });
+    expect(viewModel.items[0]?.error).toMatchObject({
+      code: 'AUTH_EXPIRED',
+      nextAction: '请重新授权',
+    });
+
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
+    expect(html).toContain('AUTH_EXPIRED');
+    expect(html).toContain('Bangumi 登录凭证已失效，请重新授权。');
+    expect(html).toContain('请重新授权');
+
+    const rendered = await renderService.renderCard(viewModel, { width: 640 });
+    expect(rendered.template).toBe('collection-backlog');
+    expect(rendered.buffer.length).toBeGreaterThan(1000);
   });
 });

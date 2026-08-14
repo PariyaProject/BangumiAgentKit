@@ -75,10 +75,15 @@ official-v0 animation collection and main-episode progress, and shows source
 order, known remaining episodes, completion percentages, per-row airing
 finished/ongoing/unknown evidence, unavailable or conflict states, hydration
 limits, and the versioned derivation. The episode collection sourceTotal is the
-denominator; a conflicting SlimSubject.eps is surfaced as a conflict. Auth and
-permission failures remain actionable in the card. It does not resolve cover
-assets, render comments, join the calendar, or turn missing episode totals into
-estimates.
+denominator when it is a valid, complete source; SlimSubject.eps keeps its raw
+value and validity, and malformed or conflicting evidence is surfaced as a
+conflict. A finished airing label means only that every currently reported,
+complete, unique main episode has a past structured airdate; it does not prove
+that no later episode or hiatus exists. Duplicate, non-main, missing-ID,
+missing/malformed-date, changed-total, or incomplete evidence remains unknown.
+Auth, permission, and per-row recovery failures keep their code, message, and
+next action visible in the card. It does not resolve cover assets, render
+comments, join the calendar, or turn missing episode totals into estimates.
 
 `series-relations` is the bounded Series / Watch-Order companion card. It shows
 the selected steps separately from directed relation evidence, preserves raw

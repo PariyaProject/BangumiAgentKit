@@ -20,6 +20,26 @@ export function mapUser(raw: User, defaultUsername?: string): DomainUser {
   };
 }
 
+function mapSubjectEpisodeTotal(subject: unknown): {
+  value?: number;
+  raw?: number | string | null;
+  validity: 'valid' | 'missing' | 'unknown' | 'invalid';
+} {
+  const raw =
+    subject && typeof subject === 'object' ? (subject as { eps?: unknown }).eps : undefined;
+  if (raw === undefined || raw === null) {
+    return { validity: 'missing', raw: raw === null ? null : undefined };
+  }
+  if (raw === 0) return { validity: 'unknown', raw: 0 };
+  if (typeof raw === 'number' && Number.isSafeInteger(raw) && raw > 0) {
+    return { value: raw, raw, validity: 'valid' };
+  }
+  return {
+    raw: typeof raw === 'number' || typeof raw === 'string' ? raw : undefined,
+    validity: 'invalid',
+  };
+}
+
 export class UserService {
   private api: GeneratedBangumiOpenApiClient;
 
@@ -86,6 +106,7 @@ export class UserService {
       const status = mapCollectionStatus(col.type);
       const subjectTypeStr = mapSubjectType(col.subject_type ?? col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
+      const subjectEpisodeTotal = mapSubjectEpisodeTotal(col.subject);
 
       return {
         subjectId: col.subject_id,
@@ -102,10 +123,9 @@ export class UserService {
         subjectDate: col.subject?.date || undefined,
         subjectImage:
           col.subject?.images?.large || col.subject?.images?.common || col.subject?.images?.medium,
-        subjectTotalEpisodes:
-          Number.isInteger(col.subject?.eps) && (col.subject?.eps ?? 0) > 0
-            ? col.subject?.eps
-            : undefined,
+        subjectTotalEpisodes: subjectEpisodeTotal.value,
+        subjectTotalEpisodesRaw: subjectEpisodeTotal.raw,
+        subjectTotalEpisodesValidity: subjectEpisodeTotal.validity,
       };
     });
 
@@ -133,6 +153,7 @@ export class UserService {
       const status = mapCollectionStatus(raw.type);
       const subjectTypeStr = mapSubjectType(raw.subject_type ?? raw.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
+      const subjectEpisodeTotal = mapSubjectEpisodeTotal(raw.subject);
 
       return {
         found: true,
@@ -153,10 +174,9 @@ export class UserService {
             raw.subject?.images?.large ||
             raw.subject?.images?.common ||
             raw.subject?.images?.medium,
-          subjectTotalEpisodes:
-            Number.isInteger(raw.subject?.eps) && (raw.subject?.eps ?? 0) > 0
-              ? raw.subject?.eps
-              : undefined,
+          subjectTotalEpisodes: subjectEpisodeTotal.value,
+          subjectTotalEpisodesRaw: subjectEpisodeTotal.raw,
+          subjectTotalEpisodesValidity: subjectEpisodeTotal.validity,
         },
       };
     } catch (err: unknown) {

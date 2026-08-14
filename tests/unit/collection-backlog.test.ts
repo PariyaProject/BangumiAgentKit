@@ -259,6 +259,58 @@ describe('CollectionBacklogService', () => {
     expect(result.data.items[0]?.reasons[0]).toContain('SlimSubject.eps');
   });
 
+  it.each([
+    ['fraction', 2.5],
+    ['negative', -1],
+    ['numeric string', '2'],
+    ['unsafe integer', Number.MAX_SAFE_INTEGER + 1],
+  ])(
+    'preserves malformed SlimSubject totals instead of treating %s as absent',
+    async (_label, eps) => {
+      const fetchFn: typeof fetch = async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/collections')) {
+          return new Response(
+            JSON.stringify({
+              total: 1,
+              limit: 50,
+              offset: 0,
+              data: [
+                collectionRow(1, 3, {
+                  ep_status: 1,
+                  subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            total: 2,
+            limit: 100,
+            offset: 0,
+            data: [episodeRow(1, 0, 2), episodeRow(2, 0, 1)],
+          }),
+          { status: 200 },
+        );
+      };
+
+      const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+        'account-owner',
+      );
+
+      expect(result.state).toBe('conflict');
+      expect(result.data.items[0]).toMatchObject({
+        sourceReportedEpisodes: undefined,
+        sourceReportedEpisodesRaw: eps,
+        sourceReportedEpisodesValidity: 'invalid',
+        denominatorSource: 'none',
+        remainingEpisodes: undefined,
+      });
+    },
+  );
+
   it('preserves permission errors as an actionable top-level state', async () => {
     const fetchFn: typeof fetch = async () =>
       new Response(JSON.stringify({ title: 'Forbidden' }), { status: 403 });
@@ -469,6 +521,79 @@ describe('CollectionBacklogService', () => {
     expect(result.data.items[0]?.airingState).toBe('ongoing');
   });
 
+  it('requires valid unique main rows and parseable dates before certifying airing state', async () => {
+    const cases = [
+      {
+        label: 'missing episode id',
+        reason: '正篇 episode evidence 缺少可验证章节 ID，无法证明完结状态',
+        rows: () => {
+          const first = episodeRow(1, 0, 1);
+          delete (first.episode as Record<string, unknown>).id;
+          return [first, episodeRow(2, 0, 1)];
+        },
+      },
+      {
+        label: 'non-main episode',
+        reason: '正篇 episode evidence 含非正篇章节，无法证明完结状态',
+        rows: () => {
+          const first = episodeRow(1, 1, 1);
+          return [first, episodeRow(2, 0, 1)];
+        },
+      },
+      {
+        label: 'malformed airdate',
+        reason: '正篇 episode airdate 格式无法验证，完结状态无法计算',
+        rows: () => {
+          const first = episodeRow(1, 0, 1);
+          (first.episode as Record<string, unknown>).airdate = '2026-02-30';
+          return [first, episodeRow(2, 0, 1)];
+        },
+      },
+      {
+        label: 'non-string airdate',
+        reason: '正篇 episode airdate 格式无法验证，完结状态无法计算',
+        rows: () => {
+          const first = episodeRow(1, 0, 1);
+          (first.episode as Record<string, unknown>).airdate = 1_723_600_000;
+          return [first, episodeRow(2, 0, 1)];
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const fetchFn: typeof fetch = async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/collections')) {
+          return new Response(
+            JSON.stringify({
+              total: 1,
+              limit: 50,
+              offset: 0,
+              data: [
+                collectionRow(1, 3, {
+                  ep_status: 0,
+                  subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+                }),
+              ],
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response(
+          JSON.stringify({ total: 2, limit: 100, offset: 0, data: testCase.rows() }),
+          { status: 200 },
+        );
+      };
+
+      const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+        'account-owner',
+      );
+
+      expect(result.data.items[0]?.airingState, testCase.label).toBe('unknown');
+      expect(result.data.items[0]?.airingReason, testCase.label).toBe(testCase.reason);
+    }
+  });
+
   it('marks episode progress partial when the per-subject bound is reached', async () => {
     let episodeRequests = 0;
     const fetchFn: typeof fetch = async (input) => {
@@ -579,11 +704,77 @@ describe('CollectionBacklogService', () => {
     expect(result.data.items[0]).toMatchObject({
       state: 'partial',
       remainingEpisodes: undefined,
-      progressCoverage: { duplicateRows: 1 },
+      airingState: 'unknown',
+      progressCoverage: { duplicateRows: 1, uniqueRows: 1 },
     });
     expect(result.warnings.some((warning) => warning.code === 'PARTIAL_EPISODE_PROGRESS')).toBe(
       true,
     );
+  });
+
+  it('preserves accumulated episode coverage when a later page fails', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 101 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.searchParams.get('offset') === '0') {
+        return new Response(
+          JSON.stringify({
+            total: 101,
+            limit: 100,
+            offset: 0,
+            data: Array.from({ length: 100 }, (_, index) =>
+              episodeRow(index + 1, 0, index === 0 ? 2 : 1),
+            ),
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ title: 'temporarily unavailable' }), { status: 503 });
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.data.items[0]).toMatchObject({
+      state: 'partial',
+      error: { code: 'UPSTREAM_UNAVAILABLE' },
+      observedProgressRows: 100,
+      progressCoverage: {
+        pagesAttempted: 2,
+        pagesSucceeded: 1,
+        observedRows: 100,
+        uniqueRows: 100,
+        pageFailureOffset: 100,
+        pageFailureCode: 'UPSTREAM_UNAVAILABLE',
+      },
+    });
+    expect(result.coverage.episodeProgress).toMatchObject({
+      observedRows: 100,
+      uniqueRows: 100,
+      pagesAttempted: 2,
+      pagesSucceeded: 1,
+    });
+    expect(result.data.items[0]?.remainingEpisodes).toBeUndefined();
+    expect(
+      result.warnings.some((warning) => warning.code === 'EPISODE_COLLECTION_PAGE_FAILURE'),
+    ).toBe(true);
   });
 
   it('preserves a per-subject permission failure on the unavailable row', async () => {
