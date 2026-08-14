@@ -49,8 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / CORRECTIVE_REQUIRED — Sol #1 found four P1 and three P2
-findings; outer ledger is 1 consumed of 4 authorized`
+`EPOCH_ACTIVE / SOL_2_READY — corrected Candidate passed local validation and
+exact CI; outer ledger is 1 consumed of 4 authorized`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -93,7 +93,7 @@ Current Milestone State:
 
 Current Phase:
 
-`EPOCH_ACTIVE / CORRECTION`
+`EPOCH_ACTIVE / REVIEW_READY_FOR_SOL_2`
 
 Review Boundary Rationale:
 
@@ -104,11 +104,11 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Sol #1 completed with four P1 blockers: nested actor caps, per-operation
-evidence timestamps, exhaustive stats failure/accounting semantics, and full
-visual-state QA. Three P2 findings also require safe correction: raw staff
-label grouping, hidden warning/limitation counts, and consumed-ledger truth.
-Correction is active; the existing Candidate is not frozen.`
+`Sol #1's four P1 blockers and three safe P2 findings are corrected: nested
+actor caps and coverage, per-operation evidence timestamps, exhaustive stats
+failure/accounting semantics, full visual-state QA, raw staff-label grouping,
+and hidden warning/limitation counts. The corrected Candidate passed local
+validation and exact CI; it is ready for Sol #2 and is not frozen.`
 
 Primary Model / Reasoning:
 
@@ -138,15 +138,17 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`aeb2b34 docs(product): record PR-8A corrected Candidate` /
-`aeb2b34d127e49dbe09f81ce80b0b53873ff1a3c`
+`998d4c4 fix: harden subject overview evidence and bounds` /
+`998d4c4935f52d4cdf1543ca1663d68d137065fc`
 
 Tests and Exact-SHA CI:
 
-`Candidate aeb2b34 local validation and mandatory CI run 31764720966 passed,
-but Sol #1 returned CORRECTIVE_REQUIRED (0 P0, 4 P1, 3 P2). The full finding
-record is docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.
-Corrective implementation, fresh Candidate validation, and Sol #2 remain.`
+`Corrected Candidate 998d4c4 local validation and mandatory exact-SHA CI run
+31766543465 passed all six required jobs. Sol #1's 0 P0 / 4 P1 / 3 P2 findings
+are addressed; the full finding record is
+docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.
+The corrected Candidate is ready for the single remaining Sol #2 launch, but
+is not frozen.`
 
 Integration Contract:
 
@@ -170,9 +172,10 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Implement and test all P1 corrections plus safe P2 corrections, complete the
-full six-state visual matrix at 640px/960px, create a fresh exact Candidate and
-green remote CI, then use the remaining Sol #2 review gate.`
+`Launch exactly the remaining Sol #2 comprehensive review against corrected
+Candidate 998d4c4. If PASS, freeze this exact SHA and complete the recorded
+AUTO_MERGE_AFTER_FREEZE integration lifecycle; if corrective, park at the
+TIER_2 review limit and return to safe opportunity discovery.`
 
 Sol #1 Runtime Checkpoint:
 
@@ -180,6 +183,12 @@ Sol #1 Runtime Checkpoint:
 COMPLETED_CORRECTIVE_REQUIRED at 2026-08-14T03:04:55Z; milestone Sol budget
 1/2 consumed, outer budget 1/4 consumed; report persisted at
 docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md.`
+
+Corrected Candidate Checkpoint:
+
+`998d4c4935f52d4cdf1543ca1663d68d137065fc / local validation green / exact
+CI 31766543465 green (6/6) / visual QA matrix complete / ready for Sol #2 at
+2026-08-14T03:24:24Z.`
 
 ---
 

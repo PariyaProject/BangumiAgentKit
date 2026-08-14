@@ -1,6 +1,6 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `CORRECTIVE_REQUIRED`
+Status: `SOL_2_READY`
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized
@@ -74,6 +74,9 @@ In scope:
   stable item caps. Default limits are 8 cast rows, 24 staff rows, and 12
   relation rows; callers may lower or raise them only within hard caps of
   1..20, 1..80, and 1..32 respectively.
+- Nested actor references are independently bounded: at most 4 actor
+  references per returned character and 32 actor references across the
+  overview, with per-character and aggregate nested coverage exposed.
 - Section-level `complete`, `partial`, `unavailable`, and `not_computable`
   states; the whole result is `complete`, `partial`, `unavailable`, or
   `not_found` according to observed section truth.
@@ -111,7 +114,8 @@ Explicit non-scope:
 - staff rows and deterministic groups by raw Bangumi relation label;
 - related subject rows retaining the raw relation label and mapped media type;
 - per-section coverage (`observed`, `returned`, `truncated`), attempted and
-  successful operations, evidence, warnings, limitations, and capability state.
+  successful operations, per-operation attempt/retrieval evidence, nested
+  actor coverage, warnings, limitations, and capability state.
 
 No section is silently replaced with an empty success. Missing or failed
 sections remain explicit. The result does not claim “all” records when a source
@@ -128,7 +132,8 @@ arranges already-derived values and displays state/coverage honestly.
   subject detail, subject stats, subject characters, subject persons, and
   subject relations. It performs no child hydration and no graph traversal.
 - Source arrays are capped before entering the result and rendered previews are
-  capped again. All visible arrays and warning/evidence lists are deterministic.
+  capped again. Actor references are capped at 4 per character and 32 total;
+  all visible arrays and warning/evidence lists are deterministic.
 - Existing HTTP retry, provider policy, renderer SSRF, browser, timeout, image,
   concurrency, output-size, and artifact boundaries remain authoritative.
 - No credentials or authenticated execution session is needed; optional account
@@ -144,8 +149,12 @@ arranges already-derived values and displays state/coverage honestly.
   while retaining other successful sections; a missing stats provider is
   `unavailable`, not fabricated zero values.
 - Evidence identifies the official-v0 operation for every attempted section,
+  records an attempt before dispatch and a retrieval timestamp only after
+  successful completion,
   and limitations distinguish bounded observation from completeness and
   not-computable claims.
+- Nested actor output is bounded and exposes truthful per-character and
+  aggregate truncation coverage.
 - The renderer has a registered `subject-overview` ViewModel/template and
   renders complete, partial, unavailable, missing-image, long-CJK, and dense
   relationship fixtures without clipping or fake values at 640px and 960px.
@@ -250,3 +259,26 @@ milestone or outer launch ledgers.
   `31764720966` passed all six required jobs after the generated catalog was
   normalized to canonical output. The readiness packet is persisted at
   `docs/product/reviews/PR-8A-subject-intelligence-overview/review-readiness.md`.
+
+## Corrected Candidate validation checkpoint — 2026-08-14
+
+- Sol #1's four P1 findings and three safe P2 findings were corrected: nested
+  actor caps/coverage, per-operation evidence timestamps, exhaustive stats
+  state/accounting semantics, the complete visual matrix, raw staff labels,
+  and hidden warning/limitation disclosure.
+- Corrected Candidate:
+  `998d4c4935f52d4cdf1543ca1663d68d137065fc`.
+- Focused corrected tests pass: semantic subject overview 13 tests and
+  renderer subject overview 2 tests / 15 assertions total.
+- Full corrected validation passes: unit/render 208 tests; semantic 46;
+  provider 33; discovery 51; contract 22; renderer 58; Standalone 21; SQLite
+  integration 33; typecheck; lint; build; `pnpm openapi:verify`; touched-file
+  formatting; and `git diff --check`.
+- Corrected visual QA rendered and inspected complete, partial, unavailable,
+  and not-found states at both 640px and 960px, including dense long-CJK and
+  missing-image cases. Evidence is under
+  `.artifacts/render/pr8a-corrected/`.
+- Mandatory exact-SHA CI run
+  [31766543465](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31766543465)
+  passed all six required jobs. The milestone is ready for the single
+  remaining Sol #2 review launch; it is not frozen yet.

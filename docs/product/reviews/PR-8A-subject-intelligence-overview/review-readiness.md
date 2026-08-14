@@ -1,6 +1,6 @@
 # PR-8A — Review Readiness
 
-Status: `SOL_1_CORRECTIVE_REQUIRED`
+Status: `SOL_2_READY`
 
 This packet authorizes the first sequential comprehensive TIER_2 review of the
 PR-8A Subject Intelligence Overview Epoch. It records evidence for the exact
@@ -10,7 +10,7 @@ implementation Candidate and does not substitute for independent inspection.
 
 - Base SHA: `cd0ee074ca6e9d6b65e063e2461bc54a4cc0897e`
 - Implementation Candidate:
-  `aeb2b34d127e49dbe09f81ce80b0b53873ff1a3c`
+  `998d4c4935f52d4cdf1543ca1663d68d137065fc`
 - Feature branch: `codex/pr-8a-subject-intelligence-overview`
 - Pull request: `#6 — https://github.com/PariyaProject/BangumiAgentKit/pull/6`
 - Target base: `master`
@@ -24,8 +24,8 @@ records are governance metadata under the two-SHA freeze model.
 ## Exact-SHA CI
 
 GitHub Actions run
-[31764720966](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31764720966)
-passed on the Candidate branch snapshot. All six required jobs passed:
+[31766543465](https://github.com/PariyaProject/BangumiAgentKit/actions/runs/31766543465)
+passed on the corrected Candidate branch snapshot. All six required jobs passed:
 
 - `sqlite-default`
 - `host-integration`
@@ -36,7 +36,8 @@ passed on the Candidate branch snapshot. All six required jobs passed:
 
 The earlier Candidate `968d20e` failed only because `openapi:verify` exposed a
 tracked generated-catalog formatting mismatch. The canonical generated catalog
-was committed in `8ee9483`, and the corrected Candidate above passed the full
+was committed in `8ee9483`; Sol #1 then required the corrections recorded in
+`sol-1-review.md`, and the current corrected Candidate above passed the full
 remote matrix.
 
 ## Local validation
@@ -48,7 +49,7 @@ The following checks passed before this packet was persisted:
 - `pnpm lint`
 - `pnpm test` — 36 files / 208 tests
 - `pnpm test:contract` — 22 tests
-- `pnpm test:semantic` — 36 tests
+- `pnpm test:semantic` — 46 tests
 - `pnpm test:provider` — 33 tests
 - `pnpm test:discovery` — 51 tests
 - `pnpm test:standalone` — 21 tests
@@ -72,10 +73,14 @@ pre-existing files outside this Epoch; no unrelated files were reformatted.
 - `bangumi.render_subject_overview` consumes a bounded ViewModel and the
   Standalone `overview` and `render overview` commands use the same caps and
   semantic surface. Existing renderer security and zero-network tests pass.
-- Representative complete/partial/no-image long-CJK fixtures were rendered
-  and inspected at 640px and 960px under `.artifacts/render/`; section states,
-  coverage, warnings, wrapping, footer, and mobile/chat density remained
-  readable without clipping.
+- Corrected Candidate visual QA rendered and inspected complete, partial,
+  unavailable, and not-found states at both 640px and 960px under
+  `.artifacts/render/pr8a-corrected/`; dense long-CJK content, missing images,
+  section states, coverage, hidden-count disclosure, warnings, wrapping,
+  footer, and mobile/chat density remained readable without clipping.
+- Corrected semantic QA proves the 4-per-character / 32-total actor caps,
+  per-operation attempt/retrieval ordering, exhaustive stats failure states,
+  source-success accounting, and raw official staff labels.
 - Bangumi parity was checked read-only against the subject overview and stats
   journey at `https://bgm.tv/subject/41529` and
   `https://bgm.tv/subject/41529/stats`; episodes, community/history,
@@ -85,15 +90,19 @@ pre-existing files outside this Epoch; no unrelated files were reformatted.
 
 - Review tier: `TIER_2`
 - Reviewer: `sol_milestone_reviewer`
-- Launch ordinal: `Sol #1 of 2`
-- Milestone Sol launches consumed: `0 / 2`
-- Outer Sol launches consumed: `0 / 4`
+- Launch ordinal: `Sol #2 of 2`
+- Milestone Sol launches consumed: `1 / 2`
+- Outer Sol launches consumed: `1 / 4`
 - Generic subagents: `0 / 0`
-- Sol #2 is reserved only for a corrected Candidate after a
-  `CORRECTIVE_REQUIRED` result. Sol #3 is prohibited.
+- Sol #2 is authorized for the corrected Candidate above as the final
+  comprehensive review launch. Sol #3 is prohibited.
 
 Sol #1 returned `CORRECTIVE_REQUIRED`; one of two milestone launches and one
-of four outer launches are now consumed. The complete report is recorded at
+of four outer launches are consumed. All four P1 and three safe P2 findings
+are corrected in Candidate `998d4c4`, with fresh local validation, full visual
+matrix evidence, and exact-SHA CI run `31766543465` green. Sol #2 is now
+authorized as the final review launch for this milestone. The complete Sol #1
+report is recorded at
 `docs/product/reviews/PR-8A-subject-intelligence-overview/sol-1-review.md`.
 
 The review should falsify the public semantic contract, section-state and
