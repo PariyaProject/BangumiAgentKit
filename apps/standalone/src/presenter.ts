@@ -323,7 +323,7 @@ function presentCollectionSchedule(value: Record<string, unknown>): string | und
   const summaryDetails = summary as Record<string, unknown>;
   const lines = [
     `收藏本周播出计划 · 状态: ${humanField(value.state || 'unknown', 64)}`,
-    `摘要: 匹配播出 ${humanField(summaryDetails.matchedRows ?? '?', 32)} · 符合收藏状态 ${humanField(summaryDetails.eligibleCollectionRows ?? '?', 32)} · 未匹配日历 ${humanField(summaryDetails.unmatchedCollectionRows ?? '?', 32)} · 未收藏日历 ${humanField(summaryDetails.unmatchedCalendarRows ?? '?', 32)}`,
+    `摘要: 匹配播出 ${humanField(summaryDetails.matchedRows ?? '?', 32)} · 符合收藏状态 ${humanField(summaryDetails.eligibleCollectionRows ?? '?', 32)} · 未匹配日历 ${humanField(summaryDetails.unmatchedCollectionRows ?? '?', 32)} · 日历未匹配 ${humanField(summaryDetails.unmatchedCalendarRows ?? '?', 32)}`,
     '说明：按 subject ID 对齐；日期是官方日历的首播日期证据，不等同于具体播出时刻或时区。',
   ];
 
@@ -354,6 +354,29 @@ function presentCollectionSchedule(value: Record<string, unknown>): string | und
         `覆盖: 日历 ${humanField(calendarDetails?.observedRows ?? '?', 32)} · 收藏 ${humanField(collectionDetails?.observedRows ?? '?', 32)}/${humanField(collectionDetails?.sourceTotal ?? '?', 32)} · 对齐返回 ${humanField(joinDetails?.returnedRows ?? '?', 32)}/${humanField(joinDetails?.maxRows ?? '?', 32)}`,
       );
     }
+  }
+
+  const unmatchedCalendar = details.unmatchedCalendar;
+  if (Array.isArray(unmatchedCalendar) && unmatchedCalendar.length > 0) {
+    const reasonCounts = new Map<string, number>();
+    for (const candidate of unmatchedCalendar) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const reason = String((candidate as Record<string, unknown>).reason || 'unknown');
+      reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+    }
+    const reasonLabels: Record<string, string> = {
+      not_collected: '完整收藏扫描未发现',
+      status_filtered: '收藏状态被筛选排除',
+      not_observed: '收藏扫描覆盖不完整',
+    };
+    lines.push(
+      `日历未匹配原因: ${[...reasonCounts.entries()]
+        .map(
+          ([reason, count]) =>
+            `${reasonLabels[reason] || humanField(reason, 64)} ${humanField(count, 32)}`,
+        )
+        .join(' · ')}`,
+    );
   }
 
   const items = details.items as unknown[];
@@ -402,7 +425,7 @@ function presentCollectionSchedule(value: Record<string, unknown>): string | und
       if (!candidate || typeof candidate !== 'object') continue;
       const item = candidate as Record<string, unknown>;
       lines.push(
-        `- ${humanField(item.nameCn || item.name || `#${item.subjectId || '?'}`)} · ${humanField(item.statusLabel || item.status || '状态未知', 96)}`,
+        `- ${humanField(item.nameCn || item.name || `#${item.subjectId || '?'}`)} · ${humanField(item.statusLabel || item.status || '状态未知', 96)} · ${item.reason === 'not_on_calendar' ? '完整日历观察未发现' : '日历覆盖不完整'}`,
       );
     }
     if (unmatchedCollection.length > 4) {

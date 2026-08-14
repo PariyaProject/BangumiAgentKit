@@ -177,6 +177,8 @@ describe('CollectionScheduleService', () => {
     expect(result.state).toBe('auth_required');
     expect(result.data.items).toEqual([]);
     expect(result.coverage.collection.pagesSucceeded).toBe(0);
+    expect(result.coverage.calendar.state).toBe('complete');
+    expect(result.coverage.collection.state).toBe('auth_required');
     expect(result.error?.code).toBe('AUTH_REQUIRED');
     expect(result.source.collection.retrievedAt).toBeUndefined();
     expect(result.data.summary.noMatch).toBe(true);
@@ -229,5 +231,177 @@ describe('CollectionScheduleService', () => {
     expect(result.warnings.some((warning) => warning.code === 'COLLECTION_PROGRESS_UNKNOWN')).toBe(
       true,
     );
+  });
+
+  it('rejects malformed collection IDs and never turns them into complete join evidence', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1), calendarItem(2)] }));
+      }
+      return response({
+        total: 2,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 3), { ...collectionRow(2, 3), subject_id: null }],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user', {
+      maxCollectionItems: 2,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.collection).toMatchObject({
+      observedRows: 2,
+      uniqueRows: 1,
+      invalidSubjectIdRows: 1,
+    });
+    expect(result.data.items.map((item) => item.subjectId)).toEqual([1]);
+    expect(result.data.unmatchedCalendar).toMatchObject([{ subjectId: 2, reason: 'not_observed' }]);
+    expect(
+      result.warnings.some((warning) => warning.code === 'COLLECTION_INVALID_SUBJECT_IDS'),
+    ).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('"subjectId":null');
+  });
+
+  it('distinguishes an excluded collection status from a proven absent collection row', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      return response({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 2)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.state).toBe('complete');
+    expect(result.data.items).toEqual([]);
+    expect(result.data.unmatchedCalendar).toMatchObject([
+      { subjectId: 1, reason: 'status_filtered', collectionStatus: 'done' },
+    ]);
+    expect(result.data.unmatchedCalendar[0]?.reason).not.toBe('not_collected');
+  });
+
+  it('does not call an incomplete collection scan an absent collection', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      if (url.searchParams.get('offset') === '0') {
+        return response({
+          total: 2,
+          limit: 1,
+          offset: 0,
+          data: [collectionRow(2, 3)],
+        });
+      }
+      return response({ message: 'temporary failure' }, 503);
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user', {
+      maxCollectionItems: 2,
+    });
+
+    expect(result.data.unmatchedCalendar).toMatchObject([{ subjectId: 1, reason: 'not_observed' }]);
+    expect(result.data.unmatchedCalendar[0]?.reason).not.toBe('not_collected');
+  });
+
+  it('does not call a collection row absent from an incomplete calendar scan', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return response([
+          {
+            weekday: { en: 'Mon', cn: '星期一', ja: '月曜日', id: 1 },
+            items: [],
+          },
+        ]);
+      }
+      return response({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(2, 3)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+
+    expect(result.data.unmatchedCollection).toMatchObject([
+      { subjectId: 2, reason: 'calendar_not_observed' },
+    ]);
+    expect(result.data.unmatchedCollection[0]?.reason).not.toBe('not_on_calendar');
+  });
+
+  it('makes duplicate status eligibility and conflict evidence independent of source order', async () => {
+    async function run(
+      order: number[],
+    ): Promise<Awaited<ReturnType<CollectionScheduleService['getCollectionSchedule']>>> {
+      const fetchFn: typeof fetch = async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname === '/calendar') {
+          return response(calendarPayload({ 1: [calendarItem(1)] }));
+        }
+        return response({
+          total: 2,
+          limit: 50,
+          offset: 0,
+          data: order.map((type) => collectionRow(1, type)),
+        });
+      };
+      return collectionService(fetchFn).getCollectionSchedule('bound-user');
+    }
+
+    const doneThenDoing = await run([2, 3]);
+    const doingThenDone = await run([3, 2]);
+
+    expect(doneThenDoing.state).toBe('partial');
+    expect(doingThenDone.state).toBe('partial');
+    expect(doneThenDoing.data.items[0]).toMatchObject({
+      subjectId: 1,
+      status: 'doing',
+      progress: { state: 'conflict' },
+    });
+    expect(doingThenDone.data.items[0]).toMatchObject({
+      subjectId: 1,
+      status: 'doing',
+      progress: { state: 'conflict' },
+    });
+    expect(doneThenDoing.data.summary).toMatchObject({ matchedRows: 1, progressConflictRows: 1 });
+    expect(doingThenDone.data.summary).toMatchObject({ matchedRows: 1, progressConflictRows: 1 });
+  });
+
+  it('uses the latest successful source retrieval for derived evidence', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return response(calendarPayload({ 1: [calendarItem(1)] }));
+      }
+      return response({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [collectionRow(1, 3)],
+      });
+    };
+
+    const result = await collectionService(fetchFn).getCollectionSchedule('bound-user');
+    const derived = result.evidence.find((item) => item.source === 'derived');
+    const latestSourceRetrieval = Math.max(
+      Date.parse(result.source.calendar.retrievedAt || ''),
+      Date.parse(result.source.collection.retrievedAt || ''),
+    );
+
+    expect(derived?.retrievedAt).toBeDefined();
+    expect(Date.parse(derived?.retrievedAt || '')).toBeGreaterThanOrEqual(latestSourceRetrieval);
   });
 });

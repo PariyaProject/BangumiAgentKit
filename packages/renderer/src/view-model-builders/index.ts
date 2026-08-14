@@ -230,7 +230,10 @@ export function buildCollectionScheduleViewModel(
   const renderedRows = items.length + unmatchedCalendar.length + unmatchedCollection.length;
   const omittedRows = Math.max(0, result.coverage.join.returnedRows - renderedRows);
   const formulaEvidence = result.evidence.find((item) => item.source === 'derived');
-  const retrievedAt = result.source.collection.retrievedAt || result.source.calendar.retrievedAt;
+  const retrievedAt = [result.source.collection.retrievedAt, result.source.calendar.retrievedAt]
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
 
   return {
     template: 'collection-schedule',

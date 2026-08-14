@@ -78,7 +78,9 @@ export interface CollectionScheduleUnmatchedCalendarItem {
   airDate?: string;
   airWeekday?: number;
   sourceIndex: number;
-  reason: 'not_collected';
+  collectionStatus?: CollectionScheduleStatus;
+  collectionStatusLabel?: string;
+  reason: 'not_collected' | 'status_filtered' | 'not_observed';
 }
 
 export interface CollectionScheduleUnmatchedCollectionItem {
@@ -89,7 +91,7 @@ export interface CollectionScheduleUnmatchedCollectionItem {
   status: CollectionScheduleStatus;
   statusLabel?: string;
   progress: CollectionScheduleProgress;
-  reason: 'not_on_calendar';
+  reason: 'not_on_calendar' | 'calendar_not_observed';
 }
 
 export interface CollectionScheduleData {
@@ -141,6 +143,7 @@ export interface CollectionScheduleCollectionCoverage {
   sourceExhausted: boolean;
   truncated: boolean;
   duplicateRows: number;
+  invalidSubjectIdRows: number;
   pageFailureOffset?: number;
   pageFailureCode?: string;
   paginationStalled: boolean;
@@ -219,6 +222,7 @@ interface CalendarScan {
 
 interface CollectionScan {
   items: UserCollectionItem[];
+  observedRows: number;
   sourceTotal?: number;
   requestedMaxItems: number;
   pagesAttempted: number;
@@ -226,6 +230,7 @@ interface CollectionScan {
   sourceExhausted: boolean;
   truncated: boolean;
   duplicateRows: number;
+  invalidSubjectIdRows: number;
   pageFailureOffset?: number;
   pageFailureCode?: string;
   paginationStalled: boolean;
@@ -238,6 +243,7 @@ interface CollectionScan {
 
 interface CollectionObservation {
   item: UserCollectionItem;
+  items: UserCollectionItem[];
   duplicateCount: number;
   conflictReasons: string[];
 }
@@ -342,6 +348,37 @@ function sameOptionalValue(left: unknown, right: unknown): boolean {
   );
 }
 
+function isValidSubjectId(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+function collectionItemSortKey(item: UserCollectionItem): string {
+  return [
+    item.status,
+    item.subjectNameCn || '',
+    item.subjectName || '',
+    item.epStatus === undefined ? '' : String(item.epStatus),
+    item.subjectTotalEpisodesValidity || '',
+    item.subjectTotalEpisodesRaw === undefined ? '' : String(item.subjectTotalEpisodesRaw),
+  ].join('\u0000');
+}
+
+function compareCollectionItems(left: UserCollectionItem, right: UserCollectionItem): number {
+  return collectionItemSortKey(left).localeCompare(collectionItemSortKey(right));
+}
+
+function chooseCollectionItem(
+  observation: CollectionObservation,
+  statuses?: readonly CollectionScheduleStatus[],
+): UserCollectionItem {
+  const candidates = statuses
+    ? observation.items.filter((item) => statuses.includes(item.status as CollectionScheduleStatus))
+    : observation.items;
+  return [...(candidates.length > 0 ? candidates : observation.items)].sort(
+    compareCollectionItems,
+  )[0] as UserCollectionItem;
+}
+
 function buildCollectionObservations(items: readonly UserCollectionItem[]): {
   observations: CollectionObservation[];
   duplicateRows: number;
@@ -351,41 +388,55 @@ function buildCollectionObservations(items: readonly UserCollectionItem[]): {
   for (const item of items) {
     const existing = byId.get(item.subjectId);
     if (!existing) {
-      byId.set(item.subjectId, { item, duplicateCount: 0, conflictReasons: [] });
+      byId.set(item.subjectId, { item, items: [item], duplicateCount: 0, conflictReasons: [] });
       continue;
     }
     duplicateRows += 1;
+    existing.items.push(item);
     existing.duplicateCount += 1;
-    if (existing.item.status !== item.status) {
-      existing.conflictReasons.push('重复收藏行的 status 不一致');
-    }
-    if (!sameOptionalValue(existing.item.epStatus, item.epStatus)) {
-      existing.conflictReasons.push('重复收藏行的 ep_status 不一致');
-    }
-    if (
-      existing.item.subjectTotalEpisodes !== item.subjectTotalEpisodes ||
-      existing.item.subjectTotalEpisodesValidity !== item.subjectTotalEpisodesValidity
-    ) {
-      existing.conflictReasons.push('重复收藏行的 subject.eps 证据不一致');
-    }
   }
   return {
-    observations: [...byId.values()].map((observation) => ({
-      ...observation,
-      conflictReasons: [...new Set(observation.conflictReasons)],
-    })),
+    observations: [...byId.values()].map((observation) => {
+      const orderedItems = [...observation.items].sort(compareCollectionItems);
+      const reference = orderedItems[0] as UserCollectionItem;
+      const conflictReasons = [...observation.conflictReasons];
+      if (orderedItems.some((item) => item.status !== reference.status)) {
+        conflictReasons.push('重复收藏行的 status 不一致');
+      }
+      if (orderedItems.some((item) => !sameOptionalValue(reference.epStatus, item.epStatus))) {
+        conflictReasons.push('重复收藏行的 ep_status 不一致');
+      }
+      if (
+        orderedItems.some(
+          (item) =>
+            item.subjectTotalEpisodes !== reference.subjectTotalEpisodes ||
+            item.subjectTotalEpisodesValidity !== reference.subjectTotalEpisodesValidity,
+        )
+      ) {
+        conflictReasons.push('重复收藏行的 subject.eps 证据不一致');
+      }
+      return {
+        ...observation,
+        item: reference,
+        items: orderedItems,
+        conflictReasons: [...new Set(conflictReasons)],
+      };
+    }),
     duplicateRows,
   };
 }
 
-function progressForCollection(observation: CollectionObservation): CollectionScheduleProgress {
-  const item = observation.item;
+function progressForCollection(
+  observation: CollectionObservation,
+  selectedItem = observation.item,
+): CollectionScheduleProgress {
+  const item = selectedItem;
   const reasons = [...observation.conflictReasons];
   const total = item.subjectTotalEpisodes;
   const watched = item.epStatus;
   const validity = item.subjectTotalEpisodesValidity ?? (total === undefined ? 'missing' : 'valid');
   if (observation.duplicateCount > 0 && observation.conflictReasons.length === 0) {
-    reasons.push('重复收藏行已按 subjectId 去重；首行作为展示证据');
+    reasons.push('重复收藏行已按 subjectId 去重；使用稳定排序的展示证据');
   }
   if (validity === 'invalid') reasons.push('subject.eps 原始值无法验证为正整数');
   if (validity === 'unknown') reasons.push('subject.eps 为未知总集数');
@@ -560,6 +611,8 @@ async function scanCollection(
 ): Promise<CollectionScan> {
   const attemptedAt = new Date().toISOString();
   const items: UserCollectionItem[] = [];
+  let observedRows = 0;
+  let invalidSubjectIdRows = 0;
   const missingFields: Record<string, number> = {};
   let sourceTotal: number | undefined;
   let pagesAttempted = 0;
@@ -574,12 +627,12 @@ async function scanCollection(
   let error: PublicErrorInfo | undefined;
 
   while (
-    items.length < maxItems &&
+    observedRows < maxItems &&
     pagesAttempted < COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES &&
     !sourceExhausted
   ) {
     pagesAttempted += 1;
-    const requested = Math.min(COLLECTION_SCHEDULE_COLLECTION_PAGE_SIZE, maxItems - items.length);
+    const requested = Math.min(COLLECTION_SCHEDULE_COLLECTION_PAGE_SIZE, maxItems - observedRows);
     try {
       const page = await userService.getUserCollections(username, {
         subjectType: 'anime',
@@ -595,9 +648,18 @@ async function scanCollection(
         sourceTotalInvalidated = true;
       }
       const pageItems = page.items.slice(0, requested);
-      pageItems.forEach((item) => markCollectionMissingFields(missingFields, item));
-      items.push(...pageItems);
-      if (pageItems.length === 0 || (sourceTotal !== undefined && sourceTotal <= items.length)) {
+      observedRows += pageItems.length;
+      const validPageItems: UserCollectionItem[] = [];
+      for (const item of pageItems) {
+        if (!isValidSubjectId((item as { subjectId?: unknown }).subjectId)) {
+          invalidSubjectIdRows += 1;
+          continue;
+        }
+        markCollectionMissingFields(missingFields, item);
+        validPageItems.push(item);
+      }
+      items.push(...validPageItems);
+      if (pageItems.length === 0 || (sourceTotal !== undefined && sourceTotal <= observedRows)) {
         sourceExhausted = true;
         continue;
       }
@@ -618,9 +680,10 @@ async function scanCollection(
   const retrievedAt = pagesSucceeded > 0 ? new Date().toISOString() : undefined;
   const truncated =
     !sourceExhausted &&
-    (items.length >= maxItems || pagesAttempted >= COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES);
+    (observedRows >= maxItems || pagesAttempted >= COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES);
   return {
     items,
+    observedRows,
     sourceTotal,
     requestedMaxItems: maxItems,
     pagesAttempted,
@@ -628,6 +691,7 @@ async function scanCollection(
     sourceExhausted,
     truncated,
     duplicateRows: buildCollectionObservations(items).duplicateRows,
+    invalidSubjectIdRows,
     pageFailureOffset,
     pageFailureCode,
     paginationStalled,
@@ -651,8 +715,10 @@ function progressStateCount(
 
 function makeUnmatchedCollectionItem(
   observation: CollectionObservation,
+  statuses: readonly CollectionScheduleStatus[],
+  reason: CollectionScheduleUnmatchedCollectionItem['reason'],
 ): CollectionScheduleUnmatchedCollectionItem {
-  const item = observation.item;
+  const item = chooseCollectionItem(observation, statuses);
   return {
     subjectId: item.subjectId,
     name: item.subjectName || `Subject ${item.subjectId}`,
@@ -660,12 +726,17 @@ function makeUnmatchedCollectionItem(
     subjectDate: item.subjectDate,
     status: item.status as CollectionScheduleStatus,
     statusLabel: item.statusLabel,
-    progress: progressForCollection(observation),
-    reason: 'not_on_calendar',
+    progress: progressForCollection(observation, item),
+    reason,
   };
 }
 
-function makeUnmatchedCalendarItem(row: CalendarRow): CollectionScheduleUnmatchedCalendarItem {
+function makeUnmatchedCalendarItem(
+  row: CalendarRow,
+  reason: CollectionScheduleUnmatchedCalendarItem['reason'],
+  observation?: CollectionObservation,
+): CollectionScheduleUnmatchedCalendarItem {
+  const item = observation?.item;
   return {
     subjectId: row.item.id,
     name: row.item.name,
@@ -674,7 +745,13 @@ function makeUnmatchedCalendarItem(row: CalendarRow): CollectionScheduleUnmatche
     airDate: row.item.airDate,
     airWeekday: row.item.airWeekday,
     sourceIndex: row.sourceIndex,
-    reason: 'not_collected',
+    ...(item
+      ? {
+          collectionStatus: item.status as CollectionScheduleStatus,
+          collectionStatusLabel: item.statusLabel,
+        }
+      : {}),
+    reason,
   };
 }
 
@@ -720,7 +797,7 @@ function baseResult(
         state: collectionState,
         sourceTotal: collection.sourceTotal,
         requestedMaxItems: options.maxItems,
-        observedRows: collection.items.length,
+        observedRows: collection.observedRows,
         uniqueRows: 0,
         eligibleRows: 0,
         pageSize: Math.min(COLLECTION_SCHEDULE_COLLECTION_PAGE_SIZE, options.maxItems),
@@ -730,6 +807,7 @@ function baseResult(
         sourceExhausted: collection.sourceExhausted,
         truncated: collection.truncated,
         duplicateRows: collection.duplicateRows,
+        invalidSubjectIdRows: collection.invalidSubjectIdRows,
         pageFailureOffset: collection.pageFailureOffset,
         pageFailureCode: collection.pageFailureCode,
         paginationStalled: collection.paginationStalled,
@@ -784,6 +862,27 @@ function addWarning(
   result.warnings.push({ code, state, message });
 }
 
+function timestampBoundary(
+  values: readonly (string | undefined)[],
+  direction: 'earliest' | 'latest',
+): string | undefined {
+  const present = values.filter((value): value is string => Boolean(value));
+  if (present.length === 0) return undefined;
+  return present.reduce((boundary, candidate) => {
+    const boundaryTime = Date.parse(boundary);
+    const candidateTime = Date.parse(candidate);
+    if (!Number.isFinite(boundaryTime)) return candidate;
+    if (!Number.isFinite(candidateTime)) return boundary;
+    return direction === 'earliest'
+      ? candidateTime < boundaryTime
+        ? candidate
+        : boundary
+      : candidateTime > boundaryTime
+        ? candidate
+        : boundary;
+  });
+}
+
 function finalizeUnavailable(result: CollectionScheduleResult): CollectionScheduleResult {
   const primaryError = result.error;
   if (primaryError) {
@@ -812,21 +911,37 @@ function finalizeSchedule(
 
   const { observations, duplicateRows } = buildCollectionObservations(collection.items);
   const eligible = observations.filter((observation) =>
-    statuses.includes(observation.item.status as CollectionScheduleStatus),
+    observation.items.some((item) => statuses.includes(item.status as CollectionScheduleStatus)),
   );
   const bySubjectId = new Map(
-    eligible.map((observation) => [observation.item.subjectId, observation]),
+    observations.map((observation) => [observation.item.subjectId, observation]),
   );
+  const eligibleSubjectIds = new Set(eligible.map((observation) => observation.item.subjectId));
+  const collectionScanComplete =
+    collection.sourceExhausted &&
+    !collection.truncated &&
+    collection.pageFailureCode === undefined &&
+    !collection.paginationStalled &&
+    !collection.sourceTotalChanged &&
+    collection.invalidSubjectIdRows === 0;
+  const calendarScanComplete = calendar.coverage.state === 'complete';
   const calendarSubjectIds = new Set(calendar.rows.map((row) => row.item.id));
   const matched: CollectionScheduleItem[] = [];
   const unmatchedCalendar: CollectionScheduleUnmatchedCalendarItem[] = [];
   for (const row of calendar.rows) {
     const observation = bySubjectId.get(row.item.id);
     if (!observation) {
-      unmatchedCalendar.push(makeUnmatchedCalendarItem(row));
+      unmatchedCalendar.push(
+        makeUnmatchedCalendarItem(row, collectionScanComplete ? 'not_collected' : 'not_observed'),
+      );
       continue;
     }
-    const progress = progressForCollection(observation);
+    if (!eligibleSubjectIds.has(row.item.id)) {
+      unmatchedCalendar.push(makeUnmatchedCalendarItem(row, 'status_filtered', observation));
+      continue;
+    }
+    const item = chooseCollectionItem(observation, statuses);
+    const progress = progressForCollection(observation, item);
     const reasons = [...progress.reasons];
     if (row.item.airDate.trim() === '') reasons.push('日历条目缺少 air_date');
     if (
@@ -838,10 +953,10 @@ function finalizeSchedule(
     }
     matched.push({
       subjectId: row.item.id,
-      name: row.item.name || observation.item.subjectName || `Subject ${row.item.id}`,
-      nameCn: row.item.nameCn || observation.item.subjectNameCn,
-      status: observation.item.status as CollectionScheduleStatus,
-      statusLabel: observation.item.statusLabel,
+      name: row.item.name || item.subjectName || `Subject ${row.item.id}`,
+      nameCn: row.item.nameCn || item.subjectNameCn,
+      status: item.status as CollectionScheduleStatus,
+      statusLabel: item.statusLabel,
       schedule: {
         weekday: row.weekday,
         airDate: row.item.airDate,
@@ -855,7 +970,13 @@ function finalizeSchedule(
 
   const unmatchedCollection = eligible
     .filter((observation) => !calendarSubjectIds.has(observation.item.subjectId))
-    .map(makeUnmatchedCollectionItem);
+    .map((observation) =>
+      makeUnmatchedCollectionItem(
+        observation,
+        statuses,
+        calendarScanComplete ? 'not_on_calendar' : 'calendar_not_observed',
+      ),
+    );
   const allRows = [
     ...matched.map((item) => ({ kind: 'matched' as const, item })),
     ...unmatchedCalendar.map((item) => ({ kind: 'calendar' as const, item })),
@@ -899,6 +1020,7 @@ function finalizeSchedule(
     collection.paginationStalled ||
     collection.sourceTotalChanged ||
     duplicateRows > 0 ||
+    collection.invalidSubjectIdRows > 0 ||
     Object.keys(collection.missingFields).length > 0 ||
     data.summary.progressInvalidRows > 0 ||
     data.summary.progressConflictRows > 0 ||
@@ -911,6 +1033,7 @@ function finalizeSchedule(
     collection.paginationStalled ||
     collection.sourceTotalChanged ||
     duplicateRows > 0 ||
+    collection.invalidSubjectIdRows > 0 ||
     Object.keys(collection.missingFields).length > 0 ||
     data.summary.progressInvalidRows > 0 ||
     data.summary.progressConflictRows > 0 ||
@@ -946,8 +1069,14 @@ function finalizeSchedule(
     operations: ['GET /calendar', 'GET /v0/users/{username}/collections'],
     formulaVersion: COLLECTION_SCHEDULE_FORMULA_VERSION,
     authScope: 'account',
-    attemptedAt: result.source.collection.attemptedAt,
-    retrievedAt: result.source.collection.retrievedAt,
+    attemptedAt: timestampBoundary(
+      [result.source.calendar.attemptedAt, result.source.collection.attemptedAt],
+      'earliest',
+    ),
+    retrievedAt: timestampBoundary(
+      [result.source.calendar.retrievedAt, result.source.collection.retrievedAt],
+      'latest',
+    ),
   });
   if (state === 'partial') {
     if (
@@ -1026,6 +1155,14 @@ function finalizeSchedule(
         'COLLECTION_DUPLICATE_ROWS',
         'partial',
         `官方收藏分页返回 ${collection.duplicateRows} 条重复 subject 行；匹配按 subjectId 去重。`,
+      );
+    }
+    if (collection.invalidSubjectIdRows > 0) {
+      addWarning(
+        result,
+        'COLLECTION_INVALID_SUBJECT_IDS',
+        'partial',
+        `官方收藏分页返回 ${collection.invalidSubjectIdRows} 条无效 subject_id；这些行未参与匹配。`,
       );
     }
     if (Object.keys(collection.missingFields).length > 0) {

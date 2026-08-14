@@ -46,9 +46,10 @@ The collection-schedule semantic tool and renderer are current-account-only,
 image-free, and bounded. They join the official seven-day legacy calendar to
 the selected current-account animation collection by subject ID, keep
 unmatched calendar/collection rows visible, and expose `ep_status` plus
-`subject.eps` only as collection-envelope evidence. They do not infer an
-airing time, timezone, episode-level completion, history, or recommendation,
-and do not render collection comments or perform writes.
+`subject.eps` only as collection-envelope evidence. Unmatched rows distinguish
+complete-scan absence from status filtering and incomplete source coverage.
+They do not infer an airing time, timezone, episode-level completion, history,
+or recommendation, and do not render collection comments or perform writes.
 
 ## 保底 Operation 工具
 

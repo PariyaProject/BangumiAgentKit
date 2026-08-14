@@ -30,6 +30,20 @@ function progressStateLabel(
   return '进度未知';
 }
 
+function calendarReasonLabel(
+  reason: CollectionScheduleViewModel['unmatchedCalendar'][number]['reason'],
+): string {
+  if (reason === 'not_collected') return '完整收藏扫描中未发现';
+  if (reason === 'status_filtered') return '收藏状态被当前筛选排除';
+  return '收藏扫描覆盖不完整';
+}
+
+function collectionReasonLabel(
+  reason: CollectionScheduleViewModel['unmatchedCollection'][number]['reason'],
+): string {
+  return reason === 'not_on_calendar' ? '完整日历观察中未发现' : '日历覆盖不完整';
+}
+
 function boundedText(value: unknown, maximum = 180): string {
   const normalized = String(value ?? '')
     .replace(/\s+/gu, ' ')
@@ -64,8 +78,15 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
     ['匹配播出', String(viewModel.summary.matchedRows)],
     ['符合收藏状态', String(viewModel.summary.eligibleCollectionRows)],
     ['未匹配日历', String(viewModel.summary.unmatchedCollectionRows)],
-    ['未收藏日历', String(viewModel.summary.unmatchedCalendarRows)],
+    ['日历未匹配', String(viewModel.summary.unmatchedCalendarRows)],
   ];
+  const calendarReasonCounts = viewModel.unmatchedCalendar.reduce<Record<string, number>>(
+    (counts, item) => {
+      counts[item.reason] = (counts[item.reason] || 0) + 1;
+      return counts;
+    },
+    {},
+  );
   const hasItems = viewModel.items.length > 0 && viewModel.state !== 'unavailable';
 
   return (
@@ -131,6 +152,18 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
         ))}
       </div>
 
+      {viewModel.unmatchedCalendar.length > 0 ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          展示的日历未匹配原因：
+          {Object.entries(calendarReasonCounts)
+            .map(
+              ([reason, count]) =>
+                `${calendarReasonLabel(reason as CollectionScheduleViewModel['unmatchedCalendar'][number]['reason'])} ${count}`,
+            )
+            .join(' · ')}
+        </div>
+      ) : null}
+
       {hasItems ? (
         <section>
           <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
@@ -176,10 +209,10 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
       {viewModel.unmatchedCollection.length > 0 ? (
         <section>
           <div style={{ color: theme.accent, fontWeight: 700, fontSize: '13px' }}>
-            收藏中未出现在本周日历的条目
+            收藏中未能与本周日历确认匹配的条目
           </div>
           <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-            这表示本次官方日历观察中没有匹配行，不证明条目已下档或收藏失效。
+            完整日历观察未发现或日历覆盖不完整时，均不证明条目已下档或收藏失效。
           </div>
           {viewModel.unmatchedCollection.map((item) => (
             <div
@@ -187,7 +220,7 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
               style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}
             >
               · {item.nameCn || item.name} · {item.statusLabel || item.status} ·{' '}
-              {progressStateLabel(item.progress.state)}
+              {collectionReasonLabel(item.reason)} · {progressStateLabel(item.progress.state)}
             </div>
           ))}
         </section>
@@ -196,7 +229,7 @@ export const CollectionScheduleCard: React.FC<CollectionScheduleCardProps> = ({
       {viewModel.unmatchedCalendar.length > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
           官方日历另有 {viewModel.summary.unmatchedCalendarRows}{' '}
-          条未在选定收藏状态中匹配的播出条目。
+          条未匹配播出条目；具体是状态筛选、覆盖不完整还是完整收藏扫描未发现，见原因说明。
         </div>
       ) : null}
 

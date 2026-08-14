@@ -127,6 +127,12 @@ describe('collection-schedule renderer', () => {
     expect(viewModel.coverage.renderedItems).toBe(1);
     expect(viewModel.coverage.renderedUnmatchedCalendar).toBe(1);
     expect(viewModel.coverage.renderedUnmatchedCollection).toBe(1);
+    expect(Date.parse(viewModel.evidence.retrievedAt || '')).toBeGreaterThanOrEqual(
+      Math.max(
+        Date.parse(result.source.calendar.retrievedAt || ''),
+        Date.parse(result.source.collection.retrievedAt || ''),
+      ),
+    );
     expect(extractImageUrls(viewModel)).toEqual([]);
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
@@ -134,7 +140,7 @@ describe('collection-schedule renderer', () => {
     expect(html).toContain('部分覆盖');
     expect(html).toContain('collection-schedule-v1');
     expect(html).toContain('一个需要在图片卡片中安全换行的超长中文收藏动画标题');
-    expect(html).toContain('收藏中未出现在本周日历的条目');
+    expect(html).toContain('收藏中未能与本周日历确认匹配的条目');
     expect(html).not.toContain('private comment');
 
     const rendered = await renderService.renderCard(viewModel, { width: 640 });

@@ -240,8 +240,11 @@ Derived Logic:
 calendar and collection source order, exposes unmatched calendar and collection
 rows, and labels `ep_status`/`subject.eps` progress as collection-envelope
 evidence. Missing, invalid, duplicate, conflicting, truncated, and unavailable
-source observations remain explicit; no timezone, historical trend, airing
-time, recommendation, or episode-completion claim is inferred.
+source observations remain explicit; unmatched rows distinguish complete-scan
+absence, status filtering, and incomplete coverage; derived retrieval evidence
+spans both source attempts and the latest successful input. No timezone,
+historical trend, airing time, recommendation, or episode-completion claim is
+inferred.
 
 Provenance:
 Selected from synchronized Harness V3 `master` in Outer Run Issue #14 after

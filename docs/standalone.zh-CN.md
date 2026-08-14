@@ -168,7 +168,8 @@ legacy `/calendar` 按 `subjectId` 对齐。它展示匹配条目的星期、官
 `air_date`、收藏状态、`ep_status`/`subject.eps` 收藏信封进度，以及未匹配的
 收藏或日历行；`air_date` 不是具体播出时刻，官方源不提供时区。分页、重复、
 缺失、进度 unknown/conflict、auth、上游错误和 partial/unavailable 状态均保留在
-JSON 与人类输出中；不读取评论，不读取 episode collection，不执行收藏写入。
+JSON 与人类输出中；未匹配会区分完整扫描未发现、状态筛选排除和源覆盖不完整，
+不读取评论，不读取 episode collection，不执行收藏写入。
 
 Renderer Tool 返回 `ArtifactRef`。`--output` 只接受用户明确指定的本地目标，
 Standalone 会从 ArtifactStore 校验 ID、mime、expiry、PNG signature 后复制

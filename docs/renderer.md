@@ -91,8 +91,10 @@ comments, join the calendar, or turn missing episode totals into estimates.
 calendar to the current account's bounded animation collection by subject ID,
 keeps unmatched rows and collection-envelope progress evidence visible, and
 labels pagination, source failure, auth, duplicate, conflict, and unknown
-states. It does not infer an airing time, timezone, episode-level completion,
-history, or recommendation, and it never renders collection comments.
+states. Unmatched rows distinguish a complete-scan absence from a filtered
+status or incomplete source observation. It does not infer an airing time,
+timezone, episode-level completion, history, or recommendation, and it never
+renders collection comments.
 
 `series-relations` is the bounded Series / Watch-Order companion card. It shows
 the selected steps separately from directed relation evidence, preserves raw
