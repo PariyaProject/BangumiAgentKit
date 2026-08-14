@@ -1,6 +1,6 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `PLANNED`
+Status: `IMPLEMENTING`
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized

@@ -88,11 +88,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`PLANNED`
+`IMPLEMENTING`
 
 Current Phase:
 
-`EPOCH_PLANNING`
+`EPOCH_ACTIVE / IMPLEMENTING`
 
 Review Boundary Rationale:
 
@@ -103,9 +103,9 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Planned: bounded subject-overview composition; semantic Agent tool; subject-
-overview renderer; Standalone/catalog/docs/tests. No Work Package is yet
-LUNA_STABLE.`
+`Work Package 1 in progress: bounded subject-overview composition and shared
+result types. Semantic tool, renderer, Standalone/catalog/docs/tests remain
+pending; no Work Package is yet LUNA_STABLE.`
 
 Primary Model / Reasoning:
 
@@ -135,7 +135,7 @@ Base SHA / Feature Branch:
 
 Latest Stable Commit / Candidate SHA:
 
-`No implementation commit yet` / `N/A`
+`709bfc8 docs(product): plan PR-8A subject intelligence overview` / `N/A`
 
 Tests and Exact-SHA CI:
 
@@ -163,8 +163,8 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Implement PR-8A from the recorded base/branch after finalizing the bounded
-Cycle Plan; run focused validation before broader readiness work.`
+`Implement the shared bounded SubjectOverview result and composition over the
+existing official-v0 services; add focused tests before renderer work.`
 
 ---
 
