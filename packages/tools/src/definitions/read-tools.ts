@@ -13,6 +13,7 @@ import {
   IndexReadService,
   CalendarService,
   CollectionIntelligenceService,
+  CollectionBacklogService,
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
@@ -813,6 +814,69 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCollectionBacklog = defineTool({
+    name: 'bangumi.get_collection_backlog',
+    description:
+      '获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、源报告总集数、已知剩余集数和完成度。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial 和 not_computable 状态都会显式返回。',
+    input: z
+      .object({
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('最多扫描当前账号动画收藏条目数，默认 50'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .optional()
+          .describe('最多读取 episode collection 的条目数，默认 20'),
+        maxEpisodesPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe('每个条目最多读取的正篇进度行数，默认 200'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('收藏状态过滤，默认 wish/doing/on_hold；顺序保留源顺序，不代表优先级'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!clientProvider) {
+          throw new Error('AUTH_REQUIRED: Must bind a Bangumi account to get collection backlog.');
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new Error('AUTH_REQUIRED: Must bind a Bangumi account to get collection backlog.');
+      }
+      return await new CollectionBacklogService(client).getCollectionBacklog(username, {
+        maxItems: input.maxItems,
+        maxSubjects: input.maxSubjects,
+        maxEpisodesPerSubject: input.maxEpisodesPerSubject,
+        statuses: input.statuses,
+      });
+    },
+  });
+
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
     description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
@@ -944,5 +1008,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getRevisionIntelligence,
     getSubjectOverviewTool,
     getCollectionIntelligence,
+    getCollectionBacklog,
   ] as const;
 }

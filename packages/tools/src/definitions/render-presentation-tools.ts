@@ -9,6 +9,7 @@ import {
   CharacterService,
   CalendarService,
   CollectionIntelligenceService,
+  CollectionBacklogService,
   PersonService,
   RevisionService,
   RevisionEntityType,
@@ -28,6 +29,7 @@ import {
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
   buildCollectionIntelligenceViewModel,
+  buildCollectionBacklogViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -493,6 +495,78 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionBacklog = defineTool({
+    name: 'bangumi.render_collection_backlog',
+    description:
+      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示源顺序条目、正篇 episode progress、已知剩余集数、来源冲突与无法计算原因；明确账号范围、覆盖、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
+    input: z
+      .object({
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('最多扫描当前账号动画收藏条目数，默认 50'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .optional()
+          .describe('最多读取 episode collection 的条目数，默认 20'),
+        maxEpisodesPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe('每个条目最多读取的正篇进度行数，默认 200'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('收藏状态过滤，默认 wish/doing/on_hold；顺序保留源顺序，不代表优先级'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            'Must bind a Bangumi account to render collection backlog',
+            false,
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          'Must bind a Bangumi account to render collection backlog',
+          false,
+        );
+      }
+      const result = await new CollectionBacklogService(client).getCollectionBacklog(username, {
+        maxItems: input.maxItems,
+        maxSubjects: input.maxSubjects,
+        maxEpisodesPerSubject: input.maxEpisodesPerSubject,
+        statuses: input.statuses,
+      });
+      return await executeRenderAndSave(buildCollectionBacklogViewModel(result));
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -505,5 +579,6 @@ export function createRenderPresentationTools(
     renderRevisionTimeline,
     renderSubjectOverview,
     renderCollectionIntelligence,
+    renderCollectionBacklog,
   ] as const;
 }

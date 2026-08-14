@@ -257,6 +257,48 @@
     }
   },
   {
+    "name": "bangumi.get_collection_backlog",
+    "description": "获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、源报告总集数、已知剩余集数和完成度。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial 和 not_computable 状态都会显式返回。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "maxItems": {
+          "description": "最多扫描当前账号动画收藏条目数，默认 50",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maxSubjects": {
+          "description": "最多读取 episode collection 的条目数，默认 20",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "maxEpisodesPerSubject": {
+          "description": "每个条目最多读取的正篇进度行数，默认 200",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "statuses": {
+          "description": "收藏状态过滤，默认 wish/doing/on_hold；顺序保留源顺序，不代表优先级",
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_collection_intelligence",
     "description": "获取当前绑定 Bangumi 账号的有界收藏智能概览：状态/媒介分布、backlog、评分、进度、标签频率和观察样本中的最近更新。仅读取当前账号的官方 v0 收藏，不接受任意用户名；返回 sourceTotal、观察覆盖、证据、公式版本和 partial/unavailable 限制，不宣称全量趋势或推荐。",
     "auth": "required",
@@ -1217,6 +1259,48 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_collection_backlog",
+    "description": "生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示源顺序条目、正篇 episode progress、已知剩余集数、来源冲突与无法计算原因；明确账号范围、覆盖、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "maxItems": {
+          "description": "最多扫描当前账号动画收藏条目数，默认 50",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maxSubjects": {
+          "description": "最多读取 episode collection 的条目数，默认 20",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "maxEpisodesPerSubject": {
+          "description": "每个条目最多读取的正篇进度行数，默认 200",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "statuses": {
+          "description": "收藏状态过滤，默认 wish/doing/on_hold；顺序保留源顺序，不代表优先级",
+          "minItems": 1,
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
+          }
+        }
+      },
       "additionalProperties": false
     }
   },

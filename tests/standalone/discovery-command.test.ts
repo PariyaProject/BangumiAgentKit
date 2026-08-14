@@ -120,6 +120,66 @@ describe('Standalone discovery and raw tool playground', () => {
     );
   });
 
+  it('collection backlog commands preserve bounded status and episode options', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'complete' });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      [
+        'collection',
+        'backlog',
+        '--max-items',
+        '25',
+        '--max-subjects',
+        '6',
+        '--max-episodes',
+        '120',
+        '--status',
+        'doing,on_hold',
+      ],
+      context(host),
+    );
+    await registry.execute(
+      [
+        'render',
+        'collection-backlog',
+        '--max-items',
+        '20',
+        '--max-subjects',
+        '4',
+        '--max-episodes',
+        '80',
+        '--status',
+        'wish',
+      ],
+      context(host),
+    );
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_collection_backlog',
+      {
+        maxItems: 25,
+        maxSubjects: 6,
+        maxEpisodesPerSubject: 120,
+        statuses: ['doing', 'on_hold'],
+      },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_collection_backlog',
+      {
+        maxItems: 20,
+        maxSubjects: 4,
+        maxEpisodesPerSubject: 80,
+        statuses: ['wish'],
+      },
+      expect.anything(),
+    );
+  });
+
   it('preserves the documented single-quoted raw JSON form and executes it through ToolRegistry', async () => {
     const tokens = tokenizeCommandLine(
       `tool call bangumi.search_subjects '{"query":"少女终末旅行"}'`,

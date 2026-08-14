@@ -12,6 +12,7 @@ import {
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
   CollectionIntelligenceViewModel,
+  CollectionBacklogViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -26,6 +27,7 @@ import { PersonProfileCard } from './PersonProfileCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
+import { CollectionBacklogCard } from './CollectionBacklogCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
@@ -146,6 +148,14 @@ registerTemplate<CollectionIntelligenceViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <CollectionIntelligenceCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<CollectionBacklogViewModel>({
+  id: 'collection-backlog',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <CollectionBacklogCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 
