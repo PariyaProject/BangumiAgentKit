@@ -7,6 +7,7 @@ export * from './models/user.js';
 export * from './models/revision.js';
 export * from './models/domain-index.js';
 export * from './models/calendar.js';
+export * from './models/subject-overview.js';
 
 export * from './services/subject-service.js';
 export * from './services/series-service.js';

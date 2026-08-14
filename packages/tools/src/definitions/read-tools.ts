@@ -17,6 +17,7 @@ import {
   groupSubjectStaff,
   RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
+import { getSubjectOverview } from '../subject-overview.js';
 
 export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
   let publicHttpClient: HttpClient;
@@ -95,6 +96,49 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectById(input.subjectId);
+    },
+  });
+
+  const getSubjectOverviewTool = defineTool({
+    name: 'bangumi.get_subject_overview',
+    description:
+      '一次获取指定条目的证据型智能概览：基本信息、官方评分/收藏统计、角色与声优、制作人员和关联条目。各区段独立保留 complete/partial/unavailable/not_computable 状态、覆盖、来源和限制；不宣称完整角色表、职员表、系列图或历史趋势。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优最多返回条数，默认 8'),
+      maxStaff: z
+        .number()
+        .int()
+        .min(1)
+        .max(80)
+        .optional()
+        .describe('制作人员最多返回条数，默认 24'),
+      maxRelations: z
+        .number()
+        .int()
+        .min(1)
+        .max(32)
+        .optional()
+        .describe('关联条目最多返回条数，默认 12'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      return await getSubjectOverview(
+        input.subjectId,
+        {
+          maxCast: input.maxCast ?? 8,
+          maxStaff: input.maxStaff ?? 24,
+          maxRelations: input.maxRelations ?? 12,
+        },
+        {
+          client: activeClient,
+          providerRegistry: deps?.providerRegistry,
+        },
+      );
     },
   });
 
@@ -853,5 +897,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubjectStats,
     getCalendarIntelligence,
     getRevisionIntelligence,
+    getSubjectOverviewTool,
   ] as const;
 }

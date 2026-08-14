@@ -7,6 +7,7 @@ import type {
   PersonActivityProfile,
   SubjectSearchResult,
   SeriesWatchOrderResult,
+  SubjectOverviewResult,
 } from '@bangumi-agent-kit/bangumi-core';
 import type {
   SubjectCardViewModel,
@@ -25,6 +26,7 @@ import type {
   SeriesRelationsViewModel,
   SeriesRelationsRelatedViewModel,
   SeriesRelationPathViewModel,
+  SubjectOverviewViewModel,
 } from '../view-models/index.js';
 
 export function truncateText(
@@ -80,6 +82,142 @@ export function buildSubjectCardViewModel(
     source: {
       label: options?.sourceLabel || 'Bangumi Agent Kit',
     },
+  };
+}
+
+function imageFromRecord(images?: Record<string, string>): string | undefined {
+  return images?.large || images?.common || images?.medium || images?.small || images?.grid;
+}
+
+export function buildSubjectOverviewViewModel(
+  result: SubjectOverviewResult,
+  options: {
+    sourceLabel?: string;
+    maxCast?: number;
+    maxStaffGroups?: number;
+    maxRelations?: number;
+  } = {},
+): SubjectOverviewViewModel {
+  const subject = result.subject;
+  const maxCast = options.maxCast ?? 6;
+  const maxStaffGroups = options.maxStaffGroups ?? 6;
+  const maxRelations = options.maxRelations ?? 8;
+  const castItems = result.cast.items.slice(0, maxCast).map((item) => ({
+    character: {
+      id: item.character.id,
+      name: item.character.name,
+      image: imageFromRecord(item.character.images),
+    },
+    relation: item.relation || '关系未知',
+    actors: item.actors.slice(0, 3).map((actor) => ({
+      id: actor.id,
+      name: actor.name,
+      image: actor.image,
+    })),
+  }));
+  const staffById = new Map(result.staff.items.map((item) => [item.id, item]));
+  const staffGroups = result.staff.groups.slice(0, maxStaffGroups).map((group) => ({
+    relation: group.relation || '职位未知',
+    count: group.count,
+    members: group.memberIds.slice(0, 4).flatMap((id) => {
+      const member = staffById.get(id);
+      return member
+        ? [{ id: member.id, name: member.name, image: imageFromRecord(member.images) }]
+        : [];
+    }),
+  }));
+  const renderedStaffMembers = staffGroups.reduce(
+    (count, group) => count + group.members.length,
+    0,
+  );
+  const relationItems = result.relations.items.slice(0, maxRelations).map((item) => ({
+    id: item.id,
+    name: item.name,
+    nameCn: item.nameCn,
+    type: item.type,
+    relation: item.relation || '关系未知',
+    image: imageFromRecord(item.images),
+  }));
+  const stats = result.stats.data;
+  const histogram = stats
+    ? Object.entries(stats.ratingHistogram)
+        .map(([score, count]) => ({ score: Number(score), count }))
+        .filter((item) => Number.isFinite(item.score))
+        .sort((left, right) => left.score - right.score)
+    : [];
+  const operations = Array.from(new Set(result.evidence.map((item) => item.operation)));
+  const retrievedAt = result.evidence
+    .map((item) => item.retrievedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1);
+
+  return {
+    template: 'subject-overview',
+    version: 1,
+    state: result.state,
+    subject: {
+      id: result.subjectId,
+      name: subject?.name || `Subject ${result.subjectId}`,
+      nameCn: subject?.nameCn,
+      type: subject?.type || 'unknown',
+      date: subject?.date,
+      platform: subject?.platform,
+      image: imageFromRecord(subject?.images),
+      score: subject?.score,
+      rank: subject?.rank,
+      summary: truncateText(subject?.summary, 260).text || undefined,
+      eps: subject?.eps,
+      totalEpisodes: subject?.totalEpisodes,
+    },
+    stats: {
+      state: result.stats.state,
+      score: stats?.score,
+      rank: stats?.rank,
+      ratingTotal: stats?.ratingTotal,
+      histogram,
+      collection: stats?.collection,
+      coverage: {
+        observed: result.stats.coverage.observed,
+        returned: result.stats.coverage.returned,
+        truncated: result.stats.coverage.truncated,
+      },
+    },
+    cast: {
+      state: result.cast.state,
+      items: castItems,
+      hiddenCount: Math.max(0, result.cast.items.length - castItems.length) || undefined,
+      coverage: {
+        observed: result.cast.coverage.observed,
+        returned: result.cast.coverage.returned,
+        truncated: result.cast.coverage.truncated,
+      },
+    },
+    staff: {
+      state: result.staff.state,
+      groups: staffGroups,
+      hiddenCount: Math.max(0, result.staff.items.length - renderedStaffMembers) || undefined,
+      coverage: {
+        observed: result.staff.coverage.observed,
+        returned: result.staff.coverage.returned,
+        truncated: result.staff.coverage.truncated,
+      },
+    },
+    relations: {
+      state: result.relations.state,
+      items: relationItems,
+      hiddenCount: Math.max(0, result.relations.items.length - relationItems.length) || undefined,
+      coverage: {
+        observed: result.relations.coverage.observed,
+        returned: result.relations.coverage.returned,
+        truncated: result.relations.coverage.truncated,
+      },
+    },
+    coverage: result.coverage,
+    evidence: { operations, count: result.evidence.length, retrievedAt },
+    warnings: result.warnings.map(({ code, state, message }) => ({ code, state, message })),
+    limitations: result.limitations,
+    source: { label: options.sourceLabel || 'Bangumi 官方来源', retrievedAt },
   };
 }
 

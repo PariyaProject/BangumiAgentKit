@@ -24,6 +24,7 @@ Ctrl+C 取消当前输入/操作，第二次 Ctrl+C 干净退出。Standalone �
 pnpm bak -- status
 pnpm bak -- search "少女终末旅行"
 pnpm bak -- subject 218707
+pnpm bak -- overview 218707
 pnpm bak -- watch-order 218707 --depth 2 --max-nodes 8 --media all
 pnpm bak -- collection status 218707
 pnpm bak -- render subject 218707 --output "$HOME/Desktop/bangumi.png"
@@ -62,6 +63,7 @@ principal、账号绑定、PendingAction 和审计事件仍然相互隔离。
 ```text
 search <query> [--type anime] [--limit 5]
 subject <id>
+overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 cast <subjectId>
 calendar
@@ -140,6 +142,7 @@ auth、scope、confirmation、audit 和 safe error policy；它不会直接调�
 
 ```text
 render subject <id>
+render overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 render watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 render cast <id>
 render calendar

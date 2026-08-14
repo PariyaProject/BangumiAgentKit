@@ -57,7 +57,7 @@ PNG Buffer + RenderResult Metadata
 ## Template Registry & Error Model
 
 The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates
-(`subject-card`, `search-list`, `discovery-results`, `cast-card`,
+(`subject-card`, `subject-overview`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `calendar`, `revision-timeline`, and `person-profile`).
 It also includes `series-relations` for bounded Series / Watch-Order evidence.
 
