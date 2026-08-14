@@ -274,4 +274,96 @@ describe('CollectionIntelligenceService', () => {
     expect(result.coverage.paginationStalled).toBe(true);
     expect(result.warnings.some((warning) => warning.code === 'PAGINATION_STALLED')).toBe(true);
   });
+
+  it.each([
+    ['missing', {}],
+    ['invalid negative', { total: -1 }],
+    ['invalid fractional', { total: 1.5 }],
+    ['contradictory zero', { total: 0 }],
+  ])('keeps a %s source total unknown instead of fabricating coverage', async (_label, total) => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          ...total,
+          limit: 1,
+          offset: 0,
+          data: [collectionRow(1, 3)],
+        }),
+        { status: 200 },
+      );
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 1 });
+
+    expect(result.coverage.sourceTotal).toBeUndefined();
+    expect(result.coverage.state).toBe('partial');
+    expect(result.warnings.some((warning) => warning.code === 'PARTIAL_SCAN')).toBe(true);
+  });
+
+  it('invalidates source total when later pages disagree instead of selecting a value', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const offset = Number(new URL(String(input)).searchParams.get('offset'));
+      return new Response(
+        JSON.stringify({
+          total: offset === 0 ? 3 : 4,
+          limit: 2,
+          offset,
+          data: offset === 0 ? [collectionRow(1, 3), collectionRow(2, 3)] : [collectionRow(3, 3)],
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 10 });
+
+    expect(result.coverage.sourceTotal).toBeUndefined();
+    expect(result.coverage.sourceTotalChanged).toBe(true);
+    expect(result.state).toBe('partial');
+  });
+
+  it('preserves a valid zero total for an empty collection', async () => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(JSON.stringify({ total: 0, limit: 1, offset: 0, data: [] }), {
+        status: 200,
+      });
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 1 });
+
+    expect(result.coverage.sourceTotal).toBe(0);
+    expect(result.coverage.sourceExhausted).toBe(true);
+    expect(result.state).toBe('complete');
+  });
+
+  it('preserves a later page zero offset and terminates the repeated page immediately', async () => {
+    let requests = 0;
+    const requestedOffsets: number[] = [];
+    const fetchFn: typeof fetch = async (input) => {
+      requests += 1;
+      const requestedOffset = Number(new URL(String(input)).searchParams.get('offset'));
+      requestedOffsets.push(requestedOffset);
+      return new Response(
+        JSON.stringify({
+          total: 10,
+          limit: 2,
+          offset: 0,
+          data: [collectionRow(1, 3), collectionRow(2, 3)],
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 10 });
+
+    expect(requests).toBe(2);
+    expect(requestedOffsets).toEqual([0, 2]);
+    expect(result.coverage.paginationStalled).toBe(true);
+    expect(result.coverage.observedRows).toBe(4);
+  });
 });

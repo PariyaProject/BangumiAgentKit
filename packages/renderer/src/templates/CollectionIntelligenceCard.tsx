@@ -62,6 +62,13 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
         {viewModel.coverage.pagesAttempted} 页{viewModel.coverage.truncated ? ' · 有界样本' : ''}
       </div>
 
+      {viewModel.presentation.state === 'partial' ? (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          展示省略：标签 {viewModel.presentation.tags.omitted} 个 · 最近更新{' '}
+          {viewModel.presentation.recentUpdates.omitted} 条（源覆盖状态不变）
+        </div>
+      ) : null}
+
       {viewModel.state === 'unavailable' ? (
         <div
           style={{

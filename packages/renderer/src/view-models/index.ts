@@ -306,6 +306,11 @@ export interface CollectionIntelligenceViewModel {
     epStatus?: number;
     updatedAt: string;
   }>;
+  presentation: {
+    state: 'complete' | 'partial';
+    tags: { available: number; rendered: number; omitted: number };
+    recentUpdates: { available: number; rendered: number; omitted: number };
+  };
   coverage: {
     state: 'complete' | 'partial' | 'unavailable';
     sourceTotal?: number;

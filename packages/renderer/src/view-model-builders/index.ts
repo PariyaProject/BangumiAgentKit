@@ -126,6 +126,9 @@ export function buildCollectionIntelligenceViewModel(
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
   const tags = result.data.tags.top.slice(0, maxTags);
   const latestObservedUpdates = result.data.latestObservedUpdates.slice(0, maxRecentUpdates);
+  const omittedTags = result.data.tags.top.length - tags.length;
+  const omittedRecentUpdates =
+    result.data.latestObservedUpdates.length - latestObservedUpdates.length;
   const formulaEvidence = result.evidence.find((item) => item.source === 'derived');
   const retrievedAt = result.source.retrievedAt;
 
@@ -140,6 +143,19 @@ export function buildCollectionIntelligenceViewModel(
     progress: result.data.progress,
     tags: { ...result.data.tags, top: tags },
     latestObservedUpdates,
+    presentation: {
+      state: omittedTags > 0 || omittedRecentUpdates > 0 ? 'partial' : 'complete',
+      tags: {
+        available: result.data.tags.top.length,
+        rendered: tags.length,
+        omitted: omittedTags,
+      },
+      recentUpdates: {
+        available: result.data.latestObservedUpdates.length,
+        rendered: latestObservedUpdates.length,
+        omitted: omittedRecentUpdates,
+      },
+    },
     coverage: {
       ...result.coverage,
       renderedStatusCount: statusCounts.length,

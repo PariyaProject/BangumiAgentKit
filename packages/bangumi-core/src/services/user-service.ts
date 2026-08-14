@@ -48,7 +48,7 @@ export class UserService {
       offset?: number;
     } = {},
   ): Promise<{
-    total: number;
+    total?: number;
     limit: number;
     offset: number;
     items: (UserCollectionItem & { statusLabel: string })[];
@@ -100,10 +100,17 @@ export class UserService {
       };
     });
 
+    const responseOffset = Number.isInteger(res.offset) && res.offset >= 0 ? res.offset : offset;
+    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : limit;
+    const responseTotal =
+      Number.isInteger(res.total) && res.total >= responseOffset + items.length
+        ? res.total
+        : undefined;
+
     return {
-      total: res.total || items.length,
-      limit: res.limit || limit,
-      offset: res.offset || offset,
+      total: responseTotal,
+      limit: responseLimit,
+      offset: responseOffset,
       items,
     };
   }

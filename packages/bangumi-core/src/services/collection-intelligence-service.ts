@@ -506,6 +506,7 @@ export class CollectionIntelligenceService {
     let pageFailureCode: string | undefined;
     let paginationStalled = false;
     let sourceTotalChanged = false;
+    let sourceTotalInvalidated = false;
 
     while (
       items.length < maxItems &&
@@ -520,10 +521,12 @@ export class CollectionIntelligenceService {
           offset,
         });
         pagesSucceeded += 1;
-        if (pagesSucceeded === 1) sourceTotal = page.total;
-        else if (page.total !== sourceTotal) {
+        if (pagesSucceeded === 1) {
+          sourceTotal = page.total;
+        } else if (!sourceTotalInvalidated && page.total !== sourceTotal) {
           sourceTotalChanged = true;
-          sourceTotal = Math.max(sourceTotal ?? page.total, page.total);
+          sourceTotal = undefined;
+          sourceTotalInvalidated = true;
         }
         const pageItems = page.items.slice(0, requested);
         items.push(...pageItems);

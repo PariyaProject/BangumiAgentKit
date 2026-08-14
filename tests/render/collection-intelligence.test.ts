@@ -131,8 +131,15 @@ describe('collection-intelligence renderer', () => {
 
     expect(viewModel.coverage.renderedTagCount).toBe(8);
     expect(viewModel.coverage.renderedRecentCount).toBe(8);
-    expect(renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640)).toContain(
-      '待看/搁置 backlog = wish + on_hold',
-    );
+    expect(viewModel.presentation).toEqual({
+      state: 'partial',
+      tags: { available: 12, rendered: 8, omitted: 4 },
+      recentUpdates: { available: 10, rendered: 8, omitted: 2 },
+    });
+    for (const width of [640, 960]) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      expect(html).toContain('待看/搁置 backlog = wish + on_hold');
+      expect(html).toContain('展示省略：标签 4 个 · 最近更新 2 条');
+    }
   });
 });
