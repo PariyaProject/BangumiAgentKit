@@ -4,6 +4,8 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
   EPOCH_MARKER,
+  MAX_EPOCH_REVIEWS,
+  MAX_OUTER_REVIEWS,
   RUN_MARKER,
   HarnessInvariantError,
   afterPassBaseAction,
@@ -12,6 +14,7 @@ import {
   assertMergeReadiness,
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
+  assertRunCanStartEpoch,
   assertReviewReadiness,
   assertScopeClosure,
   beforeReviewBaseAction,
@@ -189,6 +192,20 @@ test('F. BASE DRIFT AFTER PASS: the old PASS cannot authorize the new integratio
   assert.equal(action.ready, false);
   assert.equal(action.code, 'PASS_INVALIDATED_BASE_DRIFT');
   assert.match(action.action, /NEW_CANDIDATE_AND_REVIEW/u);
+
+  let running = startReview(run, epoch, 'sol-1');
+  running = applyReviewResult(running.run, running.epoch, { verdict: 'PASS' });
+  assert.throws(
+    () =>
+      assertMergeReadiness({
+        epoch: running.epoch,
+        branchHeadSha: sha('b'),
+        prHeadSha: sha('b'),
+        currentBaseSha: sha('c'),
+      }),
+    (error) =>
+      error instanceof HarnessInvariantError && error.code === 'PASS_INVALIDATED_BASE_DRIFT',
+  );
 });
 
 test('G. GITHUB UNAVAILABLE: CLI stops without a tracked-runtime fallback', () => {
@@ -273,4 +290,59 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     (error) =>
       error instanceof HarnessInvariantError && error.code === 'RUNTIME_ONLY_COMMIT_REJECTED',
   );
+  for (const subject of ['docs: freeze Candidate', 'chore: park state', 'docs(agent): CI green']) {
+    assert.throws(
+      () => assertProductCommitHygiene([subject]),
+      (error) =>
+        error instanceof HarnessInvariantError && error.code === 'RUNTIME_ONLY_COMMIT_REJECTED',
+    );
+  }
+});
+
+test('hard review ceilings reject caller and control-block overrides', () => {
+  assert.equal(MAX_EPOCH_REVIEWS, 2);
+  assert.equal(MAX_OUTER_REVIEWS, 4);
+  assert.throws(
+    () => createRunState({ runId: 'over-budget', outerSolMax: 5 }),
+    (error) => error instanceof HarnessInvariantError && error.code === 'INVALID_REVIEW_LEDGER',
+  );
+  assert.throws(
+    () =>
+      createEpochState({
+        epochId: 'over-budget',
+        baseSha: sha('a'),
+        objective: 'Invalid budget',
+        maxReviews: 3,
+      }),
+    (error) => error instanceof HarnessInvariantError && error.code === 'INVALID_REVIEW_LEDGER',
+  );
+  const { run, epoch } = fixture();
+  run.outer_sol.max = 99;
+  epoch.review.max = 99;
+  assert.throws(
+    () => reserveReview(run, epoch),
+    (error) => error instanceof HarnessInvariantError && error.code === 'INVALID_REVIEW_LEDGER',
+  );
+  run.outer_sol.reserved = 1;
+  epoch.review.reserved = 1;
+  assert.throws(
+    () => markReviewStarted(run, epoch, 'forbidden-reviewer'),
+    (error) => error instanceof HarnessInvariantError && error.code === 'INVALID_REVIEW_LEDGER',
+  );
+  assert.throws(
+    () => reconcileReviewReservation(run, epoch, false),
+    (error) => error instanceof HarnessInvariantError && error.code === 'INVALID_REVIEW_LEDGER',
+  );
+});
+
+test('terminal and circuit-breaker runs cannot start another Epoch', () => {
+  for (const state of ['QUALITY_CIRCUIT_BREAKER', 'STOPPED', 'INTEGRATION_BLOCKED']) {
+    const run = createRunState({ runId: `run-${state}` });
+    run.state = state;
+    assert.throws(
+      () => assertRunCanStartEpoch(run),
+      (error) => error instanceof HarnessInvariantError && error.code === 'RUN_NOT_ACTIVE',
+    );
+  }
+  assert.equal(assertRunCanStartEpoch(createRunState({ runId: 'active' })), true);
 });

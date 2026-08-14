@@ -205,6 +205,13 @@ Before review:
 
 Never spend Sol against a knowingly stale base or a different CI SHA.
 
+The Candidate evidence input must explicitly name the current fetched Base SHA
+and exact branch-HEAD Candidate SHA. A stale control-plane Base may be advanced
+only when the current base is already an ancestor of HEAD and this fresh
+evidence covers that exact base/Candidate combination. Candidate readiness
+marks the Draft PR ready for review. Mandatory checks must report `SUCCESS`;
+`SKIPPED`, `NEUTRAL`, pending, or missing checks do not satisfy exact-SHA CI.
+
 ## 8. Review budget and reservation
 
 A normal reviewed Product Epoch records:
@@ -219,6 +226,11 @@ An Autonomous outer run records:
 - `max: 4`
 - `consumed: 0`
 - `reserved: 0`
+
+The automatic ceilings are executable hard caps: Epoch `max` can never exceed
+`2` and Outer `max` can never exceed `4`, including caller options and edited
+GitHub control blocks. A user may lower a budget but cannot raise either cap
+inside the run.
 
 Before a reviewer launch, create one paired reservation id for exactly one Epoch
 slot and one Outer slot in the GitHub control planes. Another launch is
@@ -293,6 +305,10 @@ independent safe work may continue when the repository is safe.
 Issue and stop. Do not spend remaining outer Sol budget on another Epoch while
 the review/preflight process is demonstrably degraded.
 
+Only an Outer Run in `ACTIVE` state with no active or pending Epoch may start a
+new Epoch. Circuit-breaker, stopped, completed, and integration-blocked states
+reject Epoch creation mechanically.
+
 ## 11. Default integration and base freshness
 
 Normal V3 Product Epochs use `AUTO_MERGE_AFTER_PASS`; an Epoch does not need to
@@ -320,6 +336,11 @@ When permission, protection, conflict, freshness, ancestry, or another real
 gate prevents integration, update the PR control state to
 `INTEGRATION_BLOCKED` and stop. Do not claim merge success or create a Git
 runtime commit.
+
+If GitHub reports the PR merged but subsequent ancestry verification,
+synchronization, or branch cleanup fails, record both the actual merged PR/SHA
+and `INTEGRATION_BLOCKED` in the PR and Run Issue before stopping. Never leave
+the control plane at `REVIEW_PASSED` after a real merge.
 
 Successful integration updates the Outer Run Issue with the latest merged PR,
 clears the active PR, and either continues discovery (`AUTONOMOUS_EVOLUTION`)

@@ -14,6 +14,7 @@ import {
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
   assertReviewReadiness,
+  assertRunCanStartEpoch,
   completeMerge,
   createEpochState,
   createRunState,
@@ -23,7 +24,6 @@ import {
   reconcileReviewReservation,
   renderEpochBody,
   renderRunBody,
-  replaceControlBlock,
   reserveReview,
   waitForSameReviewer,
 } from './lib/agent-harness-core.mjs';
@@ -129,7 +129,7 @@ function prView(number) {
       'view',
       String(number),
       '--json',
-      'number,title,body,state,url,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,mergeCommit',
+      'number,title,body,state,url,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,statusCheckRollup,mergeCommit',
     ),
   );
 }
@@ -144,14 +144,14 @@ function epochState(number) {
   return { view, state: parseControlBlock(view.body, EPOCH_MARKER) };
 }
 
-function updateIssue(number, originalBody, state) {
-  const body = replaceControlBlock(originalBody, RUN_MARKER, state);
+function updateIssue(number, state) {
+  const body = renderRunBody(state);
   gh('issue', 'edit', String(number), '--body-file', '-', { input: body });
   return body;
 }
 
-function updatePr(number, originalBody, state) {
-  const body = replaceControlBlock(originalBody, EPOCH_MARKER, state);
+function updatePr(number, state) {
+  const body = renderEpochBody(state);
   gh('pr', 'edit', String(number), '--body-file', '-', { input: body });
   return body;
 }
@@ -217,9 +217,7 @@ function mandatoryChecksSuccessful(checks) {
   const states = new Map(
     checks.map((check) => [check.name ?? check.context, check.conclusion ?? check.state]),
   );
-  return mandatoryCiChecks.every((name) =>
-    ['SUCCESS', 'SKIPPED', 'NEUTRAL'].includes(states.get(name)),
-  );
+  return mandatoryCiChecks.every((name) => states.get(name) === 'SUCCESS');
 }
 
 function print(value) {
@@ -306,9 +304,7 @@ function commandEpochStart(options) {
   const runNumber = required(options, 'run');
   const spec = readJsonFile(required(options, 'spec'));
   const runResult = issueState(runNumber);
-  if (runResult.state.active_epoch_pr || runResult.state.pending_epoch) {
-    throw new HarnessInvariantError('ACTIVE_EPOCH_EXISTS', 'Resume the existing Epoch first');
-  }
+  assertRunCanStartEpoch(runResult.state);
   const baseBranch = spec.base_branch ?? 'master';
   const baseSha = remoteBaseSha(baseBranch);
   if (currentBranch() !== baseBranch || currentHead() !== baseSha) {
@@ -332,7 +328,7 @@ function commandEpochStart(options) {
   nextRun.pending_epoch = epoch;
   nextRun.state = 'EPOCH_SELECTED_AWAITING_FIRST_COMMIT';
   nextRun.next_action = `CREATE_BRANCH_codex/epoch-${epoch.epoch_id}`;
-  updateIssue(runNumber, runResult.view.body, nextRun);
+  updateIssue(runNumber, nextRun);
   print({ state: nextRun.state, epoch });
 }
 
@@ -359,6 +355,7 @@ function commandEpochOpenPr(options) {
     );
   }
   assertNoLegacyRuntimeChanges(changedPaths(epoch.base_sha));
+  assertProductCommitHygiene(commitSubjects(epoch.base_sha));
   epoch.branch = branch;
   epoch.state = 'IMPLEMENTING';
   epoch.next_action = 'CONTINUE_WORK_PACKAGES';
@@ -379,13 +376,13 @@ function commandEpochOpenPr(options) {
   );
   const pr = JSON.parse(gh('pr', 'view', url, '--json', 'number,body,url'));
   epoch.pr_number = pr.number;
-  updatePr(pr.number, pr.body, epoch);
+  updatePr(pr.number, epoch);
   const nextRun = structuredClone(runResult.state);
   nextRun.pending_epoch = null;
   nextRun.active_epoch_pr = pr.number;
   nextRun.state = 'EPOCH_ACTIVE';
   nextRun.next_action = `RESUME_PR_${pr.number}`;
-  updateIssue(runNumber, runResult.view.body, nextRun);
+  updateIssue(runNumber, nextRun);
   print({ state: 'EPOCH_PR_OPEN', pr: pr.number, url });
 }
 
@@ -412,6 +409,19 @@ function commandCandidateCheck(options) {
   if (currentBranch() !== epoch.branch) {
     throw new HarnessInvariantError('WRONG_EPOCH_BRANCH', `Checkout ${epoch.branch} first`);
   }
+  const baseSha = git('rev-parse', `origin/${epoch.base_branch}`);
+  if (evidence.base_sha !== baseSha || evidence.candidate_sha !== head) {
+    throw new HarnessInvariantError(
+      'FRESH_CANDIDATE_EVIDENCE_REQUIRED',
+      'Evidence must name the current target base and exact branch HEAD Candidate',
+      {
+        evidenceBaseSha: evidence.base_sha,
+        currentBaseSha: baseSha,
+        evidenceCandidateSha: evidence.candidate_sha,
+        currentHeadSha: head,
+      },
+    );
+  }
   epoch.candidate_sha = head;
   epoch.validation = evidence.validation ?? epoch.validation;
   epoch.scope_closure = evidence.scope_closure;
@@ -422,7 +432,6 @@ function commandCandidateCheck(options) {
     status: checksOk ? 'SUCCESS' : 'FAILED_OR_PENDING',
     url: evidence.ci?.url ?? epochResult.view.url,
   };
-  const baseSha = git('rev-parse', `origin/${epoch.base_branch}`);
   if (epoch.base_sha !== baseSha) {
     if (!isAncestor(baseSha, head)) {
       throw new HarnessInvariantError(
@@ -443,12 +452,14 @@ function commandCandidateCheck(options) {
   });
   epoch.state = 'REVIEW_READY';
   epoch.next_action = 'RESERVE_SOL_1';
-  updatePr(prNumber, epochResult.view.body, epoch);
+  if (epochResult.view.isDraft) gh('pr', 'ready', String(prNumber));
+  updatePr(prNumber, epoch);
   print({ state: epoch.state, candidate_sha: head, base_sha: baseSha });
 }
 
 function commandReviewReserve(options) {
   ensureControlPlane();
+  ensureCleanWorkingTree();
   const runNumber = required(options, 'run');
   const prNumber = required(options, 'pr');
   const runResult = issueState(runNumber);
@@ -471,8 +482,8 @@ function commandReviewReserve(options) {
   const reservationId = `review-${Date.now()}`;
   reserved.run.outer_sol.reservation_id = reservationId;
   reserved.epoch.review.reservation_id = reservationId;
-  updatePr(prNumber, epochResult.view.body, reserved.epoch);
-  updateIssue(runNumber, runResult.view.body, reserved.run);
+  updatePr(prNumber, reserved.epoch);
+  updateIssue(runNumber, reserved.run);
   print({ state: 'REVIEW_RESERVED', reservation_id: reservationId });
 }
 
@@ -486,8 +497,8 @@ function commandReviewStarted(options) {
   const started = markReviewStarted(runResult.state, epochResult.state, reviewerId);
   delete started.run.outer_sol.reservation_id;
   delete started.epoch.review.reservation_id;
-  updatePr(prNumber, epochResult.view.body, started.epoch);
-  updateIssue(runNumber, runResult.view.body, started.run);
+  updatePr(prNumber, started.epoch);
+  updateIssue(runNumber, started.run);
   print({ state: 'REVIEW_RUNNING', reviewer_id: reviewerId });
 }
 
@@ -504,8 +515,8 @@ function commandReviewReconcile(options) {
   );
   delete reconciled.run.outer_sol.reservation_id;
   delete reconciled.epoch.review.reservation_id;
-  updatePr(prNumber, epochResult.view.body, reconciled.epoch);
-  updateIssue(runNumber, runResult.view.body, reconciled.run);
+  updatePr(prNumber, reconciled.epoch);
+  updateIssue(runNumber, reconciled.run);
   print({
     state: 'REVIEW_RESERVATION_RECONCILED',
     counted_as_consumed: options['definitely-not-started'] !== true,
@@ -546,8 +557,8 @@ function commandReviewResult(options) {
     });
   }
   const result = applyReviewResult(runResult.state, epochResult.state, { verdict, findings });
-  updatePr(prNumber, epochResult.view.body, result.epoch);
-  updateIssue(runNumber, runResult.view.body, result.run);
+  updatePr(prNumber, result.epoch);
+  updateIssue(runNumber, result.run);
   print({ state: result.epoch.state, outer_state: result.run.state });
 }
 
@@ -573,9 +584,15 @@ function commandEpochPark(options) {
   if (state === 'PARKED_REVIEW_LIMIT') {
     runState.state = 'QUALITY_CIRCUIT_BREAKER';
     runState.next_action = 'HUMAN_INSPECTION_REQUIRED';
+  } else if (state === 'PARKED_FOR_HUMAN') {
+    runState.state = 'ACTIVE';
+    runState.next_action = 'SELECT_INDEPENDENT_SAFE_EPOCH_OR_STOP';
+  } else {
+    runState.state = 'INTEGRATION_BLOCKED';
+    runState.next_action = `RESUME_PR_${prNumber}`;
   }
-  updatePr(prNumber, epochResult.view.body, epoch);
-  updateIssue(runNumber, runResult.view.body, runState);
+  updatePr(prNumber, epoch);
+  updateIssue(runNumber, runState);
   print({ state, same_pr: Number(prNumber), branch: epoch.branch });
 }
 
@@ -608,7 +625,8 @@ function commandEpochMerge(options) {
       if (!driftedRun.parked_epoch_prs.includes(Number(prNumber))) {
         driftedRun.parked_epoch_prs.push(Number(prNumber));
       }
-      driftedRun.next_action = 'AWAIT_HUMAN_FOR_BASE_DRIFT_REVIEW_BUDGET';
+      driftedRun.state = 'ACTIVE';
+      driftedRun.next_action = 'SELECT_INDEPENDENT_SAFE_EPOCH_OR_STOP';
     } else {
       driftedEpoch.state = 'PASS_INVALIDATED_BASE_DRIFT';
       driftedEpoch.candidate_sha = null;
@@ -616,8 +634,8 @@ function commandEpochMerge(options) {
       driftedEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
       driftedEpoch.next_action = 'SYNCHRONIZE_VALIDATE_NEW_CANDIDATE_AND_REVIEW';
     }
-    updatePr(prNumber, epochResult.view.body, driftedEpoch);
-    updateIssue(runNumber, runResult.view.body, driftedRun);
+    updatePr(prNumber, driftedEpoch);
+    updateIssue(runNumber, driftedRun);
     throw new HarnessInvariantError(
       baseAction.code,
       'The reviewed base advanced; the old PASS cannot authorize integration',
@@ -638,8 +656,8 @@ function commandEpochMerge(options) {
       epoch,
       error instanceof Error ? error.message : String(error),
     );
-    updatePr(prNumber, epochResult.view.body, blocked.epoch);
-    updateIssue(runNumber, runResult.view.body, blocked.run);
+    updatePr(prNumber, blocked.epoch);
+    updateIssue(runNumber, blocked.run);
     throw new HarnessInvariantError(
       'INTEGRATION_BLOCKED',
       'GitHub did not merge the PR; the same PR remains authoritative',
@@ -649,18 +667,43 @@ function commandEpochMerge(options) {
   if (mergedPr.state !== 'MERGED' || !mergedPr.mergeCommit?.oid) {
     throw new HarnessInvariantError('INTEGRATION_BLOCKED', 'GitHub did not report MERGED');
   }
-  git('switch', epoch.base_branch);
-  git('pull', '--ff-only', 'origin', epoch.base_branch);
-  const ancestor = isAncestor(epoch.candidate_sha, `origin/${epoch.base_branch}`);
-  const result = completeMerge(runResult.state, epoch, {
-    mergeSha: mergedPr.mergeCommit.oid,
-    candidateIsAncestor: ancestor,
-  });
-  if (remoteBranchExists(epoch.branch)) git('push', 'origin', '--delete', epoch.branch);
-  if (git('branch', '--list', epoch.branch)) git('branch', '-d', epoch.branch);
-  git('fetch', 'origin', '--prune');
-  updatePr(prNumber, mergedPr.body, result.epoch);
-  updateIssue(runNumber, runResult.view.body, result.run);
+  let result;
+  try {
+    git('switch', epoch.base_branch);
+    git('pull', '--ff-only', 'origin', epoch.base_branch);
+    const ancestor = isAncestor(epoch.candidate_sha, `origin/${epoch.base_branch}`);
+    if (!ancestor) {
+      throw new HarnessInvariantError(
+        'MERGE_VERIFICATION_FAILED',
+        'The merged target does not contain the reviewed Candidate',
+      );
+    }
+    result = completeMerge(runResult.state, epoch, {
+      mergeSha: mergedPr.mergeCommit.oid,
+      candidateIsAncestor: true,
+    });
+    if (remoteBranchExists(epoch.branch)) git('push', 'origin', '--delete', epoch.branch);
+    if (git('branch', '--list', epoch.branch)) git('branch', '-d', epoch.branch);
+    git('fetch', 'origin', '--prune');
+  } catch (error) {
+    const blocked = recordIntegrationBlocked(
+      runResult.state,
+      epoch,
+      `PR MERGED as ${mergedPr.mergeCommit.oid}, but post-merge verification/cleanup failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    blocked.epoch.merge_sha = mergedPr.mergeCommit.oid;
+    blocked.epoch.github_pr_state = 'MERGED';
+    updatePr(prNumber, blocked.epoch);
+    updateIssue(runNumber, blocked.run);
+    throw new HarnessInvariantError(
+      'INTEGRATION_BLOCKED',
+      'The PR merged, but verification or cleanup failed; control state records the blocker',
+    );
+  }
+  updatePr(prNumber, result.epoch);
+  updateIssue(runNumber, result.run);
   print({
     state: 'MERGED',
     merge_sha: mergedPr.mergeCommit.oid,
@@ -678,7 +721,7 @@ function commandRunStop(options) {
   const next = structuredClone(runResult.state);
   next.state = state;
   next.next_action = nextAction;
-  updateIssue(runNumber, runResult.view.body, next);
+  updateIssue(runNumber, next);
   print({ state, next_action: nextAction });
 }
 

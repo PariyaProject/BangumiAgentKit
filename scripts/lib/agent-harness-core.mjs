@@ -2,6 +2,8 @@ export const SCHEMA = 'bangumi-harness/v3';
 export const RUN_MARKER = 'bangumi-harness:v3:outer-run';
 export const EPOCH_MARKER = 'bangumi-harness:v3:epoch';
 export const DEFAULT_INTEGRATION = 'AUTO_MERGE_AFTER_PASS';
+export const MAX_EPOCH_REVIEWS = 2;
+export const MAX_OUTER_REVIEWS = 4;
 
 export const LEGACY_RUNTIME_PATHS = [
   'docs/product/loop-status.md',
@@ -18,7 +20,7 @@ export class HarnessInvariantError extends Error {
   }
 }
 
-function copy(value) {
+function cloneState(value) {
   return structuredClone(value);
 }
 
@@ -28,13 +30,18 @@ function requireText(value, code, field) {
   }
 }
 
-function assertLedger(ledger, label) {
+function assertLedger(ledger, label, hardMax) {
   for (const field of ['max', 'consumed', 'reserved']) {
     if (!Number.isInteger(ledger?.[field]) || ledger[field] < 0) {
       throw new HarnessInvariantError('INVALID_REVIEW_LEDGER', `${label}.${field} is invalid`);
     }
   }
-  if (ledger.reserved > 1 || ledger.consumed + ledger.reserved > ledger.max) {
+  if (
+    !Number.isInteger(ledger.max) ||
+    ledger.max > hardMax ||
+    ledger.reserved > 1 ||
+    ledger.consumed + ledger.reserved > ledger.max
+  ) {
     throw new HarnessInvariantError('INVALID_REVIEW_LEDGER', `${label} exceeds its hard ceiling`);
   }
 }
@@ -46,13 +53,15 @@ export function createRunState({
   nextAction = 'SELECT_OR_RESUME_EPOCH',
 }) {
   requireText(runId, 'INVALID_RUN', 'run_id');
+  const outerSol = { max: outerSolMax, consumed: 0, reserved: 0 };
+  assertLedger(outerSol, 'run.outer_sol', MAX_OUTER_REVIEWS);
   return {
     schema: SCHEMA,
     kind: 'outer-run',
     run_id: runId,
     profile,
     state: 'ACTIVE',
-    outer_sol: { max: outerSolMax, consumed: 0, reserved: 0 },
+    outer_sol: outerSol,
     active_epoch_pr: null,
     pending_epoch: null,
     parked_epoch_prs: [],
@@ -76,6 +85,20 @@ export function createEpochState({
   requireText(epochId, 'INVALID_EPOCH', 'epoch_id');
   requireText(baseSha, 'INVALID_EPOCH', 'base_sha');
   requireText(objective, 'INVALID_EPOCH', 'objective');
+  const review = {
+    expected: expectedReviews,
+    max: maxReviews,
+    consumed: 0,
+    reserved: 0,
+    reviewer_id: null,
+  };
+  assertLedger(review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  if (!Number.isInteger(expectedReviews) || expectedReviews < 0 || expectedReviews > maxReviews) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_LEDGER',
+      'epoch.review.expected must be within its hard ceiling',
+    );
+  }
   return {
     schema: SCHEMA,
     kind: 'epoch',
@@ -87,13 +110,7 @@ export function createEpochState({
     reviewed_base_sha: null,
     review_pass_sha: null,
     ci: { sha: null, status: 'NOT_RUN', url: null },
-    review: {
-      expected: expectedReviews,
-      max: maxReviews,
-      consumed: 0,
-      reserved: 0,
-      reviewer_id: null,
-    },
+    review,
     integration: DEFAULT_INTEGRATION,
     objective,
     questions,
@@ -134,10 +151,12 @@ export function assertNoLegacyRuntimeChanges(paths) {
 }
 
 export function assertProductCommitHygiene(subjects) {
-  const runtimeOnly = subjects.filter((subject) =>
-    /^(?:chore|docs)(?:\([^)]*\))?:\s*(?:record|persist|update|mark|activate).*(?:plan|validation|candidate|ci green|review|poll|wait|verdict|freeze|park|merge state|cleanup|ledger)/iu.test(
-      subject,
-    ),
+  const runtimeTransition =
+    /(?:plan activation|validation complete|review readiness|ci green|candidate|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)/iu;
+  const durableEngineering =
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
+  const runtimeOnly = subjects.filter(
+    (subject) => runtimeTransition.test(subject) || !durableEngineering.test(subject),
   );
   if (runtimeOnly.length > 0) {
     throw new HarnessInvariantError(
@@ -145,6 +164,19 @@ export function assertProductCommitHygiene(subjects) {
       'Normal Product history must not contain runtime-state commits',
       { subjects: runtimeOnly },
     );
+  }
+  return true;
+}
+
+export function assertRunCanStartEpoch(run) {
+  if (run?.state !== 'ACTIVE') {
+    throw new HarnessInvariantError(
+      'RUN_NOT_ACTIVE',
+      `Run state ${run?.state ?? 'UNKNOWN'} cannot start another Epoch`,
+    );
+  }
+  if (run.active_epoch_pr || run.pending_epoch) {
+    throw new HarnessInvariantError('ACTIVE_EPOCH_EXISTS', 'Resume the existing Epoch first');
   }
   return true;
 }
@@ -219,8 +251,8 @@ export function afterPassBaseAction({ reviewedBaseSha, currentBaseSha, epochRevi
   if (reviewedBaseSha === currentBaseSha) {
     return { ready: true, action: 'AUTO_MERGE' };
   }
-  assertLedger(epochReview, 'epoch.review');
-  assertLedger(outerReview, 'run.outer_sol');
+  assertLedger(epochReview, 'epoch.review', MAX_EPOCH_REVIEWS);
+  assertLedger(outerReview, 'run.outer_sol', MAX_OUTER_REVIEWS);
   const budgetRemains =
     epochReview.consumed + epochReview.reserved < epochReview.max &&
     outerReview.consumed + outerReview.reserved < outerReview.max;
@@ -271,10 +303,10 @@ export function assertReviewReadiness({
 }
 
 export function reserveReview(run, epoch) {
-  const nextRun = copy(run);
-  const nextEpoch = copy(epoch);
-  assertLedger(nextRun.outer_sol, 'run.outer_sol');
-  assertLedger(nextEpoch.review, 'epoch.review');
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
+  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextRun.outer_sol.reserved || nextEpoch.review.reserved) {
     throw new HarnessInvariantError(
       'REVIEW_RESERVATION_EXISTS',
@@ -296,8 +328,10 @@ export function reserveReview(run, epoch) {
 
 export function markReviewStarted(run, epoch, reviewerId) {
   requireText(reviewerId, 'INVALID_REVIEWER', 'reviewer_id');
-  const nextRun = copy(run);
-  const nextEpoch = copy(epoch);
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
+  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextRun.outer_sol.reserved !== 1 || nextEpoch.review.reserved !== 1) {
     throw new HarnessInvariantError(
       'REVIEW_NOT_RESERVED',
@@ -326,8 +360,10 @@ export function markReviewStarted(run, epoch, reviewerId) {
 }
 
 export function reconcileReviewReservation(run, epoch, launchDefinitelyDidNotOccur) {
-  const nextRun = copy(run);
-  const nextEpoch = copy(epoch);
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
+  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextRun.outer_sol.reserved !== 1 && nextEpoch.review.reserved !== 1) {
     throw new HarnessInvariantError('NO_REVIEW_RESERVATION', 'No reservation exists');
   }
@@ -353,8 +389,10 @@ export function waitForSameReviewer(run, epoch, reviewerId) {
 }
 
 export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
-  const nextRun = copy(run);
-  const nextEpoch = copy(epoch);
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
+  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextEpoch.state !== 'REVIEW_RUNNING') {
     throw new HarnessInvariantError(
       'REVIEW_NOT_RUNNING',
@@ -375,6 +413,7 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
       nextRun.parked_epoch_prs.push(nextEpoch.pr_number);
     }
     nextRun.next_action = 'SELECT_INDEPENDENT_SAFE_EPOCH_OR_STOP';
+    nextRun.state = 'ACTIVE';
   } else if (verdict === 'CORRECTIVE_REQUIRED') {
     if (nextEpoch.review.consumed >= nextEpoch.review.max) {
       nextEpoch.state = 'PARKED_REVIEW_LIMIT';
@@ -415,17 +454,15 @@ export function assertMergeReadiness({ epoch, branchHeadSha, prHeadSha, currentB
     ciSha: epoch.ci?.sha,
     ciStatus: epoch.ci?.status,
   });
-  const base = afterPassBaseAction({
-    reviewedBaseSha: epoch.reviewed_base_sha,
-    currentBaseSha,
-    epochReview: epoch.review,
-    outerReview: { max: Number.MAX_SAFE_INTEGER, consumed: 0, reserved: 0 },
-  });
-  if (!base.ready) {
-    throw new HarnessInvariantError(base.code, 'Target base advanced after PASS', {
-      reviewedBaseSha: epoch.reviewed_base_sha,
-      currentBaseSha,
-    });
+  if (epoch.reviewed_base_sha !== currentBaseSha) {
+    throw new HarnessInvariantError(
+      'PASS_INVALIDATED_BASE_DRIFT',
+      'Target base advanced after PASS',
+      {
+        reviewedBaseSha: epoch.reviewed_base_sha,
+        currentBaseSha,
+      },
+    );
   }
   return true;
 }
@@ -438,13 +475,14 @@ export function completeMerge(run, epoch, { mergeSha, candidateIsAncestor }) {
       'The Candidate is not an ancestor of the merged target base',
     );
   }
-  const nextRun = copy(run);
-  const nextEpoch = copy(epoch);
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
   nextEpoch.state = 'MERGED';
   nextEpoch.merge_sha = mergeSha;
   nextEpoch.next_action = 'BRANCH_CLEANED';
   nextRun.active_epoch_pr = null;
   nextRun.last_merged_epoch_pr = nextEpoch.pr_number;
+  nextRun.state = nextRun.profile === 'AUTONOMOUS_EVOLUTION' ? 'ACTIVE' : 'COMPLETED';
   nextRun.next_action =
     nextRun.profile === 'AUTONOMOUS_EVOLUTION' ? 'DISCOVER_NEXT_EPOCH' : 'STOP_SUCCESS';
   return { run: nextRun, epoch: nextEpoch };
@@ -452,8 +490,8 @@ export function completeMerge(run, epoch, { mergeSha, candidateIsAncestor }) {
 
 export function recordIntegrationBlocked(run, epoch, reason) {
   requireText(reason, 'INTEGRATION_BLOCKED', 'reason');
-  const nextRun = copy(run);
-  const nextEpoch = copy(epoch);
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
   nextEpoch.state = 'INTEGRATION_BLOCKED';
   nextEpoch.next_action = reason;
   nextRun.state = 'INTEGRATION_BLOCKED';
