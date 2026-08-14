@@ -1,10 +1,12 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   GeneratedBangumiOpenApiClient,
+  OperationQuery,
   User,
   SubjectType as OpenApiSubjectType,
 } from '@bangumi-agent-kit/bangumi-openapi';
-import { DomainUser, UserCollectionItem } from '../models/user.js';
+import { DomainUser, UserCollectionItem, UserEpisodeCollectionItem } from '../models/user.js';
+import { mapEpisode } from './episode-service.js';
 import { getCollectionStatusLabel, mapCollectionStatus } from './collection-service.js';
 import { mapSubjectType } from './subject-service.js';
 
@@ -15,6 +17,26 @@ export function mapUser(raw: User, defaultUsername?: string): DomainUser {
     nickname: raw.nickname || raw.username || defaultUsername || String(raw.id),
     avatar: raw.avatar ? (raw.avatar as Record<string, string>) : undefined,
     sign: raw.sign || undefined,
+  };
+}
+
+function mapSubjectEpisodeTotal(subject: unknown): {
+  value?: number;
+  raw?: number | string | null;
+  validity: 'valid' | 'missing' | 'unknown' | 'invalid';
+} {
+  const raw =
+    subject && typeof subject === 'object' ? (subject as { eps?: unknown }).eps : undefined;
+  if (raw === undefined || raw === null) {
+    return { validity: 'missing', raw: raw === null ? null : undefined };
+  }
+  if (raw === 0) return { validity: 'unknown', raw: 0 };
+  if (typeof raw === 'number' && Number.isSafeInteger(raw) && raw > 0) {
+    return { value: raw, raw, validity: 'valid' };
+  }
+  return {
+    raw: typeof raw === 'number' || typeof raw === 'string' ? raw : undefined,
+    validity: 'invalid',
   };
 }
 
@@ -84,6 +106,7 @@ export class UserService {
       const status = mapCollectionStatus(col.type);
       const subjectTypeStr = mapSubjectType(col.subject_type ?? col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
+      const subjectEpisodeTotal = mapSubjectEpisodeTotal(col.subject);
 
       return {
         subjectId: col.subject_id,
@@ -97,6 +120,12 @@ export class UserService {
         tags: col.tags,
         epStatus: col.ep_status,
         updatedAt: col.updated_at,
+        subjectDate: col.subject?.date || undefined,
+        subjectImage:
+          col.subject?.images?.large || col.subject?.images?.common || col.subject?.images?.medium,
+        subjectTotalEpisodes: subjectEpisodeTotal.value,
+        subjectTotalEpisodesRaw: subjectEpisodeTotal.raw,
+        subjectTotalEpisodesValidity: subjectEpisodeTotal.validity,
       };
     });
 
@@ -124,6 +153,7 @@ export class UserService {
       const status = mapCollectionStatus(raw.type);
       const subjectTypeStr = mapSubjectType(raw.subject_type ?? raw.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
+      const subjectEpisodeTotal = mapSubjectEpisodeTotal(raw.subject);
 
       return {
         found: true,
@@ -139,6 +169,14 @@ export class UserService {
           tags: raw.tags,
           epStatus: raw.ep_status,
           updatedAt: raw.updated_at,
+          subjectDate: raw.subject?.date || undefined,
+          subjectImage:
+            raw.subject?.images?.large ||
+            raw.subject?.images?.common ||
+            raw.subject?.images?.medium,
+          subjectTotalEpisodes: subjectEpisodeTotal.value,
+          subjectTotalEpisodesRaw: subjectEpisodeTotal.raw,
+          subjectTotalEpisodesValidity: subjectEpisodeTotal.validity,
         },
       };
     } catch (err: unknown) {
@@ -152,5 +190,47 @@ export class UserService {
       }
       throw err;
     }
+  }
+
+  async getUserEpisodeCollections(
+    subjectId: number,
+    options: {
+      episodeType?: OperationQuery<'getUserSubjectEpisodeCollection'>['episode_type'];
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<{
+    total?: number;
+    limit: number;
+    offset: number;
+    items: UserEpisodeCollectionItem[];
+  }> {
+    const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
+    const res = await this.api.getUserSubjectEpisodeCollection(subjectId, {
+      episode_type: options.episodeType,
+      limit,
+      offset,
+    });
+    const data = res.data || [];
+    const items = data.map((item) => ({
+      episode: item.episode ? mapEpisode(item.episode, subjectId) : undefined,
+      type: item.type,
+      updatedAt:
+        Number.isInteger(item.updated_at) && item.updated_at > 0 ? item.updated_at : undefined,
+    }));
+    const responseOffset = Number.isInteger(res.offset) && res.offset >= 0 ? res.offset : offset;
+    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : limit;
+    const responseTotal =
+      Number.isInteger(res.total) && res.total >= responseOffset + items.length
+        ? res.total
+        : undefined;
+
+    return {
+      total: responseTotal,
+      limit: responseLimit,
+      offset: responseOffset,
+      items,
+    };
   }
 }

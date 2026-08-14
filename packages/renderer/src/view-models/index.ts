@@ -346,6 +346,30 @@ export interface CollectionIntelligenceViewModel {
   source: { label: string; retrievedAt?: string };
 }
 
+export interface CollectionBacklogViewModel {
+  template: 'collection-backlog';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['state'];
+  items: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['data']['items'];
+  summary: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['data']['summary'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['coverage'] & {
+    renderedItems: number;
+    omittedItems: number;
+  };
+  source: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['source'] & {
+    label: string;
+  };
+  evidence: {
+    operations: string[];
+    formulaVersion?: string;
+    authScope: 'account';
+    retrievedAt?: string;
+  };
+  warnings: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['warnings'];
+  limitations: string[];
+  error?: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['error'];
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -627,6 +651,7 @@ export type RenderViewModel =
   | CastCardViewModel
   | CollectionProgressViewModel
   | CollectionIntelligenceViewModel
+  | CollectionBacklogViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | PersonProfileViewModel

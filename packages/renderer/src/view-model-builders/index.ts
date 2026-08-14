@@ -4,6 +4,7 @@ import type {
   DomainRelatedCharacter,
   CalendarIntelligenceResult,
   CollectionIntelligenceResult,
+  CollectionBacklogResult,
   RevisionIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
@@ -16,6 +17,7 @@ import type {
   CastCardViewModel,
   CollectionProgressViewModel,
   CollectionIntelligenceViewModel,
+  CollectionBacklogViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SearchItemViewModel,
@@ -174,6 +176,43 @@ export function buildCollectionIntelligenceViewModel(
       label: options.sourceLabel || 'Bangumi v0 · 当前账号收藏',
       retrievedAt,
     },
+  };
+}
+
+export function buildCollectionBacklogViewModel(
+  result: CollectionBacklogResult,
+  options: { sourceLabel?: string; maxItems?: number } = {},
+): CollectionBacklogViewModel {
+  const maxItems = Math.min(20, Math.max(0, Math.trunc(options.maxItems ?? 12)));
+  const items = result.data.items.slice(0, maxItems);
+  const omittedItems = Math.max(0, result.data.items.length - items.length);
+  const formulaEvidence = result.evidence.find((item) => item.source === 'derived');
+  const retrievedAt = result.source.retrievedAt;
+
+  return {
+    template: 'collection-backlog',
+    version: 1,
+    state: result.state,
+    items,
+    summary: result.data.summary,
+    coverage: {
+      ...result.coverage,
+      renderedItems: items.length,
+      omittedItems,
+    },
+    source: {
+      ...result.source,
+      label: options.sourceLabel || 'Bangumi v0 · 当前账号 backlog',
+    },
+    evidence: {
+      operations: result.source.operations,
+      formulaVersion: formulaEvidence?.formulaVersion,
+      authScope: result.source.authScope,
+      retrievedAt,
+    },
+    warnings: result.warnings,
+    limitations: result.limitations,
+    error: result.error,
   };
 }
 
