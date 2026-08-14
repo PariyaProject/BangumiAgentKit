@@ -92,6 +92,24 @@ describe('PR-7B official provider foundation', () => {
     expect(result.evidence?.['name_cn']).toBeUndefined();
   });
 
+  it('records stats retrieval after a delayed source request completes', async () => {
+    let dispatchedAt = 0;
+    let completedAt = 0;
+    const result = await new OfficialV0Provider({
+      getSubjectById: async () => {
+        dispatchedAt = Date.now();
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        completedAt = Date.now();
+        return subjectFixture();
+      },
+    }).getSubjectStats(123);
+
+    const retrievedAt = new Date(String(result.retrievedAt)).getTime();
+    expect(dispatchedAt).toBeLessThan(completedAt);
+    expect(completedAt).toBeLessThanOrEqual(retrievedAt);
+    expect(result.evidence?.['rating.score']?.[0]?.retrievedAt).toBe(result.retrievedAt);
+  });
+
   it('PF17: legacy Calendar retains authoritative membership and weekday provenance', async () => {
     const api: LegacyCalendarApi = { getCalendar: async () => calendarFixture() };
     const result = await new OfficialLegacyCalendarProvider(api).getCalendar();

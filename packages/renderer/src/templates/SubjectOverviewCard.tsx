@@ -251,7 +251,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
   width,
 }) => {
   const { subject } = viewModel;
-  const cover = subject.image ? resolvedImages[subject.image] || subject.image : undefined;
+  const cover = subject.image ? resolvedImages[subject.image] : undefined;
   const title = subject.nameCn || subject.name;
   const subtitle =
     subject.nameCn && subject.nameCn !== subject.name ? subject.name : `Subject ID: ${subject.id}`;
@@ -342,11 +342,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                   style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'flex-start' }}
                 >
                   <PersonAvatar
-                    src={
-                      item.character.image
-                        ? resolvedImages[item.character.image] || item.character.image
-                        : undefined
-                    }
+                    src={item.character.image ? resolvedImages[item.character.image] : undefined}
                     name={item.character.name}
                     theme={theme}
                     size={34}

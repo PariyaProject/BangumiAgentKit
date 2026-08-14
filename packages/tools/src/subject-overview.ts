@@ -38,6 +38,10 @@ const CAST_OPERATION = 'GET /v0/subjects/{subject_id}/characters';
 const STAFF_OPERATION = 'GET /v0/subjects/{subject_id}/persons';
 const RELATIONS_OPERATION = 'GET /v0/subjects/{subject_id}/subjects';
 const STATS_OPERATION = 'GET /v0/subjects/{subject_id} (rating/collection fields)';
+const COMPOSITION_OPERATION = 'subject-overview-composition';
+const COMPOSITION_FORMULA_VERSION = 'subject-overview-composition-v1';
+const COMPOSITION_DESCRIPTION =
+  'Deterministically composes subject, stats, cast, staff, and relations in that order; preserves each section state including partial, unavailable, and not-computable states, applies the recorded section and actor limits, and derives only from constituent official-v0 observations without asserting a new upstream source.';
 const MAX_ACTORS_PER_CHARACTER = 4;
 const MAX_ACTOR_REFERENCES = 32;
 
@@ -565,7 +569,16 @@ export async function getSubjectOverview(
       limits,
       actorLimits: actorLimits(),
     },
-    evidence,
+    evidence: [
+      ...evidence,
+      {
+        source: 'derived-s7',
+        operation: COMPOSITION_OPERATION,
+        formulaVersion: COMPOSITION_FORMULA_VERSION,
+        description: COMPOSITION_DESCRIPTION,
+        retrievedAt: new Date().toISOString(),
+      },
+    ],
     limitations: [
       '每个区段只代表本次官方 v0 有界响应与本次 cap，不宣称完整角色、职员或关联条目历史。',
       '制作人员和关联条目保留官方原始标签；本结果不推断更宽泛的职位、前后传或推荐语义。',

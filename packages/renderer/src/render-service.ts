@@ -32,6 +32,7 @@ const DISCOVERY_MAX_RENDERED_ITEMS = 12;
 const SERIES_MAX_RENDERED_STEPS = 17;
 const SERIES_MAX_RENDERED_RELATED = 24;
 const SERIES_MAX_RENDERED_EDGES = 64;
+const SUBJECT_OVERVIEW_MAX_RENDERED_CAST = 6;
 
 export function canonicalizeJson(obj: unknown): string {
   if (obj === null || typeof obj !== 'object') {
@@ -110,12 +111,45 @@ export function extractImageUrls(viewModel: RenderViewModel): string[] {
     }
   } else if (viewModel.template === 'person-profile') {
     if (viewModel.person.image) urls.add(viewModel.person.image);
+  } else if (viewModel.template === 'subject-overview') {
+    if (viewModel.subject.image) urls.add(viewModel.subject.image);
+    for (const item of viewModel.cast.items.slice(0, SUBJECT_OVERVIEW_MAX_RENDERED_CAST)) {
+      if (item.character.image) urls.add(item.character.image);
+    }
   }
 
   return Array.from(urls);
 }
 
 function normalizeRenderViewModel(viewModel: RenderViewModel): RenderViewModel {
+  if (viewModel.template === 'subject-overview') {
+    const castItems = viewModel.cast.items.slice(0, SUBJECT_OVERVIEW_MAX_RENDERED_CAST);
+    const omitted = Math.max(0, viewModel.cast.items.length - castItems.length);
+    if (omitted === 0) return viewModel;
+
+    return {
+      ...viewModel,
+      state: viewModel.state === 'not_found' ? 'not_found' : 'partial',
+      warnings: [
+        ...viewModel.warnings,
+        {
+          code: 'RENDERER_CAST_OUTPUT_TRUNCATED',
+          state: 'partial',
+          message: `渲染器对角色区段应用了安全显示上限；省略 ${omitted} 条已返回角色。`,
+        },
+      ],
+      cast: {
+        ...viewModel.cast,
+        items: castItems,
+        hiddenCount: (viewModel.cast.hiddenCount ?? 0) + omitted,
+        coverage: {
+          ...viewModel.cast.coverage,
+          truncated: true,
+        },
+      },
+    };
+  }
+
   if (viewModel.template === 'series-relations') {
     const stepLimit = Math.min(
       SERIES_MAX_RENDERED_STEPS,

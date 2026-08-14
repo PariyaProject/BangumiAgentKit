@@ -558,11 +558,11 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<ProviderSubjectData>> {
     const source: SourceDescriptor = { ...SOURCE_V0, operation: 'getSubjectById' };
-    const retrievedAt = new Date().toISOString();
     const authScope = context.authScope ?? 'public';
 
     try {
       const raw = await this.api.getSubjectById(subjectId);
+      const retrievedAt = new Date().toISOString();
       const parsed = parseSubject(raw);
       return {
         state: 'ok',

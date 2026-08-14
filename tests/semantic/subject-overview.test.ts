@@ -194,6 +194,16 @@ describe('Subject Intelligence Overview semantic contract', () => {
         expect.objectContaining({ operation: 'GET /v0/subjects/{subject_id}/subjects' }),
       ]),
     );
+    expect((result as { evidence: Array<Record<string, unknown>> }).evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'derived-s7',
+          operation: 'subject-overview-composition',
+          formulaVersion: 'subject-overview-composition-v1',
+          description: expect.stringContaining('without asserting a new upstream source'),
+        }),
+      ]),
+    );
     expect(requests).toHaveLength(4);
   });
 
@@ -315,6 +325,15 @@ describe('Subject Intelligence Overview semantic contract', () => {
       expect(overview.coverage.sourceRequestsSucceeded).toBe(4);
       expect(statsEvidence).toEqual(expect.objectContaining({ attemptedAt: expect.any(String) }));
       expect(statsEvidence).not.toHaveProperty('retrievedAt');
+      expect(overview.evidence).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: 'derived-s7',
+            operation: 'subject-overview-composition',
+            formulaVersion: 'subject-overview-composition-v1',
+          }),
+        ]),
+      );
     },
   );
 
