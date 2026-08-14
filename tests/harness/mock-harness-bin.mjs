@@ -27,22 +27,51 @@ function stdin() {
   return fs.readFileSync(0, 'utf8');
 }
 
+function flagValue(flag) {
+  const index = args.indexOf(flag);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
 if (tool === 'gh') {
   const [group, action] = args;
   if (group === '--version') output('gh version mock');
   else if (group === 'auth' && action === 'status') output('authenticated');
   else if (group === 'repo' && action === 'view') output({ nameWithOwner: 'mock/repo' });
-  else if (group === 'issue' && action === 'view') {
+  else if (group === 'issue' && action === 'list') {
+    output(
+      state.openIssues ??
+        (state.runIssueState === 'CLOSED'
+          ? []
+          : [
+              {
+                number: state.runIssueNumber ?? 1,
+                title: state.runIssueTitle ?? 'Mock run',
+                body: state.runBody,
+                state: 'OPEN',
+                url: 'https://example.test/issues/1',
+              },
+            ]),
+    );
+  } else if (group === 'issue' && action === 'create') {
+    state.runBody = stdin();
+    state.runIssueTitle = flagValue('--title');
+    state.runIssueState = 'OPEN';
+    state.runIssueNumber ??= 2;
+    output(`https://example.test/issues/${state.runIssueNumber}`);
+  } else if (group === 'issue' && action === 'view') {
     output({
       number: Number(args[2]),
-      title: 'Mock run',
+      title: state.runIssueTitle ?? 'Mock run',
       body: state.runBody,
-      state: 'OPEN',
+      state: state.runIssueState ?? 'OPEN',
       url: 'https://example.test/issues/1',
     });
   } else if (group === 'issue' && action === 'edit') {
     state.runBody = stdin();
     output('updated');
+  } else if (group === 'issue' && action === 'close') {
+    state.runIssueState = 'CLOSED';
+    output('closed');
   } else if (group === 'pr' && action === 'view') {
     output({
       number: Number(args[2]),

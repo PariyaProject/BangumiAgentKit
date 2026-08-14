@@ -7,9 +7,11 @@ import {
   EPOCH_MARKER,
   RUN_MARKER,
   HarnessInvariantError,
+  NO_OPPORTUNITY_STOP,
   afterPassBaseAction,
   applyReviewResult,
   assertCandidateInvariant,
+  assertDiscoveryExhaustionEvidence,
   assertMergeReadiness,
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
@@ -18,6 +20,7 @@ import {
   completeMerge,
   createEpochState,
   createRunState,
+  isTerminalRunState,
   markReviewStarted,
   parseControlBlock,
   recordIntegrationBlocked,
@@ -244,7 +247,7 @@ Usage: pnpm harness <command> [options]
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
   epoch:resume-final-corrective --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
-  run:stop --run <issue> --state <state> --next-action <text>
+  run:stop --run <issue> --state <state> --next-action <text> [--evidence <json>]
 
 Complex Epoch selection and Candidate evidence are supplied as local JSON input;
 the durable source becomes the edited GitHub Issue/PR body.`);
@@ -287,7 +290,41 @@ function commandRunStart(options) {
       remote,
     });
   }
-  const title = required(options, 'title');
+  const openRuns = JSON.parse(
+    gh(
+      'issue',
+      'list',
+      '--state',
+      'open',
+      '--limit',
+      '100',
+      '--json',
+      'number,title,body,state,url',
+    ),
+  )
+    .filter((issue) => issue.body?.includes(`<!-- ${RUN_MARKER}:start -->`))
+    .map((issue) => ({ ...issue, run: parseControlBlock(issue.body, RUN_MARKER) }));
+  const terminalRuns = openRuns.filter((issue) => isTerminalRunState(issue.run.state));
+  const resumableRuns = openRuns.filter((issue) => !isTerminalRunState(issue.run.state));
+  if (resumableRuns.length > 1) {
+    throw new HarnessInvariantError(
+      'MULTIPLE_OPEN_OUTER_RUNS',
+      'More than one resumable Outer Run exists; do not guess which control plane is authoritative',
+      { issues: resumableRuns.map((issue) => issue.number) },
+    );
+  }
+  if (resumableRuns.length === 1) {
+    for (const issue of terminalRuns) {
+      gh('issue', 'close', String(issue.number), '--reason', 'completed');
+    }
+    const existing = resumableRuns[0];
+    print({ state: 'RUN_RESUMED', url: existing.url, issue: existing.number, run: existing.run });
+    return;
+  }
+  const title = required(options, 'title').replace(/^(?:\[Harness V3 Run\]\s*)+/u, '');
+  for (const issue of terminalRuns) {
+    gh('issue', 'close', String(issue.number), '--reason', 'completed');
+  }
   const runId = options['run-id'] ?? `run-${new Date().toISOString().replaceAll(/[:.]/gu, '-')}`;
   const state = createRunState({
     runId,
@@ -820,10 +857,36 @@ function commandRunStop(options) {
   const nextAction = required(options, 'next-action');
   const runResult = issueState(runNumber);
   const next = structuredClone(runResult.state);
+  if (state === NO_OPPORTUNITY_STOP) {
+    if (next.active_epoch_pr || next.pending_epoch) {
+      throw new HarnessInvariantError(
+        'ACTIVE_EPOCH_EXISTS',
+        'A no-opportunity stop cannot abandon an active or pending Epoch',
+      );
+    }
+    ensureCleanWorkingTree();
+    if (currentBranch() !== 'master') {
+      throw new HarnessInvariantError(
+        'DISCOVERY_MUST_FINISH_ON_MASTER',
+        'No-opportunity discovery must finish on synchronized master',
+      );
+    }
+    const currentBaseSha = remoteBaseSha('master');
+    if (currentHead() !== currentBaseSha) {
+      throw new HarnessInvariantError(
+        'MASTER_NOT_SYNCHRONIZED',
+        'No-opportunity discovery evidence must cover synchronized master',
+      );
+    }
+    const evidence = readJsonFile(required(options, 'evidence'));
+    assertDiscoveryExhaustionEvidence(evidence, currentBaseSha);
+    next.discovery_exhaustion = evidence;
+  }
   next.state = state;
   next.next_action = nextAction;
   updateIssue(runNumber, next);
-  print({ state, next_action: nextAction });
+  gh('issue', 'close', String(runNumber), '--reason', 'completed');
+  print({ state, next_action: nextAction, issue_state: 'CLOSED' });
 }
 
 const commands = {

@@ -4,6 +4,23 @@ export const EPOCH_MARKER = 'bangumi-harness:v3:epoch';
 export const DEFAULT_INTEGRATION = 'AUTO_MERGE_AFTER_PASS';
 export const MAX_EPOCH_REVIEWS = 2;
 export const MAX_OUTER_REVIEWS = 4;
+export const NO_OPPORTUNITY_STOP = 'STOPPED_NO_VALUABLE_INDEPENDENT_SAFE_OPPORTUNITY';
+export const DISCOVERY_LANES = [
+  'recorded_product_opportunities',
+  'capability_maturity_and_user_journeys',
+  'agent_ux_and_discoverability',
+  'renderer_and_standalone_experience',
+  'correctness_evidence_and_resource_bounds',
+  'architecture_maintenance_and_testability',
+];
+
+const DISCOVERY_REJECTION_DISPOSITIONS = new Set([
+  'ALREADY_DELIVERED',
+  'PROTECTED_BOUNDARY',
+  'INSUFFICIENT_TRUSTWORTHY_DATA',
+  'NOT_INDEPENDENT_OF_PARKED_WORK',
+  'LOW_USER_OR_AGENT_VALUE',
+]);
 
 export const LEGACY_RUNTIME_PATHS = [
   'docs/product/loop-status.md',
@@ -66,6 +83,7 @@ export function createRunState({
     pending_epoch: null,
     parked_epoch_prs: [],
     last_merged_epoch_pr: null,
+    discovery_exhaustion: null,
     next_action: nextAction,
   };
 }
@@ -183,6 +201,80 @@ export function assertRunCanStartEpoch(run) {
   if (run.active_epoch_pr || run.pending_epoch) {
     throw new HarnessInvariantError('ACTIVE_EPOCH_EXISTS', 'Resume the existing Epoch first');
   }
+  return true;
+}
+
+export function isTerminalRunState(state) {
+  return (
+    typeof state === 'string' &&
+    (state.startsWith('STOPPED_') ||
+      ['COMPLETED', 'MERGED_GOAL_COMPLETE', 'QUALITY_CIRCUIT_BREAKER'].includes(state))
+  );
+}
+
+export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      'A no-opportunity stop requires structured discovery evidence',
+    );
+  }
+  requireText(evidence.audited_sha, 'DISCOVERY_EVIDENCE_REQUIRED', 'audited_sha');
+  if (evidence.audited_sha !== currentBaseSha) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_STALE',
+      'Discovery evidence must cover the current synchronized target base',
+      { auditedSha: evidence.audited_sha, currentBaseSha },
+    );
+  }
+  const lanes = evidence.lane_assessments;
+  if (!lanes || typeof lanes !== 'object' || Array.isArray(lanes)) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      'lane_assessments must cover every governed discovery lane',
+    );
+  }
+  for (const lane of DISCOVERY_LANES) {
+    const assessment = lanes[lane];
+    requireText(
+      assessment?.observation,
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      `lane_assessments.${lane}.observation`,
+    );
+    requireText(
+      assessment?.conclusion,
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      `lane_assessments.${lane}.conclusion`,
+    );
+  }
+  if (!Array.isArray(evidence.candidate_assessments) || evidence.candidate_assessments.length < 3) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      'Assess at least three concrete candidates before declaring the safe backlog exhausted',
+    );
+  }
+  evidence.candidate_assessments.forEach((candidate, index) => {
+    for (const field of ['id', 'user_question', 'source_evidence', 'value_hypothesis', 'reason']) {
+      requireText(
+        candidate?.[field],
+        'DISCOVERY_EVIDENCE_REQUIRED',
+        `candidate_assessments[${index}].${field}`,
+      );
+    }
+    if (!DISCOVERY_LANES.includes(candidate.lane)) {
+      throw new HarnessInvariantError(
+        'DISCOVERY_EVIDENCE_REQUIRED',
+        `candidate_assessments[${index}].lane is not governed`,
+      );
+    }
+    if (!DISCOVERY_REJECTION_DISPOSITIONS.has(candidate.disposition)) {
+      throw new HarnessInvariantError(
+        'DISCOVERY_HAS_ACTIONABLE_CANDIDATE',
+        'A safe high-value candidate must become an Epoch instead of a no-opportunity stop',
+        { index, disposition: candidate.disposition },
+      );
+    }
+  });
   return true;
 }
 

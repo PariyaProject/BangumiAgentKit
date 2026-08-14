@@ -5,7 +5,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
+  DISCOVERY_LANES,
   EPOCH_MARKER,
+  NO_OPPORTUNITY_STOP,
   RUN_MARKER,
   createEpochState,
   createRunState,
@@ -142,6 +144,131 @@ function correctiveClosure(findingId = 'sol-2-finding-1') {
     },
   ];
 }
+
+function discoveryEvidence(environment) {
+  const file = path.join(environment.directory, 'discovery-evidence.json');
+  const laneAssessments = Object.fromEntries(
+    DISCOVERY_LANES.map((lane) => [
+      lane,
+      {
+        observation: `Inspected current ${lane} evidence and representative seams.`,
+        conclusion: 'No independent safe high-value Epoch remains in this lane.',
+      },
+    ]),
+  );
+  fs.writeFileSync(
+    file,
+    JSON.stringify({
+      audited_sha: sha('a'),
+      lane_assessments: laneAssessments,
+      candidate_assessments: DISCOVERY_LANES.slice(0, 3).map((lane, index) => ({
+        id: `candidate-${index + 1}`,
+        lane,
+        user_question: `Can the product improve journey ${index + 1}?`,
+        source_evidence: 'Current contracts, tests, and source availability were inspected.',
+        value_hypothesis: 'Would improve a real user or Agent journey if safely feasible.',
+        disposition: index === 0 ? 'ALREADY_DELIVERED' : 'PROTECTED_BOUNDARY',
+        reason: 'The current safe implementation space is already complete or protected.',
+      })),
+    }),
+  );
+  return file;
+}
+
+test('CLI run:start resumes the one open nonterminal Outer Run without creating another Issue', () => {
+  const run = createRunState({ runId: 'existing-run' });
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    branch: 'master',
+    runIssueTitle: '[Harness V3 Run] Existing run',
+  });
+  try {
+    const result = environment.execute(['run:start', '--title', 'New invocation']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'RUN_RESUMED');
+    assert.equal(
+      environment
+        .readState()
+        .calls.some(
+          (call) => call.tool === 'gh' && call.args[0] === 'issue' && call.args[1] === 'create',
+        ),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI run:start closes stale terminal Runs and normalizes the new Issue title', () => {
+  const run = createRunState({ runId: 'terminal-run' });
+  run.state = NO_OPPORTUNITY_STOP;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    branch: 'master',
+    runIssueTitle: '[Harness V3 Run] Old run',
+  });
+  try {
+    const result = environment.execute([
+      'run:start',
+      '--title',
+      '[Harness V3 Run] Autonomous evolution',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const state = environment.readState();
+    assert.equal(JSON.parse(result.stdout).state, 'RUN_STARTED');
+    assert.equal(state.runIssueTitle, '[Harness V3 Run] Autonomous evolution');
+    assert.ok(
+      state.calls.some(
+        (call) => call.tool === 'gh' && call.args[0] === 'issue' && call.args[1] === 'close',
+      ),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI no-opportunity stop requires deep current-base evidence and closes the Run', () => {
+  const run = createRunState({ runId: 'discovery-run' });
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    branch: 'master',
+  });
+  try {
+    const missing = environment.execute([
+      'run:stop',
+      '--run',
+      '1',
+      '--state',
+      NO_OPPORTUNITY_STOP,
+      '--next-action',
+      'No safe work remains',
+    ]);
+    assert.equal(missing.status, 2);
+    assert.match(missing.stderr, /^ARGUMENT_REQUIRED:/u);
+    assert.notEqual(environment.readState().runIssueState, 'CLOSED');
+
+    const stopped = environment.execute([
+      'run:stop',
+      '--run',
+      '1',
+      '--state',
+      NO_OPPORTUNITY_STOP,
+      '--next-action',
+      'Evidence-backed safe backlog exhaustion',
+      '--evidence',
+      discoveryEvidence(environment),
+    ]);
+    assert.equal(stopped.status, 0, stopped.stderr);
+    const state = environment.readState();
+    assert.equal(state.runIssueState, 'CLOSED');
+    assert.equal(
+      parseControlBlock(state.runBody, RUN_MARKER).discovery_exhaustion.audited_sha,
+      sha('a'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
 
 test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readable body', () => {
   const environment = createMockEnvironment();

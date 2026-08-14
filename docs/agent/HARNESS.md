@@ -39,6 +39,13 @@ One Autonomous Self-Evolution outer run is controlled by one GitHub Issue. Its
 editable body owns the run id/profile/state, outer review budget, active Epoch
 PR, parked Epoch PRs, latest merged Epoch, and next action.
 
+At most one nonterminal Outer Run Issue may be open. `run:start` resumes that
+Issue instead of creating another one, closes legacy open Issues whose marked
+state is already terminal, and rejects multiple nonterminal Issues rather than
+guessing which is authoritative. A governed `run:stop` records the terminal
+state and closes the Issue. Closed Issues remain durable history; they are not
+active control planes.
+
 Machine state is stored in one marked JSON block in each body and edited in
 place. Significant terminal events may receive one concise comment when it adds
 audit value. Heartbeat and polling comments are prohibited.
@@ -68,6 +75,26 @@ reasoning.
 `AUTONOMOUS_EVOLUTION` creates or resumes one Outer Run Issue, resumes its active
 Epoch PR when present, otherwise performs bounded opportunity discovery,
 selects one coherent Epoch, and proceeds until a governed stop.
+
+Opportunity discovery is bounded in breadth, not superficial in depth. Absence
+of a ready entry in the opportunity log, completion of the currently named
+official-v0 domains, or completion of one implementation stage is not evidence
+that valuable work is exhausted. Before selecting a no-opportunity stop, Luna
+must inspect all of these lanes against the current synchronized `master`:
+
+1. recorded product opportunities and deferred/remediation state;
+2. capability maturity and complete user journeys;
+3. Agent UX, tool discoverability, and orchestration cost;
+4. Renderer and Standalone information quality;
+5. correctness, evidence/coverage, degraded states, and resource bounds;
+6. architecture, maintenance, and testability that unlock concrete product
+   value.
+
+Discovery must prefer a substantial independent safe Epoch from any lane. It
+must not create empty, status-only, speculative, or low-value work merely to
+keep a run alive. A protected direction does not block independent safe work,
+and routine correctness/remediation is not human-only merely because an older
+review budget was exhausted. Discovery itself launches no Sol reviewer.
 
 `EXECUTE_EPOCH` executes one explicitly selected Epoch PR and never selects the
 next Epoch automatically.
@@ -413,6 +440,21 @@ Canonical governed stops include:
 - exhausted outer budget
 - no valuable independent safe opportunity in autonomous discovery.
 
+`STOPPED_NO_VALUABLE_INDEPENDENT_SAFE_OPPORTUNITY` is an evidence-gated claim,
+not a free-form Agent conclusion. The `run:stop` command accepts it only from a
+clean synchronized `master` with a structured evidence file that:
+
+- names the audited master SHA;
+- records an observation and conclusion for every discovery lane in section 3;
+- assesses at least three concrete candidates with a user question, source
+  evidence, value hypothesis, governed lane, rejection disposition, and reason;
+- contains no safe high-value candidate that should instead become an Epoch.
+
+This gate prevents a fresh Goal from stopping after only inventory
+classification while also preventing fabricated busywork when the safe backlog
+is genuinely exhausted. Any governed outer stop closes its Run Issue after the
+terminal state is persisted.
+
 Never convert a stop into a Git status commit. Persist runtime truth only in the
 Issue/PR when the control plane is available. If it is unavailable, report the
 stop locally and do not fabricate durability.
@@ -433,6 +475,7 @@ Outer Run block contains:
   "active_epoch_pr": null,
   "parked_epoch_prs": [],
   "last_merged_epoch_pr": null,
+  "discovery_exhaustion": null,
   "next_action": "..."
 }
 ```
@@ -468,7 +511,8 @@ The deterministic entry point is `pnpm harness <command>`. Run `pnpm harness
 help` for exact arguments.
 
 - `status`: reconstruct runtime truth from Git, the Run Issue, and Epoch PR.
-- `run:start`: create one Outer Run Issue.
+- `run:start`: resume the one open nonterminal Outer Run, reconcile legacy open
+  terminal Runs, or create one Run when none exists.
 - `epoch:start`: record a selected Epoch in the Run Issue before branch work.
 - `epoch:open-pr`: open the single Draft PR after a meaningful commit.
 - `guard:legacy-paths`: reject V3 Product changes to legacy runtime paths.
@@ -485,7 +529,8 @@ help` for exact arguments.
 - `epoch:merge`: enforce PASS or final-corrective authority plus
   freshness/CI/Candidate gates, merge, verify, clean branches, synchronize
   master, and update the Run Issue.
-- `run:stop`: record a governed outer stop.
+- `run:stop`: validate any required stop evidence, record the governed outer
+  stop, and close the Run Issue.
 
 Harness unit/simulation tests and the CI guard are mandatory readiness evidence
 for changes to this control plane.
