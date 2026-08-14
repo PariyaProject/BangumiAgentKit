@@ -1,6 +1,6 @@
 # PR-8A — Subject Intelligence Overview
 
-Status: `VALIDATING`
+Status: `REVIEW_PREPARING`
 
 This is the first Product Review Epoch selected inside the fresh
 `AUTONOMOUS_EVOLUTION_TIER2` outer Goal. It starts from the synchronized
@@ -231,3 +231,19 @@ remote CI, User QA, Agent QA, Renderer QA, consolidated Luna preflight, and
 reviewer launch checkpoint must be recorded in `loop-status.md` and the review
 artifacts before any Sol launch. A corrective Candidate resets none of the
 milestone or outer launch ledgers.
+
+## Local validation checkpoint — 2026-08-14
+
+- Implementation checkpoint: `a728de0 feat: add subject intelligence overview capability`.
+- Typecheck and lint pass; full unit/render run passes 208 tests.
+- Semantic/provider/discovery/contract suites pass 36/33/51/22 tests.
+- Renderer/Standalone/SQLite integration suites pass 58/21/33 tests.
+- OpenAPI spec validation, client generation, operation registry generation,
+  build, and catalog generation pass. `openapi:verify` reports only the
+  repository's existing generated-catalog Prettier array-style mismatch after
+  generation; no semantic catalog difference was reported.
+- Representative complete/partial/no-image long-CJK fixtures were rendered
+  and inspected at 640px and 960px under `.artifacts/render/`; section states,
+  coverage, warnings, wrapping, and footer remained readable with no clipping.
+- Exact Candidate, mandatory remote CI, User/Agent preflight record, and
+  independent review remain pending.

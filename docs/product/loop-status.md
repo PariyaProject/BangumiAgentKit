@@ -49,8 +49,8 @@ Selected Product Goal Profile:
 
 Outer Goal State:
 
-`EPOCH_ACTIVE / VALIDATING — PR-8A implementation checkpoint recorded; outer
-ledger remains at 4 authorized / 0 consumed`
+`EPOCH_ACTIVE / PREPARE_REVIEW — PR-8A local validation and visual QA passed;
+outer ledger remains at 4 authorized / 0 consumed`
 
 Outer Sol Review Budget Authorized / Consumed:
 
@@ -89,11 +89,11 @@ Current-governance plan:
 
 Current Milestone State:
 
-`VALIDATING`
+`REVIEW_PREPARING`
 
 Current Phase:
 
-`EPOCH_ACTIVE / VALIDATING`
+`EPOCH_ACTIVE / PREPARE_REVIEW`
 
 Review Boundary Rationale:
 
@@ -104,10 +104,10 @@ expansion, graph traversal, and unrelated renderer work are deferred.`
 
 Current Work Packages / `LUNA_STABLE` Summary:
 
-`Work Packages 1–4 implementation checkpoint is stable in a728de0: bounded
-composition, semantic tool, renderer, Standalone/catalog/docs, and focused
-tests are present. Broad validation, representative visual QA, exact-SHA CI,
-and review readiness remain pending.`
+`Work Packages 1–4 are stable in a728de0: bounded composition, semantic tool,
+renderer, Standalone/catalog/docs, focused tests, full local suites, and
+representative 640px/960px visual QA are complete. Exact-Candidate preflight,
+remote CI, and independent review remain pending.`
 
 Primary Model / Reasoning:
 
@@ -141,10 +141,12 @@ Latest Stable Commit / Candidate SHA:
 
 Tests and Exact-SHA CI:
 
-`Focused typechecks, semantic/renderer tests, Standalone tests, adjacent
-semantic/provider/renderer/Standalone regression (58 tests), build, and
-catalog generation are green on the checkpoint; broad validation, exact-SHA
-CI, and final QA are pending.`
+`Green: typecheck, lint, 208 unit/full tests, 36 semantic tests, 33 provider
+tests, 51 discovery tests, 22 contract tests, 58 renderer tests, 21
+Standalone tests, 33 SQLite integration tests, and touched-file formatting.
+OpenAPI validation/generation and catalog semantic generation are green; the
+repository openapi:verify command still fails only because its Prettier step
+rewrites the pre-existing catalog array style. Exact-SHA remote CI is pending.`
 
 Integration Contract:
 
@@ -168,8 +170,9 @@ Human-On-Exception boundaries remain active.`
 
 Next Action:
 
-`Run the affected/full validation matrix and representative 640px/960px visual
-QA, then prepare the exact Candidate and remote CI checkpoint.`
+`Run the consolidated Base..Candidate preflight, push the clean exact
+Candidate, create the dedicated PR, and verify mandatory remote CI before any
+Sol launch.`
 
 ---
 
