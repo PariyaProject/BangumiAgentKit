@@ -164,12 +164,15 @@ Potential Renderer:
 CollectionIntelligence
 
 Derived Logic:
-`collection-intelligence-v1` computes status and subject-type counts, backlog
-counts, valid 1–10 rating distribution/average, completed `ep_status` totals,
-bounded tag frequency, and `updated_at` ordering within the observed sample.
-Source total, page failures, missing fields, deduplication, scan caps, retrieval
-time, and limitations remain explicit; the result does not infer taste,
-recommendations, full-collection recency, or historical trends.
+`collection-intelligence-v1` computes status and subject-type counts, a
+`wish + on_hold` backlog (with `doing` reported separately), valid 1–10 rating
+distribution/average with `0` treated as unrated, completed `ep_status` totals,
+bounded tag frequency, and source-reported `updated_at` ordering within the
+observed sample. Source total may be unknown on an unavailable first page;
+long-tag skips, page failures, missing fields, deduplication, scan caps,
+retrieval time, and the upstream `updated_at` reliability limitation remain
+explicit. The result does not infer taste, recommendations, full-collection
+recency, or historical trends.
 
 Provenance:
 Selected from synchronized Harness V3 `master` in Outer Run Issue #8 after a

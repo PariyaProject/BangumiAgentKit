@@ -308,7 +308,7 @@ export interface CollectionIntelligenceViewModel {
   }>;
   coverage: {
     state: 'complete' | 'partial' | 'unavailable';
-    sourceTotal: number;
+    sourceTotal?: number;
     requestedMaxItems: number;
     observedRows: number;
     uniqueItems: number;

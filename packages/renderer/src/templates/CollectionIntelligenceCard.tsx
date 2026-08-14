@@ -43,6 +43,8 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
   width,
 }) => {
   const totalObserved = viewModel.coverage.uniqueItems;
+  const sourceTotal =
+    viewModel.coverage.sourceTotal === undefined ? '未知' : String(viewModel.coverage.sourceTotal);
   const ratingMax = Math.max(1, ...viewModel.ratings.distribution.map((item) => item.count));
   const hasData = totalObserved > 0 && viewModel.state !== 'unavailable';
 
@@ -55,8 +57,8 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        覆盖：源报告 {viewModel.coverage.sourceTotal} 条 · 观察 {viewModel.coverage.observedRows} 行
-        · 去重后 {viewModel.coverage.uniqueItems} 条 · {viewModel.coverage.pagesSucceeded}/
+        覆盖：源报告 {sourceTotal} 条 · 观察 {viewModel.coverage.observedRows} 行 · 去重后{' '}
+        {viewModel.coverage.uniqueItems} 条 · {viewModel.coverage.pagesSucceeded}/
         {viewModel.coverage.pagesAttempted} 页{viewModel.coverage.truncated ? ' · 有界样本' : ''}
       </div>
 
@@ -87,7 +89,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
           >
             {[
               ['观察条目', String(totalObserved)],
-              ['Backlog', String(viewModel.backlog.total)],
+              ['待看/搁置 backlog', String(viewModel.backlog.total)],
               [
                 '已评分',
                 `${viewModel.ratings.rated} · 均分 ${formatAverage(viewModel.ratings.average)}`,
@@ -117,6 +119,10 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
                 </div>
               </div>
             ))}
+          </div>
+
+          <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
+            待看/搁置 backlog = wish + on_hold；进行中 {viewModel.backlog.doing} 条另计。
           </div>
 
           <div
@@ -229,7 +235,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
 
           <section>
             <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
-              观察样本中的最近更新
+              观察样本中的 source-reported updated_at
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '6px' }}>
               {viewModel.latestObservedUpdates.length ? (
@@ -269,7 +275,7 @@ export const CollectionIntelligenceCard: React.FC<CollectionIntelligenceCardProp
       )}
       {viewModel.limitations.length > 0 && (
         <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          限制：{viewModel.limitations[0]}
+          限制：{viewModel.limitations.join('；')}
         </div>
       )}
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>

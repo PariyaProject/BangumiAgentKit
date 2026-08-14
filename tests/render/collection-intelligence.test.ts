@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { UserCollectionItem } from '@bangumi-agent-kit/bangumi-core';
 import {
+  CollectionIntelligenceService,
   buildCollectionIntelligence,
   type CollectionIntelligenceResult,
 } from '@bangumi-agent-kit/bangumi-core';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   buildCollectionIntelligenceViewModel,
   extractImageUrls,
@@ -47,6 +50,10 @@ function fixtureResult(): CollectionIntelligenceResult {
   });
 }
 
+function buildClient(fetchFn: typeof fetch): GeneratedBangumiOpenApiClient {
+  return new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn }));
+}
+
 describe('collection-intelligence renderer', () => {
   let renderService: RenderService;
 
@@ -77,14 +84,55 @@ describe('collection-intelligence renderer', () => {
     expect(rendered.template).toBe('collection-intelligence');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
 
-    const unavailable = buildCollectionIntelligenceViewModel({
-      ...result,
-      state: 'unavailable',
-      coverage: { ...result.coverage, state: 'unavailable' },
-      warnings: [{ code: 'AUTH_REQUIRED', state: 'unavailable', message: '需要先绑定账号。' }],
-    });
+    const unavailableResult = await new CollectionIntelligenceService(
+      buildClient(
+        async () => new Response(JSON.stringify({ message: 'temporary failure' }), { status: 503 }),
+      ),
+    ).getCollectionIntelligence('account-owner');
+    const unavailable = buildCollectionIntelligenceViewModel(unavailableResult);
+    expect(unavailable.coverage.sourceTotal).toBeUndefined();
     const unavailableHtml = renderHtmlTemplate(unavailable, 'bangumi-light', {}, 960);
     expect(unavailableHtml).toContain('官方收藏源暂时不可用');
-    expect(unavailableHtml).not.toContain('Backlog');
+    expect(unavailableHtml).toContain('源报告 未知 条');
+    expect(unavailableHtml).not.toContain('待看/搁置 backlog</div>');
+    expect(unavailableHtml).toContain('updated_at');
+  });
+
+  it('caps dense tags and recent updates while keeping the card readable', () => {
+    const result = buildCollectionIntelligence(
+      Array.from({ length: 12 }, (_, index) => ({
+        subjectId: index + 1,
+        subjectName: `Dense item ${index + 1}`,
+        subjectType: 'anime',
+        status: 'done' as const,
+        rating: 0,
+        tags: [`tag-${index + 1}`],
+        epStatus: 0,
+        updatedAt: `2026-08-${String(index + 1).padStart(2, '0')}T00:00:00.000Z`,
+      })),
+      {
+        sourceTotal: 12,
+        requestedMaxItems: 12,
+        pageSize: 12,
+        pagesAttempted: 1,
+        pagesSucceeded: 1,
+        maxPages: 8,
+        sourceExhausted: true,
+        paginationStalled: false,
+        sourceTotalChanged: false,
+        attemptedAt: '2026-08-14T00:00:00.000Z',
+        retrievedAt: '2026-08-14T10:00:01.000Z',
+      },
+    );
+    const viewModel = buildCollectionIntelligenceViewModel(result, {
+      maxTags: 8,
+      maxRecentUpdates: 8,
+    });
+
+    expect(viewModel.coverage.renderedTagCount).toBe(8);
+    expect(viewModel.coverage.renderedRecentCount).toBe(8);
+    expect(renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640)).toContain(
+      '待看/搁置 backlog = wish + on_hold',
+    );
   });
 });

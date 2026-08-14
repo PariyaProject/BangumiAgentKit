@@ -82,7 +82,7 @@ export class UserService {
     const data = res.data || [];
     const items = data.map((col) => {
       const status = mapCollectionStatus(col.type);
-      const subjectTypeStr = mapSubjectType(col.subject?.type);
+      const subjectTypeStr = mapSubjectType(col.subject_type ?? col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {
@@ -115,7 +115,7 @@ export class UserService {
     try {
       const raw = await this.api.getUserCollection(username, subjectId);
       const status = mapCollectionStatus(raw.type);
-      const subjectTypeStr = mapSubjectType(raw.subject?.type);
+      const subjectTypeStr = mapSubjectType(raw.subject_type ?? raw.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
 
       return {

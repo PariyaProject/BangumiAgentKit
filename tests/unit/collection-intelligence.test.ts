@@ -73,7 +73,7 @@ describe('CollectionIntelligenceService', () => {
     expect(result.data.statusCounts.done).toBe(1);
     expect(result.data.statusCounts.wish).toBe(1);
     expect(result.data.statusCounts.doing).toBe(1);
-    expect(result.data.backlog.total).toBe(2);
+    expect(result.data.backlog.total).toBe(1);
     expect(result.data.ratings.rated).toBe(2);
     expect(result.data.ratings.average).toBe(8);
     expect(result.data.progress.completedEpisodes).toBe(18);
@@ -124,6 +124,7 @@ describe('CollectionIntelligenceService', () => {
 
     expect(result.state).toBe('unavailable');
     expect(result.data.backlog.total).toBe(0);
+    expect(result.coverage.sourceTotal).toBeUndefined();
     expect(result.coverage.pagesSucceeded).toBe(0);
     expect(result.error?.code).toBe('AUTH_REQUIRED');
     expect(result.source.retrievedAt).toBeUndefined();
@@ -172,5 +173,105 @@ describe('CollectionIntelligenceService', () => {
     expect(result.coverage.uniqueItems).toBe(2);
     expect(result.coverage.missingFields['item.rating']).toBe(1);
     expect(result.evidence[1]?.formulaVersion).toBe('collection-intelligence-v1');
+  });
+
+  it('maps contract subject_type and rate zero without degrading complete coverage', async () => {
+    const fetchFn: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 1,
+          offset: 0,
+          data: [
+            collectionRow(1, 2, {
+              subject_type: 2,
+              subject: undefined,
+              rate: 0,
+              tags: [],
+              ep_status: 0,
+            }),
+          ],
+        }),
+        { status: 200 },
+      );
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 1 });
+
+    expect(result.state).toBe('complete');
+    expect(result.data.subjectTypeCounts.anime).toBe(1);
+    expect(result.data.ratings.rated).toBe(0);
+    expect(result.coverage.missingFields['item.rating.invalid']).toBeUndefined();
+  });
+
+  it('marks long tags partial instead of silently rewriting their identity', () => {
+    const result = buildCollectionIntelligence(
+      [
+        {
+          subjectId: 1,
+          subjectType: 'anime',
+          status: 'done',
+          rating: 0,
+          tags: ['x'.repeat(65)],
+          epStatus: 0,
+          updatedAt: '2026-08-14T00:00:00.000Z',
+        },
+      ],
+      {
+        sourceTotal: 1,
+        requestedMaxItems: 1,
+        pageSize: 1,
+        pagesAttempted: 1,
+        pagesSucceeded: 1,
+        maxPages: 8,
+        sourceExhausted: true,
+        paginationStalled: false,
+        sourceTotalChanged: false,
+        attemptedAt: '2026-08-14T00:00:00.000Z',
+        retrievedAt: '2026-08-14T00:00:01.000Z',
+      },
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.skippedTagValues).toBe(1);
+    expect(result.data.tags.top).toEqual([]);
+    expect(result.warnings.some((warning) => warning.code === 'OUTPUT_TRUNCATED')).toBe(true);
+  });
+
+  it('stops after a pagination offset stalls instead of repeating the same page', async () => {
+    let requests = 0;
+    const fetchFn: typeof fetch = async (input) => {
+      requests += 1;
+      const offset = Number(new URL(String(input)).searchParams.get('offset'));
+      if (offset === 0) {
+        return new Response(
+          JSON.stringify({
+            total: 10,
+            limit: 2,
+            offset: 0,
+            data: [collectionRow(1, 3), collectionRow(2, 3)],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          total: 10,
+          limit: 2,
+          offset: 1,
+          data: [collectionRow(1, 3)],
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionIntelligenceService(
+      buildClient(fetchFn),
+    ).getCollectionIntelligence('account-owner', { maxItems: 10 });
+
+    expect(requests).toBe(2);
+    expect(result.coverage.paginationStalled).toBe(true);
+    expect(result.warnings.some((warning) => warning.code === 'PAGINATION_STALLED')).toBe(true);
   });
 });

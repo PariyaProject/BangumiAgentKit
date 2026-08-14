@@ -61,7 +61,7 @@ export interface CollectionIntelligenceData {
 
 export interface CollectionIntelligenceCoverage {
   state: CollectionIntelligenceState;
-  sourceTotal: number;
+  sourceTotal?: number;
   requestedMaxItems: number;
   observedRows: number;
   uniqueItems: number;
@@ -110,7 +110,7 @@ export interface CollectionIntelligenceResult {
 }
 
 interface BuildMetadata {
-  sourceTotal: number;
+  sourceTotal?: number;
   requestedMaxItems: number;
   pageSize: number;
   pagesAttempted: number;
@@ -161,10 +161,14 @@ function recordMissing(missingFields: Record<string, number>, field: string): vo
   missingFields[field] = (missingFields[field] || 0) + 1;
 }
 
-function normalizeTag(tag: string): string | undefined {
+function normalizeTag(tag: string): { value?: string; truncated: boolean } {
   const normalized = tag.trim().replace(/\s+/gu, ' ');
-  if (!normalized) return undefined;
-  return Array.from(normalized).slice(0, COLLECTION_INTELLIGENCE_MAX_TAG_LENGTH).join('');
+  if (!normalized) return { truncated: false };
+  const codePoints = Array.from(normalized);
+  if (codePoints.length > COLLECTION_INTELLIGENCE_MAX_TAG_LENGTH) {
+    return { truncated: true };
+  }
+  return { value: codePoints.join(''), truncated: false };
 }
 
 function uniqueItems(items: readonly UserCollectionItem[]): {
@@ -211,10 +215,12 @@ function buildData(items: readonly UserCollectionItem[], missingFields: Record<s
     if (status === 'wish') data.backlog.wish += 1;
     if (status === 'doing') data.backlog.doing += 1;
     if (status === 'on_hold') data.backlog.onHold += 1;
-    data.backlog.total = data.backlog.wish + data.backlog.doing + data.backlog.onHold;
+    data.backlog.total = data.backlog.wish + data.backlog.onHold;
 
     if (item.rating === undefined) {
       recordMissing(missingFields, 'item.rating');
+    } else if (item.rating === 0) {
+      // Bangumi uses zero to mean that the item has no rating yet.
     } else if (Number.isInteger(item.rating) && item.rating >= 1 && item.rating <= 10) {
       data.ratings.rated += 1;
       ratingSums.total += item.rating;
@@ -239,7 +245,12 @@ function buildData(items: readonly UserCollectionItem[], missingFields: Record<s
       if (item.tags.length > tags.length) skippedTagValues += item.tags.length - tags.length;
       if (tags.length > 0) data.tags.itemsWithTags += 1;
       for (const rawTag of tags) {
-        const tag = normalizeTag(rawTag);
+        const normalizedTag = normalizeTag(rawTag);
+        if (normalizedTag.truncated) {
+          skippedTagValues += 1;
+          continue;
+        }
+        const tag = normalizedTag.value;
         if (
           !tag ||
           tagCounts.has(tag) ||
@@ -292,7 +303,8 @@ function buildData(items: readonly UserCollectionItem[], missingFields: Record<s
 function buildLimitations(): string[] {
   return [
     '统计只覆盖本次官方收藏接口观察到的有界样本；sourceTotal 大于 observed 时不能代表完整收藏。',
-    'latestObservedUpdates 只在已观察记录内按 updated_at 排序，不证明全量收藏的最新活动，也不计算历史趋势。',
+    'backlog.total = wish + on_hold；doing 单独列出，不计入待看/搁置 backlog。',
+    'latestObservedUpdates 只在已观察记录内按官方 source-reported updated_at 排序；该字段在修改评分、评价或章节观看状态时可能不更新，不应视为可靠的收藏活动时间。',
     '进度只统计收藏接口中的 ep_status 已完成集数；由于没有逐条目总集数，本结果不计算完成百分比。',
     '结果不读取或返回收藏评论，不执行推荐、口味推断、跨用户比较或任何收藏写入。',
   ];
@@ -305,7 +317,10 @@ export function buildCollectionIntelligence(
   const { items: deduplicatedItems, duplicateRows } = uniqueItems(items);
   const missingFields: Record<string, number> = {};
   const { data, skippedTagValues } = buildData(deduplicatedItems, missingFields);
-  const truncated = !metadata.sourceExhausted || metadata.sourceTotal > items.length;
+  const truncated =
+    metadata.sourceTotal === undefined ||
+    !metadata.sourceExhausted ||
+    metadata.sourceTotal > items.length;
   const pageFailure = metadata.pageFailureOffset !== undefined;
   const partial =
     truncated ||
@@ -318,10 +333,11 @@ export function buildCollectionIntelligence(
   const state: CollectionIntelligenceState = partial ? 'partial' : 'complete';
   const warnings: CollectionIntelligenceResult['warnings'] = [];
   if (truncated) {
+    const sourceTotalLabel = metadata.sourceTotal === undefined ? '未知' : metadata.sourceTotal;
     warnings.push({
       code: 'PARTIAL_SCAN',
       state: 'partial',
-      message: `收藏扫描观察到 ${items.length} 行，源报告 ${metadata.sourceTotal} 行；结果受 ${metadata.requestedMaxItems} 条扫描上限和分页边界约束。`,
+      message: `收藏扫描观察到 ${items.length} 行，源报告 ${sourceTotalLabel} 行；结果受 ${metadata.requestedMaxItems} 条扫描上限和分页边界约束。`,
     });
   }
   if (pageFailure) {
@@ -424,7 +440,6 @@ function unavailableResult(
     data: emptyData(),
     coverage: {
       state: 'unavailable',
-      sourceTotal: 0,
       requestedMaxItems: maxItems,
       observedRows: 0,
       uniqueItems: 0,
@@ -482,7 +497,7 @@ export class CollectionIntelligenceService {
     const pageSize = Math.min(COLLECTION_INTELLIGENCE_PAGE_SIZE, maxItems);
     const attemptedAt = new Date().toISOString();
     const items: UserCollectionItem[] = [];
-    let sourceTotal = 0;
+    let sourceTotal: number | undefined;
     let pagesAttempted = 0;
     let pagesSucceeded = 0;
     let offset = 0;
@@ -508,18 +523,18 @@ export class CollectionIntelligenceService {
         if (pagesSucceeded === 1) sourceTotal = page.total;
         else if (page.total !== sourceTotal) {
           sourceTotalChanged = true;
-          sourceTotal = Math.max(sourceTotal, page.total);
+          sourceTotal = Math.max(sourceTotal ?? page.total, page.total);
         }
         const pageItems = page.items.slice(0, requested);
         items.push(...pageItems);
-        if (pageItems.length === 0 || sourceTotal <= items.length) {
+        if (pageItems.length === 0 || (sourceTotal !== undefined && sourceTotal <= items.length)) {
           sourceExhausted = true;
           continue;
         }
         const nextOffset = page.offset + pageItems.length;
         if (nextOffset <= offset) {
           paginationStalled = true;
-          continue;
+          break;
         }
         offset = nextOffset;
       } catch (error: unknown) {
