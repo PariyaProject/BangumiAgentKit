@@ -49,6 +49,7 @@ Bangumi:
            [--max-details 1..48] [--max-rows 1..60]
   staff <subjectId>
   calendar [--weekday 1..7] [--max-per-day 1..8] [--max-total 1..56]
+           官方日历；首播日期是首播日期证据，不是具体播出时刻；时区未由源提供；顺序不等同于推荐
   episodes <subjectId>
   episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
                 [--max-episodes 1..200] [--no-descriptions]

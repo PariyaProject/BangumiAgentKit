@@ -51,6 +51,9 @@ describe('Standalone calendar commands', () => {
     await expect(registry.execute(['help'], context(host))).resolves.toMatchObject({
       value: expect.stringContaining('calendar [--weekday 1..7] [--max-per-day 1..8]'),
     });
+    await expect(registry.execute(['help'], context(host))).resolves.toMatchObject({
+      value: expect.stringContaining('首播日期是首播日期证据，不是具体播出时刻'),
+    });
   });
 
   it('rejects out-of-range, duplicate, and unknown calendar options', async () => {
