@@ -877,6 +877,190 @@ function presentCollectionSchedule(value: Record<string, unknown>): string | und
   return boundHumanLines(lines);
 }
 
+function presentCollectionSeries(value: Record<string, unknown>): string | undefined {
+  const summary = value.summary;
+  const groups = value.groups;
+  if (!summary || typeof summary !== 'object' || !Array.isArray(groups)) {
+    return undefined;
+  }
+
+  const summaryDetails = summary as Record<string, unknown>;
+  const lines = [
+    '收藏系列组 · 状态: ' + humanField(value.state || 'unknown', 64),
+    '说明：仅按当前收藏中的直接稳定动画关系分组，不是官方 canonical watch order；未观察部分不会被补猜。',
+    '摘要: 动画收藏 ' +
+      humanField(summaryDetails.eligibleAnimeItems ?? '?', 32) +
+      ' · 系列组 ' +
+      humanField(
+        value.coverage && typeof value.coverage === 'object'
+          ? (value.coverage as Record<string, unknown>).output &&
+            typeof (value.coverage as Record<string, unknown>).output === 'object'
+            ? ((value.coverage as Record<string, unknown>).output as Record<string, unknown>)
+                .returnedGroups
+            : '?'
+          : '?',
+        32,
+      ) +
+      ' · 已归组 ' +
+      humanField(summaryDetails.groupedItems ?? '?', 32) +
+      ' · 未归组 ' +
+      humanField(summaryDetails.ungroupedItems ?? '?', 32) +
+      ' · 关系边 ' +
+      humanField(summaryDetails.relationEdges ?? '?', 32),
+  ];
+
+  const error = value.error;
+  if (error && typeof error === 'object') {
+    const errorDetails = error as Record<string, unknown>;
+    lines.push(
+      '错误: ' +
+        humanField(errorDetails.code || 'UNKNOWN_ERROR', 64) +
+        ' · ' +
+        humanField(errorDetails.message || '请求不可用'),
+    );
+  }
+
+  for (const [index, candidate] of groups.slice(0, 12).entries()) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const group = candidate as Record<string, unknown>;
+    const items = Array.isArray(group.items) ? group.items : [];
+    const edges = Array.isArray(group.edges) ? group.edges : [];
+    lines.push(
+      String(index + 1) +
+        '. ' +
+        humanField(group.groupId || 'series-' + (index + 1), 48) +
+        ' · ' +
+        humanField(items.length, 32) +
+        ' 个收藏条目 · ' +
+        humanField(group.state || 'unknown', 32),
+    );
+    for (const itemCandidate of items.slice(0, 10)) {
+      if (!itemCandidate || typeof itemCandidate !== 'object') continue;
+      const item = itemCandidate as Record<string, unknown>;
+      lines.push(
+        '   - ' +
+          humanField(item.nameCn || item.subjectName || '#' + (item.subjectId || '?'), 100) +
+          ' · ' +
+          humanField(item.statusLabel || item.status || '状态未知', 48),
+      );
+    }
+    for (const edgeCandidate of edges.slice(0, 10)) {
+      if (!edgeCandidate || typeof edgeCandidate !== 'object') continue;
+      const edge = edgeCandidate as Record<string, unknown>;
+      lines.push(
+        '   关系: ' +
+          humanField(edge.fromNameCn || edge.fromName || '#' + (edge.fromSubjectId || '?'), 48) +
+          ' —' +
+          humanField(edge.relation || edge.relationKind || '关联', 32) +
+          '→ ' +
+          humanField(edge.toNameCn || edge.toName || '#' + (edge.toSubjectId || '?'), 48) +
+          ' ×' +
+          humanField(edge.observedCount ?? 1, 16) +
+          (edge.conflict ? ' · 冲突' : ''),
+      );
+    }
+    if (Number(group.hiddenItemCount || 0) > 0) {
+      lines.push('   另有 ' + humanField(group.hiddenItemCount, 32) + ' 项关系或条目未展开。');
+    }
+  }
+  if (groups.length === 0) lines.push('系列组: 当前观察范围没有形成可确认的系列组。');
+  if (groups.length > 12)
+    lines.push('另有 ' + humanField(groups.length - 12, 32) + ' 个返回系列组未展开。');
+
+  const ungrouped = value.ungrouped;
+  if (Array.isArray(ungrouped) && ungrouped.length > 0) {
+    lines.push('未归组条目: ' + humanField(ungrouped.length, 32));
+    for (const itemCandidate of ungrouped.slice(0, 12)) {
+      if (!itemCandidate || typeof itemCandidate !== 'object') continue;
+      const item = itemCandidate as Record<string, unknown>;
+      lines.push(
+        '- ' +
+          humanField(item.nameCn || item.subjectName || '#' + (item.subjectId || '?'), 100) +
+          ' · ' +
+          humanField(item.statusLabel || item.status || '状态未知', 48),
+      );
+    }
+    if (ungrouped.length > 12) {
+      lines.push('另有 ' + humanField(ungrouped.length - 12, 32) + ' 个未归组条目未展开。');
+    }
+  }
+
+  const coverage = value.coverage;
+  if (coverage && typeof coverage === 'object') {
+    const coverageDetails = coverage as Record<string, unknown>;
+    const collection =
+      coverageDetails.collection && typeof coverageDetails.collection === 'object'
+        ? (coverageDetails.collection as Record<string, unknown>)
+        : undefined;
+    const relations =
+      coverageDetails.relations && typeof coverageDetails.relations === 'object'
+        ? (coverageDetails.relations as Record<string, unknown>)
+        : undefined;
+    const output =
+      coverageDetails.output && typeof coverageDetails.output === 'object'
+        ? (coverageDetails.output as Record<string, unknown>)
+        : undefined;
+    lines.push(
+      '覆盖: 收藏 ' +
+        humanField(collection?.uniqueRows ?? '?', 32) +
+        '/' +
+        humanField(collection?.requestedMaxItems ?? '?', 32) +
+        (collection?.truncated ? ' · 已截断' : '') +
+        ' · 关系成功 ' +
+        humanField(relations?.succeededSubjects ?? '?', 32) +
+        '/' +
+        humanField(relations?.requestedSubjects ?? '?', 32) +
+        ' · 输出组 ' +
+        humanField(output?.returnedGroups ?? '?', 32) +
+        ' · 输出边 ' +
+        humanField(output?.returnedEdges ?? '?', 32),
+    );
+  }
+
+  const excluded = value.excludedRelations;
+  if (excluded && typeof excluded === 'object') {
+    const details = excluded as Record<string, unknown>;
+    lines.push(
+      '关系排除: 观察 ' +
+        humanField(details.sourceRelations ?? '?', 32) +
+        ' · 稳定 ' +
+        humanField(details.stableRelations ?? '?', 32) +
+        ' · 排除 ' +
+        humanField(details.excludedRelations ?? '?', 32) +
+        ' · 未知 ' +
+        humanField(details.unknownRelations ?? '?', 32) +
+        ' · 未匹配目标 ' +
+        humanField(details.unmatchedTargets ?? '?', 32),
+    );
+  }
+
+  const warnings = value.warnings;
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    lines.push('告警：');
+    for (const warning of warnings.slice(0, 4)) {
+      if (!warning || typeof warning !== 'object') continue;
+      const details = warning as Record<string, unknown>;
+      lines.push(
+        '- ' +
+          humanField(details.code || 'WARNING', 64) +
+          ' · ' +
+          humanField(details.message || ''),
+      );
+    }
+    if (warnings.length > 4) {
+      lines.push('- 另有 ' + humanField(warnings.length - 4, 32) + ' 条告警未展开。');
+    }
+  }
+  const limitations = value.limitations;
+  if (Array.isArray(limitations) && limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) {
+      lines.push('- ' + humanField(limitation));
+    }
+  }
+  return boundHumanLines(lines);
+}
+
 function presentArtifact(value: Record<string, unknown>): string | undefined {
   const artifact = value.artifact;
   if (!artifact || typeof artifact !== 'object') return undefined;
@@ -1052,6 +1236,8 @@ export function formatHuman(value: unknown): string {
     if (subjectComparison) return subjectComparison;
     const collectionDashboard = presentCollectionDashboard(safe as Record<string, unknown>);
     if (collectionDashboard) return collectionDashboard;
+    const collectionSeries = presentCollectionSeries(safe as Record<string, unknown>);
+    if (collectionSeries) return collectionSeries;
     const collectionSchedule = presentCollectionSchedule(safe as Record<string, unknown>);
     if (collectionSchedule) return collectionSchedule;
     const collectionBacklog = presentCollectionBacklog(safe as Record<string, unknown>);

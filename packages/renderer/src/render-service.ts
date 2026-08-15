@@ -305,7 +305,9 @@ export class RenderService {
     const dpr = options.deviceScaleFactor ?? 2;
     const theme = options.theme ?? 'bangumi-dark';
     const cacheEnabled =
-      options.cache !== false && normalizedViewModel.template !== 'collection-dashboard';
+      options.cache !== false &&
+      normalizedViewModel.template !== 'collection-dashboard' &&
+      normalizedViewModel.template !== 'collection-series';
 
     if (width < 640 || width > 1200) {
       throw new RendererError(

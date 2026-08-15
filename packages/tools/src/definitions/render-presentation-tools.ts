@@ -12,6 +12,8 @@ import {
   CollectionBacklogService,
   CollectionScheduleService,
   CollectionDashboardService,
+  CollectionSeriesService,
+  COLLECTION_SERIES_LIMITS,
   PersonService,
   PersonActivityService,
   RevisionService,
@@ -39,6 +41,7 @@ import {
   buildCollectionBacklogViewModel,
   buildCollectionScheduleViewModel,
   buildCollectionDashboardViewModel,
+  buildCollectionSeriesViewModel,
   buildPersonActivityViewModel,
   buildEpisodeGuideViewModel,
 } from '@bangumi-agent-kit/renderer';
@@ -73,10 +76,14 @@ export function createRenderPresentationTools(
 
   async function executeRenderAndSave(viewModel: any, privatePrincipalId?: string) {
     try {
-      if (viewModel.template === 'collection-dashboard' && !privatePrincipalId) {
+      if (
+        (viewModel.template === 'collection-dashboard' ||
+          viewModel.template === 'collection-series') &&
+        !privatePrincipalId
+      ) {
         throw new BangumiError(
           'AUTH_REQUIRED',
-          '私有收藏 Dashboard 必须绑定明确的账号主体才能保存渲染 Artifact。',
+          '私有收藏卡片必须绑定明确的账号主体才能保存渲染 Artifact。',
           false,
           401,
           '使用当前账号上下文重试',
@@ -925,6 +932,101 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionSeriesGroups = defineTool({
+    name: 'bangumi.render_collection_series_groups',
+    description:
+      '生成当前绑定 Bangumi 账号收藏系列组的无图片资产私有卡片 Artifact。卡片展示基于官方 v0 直接动画关系的有界系列分组、原始关系标签、冲突、排除关系、coverage、partial/unavailable 状态和限制；不接受任意用户名、不显示评论、不执行写入，也不宣称 canonical watch order。',
+    input: z
+      .object({
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxItems)
+          .optional()
+          .describe('最多扫描当前账号收藏条目数，默认 100'),
+        maxRelationSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxRelationSubjects)
+          .optional()
+          .describe('最多读取关系的动画收藏根条目数，默认 24'),
+        maxRelationsPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxRelationsPerSubject)
+          .optional()
+          .describe('每个根条目最多保留的关系行数，默认 64'),
+        maxGroups: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxGroups)
+          .optional()
+          .describe('最多返回系列组数，默认 24'),
+        maxEdges: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxEdges)
+          .optional()
+          .describe('最多返回关系边数，默认 96'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('收藏状态过滤；不表示优先级，默认包含全部五种已知状态'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能渲染收藏系列组。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能渲染收藏系列组。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      const result = await new CollectionSeriesService(client).getCollectionSeriesGroups(username, {
+        maxItems: input.maxItems,
+        maxRelationSubjects: input.maxRelationSubjects,
+        maxRelationsPerSubject: input.maxRelationsPerSubject,
+        maxGroups: input.maxGroups,
+        maxEdges: input.maxEdges,
+        statuses: input.statuses,
+      });
+      return await executeRenderAndSave(
+        buildCollectionSeriesViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -943,6 +1045,7 @@ export function createRenderPresentationTools(
     renderCollectionBacklog,
     renderCollectionSchedule,
     renderCollectionDashboard,
+    renderCollectionSeriesGroups,
     renderPersonActivity,
   ] as const;
 }

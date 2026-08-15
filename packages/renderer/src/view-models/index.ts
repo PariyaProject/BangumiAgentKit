@@ -434,6 +434,30 @@ export interface CollectionDashboardViewModel {
   };
 }
 
+export interface CollectionSeriesViewModel {
+  template: 'collection-series';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['state'];
+  groups: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['groups'];
+  ungrouped: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['ungrouped'];
+  summary: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['summary'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['coverage'];
+  excludedRelations: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['excludedRelations'];
+  source: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['source'] & {
+    label: string;
+  };
+  evidence: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['evidence'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['warnings'];
+  limitations: string[];
+  presentation: {
+    groups: { available: number; rendered: number; omitted: number };
+    items: { available: number; rendered: number; omitted: number };
+    edges: { available: number; rendered: number; omitted: number };
+    ungrouped: { available: number; rendered: number; omitted: number };
+  };
+  error?: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['error'];
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -870,6 +894,7 @@ export type RenderViewModel =
   | CollectionBacklogViewModel
   | CollectionScheduleViewModel
   | CollectionDashboardViewModel
+  | CollectionSeriesViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | EpisodeGuideViewModel
