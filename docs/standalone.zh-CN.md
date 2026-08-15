@@ -156,6 +156,7 @@ render collection <id>
 render collection-intelligence [--max-items 1..200]
 render collection-dashboard [--max-items 1..100] [--max-subjects 1..30]
                            [--max-episodes 1..1000] [--max-rows 1..100]
+                           [--timeout-ms 1000..120000]
                            [--status wish,doing,on_hold]
 render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
                          [--max-episodes 1..1000] [--status wish,doing,on_hold]
@@ -176,11 +177,12 @@ JSON 与人类输出中；未匹配会区分完整扫描未发现、状态筛选
 剩余集数。不读取评论，不读取 episode collection，不执行收藏写入。
 
 `collection dashboard` 一次组合当前绑定账号的收藏智能概览、动画 backlog
-和七日收藏播出计划。三个区段并行读取但保留各自的 official v0/legacy
-source、retrievedAt、coverage、partial/unavailable/auth/conflict/not_computable
-状态；组合结果另列收藏行、episode 行、日历行、输出行和并发上限。它不接受
+和七日收藏播出计划。三个顶层区段按有界调度顺序读取（schedule 内部的日历与收藏
+读取仍有明确并发上限），并保留各自的 official v0/legacy source、retrievedAt、coverage、
+partial/unavailable/auth/conflict/not_computable 状态；组合结果另列收藏行、episode
+行、日历行、输出行、upstream 请求尝试、总时限和并发上限。它不接受
 任意用户名，不读取评论，不推断历史趋势、口味或推荐，不进入共享缓存或公共
-ArtifactStore，也不执行收藏写入。文字输出会对三个区段分别给出状态和关键摘要；
+ArtifactStore；私有图片 Artifact 绑定当前账号主体且不进入共享渲染缓存，也不执行收藏写入。文字输出会对三个区段分别给出状态和关键摘要；
 JSON 模式保留完整结构化证据。
 
 Renderer Tool 返回 `ArtifactRef`。`--output` 只接受用户明确指定的本地目标，

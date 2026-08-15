@@ -275,6 +275,57 @@ export function buildCollectionDashboardViewModel(
   const intelligence = result.data.sections.intelligence;
   const backlog = result.data.sections.backlog;
   const schedule = result.data.sections.schedule;
+  const intelligenceViewModel = intelligence.result
+    ? buildCollectionIntelligenceViewModel(intelligence.result, {
+        maxTags: 5,
+        maxRecentUpdates: 4,
+      })
+    : undefined;
+  const backlogViewModel = backlog.result
+    ? buildCollectionBacklogViewModel(backlog.result, { maxItems: 4 })
+    : undefined;
+  const scheduleViewModel = schedule.result
+    ? buildCollectionScheduleViewModel(schedule.result, { maxItems: 4, maxUnmatched: 2 })
+    : undefined;
+  const presentation = {
+    intelligence: {
+      available: intelligence.result?.data.latestObservedUpdates.length ?? 0,
+      rendered: intelligenceViewModel?.latestObservedUpdates.length ?? 0,
+      omitted: Math.max(
+        0,
+        (intelligence.result?.data.latestObservedUpdates.length ?? 0) -
+          (intelligenceViewModel?.latestObservedUpdates.length ?? 0),
+      ),
+    },
+    backlog: {
+      available: backlog.result?.data.items.length ?? 0,
+      rendered: backlogViewModel?.items.length ?? 0,
+      omitted: Math.max(
+        0,
+        (backlog.result?.data.items.length ?? 0) - (backlogViewModel?.items.length ?? 0),
+      ),
+    },
+    schedule: {
+      available:
+        (schedule.result?.data.items.length ?? 0) +
+        (schedule.result?.data.unmatchedCalendar.length ?? 0) +
+        (schedule.result?.data.unmatchedCollection.length ?? 0),
+      rendered:
+        (scheduleViewModel?.items.length ?? 0) +
+        (scheduleViewModel?.unmatchedCalendar.length ?? 0) +
+        (scheduleViewModel?.unmatchedCollection.length ?? 0),
+      omitted: Math.max(
+        0,
+        (schedule.result?.data.items.length ?? 0) +
+          (schedule.result?.data.unmatchedCalendar.length ?? 0) +
+          (schedule.result?.data.unmatchedCollection.length ?? 0) -
+          ((scheduleViewModel?.items.length ?? 0) +
+            (scheduleViewModel?.unmatchedCalendar.length ?? 0) +
+            (scheduleViewModel?.unmatchedCollection.length ?? 0)),
+      ),
+    },
+  };
+  const hasOmissions = Object.values(presentation).some((section) => section.omitted > 0);
 
   return {
     template: 'collection-dashboard',
@@ -283,19 +334,17 @@ export function buildCollectionDashboardViewModel(
     sections: {
       intelligence: {
         state: intelligence.state,
-        result: intelligence.result
-          ? buildCollectionIntelligenceViewModel(intelligence.result)
-          : undefined,
+        result: intelligenceViewModel,
         error: intelligence.error,
       },
       backlog: {
         state: backlog.state,
-        result: backlog.result ? buildCollectionBacklogViewModel(backlog.result) : undefined,
+        result: backlogViewModel,
         error: backlog.error,
       },
       schedule: {
         state: schedule.state,
-        result: schedule.result ? buildCollectionScheduleViewModel(schedule.result) : undefined,
+        result: scheduleViewModel,
         error: schedule.error,
       },
     },
@@ -304,6 +353,11 @@ export function buildCollectionDashboardViewModel(
     evidence: result.evidence,
     warnings: result.warnings,
     limitations: result.limitations,
+    filters: schedule.result?.filters.statuses || [],
+    presentation: {
+      state: hasOmissions ? 'partial' : 'complete',
+      ...presentation,
+    },
   };
 }
 

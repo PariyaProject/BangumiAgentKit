@@ -1,13 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
-import { CollectionDashboardService } from '@bangumi-agent-kit/bangumi-core';
+import {
+  CollectionDashboardService,
+  type CollectionDashboardResult,
+} from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   buildCollectionDashboardViewModel,
   extractImageUrls,
   RenderService,
+  type RenderResult,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+import { RendererLruCache } from '../../packages/renderer/src/lru-cache.js';
 
 function response(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -141,5 +146,74 @@ describe('collection-dashboard renderer', () => {
     const rendered = await renderService.renderCard(viewModel, { width: 640 });
     expect(rendered.template).toBe('collection-dashboard');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+
+    const denseResult = structuredClone(result) as CollectionDashboardResult;
+    const backlogItem = denseResult.data.sections.backlog.result?.data.items[0];
+    const scheduleItem = denseResult.data.sections.schedule.result?.data.items[0];
+    if (!backlogItem || !scheduleItem) throw new Error('fixture did not produce dashboard rows');
+    denseResult.data.sections.backlog.result!.data.items = Array.from(
+      { length: 7 },
+      (_, index) => ({
+        ...backlogItem,
+        subjectId: index + 1,
+        name: `Backlog ${index + 1}`,
+      }),
+    );
+    denseResult.data.sections.schedule.result!.data.items = Array.from(
+      { length: 7 },
+      (_, index) => ({ ...scheduleItem, subjectId: index + 1, name: `Schedule ${index + 1}` }),
+    );
+    const denseViewModel = buildCollectionDashboardViewModel(denseResult);
+    expect(denseViewModel.presentation.backlog).toMatchObject({
+      available: 7,
+      rendered: 4,
+      omitted: 3,
+    });
+    expect(denseViewModel.presentation.schedule).toMatchObject({
+      available: 7,
+      rendered: 4,
+      omitted: 3,
+    });
+    for (const width of [640, 960]) {
+      const denseHtml = renderHtmlTemplate(denseViewModel, 'bangumi-dark', {}, width);
+      expect(denseHtml).toContain('省略 3 条');
+      expect(denseHtml).toContain('活跃状态过滤：doing');
+      expect(denseHtml).toContain('证据：');
+    }
+
+    const degradedResult = structuredClone(result) as CollectionDashboardResult;
+    degradedResult.state = 'partial';
+    degradedResult.data.sections.intelligence.state = 'auth_required';
+    degradedResult.data.sections.intelligence.result = undefined;
+    degradedResult.data.sections.intelligence.error = {
+      code: 'AUTH_REQUIRED',
+      message: '需要绑定当前账号才能读取收藏概览。',
+      retryable: false,
+    };
+    degradedResult.data.sections.backlog.state = 'not_computable';
+    degradedResult.data.sections.backlog.result!.state = 'not_computable';
+    degradedResult.data.sections.backlog.result!.data.items[0]!.state = 'not_computable';
+    degradedResult.data.sections.schedule.state = 'upstream_error';
+    degradedResult.data.sections.schedule.result = undefined;
+    degradedResult.data.sections.schedule.error = {
+      code: 'UPSTREAM_TIMEOUT',
+      message: '日历读取超时。',
+      retryable: true,
+    };
+    const degradedHtml = renderHtmlTemplate(
+      buildCollectionDashboardViewModel(degradedResult),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(degradedHtml).toContain('需要授权');
+    expect(degradedHtml).toContain('无法计算');
+    expect(degradedHtml).toContain('UPSTREAM_TIMEOUT');
+
+    const privateCache = new RendererLruCache<RenderResult>(4);
+    const privateRenderService = new RenderService(undefined, privateCache);
+    await privateRenderService.renderCard(viewModel, { width: 640 });
+    expect(privateCache.size).toBe(0);
+    await privateRenderService.close();
   });
 });

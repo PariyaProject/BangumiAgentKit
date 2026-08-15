@@ -129,6 +129,8 @@ describe('CollectionDashboardService', () => {
     expect(result.coverage).toMatchObject({
       sectionsAttempted: 3,
       sectionsSucceeded: 3,
+      maxConcurrentSections: 1,
+      maxConcurrentRequests: 3,
       collectionRowsRequested: 3,
       collectionRowsBound: 3,
       backlogSubjectsSucceeded: 1,
@@ -174,5 +176,55 @@ describe('CollectionDashboardService', () => {
     expect(result.data.sections.schedule.result?.state).toBe('upstream_error');
     expect(result.warnings.some((warning) => warning.section === 'schedule')).toBe(true);
     expect(result.data.sections.schedule.result?.data.items).toEqual([]);
+    expect(result.coverage.sectionsSucceeded).toBe(2);
+  });
+
+  it('preserves auth failure states and never counts unavailable results as success', async () => {
+    const fetchFn: typeof fetch = async () => response({ message: 'login required' }, 401);
+    const result = await new CollectionDashboardService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionDashboard('bound-user', { maxCollectionItems: 1, maxSubjects: 1 });
+
+    expect(result.state).toBe('auth_required');
+    expect(result.coverage.sectionsSucceeded).toBe(0);
+    expect(result.coverage.retrievedAt).toBeUndefined();
+    expect(result.data.sections.intelligence.state).toBe('auth_required');
+    expect(result.data.sections.backlog.state).toBe('auth_required');
+    expect(result.data.sections.schedule.state).toBe('auth_required');
+  });
+
+  it('stops scheduling after the bounded deadline and records every unobserved section', async () => {
+    const requests: URL[] = [];
+    let abortObserved = false;
+    const fetchFn: typeof fetch = async (input, init) => {
+      requests.push(new URL(String(input)));
+      init?.signal?.addEventListener('abort', () => {
+        abortObserved = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return response({ total: 0, limit: 50, offset: 0, data: [] });
+    };
+    const result = await new CollectionDashboardService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionDashboard('bound-user', {
+      maxCollectionItems: 1,
+      maxSubjects: 1,
+      maxEpisodesPerSubject: 1,
+      maxDurationMs: 20,
+    });
+
+    expect(result.state).toBe('unavailable');
+    expect(result.coverage).toMatchObject({
+      sectionsSucceeded: 0,
+      timedOutSections: 3,
+      deadlineMs: 20,
+    });
+    expect(result.warnings.filter((warning) => warning.code === 'UPSTREAM_TIMEOUT')).toHaveLength(
+      3,
+    );
+    expect(requests).toHaveLength(1);
+    expect(abortObserved).toBe(true);
   });
 });

@@ -21,6 +21,7 @@ export interface HttpRequestOptions {
   cacheTtlSeconds?: number;
   retryOptions?: RetryOptions;
   fetchFn?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 export class HttpClient {
@@ -94,6 +95,11 @@ export class HttpClient {
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      const abortRequest = () => controller.abort();
+      if (options.signal) {
+        if (options.signal.aborted) controller.abort();
+        else options.signal.addEventListener('abort', abortRequest, { once: true });
+      }
 
       const fetchImpl = options.fetchFn || this.fetchFn || fetch;
 
@@ -113,8 +119,10 @@ export class HttpClient {
         if (err instanceof Error && err.name === 'AbortError') {
           throw new BangumiError(
             'NETWORK_ERROR',
-            `Request timed out after ${this.timeoutMs}ms`,
-            true,
+            options.signal?.aborted
+              ? 'Request cancelled by the caller.'
+              : `Request timed out after ${this.timeoutMs}ms`,
+            !options.signal?.aborted,
           );
         }
         throw new BangumiError(
@@ -124,6 +132,7 @@ export class HttpClient {
         );
       } finally {
         clearTimeout(timer);
+        options.signal?.removeEventListener('abort', abortRequest);
       }
 
       if (response.status === 302 || response.status === 301 || response.headers.get('location')) {
@@ -203,7 +212,12 @@ export class HttpClient {
       }
     };
 
-    const result = await withRetry(executeRequest, Boolean(isReadOnly), options.retryOptions);
+    const result = await withRetry(
+      executeRequest,
+      Boolean(isReadOnly),
+      options.retryOptions,
+      options.signal,
+    );
 
     if (cacheKey && options.cacheTtlSeconds) {
       this.cache.set(cacheKey, result, options.cacheTtlSeconds);

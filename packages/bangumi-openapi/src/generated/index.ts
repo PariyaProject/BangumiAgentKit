@@ -1,7 +1,11 @@
 // Auto-generated Bangumi OpenAPI Client & Types. DO NOT EDIT MANUALLY.
 // Spec version: Bangumi OpenAPI v0
 
-import { HttpClient, HttpClientConfig } from '@bangumi-agent-kit/bangumi-transport';
+import {
+  HttpClient,
+  HttpClientConfig,
+  type HttpRequestOptions,
+} from '@bangumi-agent-kit/bangumi-transport';
 import type { components, operations, paths } from './schema.js';
 
 export type { components, operations, paths };
@@ -351,11 +355,13 @@ export class GeneratedBangumiOpenApiClient {
   async getUserCollectionsByUsername(
     username: OperationPath<'getUserCollectionsByUsername'>['username'],
     query?: OperationQuery<'getUserCollectionsByUsername'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal'>,
   ): Promise<OperationResponse<'getUserCollectionsByUsername'>> {
     return this.transport.request<OperationResponse<'getUserCollectionsByUsername'>>({
       method: 'GET',
       path: `/v0/users/${encodeURIComponent(String(username))}/collections`,
       query: query as Record<string, unknown> | undefined,
+      ...requestOptions,
     });
   }
 
@@ -398,11 +404,13 @@ export class GeneratedBangumiOpenApiClient {
   async getUserSubjectEpisodeCollection(
     subject_id: OperationPath<'getUserSubjectEpisodeCollection'>['subject_id'],
     query?: OperationQuery<'getUserSubjectEpisodeCollection'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal'>,
   ): Promise<OperationResponse<'getUserSubjectEpisodeCollection'>> {
     return this.transport.request<OperationResponse<'getUserSubjectEpisodeCollection'>>({
       method: 'GET',
       path: `/v0/users/-/collections/${encodeURIComponent(String(subject_id))}/episodes`,
       query: query as Record<string, unknown> | undefined,
+      ...requestOptions,
     });
   }
 

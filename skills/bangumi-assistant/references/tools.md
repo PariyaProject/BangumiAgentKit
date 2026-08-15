@@ -53,8 +53,9 @@ They do not infer an airing time, timezone, episode-level completion, history,
 or recommendation, and do not render collection comments or perform writes.
 
 The collection-dashboard semantic tool and renderer are current-account-only,
-image-free, and bounded. They compose the three existing private read paths in
-parallel and preserve section-level source evidence, retrieval time, coverage,
+image-free, and bounded. They schedule the three existing private read paths
+sequentially at the top level (the schedule path retains its bounded internal
+calendar/collection concurrency) and preserve section-level source evidence, retrieval time, coverage,
 warnings, conflicts, unavailable/auth states, and a versioned composition
 formula. The aggregate budget is explicit; the dashboard is not a transaction,
 does not accept an arbitrary username, does not read comments or infer history,

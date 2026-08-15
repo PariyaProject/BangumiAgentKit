@@ -480,6 +480,22 @@ function presentCollectionDashboard(value: Record<string, unknown>): string | un
     backlog: 'backlog',
     schedule: '七日播出计划',
   };
+  const scheduleForFilters = sectionDetails.schedule;
+  const scheduleResultForFilters =
+    scheduleForFilters && typeof scheduleForFilters === 'object'
+      ? (scheduleForFilters as Record<string, unknown>).result
+      : undefined;
+  const scheduleFilters =
+    scheduleResultForFilters && typeof scheduleResultForFilters === 'object'
+      ? (scheduleResultForFilters as Record<string, unknown>).filters
+      : undefined;
+  const activeStatuses =
+    scheduleFilters && typeof scheduleFilters === 'object'
+      ? (scheduleFilters as Record<string, unknown>).statuses
+      : undefined;
+  lines.push(
+    `活跃状态过滤: ${Array.isArray(activeStatuses) && activeStatuses.length ? activeStatuses.map((status) => humanField(status, 24)).join('、') : '未设置'}`,
+  );
   for (const name of ['intelligence', 'backlog', 'schedule']) {
     const section = sectionDetails[name];
     if (!section || typeof section !== 'object') continue;
@@ -525,6 +541,55 @@ function presentCollectionDashboard(value: Record<string, unknown>): string | un
       const coverage = resultCoverage as Record<string, unknown>;
       lines.push(`  覆盖状态: ${humanField(coverage.state || 'unknown', 64)}`);
     }
+    const source = resultDetails.source;
+    if (source && typeof source === 'object') {
+      const sourceDetails = source as Record<string, unknown>;
+      const sourceLabels =
+        name === 'schedule'
+          ? [
+              sourceDetails.calendar && typeof sourceDetails.calendar === 'object'
+                ? (sourceDetails.calendar as Record<string, unknown>).class
+                : undefined,
+              sourceDetails.collection && typeof sourceDetails.collection === 'object'
+                ? (sourceDetails.collection as Record<string, unknown>).class
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(' + ')
+          : sourceDetails.class;
+      const retrievedAt =
+        name === 'schedule'
+          ? [
+              sourceDetails.calendar && typeof sourceDetails.calendar === 'object'
+                ? (sourceDetails.calendar as Record<string, unknown>).retrievedAt
+                : undefined,
+              sourceDetails.collection && typeof sourceDetails.collection === 'object'
+                ? (sourceDetails.collection as Record<string, unknown>).retrievedAt
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(' / ')
+          : sourceDetails.retrievedAt;
+      lines.push(
+        `  来源与检索: ${humanField(sourceLabels || 'unknown', 80)} · ${humanField(retrievedAt || '未知', 64)}`,
+      );
+    }
+    const evidence = resultDetails.evidence;
+    if (Array.isArray(evidence) && evidence.length > 0) {
+      const operations = evidence.slice(0, 2).flatMap((item) => {
+        if (!item || typeof item !== 'object') return [];
+        const details = item as Record<string, unknown>;
+        return [
+          ...(typeof details.operation === 'string' ? [details.operation] : []),
+          ...(Array.isArray(details.operations)
+            ? details.operations.filter(
+                (operation): operation is string => typeof operation === 'string',
+              )
+            : []),
+        ];
+      });
+      if (operations.length > 0) lines.push(`  证据: ${humanField(operations.join(' · '), 180)}`);
+    }
   }
 
   const coverage = value.coverage;
@@ -532,6 +597,9 @@ function presentCollectionDashboard(value: Record<string, unknown>): string | un
     const details = coverage as Record<string, unknown>;
     lines.push(
       `组合覆盖: 区段 ${humanField(details.sectionsSucceeded ?? '?', 32)}/${humanField(details.sectionsAttempted ?? '?', 32)} · 收藏行 ${humanField(details.collectionRowsObserved ?? '?', 32)}/${humanField(details.collectionRowsBound ?? '?', 32)} · episode 行 ${humanField(details.episodeRowsObserved ?? '?', 32)}/${humanField(details.episodeRowsRequested ?? '?', 32)}`,
+    );
+    lines.push(
+      `  资源上限: 并发请求 ${humanField(details.maxConcurrentRequests ?? '?', 32)} · upstream 请求 ${humanField(details.upstreamRequestsBound ?? '?', 32)} · 重试尝试 ${humanField(details.upstreamAttemptsBound ?? '?', 32)} · 时限 ${humanField(details.deadlineMs ?? '?', 32)}ms · 超时区段 ${humanField(details.timedOutSections ?? '?', 32)}`,
     );
   }
   const warnings = value.warnings;

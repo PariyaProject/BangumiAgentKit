@@ -44,6 +44,7 @@ export interface CollectionScheduleOptions {
   maxCollectionItems?: number;
   maxRows?: number;
   statuses?: CollectionScheduleStatus[];
+  signal?: AbortSignal;
 }
 
 export interface CollectionScheduleProgress {
@@ -362,8 +363,7 @@ function isValidSubjectId(value: unknown): value is number {
 
 function isValidCollectionStatus(value: unknown): value is CollectionScheduleStatus {
   return (
-    typeof value === 'string' &&
-    COLLECTION_SCHEDULE_STATUSES.has(value as CollectionScheduleStatus)
+    typeof value === 'string' && COLLECTION_SCHEDULE_STATUSES.has(value as CollectionScheduleStatus)
   );
 }
 
@@ -588,16 +588,18 @@ function calendarRowsFromDays(days: readonly DomainCalendarDay[], maxRows: numbe
 async function scanCalendar(
   calendarService: CalendarService,
   maxRows: number,
+  signal?: AbortSignal,
 ): Promise<CalendarScan> {
   const attemptedAt = new Date().toISOString();
   try {
-    const days = await calendarService.getCalendar({ useCache: false });
+    const days = await calendarService.getCalendar({ useCache: false, signal });
     const retrievedAt = new Date().toISOString();
     const scan = calendarRowsFromDays(days, maxRows);
     scan.attemptedAt = attemptedAt;
     scan.retrievedAt = retrievedAt;
     return scan;
   } catch (error: unknown) {
+    if (signal?.aborted) throw error;
     const publicError = toPublicError(error);
     return {
       rows: [],
@@ -624,6 +626,7 @@ async function scanCollection(
   userService: UserService,
   username: string,
   maxItems: number,
+  signal?: AbortSignal,
 ): Promise<CollectionScan> {
   const attemptedAt = new Date().toISOString();
   const items: ValidCollectionItem[] = [];
@@ -647,7 +650,8 @@ async function scanCollection(
   while (
     observedRows < maxItems &&
     pagesAttempted < COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES &&
-    !sourceExhausted
+    !sourceExhausted &&
+    !signal?.aborted
   ) {
     pagesAttempted += 1;
     const requested = Math.min(COLLECTION_SCHEDULE_COLLECTION_PAGE_SIZE, maxItems - observedRows);
@@ -656,6 +660,7 @@ async function scanCollection(
         subjectType: 'anime',
         limit: requested,
         offset,
+        signal,
       });
       pagesSucceeded += 1;
       if (pagesSucceeded === 1) {
@@ -693,6 +698,7 @@ async function scanCollection(
       }
       offset = nextOffset;
     } catch (caught: unknown) {
+      if (signal?.aborted) throw caught;
       error = toPublicError(caught);
       pageFailureOffset = offset;
       pageFailureCode = error.code;
@@ -977,7 +983,9 @@ function finalizeSchedule(
       unmatchedCalendar.push(
         makeUnmatchedCalendarItem(
           row,
-          invalidStatusSubjectIds.has(row.item.id) ? 'invalid_collection_status' : 'status_filtered',
+          invalidStatusSubjectIds.has(row.item.id)
+            ? 'invalid_collection_status'
+            : 'status_filtered',
           invalidStatusSubjectIds.has(row.item.id) ? undefined : observation,
         ),
       );
@@ -1284,8 +1292,8 @@ export class CollectionScheduleService {
     );
     const statuses = boundedStatuses(options.statuses);
     const [calendar, collection] = await Promise.all([
-      scanCalendar(this.calendarService, maxRows),
-      scanCollection(this.userService, username, maxItems),
+      scanCalendar(this.calendarService, maxRows, options.signal),
+      scanCollection(this.userService, username, maxItems, options.signal),
     ]);
     const result = baseResult({ maxItems, maxRows, statuses }, calendar, collection);
     return finalizeSchedule(result, calendar, collection, statuses, maxRows);

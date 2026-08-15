@@ -33,6 +33,39 @@ function boundedText(value: unknown, maximum = 150): string {
     .join('')}…`;
 }
 
+function evidenceLine(
+  label: string,
+  source: string,
+  retrievedAt: string | undefined,
+  operation: string,
+  theme: ThemeTokens,
+): React.ReactNode {
+  return (
+    <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+      {label}来源：{boundedText(source, 64)} · 检索 {boundedText(retrievedAt || '未知', 32)}
+      <br />
+      证据：{boundedText(operation, 110)}
+    </div>
+  );
+}
+
+function omissionLine(
+  label: string,
+  section: CollectionDashboardViewModel['presentation'][Exclude<
+    keyof CollectionDashboardViewModel['presentation'],
+    'state'
+  >],
+  theme: ThemeTokens,
+): React.ReactNode {
+  if (section.omitted === 0) return null;
+  return (
+    <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+      {label}展示 {section.rendered}/{section.available}，省略 {section.omitted} 条；完整计数仍见
+      coverage。
+    </div>
+  );
+}
+
 function sectionHeader(
   title: string,
   state: CollectionDashboardViewModel['state'],
@@ -92,6 +125,10 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
         收藏概览、backlog
         和未来七日播出计划分别读取；日期不表示具体时刻或时区，未观察数据不会被补猜。
+        <br />
+        活跃状态过滤：{viewModel.filters.length ? viewModel.filters.join('、') : '未设置'} ·
+        展示状态：
+        {viewModel.presentation.state === 'complete' ? '完整' : '部分（有省略）'}
       </div>
 
       <div
@@ -169,11 +206,18 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
                 高频标签：
                 {intelligence.tags.top.length
                   ? intelligence.tags.top
-                      .slice(0, 5)
                       .map((item) => `${boundedText(item.tag, 32)}(${item.count})`)
                       .join(' · ')
                   : '无可用标签证据'}
               </div>
+              {omissionLine('概览更新：', viewModel.presentation.intelligence, theme)}
+              {evidenceLine(
+                '',
+                intelligence.source.label,
+                intelligence.source.retrievedAt,
+                intelligence.evidence.operation,
+                theme,
+              )}
             </>
           ) : (
             <div style={{ color: theme.textMuted, fontSize: '11px' }}>未生成收藏概览结果。</div>
@@ -204,7 +248,6 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
               <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
                 {backlog.items.length
                   ? backlog.items
-                      .slice(0, 4)
                       .map(
                         (item) =>
                           `${boundedText(item.nameCn || item.name, 42)} · ${item.remainingEpisodes !== undefined ? `剩余 ${item.remainingEpisodes}` : item.state}`,
@@ -212,6 +255,14 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
                       .join('\n')
                   : '没有可展示的 backlog 条目；空结果不等同于 backlog 为空。'}
               </div>
+              {omissionLine('Backlog：', viewModel.presentation.backlog, theme)}
+              {evidenceLine(
+                '',
+                backlog.source.label,
+                backlog.source.retrievedAt,
+                backlog.evidence.operations.join(' · '),
+                theme,
+              )}
             </>
           ) : (
             <div style={{ color: theme.textMuted, fontSize: '11px' }}>未生成 backlog 结果。</div>
@@ -243,7 +294,6 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
               <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
                 {schedule.items.length
                   ? schedule.items
-                      .slice(0, 4)
                       .map(
                         (item) =>
                           `${boundedText(item.nameCn || item.name, 42)} · ${item.schedule.weekday.cn || item.schedule.weekday.en || '星期未知'}${item.schedule.airDate ? ` ${item.schedule.airDate}` : ''}`,
@@ -251,6 +301,21 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
                       .join('\n')
                   : '没有确认匹配的收藏播出条目；请结合覆盖和未匹配原因理解。'}
               </div>
+              {omissionLine('播出计划：', viewModel.presentation.schedule, theme)}
+              {evidenceLine(
+                '日历',
+                schedule.source.calendar.class,
+                schedule.source.calendar.retrievedAt,
+                schedule.evidence.operations[0] || schedule.source.calendar.operation,
+                theme,
+              )}
+              {evidenceLine(
+                '收藏',
+                schedule.source.label,
+                schedule.source.collection.retrievedAt,
+                schedule.evidence.operations[1] || schedule.source.collection.operation,
+                theme,
+              )}
             </>
           ) : (
             <div style={{ color: theme.textMuted, fontSize: '11px' }}>未生成播出计划结果。</div>

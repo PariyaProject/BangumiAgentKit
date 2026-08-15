@@ -128,10 +128,7 @@ function parseCalendarItem(value: unknown, path: string): RawCalendarItem {
   const airWeekday = optionalNumber(value.air_weekday, `${path}.air_weekday`, {
     integer: true,
   });
-  if (
-    airWeekday !== undefined &&
-    (airWeekday < 1 || airWeekday > CALENDAR_EXPECTED_DAYS)
-  ) {
+  if (airWeekday !== undefined && (airWeekday < 1 || airWeekday > CALENDAR_EXPECTED_DAYS)) {
     throw schemaError(`${path}.air_weekday`, '1 至 7 的整数');
   }
 
@@ -183,10 +180,7 @@ function parseCalendarItem(value: unknown, path: string): RawCalendarItem {
 export function parseCalendarPayload(raw: unknown): RawCalendarDay[] {
   if (!Array.isArray(raw)) throw schemaError('payload', '七日数组');
   if (raw.length > CALENDAR_MAX_SOURCE_DAY_ENVELOPES) {
-    throw schemaError(
-      'payload',
-      `最多 ${CALENDAR_MAX_SOURCE_DAY_ENVELOPES} 个星期封套`,
-    );
+    throw schemaError('payload', `最多 ${CALENDAR_MAX_SOURCE_DAY_ENVELOPES} 个星期封套`);
   }
 
   let sourceItemCount = 0;
@@ -363,10 +357,7 @@ export function buildCalendarIntelligence(
   const outputTruncated = returned < observed;
   const invalidWeekdayFilter = !weekdayFilterIsValid;
   const partial =
-    sourceCoveragePartial ||
-    weekdayConsistencyPartial ||
-    outputTruncated ||
-    invalidWeekdayFilter;
+    sourceCoveragePartial || weekdayConsistencyPartial || outputTruncated || invalidWeekdayFilter;
   const warnings: CalendarIntelligenceResult['warnings'] = [];
   if (sourceCoveragePartial) {
     const sourceDetails = [
@@ -470,7 +461,9 @@ export function buildCalendarIntelligence(
 export class CalendarService {
   constructor(private client: HttpClient) {}
 
-  async getCalendar(options: { useCache?: boolean } = {}): Promise<DomainCalendarDay[]> {
+  async getCalendar(
+    options: { useCache?: boolean; signal?: AbortSignal } = {},
+  ): Promise<DomainCalendarDay[]> {
     const useCache = options.useCache !== false;
     const raw = await this.client.request<unknown>({
       method: 'GET',
@@ -478,6 +471,7 @@ export class CalendarService {
       cacheContext: useCache ? { operationId: 'getCalendar' } : undefined,
       cacheTtlSeconds: useCache ? 3600 : undefined,
       retryOptions: useCache ? undefined : { maxRetries: 0 },
+      signal: options.signal,
     });
 
     return parseCalendarPayload(raw).map((day) => ({

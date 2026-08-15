@@ -49,7 +49,7 @@ Bangumi:
   collection intelligence [--max-items 1..200]
   collection dashboard [--max-items 1..100] [--max-subjects 1..30]
                       [--max-episodes 1..1000] [--max-rows 1..100]
-                      [--status wish,doing,on_hold]
+                      [--timeout-ms 1000..120000] [--status wish,doing,on_hold]
   collection backlog [--max-items 1..100] [--max-subjects 1..30]
                     [--max-episodes 1..1000] [--status wish,doing,on_hold]
   collection schedule [--max-items 1..200] [--max-rows 1..100]
@@ -123,15 +123,31 @@ function withoutOptions(args: string[], names: string[]): string[] {
   return result;
 }
 
-function optionNumber(value: string, name: string, positive = false): number {
+function optionNumber(
+  value: string,
+  name: string,
+  positive = false,
+  minimum?: number,
+  maximum?: number,
+): number {
   const parsed = Number(value);
   if (
     !Number.isFinite(parsed) ||
     !Number.isInteger(parsed) ||
-    (positive ? parsed <= 0 : parsed < 0)
+    (positive ? parsed <= 0 : parsed < 0) ||
+    (minimum !== undefined && parsed < minimum) ||
+    (maximum !== undefined && parsed > maximum)
   ) {
+    const range =
+      minimum !== undefined && maximum !== undefined
+        ? ` from ${minimum} to ${maximum}`
+        : minimum !== undefined
+          ? ` at least ${minimum}`
+          : maximum !== undefined
+            ? ` at most ${maximum}`
+            : '';
     throw new StandaloneCliError(
-      `USAGE_ERROR: ${name} must be an integer${positive ? ' greater than zero' : ''}.`,
+      `USAGE_ERROR: ${name} must be an integer${positive ? ' greater than zero' : ''}${range}.`,
       2,
     );
   }
@@ -225,6 +241,7 @@ function parseCollectionDashboardOptions(args: string[]): Record<string, unknown
   const maxSubjects = takeOption(args, '--max-subjects');
   const maxEpisodes = takeOption(args, '--max-episodes');
   const maxRows = takeOption(args, '--max-rows');
+  const timeoutMs = takeOption(args, '--timeout-ms');
   const statuses = takeOption(args, '--status');
   if (maxItems !== undefined) input.maxCollectionItems = optionNumber(maxItems, 'max-items', true);
   if (maxSubjects !== undefined)
@@ -233,6 +250,9 @@ function parseCollectionDashboardOptions(args: string[]): Record<string, unknown
     input.maxEpisodesPerSubject = optionNumber(maxEpisodes, 'max-episodes', true);
   }
   if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
+  if (timeoutMs !== undefined) {
+    input.maxDurationMs = optionNumber(timeoutMs, 'timeout-ms', true, 1000, 120000);
+  }
   if (statuses !== undefined) {
     const values = statuses
       .split(',')

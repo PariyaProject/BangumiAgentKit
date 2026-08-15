@@ -44,6 +44,7 @@ export interface CollectionBacklogOptions {
   maxSubjects?: number;
   maxEpisodesPerSubject?: number;
   statuses?: CollectionBacklogStatus[];
+  signal?: AbortSignal;
 }
 
 export interface CollectionBacklogItem {
@@ -643,6 +644,7 @@ async function scanCollection(
   userService: UserService,
   username: string,
   maxItems: number,
+  signal?: AbortSignal,
 ): Promise<CollectionScan> {
   const items: UserCollectionItem[] = [];
   let sourceTotal: number | undefined;
@@ -660,7 +662,8 @@ async function scanCollection(
   while (
     items.length < maxItems &&
     pagesAttempted < COLLECTION_BACKLOG_MAX_COLLECTION_PAGES &&
-    !sourceExhausted
+    !sourceExhausted &&
+    !signal?.aborted
   ) {
     pagesAttempted += 1;
     const requested = Math.min(COLLECTION_BACKLOG_COLLECTION_PAGE_SIZE, maxItems - items.length);
@@ -669,6 +672,7 @@ async function scanCollection(
         subjectType: 'anime',
         limit: requested,
         offset,
+        signal,
       });
       pagesSucceeded += 1;
       if (pagesSucceeded === 1) {
@@ -691,6 +695,7 @@ async function scanCollection(
       }
       offset = nextOffset;
     } catch (error: unknown) {
+      if (signal?.aborted) throw error;
       pageFailureOffset = offset;
       pageFailureCode = toPublicError(error).code;
       if (pagesSucceeded === 0) throw error;
@@ -728,6 +733,7 @@ async function scanEpisodeProgress(
   userService: UserService,
   subjectId: number,
   maxEpisodes: number,
+  signal?: AbortSignal,
 ): Promise<EpisodeProgressScan> {
   const items: UserEpisodeCollectionItem[] = [];
   let sourceTotal: number | undefined;
@@ -745,7 +751,8 @@ async function scanEpisodeProgress(
   while (
     items.length < maxEpisodes &&
     pagesAttempted < COLLECTION_BACKLOG_MAX_EPISODE_PAGES &&
-    !sourceExhausted
+    !sourceExhausted &&
+    !signal?.aborted
   ) {
     pagesAttempted += 1;
     const requested = Math.min(COLLECTION_BACKLOG_EPISODE_PAGE_SIZE, maxEpisodes - items.length);
@@ -755,8 +762,10 @@ async function scanEpisodeProgress(
         episodeType: 0,
         limit: requested,
         offset,
+        signal,
       });
     } catch (error: unknown) {
+      if (signal?.aborted) throw error;
       pageFailureOffset = offset;
       scanError = toPublicError(error);
       pageFailureCode = scanError.code;
@@ -969,7 +978,7 @@ export class CollectionBacklogService {
 
     let scan: CollectionScan;
     try {
-      scan = await scanCollection(this.userService, username, maxItems);
+      scan = await scanCollection(this.userService, username, maxItems, options.signal);
     } catch (error: unknown) {
       const publicError = toPublicError(error);
       const errorState = stateForError(publicError);
@@ -1016,11 +1025,15 @@ export class CollectionBacklogService {
       toHydrate,
       COLLECTION_BACKLOG_MAX_CONCURRENCY,
       async (item) => {
+        if (options.signal?.aborted) {
+          throw new Error('Collection dashboard deadline reached.');
+        }
         try {
           const progress = await scanEpisodeProgress(
             this.userService,
             item.subjectId,
             maxEpisodesPerSubject,
+            options.signal,
           );
           const row =
             progress.error && progress.pagesSucceeded === 0

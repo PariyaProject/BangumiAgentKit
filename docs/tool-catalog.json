@@ -300,7 +300,7 @@
   },
   {
     "name": "bangumi.get_collection_dashboard",
-    "description": "一次获取当前绑定 Bangumi 账号的有界收藏 Dashboard：组合收藏概览、动画 backlog 与未来七日收藏播出计划。三个区段并行读取但分别保留官方 v0/legacy 来源、检索时间、coverage、partial/unavailable/auth/conflict/not_computable 状态和限制；只接受当前账号，不读取评论、不计算历史趋势/推荐、不执行写入，组合有明确的总行数与 episode/日历上限。",
+    "description": "一次获取当前绑定 Bangumi 账号的有界收藏 Dashboard：组合收藏概览、动画 backlog 与未来七日收藏播出计划。三个顶层区段按有界调度读取（同一时刻只运行一个顶层区段；schedule 内部的日历/收藏并发仍受上限约束），分别保留官方 v0/legacy 来源、检索时间、coverage、partial/unavailable/auth/conflict/not_computable 状态和限制；只接受当前账号，不读取评论、不计算历史趋势/推荐、不执行写入，组合有明确的总行数、upstream 请求尝试、episode/日历上限和总时限。",
     "auth": "required",
     "risk": "read",
     "scopes": ["read:collection"],
@@ -331,6 +331,12 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 100
+        },
+        "maxDurationMs": {
+          "description": "Dashboard 总读取时限（毫秒），默认 60000；超时区段保持 upstream_timeout，不补造空结果",
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
         },
         "statuses": {
           "description": "backlog/播出计划共同的收藏状态过滤；不表示优先级",
@@ -1390,7 +1396,7 @@
   },
   {
     "name": "bangumi.render_collection_dashboard",
-    "description": "生成当前绑定 Bangumi 账号的收藏 Dashboard 图片 Artifact：一张无图片资产的私有卡片，按同一组合结果展示收藏概览、backlog 和七日播出计划，并保留各区段 coverage、证据、partial/unavailable/auth/conflict 状态和有界限制；不接受任意用户名，不进入公共缓存，不读取评论，不执行写入。",
+    "description": "生成当前绑定 Bangumi 账号的收藏 Dashboard 图片 Artifact：一张无图片资产的私有卡片，按同一有界组合结果展示收藏概览、backlog 和七日播出计划，并保留各区段 coverage、证据、partial/unavailable/auth/conflict 状态和有界限制；渲染器绕过共享缓存，Artifact 使用当前账号主体隔离；不接受任意用户名，不读取评论，不执行写入。",
     "auth": "required",
     "risk": "read",
     "scopes": ["read:collection"],
@@ -1421,6 +1427,12 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 100
+        },
+        "maxDurationMs": {
+          "description": "Dashboard 总读取时限（毫秒），默认 60000；超时区段保持 upstream_timeout",
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000
         },
         "statuses": {
           "description": "backlog/七日播出计划共同的收藏状态过滤；不表示优先级",

@@ -103,8 +103,9 @@ one bounded private result while preserving each section's state, coverage,
 warnings, source evidence, and retrieval time. The composition exposes its
 aggregate collection-row, episode-row, calendar-row, output-row, and
 concurrency bounds; it does not create a transactionally consistent snapshot,
-resolve cover assets, enter shared caches, read comments, infer taste/history,
-recommend items, or perform writes. At narrow widths the sections stack
+resolve cover assets, enter shared caches, or place artifacts outside the
+current principal's private ArtifactStore scope; it also does not read comments,
+infer taste/history, recommend items, or perform writes. At narrow widths the sections stack
 vertically so the answer remains scannable without horizontal scrolling.
 
 `series-relations` is the bounded Series / Watch-Order companion card. It shows

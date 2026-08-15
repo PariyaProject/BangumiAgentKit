@@ -425,6 +425,13 @@ export interface CollectionDashboardViewModel {
   evidence: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['evidence'];
   warnings: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['warnings'];
   limitations: string[];
+  filters: string[];
+  presentation: {
+    state: 'complete' | 'partial';
+    intelligence: { available: number; rendered: number; omitted: number };
+    backlog: { available: number; rendered: number; omitted: number };
+    schedule: { available: number; rendered: number; omitted: number };
+  };
 }
 
 export interface CalendarDayViewModel {

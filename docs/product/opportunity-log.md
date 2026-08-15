@@ -305,9 +305,10 @@ Potential Renderer:
 `CollectionDashboard`
 
 Derived Logic:
-`collection-dashboard-v1` composes the three sections in parallel with an
-explicit aggregate collection-row, backlog-subject, episode-row, calendar-row,
-output-row, and concurrency budget. Each section retains its own source,
+`collection-dashboard-v1` composes the three sections with sequential top-level
+bounded scheduling (the schedule section retains bounded calendar/collection
+concurrency) and an explicit aggregate collection-row, backlog-subject,
+episode-row, calendar-row, output-row, deadline, retry, and concurrency budget. Each section retains its own source,
 formula, retrieval time, coverage, warnings, and degraded state; overall
 `complete` is emitted only when all sections are complete, otherwise the result
 is partial or an explicit all-source failure state. The dashboard does not infer

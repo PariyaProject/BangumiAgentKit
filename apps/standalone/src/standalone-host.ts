@@ -7,6 +7,8 @@ import {
   ArtifactRef,
   ArtifactStore,
   LocalArtifactStore,
+  isPrivateArtifactId,
+  isPrincipalScopedArtifactStore,
   RenderService,
   resolveArtifactDir,
 } from '@bangumi-agent-kit/renderer';
@@ -354,16 +356,31 @@ export class StandaloneHost {
     ) {
       throw new StandaloneCliError('VALIDATION_ERROR: invalid ArtifactRef.', 2);
     }
-    const metadata = await this.artifactStore.getArtifact(artifact.id);
+    const privateArtifact = isPrivateArtifactId(artifact.id);
+    const metadata = privateArtifact
+      ? isPrincipalScopedArtifactStore(this.artifactStore)
+        ? await this.artifactStore.getArtifactForPrincipal(this.principalId, artifact.id)
+        : null
+      : await this.artifactStore.getArtifact(artifact.id);
     if (!metadata || metadata.id !== artifact.id || metadata.mimeType !== 'image/png') {
       throw new StandaloneCliError('NOT_FOUND: artifact is missing or expired.', 1);
     }
+    const sourceValue = privateArtifact
+      ? isPrincipalScopedArtifactStore(this.artifactStore)
+        ? await this.artifactStore.resolveFilePathForPrincipal(this.principalId, artifact.id)
+        : null
+      : await this.artifactStore.resolveFilePath(artifact.id);
+    const source = sourceValue ? path.resolve(sourceValue) : '';
+    const trustedRoot = path.resolve(this.artifactDir);
+    const relativeSource = source ? path.relative(trustedRoot, source) : '';
     const trustedSource = path.resolve(this.artifactDir, `${artifact.id}.png`);
-    const source = path.resolve((await this.artifactStore.resolveFilePath(artifact.id)) || '');
-    if (source !== trustedSource || !fs.existsSync(trustedSource)) {
+    const sourceIsTrusted = privateArtifact
+      ? Boolean(source) && !relativeSource.startsWith('..') && !path.isAbsolute(relativeSource)
+      : source === trustedSource;
+    if (!sourceIsTrusted || !fs.existsSync(source)) {
       throw new StandaloneCliError('INTERNAL_ERROR: artifact source failed validation.', 1);
     }
-    const bytes = fs.readFileSync(trustedSource);
+    const bytes = fs.readFileSync(source);
     if (!isPng(bytes)) throw new StandaloneCliError('INTERNAL_ERROR: artifact is not a PNG.', 1);
 
     const target = expandDestination(destination);
@@ -374,7 +391,7 @@ export class StandaloneHost {
         2,
       );
     }
-    fs.copyFileSync(trustedSource, target);
+    fs.copyFileSync(source, target);
     try {
       fs.chmodSync(target, 0o600);
     } catch {

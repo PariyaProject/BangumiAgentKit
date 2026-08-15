@@ -68,6 +68,7 @@ export class UserService {
       type?: number | string;
       limit?: number;
       offset?: number;
+      signal?: AbortSignal;
     } = {},
   ): Promise<{
     total?: number;
@@ -94,12 +95,16 @@ export class UserService {
       typeNum = map[options.type.toLowerCase()];
     }
 
-    const res = await this.api.getUserCollectionsByUsername(username, {
-      subject_type: subjectTypeNum as OpenApiSubjectType | undefined,
-      type: typeNum as 1 | 2 | 3 | 4 | 5 | undefined,
-      limit,
-      offset,
-    });
+    const res = await this.api.getUserCollectionsByUsername(
+      username,
+      {
+        subject_type: subjectTypeNum as OpenApiSubjectType | undefined,
+        type: typeNum as 1 | 2 | 3 | 4 | 5 | undefined,
+        limit,
+        offset,
+      },
+      { signal: options.signal },
+    );
 
     const data = res.data || [];
     const items = data.map((col) => {
@@ -198,6 +203,7 @@ export class UserService {
       episodeType?: OperationQuery<'getUserSubjectEpisodeCollection'>['episode_type'];
       limit?: number;
       offset?: number;
+      signal?: AbortSignal;
     } = {},
   ): Promise<{
     total?: number;
@@ -207,11 +213,15 @@ export class UserService {
   }> {
     const limit = options.limit ?? 100;
     const offset = options.offset ?? 0;
-    const res = await this.api.getUserSubjectEpisodeCollection(subjectId, {
-      episode_type: options.episodeType,
-      limit,
-      offset,
-    });
+    const res = await this.api.getUserSubjectEpisodeCollection(
+      subjectId,
+      {
+        episode_type: options.episodeType,
+        limit,
+        offset,
+      },
+      { signal: options.signal },
+    );
     const data = res.data || [];
     const items = data.map((item) => ({
       episode: item.episode ? mapEpisode(item.episode, subjectId) : undefined,
