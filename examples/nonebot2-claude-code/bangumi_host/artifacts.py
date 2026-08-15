@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import datetime, timezone
@@ -7,6 +8,7 @@ from pathlib import Path
 
 
 ARTIFACT_ID_PATTERN = re.compile(r'^art_[A-Za-z0-9_-]+$')
+PRIVATE_ARTIFACT_ID_PATTERN = re.compile(r'^art_p_([a-f0-9]{24})_[a-f0-9]{32}$')
 PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 
 
@@ -27,7 +29,7 @@ def _parse_expiry(raw: object) -> datetime | None:
 
 
 class ArtifactResolver:
-    """Resolve model-visible capability IDs without trusting metadata file paths."""
+    """Resolve public and principal-scoped capability IDs safely."""
 
     def __init__(self, artifact_root: Path, max_bytes: int = 16 * 1024 * 1024):
         if max_bytes < len(PNG_SIGNATURE):
@@ -35,20 +37,30 @@ class ArtifactResolver:
         self.artifact_root = Path(artifact_root).expanduser().resolve()
         self.max_bytes = max_bytes
 
-    def _safe_path(self, artifact_id: str, suffix: str) -> Path | None:
+    @staticmethod
+    def _principal_scope(principal_key: str | None) -> str | None:
+        if not isinstance(principal_key, str) or not principal_key:
+            return None
+        return hashlib.sha256(principal_key.encode('utf-8')).hexdigest()[:24]
+
+    @staticmethod
+    def _is_private_prefix(artifact_id: object) -> bool:
+        return isinstance(artifact_id, str) and artifact_id.startswith('art_p_')
+
+    def _safe_path(self, directory: Path, artifact_id: str, suffix: str) -> Path | None:
         if not isinstance(artifact_id, str) or not ARTIFACT_ID_PATTERN.fullmatch(artifact_id):
             return None
-        candidate = (self.artifact_root / f'{artifact_id}{suffix}').resolve()
+        directory = directory.resolve()
+        candidate = (directory / f'{artifact_id}{suffix}').resolve()
         try:
-            candidate.relative_to(self.artifact_root)
+            candidate.relative_to(directory)
         except ValueError:
             return None
         return candidate
 
-    def resolve(self, artifact_id: str) -> Path | None:
-        """Return a validated local PNG handle, or None for any invalid artifact."""
-        image_path = self._safe_path(artifact_id, '.png')
-        metadata_path = self._safe_path(artifact_id, '.json')
+    def _resolve_in_directory(self, directory: Path, artifact_id: str) -> Path | None:
+        image_path = self._safe_path(directory, artifact_id, '.png')
+        metadata_path = self._safe_path(directory, artifact_id, '.json')
         if image_path is None or metadata_path is None:
             return None
         if not image_path.is_file() or not metadata_path.is_file():
@@ -72,5 +84,35 @@ class ArtifactResolver:
             return None
         return image_path
 
+    def resolve(self, artifact_id: str, principal_key: str | None = None) -> Path | None:
+        """Resolve a public artifact, or a private artifact with trusted scope context."""
+        if self._is_private_prefix(artifact_id):
+            return self.resolve_for_principal(artifact_id, principal_key)
+        return self._resolve_in_directory(self.artifact_root, artifact_id)
 
-__all__ = ['ARTIFACT_ID_PATTERN', 'ArtifactResolver', 'ArtifactResolutionError']
+    def resolve_for_principal(self, artifact_id: str, principal_key: str | None) -> Path | None:
+        """Resolve an artifact while enforcing the caller's principal scope."""
+        if not isinstance(artifact_id, str) or self._is_private_prefix(artifact_id):
+            match = (
+                PRIVATE_ARTIFACT_ID_PATTERN.fullmatch(artifact_id)
+                if isinstance(artifact_id, str)
+                else None
+            )
+            scope = self._principal_scope(principal_key)
+            if match is None or scope is None or match.group(1) != scope:
+                return None
+            private_root = (self.artifact_root / 'private' / scope).resolve()
+            try:
+                private_root.relative_to(self.artifact_root)
+            except ValueError:
+                return None
+            return self._resolve_in_directory(private_root, artifact_id)
+        return self._resolve_in_directory(self.artifact_root, artifact_id)
+
+
+__all__ = [
+    'ARTIFACT_ID_PATTERN',
+    'PRIVATE_ARTIFACT_ID_PATTERN',
+    'ArtifactResolver',
+    'ArtifactResolutionError',
+]

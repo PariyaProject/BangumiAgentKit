@@ -234,10 +234,13 @@ use another principal's accounts.
 ## Images and confirmations
 
 Render tools return only an `ArtifactRef`, for example `art_abc123`, never a
-filesystem path. The host accepts only `^art_[A-Za-z0-9_-]+$`, derives the
-expected PNG under `BANGUMI_ARTIFACT_DIR`, and verifies metadata ID/mime type,
-expiry, size, and PNG signature. A metadata `filePath` is ignored. Invalid or
-expired images are dropped while the text response remains available.
+filesystem path. Public artifacts are derived under `BANGUMI_ARTIFACT_DIR`;
+private Dashboard artifacts use `art_p_<scope>_<nonce>` and are derived under
+the trusted external principal's `private/<scope>` directory. The host verifies
+metadata ID/mime type, expiry, size, and PNG signature, and ignores a metadata
+`filePath`. A private artifact without the current principal scope, or from
+another principal, is rejected. Invalid or expired images are dropped while the
+text response remains available.
 
 For a destructive or bulk write:
 

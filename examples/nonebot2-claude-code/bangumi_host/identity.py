@@ -42,6 +42,11 @@ class ExternalIdentity:
             values['BANGUMI_MCP_DISPLAY_NAME'] = self.display_name
         return values
 
+    @property
+    def artifact_principal_key(self) -> str:
+        """Stable trusted key matching the MCP private artifact scope."""
+        return '\x00'.join((self.provider, self.bot_instance_id, self.external_user_id))
+
 
 def build_qq_identity(
     user_id: str,

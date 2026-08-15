@@ -142,7 +142,7 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
         {[
           [
             '区段成功',
-            `${viewModel.coverage.sectionsSucceeded}/${viewModel.coverage.sectionsAttempted}`,
+            `${viewModel.coverage.sectionsSucceeded}/${viewModel.coverage.sectionsInvoked}（请求${viewModel.coverage.sectionsRequested}）`,
           ],
           [
             '收藏观察',
@@ -347,7 +347,8 @@ export const CollectionDashboardCard: React.FC<CollectionDashboardCardProps> = (
         {viewModel.coverage.episodeRowsRequested} · 日历行上限{' '}
         {viewModel.coverage.calendarRowsRequested} · 输出行上限{' '}
         {viewModel.coverage.outputRowsRequested} · 检索时间{' '}
-        {viewModel.coverage.retrievedAt || '未知'}
+        {viewModel.coverage.retrievedAt || '未知'} · 区段超时 {viewModel.coverage.timedOutSections}{' '}
+        · 截止跳过 {viewModel.coverage.deadlineSkippedSections}
       </div>
       <Footer theme={theme} />
     </CardFrame>

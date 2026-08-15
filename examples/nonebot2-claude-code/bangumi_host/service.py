@@ -177,11 +177,12 @@ class ClaudeHostService:
     def _finish_response(
         self,
         response: HostResponse,
+        principal_key: str,
     ) -> HostResult:
         valid_artifacts = []
         artifact_paths = []
         for artifact in response.artifacts:
-            path = self.artifact_resolver.resolve(artifact.id)
+            path = self.artifact_resolver.resolve_for_principal(artifact.id, principal_key)
             if path is None:
                 LOGGER.warning('host artifact rejected id=%s', artifact.id)
                 continue
@@ -307,7 +308,7 @@ class ClaudeHostService:
                 pending_confirmation_id=pending_id,
                 pending_confirmation_summary=pending_summary,
             )
-            return self._finish_response(response)
+            return self._finish_response(response, identity.artifact_principal_key)
         except (ClaudeInvocationError, HostConfigError):
             LOGGER.exception('host Claude invocation failed')
             return _safe_response('Bangumi Agent 暂时不可用，请稍后重试。', 'CLAUDE_UNAVAILABLE')

@@ -4,8 +4,6 @@ import {
   CollectionBacklogResult,
   CollectionBacklogService,
   CollectionBacklogStatus,
-  COLLECTION_BACKLOG_COLLECTION_PAGE_SIZE,
-  COLLECTION_BACKLOG_EPISODE_PAGE_SIZE,
   COLLECTION_BACKLOG_MAX_COLLECTION_PAGES,
   COLLECTION_BACKLOG_MAX_CONCURRENCY,
   COLLECTION_BACKLOG_MAX_EPISODE_PAGES,
@@ -16,13 +14,11 @@ import {
   CollectionIntelligenceResult,
   CollectionIntelligenceService,
   COLLECTION_INTELLIGENCE_MAX_PAGES,
-  COLLECTION_INTELLIGENCE_PAGE_SIZE,
 } from './collection-intelligence-service.js';
 import {
   CollectionScheduleResult,
   CollectionScheduleService,
   CollectionScheduleStatus,
-  COLLECTION_SCHEDULE_COLLECTION_PAGE_SIZE,
   COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES,
   COLLECTION_SCHEDULE_DEFAULT_MAX_ROWS,
   COLLECTION_SCHEDULE_MAX_CALENDAR_ROWS,
@@ -81,8 +77,11 @@ export interface CollectionDashboardSection<T> {
 
 export interface CollectionDashboardAggregateCoverage {
   state: CollectionDashboardState;
+  sectionsRequested: number;
   sectionsAttempted: number;
+  sectionsInvoked: number;
   sectionsSucceeded: number;
+  deadlineSkippedSections: number;
   maxConcurrentSections: number;
   maxConcurrentRequests: number;
   upstreamRequestsBound: number;
@@ -142,6 +141,8 @@ export interface CollectionDashboardResult {
 interface SectionExecution<T> {
   result?: T;
   error?: PublicErrorInfo;
+  invoked?: boolean;
+  skipped?: boolean;
   timedOut?: boolean;
 }
 
@@ -216,8 +217,8 @@ async function executeSectionUntil<T>(
   onTimeout?: () => void,
 ): Promise<SectionExecution<T>> {
   const remainingMs = deadlineAt - Date.now();
-  if (remainingMs <= 0) {
-    return { error: timeoutError(deadlineMs), timedOut: true };
+  if (remainingMs <= 0 || signal?.aborted) {
+    return { error: timeoutError(deadlineMs), skipped: true };
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -229,17 +230,21 @@ async function executeSectionUntil<T>(
     });
     const execution = await Promise.race([executeSection(task), timeout]);
     if (signal?.aborted) {
-      return { error: timeoutError(deadlineMs), timedOut: true };
+      return { error: timeoutError(deadlineMs), invoked: true, timedOut: true };
     }
-    return execution;
+    return { ...execution, invoked: true };
   } catch (error: unknown) {
     if (error instanceof Error && error.message === '__COLLECTION_DASHBOARD_TIMEOUT__') {
-      return { error: timeoutError(deadlineMs), timedOut: true };
+      return { error: timeoutError(deadlineMs), invoked: true, timedOut: true };
     }
-    return { error: toPublicError(error) };
+    return { error: toPublicError(error), invoked: true };
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+function skippedSection(deadlineMs: number): SectionExecution<never> {
+  return { error: timeoutError(deadlineMs), skipped: true };
 }
 
 function sectionState<T extends { state: string }>(
@@ -297,36 +302,17 @@ function resultWarnings(
   }));
 }
 
-function pageBound(requested: number, pageSize: number, maximum: number): number {
-  return Math.min(maximum, Math.max(1, Math.ceil(requested / pageSize)));
-}
-
-function upstreamRequestBound(
-  maxCollectionItems: number,
-  maxSubjects: number,
-  maxEpisodesPerSubject: number,
-): number {
-  const intelligence = pageBound(
-    maxCollectionItems,
-    COLLECTION_INTELLIGENCE_PAGE_SIZE,
-    COLLECTION_INTELLIGENCE_MAX_PAGES,
+function upstreamRequestBound(maxSubjects: number): number {
+  // A short, non-empty page does not prove exhaustion. The underlying services
+  // may therefore continue until their hard page caps even when the requested
+  // item limit would fit in one page.
+  return (
+    COLLECTION_INTELLIGENCE_MAX_PAGES +
+    COLLECTION_BACKLOG_MAX_COLLECTION_PAGES +
+    maxSubjects * COLLECTION_BACKLOG_MAX_EPISODE_PAGES +
+    1 +
+    COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES
   );
-  const backlogCollection = pageBound(
-    maxCollectionItems,
-    COLLECTION_BACKLOG_COLLECTION_PAGE_SIZE,
-    COLLECTION_BACKLOG_MAX_COLLECTION_PAGES,
-  );
-  const backlogEpisodes = pageBound(
-    maxEpisodesPerSubject,
-    COLLECTION_BACKLOG_EPISODE_PAGE_SIZE,
-    COLLECTION_BACKLOG_MAX_EPISODE_PAGES,
-  );
-  const scheduleCollection = pageBound(
-    maxCollectionItems,
-    COLLECTION_SCHEDULE_COLLECTION_PAGE_SIZE,
-    COLLECTION_SCHEDULE_MAX_COLLECTION_PAGES,
-  );
-  return intelligence + backlogCollection + maxSubjects * backlogEpisodes + 1 + scheduleCollection;
 }
 
 function latestRetrievedAt(values: Array<string | undefined>): string | undefined {
@@ -411,40 +397,42 @@ export class CollectionDashboardService {
         deadlineController.signal,
         () => deadlineController.abort(),
       );
-      const backlogExecution = intelligenceExecution.timedOut
-        ? { error: timeoutError(maxDurationMs), timedOut: true }
-        : await executeSectionUntil(
-            () =>
-              new CollectionBacklogService(this.client).getCollectionBacklog(username, {
-                maxItems: maxCollectionItems,
-                maxSubjects,
-                maxEpisodesPerSubject,
-                statuses: options.statuses,
-                signal: deadlineController.signal,
-              }),
-            deadlineAt,
-            maxDurationMs,
-            deadlineController.signal,
-            () => deadlineController.abort(),
-          );
-      const scheduleExecution = backlogExecution.timedOut
-        ? { error: timeoutError(maxDurationMs), timedOut: true }
-        : await executeSectionUntil(
-            () =>
-              new CollectionScheduleService(
-                this.client,
-                this.publicHttpClient,
-              ).getCollectionSchedule(username, {
-                maxCollectionItems,
-                maxRows,
-                statuses: options.statuses,
-                signal: deadlineController.signal,
-              }),
-            deadlineAt,
-            maxDurationMs,
-            deadlineController.signal,
-            () => deadlineController.abort(),
-          );
+      const backlogExecution =
+        intelligenceExecution.timedOut || intelligenceExecution.skipped
+          ? skippedSection(maxDurationMs)
+          : await executeSectionUntil(
+              () =>
+                new CollectionBacklogService(this.client).getCollectionBacklog(username, {
+                  maxItems: maxCollectionItems,
+                  maxSubjects,
+                  maxEpisodesPerSubject,
+                  statuses: options.statuses,
+                  signal: deadlineController.signal,
+                }),
+              deadlineAt,
+              maxDurationMs,
+              deadlineController.signal,
+              () => deadlineController.abort(),
+            );
+      const scheduleExecution =
+        backlogExecution.timedOut || backlogExecution.skipped
+          ? skippedSection(maxDurationMs)
+          : await executeSectionUntil(
+              () =>
+                new CollectionScheduleService(
+                  this.client,
+                  this.publicHttpClient,
+                ).getCollectionSchedule(username, {
+                  maxCollectionItems,
+                  maxRows,
+                  statuses: options.statuses,
+                  signal: deadlineController.signal,
+                }),
+              deadlineAt,
+              maxDurationMs,
+              deadlineController.signal,
+              () => deadlineController.abort(),
+            );
 
       const executions = {
         intelligence: intelligenceExecution,
@@ -514,7 +502,13 @@ export class CollectionDashboardService {
       const successfulResultValues = successfulResults.flatMap((execution) =>
         execution.result ? [execution.result] : [],
       );
-      const timedOutSections = sectionExecutions.filter((execution) => execution.timedOut).length;
+      const sectionsInvoked = sectionExecutions.filter((execution) => execution.invoked).length;
+      const timedOutSections = sectionExecutions.filter(
+        (execution) => execution.invoked && execution.timedOut,
+      ).length;
+      const deadlineSkippedSections = sectionExecutions.filter(
+        (execution) => execution.skipped,
+      ).length;
       const retrievedAt = latestRetrievedAt([
         intelligenceExecution.result?.source.retrievedAt,
         backlogExecution.result?.source.retrievedAt,
@@ -568,18 +562,16 @@ export class CollectionDashboardService {
         data: { sections },
         coverage: {
           state,
-          sectionsAttempted: 3,
+          sectionsRequested: 3,
+          sectionsAttempted: sectionsInvoked,
+          sectionsInvoked,
           sectionsSucceeded: successfulResultValues.length,
+          deadlineSkippedSections,
           maxConcurrentSections: COLLECTION_DASHBOARD_MAX_CONCURRENT_SECTIONS,
           maxConcurrentRequests: COLLECTION_DASHBOARD_MAX_CONCURRENT_REQUESTS,
-          upstreamRequestsBound: upstreamRequestBound(
-            maxCollectionItems,
-            maxSubjects,
-            maxEpisodesPerSubject,
-          ),
+          upstreamRequestsBound: upstreamRequestBound(maxSubjects),
           upstreamAttemptsBound:
-            upstreamRequestBound(maxCollectionItems, maxSubjects, maxEpisodesPerSubject) *
-            (COLLECTION_DASHBOARD_MAX_RETRIES + 1),
+            upstreamRequestBound(maxSubjects) * (COLLECTION_DASHBOARD_MAX_RETRIES + 1),
           deadlineMs: maxDurationMs,
           timedOutSections,
           collectionRowsRequested: maxCollectionItems * 3,

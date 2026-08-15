@@ -49,6 +49,7 @@ describe('Trusted MCP external identity', () => {
     expect(second.principalId).toBe(first.principalId);
     expect(first.botInstanceId).toBe('qq:10001');
     expect(first.conversationId).toBe('qq:10001:group:20001:user:30001');
+    expect(first.artifactPrincipalKey).toBe('qq\u0000qq:10001\u000030001');
     expect(await storage.getPrincipal(first.principalId)).toMatchObject({
       provider: 'qq',
       botInstanceId: 'qq:10001',
@@ -77,6 +78,8 @@ describe('Trusted MCP external identity', () => {
     expect(userA.conversationId).not.toBe(userB.conversationId);
     expect(userA.principalId).toBe(userAOtherGroup.principalId);
     expect(userA.principalId).toBe(userAPrivate.principalId);
+    expect(userA.artifactPrincipalKey).toBe(userAOtherGroup.artifactPrincipalKey);
+    expect(userA.artifactPrincipalKey).not.toBe(userB.artifactPrincipalKey);
     expect(userAOtherGroup.conversationId).not.toBe(userAPrivate.conversationId);
     await storage.close();
   });

@@ -13,6 +13,8 @@ export interface ResolvedExecutionIdentity {
   principalId: string;
   botInstanceId: string;
   conversationId: string;
+  /** Stable capability-store scope derived from the trusted external principal tuple. */
+  artifactPrincipalKey?: string;
 }
 
 export interface McpExecutionIdentityProvider {
@@ -52,6 +54,12 @@ export function validateTrustedExternalIdentity(
   }
 
   return validated;
+}
+
+export function artifactPrincipalKey(
+  identity: Pick<TrustedExternalIdentity, 'provider' | 'botInstanceId' | 'externalUserId'>,
+): string {
+  return [identity.provider, identity.botInstanceId, identity.externalUserId].join('\u0000');
 }
 
 function readTrustedExternalIdentity(fallbackConversationId: string): TrustedExternalIdentity {
@@ -98,9 +106,7 @@ function readTrustedExternalIdentity(fallbackConversationId: string): TrustedExt
   }
 
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'CONFIG_ERROR: trusted MCP external identity is required in production.',
-    );
+    throw new Error('CONFIG_ERROR: trusted MCP external identity is required in production.');
   }
 
   return validateTrustedExternalIdentity({
@@ -145,6 +151,7 @@ export class StdioMcpExecutionIdentityProvider implements McpExecutionIdentityPr
       principalId: principal.id,
       botInstanceId: identity.botInstanceId,
       conversationId: identity.conversationId,
+      artifactPrincipalKey: artifactPrincipalKey(identity),
     };
   }
 }

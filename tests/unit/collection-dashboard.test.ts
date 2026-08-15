@@ -128,9 +128,13 @@ describe('CollectionDashboardService', () => {
     expect(result.state).toBe('complete');
     expect(result.coverage).toMatchObject({
       sectionsAttempted: 3,
+      sectionsRequested: 3,
+      sectionsInvoked: 3,
       sectionsSucceeded: 3,
       maxConcurrentSections: 1,
       maxConcurrentRequests: 3,
+      upstreamRequestsBound: 35,
+      upstreamAttemptsBound: 105,
       collectionRowsRequested: 3,
       collectionRowsBound: 3,
       backlogSubjectsSucceeded: 1,
@@ -218,7 +222,11 @@ describe('CollectionDashboardService', () => {
     expect(result.state).toBe('unavailable');
     expect(result.coverage).toMatchObject({
       sectionsSucceeded: 0,
-      timedOutSections: 3,
+      sectionsRequested: 3,
+      sectionsAttempted: 1,
+      sectionsInvoked: 1,
+      deadlineSkippedSections: 2,
+      timedOutSections: 1,
       deadlineMs: 20,
     });
     expect(result.warnings.filter((warning) => warning.code === 'UPSTREAM_TIMEOUT')).toHaveLength(

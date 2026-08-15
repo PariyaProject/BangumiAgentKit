@@ -47,6 +47,8 @@ describe('Standalone collection dashboard presenter', () => {
       coverage: {
         sectionsSucceeded: 2,
         sectionsAttempted: 3,
+        sectionsRequested: 3,
+        sectionsInvoked: 3,
         collectionRowsObserved: 6,
         collectionRowsBound: 9,
         episodeRowsObserved: 5,
@@ -67,7 +69,7 @@ describe('Standalone collection dashboard presenter', () => {
     expect(output).toContain('收藏概览 · 状态: complete');
     expect(output).toContain('backlog · 状态: not_computable');
     expect(output).toContain('七日播出计划 · 状态: upstream_error');
-    expect(output).toContain('组合覆盖: 区段 2/3 · 收藏行 6/9 · episode 行 5/4000');
+    expect(output).toContain('组合覆盖: 区段 2/3 · 请求 3 · 收藏行 6/9 · episode 行 5/4000');
     expect(output).toContain('UPSTREAM_UNAVAILABLE');
     expect(output).not.toContain('private comment');
   });

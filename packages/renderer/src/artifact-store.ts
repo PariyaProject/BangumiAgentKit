@@ -60,6 +60,10 @@ export function isPrivateArtifactId(id: string): boolean {
   return /^art_p_[a-f0-9]{24}_[a-f0-9]{32}$/u.test(id);
 }
 
+function isPrivateArtifactPrefix(id: string): boolean {
+  return id.startsWith('art_p_');
+}
+
 function principalScope(principalId: string): string {
   return crypto.createHash('sha256').update(principalId).digest('hex').slice(0, 24);
 }
@@ -166,7 +170,7 @@ export class LocalArtifactStore implements ArtifactStore {
   }
 
   async getArtifact(id: string): Promise<ArtifactMetadata | null> {
-    if (!this.isValidArtifactId(id) || isPrivateArtifactId(id)) {
+    if (!this.isValidArtifactId(id) || isPrivateArtifactPrefix(id)) {
       return null;
     }
     return this.readArtifact(this.artifactDir, id);
@@ -207,7 +211,7 @@ export class LocalArtifactStore implements ArtifactStore {
   }
 
   async resolveFilePath(id: string): Promise<string | null> {
-    if (!this.isValidArtifactId(id) || isPrivateArtifactId(id)) {
+    if (!this.isValidArtifactId(id) || isPrivateArtifactPrefix(id)) {
       return null;
     }
     const meta = await this.getArtifact(id);

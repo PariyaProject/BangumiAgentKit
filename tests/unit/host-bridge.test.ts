@@ -22,6 +22,7 @@ describe('PR-6C Host Bridge & Security Isolation Tests', () => {
     expect(await store.getArtifact('art_../../secret')).toBeNull();
     expect(await store.getArtifact('art_foo/bar')).toBeNull();
     expect(await store.getArtifact('art_foo\\bar')).toBeNull();
+    expect(await store.getArtifact('art_p_malformed')).toBeNull();
     expect(await store.resolveFilePath('../../../etc/passwd')).toBeNull();
 
     fs.rmSync(tmpDir, { recursive: true, force: true });

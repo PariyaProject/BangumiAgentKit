@@ -764,7 +764,7 @@ export function createRenderPresentationTools(
       });
       return await executeRenderAndSave(
         buildCollectionDashboardViewModel(result),
-        context.principalId,
+        context.artifactPrincipalKey || context.principalId,
       );
     },
   });

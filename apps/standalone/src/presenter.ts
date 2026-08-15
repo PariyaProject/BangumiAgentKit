@@ -596,10 +596,10 @@ function presentCollectionDashboard(value: Record<string, unknown>): string | un
   if (coverage && typeof coverage === 'object') {
     const details = coverage as Record<string, unknown>;
     lines.push(
-      `组合覆盖: 区段 ${humanField(details.sectionsSucceeded ?? '?', 32)}/${humanField(details.sectionsAttempted ?? '?', 32)} · 收藏行 ${humanField(details.collectionRowsObserved ?? '?', 32)}/${humanField(details.collectionRowsBound ?? '?', 32)} · episode 行 ${humanField(details.episodeRowsObserved ?? '?', 32)}/${humanField(details.episodeRowsRequested ?? '?', 32)}`,
+      `组合覆盖: 区段 ${humanField(details.sectionsSucceeded ?? '?', 32)}/${humanField(details.sectionsInvoked ?? details.sectionsAttempted ?? '?', 32)} · 请求 ${humanField(details.sectionsRequested ?? '?', 32)} · 收藏行 ${humanField(details.collectionRowsObserved ?? '?', 32)}/${humanField(details.collectionRowsBound ?? '?', 32)} · episode 行 ${humanField(details.episodeRowsObserved ?? '?', 32)}/${humanField(details.episodeRowsRequested ?? '?', 32)}`,
     );
     lines.push(
-      `  资源上限: 并发请求 ${humanField(details.maxConcurrentRequests ?? '?', 32)} · upstream 请求 ${humanField(details.upstreamRequestsBound ?? '?', 32)} · 重试尝试 ${humanField(details.upstreamAttemptsBound ?? '?', 32)} · 时限 ${humanField(details.deadlineMs ?? '?', 32)}ms · 超时区段 ${humanField(details.timedOutSections ?? '?', 32)}`,
+      `  资源上限: 并发请求 ${humanField(details.maxConcurrentRequests ?? '?', 32)} · upstream 请求 ${humanField(details.upstreamRequestsBound ?? '?', 32)} · 重试尝试 ${humanField(details.upstreamAttemptsBound ?? '?', 32)} · 时限 ${humanField(details.deadlineMs ?? '?', 32)}ms · 超时区段 ${humanField(details.timedOutSections ?? '?', 32)} · 截止跳过 ${humanField(details.deadlineSkippedSections ?? '?', 32)}`,
     );
   }
   const warnings = value.warnings;
