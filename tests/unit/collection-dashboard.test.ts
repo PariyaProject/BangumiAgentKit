@@ -163,6 +163,7 @@ describe('CollectionDashboardService', () => {
 
   it('keeps the hard paginator bound under short non-empty pages and maximum fan-out', async () => {
     const requests: URL[] = [];
+    const shortEpisodeRow = (episodePayload().data as Array<Record<string, unknown>>)[0]!;
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
       requests.push(url);
@@ -172,7 +173,7 @@ describe('CollectionDashboardService', () => {
           total: 1000,
           limit: 100,
           offset: Number(url.searchParams.get('offset') || 0),
-          data: [episodePayload().data[0]],
+          data: [shortEpisodeRow],
         });
       }
       return response({
