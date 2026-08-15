@@ -90,8 +90,30 @@ describe('PR-7B official provider foundation', () => {
     expect(result.data?.collection.collect).toBe(40);
     expect(result.data?.ratingHistogramPresence?.[10]).toBe(true);
     expect(result.evidence?.['collection.collect']?.[0]?.source.class).toBe('official_v0');
+    expect(result.evidence?.['collection.collect']?.[0]?.source.operation).toBe('getSubjectById');
     expect(result.evidence?.['rating.count.10']?.[0]?.fieldPath).toBe('rating.count.10');
     expect(result.evidence?.['name_cn']).toBeUndefined();
+    expect(result.coverage?.state).toBe('complete');
+  });
+
+  it('keeps valid zero buckets complete', async () => {
+    const raw = structuredClone(subjectFixture()) as unknown as {
+      rating: { count: Record<string, number> };
+      collection: Record<string, number>;
+    };
+    raw.rating.count = Object.fromEntries(
+      Array.from({ length: 10 }, (_, index) => [String(index + 1), 0]),
+    );
+    raw.collection = { wish: 0, collect: 0, doing: 0, on_hold: 0, dropped: 0 };
+
+    const result = await new OfficialV0Provider({
+      getSubjectById: async () => raw as Subject,
+    }).getSubjectStats(123);
+
+    expect(result.state).toBe('ok');
+    expect(result.coverage?.state).toBe('complete');
+    expect(Object.values(result.data?.ratingHistogramPresence || {})).toEqual(Array(10).fill(true));
+    expect(Object.values(result.data?.collectionPresence || {})).toEqual(Array(5).fill(true));
   });
 
   it('preserves missing and invalid rating/collection bucket presence through the stats adapter', async () => {
@@ -114,7 +136,8 @@ describe('PR-7B official provider foundation', () => {
           getSubjectById: async () => raw as Subject,
         }).getSubjectStats(123);
 
-        expect(result.state, `rating ${score} ${label}`).toBe('ok');
+        expect(result.state, `rating ${score} ${label}`).toBe('partial');
+        expect(result.coverage?.state, `rating ${score} ${label}`).toBe('partial');
         const presence = result.data?.ratingHistogramPresence as
           Record<number, boolean> | undefined;
         expect(presence?.[score]).toBe(false);
@@ -134,7 +157,8 @@ describe('PR-7B official provider foundation', () => {
         }).getSubjectStats(123);
         const presenceKey = bucket === 'on_hold' ? 'onHold' : bucket;
 
-        expect(result.state, `collection ${bucket} ${label}`).toBe('ok');
+        expect(result.state, `collection ${bucket} ${label}`).toBe('partial');
+        expect(result.coverage?.state, `collection ${bucket} ${label}`).toBe('partial');
         expect(result.data?.collectionPresence?.[presenceKey]).toBe(false);
         expect(result.evidence?.[`collection.${bucket}`]).toBeUndefined();
       }

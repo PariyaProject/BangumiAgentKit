@@ -119,7 +119,7 @@ function formulaEvidence(
   description: string,
 ): SubjectStatsEvidence[] {
   return evidenceFromFields(result.evidence)
-    .filter((item) => !item.formula || item.formula === formula.id)
+    .filter((item) => item.source === 'derived-s7' && item.formula === formula.id)
     .map((item) => ({ ...item, description }));
 }
 
@@ -468,10 +468,21 @@ export async function getSubjectStatsIntelligence(
         COMPLETION_FORMULA,
         'Collection buckets contain missing or invalid values; completion rate is suppressed.',
       );
-  const ratingFormulaState = stateForFormula(ratingDeviation);
+  const ratingMeanFormulaState: SubjectStatsMetricState = !ratingInputsComplete
+    ? 'partial'
+    : ratingDeviation.data?.histogramMean !== undefined
+      ? ratingDeviation.state === 'conflict'
+        ? 'conflict'
+        : 'complete'
+      : stateForFormula(ratingDeviation);
+  const ratingStandardDeviationFormulaState: SubjectStatsMetricState = !ratingInputsComplete
+    ? 'partial'
+    : ratingDeviation.data?.standardDeviation !== undefined
+      ? 'complete'
+      : stateForFormula(ratingDeviation);
   const ratingState = !ratingInputsComplete
     ? 'partial'
-    : ratingFormulaState === 'conflict'
+    : ratingMeanFormulaState === 'conflict'
       ? 'conflict'
       : stateForFormula(ratingPercentages);
   const collectionState = !collectionInputsComplete
@@ -483,34 +494,26 @@ export async function getSubjectStatsIntelligence(
     ? ratingDeviation.data?.histogramPopulation
     : observedRatingPopulation(stats, statsRatingPresence);
   const collectionPopulation = observedCollectionPopulation(stats, statsCollectionPresence);
-  const formulaResults = [
-    { result: ratingPercentages, multiplicity: 1 },
-    { result: ratingDeviation, multiplicity: 2 },
-    { result: collectionPercentages, multiplicity: 1 },
-    { result: completion, multiplicity: 1 },
+  const formulaStates = [
+    { state: stateForFormula(ratingPercentages) },
+    { state: ratingMeanFormulaState },
+    { state: ratingStandardDeviationFormulaState },
+    { state: stateForFormula(collectionPercentages) },
+    { state: stateForFormula(completion) },
   ];
   result.coverage.ratingPopulation = ratingPopulation;
   result.coverage.collectionPopulation = collectionPopulation;
-  result.coverage.formulasAttempted = formulaResults.reduce(
-    (total, item) => total + item.multiplicity,
-    0,
-  );
-  result.coverage.formulasComplete = formulaResults.reduce(
-    (total, item) => total + (item.result.state === 'ok' ? item.multiplicity : 0),
-    0,
-  );
-  result.coverage.formulasPartial = formulaResults.reduce(
-    (total, item) => total + (item.result.state === 'partial' ? item.multiplicity : 0),
-    0,
-  );
-  result.coverage.formulasNotComputable = formulaResults.reduce(
-    (total, item) => total + (item.result.state === 'not_computable' ? item.multiplicity : 0),
-    0,
-  );
-  result.coverage.formulasConflict = formulaResults.reduce(
-    (total, item) => total + (item.result.state === 'conflict' ? item.multiplicity : 0),
-    0,
-  );
+  result.coverage.formulasAttempted = formulaStates.length;
+  result.coverage.formulasComplete = formulaStates.filter(
+    (item) => item.state === 'complete',
+  ).length;
+  result.coverage.formulasPartial = formulaStates.filter((item) => item.state === 'partial').length;
+  result.coverage.formulasNotComputable = formulaStates.filter(
+    (item) => item.state === 'not_computable',
+  ).length;
+  result.coverage.formulasConflict = formulaStates.filter(
+    (item) => item.state === 'conflict',
+  ).length;
   const ratingConflicts = addConflictEvidence(
     ratingDeviation.conflicts,
     formulaEvidence(ratingDeviation, POPULATION_SD_FORMULA, POPULATION_SD_FORMULA.description),

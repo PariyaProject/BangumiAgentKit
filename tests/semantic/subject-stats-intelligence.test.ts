@@ -77,6 +77,14 @@ interface SubjectStatsTool {
   ) => Promise<SubjectStatsIntelligenceResult>;
 }
 
+interface RawSubjectStatsTool {
+  execute: (
+    input: { subjectId: number },
+    context: unknown,
+    dependencies: { providerRegistry: ProviderRegistry },
+  ) => Promise<CapabilityResult<SubjectStatsData>>;
+}
+
 function getTool(): SubjectStatsTool {
   const tool = createReadTools(new HttpClient()).find(
     (candidate) => candidate.name === 'bangumi.get_subject_stats_intelligence',
@@ -168,6 +176,9 @@ describe('Subject statistics intelligence semantic contract', () => {
               expect.objectContaining({
                 source: expect.objectContaining({ class: 'derived-s7' }),
                 value: 8.6,
+                evidence: expect.arrayContaining([
+                  expect.objectContaining({ formula: 'bangumi.rating.histogram_mean.v1' }),
+                ]),
               }),
               expect.objectContaining({
                 source: expect.objectContaining({ class: 'official-v0' }),
@@ -180,7 +191,7 @@ describe('Subject statistics intelligence semantic contract', () => {
           },
         ],
       },
-      coverage: { formulasConflict: 2 },
+      coverage: { formulasComplete: 4, formulasConflict: 1 },
     });
   });
 
@@ -220,6 +231,12 @@ describe('Subject statistics intelligence semantic contract', () => {
     expect(ratingConflict?.candidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          source: expect.objectContaining({ class: 'derived-s7' }),
+          evidence: expect.arrayContaining([
+            expect.objectContaining({ formula: 'bangumi.rating.histogram_mean.v1' }),
+          ]),
+        }),
+        expect.objectContaining({
           source: expect.objectContaining({ class: 'official-v0' }),
           evidence: expect.arrayContaining([
             expect.objectContaining({ fieldPath: 'rating.score' }),
@@ -227,6 +244,53 @@ describe('Subject statistics intelligence semantic contract', () => {
         }),
       ]),
     );
+    expect(result.source.official.operations).toEqual(['getSubjectById']);
+    expect(result.source.derived.operations).toEqual(
+      expect.arrayContaining([
+        'bangumi.rating.percentages.v1',
+        'bangumi.rating.histogram_mean.v1',
+        'bangumi.rating.population_sd.v1',
+        'bangumi.collection.percentages.v1',
+        'bangumi.subject.completion.v1',
+      ]),
+    );
+    expect(result.source.derived.operations).not.toContain('getSubjectById');
+    expect(result.source.derived.operations).not.toContain('getSubjectStats');
+  });
+
+  it('propagates incomplete official coverage through the registry and raw stats tool', async () => {
+    const raw = {
+      id: 123,
+      rating: {
+        score: 6,
+        rank: 12,
+        total: 100,
+        count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 9: 60, 10: 0 },
+      },
+      collection: { wish: 2, collect: 4, doing: 2, on_hold: 1, dropped: 1 },
+    } as unknown as Subject;
+    const rawToolDefinition = createReadTools(new HttpClient()).find(
+      (candidate) => candidate.name === 'bangumi.get_subject_stats',
+    );
+    if (!rawToolDefinition) throw new Error('raw subject stats tool was not registered');
+    const rawTool = rawToolDefinition as unknown as RawSubjectStatsTool;
+
+    const rawResult = await rawTool.execute(
+      { subjectId: 123 },
+      { principalId: 'stats-test' },
+      {
+        providerRegistry: new ProviderRegistry({
+          v0: new OfficialV0Provider({ getSubjectById: async () => raw }),
+        }),
+      },
+    );
+
+    expect(rawResult).toMatchObject({
+      state: 'partial',
+      coverage: { state: 'partial' },
+      data: { ratingHistogramPresence: { 8: false } },
+    });
+    expect(rawResult.evidence?.['rating.count.8']).toBeUndefined();
   });
 
   it('distinguishes zero-population not-computable data from unavailable data', async () => {

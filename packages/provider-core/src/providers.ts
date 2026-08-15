@@ -674,19 +674,39 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
     subjectId: number,
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<SubjectStatsData>> {
-    const source: SourceDescriptor = { ...SOURCE_V0, operation: 'getSubjectStats' };
+    const source: SourceDescriptor = { ...SOURCE_V0, operation: 'getSubjectById' };
     const authScope = context.authScope ?? 'public';
     try {
       const raw = await this.api.getSubjectById(subjectId);
       const retrievedAt = new Date().toISOString();
       const stats = parseStats(raw, { allowIncomplete: true });
       const id = requiredNumber((raw as unknown as Record<string, unknown>).id, 'id');
+      const complete =
+        Object.values(stats.ratingHistogramPresence || {}).every(Boolean) &&
+        Object.values(stats.collectionPresence || {}).every(Boolean);
       return {
-        state: 'ok',
+        state: complete ? 'ok' : 'partial',
         data: stats,
         evidence: subjectEvidence(source, retrievedAt, id, statsEvidenceFields(stats), authScope),
-        coverage: { state: 'complete', requested: 1, scanned: 1, matched: 1, returned: 1 },
+        coverage: {
+          state: complete ? 'complete' : 'partial',
+          requested: 1,
+          scanned: 1,
+          matched: 1,
+          returned: 1,
+        },
         retrievedAt,
+        ...(complete
+          ? {}
+          : {
+              warnings: [
+                warning(
+                  'MISSING_FIELD',
+                  'Subject stats response omitted or contained invalid rating or collection buckets.',
+                  { source },
+                ),
+              ],
+            }),
       };
     } catch (err: unknown) {
       return failure(source, err);

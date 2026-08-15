@@ -299,7 +299,7 @@ export function computePopulationStandardDeviation(
         state: 'conflict',
         reason: 'derived histogram mean differs materially from upstream score',
         candidates: [
-          { source: SOURCE_DERIVED, value: mean, evidence: [formulaRef] },
+          { source: SOURCE_DERIVED, value: mean, evidence: [meanFormulaRef] },
           {
             source: scoreEvidence?.[0]?.source ?? {
               class: 'official_v0',
