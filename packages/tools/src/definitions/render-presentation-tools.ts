@@ -16,6 +16,7 @@ import {
   PersonActivityService,
   RevisionService,
   RevisionEntityType,
+  EpisodeGuideService,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
@@ -37,6 +38,7 @@ import {
   buildCollectionScheduleViewModel,
   buildCollectionDashboardViewModel,
   buildPersonActivityViewModel,
+  buildEpisodeGuideViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -307,6 +309,44 @@ export function createRenderPresentationTools(
         { limit: input.limit, offset: input.offset },
       );
       return await executeRenderAndSave(buildRevisionTimelineViewModel(revisionResult));
+    },
+  });
+
+  const renderEpisodeGuide = defineTool({
+    name: 'bangumi.render_episode_guide',
+    description:
+      '生成官方 v0 条目章节指南图片卡片 Artifact。卡片展示条目身份、章节类别、标题、播出日期、原始时长、讨论数、描述、观察/返回/总数、缺失字段、重复/截断、来源证据和 partial/unavailable/not_found 状态；不显示评论正文、不推断观看顺序或进度，渲染器不读取网络资产。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        category: z
+          .enum(['all', 'main', 'sp', 'op', 'ed', 'pv', 'mad', 'other'])
+          .optional()
+          .describe('章节类别，默认 all'),
+        maxEpisodes: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多读取章节数，默认 50'),
+        includeDescriptions: z.boolean().optional().describe('是否保留章节描述，默认 true'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.publicHttpClient;
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const result = await new EpisodeGuideService(client).getEpisodeGuide(input.subjectId, {
+        category: input.category,
+        maxEpisodes: input.maxEpisodes,
+        includeDescriptions: input.includeDescriptions,
+      });
+      return await executeRenderAndSave(buildEpisodeGuideViewModel(result));
     },
   });
 
@@ -816,6 +856,7 @@ export function createRenderPresentationTools(
     renderSeriesWatchOrder,
     renderPersonProfile,
     renderRevisionTimeline,
+    renderEpisodeGuide,
     renderSubjectOverview,
     renderCollectionIntelligence,
     renderCollectionBacklog,

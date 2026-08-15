@@ -17,6 +17,7 @@ import {
   CollectionBacklogService,
   CollectionScheduleService,
   CollectionDashboardService,
+  EpisodeGuideService,
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
@@ -410,6 +411,44 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     risk: 'read',
     execute: async (input) => {
       return await episodeService.getEpisodeById(input.episodeId);
+    },
+  });
+
+  const getEpisodeGuide = defineTool({
+    name: 'bangumi.get_episode_guide',
+    description:
+      '获取指定条目的证据型章节指南：一次读取官方 v0 条目身份和有界章节页面，按章节类别、ep/sort 和 ID 做确定性排序，保留标题、播出日期、原始时长、讨论数、描述、缺失/重复/截断字段、来源证据和 partial/unavailable/not_found 状态；不推断观看顺序、进度、后续集数或社区热度趋势。若只需要原始分页，请使用 bangumi.get_episodes。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        category: z
+          .enum(['all', 'main', 'sp', 'op', 'ed', 'pv', 'mad', 'other'])
+          .optional()
+          .describe('章节类别；默认 all，main=正篇、sp=特别篇、op/ed=片头/片尾、pv/mad/other=其他'),
+        maxEpisodes: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多返回章节数，默认 50；超过上限的官方观察保留为 truncated'),
+        includeDescriptions: z
+          .boolean()
+          .optional()
+          .describe('是否返回章节描述，默认 true；关闭可减少输出体积但不读取额外来源'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      return await new EpisodeGuideService(activeClient).getEpisodeGuide(input.subjectId, {
+        category: input.category,
+        maxEpisodes: input.maxEpisodes,
+        includeDescriptions: input.includeDescriptions,
+      });
     },
   });
 
@@ -1251,5 +1290,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCollectionSchedule,
     getCollectionDashboard,
     getPersonActivity,
+    getEpisodeGuide,
   ] as const;
 }

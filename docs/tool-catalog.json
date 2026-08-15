@@ -430,6 +430,42 @@
     }
   },
   {
+    "name": "bangumi.get_episode_guide",
+    "description": "获取指定条目的证据型章节指南：一次读取官方 v0 条目身份和有界章节页面，按章节类别、ep/sort 和 ID 做确定性排序，保留标题、播出日期、原始时长、讨论数、描述、缺失/重复/截断字段、来源证据和 partial/unavailable/not_found 状态；不推断观看顺序、进度、后续集数或社区热度趋势。若只需要原始分页，请使用 bangumi.get_episodes。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 条目 ID"
+        },
+        "category": {
+          "description": "章节类别；默认 all，main=正篇、sp=特别篇、op/ed=片头/片尾、pv/mad/other=其他",
+          "type": "string",
+          "enum": ["all", "main", "sp", "op", "ed", "pv", "mad", "other"]
+        },
+        "maxEpisodes": {
+          "description": "最多返回章节数，默认 50；超过上限的官方观察保留为 truncated",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "includeDescriptions": {
+          "description": "是否返回章节描述，默认 true；关闭可减少输出体积但不读取额外来源",
+          "type": "boolean"
+        }
+      },
+      "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_episodes",
     "description": "获取一个条目的章节列表，自动分类正篇 (main) 与 SP/OP/ED/PV/MAD/其他。",
     "auth": "none",
@@ -1586,6 +1622,42 @@
           }
         }
       },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_episode_guide",
+    "description": "生成官方 v0 条目章节指南图片卡片 Artifact。卡片展示条目身份、章节类别、标题、播出日期、原始时长、讨论数、描述、观察/返回/总数、缺失字段、重复/截断、来源证据和 partial/unavailable/not_found 状态；不显示评论正文、不推断观看顺序或进度，渲染器不读取网络资产。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 条目 ID"
+        },
+        "category": {
+          "description": "章节类别，默认 all",
+          "type": "string",
+          "enum": ["all", "main", "sp", "op", "ed", "pv", "mad", "other"]
+        },
+        "maxEpisodes": {
+          "description": "最多读取章节数，默认 50",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "includeDescriptions": {
+          "description": "是否保留章节描述，默认 true",
+          "type": "boolean"
+        }
+      },
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },

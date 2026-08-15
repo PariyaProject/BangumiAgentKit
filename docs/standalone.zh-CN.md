@@ -26,6 +26,7 @@ pnpm bak -- search "少女终末旅行"
 pnpm bak -- subject 218707
 pnpm bak -- overview 218707
 pnpm bak -- watch-order 218707 --depth 2 --max-nodes 8 --media all
+pnpm bak -- episode-guide 218707 --max-episodes 24
 pnpm bak -- collection status 218707
 pnpm bak -- render subject 218707 --output "$HOME/Desktop/bangumi.png"
 ```
@@ -71,6 +72,8 @@ activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
          [--max-details 1..48] [--max-rows 1..60]
 calendar
 episodes <subjectId>
+episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
+              [--max-episodes 1..200] [--no-descriptions]
 collection status <subjectId>
 collection intelligence [--max-items 1..200]
 collection backlog [--max-items 1..100] [--max-subjects 1..30]
@@ -164,6 +167,8 @@ render cast <id>
 render activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
                      [--months 3|6|12] [--max-relations 1..120]
                      [--max-details 1..48] [--max-rows 1..60]
+render episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
+                   [--max-episodes 1..200] [--no-descriptions]
 render calendar
 render search <query>
 render collection <id>
@@ -177,6 +182,12 @@ render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
 render collection-schedule [--max-items 1..200] [--max-rows 1..100]
                            [--status wish,doing,done,on_hold,dropped]
 ```
+
+`episode-guide` 将官方 v0 的 subject 与 episode 页面组合成一个有界章节视图：
+按正篇、SP、OP、ED、PV、MAD 和其他类型分类，公开 `ep`/`sort` 的确定性排序，
+并保留缺失字段、非法字段、重复 ID、source total、截断和空结果状态。成功的
+空页仍是“空但可用”，不会被解释为条目不存在；观看进度、官方观看顺序、后续
+集数、评论正文和社区热度均保持 `not_computable` 或明确限制，不做推断。
 
 `collection backlog` 只读取当前绑定账号的官方 v0 动画收藏和正篇 episode
 collection。默认筛选 `wish`、`doing`、`on_hold`，并在安全上限内显示已看章节、episode sourceTotal 分母、SlimSubject.eps 原始值及 validity、剩余集数、完成度和基于严格 airing certification 的 `finished`/`ongoing`/`unknown` 状态。`finished` 只表示当前报告的完整、去重正篇 episode airdate 均已过去，不证明未发布后续或排除 hiatus；重复、非正篇、缺失/非法 ID、缺失/非法日期、分页失败、sourceTotal 变化或截断都会保留为未知/部分覆盖。条目级 auth、过期、权限、限流、上游和网络错误会保留 code、message 与 nextAction。人类可读输出按字段、行数、字符和 UTF-8 字节数有界；JSON 模式保留结构化证据。该视图不读取评论、不做日历/推荐/历史推断，也不执行写入。
