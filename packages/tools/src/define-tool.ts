@@ -13,6 +13,7 @@ export interface ToolContext {
   principalId: string;
   botInstanceId: string;
   conversationId: string;
+  artifactPrincipalKey?: string;
   confirmationId?: string;
   requestId?: string;
 }

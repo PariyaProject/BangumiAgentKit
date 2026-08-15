@@ -11,6 +11,7 @@ import {
   CollectionIntelligenceService,
   CollectionBacklogService,
   CollectionScheduleService,
+  CollectionDashboardService,
   PersonService,
   RevisionService,
   RevisionEntityType,
@@ -19,6 +20,7 @@ import {
   RenderService,
   LocalArtifactStore,
   ArtifactStore,
+  isPrincipalScopedArtifactStore,
   buildSubjectCardViewModel,
   buildCastCardViewModel,
   buildCollectionProgressViewModel,
@@ -32,6 +34,7 @@ import {
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
   buildCollectionScheduleViewModel,
+  buildCollectionDashboardViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -60,13 +63,41 @@ export function createRenderPresentationTools(
   const artifactStore = artifactStoreOverride || getArtifactStore();
   const renderService = renderServiceOverride || getRenderService();
 
-  async function executeRenderAndSave(viewModel: any) {
+  async function executeRenderAndSave(viewModel: any, privatePrincipalId?: string) {
     try {
-      const renderResult = await renderService.renderCard(viewModel);
-      const artifactRef = await artifactStore.saveArtifact(renderResult.buffer, 'image/png', {
-        width: renderResult.width,
-        height: renderResult.height,
-      });
+      if (viewModel.template === 'collection-dashboard' && !privatePrincipalId) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '私有收藏 Dashboard 必须绑定明确的账号主体才能保存渲染 Artifact。',
+          false,
+          401,
+          '使用当前账号上下文重试',
+        );
+      }
+      const renderResult = privatePrincipalId
+        ? await renderService.renderCard(viewModel, { cache: false })
+        : await renderService.renderCard(viewModel);
+      const artifactRef = privatePrincipalId
+        ? isPrincipalScopedArtifactStore(artifactStore)
+          ? await artifactStore.saveArtifactForPrincipal(
+              privatePrincipalId,
+              renderResult.buffer,
+              'image/png',
+              { width: renderResult.width, height: renderResult.height },
+            )
+          : (() => {
+              throw new BangumiError(
+                'RENDERER_UNAVAILABLE',
+                '当前 ArtifactStore 未提供账号隔离的私有渲染存储。',
+                false,
+                503,
+                '配置 PrincipalScopedArtifactStore',
+              );
+            })()
+        : await artifactStore.saveArtifact(renderResult.buffer, 'image/png', {
+            width: renderResult.width,
+            height: renderResult.height,
+          });
       return { artifact: artifactRef };
     } catch (err: any) {
       if (
@@ -640,6 +671,104 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionDashboard = defineTool({
+    name: 'bangumi.render_collection_dashboard',
+    description:
+      '生成当前绑定 Bangumi 账号的收藏 Dashboard 图片 Artifact：一张无图片资产的私有卡片，按同一有界组合结果展示收藏概览、backlog 和七日播出计划，并保留各区段 coverage、证据、partial/unavailable/auth/conflict 状态和有界限制；渲染器绕过共享缓存，Artifact 使用当前账号主体隔离；不接受任意用户名，不读取评论，不执行写入。',
+    input: z
+      .object({
+        maxCollectionItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('每个收藏区段最多扫描当前账号动画收藏条目数，默认 100'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .optional()
+          .describe('backlog 最多读取条目数，默认 20'),
+        maxEpisodesPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe('backlog 每个条目最多读取正篇进度行数，默认 200'),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('七日播出计划最多返回行数，默认 56'),
+        maxDurationMs: z
+          .number()
+          .int()
+          .min(1000)
+          .max(120000)
+          .optional()
+          .describe('Dashboard 总读取时限（毫秒），默认 60000；超时区段保持 upstream_timeout'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('backlog/七日播出计划共同的收藏状态过滤；不表示优先级'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能渲染收藏 Dashboard。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能渲染收藏 Dashboard。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      const result = await new CollectionDashboardService(
+        client,
+        deps?.publicHttpClient,
+      ).getCollectionDashboard(username, {
+        maxCollectionItems: input.maxCollectionItems,
+        maxSubjects: input.maxSubjects,
+        maxEpisodesPerSubject: input.maxEpisodesPerSubject,
+        maxRows: input.maxRows,
+        maxDurationMs: input.maxDurationMs,
+        statuses: input.statuses,
+      });
+      return await executeRenderAndSave(
+        buildCollectionDashboardViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -654,5 +783,6 @@ export function createRenderPresentationTools(
     renderCollectionIntelligence,
     renderCollectionBacklog,
     renderCollectionSchedule,
+    renderCollectionDashboard,
   ] as const;
 }

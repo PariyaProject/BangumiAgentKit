@@ -5,6 +5,10 @@ import * as YAML from 'yaml';
 const SPEC_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
 const GENERATED_DIR = path.join(__dirname, '..', 'packages', 'bangumi-openapi', 'src', 'generated');
 const CLIENT_OUTPUT_PATH = path.join(GENERATED_DIR, 'index.ts');
+const SIGNALABLE_OPERATIONS = new Set([
+  'getUserCollectionsByUsername',
+  'getUserSubjectEpisodeCollection',
+]);
 
 function resolveRef(spec: any, item: any): any {
   if (item && typeof item === 'object' && typeof item.$ref === 'string') {
@@ -29,7 +33,9 @@ function generateClient() {
 
   code.push(`// Auto-generated Bangumi OpenAPI Client & Types. DO NOT EDIT MANUALLY.`);
   code.push(`// Spec version: Bangumi OpenAPI v0\n`);
-  code.push(`import { HttpClient, HttpClientConfig } from '@bangumi-agent-kit/bangumi-transport';`);
+  code.push(
+    `import { HttpClient, HttpClientConfig, type HttpRequestOptions } from '@bangumi-agent-kit/bangumi-transport';`,
+  );
   code.push(`import type { components, operations, paths } from './schema.js';\n`);
 
   code.push(`export type { components, operations, paths };\n`);
@@ -85,6 +91,7 @@ function generateClient() {
         const method = m.toUpperCase();
         const opId = op.operationId;
         const summary = op.summary || opId;
+        const supportsSignal = SIGNALABLE_OPERATIONS.has(opId);
 
         const rawParams = [...(pathItem.parameters || []), ...(op.parameters || [])];
         const resolvedParamsMap = new Map<string, any>();
@@ -190,6 +197,9 @@ function generateClient() {
             argsList.push(`body?: OperationBody<'${opId}'>`);
           }
         }
+        if (supportsSignal) {
+          argsList.push(`requestOptions?: Pick<HttpRequestOptions, 'signal'>`);
+        }
 
         const argsStr = argsList.join(', ');
 
@@ -208,6 +218,9 @@ function generateClient() {
         }
         if (hasBody) {
           code.push(`      body: body as unknown,`);
+        }
+        if (supportsSignal) {
+          code.push(`      ...requestOptions,`);
         }
         code.push(`    });`);
         code.push(`  }\n`);

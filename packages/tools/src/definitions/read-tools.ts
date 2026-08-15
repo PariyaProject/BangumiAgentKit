@@ -15,6 +15,7 @@ import {
   CollectionIntelligenceService,
   CollectionBacklogService,
   CollectionScheduleService,
+  CollectionDashboardService,
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
@@ -960,6 +961,102 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCollectionDashboard = defineTool({
+    name: 'bangumi.get_collection_dashboard',
+    description:
+      '一次获取当前绑定 Bangumi 账号的有界收藏 Dashboard：组合收藏概览、动画 backlog 与未来七日收藏播出计划。三个顶层区段按有界调度读取（同一时刻只运行一个顶层区段；schedule 内部的日历/收藏并发仍受上限约束），分别保留官方 v0/legacy 来源、检索时间、coverage、partial/unavailable/auth/conflict/not_computable 状态和限制；只接受当前账号，不读取评论、不计算历史趋势/推荐、不执行写入，组合有明确的总行数、upstream 请求尝试、episode/日历上限和总时限。',
+    input: z
+      .object({
+        maxCollectionItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('每个收藏区段最多扫描当前账号动画收藏条目数，默认 100；组合总上限为三倍该值'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .optional()
+          .describe('backlog 最多读取条目数，默认 20'),
+        maxEpisodesPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe('backlog 每个条目最多读取正篇进度行数，默认 200'),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe('本周播出计划最多返回匹配和未匹配行数，默认 56'),
+        maxDurationMs: z
+          .number()
+          .int()
+          .min(1000)
+          .max(120000)
+          .optional()
+          .describe(
+            'Dashboard 总读取时限（毫秒），默认 60000；超时区段保持 upstream_timeout，不补造空结果',
+          ),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('backlog/播出计划共同的收藏状态过滤；不表示优先级'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能获取收藏 Dashboard。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能获取收藏 Dashboard。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      return await new CollectionDashboardService(
+        client,
+        deps?.publicHttpClient,
+      ).getCollectionDashboard(username, {
+        maxCollectionItems: input.maxCollectionItems,
+        maxSubjects: input.maxSubjects,
+        maxEpisodesPerSubject: input.maxEpisodesPerSubject,
+        maxRows: input.maxRows,
+        maxDurationMs: input.maxDurationMs,
+        statuses: input.statuses,
+      });
+    },
+  });
+
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
     description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
@@ -1093,5 +1190,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCollectionIntelligence,
     getCollectionBacklog,
     getCollectionSchedule,
+    getCollectionDashboard,
   ] as const;
 }

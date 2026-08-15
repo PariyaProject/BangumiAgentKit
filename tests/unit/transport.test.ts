@@ -175,6 +175,24 @@ describe('Phase 2: HTTP Transport Tests', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
+  it('cancels retry backoff without issuing another upstream request', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new TypeError('network down'));
+    const controller = new AbortController();
+    const client = new HttpClient();
+    const request = client.request({
+      path: '/v0/subjects/10',
+      fetchFn: mockFetch as any,
+      signal: controller.signal,
+      retryOptions: { maxRetries: 2, initialDelayMs: 100 },
+    });
+
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ code: 'NETWORK_ERROR' });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('does NOT retry write (POST/PATCH/DELETE) requests on error', async () => {
     const mockFetch = vi.fn().mockResolvedValue(new Response('Server Error', { status: 500 }));
 

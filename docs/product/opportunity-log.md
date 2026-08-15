@@ -255,6 +255,77 @@ calendar/weekly-schedule join. The slice reuses the existing current-account
 
 ---
 
+## OP-011 Collection Dashboard
+
+Status:
+SELECTED_IN_HARNESS_V3_EPOCH / COLLECTION-DASHBOARD-V1
+
+User questions:
+
+“我的收藏概览、backlog 和未来七日播出计划能否一次给出？”
+
+“三个收藏视图分别读取了哪些源，哪些区段 partial、冲突或无法计算？”
+
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+5/5 — one semantic call joins three already-bounded current-account views
+without hiding section-level evidence.
+
+Data Availability:
+4/5 — official v0 collection and authenticated episode progress plus the
+official legacy seven-day calendar are already integrated and tested.
+
+Reliability:
+4/5
+
+Implementation Cost:
+3/5 — composition, aggregate budget, private Renderer card, and Standalone
+presentation over existing services.
+
+Maintenance Risk:
+2/5
+
+Source Risk:
+1/5
+
+Possible Sources:
+Existing `get_collection_intelligence`, `get_collection_backlog`, and
+`get_collection_schedule` services; official v0 collection/episode operations
+and official legacy `/calendar`. No HTML, snapshots, or new auth semantics.
+
+Potential Capability:
+`get_collection_dashboard`
+
+Potential Renderer:
+`CollectionDashboard`
+
+Derived Logic:
+`collection-dashboard-v1` composes the three sections with sequential top-level
+bounded scheduling (the schedule section retains bounded calendar/collection
+concurrency) and an explicit aggregate collection-row, backlog-subject,
+episode-row, calendar-row, output-row, deadline, retry, and concurrency budget. Each section retains its own source,
+formula, retrieval time, coverage, warnings, and degraded state; overall
+`complete` is emitted only when all sections are complete, otherwise the result
+is partial or an explicit all-source failure state. The dashboard does not infer
+completion, history, recommendations, taste, or a transactional snapshot and
+does not return comments or accept arbitrary usernames.
+
+Provenance:
+Selected from synchronized Harness V3 `master` in Outer Run Issue #17 after a
+canonical six-lane audit. The live Bangumi calendar exposes a seven-day plan and
+daily counts, while the repository's collection intelligence, backlog, and
+schedule surfaces remained separate Agent calls/cards. This is an independent
+safe read-only composition that closes the complete personal collection
+journey without reopening authentication, HTML, Structured Web, or write
+boundaries.
+
+---
+
 ## OP-001 Voice Actor Workload
 
 Status:

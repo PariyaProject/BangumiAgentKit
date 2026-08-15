@@ -59,7 +59,7 @@ PNG Buffer + RenderResult Metadata
 The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates
 (`subject-card`, `subject-overview`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `collection-intelligence`, `collection-backlog`,
-`collection-schedule`, `calendar`,
+`collection-schedule`, `collection-dashboard`, `calendar`,
 `revision-timeline`, and `person-profile`).
 It also includes `series-relations` for bounded Series / Watch-Order evidence.
 
@@ -95,6 +95,18 @@ states. Unmatched rows distinguish a complete-scan absence from a filtered
 status, malformed collection status, or incomplete source observation. It does not infer an airing time,
 timezone, episode-level completion, history, or recommendation, and it never
 renders collection comments.
+
+`collection-dashboard` is an image-free, authenticated companion card for
+`bangumi.get_collection_dashboard`. It presents the current-account
+collection-intelligence, backlog, and seven-day collection schedule sections in
+one bounded private result while preserving each section's state, coverage,
+warnings, source evidence, and retrieval time. The composition exposes its
+aggregate collection-row, episode-row, calendar-row, output-row, and
+concurrency bounds; it does not create a transactionally consistent snapshot,
+resolve cover assets, enter shared caches, or place artifacts outside the
+current principal's private ArtifactStore scope; it also does not read comments,
+infer taste/history, recommend items, or perform writes. At narrow widths the sections stack
+vertically so the answer remains scannable without horizontal scrolling.
 
 `series-relations` is the bounded Series / Watch-Order companion card. It shows
 the selected steps separately from directed relation evidence, preserves raw

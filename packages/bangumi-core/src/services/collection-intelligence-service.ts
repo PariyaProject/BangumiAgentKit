@@ -22,6 +22,7 @@ export type CollectionIntelligenceState = 'complete' | 'partial' | 'unavailable'
 
 export interface CollectionIntelligenceOptions {
   maxItems?: number;
+  signal?: AbortSignal;
 }
 
 export interface CollectionIntelligenceData {
@@ -519,6 +520,7 @@ export class CollectionIntelligenceService {
         const page = await this.userService.getUserCollections(username, {
           limit: requested,
           offset,
+          signal: options.signal,
         });
         pagesSucceeded += 1;
         if (pagesSucceeded === 1) {

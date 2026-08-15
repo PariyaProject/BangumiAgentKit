@@ -21,6 +21,7 @@
 | `bangumi.get_collection_intelligence` | read:collection | read     | 当前账号有界收藏状态、评分、标签和进度概览                                                              |
 | `bangumi.get_collection_backlog`      | read:collection | read     | 当前账号动画 backlog、正篇 sourceTotal、SlimSubject.eps validity、严格 airdate 证据、剩余集数与冲突状态 |
 | `bangumi.get_collection_schedule`     | read:collection | read     | 当前账号收藏与官方七日 legacy 日历的 subject ID 对齐、星期、首播日期、收藏信封进度与未匹配覆盖          |
+| `bangumi.get_collection_dashboard`    | read:collection | read     | 一次组合当前账号收藏概览、backlog 与七日播出计划；保留区段 evidence/coverage/degraded states 和组合上限 |
 | `bangumi.get_revision`                | none            | read     | 查看条目修改修订日志                                                                                    |
 | `bangumi.get_index`                   | none            | read     | 查看目录及其包含条目                                                                                    |
 | `bangumi.auth_status`                 | none            | read     | 查看当前用户 Bangumi 绑定状态                                                                           |
@@ -50,6 +51,16 @@ unmatched calendar/collection rows visible, and expose `ep_status` plus
 complete-scan absence from status filtering and incomplete source coverage.
 They do not infer an airing time, timezone, episode-level completion, history,
 or recommendation, and do not render collection comments or perform writes.
+
+The collection-dashboard semantic tool and renderer are current-account-only,
+image-free, and bounded. They schedule the three existing private read paths
+sequentially at the top level (the schedule path retains its bounded internal
+calendar/collection concurrency) and preserve section-level source evidence, retrieval time, coverage,
+warnings, conflicts, unavailable/auth states, and a versioned composition
+formula. The aggregate budget is explicit; the dashboard is not a transaction,
+does not accept an arbitrary username, does not read comments or infer history,
+taste, or recommendations, does not use shared caches or public artifacts, and
+does not perform writes.
 
 ## 保底 Operation 工具
 

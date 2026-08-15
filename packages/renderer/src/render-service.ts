@@ -13,6 +13,7 @@ export interface RenderOptions {
   width?: number;
   deviceScaleFactor?: number;
   format?: 'png';
+  cache?: boolean;
 }
 
 export interface RenderResult {
@@ -303,6 +304,8 @@ export class RenderService {
     const width = options.width ?? 960;
     const dpr = options.deviceScaleFactor ?? 2;
     const theme = options.theme ?? 'bangumi-dark';
+    const cacheEnabled =
+      options.cache !== false && normalizedViewModel.template !== 'collection-dashboard';
 
     if (width < 640 || width > 1200) {
       throw new RendererError(
@@ -354,9 +357,11 @@ export class RenderService {
         { ...options, theme, width, deviceScaleFactor: dpr },
         resolvedImages,
       );
-      const cached = this.cache.get(cacheKey);
-      if (cached) {
-        return cached;
+      if (cacheEnabled) {
+        const cached = this.cache.get(cacheKey);
+        if (cached) {
+          return cached;
+        }
       }
 
       if (controller.signal.aborted) {
@@ -392,7 +397,7 @@ export class RenderService {
         warnings,
       };
 
-      this.cache.set(cacheKey, result);
+      if (cacheEnabled) this.cache.set(cacheKey, result);
       return result;
     } catch (err) {
       if (

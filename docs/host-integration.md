@@ -75,10 +75,15 @@ summary/ID, TTLs, and safe error codes. It never stores transcripts, OAuth
 secrets, or access tokens. A WAL SQLite lease and per-conversation asyncio lock
 prevent simultaneous `--resume` calls for one conversation.
 
-Artifacts are capability-like IDs such as `art_abc`. The model receives the ID,
-not a path. The Python host derives `<artifact-root>/<id>.png`, checks the
+Artifacts are capability-like IDs such as `art_abc`; private Dashboard artifacts
+use the scoped form `art_p_<scope>_<nonce>`. The model receives the ID, not a
+path. The Python host derives public artifacts from `<artifact-root>/<id>.png`,
+or derives private artifacts only from
+`<artifact-root>/private/<trusted-principal-scope>/<id>.png`; it checks the
 metadata ID/mime/expiry, file size, and PNG signature, and ignores any metadata
-`filePath`. Invalid artifacts are omitted while text remains deliverable.
+`filePath`. Private IDs without the current trusted external-principal context,
+or issued to another principal, are rejected. Invalid artifacts are omitted
+while text remains deliverable.
 
 Destructive and bulk writes have two server-side gates. First, only a
 conservatively recognized `CONFIRM` message causes the trusted Host to set

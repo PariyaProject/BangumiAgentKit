@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import shutil
 import tempfile
@@ -261,6 +262,53 @@ class HostServiceTests(unittest.TestCase):
         self.assertEqual(result.artifact_paths, ((artifact_dir / f'{artifact_id}.png').resolve(),))
         self.assertNotIn('filePath', result.to_public_dict())
         self.assertNotIn(str(artifact_dir), json.dumps(result.to_public_dict()))
+
+    def test_private_artifact_is_delivered_only_to_the_issuing_principal(self) -> None:
+        artifact_dir = self.root / 'data' / 'artifacts'
+        principal_key = self.identity.artifact_principal_key
+        scope = hashlib.sha256(principal_key.encode('utf-8')).hexdigest()[:24]
+        artifact_id = f'art_p_{scope}_' + ('c' * 32)
+        private_dir = artifact_dir / 'private' / scope
+        private_dir.mkdir(parents=True)
+        (private_dir / f'{artifact_id}.png').write_bytes(PNG)
+        (private_dir / f'{artifact_id}.json').write_text(
+            json.dumps(
+                {
+                    'id': artifact_id,
+                    'mimeType': 'image/png',
+                    'expiresAt': (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+                    'filePath': str(self.root / 'outside.png'),
+                }
+            ),
+            encoding='utf-8',
+        )
+        runner = FakeRunner(
+            [
+                PlannedResult(
+                    stdout=wrapper(
+                        'session-private-a',
+                        'private card',
+                        artifacts=[{'id': artifact_id, 'mimeType': 'image/png'}],
+                    )
+                ),
+                PlannedResult(
+                    stdout=wrapper(
+                        'session-private-b',
+                        'cross principal card',
+                        artifacts=[{'id': artifact_id, 'mimeType': 'image/png'}],
+                    )
+                ),
+            ]
+        )
+        service = self.build_service(runner)
+        same_principal = asyncio.run(service.handle_message(self.identity, 'make private card'))
+        other_identity = build_qq_identity('user-b', 'group-1', 'bot-1', 'Bob')
+        cross_principal = asyncio.run(service.handle_message(other_identity, 'reuse private card'))
+
+        self.assertEqual(same_principal.response.artifacts[0].id, artifact_id)
+        self.assertEqual(same_principal.artifact_paths, ((private_dir / f'{artifact_id}.png').resolve(),))
+        self.assertEqual(cross_principal.response.artifacts, ())
+        self.assertEqual(cross_principal.artifact_paths, ())
 
     def test_same_conversation_serializes_and_different_conversations_can_overlap(self) -> None:
         runner = FakeRunner(

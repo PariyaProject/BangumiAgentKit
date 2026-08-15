@@ -399,6 +399,41 @@ export interface CollectionScheduleViewModel {
   error?: import('@bangumi-agent-kit/bangumi-core').CollectionScheduleResult['error'];
 }
 
+export interface CollectionDashboardViewModel {
+  template: 'collection-dashboard';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['state'];
+  sections: {
+    intelligence: {
+      state: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['state'];
+      result?: CollectionIntelligenceViewModel;
+      error?: import('@bangumi-agent-kit/bangumi-transport').PublicErrorInfo;
+    };
+    backlog: {
+      state: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['state'];
+      result?: CollectionBacklogViewModel;
+      error?: import('@bangumi-agent-kit/bangumi-transport').PublicErrorInfo;
+    };
+    schedule: {
+      state: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['state'];
+      result?: CollectionScheduleViewModel;
+      error?: import('@bangumi-agent-kit/bangumi-transport').PublicErrorInfo;
+    };
+  };
+  coverage: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['coverage'];
+  source: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['evidence'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').CollectionDashboardResult['warnings'];
+  limitations: string[];
+  filters: string[];
+  presentation: {
+    state: 'complete' | 'partial';
+    intelligence: { available: number; rendered: number; omitted: number };
+    backlog: { available: number; rendered: number; omitted: number };
+    schedule: { available: number; rendered: number; omitted: number };
+  };
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -682,6 +717,7 @@ export type RenderViewModel =
   | CollectionIntelligenceViewModel
   | CollectionBacklogViewModel
   | CollectionScheduleViewModel
+  | CollectionDashboardViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | PersonProfileViewModel

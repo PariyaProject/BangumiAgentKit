@@ -22,7 +22,29 @@ describe('PR-6C Host Bridge & Security Isolation Tests', () => {
     expect(await store.getArtifact('art_../../secret')).toBeNull();
     expect(await store.getArtifact('art_foo/bar')).toBeNull();
     expect(await store.getArtifact('art_foo\\bar')).toBeNull();
+    expect(await store.getArtifact('art_p_malformed')).toBeNull();
     expect(await store.resolveFilePath('../../../etc/passwd')).toBeNull();
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('H01b: private artifacts are scoped to their issuing principal', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgm-private-artifacts-'));
+    const store = new LocalArtifactStore({ artifactDir: tmpDir });
+
+    const alice = await store.saveArtifactForPrincipal('alice', Buffer.from('ALICE'), 'image/png');
+    const bob = await store.saveArtifactForPrincipal('bob', Buffer.from('BOB'), 'image/png');
+
+    expect(alice.id).toMatch(/^art_p_[a-f0-9]{24}_[a-f0-9]{32}$/u);
+    expect(bob.id).toMatch(/^art_p_[a-f0-9]{24}_[a-f0-9]{32}$/u);
+    expect(alice.id).not.toBe(bob.id);
+    expect(await store.getArtifact(alice.id)).toBeNull();
+    expect(await store.getArtifactForPrincipal('alice', alice.id)).not.toBeNull();
+    expect(await store.getArtifactForPrincipal('bob', alice.id)).toBeNull();
+    expect(await store.resolveFilePathForPrincipal('alice', alice.id)).toContain(
+      path.join(tmpDir, 'private'),
+    );
+    expect(await store.resolveFilePathForPrincipal('bob', alice.id)).toBeNull();
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
