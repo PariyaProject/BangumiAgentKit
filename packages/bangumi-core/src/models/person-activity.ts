@@ -81,7 +81,12 @@ export interface PersonActivityCoverage {
   relationRowsObserved: number;
   relationRowsSelected: number;
   relationRowsDroppedAtLimit: number;
+  relationSelectionStrategy: 'all' | 'deterministic_even_spread';
+  sampled: boolean;
   subjectIdsObserved: number;
+  subjectIdsSelected: number;
+  subjectIdsDroppedAtRelationLimit: number;
+  subjectDetailIdsObserved: number;
   subjectDetailRequests: number;
   subjectDetailsSucceeded: number;
   subjectDetailsFailed: number;
@@ -105,6 +110,7 @@ export interface PersonActivityCoverage {
 }
 
 export interface PersonActivityResult {
+  personId: number;
   state: PersonActivityState;
   person?: DomainPerson;
   kind: PersonActivityKind;

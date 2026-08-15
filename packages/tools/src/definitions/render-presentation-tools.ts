@@ -446,7 +446,7 @@ export function createRenderPresentationTools(
   const renderPersonActivity = defineTool({
     name: 'bangumi.render_person_activity',
     description:
-      '生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算和来源限制可见；不显示或推断历史增长、劳动时长或实际配音时间。',
+      '生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算、确定性等距抽样、观察/选取/省略 ID 和来源限制可见；不显示或推断历史增长、劳动时长或实际配音时间。',
     input: z
       .object({
         personId: z.number().int().positive().describe('Bangumi 人物 ID'),

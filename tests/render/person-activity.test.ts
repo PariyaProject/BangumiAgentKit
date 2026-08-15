@@ -7,6 +7,7 @@ import {
 import type { PersonActivityResult } from '@bangumi-agent-kit/bangumi-core';
 
 const result: PersonActivityResult = {
+  personId: 20,
   state: 'partial',
   person: {
     id: 20,
@@ -62,7 +63,12 @@ const result: PersonActivityResult = {
     relationRowsObserved: 24,
     relationRowsSelected: 22,
     relationRowsDroppedAtLimit: 2,
+    relationSelectionStrategy: 'deterministic_even_spread',
+    sampled: true,
     subjectIdsObserved: 22,
+    subjectIdsSelected: 22,
+    subjectIdsDroppedAtRelationLimit: 0,
+    subjectDetailIdsObserved: 22,
     subjectDetailRequests: 22,
     subjectDetailsSucceeded: 22,
     subjectDetailsFailed: 0,
@@ -113,6 +119,14 @@ describe('Person activity renderer', () => {
     expect(html).toContain('另有 10 条窗口内关系因展示上限未显示');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
+
+    const failedPersonViewModel = buildPersonActivityViewModel(
+      { ...result, personId: 99, person: undefined },
+      { maxRows: 1 },
+    );
+    const failedPersonHtml = renderHtmlTemplate(failedPersonViewModel, 'bangumi-dark', {}, 640);
+    expect(failedPersonHtml).toContain('Person ID 99');
+    expect(failedPersonHtml).not.toContain('Person ID 0');
 
     const service = new RenderService();
     try {

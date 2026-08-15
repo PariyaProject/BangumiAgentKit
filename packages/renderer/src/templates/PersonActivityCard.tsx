@@ -107,12 +107,18 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         }}
       >
         关系观察 {viewModel.coverage.relationRowsObserved} · 选取{' '}
-        {viewModel.coverage.relationRowsSelected} · 作品详情请求{' '}
-        {viewModel.coverage.subjectDetailRequests} · 成功{' '}
+        {viewModel.coverage.relationRowsSelected} · 作品 ID 观察{' '}
+        {viewModel.coverage.subjectIdsObserved} / 选取 {viewModel.coverage.subjectIdsSelected} ·
+        作品详情请求 {viewModel.coverage.subjectDetailRequests} · 成功{' '}
         {viewModel.coverage.subjectDetailsSucceeded} · 失败{' '}
-        {viewModel.coverage.subjectDetailsFailed} · 详情并发 {viewModel.coverage.detailConcurrency}{' '}
-        · 输出 {viewModel.coverage.rowsReturned}/{viewModel.coverage.rowsEligible}
-        {viewModel.coverage.truncated ? ' · 已达到边界' : ''}
+        {viewModel.coverage.subjectDetailsFailed} · 关系 ID 省略{' '}
+        {viewModel.coverage.subjectIdsDroppedAtRelationLimit} · 详情未请求{' '}
+        {viewModel.coverage.subjectDetailIdsDroppedAtLimit} 个 · 详情并发{' '}
+        {viewModel.coverage.detailConcurrency} · 输出 {viewModel.coverage.rowsReturned}/
+        {viewModel.coverage.rowsEligible}
+        {viewModel.coverage.truncated
+          ? ` · 已达到边界${viewModel.coverage.sampled ? '（确定性等距样本）' : ''}`
+          : ''}
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>

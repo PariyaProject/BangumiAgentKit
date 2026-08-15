@@ -634,7 +634,12 @@ export interface PersonActivityViewModel {
     relationRowsObserved: number;
     relationRowsSelected: number;
     relationRowsDroppedAtLimit: number;
+    relationSelectionStrategy: 'all' | 'deterministic_even_spread';
+    sampled: boolean;
     subjectIdsObserved: number;
+    subjectIdsSelected: number;
+    subjectIdsDroppedAtRelationLimit: number;
+    subjectDetailIdsObserved: number;
     subjectDetailRequests: number;
     subjectDetailsSucceeded: number;
     subjectDetailsFailed: number;

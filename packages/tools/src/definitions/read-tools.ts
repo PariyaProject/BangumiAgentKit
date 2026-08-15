@@ -619,7 +619,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getPersonActivity = defineTool({
     name: 'bangumi.get_person_activity',
     description:
-      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月，显式报告媒介筛选、缺日期、未知角色、详情失败和各项预算；不宣称历史增长、劳动时长或实际配音时间。',
+      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月；达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算；不宣称历史增长、劳动时长或实际配音时间。',
     input: z
       .object({
         personId: z.number().int().positive().describe('Bangumi 人物 ID'),

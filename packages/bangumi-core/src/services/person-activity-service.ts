@@ -161,16 +161,20 @@ function sourceFailureCode(error: unknown): string {
   return toPublicError(error).code;
 }
 
-function sortCandidates(candidates: ActivityCandidate[]): ActivityCandidate[] {
-  return [...candidates].sort((left, right) => {
-    const leftId = left.subjectId ?? Number.MAX_SAFE_INTEGER;
-    const rightId = right.subjectId ?? Number.MAX_SAFE_INTEGER;
-    if (leftId !== rightId) return leftId - rightId;
-    if (left.relationKind !== right.relationKind) {
-      return left.relationKind === 'voice' ? -1 : 1;
-    }
-    return (left.relationId ?? 0) - (right.relationId ?? 0);
-  });
+function selectEvenly<T>(values: readonly T[], limit: number): T[] {
+  if (values.length <= limit) return [...values];
+  if (limit === 1) return [values[0]!];
+  const selected: T[] = [];
+  let previousIndex = -1;
+  for (let position = 0; position < limit; position += 1) {
+    const idealIndex = Math.round((position * (values.length - 1)) / (limit - 1));
+    const minimumIndex = previousIndex + 1;
+    const maximumIndex = values.length - (limit - position);
+    const index = Math.min(maximumIndex, Math.max(minimumIndex, idealIndex));
+    selected.push(values[index]!);
+    previousIndex = index;
+  }
+  return selected;
 }
 
 function uniqueNumbers(values: Iterable<number | undefined>): number[] {
@@ -348,7 +352,7 @@ export class PersonActivityService {
       );
     }
 
-    const candidates = sortCandidates([
+    const candidates = [
       ...(kind === 'voice' || kind === 'all'
         ? characterRelations.map((character: PersonRelationCharacter): ActivityCandidate => ({
             relationKind: 'voice',
@@ -366,12 +370,21 @@ export class PersonActivityService {
             rawRole: subject.staffRole,
           }))
         : []),
-    ]);
-    const selectedCandidates = candidates.slice(0, maxRelations);
+    ];
+    const selectedCandidates = selectEvenly(candidates, maxRelations);
     const relationRowsDroppedAtLimit = Math.max(0, candidates.length - selectedCandidates.length);
-    const subjectIds = uniqueNumbers(selectedCandidates.map((candidate) => candidate.subjectId));
-    const detailIds = subjectIds.slice(0, maxSubjectDetails);
-    const subjectDetailIdsDroppedAtLimit = Math.max(0, subjectIds.length - detailIds.length);
+    const observedSubjectIds = uniqueNumbers(candidates.map((candidate) => candidate.subjectId));
+    const selectedSubjectIds = uniqueNumbers(
+      selectedCandidates.map((candidate) => candidate.subjectId),
+    );
+    const subjectIdsDroppedAtRelationLimit = observedSubjectIds.filter(
+      (subjectId) => !selectedSubjectIds.includes(subjectId),
+    ).length;
+    const detailIds = selectEvenly(selectedSubjectIds, maxSubjectDetails);
+    const subjectDetailIdsDroppedAtLimit = Math.max(
+      0,
+      selectedSubjectIds.length - detailIds.length,
+    );
     const detailMap = new Map<number, DomainSubject>();
     const detailFailures = new Map<number, DetailFailure>();
     for (let index = 0; index < detailIds.length; index += PERSON_ACTIVITY_DETAIL_CONCURRENCY) {
@@ -507,22 +520,32 @@ export class PersonActivityService {
       sourceStatus(sourceOperations, 'GET /v0/persons/{person_id}/subjects') === 'unavailable' &&
       sourceStatus(sourceOperations, 'GET /v0/persons/{person_id}/characters') === 'unavailable';
     const personUnavailable = !personResult.value;
+    const unknownRoleRows = accepted.filter((row) => row.roleFamily === 'unknown').length;
     const noComputableRows =
       candidates.length > 0 &&
       accepted.length === 0 &&
       missingDateRows + invalidDateRows === selectedCandidates.length;
-    let state: PersonActivityState = 'complete';
-    if (sourceUnavailable) state = 'unavailable';
-    else if (noComputableRows) state = 'not_computable';
-    else if (
+    const sampled = relationRowsDroppedAtLimit > 0 || subjectDetailIdsDroppedAtLimit > 0;
+    const completenessDegraded =
+      sampled ||
+      outputTruncated ||
       personUnavailable ||
       detailPartial ||
       relationFailures > 0 ||
-      relationRowsDroppedAtLimit > 0
-    )
-      state = 'partial';
+      unknownRoleRows > 0;
+    const onlyDateCoverageIsUnavailable =
+      noComputableRows &&
+      !sampled &&
+      !outputTruncated &&
+      !personUnavailable &&
+      relationFailures === 0 &&
+      detailFailures.size === 0 &&
+      unknownRoleRows === 0;
+    let state: PersonActivityState = 'complete';
+    if (sourceUnavailable) state = 'unavailable';
+    else if (onlyDateCoverageIsUnavailable) state = 'not_computable';
+    else if (completenessDegraded) state = 'partial';
 
-    const unknownRoleRows = accepted.filter((row) => row.roleFamily === 'unknown').length;
     const warnings: PersonActivityResult['warnings'] = [];
     if (personUnavailable) {
       warnings.push({
@@ -535,7 +558,7 @@ export class PersonActivityService {
       warnings.push({
         code: 'RELATION_LIMIT_REACHED',
         state: 'partial',
-        message: `关系行达到 ${maxRelations} 条上限，未读取的关系没有进入作品详情预算。`,
+        message: `官方关系共 ${candidates.length} 行，本次按来源顺序等距选取 ${selectedCandidates.length} 行；未按条目 ID 或日期排序，未读取的关系没有进入作品详情预算。`,
       });
     }
     if (subjectDetailIdsDroppedAtLimit > 0 || detailFailures.size > 0) {
@@ -564,6 +587,13 @@ export class PersonActivityService {
         code: 'ROLE_UNKNOWN',
         state: 'partial',
         message: `${unknownRoleRows} 条关系保留原始职位/角色标签，但无法安全归入主役、配角或标准职位。`,
+      });
+    }
+    if (outputTruncated) {
+      warnings.push({
+        code: 'OUTPUT_ROW_LIMIT_REACHED',
+        state: 'partial',
+        message: `窗口内可返回 ${accepted.length} 行，但输出上限只返回 ${rows.length} 行。`,
       });
     }
     if (accepted.length === 0 && state === 'complete') {
@@ -609,12 +639,13 @@ export class PersonActivityService {
         operation: 'person-activity-window-composition',
         formulaVersion: PERSON_ACTIVITY_FORMULA_VERSION,
         description:
-          '按稳定 subject/character ID 去重；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类。',
+          '按稳定 subject/character ID 去重；超过预算时按官方关系返回顺序做确定性等距抽样，不假设条目 ID 或返回顺序代表新旧；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类。',
         retrievedAt,
       },
     ];
 
     return {
+      personId,
       state,
       person: personResult.value ? mapPerson(personResult.value) : undefined,
       kind,
@@ -632,7 +663,13 @@ export class PersonActivityService {
         relationRowsObserved: candidates.length,
         relationRowsSelected: selectedCandidates.length,
         relationRowsDroppedAtLimit,
-        subjectIdsObserved: subjectIds.length,
+        relationSelectionStrategy:
+          relationRowsDroppedAtLimit > 0 ? 'deterministic_even_spread' : 'all',
+        sampled,
+        subjectIdsObserved: observedSubjectIds.length,
+        subjectIdsSelected: selectedSubjectIds.length,
+        subjectIdsDroppedAtRelationLimit,
+        subjectDetailIdsObserved: selectedSubjectIds.length,
         subjectDetailRequests: detailIds.length,
         subjectDetailsSucceeded: detailMap.size,
         subjectDetailsFailed: detailFailures.size,
@@ -662,6 +699,7 @@ export class PersonActivityService {
         '时间窗按官方作品 first_air_date 的日期归属，不代表实际配音、制作或劳动发生时间。',
         '没有历史快照；本结果只描述当前官方关系与作品详情观察，不能计算增长、趋势或前后窗口变化。',
         '主役、配角和职位分类只对可识别的官方关系标签做保守映射，未知标签保留原文并单独计数。',
+        '关系或作品详情达到上限时，结果是官方关系返回顺序上的确定性等距样本，不代表完整最近活动；coverage 会分别报告观察、选取、详情请求和省略的 ID 数量。',
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
       ],
       warnings,

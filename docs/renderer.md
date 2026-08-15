@@ -133,10 +133,15 @@ The `person-activity` card is the image-free companion to
 window using official person relations plus bounded subject hydration. The
 window is assigned by `first_air_date` to calendar months, with explicit
 TV-platform, role-family, missing-date, detail-cap, and exclusion evidence.
-It preserves partial, unavailable, and not-computable states, reports the
-relation/detail/output budgets, and does not infer labor time, historical
-trend, popularity, income, or recommendations. Narrow layouts keep the
-summary and visible rows readable while reporting hidden rows separately.
+When a relation or detail budget is reached, selection is a deterministic
+even-spread sample over the official relation response order rather than an
+ID-ordered prefix; the card reports observed, selected, hydrated, and omitted
+IDs and marks the result partial. It preserves partial, unavailable, and
+not-computable states, reports the relation/detail/output budgets, and does not
+infer labor time, historical trend, popularity, income, or recommendations.
+Narrow layouts keep the summary and visible rows readable while reporting
+hidden rows separately, including the requested person ID when person detail
+hydration fails.
 
 All operations use structured `RendererError` types:
 

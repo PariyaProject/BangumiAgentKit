@@ -123,7 +123,12 @@ describe('PersonActivityService', () => {
     expect(result.coverage).toMatchObject({
       relationRowsObserved: 4,
       relationRowsSelected: 4,
+      relationSelectionStrategy: 'all',
+      sampled: false,
       subjectIdsObserved: 4,
+      subjectIdsSelected: 4,
+      subjectIdsDroppedAtRelationLimit: 0,
+      subjectDetailIdsObserved: 4,
       subjectDetailRequests: 4,
       subjectDetailsSucceeded: 4,
       rowsEligible: 1,
@@ -167,6 +172,7 @@ describe('PersonActivityService', () => {
     expect(result.coverage).toMatchObject({
       subjectDetailRequests: 1,
       subjectDetailIdsDroppedAtLimit: 3,
+      subjectDetailIdsObserved: 4,
       subjectDetailsFailed: 0,
       rowsReturned: 1,
     });
@@ -183,6 +189,103 @@ describe('PersonActivityService', () => {
     expect(failed.exclusions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ reason: 'subject_detail_unavailable', count: 1 }),
+      ]),
+    );
+  });
+
+  it('uses an even-spread relation sample instead of an ascending-ID prefix', async () => {
+    const relations = Array.from({ length: 8 }, (_, index) => ({
+      id: 100 + index,
+      name: `角色 ${index + 1}`,
+      subject_id: index + 1,
+      subject_type: 2,
+      subject_name: `Subject ${index + 1}`,
+      staff: '主角',
+    }));
+    const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) return json(relations);
+      if (url.includes('/v0/subjects/')) {
+        const id = Number(url.split('/').pop());
+        return json(subjectPayload(id, { date: '2026-08-01' }));
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-08-15',
+        kind: 'voice',
+        media: 'tv',
+        maxRelations: 4,
+        maxSubjectDetails: 4,
+      },
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.rows.map((row) => row.subjectId)).toEqual([1, 3, 6, 8]);
+    expect(result.coverage).toMatchObject({
+      relationRowsObserved: 8,
+      relationRowsSelected: 4,
+      relationRowsDroppedAtLimit: 4,
+      relationSelectionStrategy: 'deterministic_even_spread',
+      sampled: true,
+      subjectIdsObserved: 8,
+      subjectIdsSelected: 4,
+      subjectIdsDroppedAtRelationLimit: 4,
+      subjectDetailIdsObserved: 4,
+      subjectDetailRequests: 4,
+    });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'RELATION_LIMIT_REACHED' })]),
+    );
+  });
+
+  it('marks output truncation and unknown roles as partial', async () => {
+    const fixture = activityFetch();
+    const result = await new PersonActivityService(
+      new HttpClient({ fetchFn: fixture.fetchFn }),
+    ).getPersonActivity(20, {
+      asOf: '2026-08-15',
+      kind: 'voice',
+      media: 'all',
+      maxRows: 1,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.outputTruncated).toBe(true);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'OUTPUT_ROW_LIMIT_REACHED', state: 'partial' }),
+        expect.objectContaining({ code: 'ROLE_UNKNOWN', state: 'partial' }),
+      ]),
+    );
+  });
+
+  it('preserves the requested person ID when person detail fails', async () => {
+    const fixture = activityFetch();
+    const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json({ error: 'person unavailable' }, 503);
+      return await fixture.fetchFn(input, init);
+    });
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-08-15',
+        kind: 'voice',
+        media: 'all',
+      },
+    );
+
+    expect(result.personId).toBe(20);
+    expect(result.person).toBeUndefined();
+    expect(result.state).toBe('partial');
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'PERSON_DETAIL_UNAVAILABLE', state: 'partial' }),
       ]),
     );
   });
