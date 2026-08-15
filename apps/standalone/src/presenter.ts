@@ -564,7 +564,23 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
   const coverage = comparisonRecord(value.coverage);
   if (coverage) {
     lines.push(
-      `覆盖：来源请求 ${humanField(coverage.sourceRequestsSucceeded ?? '?', 32)}/${humanField(coverage.sourceRequestsAttempted ?? '?', 32)} 成功 · 评分样本 ${humanField(coverage.ratingPopulation ?? '?', 32)} · 收藏样本 ${humanField(coverage.collectionPopulation ?? '?', 32)} · 公式完整 ${humanField(coverage.formulasComplete ?? '?', 32)}/${humanField(coverage.formulasAttempted ?? '?', 32)} · 冲突 ${humanField(coverage.formulasConflict ?? '?', 32)} · 不可计算 ${humanField(coverage.formulasNotComputable ?? '?', 32)}`,
+      `覆盖：来源请求 ${humanField(coverage.sourceRequestsSucceeded ?? '?', 32)}/${humanField(coverage.sourceRequestsAttempted ?? '?', 32)} 成功 · 评分桶 ${humanField(coverage.ratingBucketsObserved ?? '?', 32)}/${humanField(coverage.ratingBucketsExpected ?? '?', 32)} · 收藏桶 ${humanField(coverage.collectionBucketsObserved ?? '?', 32)}/${humanField(coverage.collectionBucketsExpected ?? '?', 32)} · 评分样本 ${humanField(coverage.ratingPopulation ?? '?', 32)} · 收藏样本 ${humanField(coverage.collectionPopulation ?? '?', 32)} · 公式完整 ${humanField(coverage.formulasComplete ?? '?', 32)}/${humanField(coverage.formulasAttempted ?? '?', 32)} · 部分 ${humanField(coverage.formulasPartial ?? '?', 32)} · 冲突 ${humanField(coverage.formulasConflict ?? '?', 32)} · 不可计算 ${humanField(coverage.formulasNotComputable ?? '?', 32)}`,
+    );
+  }
+
+  const formulaGroups = [
+    ['评分百分比', comparisonRecord(rating.formulas)?.percentages],
+    ['直方图均值', comparisonRecord(rating.formulas)?.histogramMean],
+    ['总体标准差', comparisonRecord(rating.formulas)?.populationStandardDeviation],
+    ['收藏百分比', comparisonRecord(collection.formulas)?.percentages],
+    ['完成率', comparisonRecord(collection.formulas)?.completion],
+  ] as const;
+  for (const [label, formula] of formulaGroups) {
+    const details = comparisonRecord(formula);
+    if (!details) continue;
+    const inputs = Array.isArray(details.inputs) ? details.inputs.join(', ') : '未知';
+    lines.push(
+      `公式 ${label}：${humanField(details.id ?? '未知', 96)} v${humanField(details.version ?? '?', 16)} · ${humanField(details.description ?? '未知', 180)} · inputs ${humanField(inputs, 180)}`,
     );
   }
 

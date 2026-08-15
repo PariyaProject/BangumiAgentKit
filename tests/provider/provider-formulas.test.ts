@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COMPLETION_FORMULA,
   COLLECTION_PERCENTAGES_FORMULA,
+  HISTOGRAM_MEAN_FORMULA,
   POPULATION_SD_FORMULA,
   computeCollectionCompletionRate,
   computeCollectionPercentages,
@@ -95,12 +96,16 @@ describe('PR-7B formula foundation', () => {
     const result = computePopulationStandardDeviation({
       ...stats,
       ratingHistogram: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1 },
-    });
+    }, inputEvidence);
     expect(result.state).toBe('conflict');
     expect(result.data?.histogramPopulation).toBe(10);
+    expect(result.data?.histogramMean).toBe(5.5);
     expect(result.data?.standardDeviation).toBeCloseTo(Math.sqrt(8.25), 8);
     expect(result.data?.upstreamScore).toBe(6);
     expect(result.conflicts).toHaveLength(1);
+    expect(result.evidence?.histogramMean?.[0]?.formula).toBe(HISTOGRAM_MEAN_FORMULA.id);
+    expect(result.evidence?.histogramMean?.[0]?.fieldPath).toBe('histogramMean');
+    expect(result.conflicts?.[0]?.candidates[1]?.evidence?.[0]?.fieldPath).toBe('rating.score');
 
     const empty = computePopulationStandardDeviation({
       ...stats,

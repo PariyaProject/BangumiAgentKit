@@ -55,16 +55,25 @@ const collectionLabels: Record<string, string> = {
   dropped: '抛弃',
 };
 
+const DIAGNOSTIC_RENDER_CAP = 8;
+
 export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, theme, width }) => {
   const raw = viewModel.raw;
-  const ratingMax = Math.max(1, ...viewModel.rating.distribution.map((item) => item.count));
-  const collectionMax = Math.max(1, ...viewModel.collection.distribution.map((item) => item.count));
+  const ratingMax = Math.max(1, ...viewModel.rating.distribution.map((item) => item.count ?? 0));
+  const collectionMax = Math.max(
+    1,
+    ...viewModel.collection.distribution.map((item) => item.count ?? 0),
+  );
   const formulaLines = [
     viewModel.rating.formulas.percentages,
+    viewModel.rating.formulas.histogramMean,
     viewModel.rating.formulas.populationStandardDeviation,
     viewModel.collection.formulas.percentages,
     viewModel.collection.formulas.completion,
   ];
+  const renderedConflicts = viewModel.rating.conflicts?.slice(0, DIAGNOSTIC_RENDER_CAP) || [];
+  const renderedWarnings = viewModel.warnings.slice(0, DIAGNOSTIC_RENDER_CAP);
+  const renderedLimitations = viewModel.limitations.slice(0, DIAGNOSTIC_RENDER_CAP);
   const officialOperations = viewModel.source.official.operations.join(' + ') || '未记录';
   const derivedOperations = viewModel.source.derived.operations.join(' + ') || '未记录';
 
@@ -176,7 +185,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                     >
                       <div
                         style={{
-                          width: `${Math.min(100, (item.count / ratingMax) * 100)}%`,
+                          width: `${Math.min(100, ((item.count ?? 0) / ratingMax) * 100)}%`,
                           height: '100%',
                           backgroundColor: item.score >= 8 ? theme.accent : theme.border,
                         }}
@@ -230,7 +239,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                     >
                       <div
                         style={{
-                          width: `${Math.min(100, (item.count / collectionMax) * 100)}%`,
+                          width: `${Math.min(100, ((item.count ?? 0) / collectionMax) * 100)}%`,
                           height: '100%',
                           backgroundColor: theme.accent,
                         }}
@@ -258,7 +267,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
         </>
       ) : null}
 
-      {viewModel.rating.conflicts?.length ? (
+      {renderedConflicts.length ? (
         <section
           style={{
             backgroundColor: theme.surfaceAlt,
@@ -270,20 +279,34 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
           <div style={{ color: theme.warning, fontWeight: 700, fontSize: '12px' }}>
             评分来源冲突
           </div>
-          {viewModel.rating.conflicts.slice(0, 2).map((conflict, conflictIndex) => (
+          {renderedConflicts.map((conflict, conflictIndex) => (
             <div
               key={`${conflict.reason}-${conflictIndex}`}
-              style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}
+              style={{
+                color: theme.textMuted,
+                fontSize: '10px',
+                lineHeight: 1.5,
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              }}
             >
-              {conflict.reason}：
-              {conflict.candidates
-                .map(
-                  (candidate) =>
-                    `${candidate.source.class}/${candidate.source.provider}=${formatNumber(candidate.value, 2)}`,
-                )
-                .join('；')}
+              <div>{conflict.reason}：</div>
+              {conflict.candidates.map((candidate, candidateIndex) => (
+                <div
+                  key={`${candidate.source.class}-${candidate.source.provider}-${candidateIndex}`}
+                >
+                  候选 {candidate.source.class}/{candidate.source.provider} ={' '}
+                  {formatNumber(candidate.value, 2)}
+                </div>
+              ))}
             </div>
           ))}
+          {viewModel.rating.conflicts &&
+          viewModel.rating.conflicts.length > renderedConflicts.length ? (
+            <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
+              另有 {viewModel.rating.conflicts.length - renderedConflicts.length} 条评分冲突未展开。
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -301,29 +324,57 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
         >
           official-v0：{officialOperations} · derived-s7：{derivedOperations}
         </div>
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          公式：{formulaLines.map((formula) => `${formula.id} v${formula.version}`).join(' · ')}
+        <div
+          style={{
+            color: theme.textMuted,
+            fontSize: '10px',
+            lineHeight: 1.5,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+          }}
+        >
+          公式：
+          {formulaLines.map((formula) => (
+            <div key={formula.id}>
+              {formula.id} v{formula.version} · {formula.description} · inputs:{' '}
+              {formula.inputs.join(', ')}
+            </div>
+          ))}
         </div>
         <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
           覆盖：来源请求 {viewModel.coverage.sourceRequestsSucceeded}/
-          {viewModel.coverage.sourceRequestsAttempted} 成功 · 公式完整{' '}
+          {viewModel.coverage.sourceRequestsAttempted} 成功 · 评分桶{' '}
+          {viewModel.coverage.ratingBucketsObserved}/{viewModel.coverage.ratingBucketsExpected} ·
+          收藏桶 {viewModel.coverage.collectionBucketsObserved}/
+          {viewModel.coverage.collectionBucketsExpected} · 公式完整{' '}
           {viewModel.coverage.formulasComplete}/{viewModel.coverage.formulasAttempted} · 冲突{' '}
-          {viewModel.coverage.formulasConflict} · 不可计算{' '}
-          {viewModel.coverage.formulasNotComputable}
+          {viewModel.coverage.formulasConflict} · 部分 {viewModel.coverage.formulasPartial} ·
+          不可计算 {viewModel.coverage.formulasNotComputable}
         </div>
       </section>
 
-      {viewModel.warnings.length > 0 ? (
+      {renderedWarnings.length > 0 ? (
         <section>
           <div style={{ color: theme.warning, fontWeight: 700, fontSize: '12px' }}>告警</div>
-          {viewModel.warnings.slice(0, 4).map((warning, index) => (
+          {renderedWarnings.map((warning, index) => (
             <div
               key={`${warning.code}-${index}`}
-              style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}
+              style={{
+                color: theme.textMuted,
+                fontSize: '10px',
+                lineHeight: 1.45,
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              }}
             >
               {warning.code} · {warning.message}
             </div>
           ))}
+          {viewModel.warnings.length > renderedWarnings.length ? (
+            <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
+              另有 {viewModel.warnings.length - renderedWarnings.length} 条告警未展开。
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -335,8 +386,24 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
             .filter((item, index, values) => values.indexOf(item) === index)
             .join(' + ') || '未记录'}
         </div>
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
-          限制：{viewModel.limitations.slice(0, 3).join('；')}
+        <div
+          style={{
+            color: theme.textMuted,
+            fontSize: '10px',
+            lineHeight: 1.45,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+          }}
+        >
+          限制：
+          {renderedLimitations.map((limitation, index) => (
+            <div key={`${limitation}-${index}`}>{limitation}</div>
+          ))}
+          {viewModel.limitations.length > renderedLimitations.length ? (
+            <div>
+              另有 {viewModel.limitations.length - renderedLimitations.length} 条限制未展开。
+            </div>
+          ) : null}
         </div>
       </section>
 

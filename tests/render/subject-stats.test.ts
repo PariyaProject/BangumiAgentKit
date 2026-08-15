@@ -35,6 +35,13 @@ const result: SubjectStatsIntelligenceResult = {
         evidenceStatus: 'derived',
         description: 'rating bucket count / population × 100',
       },
+      histogramMean: {
+        id: 'bangumi.rating.histogram_mean.v1',
+        version: 1,
+        inputs: ['rating.count.1', 'rating.count.10'],
+        evidenceStatus: 'derived',
+        description: 'sum(rating score × bucket count) / rating histogram population',
+      },
       populationStandardDeviation: {
         id: 'bangumi.rating.population_sd.v1',
         version: 1,
@@ -82,8 +89,9 @@ const result: SubjectStatsIntelligenceResult = {
     collectionBucketsObserved: 5,
     ratingPopulation: 100,
     collectionPopulation: 10,
-    formulasAttempted: 4,
-    formulasComplete: 4,
+    formulasAttempted: 5,
+    formulasComplete: 5,
+    formulasPartial: 0,
     formulasNotComputable: 0,
     formulasConflict: 0,
   },
@@ -180,8 +188,8 @@ describe('subject-stats renderer', () => {
       640,
     );
     expect(conflictHtml).toContain('评分来源冲突');
-    expect(conflictHtml).toContain('derived-s7/bangumi-agent-kit=8.60');
-    expect(conflictHtml).toContain('official-v0/bangumi=6.00');
+    expect(conflictHtml).toContain('derived-s7/bangumi-agent-kit = 8.60');
+    expect(conflictHtml).toContain('official-v0/bangumi = 6.00');
 
     const unavailable: SubjectStatsIntelligenceResult = {
       ...result,
@@ -213,4 +221,183 @@ describe('subject-stats renderer', () => {
     expect(unavailableHtml).not.toContain('8.6');
     expect(unavailableHtml).not.toContain('NaN');
   });
+
+  it('renders complete, sparse, partial, conflict, unavailable, and not-computable states at both widths', async () => {
+    const sparse = structuredClone(result);
+    sparse.raw = {
+      ...sparse.raw!,
+      ratingTotal: 1,
+      ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 1, 9: 0, 10: 0 },
+      collection: { wish: 0, collect: 1, doing: 0, onHold: 0, dropped: 0 },
+    };
+    sparse.rating.population = 1;
+    sparse.rating.mean = 8;
+    sparse.rating.standardDeviation = 0;
+    sparse.rating.distribution = sparse.rating.distribution.map((item) => ({
+      ...item,
+      count: item.score === 8 ? 1 : 0,
+      percentage: item.score === 8 ? 100 : 0,
+    }));
+    sparse.collection.total = 1;
+    sparse.collection.completionRate = 1;
+    sparse.collection.distribution = sparse.collection.distribution.map((item) => ({
+      ...item,
+      count: item.status === 'collect' ? 1 : 0,
+      percentage: item.status === 'collect' ? 100 : 0,
+    }));
+    sparse.coverage = {
+      ...sparse.coverage,
+      ratingPopulation: 1,
+      collectionPopulation: 1,
+    };
+
+    const partial = structuredClone(result);
+    partial.state = 'partial';
+    partial.raw = {
+      ...partial.raw!,
+      ratingHistogramPresence: {
+        1: true,
+        2: true,
+        3: true,
+        4: true,
+        5: true,
+        6: true,
+        7: true,
+        8: true,
+        9: true,
+        10: false,
+      },
+      collectionPresence: { wish: true, collect: true, doing: true, onHold: false, dropped: true },
+    };
+    partial.rating.state = 'partial';
+    partial.rating.population = 90;
+    partial.rating.distribution = partial.rating.distribution.map((item) =>
+      item.score === 10 ? { score: item.score } : item,
+    );
+    partial.collection.state = 'partial';
+    partial.collection.total = 9;
+    partial.collection.completionRate = undefined;
+    partial.collection.completionState = 'partial';
+    partial.collection.distribution = partial.collection.distribution.map((item) =>
+      item.status === 'on_hold' ? { status: item.status } : item,
+    );
+    partial.coverage = {
+      ...partial.coverage,
+      ratingBucketsObserved: 9,
+      collectionBucketsObserved: 4,
+      ratingPopulation: 90,
+      collectionPopulation: 9,
+      formulasComplete: 0,
+      formulasPartial: 5,
+    };
+    partial.warnings = [
+      {
+        code: 'FORMULA_SUPPRESSED',
+        state: 'partial',
+        message: 'Missing rating and collection buckets; derived metrics are suppressed.',
+      },
+    ];
+
+    const conflict = structuredClone(result);
+    conflict.state = 'conflict';
+    conflict.rating.state = 'conflict';
+    conflict.rating.conflicts = [
+      {
+        state: 'conflict',
+        reason: 'derived histogram mean differs materially from upstream score',
+        candidates: [
+          {
+            source: {
+              class: 'derived-s7',
+              provider: 'bangumi-agent-kit-with-a-long-derived-provider-label',
+            },
+            value: 8.6,
+          },
+          {
+            source: {
+              class: 'official-v0',
+              provider: 'bangumi-official-provider-with-a-long-source-label',
+            },
+            value: 6,
+          },
+        ],
+      },
+    ];
+    conflict.warnings = [
+      { code: 'RATING_MEAN_CONFLICT', state: 'conflict', message: '两个评分来源存在差异。' },
+    ];
+
+    const unavailable: SubjectStatsIntelligenceResult = {
+      ...result,
+      state: 'unavailable',
+      raw: undefined,
+      rating: { ...result.rating, state: 'unavailable', distribution: [], population: undefined },
+      collection: {
+        ...result.collection,
+        state: 'unavailable',
+        distribution: [],
+        total: undefined,
+        completionRate: undefined,
+        completionState: 'unavailable',
+      },
+      coverage: { ...result.coverage, sourceRequestsSucceeded: 0, formulasComplete: 0 },
+      evidence: [],
+      warnings: [
+        { code: 'UPSTREAM_UNAVAILABLE', state: 'unavailable', message: '官方统计源不可用。' },
+      ],
+    };
+
+    const notComputable = structuredClone(result);
+    notComputable.state = 'not_computable';
+    notComputable.rating.state = 'not_computable';
+    notComputable.rating.population = 0;
+    notComputable.rating.mean = undefined;
+    notComputable.rating.standardDeviation = undefined;
+    notComputable.rating.distribution = notComputable.rating.distribution.map((item) => ({
+      score: item.score,
+      count: 0,
+    }));
+    notComputable.collection.state = 'not_computable';
+    notComputable.collection.total = 0;
+    notComputable.collection.completionRate = undefined;
+    notComputable.collection.completionState = 'not_computable';
+    notComputable.collection.distribution = notComputable.collection.distribution.map((item) => ({
+      status: item.status,
+      count: 0,
+    }));
+    notComputable.coverage = {
+      ...notComputable.coverage,
+      ratingPopulation: 0,
+      collectionPopulation: 0,
+      formulasComplete: 0,
+      formulasNotComputable: 5,
+    };
+    notComputable.warnings = [
+      { code: 'ZERO_POPULATION', state: 'not_computable', message: '评分与收藏样本量为零。' },
+    ];
+
+    const states: Array<[string, SubjectStatsIntelligenceResult]> = [
+      ['complete', result],
+      ['sparse', sparse],
+      ['partial', partial],
+      ['conflict', conflict],
+      ['unavailable', unavailable],
+      ['not-computable', notComputable],
+    ];
+    for (const [label, fixture] of states) {
+      const viewModel = buildSubjectStatsViewModel(fixture);
+      for (const width of [640, 960]) {
+        const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+        expect(html, `${label} HTML at ${width}`).toContain('zero-network card');
+        expect(html, `${label} HTML at ${width}`).not.toContain('NaN');
+        expect(html, `${label} HTML at ${width}`).not.toContain('Infinity');
+        const rendered = await renderService.renderCard(viewModel, {
+          width,
+          deviceScaleFactor: 1,
+          cache: false,
+        });
+        expect(rendered.buffer.length, `${label} PNG at ${width}`).toBeGreaterThan(1000);
+      }
+    }
+  }, 60_000);
 });

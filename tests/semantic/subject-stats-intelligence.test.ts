@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { SubjectStatsIntelligenceResult } from '@bangumi-agent-kit/bangumi-core';
 import {
+  OfficialV0Provider,
   ProviderRegistry,
   type CapabilityResult,
   type SubjectStatsData,
 } from '@bangumi-agent-kit/provider-core';
+import type { Subject } from '@bangumi-agent-kit/bangumi-openapi';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createReadTools } from '@bangumi-agent-kit/tools';
 
@@ -103,6 +105,9 @@ describe('Subject statistics intelligence semantic contract', () => {
         state: 'complete',
         population: 100,
         mean: 8.6,
+        formulas: expect.objectContaining({
+          histogramMean: expect.objectContaining({ id: 'bangumi.rating.histogram_mean.v1' }),
+        }),
         distribution: expect.arrayContaining([
           { score: 8, count: 40, percentage: 40 },
           { score: 9, count: 60, percentage: 60 },
@@ -116,8 +121,9 @@ describe('Subject statistics intelligence semantic contract', () => {
         distribution: expect.arrayContaining([{ status: 'collect', count: 4, percentage: 40 }]),
       },
       coverage: {
-        formulasAttempted: 4,
-        formulasComplete: 4,
+        formulasAttempted: 5,
+        formulasComplete: 5,
+        formulasPartial: 0,
         formulasNotComputable: 0,
         formulasConflict: 0,
       },
@@ -126,6 +132,10 @@ describe('Subject statistics intelligence semantic contract', () => {
       expect.arrayContaining([
         expect.objectContaining({ source: 'official-v0', fieldPath: 'rating.score' }),
         expect.objectContaining({ source: 'derived-s7', formula: 'bangumi.rating.percentages.v1' }),
+        expect.objectContaining({
+          source: 'derived-s7',
+          formula: 'bangumi.rating.histogram_mean.v1',
+        }),
         expect.objectContaining({
           source: 'derived-s7',
           formula: 'bangumi.collection.percentages.v1',
@@ -162,13 +172,61 @@ describe('Subject statistics intelligence semantic contract', () => {
               expect.objectContaining({
                 source: expect.objectContaining({ class: 'official-v0' }),
                 value: 6,
+                evidence: expect.arrayContaining([
+                  expect.objectContaining({ fieldPath: 'rating.score' }),
+                ]),
               }),
             ]),
           },
         ],
       },
-      coverage: { formulasConflict: 1 },
+      coverage: { formulasConflict: 2 },
     });
+  });
+
+  it('preserves granular official evidence through the real provider adapter', async () => {
+    const raw = {
+      id: 123,
+      rating: {
+        score: 6,
+        rank: 12,
+        total: 100,
+        count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 40, 9: 60, 10: 0 },
+      },
+      collection: { wish: 2, collect: 4, doing: 2, on_hold: 1, dropped: 1 },
+    } as unknown as Subject;
+
+    const result = await getTool().execute(
+      { subjectId: 123 },
+      { principalId: 'stats-test' },
+      {
+        providerRegistry: new ProviderRegistry({
+          v0: new OfficialV0Provider({ getSubjectById: async () => raw }),
+        }),
+      },
+    );
+
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'official-v0', fieldPath: 'rating.score' }),
+        expect.objectContaining({ source: 'official-v0', fieldPath: 'rating.count.8' }),
+        expect.objectContaining({
+          source: 'derived-s7',
+          formula: 'bangumi.rating.histogram_mean.v1',
+        }),
+      ]),
+    );
+    const ratingConflict = result.rating?.conflicts?.[0];
+    expect(ratingConflict?.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: expect.objectContaining({ class: 'official-v0' }),
+          evidence: expect.arrayContaining([
+            expect.objectContaining({ fieldPath: 'rating.score' }),
+          ]),
+        }),
+      ]),
+    );
   });
 
   it('distinguishes zero-population not-computable data from unavailable data', async () => {
@@ -193,6 +251,7 @@ describe('Subject statistics intelligence semantic contract', () => {
       state: 'not_computable',
       rating: { state: 'not_computable' },
       collection: { state: 'not_computable', total: 0, completionState: 'not_computable' },
+      coverage: { formulasAttempted: 5, formulasNotComputable: 5 },
     });
     expect(JSON.stringify(result)).not.toContain('NaN');
     expect(JSON.stringify(result)).not.toContain('Infinity');

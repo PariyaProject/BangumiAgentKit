@@ -74,6 +74,26 @@ describe('Standalone subject statistics commands', () => {
         mean: 8.6,
         standardDeviation: 0.49,
         distribution: [{ score: 8, count: 40, percentage: 40 }],
+        formulas: {
+          percentages: {
+            id: 'bangumi.rating.percentages.v1',
+            version: 1,
+            inputs: ['rating.count.1', 'rating.count.10'],
+            description: 'rating bucket count / population × 100',
+          },
+          histogramMean: {
+            id: 'bangumi.rating.histogram_mean.v1',
+            version: 1,
+            inputs: ['rating.count.1', 'rating.count.10'],
+            description: 'sum(rating score × bucket count) / rating histogram population',
+          },
+          populationStandardDeviation: {
+            id: 'bangumi.rating.population_sd.v1',
+            version: 1,
+            inputs: ['rating.count.1', 'rating.count.10'],
+            description: 'population standard deviation over the rating histogram',
+          },
+        },
       },
       collection: {
         state: 'complete',
@@ -81,14 +101,33 @@ describe('Standalone subject statistics commands', () => {
         completionRate: 0.4,
         completionState: 'complete',
         distribution: [{ status: 'collect', count: 4, percentage: 40 }],
+        formulas: {
+          percentages: {
+            id: 'bangumi.collection.percentages.v1',
+            version: 1,
+            inputs: ['collection.wish', 'collection.dropped'],
+            description: 'collection bucket count / population × 100',
+          },
+          completion: {
+            id: 'bangumi.subject.completion.v1',
+            version: 1,
+            inputs: ['collection.wish', 'collection.dropped'],
+            description: 'collect / collection population',
+          },
+        },
       },
       coverage: {
         sourceRequestsSucceeded: 1,
         sourceRequestsAttempted: 1,
+        ratingBucketsObserved: 10,
+        ratingBucketsExpected: 10,
+        collectionBucketsObserved: 5,
+        collectionBucketsExpected: 5,
         ratingPopulation: 100,
         collectionPopulation: 10,
-        formulasComplete: 4,
-        formulasAttempted: 4,
+        formulasComplete: 5,
+        formulasPartial: 0,
+        formulasAttempted: 5,
         formulasConflict: 0,
         formulasNotComputable: 0,
       },
@@ -103,6 +142,9 @@ describe('Standalone subject statistics commands', () => {
     expect(complete).toContain('完成率 40.0%');
     expect(complete).toContain('评分分布');
     expect(complete).toContain('覆盖：来源请求 1/1 成功');
+    expect(complete).toContain('评分桶 10/10');
+    expect(complete).toContain('公式 直方图均值');
+    expect(complete).toContain('bangumi.rating.histogram_mean.v1');
 
     const unavailable = formatHuman({
       state: 'unavailable',

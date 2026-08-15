@@ -88,8 +88,57 @@ describe('PR-7B official provider foundation', () => {
 
     expect(result.state).toBe('ok');
     expect(result.data?.collection.collect).toBe(40);
+    expect(result.data?.ratingHistogramPresence?.[10]).toBe(true);
     expect(result.evidence?.['collection.collect']?.[0]?.source.class).toBe('official_v0');
+    expect(result.evidence?.['rating.count.10']?.[0]?.fieldPath).toBe('rating.count.10');
     expect(result.evidence?.['name_cn']).toBeUndefined();
+  });
+
+  it('preserves missing and invalid rating/collection bucket presence through the stats adapter', async () => {
+    const invalidCases: Array<[string, unknown, boolean]> = [
+      ['missing', undefined, true],
+      ['null', null, false],
+      ['wrong type', '8', false],
+      ['fractional', 1.5, false],
+      ['negative', -1, false],
+    ];
+
+    for (let score = 1; score <= 10; score += 1) {
+      for (const [label, value, remove] of invalidCases) {
+        const raw = structuredClone(subjectFixture()) as unknown as {
+          rating: { count: Record<string, unknown> };
+        };
+        if (remove) delete raw.rating.count[String(score)];
+        else raw.rating.count[String(score)] = value;
+        const result = await new OfficialV0Provider({
+          getSubjectById: async () => raw as Subject,
+        }).getSubjectStats(123);
+
+        expect(result.state, `rating ${score} ${label}`).toBe('ok');
+        const presence = result.data?.ratingHistogramPresence as
+          Record<number, boolean> | undefined;
+        expect(presence?.[score]).toBe(false);
+        expect(result.evidence?.[`rating.count.${score}`]).toBeUndefined();
+      }
+    }
+
+    for (const bucket of ['wish', 'collect', 'doing', 'on_hold', 'dropped'] as const) {
+      for (const [label, value, remove] of invalidCases) {
+        const raw = structuredClone(subjectFixture()) as unknown as {
+          collection: Record<string, unknown>;
+        };
+        if (remove) delete raw.collection[bucket];
+        else raw.collection[bucket] = value;
+        const result = await new OfficialV0Provider({
+          getSubjectById: async () => raw as Subject,
+        }).getSubjectStats(123);
+        const presenceKey = bucket === 'on_hold' ? 'onHold' : bucket;
+
+        expect(result.state, `collection ${bucket} ${label}`).toBe('ok');
+        expect(result.data?.collectionPresence?.[presenceKey]).toBe(false);
+        expect(result.evidence?.[`collection.${bucket}`]).toBeUndefined();
+      }
+    }
   });
 
   it('records stats retrieval after a delayed source request completes', async () => {

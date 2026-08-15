@@ -46,6 +46,13 @@ export const FORMULA_REGISTRY: readonly FormulaDescriptor[] = Object.freeze([
     description: 'rating bucket count / rating histogram population × 100',
   },
   {
+    id: 'bangumi.rating.histogram_mean.v1',
+    version: 1,
+    inputs: Array.from({ length: 10 }, (_, index) => `rating.count.${index + 1}`),
+    evidenceStatus: 'derived',
+    description: 'sum(rating score × bucket count) / rating histogram population',
+  },
+  {
     id: 'bangumi.rating.population_sd.v1',
     version: 1,
     inputs: Array.from({ length: 10 }, (_, index) => `rating.count.${index + 1}`),
@@ -63,8 +70,9 @@ export const FORMULA_REGISTRY: readonly FormulaDescriptor[] = Object.freeze([
 
 export const COMPLETION_FORMULA = FORMULA_REGISTRY[0] as FormulaDescriptor;
 export const RATING_PERCENTAGES_FORMULA = FORMULA_REGISTRY[1] as FormulaDescriptor;
-export const POPULATION_SD_FORMULA = FORMULA_REGISTRY[2] as FormulaDescriptor;
-export const COLLECTION_PERCENTAGES_FORMULA = FORMULA_REGISTRY[3] as FormulaDescriptor;
+export const HISTOGRAM_MEAN_FORMULA = FORMULA_REGISTRY[2] as FormulaDescriptor;
+export const POPULATION_SD_FORMULA = FORMULA_REGISTRY[3] as FormulaDescriptor;
+export const COLLECTION_PERCENTAGES_FORMULA = FORMULA_REGISTRY[4] as FormulaDescriptor;
 
 /** Upstream scores are published to one decimal place; this is the rounding band. */
 export const UPSTREAM_SCORE_ROUNDING_TOLERANCE = 0.05;
@@ -243,12 +251,13 @@ export function computePopulationStandardDeviation(
 ): CapabilityResult<PopulationStandardDeviationData | null> {
   const population = histogramPopulation(stats.ratingHistogram);
   const formulaRef = formulaEvidence(POPULATION_SD_FORMULA, retrievedAt, 'standardDeviation');
+  const meanFormulaRef = formulaEvidence(HISTOGRAM_MEAN_FORMULA, retrievedAt, 'histogramMean');
   const inputs = inputEvidence(input, POPULATION_SD_FORMULA.inputs);
   if (population === 0) {
     return {
       state: 'not_computable',
       data: null,
-      evidence: { value: [formulaRef], ...inputs },
+      evidence: { value: [formulaRef], histogramMean: [meanFormulaRef], ...inputs },
       retrievedAt,
       warnings: [
         warning(
@@ -273,6 +282,7 @@ export function computePopulationStandardDeviation(
   };
   const warnings: CapabilityWarning[] = [];
   const conflicts: CapabilityConflict<number>[] = [];
+  const scoreEvidence = input['rating.score'] ?? input.score;
   const scoreDelta = Math.abs(mean - stats.score);
   if (scoreDelta > 0) {
     warnings.push(
@@ -291,13 +301,13 @@ export function computePopulationStandardDeviation(
         candidates: [
           { source: SOURCE_DERIVED, value: mean, evidence: [formulaRef] },
           {
-            source: {
+            source: scoreEvidence?.[0]?.source ?? {
               class: 'official_v0',
               provider: 'bangumi',
               operation: 'getSubjectById',
-            } as const,
+            },
             value: stats.score,
-            evidence: input.score,
+            evidence: scoreEvidence,
           },
         ],
       });
@@ -307,7 +317,7 @@ export function computePopulationStandardDeviation(
   return {
     state: conflicts.length > 0 ? 'conflict' : 'ok',
     data,
-    evidence: { value: [formulaRef], ...inputs },
+    evidence: { value: [formulaRef], histogramMean: [meanFormulaRef], ...inputs },
     retrievedAt,
     warnings,
     conflicts: conflicts.length > 0 ? conflicts : undefined,

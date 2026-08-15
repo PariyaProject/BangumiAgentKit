@@ -19,12 +19,24 @@ export interface SubjectStatsRatingHistogram {
   10: number;
 }
 
+export type SubjectStatsRatingHistogramPresence = {
+  [Score in keyof SubjectStatsRatingHistogram]: boolean;
+};
+
 export interface SubjectStatsCollectionBuckets {
   wish: number;
   collect: number;
   doing: number;
   onHold: number;
   dropped: number;
+}
+
+export interface SubjectStatsCollectionPresence {
+  wish: boolean;
+  collect: boolean;
+  doing: boolean;
+  onHold: boolean;
+  dropped: boolean;
 }
 
 export type SubjectStatsCollectionStatus = 'wish' | 'collect' | 'doing' | 'on_hold' | 'dropped';
@@ -73,16 +85,19 @@ export interface SubjectStatsIntelligenceResult {
     rank: number;
     ratingTotal: number;
     ratingHistogram: SubjectStatsRatingHistogram;
+    ratingHistogramPresence?: SubjectStatsRatingHistogramPresence;
     collection: SubjectStatsCollectionBuckets;
+    collectionPresence?: SubjectStatsCollectionPresence;
   };
   rating: {
     state: SubjectStatsMetricState;
     population?: number;
     mean?: number;
     standardDeviation?: number;
-    distribution: Array<{ score: number; count: number; percentage?: number }>;
+    distribution: Array<{ score: number; count?: number; percentage?: number }>;
     formulas: {
       percentages: SubjectStatsFormulaDescriptor;
+      histogramMean: SubjectStatsFormulaDescriptor;
       populationStandardDeviation: SubjectStatsFormulaDescriptor;
     };
     conflicts?: SubjectStatsConflict[];
@@ -92,7 +107,7 @@ export interface SubjectStatsIntelligenceResult {
     total?: number;
     distribution: Array<{
       status: SubjectStatsCollectionStatus;
-      count: number;
+      count?: number;
       percentage?: number;
     }>;
     completionRate?: number;
@@ -113,6 +128,7 @@ export interface SubjectStatsIntelligenceResult {
     collectionPopulation?: number;
     formulasAttempted: number;
     formulasComplete: number;
+    formulasPartial: number;
     formulasNotComputable: number;
     formulasConflict: number;
   };
