@@ -188,6 +188,14 @@ export const CollectionSeriesCard: React.FC<CollectionSeriesCardProps> = ({
         </div>
       )}
 
+      {viewModel.presentation.groups.omitted > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+          系列组展示 {viewModel.presentation.groups.rendered}/
+          {viewModel.presentation.groups.available}，省略 {viewModel.presentation.groups.omitted} 个；
+          完整组计数仍见 coverage。
+        </div>
+      ) : null}
+
       {viewModel.ungrouped.length > 0 ? (
         <section>
           <div style={{ color: theme.accent, fontWeight: 700, fontSize: '13px' }}>

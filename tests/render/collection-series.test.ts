@@ -98,6 +98,27 @@ describe('collection-series renderer', () => {
     expect(rendered.template).toBe('collection-series');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
 
+    const sourceGroup = result.groups[0]!;
+    const denseResult = {
+      ...result,
+      groups: Array.from({ length: 9 }, (_, index) => ({
+        ...sourceGroup,
+        groupId: `series-${index + 1}`,
+      })),
+      coverage: {
+        ...result.coverage,
+        output: { ...result.coverage.output, returnedGroups: 9 },
+      },
+    };
+    const denseViewModel = buildCollectionSeriesViewModel(denseResult);
+    expect(denseViewModel.presentation.groups).toEqual({
+      available: 9,
+      rendered: 8,
+      omitted: 1,
+    });
+    const denseHtml = renderHtmlTemplate(denseViewModel, 'bangumi-dark', {}, 640);
+    expect(denseHtml).toContain('系列组展示 8/9，省略 1 个');
+
     const privateCache = new RendererLruCache<RenderResult>(2);
     const privateRenderService = new RenderService(undefined, privateCache);
     await privateRenderService.renderCard(viewModel, { width: 640 });
