@@ -42,6 +42,9 @@ Bangumi:
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
   cast <subjectId>
   person <personId>
+  activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
+           [--months 3|6|12] [--max-relations 1..120]
+           [--max-details 1..48] [--max-rows 1..60]
   staff <subjectId>
   calendar
   episodes <subjectId>
@@ -63,7 +66,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|overview|watch-order|cast|person|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
+  render subject|overview|watch-order|cast|person|activity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -121,6 +124,43 @@ function withoutOptions(args: string[], names: string[]): string[] {
     result.push(arg as string);
   }
   return result;
+}
+
+function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    personId: parsePositiveInteger(args[0], 'person id'),
+  };
+  const kind = takeOption(args, '--kind');
+  const media = takeOption(args, '--media');
+  const months = takeOption(args, '--months');
+  const maxRelations = takeOption(args, '--max-relations');
+  const maxDetails = takeOption(args, '--max-details');
+  const maxRows = takeOption(args, '--max-rows');
+  if (kind !== undefined) {
+    if (kind !== 'voice' && kind !== 'staff' && kind !== 'all') {
+      throw new StandaloneCliError('USAGE_ERROR: --kind must be voice, staff, or all.', 2);
+    }
+    input.kind = kind;
+  }
+  if (media !== undefined) {
+    if (media !== 'tv' && media !== 'anime' && media !== 'all') {
+      throw new StandaloneCliError('USAGE_ERROR: --media must be tv, anime, or all.', 2);
+    }
+    input.media = media;
+  }
+  if (months !== undefined) {
+    const parsed = parsePositiveInteger(months, 'months');
+    if (parsed !== 3 && parsed !== 6 && parsed !== 12) {
+      throw new StandaloneCliError('USAGE_ERROR: --months must be 3, 6, or 12.', 2);
+    }
+    input.windowMonths = parsed;
+  }
+  if (maxRelations !== undefined)
+    input.maxRelations = optionNumber(maxRelations, 'max-relations', true);
+  if (maxDetails !== undefined)
+    input.maxSubjectDetails = optionNumber(maxDetails, 'max-details', true);
+  if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
+  return input;
 }
 
 function optionNumber(
@@ -376,6 +416,15 @@ export class StandaloneCommandRegistry {
         value: await runTool(ctx, 'bangumi.get_person_profile', {
           personId: parsePositiveInteger(args[1], 'person id'),
         }),
+      };
+    }
+    if (command === 'activity') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_person_activity',
+          parsePersonActivityOptions(args.slice(1)),
+        ),
       };
     }
     if (command === 'staff') {
@@ -690,6 +739,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'person') {
       name = 'bangumi.render_person_profile';
       input = { personId: parsePositiveInteger(args[1], 'person id') };
+    } else if (kind === 'activity') {
+      name = 'bangumi.render_person_activity';
+      input = parsePersonActivityOptions(args.slice(1));
     } else if (kind === 'collection') {
       name = 'bangumi.render_collection_progress';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };

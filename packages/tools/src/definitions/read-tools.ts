@@ -8,6 +8,7 @@ import {
   EpisodeService,
   CharacterService,
   PersonService,
+  PersonActivityService,
   UserService,
   RevisionService,
   IndexReadService,
@@ -615,6 +616,64 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getPersonActivity = defineTool({
+    name: 'bangumi.get_person_activity',
+    description:
+      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月；达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算；不宣称历史增长、劳动时长或实际配音时间。',
+    input: z
+      .object({
+        personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+        kind: z
+          .enum(['voice', 'staff', 'all'])
+          .optional()
+          .describe('关系类型：voice 声优、staff 制作人员、all 两者；默认 voice'),
+        media: z
+          .enum(['anime', 'tv', 'all'])
+          .optional()
+          .describe('媒介范围：anime 全部动画、tv 可判断为 TV 的动画、all 全部媒介；默认 tv'),
+        windowMonths: z
+          .union([z.literal(3), z.literal(6), z.literal(12)])
+          .optional()
+          .describe('最近的日历月窗口，支持 3、6、12；默认 12'),
+        maxRelations: z
+          .number()
+          .int()
+          .min(1)
+          .max(120)
+          .optional()
+          .describe('最多读取的人物关系行数，默认 80'),
+        maxSubjectDetails: z
+          .number()
+          .int()
+          .min(1)
+          .max(48)
+          .optional()
+          .describe('最多读取的作品详情数，默认 32'),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(60)
+          .optional()
+          .describe('最多返回的 activity 行数，默认 40'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      return await new PersonActivityService(activeClient).getPersonActivity(input.personId, {
+        kind: input.kind,
+        media: input.media,
+        windowMonths: input.windowMonths,
+        maxRelations: input.maxRelations,
+        maxSubjectDetails: input.maxSubjectDetails,
+        maxRows: input.maxRows,
+      });
+    },
+  });
+
   const getUser = defineTool({
     name: 'bangumi.get_user',
     description: '获取 Bangumi 用户公开个人主页信息（昵称、签名、头像等）。',
@@ -1191,5 +1250,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCollectionBacklog,
     getCollectionSchedule,
     getCollectionDashboard,
+    getPersonActivity,
   ] as const;
 }

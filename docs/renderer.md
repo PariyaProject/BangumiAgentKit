@@ -60,7 +60,7 @@ The `TemplateRegistry` maps `RenderViewModel['template']` to React card template
 (`subject-card`, `subject-overview`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `collection-intelligence`, `collection-backlog`,
 `collection-schedule`, `collection-dashboard`, `calendar`,
-`revision-timeline`, and `person-profile`).
+`revision-timeline`, `person-profile`, and `person-activity`).
 It also includes `series-relations` for bounded Series / Watch-Order evidence.
 
 `collection-intelligence` is an image-free, authenticated companion card for
@@ -127,6 +127,21 @@ source/operation, pushdown versus local plan filters, matched/observed/returned/
 rendered coverage, warnings, and bounded-result limitations. It does not claim
 that an experimental or budget-bounded search enumerates the complete Bangumi
 database.
+
+The `person-activity` card is the image-free companion to
+`bangumi.get_person_activity`. It presents a bounded person-to-work activity
+window using official person relations plus bounded subject hydration. The
+window is assigned by `first_air_date` to calendar months, with explicit
+TV-platform, role-family, missing-date, detail-cap, and exclusion evidence.
+When a relation or detail budget is reached, selection is a deterministic
+even-spread sample over the official relation response order rather than an
+ID-ordered prefix; the card reports observed, selected, hydrated, and omitted
+IDs and marks the result partial. It preserves partial, unavailable, and
+not-computable states, reports the relation/detail/output budgets, and does not
+infer labor time, historical trend, popularity, income, or recommendations.
+Narrow layouts keep the summary and visible rows readable while reporting
+hidden rows separately, including the requested person ID when person detail
+hydration fails.
 
 All operations use structured `RendererError` types:
 

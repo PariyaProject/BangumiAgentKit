@@ -95,6 +95,69 @@ describe('Standalone discovery and raw tool playground', () => {
     );
   });
 
+  it('person activity commands preserve bounded semantic and render filters', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'complete' });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      [
+        'activity',
+        '10868',
+        '--kind',
+        'voice',
+        '--media',
+        'tv',
+        '--months',
+        '6',
+        '--max-relations',
+        '40',
+        '--max-details',
+        '20',
+        '--max-rows',
+        '12',
+      ],
+      context(host),
+    );
+    await registry.execute(
+      [
+        'render',
+        'activity',
+        '10868',
+        '--kind',
+        'staff',
+        '--media',
+        'anime',
+        '--months',
+        '3',
+        '--max-relations',
+        '18',
+      ],
+      context(host),
+    );
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_person_activity',
+      {
+        personId: 10868,
+        kind: 'voice',
+        media: 'tv',
+        windowMonths: 6,
+        maxRelations: 40,
+        maxSubjectDetails: 20,
+        maxRows: 12,
+      },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_person_activity',
+      { personId: 10868, kind: 'staff', media: 'anime', windowMonths: 3, maxRelations: 18 },
+      expect.anything(),
+    );
+  });
+
   it('PR-8B: collection intelligence commands route with bounded account input', async () => {
     const executeTool = vi.fn().mockResolvedValue({ state: 'complete' });
     const host = { executeTool } as unknown as StandaloneHost;

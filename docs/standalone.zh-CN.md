@@ -66,6 +66,9 @@ subject <id>
 overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 cast <subjectId>
+activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
+         [--months 3|6|12] [--max-relations 1..120]
+         [--max-details 1..48] [--max-rows 1..60]
 calendar
 episodes <subjectId>
 collection status <subjectId>
@@ -77,6 +80,14 @@ collection schedule [--max-items 1..200] [--max-rows 1..100]
 collection list
 collection set <subjectId> <wish|watching|watched|dropped|...>
 ```
+
+`activity` 将人物关系与有界作品详情组合成时间窗摘要。默认查询最近
+12 个日历月的 TV 动画配音关系；作品按官方 `first_air_date` 归月，主役/配角
+和职位只做保守分类，缺失日期、未知媒介、详情失败和各类上限都会在结构化
+结果中保留。达到关系或详情上限时，服务会在官方关系返回顺序上做确定性等距
+抽样，而不是按条目 ID 取前缀，并分别报告观察、选取、详情请求和省略的 ID 数量；
+此时状态为 `partial`。它描述当前官方关系的可观测覆盖，不推断实际工作时长、
+历史趋势、热度或推荐。
 
 认证和账号命令：
 
@@ -150,6 +161,9 @@ render subject <id>
 render overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 render watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 render cast <id>
+render activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
+                     [--months 3|6|12] [--max-relations 1..120]
+                     [--max-details 1..48] [--max-rows 1..60]
 render calendar
 render search <query>
 render collection <id>
