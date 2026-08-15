@@ -535,6 +535,72 @@
     }
   },
   {
+    "name": "bangumi.get_person_activity",
+    "description": "按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月，显式报告媒介筛选、缺日期、未知角色、详情失败和各项预算；不宣称历史增长、劳动时长或实际配音时间。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "kind": {
+          "description": "关系类型：voice 声优、staff 制作人员、all 两者；默认 voice",
+          "type": "string",
+          "enum": ["voice", "staff", "all"]
+        },
+        "media": {
+          "description": "媒介范围：anime 全部动画、tv 可判断为 TV 的动画、all 全部媒介；默认 tv",
+          "type": "string",
+          "enum": ["anime", "tv", "all"]
+        },
+        "windowMonths": {
+          "description": "最近的日历月窗口，支持 3、6、12；默认 12",
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 3
+            },
+            {
+              "type": "number",
+              "const": 6
+            },
+            {
+              "type": "number",
+              "const": 12
+            }
+          ]
+        },
+        "maxRelations": {
+          "description": "最多读取的人物关系行数，默认 80",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "maxSubjectDetails": {
+          "description": "最多读取的作品详情数，默认 32",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 48
+        },
+        "maxRows": {
+          "description": "最多返回的 activity 行数，默认 40",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      },
+      "required": ["personId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_person_profile",
     "description": "生成一个现实人物/声优/制作人员的结构化履历摘要：身份、媒介分布、原始职位/角色标签、去重作品/角色计数和受限关系明细。用于 Agent 一次回答“这个人参与过什么”；时间窗口、最近活动、工作量趋势和合作次数需要额外数据，本工具不会猜测。",
     "auth": "none",
@@ -1520,6 +1586,66 @@
           }
         }
       },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_person_activity",
+    "description": "生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算和来源限制可见；不显示或推断历史增长、劳动时长或实际配音时间。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["voice", "staff", "all"]
+        },
+        "media": {
+          "type": "string",
+          "enum": ["anime", "tv", "all"]
+        },
+        "windowMonths": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 3
+            },
+            {
+              "type": "number",
+              "const": 6
+            },
+            {
+              "type": "number",
+              "const": 12
+            }
+          ]
+        },
+        "maxRelations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "maxSubjectDetails": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 48
+        },
+        "maxRows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      },
+      "required": ["personId"],
       "additionalProperties": false
     }
   },
