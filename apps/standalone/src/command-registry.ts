@@ -61,6 +61,9 @@ Bangumi:
                     [--max-episodes 1..1000] [--status wish,doing,on_hold]
   collection schedule [--max-items 1..200] [--max-rows 1..100]
                       [--status wish,doing,done,on_hold,dropped]
+  collection series [--max-items 1..100] [--max-relation-subjects 1..36]
+                    [--max-relations-per-subject 1..96] [--max-groups 1..36]
+                    [--max-edges 1..144] [--status wish,doing,done,on_hold,dropped]
   collection list
   collection set <subjectId> <status>
 
@@ -70,7 +73,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
+  render subject|stats|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -355,6 +358,49 @@ function parseCollectionDashboardOptions(args: string[]): Record<string, unknown
   if (timeoutMs !== undefined) {
     input.maxDurationMs = optionNumber(timeoutMs, 'timeout-ms', true, 1000, 120000);
   }
+  if (statuses !== undefined) {
+    const values = statuses
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map(parseStatus);
+    if (values.length === 0) {
+      throw new StandaloneCliError('USAGE_ERROR: --status requires at least one status.', 2);
+    }
+    input.statuses = [...new Set(values)];
+  }
+  return input;
+}
+
+function parseCollectionSeriesOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  const maxItems = takeOption(args, '--max-items');
+  const maxRelationSubjects = takeOption(args, '--max-relation-subjects');
+  const maxRelationsPerSubject = takeOption(args, '--max-relations-per-subject');
+  const maxGroups = takeOption(args, '--max-groups');
+  const maxEdges = takeOption(args, '--max-edges');
+  const statuses = takeOption(args, '--status');
+  if (maxItems !== undefined) input.maxItems = optionNumber(maxItems, 'max-items', true, 1, 100);
+  if (maxRelationSubjects !== undefined) {
+    input.maxRelationSubjects = optionNumber(
+      maxRelationSubjects,
+      'max-relation-subjects',
+      true,
+      1,
+      36,
+    );
+  }
+  if (maxRelationsPerSubject !== undefined) {
+    input.maxRelationsPerSubject = optionNumber(
+      maxRelationsPerSubject,
+      'max-relations-per-subject',
+      true,
+      1,
+      96,
+    );
+  }
+  if (maxGroups !== undefined) input.maxGroups = optionNumber(maxGroups, 'max-groups', true, 1, 36);
+  if (maxEdges !== undefined) input.maxEdges = optionNumber(maxEdges, 'max-edges', true, 1, 144);
   if (statuses !== undefined) {
     const values = statuses
       .split(',')
@@ -742,6 +788,13 @@ export class StandaloneCommandRegistry {
         parseCollectionDashboardOptions(args),
       );
     }
+    if (subcommand === 'series' || subcommand === 'series-groups') {
+      return runTool(
+        ctx,
+        'bangumi.get_collection_series_groups',
+        parseCollectionSeriesOptions(args),
+      );
+    }
     if (subcommand === 'set') {
       return runTool(ctx, 'bangumi.update_collection', {
         subjectId: parsePositiveInteger(args[1], 'subject id'),
@@ -854,6 +907,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'collection-dashboard' || kind === 'dashboard') {
       name = 'bangumi.render_collection_dashboard';
       input = parseCollectionDashboardOptions(args);
+    } else if (kind === 'collection-series' || kind === 'series-groups') {
+      name = 'bangumi.render_collection_series_groups';
+      input = parseCollectionSeriesOptions(args);
     } else if (kind === 'calendar') {
       name = 'bangumi.render_calendar';
     } else if (kind === 'revision') {

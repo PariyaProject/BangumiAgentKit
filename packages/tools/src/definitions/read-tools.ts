@@ -17,6 +17,8 @@ import {
   CollectionBacklogService,
   CollectionScheduleService,
   CollectionDashboardService,
+  CollectionSeriesService,
+  COLLECTION_SERIES_LIMITS,
   EpisodeGuideService,
   resolveSubject,
   getSubjectCast,
@@ -1227,6 +1229,97 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCollectionSeriesGroups = defineTool({
+    name: 'bangumi.get_collection_series_groups',
+    description:
+      '获取当前绑定 Bangumi 账号收藏中的动画系列组：将当前收藏条目与官方 v0 直接关系按有界动画关系连通分量分组，保留原始关系标签、方向、冲突、排除关系、读取失败和覆盖边界。只接受当前账号，不读取评论，不执行写入；这不是官方 canonical watch order，也不跨账号、不使用社区/HTML/历史快照。',
+    input: z
+      .object({
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxItems)
+          .optional()
+          .describe('最多扫描当前账号收藏条目数，默认 100'),
+        maxRelationSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxRelationSubjects)
+          .optional()
+          .describe('最多读取关系的动画收藏根条目数，默认 24'),
+        maxRelationsPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxRelationsPerSubject)
+          .optional()
+          .describe('每个根条目最多保留的关系行数，默认 64'),
+        maxGroups: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxGroups)
+          .optional()
+          .describe('最多返回系列组数，默认 24'),
+        maxEdges: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_SERIES_LIMITS.maxEdges)
+          .optional()
+          .describe('最多返回关系边数，默认 96'),
+        statuses: z
+          .array(z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']))
+          .min(1)
+          .max(5)
+          .optional()
+          .describe('收藏状态过滤；不表示优先级，默认包含全部五种已知状态'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能获取收藏系列组。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能获取收藏系列组。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      return await new CollectionSeriesService(client).getCollectionSeriesGroups(username, {
+        maxItems: input.maxItems,
+        maxRelationSubjects: input.maxRelationSubjects,
+        maxRelationsPerSubject: input.maxRelationsPerSubject,
+        maxGroups: input.maxGroups,
+        maxEdges: input.maxEdges,
+        statuses: input.statuses,
+      });
+    },
+  });
+
   const listRevisions = defineTool({
     name: 'bangumi.list_revisions',
     description: '获取指定实体（条目、章节、角色、人物）的原始编辑修订历史列表。',
@@ -1362,6 +1455,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCollectionBacklog,
     getCollectionSchedule,
     getCollectionDashboard,
+    getCollectionSeriesGroups,
     getPersonActivity,
     getEpisodeGuide,
     getSubjectStatsIntelligenceTool,

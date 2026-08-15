@@ -28,6 +28,7 @@ export * from './services/collection-intelligence-service.js';
 export * from './services/collection-backlog-service.js';
 export * from './services/collection-schedule-service.js';
 export * from './services/collection-dashboard-service.js';
+export * from './services/collection-series-service.js';
 export * from './services/audit-service.js';
 export * from './services/calendar-service.js';
 

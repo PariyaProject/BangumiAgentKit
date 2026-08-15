@@ -7,6 +7,7 @@ import type {
   CollectionBacklogResult,
   CollectionScheduleResult,
   CollectionDashboardResult,
+  CollectionSeriesResult,
   RevisionIntelligenceResult,
   EpisodeGuideResult,
   PersonActivityProfile,
@@ -26,6 +27,7 @@ import type {
   CollectionBacklogViewModel,
   CollectionScheduleViewModel,
   CollectionDashboardViewModel,
+  CollectionSeriesViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   EpisodeGuideViewModel,
@@ -366,6 +368,85 @@ export function buildCollectionDashboardViewModel(
       state: hasOmissions ? 'partial' : 'complete',
       ...presentation,
     },
+  };
+}
+
+export function buildCollectionSeriesViewModel(
+  result: CollectionSeriesResult,
+  options: {
+    sourceLabel?: string;
+    maxGroups?: number;
+    maxItemsPerGroup?: number;
+    maxEdgesPerGroup?: number;
+    maxUngrouped?: number;
+  } = {},
+): CollectionSeriesViewModel {
+  const maxGroups = Math.min(10, Math.max(1, Math.trunc(options.maxGroups ?? 8)));
+  const maxItemsPerGroup = Math.min(10, Math.max(1, Math.trunc(options.maxItemsPerGroup ?? 8)));
+  const maxEdgesPerGroup = Math.min(16, Math.max(1, Math.trunc(options.maxEdgesPerGroup ?? 12)));
+  const maxUngrouped = Math.min(12, Math.max(0, Math.trunc(options.maxUngrouped ?? 8)));
+  const groups = result.groups.slice(0, maxGroups).map((group) => {
+    const items = group.items.slice(0, maxItemsPerGroup);
+    const edges = group.edges.slice(0, maxEdgesPerGroup);
+    return {
+      ...group,
+      items,
+      edges,
+      hiddenItemCount:
+        group.hiddenItemCount +
+        Math.max(0, group.items.length - items.length) +
+        Math.max(0, group.edges.length - edges.length),
+    };
+  });
+  const ungrouped = result.ungrouped.slice(0, maxUngrouped);
+  const renderedItems = groups.reduce((total, group) => total + group.items.length, 0);
+  const renderedEdges = groups.reduce((total, group) => total + group.edges.length, 0);
+  const availableGroups = result.groups.length + result.coverage.output.hiddenGroupCount;
+  const availableItems = Math.max(
+    result.summary.eligibleAnimeItems - result.summary.ungroupedItems,
+    result.summary.groupedItems,
+  );
+  const availableEdges = result.summary.relationEdges;
+
+  return {
+    template: 'collection-series',
+    version: 1,
+    state: result.state,
+    groups,
+    ungrouped,
+    summary: result.summary,
+    coverage: result.coverage,
+    excludedRelations: result.excludedRelations,
+    source: {
+      ...result.source,
+      label: options.sourceLabel || 'Bangumi v0 · 当前账号收藏系列关系',
+    },
+    evidence: result.evidence,
+    warnings: result.warnings,
+    limitations: result.limitations,
+    presentation: {
+      groups: {
+        available: availableGroups,
+        rendered: groups.length,
+        omitted: Math.max(0, availableGroups - groups.length),
+      },
+      items: {
+        available: availableItems,
+        rendered: renderedItems,
+        omitted: Math.max(0, availableItems - renderedItems),
+      },
+      edges: {
+        available: availableEdges,
+        rendered: renderedEdges,
+        omitted: Math.max(0, availableEdges - renderedEdges),
+      },
+      ungrouped: {
+        available: result.ungrouped.length,
+        rendered: ungrouped.length,
+        omitted: Math.max(0, result.ungrouped.length - ungrouped.length),
+      },
+    },
+    error: result.error,
   };
 }
 
