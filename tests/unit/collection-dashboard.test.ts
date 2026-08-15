@@ -161,6 +161,45 @@ describe('CollectionDashboardService', () => {
     expect(requests.filter((url) => url.pathname.endsWith('/collections')).length).toBe(3);
   });
 
+  it('keeps the hard paginator bound under short non-empty pages and maximum fan-out', async () => {
+    const requests: URL[] = [];
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      requests.push(url);
+      if (url.pathname === '/calendar') return response(calendarPayload());
+      if (url.pathname.endsWith('/episodes')) {
+        return response({
+          total: 1000,
+          limit: 100,
+          offset: Number(url.searchParams.get('offset') || 0),
+          data: [episodePayload().data[0]],
+        });
+      }
+      return response({
+        total: 1000,
+        limit: 50,
+        offset: Number(url.searchParams.get('offset') || 0),
+        data: [collectionRow()],
+      });
+    };
+
+    const result = await new CollectionDashboardService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionDashboard('bound-user', {
+      maxCollectionItems: 100,
+      maxSubjects: 1,
+      maxEpisodesPerSubject: 1000,
+      maxRows: 100,
+    });
+
+    expect(result.coverage.upstreamRequestsBound).toBe(35);
+    expect(result.coverage.upstreamAttemptsBound).toBe(105);
+    expect(requests.filter((url) => url.pathname.endsWith('/collections'))).toHaveLength(24);
+    expect(requests.filter((url) => url.pathname.endsWith('/episodes'))).toHaveLength(10);
+    expect(requests.filter((url) => url.pathname === '/calendar')).toHaveLength(1);
+  });
+
   it('keeps a failed section explicit while retaining successful sibling sections', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
