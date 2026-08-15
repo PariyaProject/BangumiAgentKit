@@ -47,6 +47,9 @@ Bangumi:
   episodes <subjectId>
   collection status <subjectId>
   collection intelligence [--max-items 1..200]
+  collection dashboard [--max-items 1..100] [--max-subjects 1..30]
+                      [--max-episodes 1..1000] [--max-rows 1..100]
+                      [--status wish,doing,on_hold]
   collection backlog [--max-items 1..100] [--max-subjects 1..30]
                     [--max-episodes 1..1000] [--status wish,doing,on_hold]
   collection schedule [--max-items 1..200] [--max-rows 1..100]
@@ -60,7 +63,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|overview|watch-order|cast|person|calendar|revision|search|collection|collection-backlog|collection-schedule <args> [--output <path>] [--force]
+  render subject|overview|watch-order|cast|person|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -201,6 +204,34 @@ function parseCollectionScheduleOptions(args: string[]): Record<string, unknown>
   const maxRows = takeOption(args, '--max-rows');
   const statuses = takeOption(args, '--status');
   if (maxItems !== undefined) input.maxCollectionItems = optionNumber(maxItems, 'max-items', true);
+  if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
+  if (statuses !== undefined) {
+    const values = statuses
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map(parseStatus);
+    if (values.length === 0) {
+      throw new StandaloneCliError('USAGE_ERROR: --status requires at least one status.', 2);
+    }
+    input.statuses = [...new Set(values)];
+  }
+  return input;
+}
+
+function parseCollectionDashboardOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  const maxItems = takeOption(args, '--max-items');
+  const maxSubjects = takeOption(args, '--max-subjects');
+  const maxEpisodes = takeOption(args, '--max-episodes');
+  const maxRows = takeOption(args, '--max-rows');
+  const statuses = takeOption(args, '--status');
+  if (maxItems !== undefined) input.maxCollectionItems = optionNumber(maxItems, 'max-items', true);
+  if (maxSubjects !== undefined)
+    input.maxSubjects = optionNumber(maxSubjects, 'max-subjects', true);
+  if (maxEpisodes !== undefined) {
+    input.maxEpisodesPerSubject = optionNumber(maxEpisodes, 'max-episodes', true);
+  }
   if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
   if (statuses !== undefined) {
     const values = statuses
@@ -548,6 +579,13 @@ export class StandaloneCommandRegistry {
     if (subcommand === 'schedule' || subcommand === 'airing') {
       return runTool(ctx, 'bangumi.get_collection_schedule', parseCollectionScheduleOptions(args));
     }
+    if (subcommand === 'dashboard' || subcommand === 'summary-dashboard') {
+      return runTool(
+        ctx,
+        'bangumi.get_collection_dashboard',
+        parseCollectionDashboardOptions(args),
+      );
+    }
     if (subcommand === 'set') {
       return runTool(ctx, 'bangumi.update_collection', {
         subjectId: parsePositiveInteger(args[1], 'subject id'),
@@ -645,6 +683,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'collection-schedule' || kind === 'schedule' || kind === 'airing') {
       name = 'bangumi.render_collection_schedule';
       input = parseCollectionScheduleOptions(args);
+    } else if (kind === 'collection-dashboard' || kind === 'dashboard') {
+      name = 'bangumi.render_collection_dashboard';
+      input = parseCollectionDashboardOptions(args);
     } else if (kind === 'calendar') {
       name = 'bangumi.render_calendar';
     } else if (kind === 'revision') {

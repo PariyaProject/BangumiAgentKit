@@ -462,11 +462,101 @@ function presentArtifact(value: Record<string, unknown>): string | undefined {
   return `Artifact: ${String(ref.id)}${dimensions}`;
 }
 
+function presentCollectionDashboard(value: Record<string, unknown>): string | undefined {
+  const data = value.data;
+  if (!data || typeof data !== 'object') return undefined;
+  const dataDetails = data as Record<string, unknown>;
+  const sections = dataDetails.sections;
+  if (!sections || typeof sections !== 'object') return undefined;
+
+  const sectionDetails = sections as Record<string, unknown>;
+  const lines = [
+    `收藏 Dashboard · 状态: ${humanField(value.state || 'unknown', 64)}`,
+    '说明：收藏概览、backlog 和七日播出计划是分别读取的私有只读区段；空结果不等于源为空。',
+  ];
+
+  const sectionLabel: Record<string, string> = {
+    intelligence: '收藏概览',
+    backlog: 'backlog',
+    schedule: '七日播出计划',
+  };
+  for (const name of ['intelligence', 'backlog', 'schedule']) {
+    const section = sectionDetails[name];
+    if (!section || typeof section !== 'object') continue;
+    const details = section as Record<string, unknown>;
+    lines.push(`${sectionLabel[name]} · 状态: ${humanField(details.state || 'unknown', 64)}`);
+    const error = details.error;
+    if (error && typeof error === 'object') {
+      const errorDetails = error as Record<string, unknown>;
+      lines.push(
+        `  错误: ${humanField(errorDetails.code || 'ERROR', 64)} · ${humanField(errorDetails.message || '请求不可用')}`,
+      );
+    }
+    const result = details.result;
+    if (!result || typeof result !== 'object') {
+      lines.push('  未生成该区段结果。');
+      continue;
+    }
+    const resultDetails = result as Record<string, unknown>;
+    const resultData = resultDetails.data;
+    const resultCoverage = resultDetails.coverage;
+    if (name === 'intelligence' && resultData && typeof resultData === 'object') {
+      const summary = resultData as Record<string, unknown>;
+      const backlog = summary.backlog as Record<string, unknown> | undefined;
+      const ratings = summary.ratings as Record<string, unknown> | undefined;
+      const tags = summary.tags as Record<string, unknown> | undefined;
+      lines.push(
+        `  backlog ${humanField(backlog?.total ?? '?', 32)} · 已评分 ${humanField(ratings?.rated ?? '?', 32)}${ratings?.average !== undefined ? ` · 平均 ${humanField(ratings.average, 32)}` : ''} · 标签 ${humanField(tags?.distinct ?? '?', 32)}`,
+      );
+    } else if (name === 'backlog' && resultData && typeof resultData === 'object') {
+      const summary = (resultData as Record<string, unknown>).summary as
+        Record<string, unknown> | undefined;
+      lines.push(
+        `  返回 ${humanField(summary?.returnedItems ?? '?', 32)} · 已知剩余 ${humanField(summary?.knownRemainingEpisodes ?? '?', 32)} 集 · 可计算 ${humanField(summary?.completeItems ?? '?', 32)} · 无法计算 ${humanField(summary?.notComputableItems ?? '?', 32)}`,
+      );
+    } else if (name === 'schedule' && resultData && typeof resultData === 'object') {
+      const summary = (resultData as Record<string, unknown>).summary as
+        Record<string, unknown> | undefined;
+      lines.push(
+        `  匹配播出 ${humanField(summary?.matchedRows ?? '?', 32)} · 收藏未匹配 ${humanField(summary?.unmatchedCollectionRows ?? '?', 32)} · 日历未匹配 ${humanField(summary?.unmatchedCalendarRows ?? '?', 32)}`,
+      );
+    }
+    if (resultCoverage && typeof resultCoverage === 'object') {
+      const coverage = resultCoverage as Record<string, unknown>;
+      lines.push(`  覆盖状态: ${humanField(coverage.state || 'unknown', 64)}`);
+    }
+  }
+
+  const coverage = value.coverage;
+  if (coverage && typeof coverage === 'object') {
+    const details = coverage as Record<string, unknown>;
+    lines.push(
+      `组合覆盖: 区段 ${humanField(details.sectionsSucceeded ?? '?', 32)}/${humanField(details.sectionsAttempted ?? '?', 32)} · 收藏行 ${humanField(details.collectionRowsObserved ?? '?', 32)}/${humanField(details.collectionRowsBound ?? '?', 32)} · episode 行 ${humanField(details.episodeRowsObserved ?? '?', 32)}/${humanField(details.episodeRowsRequested ?? '?', 32)}`,
+    );
+  }
+  const warnings = value.warnings;
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    lines.push('告警：');
+    for (const warning of warnings.slice(0, 3)) {
+      if (!warning || typeof warning !== 'object') continue;
+      const warningDetails = warning as Record<string, unknown>;
+      lines.push(
+        `- ${humanField(warningDetails.section || 'dashboard', 48)} · ${humanField(warningDetails.code || 'WARNING', 64)} · ${humanField(warningDetails.message || '')}`,
+      );
+    }
+    if (warnings.length > 3)
+      lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条告警未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 export function formatHuman(value: unknown): string {
   const safe = sanitizeOutput(value);
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const collectionDashboard = presentCollectionDashboard(safe as Record<string, unknown>);
+    if (collectionDashboard) return collectionDashboard;
     const collectionSchedule = presentCollectionSchedule(safe as Record<string, unknown>);
     if (collectionSchedule) return collectionSchedule;
     const collectionBacklog = presentCollectionBacklog(safe as Record<string, unknown>);

@@ -154,6 +154,9 @@ render calendar
 render search <query>
 render collection <id>
 render collection-intelligence [--max-items 1..200]
+render collection-dashboard [--max-items 1..100] [--max-subjects 1..30]
+                           [--max-episodes 1..1000] [--max-rows 1..100]
+                           [--status wish,doing,on_hold]
 render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
                          [--max-episodes 1..1000] [--status wish,doing,on_hold]
 render collection-schedule [--max-items 1..200] [--max-rows 1..100]
@@ -171,6 +174,14 @@ legacy `/calendar` 按 `subjectId` 对齐。它展示匹配条目的星期、官
 JSON 与人类输出中；未匹配会区分完整扫描未发现、状态筛选排除和源覆盖不完整，
 无效收藏 status 会单独标记为 partial，不会伪装成状态筛选排除；冲突进度不推导
 剩余集数。不读取评论，不读取 episode collection，不执行收藏写入。
+
+`collection dashboard` 一次组合当前绑定账号的收藏智能概览、动画 backlog
+和七日收藏播出计划。三个区段并行读取但保留各自的 official v0/legacy
+source、retrievedAt、coverage、partial/unavailable/auth/conflict/not_computable
+状态；组合结果另列收藏行、episode 行、日历行、输出行和并发上限。它不接受
+任意用户名，不读取评论，不推断历史趋势、口味或推荐，不进入共享缓存或公共
+ArtifactStore，也不执行收藏写入。文字输出会对三个区段分别给出状态和关键摘要；
+JSON 模式保留完整结构化证据。
 
 Renderer Tool 返回 `ArtifactRef`。`--output` 只接受用户明确指定的本地目标，
 Standalone 会从 ArtifactStore 校验 ID、mime、expiry、PNG signature 后复制

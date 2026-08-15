@@ -6,6 +6,7 @@ import type {
   CollectionIntelligenceResult,
   CollectionBacklogResult,
   CollectionScheduleResult,
+  CollectionDashboardResult,
   RevisionIntelligenceResult,
   PersonActivityProfile,
   SubjectSearchResult,
@@ -20,6 +21,7 @@ import type {
   CollectionIntelligenceViewModel,
   CollectionBacklogViewModel,
   CollectionScheduleViewModel,
+  CollectionDashboardViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SearchItemViewModel,
@@ -264,6 +266,44 @@ export function buildCollectionScheduleViewModel(
     warnings: result.warnings,
     limitations: result.limitations,
     error: result.error,
+  };
+}
+
+export function buildCollectionDashboardViewModel(
+  result: CollectionDashboardResult,
+): CollectionDashboardViewModel {
+  const intelligence = result.data.sections.intelligence;
+  const backlog = result.data.sections.backlog;
+  const schedule = result.data.sections.schedule;
+
+  return {
+    template: 'collection-dashboard',
+    version: 1,
+    state: result.state,
+    sections: {
+      intelligence: {
+        state: intelligence.state,
+        result: intelligence.result
+          ? buildCollectionIntelligenceViewModel(intelligence.result)
+          : undefined,
+        error: intelligence.error,
+      },
+      backlog: {
+        state: backlog.state,
+        result: backlog.result ? buildCollectionBacklogViewModel(backlog.result) : undefined,
+        error: backlog.error,
+      },
+      schedule: {
+        state: schedule.state,
+        result: schedule.result ? buildCollectionScheduleViewModel(schedule.result) : undefined,
+        error: schedule.error,
+      },
+    },
+    coverage: result.coverage,
+    source: result.source,
+    evidence: result.evidence,
+    warnings: result.warnings,
+    limitations: result.limitations,
   };
 }
 
