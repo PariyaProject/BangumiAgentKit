@@ -196,6 +196,75 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
   return lines.join('\n');
 }
 
+function presentEpisodeGuide(value: Record<string, unknown>): string | undefined {
+  if (typeof value.subjectId !== 'number' || !Array.isArray(value.items)) return undefined;
+  const summary = value.summary;
+  const coverage = value.coverage;
+  if (!summary || typeof summary !== 'object' || !coverage || typeof coverage !== 'object') {
+    return undefined;
+  }
+  const summaryDetails = summary as Record<string, unknown>;
+  const coverageDetails = coverage as Record<string, unknown>;
+  const subject = value.subject && typeof value.subject === 'object' ? value.subject : undefined;
+  const subjectDetails = subject as Record<string, unknown> | undefined;
+  const lines = [
+    `章节指南 · 状态: ${humanField(value.state || 'unknown', 64)} · ${humanField(subjectDetails?.nameCn || subjectDetails?.name || `条目 ${value.subjectId}`)}`,
+    `摘要: 返回 ${humanField(summaryDetails.returned ?? '?', 32)} · 观察 ${humanField(coverageDetails.observedRows ?? '?', 32)} · 总数 ${humanField(coverageDetails.totalKind === 'exact' ? (coverageDetails.sourceTotal ?? '?') : '未知', 32)} · 日期 ${humanField(summaryDetails.withAirdate ?? '?', 32)} · 时长 ${humanField(summaryDetails.withDuration ?? '?', 32)}`,
+    `覆盖: ${humanField(coverageDetails.returnedRows ?? '?', 32)}/${humanField(coverageDetails.sourceTotal ?? '?', 32)} 返回 · ${coverageDetails.truncated ? '来源有界' : '来源未显示截断'}`,
+    '说明：章节顺序是按类别、ep/sort 和 ID 的确定性排序，不代表官方观看顺序；空结果不证明没有后续内容。',
+  ];
+  const items = value.items as unknown[];
+  if (items.length === 0) {
+    lines.push('章节: 没有可展示的章节。');
+  } else {
+    for (const [index, candidate] of items.slice(0, 12).entries()) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const item = candidate as Record<string, unknown>;
+      const number =
+        item.ep !== undefined
+          ? `EP ${item.ep}`
+          : item.sort !== undefined
+            ? `#${item.sort}`
+            : `ID ${item.id}`;
+      const title = humanField(item.nameCn || item.name || `章节 ${item.id}`);
+      const metadata = [
+        item.airdate ? `首播 ${humanField(item.airdate, 32)}` : '首播未知',
+        item.duration ? `时长 ${humanField(item.duration, 32)}` : '时长未知',
+        item.discussionCount !== undefined
+          ? `讨论 ${humanField(item.discussionCount, 32)}`
+          : '讨论未知',
+      ].join(' · ');
+      lines.push(`${index + 1}. ${number} · ${title}`);
+      lines.push(`   ${metadata}`);
+    }
+    if (items.length > 12) lines.push(`另有 ${humanField(items.length - 12, 32)} 条章节未展开。`);
+  }
+  if (coverageDetails.renderedOmitted) {
+    lines.push(`渲染器省略: ${humanField(coverageDetails.renderedOmitted, 32)} 条已返回章节。`);
+  }
+  const missingFields = coverageDetails.missingFields;
+  if (missingFields && typeof missingFields === 'object') {
+    const fields = Object.entries(missingFields as Record<string, unknown>)
+      .map(([field, count]) => `${field} ${count}`)
+      .join('、');
+    if (fields) lines.push(`缺失字段: ${humanField(fields, 220)}`);
+  }
+  const warnings = value.warnings;
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    lines.push('告警：');
+    for (const warning of warnings.slice(0, 3)) {
+      if (!warning || typeof warning !== 'object') continue;
+      const details = warning as Record<string, unknown>;
+      lines.push(
+        `- ${humanField(details.code || 'WARNING', 64)} · ${humanField(details.message || '')}`,
+      );
+    }
+    if (warnings.length > 3)
+      lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条告警未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentCollectionBacklog(value: Record<string, unknown>): string | undefined {
   const data = value.data;
   if (!data || typeof data !== 'object') return undefined;
@@ -629,6 +698,8 @@ export function formatHuman(value: unknown): string {
     if (collectionSchedule) return collectionSchedule;
     const collectionBacklog = presentCollectionBacklog(safe as Record<string, unknown>);
     if (collectionBacklog) return collectionBacklog;
+    const episodeGuide = presentEpisodeGuide(safe as Record<string, unknown>);
+    if (episodeGuide) return episodeGuide;
     const discovery = presentDiscovery(safe as Record<string, unknown>);
     if (discovery) return discovery;
     const search = presentSearch(safe as Record<string, unknown>);

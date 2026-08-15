@@ -48,6 +48,8 @@ Bangumi:
   staff <subjectId>
   calendar
   episodes <subjectId>
+  episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
+                [--max-episodes 1..200] [--no-descriptions]
   collection status <subjectId>
   collection intelligence [--max-items 1..200]
   collection dashboard [--max-items 1..100] [--max-subjects 1..30]
@@ -66,7 +68,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|overview|watch-order|cast|person|activity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
+  render subject|overview|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -160,6 +162,29 @@ function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
   if (maxDetails !== undefined)
     input.maxSubjectDetails = optionNumber(maxDetails, 'max-details', true);
   if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
+  return input;
+}
+
+function parseEpisodeGuideOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    subjectId: parsePositiveInteger(args[0], 'subject id'),
+  };
+  const category = takeOption(args, '--category');
+  const maxEpisodes = takeOption(args, '--max-episodes');
+  if (category !== undefined) {
+    const categories = ['all', 'main', 'sp', 'op', 'ed', 'pv', 'mad', 'other'];
+    if (!categories.includes(category)) {
+      throw new StandaloneCliError(
+        'USAGE_ERROR: --category must be all, main, sp, op, ed, pv, mad, or other.',
+        2,
+      );
+    }
+    input.category = category;
+  }
+  if (maxEpisodes !== undefined) {
+    input.maxEpisodes = optionNumber(maxEpisodes, 'max-episodes', true, 1, 200);
+  }
+  if (args.includes('--no-descriptions')) input.includeDescriptions = false;
   return input;
 }
 
@@ -440,6 +465,15 @@ export class StandaloneCommandRegistry {
         value: await runTool(ctx, 'bangumi.get_episodes', {
           subjectId: parsePositiveInteger(args[1], 'subject id'),
         }),
+      };
+    }
+    if (command === 'episode-guide') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_episode_guide',
+          parseEpisodeGuideOptions(args.slice(1)),
+        ),
       };
     }
     if (command === 'collection') return { value: await this.collection(args.slice(1), ctx) };
@@ -742,6 +776,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'activity') {
       name = 'bangumi.render_person_activity';
       input = parsePersonActivityOptions(args.slice(1));
+    } else if (kind === 'episode-guide' || kind === 'episodes-guide') {
+      name = 'bangumi.render_episode_guide';
+      input = parseEpisodeGuideOptions(args.slice(1));
     } else if (kind === 'collection') {
       name = 'bangumi.render_collection_progress';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };

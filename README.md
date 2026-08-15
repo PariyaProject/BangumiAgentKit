@@ -18,8 +18,8 @@ paths have independent smoke tests. No v0.1.0 tag or release has been created.
 
 - Standalone local console with interactive REPL, non-interactive CLI, JSON
   output, profiles, raw ToolRegistry playground, and `pnpm self-test`.
-- Semantic search, subjects, cast, calendar, episodes, bounded collection
-  intelligence, auth, and renderer presentation tools.
+- Semantic search, subjects, cast, calendar, episodes, bounded episode guides,
+  collection intelligence, auth, and renderer presentation tools.
 - OAuth account binding with encrypted credentials, active-account switching,
   and principal isolation.
 - SQLite by default, PostgreSQL compatibility, migrations, audit events, and
@@ -57,6 +57,7 @@ pnpm bak -- search "少女终末旅行"
 pnpm bak -- --json status
 pnpm bak -- tool describe bangumi.search_subjects
 pnpm bak -- tool call bangumi.search_subjects '{"query":"少女终末旅行"}'
+pnpm bak -- episode-guide 218707 --max-episodes 24
 ```
 
 Profiles share one SQLite database but resolve to different trusted local
@@ -72,7 +73,14 @@ PNG rendering is optional:
 ```bash
 pnpm renderer:install
 pnpm bak -- render subject 218707 --output "$HOME/Desktop/bangumi.png"
+pnpm bak -- render episode-guide 218707 --output "$HOME/Desktop/episode-guide.png"
 ```
+
+`episode-guide` reads one bounded page from the official v0 subject and episode
+endpoints, then reports category, ordering, field coverage, duplicates,
+truncation, and source limitations. It does not infer watch order, progress, or
+unobserved episodes. Use `--category main|sp|op|ed|pv|mad|other` to narrow the
+official episode type and `--no-descriptions` to omit bounded descriptions.
 
 ## Quick Start: Claude Code MCP
 

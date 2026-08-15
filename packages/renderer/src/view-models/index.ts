@@ -717,6 +717,27 @@ export interface RevisionTimelineViewModel {
   }>;
 }
 
+export interface EpisodeGuideViewModel {
+  template: 'episode-guide';
+  version: 1;
+  subjectId: number;
+  state: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideState;
+  subject?: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['subject'];
+  filters: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['filters'];
+  items: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideItem[];
+  summary: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['summary'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['coverage'] & {
+    renderedRows: number;
+    renderedOmitted: number;
+  };
+  capabilityStates: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['capabilityStates'];
+  source: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['evidence'];
+  limitations: string[];
+  warnings: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['warnings'];
+  error?: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['error'];
+}
+
 export type SubjectOverviewState = 'complete' | 'partial' | 'unavailable' | 'not_found';
 export type SubjectOverviewSectionState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
 
@@ -817,6 +838,7 @@ export type RenderViewModel =
   | CollectionDashboardViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
+  | EpisodeGuideViewModel
   | PersonProfileViewModel
   | PersonActivityViewModel
   | SubjectOverviewViewModel;
