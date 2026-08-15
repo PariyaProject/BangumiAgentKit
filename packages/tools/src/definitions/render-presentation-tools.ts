@@ -33,6 +33,7 @@ import {
   buildDiscoveryResultsViewModel,
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
+  buildSubjectComparisonViewModel,
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
   buildCollectionScheduleViewModel,
@@ -42,6 +43,7 @@ import {
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
+import { getSubjectComparison } from '../subject-comparison.js';
 
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
@@ -555,6 +557,63 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectComparison = defineTool({
+    name: 'bangumi.render_subject_comparison',
+    description:
+      '生成两个已知 Bangumi 条目的证据型并列比较图片卡片 Artifact。卡片显示身份、日期、话数、官方评分/排名/评分人数/收藏总数、差值方向、各区段状态、来源边界和未知值；差值不等于推荐或胜负，渲染器不读取网络资产。',
+    input: z
+      .object({
+        subjectIds: z
+          .array(z.number().int().positive())
+          .length(2)
+          .refine((subjectIds) => subjectIds[0] !== subjectIds[1], {
+            message: 'subjectIds 必须包含两个不同的条目 ID',
+          })
+          .describe('两个不同的 Bangumi 条目 ID，顺序决定差值方向'),
+        maxCast: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe('每个条目的角色读取上限，默认 4'),
+        maxStaff: z
+          .number()
+          .int()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('每个条目的职员读取上限，默认 12'),
+        maxRelations: z
+          .number()
+          .int()
+          .min(1)
+          .max(32)
+          .optional()
+          .describe('每个条目的关联条目读取上限，默认 8'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.executionSession?.client || deps?.publicHttpClient;
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const result = await getSubjectComparison(
+        input.subjectIds,
+        {
+          maxCast: input.maxCast,
+          maxStaff: input.maxStaff,
+          maxRelations: input.maxRelations,
+        },
+        { client, providerRegistry: deps?.providerRegistry },
+      );
+      return await executeRenderAndSave(buildSubjectComparisonViewModel(result));
+    },
+  });
+
   const renderCollectionIntelligence = defineTool({
     name: 'bangumi.render_collection_intelligence',
     description:
@@ -858,6 +917,7 @@ export function createRenderPresentationTools(
     renderRevisionTimeline,
     renderEpisodeGuide,
     renderSubjectOverview,
+    renderSubjectComparison,
     renderCollectionIntelligence,
     renderCollectionBacklog,
     renderCollectionSchedule,

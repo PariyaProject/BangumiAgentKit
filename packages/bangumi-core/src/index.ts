@@ -8,6 +8,7 @@ export * from './models/revision.js';
 export * from './models/domain-index.js';
 export * from './models/calendar.js';
 export * from './models/subject-overview.js';
+export * from './models/subject-comparison.js';
 export * from './models/person-activity.js';
 
 export * from './services/subject-service.js';

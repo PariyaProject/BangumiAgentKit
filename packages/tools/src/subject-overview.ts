@@ -8,8 +8,11 @@ import {
   type SubjectOverviewCastItem,
   type SubjectOverviewEvidence,
   type SubjectOverviewResult,
+  type SubjectOverviewConflictEvidence,
+  type SubjectOverviewConflictSource,
   type SubjectOverviewSectionCoverage,
   type SubjectOverviewSectionState,
+  type SubjectOverviewStatsConflict,
   type SubjectOverviewStats,
   type SubjectOverviewWarning,
   type SubjectStaffGroup,
@@ -104,6 +107,68 @@ function mapStats(data: SubjectStatsData): SubjectOverviewStats {
     ratingHistogram: { ...data.ratingHistogram },
     collection: { ...data.collection },
   };
+}
+
+function mapConflictSource(source: {
+  class: string;
+  provider: string;
+  operation?: string;
+  version?: string;
+  experimental?: boolean;
+}): SubjectOverviewConflictSource {
+  return {
+    class: source.class,
+    provider: source.provider,
+    ...(source.operation ? { operation: source.operation } : {}),
+    ...(source.version ? { version: source.version } : {}),
+    ...(source.experimental === undefined ? {} : { experimental: source.experimental }),
+  };
+}
+
+function mapConflictEvidence(ref: {
+  source: {
+    class: string;
+    provider: string;
+    operation?: string;
+    version?: string;
+    experimental?: boolean;
+  };
+  retrievedAt: string;
+  entity?: { type: string; id: string | number };
+  fieldPath?: string;
+  freshness?: { state: string; expiresAt?: string; sourceAgeMs?: number };
+  authScope?: string;
+  confidence?: string;
+  formula?: string;
+}): SubjectOverviewConflictEvidence {
+  return {
+    source: mapConflictSource(ref.source),
+    retrievedAt: ref.retrievedAt,
+    ...(ref.entity ? { entity: { ...ref.entity } } : {}),
+    ...(ref.fieldPath ? { fieldPath: ref.fieldPath } : {}),
+    ...(ref.freshness ? { freshness: { ...ref.freshness } } : {}),
+    ...(ref.authScope ? { authScope: ref.authScope } : {}),
+    ...(ref.confidence ? { confidence: ref.confidence } : {}),
+    ...(ref.formula ? { formula: ref.formula } : {}),
+  };
+}
+
+function mapProviderConflicts(
+  result: CapabilityResult<SubjectStatsData>,
+): SubjectOverviewStatsConflict[] | undefined {
+  if (!result.conflicts || result.conflicts.length === 0) return undefined;
+  return result.conflicts.map((conflict) => ({
+    state: 'conflict' as const,
+    reason: conflict.reason,
+    ...(conflict.resolution ? { resolution: conflict.resolution } : {}),
+    candidates: conflict.candidates.map((candidate) => ({
+      source: mapConflictSource(candidate.source),
+      value: candidate.value,
+      ...(candidate.evidence
+        ? { evidence: candidate.evidence.map((ref) => mapConflictEvidence(ref)) }
+        : {}),
+    })),
+  }));
 }
 
 function mapEvidence(result: CapabilityResult<SubjectStatsData>): SubjectOverviewEvidence[] {
@@ -351,15 +416,25 @@ export async function getSubjectOverview(
   if (statsResult.status === 'fulfilled' && statsResult.value) {
     const providerResult = statsResult.value.value as CapabilityResult<SubjectStatsData>;
     const state = mapProviderState(providerResult.state, Boolean(providerResult.data));
+    const conflicts = mapProviderConflicts(providerResult);
     stats = {
       state,
       data: providerResult.data ? mapStats(providerResult.data) : undefined,
       coverage: coverage(state, providerResult.data ? 1 : 0, providerResult.data ? 1 : 0),
+      ...(conflicts ? { conflicts } : {}),
     };
     evidence.push(
       ...statsEvidence(providerResult, statsRequest!.attemptedAt, statsResult.value.retrievedAt),
     );
     warnings.push(...mapProviderWarnings(providerResult));
+    if (conflicts && !providerResult.warnings?.length) {
+      warnings.push({
+        code: 'SUBJECT_STATS_CONFLICT',
+        state: 'partial',
+        section: 'stats',
+        message: `${conflicts.length} 个官方统计冲突保留候选值，未选择单一真值。`,
+      });
+    }
     if (providerStateSucceeded(providerResult.state)) successfulSections += 1;
     if (state === 'unavailable' && !providerResult.warnings?.length) {
       warnings.push({

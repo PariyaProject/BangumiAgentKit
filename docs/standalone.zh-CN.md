@@ -65,6 +65,7 @@ principal、账号绑定、PendingAction 和审计事件仍然相互隔离。
 search <query> [--type anime] [--limit 5]
 subject <id>
 overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 cast <subjectId>
 activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
@@ -162,6 +163,7 @@ auth、scope、confirmation、audit 和 safe error policy；它不会直接调�
 ```text
 render subject <id>
 render overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+render compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 render watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 render cast <id>
 render activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
@@ -182,6 +184,14 @@ render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
 render collection-schedule [--max-items 1..200] [--max-rows 1..100]
                            [--status wish,doing,done,on_hold,dropped]
 ```
+
+`compare` 严格读取两个不同的已知条目 ID，并按输入顺序展示身份、日期、平台、报告话数、
+官方评分/排名/评分人数/收藏总数及 `B − A` 数值差；多余 ID、未知选项、孤立值和重复上限
+选项都会拒绝。评分差值规范化为 1 位小数，话数、排名和人数差值规范化为整数，非有限差值
+保持不可计算。每个条目的区段状态、官方 v0 与 derived-s7 证据通道、请求覆盖、截断、告警和
+限制分别保留；缺失值保持未知，差值不代表推荐、胜负或观看顺序。人类输出有行数、字符数和
+UTF-8 字节数上限；JSON 模式保留完整结构。比较卡片不解析图片资产，也不读取评论、社区历史
+或 episode 行。
 
 `episode-guide` 将官方 v0 的 subject 与 episode 页面组合成一个有界章节视图：
 按正篇、SP、OP、ED、PV、MAD 和其他类型分类，公开 `ep`/`sort` 的确定性排序，

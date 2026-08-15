@@ -308,6 +308,206 @@ function presentEpisodeGuide(value: Record<string, unknown>): string | undefined
   return boundHumanLines(lines);
 }
 
+function comparisonRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function comparisonStateLabel(value: unknown): string {
+  const labels: Record<string, string> = {
+    complete: '完整',
+    partial: '部分',
+    unavailable: '不可用',
+    not_found: '未找到',
+    not_computable: '不可计算',
+    unknown: '未知',
+    conflict: '冲突',
+  };
+  return labels[String(value)] || String(value || '未知');
+}
+
+function comparisonSubjectTitle(subject: Record<string, unknown>): string {
+  const details = comparisonRecord(subject.subject);
+  return String(details?.nameCn || details?.name || `条目 ${subject.subjectId || '?'}`);
+}
+
+function comparisonMetricValue(metric: Record<string, unknown>, index: number): string {
+  const values = Array.isArray(metric.values) ? metric.values : [];
+  const value = values[index] === null || values[index] === undefined ? '未知' : values[index];
+  const conflicts = Array.isArray(metric.conflicts) ? metric.conflicts : [];
+  const conflict = conflicts
+    .map(comparisonRecord)
+    .find((item) => item?.side === (index === 0 ? 'A' : 'B'));
+  if (!conflict) return humanField(value, 120);
+  const labels = [
+    conflict.statsValue === undefined ? undefined : `统计 ${humanField(conflict.statsValue, 48)}`,
+    conflict.subjectValue === undefined
+      ? undefined
+      : `详情 ${humanField(conflict.subjectValue, 48)}`,
+  ];
+  const candidates = Array.isArray(conflict.candidates)
+    ? conflict.candidates
+        .map(comparisonRecord)
+        .filter((candidate): candidate is Record<string, unknown> => Boolean(candidate))
+        .map((candidate) => {
+          const source = comparisonRecord(candidate.source);
+          const candidateValue =
+            candidate.metricValue !== undefined
+              ? candidate.metricValue
+              : typeof candidate.value === 'number'
+                ? candidate.value
+                : '未知';
+          return `${humanField(source?.class || 'source', 48)}/${humanField(source?.provider || '?', 48)}=${humanField(candidateValue, 48)}`;
+        })
+    : [];
+  if (candidates.length > 0) labels.push(`候选 ${candidates.join('；')}`);
+  return labels.filter((label): label is string => Boolean(label)).join(' / ') || '冲突候选未知';
+}
+
+function comparisonDeltaValue(metric: Record<string, unknown>): string {
+  const state = String(metric.state || 'unknown');
+  if (state === 'conflict') return '冲突，不计算';
+  if (metric.delta === null || metric.delta === undefined) return '不可计算';
+  const delta = Number(metric.delta);
+  if (!Number.isFinite(delta)) return '不可计算';
+  return delta > 0 ? `+${humanField(delta, 48)}` : humanField(delta, 48);
+}
+
+function presentSubjectComparison(value: Record<string, unknown>): string | undefined {
+  const subjectIds = value.subjectIds;
+  const subjects = value.subjects;
+  const metrics = value.metrics;
+  if (
+    !Array.isArray(subjectIds) ||
+    subjectIds.length !== 2 ||
+    !Array.isArray(subjects) ||
+    subjects.length !== 2 ||
+    !Array.isArray(metrics)
+  ) {
+    return undefined;
+  }
+
+  const coverage = comparisonRecord(value.coverage);
+  const lines = [
+    `条目并列比较 · 状态: ${comparisonStateLabel(value.state)} · B−A · 不生成推荐或胜负结论`,
+    `输入条目: ${humanField(subjectIds[0], 32)} 与 ${humanField(subjectIds[1], 32)} · 读取上限：2 个条目`,
+  ];
+
+  for (const [index, rawSubject] of subjects.entries()) {
+    const subject = comparisonRecord(rawSubject);
+    if (!subject) continue;
+    const identity = comparisonRecord(subject.subject);
+    const sections = comparisonRecord(subject.sections);
+    const subjectCoverage = comparisonRecord(subject.coverage);
+    const limits = comparisonRecord(subjectCoverage?.limits);
+    const title = humanField(comparisonSubjectTitle(subject), 240);
+    const alternateTitle = identity?.nameCn && identity?.name ? ` / ${identity.name}` : '';
+    lines.push(
+      `${index === 0 ? 'A' : 'B'} · ${title}${humanField(alternateTitle, 180)} · 条目 ${humanField(subject.subjectId, 32)}`,
+    );
+    lines.push(
+      `  类型 ${humanField(identity?.type || '未知', 32)} · 日期 ${humanField(identity?.date || '未知', 32)} · 平台 ${humanField(identity?.platform || '未知', 48)}`,
+    );
+    lines.push(
+      `  话数 ${humanField(identity?.episodesReported ?? '未知', 32)}/${humanField(identity?.totalEpisodesReported ?? '未知', 32)} · 状态 ${comparisonStateLabel(subject.state)}`,
+    );
+    if (sections) {
+      lines.push(
+        `  区段：统计 ${comparisonStateLabel(sections.stats)} · 角色 ${comparisonStateLabel(sections.cast)} · 职员 ${comparisonStateLabel(sections.staff)} · 关联 ${comparisonStateLabel(sections.relations)}`,
+      );
+    }
+    if (subjectCoverage) {
+      const truncated = Array.isArray(subjectCoverage.truncatedSections)
+        ? subjectCoverage.truncatedSections
+        : [];
+      lines.push(
+        `  覆盖：请求 ${humanField(subjectCoverage.sourceRequestsSucceeded ?? '?', 32)}/${humanField(subjectCoverage.sourceRequestsAttempted ?? '?', 32)} 成功 · 区段完整 ${humanField(subjectCoverage.sectionsComplete ?? '?', 32)} · 部分 ${humanField(subjectCoverage.sectionsPartial ?? '?', 32)} · 不可用 ${humanField(subjectCoverage.sectionsUnavailable ?? '?', 32)} · 不可计算 ${humanField(subjectCoverage.sectionsNotComputable ?? '?', 32)}${truncated.length ? ` · 截断 ${humanField(truncated.join('、'), 120)}` : ''}`,
+      );
+    }
+    if (limits) {
+      lines.push(
+        `  区段上限：角色 ${humanField(limits.maxCast ?? '?', 32)} · 职员 ${humanField(limits.maxStaff ?? '?', 32)} · 关联 ${humanField(limits.maxRelations ?? '?', 32)}`,
+      );
+    }
+    const warnings = Array.isArray(subject.warnings) ? subject.warnings : [];
+    for (const warning of warnings.slice(0, 2)) {
+      const details = comparisonRecord(warning);
+      if (details) {
+        lines.push(
+          `  告警：${humanField(details.code || 'WARNING', 64)} · ${humanField(details.message || '')}`,
+        );
+      }
+    }
+    if (warnings.length > 2)
+      lines.push(`  另有 ${humanField(warnings.length - 2, 32)} 条条目告警未展开。`);
+    const limitations = Array.isArray(subject.limitations) ? subject.limitations : [];
+    for (const limitation of limitations.slice(0, 2)) {
+      lines.push(`  限制：${humanField(limitation)}`);
+    }
+    if (limitations.length > 2)
+      lines.push(`  另有 ${humanField(limitations.length - 2, 32)} 条条目限制未展开。`);
+  }
+
+  lines.push('比较字段：');
+  for (const rawMetric of metrics.slice(0, 12)) {
+    const metric = comparisonRecord(rawMetric);
+    if (!metric) continue;
+    const values = [comparisonMetricValue(metric, 0), comparisonMetricValue(metric, 1)];
+    lines.push(
+      `- ${humanField(metric.label || metric.key || '字段', 96)}：A ${values[0]} · B ${values[1]} · B−A ${comparisonDeltaValue(metric)}${metric.deltaPrecision !== undefined ? `（精度 ${humanField(metric.deltaPrecision, 16)} 位）` : ''}`,
+    );
+  }
+  if (metrics.length > 12)
+    lines.push(`另有 ${humanField(metrics.length - 12, 32)} 个比较字段未展开。`);
+
+  if (coverage) {
+    lines.push(
+      `组合覆盖：身份已读取 ${humanField(coverage.returnedSubjects ?? '?', 32)}/${humanField(coverage.requestedSubjects ?? '?', 32)} · 完整 ${humanField(coverage.subjectsComplete ?? '?', 32)} · 部分 ${humanField(coverage.subjectsPartial ?? '?', 32)} · 不可用 ${humanField(coverage.subjectsUnavailable ?? '?', 32)} · 未找到 ${humanField(coverage.subjectsNotFound ?? '?', 32)}`,
+    );
+    const limits = comparisonRecord(coverage.limits);
+    if (limits) {
+      lines.push(
+        `组合上限：条目 ${humanField(limits.maxSubjects ?? '?', 32)} · 角色 ${humanField(limits.maxCast ?? '?', 32)} · 职员 ${humanField(limits.maxStaff ?? '?', 32)} · 关联 ${humanField(limits.maxRelations ?? '?', 32)}`,
+      );
+    }
+  }
+
+  const source = comparisonRecord(value.source);
+  for (const key of ['official', 'derived']) {
+    const channel = comparisonRecord(source?.[key]);
+    if (!channel) continue;
+    const operations = Array.isArray(channel.operations) ? channel.operations : [];
+    lines.push(
+      `来源 ${key === 'official' ? 'official-v0' : 'derived-s7'}：${humanField(operations.join(' + ') || '未记录', 220)}${channel.retrievedAt ? ` · 获取于 ${humanField(channel.retrievedAt, 48)}` : ''}`,
+    );
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('组合告警：');
+    for (const warning of warnings.slice(0, 3)) {
+      const details = comparisonRecord(warning);
+      if (details) {
+        lines.push(
+          `- ${humanField(details.code || 'WARNING', 64)} · ${humanField(details.message || '')}`,
+        );
+      }
+    }
+    if (warnings.length > 3)
+      lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条组合告警未展开。`);
+  }
+
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('组合限制：');
+    for (const limitation of limitations.slice(0, 3)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 3)
+      lines.push(`- 另有 ${humanField(limitations.length - 3, 32)} 条组合限制未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentCollectionBacklog(value: Record<string, unknown>): string | undefined {
   const data = value.data;
   if (!data || typeof data !== 'object') return undefined;
@@ -735,6 +935,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const subjectComparison = presentSubjectComparison(safe as Record<string, unknown>);
+    if (subjectComparison) return subjectComparison;
     const collectionDashboard = presentCollectionDashboard(safe as Record<string, unknown>);
     if (collectionDashboard) return collectionDashboard;
     const collectionSchedule = presentCollectionSchedule(safe as Record<string, unknown>);

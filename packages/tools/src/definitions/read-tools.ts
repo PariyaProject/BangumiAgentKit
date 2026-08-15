@@ -24,6 +24,7 @@ import {
   RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 import { getSubjectOverview } from '../subject-overview.js';
+import { getSubjectComparison } from '../subject-comparison.js';
 
 export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
   let publicHttpClient: HttpClient;
@@ -144,6 +145,60 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           client: activeClient,
           providerRegistry: deps?.providerRegistry,
         },
+      );
+    },
+  });
+
+  const getSubjectComparisonTool = defineTool({
+    name: 'bangumi.get_subject_comparison',
+    description:
+      '并列比较两个已知 Bangumi 条目的证据型官方事实：身份、日期、平台、报告话数、评分、排名、评分人数、收藏总数和各区段覆盖。只接受两个不同条目 ID；差值按输入顺序计算，不生成推荐或胜负结论，缺失/partial/unavailable/not_found 状态和来源限制会保留。',
+    input: z
+      .object({
+        subjectIds: z
+          .array(z.number().int().positive())
+          .length(2)
+          .refine((subjectIds) => subjectIds[0] !== subjectIds[1], {
+            message: 'subjectIds 必须包含两个不同的条目 ID',
+          })
+          .describe('两个不同的 Bangumi 条目 ID，顺序决定差值方向'),
+        maxCast: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe('每个条目的角色读取上限，默认 4'),
+        maxStaff: z
+          .number()
+          .int()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('每个条目的职员读取上限，默认 12'),
+        maxRelations: z
+          .number()
+          .int()
+          .min(1)
+          .max(32)
+          .optional()
+          .describe('每个条目的关联条目读取上限，默认 8'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      return await getSubjectComparison(
+        input.subjectIds,
+        {
+          maxCast: input.maxCast,
+          maxStaff: input.maxStaff,
+          maxRelations: input.maxRelations,
+        },
+        { client: activeClient, providerRegistry: deps?.providerRegistry },
       );
     },
   });
@@ -1285,6 +1340,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCalendarIntelligence,
     getRevisionIntelligence,
     getSubjectOverviewTool,
+    getSubjectComparisonTool,
     getCollectionIntelligence,
     getCollectionBacklog,
     getCollectionSchedule,

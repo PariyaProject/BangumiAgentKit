@@ -14,6 +14,7 @@ import type {
   SubjectSearchResult,
   SeriesWatchOrderResult,
   SubjectOverviewResult,
+  SubjectComparisonResult,
 } from '@bangumi-agent-kit/bangumi-core';
 import type {
   SubjectCardViewModel,
@@ -39,6 +40,7 @@ import type {
   SeriesRelationsRelatedViewModel,
   SeriesRelationPathViewModel,
   SubjectOverviewViewModel,
+  SubjectComparisonViewModel,
 } from '../view-models/index.js';
 
 export function truncateText(
@@ -499,6 +501,34 @@ export function buildSubjectOverviewViewModel(
     warnings: result.warnings.map(({ code, state, message }) => ({ code, state, message })),
     limitations: result.limitations,
     source: { label: options.sourceLabel || 'Bangumi 官方来源', retrievedAt },
+  };
+}
+
+export function buildSubjectComparisonViewModel(
+  result: SubjectComparisonResult,
+  options: { maxMetrics?: number } = {},
+): SubjectComparisonViewModel {
+  const maxMetrics = Number.isFinite(options.maxMetrics)
+    ? Math.min(result.metrics.length, Math.max(1, Math.trunc(options.maxMetrics as number)))
+    : result.metrics.length;
+  const metrics = result.metrics.slice(0, maxMetrics);
+  return {
+    template: 'subject-comparison',
+    version: 1,
+    state: result.state,
+    subjectIds: result.subjectIds,
+    subjects: result.subjects,
+    metrics,
+    formulaVersion: result.formulaVersion,
+    coverage: {
+      ...result.coverage,
+      renderedMetrics: metrics.length,
+      omittedMetrics: result.metrics.length - metrics.length,
+    },
+    source: result.source,
+    evidence: result.evidence,
+    warnings: result.warnings,
+    limitations: result.limitations,
   };
 }
 
