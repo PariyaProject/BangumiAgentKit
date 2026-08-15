@@ -40,9 +40,7 @@
           "description": "需要解绑的 Bangumi 账号 ID"
         }
       },
-      "required": [
-        "accountId"
-      ],
+      "required": ["accountId"],
       "additionalProperties": false
     }
   },
@@ -95,9 +93,7 @@
           "description": "需要切换为活跃状态的 Bangumi 账号 ID"
         }
       },
-      "required": [
-        "accountId"
-      ],
+      "required": ["accountId"],
       "additionalProperties": false
     }
   },
@@ -145,9 +141,7 @@
           "description": "Request Body 参数"
         }
       },
-      "required": [
-        "operationId"
-      ],
+      "required": ["operationId"],
       "additionalProperties": false
     }
   },
@@ -166,9 +160,7 @@
           "description": "合法 Operation ID (如 \"patchUserCollection\")"
         }
       },
-      "required": [
-        "operationId"
-      ],
+      "required": ["operationId"],
       "additionalProperties": false
     }
   },
@@ -234,9 +226,7 @@
           "description": "Bangumi 角色 ID"
         }
       },
-      "required": [
-        "characterId"
-      ],
+      "required": ["characterId"],
       "additionalProperties": false
     }
   },
@@ -262,9 +252,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -273,9 +261,7 @@
     "description": "获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、已知剩余集数、完成度和结构化完结状态。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial 和 not_computable 状态都会显式返回。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -305,13 +291,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -323,9 +303,7 @@
     "description": "一次获取当前绑定 Bangumi 账号的有界收藏 Dashboard：组合收藏概览、动画 backlog 与未来七日收藏播出计划。三个顶层区段按有界调度读取（同一时刻只运行一个顶层区段；schedule 内部的日历/收藏并发仍受上限约束），分别保留官方 v0/legacy 来源、检索时间、coverage、partial/unavailable/auth/conflict/not_computable 状态和限制；只接受当前账号，不读取评论、不计算历史趋势/推荐、不执行写入，组合有明确的总行数、upstream 请求尝试、episode/日历上限和总时限。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -367,13 +345,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -385,9 +357,7 @@
     "description": "获取当前绑定 Bangumi 账号的有界收藏智能概览：状态/媒介分布、backlog、评分、进度、标签频率和观察样本中的最近更新。仅读取当前账号的官方 v0 收藏，不接受任意用户名；返回 sourceTotal、观察覆盖、证据、公式版本和 partial/unavailable 限制，不宣称全量趋势或推荐。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -407,9 +377,7 @@
     "description": "获取当前绑定 Bangumi 账号的有界动画播出计划：将官方七日 legacy 日历与当前账号收藏的动画按 subject ID 对齐，显示星期、首播日期、收藏状态和收藏接口报告的进度。只接受当前账号，不读取评论、不执行写入；分页、重复、未匹配、进度 unknown/conflict、auth、partial 和 unavailable 状态都会显式返回；官方日历不提供具体时区或播出时刻。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -433,13 +401,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -451,9 +413,7 @@
     "description": "获取当前绑定 Bangumi 账号收藏中的动画系列组：将当前收藏条目与官方 v0 直接关系按有界动画关系连通分量分组，保留原始关系标签、方向、冲突、排除关系、读取失败和覆盖边界。只接受当前账号，不读取评论，不执行写入；这不是官方 canonical watch order，也不跨账号、不使用社区/HTML/历史快照。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -495,13 +455,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -525,9 +479,7 @@
           "description": "Bangumi 章节 ID"
         }
       },
-      "required": [
-        "episodeId"
-      ],
+      "required": ["episodeId"],
       "additionalProperties": false
     }
   },
@@ -550,16 +502,7 @@
         "category": {
           "description": "章节类别；默认 all，main=正篇、sp=特别篇、op/ed=片头/片尾、pv/mad/other=其他",
           "type": "string",
-          "enum": [
-            "all",
-            "main",
-            "sp",
-            "op",
-            "ed",
-            "pv",
-            "mad",
-            "other"
-          ]
+          "enum": ["all", "main", "sp", "op", "ed", "pv", "mad", "other"]
         },
         "maxEpisodes": {
           "description": "最多返回章节数，默认 50；超过上限的官方观察保留为 truncated",
@@ -572,9 +515,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -597,15 +538,7 @@
         "category": {
           "description": "章节分类: main(正篇), sp(SP), op(OP), ed(ED), pv(PV), mad(MAD), other(其他)",
           "type": "string",
-          "enum": [
-            "main",
-            "sp",
-            "op",
-            "ed",
-            "pv",
-            "mad",
-            "other"
-          ]
+          "enum": ["main", "sp", "op", "ed", "pv", "mad", "other"]
         },
         "limit": {
           "description": "分页参数 limit",
@@ -620,9 +553,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -655,9 +586,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "indexId"
-      ],
+      "required": ["indexId"],
       "additionalProperties": false
     }
   },
@@ -691,9 +620,7 @@
           "description": "Bangumi 人物 ID"
         }
       },
-      "required": [
-        "personId"
-      ],
+      "required": ["personId"],
       "additionalProperties": false
     }
   },
@@ -716,20 +643,12 @@
         "kind": {
           "description": "关系类型：voice 声优、staff 制作人员、all 两者；默认 voice",
           "type": "string",
-          "enum": [
-            "voice",
-            "staff",
-            "all"
-          ]
+          "enum": ["voice", "staff", "all"]
         },
         "media": {
           "description": "媒介范围：anime 全部动画、tv 可判断为 TV 的动画、all 全部媒介；默认 tv",
           "type": "string",
-          "enum": [
-            "anime",
-            "tv",
-            "all"
-          ]
+          "enum": ["anime", "tv", "all"]
         },
         "windowMonths": {
           "description": "最近的日历月窗口，支持 3、6、12；默认 12",
@@ -767,9 +686,7 @@
           "maximum": 60
         }
       },
-      "required": [
-        "personId"
-      ],
+      "required": ["personId"],
       "additionalProperties": false
     }
   },
@@ -806,9 +723,7 @@
           "maximum": 500
         }
       },
-      "required": [
-        "personId"
-      ],
+      "required": ["personId"],
       "additionalProperties": false
     }
   },
@@ -824,12 +739,7 @@
       "properties": {
         "entityType": {
           "type": "string",
-          "enum": [
-            "subject",
-            "episode",
-            "character",
-            "person"
-          ],
+          "enum": ["subject", "episode", "character", "person"],
           "description": "实体类型"
         },
         "revisionId": {
@@ -839,10 +749,7 @@
           "description": "修订 ID"
         }
       },
-      "required": [
-        "entityType",
-        "revisionId"
-      ],
+      "required": ["entityType", "revisionId"],
       "additionalProperties": false
     }
   },
@@ -858,12 +765,7 @@
       "properties": {
         "entityType": {
           "type": "string",
-          "enum": [
-            "subject",
-            "episode",
-            "character",
-            "person"
-          ],
+          "enum": ["subject", "episode", "character", "person"],
           "description": "实体类型：subject 条目、episode 章节、character 角色、person 人物"
         },
         "entityId": {
@@ -885,10 +787,7 @@
           "maximum": 1000000
         }
       },
-      "required": [
-        "entityType",
-        "entityId"
-      ],
+      "required": ["entityType", "entityId"],
       "additionalProperties": false
     }
   },
@@ -923,15 +822,10 @@
         "media": {
           "description": "anime 的 related 只返回动画证据，但 edges/排除统计仍可保留观察到的非动画关系；all 额外返回最多 8 条非动画 related 证据；非动画永不进入步骤或详情请求",
           "type": "string",
-          "enum": [
-            "anime",
-            "all"
-          ]
+          "enum": ["anime", "all"]
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -952,9 +846,7 @@
           "description": "Bangumi 条目 ID (例如 226998)"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -981,9 +873,7 @@
           "maximum": 100
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1027,9 +917,7 @@
           "maximum": 32
         }
       },
-      "required": [
-        "subjectIds"
-      ],
+      "required": ["subjectIds"],
       "additionalProperties": false
     }
   },
@@ -1068,9 +956,7 @@
           "maximum": 32
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1091,9 +977,7 @@
           "description": "Bangumi 条目 ID"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1120,9 +1004,7 @@
           "maximum": 200
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1143,9 +1025,7 @@
           "description": "Bangumi 条目 ID"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1166,9 +1046,7 @@
           "description": "Bangumi 条目 ID"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1187,9 +1065,7 @@
           "description": "Bangumi 用户名或 UID"
         }
       },
-      "required": [
-        "username"
-      ],
+      "required": ["username"],
       "additionalProperties": false
     }
   },
@@ -1211,24 +1087,12 @@
         "subjectType": {
           "description": "条目类型过滤",
           "type": "string",
-          "enum": [
-            "book",
-            "anime",
-            "music",
-            "game",
-            "real"
-          ]
+          "enum": ["book", "anime", "music", "game", "real"]
         },
         "status": {
           "description": "收藏状态过滤: wish(想看/想读), doing(在看/在读), done(看过/读过), on_hold(搁置), dropped(抛弃)",
           "type": "string",
-          "enum": [
-            "wish",
-            "doing",
-            "done",
-            "on_hold",
-            "dropped"
-          ]
+          "enum": ["wish", "doing", "done", "on_hold", "dropped"]
         },
         "limit": {
           "description": "分页参数 limit",
@@ -1276,12 +1140,7 @@
       "properties": {
         "entityType": {
           "type": "string",
-          "enum": [
-            "subject",
-            "episode",
-            "character",
-            "person"
-          ],
+          "enum": ["subject", "episode", "character", "person"],
           "description": "实体类型"
         },
         "entityId": {
@@ -1303,10 +1162,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "entityType",
-        "entityId"
-      ],
+      "required": ["entityType", "entityId"],
       "additionalProperties": false
     }
   },
@@ -1315,9 +1171,7 @@
     "description": "收藏或取消收藏指定的虚拟角色。取消收藏属于破坏性操作，需要二次确认。",
     "auth": "required",
     "risk": "write",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "policyMode": "dynamic",
     "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
@@ -1331,17 +1185,11 @@
         },
         "action": {
           "type": "string",
-          "enum": [
-            "collect",
-            "uncollect"
-          ],
+          "enum": ["collect", "uncollect"],
           "description": "操作动作"
         }
       },
-      "required": [
-        "characterId",
-        "action"
-      ],
+      "required": ["characterId", "action"],
       "additionalProperties": false
     }
   },
@@ -1350,9 +1198,7 @@
     "description": "创建、编辑或为目录添加/移除条目。删除目录或移除条目需要二次确认。",
     "auth": "required",
     "risk": "write",
-    "scopes": [
-      "write:index"
-    ],
+    "scopes": ["write:index"],
     "policyMode": "dynamic",
     "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
@@ -1376,10 +1222,7 @@
               "maxLength": 1000
             }
           },
-          "required": [
-            "action",
-            "title"
-          ],
+          "required": ["action", "title"],
           "additionalProperties": false
         },
         {
@@ -1407,10 +1250,7 @@
               "maxLength": 1000
             }
           },
-          "required": [
-            "action",
-            "indexId"
-          ],
+          "required": ["action", "indexId"],
           "additionalProperties": false
         },
         {
@@ -1438,11 +1278,7 @@
               "maxLength": 500
             }
           },
-          "required": [
-            "action",
-            "indexId",
-            "subjectId"
-          ],
+          "required": ["action", "indexId", "subjectId"],
           "additionalProperties": false
         },
         {
@@ -1465,11 +1301,7 @@
               "description": "条目 ID"
             }
           },
-          "required": [
-            "action",
-            "indexId",
-            "subjectId"
-          ],
+          "required": ["action", "indexId", "subjectId"],
           "additionalProperties": false
         }
       ]
@@ -1480,9 +1312,7 @@
     "description": "收藏或取消收藏指定的现实人物/声优。取消收藏属于破坏性操作，需要二次确认。",
     "auth": "required",
     "risk": "write",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "policyMode": "dynamic",
     "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
@@ -1496,17 +1326,11 @@
         },
         "action": {
           "type": "string",
-          "enum": [
-            "collect",
-            "uncollect"
-          ],
+          "enum": ["collect", "uncollect"],
           "description": "操作动作"
         }
       },
-      "required": [
-        "personId",
-        "action"
-      ],
+      "required": ["personId", "action"],
       "additionalProperties": false
     }
   },
@@ -1528,13 +1352,7 @@
           "anyOf": [
             {
               "type": "string",
-              "enum": [
-                "anime",
-                "book",
-                "music",
-                "game",
-                "real"
-              ]
+              "enum": ["anime", "book", "music", "game", "real"]
             },
             {
               "minItems": 1,
@@ -1542,13 +1360,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": [
-                  "anime",
-                  "book",
-                  "music",
-                  "game",
-                  "real"
-                ]
+                "enum": ["anime", "book", "music", "game", "real"]
               }
             }
           ]
@@ -1557,12 +1369,7 @@
           "anyOf": [
             {
               "type": "string",
-              "enum": [
-                "tv",
-                "ova",
-                "movie",
-                "web"
-              ]
+              "enum": ["tv", "ova", "movie", "web"]
             },
             {
               "minItems": 1,
@@ -1570,12 +1377,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": [
-                  "tv",
-                  "ova",
-                  "movie",
-                  "web"
-                ]
+                "enum": ["tv", "ova", "movie", "web"]
               }
             }
           ]
@@ -1690,11 +1492,7 @@
           "anyOf": [
             {
               "type": "string",
-              "enum": [
-                "include",
-                "exclude",
-                "only"
-              ]
+              "enum": ["include", "exclude", "only"]
             },
             {
               "type": "boolean"
@@ -1703,27 +1501,15 @@
         },
         "sort": {
           "type": "string",
-          "enum": [
-            "relevance",
-            "heat",
-            "rank",
-            "score",
-            "date"
-          ]
+          "enum": ["relevance", "heat", "rank", "score", "date"]
         },
         "order": {
           "type": "string",
-          "enum": [
-            "asc",
-            "desc"
-          ]
+          "enum": ["asc", "desc"]
         },
         "resultMode": {
           "type": "string",
-          "enum": [
-            "top",
-            "all"
-          ]
+          "enum": ["top", "all"]
         },
         "limit": {
           "type": "integer",
@@ -1732,11 +1518,7 @@
         },
         "explain": {
           "type": "string",
-          "enum": [
-            "none",
-            "compact",
-            "full"
-          ]
+          "enum": ["none", "compact", "full"]
         }
       },
       "additionalProperties": false
@@ -1787,9 +1569,7 @@
           "description": "Subject 条目 ID"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1798,9 +1578,7 @@
     "description": "生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示源顺序条目、正篇 episode progress、episode sourceTotal 分母、已知剩余集数、结构化完结状态、来源冲突与无法计算原因；明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -1830,13 +1608,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -1848,9 +1620,7 @@
     "description": "生成当前绑定 Bangumi 账号的收藏 Dashboard 图片 Artifact：一张无图片资产的私有卡片，按同一有界组合结果展示收藏概览、backlog 和七日播出计划，并保留各区段 coverage、证据、partial/unavailable/auth/conflict 状态和有界限制；渲染器绕过共享缓存，Artifact 使用当前账号主体隔离；不接受任意用户名，不读取评论，不执行写入。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -1892,13 +1662,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -1910,9 +1674,7 @@
     "description": "生成当前绑定 Bangumi 账号有界收藏智能概览图片卡片 Artifact。卡片显示状态/backlog、评分、进度、标签和观察样本中的最近更新，并明确 sourceTotal、覆盖、partial/unavailable、公式和限制；不接受任意用户名，不显示评论，不宣称历史趋势或推荐。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -1932,9 +1694,7 @@
     "description": "生成用户对指定 Subject 的追番/追剧进度与评分卡片 Artifact。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -1944,9 +1704,7 @@
           "description": "Subject 条目 ID"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -1955,9 +1713,7 @@
     "description": "生成当前绑定 Bangumi 账号有界本周播出计划图片卡片 Artifact。卡片将官方七日 legacy 日历与当前账号动画收藏按 subject ID 对齐，显示星期、日期、收藏状态、收藏接口报告的进度以及未匹配/partial/unavailable/auth 状态；不接受任意用户名、不显示评论、不执行写入，不把日期当作具体时刻。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -1981,13 +1737,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -1999,9 +1749,7 @@
     "description": "生成当前绑定 Bangumi 账号收藏系列组的无图片资产私有卡片 Artifact。卡片展示基于官方 v0 直接动画关系的有界系列分组、原始关系标签、冲突、排除关系、coverage、partial/unavailable 状态和限制；不接受任意用户名、不显示评论、不执行写入，也不宣称 canonical watch order。",
     "auth": "required",
     "risk": "read",
-    "scopes": [
-      "read:collection"
-    ],
+    "scopes": ["read:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -2043,13 +1791,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "wish",
-              "doing",
-              "done",
-              "on_hold",
-              "dropped"
-            ]
+            "enum": ["wish", "doing", "done", "on_hold", "dropped"]
           }
         }
       },
@@ -2075,16 +1817,7 @@
         "category": {
           "description": "章节类别，默认 all",
           "type": "string",
-          "enum": [
-            "all",
-            "main",
-            "sp",
-            "op",
-            "ed",
-            "pv",
-            "mad",
-            "other"
-          ]
+          "enum": ["all", "main", "sp", "op", "ed", "pv", "mad", "other"]
         },
         "maxEpisodes": {
           "description": "最多读取章节数，默认 50",
@@ -2097,9 +1830,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -2121,19 +1852,11 @@
         },
         "kind": {
           "type": "string",
-          "enum": [
-            "voice",
-            "staff",
-            "all"
-          ]
+          "enum": ["voice", "staff", "all"]
         },
         "media": {
           "type": "string",
-          "enum": [
-            "anime",
-            "tv",
-            "all"
-          ]
+          "enum": ["anime", "tv", "all"]
         },
         "windowMonths": {
           "anyOf": [
@@ -2167,9 +1890,7 @@
           "maximum": 60
         }
       },
-      "required": [
-        "personId"
-      ],
+      "required": ["personId"],
       "additionalProperties": false
     }
   },
@@ -2208,9 +1929,7 @@
           "maximum": 20
         }
       },
-      "required": [
-        "personId"
-      ],
+      "required": ["personId"],
       "additionalProperties": false
     }
   },
@@ -2232,13 +1951,7 @@
           "anyOf": [
             {
               "type": "string",
-              "enum": [
-                "anime",
-                "book",
-                "music",
-                "game",
-                "real"
-              ]
+              "enum": ["anime", "book", "music", "game", "real"]
             },
             {
               "minItems": 1,
@@ -2246,13 +1959,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": [
-                  "anime",
-                  "book",
-                  "music",
-                  "game",
-                  "real"
-                ]
+                "enum": ["anime", "book", "music", "game", "real"]
               }
             }
           ]
@@ -2261,12 +1968,7 @@
           "anyOf": [
             {
               "type": "string",
-              "enum": [
-                "tv",
-                "ova",
-                "movie",
-                "web"
-              ]
+              "enum": ["tv", "ova", "movie", "web"]
             },
             {
               "minItems": 1,
@@ -2274,12 +1976,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": [
-                  "tv",
-                  "ova",
-                  "movie",
-                  "web"
-                ]
+                "enum": ["tv", "ova", "movie", "web"]
               }
             }
           ]
@@ -2394,11 +2091,7 @@
           "anyOf": [
             {
               "type": "string",
-              "enum": [
-                "include",
-                "exclude",
-                "only"
-              ]
+              "enum": ["include", "exclude", "only"]
             },
             {
               "type": "boolean"
@@ -2407,27 +2100,15 @@
         },
         "sort": {
           "type": "string",
-          "enum": [
-            "relevance",
-            "heat",
-            "rank",
-            "score",
-            "date"
-          ]
+          "enum": ["relevance", "heat", "rank", "score", "date"]
         },
         "order": {
           "type": "string",
-          "enum": [
-            "asc",
-            "desc"
-          ]
+          "enum": ["asc", "desc"]
         },
         "resultMode": {
           "type": "string",
-          "enum": [
-            "top",
-            "all"
-          ]
+          "enum": ["top", "all"]
         },
         "limit": {
           "type": "integer",
@@ -2436,11 +2117,7 @@
         },
         "explain": {
           "type": "string",
-          "enum": [
-            "none",
-            "compact",
-            "full"
-          ]
+          "enum": ["none", "compact", "full"]
         }
       },
       "additionalProperties": false
@@ -2458,12 +2135,7 @@
       "properties": {
         "entityType": {
           "type": "string",
-          "enum": [
-            "subject",
-            "episode",
-            "character",
-            "person"
-          ],
+          "enum": ["subject", "episode", "character", "person"],
           "description": "实体类型：subject 条目、episode 章节、character 角色、person 人物"
         },
         "entityId": {
@@ -2485,10 +2157,7 @@
           "maximum": 1000000
         }
       },
-      "required": [
-        "entityType",
-        "entityId"
-      ],
+      "required": ["entityType", "entityId"],
       "additionalProperties": false
     }
   },
@@ -2515,9 +2184,7 @@
           "type": "number"
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -2552,15 +2219,10 @@
         "media": {
           "description": "anime 的 related 只展示动画证据，但边证据/排除统计仍可保留观察到的非动画关系；all 额外展示最多 8 条非动画证据",
           "type": "string",
-          "enum": [
-            "anime",
-            "all"
-          ]
+          "enum": ["anime", "all"]
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -2583,9 +2245,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -2629,9 +2289,7 @@
           "maximum": 32
         }
       },
-      "required": [
-        "subjectIds"
-      ],
+      "required": ["subjectIds"],
       "additionalProperties": false
     }
   },
@@ -2670,9 +2328,7 @@
           "maximum": 32
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -2693,9 +2349,7 @@
           "description": "Bangumi 条目 ID"
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -2715,9 +2369,7 @@
           "maxLength": 120
         }
       },
-      "required": [
-        "concept"
-      ],
+      "required": ["concept"],
       "additionalProperties": false
     }
   },
@@ -2748,9 +2400,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -2781,9 +2431,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -2804,32 +2452,17 @@
         "type": {
           "description": "条目类别: book, anime, music, game, real",
           "type": "string",
-          "enum": [
-            "book",
-            "anime",
-            "music",
-            "game",
-            "real"
-          ]
+          "enum": ["book", "anime", "music", "game", "real"]
         },
         "sort": {
           "description": "排序依据: match(匹配度), heat(热度), rank(排名), score(评分)",
           "type": "string",
-          "enum": [
-            "match",
-            "heat",
-            "rank",
-            "score"
-          ]
+          "enum": ["match", "heat", "rank", "score"]
         },
         "nsfw": {
           "description": "NSFW 过滤: exclude(默认排除), include(包含), only(仅看)",
           "type": "string",
-          "enum": [
-            "exclude",
-            "include",
-            "only"
-          ]
+          "enum": ["exclude", "include", "only"]
         },
         "limit": {
           "description": "分页参数 limit",
@@ -2844,9 +2477,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "query"
-      ],
+      "required": ["query"],
       "additionalProperties": false
     }
   },
@@ -2855,9 +2486,7 @@
     "description": "更新当前绑定 Bangumi 账号对某个条目的收藏状态（在看/看过/想看等）、评分（1-10）、标签或评价。",
     "auth": "required",
     "risk": "write",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "policyMode": "static",
     "inputSchema": {
       "type": "object",
@@ -2871,13 +2500,7 @@
         "status": {
           "description": "收藏状态",
           "type": "string",
-          "enum": [
-            "wish",
-            "doing",
-            "done",
-            "on_hold",
-            "dropped"
-          ]
+          "enum": ["wish", "doing", "done", "on_hold", "dropped"]
         },
         "rating": {
           "description": "评分 (1-10)",
@@ -2898,9 +2521,7 @@
           "maxLength": 1000
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   },
@@ -2909,9 +2530,7 @@
     "description": "更新单个、批量或通过 \"看到第 N 集\" 模式更新章节进度。超过 20 集的大批量变更将自动要求二次确认。",
     "auth": "required",
     "risk": "write",
-    "scopes": [
-      "write:collection"
-    ],
+    "scopes": ["write:collection"],
     "policyMode": "dynamic",
     "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
@@ -2944,10 +2563,7 @@
                   "description": "具体章节 ID 列表"
                 }
               },
-              "required": [
-                "kind",
-                "episodeIds"
-              ],
+              "required": ["kind", "episodeIds"],
               "additionalProperties": false
             },
             {
@@ -2966,18 +2582,10 @@
                 "category": {
                   "description": "章节分类，默认 main (正篇)",
                   "type": "string",
-                  "enum": [
-                    "main",
-                    "sp",
-                    "op",
-                    "ed"
-                  ]
+                  "enum": ["main", "sp", "op", "ed"]
                 }
               },
-              "required": [
-                "kind",
-                "episodeNumber"
-              ],
+              "required": ["kind", "episodeNumber"],
               "additionalProperties": false
             }
           ]
@@ -2994,11 +2602,7 @@
         "status": {
           "description": "更新动作: watched(看过,默认), wish(想看), dropped(抛弃)",
           "type": "string",
-          "enum": [
-            "wish",
-            "watched",
-            "dropped"
-          ]
+          "enum": ["wish", "watched", "dropped"]
         },
         "type": {
           "description": "(Deprecated) 兼容旧 API 数字: 2=看过, 1=想看, 3=抛弃",
@@ -3007,9 +2611,7 @@
           "maximum": 9007199254740991
         }
       },
-      "required": [
-        "subjectId"
-      ],
+      "required": ["subjectId"],
       "additionalProperties": false
     }
   }
