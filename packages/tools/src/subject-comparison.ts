@@ -5,6 +5,7 @@ import type {
   SubjectComparisonResult,
   SubjectComparisonState,
   SubjectComparisonSubject,
+  SubjectComparisonSourceSummary,
   SubjectComparisonStatsConflict,
   SubjectComparisonStatsKey,
   SubjectOverviewResult,
@@ -21,7 +22,17 @@ export interface SubjectComparisonOptions {
   maxRelations?: number;
 }
 
-const FORMULA_VERSION = 'subject-comparison-v1' as const;
+const FORMULA_VERSION = 'subject-comparison-v2' as const;
+const DELTA_PRECISION: Record<SubjectComparisonMetricKey, number> = {
+  episodesReported: 0,
+  totalEpisodesReported: 0,
+  score: 1,
+  rank: 0,
+  ratingTotal: 0,
+  collectionTotal: 0,
+};
+const DELTA_POLICY_DESCRIPTION =
+  '差值按第二个条目减第一个条目；评分差值规范化为 1 位小数，话数、排名和人数差值规范化为整数；非有限差值保持不可计算。';
 const DEFAULT_LIMITS: SubjectOverviewLimits = {
   maxCast: 4,
   maxStaff: 12,
@@ -56,6 +67,43 @@ function latestTimestamp(values: Array<string | undefined>): string | undefined 
     .at(-1);
 }
 
+function summarizeSource<T extends SubjectComparisonSourceSummary['class']>(
+  evidence: SubjectOverviewResult['evidence'],
+  sourceClass: T,
+  fallbackAttemptedAt: string,
+): SubjectComparisonSourceSummary & { class: T } {
+  const matching = evidence.filter((item) => item.source === sourceClass);
+  const attemptedAt = earliestTimestamp([
+    ...matching.map((item) => item.attemptedAt),
+    fallbackAttemptedAt,
+  ]);
+  const retrievedAt = latestTimestamp(matching.map((item) => item.retrievedAt));
+  return {
+    class: sourceClass,
+    operations: Array.from(new Set(matching.map((item) => item.operation))),
+    attemptedAt,
+    ...(retrievedAt ? { retrievedAt } : {}),
+  };
+}
+
+function mergeSources<T extends SubjectComparisonSourceSummary['class']>(
+  sources: Array<SubjectComparisonSourceSummary & { class: T }>,
+  sourceClass: T,
+  fallbackAttemptedAt: string,
+): SubjectComparisonSourceSummary & { class: T } {
+  const attemptedAt = earliestTimestamp([
+    ...sources.map((source) => source.attemptedAt),
+    fallbackAttemptedAt,
+  ]);
+  const retrievedAt = latestTimestamp(sources.map((source) => source.retrievedAt));
+  return {
+    class: sourceClass,
+    operations: Array.from(new Set(sources.flatMap((source) => source.operations))),
+    attemptedAt,
+    ...(retrievedAt ? { retrievedAt } : {}),
+  };
+}
+
 function earliestTimestamp(values: Array<string | undefined>): string {
   return (
     values.filter((value): value is string => Boolean(value)).sort()[0] || new Date().toISOString()
@@ -70,7 +118,8 @@ function collectionTotal(value: unknown): number | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const values = Object.values(value as Record<string, unknown>);
   if (values.some((item) => finiteNumber(item) === undefined)) return undefined;
-  return values.reduce<number>((sum, item) => sum + (finiteNumber(item) || 0), 0);
+  const total = values.reduce<number>((sum, item) => sum + (finiteNumber(item) || 0), 0);
+  return Number.isFinite(total) ? total : undefined;
 }
 
 function mapSubjectOverview(
@@ -103,9 +152,7 @@ function mapSubjectOverview(
     {} as Partial<Record<SubjectComparisonStatsKey, SubjectComparisonStatsConflict>>,
   );
   const evidence = overview.evidence;
-  const operations = Array.from(new Set(evidence.map((item) => item.operation)));
   const attemptedAt = earliestTimestamp(evidence.map((item) => item.attemptedAt));
-  const retrievedAt = latestTimestamp(evidence.map((item) => item.retrievedAt));
   return {
     subjectId: overview.subjectId,
     state: overview.state,
@@ -153,7 +200,10 @@ function mapSubjectOverview(
       truncatedSections: [...overview.coverage.truncatedSections],
       limits,
     },
-    source: { operations, attemptedAt, ...(retrievedAt ? { retrievedAt } : {}) },
+    source: {
+      official: summarizeSource(evidence, 'official-v0', attemptedAt),
+      derived: summarizeSource(evidence, 'derived-s7', attemptedAt),
+    },
     evidence,
     warnings: overview.warnings,
     limitations: overview.limitations,
@@ -168,21 +218,33 @@ function metric(
   leftConflict?: SubjectComparisonStatsConflict,
   rightConflict?: SubjectComparisonStatsConflict,
 ): SubjectComparisonMetric {
+  const deltaPrecision = DELTA_PRECISION[key];
   const values: [number | null, number | null] = [left ?? null, right ?? null];
   const conflicts = [
     leftConflict ? { side: 'A' as const, ...leftConflict } : undefined,
     rightConflict ? { side: 'B' as const, ...rightConflict } : undefined,
   ].filter((value): value is NonNullable<typeof value> => Boolean(value));
   if (conflicts.length > 0) {
-    return { key, label, values, delta: null, state: 'conflict', conflicts };
+    return { key, label, values, delta: null, deltaPrecision, state: 'conflict', conflicts };
   }
   const complete = values[0] !== null && values[1] !== null;
+  const rawDelta = complete ? values[1]! - values[0]! : undefined;
+  const scale = 10 ** deltaPrecision;
+  const roundedDelta =
+    rawDelta !== undefined && Number.isFinite(rawDelta)
+      ? (() => {
+          const rounded = Math.round(rawDelta * scale) / scale;
+          return Number.isFinite(rounded) ? rounded : rawDelta;
+        })()
+      : undefined;
+  const delta = roundedDelta !== undefined && Object.is(roundedDelta, -0) ? 0 : roundedDelta;
   return {
     key,
     label,
     values,
-    delta: complete ? values[1]! - values[0]! : null,
-    state: complete ? 'complete' : 'unknown',
+    delta: delta ?? null,
+    deltaPrecision,
+    state: complete && delta !== undefined ? 'complete' : 'unknown',
   };
 }
 
@@ -281,7 +343,7 @@ export async function getSubjectComparison(
     if (subject.state !== 'complete') {
       warnings.push({
         code: 'SUBJECT_STATE_DEGRADED',
-        state,
+        state: subject.state,
         subjectId: subject.subjectId,
         message: `条目 ${subject.subjectId} 的概览状态为 ${subject.state}；比较保留可获取事实，不把缺失区段当作空值。`,
       });
@@ -291,7 +353,7 @@ export async function getSubjectComparison(
     warnings.push({
       code: 'COMPARISON_VALUES_UNKNOWN',
       state: state === 'complete' ? 'partial' : state,
-      message: `${unknownMetrics} 个比较字段缺少两侧兼容的官方数值，差值保持不可计算。`,
+      message: `${unknownMetrics} 个比较字段缺少两侧兼容的有限官方数值，差值保持不可计算。`,
     });
   }
   if (conflictMetrics > 0) {
@@ -301,10 +363,6 @@ export async function getSubjectComparison(
       message: `${conflictMetrics} 个比较字段在条目详情与统计区段之间出现冲突，差值保持不可计算。`,
     });
   }
-  const sourceOperations = Array.from(
-    new Set(pair.flatMap((subject) => subject.source.operations)),
-  );
-  const sourceRetrievedAt = latestTimestamp(pair.map((subject) => subject.source.retrievedAt));
   const evidence: SubjectComparisonResult['evidence'] = [
     ...pair.flatMap((subject) =>
       subject.evidence.map((item) => ({ ...item, subjectIds: [subject.subjectId] })),
@@ -315,11 +373,28 @@ export async function getSubjectComparison(
       attemptedAt,
       retrievedAt: derivedRetrievedAt,
       formulaVersion: FORMULA_VERSION,
-      description:
-        '按 subjectIds 输入顺序并列官方条目事实；numeric delta = 第二个条目值 - 第一个条目值；差值不代表推荐或胜负。',
+      description: `${DELTA_POLICY_DESCRIPTION} 差值不代表推荐或胜负。`,
     },
   ];
-  const returnedSubjects = pair.filter((subject) => subject.state !== 'not_found').length;
+  const derivedComparisonSource: SubjectComparisonSourceSummary & { class: 'derived-s7' } = {
+    class: 'derived-s7',
+    operations: ['subject-comparison'],
+    attemptedAt,
+    retrievedAt: derivedRetrievedAt,
+  };
+  const source = {
+    official: mergeSources(
+      pair.map((subject) => subject.source.official),
+      'official-v0' as const,
+      attemptedAt,
+    ),
+    derived: mergeSources(
+      [...pair.map((subject) => subject.source.derived), derivedComparisonSource],
+      'derived-s7' as const,
+      attemptedAt,
+    ),
+  };
+  const returnedSubjects = pair.filter((subject) => subject.subject !== undefined).length;
   const coverage: SubjectComparisonResult['coverage'] = {
     requestedSubjects: 2,
     returnedSubjects,
@@ -339,17 +414,12 @@ export async function getSubjectComparison(
     metrics,
     formulaVersion: FORMULA_VERSION,
     coverage,
-    source: {
-      class: 'official_v0',
-      operations: sourceOperations,
-      attemptedAt,
-      ...(sourceRetrievedAt ? { retrievedAt: sourceRetrievedAt } : {}),
-    },
+    source,
     evidence,
     warnings,
     limitations: [
       '比较只覆盖两个条目本次官方 v0 概览读取与有界区段；缺失或截断不代表不存在。',
-      '差值按输入顺序计算为第二个条目减第一个条目，不等同于推荐、质量结论或观看顺序。',
+      `${DELTA_POLICY_DESCRIPTION} 不等同于推荐、质量结论或观看顺序。`,
       '统计是当前官方快照；本能力不计算历史趋势、社区热度、评论、偏好或 episode-row 级比较。',
     ],
   };

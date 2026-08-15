@@ -198,13 +198,28 @@ function parseSubjectComparisonOptions(args: string[]): Record<string, unknown> 
   const input: Record<string, unknown> = {
     subjectIds: [firstSubjectId, secondSubjectId],
   };
-  const maxCast = takeOption(args, '--max-cast');
-  const maxStaff = takeOption(args, '--max-staff');
-  const maxRelations = takeOption(args, '--max-relations');
-  if (maxCast !== undefined) input.maxCast = optionNumber(maxCast, 'max-cast', true, 1, 20);
-  if (maxStaff !== undefined) input.maxStaff = optionNumber(maxStaff, 'max-staff', true, 1, 80);
-  if (maxRelations !== undefined) {
-    input.maxRelations = optionNumber(maxRelations, 'max-relations', true, 1, 32);
+  const optionNames = new Set(['--max-cast', '--max-staff', '--max-relations']);
+  const seen = new Set<string>();
+  for (let index = 2; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !name.startsWith('--') || !optionNames.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: unknown compare argument "${name || ''}".`, 2);
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--max-cast') {
+      input.maxCast = optionNumber(value, 'max-cast', true, 1, 20);
+    } else if (name === '--max-staff') {
+      input.maxStaff = optionNumber(value, 'max-staff', true, 1, 80);
+    } else {
+      input.maxRelations = optionNumber(value, 'max-relations', true, 1, 32);
+    }
   }
   return input;
 }

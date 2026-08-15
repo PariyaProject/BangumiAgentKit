@@ -27,7 +27,9 @@ const SECTION_LABELS: Record<string, string> = {
   not_computable: '不可计算',
 };
 
-function stateLabel(state: SubjectComparisonViewModel['state']): string {
+function stateLabel(
+  state: SubjectComparisonViewModel['state'] | 'not_computable' | 'unknown' | 'conflict',
+): string {
   switch (state) {
     case 'complete':
       return '比较完整';
@@ -37,11 +39,26 @@ function stateLabel(state: SubjectComparisonViewModel['state']): string {
       return '来源不可用';
     case 'not_found':
       return '未找到';
+    case 'not_computable':
+      return '不可计算';
+    case 'unknown':
+      return '未知';
+    case 'conflict':
+      return '冲突';
   }
 }
 
-function valueLabel(value: number | null): string {
-  return value === null ? '未知' : String(value);
+function valueLabel(value: number | null | undefined): string {
+  return value === null || value === undefined ? '未知' : String(value);
+}
+
+function metricValueLabel(
+  metric: SubjectComparisonViewModel['metrics'][number],
+  index: number,
+): string {
+  const conflict = metric.conflicts?.find((item) => item.side === (index === 0 ? 'A' : 'B'));
+  if (!conflict) return valueLabel(metric.values[index]);
+  return `统计 ${valueLabel(conflict.statsValue)} / 详情 ${valueLabel(conflict.subjectValue)}`;
 }
 
 function deltaLabel(value: number | null, state: 'complete' | 'unknown' | 'conflict'): string {
@@ -136,6 +153,36 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
               {SECTION_LABELS[subject.sections.staff] || subject.sections.staff} · 关联{' '}
               {SECTION_LABELS[subject.sections.relations] || subject.sections.relations}
             </div>
+            <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+              读取：{subject.coverage.sourceRequestsSucceeded}/
+              {subject.coverage.sourceRequestsAttempted} 成功 · 区段完整{' '}
+              {subject.coverage.sectionsComplete} · 部分 {subject.coverage.sectionsPartial} · 不可用{' '}
+              {subject.coverage.sectionsUnavailable}
+              {subject.coverage.truncatedSections.length > 0
+                ? ` · 截断 ${subject.coverage.truncatedSections.join('、')}`
+                : ''}
+            </div>
+            <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+              区段上限：角色 {subject.coverage.limits.maxCast} · 职员{' '}
+              {subject.coverage.limits.maxStaff} · 关联 {subject.coverage.limits.maxRelations}
+            </div>
+            {subject.warnings.length > 0 ? (
+              <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+                {subject.warnings
+                  .slice(0, 2)
+                  .map((warning) => `${warning.code} · ${warning.message}`)
+                  .join('；')}
+                {subject.warnings.length > 2 ? `；另有 ${subject.warnings.length - 2} 条告警` : ''}
+              </div>
+            ) : null}
+            {subject.limitations.length > 0 ? (
+              <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+                限制：{subject.limitations.slice(0, 2).join('；')}
+                {subject.limitations.length > 2
+                  ? `；另有 ${subject.limitations.length - 2} 条限制`
+                  : ''}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -177,11 +224,12 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
             }}
           >
             <span>{metric.label}</span>
-            <span>{valueLabel(metric.values[0])}</span>
-            <span>{valueLabel(metric.values[1])}</span>
+            <span style={{ overflowWrap: 'anywhere' }}>{metricValueLabel(metric, 0)}</span>
+            <span style={{ overflowWrap: 'anywhere' }}>{metricValueLabel(metric, 1)}</span>
             <span
               style={{
                 color: metric.state === 'complete' ? theme.accent : theme.warning,
+                overflowWrap: 'anywhere',
               }}
             >
               {deltaLabel(metric.delta, metric.state)}
@@ -195,8 +243,9 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
         items={[
           `字段可计算 ${viewModel.coverage.metricsComplete}/${viewModel.coverage.metricsComplete + viewModel.coverage.metricsUnknown + viewModel.coverage.metricsConflict}`,
           `未知 ${viewModel.coverage.metricsUnknown} · 冲突 ${viewModel.coverage.metricsConflict}`,
-          `来源请求 ${viewModel.coverage.subjectsComplete}/${viewModel.coverage.requestedSubjects} 条目完整`,
-          `上限 2 个条目`,
+          `条目身份已读取 ${viewModel.coverage.returnedSubjects}/${viewModel.coverage.requestedSubjects}`,
+          `条目状态完整 ${viewModel.coverage.subjectsComplete} · 部分 ${viewModel.coverage.subjectsPartial} · 不可用 ${viewModel.coverage.subjectsUnavailable} · 未找到 ${viewModel.coverage.subjectsNotFound}`,
+          `上限：条目 ${viewModel.coverage.limits.maxSubjects} · 角色 ${viewModel.coverage.limits.maxCast} · 职员 ${viewModel.coverage.limits.maxStaff} · 关联 ${viewModel.coverage.limits.maxRelations}`,
           `公式 ${viewModel.formulaVersion}`,
         ]}
       />
@@ -210,17 +259,28 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
           {viewModel.warnings
             .slice(0, 3)
-            .map((warning) => warning.message)
+            .map((warning) => `${warning.code} · ${warning.message}`)
             .join('；')}
           {viewModel.warnings.length > 3 ? `；另有 ${viewModel.warnings.length - 3} 条告警` : ''}
         </div>
       ) : null}
-      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        限制：{viewModel.limitations[0]}
-      </div>
+      {viewModel.limitations.length > 0 ? (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          限制：{viewModel.limitations.slice(0, 3).join('；')}
+          {viewModel.limitations.length > 3
+            ? `；另有 ${viewModel.limitations.length - 3} 条限制`
+            : ''}
+        </div>
+      ) : null}
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-        来源：Bangumi official v0 · {viewModel.source.operations.join(' + ')}
-        {viewModel.source.retrievedAt ? ` · 获取于 ${viewModel.source.retrievedAt}` : ''}
+        来源：official-v0 · {viewModel.source.official.operations.join(' + ') || '未记录'}
+        {viewModel.source.official.retrievedAt
+          ? ` · 获取于 ${viewModel.source.official.retrievedAt}`
+          : ''}
+        {' · '}derived-s7 · {viewModel.source.derived.operations.join(' + ') || '未记录'}
+        {viewModel.source.derived.retrievedAt
+          ? ` · 获取于 ${viewModel.source.derived.retrievedAt}`
+          : ''}
       </div>
       <Footer theme={theme} />
     </CardFrame>

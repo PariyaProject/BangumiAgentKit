@@ -65,9 +65,12 @@ It also includes `series-relations` for bounded Series / Watch-Order evidence.
 
 `subject-comparison` is an image-free, read-only companion card for
 `bangumi.get_subject_comparison`. It renders exactly two known subjects side by side,
-keeps per-subject coverage and source states visible, and shows only deterministic
-numeric deltas using `B − A`. Unknown, partial, unavailable, and capped values remain
-explicit; the card never labels a winner or recommendation and does not fetch network
+keeps per-subject coverage, source states, bounded limits, truncation, warnings, and
+limitations visible, and shows only deterministic numeric deltas using `B − A`. The
+official-v0 and derived-s7 source channels remain separate. Score deltas use one decimal
+place; episode, rank, and count deltas use integer precision. Unknown, partial,
+unavailable, conflict, and capped values remain explicit, including both conflict
+candidates; the card never labels a winner or recommendation and does not fetch network
 assets.
 
 `collection-intelligence` is an image-free, authenticated companion card for

@@ -37,9 +37,18 @@ const result: SubjectComparisonResult = {
         limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
       },
       source: {
-        operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/subjects/{subject_id}/characters'],
-        attemptedAt: '2026-08-15T00:00:00.000Z',
-        retrievedAt: '2026-08-15T00:00:01.000Z',
+        official: {
+          class: 'official-v0',
+          operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/subjects/{subject_id}/characters'],
+          attemptedAt: '2026-08-15T00:00:00.000Z',
+          retrievedAt: '2026-08-15T00:00:01.000Z',
+        },
+        derived: {
+          class: 'derived-s7',
+          operations: ['subject-overview-composition'],
+          attemptedAt: '2026-08-15T00:00:00.000Z',
+          retrievedAt: '2026-08-15T00:00:01.000Z',
+        },
       },
       evidence: [],
       warnings: [],
@@ -76,8 +85,16 @@ const result: SubjectComparisonResult = {
         limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
       },
       source: {
-        operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/subjects/{subject_id}/persons'],
-        attemptedAt: '2026-08-15T00:00:00.000Z',
+        official: {
+          class: 'official-v0',
+          operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/subjects/{subject_id}/persons'],
+          attemptedAt: '2026-08-15T00:00:00.000Z',
+        },
+        derived: {
+          class: 'derived-s7',
+          operations: ['subject-overview-composition'],
+          attemptedAt: '2026-08-15T00:00:00.000Z',
+        },
       },
       evidence: [],
       warnings: [
@@ -97,6 +114,7 @@ const result: SubjectComparisonResult = {
       label: '条目报告话数',
       values: [12, 24],
       delta: 12,
+      deltaPrecision: 0,
       state: 'complete',
     },
     {
@@ -104,6 +122,7 @@ const result: SubjectComparisonResult = {
       label: '条目报告总话数',
       values: [12, 26],
       delta: 14,
+      deltaPrecision: 0,
       state: 'complete',
     },
     {
@@ -111,20 +130,36 @@ const result: SubjectComparisonResult = {
       label: '官方评分',
       values: [8.6, 7.5],
       delta: null,
+      deltaPrecision: 1,
       state: 'conflict',
       conflicts: [{ side: 'B', subjectValue: 7.4, statsValue: 7.5 }],
     },
-    { key: 'rank', label: '官方排名', values: [42, null], delta: null, state: 'unknown' },
-    { key: 'ratingTotal', label: '评分人数', values: [100, null], delta: null, state: 'unknown' },
+    {
+      key: 'rank',
+      label: '官方排名',
+      values: [42, null],
+      delta: null,
+      deltaPrecision: 0,
+      state: 'unknown',
+    },
+    {
+      key: 'ratingTotal',
+      label: '评分人数',
+      values: [100, null],
+      delta: null,
+      deltaPrecision: 0,
+      state: 'unknown',
+    },
     {
       key: 'collectionTotal',
       label: '收藏总数',
       values: [39, null],
       delta: null,
+      deltaPrecision: 0,
       state: 'unknown',
     },
   ],
-  formulaVersion: 'subject-comparison-v1',
+  formulaVersion: 'subject-comparison-v2',
   coverage: {
     requestedSubjects: 2,
     returnedSubjects: 2,
@@ -138,10 +173,18 @@ const result: SubjectComparisonResult = {
     limits: { maxSubjects: 2, maxCast: 4, maxStaff: 12, maxRelations: 8 },
   },
   source: {
-    class: 'official_v0',
-    operations: ['GET /v0/subjects/{subject_id}', 'subject-overview-composition'],
-    attemptedAt: '2026-08-15T00:00:00.000Z',
-    retrievedAt: '2026-08-15T00:00:01.000Z',
+    official: {
+      class: 'official-v0',
+      operations: ['GET /v0/subjects/{subject_id}'],
+      attemptedAt: '2026-08-15T00:00:00.000Z',
+      retrievedAt: '2026-08-15T00:00:01.000Z',
+    },
+    derived: {
+      class: 'derived-s7',
+      operations: ['subject-overview-composition', 'subject-comparison'],
+      attemptedAt: '2026-08-15T00:00:00.000Z',
+      retrievedAt: '2026-08-15T00:00:01.000Z',
+    },
   },
   evidence: [
     {
@@ -149,7 +192,7 @@ const result: SubjectComparisonResult = {
       operation: 'subject-comparison',
       attemptedAt: '2026-08-15T00:00:00.000Z',
       retrievedAt: '2026-08-15T00:00:01.000Z',
-      formulaVersion: 'subject-comparison-v1',
+      formulaVersion: 'subject-comparison-v2',
     },
   ],
   warnings: [
@@ -196,6 +239,12 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('差值 B−A');
     expect(html).toContain('未知');
     expect(html).toContain('冲突，不计算');
+    expect(html).toContain('统计 7.5 / 详情 7.4');
+    expect(html).toContain('条目身份已读取');
+    expect(html).toContain('区段上限：角色 4');
+    expect(html).toContain('截断 cast');
+    expect(html).toContain('official-v0');
+    expect(html).toContain('derived-s7');
     expect(html).toContain('渲染器省略比较字段：2 条。');
     expect(html).toContain('限制：');
     expect(html).not.toContain('https://');
@@ -206,5 +255,55 @@ describe('subject-comparison renderer', () => {
     });
     expect(rendered.template).toBe('subject-comparison');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('keeps both unavailable subjects and bounded diagnostics visible', () => {
+    const unavailable = structuredClone(result);
+    unavailable.state = 'unavailable';
+    unavailable.subjects = unavailable.subjects.map((subject) => ({
+      ...subject,
+      state: 'unavailable',
+      subject: undefined,
+      sections: {
+        stats: 'unavailable',
+        cast: 'unavailable',
+        staff: 'unavailable',
+        relations: 'unavailable',
+      },
+      warnings: [
+        {
+          code: 'UPSTREAM_UNAVAILABLE',
+          state: 'unavailable',
+          message: '官方区段暂时不可用。',
+        },
+      ],
+      limitations: ['当前请求未取得条目身份，比较不填充猜测值。'],
+    })) as typeof result.subjects;
+    unavailable.coverage = {
+      ...unavailable.coverage,
+      returnedSubjects: 0,
+      subjectsComplete: 0,
+      subjectsPartial: 0,
+      subjectsUnavailable: 2,
+      metricsComplete: 0,
+      metricsUnknown: 6,
+    };
+    unavailable.metrics = unavailable.metrics.map((metric) => ({
+      ...metric,
+      values: [null, null],
+      delta: null,
+      state: 'unknown' as const,
+    }));
+
+    const html = renderHtmlTemplate(
+      buildSubjectComparisonViewModel(unavailable),
+      'bangumi-dark',
+      {},
+      480,
+    );
+    expect(html).toContain('来源不可用');
+    expect(html).toContain('UPSTREAM_UNAVAILABLE');
+    expect(html).toContain('条目身份已读取 0/2');
+    expect(html).toContain('当前请求未取得条目身份');
   });
 });

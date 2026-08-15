@@ -8,6 +8,13 @@ import type { SubjectType } from './subject.js';
 
 export type SubjectComparisonState = 'complete' | 'partial' | 'unavailable' | 'not_found';
 
+export interface SubjectComparisonSourceSummary {
+  class: 'official-v0' | 'derived-s7';
+  operations: string[];
+  attemptedAt: string;
+  retrievedAt?: string;
+}
+
 export type SubjectComparisonMetricKey =
   | 'episodesReported'
   | 'totalEpisodesReported'
@@ -68,9 +75,8 @@ export interface SubjectComparisonSubject {
     };
   };
   source: {
-    operations: string[];
-    attemptedAt: string;
-    retrievedAt?: string;
+    official: SubjectComparisonSourceSummary & { class: 'official-v0' };
+    derived: SubjectComparisonSourceSummary & { class: 'derived-s7' };
   };
   evidence: SubjectOverviewEvidence[];
   warnings: SubjectOverviewWarning[];
@@ -83,6 +89,7 @@ export interface SubjectComparisonMetric {
   label: string;
   values: [number | null, number | null];
   delta: number | null;
+  deltaPrecision: number;
   state: 'complete' | 'unknown' | 'conflict';
   conflicts?: Array<{
     side: 'A' | 'B';
@@ -96,7 +103,7 @@ export interface SubjectComparisonResult {
   state: SubjectComparisonState;
   subjects: [SubjectComparisonSubject, SubjectComparisonSubject];
   metrics: SubjectComparisonMetric[];
-  formulaVersion: 'subject-comparison-v1';
+  formulaVersion: 'subject-comparison-v2';
   coverage: {
     requestedSubjects: 2;
     returnedSubjects: number;
@@ -115,10 +122,8 @@ export interface SubjectComparisonResult {
     };
   };
   source: {
-    class: 'official_v0';
-    operations: string[];
-    attemptedAt: string;
-    retrievedAt?: string;
+    official: SubjectComparisonSourceSummary & { class: 'official-v0' };
+    derived: SubjectComparisonSourceSummary & { class: 'derived-s7' };
   };
   evidence: Array<SubjectOverviewEvidence & { subjectIds?: number[] }>;
   warnings: Array<{

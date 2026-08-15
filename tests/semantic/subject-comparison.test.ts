@@ -119,7 +119,13 @@ const relations = (subjectId: number) => [
 ];
 
 function buildClient(
-  options: { missingSubjectId?: number; failPath?: string; malformedPath?: string } = {},
+  options: {
+    missingSubjectId?: number;
+    missingSubjectIds?: number[];
+    subjectScoreOverrides?: Record<number, number>;
+    failPath?: string;
+    malformedPath?: string;
+  } = {},
 ) {
   const requests: string[] = [];
   const client = new HttpClient({
@@ -138,11 +144,28 @@ function buildClient(
       if (!subjectId || !subjects[subjectId as keyof typeof subjects]) {
         return new Response(JSON.stringify({ error: 'missing fixture' }), { status: 404 });
       }
-      if (options.missingSubjectId === subjectId && !endpoint) {
+      if (
+        (options.missingSubjectId === subjectId ||
+          options.missingSubjectIds?.includes(subjectId)) &&
+        !endpoint
+      ) {
         return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
       }
       if (!endpoint)
-        return new Response(JSON.stringify(subjects[subjectId as 123 | 456]), { status: 200 });
+        return new Response(
+          JSON.stringify({
+            ...subjects[subjectId as 123 | 456],
+            ...(options.subjectScoreOverrides?.[subjectId] === undefined
+              ? {}
+              : {
+                  rating: {
+                    ...subjects[subjectId as 123 | 456].rating,
+                    score: options.subjectScoreOverrides[subjectId],
+                  },
+                }),
+          }),
+          { status: 200 },
+        );
       if (endpoint === 'characters') {
         return new Response(JSON.stringify(characters(subjectId)), { status: 200 });
       }
@@ -250,19 +273,34 @@ describe('Subject comparison semantic contract', () => {
       expect.arrayContaining([
         expect.objectContaining({ key: 'episodesReported', values: [12, 24], delta: 12 }),
         expect.objectContaining({ key: 'totalEpisodesReported', values: [12, 26], delta: 14 }),
-        expect.objectContaining({ key: 'score', values: [8.6, 7.5], delta: -1.0999999999999996 }),
+        expect.objectContaining({
+          key: 'score',
+          values: [8.6, 7.5],
+          delta: -1.1,
+          deltaPrecision: 1,
+        }),
         expect.objectContaining({ key: 'rank', values: [42, 120], delta: 78 }),
         expect.objectContaining({ key: 'ratingTotal', values: [100, 80], delta: -20 }),
         expect.objectContaining({ key: 'collectionTotal', values: [39, 40], delta: 1 }),
       ]),
     );
-    expect(result.formulaVersion).toBe('subject-comparison-v1');
+    expect(result.formulaVersion).toBe('subject-comparison-v2');
+    expect(result.source).toMatchObject({
+      official: {
+        class: 'official-v0',
+        operations: expect.arrayContaining(['GET /v0/subjects/{subject_id}']),
+      },
+      derived: {
+        class: 'derived-s7',
+        operations: expect.arrayContaining(['subject-overview-composition', 'subject-comparison']),
+      },
+    });
     expect(result.evidence).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: 'derived-s7',
           operation: 'subject-comparison',
-          formulaVersion: 'subject-comparison-v1',
+          formulaVersion: 'subject-comparison-v2',
         }),
         expect.objectContaining({ subjectIds: [123] }),
         expect.objectContaining({ subjectIds: [456] }),
@@ -308,9 +346,15 @@ describe('Subject comparison semantic contract', () => {
       ],
       coverage: { subjectsNotFound: 1, metricsComplete: 0 },
     });
+    expect((missing as { coverage: { returnedSubjects: number } }).coverage.returnedSubjects).toBe(
+      1,
+    );
     expect(
       (missing as { subjects: Array<Record<string, unknown>> }).subjects[1],
     ).not.toHaveProperty('subject');
+    expect((missing as { warnings: Array<Record<string, unknown>> }).warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ subjectId: 456, state: 'not_found' })]),
+    );
     expect(
       (missing as { metrics: Array<{ state: string; delta: number | null }> }).metrics,
     ).toEqual(expect.arrayContaining([expect.objectContaining({ state: 'unknown', delta: null })]));
@@ -353,5 +397,66 @@ describe('Subject comparison semantic contract', () => {
         }),
       ]),
     );
+  });
+
+  it('canonicalizes fractional, positive, equal, and non-finite deltas', async () => {
+    const positive = await getTool(
+      buildClient({ subjectScoreOverrides: { 456: 9.0 } }).client,
+    ).execute({ subjectIds: [123, 456] }, context, {
+      providerRegistry: buildProviderRegistry({ scoreOverrides: { 456: 9.0 } }),
+    });
+    expect(
+      (positive as { metrics: Array<{ key: string; delta: number | null }> }).metrics.find(
+        (metric) => metric.key === 'score',
+      ),
+    ).toMatchObject({ delta: 0.4 });
+
+    const equal = await getTool(
+      buildClient({ subjectScoreOverrides: { 456: 8.6 } }).client,
+    ).execute({ subjectIds: [123, 456] }, context, {
+      providerRegistry: buildProviderRegistry({ scoreOverrides: { 456: 8.6 } }),
+    });
+    expect(
+      (equal as { metrics: Array<{ key: string; delta: number | null }> }).metrics.find(
+        (metric) => metric.key === 'score',
+      ),
+    ).toMatchObject({ delta: 0 });
+
+    const nonFinite = await getTool(
+      buildClient({
+        subjectScoreOverrides: { 123: Number.MAX_VALUE, 456: -Number.MAX_VALUE },
+      }).client,
+    ).execute({ subjectIds: [123, 456] }, context, {
+      providerRegistry: buildProviderRegistry({
+        scoreOverrides: { 123: Number.MAX_VALUE, 456: -Number.MAX_VALUE },
+      }),
+    });
+    expect(
+      (
+        nonFinite as { metrics: Array<{ key: string; state: string; delta: number | null }> }
+      ).metrics.find((metric) => metric.key === 'score'),
+    ).toMatchObject({ state: 'unknown', delta: null });
+  });
+
+  it('keeps both missing identities and provider-not-configured statistics explicit', async () => {
+    const bothMissing = await getTool(
+      buildClient({ missingSubjectIds: [123, 456] }).client,
+    ).execute({ subjectIds: [123, 456] }, context);
+    expect(bothMissing).toMatchObject({
+      state: 'not_found',
+      coverage: { returnedSubjects: 0, subjectsNotFound: 2 },
+    });
+
+    const providerUnavailable = await getTool(buildClient().client).execute(
+      { subjectIds: [123, 456] },
+      context,
+    );
+    expect(providerUnavailable).toMatchObject({
+      state: 'partial',
+      subjects: [
+        { state: 'partial', sections: { stats: 'unavailable' } },
+        { state: 'partial', sections: { stats: 'unavailable' } },
+      ],
+    });
   });
 });
