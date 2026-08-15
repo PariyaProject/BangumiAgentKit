@@ -71,8 +71,16 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
   const totalLabel =
     viewModel.coverage.totalKind === 'exact'
       ? String(viewModel.coverage.sourceTotal ?? viewModel.coverage.observedRows)
-      : '未知';
+      : viewModel.coverage.totalKind === 'conflict'
+        ? `冲突(${viewModel.coverage.sourceTotal ?? '未知'})`
+        : '未知';
   const itemBasis = width && width >= 900 ? 'calc(50% - 4px)' : '100%';
+  const emptyMessage =
+    viewModel.coverage.episodes.state === 'unavailable'
+      ? '官方章节源暂时不可用，未生成猜测的章节列表。'
+      : viewModel.coverage.episodes.state === 'not_found'
+        ? '官方章节源没有找到对应章节页面。'
+        : '官方章节源返回空结果；空结果不证明没有后续内容。';
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -94,6 +102,8 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
           categoryLabel,
           `观察 ${viewModel.coverage.observedRows}`,
           `返回 ${viewModel.coverage.returnedRows}/${totalLabel}`,
+          `读取上限 ${viewModel.coverage.requestedMaxEpisodes}`,
+          viewModel.filters.includeDescriptions ? '含简介' : '省略简介',
           viewModel.coverage.truncated || viewModel.coverage.renderedOmitted > 0
             ? '有界样本'
             : undefined,
@@ -124,9 +134,7 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
         ))}
       </div>
 
-      {viewModel.state === 'unavailable' ||
-      viewModel.state === 'not_found' ||
-      viewModel.items.length === 0 ? (
+      {viewModel.items.length === 0 ? (
         <div
           style={{
             color: theme.warning,
@@ -138,11 +146,7 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
             lineHeight: 1.5,
           }}
         >
-          {viewModel.state === 'unavailable'
-            ? '官方条目/章节源暂时不可用，未生成猜测的章节列表。'
-            : viewModel.state === 'not_found'
-              ? '没有找到对应条目或章节源。'
-              : '官方章节源返回空结果；空结果不证明没有后续内容。'}
+          {emptyMessage}
         </div>
       ) : null}
 
@@ -225,6 +229,17 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
       {viewModel.coverage.duplicateRows > 0 ? (
         <div style={{ color: theme.warning, fontSize: '11px' }}>
           重复章节 ID：{viewModel.coverage.duplicateRows}（输出保留首次观察）
+        </div>
+      ) : null}
+      {viewModel.coverage.overReturnedRows > 0 || viewModel.coverage.sourceLimitMismatch ? (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          来源上限异常：超出返回 {viewModel.coverage.overReturnedRows} 条
+          {viewModel.coverage.sourceLimitMismatch ? '，source limit 与请求不一致' : ''}。
+        </div>
+      ) : null}
+      {viewModel.coverage.renderedOmitted > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '11px' }}>
+          渲染器省略已返回章节：{viewModel.coverage.renderedOmitted} 条（JSON 保留完整有界结果）
         </div>
       ) : null}
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   EPISODE_GUIDE_MAX_DESCRIPTION_LENGTH,
   EpisodeGuideService,
@@ -153,6 +154,8 @@ describe('EpisodeGuideService', () => {
       sourceTotal: 4,
       truncated: true,
       duplicateRows: 1,
+      overReturnedRows: 1,
+      sourceLimitMismatch: false,
     });
     expect(result.coverage.missingFields).toEqual(
       expect.objectContaining({
@@ -173,6 +176,7 @@ describe('EpisodeGuideService', () => {
       expect.arrayContaining([
         'OUTPUT_TRUNCATED',
         'DUPLICATE_EPISODE_ROWS',
+        'SOURCE_OVER_RETURNED',
         'MISSING_FIELDS',
         'FIELD_TRUNCATED',
         'INVALID_FIELDS',
@@ -221,5 +225,113 @@ describe('EpisodeGuideService', () => {
     expect(unavailable.state).toBe('unavailable');
     expect(unavailable.items).toEqual([]);
     expect(unavailable.error?.code).toBe('UPSTREAM_UNAVAILABLE');
+  });
+
+  it('uses the same lossless parser through the generated client path', async () => {
+    const { client } = buildClient({
+      episodes: {
+        total: 7,
+        limit: 7,
+        offset: 0,
+        data: [
+          episode(1, { type: 0, name_cn: '正篇第一集', comment: 0 }),
+          episode(2, { type: 1, name_cn: '特别篇' }),
+          episode(3, { type: 2, name_cn: 'OP' }),
+          episode(4, { type: 3, name_cn: 'ED' }),
+          episode(5, { type: 4, name_cn: 'PV' }),
+          episode(6, { type: 5, name_cn: 'MAD' }),
+          episode(7, { type: 6, name_cn: '其他', airdate: '2026-02-30' }),
+        ],
+      },
+    });
+
+    const result = await new EpisodeGuideService(
+      new GeneratedBangumiOpenApiClient(client),
+    ).getEpisodeGuide(123);
+
+    expect(result.state).toBe('partial');
+    expect(result.items.map((item) => item.category)).toEqual([
+      'main',
+      'sp',
+      'op',
+      'ed',
+      'pv',
+      'mad',
+      'other',
+    ]);
+    expect(result.items[0]).toMatchObject({ nameCn: '正篇第一集', discussionCount: 0 });
+    expect(result.items[6]?.airdate).toBeUndefined();
+    expect(result.coverage.invalidFields).toEqual({ 'episode.airdate': 1 });
+    expect(result.coverage.missingFields).toEqual({});
+  });
+
+  it('marks an inconsistent denominator as conflict instead of exact', async () => {
+    const { client } = buildClient({
+      episodes: {
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [episode(1), episode(2)],
+      },
+    });
+
+    const result = await new EpisodeGuideService(client).getEpisodeGuide(123);
+
+    expect(result.coverage.totalKind).toBe('conflict');
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SOURCE_INCONSISTENT' })]),
+    );
+  });
+
+  it('bounds unique over-return and exposes a mismatched source limit', async () => {
+    const { client } = buildClient({
+      episodes: {
+        total: 3,
+        limit: 99,
+        offset: 0,
+        data: [episode(1), episode(2), episode(3)],
+      },
+    });
+
+    const result = await new EpisodeGuideService(client).getEpisodeGuide(123, {
+      maxEpisodes: 2,
+    });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.coverage).toMatchObject({
+      observedRows: 3,
+      uniqueRows: 3,
+      returnedRows: 2,
+      overReturnedRows: 1,
+      sourceLimitMismatch: true,
+      truncated: true,
+    });
+    expect(result.warnings.map((item) => item.code)).toEqual(
+      expect.arrayContaining(['SOURCE_OVER_RETURNED', 'SOURCE_LIMIT_MISMATCH']),
+    );
+  });
+
+  it('keeps operation evidence separate when one official read fails', async () => {
+    const { client } = buildClient({ subjectStatus: 503, episodesStatus: 503 });
+    const result = await new EpisodeGuideService(client).getEpisodeGuide(123);
+
+    expect(result.source.attempts).toHaveLength(2);
+    expect(result.source.attempts[0]).toMatchObject({
+      operation: 'GET /v0/subjects/{subject_id}',
+      state: 'unavailable',
+    });
+    expect(result.source.attempts[0]).not.toHaveProperty('retrievedAt');
+    expect(result.evidence.filter((item) => item.source === 'official_v0')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operations: ['GET /v0/subjects/{subject_id}'],
+          error: expect.objectContaining({ code: 'UPSTREAM_UNAVAILABLE' }),
+        }),
+        expect.objectContaining({
+          operations: ['GET /v0/episodes'],
+          error: expect.objectContaining({ code: 'UPSTREAM_UNAVAILABLE' }),
+        }),
+      ]),
+    );
   });
 });

@@ -70,14 +70,18 @@ describe('Standalone episode guide commands', () => {
       state: 'partial',
       subjectId: 123,
       subject: { nameCn: '中文条目' },
+      filters: { category: 'main', includeDescriptions: false },
       summary: { returned: 2, withAirdate: 1, withDuration: 2 },
       coverage: {
+        requestedMaxEpisodes: 2,
         observedRows: 4,
         returnedRows: 2,
         totalKind: 'exact',
         sourceTotal: 4,
         renderedOmitted: 2,
         missingFields: { 'episode.airdate': 1 },
+        overReturnedRows: 2,
+        sourceLimitMismatch: true,
       },
       items: [
         { id: 1, ep: 1, nameCn: '第一集', airdate: '2026-08-01', duration: '00:24:00' },
@@ -86,6 +90,8 @@ describe('Standalone episode guide commands', () => {
       warnings: [{ code: 'MISSING_FIELDS', message: '有字段缺失。' }],
     });
     expect(output).toContain('章节指南');
+    expect(output).toContain('类别 main');
+    expect(output).toContain('读取上限 2');
     expect(output).toContain('覆盖');
     expect(output).toContain('第一集');
     expect(output).toContain('缺失字段');

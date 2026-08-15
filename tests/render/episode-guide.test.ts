@@ -56,6 +56,8 @@ const result: EpisodeGuideResult = {
     sourceOffset: 0,
     truncated: true,
     duplicateRows: 0,
+    overReturnedRows: 0,
+    sourceLimitMismatch: false,
     missingFields: {
       'episode.airdate': 1,
       'episode.duration': 1,
@@ -73,6 +75,20 @@ const result: EpisodeGuideResult = {
     operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/episodes'],
     attemptedAt: '2026-08-15T00:00:00.000Z',
     retrievedAt: '2026-08-15T00:00:00.000Z',
+    attempts: [
+      {
+        operation: 'GET /v0/subjects/{subject_id}',
+        state: 'complete',
+        attemptedAt: '2026-08-15T00:00:00.000Z',
+        retrievedAt: '2026-08-15T00:00:00.000Z',
+      },
+      {
+        operation: 'GET /v0/episodes',
+        state: 'complete',
+        attemptedAt: '2026-08-15T00:00:00.000Z',
+        retrievedAt: '2026-08-15T00:00:00.000Z',
+      },
+    ],
   },
   evidence: [],
   limitations: ['章节结果是官方 v0 有界页面，不代表完整生命周期。'],
@@ -102,8 +118,10 @@ describe('episode-guide renderer', () => {
     expect(html).toContain('EPISODE GUIDE');
     expect(html).toContain('部分覆盖');
     expect(html).toContain('有界样本');
+    expect(html).toContain('读取上限 20');
     expect(html).toContain('一个用于验证窄宽度换行');
     expect(html).toContain('缺失字段');
+    expect(html).toContain('渲染器省略已返回章节');
     expect(html).toContain('章节进度与官方观看顺序');
     expect(html).not.toContain('https://');
 
@@ -113,5 +131,29 @@ describe('episode-guide renderer', () => {
     });
     expect(rendered.template).toBe('episode-guide');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('uses the episode-source state for unavailable empty output', () => {
+    const unavailable = buildEpisodeGuideViewModel({
+      ...result,
+      state: 'partial',
+      items: [],
+      summary: { ...result.summary, returned: 0, byCategory: {}, empty: true },
+      coverage: {
+        ...result.coverage,
+        state: 'partial',
+        sourceTotal: undefined,
+        totalKind: 'unknown',
+        observedRows: 0,
+        uniqueRows: 0,
+        returnedRows: 0,
+        truncated: false,
+        episodes: { state: 'unavailable', attempted: true },
+      },
+    });
+    const html = renderHtmlTemplate(unavailable, 'bangumi-dark', {}, 640);
+
+    expect(html).toContain('官方章节源暂时不可用');
+    expect(html).not.toContain('官方章节源返回空结果');
   });
 });

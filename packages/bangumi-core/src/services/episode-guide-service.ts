@@ -4,15 +4,9 @@ import {
   PublicErrorInfo,
   toPublicError,
 } from '@bangumi-agent-kit/bangumi-transport';
-import {
-  Episode,
-  GeneratedBangumiOpenApiClient,
-  Subject,
-} from '@bangumi-agent-kit/bangumi-openapi';
+import { GeneratedBangumiOpenApiClient, Subject } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainSubject, SubjectType } from '../models/subject.js';
-import { DomainEpisode } from '../models/episode.js';
-import { EpisodeService } from './episode-service.js';
-import { mapSubject, SubjectService } from './subject-service.js';
+import { mapSubject } from './subject-service.js';
 
 export type EpisodeGuideCategory = 'main' | 'sp' | 'op' | 'ed' | 'pv' | 'mad' | 'other' | 'unknown';
 
@@ -70,7 +64,7 @@ export interface EpisodeGuideResult {
     state: EpisodeGuideState;
     requestedMaxEpisodes: number;
     sourceTotal?: number;
-    totalKind: 'exact' | 'unknown';
+    totalKind: 'exact' | 'unknown' | 'conflict';
     observedRows: number;
     uniqueRows: number;
     returnedRows: number;
@@ -78,6 +72,8 @@ export interface EpisodeGuideResult {
     sourceOffset?: number;
     truncated: boolean;
     duplicateRows: number;
+    overReturnedRows: number;
+    sourceLimitMismatch: boolean;
     missingFields: Record<string, number>;
     truncatedFields: Record<string, number>;
     invalidFields: Record<string, number>;
@@ -101,6 +97,13 @@ export interface EpisodeGuideResult {
     operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/episodes'];
     attemptedAt: string;
     retrievedAt?: string;
+    attempts: Array<{
+      operation: string;
+      state: 'complete' | 'unavailable' | 'not_found';
+      attemptedAt: string;
+      retrievedAt?: string;
+      error?: PublicErrorInfo;
+    }>;
   };
   evidence: Array<{
     source: 'official_v0' | 'derived';
@@ -109,6 +112,7 @@ export interface EpisodeGuideResult {
     attemptedAt?: string;
     formulaVersion?: string;
     description?: string;
+    error?: PublicErrorInfo;
   }>;
   limitations: string[];
   warnings: Array<{
@@ -117,16 +121,6 @@ export interface EpisodeGuideResult {
     message: string;
   }>;
   error?: PublicErrorInfo;
-}
-
-interface EpisodePage {
-  total?: number;
-  limit?: number;
-  offset?: number;
-  data: Episode[];
-  missingFields: Record<string, number>;
-  truncatedFields: Record<string, number>;
-  invalidFields: Record<string, number>;
 }
 
 interface GuideEpisodeSource {
@@ -141,6 +135,16 @@ interface GuideEpisodeSource {
   comment?: number;
   duration?: string;
   desc?: string;
+}
+
+interface EpisodePage {
+  total?: number;
+  limit?: number;
+  offset?: number;
+  data: GuideEpisodeSource[];
+  missingFields: Record<string, number>;
+  truncatedFields: Record<string, number>;
+  invalidFields: Record<string, number>;
 }
 
 interface EpisodeSourceAttempt {
@@ -228,11 +232,20 @@ function positiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
 
+function validIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day!));
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month! - 1 && date.getUTCDate() === day
+  );
+}
+
 function parserError(path: string, expected: string): BangumiError {
   return new BangumiError('PARSER_ERROR', `episode-guide.${path} 应为 ${expected}`, false);
 }
 
-function parseEpisodePage(raw: unknown): EpisodePage {
+function parseEpisodePage(raw: unknown, subjectId: number): EpisodePage {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw parserError('payload', '对象');
   }
@@ -283,17 +296,32 @@ function parseEpisodePage(raw: unknown): EpisodePage {
     recordMissing(item.duration, 'episode.duration', missingFields);
     recordMissing(item.desc, 'episode.description', missingFields);
     recordMissing(item.comment, 'episode.discussionCount', missingFields);
-    const normalizedItem = { ...item };
-    if (
-      typeof item.airdate === 'string' &&
-      item.airdate !== '' &&
-      !/^\d{4}-\d{2}-\d{2}$/u.test(item.airdate)
-    ) {
+    const normalizedItem: GuideEpisodeSource = {
+      id: item.id as number,
+      subjectId,
+      type: finiteNumber(item.type) ? item.type : undefined,
+      name: typeof item.name === 'string' && item.name ? item.name : undefined,
+      nameCn: typeof item.name_cn === 'string' && item.name_cn ? item.name_cn : undefined,
+      sort: finiteNumber(item.sort) ? item.sort : undefined,
+      ep: finiteNumber(item.ep) ? item.ep : undefined,
+      airdate: typeof item.airdate === 'string' && item.airdate ? item.airdate : undefined,
+      comment: finiteNumber(item.comment) ? item.comment : undefined,
+      duration: typeof item.duration === 'string' && item.duration ? item.duration : undefined,
+      desc: typeof item.desc === 'string' && item.desc ? item.desc : undefined,
+    };
+    if (typeof item.airdate === 'string' && item.airdate !== '' && !validIsoDate(item.airdate)) {
       increment(invalidFields, 'episode.airdate');
       delete normalizedItem.airdate;
     }
+    if (
+      finiteNumber(item.comment) &&
+      (!Number.isInteger(item.comment) || (item.comment as number) < 0)
+    ) {
+      increment(invalidFields, 'episode.discussionCount');
+      delete normalizedItem.comment;
+    }
 
-    return normalizedItem as unknown as Episode;
+    return normalizedItem;
   });
 
   return {
@@ -322,7 +350,10 @@ function parseSubjectPayload(raw: unknown): { subject: DomainSubject; missingFie
   const missingFields = ['name', 'name_cn', 'type'].filter(
     (field) => value[field] === undefined || value[field] === null || value[field] === '',
   );
-  return { subject: mapSubject(value as unknown as Subject), missingFields };
+  const subject = mapSubject(value as unknown as Subject);
+  if (!value.name) subject.name = '';
+  if (!value.name_cn) subject.nameCn = '';
+  return { subject, missingFields };
 }
 
 function boundedText(
@@ -334,39 +365,6 @@ function boundedText(
   if (value.length <= EPISODE_GUIDE_MAX_DESCRIPTION_LENGTH) return value;
   increment(truncatedFields, field);
   return `${value.slice(0, EPISODE_GUIDE_MAX_DESCRIPTION_LENGTH - 1)}…`;
-}
-
-function mapOpenApiEpisode(item: Episode, subjectId: number): GuideEpisodeSource {
-  const raw = item as unknown as Record<string, unknown>;
-  return {
-    id: item.id,
-    subjectId,
-    type: finiteNumber(raw.type) ? raw.type : undefined,
-    name: typeof raw.name === 'string' && raw.name ? raw.name : undefined,
-    nameCn: typeof raw.name_cn === 'string' && raw.name_cn ? raw.name_cn : undefined,
-    sort: finiteNumber(raw.sort) ? raw.sort : undefined,
-    ep: finiteNumber(raw.ep) ? raw.ep : undefined,
-    airdate: typeof raw.airdate === 'string' && raw.airdate ? raw.airdate : undefined,
-    comment: finiteNumber(raw.comment) ? raw.comment : undefined,
-    duration: typeof raw.duration === 'string' && raw.duration ? raw.duration : undefined,
-    desc: typeof raw.desc === 'string' && raw.desc ? raw.desc : undefined,
-  };
-}
-
-function mapTypedEpisode(item: DomainEpisode, subjectId: number): GuideEpisodeSource {
-  return {
-    id: item.id,
-    subjectId,
-    type: item.rawType,
-    name: item.name || undefined,
-    nameCn: item.nameCn || undefined,
-    sort: finiteNumber(item.sort) ? item.sort : undefined,
-    ep: finiteNumber(item.ep) ? item.ep : undefined,
-    airdate: item.airdate,
-    comment: item.comment,
-    duration: item.duration,
-    desc: item.desc,
-  };
 }
 
 function mapGuideItem(
@@ -442,15 +440,11 @@ function warning(
 
 export class EpisodeGuideService {
   private transport?: HttpClient;
-  private subjectService: SubjectService;
-  private episodeService: EpisodeService;
+  private generatedClient?: GeneratedBangumiOpenApiClient;
 
   constructor(client: GeneratedBangumiOpenApiClient | HttpClient) {
-    if (!(client instanceof GeneratedBangumiOpenApiClient)) {
-      this.transport = client;
-    }
-    this.subjectService = new SubjectService(client);
-    this.episodeService = new EpisodeService(client);
+    if (client instanceof GeneratedBangumiOpenApiClient) this.generatedClient = client;
+    else this.transport = client;
   }
 
   private async fetchSubject(subjectId: number): Promise<SubjectSourceAttempt> {
@@ -473,11 +467,14 @@ export class EpisodeGuideService {
           retrievedAt: new Date().toISOString(),
         };
       }
-      const subject = await this.subjectService.getSubjectById(subjectId);
+      const raw = await this.generatedClient!.getSubjectById(subjectId);
+      const parsed = parseSubjectPayload(raw);
+      const missingFields: Record<string, number> = {};
+      for (const field of parsed.missingFields) increment(missingFields, `subject.${field}`);
       return {
         state: 'complete',
-        subject,
-        missingFields: {},
+        subject: parsed.subject,
+        missingFields,
         attemptedAt,
         retrievedAt: new Date().toISOString(),
       };
@@ -514,38 +511,20 @@ export class EpisodeGuideService {
         });
         return {
           state: 'complete',
-          page: parseEpisodePage(raw),
+          page: parseEpisodePage(raw, subjectId),
           attemptedAt,
           retrievedAt: new Date().toISOString(),
         };
       }
-      const page = await this.episodeService.getEpisodes(subjectId, {
+      const raw = await this.generatedClient!.getEpisodes({
+        subject_id: subjectId,
         type: type as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined,
         limit: maxEpisodes,
         offset: 0,
       });
       return {
         state: 'complete',
-        page: {
-          total: page.total,
-          limit: page.limit,
-          offset: page.offset,
-          data: page.items.map((item) => ({
-            id: item.id,
-            type: item.rawType,
-            name: item.name,
-            name_cn: item.nameCn,
-            sort: item.sort,
-            ep: item.ep,
-            airdate: item.airdate,
-            comment: item.comment,
-            duration: item.duration,
-            desc: item.desc,
-          })) as unknown as Episode[],
-          missingFields: {},
-          truncatedFields: {},
-          invalidFields: {},
-        },
+        page: parseEpisodePage(raw, subjectId),
         attemptedAt,
         retrievedAt: new Date().toISOString(),
       };
@@ -581,14 +560,11 @@ export class EpisodeGuideService {
     const uniqueSources = new Map<number, GuideEpisodeSource>();
     let duplicateRows = 0;
     for (const raw of rawRows) {
-      const source = this.transport
-        ? mapOpenApiEpisode(raw, subjectId)
-        : mapTypedEpisode(raw as unknown as DomainEpisode, subjectId);
-      if (uniqueSources.has(source.id)) {
+      if (uniqueSources.has(raw.id)) {
         duplicateRows += 1;
         continue;
       }
-      uniqueSources.set(source.id, source);
+      uniqueSources.set(raw.id, raw);
     }
     if (episodeAttempt.page) {
       for (const [field, count] of Object.entries(episodeAttempt.page.missingFields)) {
@@ -601,26 +577,32 @@ export class EpisodeGuideService {
         invalidFields[field] = (invalidFields[field] || 0) + count;
       }
     }
-    const items = sortEpisodes(
+    const allItems = sortEpisodes(
       Array.from(uniqueSources.values()).map((item) =>
         mapGuideItem(item, subjectId, includeDescriptions, truncatedFields),
       ),
     );
+    const items = allItems.slice(0, maxEpisodes);
     if (!includeDescriptions) {
       delete missingFields['episode.description'];
       delete truncatedFields['episode.description'];
     }
     if (sourcePage && sourcePage.total === undefined) increment(missingFields, 'page.total');
     const sourceTotal = sourcePage?.total;
-    const totalKind = sourceTotal === undefined ? 'unknown' : 'exact';
     const inconsistentTotal = sourceTotal !== undefined && sourceTotal < observedRows;
+    const totalKind =
+      sourceTotal === undefined ? 'unknown' : inconsistentTotal ? 'conflict' : 'exact';
+    const overReturnedRows = Math.max(0, observedRows - maxEpisodes);
+    const sourceLimitMismatch = sourcePage?.limit !== undefined && sourcePage.limit > maxEpisodes;
     const truncated =
       (sourceTotal !== undefined && sourceTotal > observedRows) ||
+      overReturnedRows > 0 ||
       Boolean(sourcePage && sourcePage.offset && sourcePage.offset > 0);
     const qualityDegraded =
       truncated ||
       duplicateRows > 0 ||
       inconsistentTotal ||
+      sourceLimitMismatch ||
       Object.keys(missingFields).length > 0 ||
       Object.keys(truncatedFields).length > 0 ||
       Object.keys(invalidFields).length > 0 ||
@@ -686,7 +668,25 @@ export class EpisodeGuideService {
         warning(
           'OUTPUT_TRUNCATED',
           'partial',
-          `官方章节报告 ${sourceTotal ?? '未知'} 条，本次观察 ${observedRows} 条且最多返回 ${maxEpisodes} 条；未读取部分不代表不存在。`,
+          `官方章节报告 ${sourceTotal ?? '未知'} 条，本次观察 ${observedRows} 条，输出最多 ${maxEpisodes} 条；省略或未读取部分不代表不存在。`,
+        ),
+      );
+    }
+    if (overReturnedRows > 0) {
+      warnings.push(
+        warning(
+          'SOURCE_OVER_RETURNED',
+          'partial',
+          `官方章节源返回 ${observedRows} 条，超过请求上限 ${maxEpisodes} 条；输出只保留有界结果。`,
+        ),
+      );
+    }
+    if (sourceLimitMismatch) {
+      warnings.push(
+        warning(
+          'SOURCE_LIMIT_MISMATCH',
+          'partial',
+          `官方章节源报告 limit=${sourcePage?.limit}，大于请求上限 ${maxEpisodes}。`,
         ),
       );
     }
@@ -723,7 +723,7 @@ export class EpisodeGuideService {
         warning(
           'SOURCE_INCONSISTENT',
           'partial',
-          '官方 total 小于本次观察条数，覆盖状态按 partial 处理。',
+          '官方 total 小于本次观察条数，分母标记为 conflict，覆盖状态按 partial 处理。',
         ),
       );
     }
@@ -735,6 +735,22 @@ export class EpisodeGuideService {
     const operations: EpisodeGuideResult['source']['operations'] = [
       'GET /v0/subjects/{subject_id}',
       'GET /v0/episodes',
+    ];
+    const operationAttempts = [
+      {
+        operation: operations[0],
+        state: subjectAttempt.state,
+        attemptedAt: subjectAttempt.attemptedAt,
+        ...(subjectAttempt.retrievedAt ? { retrievedAt: subjectAttempt.retrievedAt } : {}),
+        ...(subjectAttempt.error ? { error: subjectAttempt.error } : {}),
+      },
+      {
+        operation: operations[1],
+        state: episodeAttempt.state,
+        attemptedAt: episodeAttempt.attemptedAt,
+        ...(episodeAttempt.retrievedAt ? { retrievedAt: episodeAttempt.retrievedAt } : {}),
+        ...(episodeAttempt.error ? { error: episodeAttempt.error } : {}),
+      },
     ];
     const error = episodeAttempt.error || subjectAttempt.error;
     return {
@@ -756,6 +772,8 @@ export class EpisodeGuideService {
         ...(sourcePage?.offset === undefined ? {} : { sourceOffset: sourcePage.offset }),
         truncated,
         duplicateRows,
+        overReturnedRows,
+        sourceLimitMismatch,
         missingFields,
         truncatedFields,
         invalidFields,
@@ -779,21 +797,30 @@ export class EpisodeGuideService {
         operations,
         attemptedAt,
         ...(retrievedAt ? { retrievedAt } : {}),
+        attempts: operationAttempts,
       },
       evidence: [
         {
           source: 'official_v0',
-          operations,
-          ...(retrievedAt ? { retrievedAt } : {}),
-          attemptedAt,
+          operations: [operations[0]],
+          attemptedAt: subjectAttempt.attemptedAt,
+          ...(subjectAttempt.retrievedAt ? { retrievedAt: subjectAttempt.retrievedAt } : {}),
+          ...(subjectAttempt.error ? { error: subjectAttempt.error } : {}),
+        },
+        {
+          source: 'official_v0',
+          operations: [operations[1]],
+          attemptedAt: episodeAttempt.attemptedAt,
+          ...(episodeAttempt.retrievedAt ? { retrievedAt: episodeAttempt.retrievedAt } : {}),
+          ...(episodeAttempt.error ? { error: episodeAttempt.error } : {}),
         },
         {
           source: 'derived',
           operations: ['episode-guide-composition'],
-          ...(retrievedAt ? { retrievedAt } : {}),
+          attemptedAt,
           formulaVersion: EPISODE_GUIDE_FORMULA_VERSION,
           description:
-            '保留官方章节字段；按分类、ep/sort、ID 确定性排序；重复 ID 只保留首次观察；所有省略、缺失和字段裁剪都进入 coverage。',
+            '保留官方章节字段；按分类、ep/sort、ID 确定性排序；重复 ID 只保留首次观察；输出受 requestedMaxEpisodes 限制；所有省略、缺失、冲突和字段裁剪都进入 coverage。',
         },
       ],
       limitations: limitations(),

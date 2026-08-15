@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { createReadTools, type ToolContext } from '@bangumi-agent-kit/tools';
+import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { createReadTools, ToolRegistry, type ToolContext } from '@bangumi-agent-kit/tools';
 
 const context: ToolContext = {
   principalId: 'episode-guide-test',
@@ -79,5 +80,55 @@ describe('episode guide semantic tool', () => {
         expect.stringContaining('/v0/episodes?subject_id=7&type=0&limit=10&offset=0'),
       ]),
     );
+  });
+
+  it('survives the generated public-client path used by ToolRegistry', async () => {
+    const client = new HttpClient({
+      fetchFn: async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname === '/v0/subjects/7') {
+          return response({ id: 7, type: 2, name: 'Original', name_cn: '中文名' });
+        }
+        return response({
+          total: 1,
+          limit: 50,
+          offset: 0,
+          data: [
+            {
+              id: 70,
+              type: 0,
+              name: 'Episode',
+              name_cn: '第一集',
+              sort: 1,
+              ep: 1,
+              airdate: '2026-08-01',
+              comment: 0,
+              duration: '00:24:00',
+              desc: 'safe description',
+            },
+          ],
+        });
+      },
+    });
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: client,
+    });
+
+    const result = (await registry.executeTool(
+      'bangumi.get_episode_guide',
+      { subjectId: 7 },
+      context,
+    )) as {
+      state: string;
+      subject?: { nameCn?: string };
+      items: Array<{ category: string; nameCn?: string; discussionCount?: number }>;
+    };
+
+    expect(result).toMatchObject({
+      state: 'complete',
+      subject: { nameCn: '中文名' },
+      items: [{ category: 'main', nameCn: '第一集', discussionCount: 0 }],
+    });
   });
 });
