@@ -18,8 +18,9 @@ paths have independent smoke tests. No v0.1.0 tag or release has been created.
 
 - Standalone local console with interactive REPL, non-interactive CLI, JSON
   output, profiles, raw ToolRegistry playground, and `pnpm self-test`.
-- Semantic search, subjects, bounded subject comparisons, cast, calendar, episodes,
-  bounded episode guides, collection intelligence, auth, and renderer presentation tools.
+- Semantic search, subjects, evidence-bearing subject overview/comparison/statistics
+  intelligence, cast, calendar, episodes, bounded episode guides, collection
+  intelligence, auth, and renderer presentation tools.
 - OAuth account binding with encrypted credentials, active-account switching,
   and principal isolation.
 - SQLite by default, PostgreSQL compatibility, migrations, audit events, and
@@ -47,6 +48,7 @@ Then try:
 bak> status
 bak> search 少女终末旅行
 bak> subject 218707
+bak> stats 218707
 bak> tool list
 ```
 
@@ -59,6 +61,7 @@ pnpm bak -- tool describe bangumi.search_subjects
 pnpm bak -- tool call bangumi.search_subjects '{"query":"少女终末旅行"}'
 pnpm bak -- episode-guide 218707 --max-episodes 24
 pnpm bak -- compare 218707 226998
+pnpm bak -- stats 218707
 ```
 
 Profiles share one SQLite database but resolve to different trusted local
@@ -76,7 +79,15 @@ pnpm renderer:install
 pnpm bak -- render subject 218707 --output "$HOME/Desktop/bangumi.png"
 pnpm bak -- render episode-guide 218707 --output "$HOME/Desktop/episode-guide.png"
 pnpm bak -- render compare 218707 226998 --output "$HOME/Desktop/subject-comparison.png"
+pnpm bak -- render stats 218707 --output "$HOME/Desktop/subject-stats.png"
 ```
+
+`stats` preserves the official v0 rating histogram and collection buckets, then
+adds versioned deterministic percentages, histogram mean, population standard
+deviation, and collection completion rate. It keeps source evidence, formula
+versions, conflicts, zero-population `not_computable`, and unavailable states
+visible; it does not infer quality, recommendations, historical trends, or
+community statistics.
 
 `episode-guide` reads one bounded page from the official v0 subject and episode
 endpoints, then reports category, ordering, field coverage, duplicates,

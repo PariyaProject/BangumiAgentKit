@@ -38,6 +38,7 @@ Bangumi:
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
+  stats <subjectId>
   overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
@@ -69,7 +70,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
+  render subject|stats|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -434,6 +435,13 @@ export class StandaloneCommandRegistry {
         }),
       };
     }
+    if (command === 'stats') {
+      return {
+        value: await runTool(ctx, 'bangumi.get_subject_stats_intelligence', {
+          subjectId: parsePositiveInteger(args[1], 'subject id'),
+        }),
+      };
+    }
     if (command === 'overview') {
       const overviewArgs = args.slice(1);
       const input: Record<string, unknown> = {
@@ -786,6 +794,9 @@ export class StandaloneCommandRegistry {
     let input: Record<string, unknown> = {};
     if (kind === 'subject') {
       name = 'bangumi.render_subject_card';
+      input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'stats' || kind === 'subject-stats') {
+      name = 'bangumi.render_subject_stats_intelligence';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
     } else if (kind === 'overview') {
       name = 'bangumi.render_subject_overview';

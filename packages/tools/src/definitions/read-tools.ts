@@ -25,6 +25,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
+import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
 
 export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
   let publicHttpClient: HttpClient;
@@ -220,6 +221,22 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         authScope: deps.executionSession?.account ? 'account' : 'public',
       });
     },
+  });
+
+  const getSubjectStatsIntelligenceTool = defineTool({
+    name: 'bangumi.get_subject_stats_intelligence',
+    description:
+      '获取指定条目的证据型统计智能：保留官方 v0 评分直方图与收藏桶，并计算有版本公式的评分百分比、直方图均值、总体标准差、收藏分布百分比和完成率。显式保留 source evidence、检索时间、评分均值冲突、零样本 not_computable、partial/unavailable/not_found 状态；不计算历史趋势、社区统计、网站专有图表或推荐结论。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) =>
+      await getSubjectStatsIntelligence(input.subjectId, {
+        providerRegistry: deps?.providerRegistry,
+      }),
   });
 
   const getSubjectRelations = defineTool({
@@ -1347,5 +1364,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCollectionDashboard,
     getPersonActivity,
     getEpisodeGuide,
+    getSubjectStatsIntelligenceTool,
   ] as const;
 }

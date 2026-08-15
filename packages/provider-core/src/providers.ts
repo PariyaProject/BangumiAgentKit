@@ -37,11 +37,25 @@ export interface RatingHistogram {
   10: number;
 }
 
+export type RatingHistogramPresence = {
+  [Score in keyof RatingHistogram]: boolean;
+};
+
+export interface SubjectCollectionPresence {
+  wish: boolean;
+  collect: boolean;
+  doing: boolean;
+  onHold: boolean;
+  dropped: boolean;
+}
+
 export interface SubjectStatsData {
   score: number;
   rank: number;
   ratingTotal: number;
   ratingHistogram: RatingHistogram;
+  /** Present only on the tolerant stats read; false means missing or invalid upstream input. */
+  ratingHistogramPresence?: RatingHistogramPresence;
   collection: {
     wish: number;
     collect: number;
@@ -49,6 +63,8 @@ export interface SubjectStatsData {
     onHold: number;
     dropped: number;
   };
+  /** Present only on the tolerant stats read; false means missing or invalid upstream input. */
+  collectionPresence?: SubjectCollectionPresence;
 }
 
 export interface ProviderSubjectData {
@@ -349,31 +365,90 @@ function subjectEvidence(
   return evidence;
 }
 
-function parseStats(raw: Subject): SubjectStatsData {
+function parseStats(
+  raw: Subject,
+  options: { allowIncomplete: boolean } = { allowIncomplete: false },
+): SubjectStatsData {
+  const allowIncomplete = options.allowIncomplete;
   const rating = requiredRecord(raw.rating, 'rating');
   const ratingCount = requiredRecord(rating.count, 'rating.count');
   const collection = requiredRecord(raw.collection, 'collection');
   const histogram = {} as RatingHistogram;
+  const ratingHistogramPresence = {} as RatingHistogramPresence;
+
+  const parseIncompleteNumber = (value: unknown): { value: number; present: boolean } =>
+    typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0
+      ? { value, present: true }
+      : { value: 0, present: false };
 
   for (let score = 1; score <= 10; score += 1) {
     const value = ratingCount[String(score)];
-    if (value !== undefined) requiredNumber(value, `rating.count.${score}`);
-    histogram[score as keyof RatingHistogram] = value === undefined ? 0 : (value as number);
+    if (allowIncomplete) {
+      const parsed = parseIncompleteNumber(value);
+      histogram[score as keyof RatingHistogram] = parsed.value;
+      ratingHistogramPresence[score as keyof RatingHistogram] = parsed.present;
+    } else {
+      if (value !== undefined) requiredNumber(value, `rating.count.${score}`);
+      histogram[score as keyof RatingHistogram] = value === undefined ? 0 : (value as number);
+    }
   }
+
+  const collectionValue = (key: string, path: string): { value: number; present: boolean } => {
+    const value = collection[key];
+    if (!allowIncomplete) return { value: requiredNumber(value, path), present: true };
+    return parseIncompleteNumber(value);
+  };
+  const wish = collectionValue('wish', 'collection.wish');
+  const collect = collectionValue('collect', 'collection.collect');
+  const doing = collectionValue('doing', 'collection.doing');
+  const onHold = collectionValue('on_hold', 'collection.on_hold');
+  const dropped = collectionValue('dropped', 'collection.dropped');
 
   return {
     score: requiredNumber(rating.score, 'rating.score'),
     rank: requiredNumber(rating.rank, 'rating.rank'),
     ratingTotal: requiredNumber(rating.total, 'rating.total'),
     ratingHistogram: histogram,
+    ...(allowIncomplete ? { ratingHistogramPresence } : {}),
     collection: {
-      wish: requiredNumber(collection.wish, 'collection.wish'),
-      collect: requiredNumber(collection.collect, 'collection.collect'),
-      doing: requiredNumber(collection.doing, 'collection.doing'),
-      onHold: requiredNumber(collection.on_hold, 'collection.on_hold'),
-      dropped: requiredNumber(collection.dropped, 'collection.dropped'),
+      wish: wish.value,
+      collect: collect.value,
+      doing: doing.value,
+      onHold: onHold.value,
+      dropped: dropped.value,
     },
+    ...(allowIncomplete
+      ? {
+          collectionPresence: {
+            wish: wish.present,
+            collect: collect.present,
+            doing: doing.present,
+            onHold: onHold.present,
+            dropped: dropped.present,
+          },
+        }
+      : {}),
   };
+}
+
+function statsEvidenceFields(stats: SubjectStatsData): string[] {
+  const fields = ['rating.score', 'rating.rank', 'rating.total'];
+  for (let score = 1; score <= 10; score += 1) {
+    if (stats.ratingHistogramPresence?.[score as keyof RatingHistogram] !== false) {
+      fields.push(`rating.count.${score}`);
+    }
+  }
+  const collectionFields: Array<[keyof SubjectCollectionPresence, string]> = [
+    ['wish', 'collection.wish'],
+    ['collect', 'collection.collect'],
+    ['doing', 'collection.doing'],
+    ['onHold', 'collection.on_hold'],
+    ['dropped', 'collection.dropped'],
+  ];
+  for (const [key, field] of collectionFields) {
+    if (stats.collectionPresence?.[key] !== false) fields.push(field);
+  }
+  return fields;
 }
 
 function parseSubject(raw: Subject): { data: ProviderSubjectData; fields: string[] } {
@@ -492,7 +567,8 @@ function parseDiscoveryPage(
   totalKind: SubjectDiscoveryTotalKind,
 ): SubjectDiscoveryPage {
   const value = raw as unknown as Record<string, unknown>;
-  if (!Array.isArray(value.data)) throw new SchemaDriftError('Discovery response data must be an array.');
+  if (!Array.isArray(value.data))
+    throw new SchemaDriftError('Discovery response data must be an array.');
   const items = value.data.map((item) => parseDiscoveryCandidate(item as Subject));
   return {
     items,
@@ -524,7 +600,21 @@ function discoveryEvidence(
     ];
   }
   for (const item of page.items) {
-    for (const fieldPath of ['id', 'name', 'nameCn', 'date', 'platform', 'score', 'rank', 'ratingCount', 'collection', 'tags', 'metaTags', 'images', 'nsfw']) {
+    for (const fieldPath of [
+      'id',
+      'name',
+      'nameCn',
+      'date',
+      'platform',
+      'score',
+      'rank',
+      'ratingCount',
+      'collection',
+      'tags',
+      'metaTags',
+      'images',
+      'nsfw',
+    ]) {
       const key = `items[${item.id}].${fieldPath}`;
       evidence[key] = [
         createEvidenceRef({
@@ -546,7 +636,11 @@ function unavailableDiscovery<T>(source: SourceDescriptor): CapabilityResult<T> 
   return {
     state: 'unavailable',
     error: { code: 'upstream_unavailable', retryable: true },
-    warnings: [warning('SOURCE_NOT_CONFIGURED', 'The official discovery operation is not configured.', { source })],
+    warnings: [
+      warning('SOURCE_NOT_CONFIGURED', 'The official discovery operation is not configured.', {
+        source,
+      }),
+    ],
   };
 }
 
@@ -580,19 +674,43 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
     subjectId: number,
     context: ProviderRequestContext = {},
   ): Promise<CapabilityResult<SubjectStatsData>> {
-    const subject = await this.getSubject(subjectId, context);
-    if (!subject.data) {
-      return subject as unknown as CapabilityResult<SubjectStatsData>;
+    const source: SourceDescriptor = { ...SOURCE_V0, operation: 'getSubjectById' };
+    const authScope = context.authScope ?? 'public';
+    try {
+      const raw = await this.api.getSubjectById(subjectId);
+      const retrievedAt = new Date().toISOString();
+      const stats = parseStats(raw, { allowIncomplete: true });
+      const id = requiredNumber((raw as unknown as Record<string, unknown>).id, 'id');
+      const complete =
+        Object.values(stats.ratingHistogramPresence || {}).every(Boolean) &&
+        Object.values(stats.collectionPresence || {}).every(Boolean);
+      return {
+        state: complete ? 'ok' : 'partial',
+        data: stats,
+        evidence: subjectEvidence(source, retrievedAt, id, statsEvidenceFields(stats), authScope),
+        coverage: {
+          state: complete ? 'complete' : 'partial',
+          requested: 1,
+          scanned: 1,
+          matched: 1,
+          returned: 1,
+        },
+        retrievedAt,
+        ...(complete
+          ? {}
+          : {
+              warnings: [
+                warning(
+                  'MISSING_FIELD',
+                  'Subject stats response omitted or contained invalid rating or collection buckets.',
+                  { source },
+                ),
+              ],
+            }),
+      };
+    } catch (err: unknown) {
+      return failure(source, err);
     }
-    return {
-      ...subject,
-      data: subject.data.stats,
-      evidence: Object.fromEntries(
-        Object.entries(subject.evidence ?? {}).filter(
-          ([field]) => field.startsWith('rating.') || field.startsWith('collection.'),
-        ),
-      ),
-    };
   }
 
   async searchSubjects(
@@ -638,7 +756,13 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
           returned: data.items.length,
         },
         retrievedAt,
-        warnings: [warning('EXPERIMENTAL_SOURCE', 'Official v0 subject search is marked experimental upstream.', { source })],
+        warnings: [
+          warning(
+            'EXPERIMENTAL_SOURCE',
+            'Official v0 subject search is marked experimental upstream.',
+            { source },
+          ),
+        ],
       };
     } catch (err: unknown) {
       return failure(source, err);

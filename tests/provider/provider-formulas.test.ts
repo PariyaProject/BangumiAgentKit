@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMPLETION_FORMULA,
+  COLLECTION_PERCENTAGES_FORMULA,
+  HISTOGRAM_MEAN_FORMULA,
   POPULATION_SD_FORMULA,
   computeCollectionCompletionRate,
+  computeCollectionPercentages,
   computePopulationStandardDeviation,
   computeRatingPercentages,
   type FieldEvidence,
@@ -90,15 +93,25 @@ describe('PR-7B formula foundation', () => {
   });
 
   it('PF26/PF27: computes population SD and safely handles N=0', () => {
-    const result = computePopulationStandardDeviation({
-      ...stats,
-      ratingHistogram: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1 },
-    });
+    const result = computePopulationStandardDeviation(
+      {
+        ...stats,
+        ratingHistogram: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1 },
+      },
+      inputEvidence,
+    );
     expect(result.state).toBe('conflict');
     expect(result.data?.histogramPopulation).toBe(10);
+    expect(result.data?.histogramMean).toBe(5.5);
     expect(result.data?.standardDeviation).toBeCloseTo(Math.sqrt(8.25), 8);
     expect(result.data?.upstreamScore).toBe(6);
     expect(result.conflicts).toHaveLength(1);
+    expect(result.evidence?.histogramMean?.[0]?.formula).toBe(HISTOGRAM_MEAN_FORMULA.id);
+    expect(result.evidence?.histogramMean?.[0]?.fieldPath).toBe('histogramMean');
+    expect(result.conflicts?.[0]?.candidates[0]?.evidence?.[0]?.formula).toBe(
+      HISTOGRAM_MEAN_FORMULA.id,
+    );
+    expect(result.conflicts?.[0]?.candidates[1]?.evidence?.[0]?.fieldPath).toBe('rating.score');
 
     const empty = computePopulationStandardDeviation({
       ...stats,
@@ -120,6 +133,28 @@ describe('PR-7B formula foundation', () => {
     expect(COMPLETION_FORMULA.evidenceStatus).toBe('empirically_verified');
     expect(COMPLETION_FORMULA.evidenceStatus).not.toBe('official_contract');
     expect(result.evidence?.value?.[0]?.formula).toBe(COMPLETION_FORMULA.id);
+  });
+
+  it('PF33: collection percentages preserve all five buckets and zero-population semantics', () => {
+    const result = computeCollectionPercentages(stats, inputEvidence, '2026-08-09T00:00:00Z');
+
+    expect(result.state).toBe('ok');
+    expect(result.data).toMatchObject({
+      wish: (1 / 15) * 100,
+      collect: (2 / 15) * 100,
+      doing: 20,
+      on_hold: (4 / 15) * 100,
+      dropped: (5 / 15) * 100,
+    });
+    expect(COLLECTION_PERCENTAGES_FORMULA.id).toBe('bangumi.collection.percentages.v1');
+    expect(result.evidence?.value?.[0]?.formula).toBe(COLLECTION_PERCENTAGES_FORMULA.id);
+
+    const empty = computeCollectionPercentages({
+      ...stats,
+      collection: { wish: 0, collect: 0, doing: 0, onHold: 0, dropped: 0 },
+    });
+    expect(empty.state).toBe('not_computable');
+    expect(empty.data).toBeNull();
   });
 
   it('PF29/PF32: zero denominator is not computable and derived evidence retains inputs', () => {

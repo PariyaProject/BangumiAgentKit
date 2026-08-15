@@ -14,6 +14,7 @@ import {
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
+  SubjectStatsViewModel,
   CollectionIntelligenceViewModel,
   CollectionBacklogViewModel,
   CollectionScheduleViewModel,
@@ -34,6 +35,7 @@ import { PersonActivityCard } from './PersonActivityCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { SubjectComparisonCard } from './SubjectComparisonCard.js';
+import { SubjectStatsCard } from './SubjectStatsCard.js';
 import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
 import { CollectionBacklogCard } from './CollectionBacklogCard.js';
 import { CollectionScheduleCard } from './CollectionScheduleCard.js';
@@ -174,6 +176,14 @@ registerTemplate<SubjectComparisonViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <SubjectComparisonCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<SubjectStatsViewModel>({
+  id: 'subject-stats',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <SubjectStatsCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

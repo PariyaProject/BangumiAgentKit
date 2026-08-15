@@ -326,6 +326,77 @@ boundaries.
 
 ---
 
+## OP-012 Subject Statistics Intelligence
+
+Status:
+SELECTED_IN_HARNESS_V3_EPOCH / SUBJECT-STATS-INTELLIGENCE-V1
+
+User questions:
+
+“这个条目的评分分布集中还是分散？评分人数和官方评分直方图是否一致？”
+
+“收藏状态如何分布，当前样本里的看过完成率是多少？”
+
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+5/5 — one bounded call turns an existing raw stats seam into a reusable,
+evidence-bearing answer for both Agents and presentation surfaces.
+
+Data Availability:
+5/5 — official v0 already supplies the score, rank, rating total, ten rating
+buckets, and five collection buckets.
+
+Reliability:
+4/5 — raw values are official v0; derived percentages and dispersion are
+deterministic formulas, while the collection completion denominator is retained
+as empirically verified rather than an official contract.
+
+Implementation Cost:
+3/5 — a new semantic adapter, formula descriptor, image-free Renderer card,
+Standalone route, tests, and catalog/docs updates over existing provider seams.
+
+Maintenance Risk:
+2/5
+
+Source Risk:
+1/5
+
+Possible Sources:
+Official v0 `getSubjectStats`; derived-s7 rating percentages, histogram mean,
+population standard deviation, collection percentages, and completion rate. No
+HTML, Structured Web, snapshots, history, community statistics, or private
+collection data.
+
+Potential Capability:
+`get_subject_stats_intelligence`
+
+Potential Renderer:
+`SubjectStatsIntelligence`
+
+Derived Logic:
+`subject-stats-intelligence-v1` preserves the official rating histogram and
+collection buckets, computes versioned percentages and population standard
+deviation, retains upstream score versus histogram-mean conflicts, and computes
+`collect / (wish + collect + doing + on_hold + dropped)` with empirical-verification
+evidence. Zero populations are `not_computable`; malformed, partial, unavailable,
+and not-found inputs remain explicit. The result never turns dispersion into a
+quality, polarization, or recommendation score and does not claim historical or
+cross-subject trends.
+
+Provenance:
+Selected from synchronized `master` at `bae48a42cfee4b4a9db4c8f2615e0b5f16a081c9`
+in Harness V3 Outer Run Issue #23 after the six-lane discovery audit. Existing
+product surfaces already exposed raw subject stats and tested formula primitives,
+but Agents lacked one evidence-bearing semantic result, Renderer card, and
+Standalone command. The Epoch stays within the public read-only source boundary.
+
+---
+
 ## OP-001 Voice Actor Workload
 
 Status:
