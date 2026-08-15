@@ -96,6 +96,7 @@ export interface PersonActivityCoverage {
   outputTruncated: boolean;
   uniqueSubjects: number;
   uniqueCharacters: number;
+  missingSubjectIdRows: number;
   missingDateRows: number;
   invalidDateRows: number;
   outsideWindowRows: number;

@@ -290,6 +290,65 @@ describe('PersonActivityService', () => {
     );
   });
 
+  it('degrades missing subject IDs and reserves empty-window success for evaluable rows', async () => {
+    const missingOnlyFetch = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return json([{ id: 101, name: '缺失条目', subject_type: 2, staff: '主角' }]);
+      }
+      return json({ error: 'not found' }, 404);
+    });
+    const missingOnly = await new PersonActivityService(
+      new HttpClient({ fetchFn: missingOnlyFetch }),
+    ).getPersonActivity(20, { asOf: '2026-08-15', kind: 'voice', media: 'all' });
+
+    expect(missingOnly.state).toBe('partial');
+    expect(missingOnly.coverage.missingSubjectIdRows).toBe(1);
+    expect(missingOnly.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'MISSING_SUBJECT_ID' })]),
+    );
+    expect(missingOnly.warnings).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'NO_WINDOW_MATCHES' })]),
+    );
+
+    const mixedFetch = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return json([
+          { id: 101, name: '缺失条目', subject_type: 2, staff: '主角' },
+          { id: 102, name: '有效角色', subject_id: 9, subject_type: 2, staff: '主角' },
+        ]);
+      }
+      if (url.endsWith('/v0/subjects/9')) return json(subjectPayload(9, { date: '2026-08-01' }));
+      return json({ error: 'not found' }, 404);
+    });
+    const mixed = await new PersonActivityService(
+      new HttpClient({ fetchFn: mixedFetch }),
+    ).getPersonActivity(20, { asOf: '2026-08-15', kind: 'voice', media: 'all' });
+    expect(mixed.state).toBe('partial');
+    expect(mixed.rows).toHaveLength(1);
+    expect(mixed.coverage.missingSubjectIdRows).toBe(1);
+
+    const emptyFetch = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return json([{ id: 101, name: '旧作品', subject_id: 9, subject_type: 2, staff: '主角' }]);
+      }
+      if (url.endsWith('/v0/subjects/9')) return json(subjectPayload(9, { date: '2020-08-01' }));
+      return json({ error: 'not found' }, 404);
+    });
+    const empty = await new PersonActivityService(
+      new HttpClient({ fetchFn: emptyFetch }),
+    ).getPersonActivity(20, { asOf: '2026-08-15', kind: 'voice', media: 'all' });
+    expect(empty.state).toBe('complete');
+    expect(empty.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'NO_WINDOW_MATCHES' })]),
+    );
+  });
+
   it('returns not_computable when every observed credit lacks a usable activity date', async () => {
     const fixture = activityFetch();
     const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {

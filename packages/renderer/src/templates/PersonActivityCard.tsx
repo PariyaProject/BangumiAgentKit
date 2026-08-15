@@ -114,7 +114,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         {viewModel.coverage.subjectDetailsFailed} · 关系 ID 省略{' '}
         {viewModel.coverage.subjectIdsDroppedAtRelationLimit} · 详情未请求{' '}
         {viewModel.coverage.subjectDetailIdsDroppedAtLimit} 个 · 详情并发{' '}
-        {viewModel.coverage.detailConcurrency} · 输出 {viewModel.coverage.rowsReturned}/
+        {viewModel.coverage.detailConcurrency} · 缺少作品 ID{' '}
+        {viewModel.coverage.missingSubjectIdRows} · 输出 {viewModel.coverage.rowsReturned}/
         {viewModel.coverage.rowsEligible}
         {viewModel.coverage.truncated
           ? ` · 已达到边界${viewModel.coverage.sampled ? '（确定性等距样本）' : ''}`

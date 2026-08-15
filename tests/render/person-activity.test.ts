@@ -78,6 +78,7 @@ const result: PersonActivityResult = {
     outputTruncated: false,
     uniqueSubjects: 22,
     uniqueCharacters: 22,
+    missingSubjectIdRows: 0,
     missingDateRows: 1,
     invalidDateRows: 0,
     outsideWindowRows: 1,

@@ -647,6 +647,7 @@ export interface PersonActivityViewModel {
     rowsEligible: number;
     rowsReturned: number;
     outputTruncated: boolean;
+    missingSubjectIdRows: number;
     missingDateRows: number;
     invalidDateRows: number;
     outsideWindowRows: number;

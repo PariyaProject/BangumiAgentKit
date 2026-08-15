@@ -413,6 +413,7 @@ export class PersonActivityService {
       { count: number; sampleSubjectIds: Set<number> }
     >();
     const accepted: ActivityRowWithSets[] = [];
+    let missingSubjectIdRows = 0;
     let missingDateRows = 0;
     let invalidDateRows = 0;
     let outsideWindowRows = 0;
@@ -421,6 +422,7 @@ export class PersonActivityService {
 
     for (const candidate of selectedCandidates) {
       if (candidate.subjectId === undefined) {
+        missingSubjectIdRows += 1;
         addExclusion(exclusions, 'missing_subject_id');
         continue;
       }
@@ -513,6 +515,7 @@ export class PersonActivityService {
     const detailPartial =
       detailFailures.size > 0 ||
       subjectDetailIdsDroppedAtLimit > 0 ||
+      missingSubjectIdRows > 0 ||
       missingDateRows > 0 ||
       invalidDateRows > 0 ||
       mediaUnknownRows > 0;
@@ -573,6 +576,13 @@ export class PersonActivityService {
         code: 'MISSING_ACTIVITY_DATE',
         state: 'partial',
         message: `${missingDateRows + invalidDateRows} 条关系缺少可用的作品首播日期，未强行归入时间窗。`,
+      });
+    }
+    if (missingSubjectIdRows > 0) {
+      warnings.push({
+        code: 'MISSING_SUBJECT_ID',
+        state: 'partial',
+        message: `${missingSubjectIdRows} 条官方关系缺少作品 ID，无法进行作品详情和时间窗判断。`,
       });
     }
     if (mediaUnknownRows > 0) {
@@ -679,6 +689,7 @@ export class PersonActivityService {
         outputTruncated,
         uniqueSubjects: summary.uniqueSubjects,
         uniqueCharacters: summary.uniqueCharacters,
+        missingSubjectIdRows,
         missingDateRows,
         invalidDateRows,
         outsideWindowRows,

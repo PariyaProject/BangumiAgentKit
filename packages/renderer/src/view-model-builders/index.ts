@@ -1530,6 +1530,7 @@ export function buildPersonActivityViewModel(
       rowsEligible: result.coverage.rowsEligible,
       rowsReturned: result.coverage.rowsReturned,
       outputTruncated: result.coverage.outputTruncated,
+      missingSubjectIdRows: result.coverage.missingSubjectIdRows,
       missingDateRows: result.coverage.missingDateRows,
       invalidDateRows: result.coverage.invalidDateRows,
       outsideWindowRows: result.coverage.outsideWindowRows,
