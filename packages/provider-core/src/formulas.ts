@@ -52,11 +52,19 @@ export const FORMULA_REGISTRY: readonly FormulaDescriptor[] = Object.freeze([
     evidenceStatus: 'derived',
     description: 'population standard deviation over the rating histogram',
   },
+  {
+    id: 'bangumi.collection.percentages.v1',
+    version: 1,
+    inputs: SUBJECT_COLLECTION_BUCKETS.map((bucket) => `collection.${bucket}`),
+    evidenceStatus: 'derived',
+    description: 'collection bucket count / collection bucket population × 100',
+  },
 ]);
 
 export const COMPLETION_FORMULA = FORMULA_REGISTRY[0] as FormulaDescriptor;
 export const RATING_PERCENTAGES_FORMULA = FORMULA_REGISTRY[1] as FormulaDescriptor;
 export const POPULATION_SD_FORMULA = FORMULA_REGISTRY[2] as FormulaDescriptor;
+export const COLLECTION_PERCENTAGES_FORMULA = FORMULA_REGISTRY[3] as FormulaDescriptor;
 
 /** Upstream scores are published to one decimal place; this is the rounding band. */
 export const UPSTREAM_SCORE_ROUNDING_TOLERANCE = 0.05;
@@ -69,6 +77,7 @@ export interface PopulationStandardDeviationData {
 }
 
 export type RatingPercentages = Record<keyof RatingHistogram, number>;
+export type CollectionPercentages = Record<SubjectCollectionBucket, number>;
 
 function formulaSource(formula: FormulaDescriptor): SourceDescriptor {
   return {
@@ -185,6 +194,44 @@ export function computeRatingPercentages(
   for (let score = 1; score <= 10; score += 1) {
     data[score as keyof RatingHistogram] =
       (histogram[score as keyof RatingHistogram] / population) * 100;
+  }
+  return { state: 'ok', data, evidence: { value: [formulaRef], ...inputs }, retrievedAt };
+}
+
+export function computeCollectionPercentages(
+  stats: SubjectStatsData,
+  input: FieldEvidence = {},
+  retrievedAt = new Date().toISOString(),
+): CapabilityResult<CollectionPercentages | null> {
+  const population = SUBJECT_COLLECTION_BUCKETS.reduce(
+    (total, bucket) => total + stats.collection[bucket === 'on_hold' ? 'onHold' : bucket],
+    0,
+  );
+  const formulaRef = formulaEvidence(
+    COLLECTION_PERCENTAGES_FORMULA,
+    retrievedAt,
+    'collectionPercentages',
+  );
+  const inputs = inputEvidence(input, COLLECTION_PERCENTAGES_FORMULA.inputs);
+  if (population === 0) {
+    return {
+      state: 'not_computable',
+      data: null,
+      evidence: { value: [formulaRef], ...inputs },
+      retrievedAt,
+      warnings: [
+        warning(
+          'MISSING_FIELD',
+          'Collection population is zero; collection percentages are not computable.',
+        ),
+      ],
+    };
+  }
+
+  const data = {} as CollectionPercentages;
+  for (const bucket of SUBJECT_COLLECTION_BUCKETS) {
+    const value = stats.collection[bucket === 'on_hold' ? 'onHold' : bucket];
+    data[bucket] = (value / population) * 100;
   }
   return { state: 'ok', data, evidence: { value: [formulaRef], ...inputs }, retrievedAt };
 }

@@ -24,6 +24,7 @@ Ctrl+C 取消当前输入/操作，第二次 Ctrl+C 干净退出。Standalone �
 pnpm bak -- status
 pnpm bak -- search "少女终末旅行"
 pnpm bak -- subject 218707
+pnpm bak -- stats 218707
 pnpm bak -- overview 218707
 pnpm bak -- watch-order 218707 --depth 2 --max-nodes 8 --media all
 pnpm bak -- episode-guide 218707 --max-episodes 24
@@ -64,6 +65,7 @@ principal、账号绑定、PendingAction 和审计事件仍然相互隔离。
 ```text
 search <query> [--type anime] [--limit 5]
 subject <id>
+stats <subjectId>
 overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
@@ -162,6 +164,7 @@ auth、scope、confirmation、audit 和 safe error policy；它不会直接调�
 
 ```text
 render subject <id>
+render stats|subject-stats <subjectId>
 render overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 render compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 render watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
@@ -184,6 +187,12 @@ render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
 render collection-schedule [--max-items 1..200] [--max-rows 1..100]
                            [--status wish,doing,done,on_hold,dropped]
 ```
+
+`stats` 读取官方 v0 的评分直方图与收藏桶，并计算有版本公式的评分百分比、直方图均值、
+总体标准差、收藏分布百分比和完成率。输出保留 official-v0/derived-s7 证据、检索时间、
+公式版本、评分均值冲突、评分/收藏区段覆盖，以及零样本 `not_computable`、`partial`、
+`unavailable` 和 `not_found` 状态。它不读取评论、社区统计、网站专有图表或历史快照，
+也不生成推荐、质量或因果结论。
 
 `compare` 严格读取两个不同的已知条目 ID，并按输入顺序展示身份、日期、平台、报告话数、
 官方评分/排名/评分人数/收藏总数及 `B − A` 数值差；多余 ID、未知选项、孤立值和重复上限

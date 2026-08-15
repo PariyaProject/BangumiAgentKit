@@ -34,6 +34,7 @@ import {
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
   buildSubjectComparisonViewModel,
+  buildSubjectStatsViewModel,
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
   buildCollectionScheduleViewModel,
@@ -44,6 +45,7 @@ import {
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
+import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
 
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
@@ -614,6 +616,24 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectStats = defineTool({
+    name: 'bangumi.render_subject_stats_intelligence',
+    description:
+      '生成指定条目的证据型统计智能图片卡片 Artifact。卡片显示官方 v0 评分直方图、评分百分比/均值/总体标准差、收藏状态分布与完成率、公式版本、覆盖、冲突和不可计算原因；不读取图片资产，不计算历史趋势、社区统计、网站专有图表或推荐结论。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const result = await getSubjectStatsIntelligence(input.subjectId, {
+        providerRegistry: deps?.providerRegistry,
+      });
+      return await executeRenderAndSave(buildSubjectStatsViewModel(result));
+    },
+  });
+
   const renderCollectionIntelligence = defineTool({
     name: 'bangumi.render_collection_intelligence',
     description:
@@ -918,6 +938,7 @@ export function createRenderPresentationTools(
     renderEpisodeGuide,
     renderSubjectOverview,
     renderSubjectComparison,
+    renderSubjectStats,
     renderCollectionIntelligence,
     renderCollectionBacklog,
     renderCollectionSchedule,

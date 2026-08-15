@@ -2,32 +2,33 @@
 
 ## 语义工具列表
 
-| 工具名称                              | 权限            | 风险等级 | 说明                                                                                                    |
-| ------------------------------------- | --------------- | -------- | ------------------------------------------------------------------------------------------------------- |
-| `bangumi.search_subjects`             | none            | read     | 按关键词搜索动画、书籍、音乐、游戏                                                                      |
-| `bangumi.get_subject`                 | optional        | read     | 获取条目详细信息（评分、排名、简介、分类统计）                                                          |
-| `bangumi.get_subject_overview`        | none            | read     | 一次获取条目、统计、角色、职员、关联条目的证据型概览                                                    |
-| `bangumi.get_subject_relations`       | none            | read     | 查看前传、续集、衍生作、原著                                                                            |
-| `bangumi.get_series_watch_order`      | none            | read     | 有界观看顺序、方向路径、媒介排除与覆盖证据                                                              |
-| `bangumi.get_subject_cast`            | none            | read     | 查看角色及其声优 (CV) 人物关联                                                                          |
-| `bangumi.get_calendar`                | none            | read     | 获取周一至周日新番每日放送进度                                                                          |
-| `bangumi.get_episodes`                | none            | read     | 查看章节列表（自动标识正篇/SP）                                                                         |
-| `bangumi.get_episode`                 | none            | read     | 查看单个章节详情                                                                                        |
-| `bangumi.search_characters`           | none            | read     | 搜索虚拟角色                                                                                            |
-| `bangumi.get_character`               | none            | read     | 查看角色详情、关联条目与声优                                                                            |
-| `bangumi.search_persons`              | none            | read     | 搜索现实人物/声优                                                                                       |
-| `bangumi.get_person`                  | none            | read     | 查看人物详情与参与作品                                                                                  |
-| `bangumi.get_user`                    | none            | read     | 查看用户公开主页与收藏                                                                                  |
-| `bangumi.get_collection_intelligence` | read:collection | read     | 当前账号有界收藏状态、评分、标签和进度概览                                                              |
-| `bangumi.get_collection_backlog`      | read:collection | read     | 当前账号动画 backlog、正篇 sourceTotal、SlimSubject.eps validity、严格 airdate 证据、剩余集数与冲突状态 |
-| `bangumi.get_collection_schedule`     | read:collection | read     | 当前账号收藏与官方七日 legacy 日历的 subject ID 对齐、星期、首播日期、收藏信封进度与未匹配覆盖          |
-| `bangumi.get_collection_dashboard`    | read:collection | read     | 一次组合当前账号收藏概览、backlog 与七日播出计划；保留区段 evidence/coverage/degraded states 和组合上限 |
-| `bangumi.get_revision`                | none            | read     | 查看条目修改修订日志                                                                                    |
-| `bangumi.get_index`                   | none            | read     | 查看目录及其包含条目                                                                                    |
-| `bangumi.auth_status`                 | none            | read     | 查看当前用户 Bangumi 绑定状态                                                                           |
+| 工具名称                                 | 权限            | 风险等级 | 说明                                                                                                    |
+| ---------------------------------------- | --------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `bangumi.search_subjects`                | none            | read     | 按关键词搜索动画、书籍、音乐、游戏                                                                      |
+| `bangumi.get_subject`                    | optional        | read     | 获取条目详细信息（评分、排名、简介、分类统计）                                                          |
+| `bangumi.get_subject_overview`           | none            | read     | 一次获取条目、统计、角色、职员、关联条目的证据型概览                                                    |
+| `bangumi.get_subject_stats_intelligence` | none            | read     | 官方评分直方图/收藏桶及有版本的分布、均值、总体标准差、完成率与证据状态                                 |
+| `bangumi.get_subject_relations`          | none            | read     | 查看前传、续集、衍生作、原著                                                                            |
+| `bangumi.get_series_watch_order`         | none            | read     | 有界观看顺序、方向路径、媒介排除与覆盖证据                                                              |
+| `bangumi.get_subject_cast`               | none            | read     | 查看角色及其声优 (CV) 人物关联                                                                          |
+| `bangumi.get_calendar`                   | none            | read     | 获取周一至周日新番每日放送进度                                                                          |
+| `bangumi.get_episodes`                   | none            | read     | 查看章节列表（自动标识正篇/SP）                                                                         |
+| `bangumi.get_episode`                    | none            | read     | 查看单个章节详情                                                                                        |
+| `bangumi.search_characters`              | none            | read     | 搜索虚拟角色                                                                                            |
+| `bangumi.get_character`                  | none            | read     | 查看角色详情、关联条目与声优                                                                            |
+| `bangumi.search_persons`                 | none            | read     | 搜索现实人物/声优                                                                                       |
+| `bangumi.get_person`                     | none            | read     | 查看人物详情与参与作品                                                                                  |
+| `bangumi.get_user`                       | none            | read     | 查看用户公开主页与收藏                                                                                  |
+| `bangumi.get_collection_intelligence`    | read:collection | read     | 当前账号有界收藏状态、评分、标签和进度概览                                                              |
+| `bangumi.get_collection_backlog`         | read:collection | read     | 当前账号动画 backlog、正篇 sourceTotal、SlimSubject.eps validity、严格 airdate 证据、剩余集数与冲突状态 |
+| `bangumi.get_collection_schedule`        | read:collection | read     | 当前账号收藏与官方七日 legacy 日历的 subject ID 对齐、星期、首播日期、收藏信封进度与未匹配覆盖          |
+| `bangumi.get_collection_dashboard`       | read:collection | read     | 一次组合当前账号收藏概览、backlog 与七日播出计划；保留区段 evidence/coverage/degraded states 和组合上限 |
+| `bangumi.get_revision`                   | none            | read     | 查看条目修改修订日志                                                                                    |
+| `bangumi.get_index`                      | none            | read     | 查看目录及其包含条目                                                                                    |
+| `bangumi.auth_status`                    | none            | read     | 查看当前用户 Bangumi 绑定状态                                                                           |
 
 Renderer companions include `bangumi.render_subject_overview`,
-`bangumi.render_series_watch_order`, and
+`bangumi.render_subject_stats_intelligence`, `bangumi.render_series_watch_order`, and
 `bangumi.render_collection_backlog`. `render_subject_overview` accepts the
 same bounded subject-overview caps as the semantic tool. The series renderer
 accepts the same bounded `subjectId`, `depth` (0-2), `maxNodes` (1-16), and `media`
@@ -42,6 +43,13 @@ completion as finished/ongoing/unknown evidence. Finished is explicitly
 qualified as “all currently reported main episodes have past airdates” rather
 than an official no-more-episodes claim. Row-level errors retain code, message,
 and nextAction.
+
+The subject-stats renderer is image-free and read-only. It displays the official
+v0 snapshot beside derived-s7 percentage, mean, population-standard-deviation,
+and completion formulas, along with source operations, coverage, conflict
+candidates, zero-population `not_computable`, and unavailable/not-found states.
+It does not fetch image assets, render comments, inspect community/history
+sources, or turn dispersion into a quality or recommendation score.
 
 The collection-schedule semantic tool and renderer are current-account-only,
 image-free, and bounded. They join the official seven-day legacy calendar to

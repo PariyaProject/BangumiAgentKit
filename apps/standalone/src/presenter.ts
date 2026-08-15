@@ -508,6 +508,101 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
   return boundHumanLines(lines);
 }
 
+function presentSubjectStats(value: Record<string, unknown>): string | undefined {
+  const subjectId = value.subjectId;
+  const raw = comparisonRecord(value.raw);
+  const rating = comparisonRecord(value.rating);
+  const collection = comparisonRecord(value.collection);
+  if (typeof subjectId !== 'number' || !rating || !collection) return undefined;
+
+  const completionRate =
+    typeof collection.completionRate === 'number' && Number.isFinite(collection.completionRate)
+      ? `${(collection.completionRate * 100).toFixed(1)}%`
+      : '未知';
+
+  const lines = [
+    `条目统计智能 · 条目 ${humanField(subjectId, 32)} · 状态: ${comparisonStateLabel(value.state)}`,
+    `官方评分 ${humanField(raw?.score ?? '未知', 32)} · 评分人数 ${humanField(raw?.ratingTotal ?? '未知', 32)} · 直方图均值 ${humanField(rating.mean ?? '未知', 32)} · 总体标准差 ${humanField(rating.standardDeviation ?? '未知', 32)}`,
+    `收藏总数 ${humanField(collection.total ?? '未知', 32)} · 完成率 ${completionRate} · 评分区段 ${comparisonStateLabel(rating.state)} · 收藏区段 ${comparisonStateLabel(collection.state)} · 完成率状态 ${comparisonStateLabel(collection.completionState)}`,
+    '说明：标准差只描述当前官方评分直方图的分散程度，不生成推荐、质量或因果结论。',
+  ];
+
+  const ratingDistribution = Array.isArray(rating.distribution) ? rating.distribution : [];
+  if (ratingDistribution.length > 0) {
+    lines.push('评分分布：');
+    for (const item of ratingDistribution) {
+      const details = comparisonRecord(item);
+      if (!details) continue;
+      const percentage =
+        typeof details.percentage === 'number' && Number.isFinite(details.percentage)
+          ? `${details.percentage.toFixed(1)}%`
+          : '未知';
+      lines.push(
+        `- ${humanField(details.score ?? '?', 16)} 分：${humanField(details.count ?? '?', 32)} · ${percentage}`,
+      );
+    }
+  }
+
+  const collectionDistribution = Array.isArray(collection.distribution)
+    ? collection.distribution
+    : [];
+  if (collectionDistribution.length > 0) {
+    lines.push('收藏状态分布：');
+    for (const item of collectionDistribution) {
+      const details = comparisonRecord(item);
+      if (!details) continue;
+      const percentage =
+        typeof details.percentage === 'number' && Number.isFinite(details.percentage)
+          ? `${details.percentage.toFixed(1)}%`
+          : '未知';
+      lines.push(
+        `- ${humanField(details.status ?? '?', 32)}：${humanField(details.count ?? '?', 32)} · ${percentage}`,
+      );
+    }
+  }
+
+  const coverage = comparisonRecord(value.coverage);
+  if (coverage) {
+    lines.push(
+      `覆盖：来源请求 ${humanField(coverage.sourceRequestsSucceeded ?? '?', 32)}/${humanField(coverage.sourceRequestsAttempted ?? '?', 32)} 成功 · 评分样本 ${humanField(coverage.ratingPopulation ?? '?', 32)} · 收藏样本 ${humanField(coverage.collectionPopulation ?? '?', 32)} · 公式完整 ${humanField(coverage.formulasComplete ?? '?', 32)}/${humanField(coverage.formulasAttempted ?? '?', 32)} · 冲突 ${humanField(coverage.formulasConflict ?? '?', 32)} · 不可计算 ${humanField(coverage.formulasNotComputable ?? '?', 32)}`,
+    );
+  }
+
+  const source = comparisonRecord(value.source);
+  for (const key of ['official', 'derived']) {
+    const channel = comparisonRecord(source?.[key]);
+    if (!channel) continue;
+    const operations = Array.isArray(channel.operations) ? channel.operations : [];
+    lines.push(
+      `来源 ${key === 'official' ? 'official-v0' : 'derived-s7'}：${humanField(operations.join(' + ') || '未记录', 220)}${channel.retrievedAt ? ` · 获取于 ${humanField(channel.retrievedAt, 48)}` : ''}`,
+    );
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const warning of warnings.slice(0, 4)) {
+      const details = comparisonRecord(warning);
+      if (details) {
+        lines.push(
+          `- ${humanField(details.code || 'WARNING', 64)} · ${humanField(details.message || '')}`,
+        );
+      }
+    }
+    if (warnings.length > 4)
+      lines.push(`- 另有 ${humanField(warnings.length - 4, 32)} 条告警未展开。`);
+  }
+
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 4)
+      lines.push(`- 另有 ${humanField(limitations.length - 4, 32)} 条限制未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentCollectionBacklog(value: Record<string, unknown>): string | undefined {
   const data = value.data;
   if (!data || typeof data !== 'object') return undefined;
@@ -935,6 +1030,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const subjectStats = presentSubjectStats(safe as Record<string, unknown>);
+    if (subjectStats) return subjectStats;
     const subjectComparison = presentSubjectComparison(safe as Record<string, unknown>);
     if (subjectComparison) return subjectComparison;
     const collectionDashboard = presentCollectionDashboard(safe as Record<string, unknown>);

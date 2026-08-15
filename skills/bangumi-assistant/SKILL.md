@@ -16,6 +16,9 @@ Do not rely on model memory for subject IDs, episode IDs, collection states, sco
 1. **Prefer high-level Semantic Tools**:
    - `bangumi.search_subjects`: 搜索条目（动画、书籍、音乐、游戏、三次元影视）。根据关键词返回候选列表。已知条目 ID 时使用 `get_subject`。
    - `bangumi.get_subject`: 获取具体条目的详细资料与数据。
+   - `bangumi.get_subject_stats_intelligence`: 获取官方评分直方图/收藏桶及其有版本的
+     分布、均值、总体标准差和完成率；保留 evidence、formula、conflict 与 degraded state，
+     不生成推荐或历史趋势。
    - `bangumi.search_characters`: 按角色姓名搜索虚拟角色（已知角色 ID 时使用 `get_character`）。
    - `bangumi.get_character`: 获取单个角色的详细资料及其参演作品和声优。
    - `bangumi.search_persons`: 按姓名/声优/制作人员搜索现实人物（已知人物 ID 时使用 `get_person`）。

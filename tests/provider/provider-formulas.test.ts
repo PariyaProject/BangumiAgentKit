@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMPLETION_FORMULA,
+  COLLECTION_PERCENTAGES_FORMULA,
   POPULATION_SD_FORMULA,
   computeCollectionCompletionRate,
+  computeCollectionPercentages,
   computePopulationStandardDeviation,
   computeRatingPercentages,
   type FieldEvidence,
@@ -120,6 +122,28 @@ describe('PR-7B formula foundation', () => {
     expect(COMPLETION_FORMULA.evidenceStatus).toBe('empirically_verified');
     expect(COMPLETION_FORMULA.evidenceStatus).not.toBe('official_contract');
     expect(result.evidence?.value?.[0]?.formula).toBe(COMPLETION_FORMULA.id);
+  });
+
+  it('PF33: collection percentages preserve all five buckets and zero-population semantics', () => {
+    const result = computeCollectionPercentages(stats, inputEvidence, '2026-08-09T00:00:00Z');
+
+    expect(result.state).toBe('ok');
+    expect(result.data).toMatchObject({
+      wish: (1 / 15) * 100,
+      collect: (2 / 15) * 100,
+      doing: 20,
+      on_hold: (4 / 15) * 100,
+      dropped: (5 / 15) * 100,
+    });
+    expect(COLLECTION_PERCENTAGES_FORMULA.id).toBe('bangumi.collection.percentages.v1');
+    expect(result.evidence?.value?.[0]?.formula).toBe(COLLECTION_PERCENTAGES_FORMULA.id);
+
+    const empty = computeCollectionPercentages({
+      ...stats,
+      collection: { wish: 0, collect: 0, doing: 0, onHold: 0, dropped: 0 },
+    });
+    expect(empty.state).toBe('not_computable');
+    expect(empty.data).toBeNull();
   });
 
   it('PF29/PF32: zero denominator is not computable and derived evidence retains inputs', () => {

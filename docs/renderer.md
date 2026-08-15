@@ -57,7 +57,7 @@ PNG Buffer + RenderResult Metadata
 ## Template Registry & Error Model
 
 The `TemplateRegistry` maps `RenderViewModel['template']` to React card templates
-(`subject-card`, `subject-overview`, `search-list`, `discovery-results`, `cast-card`,
+(`subject-card`, `subject-overview`, `subject-stats`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `collection-intelligence`, `collection-backlog`,
 `collection-schedule`, `collection-dashboard`, `calendar`,
 `revision-timeline`, `person-profile`, `person-activity`, and `subject-comparison`).
@@ -72,6 +72,16 @@ place; episode, rank, and count deltas use integer precision. Unknown, partial,
 unavailable, conflict, and capped values remain explicit, including both conflict
 candidates; the card never labels a winner or recommendation and does not fetch network
 assets.
+
+`subject-stats` is an image-free, read-only companion card for
+`bangumi.get_subject_stats_intelligence`. It keeps the official v0 rating
+histogram and collection buckets next to derived-s7 percentages, histogram
+mean, population standard deviation, and completion rate. Formula IDs and
+versions, source operations, coverage, conflict candidates, warnings, and
+limitations remain visible. Zero populations show `not_computable`; unavailable
+and not-found results do not receive invented metrics. The card never fetches
+image assets or turns dispersion into a recommendation, quality, community, or
+historical claim.
 
 `collection-intelligence` is an image-free, authenticated companion card for
 `bangumi.get_collection_intelligence`. It shows only deterministic aggregates

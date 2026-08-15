@@ -1,6 +1,6 @@
 # Artifact Store & Renderer Security
 
-BangumiAgentKit provides image card rendering for Bangumi subjects, bounded subject intelligence overviews, cast lists, collection progress, search results, and daily calendars.
+BangumiAgentKit provides image card rendering for Bangumi subjects, bounded subject intelligence overviews and statistics, cast lists, collection progress, search results, and daily calendars.
 
 ## Artifact Lifecycle
 

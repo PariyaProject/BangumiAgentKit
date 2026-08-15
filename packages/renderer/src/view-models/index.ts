@@ -843,6 +843,22 @@ export interface SubjectComparisonViewModel {
   limitations: string[];
 }
 
+export interface SubjectStatsViewModel {
+  template: 'subject-stats';
+  version: 1;
+  subjectId: number;
+  state: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceState;
+  raw?: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['raw'];
+  rating: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['rating'];
+  collection: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['collection'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['coverage'];
+  source: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['evidence'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['warnings'];
+  limitations: string[];
+  retrievedAt?: string;
+}
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
@@ -860,4 +876,5 @@ export type RenderViewModel =
   | PersonProfileViewModel
   | PersonActivityViewModel
   | SubjectOverviewViewModel
-  | SubjectComparisonViewModel;
+  | SubjectComparisonViewModel
+  | SubjectStatsViewModel;
