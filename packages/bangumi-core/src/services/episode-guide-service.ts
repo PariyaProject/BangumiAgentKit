@@ -22,6 +22,8 @@ export interface EpisodeGuideItem {
   id: number;
   subjectId: number;
   category: EpisodeGuideCategory;
+  sourceSubjectId?: number;
+  categoryFilterConflict?: boolean;
   rawType?: number;
   name?: string;
   nameCn?: string;
@@ -74,6 +76,8 @@ export interface EpisodeGuideResult {
     duplicateRows: number;
     overReturnedRows: number;
     sourceLimitMismatch: boolean;
+    identityConflicts: Record<string, number>;
+    filterConflicts: Record<string, number>;
     missingFields: Record<string, number>;
     truncatedFields: Record<string, number>;
     invalidFields: Record<string, number>;
@@ -126,6 +130,8 @@ export interface EpisodeGuideResult {
 interface GuideEpisodeSource {
   id: number;
   subjectId: number;
+  sourceSubjectId?: number;
+  categoryFilterConflict?: boolean;
   type?: number;
   name?: string;
   nameCn?: string;
@@ -145,6 +151,8 @@ interface EpisodePage {
   missingFields: Record<string, number>;
   truncatedFields: Record<string, number>;
   invalidFields: Record<string, number>;
+  identityConflicts: Record<string, number>;
+  filterConflicts: Record<string, number>;
 }
 
 interface EpisodeSourceAttempt {
@@ -159,6 +167,7 @@ interface SubjectSourceAttempt {
   state: 'complete' | 'unavailable' | 'not_found';
   subject?: DomainSubject;
   missingFields: Record<string, number>;
+  identityConflicts: Record<string, number>;
   error?: PublicErrorInfo;
   attemptedAt: string;
   retrievedAt?: string;
@@ -245,7 +254,22 @@ function parserError(path: string, expected: string): BangumiError {
   return new BangumiError('PARSER_ERROR', `episode-guide.${path} 应为 ${expected}`, false);
 }
 
-function parseEpisodePage(raw: unknown, subjectId: number): EpisodePage {
+function subjectIdentityMismatchError(
+  requestedSubjectId: number,
+  sourceSubjectId: number,
+): BangumiError {
+  return new BangumiError(
+    'PARSER_ERROR',
+    `episode-guide.subject.id identity mismatch: expected ${requestedSubjectId}, received ${sourceSubjectId}`,
+    false,
+  );
+}
+
+function parseEpisodePage(
+  raw: unknown,
+  subjectId: number,
+  category: EpisodeGuideOptions['category'],
+): EpisodePage {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw parserError('payload', '对象');
   }
@@ -267,12 +291,22 @@ function parseEpisodePage(raw: unknown, subjectId: number): EpisodePage {
   const missingFields: Record<string, number> = {};
   const truncatedFields: Record<string, number> = {};
   const invalidFields: Record<string, number> = {};
+  const identityConflicts: Record<string, number> = {};
+  const filterConflicts: Record<string, number> = {};
+  const requestedType = category && category !== 'all' ? CATEGORY_TO_TYPE[category] : undefined;
   const data = value.data.map((rawItem, index) => {
     if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
       throw parserError(`data[${index}]`, '对象');
     }
     const item = rawItem as Record<string, unknown>;
     if (!positiveInteger(item.id)) throw parserError(`data[${index}].id`, '正整数');
+    if (
+      item.subject_id !== undefined &&
+      item.subject_id !== null &&
+      !positiveInteger(item.subject_id)
+    ) {
+      throw parserError(`data[${index}].subject_id`, '正整数');
+    }
     if (item.type !== undefined && item.type !== null) {
       if (!Number.isInteger(item.type) || (item.type as number) < 0 || (item.type as number) > 6) {
         throw parserError(`data[${index}].type`, '0 到 6 的整数');
@@ -299,6 +333,7 @@ function parseEpisodePage(raw: unknown, subjectId: number): EpisodePage {
     const normalizedItem: GuideEpisodeSource = {
       id: item.id as number,
       subjectId,
+      ...(positiveInteger(item.subject_id) ? { sourceSubjectId: item.subject_id } : {}),
       type: finiteNumber(item.type) ? item.type : undefined,
       name: typeof item.name === 'string' && item.name ? item.name : undefined,
       nameCn: typeof item.name_cn === 'string' && item.name_cn ? item.name_cn : undefined,
@@ -309,6 +344,20 @@ function parseEpisodePage(raw: unknown, subjectId: number): EpisodePage {
       duration: typeof item.duration === 'string' && item.duration ? item.duration : undefined,
       desc: typeof item.desc === 'string' && item.desc ? item.desc : undefined,
     };
+    if (
+      normalizedItem.sourceSubjectId !== undefined &&
+      normalizedItem.sourceSubjectId !== subjectId
+    ) {
+      increment(identityConflicts, 'episode.subjectId');
+    }
+    if (
+      requestedType !== undefined &&
+      normalizedItem.type !== undefined &&
+      normalizedItem.type !== requestedType
+    ) {
+      normalizedItem.categoryFilterConflict = true;
+      increment(filterConflicts, 'episode.category');
+    }
     if (typeof item.airdate === 'string' && item.airdate !== '' && !validIsoDate(item.airdate)) {
       increment(invalidFields, 'episode.airdate');
       delete normalizedItem.airdate;
@@ -332,15 +381,23 @@ function parseEpisodePage(raw: unknown, subjectId: number): EpisodePage {
     missingFields,
     truncatedFields,
     invalidFields,
+    identityConflicts,
+    filterConflicts,
   };
 }
 
-function parseSubjectPayload(raw: unknown): { subject: DomainSubject; missingFields: string[] } {
+function parseSubjectPayload(
+  raw: unknown,
+  requestedSubjectId: number,
+): { subject: DomainSubject; missingFields: string[] } {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw parserError('subject', '对象');
   }
   const value = raw as Record<string, unknown>;
   if (!positiveInteger(value.id)) throw parserError('subject.id', '正整数');
+  if (value.id !== requestedSubjectId) {
+    throw subjectIdentityMismatchError(requestedSubjectId, value.id as number);
+  }
   if (!Number.isInteger(value.type)) throw parserError('subject.type', '整数');
   for (const field of ['name', 'name_cn', 'date', 'platform']) {
     if (value[field] !== undefined && value[field] !== null && typeof value[field] !== 'string') {
@@ -377,6 +434,8 @@ function mapGuideItem(
     id: raw.id,
     subjectId,
     category: categoryForType(raw.type),
+    ...(raw.sourceSubjectId === undefined ? {} : { sourceSubjectId: raw.sourceSubjectId }),
+    ...(raw.categoryFilterConflict ? { categoryFilterConflict: true } : {}),
     ...(raw.type === undefined ? {} : { rawType: raw.type }),
     ...(raw.name ? { name: raw.name } : {}),
     ...(raw.nameCn ? { nameCn: raw.nameCn } : {}),
@@ -456,33 +515,44 @@ export class EpisodeGuideService {
           path: `/v0/subjects/${encodeURIComponent(String(subjectId))}`,
           retryOptions: { maxRetries: 0 },
         });
-        const parsed = parseSubjectPayload(raw);
+        const parsed = parseSubjectPayload(raw, subjectId);
         const missingFields: Record<string, number> = {};
         for (const field of parsed.missingFields) increment(missingFields, `subject.${field}`);
         return {
           state: 'complete',
           subject: parsed.subject,
           missingFields,
+          identityConflicts: {},
           attemptedAt,
           retrievedAt: new Date().toISOString(),
         };
       }
       const raw = await this.generatedClient!.getSubjectById(subjectId);
-      const parsed = parseSubjectPayload(raw);
+      const parsed = parseSubjectPayload(raw, subjectId);
       const missingFields: Record<string, number> = {};
       for (const field of parsed.missingFields) increment(missingFields, `subject.${field}`);
       return {
         state: 'complete',
         subject: parsed.subject,
         missingFields,
+        identityConflicts: {},
         attemptedAt,
         retrievedAt: new Date().toISOString(),
       };
     } catch (err) {
       const error = toPublicError(err);
+      const identityConflicts: Record<string, number> = {};
+      if (
+        err instanceof BangumiError &&
+        err.code === 'PARSER_ERROR' &&
+        err.message.includes('episode-guide.subject.id identity mismatch')
+      ) {
+        increment(identityConflicts, 'subject.id');
+      }
       return {
         state: error.code === 'NOT_FOUND' ? 'not_found' : 'unavailable',
         missingFields: {},
+        identityConflicts,
         error,
         attemptedAt,
       };
@@ -511,7 +581,7 @@ export class EpisodeGuideService {
         });
         return {
           state: 'complete',
-          page: parseEpisodePage(raw, subjectId),
+          page: parseEpisodePage(raw, subjectId, category),
           attemptedAt,
           retrievedAt: new Date().toISOString(),
         };
@@ -524,7 +594,7 @@ export class EpisodeGuideService {
       });
       return {
         state: 'complete',
-        page: parseEpisodePage(raw, subjectId),
+        page: parseEpisodePage(raw, subjectId, category),
         attemptedAt,
         retrievedAt: new Date().toISOString(),
       };
@@ -554,6 +624,11 @@ export class EpisodeGuideService {
     const missingFields: Record<string, number> = { ...subjectAttempt.missingFields };
     const truncatedFields: Record<string, number> = {};
     const invalidFields: Record<string, number> = {};
+    const identityConflicts: Record<string, number> = {};
+    const filterConflicts: Record<string, number> = {};
+    for (const [field, count] of Object.entries(subjectAttempt.identityConflicts)) {
+      identityConflicts[field] = (identityConflicts[field] || 0) + count;
+    }
     const sourcePage = episodeAttempt.page;
     const rawRows = sourcePage?.data || [];
     const observedRows = rawRows.length;
@@ -575,6 +650,12 @@ export class EpisodeGuideService {
       }
       for (const [field, count] of Object.entries(episodeAttempt.page.invalidFields)) {
         invalidFields[field] = (invalidFields[field] || 0) + count;
+      }
+      for (const [field, count] of Object.entries(episodeAttempt.page.identityConflicts)) {
+        identityConflicts[field] = (identityConflicts[field] || 0) + count;
+      }
+      for (const [field, count] of Object.entries(episodeAttempt.page.filterConflicts)) {
+        filterConflicts[field] = (filterConflicts[field] || 0) + count;
       }
     }
     const allItems = sortEpisodes(
@@ -603,6 +684,8 @@ export class EpisodeGuideService {
       duplicateRows > 0 ||
       inconsistentTotal ||
       sourceLimitMismatch ||
+      Object.keys(identityConflicts).length > 0 ||
+      Object.keys(filterConflicts).length > 0 ||
       Object.keys(missingFields).length > 0 ||
       Object.keys(truncatedFields).length > 0 ||
       Object.keys(invalidFields).length > 0 ||
@@ -642,11 +725,15 @@ export class EpisodeGuideService {
     if (subjectAttempt.state !== 'complete') {
       warnings.push(
         warning(
-          'SUBJECT_IDENTITY_UNAVAILABLE',
+          subjectAttempt.identityConflicts['subject.id']
+            ? 'SUBJECT_SOURCE_MISMATCH'
+            : 'SUBJECT_IDENTITY_UNAVAILABLE',
           state,
-          subjectAttempt.state === 'not_found'
-            ? '未找到对应条目身份信息；章节源结果不会被当作完整条目概览。'
-            : '条目身份源暂时不可用；章节结果仍按可获取的官方页面返回。',
+          subjectAttempt.identityConflicts['subject.id']
+            ? '官方条目源返回的 subject_id 与请求条目不一致；条目身份按 schema drift/conflict 处理，未标记为完整。'
+            : subjectAttempt.state === 'not_found'
+              ? '未找到对应条目身份信息；章节源结果不会被当作完整条目概览。'
+              : '条目身份源暂时不可用；章节结果仍按可获取的官方页面返回。',
         ),
       );
     }
@@ -696,6 +783,24 @@ export class EpisodeGuideService {
           'DUPLICATE_EPISODE_ROWS',
           'partial',
           `官方章节源返回 ${duplicateRows} 条重复 ID，输出保留首次观察并公开重复计数。`,
+        ),
+      );
+    }
+    if (identityConflicts['episode.subjectId']) {
+      warnings.push(
+        warning(
+          'SOURCE_ID_MISMATCH',
+          'partial',
+          '部分章节的官方 subject_id 与请求条目不一致，已保留 sourceSubjectId 并标记 partial。',
+        ),
+      );
+    }
+    if (Object.keys(filterConflicts).length > 0) {
+      warnings.push(
+        warning(
+          'CATEGORY_FILTER_MISMATCH',
+          'partial',
+          '章节源返回了不符合请求类别的行，已保留实际类别并标记冲突。',
         ),
       );
     }
@@ -774,6 +879,8 @@ export class EpisodeGuideService {
         duplicateRows,
         overReturnedRows,
         sourceLimitMismatch,
+        identityConflicts,
+        filterConflicts,
         missingFields,
         truncatedFields,
         invalidFields,

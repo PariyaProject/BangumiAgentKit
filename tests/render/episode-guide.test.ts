@@ -58,6 +58,8 @@ const result: EpisodeGuideResult = {
     duplicateRows: 0,
     overReturnedRows: 0,
     sourceLimitMismatch: false,
+    identityConflicts: {},
+    filterConflicts: {},
     missingFields: {
       'episode.airdate': 1,
       'episode.duration': 1,

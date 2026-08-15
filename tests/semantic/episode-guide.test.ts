@@ -33,6 +33,7 @@ describe('episode guide semantic tool', () => {
           data: [
             {
               id: 70,
+              subject_id: 7,
               type: 0,
               name: 'Episode',
               name_cn: '第一集',
@@ -96,6 +97,7 @@ describe('episode guide semantic tool', () => {
           data: [
             {
               id: 70,
+              subject_id: 7,
               type: 0,
               name: 'Episode',
               name_cn: '第一集',
@@ -122,13 +124,18 @@ describe('episode guide semantic tool', () => {
     )) as {
       state: string;
       subject?: { nameCn?: string };
-      items: Array<{ category: string; nameCn?: string; discussionCount?: number }>;
+      items: Array<{
+        category: string;
+        nameCn?: string;
+        discussionCount?: number;
+        sourceSubjectId?: number;
+      }>;
     };
 
     expect(result).toMatchObject({
       state: 'complete',
       subject: { nameCn: '中文名' },
-      items: [{ category: 'main', nameCn: '第一集', discussionCount: 0 }],
+      items: [{ category: 'main', nameCn: '第一集', discussionCount: 0, sourceSubjectId: 7 }],
     });
   });
 });

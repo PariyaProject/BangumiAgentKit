@@ -33,6 +33,9 @@ const FIELD_LABELS: Record<string, string> = {
   'episode.duration': '时长',
   'episode.description': '简介',
   'episode.discussionCount': '讨论数',
+  'episode.subjectId': '来源条目 ID',
+  'episode.category': '请求类别',
+  'subject.id': '条目 ID',
   'page.total': '来源总数',
 };
 
@@ -224,6 +227,16 @@ export const EpisodeGuideCard: React.FC<EpisodeGuideCardProps> = ({ viewModel, t
       {Object.keys(viewModel.coverage.invalidFields).length > 0 ? (
         <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
           无效字段：{fieldSummary(viewModel.coverage.invalidFields)}
+        </div>
+      ) : null}
+      {Object.keys(viewModel.coverage.identityConflicts).length > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          身份冲突：{fieldSummary(viewModel.coverage.identityConflicts)}
+        </div>
+      ) : null}
+      {Object.keys(viewModel.coverage.filterConflicts).length > 0 ? (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          类别过滤冲突：{fieldSummary(viewModel.coverage.filterConflicts)}
         </div>
       ) : null}
       {viewModel.coverage.duplicateRows > 0 ? (

@@ -278,6 +278,20 @@ function presentEpisodeGuide(value: Record<string, unknown>): string | undefined
       .join('、');
     if (fields) lines.push(`无效字段: ${humanField(fields, 220)}`);
   }
+  const identityConflicts = coverageDetails.identityConflicts;
+  if (identityConflicts && typeof identityConflicts === 'object') {
+    const fields = Object.entries(identityConflicts as Record<string, unknown>)
+      .map(([field, count]) => `${field} ${count}`)
+      .join('、');
+    if (fields) lines.push(`身份冲突: ${humanField(fields, 220)}`);
+  }
+  const filterConflicts = coverageDetails.filterConflicts;
+  if (filterConflicts && typeof filterConflicts === 'object') {
+    const fields = Object.entries(filterConflicts as Record<string, unknown>)
+      .map(([field, count]) => `${field} ${count}`)
+      .join('、');
+    if (fields) lines.push(`类别过滤冲突: ${humanField(fields, 220)}`);
+  }
   const warnings = value.warnings;
   if (Array.isArray(warnings) && warnings.length > 0) {
     lines.push('告警：');

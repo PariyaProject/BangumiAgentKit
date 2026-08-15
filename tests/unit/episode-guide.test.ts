@@ -203,6 +203,104 @@ describe('EpisodeGuideService', () => {
     );
   });
 
+  it('does not complete when the subject source identity differs from the request', async () => {
+    const { client } = buildClient({ subject: subjectPayload({ id: 999 }) });
+
+    const result = await new EpisodeGuideService(client).getEpisodeGuide(123);
+
+    expect(result.state).toBe('partial');
+    expect(result.subject).toBeUndefined();
+    expect(result.coverage).toMatchObject({
+      identityConflicts: { 'subject.id': 1 },
+      subject: { state: 'unavailable' },
+      episodes: { state: 'complete' },
+    });
+    expect(result.error?.code).toBe('PARSER_ERROR');
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SUBJECT_SOURCE_MISMATCH' })]),
+    );
+  });
+
+  it('keeps matching and missing episode subject IDs explicit without inventing conflicts', async () => {
+    const matching = await new EpisodeGuideService(
+      buildClient({
+        episodes: { total: 1, limit: 50, offset: 0, data: [episode(1, { subject_id: 123 })] },
+      }).client,
+    ).getEpisodeGuide(123, { category: 'main' });
+    expect(matching.state).toBe('complete');
+    expect(matching.items[0]).toMatchObject({ subjectId: 123, sourceSubjectId: 123 });
+    expect(matching.coverage.identityConflicts).toEqual({});
+    expect(matching.coverage.filterConflicts).toEqual({});
+
+    const missing = await new EpisodeGuideService(
+      buildClient({
+        episodes: { total: 1, limit: 50, offset: 0, data: [episode(1)] },
+      }).client,
+    ).getEpisodeGuide(123, { category: 'main' });
+    expect(missing.state).toBe('complete');
+    expect(missing.items[0]).not.toHaveProperty('sourceSubjectId');
+    expect(missing.coverage.identityConflicts).toEqual({});
+    expect(missing.coverage.filterConflicts).toEqual({});
+  });
+
+  it('marks episode identity and category conflicts while preserving the source values', async () => {
+    const { client } = buildClient({
+      episodes: {
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [episode(1, { subject_id: 999, type: 1 })],
+      },
+    });
+
+    const result = await new EpisodeGuideService(client).getEpisodeGuide(123, { category: 'main' });
+
+    expect(result.state).toBe('partial');
+    expect(result.items[0]).toMatchObject({
+      subjectId: 123,
+      sourceSubjectId: 999,
+      category: 'sp',
+      categoryFilterConflict: true,
+    });
+    expect(result.coverage).toMatchObject({
+      identityConflicts: { 'episode.subjectId': 1 },
+      filterConflicts: { 'episode.category': 1 },
+    });
+    expect(result.warnings.map((item) => item.code)).toEqual(
+      expect.arrayContaining(['SOURCE_ID_MISMATCH', 'CATEGORY_FILTER_MISMATCH']),
+    );
+  });
+
+  it('does not report category conflicts for matching rows across every supported category', async () => {
+    const categories = [
+      ['main', 0],
+      ['sp', 1],
+      ['op', 2],
+      ['ed', 3],
+      ['pv', 4],
+      ['mad', 5],
+      ['other', 6],
+    ] as const;
+
+    for (const [category, type] of categories) {
+      const result = await new EpisodeGuideService(
+        buildClient({
+          episodes: {
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [episode(1, { subject_id: 123, type })],
+          },
+        }).client,
+      ).getEpisodeGuide(123, { category });
+
+      expect(result.state, category).toBe('complete');
+      expect(result.items[0], category).toMatchObject({ category });
+      expect(result.items[0], category).not.toHaveProperty('categoryFilterConflict');
+      expect(result.coverage.filterConflicts, category).toEqual({});
+    }
+  });
+
   it('distinguishes not-found, malformed source, and unavailable source states', async () => {
     const notFound = await new EpisodeGuideService(
       buildClient({ subjectStatus: 404, episodesStatus: 404 }).client,
@@ -263,6 +361,42 @@ describe('EpisodeGuideService', () => {
     expect(result.items[6]?.airdate).toBeUndefined();
     expect(result.coverage.invalidFields).toEqual({ 'episode.airdate': 1 });
     expect(result.coverage.missingFields).toEqual({});
+  });
+
+  it('marks subject and episode identity conflicts through the generated client path', async () => {
+    const { client } = buildClient({
+      subject: subjectPayload({ id: 999 }),
+      episodes: {
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [episode(1, { subject_id: 999, type: 1 })],
+      },
+    });
+
+    const result = await new EpisodeGuideService(
+      new GeneratedBangumiOpenApiClient(client),
+    ).getEpisodeGuide(123, { category: 'main' });
+
+    expect(result.state).toBe('partial');
+    expect(result.subject).toBeUndefined();
+    expect(result.items[0]).toMatchObject({
+      subjectId: 123,
+      sourceSubjectId: 999,
+      category: 'sp',
+      categoryFilterConflict: true,
+    });
+    expect(result.coverage).toMatchObject({
+      identityConflicts: { 'subject.id': 1, 'episode.subjectId': 1 },
+      filterConflicts: { 'episode.category': 1 },
+    });
+    expect(result.warnings.map((item) => item.code)).toEqual(
+      expect.arrayContaining([
+        'SUBJECT_SOURCE_MISMATCH',
+        'SOURCE_ID_MISMATCH',
+        'CATEGORY_FILTER_MISMATCH',
+      ]),
+    );
   });
 
   it('marks an inconsistent denominator as conflict instead of exact', async () => {
