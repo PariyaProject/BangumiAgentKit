@@ -574,6 +574,97 @@ export interface PersonProfileViewModel {
   };
 }
 
+export interface PersonActivityViewModel {
+  template: 'person-activity';
+  version: 1;
+  state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
+  person: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    career: string[];
+  };
+  kind: 'voice' | 'staff' | 'all';
+  media: 'anime' | 'tv' | 'all';
+  window: {
+    months: number;
+    start: string;
+    end: string;
+    monthKeys: string[];
+  };
+  rows: Array<{
+    subjectId: number;
+    subjectName: string;
+    subjectNameCn: string;
+    subjectType: string;
+    platform?: string;
+    firstAirDate: string;
+    month: string;
+    relationLabel: string;
+    relationId?: number;
+    characterName?: string;
+    rawRole?: string;
+    roleFamily: string;
+  }>;
+  hiddenRows: number;
+  summary: {
+    creditRows: number;
+    uniqueSubjects: number;
+    uniqueCharacters: number;
+    byRole: Array<{
+      label: string;
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+    }>;
+    byMedia: Array<{
+      label: string;
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+    }>;
+    byMonth: Array<{
+      month: string;
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+    }>;
+  };
+  coverage: {
+    relationRowsObserved: number;
+    relationRowsSelected: number;
+    relationRowsDroppedAtLimit: number;
+    subjectIdsObserved: number;
+    subjectDetailRequests: number;
+    subjectDetailsSucceeded: number;
+    subjectDetailsFailed: number;
+    subjectDetailIdsDroppedAtLimit: number;
+    rowsEligible: number;
+    rowsReturned: number;
+    outputTruncated: boolean;
+    missingDateRows: number;
+    invalidDateRows: number;
+    outsideWindowRows: number;
+    mediaExcludedRows: number;
+    mediaUnknownRows: number;
+    maxRelations: number;
+    maxSubjectDetails: number;
+    maxRows: number;
+    detailConcurrency: number;
+    truncated: boolean;
+  };
+  exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
+  sourceOperations: Array<{
+    operation: string;
+    attempted: number;
+    succeeded: number;
+    failed: number;
+  }>;
+  limitations: string[];
+  warnings: Array<{ code: string; state: string; message: string }>;
+  source: { label: string; retrievedAt: string };
+}
+
 export interface RevisionTimelineViewModel {
   template: 'revision-timeline';
   version: 1;
@@ -721,4 +812,5 @@ export type RenderViewModel =
   | CalendarViewModel
   | RevisionTimelineViewModel
   | PersonProfileViewModel
+  | PersonActivityViewModel
   | SubjectOverviewViewModel;

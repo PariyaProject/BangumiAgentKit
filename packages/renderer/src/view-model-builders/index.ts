@@ -9,6 +9,7 @@ import type {
   CollectionDashboardResult,
   RevisionIntelligenceResult,
   PersonActivityProfile,
+  PersonActivityResult,
   SubjectSearchResult,
   SeriesWatchOrderResult,
   SubjectOverviewResult,
@@ -31,6 +32,7 @@ import type {
   CalendarDayViewModel,
   PersonProfileCreditViewModel,
   PersonProfileViewModel,
+  PersonActivityViewModel,
   SeriesRelationsViewModel,
   SeriesRelationsRelatedViewModel,
   SeriesRelationPathViewModel,
@@ -1419,6 +1421,134 @@ export function buildPersonProfileViewModel(
     source: {
       label: options.sourceLabel || 'Bangumi v0 · PersonProfile',
       retrievedAt: options.retrievedAt,
+    },
+  };
+}
+
+const PERSON_ACTIVITY_KIND_LABELS: Record<PersonActivityResult['kind'], string> = {
+  voice: '声优关系',
+  staff: '制作人员关系',
+  all: '声优与制作人员关系',
+};
+
+const PERSON_ACTIVITY_MEDIA_LABELS: Record<PersonActivityResult['media'], string> = {
+  anime: '全部动画',
+  tv: '可判断为 TV 的动画',
+  all: '全部媒介',
+};
+
+const PERSON_ACTIVITY_REASON_LABELS: Record<string, string> = {
+  missing_subject_id: '关系缺少条目 ID',
+  subject_detail_cap: '作品详情预算上限',
+  subject_detail_unavailable: '作品详情不可用',
+  missing_date: '缺少作品首播日期',
+  invalid_date: '作品首播日期无效',
+  outside_window: '不在时间窗内',
+  media_excluded: '媒介筛选排除',
+  media_unknown: '平台字段不足以判断 TV',
+};
+
+const PERSON_ACTIVITY_ROLE_LABELS: Record<string, string> = {
+  main: '主役',
+  support: '配角',
+  staff: '制作人员',
+  unknown: '未知',
+};
+
+export function buildPersonActivityViewModel(
+  result: PersonActivityResult,
+  options: { sourceLabel?: string; maxRows?: number } = {},
+): PersonActivityViewModel {
+  const maxRows = Math.min(24, Math.max(1, Math.trunc(options.maxRows ?? 18)));
+  const visibleRows = result.rows.slice(0, maxRows);
+  const person = result.person;
+  return {
+    template: 'person-activity',
+    version: 1,
+    state: result.state,
+    person: {
+      id: person?.id || 0,
+      name: person?.name || '未知人物',
+      nameCn: person?.nameCn,
+      career: person?.career || [],
+    },
+    kind: result.kind,
+    media: result.media,
+    window: {
+      months: result.window.months,
+      start: result.window.start,
+      end: result.window.end,
+      monthKeys: result.window.monthKeys,
+    },
+    rows: visibleRows.map((row) => ({
+      subjectId: row.subjectId,
+      subjectName: row.subjectName,
+      subjectNameCn: row.subjectNameCn,
+      subjectType: row.subjectType,
+      platform: row.platform,
+      firstAirDate: row.firstAirDate,
+      month: row.month,
+      relationLabel: row.relationKind === 'voice' ? '声优' : '制作人员',
+      relationId: row.relationId,
+      characterName: row.characterName,
+      rawRole: row.rawRole,
+      roleFamily: PERSON_ACTIVITY_ROLE_LABELS[row.roleFamily] || row.roleFamily,
+    })),
+    hiddenRows: Math.max(0, result.rows.length - visibleRows.length),
+    summary: {
+      creditRows: result.summary.creditRows,
+      uniqueSubjects: result.summary.uniqueSubjects,
+      uniqueCharacters: result.summary.uniqueCharacters,
+      byRole: result.summary.byRole.map((item) => ({
+        label: PERSON_ACTIVITY_ROLE_LABELS[item.key] || item.label,
+        creditRows: item.creditRows,
+        uniqueSubjects: item.uniqueSubjects,
+        uniqueCharacters: item.uniqueCharacters,
+      })),
+      byMedia: result.summary.byMedia.map((item) => ({
+        label: item.label,
+        creditRows: item.creditRows,
+        uniqueSubjects: item.uniqueSubjects,
+        uniqueCharacters: item.uniqueCharacters,
+      })),
+      byMonth: result.summary.byMonth,
+    },
+    coverage: {
+      relationRowsObserved: result.coverage.relationRowsObserved,
+      relationRowsSelected: result.coverage.relationRowsSelected,
+      relationRowsDroppedAtLimit: result.coverage.relationRowsDroppedAtLimit,
+      subjectIdsObserved: result.coverage.subjectIdsObserved,
+      subjectDetailRequests: result.coverage.subjectDetailRequests,
+      subjectDetailsSucceeded: result.coverage.subjectDetailsSucceeded,
+      subjectDetailsFailed: result.coverage.subjectDetailsFailed,
+      subjectDetailIdsDroppedAtLimit: result.coverage.subjectDetailIdsDroppedAtLimit,
+      rowsEligible: result.coverage.rowsEligible,
+      rowsReturned: result.coverage.rowsReturned,
+      outputTruncated: result.coverage.outputTruncated,
+      missingDateRows: result.coverage.missingDateRows,
+      invalidDateRows: result.coverage.invalidDateRows,
+      outsideWindowRows: result.coverage.outsideWindowRows,
+      mediaExcludedRows: result.coverage.mediaExcludedRows,
+      mediaUnknownRows: result.coverage.mediaUnknownRows,
+      maxRelations: result.coverage.maxRelations,
+      maxSubjectDetails: result.coverage.maxSubjectDetails,
+      maxRows: result.coverage.maxRows,
+      detailConcurrency: result.coverage.detailConcurrency,
+      truncated: result.coverage.truncated,
+    },
+    exclusions: result.exclusions.map((item) => ({
+      reason: PERSON_ACTIVITY_REASON_LABELS[item.reason] || item.reason,
+      count: item.count,
+      sampleSubjectIds: item.sampleSubjectIds,
+    })),
+    sourceOperations: result.sourceOperations,
+    limitations: result.limitations,
+    warnings: result.warnings,
+    source: {
+      label:
+        options.sourceLabel ||
+        `Bangumi v0 · ${PERSON_ACTIVITY_KIND_LABELS[result.kind]} · ${PERSON_ACTIVITY_MEDIA_LABELS[result.media]}`,
+      retrievedAt: result.coverage.retrievedAt,
     },
   };
 }

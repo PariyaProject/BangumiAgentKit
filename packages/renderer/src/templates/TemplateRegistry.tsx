@@ -9,6 +9,7 @@ import {
   CalendarViewModel,
   RevisionTimelineViewModel,
   PersonProfileViewModel,
+  PersonActivityViewModel,
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
   CollectionIntelligenceViewModel,
@@ -26,6 +27,7 @@ import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
 import { RevisionTimelineCard } from './RevisionTimelineCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
+import { PersonActivityCard } from './PersonActivityCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
@@ -118,6 +120,14 @@ registerTemplate<PersonProfileViewModel>({
   version: 1,
   render: (vm, theme, resolvedImages, width) => (
     <PersonProfileCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
+  ),
+});
+
+registerTemplate<PersonActivityViewModel>({
+  id: 'person-activity',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <PersonActivityCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 
