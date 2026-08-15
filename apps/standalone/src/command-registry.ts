@@ -39,6 +39,7 @@ Bangumi:
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
   overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+  compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
   cast <subjectId>
   person <personId>
@@ -68,7 +69,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|overview|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
+  render subject|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -185,6 +186,26 @@ function parseEpisodeGuideOptions(args: string[]): Record<string, unknown> {
     input.maxEpisodes = optionNumber(maxEpisodes, 'max-episodes', true, 1, 200);
   }
   if (args.includes('--no-descriptions')) input.includeDescriptions = false;
+  return input;
+}
+
+function parseSubjectComparisonOptions(args: string[]): Record<string, unknown> {
+  const firstSubjectId = parsePositiveInteger(args[0], 'first subject id');
+  const secondSubjectId = parsePositiveInteger(args[1], 'second subject id');
+  if (firstSubjectId === secondSubjectId) {
+    throw new StandaloneCliError('USAGE_ERROR: subject ids must be different.', 2);
+  }
+  const input: Record<string, unknown> = {
+    subjectIds: [firstSubjectId, secondSubjectId],
+  };
+  const maxCast = takeOption(args, '--max-cast');
+  const maxStaff = takeOption(args, '--max-staff');
+  const maxRelations = takeOption(args, '--max-relations');
+  if (maxCast !== undefined) input.maxCast = optionNumber(maxCast, 'max-cast', true, 1, 20);
+  if (maxStaff !== undefined) input.maxStaff = optionNumber(maxStaff, 'max-staff', true, 1, 80);
+  if (maxRelations !== undefined) {
+    input.maxRelations = optionNumber(maxRelations, 'max-relations', true, 1, 32);
+  }
   return input;
 }
 
@@ -412,6 +433,15 @@ export class StandaloneCommandRegistry {
         input.maxRelations = parsePositiveInteger(maxRelations, 'max-relations');
       }
       return { value: await runTool(ctx, 'bangumi.get_subject_overview', input) };
+    }
+    if (command === 'compare') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_subject_comparison',
+          parseSubjectComparisonOptions(args.slice(1)),
+        ),
+      };
     }
     if (command === 'watch-order') {
       const watchArgs = args.slice(1);
@@ -753,6 +783,9 @@ export class StandaloneCommandRegistry {
       if (maxRelations !== undefined) {
         input.maxRelations = parsePositiveInteger(maxRelations, 'max-relations');
       }
+    } else if (kind === 'compare') {
+      name = 'bangumi.render_subject_comparison';
+      input = parseSubjectComparisonOptions(args.slice(1));
     } else if (kind === 'watch-order') {
       input = {
         subjectId: parsePositiveInteger(args[1], 'subject id'),

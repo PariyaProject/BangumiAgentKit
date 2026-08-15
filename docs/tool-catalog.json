@@ -824,6 +824,50 @@
     }
   },
   {
+    "name": "bangumi.get_subject_comparison",
+    "description": "并列比较两个已知 Bangumi 条目的证据型官方事实：身份、日期、平台、报告话数、评分、排名、评分人数、收藏总数和各区段覆盖。只接受两个不同条目 ID；差值按输入顺序计算，不生成推荐或胜负结论，缺失/partial/unavailable/not_found 状态和来源限制会保留。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectIds": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "description": "两个不同的 Bangumi 条目 ID，顺序决定差值方向"
+        },
+        "maxCast": {
+          "description": "每个条目的角色读取上限，默认 4",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "maxStaff": {
+          "description": "每个条目的职员读取上限，默认 12",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80
+        },
+        "maxRelations": {
+          "description": "每个条目的关联条目读取上限，默认 8",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        }
+      },
+      "required": ["subjectIds"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_subject_overview",
     "description": "一次获取指定条目的证据型智能概览：基本信息、官方评分/收藏统计、角色与声优、制作人员和关联条目。各区段独立保留 complete/partial/unavailable/not_computable 状态、覆盖、来源和限制；不宣称完整角色表、职员表、系列图或历史趋势。",
     "auth": "none",
@@ -2073,6 +2117,50 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_subject_comparison",
+    "description": "生成两个已知 Bangumi 条目的证据型并列比较图片卡片 Artifact。卡片显示身份、日期、话数、官方评分/排名/评分人数/收藏总数、差值方向、各区段状态、来源边界和未知值；差值不等于推荐或胜负，渲染器不读取网络资产。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectIds": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "description": "两个不同的 Bangumi 条目 ID，顺序决定差值方向"
+        },
+        "maxCast": {
+          "description": "每个条目的角色读取上限，默认 4",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "maxStaff": {
+          "description": "每个条目的职员读取上限，默认 12",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80
+        },
+        "maxRelations": {
+          "description": "每个条目的关联条目读取上限，默认 8",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        }
+      },
+      "required": ["subjectIds"],
       "additionalProperties": false
     }
   },

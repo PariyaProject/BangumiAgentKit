@@ -60,8 +60,15 @@ The `TemplateRegistry` maps `RenderViewModel['template']` to React card template
 (`subject-card`, `subject-overview`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `collection-intelligence`, `collection-backlog`,
 `collection-schedule`, `collection-dashboard`, `calendar`,
-`revision-timeline`, `person-profile`, and `person-activity`).
+`revision-timeline`, `person-profile`, `person-activity`, and `subject-comparison`).
 It also includes `series-relations` for bounded Series / Watch-Order evidence.
+
+`subject-comparison` is an image-free, read-only companion card for
+`bangumi.get_subject_comparison`. It renders exactly two known subjects side by side,
+keeps per-subject coverage and source states visible, and shows only deterministic
+numeric deltas using `B − A`. Unknown, partial, unavailable, and capped values remain
+explicit; the card never labels a winner or recommendation and does not fetch network
+assets.
 
 `collection-intelligence` is an image-free, authenticated companion card for
 `bangumi.get_collection_intelligence`. It shows only deterministic aggregates

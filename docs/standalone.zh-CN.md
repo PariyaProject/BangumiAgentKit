@@ -65,6 +65,7 @@ principal、账号绑定、PendingAction 和审计事件仍然相互隔离。
 search <query> [--type anime] [--limit 5]
 subject <id>
 overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 cast <subjectId>
 activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
@@ -162,6 +163,7 @@ auth、scope、confirmation、audit 和 safe error policy；它不会直接调�
 ```text
 render subject <id>
 render overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+render compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 render watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 render cast <id>
 render activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
@@ -182,6 +184,11 @@ render collection-backlog [--max-items 1..100] [--max-subjects 1..30]
 render collection-schedule [--max-items 1..200] [--max-rows 1..100]
                            [--status wish,doing,done,on_hold,dropped]
 ```
+
+`compare` 严格读取两个不同的已知条目 ID，并按输入顺序展示身份、日期、平台、报告话数、
+官方评分/排名/评分人数/收藏总数及 `B − A` 数值差。每个条目的区段状态、证据、截断和限制
+分别保留；缺失值保持未知，差值不代表推荐、胜负或观看顺序。比较卡片不解析图片资产，也不
+读取评论、社区历史或 episode 行。
 
 `episode-guide` 将官方 v0 的 subject 与 episode 页面组合成一个有界章节视图：
 按正篇、SP、OP、ED、PV、MAD 和其他类型分类，公开 `ep`/`sort` 的确定性排序，
