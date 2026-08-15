@@ -308,6 +308,127 @@ function presentEpisodeGuide(value: Record<string, unknown>): string | undefined
   return boundHumanLines(lines);
 }
 
+function presentCalendar(value: Record<string, unknown>): string | undefined {
+  const days = Array.isArray(value.days) ? value.days : undefined;
+  const coverage = comparisonRecord(value.coverage);
+  if (!days || !coverage) return undefined;
+
+  const requestedWeekday = coverage.requestedWeekday;
+  const lines = [
+    `每日放送 · 状态: ${comparisonStateLabel(value.state)}`,
+    `筛选: ${requestedWeekday === undefined ? '整周' : `星期 ${humanField(requestedWeekday, 16)}`} · 每日上限 ${humanField(coverage.maxPerDay ?? '?', 32)} · 总上限 ${humanField(coverage.maxTotal ?? '?', 32)}`,
+    `覆盖: 观察 ${humanField(coverage.observed ?? '?', 32)} · 返回 ${humanField(coverage.returned ?? '?', 32)} · 选择星期 ${humanField(coverage.selectedDays ?? '?', 32)} · 源星期 ${humanField(coverage.sourceDayCount ?? '?', 32)}/${humanField(coverage.expectedDays ?? 7, 32)}`,
+    '说明：首播日期不是具体播出时刻；星期沿用官方编号，时区未由源提供；顺序不等同于推荐。',
+  ];
+
+  const error = comparisonRecord(value.error);
+  if (error) {
+    lines.push(
+      `错误: ${humanField(error.code || 'UNKNOWN_ERROR', 64)} · ${humanField(error.message || '官方日历源不可用')}`,
+    );
+  }
+
+  if (days.length === 0) {
+    lines.push(
+      value.state === 'unavailable'
+        ? '条目: 官方日历源暂时不可用，未生成播出样本。'
+        : '条目: 当前筛选没有可展示的官方日历样本。',
+    );
+  }
+
+  for (const [index, rawDay] of days.slice(0, 7).entries()) {
+    const day = comparisonRecord(rawDay);
+    if (!day) continue;
+    const items = Array.isArray(day.items) ? day.items : [];
+    const weekdayDetails = comparisonRecord(day.weekday);
+    const weekday = humanField(weekdayDetails?.cn || weekdayDetails?.en || `星期 ${index + 1}`, 64);
+    lines.push(
+      `${weekday} · 返回 ${humanField(day.returned ?? items.length, 32)} · 观察 ${humanField(day.observed ?? items.length, 32)}`,
+    );
+    for (const [itemIndex, rawItem] of items.slice(0, 8).entries()) {
+      const item = comparisonRecord(rawItem);
+      if (!item) continue;
+      const title = humanField(item.nameCn || item.name || `条目 ${item.id || itemIndex + 1}`, 180);
+      const alternate =
+        item.nameCn && item.name && item.nameCn !== item.name
+          ? ` / ${humanField(item.name, 140)}`
+          : '';
+      const metadata = [
+        item.airDate ? `首播 ${humanField(item.airDate, 32)}` : '首播未知',
+        item.typeLabel ? `类型 ${humanField(item.typeLabel, 32)}` : '类型未知',
+        item.score !== undefined ? `评分 ${humanField(item.score, 32)}` : '评分未知',
+        item.rank !== undefined ? `排名 ${humanField(item.rank, 32)}` : '排名未知',
+      ].join(' · ');
+      lines.push(`${itemIndex + 1}. ${title}${alternate}`);
+      lines.push(`   ${metadata}`);
+    }
+    if (Number(day.overflowCount || 0) > 0) {
+      lines.push(`   另有 ${humanField(day.overflowCount, 32)} 条该星期条目未展开。`);
+    }
+    if (items.length > 8) {
+      lines.push(`   另有 ${humanField(items.length - 8, 32)} 条已返回条目未展开。`);
+    }
+  }
+  if (days.length > 7) lines.push(`另有 ${humanField(days.length - 7, 32)} 个星期未展开。`);
+
+  const missingWeekdays = Array.isArray(coverage.missingWeekdays) ? coverage.missingWeekdays : [];
+  if (missingWeekdays.length > 0) {
+    lines.push(`缺少星期: ${humanField(missingWeekdays.join('、'), 120)}`);
+  }
+  const missingFields = coverage.missingFields;
+  if (missingFields && typeof missingFields === 'object') {
+    const fields = Object.entries(missingFields as Record<string, unknown>)
+      .filter(([, count]) => Number(count) > 0)
+      .map(([field, count]) => `${field} ${count}`)
+      .join('、');
+    if (fields) lines.push(`缺失字段: ${humanField(fields, 240)}`);
+  }
+
+  const source = comparisonRecord(value.source);
+  if (source) {
+    lines.push(
+      `来源与检索: ${humanField(source.class || 'unknown', 64)} · ${humanField(source.operation || '未记录', 96)} · ${humanField(source.retrievedAt || source.attemptedAt || '未知', 64)}`,
+    );
+  }
+  const evidence = Array.isArray(value.evidence) ? value.evidence : [];
+  const evidenceOperations = evidence
+    .map(comparisonRecord)
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .flatMap((item) => [
+      ...(typeof item.operation === 'string' ? [item.operation] : []),
+      ...(typeof item.formulaVersion === 'string' ? [item.formulaVersion] : []),
+    ]);
+  if (evidenceOperations.length > 0) {
+    lines.push(`证据: ${humanField([...new Set(evidenceOperations)].join(' · '), 240)}`);
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 3)) {
+      const warning = comparisonRecord(rawWarning);
+      if (warning) {
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 64)} · ${humanField(warning.message || '')}`,
+        );
+      }
+    }
+    if (warnings.length > 3)
+      lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条告警未展开。`);
+  }
+
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 3)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 3) {
+      lines.push(`- 另有 ${humanField(limitations.length - 3, 32)} 条限制未展开。`);
+    }
+  }
+
+  return boundHumanLines(lines);
+}
+
 function comparisonRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -1230,6 +1351,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const calendar = presentCalendar(safe as Record<string, unknown>);
+    if (calendar) return calendar;
     const subjectStats = presentSubjectStats(safe as Record<string, unknown>);
     if (subjectStats) return subjectStats;
     const subjectComparison = presentSubjectComparison(safe as Record<string, unknown>);

@@ -48,7 +48,7 @@ Bangumi:
            [--months 3|6|12] [--max-relations 1..120]
            [--max-details 1..48] [--max-rows 1..60]
   staff <subjectId>
-  calendar
+  calendar [--weekday 1..7] [--max-per-day 1..8] [--max-total 1..56]
   episodes <subjectId>
   episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
                 [--max-episodes 1..200] [--no-descriptions]
@@ -131,6 +131,34 @@ function withoutOptions(args: string[], names: string[]): string[] {
     result.push(arg as string);
   }
   return result;
+}
+
+function parseCalendarOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  const optionNames = new Set(['--weekday', '--max-per-day', '--max-total']);
+  const seen = new Set<string>();
+
+  for (let index = 0; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: unknown calendar argument "${name || ''}".`, 2);
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--weekday') input.weekday = optionNumber(value, 'weekday', true, 1, 7);
+    if (name === '--max-per-day') {
+      input.maxPerDay = optionNumber(value, 'max-per-day', true, 1, 8);
+    }
+    if (name === '--max-total') input.maxTotal = optionNumber(value, 'max-total', true, 1, 56);
+  }
+
+  return input;
 }
 
 function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
@@ -558,7 +586,15 @@ export class StandaloneCommandRegistry {
         }),
       };
     }
-    if (command === 'calendar') return { value: await runTool(ctx, 'bangumi.get_calendar', {}) };
+    if (command === 'calendar') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_calendar_intelligence',
+          parseCalendarOptions(args.slice(1)),
+        ),
+      };
+    }
     if (command === 'episodes') {
       return {
         value: await runTool(ctx, 'bangumi.get_episodes', {
@@ -912,6 +948,7 @@ export class StandaloneCommandRegistry {
       input = parseCollectionSeriesOptions(args);
     } else if (kind === 'calendar') {
       name = 'bangumi.render_calendar';
+      input = parseCalendarOptions(args.slice(1));
     } else if (kind === 'revision') {
       name = 'bangumi.render_revision_timeline';
       input = {
