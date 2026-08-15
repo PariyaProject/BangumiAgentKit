@@ -32,6 +32,38 @@ export interface SubjectOverviewStats {
   };
 }
 
+export interface SubjectOverviewConflictSource {
+  class: string;
+  provider: string;
+  operation?: string;
+  version?: string;
+  experimental?: boolean;
+}
+
+export interface SubjectOverviewConflictEvidence {
+  source: SubjectOverviewConflictSource;
+  retrievedAt: string;
+  entity?: { type: string; id: string | number };
+  fieldPath?: string;
+  freshness?: { state: string; expiresAt?: string; sourceAgeMs?: number };
+  authScope?: string;
+  confidence?: string;
+  formula?: string;
+}
+
+export interface SubjectOverviewStatsConflictCandidate {
+  source: SubjectOverviewConflictSource;
+  value: unknown;
+  evidence?: SubjectOverviewConflictEvidence[];
+}
+
+export interface SubjectOverviewStatsConflict {
+  state: 'conflict';
+  candidates: SubjectOverviewStatsConflictCandidate[];
+  reason: string;
+  resolution?: string;
+}
+
 export interface SubjectOverviewCastItem {
   character: {
     id: number;
@@ -73,6 +105,7 @@ export interface SubjectOverviewResult {
   stats: {
     state: SubjectOverviewSectionState;
     data?: SubjectOverviewStats;
+    conflicts?: SubjectOverviewStatsConflict[];
     coverage: SubjectOverviewSectionCoverage;
   };
   cast: {

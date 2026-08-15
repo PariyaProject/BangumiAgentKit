@@ -132,7 +132,25 @@ const result: SubjectComparisonResult = {
       delta: null,
       deltaPrecision: 1,
       state: 'conflict',
-      conflicts: [{ side: 'B', subjectValue: 7.4, statsValue: 7.5 }],
+      conflicts: [
+        {
+          side: 'B',
+          subjectValue: 7.4,
+          statsValue: 7.5,
+          candidates: [
+            {
+              source: { class: 'official_v0', provider: 'bangumi' },
+              value: 7.5,
+              metricValue: 7.5,
+            },
+            {
+              source: { class: 'derived', provider: 'fixture-derived' },
+              value: 7.6,
+              metricValue: 7.6,
+            },
+          ],
+        },
+      ],
     },
     {
       key: 'rank',
@@ -240,6 +258,7 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('未知');
     expect(html).toContain('冲突，不计算');
     expect(html).toContain('统计 7.5 / 详情 7.4');
+    expect(html).toContain('候选 official_v0/bangumi=7.5；derived/fixture-derived=7.6');
     expect(html).toContain('条目身份已读取');
     expect(html).toContain('区段上限：角色 4');
     expect(html).toContain('截断 cast');

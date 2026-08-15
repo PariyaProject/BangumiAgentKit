@@ -340,7 +340,29 @@ function comparisonMetricValue(metric: Record<string, unknown>, index: number): 
     .map(comparisonRecord)
     .find((item) => item?.side === (index === 0 ? 'A' : 'B'));
   if (!conflict) return humanField(value, 120);
-  return `统计 ${humanField(conflict.statsValue, 48)} / 详情 ${humanField(conflict.subjectValue, 48)}`;
+  const labels = [
+    conflict.statsValue === undefined ? undefined : `统计 ${humanField(conflict.statsValue, 48)}`,
+    conflict.subjectValue === undefined
+      ? undefined
+      : `详情 ${humanField(conflict.subjectValue, 48)}`,
+  ];
+  const candidates = Array.isArray(conflict.candidates)
+    ? conflict.candidates
+        .map(comparisonRecord)
+        .filter((candidate): candidate is Record<string, unknown> => Boolean(candidate))
+        .map((candidate) => {
+          const source = comparisonRecord(candidate.source);
+          const candidateValue =
+            candidate.metricValue !== undefined
+              ? candidate.metricValue
+              : typeof candidate.value === 'number'
+                ? candidate.value
+                : '未知';
+          return `${humanField(source?.class || 'source', 48)}/${humanField(source?.provider || '?', 48)}=${humanField(candidateValue, 48)}`;
+        })
+    : [];
+  if (candidates.length > 0) labels.push(`候选 ${candidates.join('；')}`);
+  return labels.filter((label): label is string => Boolean(label)).join(' / ') || '冲突候选未知';
 }
 
 function comparisonDeltaValue(metric: Record<string, unknown>): string {
@@ -400,7 +422,7 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
         ? subjectCoverage.truncatedSections
         : [];
       lines.push(
-        `  覆盖：请求 ${humanField(subjectCoverage.sourceRequestsSucceeded ?? '?', 32)}/${humanField(subjectCoverage.sourceRequestsAttempted ?? '?', 32)} 成功 · 区段完整 ${humanField(subjectCoverage.sectionsComplete ?? '?', 32)} · 部分 ${humanField(subjectCoverage.sectionsPartial ?? '?', 32)} · 不可用 ${humanField(subjectCoverage.sectionsUnavailable ?? '?', 32)}${truncated.length ? ` · 截断 ${humanField(truncated.join('、'), 120)}` : ''}`,
+        `  覆盖：请求 ${humanField(subjectCoverage.sourceRequestsSucceeded ?? '?', 32)}/${humanField(subjectCoverage.sourceRequestsAttempted ?? '?', 32)} 成功 · 区段完整 ${humanField(subjectCoverage.sectionsComplete ?? '?', 32)} · 部分 ${humanField(subjectCoverage.sectionsPartial ?? '?', 32)} · 不可用 ${humanField(subjectCoverage.sectionsUnavailable ?? '?', 32)} · 不可计算 ${humanField(subjectCoverage.sectionsNotComputable ?? '?', 32)}${truncated.length ? ` · 截断 ${humanField(truncated.join('、'), 120)}` : ''}`,
       );
     }
     if (limits) {

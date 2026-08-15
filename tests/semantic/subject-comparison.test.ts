@@ -5,6 +5,7 @@ import {
   type CapabilityResult,
   type SubjectStatsData,
 } from '@bangumi-agent-kit/provider-core';
+import type { SubjectComparisonResult } from '@bangumi-agent-kit/bangumi-core';
 import { createReadTools, type ToolContext, type ToolDefinition } from '@bangumi-agent-kit/tools';
 
 const context: ToolContext = {
@@ -182,7 +183,7 @@ function buildClient(
 }
 
 function buildProviderRegistry(
-  options: { scoreOverrides?: Record<number, number> } = {},
+  options: { scoreOverrides?: Record<number, number>; scoreConflict?: boolean } = {},
 ): ProviderRegistry {
   return new ProviderRegistry({
     v0: {
@@ -190,13 +191,12 @@ function buildProviderRegistry(
         return { state: 'ok' as const, data: undefined };
       },
       async getSubjectStats(subjectId: number): Promise<CapabilityResult<SubjectStatsData>> {
+        const score = options.scoreOverrides?.[subjectId] ?? stats[subjectId]!.score;
         return {
-          state: 'ok',
+          state: options.scoreConflict ? 'conflict' : 'ok',
           data: {
             ...stats[subjectId]!,
-            ...(options.scoreOverrides?.[subjectId] === undefined
-              ? {}
-              : { score: options.scoreOverrides[subjectId] }),
+            ...(options.scoreOverrides?.[subjectId] === undefined ? {} : { score }),
           },
           retrievedAt: `2026-08-15T00:00:0${subjectId === 123 ? '1' : '2'}.000Z`,
           evidence: {
@@ -211,6 +211,56 @@ function buildProviderRegistry(
               },
             ],
           },
+          ...(options.scoreConflict
+            ? {
+                conflicts: [
+                  {
+                    state: 'conflict' as const,
+                    reason: 'score provider candidates disagree',
+                    candidates: [
+                      {
+                        source: {
+                          class: 'official_v0' as const,
+                          provider: 'bangumi',
+                          operation: 'getSubjectStats',
+                        },
+                        value: score,
+                        evidence: [
+                          {
+                            source: {
+                              class: 'official_v0' as const,
+                              provider: 'bangumi',
+                              operation: 'getSubjectStats',
+                            },
+                            retrievedAt: '2026-08-15T00:00:00.000Z',
+                            fieldPath: 'score',
+                          },
+                        ],
+                      },
+                      {
+                        source: {
+                          class: 'derived' as const,
+                          provider: 'fixture-derived',
+                          operation: 'score-candidate',
+                        },
+                        value: score + 0.1,
+                        evidence: [
+                          {
+                            source: {
+                              class: 'derived' as const,
+                              provider: 'fixture-derived',
+                              operation: 'score-candidate',
+                            },
+                            retrievedAt: '2026-08-15T00:00:00.000Z',
+                            fieldPath: 'score',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              }
+            : {}),
         };
       },
     },
@@ -458,5 +508,56 @@ describe('Subject comparison semantic contract', () => {
         { state: 'partial', sections: { stats: 'unavailable' } },
       ],
     });
+  });
+
+  it('preserves provider-level conflict candidates through comparison metrics', async () => {
+    const result = (await getTool(buildClient().client).execute(
+      { subjectIds: [123, 456] },
+      context,
+      { providerRegistry: buildProviderRegistry({ scoreConflict: true }) },
+    )) as SubjectComparisonResult;
+    expect(result).toMatchObject({
+      state: 'partial',
+      coverage: { metricsConflict: 1 },
+    });
+    const conflictedSubject = result.subjects.find((subject) => subject.subjectId === 123);
+    expect(conflictedSubject?.stats.state).toBe('partial');
+    expect(conflictedSubject?.stats.conflicts?.score?.candidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: expect.objectContaining({ class: 'official_v0' }),
+          value: 8.6,
+        }),
+        expect.objectContaining({
+          source: expect.objectContaining({ class: 'derived' }),
+          value: 8.7,
+        }),
+      ]),
+    );
+    expect(result.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'score',
+          state: 'conflict',
+          delta: null,
+          conflicts: expect.arrayContaining([
+            expect.objectContaining({
+              side: 'A',
+              candidates: expect.arrayContaining([
+                expect.objectContaining({
+                  source: expect.objectContaining({ class: 'official_v0' }),
+                  metricValue: 8.6,
+                }),
+              ]),
+            }),
+          ]),
+        }),
+      ]),
+    );
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'derived-s7', operation: 'subject-comparison' }),
+      ]),
+    );
   });
 });

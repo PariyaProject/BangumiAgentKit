@@ -143,6 +143,7 @@ describe('Standalone subject comparison commands', () => {
             sectionsComplete: 3,
             sectionsPartial: 1,
             sectionsUnavailable: 0,
+            sectionsNotComputable: 0,
             truncatedSections: ['cast'],
             limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
           },
@@ -164,6 +165,7 @@ describe('Standalone subject comparison commands', () => {
             sectionsComplete: 0,
             sectionsPartial: 0,
             sectionsUnavailable: 4,
+            sectionsNotComputable: 0,
             truncatedSections: [],
             limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
           },
@@ -177,10 +179,28 @@ describe('Standalone subject comparison commands', () => {
         {
           key: 'score',
           label: '官方评分',
-          values: [8.6, null],
+          values: [null, 7.5],
           delta: null,
           deltaPrecision: 1,
-          state: 'unknown',
+          state: 'conflict',
+          conflicts: [
+            {
+              side: 'A',
+              candidates: [
+                {
+                  source: { class: 'official_v0', provider: 'bangumi' },
+                  value: 8.6,
+                  metricValue: 8.6,
+                },
+                {
+                  source: { class: 'derived', provider: 'fixture-derived' },
+                  value: 8.7,
+                  metricValue: 8.7,
+                },
+              ],
+              reason: 'official and derived score conflict',
+            },
+          ],
         },
         {
           key: 'rank',
@@ -228,6 +248,8 @@ describe('Standalone subject comparison commands', () => {
 
     expect(human).toContain('甲条目');
     expect(human).toContain('官方评分');
+    expect(human).toContain('候选 official_v0/bangumi=8.6；derived/fixture-derived=8.7');
+    expect(human).toContain('冲突，不计算');
     expect(human).toContain('UPSTREAM_NOT_FOUND');
     expect(human).toContain('official-v0');
     expect(human).toContain('derived-s7');

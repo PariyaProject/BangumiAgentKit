@@ -58,7 +58,25 @@ function metricValueLabel(
 ): string {
   const conflict = metric.conflicts?.find((item) => item.side === (index === 0 ? 'A' : 'B'));
   if (!conflict) return valueLabel(metric.values[index]);
-  return `统计 ${valueLabel(conflict.statsValue)} / 详情 ${valueLabel(conflict.subjectValue)}`;
+  const labels = [
+    conflict.statsValue === undefined ? undefined : `统计 ${valueLabel(conflict.statsValue)}`,
+    conflict.subjectValue === undefined ? undefined : `详情 ${valueLabel(conflict.subjectValue)}`,
+    conflict.candidates && conflict.candidates.length > 0
+      ? `候选 ${conflict.candidates
+          .map((candidate) => {
+            const source = `${candidate.source.class}/${candidate.source.provider}`;
+            const value =
+              candidate.metricValue !== undefined
+                ? candidate.metricValue
+                : typeof candidate.value === 'number'
+                  ? candidate.value
+                  : null;
+            return `${source}=${valueLabel(value)}`;
+          })
+          .join('；')}`
+      : undefined,
+  ].filter((value): value is string => Boolean(value));
+  return labels.join(' / ') || '冲突候选未知';
 }
 
 function deltaLabel(value: number | null, state: 'complete' | 'unknown' | 'conflict'): string {
@@ -157,7 +175,8 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
               读取：{subject.coverage.sourceRequestsSucceeded}/
               {subject.coverage.sourceRequestsAttempted} 成功 · 区段完整{' '}
               {subject.coverage.sectionsComplete} · 部分 {subject.coverage.sectionsPartial} · 不可用{' '}
-              {subject.coverage.sectionsUnavailable}
+              {subject.coverage.sectionsUnavailable} · 不可计算{' '}
+              {subject.coverage.sectionsNotComputable}
               {subject.coverage.truncatedSections.length > 0
                 ? ` · 截断 ${subject.coverage.truncatedSections.join('、')}`
                 : ''}
@@ -206,8 +225,8 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
           }}
         >
           <span>字段</span>
-          <span>{subjectTitle(left)}</span>
-          <span>{subjectTitle(right)}</span>
+          <span style={{ overflowWrap: 'anywhere' }}>{subjectTitle(left)}</span>
+          <span style={{ overflowWrap: 'anywhere' }}>{subjectTitle(right)}</span>
           <span>差值 B−A</span>
         </div>
         {viewModel.metrics.map((metric) => (

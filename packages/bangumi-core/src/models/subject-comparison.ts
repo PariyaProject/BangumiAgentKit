@@ -1,6 +1,7 @@
 import type { PublicErrorInfo } from '@bangumi-agent-kit/bangumi-transport';
 import type {
   SubjectOverviewEvidence,
+  SubjectOverviewStatsConflictCandidate,
   SubjectOverviewSectionState,
   SubjectOverviewWarning,
 } from './subject-overview.js';
@@ -29,8 +30,11 @@ export type SubjectComparisonStatsKey = Exclude<
 >;
 
 export interface SubjectComparisonStatsConflict {
-  subjectValue: number;
-  statsValue: number;
+  subjectValue?: number;
+  statsValue?: number;
+  candidates?: Array<SubjectOverviewStatsConflictCandidate & { metricValue?: number }>;
+  reason?: string;
+  resolution?: string;
 }
 
 export interface SubjectComparisonSubject {
@@ -91,11 +95,11 @@ export interface SubjectComparisonMetric {
   delta: number | null;
   deltaPrecision: number;
   state: 'complete' | 'unknown' | 'conflict';
-  conflicts?: Array<{
-    side: 'A' | 'B';
-    subjectValue: number;
-    statsValue: number;
-  }>;
+  conflicts?: Array<
+    {
+      side: 'A' | 'B';
+    } & SubjectComparisonStatsConflict
+  >;
 }
 
 export interface SubjectComparisonResult {

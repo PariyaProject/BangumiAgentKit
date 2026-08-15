@@ -9,6 +9,7 @@ import type {
   SubjectComparisonStatsConflict,
   SubjectComparisonStatsKey,
   SubjectOverviewResult,
+  SubjectOverviewStatsConflict,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   getSubjectOverview,
@@ -38,6 +39,12 @@ const DEFAULT_LIMITS: SubjectOverviewLimits = {
   maxStaff: 12,
   maxRelations: 8,
 };
+const COMPARISON_STATS_KEYS: SubjectComparisonStatsKey[] = [
+  'score',
+  'rank',
+  'ratingTotal',
+  'collectionTotal',
+];
 
 function bounded(value: number | undefined, fallback: number, maximum: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -122,6 +129,74 @@ function collectionTotal(value: unknown): number | undefined {
   return Number.isFinite(total) ? total : undefined;
 }
 
+function record(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function candidateMetricValue(value: unknown, key: SubjectComparisonStatsKey): number | undefined {
+  const direct = finiteNumber(value);
+  if (direct !== undefined) return direct;
+  const details = record(value);
+  if (!details) return undefined;
+  const field = finiteNumber(details[key]);
+  if (field !== undefined) return field;
+  if (key === 'collectionTotal') {
+    return collectionTotal(details.collection ?? details.collectionCounts);
+  }
+  return undefined;
+}
+
+function providerConflictKeys(conflict: SubjectOverviewStatsConflict): SubjectComparisonStatsKey[] {
+  const hints = [
+    conflict.reason,
+    ...conflict.candidates.flatMap((candidate) =>
+      (candidate.evidence || []).map((evidence) => evidence.fieldPath || ''),
+    ),
+  ]
+    .join(' ')
+    .toLowerCase();
+  const keys = new Set<SubjectComparisonStatsKey>();
+  if (/score|rating[._ -]?score|评分/iu.test(hints)) keys.add('score');
+  if (/rank|rating[._ -]?rank|排名/iu.test(hints)) keys.add('rank');
+  if (/rating[._ -]?total|rating[._ -]?count|评分人数/iu.test(hints)) keys.add('ratingTotal');
+  if (/collection|收藏/iu.test(hints)) keys.add('collectionTotal');
+
+  for (const key of COMPARISON_STATS_KEYS) {
+    if (
+      conflict.candidates.some(
+        (candidate) =>
+          record(candidate.value) !== undefined &&
+          candidateMetricValue(candidate.value, key) !== undefined,
+      )
+    ) {
+      keys.add(key);
+    }
+  }
+  return keys.size > 0
+    ? COMPARISON_STATS_KEYS.filter((key) => keys.has(key))
+    : COMPARISON_STATS_KEYS;
+}
+
+function mapProviderConflict(
+  key: SubjectComparisonStatsKey,
+  conflict: SubjectOverviewStatsConflict,
+): SubjectComparisonStatsConflict {
+  const targetKeys = providerConflictKeys(conflict);
+  return {
+    reason: conflict.reason,
+    ...(conflict.resolution ? { resolution: conflict.resolution } : {}),
+    candidates: conflict.candidates.map((candidate) => {
+      const metricValue =
+        record(candidate.value) || targetKeys.length === 1
+          ? candidateMetricValue(candidate.value, key)
+          : undefined;
+      return metricValue === undefined ? { ...candidate } : { ...candidate, metricValue };
+    }),
+  };
+}
+
 function mapSubjectOverview(
   overview: SubjectOverviewResult,
   limits: SubjectOverviewLimits,
@@ -151,6 +226,18 @@ function mapSubjectOverview(
     },
     {} as Partial<Record<SubjectComparisonStatsKey, SubjectComparisonStatsConflict>>,
   );
+  for (const providerConflict of overview.stats.conflicts || []) {
+    for (const key of providerConflictKeys(providerConflict)) {
+      const mapped = mapProviderConflict(key, providerConflict);
+      const existing = conflicts[key];
+      conflicts[key] = {
+        ...(existing || {}),
+        ...(mapped.reason && !existing?.reason ? { reason: mapped.reason } : {}),
+        ...(mapped.resolution && !existing?.resolution ? { resolution: mapped.resolution } : {}),
+        candidates: [...(existing?.candidates || []), ...(mapped.candidates || [])],
+      };
+    }
+  }
   const evidence = overview.evidence;
   const attemptedAt = earliestTimestamp(evidence.map((item) => item.attemptedAt));
   return {
