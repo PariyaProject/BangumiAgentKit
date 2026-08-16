@@ -133,7 +133,7 @@ The upstream index handlers show that index creation returns an index, index edi
 
 ## Current BangumiAgentKit semantic surface
 
-This section is verified from the current tool definitions and service calls, not inferred from the generated catalog. The `ToolRegistry` registers curated read tools, raw operation tools, curated write tools, auth tools, and presentation tools. The semantic v0 surface is the following 18 read-oriented tools plus 5 write-oriented tools; `get_calendar` and render tools additionally use the legacy `/calendar` endpoint, which is not one of the 55 v0 operations.
+This section is verified from the current tool definitions and service calls, not inferred from the generated catalog. The `ToolRegistry` registers curated read tools, raw operation tools, curated write tools, auth tools, and presentation tools. The first table is the PR-7A historical snapshot of 18 read-oriented tools plus 5 write-oriented tools; current collection-read additions are listed in the explicit update below. `get_calendar` and render tools additionally use the legacy `/calendar` endpoint, which is not one of the 55 v0 operations.
 
 ### Curated reads
 
@@ -158,6 +158,18 @@ This section is verified from the current tool definitions and service calls, no
 | `bangumi.get_index`             | `getIndexById` plus `getIndexSubjectsByIndexId`                                                    | Returns index detail and a paged subject list. It exposes local subject limit/offset but not the official index-subject `type` filter.                                                                                                                                                                                        | None / read                                                              |
 | `bangumi.get_calendar`          | Legacy `GET /calendar`, not v0                                                                     | Returns daily calendar data via `CalendarService`; this is outside the pinned v0 operation set.                                                                                                                                                                                                                               | None / read                                                              |
 
+### Collection-read parity update
+
+The collection-read parity tools added after the initial research snapshot are:
+
+| Semantic tool                                                             | Current operation(s) called                                  | Current input/behavior and output shaping                                                                                                                                                                                                                                             | Tool auth/risk                                                           |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `bangumi.get_episode_collections`                                         | `getUserSubjectEpisodeCollection`                            | Bound-account read with bounded subject ID, official episode type, limit, and offset. Returns mapped episode identity and collection type with account-scoped source and page coverage; it does not infer watch order or unseen progress.                                             | Required, `read:collection` / read                                       |
+| `bangumi.list_character_collections` / `bangumi.get_character_collection` | `getUserCharacterCollections` / `getUserCharacterCollection` | Named username uses the official public endpoint; omitted username uses the bound account. List output applies a local `maxItems` cap because the upstream list operation has no query pagination and reports observed/returned/truncated coverage; detail 404 maps to `found:false`. | Dynamic: none for named public user, required for current account / read |
+| `bangumi.list_person_collections` / `bangumi.get_person_collection`       | `getUserPersonCollections` / `getUserPersonCollection`       | Same public-versus-bound-account policy; list output preserves IDs, names, types, raw career labels, images, and timestamps with explicit local truncation; detail 404 maps to `found:false`.                                                                                         | Dynamic: none for named public user, required for current account / read |
+
+For `bangumi.get_episode_collections`, response `items[].type` is the raw collection status (`0` uncollected, `1` wish, `2` done, `3` dropped) and `items[].status` is the semantic label; both are distinct from the request's `episodeType` category filter (`0` main through `6` other). Coverage keeps the caller `requestedLimit` separate from the effective response limit and any valid upstream limit metadata.
+
 ### Curated writes
 
 | Semantic tool                         | Current operation(s) called                                                                                             | Current input/behavior and write scope                                                                                                                                                                                                                                                                                                                  | Tool auth/risk                                                          |
@@ -174,21 +186,25 @@ This section is verified from the current tool definitions and service calls, no
 - The raw tool is gated: read operations are callable through it, while non-read operations are rejected unless `BANGUMI_ALLOW_RAW_WRITES=true`; the curated write tools remain the intended write path. This is verified in `packages/tools/src/definitions/raw-operation-tools.ts`.
 - Auth tools (`bangumi.auth_*`) manage the agent’s OAuth/account binding and are not Bangumi v0 API operations. Render tools are presentation wrappers; they call selected read operations and/or legacy calendar, then save an artifact.
 
+## Current-state amendment
+
+The original PR-7A coverage inventory is explicitly split below into current semantic coverage and a historical raw-only snapshot. The collection-read parity Epoch now exposes `getUserSubjectEpisodeCollection`, public/current-account character collection list/detail, and public/current-account person collection list/detail through the curated tools above. They remain bounded reads: character/person list endpoints have no upstream query pagination, and the curated tools report local truncation rather than claiming an unobserved full result.
+
 ## Coverage and gaps
 
-### Direct semantic coverage
+### Current semantic coverage
 
 The curated tools directly cover these v0 operation families:
 
 - Search: all three search operations, but with narrower filters than the official bodies.
 - Subject: subject detail and subject-to-subject relations; subject persons/characters are covered indirectly through `get_subject_cast`, which currently uses the character relation endpoint and its nested actors rather than the separate subject-person operation.
-- Episodes: list/detail reads, plus the subject episode collection mutation used by progress updates.
-- Character/person: detail, search, selected relationships, and collect/uncollect writes.
+- Episodes: list/detail reads, account-bound episode collection reads, plus the subject episode collection mutation used by progress updates.
+- Character/person: detail, search, selected relationships, public/current collection list/detail reads, and collect/uncollect writes.
 - User/subject collections: current profile, public/current collection list, single collection, subject collection write, and episode-progress write.
 - Revisions: all list/detail operations through unified entity-type tools.
 - Indices: index detail/list reads and create/edit/add/remove writes.
 
-### Official operations not exposed by a dedicated semantic tool
+### Historical PR-7A snapshot: official operations not exposed by a dedicated semantic tool
 
 These remain available only through the raw fallback (or through lower-level services where noted):
 
@@ -210,10 +226,10 @@ This list is a coverage observation, not a recommendation to add tools. It also 
 - The official subject browser is not represented by the semantic surface; `search_subjects` is not a substitute because it is a different POST search contract.
 - Several official image operations return redirects and are absent from the semantic surface; they are not ordinary JSON detail reads.
 - Official collection writes permit `private`, book volume/episode progress fields, tag-clearing semantics, and separate POST/PATCH behavior. `update_collection` intentionally presents a narrower semantic input.
-- Official episode collection reads are distinct from episode metadata reads. Current semantic tools can write progress but do not offer the authenticated collection read operations.
+- Official episode collection reads are distinct from episode metadata reads. The current semantic surface exposes the bounded account read as `bangumi.get_episode_collections`; the historical raw-only state is retained in the snapshot above.
 - The pinned spec does not describe a response schema for `getIndexSubjectsByIndexId`; the upstream server source does return paged index-subject data. This is a verified source/spec discrepancy, not an inferred schema change.
 - The generated operation registry uses coarse request-body metadata (`required` only) and its own derived risk/auth metadata. The authoritative field-level body contract in this note is the pinned OpenAPI schema; the authoritative curated-tool behavior is the current TypeScript source.
 
 ## Bottom line
 
-The official v0 API is broader than the curated semantic surface: 55 operations cover public metadata/relationships, authenticated collection reads and writes, revision history, and index management. BangumiAgentKit’s semantic layer deliberately compresses that into user-oriented search/detail/progress/collection/index tools, while preserving full operation reachability through the raw fallback. The main unrepresented official capability clusters are browse/image endpoints, detailed episode-collection reads and single-episode writes, person/character collection reads, index membership editing/collection, and the richer search filters.
+The official v0 API is broader than the curated semantic surface: 55 operations cover public metadata/relationships, authenticated collection reads and writes, revision history, and index management. BangumiAgentKit’s semantic layer deliberately compresses that into user-oriented search/detail/progress/collection/index tools, while preserving full operation reachability through the raw fallback. The remaining unrepresented clusters are browse/image endpoints, single-episode writes, index membership editing/collection, and richer search filters; the collection-read parity Epoch now covers the bounded episode and character/person collection reads described above.

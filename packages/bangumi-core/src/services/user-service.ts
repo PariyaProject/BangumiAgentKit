@@ -5,7 +5,14 @@ import {
   User,
   SubjectType as OpenApiSubjectType,
 } from '@bangumi-agent-kit/bangumi-openapi';
-import { DomainUser, UserCollectionItem, UserEpisodeCollectionItem } from '../models/user.js';
+import {
+  DomainUser,
+  UserCharacterCollectionItem,
+  UserCollectionItem,
+  UserEpisodeCollectionItem,
+  UserEpisodeCollectionStatus,
+  UserPersonCollectionItem,
+} from '../models/user.js';
 import { mapEpisode } from './episode-service.js';
 import { getCollectionStatusLabel, mapCollectionStatus } from './collection-service.js';
 import { mapSubjectType } from './subject-service.js';
@@ -37,6 +44,92 @@ function mapSubjectEpisodeTotal(subject: unknown): {
   return {
     raw: typeof raw === 'number' || typeof raw === 'string' ? raw : undefined,
     validity: 'invalid',
+  };
+}
+
+function mapCollectionImages(
+  images: Record<string, string> | null | undefined,
+): Record<string, string> | undefined {
+  return images ? { ...images } : undefined;
+}
+
+export function mapUserEpisodeCollectionStatus(value: unknown): UserEpisodeCollectionStatus {
+  switch (value) {
+    case 0:
+      return 'uncollected';
+    case 1:
+      return 'wish';
+    case 2:
+      return 'done';
+    case 3:
+      return 'dropped';
+    default:
+      return 'unknown';
+  }
+}
+
+function mapUserCharacterCollection(raw: {
+  id: number;
+  name: string;
+  type: number;
+  images?: Record<string, string> | null;
+  created_at: string;
+}): UserCharacterCollectionItem {
+  return {
+    id: raw.id,
+    name: raw.name,
+    type: raw.type,
+    images: mapCollectionImages(raw.images),
+    createdAt: raw.created_at,
+  };
+}
+
+function mapUserPersonCollection(raw: {
+  id: number;
+  name: string;
+  type: number;
+  career: string[];
+  images?: Record<string, string> | null;
+  created_at: string;
+}): UserPersonCollectionItem {
+  return {
+    id: raw.id,
+    name: raw.name,
+    type: raw.type,
+    career: [...raw.career],
+    images: mapCollectionImages(raw.images),
+    createdAt: raw.created_at,
+  };
+}
+
+function mapUserCollectionPage<T>(
+  total: number,
+  limit: number,
+  offset: number,
+  data: T[],
+  maxItems: number,
+): {
+  total?: number;
+  limit: number;
+  offset: number;
+  items: T[];
+  observed: number;
+  returned: number;
+  truncated: boolean;
+} {
+  const responseTotal = Number.isInteger(total) && total >= data.length ? total : undefined;
+  const responseLimit = Number.isInteger(limit) && limit >= 0 ? limit : data.length;
+  const responseOffset = Number.isInteger(offset) && offset >= 0 ? offset : 0;
+  const items = data.slice(0, maxItems);
+  return {
+    total: responseTotal,
+    limit: responseLimit,
+    offset: responseOffset,
+    items,
+    observed: data.length,
+    returned: items.length,
+    truncated:
+      items.length < data.length || (responseTotal !== undefined && data.length < responseTotal),
   };
 }
 
@@ -207,6 +300,8 @@ export class UserService {
     } = {},
   ): Promise<{
     total?: number;
+    requestedLimit: number;
+    responseLimit?: number;
     limit: number;
     offset: number;
     items: UserEpisodeCollectionItem[];
@@ -226,11 +321,13 @@ export class UserService {
     const items = data.map((item) => ({
       episode: item.episode ? mapEpisode(item.episode, subjectId) : undefined,
       type: item.type,
+      status: mapUserEpisodeCollectionStatus(item.type),
       updatedAt:
         Number.isInteger(item.updated_at) && item.updated_at > 0 ? item.updated_at : undefined,
     }));
     const responseOffset = Number.isInteger(res.offset) && res.offset >= 0 ? res.offset : offset;
-    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : limit;
+    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : undefined;
+    const effectiveLimit = responseLimit ?? limit;
     const responseTotal =
       Number.isInteger(res.total) && res.total >= responseOffset + items.length
         ? res.total
@@ -238,9 +335,99 @@ export class UserService {
 
     return {
       total: responseTotal,
-      limit: responseLimit,
+      requestedLimit: limit,
+      responseLimit,
+      limit: effectiveLimit,
       offset: responseOffset,
       items,
     };
+  }
+
+  async getUserCharacterCollections(
+    username: string,
+    options: { maxItems?: number; signal?: AbortSignal } = {},
+  ): Promise<{
+    total?: number;
+    limit: number;
+    offset: number;
+    items: UserCharacterCollectionItem[];
+    observed: number;
+    returned: number;
+    truncated: boolean;
+  }> {
+    const maxItems = options.maxItems ?? 50;
+    const res = await this.api.getUserCharacterCollections(username);
+    const data = res.data || [];
+    return mapUserCollectionPage(
+      res.total,
+      res.limit,
+      res.offset,
+      data.map(mapUserCharacterCollection),
+      maxItems,
+    );
+  }
+
+  async getUserCharacterCollection(
+    username: string,
+    characterId: number,
+  ): Promise<{ found: boolean; item?: UserCharacterCollectionItem }> {
+    try {
+      const raw = await this.api.getUserCharacterCollection(username, characterId);
+      return { found: true, item: mapUserCharacterCollection(raw) };
+    } catch (err: unknown) {
+      const errorObj = err as { status?: number; code?: string; statusCode?: number };
+      if (
+        errorObj?.status === 404 ||
+        errorObj?.code === 'NOT_FOUND' ||
+        errorObj?.statusCode === 404
+      ) {
+        return { found: false };
+      }
+      throw err;
+    }
+  }
+
+  async getUserPersonCollections(
+    username: string,
+    options: { maxItems?: number; signal?: AbortSignal } = {},
+  ): Promise<{
+    total?: number;
+    limit: number;
+    offset: number;
+    items: UserPersonCollectionItem[];
+    observed: number;
+    returned: number;
+    truncated: boolean;
+  }> {
+    const maxItems = options.maxItems ?? 50;
+    const res = await this.api.getUserPersonCollections(username);
+    const data = res.data || [];
+    return mapUserCollectionPage(
+      res.total,
+      res.limit,
+      res.offset,
+      data.map(mapUserPersonCollection),
+      maxItems,
+    );
+  }
+
+  async getUserPersonCollection(
+    username: string,
+    personId: number,
+  ): Promise<{ found: boolean; item?: UserPersonCollectionItem }> {
+    try {
+      const raw = await this.api.getUserPersonCollection(username, personId);
+      return { found: true, item: mapUserPersonCollection(raw) };
+    } catch (err: unknown) {
+      const errorObj = err as { status?: number; code?: string; statusCode?: number };
+      if (
+        errorObj?.status === 404 ||
+        errorObj?.code === 'NOT_FOUND' ||
+        errorObj?.statusCode === 404
+      ) {
+        return { found: false };
+      }
+      throw err;
+    }
   }
 }

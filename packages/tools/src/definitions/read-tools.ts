@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { defineTool, ResolvedToolPolicy } from '../define-tool.js';
+import {
+  defineTool,
+  ResolvedToolPolicy,
+  ToolContext,
+  ToolExecutionDependencies,
+} from '../define-tool.js';
 import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiClientProvider } from '@bangumi-agent-kit/auth';
 import {
@@ -52,6 +57,46 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     music: 3,
     game: 4,
     real: 6,
+  };
+
+  const resolveUserCollectionTarget = async (
+    inputUsername: string | undefined,
+    context: ToolContext,
+    deps?: ToolExecutionDependencies,
+  ): Promise<{
+    username: string;
+    client: NonNullable<ToolExecutionDependencies['executionSession']>['client'] | HttpClient;
+    authScope: 'public' | 'account';
+  }> => {
+    const explicitUsername = inputUsername?.trim();
+    if (explicitUsername) {
+      return {
+        username: explicitUsername,
+        client: deps?.publicHttpClient || publicHttpClient,
+        authScope: 'public',
+      };
+    }
+
+    let client = deps?.executionSession?.client;
+    let username = deps?.executionSession?.account?.username;
+    if (!client && clientProvider) {
+      const authed = await clientProvider.requireAuthenticatedClient(context.principalId, []);
+      client = authed.client;
+      username = authed.account.username;
+    }
+    if (client && !username) {
+      username = (await new UserService(client).getMyself()).username;
+    }
+    if (!client || !username) {
+      throw new BangumiError(
+        'AUTH_REQUIRED',
+        '必须提供用户名或先绑定 Bangumi 账号才能读取角色/人物收藏。',
+        false,
+        401,
+        '调用 bangumi.auth_start',
+      );
+    }
+    return { username, client, authScope: 'account' };
   };
 
   const searchSubjects = defineTool({
@@ -842,6 +887,280 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getEpisodeCollections = defineTool({
+    name: 'bangumi.get_episode_collections',
+    description:
+      '获取当前绑定 Bangumi 账号对指定条目的章节收藏状态。items[].type 是官方收藏状态原值：0=未收藏、1=想看、2=看过、3=抛弃；items[].status 是对应语义标签。episodeType 是另一个请求筛选枚举：0=正篇、1=SP、2=OP、3=ED、4=PV、5=MAD、6=其他。返回章节身份、分页覆盖与 account 级来源，不推断观看顺序或未读取的进度。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        episodeType: z
+          .number()
+          .int()
+          .min(0)
+          .max(6)
+          .optional()
+          .describe('章节类型：0=正篇、1=SP、2=OP、3=ED、4=PV、5=MAD、6=其他'),
+        limit: z.number().int().min(1).max(200).optional().describe('官方分页参数 limit，默认 100'),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .max(1_000_000)
+          .optional()
+          .describe('官方分页参数 offset，默认 0'),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      if (!client) {
+        if (!clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能读取章节收藏。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+      }
+
+      const requestedLimit = input.limit ?? 100;
+      const result = await new UserService(client).getUserEpisodeCollections(input.subjectId, {
+        episodeType: input.episodeType as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined,
+        limit: requestedLimit,
+        offset: input.offset ?? 0,
+      });
+      const retrievedAt = new Date().toISOString();
+      const truncated =
+        result.total !== undefined
+          ? result.offset + result.items.length < result.total
+          : result.items.length >= result.limit;
+      return {
+        ...result,
+        coverage: {
+          sourceTotal: result.total,
+          observed: result.items.length,
+          returned: result.items.length,
+          requestedLimit: result.requestedLimit,
+          effectiveLimit: result.limit,
+          upstreamLimit: result.responseLimit,
+          offset: result.offset,
+          truncated,
+        },
+        source: {
+          source: 'official-v0',
+          operation: 'GET /v0/users/-/collections/{subject_id}/episodes',
+          authScope: 'account',
+          retrievedAt,
+        },
+        retrievedAt,
+      };
+    },
+  });
+
+  const collectionTargetPolicy = (input: { username?: string }): ResolvedToolPolicy => {
+    const isPublic = Boolean(input.username && input.username.trim());
+    return {
+      auth: isPublic ? 'none' : 'required',
+      requiredCapabilities: [],
+      risk: 'read',
+    };
+  };
+
+  const listCharacterCollections = defineTool({
+    name: 'bangumi.list_character_collections',
+    description:
+      '读取用户收藏的角色列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，不推断收藏偏好。',
+    input: z
+      .object({
+        username: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('Bangumi 用户名；省略则读取当前绑定账号'),
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe('最多返回角色数，默认 50；官方列表没有分页参数'),
+      })
+      .strict(),
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    resolvePolicy: collectionTargetPolicy,
+    execute: async (input, context, deps) => {
+      const target = await resolveUserCollectionTarget(input.username, context, deps);
+      const result = await new UserService(target.client).getUserCharacterCollections(
+        target.username,
+        { maxItems: input.maxItems ?? 50 },
+      );
+      const retrievedAt = new Date().toISOString();
+      return {
+        ...result,
+        coverage: {
+          sourceTotal: result.total,
+          observed: result.observed,
+          returned: result.returned,
+          maxItems: input.maxItems ?? 50,
+          truncated: result.truncated,
+        },
+        source: {
+          source: 'official-v0',
+          operation: 'GET /v0/users/{username}/collections/-/characters',
+          authScope: target.authScope,
+          retrievedAt,
+        },
+        retrievedAt,
+      };
+    },
+  });
+
+  const getCharacterCollection = defineTool({
+    name: 'bangumi.get_character_collection',
+    description:
+      '读取用户对单个角色的收藏信息。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。用户或角色不存在时返回 found:false。',
+    input: z
+      .object({
+        characterId: z.number().int().positive().describe('Bangumi 角色 ID'),
+        username: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('Bangumi 用户名；省略则读取当前绑定账号'),
+      })
+      .strict(),
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    resolvePolicy: collectionTargetPolicy,
+    execute: async (input, context, deps) => {
+      const target = await resolveUserCollectionTarget(input.username, context, deps);
+      const result = await new UserService(target.client).getUserCharacterCollection(
+        target.username,
+        input.characterId,
+      );
+      const retrievedAt = new Date().toISOString();
+      return {
+        ...result,
+        source: {
+          source: 'official-v0',
+          operation: 'GET /v0/users/{username}/collections/-/characters/{character_id}',
+          authScope: target.authScope,
+          retrievedAt,
+        },
+        retrievedAt,
+      };
+    },
+  });
+
+  const listPersonCollections = defineTool({
+    name: 'bangumi.list_person_collections',
+    description:
+      '读取用户收藏的人物列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，保留官方 career 原始标签。',
+    input: z
+      .object({
+        username: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('Bangumi 用户名；省略则读取当前绑定账号'),
+        maxItems: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe('最多返回人物数，默认 50；官方列表没有分页参数'),
+      })
+      .strict(),
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    resolvePolicy: collectionTargetPolicy,
+    execute: async (input, context, deps) => {
+      const target = await resolveUserCollectionTarget(input.username, context, deps);
+      const result = await new UserService(target.client).getUserPersonCollections(
+        target.username,
+        { maxItems: input.maxItems ?? 50 },
+      );
+      const retrievedAt = new Date().toISOString();
+      return {
+        ...result,
+        coverage: {
+          sourceTotal: result.total,
+          observed: result.observed,
+          returned: result.returned,
+          maxItems: input.maxItems ?? 50,
+          truncated: result.truncated,
+        },
+        source: {
+          source: 'official-v0',
+          operation: 'GET /v0/users/{username}/collections/-/persons',
+          authScope: target.authScope,
+          retrievedAt,
+        },
+        retrievedAt,
+      };
+    },
+  });
+
+  const getPersonCollection = defineTool({
+    name: 'bangumi.get_person_collection',
+    description:
+      '读取用户对单个人物的收藏信息。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。用户或人物不存在时返回 found:false，并保留官方 career 原始标签。',
+    input: z
+      .object({
+        personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+        username: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('Bangumi 用户名；省略则读取当前绑定账号'),
+      })
+      .strict(),
+    auth: 'optional',
+    scopes: [],
+    risk: 'read',
+    resolvePolicy: collectionTargetPolicy,
+    execute: async (input, context, deps) => {
+      const target = await resolveUserCollectionTarget(input.username, context, deps);
+      const result = await new UserService(target.client).getUserPersonCollection(
+        target.username,
+        input.personId,
+      );
+      const retrievedAt = new Date().toISOString();
+      return {
+        ...result,
+        source: {
+          source: 'official-v0',
+          operation: 'GET /v0/users/{username}/collections/-/persons/{person_id}',
+          authScope: target.authScope,
+          retrievedAt,
+        },
+        retrievedAt,
+      };
+    },
+  });
+
   const listCollections = defineTool({
     name: 'bangumi.list_collections',
     description: '获取指定用户（或当前绑定账号）的收藏列表。',
@@ -1479,5 +1798,10 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getPersonActivity,
     getEpisodeGuide,
     getSubjectStatsIntelligenceTool,
+    getEpisodeCollections,
+    listCharacterCollections,
+    getCharacterCollection,
+    listPersonCollections,
+    getPersonCollection,
   ] as const;
 }

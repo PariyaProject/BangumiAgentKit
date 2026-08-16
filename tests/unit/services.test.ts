@@ -169,6 +169,167 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(res.items[0]?.rating).toBe(9);
   });
 
+  it('UserService maps character/person collections and preserves not-found semantics', async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/collections/-/characters')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              total: 2,
+              limit: 0,
+              offset: 0,
+              data: [
+                {
+                  id: 10,
+                  name: '角色甲',
+                  type: 1,
+                  images: { large: 'https://img/large' },
+                  created_at: '2026-08-01T00:00:00Z',
+                },
+                { id: 11, name: '角色乙', type: 2, created_at: '2026-08-02T00:00:00Z' },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      if (url.endsWith('/collections/-/persons')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              total: 1,
+              limit: 0,
+              offset: 0,
+              data: [
+                {
+                  id: 20,
+                  name: '人物甲',
+                  type: 1,
+                  career: ['声优'],
+                  created_at: '2026-08-03T00:00:00Z',
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      return Promise.resolve(new Response('not found', { status: 404 }));
+    });
+    const service = new UserService(new HttpClient({ fetchFn: mockFetch }));
+
+    const characters = await service.getUserCharacterCollections('testuser', { maxItems: 1 });
+    const people = await service.getUserPersonCollections('testuser');
+    const missing = await service.getUserCharacterCollection('testuser', 999);
+
+    expect(characters).toMatchObject({
+      total: 2,
+      observed: 2,
+      returned: 1,
+      truncated: true,
+      items: [{ id: 10, name: '角色甲', createdAt: '2026-08-01T00:00:00Z' }],
+    });
+    expect(people.items[0]).toMatchObject({ id: 20, name: '人物甲', career: ['声优'] });
+    expect(missing).toEqual({ found: false });
+  });
+
+  it('UserService separates episode collection status from episode category and page limits', async () => {
+    const collectionTypes = [0, 1, 2, 3, 9];
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 20,
+          limit: 40,
+          offset: 10,
+          data: collectionTypes.map((type, index) => ({
+            type,
+            updated_at: 1_723_600_000 + index,
+            episode: {
+              id: 100 + index,
+              subject_id: 42,
+              type: index === 2 ? 2 : 0,
+              name: `Episode ${index}`,
+              name_cn: `第${index + 1}集`,
+              sort: index + 1,
+              ep: index + 1,
+            },
+          })),
+        }),
+        { status: 200 },
+      ),
+    );
+    const service = new UserService(new HttpClient({ fetchFn: mockFetch }));
+
+    const result = await service.getUserEpisodeCollections(42, {
+      episodeType: 0,
+      limit: 50,
+      offset: 10,
+    });
+
+    expect(result).toMatchObject({
+      total: 20,
+      requestedLimit: 50,
+      responseLimit: 40,
+      limit: 40,
+      offset: 10,
+    });
+    expect(result.items.map((item) => item.status)).toEqual([
+      'uncollected',
+      'wish',
+      'done',
+      'dropped',
+      'unknown',
+    ]);
+    expect(result.items[2]).toMatchObject({
+      type: 2,
+      status: 'done',
+      episode: { rawType: 2, category: 'op' },
+    });
+  });
+
+  it('UserService falls back locally when episode page metadata is missing or invalid', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [{ type: 1, episode: { id: 1, type: 0, name: 'Episode', sort: 1 } }],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            total: 20,
+            limit: 0,
+            offset: -1,
+            data: [{ type: 3, episode: { id: 2, type: 0, name: 'Episode 2', sort: 2 } }],
+          }),
+          { status: 200 },
+        ),
+      );
+    const service = new UserService(new HttpClient({ fetchFn: mockFetch }));
+
+    const missing = await service.getUserEpisodeCollections(42, { limit: 50, offset: 10 });
+    const invalid = await service.getUserEpisodeCollections(42, { limit: 50, offset: 10 });
+
+    expect(missing).toMatchObject({
+      requestedLimit: 50,
+      responseLimit: undefined,
+      limit: 50,
+      offset: 10,
+      total: undefined,
+    });
+    expect(invalid).toMatchObject({
+      requestedLimit: 50,
+      responseLimit: undefined,
+      limit: 50,
+      offset: 10,
+      total: 20,
+    });
+  });
+
   it('RevisionService fetches subject revision logs', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(
@@ -383,14 +544,12 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
   });
 
   it('RevisionService routes each supported entity through its official bounded endpoint', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-      );
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
     const service = new RevisionService(new HttpClient({ fetchFn: mockFetch }));
 
     for (const [entityType, path, idKey] of [
