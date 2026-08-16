@@ -73,6 +73,7 @@ describe('collection read parity tools', () => {
 
     expect(result.items[0]).toMatchObject({
       type: 2,
+      status: 'done',
       updatedAt: 1_723_600_000,
       episode: { id: 100, subjectId: 42, category: 'main', nameCn: '第一集' },
     });
@@ -81,6 +82,8 @@ describe('collection read parity tools', () => {
       observed: 1,
       returned: 1,
       requestedLimit: 50,
+      effectiveLimit: 50,
+      upstreamLimit: 50,
       offset: 10,
       truncated: true,
     });

@@ -890,7 +890,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getEpisodeCollections = defineTool({
     name: 'bangumi.get_episode_collections',
     description:
-      '获取当前绑定 Bangumi 账号对指定条目的章节收藏状态。返回官方章节身份、收藏类型、分页覆盖与 account 级来源；episodeType 使用官方 0=正篇、1=SP、2=OP、3=ED、4=PV、5=MAD、6=其他，不推断观看顺序或未读取的进度。',
+      '获取当前绑定 Bangumi 账号对指定条目的章节收藏状态。items[].type 是官方收藏状态原值：0=未收藏、1=想看、2=看过、3=抛弃；items[].status 是对应语义标签。episodeType 是另一个请求筛选枚举：0=正篇、1=SP、2=OP、3=ED、4=PV、5=MAD、6=其他。返回章节身份、分页覆盖与 account 级来源，不推断观看顺序或未读取的进度。',
     input: z
       .object({
         subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
@@ -932,9 +932,10 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         client = authed.client;
       }
 
+      const requestedLimit = input.limit ?? 100;
       const result = await new UserService(client).getUserEpisodeCollections(input.subjectId, {
         episodeType: input.episodeType as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined,
-        limit: input.limit ?? 100,
+        limit: requestedLimit,
         offset: input.offset ?? 0,
       });
       const retrievedAt = new Date().toISOString();
@@ -948,7 +949,9 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           sourceTotal: result.total,
           observed: result.items.length,
           returned: result.items.length,
-          requestedLimit: result.limit,
+          requestedLimit: result.requestedLimit,
+          effectiveLimit: result.limit,
+          upstreamLimit: result.responseLimit,
           offset: result.offset,
           truncated,
         },

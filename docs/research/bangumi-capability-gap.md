@@ -89,7 +89,7 @@
 
 上方矩阵保留了 PR-7A 的原始研究快照；collection-read parity Epoch 已经把其中三项 raw-only 观察收敛为有界语义读取：
 
-- `bangumi.get_episode_collections` 读取当前绑定账号的章节收藏状态，并保留 `read:collection`、分页和未读取范围边界。
+- `bangumi.get_episode_collections` 读取当前绑定账号的章节收藏状态，并保留 `read:collection`、分页和未读取范围边界；响应的 raw `type`/语义 `status` 与请求的 `episodeType` 分类筛选明确分离。
 - `bangumi.list_character_collections`、`bangumi.get_character_collection`、`bangumi.list_person_collections` 和 `bangumi.get_person_collection` 读取指定公开用户或当前绑定账号的角色/人物收藏；列表端点没有上游分页参数，因此只做本地上限并报告 `observed`、`returned`、`truncated`。
 - 这组读取不计算偏好、推荐、历史趋势或跨条目聚合；Renderer/Card 仍不在本 Epoch 范围内。
 

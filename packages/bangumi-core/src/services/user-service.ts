@@ -10,6 +10,7 @@ import {
   UserCharacterCollectionItem,
   UserCollectionItem,
   UserEpisodeCollectionItem,
+  UserEpisodeCollectionStatus,
   UserPersonCollectionItem,
 } from '../models/user.js';
 import { mapEpisode } from './episode-service.js';
@@ -50,6 +51,21 @@ function mapCollectionImages(
   images: Record<string, string> | null | undefined,
 ): Record<string, string> | undefined {
   return images ? { ...images } : undefined;
+}
+
+export function mapUserEpisodeCollectionStatus(value: unknown): UserEpisodeCollectionStatus {
+  switch (value) {
+    case 0:
+      return 'uncollected';
+    case 1:
+      return 'wish';
+    case 2:
+      return 'done';
+    case 3:
+      return 'dropped';
+    default:
+      return 'unknown';
+  }
 }
 
 function mapUserCharacterCollection(raw: {
@@ -284,6 +300,8 @@ export class UserService {
     } = {},
   ): Promise<{
     total?: number;
+    requestedLimit: number;
+    responseLimit?: number;
     limit: number;
     offset: number;
     items: UserEpisodeCollectionItem[];
@@ -303,11 +321,13 @@ export class UserService {
     const items = data.map((item) => ({
       episode: item.episode ? mapEpisode(item.episode, subjectId) : undefined,
       type: item.type,
+      status: mapUserEpisodeCollectionStatus(item.type),
       updatedAt:
         Number.isInteger(item.updated_at) && item.updated_at > 0 ? item.updated_at : undefined,
     }));
     const responseOffset = Number.isInteger(res.offset) && res.offset >= 0 ? res.offset : offset;
-    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : limit;
+    const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : undefined;
+    const effectiveLimit = responseLimit ?? limit;
     const responseTotal =
       Number.isInteger(res.total) && res.total >= responseOffset + items.length
         ? res.total
@@ -315,7 +335,9 @@ export class UserService {
 
     return {
       total: responseTotal,
-      limit: responseLimit,
+      requestedLimit: limit,
+      responseLimit,
+      limit: effectiveLimit,
       offset: responseOffset,
       items,
     };

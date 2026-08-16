@@ -30,8 +30,11 @@ export interface UserCollectionItem {
 export interface UserEpisodeCollectionItem {
   episode?: DomainEpisode;
   type: 0 | 1 | 2 | 3;
+  status: UserEpisodeCollectionStatus;
   updatedAt?: number;
 }
+
+export type UserEpisodeCollectionStatus = 'uncollected' | 'wish' | 'done' | 'dropped' | 'unknown';
 
 export interface UserCharacterCollectionItem {
   id: number;
