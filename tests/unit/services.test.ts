@@ -447,14 +447,12 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
   });
 
   it('RevisionService routes each supported entity through its official bounded endpoint', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-      );
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
     const service = new RevisionService(new HttpClient({ fetchFn: mockFetch }));
 
     for (const [entityType, path, idKey] of [
