@@ -48,8 +48,15 @@ function stateLabel(
   }
 }
 
-function valueLabel(value: number | null | undefined): string {
-  return value === null || value === undefined ? '未知' : String(value);
+function valueLabel(value: unknown): string {
+  if (value === null || value === undefined) return '未知';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '未知';
+  if (typeof value === 'string' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value).slice(0, 120);
+  } catch {
+    return '未知';
+  }
 }
 
 function formattedNumber(value: number | null | undefined, digits = 2): string {

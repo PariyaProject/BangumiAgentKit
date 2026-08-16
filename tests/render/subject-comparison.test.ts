@@ -9,6 +9,7 @@ import {
   RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+import { getTemplate } from '../../packages/renderer/src/templates/TemplateRegistry.js';
 
 const result: SubjectComparisonResult = {
   subjectIds: [123, 456],
@@ -437,6 +438,80 @@ const renderStatistics: SubjectStatsIntelligenceResult = {
   retrievedAt: '2026-08-15T00:00:00.000Z',
 };
 
+function statisticsStateMatrix(): Array<{
+  name: string;
+  statistics: SubjectStatsIntelligenceResult;
+  marker: string;
+}> {
+  const complete = structuredClone(renderStatistics);
+  complete.state = 'complete';
+  complete.rating.state = 'complete';
+  complete.rating.conflicts = undefined;
+  complete.coverage.formulasComplete = 5;
+  complete.coverage.formulasConflict = 0;
+
+  const partial = structuredClone(complete);
+  partial.state = 'partial';
+  partial.collection.state = 'partial';
+  partial.collection.completionState = 'partial';
+  partial.collection.distribution = partial.collection.distribution.map((item, index) =>
+    index === 1 ? { status: item.status } : item,
+  );
+  partial.coverage.collectionBucketsObserved = 4;
+  partial.coverage.formulasComplete = 3;
+  partial.coverage.formulasPartial = 2;
+  partial.coverage.formulasConflict = 0;
+
+  const zero = structuredClone(complete);
+  zero.state = 'not_computable';
+  zero.rating = {
+    ...zero.rating,
+    state: 'not_computable',
+    population: undefined,
+    mean: undefined,
+    standardDeviation: undefined,
+    distribution: zero.rating.distribution.map((item) => ({ score: item.score })),
+    conflicts: undefined,
+  };
+  zero.collection = {
+    ...zero.collection,
+    state: 'not_computable',
+    total: undefined,
+    completionRate: undefined,
+    completionState: 'not_computable',
+    distribution: zero.collection.distribution.map((item) => ({ status: item.status })),
+    conflicts: undefined,
+  };
+  zero.coverage.ratingPopulation = undefined;
+  zero.coverage.collectionPopulation = undefined;
+  zero.coverage.formulasComplete = 0;
+  zero.coverage.formulasPartial = 0;
+  zero.coverage.formulasNotComputable = 5;
+  zero.coverage.formulasConflict = 0;
+
+  const unavailable = structuredClone(zero);
+  unavailable.state = 'unavailable';
+  unavailable.rating.state = 'unavailable';
+  unavailable.collection.state = 'unavailable';
+  unavailable.collection.completionState = 'unavailable';
+  unavailable.coverage.sourceRequestsSucceeded = 0;
+  unavailable.coverage.ratingBucketsObserved = 0;
+  unavailable.coverage.collectionBucketsObserved = 0;
+  unavailable.coverage.formulasNotComputable = 0;
+  unavailable.coverage.formulasAttempted = 0;
+  unavailable.rating.distribution = [];
+  unavailable.collection.distribution = [];
+  unavailable.evidence = [];
+
+  return [
+    { name: 'complete', statistics: complete, marker: '统计覆盖：评分桶 10/10' },
+    { name: 'partial', statistics: partial, marker: '统计覆盖：评分桶 10/10 · 收藏桶 4/5' },
+    { name: 'conflict', statistics: renderStatistics, marker: '统计冲突：rating · histogramMean' },
+    { name: 'not-computable', statistics: zero, marker: '不可计算' },
+    { name: 'unavailable', statistics: unavailable, marker: '不可用' },
+  ];
+}
+
 describe('subject-comparison renderer', () => {
   let renderService: RenderService;
 
@@ -560,4 +635,39 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('统计证据：getSubjectById:rating.score');
     expect(extractImageUrls(buildSubjectComparisonViewModel(withStatistics))).toEqual([]);
   });
+
+  it('keeps current and legacy comparison ViewModels renderable with a bounded statistics PNG matrix', async () => {
+    expect(getTemplate('subject-comparison').version).toBe(2);
+    const current = buildSubjectComparisonViewModel(result);
+    expect(current.version).toBe(2);
+
+    const legacy = { ...current, version: 1 as const };
+    const legacyHtml = renderHtmlTemplate(legacy, 'bangumi-dark', {}, 480);
+    expect(legacyHtml).toContain('条目并列比较');
+
+    for (const matrixCase of statisticsStateMatrix()) {
+      const withStatistics = structuredClone(result);
+      withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';
+      withStatistics.subjects[0] = {
+        ...withStatistics.subjects[0],
+        statistics: matrixCase.statistics,
+      };
+      const viewModel = buildSubjectComparisonViewModel(withStatistics);
+      expect(viewModel.version).toBe(2);
+      expect(extractImageUrls(viewModel)).toEqual([]);
+
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 480);
+      expect(html).toContain('一个用于验证窄宽度换行');
+      expect(html).toContain('差值 B−A');
+      expect(html).toContain(matrixCase.marker);
+
+      const rendered = await renderService.renderCard(viewModel, {
+        width: 640,
+        deviceScaleFactor: 1,
+      });
+      expect(rendered.template).toBe('subject-comparison');
+      expect(rendered.templateVersion).toBe(2);
+      expect(rendered.buffer.length).toBeGreaterThan(1000);
+    }
+  }, 30_000);
 });

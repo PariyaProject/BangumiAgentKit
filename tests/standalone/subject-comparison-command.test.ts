@@ -410,4 +410,161 @@ describe('Standalone subject comparison commands', () => {
     expect(human.split('\n').length).toBeLessThanOrEqual(80);
     expect(Buffer.byteLength(human, 'utf8')).toBeLessThanOrEqual(24_000);
   });
+
+  it('keeps Standalone statistics state labels and diagnostics aligned across degraded states', () => {
+    const formulas = {
+      percentages: { id: 'bangumi.rating.percentages.v1', version: 1 },
+      histogramMean: { id: 'bangumi.rating.histogram_mean.v1', version: 1 },
+      populationStandardDeviation: { id: 'bangumi.rating.population_sd.v1', version: 1 },
+    };
+    const collectionFormulas = {
+      percentages: { id: 'bangumi.collection.percentages.v1', version: 1 },
+      completion: { id: 'bangumi.subject.completion.v1', version: 1 },
+    };
+    const cases = [
+      { state: 'complete', label: '完整', formulasComplete: 5, formulasNotComputable: 0 },
+      { state: 'partial', label: '部分', formulasComplete: 3, formulasNotComputable: 0 },
+      { state: 'conflict', label: '冲突', formulasComplete: 4, formulasNotComputable: 0 },
+      {
+        state: 'not_computable',
+        label: '不可计算',
+        formulasComplete: 0,
+        formulasNotComputable: 5,
+      },
+      { state: 'unavailable', label: '不可用', formulasComplete: 0, formulasNotComputable: 0 },
+    ] as const;
+
+    for (const item of cases) {
+      const statistics = {
+        state: item.state,
+        rating: {
+          state: item.state,
+          population:
+            item.state === 'not_computable' || item.state === 'unavailable' ? undefined : 100,
+          mean: item.state === 'not_computable' || item.state === 'unavailable' ? undefined : 8.6,
+          standardDeviation:
+            item.state === 'not_computable' || item.state === 'unavailable' ? undefined : 0.49,
+          distribution: [],
+          formulas,
+          ...(item.state === 'conflict'
+            ? {
+                conflicts: [
+                  {
+                    state: 'conflict',
+                    scope: 'rating',
+                    fieldPaths: ['histogramMean', 'rating.score'],
+                    reason: 'derived histogram mean differs materially from upstream score',
+                    candidates: [
+                      { source: { class: 'derived-s7', provider: 'derived' }, value: 8.6 },
+                      { source: { class: 'official-v0', provider: 'bangumi' }, value: 7.4 },
+                    ],
+                  },
+                ],
+              }
+            : {}),
+        },
+        collection: {
+          state: item.state === 'conflict' ? 'complete' : item.state,
+          total: item.state === 'not_computable' || item.state === 'unavailable' ? undefined : 100,
+          distribution: [],
+          completionRate:
+            item.state === 'not_computable' || item.state === 'unavailable' ? undefined : 0.5,
+          completionState: item.state === 'conflict' ? 'complete' : item.state,
+          formulas: collectionFormulas,
+        },
+        coverage: {
+          ratingBucketsExpected: 10,
+          ratingBucketsObserved: item.state === 'unavailable' ? 0 : 10,
+          collectionBucketsExpected: 5,
+          collectionBucketsObserved: item.state === 'unavailable' ? 0 : 5,
+          formulasAttempted: item.state === 'unavailable' ? 0 : 5,
+          formulasComplete: item.formulasComplete,
+          formulasPartial: item.state === 'partial' ? 2 : 0,
+          formulasNotComputable: item.formulasNotComputable,
+          formulasConflict: item.state === 'conflict' ? 1 : 0,
+        },
+        evidence: [],
+        warnings: [],
+        limitations: [],
+      };
+      const human = formatHuman({
+        state: 'partial',
+        subjectIds: [123, 456],
+        subjects: [
+          {
+            subjectId: 123,
+            state: 'partial',
+            subject: { nameCn: '甲条目' },
+            sections: {
+              stats: item.state,
+              cast: 'complete',
+              staff: 'complete',
+              relations: 'complete',
+            },
+            coverage: {
+              sourceRequestsAttempted: 1,
+              sourceRequestsSucceeded: 1,
+              sectionsComplete: 3,
+              sectionsPartial: 1,
+              sectionsUnavailable: 0,
+              sectionsNotComputable: 0,
+              truncatedSections: [],
+              limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
+            },
+            warnings: [],
+            limitations: [],
+            statistics,
+          },
+          {
+            subjectId: 456,
+            state: 'unavailable',
+            sections: {
+              stats: 'unavailable',
+              cast: 'unavailable',
+              staff: 'unavailable',
+              relations: 'unavailable',
+            },
+            coverage: {
+              sourceRequestsAttempted: 1,
+              sourceRequestsSucceeded: 0,
+              sectionsComplete: 0,
+              sectionsPartial: 0,
+              sectionsUnavailable: 4,
+              sectionsNotComputable: 0,
+              truncatedSections: [],
+              limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
+            },
+            warnings: [],
+            limitations: [],
+          },
+        ],
+        metrics: [],
+        coverage: {
+          requestedSubjects: 2,
+          returnedSubjects: 1,
+          subjectsComplete: 0,
+          subjectsPartial: 1,
+          subjectsUnavailable: 1,
+          subjectsNotFound: 0,
+          metricsComplete: 0,
+          metricsUnknown: 0,
+          metricsConflict: 0,
+          limits: {
+            maxSubjects: 2,
+            maxCast: 4,
+            maxStaff: 12,
+            maxRelations: 8,
+            maxOverlapItems: 24,
+          },
+        },
+      });
+
+      expect(human).toContain(`统计智能：${item.label}`);
+      expect(human).toContain('统计覆盖：评分桶');
+      expect(human).toContain('bangumi.rating.percentages.v1@v1');
+      if (item.state === 'conflict') {
+        expect(human).toContain('统计冲突：rating · histogramMean,rating.score');
+      }
+    }
+  });
 });

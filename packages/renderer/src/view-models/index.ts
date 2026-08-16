@@ -851,7 +851,8 @@ export interface SubjectOverviewViewModel {
 
 export interface SubjectComparisonViewModel {
   template: 'subject-comparison';
-  version: 2;
+  /** Version 1 is accepted for additive compatibility; builders emit version 2. */
+  version: 1 | 2;
   state: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonState;
   subjectIds: [number, number];
   subjects: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['subjects'];

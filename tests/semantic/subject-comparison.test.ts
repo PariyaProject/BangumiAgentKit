@@ -720,6 +720,118 @@ describe('Subject comparison semantic contract', () => {
     );
   });
 
+  it('keeps side-specific structured statistic conflicts bounded and deduplicated', async () => {
+    const registry = new ProviderRegistry({
+      v0: {
+        async getSubject() {
+          return { state: 'ok' as const, data: undefined };
+        },
+        async getSubjectStats(subjectId: number): Promise<CapabilityResult<SubjectStatsData>> {
+          if (subjectId === 123) {
+            return { state: 'ok', data: stats[subjectId]!, evidence: {} };
+          }
+          return {
+            state: 'conflict',
+            data: stats[subjectId]!,
+            evidence: {},
+            conflicts: [
+              {
+                state: 'conflict',
+                reason: 'rating bucket candidates disagree',
+                candidates: [
+                  {
+                    source: { class: 'official_v0', provider: 'bangumi' },
+                    value: { rating: { count: { 8: 40 } } },
+                    evidence: [
+                      {
+                        source: { class: 'official_v0', provider: 'bangumi' },
+                        retrievedAt: '2026-08-15T00:00:00.000Z',
+                        fieldPath: 'rating.count.8',
+                      },
+                    ],
+                  },
+                  {
+                    source: { class: 'derived', provider: 'fixture-derived' },
+                    value: { rating: { count: { 8: 41 } } },
+                    evidence: [
+                      {
+                        source: { class: 'derived', provider: 'fixture-derived' },
+                        retrievedAt: '2026-08-15T00:00:00.000Z',
+                        fieldPath: 'rating.count.8',
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                state: 'conflict',
+                reason: 'collection bucket candidates disagree',
+                candidates: [
+                  {
+                    source: { class: 'official_v0', provider: 'bangumi' },
+                    value: { collection: { collect: 30 } },
+                    evidence: [
+                      {
+                        source: { class: 'official_v0', provider: 'bangumi' },
+                        retrievedAt: '2026-08-15T00:00:00.000Z',
+                        fieldPath: 'collection.collect',
+                      },
+                    ],
+                  },
+                  {
+                    source: { class: 'derived', provider: 'fixture-derived' },
+                    value: { collection: { collect: 31 } },
+                    evidence: [
+                      {
+                        source: { class: 'derived', provider: 'fixture-derived' },
+                        retrievedAt: '2026-08-15T00:00:00.000Z',
+                        fieldPath: 'collection.collect',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          };
+        },
+      },
+    });
+    const result = (await getTool(buildClient().client).execute(
+      { subjectIds: [123, 456] },
+      context,
+      { providerRegistry: registry },
+    )) as SubjectComparisonResult;
+    const conflictedSubject = result.subjects[1];
+
+    expect(conflictedSubject.statistics?.rating.conflicts?.[0]).toMatchObject({
+      scope: 'rating',
+      fieldPaths: ['rating.count.8'],
+      candidates: expect.arrayContaining([
+        expect.objectContaining({ value: { rating: { count: { 8: 40 } } } }),
+      ]),
+    });
+    expect(conflictedSubject.statistics?.collection.conflicts?.[0]).toMatchObject({
+      scope: 'collection',
+      fieldPaths: ['collection.collect'],
+    });
+    expect(result.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'ratingPopulation', state: 'conflict', delta: null }),
+        expect.objectContaining({ key: 'collectionPopulation', state: 'conflict', delta: null }),
+      ]),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'COMPARISON_STATISTICS_CONFLICT',
+          message: expect.stringContaining('2 条统计冲突证据'),
+        }),
+      ]),
+    );
+    expect(JSON.stringify(result)).not.toContain('NaN');
+    expect(JSON.stringify(result)).not.toContain('Infinity');
+  });
+
   it('does not convert a missing collection bucket into a complete comparison total', async () => {
     for (const missingSubjectId of [123, 456]) {
       const registry = new ProviderRegistry({

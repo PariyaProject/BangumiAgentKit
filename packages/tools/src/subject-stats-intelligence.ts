@@ -23,6 +23,7 @@ import type {
   SubjectStatsCollectionStatus,
   SubjectStatsCollectionPresence,
   SubjectStatsConflict,
+  SubjectStatsConflictValue,
   SubjectStatsConflictScope,
   SubjectStatsEvidence,
   SubjectStatsFormulaDescriptor,
@@ -135,6 +136,27 @@ function finiteNonNegative(value: unknown): value is number {
 
 function nonNegativeInteger(value: unknown): value is number {
   return finiteNonNegative(value) && Number.isInteger(value);
+}
+
+function safeConflictValue(
+  value: unknown,
+  seen = new WeakSet<object>(),
+): SubjectStatsConflictValue {
+  if (typeof value === 'number') {
+    return Number.isFinite(value)
+      ? value
+      : { state: 'unknown', reason: 'non_finite_candidate_value' };
+  }
+  if (value === undefined) return { state: 'unknown', reason: 'missing_candidate_value' };
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value !== 'object') return { state: 'unknown', reason: 'unsupported_candidate_value' };
+  if (seen.has(value)) return { state: 'unknown', reason: 'circular_candidate_value' };
+  seen.add(value);
+  if (Array.isArray(value)) {
+    return value.slice(0, 32).map((item) => safeConflictValue(item, seen));
+  }
+  const entries = Object.entries(value).slice(0, 32);
+  return Object.fromEntries(entries.map(([key, item]) => [key, safeConflictValue(item, seen)]));
 }
 
 function validHistogram(value: unknown): value is SubjectStatsRatingHistogram {
@@ -367,7 +389,7 @@ function addConflictEvidence(
             ...(candidate.source.operation ? { operation: candidate.source.operation } : {}),
             ...(candidate.source.version ? { version: candidate.source.version } : {}),
           },
-          value: typeof candidate.value === 'number' ? candidate.value : Number(candidate.value),
+          value: safeConflictValue(candidate.value),
           evidence:
             candidateEvidence?.filter((item) => item.source === mappedClass) ||
             fallbackEvidence.filter(
@@ -380,6 +402,59 @@ function addConflictEvidence(
       }),
     };
   });
+}
+
+function conflictIdentity(conflict: SubjectStatsConflict): string {
+  return JSON.stringify({
+    scope: conflict.scope || 'unknown',
+    reason: conflict.reason,
+    fieldPaths: [...(conflict.fieldPaths || [])].sort(),
+    candidates: conflict.candidates.map((candidate) => ({
+      source: candidate.source,
+      value: candidate.value,
+      evidence: (candidate.evidence || []).map((item) => ({
+        source: item.source,
+        provider: item.provider,
+        operation: item.operation,
+        fieldPath: item.fieldPath,
+        formula: item.formula,
+      })),
+    })),
+  });
+}
+
+function uniqueConflicts(conflicts: SubjectStatsConflict[]): SubjectStatsConflict[] {
+  const seen = new Set<string>();
+  return conflicts.filter((conflict) => {
+    const identity = conflictIdentity(conflict);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
+
+function ratingConflictAffects(
+  conflicts: SubjectStatsConflict[] | undefined,
+  field: 'population' | 'mean' | 'standardDeviation',
+): boolean {
+  return (conflicts || []).some((conflict) => {
+    if (conflict.scope !== 'rating' && conflict.scope !== 'unknown') return false;
+    const paths = conflict.fieldPaths || [];
+    if (paths.length === 0) return true;
+    if (paths.some((path) => /^rating\.count\.|ratingHistogram|histogramPopulation/iu.test(path))) {
+      return true;
+    }
+    if (field === 'mean') {
+      return paths.some((path) => /histogramMean|rating\.score|^score$/iu.test(path));
+    }
+    return false;
+  });
+}
+
+function collectionConflictAffects(conflicts: SubjectStatsConflict[] | undefined): boolean {
+  return (conflicts || []).some(
+    (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
+  );
 }
 
 function deriveOverallState(
@@ -496,12 +571,7 @@ export async function getSubjectStatsIntelligence(
   const collectionInputsComplete = allPresent(statsCollectionPresence);
   const unscopedProviderConflict =
     sourceResult.state === 'conflict' && (sourceConflicts || []).length === 0;
-  const sourceRatingConflict = (sourceConflicts || []).some(
-    (conflict) => conflict.scope === 'rating' || conflict.scope === 'unknown',
-  );
-  const sourceCollectionConflict = (sourceConflicts || []).some(
-    (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
-  );
+  const allProviderConflict = unscopedProviderConflict;
   result.raw = {
     score: stats.score,
     rank: stats.rank,
@@ -552,49 +622,68 @@ export async function getSubjectStatsIntelligence(
         COMPLETION_FORMULA,
         'Collection buckets contain missing or invalid values; completion rate is suppressed.',
       );
-  const ratingMeanFormulaState: SubjectStatsMetricState = !ratingInputsComplete
-    ? 'partial'
-    : ratingDeviation.data?.histogramMean !== undefined
-      ? ratingDeviation.state === 'conflict'
-        ? 'conflict'
-        : 'complete'
-      : stateForFormula(ratingDeviation);
-  const ratingStandardDeviationFormulaState: SubjectStatsMetricState = !ratingInputsComplete
-    ? 'partial'
-    : ratingDeviation.data?.standardDeviation !== undefined
-      ? 'complete'
-      : stateForFormula(ratingDeviation);
-  const ratingState =
-    sourceRatingConflict || unscopedProviderConflict
+  const ratingPercentagesFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'population')
       ? 'conflict'
       : !ratingInputsComplete
         ? 'partial'
-        : ratingMeanFormulaState === 'conflict'
-          ? 'conflict'
-          : stateForFormula(ratingPercentages);
-  const collectionState =
-    sourceCollectionConflict || unscopedProviderConflict
+        : stateForFormula(ratingPercentages);
+  const ratingMeanFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'mean')
+      ? 'conflict'
+      : !ratingInputsComplete
+        ? 'partial'
+        : ratingDeviation.data?.histogramMean !== undefined
+          ? ratingDeviation.state === 'conflict'
+            ? 'conflict'
+            : 'complete'
+          : stateForFormula(ratingDeviation);
+  const ratingStandardDeviationFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'standardDeviation')
+      ? 'conflict'
+      : !ratingInputsComplete
+        ? 'partial'
+        : ratingDeviation.data?.standardDeviation !== undefined
+          ? 'complete'
+          : stateForFormula(ratingDeviation);
+  const collectionPercentagesFormulaState: SubjectStatsMetricState =
+    allProviderConflict || collectionConflictAffects(sourceConflicts)
       ? 'conflict'
       : !collectionInputsComplete
         ? 'partial'
         : stateForFormula(collectionPercentages);
-  const completionState =
-    sourceCollectionConflict || unscopedProviderConflict
+  const completionFormulaState: SubjectStatsMetricState =
+    allProviderConflict || collectionConflictAffects(sourceConflicts)
       ? 'conflict'
       : !collectionInputsComplete
         ? 'partial'
         : stateForFormula(completion);
+  const ratingState = !ratingInputsComplete
+    ? 'partial'
+    : [
+          ratingPercentagesFormulaState,
+          ratingMeanFormulaState,
+          ratingStandardDeviationFormulaState,
+        ].includes('conflict')
+      ? 'conflict'
+      : stateForFormula(ratingPercentages);
+  const collectionState = !collectionInputsComplete
+    ? 'partial'
+    : [collectionPercentagesFormulaState, completionFormulaState].includes('conflict')
+      ? 'conflict'
+      : stateForFormula(collectionPercentages);
+  const completionState = completionFormulaState;
 
   const ratingPopulation = ratingInputsComplete
     ? ratingDeviation.data?.histogramPopulation
     : observedRatingPopulation(stats, statsRatingPresence);
   const collectionPopulation = observedCollectionPopulation(stats, statsCollectionPresence);
   const formulaStates = [
-    { state: stateForFormula(ratingPercentages) },
+    { state: ratingPercentagesFormulaState },
     { state: ratingMeanFormulaState },
     { state: ratingStandardDeviationFormulaState },
-    { state: stateForFormula(collectionPercentages) },
-    { state: stateForFormula(completion) },
+    { state: collectionPercentagesFormulaState },
+    { state: completionFormulaState },
   ];
   result.coverage.ratingPopulation = ratingPopulation;
   result.coverage.collectionPopulation = collectionPopulation;
@@ -623,8 +712,11 @@ export async function getSubjectStatsIntelligence(
   const scopedCollectionConflicts = (sourceConflicts || []).filter(
     (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
   );
-  const allRatingConflicts = [...scopedRatingConflicts, ...(ratingConflicts || [])];
-  result.conflicts = [...(sourceConflicts || []), ...(ratingConflicts || [])];
+  const allRatingConflicts = uniqueConflicts([
+    ...scopedRatingConflicts,
+    ...(ratingConflicts || []),
+  ]);
+  result.conflicts = uniqueConflicts([...(sourceConflicts || []), ...(ratingConflicts || [])]);
 
   result.rating = {
     state: ratingState,
@@ -671,7 +763,9 @@ export async function getSubjectStatsIntelligence(
       percentages: descriptor(COLLECTION_PERCENTAGES_FORMULA),
       completion: descriptor(COMPLETION_FORMULA),
     },
-    ...(scopedCollectionConflicts.length > 0 ? { conflicts: scopedCollectionConflicts } : {}),
+    ...(scopedCollectionConflicts.length > 0
+      ? { conflicts: uniqueConflicts(scopedCollectionConflicts) }
+      : {}),
   };
 
   const formulaEvidenceItems = uniqueEvidence([

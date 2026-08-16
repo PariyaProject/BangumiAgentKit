@@ -35,6 +35,17 @@ function formatNumber(value: number | undefined, digits = 0): string {
       });
 }
 
+function formatConflictValue(value: unknown): string {
+  if (typeof value === 'number') return formatNumber(value, 2);
+  if (value === null || value === undefined) return '未知';
+  if (typeof value === 'string' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value).slice(0, 120);
+  } catch {
+    return '未知';
+  }
+}
+
 function formatPercent(value: number | undefined): string {
   return value === undefined || !Number.isFinite(value) ? '未知' : `${value.toFixed(1)}%`;
 }
@@ -296,7 +307,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                   key={`${candidate.source.class}-${candidate.source.provider}-${candidateIndex}`}
                 >
                   候选 {candidate.source.class}/{candidate.source.provider} ={' '}
-                  {formatNumber(candidate.value, 2)}
+                  {formatConflictValue(candidate.value)}
                 </div>
               ))}
             </div>

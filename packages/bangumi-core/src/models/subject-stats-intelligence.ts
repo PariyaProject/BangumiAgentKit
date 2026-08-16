@@ -67,9 +67,17 @@ export interface SubjectStatsConflictCandidate {
     operation?: string;
     version?: string;
   };
-  value: number;
+  value: SubjectStatsConflictValue;
   evidence?: SubjectStatsEvidence[];
 }
+
+export type SubjectStatsConflictValue =
+  | number
+  | string
+  | boolean
+  | null
+  | SubjectStatsConflictValue[]
+  | { [key: string]: SubjectStatsConflictValue };
 
 export type SubjectStatsConflictScope = 'headline' | 'rating' | 'collection' | 'unknown';
 

@@ -8,6 +8,7 @@ import type {
   SubjectComparisonSourceSummary,
   SubjectComparisonStatsConflict,
   SubjectComparisonStatsKey,
+  SubjectStatsConflict,
   SubjectStatsIntelligenceResult,
   SubjectOverviewResult,
   SubjectOverviewStatsConflict,
@@ -544,6 +545,25 @@ function buildStatisticsMetrics(
   ];
 }
 
+function statisticsConflictIdentity(conflict: SubjectStatsConflict): string {
+  return JSON.stringify({
+    scope: conflict.scope || 'unknown',
+    reason: conflict.reason,
+    fieldPaths: [...(conflict.fieldPaths || [])].sort(),
+    candidates: conflict.candidates.map((candidate) => ({
+      source: candidate.source,
+      value: candidate.value,
+      evidence: (candidate.evidence || []).map((item) => ({
+        source: item.source,
+        provider: item.provider,
+        operation: item.operation,
+        fieldPath: item.fieldPath,
+        formula: item.formula,
+      })),
+    })),
+  });
+}
+
 function buildMetrics(
   subjects: [SubjectComparisonSubject, SubjectComparisonSubject],
 ): SubjectComparisonMetric[] {
@@ -990,14 +1010,15 @@ export async function getSubjectComparison(
   const statisticsConflictMetrics = statisticsMetrics.filter(
     (item) => item.state === 'conflict',
   ).length;
-  const statisticsConflictDetails = pair.reduce(
-    (count, subject) =>
-      count +
-      (subject.statistics?.conflicts?.length || 0) +
-      (subject.statistics?.rating.conflicts?.length || 0) +
-      (subject.statistics?.collection.conflicts?.length || 0),
-    0,
-  );
+  const statisticsConflictDetails = new Set(
+    pair.flatMap((subject) =>
+      [
+        ...(subject.statistics?.conflicts || []),
+        ...(subject.statistics?.rating.conflicts || []),
+        ...(subject.statistics?.collection.conflicts || []),
+      ].map(statisticsConflictIdentity),
+    ),
+  ).size;
   const state: SubjectComparisonState =
     subjectState === 'complete' &&
     (unknownMetrics > 0 ||

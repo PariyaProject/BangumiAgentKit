@@ -195,6 +195,96 @@ describe('Subject statistics intelligence semantic contract', () => {
     });
   });
 
+  it('preserves structured rating and collection conflict candidates without non-finite coercion', async () => {
+    const result = await getTool().execute(
+      { subjectId: 123 },
+      { principalId: 'stats-test' },
+      {
+        providerRegistry: registry({
+          state: 'conflict',
+          data: stats,
+          evidence: evidence(),
+          conflicts: [
+            {
+              state: 'conflict',
+              reason: 'rating bucket candidates disagree',
+              candidates: [
+                {
+                  source: {
+                    class: 'official_v0',
+                    provider: 'bangumi',
+                    operation: 'getSubjectById',
+                  },
+                  value: { rating: { count: { 8: 40 } } },
+                  evidence: [
+                    {
+                      source: {
+                        class: 'official_v0',
+                        provider: 'bangumi',
+                        operation: 'getSubjectById',
+                      },
+                      retrievedAt: '2026-08-15T00:00:00.000Z',
+                      fieldPath: 'rating.count.8',
+                    },
+                  ],
+                },
+                {
+                  source: { class: 'derived', provider: 'fixture-derived' },
+                  value: { rating: { count: { 8: 41 } } },
+                  evidence: [
+                    {
+                      source: { class: 'derived', provider: 'fixture-derived' },
+                      retrievedAt: '2026-08-15T00:00:00.000Z',
+                      fieldPath: 'rating.count.8',
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              state: 'conflict',
+              reason: 'collection bucket candidate is malformed',
+              candidates: [
+                {
+                  source: { class: 'official_v0', provider: 'bangumi' },
+                  value: Number.NaN,
+                  evidence: [
+                    {
+                      source: { class: 'official_v0', provider: 'bangumi' },
+                      retrievedAt: '2026-08-15T00:00:00.000Z',
+                      fieldPath: 'collection.collect',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    );
+
+    expect(result).toMatchObject({
+      state: 'conflict',
+      coverage: { formulasAttempted: 5, formulasConflict: 5 },
+      rating: {
+        state: 'conflict',
+        conflicts: [expect.objectContaining({ scope: 'rating', fieldPaths: ['rating.count.8'] })],
+      },
+      collection: {
+        state: 'conflict',
+        conflicts: [expect.objectContaining({ scope: 'collection' })],
+      },
+    });
+    expect(result.conflicts).toHaveLength(2);
+    expect(result.conflicts?.[0]?.candidates[0]?.value).toEqual({ rating: { count: { 8: 40 } } });
+    expect(result.conflicts?.[1]?.candidates[0]?.value).toEqual({
+      state: 'unknown',
+      reason: 'non_finite_candidate_value',
+    });
+    expect(JSON.stringify(result)).not.toContain('NaN');
+    expect(JSON.stringify(result)).not.toContain('Infinity');
+  });
+
   it('preserves granular official evidence through the real provider adapter', async () => {
     const raw = {
       id: 123,

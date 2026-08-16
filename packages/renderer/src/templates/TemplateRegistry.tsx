@@ -61,6 +61,12 @@ export function registerTemplate<T extends RenderViewModel>(template: CardTempla
   templates.set(template.id, template);
 }
 
+function normalizeSubjectComparisonViewModel(
+  viewModel: SubjectComparisonViewModel,
+): SubjectComparisonViewModel {
+  return viewModel.version === 1 ? { ...viewModel, version: 2 } : viewModel;
+}
+
 // Register the default card templates.
 registerTemplate<SubjectCardViewModel>({
   id: 'subject-card',
@@ -175,9 +181,13 @@ registerTemplate<SubjectOverviewViewModel>({
 
 registerTemplate<SubjectComparisonViewModel>({
   id: 'subject-comparison',
-  version: 1,
+  version: 2,
   render: (vm, theme, _resolvedImages, width) => (
-    <SubjectComparisonCard viewModel={vm} theme={theme} width={width} />
+    <SubjectComparisonCard
+      viewModel={normalizeSubjectComparisonViewModel(vm)}
+      theme={theme}
+      width={width}
+    />
   ),
 });
 
