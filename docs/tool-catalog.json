@@ -2375,8 +2375,8 @@
   },
   {
     "name": "bangumi.search_characters",
-    "description": "搜索 Bangumi 虚拟角色；可用官方 v0 nsfw 布尔筛选。未授权调用者的 NSFW 筛选可能被上游忽略，结果仍以官方响应为准。若已知角色 ID，请使用 bangumi.get_character。",
-    "auth": "none",
+    "description": "搜索 Bangumi 虚拟角色；可用官方 v0 nsfw 布尔筛选。省略 nsfw 时由上游返回默认结果，true 只返回 R18 角色，false 只返回非 R18 角色；未授权调用者会忽略该字段且不会返回 R18 角色。已绑定账号会通过可选认证会话执行，结果仍以官方响应为准。若已知角色 ID，请使用 bangumi.get_character。",
+    "auth": "optional",
     "risk": "read",
     "scopes": [],
     "policyMode": "static",
@@ -2400,7 +2400,7 @@
           "maximum": 9007199254740991
         },
         "nsfw": {
-          "description": "官方 v0 NSFW 筛选；未授权时上游可能忽略",
+          "description": "官方 v0 NSFW 筛选：省略=上游默认结果，true=仅 R18，false=仅非 R18；未授权时上游忽略该字段且不返回 R18",
           "type": "boolean"
         }
       },

@@ -375,6 +375,149 @@ describe('Semantic Tools Contract Tests (S01 - S25)', () => {
     ).toBe(false);
   });
 
+  it('S07c: ToolRegistry selects optional auth for character NSFW filter semantics', async () => {
+    const secretKey = 'test-secret-key-123456789012345678901234';
+    const requests: Array<{
+      body: Record<string, unknown>;
+      authorization: string | null;
+    }> = [];
+    const fetchFn = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      requests.push({
+        body: init?.body ? JSON.parse(init.body as string) : {},
+        authorization: new Headers(init?.headers).get('authorization'),
+      });
+      if (url.includes('/search/characters')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 10,
+            offset: 0,
+            data: [{ id: 1, name: '角色', type: 1 }],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ total: 0, limit: 10, offset: 0, data: [] }), {
+        status: 200,
+      });
+    });
+    const storage = new MemoryStorage();
+    const registry = new ToolRegistry(
+      createRuntimeDependencies({
+        storage,
+        secretKey,
+        publicHttpClient: new HttpClient({ fetchFn }),
+      }),
+    );
+
+    const boundPrincipal = await storage.findOrCreatePrincipal({
+      provider: 'test-platform',
+      botInstanceId: 'bot-search-filters',
+      externalUserId: 'bound-search-filters',
+    });
+    const boundAccount = await storage.upsertBangumiAccount({
+      id: 'account-search-filters',
+      bangumiUserId: 91001,
+      username: 'bound-search-filters',
+      nickname: 'Bound Search Filters',
+    });
+    const now = new Date();
+    await storage.upsertCredential({
+      id: 'credential-search-filters',
+      bangumiAccountId: boundAccount.id,
+      encryptedAccessToken: encryptToken('bound-search-token', secretKey, 'v1'),
+      expiresAt: new Date(now.getTime() + 3600000),
+      requestedCapabilities: [],
+      reportedScopes: [],
+      scopeEvidence: 'reported',
+      keyVersion: 'v1',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await storage.bindAccount(boundPrincipal.id, boundAccount.id, true);
+
+    const anonymousContext = { ...context, principalId: 'anonymous-search-filters' };
+    const boundContext = { ...context, principalId: boundPrincipal.id };
+    const variants = [
+      { query: '角色' },
+      { query: '角色', nsfw: true },
+      { query: '角色', nsfw: false },
+    ];
+
+    for (const input of variants) {
+      await registry.executeTool('bangumi.search_characters', input, anonymousContext);
+    }
+    for (const input of variants) {
+      await registry.executeTool('bangumi.search_characters', input, boundContext);
+    }
+
+    expect(registry.getTool('bangumi.search_characters')?.auth).toBe('optional');
+    expect(requests).toEqual([
+      { body: { keyword: '角色' }, authorization: null },
+      { body: { keyword: '角色', filter: { nsfw: true } }, authorization: null },
+      { body: { keyword: '角色', filter: { nsfw: false } }, authorization: null },
+      { body: { keyword: '角色' }, authorization: 'Bearer bound-search-token' },
+      {
+        body: { keyword: '角色', filter: { nsfw: true } },
+        authorization: 'Bearer bound-search-token',
+      },
+      {
+        body: { keyword: '角色', filter: { nsfw: false } },
+        authorization: 'Bearer bound-search-token',
+      },
+    ]);
+    expect(fetchFn).toHaveBeenCalledTimes(6);
+    await registry.close();
+  });
+
+  it('S07d: ToolRegistry rejects bounded filters before I/O and accepts exact career bounds', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 10,
+          offset: 0,
+          data: [{ id: 20, name: '人物', career: ['x'.repeat(80)] }],
+        }),
+        { status: 200 },
+      ),
+    );
+    const registry = new ToolRegistry(
+      createRuntimeDependencies({
+        storage: new MemoryStorage(),
+        secretKey: 'test-secret-key-123456789012345678901234',
+        publicHttpClient: new HttpClient({ fetchFn }),
+      }),
+    );
+
+    const invalidInputs: Array<[string, unknown]> = [
+      ['bangumi.search_characters', { query: '角色', nsfw: 'false' }],
+      ['bangumi.search_persons', { query: '人物', career: [] }],
+      ['bangumi.search_persons', { query: '人物', career: ['   '] }],
+      ['bangumi.search_persons', { query: '人物', career: Array(9).fill('director') }],
+      ['bangumi.search_persons', { query: '人物', career: ['x'.repeat(81)] }],
+    ];
+    for (const [toolName, input] of invalidInputs) {
+      await expect(registry.executeTool(toolName, input, context)).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+      });
+    }
+    expect(fetchFn).not.toHaveBeenCalled();
+
+    const exactCareerBounds = Array.from({ length: 8 }, (_, index) => `${index}${'x'.repeat(79)}`);
+    await registry.executeTool(
+      'bangumi.search_persons',
+      { query: '人物', career: exactCareerBounds },
+      context,
+    );
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchFn.mock.calls[0]![1].body as string)).toEqual({
+      keyword: '人物',
+      filter: { career: exactCareerBounds },
+    });
+    await registry.close();
+  });
+
   it('S08: get_character by ID -> detail endpoint', async () => {
     const capturedUrls: string[] = [];
     const mockFetch = vi.fn().mockImplementation(async (url: string) => {

@@ -529,18 +529,25 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const searchCharacters = defineTool({
     name: 'bangumi.search_characters',
     description:
-      '搜索 Bangumi 虚拟角色；可用官方 v0 nsfw 布尔筛选。未授权调用者的 NSFW 筛选可能被上游忽略，结果仍以官方响应为准。若已知角色 ID，请使用 bangumi.get_character。',
+      '搜索 Bangumi 虚拟角色；可用官方 v0 nsfw 布尔筛选。省略 nsfw 时由上游返回默认结果，true 只返回 R18 角色，false 只返回非 R18 角色；未授权调用者会忽略该字段且不会返回 R18 角色。已绑定账号会通过可选认证会话执行，结果仍以官方响应为准。若已知角色 ID，请使用 bangumi.get_character。',
     input: z.object({
       query: z.string().describe('搜索关键词'),
       limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
       offset: z.number().int().min(0).optional().describe('分页参数 offset'),
-      nsfw: z.boolean().optional().describe('官方 v0 NSFW 筛选；未授权时上游可能忽略'),
+      nsfw: z
+        .boolean()
+        .optional()
+        .describe(
+          '官方 v0 NSFW 筛选：省略=上游默认结果，true=仅 R18，false=仅非 R18；未授权时上游忽略该字段且不返回 R18',
+        ),
     }),
-    auth: 'none',
+    auth: 'optional',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await characterService.searchCharacters(input.query, {
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      const activeService = new CharacterService(activeClient);
+      return await activeService.searchCharacters(input.query, {
         limit: input.limit ?? 10,
         offset: input.offset ?? 0,
         nsfw: input.nsfw,
@@ -587,8 +594,10 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     auth: 'none',
     scopes: [],
     risk: 'read',
-    execute: async (input) => {
-      return await personService.searchPersons(input.query, {
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      const activeService = new PersonService(activeClient);
+      return await activeService.searchPersons(input.query, {
         limit: input.limit ?? 10,
         offset: input.offset ?? 0,
         career: input.career,
