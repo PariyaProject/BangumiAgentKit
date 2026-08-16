@@ -231,6 +231,34 @@
     }
   },
   {
+    "name": "bangumi.get_character_collection",
+    "description": "读取用户对单个角色的收藏信息。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。用户或角色不存在时返回 found:false。",
+    "auth": "optional",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "characterId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 角色 ID"
+        },
+        "username": {
+          "description": "Bangumi 用户名；省略则读取当前绑定账号",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": ["characterId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_collection",
     "description": "获取用户（或当前绑定账号）对某个特定条目的收藏状态。若未收藏返回 found: false。",
     "auth": "optional",
@@ -484,6 +512,45 @@
     }
   },
   {
+    "name": "bangumi.get_episode_collections",
+    "description": "获取当前绑定 Bangumi 账号对指定条目的章节收藏状态。返回官方章节身份、收藏类型、分页覆盖与 account 级来源；episodeType 使用官方 0=正篇、1=SP、2=OP、3=ED、4=PV、5=MAD、6=其他，不推断观看顺序或未读取的进度。",
+    "auth": "required",
+    "risk": "read",
+    "scopes": ["read:collection"],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 条目 ID"
+        },
+        "episodeType": {
+          "description": "章节类型：0=正篇、1=SP、2=OP、3=ED、4=PV、5=MAD、6=其他",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        },
+        "limit": {
+          "description": "官方分页参数 limit，默认 100",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "offset": {
+          "description": "官方分页参数 offset，默认 0",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_episode_guide",
     "description": "获取指定条目的证据型章节指南：一次读取官方 v0 条目身份和有界章节页面，按章节类别、ep/sort 和 ID 做确定性排序，保留标题、播出日期、原始时长、讨论数、描述、缺失/重复/截断字段、来源证据和 partial/unavailable/not_found 状态；不推断观看顺序、进度、后续集数或社区热度趋势。若只需要原始分页，请使用 bangumi.get_episodes。",
     "auth": "none",
@@ -684,6 +751,34 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 60
+        }
+      },
+      "required": ["personId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.get_person_collection",
+    "description": "读取用户对单个人物的收藏信息。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。用户或人物不存在时返回 found:false，并保留官方 career 原始标签。",
+    "auth": "optional",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "username": {
+          "description": "Bangumi 用户名；省略则读取当前绑定账号",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
         }
       },
       "required": ["personId"],
@@ -1070,6 +1165,33 @@
     }
   },
   {
+    "name": "bangumi.list_character_collections",
+    "description": "读取用户收藏的角色列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，不推断收藏偏好。",
+    "auth": "optional",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "description": "Bangumi 用户名；省略则读取当前绑定账号",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "maxItems": {
+          "description": "最多返回角色数，默认 50；官方列表没有分页参数",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.list_collections",
     "description": "获取指定用户（或当前绑定账号）的收藏列表。",
     "auth": "optional",
@@ -1123,6 +1245,33 @@
         "tag": {
           "description": "按标签过滤 (如 \"条目\", \"收藏\", \"章节\")",
           "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.list_person_collections",
+    "description": "读取用户收藏的人物列表。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。官方列表接口不提供分页参数，本工具只返回 maxItems 内的观察并明确 observed/returned/truncated，保留官方 career 原始标签。",
+    "auth": "optional",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "dynamic",
+    "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "description": "Bangumi 用户名；省略则读取当前绑定账号",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "maxItems": {
+          "description": "最多返回人物数，默认 50；官方列表没有分页参数",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
         }
       },
       "additionalProperties": false

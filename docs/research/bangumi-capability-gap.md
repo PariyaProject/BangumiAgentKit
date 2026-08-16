@@ -85,6 +85,14 @@
 |     19 | 公开收藏时间序列与趋势                                            |          3 |                 3 |                   5 |           2 |              3 | PR-7F, only with snapshots |
 |     20 | 标签概念解析和歧义确认                                            |          4 |                 4 |                   3 |           4 |              5 | PR-7B ConceptResolver      |
 
+## 当前语义面补充
+
+上方矩阵保留了 PR-7A 的原始研究快照；collection-read parity Epoch 已经把其中三项 raw-only 观察收敛为有界语义读取：
+
+- `bangumi.get_episode_collections` 读取当前绑定账号的章节收藏状态，并保留 `read:collection`、分页和未读取范围边界。
+- `bangumi.list_character_collections`、`bangumi.get_character_collection`、`bangumi.list_person_collections` 和 `bangumi.get_person_collection` 读取指定公开用户或当前绑定账号的角色/人物收藏；列表端点没有上游分页参数，因此只做本地上限并报告 `observed`、`returned`、`truncated`。
+- 这组读取不计算偏好、推荐、历史趋势或跨条目聚合；Renderer/Card 仍不在本 Epoch 范围内。
+
 ## 研究结论
 
 - 最优先补的是 API 已经提供、且无需 HTML 风险的 typed query filters 和关系聚合；raw operation 已能证明可行，但不是可用的产品契约。

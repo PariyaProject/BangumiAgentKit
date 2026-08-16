@@ -169,6 +169,70 @@ describe('Phase 3: Read-Only Domain Services & Workflows', () => {
     expect(res.items[0]?.rating).toBe(9);
   });
 
+  it('UserService maps character/person collections and preserves not-found semantics', async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/collections/-/characters')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              total: 2,
+              limit: 0,
+              offset: 0,
+              data: [
+                {
+                  id: 10,
+                  name: '角色甲',
+                  type: 1,
+                  images: { large: 'https://img/large' },
+                  created_at: '2026-08-01T00:00:00Z',
+                },
+                { id: 11, name: '角色乙', type: 2, created_at: '2026-08-02T00:00:00Z' },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      if (url.endsWith('/collections/-/persons')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              total: 1,
+              limit: 0,
+              offset: 0,
+              data: [
+                {
+                  id: 20,
+                  name: '人物甲',
+                  type: 1,
+                  career: ['声优'],
+                  created_at: '2026-08-03T00:00:00Z',
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      return Promise.resolve(new Response('not found', { status: 404 }));
+    });
+    const service = new UserService(new HttpClient({ fetchFn: mockFetch }));
+
+    const characters = await service.getUserCharacterCollections('testuser', { maxItems: 1 });
+    const people = await service.getUserPersonCollections('testuser');
+    const missing = await service.getUserCharacterCollection('testuser', 999);
+
+    expect(characters).toMatchObject({
+      total: 2,
+      observed: 2,
+      returned: 1,
+      truncated: true,
+      items: [{ id: 10, name: '角色甲', createdAt: '2026-08-01T00:00:00Z' }],
+    });
+    expect(people.items[0]).toMatchObject({ id: 20, name: '人物甲', career: ['声优'] });
+    expect(missing).toEqual({ found: false });
+  });
+
   it('RevisionService fetches subject revision logs', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(

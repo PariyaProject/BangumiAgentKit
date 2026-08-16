@@ -32,3 +32,20 @@ export interface UserEpisodeCollectionItem {
   type: 0 | 1 | 2 | 3;
   updatedAt?: number;
 }
+
+export interface UserCharacterCollectionItem {
+  id: number;
+  name: string;
+  type: number;
+  images?: Record<string, string>;
+  createdAt: string;
+}
+
+export interface UserPersonCollectionItem {
+  id: number;
+  name: string;
+  type: number;
+  career: string[];
+  images?: Record<string, string>;
+  createdAt: string;
+}
