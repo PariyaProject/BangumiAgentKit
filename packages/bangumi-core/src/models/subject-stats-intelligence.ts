@@ -71,10 +71,14 @@ export interface SubjectStatsConflictCandidate {
   evidence?: SubjectStatsEvidence[];
 }
 
+export type SubjectStatsConflictScope = 'headline' | 'rating' | 'collection' | 'unknown';
+
 export interface SubjectStatsConflict {
   state: 'conflict';
   reason: string;
   candidates: SubjectStatsConflictCandidate[];
+  fieldPaths?: string[];
+  scope?: SubjectStatsConflictScope;
 }
 
 export interface SubjectStatsIntelligenceResult {
@@ -116,6 +120,7 @@ export interface SubjectStatsIntelligenceResult {
       percentages: SubjectStatsFormulaDescriptor;
       completion: SubjectStatsFormulaDescriptor;
     };
+    conflicts?: SubjectStatsConflict[];
   };
   coverage: {
     sourceRequestsAttempted: number;
@@ -144,6 +149,7 @@ export interface SubjectStatsIntelligenceResult {
       retrievedAt?: string;
     };
   };
+  conflicts?: SubjectStatsConflict[];
   evidence: SubjectStatsEvidence[];
   warnings: Array<{
     code: string;

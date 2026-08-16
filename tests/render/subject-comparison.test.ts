@@ -311,7 +311,7 @@ const result: SubjectComparisonResult = {
 
 const renderStatistics: SubjectStatsIntelligenceResult = {
   subjectId: 123,
-  state: 'complete',
+  state: 'conflict',
   raw: {
     score: 8.6,
     rank: 42,
@@ -351,6 +351,26 @@ const renderStatistics: SubjectStatsIntelligenceResult = {
         description: 'population standard deviation',
       },
     },
+    conflicts: [
+      {
+        state: 'conflict',
+        scope: 'rating',
+        fieldPaths: ['histogramMean', 'rating.score'],
+        reason: 'derived histogram mean differs materially from upstream score',
+        candidates: [
+          {
+            source: { class: 'derived-s7', provider: 'derived' },
+            value: 8.6,
+            evidence: [{ source: 'derived-s7', provider: 'derived', fieldPath: 'histogramMean' }],
+          },
+          {
+            source: { class: 'official-v0', provider: 'bangumi' },
+            value: 7.4,
+            evidence: [{ source: 'official-v0', provider: 'bangumi', fieldPath: 'rating.score' }],
+          },
+        ],
+      },
+    ],
   },
   collection: {
     state: 'complete',
@@ -391,13 +411,27 @@ const renderStatistics: SubjectStatsIntelligenceResult = {
     formulasComplete: 5,
     formulasPartial: 0,
     formulasNotComputable: 0,
-    formulasConflict: 0,
+    formulasConflict: 1,
   },
   source: {
     official: { class: 'official-v0', operations: ['getSubjectById'] },
     derived: { class: 'derived-s7', operations: ['bangumi.rating.percentages.v1'] },
   },
-  evidence: [],
+  evidence: [
+    {
+      source: 'official-v0',
+      provider: 'bangumi',
+      operation: 'getSubjectById',
+      fieldPath: 'rating.score',
+    },
+    {
+      source: 'derived-s7',
+      provider: 'derived',
+      operation: 'bangumi.rating.histogram_mean.v1',
+      fieldPath: 'histogramMean',
+      formula: 'bangumi.rating.histogram_mean.v1',
+    },
+  ],
   warnings: [],
   limitations: ['当前快照不代表历史趋势。'],
   retrievedAt: '2026-08-15T00:00:00.000Z',
@@ -519,6 +553,11 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('完成率 51.3%');
     expect(html).toContain('8 分 · 40 · 40%');
     expect(html).toContain('统计组合公式：subject-comparison-statistics-v1');
+    expect(html).toContain('统计覆盖：评分桶 10/10 · 收藏桶 5/5');
+    expect(html).toContain('bangumi.rating.percentages.v1@v1');
+    expect(html).toContain('统计冲突：rating · histogramMean,rating.score');
+    expect(html).toContain('候选 derived-s7/derived=8.6；official-v0/bangumi=7.4');
+    expect(html).toContain('统计证据：getSubjectById:rating.score');
     expect(extractImageUrls(buildSubjectComparisonViewModel(withStatistics))).toEqual([]);
   });
 });

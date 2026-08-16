@@ -1,5 +1,9 @@
 import type { DomainSubject, SubjectRelationItem } from './subject.js';
 import type { SubjectStaffGroup, SubjectStaffMember } from './person.js';
+import type {
+  SubjectStatsCollectionPresence,
+  SubjectStatsRatingHistogramPresence,
+} from './subject-stats-intelligence.js';
 
 export type SubjectOverviewSectionState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
 
@@ -23,6 +27,7 @@ export interface SubjectOverviewStats {
   rank: number;
   ratingTotal: number;
   ratingHistogram: Record<string, number>;
+  ratingHistogramPresence?: SubjectStatsRatingHistogramPresence;
   collection: {
     wish: number;
     collect: number;
@@ -30,6 +35,7 @@ export interface SubjectOverviewStats {
     onHold: number;
     dropped: number;
   };
+  collectionPresence?: SubjectStatsCollectionPresence;
 }
 
 export interface SubjectOverviewConflictSource {

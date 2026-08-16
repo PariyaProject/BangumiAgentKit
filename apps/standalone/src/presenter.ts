@@ -506,6 +506,67 @@ function comparisonDeltaValue(metric: Record<string, unknown>): string {
   return delta > 0 ? `+${formatted}` : formatted;
 }
 
+function comparisonPercentageValue(value: unknown): string {
+  const numeric = typeof value === 'number' ? value : undefined;
+  return numeric !== undefined && Number.isFinite(numeric) ? `${numeric.toFixed(1)}%` : '未知';
+}
+
+function comparisonStatisticsDistribution(
+  value: unknown,
+  labels: Record<string, string> | undefined = undefined,
+): string {
+  if (!Array.isArray(value)) return '未知';
+  return value
+    .slice(0, 10)
+    .map((rawItem) => {
+      const item = comparisonRecord(rawItem);
+      if (!item) return undefined;
+      const key = String(item.score ?? item.status ?? '?');
+      const label = labels?.[key] || key;
+      return `${label}=${comparisonFormattedMetricValue('ratingPopulation', item.count)} (${comparisonPercentageValue(item.percentage)})`;
+    })
+    .filter((item): item is string => Boolean(item))
+    .join('；');
+}
+
+function comparisonStatisticsFormula(value: unknown): string | undefined {
+  const formula = comparisonRecord(value);
+  if (!formula) return undefined;
+  return `${formula.id || 'formula'}@v${formula.version ?? '?'}`;
+}
+
+function comparisonStatisticsConflict(value: unknown): string | undefined {
+  const conflict = comparisonRecord(value);
+  if (!conflict) return undefined;
+  const candidates = Array.isArray(conflict.candidates)
+    ? conflict.candidates
+        .slice(0, 3)
+        .map((rawCandidate) => {
+          const candidate = comparisonRecord(rawCandidate);
+          const source = comparisonRecord(candidate?.source);
+          return candidate
+            ? `${source?.class || 'source'}/${source?.provider || '?'}=${humanField(candidate.value, 48)}`
+            : undefined;
+        })
+        .filter((item): item is string => Boolean(item))
+        .join('；')
+    : '';
+  const fields = Array.isArray(conflict.fieldPaths) ? conflict.fieldPaths.join(',') : '';
+  return `${humanField(conflict.scope || 'unknown', 32)}${fields ? ` · ${humanField(fields, 96)}` : ''} · ${humanField(conflict.reason || 'conflict', 160)}${candidates ? ` · 候选 ${candidates}` : ''}`;
+}
+
+function comparisonStatisticsEvidence(value: unknown): string {
+  if (!Array.isArray(value)) return '未记录';
+  const items = value.slice(0, 6).map((rawItem) => {
+    const item = comparisonRecord(rawItem);
+    if (!item) return undefined;
+    const operation = item.operation || item.formula || 'evidence';
+    return item.fieldPath ? `${operation}:${item.fieldPath}` : operation;
+  });
+  const rendered = items.filter((item): item is string => typeof item === 'string');
+  return `${rendered.join(' · ') || '未记录'}${value.length > 6 ? ` · +${value.length - 6}` : ''}`;
+}
+
 function presentSubjectComparison(value: Record<string, unknown>): string | undefined {
   const subjectIds = value.subjectIds;
   const subjects = value.subjects;
@@ -571,6 +632,51 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
       );
       lines.push(
         `  统计区段：评分 ${comparisonStateLabel(rating?.state)} · 收藏 ${comparisonStateLabel(collection?.state)} · 完成率 ${comparisonStateLabel(collection?.completionState)}`,
+      );
+      lines.push(
+        `  评分分布：${humanField(comparisonStatisticsDistribution(rating?.distribution), 360)}`,
+      );
+      lines.push(
+        `  收藏分布：${humanField(
+          comparisonStatisticsDistribution(collection?.distribution, {
+            wish: '想看',
+            collect: '看过',
+            doing: '在看',
+            on_hold: '搁置',
+            dropped: '抛弃',
+          }),
+          240,
+        )}`,
+      );
+      const statisticsCoverage = comparisonRecord(statistics.coverage);
+      if (statisticsCoverage) {
+        lines.push(
+          `  统计覆盖：评分桶 ${humanField(statisticsCoverage.ratingBucketsObserved ?? '?', 32)}/${humanField(statisticsCoverage.ratingBucketsExpected ?? '?', 32)} · 收藏桶 ${humanField(statisticsCoverage.collectionBucketsObserved ?? '?', 32)}/${humanField(statisticsCoverage.collectionBucketsExpected ?? '?', 32)} · 公式完整 ${humanField(statisticsCoverage.formulasComplete ?? '?', 32)}/${humanField(statisticsCoverage.formulasAttempted ?? '?', 32)} · 部分 ${humanField(statisticsCoverage.formulasPartial ?? '?', 32)} · 不可计算 ${humanField(statisticsCoverage.formulasNotComputable ?? '?', 32)} · 冲突 ${humanField(statisticsCoverage.formulasConflict ?? '?', 32)}`,
+        );
+      }
+      const ratingFormulas = comparisonRecord(rating?.formulas);
+      const collectionFormulas = comparisonRecord(collection?.formulas);
+      const formulaLabels = [
+        comparisonStatisticsFormula(ratingFormulas?.percentages),
+        comparisonStatisticsFormula(ratingFormulas?.histogramMean),
+        comparisonStatisticsFormula(ratingFormulas?.populationStandardDeviation),
+        comparisonStatisticsFormula(collectionFormulas?.percentages),
+        comparisonStatisticsFormula(collectionFormulas?.completion),
+      ].filter((item): item is string => Boolean(item));
+      lines.push(`  统计公式：${humanField(formulaLabels.join(' · ') || '未记录', 360)}`);
+      const statisticsConflicts = [
+        ...(Array.isArray(statistics.conflicts) ? statistics.conflicts : []),
+        ...(Array.isArray(rating?.conflicts) ? rating.conflicts : []),
+        ...(Array.isArray(collection?.conflicts) ? collection.conflicts : []),
+      ]
+        .slice(0, 2)
+        .map(comparisonStatisticsConflict)
+        .filter((item): item is string => Boolean(item));
+      if (statisticsConflicts.length > 0) {
+        lines.push(`  统计冲突：${humanField(statisticsConflicts.join('；'), 360)}`);
+      }
+      lines.push(
+        `  统计证据：${humanField(comparisonStatisticsEvidence(statistics.evidence), 360)}`,
       );
     }
     const warnings = Array.isArray(subject.warnings) ? subject.warnings : [];

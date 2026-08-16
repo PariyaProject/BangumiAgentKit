@@ -174,6 +174,35 @@ function statisticsCollectionRowLabel(
   )}`;
 }
 
+type ComparisonStatisticsConflict = NonNullable<
+  ComparisonStatistics['rating']['conflicts']
+>[number];
+
+function statisticsFormulaLabel(formula: { id: string; version: number }): string {
+  return `${formula.id}@v${formula.version}`;
+}
+
+function statisticsConflictLabel(conflict: ComparisonStatisticsConflict): string {
+  const scope = conflict.scope || 'unknown';
+  const fields = conflict.fieldPaths?.length ? ` · ${conflict.fieldPaths.join(',')}` : '';
+  const candidates = conflict.candidates
+    .slice(0, 3)
+    .map(
+      (candidate) =>
+        `${candidate.source.class}/${candidate.source.provider}=${valueLabel(candidate.value)}`,
+    )
+    .join('；');
+  return `${scope}${fields} · ${conflict.reason}${candidates ? ` · 候选 ${candidates}` : ''}`;
+}
+
+function statisticsEvidenceLabel(stats: ComparisonStatistics): string {
+  const items = stats.evidence.slice(0, 6).map((item) => {
+    const operation = item.operation || item.formula || 'evidence';
+    return item.fieldPath ? `${operation}:${item.fieldPath}` : operation;
+  });
+  return `${items.join(' · ') || '未记录'}${stats.evidence.length > 6 ? ` · +${stats.evidence.length - 6}` : ''}`;
+}
+
 export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
   viewModel,
   theme,
@@ -417,6 +446,38 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                       .map((item) => statisticsCollectionRowLabel(item))
                       .join('；')}
                   </div>
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    统计覆盖：评分桶 {stats.coverage.ratingBucketsObserved}/
+                    {stats.coverage.ratingBucketsExpected} · 收藏桶{' '}
+                    {stats.coverage.collectionBucketsObserved}/
+                    {stats.coverage.collectionBucketsExpected} · 公式完整{' '}
+                    {stats.coverage.formulasComplete}/{stats.coverage.formulasAttempted} · 部分{' '}
+                    {stats.coverage.formulasPartial} · 不可计算{' '}
+                    {stats.coverage.formulasNotComputable} · 冲突 {stats.coverage.formulasConflict}
+                  </div>
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    公式：{statisticsFormulaLabel(stats.rating.formulas.percentages)} ·{' '}
+                    {statisticsFormulaLabel(stats.rating.formulas.histogramMean)} ·{' '}
+                    {statisticsFormulaLabel(stats.rating.formulas.populationStandardDeviation)} ·{' '}
+                    {statisticsFormulaLabel(stats.collection.formulas.percentages)} ·{' '}
+                    {statisticsFormulaLabel(stats.collection.formulas.completion)}
+                  </div>
+                  {(() => {
+                    const conflicts = [
+                      ...(stats.conflicts || []),
+                      ...(stats.rating.conflicts || []),
+                      ...(stats.collection.conflicts || []),
+                    ];
+                    return conflicts.length > 0 ? (
+                      <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+                        统计冲突：{conflicts.slice(0, 2).map(statisticsConflictLabel).join('；')}
+                        {conflicts.length > 2 ? `；另有 ${conflicts.length - 2} 条冲突` : ''}
+                      </div>
+                    ) : null;
+                  })()}
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    统计证据：{statisticsEvidenceLabel(stats)}
+                  </div>
                   {stats.warnings.length > 0 ? (
                     <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
                       {stats.warnings
@@ -433,8 +494,8 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
             })}
           </div>
           <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-            统计组合公式：{viewModel.statisticsFormulaVersion || '未记录'} · 统计来源/公式证据保留在
-            JSON 结果。
+            统计组合公式：{viewModel.statisticsFormulaVersion || '未记录'} · 以上为有界诊断，JSON
+            结果保留完整证据。
           </div>
         </div>
       ) : null}

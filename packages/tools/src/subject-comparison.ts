@@ -136,8 +136,9 @@ function finiteNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-function collectionTotal(value: unknown): number | undefined {
+function collectionTotal(value: unknown, presence?: object): number | undefined {
   if (!value || typeof value !== 'object') return undefined;
+  if (presence && Object.values(presence).some((present) => !present)) return undefined;
   const values = Object.values(value as Record<string, unknown>);
   if (values.some((item) => finiteNumber(item) === undefined)) return undefined;
   const total = values.reduce<number>((sum, item) => sum + (finiteNumber(item) || 0), 0);
@@ -262,7 +263,7 @@ function mapSubjectOverview(
   // payload to an unknown subject.
   if (!overview.subject) statistics = undefined;
   const statsData = statistics?.raw ?? overview.stats.data;
-  const total = collectionTotal(statsData?.collection);
+  const total = collectionTotal(statsData?.collection, statsData?.collectionPresence);
   const subjectStats: Partial<Record<SubjectComparisonStatsKey, number | undefined>> = {
     score: finiteNumber(overview.subject?.score),
     rank: finiteNumber(overview.subject?.rank),
@@ -328,6 +329,18 @@ function mapSubjectOverview(
       section: 'stats' as const,
       message: warning.message,
     })) || [];
+  const projectedSectionStates = [
+    statisticsSectionState,
+    overview.cast.state,
+    overview.staff.state,
+    overview.relations.state,
+  ];
+  const projectedCoverage = {
+    complete: projectedSectionStates.filter((section) => section === 'complete').length,
+    partial: projectedSectionStates.filter((section) => section === 'partial').length,
+    unavailable: projectedSectionStates.filter((section) => section === 'unavailable').length,
+    notComputable: projectedSectionStates.filter((section) => section === 'not_computable').length,
+  };
   return {
     subjectId: overview.subjectId,
     state,
@@ -368,10 +381,10 @@ function mapSubjectOverview(
     coverage: {
       sourceRequestsAttempted: overview.coverage.sourceRequestsAttempted,
       sourceRequestsSucceeded: overview.coverage.sourceRequestsSucceeded,
-      sectionsComplete: overview.coverage.sectionsComplete,
-      sectionsPartial: overview.coverage.sectionsPartial,
-      sectionsUnavailable: overview.coverage.sectionsUnavailable,
-      sectionsNotComputable: overview.coverage.sectionsNotComputable,
+      sectionsComplete: projectedCoverage.complete,
+      sectionsPartial: projectedCoverage.partial,
+      sectionsUnavailable: projectedCoverage.unavailable,
+      sectionsNotComputable: projectedCoverage.notComputable,
       truncatedSections: [...overview.coverage.truncatedSections],
       limits,
     },
@@ -426,6 +439,24 @@ function metric(
 
 type StatisticsMetricState = SubjectStatsIntelligenceResult['rating']['state'];
 
+function ratingConflictAffects(
+  statistics: SubjectStatsIntelligenceResult,
+  field: 'population' | 'mean' | 'standardDeviation',
+): boolean {
+  return (statistics.rating.conflicts || []).some((conflict) => {
+    if (conflict.scope !== 'rating' && conflict.scope !== 'unknown') return false;
+    const paths = conflict.fieldPaths || [];
+    if (paths.length === 0) return true;
+    if (paths.some((path) => /^rating\.count\.|ratingHistogram|histogramPopulation/iu.test(path))) {
+      return true;
+    }
+    if (field === 'mean') {
+      return paths.some((path) => /histogramMean|rating\.score|^score$/iu.test(path));
+    }
+    return false;
+  });
+}
+
 function statisticsMetric(
   key: SubjectComparisonMetricKey,
   label: string,
@@ -449,6 +480,7 @@ function ratingMetricState(
   field: 'population' | 'mean' | 'standardDeviation',
 ): StatisticsMetricState {
   if (!statistics) return 'unavailable';
+  if (ratingConflictAffects(statistics, field)) return 'conflict';
   if (
     statistics.rating.state === 'conflict' &&
     field !== 'mean' &&
@@ -907,21 +939,28 @@ export async function getSubjectComparison(
   const overviews: SubjectOverviewResult[] = [];
   const subjects: SubjectComparisonSubject[] = [];
   for (const subjectId of ids) {
-    const sharedStatsResult = dependencies.providerRegistry
-      ? dependencies.providerRegistry.getSubjectStats(subjectId, { authScope: 'public' })
+    let sharedStatsResult:
+      ReturnType<NonNullable<typeof dependencies.providerRegistry>['getSubjectStats']> | undefined;
+    const statsResultFactory = dependencies.providerRegistry
+      ? () => {
+          sharedStatsResult ??= dependencies.providerRegistry!.getSubjectStats(subjectId, {
+            authScope: 'public',
+          });
+          return sharedStatsResult;
+        }
       : undefined;
-    const [overview, statistics] = await Promise.all([
-      getSubjectOverview(subjectId, limits, {
-        ...dependencies,
-        ...(sharedStatsResult ? { statsResult: sharedStatsResult } : {}),
-      }),
-      getSubjectStatsIntelligence(subjectId, {
-        ...(dependencies.providerRegistry
-          ? { providerRegistry: dependencies.providerRegistry }
-          : {}),
-        ...(sharedStatsResult ? { sourceResult: sharedStatsResult } : {}),
-      }),
-    ]);
+    const overview = await getSubjectOverview(subjectId, limits, {
+      ...dependencies,
+      ...(statsResultFactory ? { statsResultFactory } : {}),
+    });
+    const statistics = overview.subject
+      ? await getSubjectStatsIntelligence(subjectId, {
+          ...(dependencies.providerRegistry
+            ? { providerRegistry: dependencies.providerRegistry }
+            : {}),
+          ...(sharedStatsResult ? { sourceResult: sharedStatsResult } : {}),
+        })
+      : undefined;
     overviews.push(overview);
     subjects.push(mapSubjectOverview(overview, limits, statistics));
   }
@@ -951,6 +990,14 @@ export async function getSubjectComparison(
   const statisticsConflictMetrics = statisticsMetrics.filter(
     (item) => item.state === 'conflict',
   ).length;
+  const statisticsConflictDetails = pair.reduce(
+    (count, subject) =>
+      count +
+      (subject.statistics?.conflicts?.length || 0) +
+      (subject.statistics?.rating.conflicts?.length || 0) +
+      (subject.statistics?.collection.conflicts?.length || 0),
+    0,
+  );
   const state: SubjectComparisonState =
     subjectState === 'complete' &&
     (unknownMetrics > 0 ||
@@ -991,11 +1038,11 @@ export async function getSubjectComparison(
       message: `${statisticsUnknownMetrics} 个统计比较字段因缺失、部分或不可用公式状态而保持不可计算。`,
     });
   }
-  if (statisticsConflictMetrics > 0) {
+  if (statisticsConflictMetrics > 0 || statisticsConflictDetails > 0) {
     warnings.push({
       code: 'COMPARISON_STATISTICS_CONFLICT',
       state: state === 'complete' ? 'partial' : state,
-      message: `${statisticsConflictMetrics} 个统计比较字段存在公式冲突，差值保持不可计算。`,
+      message: `${statisticsConflictMetrics} 个统计比较字段或 ${statisticsConflictDetails} 条统计冲突证据需要保留候选值，受影响差值保持不可计算。`,
     });
   }
   for (const [kind, overlap] of [

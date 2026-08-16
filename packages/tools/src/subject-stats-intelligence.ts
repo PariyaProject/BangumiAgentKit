@@ -23,6 +23,7 @@ import type {
   SubjectStatsCollectionStatus,
   SubjectStatsCollectionPresence,
   SubjectStatsConflict,
+  SubjectStatsConflictScope,
   SubjectStatsEvidence,
   SubjectStatsFormulaDescriptor,
   SubjectStatsIntelligenceResult,
@@ -305,37 +306,80 @@ function formatFormulaWarnings(
 function addConflictEvidence(
   conflicts: CapabilityConflict[] | undefined,
   fallbackEvidence: SubjectStatsEvidence[],
+  scope?: SubjectStatsConflictScope,
 ): SubjectStatsConflict[] | undefined {
   if (!conflicts || conflicts.length === 0) return undefined;
-  return conflicts.map((conflict) => ({
-    state: 'conflict' as const,
-    reason: conflict.reason,
-    candidates: conflict.candidates.map((candidate) => {
-      const mappedClass = candidate.source.class === 'official_v0' ? 'official-v0' : 'derived-s7';
-      return {
-        source: {
-          class: mappedClass,
-          provider: candidate.source.provider,
-          ...(candidate.source.operation ? { operation: candidate.source.operation } : {}),
-          ...(candidate.source.version ? { version: candidate.source.version } : {}),
-        },
-        value: typeof candidate.value === 'number' ? candidate.value : Number(candidate.value),
-        evidence:
-          candidate.evidence
-            ?.flatMap((ref) => {
-              const mapped = mapEvidenceRef(ref);
-              return mapped ? [mapped] : [];
-            })
-            .filter((item) => item.source === mappedClass) ||
-          fallbackEvidence.filter(
-            (item) =>
-              item.source === mappedClass &&
-              (candidate.source.operation === undefined ||
-                item.operation === candidate.source.operation),
-          ),
-      };
-    }),
-  }));
+  return conflicts.map((conflict) => {
+    const fieldPaths = [
+      ...new Set(
+        conflict.candidates.flatMap((candidate) => {
+          const mappedClass =
+            candidate.source.class === 'official_v0' ? 'official-v0' : 'derived-s7';
+          return (candidate.evidence || []).flatMap((evidence) => {
+            if (typeof evidence.fieldPath === 'string') return [evidence.fieldPath];
+            const fallbackFieldPath = fallbackEvidence.find(
+              (item) =>
+                item.source === mappedClass &&
+                item.provider === candidate.source.provider &&
+                (candidate.source.operation === undefined ||
+                  item.operation === candidate.source.operation) &&
+                (scope === 'rating' ? item.fieldPath === 'rating.score' : true),
+            )?.fieldPath;
+            return fallbackFieldPath ? [fallbackFieldPath] : [];
+          });
+        }),
+      ),
+    ];
+    const inferredScope =
+      scope ||
+      (fieldPaths.some((fieldPath) => /^collection(?:\.|$)/iu.test(fieldPath))
+        ? 'collection'
+        : fieldPaths.some((fieldPath) => /^rating\.count\.|^rating\.histogram/iu.test(fieldPath))
+          ? 'rating'
+          : fieldPaths.length > 0
+            ? 'headline'
+            : 'unknown');
+    return {
+      state: 'conflict' as const,
+      reason: conflict.reason,
+      ...(fieldPaths.length > 0 ? { fieldPaths } : {}),
+      scope: inferredScope,
+      candidates: conflict.candidates.map((candidate) => {
+        const mappedClass = candidate.source.class === 'official_v0' ? 'official-v0' : 'derived-s7';
+        const candidateEvidence = candidate.evidence?.flatMap((ref) => {
+          const fallbackFieldPath =
+            ref.fieldPath ||
+            fallbackEvidence.find(
+              (item) =>
+                item.source === mappedClass &&
+                item.provider === candidate.source.provider &&
+                (candidate.source.operation === undefined ||
+                  item.operation === candidate.source.operation) &&
+                (scope === 'rating' ? item.fieldPath === 'rating.score' : true),
+            )?.fieldPath;
+          const mapped = mapEvidenceRef(ref, fallbackFieldPath || 'unknown');
+          return mapped ? [mapped] : [];
+        });
+        return {
+          source: {
+            class: mappedClass,
+            provider: candidate.source.provider,
+            ...(candidate.source.operation ? { operation: candidate.source.operation } : {}),
+            ...(candidate.source.version ? { version: candidate.source.version } : {}),
+          },
+          value: typeof candidate.value === 'number' ? candidate.value : Number(candidate.value),
+          evidence:
+            candidateEvidence?.filter((item) => item.source === mappedClass) ||
+            fallbackEvidence.filter(
+              (item) =>
+                item.source === mappedClass &&
+                (candidate.source.operation === undefined ||
+                  item.operation === candidate.source.operation),
+            ),
+        };
+      }),
+    };
+  });
 }
 
 function deriveOverallState(
@@ -393,6 +437,8 @@ export async function getSubjectStatsIntelligence(
     return result;
   }
   const sourceEvidence = evidenceFromFields(sourceResult.evidence);
+  const sourceConflicts = addConflictEvidence(sourceResult.conflicts, sourceEvidence);
+  result.conflicts = sourceConflicts;
   result.evidence = sourceEvidence;
   result.coverage.sourceRequestsAttempted = 1;
   result.coverage.sourceRequestsSucceeded = sourceResult.data ? 1 : 0;
@@ -448,6 +494,14 @@ export async function getSubjectStatsIntelligence(
   const statsCollectionPresence = collectionPresence(stats);
   const ratingInputsComplete = allPresent(statsRatingPresence);
   const collectionInputsComplete = allPresent(statsCollectionPresence);
+  const unscopedProviderConflict =
+    sourceResult.state === 'conflict' && (sourceConflicts || []).length === 0;
+  const sourceRatingConflict = (sourceConflicts || []).some(
+    (conflict) => conflict.scope === 'rating' || conflict.scope === 'unknown',
+  );
+  const sourceCollectionConflict = (sourceConflicts || []).some(
+    (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
+  );
   result.raw = {
     score: stats.score,
     rank: stats.rank,
@@ -510,15 +564,26 @@ export async function getSubjectStatsIntelligence(
     : ratingDeviation.data?.standardDeviation !== undefined
       ? 'complete'
       : stateForFormula(ratingDeviation);
-  const ratingState = !ratingInputsComplete
-    ? 'partial'
-    : ratingMeanFormulaState === 'conflict'
+  const ratingState =
+    sourceRatingConflict || unscopedProviderConflict
       ? 'conflict'
-      : stateForFormula(ratingPercentages);
-  const collectionState = !collectionInputsComplete
-    ? 'partial'
-    : stateForFormula(collectionPercentages);
-  const completionState = !collectionInputsComplete ? 'partial' : stateForFormula(completion);
+      : !ratingInputsComplete
+        ? 'partial'
+        : ratingMeanFormulaState === 'conflict'
+          ? 'conflict'
+          : stateForFormula(ratingPercentages);
+  const collectionState =
+    sourceCollectionConflict || unscopedProviderConflict
+      ? 'conflict'
+      : !collectionInputsComplete
+        ? 'partial'
+        : stateForFormula(collectionPercentages);
+  const completionState =
+    sourceCollectionConflict || unscopedProviderConflict
+      ? 'conflict'
+      : !collectionInputsComplete
+        ? 'partial'
+        : stateForFormula(completion);
 
   const ratingPopulation = ratingInputsComplete
     ? ratingDeviation.data?.histogramPopulation
@@ -546,8 +611,20 @@ export async function getSubjectStatsIntelligence(
   ).length;
   const ratingConflicts = addConflictEvidence(
     ratingDeviation.conflicts,
-    formulaEvidence(ratingDeviation, POPULATION_SD_FORMULA, POPULATION_SD_FORMULA.description),
+    uniqueEvidence([
+      ...sourceEvidence,
+      ...formulaEvidence(ratingDeviation, POPULATION_SD_FORMULA, POPULATION_SD_FORMULA.description),
+    ]),
+    'rating',
   );
+  const scopedRatingConflicts = (sourceConflicts || []).filter(
+    (conflict) => conflict.scope === 'rating' || conflict.scope === 'unknown',
+  );
+  const scopedCollectionConflicts = (sourceConflicts || []).filter(
+    (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
+  );
+  const allRatingConflicts = [...scopedRatingConflicts, ...(ratingConflicts || [])];
+  result.conflicts = [...(sourceConflicts || []), ...(ratingConflicts || [])];
 
   result.rating = {
     state: ratingState,
@@ -570,7 +647,7 @@ export async function getSubjectStatsIntelligence(
       histogramMean: descriptor(HISTOGRAM_MEAN_FORMULA),
       populationStandardDeviation: descriptor(POPULATION_SD_FORMULA),
     },
-    ...(ratingConflicts ? { conflicts: ratingConflicts } : {}),
+    ...(allRatingConflicts.length > 0 ? { conflicts: allRatingConflicts } : {}),
   };
 
   result.collection = {
@@ -594,6 +671,7 @@ export async function getSubjectStatsIntelligence(
       percentages: descriptor(COLLECTION_PERCENTAGES_FORMULA),
       completion: descriptor(COMPLETION_FORMULA),
     },
+    ...(scopedCollectionConflicts.length > 0 ? { conflicts: scopedCollectionConflicts } : {}),
   };
 
   const formulaEvidenceItems = uniqueEvidence([

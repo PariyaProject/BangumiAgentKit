@@ -204,7 +204,11 @@ function buildClient(
 }
 
 function buildProviderRegistry(
-  options: { scoreOverrides?: Record<number, number>; scoreConflict?: boolean } = {},
+  options: {
+    scoreOverrides?: Record<number, number>;
+    scoreConflict?: boolean;
+    statsCalls?: { value: number };
+  } = {},
 ): ProviderRegistry {
   return new ProviderRegistry({
     v0: {
@@ -212,6 +216,7 @@ function buildProviderRegistry(
         return { state: 'ok' as const, data: undefined };
       },
       async getSubjectStats(subjectId: number): Promise<CapabilityResult<SubjectStatsData>> {
+        if (options.statsCalls) options.statsCalls.value += 1;
         const score = options.scoreOverrides?.[subjectId] ?? stats[subjectId]!.score;
         return {
           state: options.scoreConflict ? 'conflict' : 'ok',
@@ -419,10 +424,11 @@ describe('Subject comparison semantic contract', () => {
       expect.arrayContaining([expect.objectContaining({ code: 'SUBJECT_STATE_DEGRADED' })]),
     );
 
+    const statsCalls = { value: 0 };
     const missing = await getTool(buildClient({ missingSubjectId: 456 }).client).execute(
       { subjectIds: [123, 456] },
       context,
-      { providerRegistry: buildProviderRegistry() },
+      { providerRegistry: buildProviderRegistry({ statsCalls }) },
     );
     expect(missing).toMatchObject({
       state: 'partial',
@@ -453,6 +459,7 @@ describe('Subject comparison semantic contract', () => {
     expect(
       (missing as { metrics: Array<{ state: string; delta: number | null }> }).metrics,
     ).toEqual(expect.arrayContaining([expect.objectContaining({ state: 'unknown', delta: null })]));
+    expect(statsCalls.value).toBe(1);
   });
 
   it('keeps malformed sections and cross-source numeric conflicts explicit', async () => {
@@ -492,6 +499,32 @@ describe('Subject comparison semantic contract', () => {
           state: 'conflict',
           delta: null,
           conflicts: [expect.objectContaining({ side: 'A', subjectValue: 8.6, statsValue: 8.4 })],
+        }),
+      ]),
+    );
+    const conflictedSubject = (conflict as SubjectComparisonResult).subjects.find(
+      (subject) => subject.subjectId === 123,
+    );
+    expect(conflictedSubject?.statistics?.rating.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'rating',
+          fieldPaths: expect.arrayContaining(['histogramMean', 'rating.score']),
+          reason: expect.stringContaining('histogram mean'),
+          candidates: expect.arrayContaining([
+            expect.objectContaining({
+              source: expect.objectContaining({ class: 'derived-s7' }),
+              evidence: expect.arrayContaining([
+                expect.objectContaining({ fieldPath: 'histogramMean' }),
+              ]),
+            }),
+            expect.objectContaining({
+              source: expect.objectContaining({ class: 'official-v0' }),
+              evidence: expect.arrayContaining([
+                expect.objectContaining({ fieldPath: 'rating.score' }),
+              ]),
+            }),
+          ]),
         }),
       ]),
     );
@@ -601,6 +634,12 @@ describe('Subject comparison semantic contract', () => {
       rating: { state: 'not_computable' },
       collection: { state: 'not_computable', completionState: 'not_computable' },
     });
+    expect(result.subjects[0]?.coverage).toMatchObject({
+      sectionsComplete: 3,
+      sectionsPartial: 0,
+      sectionsUnavailable: 0,
+      sectionsNotComputable: 1,
+    });
     expect(result.metrics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'ratingMean', state: 'unknown', delta: null }),
@@ -627,6 +666,21 @@ describe('Subject comparison semantic contract', () => {
     });
     const conflictedSubject = result.subjects.find((subject) => subject.subjectId === 123);
     expect(conflictedSubject?.stats.state).toBe('partial');
+    expect(conflictedSubject?.statistics?.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'headline',
+          fieldPaths: ['score'],
+          reason: 'score provider candidates disagree',
+          candidates: expect.arrayContaining([
+            expect.objectContaining({
+              source: expect.objectContaining({ class: 'official-v0' }),
+              evidence: expect.arrayContaining([expect.objectContaining({ fieldPath: 'score' })]),
+            }),
+          ]),
+        }),
+      ]),
+    );
     expect(conflictedSubject?.stats.conflicts?.score?.candidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -664,6 +718,72 @@ describe('Subject comparison semantic contract', () => {
         expect.objectContaining({ source: 'derived-s7', operation: 'subject-comparison' }),
       ]),
     );
+  });
+
+  it('does not convert a missing collection bucket into a complete comparison total', async () => {
+    for (const missingSubjectId of [123, 456]) {
+      const registry = new ProviderRegistry({
+        v0: {
+          async getSubject() {
+            return { state: 'ok' as const, data: undefined };
+          },
+          async getSubjectStats(subjectId: number): Promise<CapabilityResult<SubjectStatsData>> {
+            if (subjectId !== missingSubjectId) {
+              return {
+                state: 'ok',
+                data: stats[subjectId]!,
+                evidence: {},
+                retrievedAt: '2026-08-15T00:00:00.000Z',
+              };
+            }
+            return {
+              state: 'partial',
+              data: {
+                ...stats[subjectId]!,
+                collection: { ...stats[subjectId]!.collection, dropped: 0 },
+                collectionPresence: {
+                  wish: true,
+                  collect: true,
+                  doing: true,
+                  onHold: true,
+                  dropped: false,
+                },
+              },
+              evidence: {},
+              retrievedAt: '2026-08-15T00:00:00.000Z',
+              warnings: [
+                {
+                  code: 'MISSING_FIELD',
+                  message: 'collection.dropped is missing in the bounded upstream response',
+                },
+              ],
+            };
+          },
+        },
+      });
+      const result = (await getTool(buildClient().client).execute(
+        { subjectIds: [123, 456] },
+        context,
+        { providerRegistry: registry },
+      )) as SubjectComparisonResult;
+      const missingIndex = missingSubjectId === 123 ? 0 : 1;
+      const collectionTotal = result.metrics.find((metric) => metric.key === 'collectionTotal');
+      const collectionPopulation = result.metrics.find(
+        (metric) => metric.key === 'collectionPopulation',
+      );
+      expect(collectionTotal).toMatchObject({ state: 'unknown', delta: null });
+      expect(collectionTotal?.values[missingIndex]).toBeNull();
+      expect(collectionPopulation).toMatchObject({ state: 'unknown', delta: null });
+      expect(result.subjects[missingIndex]?.statistics?.collection).toMatchObject({
+        state: 'partial',
+        total: 37,
+      });
+      expect(result.subjects[missingIndex]?.statistics?.coverage).toMatchObject({
+        collectionBucketsExpected: 5,
+        collectionBucketsObserved: 4,
+      });
+      expect(result.subjects[missingIndex]?.stats.collectionTotal).toBeUndefined();
+    }
   });
 
   it('computes bounded cast and staff overlap by stable person ID with raw credit labels', async () => {

@@ -150,18 +150,81 @@ describe('Standalone subject comparison commands', () => {
           warnings: [],
           limitations: ['角色区段受上限约束。'],
           statistics: {
-            state: 'complete',
+            state: 'conflict',
             rating: {
-              state: 'complete',
+              state: 'conflict',
               population: 100,
               mean: 8.6,
               standardDeviation: 0.49,
+              distribution: [
+                { score: 8, count: 60, percentage: 60 },
+                { score: 9, count: 40, percentage: 40 },
+              ],
+              formulas: {
+                percentages: { id: 'bangumi.rating.percentages.v1', version: 1 },
+                histogramMean: { id: 'bangumi.rating.histogram_mean.v1', version: 1 },
+                populationStandardDeviation: {
+                  id: 'bangumi.rating.population_sd.v1',
+                  version: 1,
+                },
+              },
+              conflicts: [
+                {
+                  scope: 'rating',
+                  fieldPaths: ['histogramMean', 'rating.score'],
+                  reason: 'derived histogram mean differs materially from upstream score',
+                  candidates: [
+                    {
+                      source: { class: 'derived-s7', provider: 'derived' },
+                      value: 8.6,
+                    },
+                    {
+                      source: { class: 'official-v0', provider: 'bangumi' },
+                      value: 7.4,
+                    },
+                  ],
+                },
+              ],
             },
             collection: {
               state: 'complete',
+              total: 100,
+              distribution: [
+                { status: 'wish', count: 20, percentage: 20 },
+                { status: 'collect', count: 50, percentage: 50 },
+              ],
               completionRate: 0.5,
               completionState: 'complete',
+              formulas: {
+                percentages: { id: 'bangumi.collection.percentages.v1', version: 1 },
+                completion: { id: 'bangumi.subject.completion.v1', version: 1 },
+              },
             },
+            coverage: {
+              ratingBucketsExpected: 10,
+              ratingBucketsObserved: 10,
+              collectionBucketsExpected: 5,
+              collectionBucketsObserved: 5,
+              formulasAttempted: 5,
+              formulasComplete: 4,
+              formulasPartial: 0,
+              formulasNotComputable: 0,
+              formulasConflict: 1,
+            },
+            evidence: [
+              {
+                source: 'official-v0',
+                provider: 'bangumi',
+                operation: 'getSubjectById',
+                fieldPath: 'rating.score',
+              },
+              {
+                source: 'derived-s7',
+                provider: 'derived',
+                operation: 'bangumi.rating.histogram_mean.v1',
+                fieldPath: 'histogramMean',
+              },
+            ],
           },
         },
         {
@@ -333,8 +396,14 @@ describe('Standalone subject comparison commands', () => {
     expect(human).toContain('official-v0');
     expect(human).toContain('derived-s7');
     expect(human).toContain(
-      '统计智能：完整 · 评分样本 100 · 直方图均值 8.60 · 标准差 0.49 · 完成率 50.0%',
+      '统计智能：冲突 · 评分样本 100 · 直方图均值 8.60 · 标准差 0.49 · 完成率 50.0%',
     );
+    expect(human).toContain('评分分布：8=60 (60.0%)；9=40 (40.0%)');
+    expect(human).toContain('收藏分布：想看=20 (20.0%)；看过=50 (50.0%)');
+    expect(human).toContain('统计覆盖：评分桶 10/10 · 收藏桶 5/5 · 公式完整 4/5');
+    expect(human).toContain('bangumi.rating.percentages.v1@v1');
+    expect(human).toContain('统计冲突：rating · histogramMean,rating.score');
+    expect(human).toContain('统计证据：getSubjectById:rating.score');
     expect(human).toContain('共同声优');
     expect(human).toContain('共同关系公式：subject-comparison-overlap-v1');
     expect(human).toContain('不生成推荐或胜负结论');
