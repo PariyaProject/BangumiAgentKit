@@ -528,11 +528,13 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const searchCharacters = defineTool({
     name: 'bangumi.search_characters',
-    description: '搜索 Bangumi 虚拟角色。若已知角色 ID，请使用 bangumi.get_character。',
+    description:
+      '搜索 Bangumi 虚拟角色；可用官方 v0 nsfw 布尔筛选。未授权调用者的 NSFW 筛选可能被上游忽略，结果仍以官方响应为准。若已知角色 ID，请使用 bangumi.get_character。',
     input: z.object({
       query: z.string().describe('搜索关键词'),
       limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
       offset: z.number().int().min(0).optional().describe('分页参数 offset'),
+      nsfw: z.boolean().optional().describe('官方 v0 NSFW 筛选；未授权时上游可能忽略'),
     }),
     auth: 'none',
     scopes: [],
@@ -541,6 +543,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       return await characterService.searchCharacters(input.query, {
         limit: input.limit ?? 10,
         offset: input.offset ?? 0,
+        nsfw: input.nsfw,
       });
     },
   });
@@ -568,11 +571,18 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
 
   const searchPersons = defineTool({
     name: 'bangumi.search_persons',
-    description: '搜索 Bangumi 现实人物/声优/制作人员/公司/团体。',
+    description:
+      '搜索 Bangumi 现实人物/声优/制作人员/公司/团体；可按一个或多个官方 career 原始标签做 AND 筛选，不做职位同义词或角色推断。',
     input: z.object({
       query: z.string().describe('搜索关键词'),
       limit: z.number().int().min(1).max(50).optional().describe('分页参数 limit'),
       offset: z.number().int().min(0).optional().describe('分页参数 offset'),
+      career: z
+        .array(z.string().trim().min(1).max(80))
+        .min(1)
+        .max(8)
+        .optional()
+        .describe('官方 career 原始标签；多个值按 AND 关系筛选'),
     }),
     auth: 'none',
     scopes: [],
@@ -581,6 +591,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       return await personService.searchPersons(input.query, {
         limit: input.limit ?? 10,
         offset: input.offset ?? 0,
+        career: input.career,
       });
     },
   });

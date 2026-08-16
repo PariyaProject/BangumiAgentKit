@@ -2375,7 +2375,7 @@
   },
   {
     "name": "bangumi.search_characters",
-    "description": "搜索 Bangumi 虚拟角色。若已知角色 ID，请使用 bangumi.get_character。",
+    "description": "搜索 Bangumi 虚拟角色；可用官方 v0 nsfw 布尔筛选。未授权调用者的 NSFW 筛选可能被上游忽略，结果仍以官方响应为准。若已知角色 ID，请使用 bangumi.get_character。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -2398,6 +2398,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "nsfw": {
+          "description": "官方 v0 NSFW 筛选；未授权时上游可能忽略",
+          "type": "boolean"
         }
       },
       "required": ["query"],
@@ -2406,7 +2410,7 @@
   },
   {
     "name": "bangumi.search_persons",
-    "description": "搜索 Bangumi 现实人物/声优/制作人员/公司/团体。",
+    "description": "搜索 Bangumi 现实人物/声优/制作人员/公司/团体；可按一个或多个官方 career 原始标签做 AND 筛选，不做职位同义词或角色推断。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -2429,6 +2433,17 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "career": {
+          "description": "官方 career 原始标签；多个值按 AND 关系筛选",
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
         }
       },
       "required": ["query"],

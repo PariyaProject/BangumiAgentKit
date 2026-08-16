@@ -33,6 +33,7 @@ export function mapCharacterCandidate(raw: Character): CharacterCandidate {
 export interface SearchCharactersOptions {
   limit?: number;
   offset?: number;
+  nsfw?: boolean;
 }
 
 export class CharacterService {
@@ -53,7 +54,13 @@ export class CharacterService {
     const limit = options.limit ?? 10;
     const offset = options.offset ?? 0;
 
-    const res = await this.api.searchCharacters({ limit, offset }, { keyword: query });
+    const res = await this.api.searchCharacters(
+      { limit, offset },
+      {
+        keyword: query,
+        ...(options.nsfw === undefined ? {} : { filter: { nsfw: options.nsfw } }),
+      },
+    );
 
     const data = res.data || [];
     const candidates = data.map(mapCharacterCandidate);

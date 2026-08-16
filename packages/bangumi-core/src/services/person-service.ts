@@ -304,6 +304,7 @@ export function groupSubjectStaff(members: readonly SubjectStaffMember[]): Subje
 export interface SearchPersonsOptions {
   limit?: number;
   offset?: number;
+  career?: string[];
 }
 
 export interface PersonProfileOptions {
@@ -329,7 +330,15 @@ export class PersonService {
     const limit = options.limit ?? 10;
     const offset = options.offset ?? 0;
 
-    const res = await this.api.searchPersons({ limit, offset }, { keyword: query });
+    const res = await this.api.searchPersons(
+      { limit, offset },
+      {
+        keyword: query,
+        ...(options.career && options.career.length > 0
+          ? { filter: { career: [...options.career] } }
+          : {}),
+      },
+    );
 
     const data = res.data || [];
     const candidates = data.map(mapPersonCandidate);
