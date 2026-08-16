@@ -23,6 +23,8 @@ import type {
   SubjectStatsCollectionStatus,
   SubjectStatsCollectionPresence,
   SubjectStatsConflict,
+  SubjectStatsConflictValue,
+  SubjectStatsConflictScope,
   SubjectStatsEvidence,
   SubjectStatsFormulaDescriptor,
   SubjectStatsIntelligenceResult,
@@ -49,6 +51,11 @@ const LIMITATIONS = [
 
 interface SubjectStatsIntelligenceDependencies {
   providerRegistry?: ProviderRegistry;
+  /**
+   * A composed capability may provide the already-bounded provider result so
+   * formula derivation does not issue a duplicate upstream request.
+   */
+  sourceResult?: CapabilityResult<SubjectStatsData> | Promise<CapabilityResult<SubjectStatsData>>;
 }
 
 function descriptor(formula: FormulaDescriptor): SubjectStatsFormulaDescriptor {
@@ -129,6 +136,27 @@ function finiteNonNegative(value: unknown): value is number {
 
 function nonNegativeInteger(value: unknown): value is number {
   return finiteNonNegative(value) && Number.isInteger(value);
+}
+
+function safeConflictValue(
+  value: unknown,
+  seen = new WeakSet<object>(),
+): SubjectStatsConflictValue {
+  if (typeof value === 'number') {
+    return Number.isFinite(value)
+      ? value
+      : { state: 'unknown', reason: 'non_finite_candidate_value' };
+  }
+  if (value === undefined) return { state: 'unknown', reason: 'missing_candidate_value' };
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value !== 'object') return { state: 'unknown', reason: 'unsupported_candidate_value' };
+  if (seen.has(value)) return { state: 'unknown', reason: 'circular_candidate_value' };
+  seen.add(value);
+  if (Array.isArray(value)) {
+    return value.slice(0, 32).map((item) => safeConflictValue(item, seen));
+  }
+  const entries = Object.entries(value).slice(0, 32);
+  return Object.fromEntries(entries.map(([key, item]) => [key, safeConflictValue(item, seen)]));
 }
 
 function validHistogram(value: unknown): value is SubjectStatsRatingHistogram {
@@ -300,37 +328,133 @@ function formatFormulaWarnings(
 function addConflictEvidence(
   conflicts: CapabilityConflict[] | undefined,
   fallbackEvidence: SubjectStatsEvidence[],
+  scope?: SubjectStatsConflictScope,
 ): SubjectStatsConflict[] | undefined {
   if (!conflicts || conflicts.length === 0) return undefined;
-  return conflicts.map((conflict) => ({
-    state: 'conflict' as const,
+  return conflicts.map((conflict) => {
+    const fieldPaths = [
+      ...new Set(
+        conflict.candidates.flatMap((candidate) => {
+          const mappedClass =
+            candidate.source.class === 'official_v0' ? 'official-v0' : 'derived-s7';
+          return (candidate.evidence || []).flatMap((evidence) => {
+            if (typeof evidence.fieldPath === 'string') return [evidence.fieldPath];
+            const fallbackFieldPath = fallbackEvidence.find(
+              (item) =>
+                item.source === mappedClass &&
+                item.provider === candidate.source.provider &&
+                (candidate.source.operation === undefined ||
+                  item.operation === candidate.source.operation) &&
+                (scope === 'rating' ? item.fieldPath === 'rating.score' : true),
+            )?.fieldPath;
+            return fallbackFieldPath ? [fallbackFieldPath] : [];
+          });
+        }),
+      ),
+    ];
+    const inferredScope =
+      scope ||
+      (fieldPaths.some((fieldPath) => /^collection(?:\.|$)/iu.test(fieldPath))
+        ? 'collection'
+        : fieldPaths.some((fieldPath) => /^rating\.count\.|^rating\.histogram/iu.test(fieldPath))
+          ? 'rating'
+          : fieldPaths.length > 0
+            ? 'headline'
+            : 'unknown');
+    return {
+      state: 'conflict' as const,
+      reason: conflict.reason,
+      ...(fieldPaths.length > 0 ? { fieldPaths } : {}),
+      scope: inferredScope,
+      candidates: conflict.candidates.map((candidate) => {
+        const mappedClass = candidate.source.class === 'official_v0' ? 'official-v0' : 'derived-s7';
+        const candidateEvidence = candidate.evidence?.flatMap((ref) => {
+          const fallbackFieldPath =
+            ref.fieldPath ||
+            fallbackEvidence.find(
+              (item) =>
+                item.source === mappedClass &&
+                item.provider === candidate.source.provider &&
+                (candidate.source.operation === undefined ||
+                  item.operation === candidate.source.operation) &&
+                (scope === 'rating' ? item.fieldPath === 'rating.score' : true),
+            )?.fieldPath;
+          const mapped = mapEvidenceRef(ref, fallbackFieldPath || 'unknown');
+          return mapped ? [mapped] : [];
+        });
+        return {
+          source: {
+            class: mappedClass,
+            provider: candidate.source.provider,
+            ...(candidate.source.operation ? { operation: candidate.source.operation } : {}),
+            ...(candidate.source.version ? { version: candidate.source.version } : {}),
+          },
+          value: safeConflictValue(candidate.value),
+          evidence:
+            candidateEvidence?.filter((item) => item.source === mappedClass) ||
+            fallbackEvidence.filter(
+              (item) =>
+                item.source === mappedClass &&
+                (candidate.source.operation === undefined ||
+                  item.operation === candidate.source.operation),
+            ),
+        };
+      }),
+    };
+  });
+}
+
+function conflictIdentity(conflict: SubjectStatsConflict): string {
+  return JSON.stringify({
+    scope: conflict.scope || 'unknown',
     reason: conflict.reason,
-    candidates: conflict.candidates.map((candidate) => {
-      const mappedClass = candidate.source.class === 'official_v0' ? 'official-v0' : 'derived-s7';
-      return {
-        source: {
-          class: mappedClass,
-          provider: candidate.source.provider,
-          ...(candidate.source.operation ? { operation: candidate.source.operation } : {}),
-          ...(candidate.source.version ? { version: candidate.source.version } : {}),
-        },
-        value: typeof candidate.value === 'number' ? candidate.value : Number(candidate.value),
-        evidence:
-          candidate.evidence
-            ?.flatMap((ref) => {
-              const mapped = mapEvidenceRef(ref);
-              return mapped ? [mapped] : [];
-            })
-            .filter((item) => item.source === mappedClass) ||
-          fallbackEvidence.filter(
-            (item) =>
-              item.source === mappedClass &&
-              (candidate.source.operation === undefined ||
-                item.operation === candidate.source.operation),
-          ),
-      };
-    }),
-  }));
+    fieldPaths: [...(conflict.fieldPaths || [])].sort(),
+    candidates: conflict.candidates.map((candidate) => ({
+      source: candidate.source,
+      value: candidate.value,
+      evidence: (candidate.evidence || []).map((item) => ({
+        source: item.source,
+        provider: item.provider,
+        operation: item.operation,
+        fieldPath: item.fieldPath,
+        formula: item.formula,
+      })),
+    })),
+  });
+}
+
+function uniqueConflicts(conflicts: SubjectStatsConflict[]): SubjectStatsConflict[] {
+  const seen = new Set<string>();
+  return conflicts.filter((conflict) => {
+    const identity = conflictIdentity(conflict);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
+
+function ratingConflictAffects(
+  conflicts: SubjectStatsConflict[] | undefined,
+  field: 'population' | 'mean' | 'standardDeviation',
+): boolean {
+  return (conflicts || []).some((conflict) => {
+    if (conflict.scope !== 'rating' && conflict.scope !== 'unknown') return false;
+    const paths = conflict.fieldPaths || [];
+    if (paths.length === 0) return true;
+    if (paths.some((path) => /^rating\.count\.|ratingHistogram|histogramPopulation/iu.test(path))) {
+      return true;
+    }
+    if (field === 'mean') {
+      return paths.some((path) => /histogramMean|rating\.score|^score$/iu.test(path));
+    }
+    return false;
+  });
+}
+
+function collectionConflictAffects(conflicts: SubjectStatsConflict[] | undefined): boolean {
+  return (conflicts || []).some(
+    (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
+  );
 }
 
 function deriveOverallState(
@@ -357,18 +481,39 @@ export async function getSubjectStatsIntelligence(
 ): Promise<SubjectStatsIntelligenceResult> {
   const result = emptyResult(subjectId);
   if (!dependencies.providerRegistry) {
+    if (dependencies.sourceResult) {
+      // A source result supplied by a parent composition is sufficient even
+      // when the caller intentionally omitted the registry to avoid a second
+      // request.
+    } else {
+      result.warnings.push({
+        code: 'PROVIDER_NOT_CONFIGURED',
+        state: 'unavailable',
+        message: '官方统计 Provider 未配置，未填充猜测的统计值。',
+      });
+      return result;
+    }
+  }
+
+  let sourceResult: CapabilityResult<SubjectStatsData>;
+  try {
+    sourceResult = dependencies.sourceResult
+      ? await dependencies.sourceResult
+      : await dependencies.providerRegistry!.getSubjectStats(subjectId, {
+          authScope: 'public',
+        });
+  } catch {
+    result.coverage.sourceRequestsAttempted = 1;
     result.warnings.push({
-      code: 'PROVIDER_NOT_CONFIGURED',
+      code: 'UPSTREAM_STATS_UNAVAILABLE',
       state: 'unavailable',
-      message: '官方统计 Provider 未配置，未填充猜测的统计值。',
+      message: '官方统计源请求失败，未生成猜测的统计值。',
     });
     return result;
   }
-
-  const sourceResult = await dependencies.providerRegistry.getSubjectStats(subjectId, {
-    authScope: 'public',
-  });
   const sourceEvidence = evidenceFromFields(sourceResult.evidence);
+  const sourceConflicts = addConflictEvidence(sourceResult.conflicts, sourceEvidence);
+  result.conflicts = sourceConflicts;
   result.evidence = sourceEvidence;
   result.coverage.sourceRequestsAttempted = 1;
   result.coverage.sourceRequestsSucceeded = sourceResult.data ? 1 : 0;
@@ -413,11 +558,20 @@ export async function getSubjectStatsIntelligence(
     return result;
   }
 
+  /*
+   * The remainder of this function deliberately operates on sourceResult,
+   * whether it came from the registry or a parent composition. This keeps the
+   * formula/evidence contract identical for standalone statistics and nested
+   * comparison statistics.
+   */
   const stats = sourceResult.data;
   const statsRatingPresence = ratingPresence(stats);
   const statsCollectionPresence = collectionPresence(stats);
   const ratingInputsComplete = allPresent(statsRatingPresence);
   const collectionInputsComplete = allPresent(statsCollectionPresence);
+  const unscopedProviderConflict =
+    sourceResult.state === 'conflict' && (sourceConflicts || []).length === 0;
+  const allProviderConflict = unscopedProviderConflict;
   result.raw = {
     score: stats.score,
     rank: stats.rank,
@@ -468,38 +622,68 @@ export async function getSubjectStatsIntelligence(
         COMPLETION_FORMULA,
         'Collection buckets contain missing or invalid values; completion rate is suppressed.',
       );
-  const ratingMeanFormulaState: SubjectStatsMetricState = !ratingInputsComplete
-    ? 'partial'
-    : ratingDeviation.data?.histogramMean !== undefined
-      ? ratingDeviation.state === 'conflict'
-        ? 'conflict'
-        : 'complete'
-      : stateForFormula(ratingDeviation);
-  const ratingStandardDeviationFormulaState: SubjectStatsMetricState = !ratingInputsComplete
-    ? 'partial'
-    : ratingDeviation.data?.standardDeviation !== undefined
-      ? 'complete'
-      : stateForFormula(ratingDeviation);
+  const ratingPercentagesFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'population')
+      ? 'conflict'
+      : !ratingInputsComplete
+        ? 'partial'
+        : stateForFormula(ratingPercentages);
+  const ratingMeanFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'mean')
+      ? 'conflict'
+      : !ratingInputsComplete
+        ? 'partial'
+        : ratingDeviation.data?.histogramMean !== undefined
+          ? ratingDeviation.state === 'conflict'
+            ? 'conflict'
+            : 'complete'
+          : stateForFormula(ratingDeviation);
+  const ratingStandardDeviationFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'standardDeviation')
+      ? 'conflict'
+      : !ratingInputsComplete
+        ? 'partial'
+        : ratingDeviation.data?.standardDeviation !== undefined
+          ? 'complete'
+          : stateForFormula(ratingDeviation);
+  const collectionPercentagesFormulaState: SubjectStatsMetricState =
+    allProviderConflict || collectionConflictAffects(sourceConflicts)
+      ? 'conflict'
+      : !collectionInputsComplete
+        ? 'partial'
+        : stateForFormula(collectionPercentages);
+  const completionFormulaState: SubjectStatsMetricState =
+    allProviderConflict || collectionConflictAffects(sourceConflicts)
+      ? 'conflict'
+      : !collectionInputsComplete
+        ? 'partial'
+        : stateForFormula(completion);
   const ratingState = !ratingInputsComplete
     ? 'partial'
-    : ratingMeanFormulaState === 'conflict'
+    : [
+          ratingPercentagesFormulaState,
+          ratingMeanFormulaState,
+          ratingStandardDeviationFormulaState,
+        ].includes('conflict')
       ? 'conflict'
       : stateForFormula(ratingPercentages);
   const collectionState = !collectionInputsComplete
     ? 'partial'
-    : stateForFormula(collectionPercentages);
-  const completionState = !collectionInputsComplete ? 'partial' : stateForFormula(completion);
+    : [collectionPercentagesFormulaState, completionFormulaState].includes('conflict')
+      ? 'conflict'
+      : stateForFormula(collectionPercentages);
+  const completionState = completionFormulaState;
 
   const ratingPopulation = ratingInputsComplete
     ? ratingDeviation.data?.histogramPopulation
     : observedRatingPopulation(stats, statsRatingPresence);
   const collectionPopulation = observedCollectionPopulation(stats, statsCollectionPresence);
   const formulaStates = [
-    { state: stateForFormula(ratingPercentages) },
+    { state: ratingPercentagesFormulaState },
     { state: ratingMeanFormulaState },
     { state: ratingStandardDeviationFormulaState },
-    { state: stateForFormula(collectionPercentages) },
-    { state: stateForFormula(completion) },
+    { state: collectionPercentagesFormulaState },
+    { state: completionFormulaState },
   ];
   result.coverage.ratingPopulation = ratingPopulation;
   result.coverage.collectionPopulation = collectionPopulation;
@@ -516,8 +700,23 @@ export async function getSubjectStatsIntelligence(
   ).length;
   const ratingConflicts = addConflictEvidence(
     ratingDeviation.conflicts,
-    formulaEvidence(ratingDeviation, POPULATION_SD_FORMULA, POPULATION_SD_FORMULA.description),
+    uniqueEvidence([
+      ...sourceEvidence,
+      ...formulaEvidence(ratingDeviation, POPULATION_SD_FORMULA, POPULATION_SD_FORMULA.description),
+    ]),
+    'rating',
   );
+  const scopedRatingConflicts = (sourceConflicts || []).filter(
+    (conflict) => conflict.scope === 'rating' || conflict.scope === 'unknown',
+  );
+  const scopedCollectionConflicts = (sourceConflicts || []).filter(
+    (conflict) => conflict.scope === 'collection' || conflict.scope === 'unknown',
+  );
+  const allRatingConflicts = uniqueConflicts([
+    ...scopedRatingConflicts,
+    ...(ratingConflicts || []),
+  ]);
+  result.conflicts = uniqueConflicts([...(sourceConflicts || []), ...(ratingConflicts || [])]);
 
   result.rating = {
     state: ratingState,
@@ -540,7 +739,7 @@ export async function getSubjectStatsIntelligence(
       histogramMean: descriptor(HISTOGRAM_MEAN_FORMULA),
       populationStandardDeviation: descriptor(POPULATION_SD_FORMULA),
     },
-    ...(ratingConflicts ? { conflicts: ratingConflicts } : {}),
+    ...(allRatingConflicts.length > 0 ? { conflicts: allRatingConflicts } : {}),
   };
 
   result.collection = {
@@ -564,6 +763,9 @@ export async function getSubjectStatsIntelligence(
       percentages: descriptor(COLLECTION_PERCENTAGES_FORMULA),
       completion: descriptor(COMPLETION_FORMULA),
     },
+    ...(scopedCollectionConflicts.length > 0
+      ? { conflicts: uniqueConflicts(scopedCollectionConflicts) }
+      : {}),
   };
 
   const formulaEvidenceItems = uniqueEvidence([

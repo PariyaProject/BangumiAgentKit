@@ -851,12 +851,14 @@ export interface SubjectOverviewViewModel {
 
 export interface SubjectComparisonViewModel {
   template: 'subject-comparison';
-  version: 1;
+  /** Version 1 is accepted for additive compatibility; builders emit version 2. */
+  version: 1 | 2;
   state: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonState;
   subjectIds: [number, number];
   subjects: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['subjects'];
   metrics: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['metrics'];
   formulaVersion: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['formulaVersion'];
+  statisticsFormulaVersion?: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['statisticsFormulaVersion'];
   overlapFormulaVersion: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['overlapFormulaVersion'];
   overlaps: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['overlaps'];
   coverage: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['coverage'] & {

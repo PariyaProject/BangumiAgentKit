@@ -569,7 +569,7 @@ export function createRenderPresentationTools(
   const renderSubjectComparison = defineTool({
     name: 'bangumi.render_subject_comparison',
     description:
-      '生成两个已知 Bangumi 条目的证据型并列比较图片卡片 Artifact。卡片显示身份、日期、话数、官方评分/排名/评分人数/收藏总数、共享声优/制作人员及其角色/原始职位标签、差值方向、各区段状态、来源边界和未知值；差值和共同人物不等于推荐或胜负，渲染器不读取网络资产。',
+      '生成两个已知 Bangumi 条目的证据型并列比较图片卡片 Artifact。卡片显示身份、日期、话数、官方评分/排名/评分人数/收藏总数、评分直方图样本/均值/总体标准差、收藏分布/观察完成率、共享声优/制作人员及其角色/原始职位标签、差值方向、各区段状态、公式/来源边界和未知值；差值、统计和共同人物不等于推荐、质量或胜负，渲染器不读取网络资产。',
     input: z
       .object({
         subjectIds: z

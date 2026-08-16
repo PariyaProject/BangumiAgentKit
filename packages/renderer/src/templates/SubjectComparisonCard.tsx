@@ -48,8 +48,35 @@ function stateLabel(
   }
 }
 
-function valueLabel(value: number | null | undefined): string {
-  return value === null || value === undefined ? '未知' : String(value);
+function valueLabel(value: unknown): string {
+  if (value === null || value === undefined) return '未知';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '未知';
+  if (typeof value === 'string' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value).slice(0, 120);
+  } catch {
+    return '未知';
+  }
+}
+
+function formattedNumber(value: number | null | undefined, digits = 2): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '未知';
+  return Number(value.toFixed(digits)).toString();
+}
+
+function percentageLabel(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '未知';
+  return `${formattedNumber(value * 100, 1)}%`;
+}
+
+function comparisonValueLabel(
+  key: SubjectComparisonViewModel['metrics'][number]['key'],
+  value: number | null | undefined,
+): string {
+  if (key === 'collectionCompletionRate') return percentageLabel(value);
+  if (key === 'ratingMean') return formattedNumber(value, 2);
+  if (key === 'ratingStandardDeviation') return formattedNumber(value, 2);
+  return valueLabel(value);
 }
 
 function metricValueLabel(
@@ -57,10 +84,14 @@ function metricValueLabel(
   index: number,
 ): string {
   const conflict = metric.conflicts?.find((item) => item.side === (index === 0 ? 'A' : 'B'));
-  if (!conflict) return valueLabel(metric.values[index]);
+  if (!conflict) return comparisonValueLabel(metric.key, metric.values[index]);
   const labels = [
-    conflict.statsValue === undefined ? undefined : `统计 ${valueLabel(conflict.statsValue)}`,
-    conflict.subjectValue === undefined ? undefined : `详情 ${valueLabel(conflict.subjectValue)}`,
+    conflict.statsValue === undefined
+      ? undefined
+      : `统计 ${comparisonValueLabel(metric.key, conflict.statsValue)}`,
+    conflict.subjectValue === undefined
+      ? undefined
+      : `详情 ${comparisonValueLabel(metric.key, conflict.subjectValue)}`,
     conflict.candidates && conflict.candidates.length > 0
       ? `候选 ${conflict.candidates
           .map((candidate) => {
@@ -71,7 +102,7 @@ function metricValueLabel(
                 : typeof candidate.value === 'number'
                   ? candidate.value
                   : null;
-            return `${source}=${valueLabel(value)}`;
+            return `${source}=${comparisonValueLabel(metric.key, value)}`;
           })
           .join('；')}`
       : undefined,
@@ -79,10 +110,15 @@ function metricValueLabel(
   return labels.join(' / ') || '冲突候选未知';
 }
 
-function deltaLabel(value: number | null, state: 'complete' | 'unknown' | 'conflict'): string {
+function deltaLabel(
+  value: number | null,
+  state: 'complete' | 'unknown' | 'conflict',
+  key: SubjectComparisonViewModel['metrics'][number]['key'],
+): string {
   if (state === 'conflict') return '冲突，不计算';
   if (value === null) return '不可计算';
-  return value > 0 ? `+${value}` : String(value);
+  const formatted = comparisonValueLabel(key, value);
+  return value > 0 ? `+${formatted}` : formatted;
 }
 
 function subjectTitle(subject: SubjectComparisonViewModel['subjects'][number]): string {
@@ -107,6 +143,71 @@ function overlapCoverageLabel(
 ): string {
   const matched = coverage.matchedIds === undefined ? '未知' : coverage.matchedIds;
   return `A 行 ${coverage.left.rowsReturned}/${coverage.left.rowsObserved} · B 行 ${coverage.right.rowsReturned}/${coverage.right.rowsObserved} · 共同 ID ${matched} · 返回 ${coverage.returned} · 省略 ${coverage.omitted}`;
+}
+
+type ComparisonStatistics = NonNullable<
+  SubjectComparisonViewModel['subjects'][number]['statistics']
+>;
+
+const COLLECTION_STATUS_LABELS: Record<string, string> = {
+  wish: '想看',
+  collect: '看过',
+  doing: '在看',
+  on_hold: '搁置',
+  dropped: '抛弃',
+};
+
+function statisticsStateLabel(state: string): string {
+  return SECTION_LABELS[state] || state;
+}
+
+function statisticsMetricLabel(stats: ComparisonStatistics, key: 'population' | 'mean' | 'sd') {
+  if (key === 'population') return `评分样本 ${valueLabel(stats.rating.population)}`;
+  if (key === 'mean') return `直方图均值 ${formattedNumber(stats.rating.mean)}`;
+  return `总体标准差 ${formattedNumber(stats.rating.standardDeviation)}`;
+}
+
+function statisticsRatingRowLabel(item: ComparisonStatistics['rating']['distribution'][number]) {
+  return `${item.score} 分 · ${valueLabel(item.count)} · ${percentageLabel(
+    item.percentage === undefined ? undefined : item.percentage / 100,
+  )}`;
+}
+
+function statisticsCollectionRowLabel(
+  item: ComparisonStatistics['collection']['distribution'][number],
+) {
+  return `${COLLECTION_STATUS_LABELS[item.status] || item.status} · ${valueLabel(item.count)} · ${percentageLabel(
+    item.percentage === undefined ? undefined : item.percentage / 100,
+  )}`;
+}
+
+type ComparisonStatisticsConflict = NonNullable<
+  ComparisonStatistics['rating']['conflicts']
+>[number];
+
+function statisticsFormulaLabel(formula: { id: string; version: number }): string {
+  return `${formula.id}@v${formula.version}`;
+}
+
+function statisticsConflictLabel(conflict: ComparisonStatisticsConflict): string {
+  const scope = conflict.scope || 'unknown';
+  const fields = conflict.fieldPaths?.length ? ` · ${conflict.fieldPaths.join(',')}` : '';
+  const candidates = conflict.candidates
+    .slice(0, 3)
+    .map(
+      (candidate) =>
+        `${candidate.source.class}/${candidate.source.provider}=${valueLabel(candidate.value)}`,
+    )
+    .join('；');
+  return `${scope}${fields} · ${conflict.reason}${candidates ? ` · 候选 ${candidates}` : ''}`;
+}
+
+function statisticsEvidenceLabel(stats: ComparisonStatistics): string {
+  const items = stats.evidence.slice(0, 6).map((item) => {
+    const operation = item.operation || item.formula || 'evidence';
+    return item.fieldPath ? `${operation}:${item.fieldPath}` : operation;
+  });
+  return `${items.join(' · ') || '未记录'}${stats.evidence.length > 6 ? ` · +${stats.evidence.length - 6}` : ''}`;
 }
 
 export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
@@ -271,11 +372,140 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                 overflowWrap: 'anywhere',
               }}
             >
-              {deltaLabel(metric.delta, metric.state)}
+              {deltaLabel(metric.delta, metric.state, metric.key)}
             </span>
           </div>
         ))}
       </div>
+
+      {columns.some((subject) => subject.statistics !== undefined) ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: theme.spacing.sm,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            backgroundColor: theme.surfaceAlt,
+          }}
+        >
+          <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
+            评分与收藏统计智能
+          </div>
+          <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+            仅表示两侧本次官方 v0
+            快照；均值、标准差、百分比和完成率是有版本的确定性公式，不能解释为历史趋势、质量或推荐。
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {columns.map((subject, index) => {
+              const stats = subject.statistics;
+              if (!stats) {
+                return (
+                  <div
+                    key={subject.subjectId}
+                    style={{ flex: '1 1 280px', color: theme.textMuted, fontSize: '11px' }}
+                  >
+                    {index === 0 ? 'A' : 'B'} · 统计源未提供，未填充猜测值。
+                  </div>
+                );
+              }
+              return (
+                <div
+                  key={subject.subjectId}
+                  style={{
+                    flex: '1 1 280px',
+                    minWidth: 0,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: theme.radius.sm,
+                    padding: theme.spacing.sm,
+                  }}
+                >
+                  <div style={{ color: theme.text, fontSize: '12px', fontWeight: 700 }}>
+                    {index === 0 ? 'A' : 'B'} · {subjectTitle(subject)} ·{' '}
+                    {statisticsStateLabel(stats.state)}
+                  </div>
+                  <MetaRow
+                    theme={theme}
+                    items={[
+                      statisticsMetricLabel(stats, 'population'),
+                      statisticsMetricLabel(stats, 'mean'),
+                      statisticsMetricLabel(stats, 'sd'),
+                      `完成率 ${percentageLabel(stats.collection.completionRate)}`,
+                    ]}
+                  />
+                  <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+                    评分区段 {statisticsStateLabel(stats.rating.state)} · 收藏区段{' '}
+                    {statisticsStateLabel(stats.collection.state)} · 完成率{' '}
+                    {statisticsStateLabel(stats.collection.completionState)}
+                  </div>
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    评分分布：
+                    {stats.rating.distribution
+                      .slice(0, 10)
+                      .map((item) => statisticsRatingRowLabel(item))
+                      .join('；')}
+                  </div>
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    收藏分布：
+                    {stats.collection.distribution
+                      .slice(0, 5)
+                      .map((item) => statisticsCollectionRowLabel(item))
+                      .join('；')}
+                  </div>
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    统计覆盖：评分桶 {stats.coverage.ratingBucketsObserved}/
+                    {stats.coverage.ratingBucketsExpected} · 收藏桶{' '}
+                    {stats.coverage.collectionBucketsObserved}/
+                    {stats.coverage.collectionBucketsExpected} · 公式完整{' '}
+                    {stats.coverage.formulasComplete}/{stats.coverage.formulasAttempted} · 部分{' '}
+                    {stats.coverage.formulasPartial} · 不可计算{' '}
+                    {stats.coverage.formulasNotComputable} · 冲突 {stats.coverage.formulasConflict}
+                  </div>
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    公式：{statisticsFormulaLabel(stats.rating.formulas.percentages)} ·{' '}
+                    {statisticsFormulaLabel(stats.rating.formulas.histogramMean)} ·{' '}
+                    {statisticsFormulaLabel(stats.rating.formulas.populationStandardDeviation)} ·{' '}
+                    {statisticsFormulaLabel(stats.collection.formulas.percentages)} ·{' '}
+                    {statisticsFormulaLabel(stats.collection.formulas.completion)}
+                  </div>
+                  {(() => {
+                    const conflicts = [
+                      ...(stats.conflicts || []),
+                      ...(stats.rating.conflicts || []),
+                      ...(stats.collection.conflicts || []),
+                    ];
+                    return conflicts.length > 0 ? (
+                      <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+                        统计冲突：{conflicts.slice(0, 2).map(statisticsConflictLabel).join('；')}
+                        {conflicts.length > 2 ? `；另有 ${conflicts.length - 2} 条冲突` : ''}
+                      </div>
+                    ) : null;
+                  })()}
+                  <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+                    统计证据：{statisticsEvidenceLabel(stats)}
+                  </div>
+                  {stats.warnings.length > 0 ? (
+                    <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.5 }}>
+                      {stats.warnings
+                        .slice(0, 2)
+                        .map((warning) => `${warning.code} · ${warning.message}`)
+                        .join('；')}
+                      {stats.warnings.length > 2
+                        ? `；另有 ${stats.warnings.length - 2} 条告警`
+                        : ''}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
+            统计组合公式：{viewModel.statisticsFormulaVersion || '未记录'} · 以上为有界诊断，JSON
+            结果保留完整证据。
+          </div>
+        </div>
+      ) : null}
 
       <MetaRow
         theme={theme}
@@ -285,7 +515,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
           `条目身份已读取 ${viewModel.coverage.returnedSubjects}/${viewModel.coverage.requestedSubjects}`,
           `条目状态完整 ${viewModel.coverage.subjectsComplete} · 部分 ${viewModel.coverage.subjectsPartial} · 不可用 ${viewModel.coverage.subjectsUnavailable} · 未找到 ${viewModel.coverage.subjectsNotFound}`,
           `上限：条目 ${viewModel.coverage.limits.maxSubjects} · 角色 ${viewModel.coverage.limits.maxCast} · 职员 ${viewModel.coverage.limits.maxStaff} · 关联 ${viewModel.coverage.limits.maxRelations} · 共同人物 ${viewModel.coverage.limits.maxOverlapItems}`,
-          `公式 ${viewModel.formulaVersion}`,
+          `公式 ${viewModel.formulaVersion}${viewModel.statisticsFormulaVersion ? ` · 统计 ${viewModel.statisticsFormulaVersion}` : ''}`,
         ]}
       />
 

@@ -1,11 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { SubjectComparisonResult } from '@bangumi-agent-kit/bangumi-core';
+import type {
+  SubjectComparisonResult,
+  SubjectStatsIntelligenceResult,
+} from '@bangumi-agent-kit/bangumi-core';
 import {
   buildSubjectComparisonViewModel,
   extractImageUrls,
   RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+import { getTemplate } from '../../packages/renderer/src/templates/TemplateRegistry.js';
 
 const result: SubjectComparisonResult = {
   subjectIds: [123, 456],
@@ -306,6 +310,208 @@ const result: SubjectComparisonResult = {
   ],
 };
 
+const renderStatistics: SubjectStatsIntelligenceResult = {
+  subjectId: 123,
+  state: 'conflict',
+  raw: {
+    score: 8.6,
+    rank: 42,
+    ratingTotal: 100,
+    ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 40, 9: 60, 10: 0 },
+    collection: { wish: 10, collect: 20, doing: 3, onHold: 4, dropped: 2 },
+  },
+  rating: {
+    state: 'complete',
+    population: 100,
+    mean: 8.6,
+    standardDeviation: 0.49,
+    distribution: [
+      { score: 8, count: 40, percentage: 40 },
+      { score: 9, count: 60, percentage: 60 },
+    ],
+    formulas: {
+      percentages: {
+        id: 'bangumi.rating.percentages.v1',
+        version: 1,
+        inputs: ['rating.count.1'],
+        evidenceStatus: 'derived',
+        description: 'count / population',
+      },
+      histogramMean: {
+        id: 'bangumi.rating.histogram_mean.v1',
+        version: 1,
+        inputs: ['rating.count.1'],
+        evidenceStatus: 'derived',
+        description: 'weighted mean',
+      },
+      populationStandardDeviation: {
+        id: 'bangumi.rating.population_sd.v1',
+        version: 1,
+        inputs: ['rating.count.1'],
+        evidenceStatus: 'derived',
+        description: 'population standard deviation',
+      },
+    },
+    conflicts: [
+      {
+        state: 'conflict',
+        scope: 'rating',
+        fieldPaths: ['histogramMean', 'rating.score'],
+        reason: 'derived histogram mean differs materially from upstream score',
+        candidates: [
+          {
+            source: { class: 'derived-s7', provider: 'derived' },
+            value: 8.6,
+            evidence: [{ source: 'derived-s7', provider: 'derived', fieldPath: 'histogramMean' }],
+          },
+          {
+            source: { class: 'official-v0', provider: 'bangumi' },
+            value: 7.4,
+            evidence: [{ source: 'official-v0', provider: 'bangumi', fieldPath: 'rating.score' }],
+          },
+        ],
+      },
+    ],
+  },
+  collection: {
+    state: 'complete',
+    total: 39,
+    distribution: [
+      { status: 'wish', count: 10, percentage: 25.64 },
+      { status: 'collect', count: 20, percentage: 51.28 },
+    ],
+    completionRate: 20 / 39,
+    completionState: 'complete',
+    formulas: {
+      percentages: {
+        id: 'bangumi.collection.percentages.v1',
+        version: 1,
+        inputs: ['collection.wish'],
+        evidenceStatus: 'derived',
+        description: 'count / population',
+      },
+      completion: {
+        id: 'bangumi.subject.completion.v1',
+        version: 1,
+        inputs: ['collection.collect'],
+        evidenceStatus: 'empirically_verified',
+        description: 'collect / population',
+      },
+    },
+  },
+  coverage: {
+    sourceRequestsAttempted: 1,
+    sourceRequestsSucceeded: 1,
+    ratingBucketsExpected: 10,
+    ratingBucketsObserved: 10,
+    collectionBucketsExpected: 5,
+    collectionBucketsObserved: 5,
+    ratingPopulation: 100,
+    collectionPopulation: 39,
+    formulasAttempted: 5,
+    formulasComplete: 5,
+    formulasPartial: 0,
+    formulasNotComputable: 0,
+    formulasConflict: 1,
+  },
+  source: {
+    official: { class: 'official-v0', operations: ['getSubjectById'] },
+    derived: { class: 'derived-s7', operations: ['bangumi.rating.percentages.v1'] },
+  },
+  evidence: [
+    {
+      source: 'official-v0',
+      provider: 'bangumi',
+      operation: 'getSubjectById',
+      fieldPath: 'rating.score',
+    },
+    {
+      source: 'derived-s7',
+      provider: 'derived',
+      operation: 'bangumi.rating.histogram_mean.v1',
+      fieldPath: 'histogramMean',
+      formula: 'bangumi.rating.histogram_mean.v1',
+    },
+  ],
+  warnings: [],
+  limitations: ['当前快照不代表历史趋势。'],
+  retrievedAt: '2026-08-15T00:00:00.000Z',
+};
+
+function statisticsStateMatrix(): Array<{
+  name: string;
+  statistics: SubjectStatsIntelligenceResult;
+  marker: string;
+}> {
+  const complete = structuredClone(renderStatistics);
+  complete.state = 'complete';
+  complete.rating.state = 'complete';
+  complete.rating.conflicts = undefined;
+  complete.coverage.formulasComplete = 5;
+  complete.coverage.formulasConflict = 0;
+
+  const partial = structuredClone(complete);
+  partial.state = 'partial';
+  partial.collection.state = 'partial';
+  partial.collection.completionState = 'partial';
+  partial.collection.distribution = partial.collection.distribution.map((item, index) =>
+    index === 1 ? { status: item.status } : item,
+  );
+  partial.coverage.collectionBucketsObserved = 4;
+  partial.coverage.formulasComplete = 3;
+  partial.coverage.formulasPartial = 2;
+  partial.coverage.formulasConflict = 0;
+
+  const zero = structuredClone(complete);
+  zero.state = 'not_computable';
+  zero.rating = {
+    ...zero.rating,
+    state: 'not_computable',
+    population: undefined,
+    mean: undefined,
+    standardDeviation: undefined,
+    distribution: zero.rating.distribution.map((item) => ({ score: item.score })),
+    conflicts: undefined,
+  };
+  zero.collection = {
+    ...zero.collection,
+    state: 'not_computable',
+    total: undefined,
+    completionRate: undefined,
+    completionState: 'not_computable',
+    distribution: zero.collection.distribution.map((item) => ({ status: item.status })),
+    conflicts: undefined,
+  };
+  zero.coverage.ratingPopulation = undefined;
+  zero.coverage.collectionPopulation = undefined;
+  zero.coverage.formulasComplete = 0;
+  zero.coverage.formulasPartial = 0;
+  zero.coverage.formulasNotComputable = 5;
+  zero.coverage.formulasConflict = 0;
+
+  const unavailable = structuredClone(zero);
+  unavailable.state = 'unavailable';
+  unavailable.rating.state = 'unavailable';
+  unavailable.collection.state = 'unavailable';
+  unavailable.collection.completionState = 'unavailable';
+  unavailable.coverage.sourceRequestsSucceeded = 0;
+  unavailable.coverage.ratingBucketsObserved = 0;
+  unavailable.coverage.collectionBucketsObserved = 0;
+  unavailable.coverage.formulasNotComputable = 0;
+  unavailable.coverage.formulasAttempted = 0;
+  unavailable.rating.distribution = [];
+  unavailable.collection.distribution = [];
+  unavailable.evidence = [];
+
+  return [
+    { name: 'complete', statistics: complete, marker: '统计覆盖：评分桶 10/10' },
+    { name: 'partial', statistics: partial, marker: '统计覆盖：评分桶 10/10 · 收藏桶 4/5' },
+    { name: 'conflict', statistics: renderStatistics, marker: '统计冲突：rating · histogramMean' },
+    { name: 'not-computable', statistics: zero, marker: '不可计算' },
+    { name: 'unavailable', statistics: unavailable, marker: '不可用' },
+  ];
+}
+
 describe('subject-comparison renderer', () => {
   let renderService: RenderService;
 
@@ -404,4 +610,64 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('条目身份已读取 0/2');
     expect(html).toContain('当前请求未取得条目身份');
   });
+
+  it('renders nested statistics distributions and the composition formula without images', () => {
+    const withStatistics = structuredClone(result);
+    withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';
+    withStatistics.subjects[0] = { ...withStatistics.subjects[0], statistics: renderStatistics };
+    const html = renderHtmlTemplate(
+      buildSubjectComparisonViewModel(withStatistics),
+      'bangumi-dark',
+      {},
+      640,
+    );
+
+    expect(html).toContain('评分与收藏统计智能');
+    expect(html).toContain('评分样本 100');
+    expect(html).toContain('直方图均值 8.6');
+    expect(html).toContain('完成率 51.3%');
+    expect(html).toContain('8 分 · 40 · 40%');
+    expect(html).toContain('统计组合公式：subject-comparison-statistics-v1');
+    expect(html).toContain('统计覆盖：评分桶 10/10 · 收藏桶 5/5');
+    expect(html).toContain('bangumi.rating.percentages.v1@v1');
+    expect(html).toContain('统计冲突：rating · histogramMean,rating.score');
+    expect(html).toContain('候选 derived-s7/derived=8.6；official-v0/bangumi=7.4');
+    expect(html).toContain('统计证据：getSubjectById:rating.score');
+    expect(extractImageUrls(buildSubjectComparisonViewModel(withStatistics))).toEqual([]);
+  });
+
+  it('keeps current and legacy comparison ViewModels renderable with a bounded statistics PNG matrix', async () => {
+    expect(getTemplate('subject-comparison').version).toBe(2);
+    const current = buildSubjectComparisonViewModel(result);
+    expect(current.version).toBe(2);
+
+    const legacy = { ...current, version: 1 as const };
+    const legacyHtml = renderHtmlTemplate(legacy, 'bangumi-dark', {}, 480);
+    expect(legacyHtml).toContain('条目并列比较');
+
+    for (const matrixCase of statisticsStateMatrix()) {
+      const withStatistics = structuredClone(result);
+      withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';
+      withStatistics.subjects[0] = {
+        ...withStatistics.subjects[0],
+        statistics: matrixCase.statistics,
+      };
+      const viewModel = buildSubjectComparisonViewModel(withStatistics);
+      expect(viewModel.version).toBe(2);
+      expect(extractImageUrls(viewModel)).toEqual([]);
+
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 480);
+      expect(html).toContain('一个用于验证窄宽度换行');
+      expect(html).toContain('差值 B−A');
+      expect(html).toContain(matrixCase.marker);
+
+      const rendered = await renderService.renderCard(viewModel, {
+        width: 640,
+        deviceScaleFactor: 1,
+      });
+      expect(rendered.template).toBe('subject-comparison');
+      expect(rendered.templateVersion).toBe(2);
+      expect(rendered.buffer.length).toBeGreaterThan(1000);
+    }
+  }, 30_000);
 });
