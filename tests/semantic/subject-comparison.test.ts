@@ -176,7 +176,7 @@ function buildClient(
       if (endpoint === 'characters') {
         const data = characters(subjectId).map((item) => ({
           ...item,
-          actors: item.actors.map((actor, index) =>
+          actors: item.actors.map((actor) =>
             options.missingActorIdSubject === subjectId && actor.id === 900
               ? { ...actor, id: 0 }
               : actor,
