@@ -200,7 +200,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getSubjectComparisonTool = defineTool({
     name: 'bangumi.get_subject_comparison',
     description:
-      '并列比较两个已知 Bangumi 条目的证据型官方事实：身份、日期、平台、报告话数、评分、排名、评分人数、收藏总数、共享声优/制作人员和各区段覆盖。共享人物按两侧本次有界官方 v0 关系中的稳定 ID 求交集，保留角色与原始职位标签、缺失 ID、截断和不可用状态；差值按输入顺序计算，不生成推荐或胜负结论，缺失/partial/unavailable/not_found 状态和来源限制会保留。',
+      '一次并列比较两个已知 Bangumi 条目的证据型官方事实与统计智能：身份、日期、平台、报告话数、评分、排名、评分人数、收藏总数、评分直方图样本/均值/总体标准差、收藏分布/观察完成率、共享声优/制作人员和各区段覆盖。统计保留官方 v0 快照、derived-s7 公式版本、分布、冲突、零样本 not_computable、partial/unavailable/not_found 状态与限制；共享人物按两侧本次有界官方 v0 关系中的稳定 ID 求交集，保留角色与原始职位标签、缺失 ID和截断。差值按输入顺序计算，不生成推荐、质量或胜负结论，也不计算历史趋势。',
     input: z
       .object({
         subjectIds: z

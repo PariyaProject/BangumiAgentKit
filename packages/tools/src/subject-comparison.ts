@@ -8,6 +8,7 @@ import type {
   SubjectComparisonSourceSummary,
   SubjectComparisonStatsConflict,
   SubjectComparisonStatsKey,
+  SubjectStatsIntelligenceResult,
   SubjectOverviewResult,
   SubjectOverviewStatsConflict,
   SubjectOverviewSectionState,
@@ -17,6 +18,7 @@ import {
   type SubjectOverviewDependencies,
   type SubjectOverviewLimits,
 } from './subject-overview.js';
+import { getSubjectStatsIntelligence } from './subject-stats-intelligence.js';
 
 export interface SubjectComparisonOptions {
   maxCast?: number;
@@ -32,6 +34,11 @@ const DELTA_PRECISION: Record<SubjectComparisonMetricKey, number> = {
   rank: 0,
   ratingTotal: 0,
   collectionTotal: 0,
+  ratingPopulation: 0,
+  ratingMean: 1,
+  ratingStandardDeviation: 2,
+  collectionPopulation: 0,
+  collectionCompletionRate: 3,
 };
 const DELTA_POLICY_DESCRIPTION =
   '差值按第二个条目减第一个条目；评分差值规范化为 1 位小数，话数、排名和人数差值规范化为整数；非有限差值保持不可计算。';
@@ -50,6 +57,9 @@ const OVERLAP_FORMULA_VERSION = 'subject-comparison-overlap-v1' as const;
 const MAX_OVERLAP_ITEMS = 24;
 const OVERLAP_DESCRIPTION =
   '按官方 v0 本次有界角色声优与制作人员关系中的稳定人物 ID 求交集；保留每侧角色/原始职位标签、重复关系的确定性去重、缺失 ID、section/output 截断和来源状态，不把未读取或不可用的关系解释为不存在。';
+const STATISTICS_FORMULA_VERSION = 'subject-comparison-statistics-v1' as const;
+const STATISTICS_DESCRIPTION =
+  '在同一对官方 v0 统计观察上，保留评分直方图、收藏桶及其确定性百分比/均值/总体标准差/观察完成率公式；差值只在两侧对应公式状态 complete 且有限时计算，不产生推荐、质量或历史趋势结论。';
 
 function bounded(value: number | undefined, fallback: number, maximum: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -202,11 +212,56 @@ function mapProviderConflict(
   };
 }
 
+function mapStatisticsSectionState(
+  statistics: SubjectStatsIntelligenceResult,
+): SubjectOverviewSectionState {
+  switch (statistics.state) {
+    case 'complete':
+      return 'complete';
+    case 'not_computable':
+      return 'not_computable';
+    case 'unavailable':
+    case 'not_found':
+      return 'unavailable';
+    case 'partial':
+    case 'conflict':
+      return 'partial';
+  }
+}
+
+function mapStatisticsWarningState(
+  state: SubjectStatsIntelligenceResult['warnings'][number]['state'],
+): SubjectOverviewSectionState {
+  if (state === 'complete') return 'complete';
+  if (state === 'not_computable') return 'not_computable';
+  if (state === 'unavailable' || state === 'not_found') return 'unavailable';
+  return 'partial';
+}
+
+function mergeSourceSummary<T extends SubjectComparisonSourceSummary['class']>(
+  summary: SubjectComparisonSourceSummary & { class: T },
+  operations: string[],
+  retrievedAt?: string,
+): SubjectComparisonSourceSummary & { class: T } {
+  return {
+    ...summary,
+    operations: Array.from(new Set([...summary.operations, ...operations])),
+    ...(latestTimestamp([summary.retrievedAt, retrievedAt])
+      ? { retrievedAt: latestTimestamp([summary.retrievedAt, retrievedAt]) }
+      : {}),
+  };
+}
+
 function mapSubjectOverview(
   overview: SubjectOverviewResult,
   limits: SubjectOverviewLimits,
+  statistics?: SubjectStatsIntelligenceResult,
 ): SubjectComparisonSubject {
-  const statsData = overview.stats.data;
+  // A provider may finish after the identity request has already established
+  // NOT_FOUND/UNAVAILABLE. Do not attach an otherwise valid-looking stats
+  // payload to an unknown subject.
+  if (!overview.subject) statistics = undefined;
+  const statsData = statistics?.raw ?? overview.stats.data;
   const total = collectionTotal(statsData?.collection);
   const subjectStats: Partial<Record<SubjectComparisonStatsKey, number | undefined>> = {
     score: finiteNumber(overview.subject?.score),
@@ -245,9 +300,37 @@ function mapSubjectOverview(
   }
   const evidence = overview.evidence;
   const attemptedAt = earliestTimestamp(evidence.map((item) => item.attemptedAt));
+  const statisticsSectionState = statistics
+    ? mapStatisticsSectionState(statistics)
+    : overview.stats.state;
+  const state: SubjectComparisonSubject['state'] =
+    overview.state === 'not_found'
+      ? 'not_found'
+      : overview.state === 'unavailable'
+        ? 'unavailable'
+        : statisticsSectionState === 'complete'
+          ? overview.state
+          : 'partial';
+  const officialSource = mergeSourceSummary(
+    summarizeSource(evidence, 'official-v0', attemptedAt),
+    statistics?.source.official.operations || [],
+    statistics?.source.official.retrievedAt,
+  );
+  const derivedSource = mergeSourceSummary(
+    summarizeSource(evidence, 'derived-s7', attemptedAt),
+    statistics?.source.derived.operations || [],
+    statistics?.source.derived.retrievedAt,
+  );
+  const statisticsWarnings =
+    statistics?.warnings.map((warning) => ({
+      code: warning.code,
+      state: mapStatisticsWarningState(warning.state),
+      section: 'stats' as const,
+      message: warning.message,
+    })) || [];
   return {
     subjectId: overview.subjectId,
-    state: overview.state,
+    state,
     ...(overview.subject
       ? {
           subject: {
@@ -267,7 +350,7 @@ function mapSubjectOverview(
         }
       : {}),
     stats: {
-      state: overview.stats.state,
+      state: statisticsSectionState,
       ...(providerStats.score === undefined ? {} : { score: providerStats.score }),
       ...(providerStats.rank === undefined ? {} : { rank: providerStats.rank }),
       ...(providerStats.ratingTotal === undefined
@@ -277,7 +360,7 @@ function mapSubjectOverview(
       ...(Object.keys(conflicts).length > 0 ? { conflicts } : {}),
     },
     sections: {
-      stats: overview.stats.state,
+      stats: statisticsSectionState,
       cast: overview.cast.state,
       staff: overview.staff.state,
       relations: overview.relations.state,
@@ -293,12 +376,13 @@ function mapSubjectOverview(
       limits,
     },
     source: {
-      official: summarizeSource(evidence, 'official-v0', attemptedAt),
-      derived: summarizeSource(evidence, 'derived-s7', attemptedAt),
+      official: officialSource,
+      derived: derivedSource,
     },
+    ...(statistics ? { statistics } : {}),
     evidence,
-    warnings: overview.warnings,
-    limitations: overview.limitations,
+    warnings: [...overview.warnings, ...statisticsWarnings],
+    limitations: Array.from(new Set([...overview.limitations, ...(statistics?.limitations || [])])),
   };
 }
 
@@ -338,6 +422,94 @@ function metric(
     deltaPrecision,
     state: complete && delta !== undefined ? 'complete' : 'unknown',
   };
+}
+
+type StatisticsMetricState = SubjectStatsIntelligenceResult['rating']['state'];
+
+function statisticsMetric(
+  key: SubjectComparisonMetricKey,
+  label: string,
+  left: number | undefined,
+  right: number | undefined,
+  leftState: StatisticsMetricState,
+  rightState: StatisticsMetricState,
+): SubjectComparisonMetric {
+  const result = metric(key, label, left, right);
+  if (leftState === 'conflict' || rightState === 'conflict') {
+    return { ...result, delta: null, state: 'conflict' };
+  }
+  if (result.state !== 'complete' || leftState !== 'complete' || rightState !== 'complete') {
+    return { ...result, delta: null, state: 'unknown' };
+  }
+  return result;
+}
+
+function ratingMetricState(
+  statistics: SubjectStatsIntelligenceResult | undefined,
+  field: 'population' | 'mean' | 'standardDeviation',
+): StatisticsMetricState {
+  if (!statistics) return 'unavailable';
+  if (
+    statistics.rating.state === 'conflict' &&
+    field !== 'mean' &&
+    statistics.rating[field] !== undefined
+  ) {
+    // A histogram mean conflict does not invalidate the observed population
+    // or the independently derived standard deviation.
+    return 'complete';
+  }
+  return statistics.rating.state;
+}
+
+function buildStatisticsMetrics(
+  subjects: [SubjectComparisonSubject, SubjectComparisonSubject],
+): SubjectComparisonMetric[] {
+  const [left, right] = subjects;
+  const leftStats = left.statistics;
+  const rightStats = right.statistics;
+  if (!leftStats && !rightStats) return [];
+  return [
+    statisticsMetric(
+      'ratingPopulation',
+      '评分直方图样本数',
+      leftStats?.rating.population,
+      rightStats?.rating.population,
+      ratingMetricState(leftStats, 'population'),
+      ratingMetricState(rightStats, 'population'),
+    ),
+    statisticsMetric(
+      'ratingMean',
+      '评分直方图均值',
+      leftStats?.rating.mean,
+      rightStats?.rating.mean,
+      ratingMetricState(leftStats, 'mean'),
+      ratingMetricState(rightStats, 'mean'),
+    ),
+    statisticsMetric(
+      'ratingStandardDeviation',
+      '评分总体标准差',
+      leftStats?.rating.standardDeviation,
+      rightStats?.rating.standardDeviation,
+      ratingMetricState(leftStats, 'standardDeviation'),
+      ratingMetricState(rightStats, 'standardDeviation'),
+    ),
+    statisticsMetric(
+      'collectionPopulation',
+      '收藏分布样本数',
+      leftStats?.collection.total,
+      rightStats?.collection.total,
+      leftStats?.collection.state || 'unavailable',
+      rightStats?.collection.state || 'unavailable',
+    ),
+    statisticsMetric(
+      'collectionCompletionRate',
+      '观察完成率',
+      leftStats?.collection.completionRate,
+      rightStats?.collection.completionRate,
+      leftStats?.collection.completionState || 'unavailable',
+      rightStats?.collection.completionState || 'unavailable',
+    ),
+  ];
 }
 
 function buildMetrics(
@@ -389,6 +561,7 @@ function buildMetrics(
       left.stats.conflicts?.collectionTotal,
       right.stats.conflicts?.collectionTotal,
     ),
+    ...buildStatisticsMetrics(subjects),
   ];
 }
 
@@ -734,9 +907,23 @@ export async function getSubjectComparison(
   const overviews: SubjectOverviewResult[] = [];
   const subjects: SubjectComparisonSubject[] = [];
   for (const subjectId of ids) {
-    const overview = await getSubjectOverview(subjectId, limits, dependencies);
+    const sharedStatsResult = dependencies.providerRegistry
+      ? dependencies.providerRegistry.getSubjectStats(subjectId, { authScope: 'public' })
+      : undefined;
+    const [overview, statistics] = await Promise.all([
+      getSubjectOverview(subjectId, limits, {
+        ...dependencies,
+        ...(sharedStatsResult ? { statsResult: sharedStatsResult } : {}),
+      }),
+      getSubjectStatsIntelligence(subjectId, {
+        ...(dependencies.providerRegistry
+          ? { providerRegistry: dependencies.providerRegistry }
+          : {}),
+        ...(sharedStatsResult ? { sourceResult: sharedStatsResult } : {}),
+      }),
+    ]);
     overviews.push(overview);
-    subjects.push(mapSubjectOverview(overview, limits));
+    subjects.push(mapSubjectOverview(overview, limits, statistics));
   }
   const overviewPair = overviews as [SubjectOverviewResult, SubjectOverviewResult];
   const pair = subjects as [SubjectComparisonSubject, SubjectComparisonSubject];
@@ -749,6 +936,21 @@ export async function getSubjectComparison(
   const derivedRetrievedAt = new Date().toISOString();
   const unknownMetrics = metrics.filter((item) => item.state === 'unknown').length;
   const conflictMetrics = metrics.filter((item) => item.state === 'conflict').length;
+  const statisticsMetrics = metrics.filter((item) =>
+    [
+      'ratingPopulation',
+      'ratingMean',
+      'ratingStandardDeviation',
+      'collectionPopulation',
+      'collectionCompletionRate',
+    ].includes(item.key),
+  );
+  const statisticsUnknownMetrics = statisticsMetrics.filter(
+    (item) => item.state === 'unknown',
+  ).length;
+  const statisticsConflictMetrics = statisticsMetrics.filter(
+    (item) => item.state === 'conflict',
+  ).length;
   const state: SubjectComparisonState =
     subjectState === 'complete' &&
     (unknownMetrics > 0 ||
@@ -779,7 +981,21 @@ export async function getSubjectComparison(
     warnings.push({
       code: 'COMPARISON_VALUES_CONFLICT',
       state: state === 'complete' ? 'partial' : state,
-      message: `${conflictMetrics} 个比较字段在条目详情与统计区段之间出现冲突，差值保持不可计算。`,
+      message: `${conflictMetrics} 个比较字段存在来源或公式冲突，差值保持不可计算。`,
+    });
+  }
+  if (statisticsUnknownMetrics > 0) {
+    warnings.push({
+      code: 'COMPARISON_STATISTICS_UNKNOWN',
+      state: state === 'complete' ? 'partial' : state,
+      message: `${statisticsUnknownMetrics} 个统计比较字段因缺失、部分或不可用公式状态而保持不可计算。`,
+    });
+  }
+  if (statisticsConflictMetrics > 0) {
+    warnings.push({
+      code: 'COMPARISON_STATISTICS_CONFLICT',
+      state: state === 'complete' ? 'partial' : state,
+      message: `${statisticsConflictMetrics} 个统计比较字段存在公式冲突，差值保持不可计算。`,
     });
   }
   for (const [kind, overlap] of [
@@ -806,10 +1022,21 @@ export async function getSubjectComparison(
       });
     }
   }
+  const statisticsEvidence: SubjectComparisonResult['evidence'] = pair.flatMap((subject) =>
+    (subject.statistics?.evidence || []).map((item) => ({
+      source: item.source,
+      operation: item.operation || item.formula || 'subject-stats-intelligence',
+      ...(item.retrievedAt ? { retrievedAt: item.retrievedAt } : {}),
+      formulaVersion: STATISTICS_FORMULA_VERSION,
+      ...(item.description ? { description: item.description } : {}),
+      subjectIds: [subject.subjectId],
+    })),
+  );
   const evidence: SubjectComparisonResult['evidence'] = [
     ...pair.flatMap((subject) =>
       subject.evidence.map((item) => ({ ...item, subjectIds: [subject.subjectId] })),
     ),
+    ...statisticsEvidence,
     {
       source: 'derived-s7',
       operation: 'subject-comparison',
@@ -817,6 +1044,14 @@ export async function getSubjectComparison(
       retrievedAt: derivedRetrievedAt,
       formulaVersion: FORMULA_VERSION,
       description: `${DELTA_POLICY_DESCRIPTION} 差值不代表推荐或胜负。`,
+    },
+    {
+      source: 'derived-s7',
+      operation: 'subject-comparison-statistics',
+      attemptedAt,
+      retrievedAt: derivedRetrievedAt,
+      formulaVersion: STATISTICS_FORMULA_VERSION,
+      description: STATISTICS_DESCRIPTION,
     },
     {
       source: 'derived-s7',
@@ -829,7 +1064,11 @@ export async function getSubjectComparison(
   ];
   const derivedComparisonSource: SubjectComparisonSourceSummary & { class: 'derived-s7' } = {
     class: 'derived-s7',
-    operations: ['subject-comparison', 'subject-comparison-overlap'],
+    operations: [
+      'subject-comparison',
+      'subject-comparison-statistics',
+      'subject-comparison-overlap',
+    ],
     attemptedAt,
     retrievedAt: derivedRetrievedAt,
   };
@@ -864,6 +1103,7 @@ export async function getSubjectComparison(
     subjects: pair,
     metrics,
     formulaVersion: FORMULA_VERSION,
+    statisticsFormulaVersion: STATISTICS_FORMULA_VERSION,
     overlapFormulaVersion: OVERLAP_FORMULA_VERSION,
     overlaps,
     coverage,
@@ -873,7 +1113,8 @@ export async function getSubjectComparison(
     limitations: [
       '比较只覆盖两个条目本次官方 v0 概览读取与有界区段；缺失或截断不代表不存在。',
       `${DELTA_POLICY_DESCRIPTION} 不等同于推荐、质量结论或观看顺序。`,
-      '统计是当前官方快照；本能力不计算历史趋势、社区热度、评论、偏好或 episode-row 级比较。',
+      '统计直方图、收藏桶和派生公式只代表两侧本次官方 v0 快照；不计算历史趋势、社区热度、评论、偏好或 episode-row 级比较。',
+      `${STATISTICS_DESCRIPTION}`,
       `${OVERLAP_DESCRIPTION} 共同人物只代表两侧本次返回的角色/职员关系，不是完整演职员表或系列协作图。`,
     ],
   };

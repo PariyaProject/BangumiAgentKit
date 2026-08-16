@@ -597,12 +597,13 @@ export function buildSubjectComparisonViewModel(
   const metrics = result.metrics.slice(0, maxMetrics);
   return {
     template: 'subject-comparison',
-    version: 1,
+    version: 2,
     state: result.state,
     subjectIds: result.subjectIds,
     subjects: result.subjects,
     metrics,
     formulaVersion: result.formulaVersion,
+    statisticsFormulaVersion: result.statisticsFormulaVersion,
     overlapFormulaVersion: result.overlapFormulaVersion,
     overlaps: result.overlaps,
     coverage: {

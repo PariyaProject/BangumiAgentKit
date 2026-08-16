@@ -34,6 +34,11 @@ export interface SubjectOverviewLimits {
 export interface SubjectOverviewDependencies {
   client: GeneratedBangumiOpenApiClient | HttpClient;
   providerRegistry?: ProviderRegistry;
+  /**
+   * Allows a composed capability to share one bounded statistics request with
+   * the overview and its derived statistics adapter.
+   */
+  statsResult?: Promise<CapabilityResult<SubjectStatsData>>;
 }
 
 const SUBJECT_OPERATION = 'GET /v0/subjects/{subject_id}';
@@ -390,11 +395,19 @@ export async function getSubjectOverview(
   ];
   const characterService = new CharacterService(dependencies.client);
   const personService = new PersonService(dependencies.client);
-  const statsRequest = dependencies.providerRegistry
-    ? startTimedOperation(() =>
-        dependencies.providerRegistry!.getSubjectStats(subjectId, { authScope: 'public' }),
-      )
-    : undefined;
+  const statsRequest = dependencies.statsResult
+    ? {
+        attemptedAt: new Date().toISOString(),
+        promise: dependencies.statsResult.then((value) => ({
+          value,
+          retrievedAt: value.retrievedAt || new Date().toISOString(),
+        })),
+      }
+    : dependencies.providerRegistry
+      ? startTimedOperation(() =>
+          dependencies.providerRegistry!.getSubjectStats(subjectId, { authScope: 'public' }),
+        )
+      : undefined;
   const castRequest = startTimedOperation(() =>
     getSubjectCast(characterService, subjectId, { limit: limits.maxCast }),
   );
@@ -634,7 +647,7 @@ export async function getSubjectOverview(
     staff,
     relations,
     coverage: {
-      sourceRequestsAttempted: 4 + (dependencies.providerRegistry ? 1 : 0),
+      sourceRequestsAttempted: 4 + (statsRequest ? 1 : 0),
       sourceRequestsSucceeded: successfulSections + 1,
       sectionsComplete: 0,
       sectionsPartial: 0,

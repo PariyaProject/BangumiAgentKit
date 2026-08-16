@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { SubjectComparisonResult } from '@bangumi-agent-kit/bangumi-core';
+import type {
+  SubjectComparisonResult,
+  SubjectStatsIntelligenceResult,
+} from '@bangumi-agent-kit/bangumi-core';
 import {
   buildSubjectComparisonViewModel,
   extractImageUrls,
@@ -306,6 +309,100 @@ const result: SubjectComparisonResult = {
   ],
 };
 
+const renderStatistics: SubjectStatsIntelligenceResult = {
+  subjectId: 123,
+  state: 'complete',
+  raw: {
+    score: 8.6,
+    rank: 42,
+    ratingTotal: 100,
+    ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 40, 9: 60, 10: 0 },
+    collection: { wish: 10, collect: 20, doing: 3, onHold: 4, dropped: 2 },
+  },
+  rating: {
+    state: 'complete',
+    population: 100,
+    mean: 8.6,
+    standardDeviation: 0.49,
+    distribution: [
+      { score: 8, count: 40, percentage: 40 },
+      { score: 9, count: 60, percentage: 60 },
+    ],
+    formulas: {
+      percentages: {
+        id: 'bangumi.rating.percentages.v1',
+        version: 1,
+        inputs: ['rating.count.1'],
+        evidenceStatus: 'derived',
+        description: 'count / population',
+      },
+      histogramMean: {
+        id: 'bangumi.rating.histogram_mean.v1',
+        version: 1,
+        inputs: ['rating.count.1'],
+        evidenceStatus: 'derived',
+        description: 'weighted mean',
+      },
+      populationStandardDeviation: {
+        id: 'bangumi.rating.population_sd.v1',
+        version: 1,
+        inputs: ['rating.count.1'],
+        evidenceStatus: 'derived',
+        description: 'population standard deviation',
+      },
+    },
+  },
+  collection: {
+    state: 'complete',
+    total: 39,
+    distribution: [
+      { status: 'wish', count: 10, percentage: 25.64 },
+      { status: 'collect', count: 20, percentage: 51.28 },
+    ],
+    completionRate: 20 / 39,
+    completionState: 'complete',
+    formulas: {
+      percentages: {
+        id: 'bangumi.collection.percentages.v1',
+        version: 1,
+        inputs: ['collection.wish'],
+        evidenceStatus: 'derived',
+        description: 'count / population',
+      },
+      completion: {
+        id: 'bangumi.subject.completion.v1',
+        version: 1,
+        inputs: ['collection.collect'],
+        evidenceStatus: 'empirically_verified',
+        description: 'collect / population',
+      },
+    },
+  },
+  coverage: {
+    sourceRequestsAttempted: 1,
+    sourceRequestsSucceeded: 1,
+    ratingBucketsExpected: 10,
+    ratingBucketsObserved: 10,
+    collectionBucketsExpected: 5,
+    collectionBucketsObserved: 5,
+    ratingPopulation: 100,
+    collectionPopulation: 39,
+    formulasAttempted: 5,
+    formulasComplete: 5,
+    formulasPartial: 0,
+    formulasNotComputable: 0,
+    formulasConflict: 0,
+  },
+  source: {
+    official: { class: 'official-v0', operations: ['getSubjectById'] },
+    derived: { class: 'derived-s7', operations: ['bangumi.rating.percentages.v1'] },
+  },
+  evidence: [],
+  warnings: [],
+  limitations: ['当前快照不代表历史趋势。'],
+  retrievedAt: '2026-08-15T00:00:00.000Z',
+};
+
 describe('subject-comparison renderer', () => {
   let renderService: RenderService;
 
@@ -403,5 +500,25 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('UPSTREAM_UNAVAILABLE');
     expect(html).toContain('条目身份已读取 0/2');
     expect(html).toContain('当前请求未取得条目身份');
+  });
+
+  it('renders nested statistics distributions and the composition formula without images', () => {
+    const withStatistics = structuredClone(result);
+    withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';
+    withStatistics.subjects[0] = { ...withStatistics.subjects[0], statistics: renderStatistics };
+    const html = renderHtmlTemplate(
+      buildSubjectComparisonViewModel(withStatistics),
+      'bangumi-dark',
+      {},
+      640,
+    );
+
+    expect(html).toContain('评分与收藏统计智能');
+    expect(html).toContain('评分样本 100');
+    expect(html).toContain('直方图均值 8.6');
+    expect(html).toContain('完成率 51.3%');
+    expect(html).toContain('8 分 · 40 · 40%');
+    expect(html).toContain('统计组合公式：subject-comparison-statistics-v1');
+    expect(extractImageUrls(buildSubjectComparisonViewModel(withStatistics))).toEqual([]);
   });
 });

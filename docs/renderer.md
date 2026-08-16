@@ -75,7 +75,10 @@ assets. It also shows shared voice actors and production staff by stable person 
 preserving the two sides' character names and raw role labels. Shared-person sections
 remain explicitly partial or unavailable when either bounded credit source is incomplete;
 an empty complete intersection is the only state that supports a “no overlap observed”
-reading.
+reading. The statistics section additionally shows each side's official rating
+histogram and collection distribution, derived histogram mean, population standard
+deviation, observed completion rate, formula version, and not-computable/partial
+states without turning a current snapshot into a trend or recommendation.
 
 `subject-stats` is an image-free, read-only companion card for
 `bangumi.get_subject_stats_intelligence`. It keeps the official v0 rating

@@ -149,6 +149,20 @@ describe('Standalone subject comparison commands', () => {
           },
           warnings: [],
           limitations: ['角色区段受上限约束。'],
+          statistics: {
+            state: 'complete',
+            rating: {
+              state: 'complete',
+              population: 100,
+              mean: 8.6,
+              standardDeviation: 0.49,
+            },
+            collection: {
+              state: 'complete',
+              completionRate: 0.5,
+              completionState: 'complete',
+            },
+          },
         },
         {
           subjectId: 456,
@@ -318,6 +332,9 @@ describe('Standalone subject comparison commands', () => {
     expect(human).toContain('UPSTREAM_NOT_FOUND');
     expect(human).toContain('official-v0');
     expect(human).toContain('derived-s7');
+    expect(human).toContain(
+      '统计智能：完整 · 评分样本 100 · 直方图均值 8.60 · 标准差 0.49 · 完成率 50.0%',
+    );
     expect(human).toContain('共同声优');
     expect(human).toContain('共同关系公式：subject-comparison-overlap-v1');
     expect(human).toContain('不生成推荐或胜负结论');

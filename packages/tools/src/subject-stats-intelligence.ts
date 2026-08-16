@@ -49,6 +49,11 @@ const LIMITATIONS = [
 
 interface SubjectStatsIntelligenceDependencies {
   providerRegistry?: ProviderRegistry;
+  /**
+   * A composed capability may provide the already-bounded provider result so
+   * formula derivation does not issue a duplicate upstream request.
+   */
+  sourceResult?: CapabilityResult<SubjectStatsData> | Promise<CapabilityResult<SubjectStatsData>>;
 }
 
 function descriptor(formula: FormulaDescriptor): SubjectStatsFormulaDescriptor {
@@ -357,17 +362,36 @@ export async function getSubjectStatsIntelligence(
 ): Promise<SubjectStatsIntelligenceResult> {
   const result = emptyResult(subjectId);
   if (!dependencies.providerRegistry) {
+    if (dependencies.sourceResult) {
+      // A source result supplied by a parent composition is sufficient even
+      // when the caller intentionally omitted the registry to avoid a second
+      // request.
+    } else {
+      result.warnings.push({
+        code: 'PROVIDER_NOT_CONFIGURED',
+        state: 'unavailable',
+        message: '官方统计 Provider 未配置，未填充猜测的统计值。',
+      });
+      return result;
+    }
+  }
+
+  let sourceResult: CapabilityResult<SubjectStatsData>;
+  try {
+    sourceResult = dependencies.sourceResult
+      ? await dependencies.sourceResult
+      : await dependencies.providerRegistry!.getSubjectStats(subjectId, {
+          authScope: 'public',
+        });
+  } catch {
+    result.coverage.sourceRequestsAttempted = 1;
     result.warnings.push({
-      code: 'PROVIDER_NOT_CONFIGURED',
+      code: 'UPSTREAM_STATS_UNAVAILABLE',
       state: 'unavailable',
-      message: '官方统计 Provider 未配置，未填充猜测的统计值。',
+      message: '官方统计源请求失败，未生成猜测的统计值。',
     });
     return result;
   }
-
-  const sourceResult = await dependencies.providerRegistry.getSubjectStats(subjectId, {
-    authScope: 'public',
-  });
   const sourceEvidence = evidenceFromFields(sourceResult.evidence);
   result.evidence = sourceEvidence;
   result.coverage.sourceRequestsAttempted = 1;
@@ -413,6 +437,12 @@ export async function getSubjectStatsIntelligence(
     return result;
   }
 
+  /*
+   * The remainder of this function deliberately operates on sourceResult,
+   * whether it came from the registry or a parent composition. This keeps the
+   * formula/evidence contract identical for standalone statistics and nested
+   * comparison statistics.
+   */
   const stats = sourceResult.data;
   const statsRatingPresence = ratingPresence(stats);
   const statsCollectionPresence = collectionPresence(stats);

@@ -453,6 +453,14 @@ function comparisonSubjectTitle(subject: Record<string, unknown>): string {
   return String(details?.nameCn || details?.name || `条目 ${subject.subjectId || '?'}`);
 }
 
+function comparisonFormattedMetricValue(key: unknown, value: unknown): string {
+  const numeric = typeof value === 'number' ? value : undefined;
+  if (numeric === undefined || !Number.isFinite(numeric)) return '未知';
+  if (key === 'collectionCompletionRate') return `${(numeric * 100).toFixed(1)}%`;
+  if (key === 'ratingMean' || key === 'ratingStandardDeviation') return numeric.toFixed(2);
+  return String(numeric);
+}
+
 function comparisonMetricValue(metric: Record<string, unknown>, index: number): string {
   const values = Array.isArray(metric.values) ? metric.values : [];
   const value = values[index] === null || values[index] === undefined ? '未知' : values[index];
@@ -460,12 +468,14 @@ function comparisonMetricValue(metric: Record<string, unknown>, index: number): 
   const conflict = conflicts
     .map(comparisonRecord)
     .find((item) => item?.side === (index === 0 ? 'A' : 'B'));
-  if (!conflict) return humanField(value, 120);
+  if (!conflict) return humanField(comparisonFormattedMetricValue(metric.key, value), 120);
   const labels = [
-    conflict.statsValue === undefined ? undefined : `统计 ${humanField(conflict.statsValue, 48)}`,
+    conflict.statsValue === undefined
+      ? undefined
+      : `统计 ${comparisonFormattedMetricValue(metric.key, conflict.statsValue)}`,
     conflict.subjectValue === undefined
       ? undefined
-      : `详情 ${humanField(conflict.subjectValue, 48)}`,
+      : `详情 ${comparisonFormattedMetricValue(metric.key, conflict.subjectValue)}`,
   ];
   const candidates = Array.isArray(conflict.candidates)
     ? conflict.candidates
@@ -479,7 +489,7 @@ function comparisonMetricValue(metric: Record<string, unknown>, index: number): 
               : typeof candidate.value === 'number'
                 ? candidate.value
                 : '未知';
-          return `${humanField(source?.class || 'source', 48)}/${humanField(source?.provider || '?', 48)}=${humanField(candidateValue, 48)}`;
+          return `${humanField(source?.class || 'source', 48)}/${humanField(source?.provider || '?', 48)}=${comparisonFormattedMetricValue(metric.key, candidateValue)}`;
         })
     : [];
   if (candidates.length > 0) labels.push(`候选 ${candidates.join('；')}`);
@@ -492,7 +502,8 @@ function comparisonDeltaValue(metric: Record<string, unknown>): string {
   if (metric.delta === null || metric.delta === undefined) return '不可计算';
   const delta = Number(metric.delta);
   if (!Number.isFinite(delta)) return '不可计算';
-  return delta > 0 ? `+${humanField(delta, 48)}` : humanField(delta, 48);
+  const formatted = comparisonFormattedMetricValue(metric.key, delta);
+  return delta > 0 ? `+${formatted}` : formatted;
 }
 
 function presentSubjectComparison(value: Record<string, unknown>): string | undefined {
@@ -549,6 +560,17 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
     if (limits) {
       lines.push(
         `  区段上限：角色 ${humanField(limits.maxCast ?? '?', 32)} · 职员 ${humanField(limits.maxStaff ?? '?', 32)} · 关联 ${humanField(limits.maxRelations ?? '?', 32)}`,
+      );
+    }
+    const statistics = comparisonRecord(subject.statistics);
+    if (statistics) {
+      const rating = comparisonRecord(statistics.rating);
+      const collection = comparisonRecord(statistics.collection);
+      lines.push(
+        `  统计智能：${comparisonStateLabel(statistics.state)} · 评分样本 ${comparisonFormattedMetricValue('ratingPopulation', rating?.population)} · 直方图均值 ${comparisonFormattedMetricValue('ratingMean', rating?.mean)} · 标准差 ${comparisonFormattedMetricValue('ratingStandardDeviation', rating?.standardDeviation)} · 完成率 ${comparisonFormattedMetricValue('collectionCompletionRate', collection?.completionRate)}`,
+      );
+      lines.push(
+        `  统计区段：评分 ${comparisonStateLabel(rating?.state)} · 收藏 ${comparisonStateLabel(collection?.state)} · 完成率 ${comparisonStateLabel(collection?.completionState)}`,
       );
     }
     const warnings = Array.isArray(subject.warnings) ? subject.warnings : [];

@@ -5,6 +5,7 @@ import type {
   SubjectOverviewSectionState,
   SubjectOverviewWarning,
 } from './subject-overview.js';
+import type { SubjectStatsIntelligenceResult } from './subject-stats-intelligence.js';
 import type { SubjectType } from './subject.js';
 
 export type SubjectComparisonState = 'complete' | 'partial' | 'unavailable' | 'not_found';
@@ -22,7 +23,12 @@ export type SubjectComparisonMetricKey =
   | 'score'
   | 'rank'
   | 'ratingTotal'
-  | 'collectionTotal';
+  | 'collectionTotal'
+  | 'ratingPopulation'
+  | 'ratingMean'
+  | 'ratingStandardDeviation'
+  | 'collectionPopulation'
+  | 'collectionCompletionRate';
 
 export type SubjectComparisonStatsKey = Exclude<
   SubjectComparisonMetricKey,
@@ -82,6 +88,13 @@ export interface SubjectComparisonSubject {
     official: SubjectComparisonSourceSummary & { class: 'official-v0' };
     derived: SubjectComparisonSourceSummary & { class: 'derived-s7' };
   };
+  /**
+   * The complete statistics result is additive to the original headline
+   * stats. Keeping it nested preserves the compact comparison fields while
+   * making formula, coverage, and degraded-state details available to Agents
+   * and renderers.
+   */
+  statistics?: SubjectStatsIntelligenceResult;
   evidence: SubjectOverviewEvidence[];
   warnings: SubjectOverviewWarning[];
   limitations: string[];
@@ -174,6 +187,7 @@ export interface SubjectComparisonResult {
   subjects: [SubjectComparisonSubject, SubjectComparisonSubject];
   metrics: SubjectComparisonMetric[];
   formulaVersion: 'subject-comparison-v2';
+  statisticsFormulaVersion?: 'subject-comparison-statistics-v1';
   overlapFormulaVersion: 'subject-comparison-overlap-v1';
   overlaps: {
     cast: SubjectComparisonCastOverlap;
