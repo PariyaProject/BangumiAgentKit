@@ -129,6 +129,7 @@ function buildClient(
     subjectScoreOverrides?: Record<number, number>;
     failPath?: string;
     malformedPath?: string;
+    duplicateCreditRows?: boolean;
     missingActorIdSubject?: number;
     missingStaffIdSubject?: number;
   } = {},
@@ -176,17 +177,21 @@ function buildClient(
         const data = characters(subjectId).map((item) => ({
           ...item,
           actors: item.actors.map((actor, index) =>
-            options.missingActorIdSubject === subjectId && index === 0
+            options.missingActorIdSubject === subjectId && actor.id === 900
               ? { ...actor, id: 0 }
               : actor,
           ),
         }));
+        if (options.duplicateCreditRows && data[0]) {
+          data[0] = { ...data[0], actors: [...data[0].actors, data[0].actors[0]!] };
+        }
         return new Response(JSON.stringify(data), { status: 200 });
       }
       if (endpoint === 'persons') {
         const data = persons(subjectId).map((item, index) =>
           options.missingStaffIdSubject === subjectId && index === 0 ? { ...item, id: 0 } : item,
         );
+        if (options.duplicateCreditRows && data[0]) data.push({ ...data[0] });
         return new Response(JSON.stringify(data), { status: 200 });
       }
       if (endpoint === 'subjects') {
@@ -578,7 +583,7 @@ describe('Subject comparison semantic contract', () => {
   });
 
   it('computes bounded cast and staff overlap by stable person ID with raw credit labels', async () => {
-    const result = (await getTool(buildClient().client).execute(
+    const result = (await getTool(buildClient({ duplicateCreditRows: true }).client).execute(
       { subjectIds: [123, 456] },
       context,
       { providerRegistry: buildProviderRegistry() },
@@ -604,6 +609,7 @@ describe('Subject comparison semantic contract', () => {
         },
       ],
     });
+    expect(result.overlaps.cast.items[0]?.credits[0]?.characters).toHaveLength(1);
     expect(result.overlaps.staff).toMatchObject({
       state: 'complete',
       coverage: { candidateIds: 3, matchedIds: 1, returned: 1 },
@@ -618,6 +624,7 @@ describe('Subject comparison semantic contract', () => {
         },
       ],
     });
+    expect(result.overlaps.staff.items[0]?.credits).toHaveLength(2);
     expect(result.evidence).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -667,7 +674,7 @@ describe('Subject comparison semantic contract', () => {
     expect(result.overlaps.cast).toMatchObject({
       state: 'partial',
       coverage: {
-        left: { missingIdRows: 2 },
+        left: { missingIdRows: 1 },
         truncated: true,
       },
     });
