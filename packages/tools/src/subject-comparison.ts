@@ -10,6 +10,7 @@ import type {
   SubjectComparisonStatsKey,
   SubjectOverviewResult,
   SubjectOverviewStatsConflict,
+  SubjectOverviewSectionState,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   getSubjectOverview,
@@ -45,6 +46,10 @@ const COMPARISON_STATS_KEYS: SubjectComparisonStatsKey[] = [
   'ratingTotal',
   'collectionTotal',
 ];
+const OVERLAP_FORMULA_VERSION = 'subject-comparison-overlap-v1' as const;
+const MAX_OVERLAP_ITEMS = 24;
+const OVERLAP_DESCRIPTION =
+  '按官方 v0 本次有界角色声优与制作人员关系中的稳定人物 ID 求交集；保留每侧角色/原始职位标签、重复关系的确定性去重、缺失 ID、section/output 截断和来源状态，不把未读取或不可用的关系解释为不存在。';
 
 function bounded(value: number | undefined, fallback: number, maximum: number): number {
   if (!Number.isFinite(value)) return fallback;
@@ -387,6 +392,323 @@ function buildMetrics(
   ];
 }
 
+type OverlapSide = 'A' | 'B';
+
+interface CastAccumulator {
+  names: Set<string>;
+  career: Set<string>;
+  credits: Map<
+    string,
+    {
+      subjectId: number;
+      characters: Map<string, { characterId?: number; name: string; relation: string }>;
+    }
+  >;
+}
+
+interface StaffAccumulator {
+  names: Set<string>;
+  career: Set<string>;
+  credits: Map<
+    string,
+    { subjectId: number; rawRelations: Set<string>; relations: Set<string>; eps: Set<string> }
+  >;
+}
+
+interface OverlapSideCoverage {
+  state: SubjectOverviewSectionState;
+  rowsObserved: number;
+  rowsReturned: number;
+  uniqueIdsReturned: number;
+  missingIdRows: number;
+  truncated: boolean;
+}
+
+interface CastSideData {
+  people: Map<number, CastAccumulator>;
+  coverage: OverlapSideCoverage;
+}
+
+interface StaffSideData {
+  people: Map<number, StaffAccumulator>;
+  coverage: OverlapSideCoverage;
+}
+
+function positiveId(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function sortedStrings(values: Iterable<string>): string[] {
+  return [...new Set([...values].filter((value) => value.length > 0))].sort((left, right) =>
+    left.localeCompare(right),
+  );
+}
+
+function overlapState(
+  left: SubjectOverviewSectionState,
+  right: SubjectOverviewSectionState,
+  missingIds: number,
+  outputTruncated: boolean,
+): SubjectOverviewSectionState {
+  if (left === 'not_computable' || right === 'not_computable') return 'not_computable';
+  if (left === 'unavailable' || right === 'unavailable') return 'unavailable';
+  if (left === 'partial' || right === 'partial' || missingIds > 0 || outputTruncated) {
+    return 'partial';
+  }
+  return 'complete';
+}
+
+function overlapSideCoverage(
+  state: SubjectOverviewSectionState,
+  rowsObserved: number,
+  rowsReturned: number,
+  uniqueIdsReturned: number,
+  missingIdRows: number,
+  truncated: boolean,
+): OverlapSideCoverage {
+  return {
+    state,
+    rowsObserved,
+    rowsReturned,
+    uniqueIdsReturned,
+    missingIdRows,
+    truncated: truncated || missingIdRows > 0,
+  };
+}
+
+function collectCastSide(overview: SubjectOverviewResult, subjectId: number): CastSideData {
+  const people = new Map<number, CastAccumulator>();
+  let missingIdRows = 0;
+  let rowsReturned = 0;
+
+  for (const item of overview.cast.items) {
+    for (const actor of item.actors) {
+      rowsReturned += 1;
+      const personId = positiveId(actor.id);
+      if (personId === undefined) {
+        missingIdRows += 1;
+        continue;
+      }
+      const person = people.get(personId) || {
+        names: new Set<string>(),
+        career: new Set<string>(),
+        credits: new Map(),
+      };
+      if (actor.name.trim()) person.names.add(actor.name.trim());
+      for (const career of actor.career) {
+        if (career.trim()) person.career.add(career.trim());
+      }
+      const creditKey = String(subjectId);
+      const credit = person.credits.get(creditKey) || {
+        subjectId,
+        characters: new Map(),
+      };
+      const characterId = positiveId(item.character.id);
+      const characterName = item.character.name.trim() || `角色 ${item.character.id}`;
+      const relation = item.relation.trim() || '未知';
+      const characterKey = `${characterId ?? ''}|${characterName}|${relation}`;
+      credit.characters.set(characterKey, { characterId, name: characterName, relation });
+      person.credits.set(creditKey, credit);
+      people.set(personId, person);
+    }
+  }
+
+  return {
+    people,
+    coverage: overlapSideCoverage(
+      overview.cast.state,
+      overview.cast.actorCoverage.observed,
+      overview.cast.actorCoverage.returned || rowsReturned,
+      people.size,
+      missingIdRows,
+      overview.cast.coverage.truncated || overview.cast.actorCoverage.truncated,
+    ),
+  };
+}
+
+function collectStaffSide(overview: SubjectOverviewResult, subjectId: number): StaffSideData {
+  const people = new Map<number, StaffAccumulator>();
+  let missingIdRows = 0;
+
+  for (const member of overview.staff.items) {
+    const personId = positiveId(member.id);
+    if (personId === undefined) {
+      missingIdRows += 1;
+      continue;
+    }
+    const person = people.get(personId) || {
+      names: new Set<string>(),
+      career: new Set<string>(),
+      credits: new Map(),
+    };
+    if (member.name.trim()) person.names.add(member.name.trim());
+    for (const career of member.career) {
+      if (career.trim()) person.career.add(career.trim());
+    }
+    const creditKey = String(subjectId);
+    const credit = person.credits.get(creditKey) || {
+      subjectId,
+      rawRelations: new Set<string>(),
+      relations: new Set<string>(),
+      eps: new Set<string>(),
+    };
+    credit.rawRelations.add(member.rawRelation ?? '');
+    credit.relations.add(member.relation.trim() || '未知');
+    if (member.eps.trim()) credit.eps.add(member.eps.trim());
+    person.credits.set(creditKey, credit);
+    people.set(personId, person);
+  }
+
+  return {
+    people,
+    coverage: overlapSideCoverage(
+      overview.staff.state,
+      overview.staff.coverage.observed,
+      overview.staff.coverage.returned,
+      people.size,
+      missingIdRows,
+      overview.staff.coverage.truncated,
+    ),
+  };
+}
+
+function castOverlap(
+  overviews: [SubjectOverviewResult, SubjectOverviewResult],
+  subjectIds: [number, number],
+) {
+  const sides = subjectIds.map((subjectId, index) =>
+    collectCastSide(overviews[index]!, subjectId),
+  ) as [CastSideData, CastSideData];
+  const commonIds = [...sides[0].people.keys()]
+    .filter((personId) => sides[1].people.has(personId))
+    .sort((left, right) => left - right);
+  const allItems = commonIds.map((personId) => {
+    const credits = sides.map((side, index) => {
+      const person = side.people.get(personId)!;
+      return {
+        side: (index === 0 ? 'A' : 'B') as OverlapSide,
+        subjectId: subjectIds[index]!,
+        characters: [...person.credits.values()]
+          .flatMap((credit) => [...credit.characters.values()])
+          .sort(
+            (left, right) =>
+              (left.characterId ?? Number.MAX_SAFE_INTEGER) -
+                (right.characterId ?? Number.MAX_SAFE_INTEGER) ||
+              left.name.localeCompare(right.name) ||
+              left.relation.localeCompare(right.relation),
+          ),
+      };
+    });
+    const names = sortedStrings(
+      sides.flatMap((side) => [...(side.people.get(personId)?.names || [])]),
+    );
+    return {
+      personId,
+      name: names[0] || `人物 ${personId}`,
+      ...(names.length > 1 ? { nameVariants: names } : {}),
+      career: sortedStrings(
+        sides.flatMap((side) => [...(side.people.get(personId)?.career || [])]),
+      ),
+      credits,
+    };
+  });
+  const missingIds = sides[0].coverage.missingIdRows + sides[1].coverage.missingIdRows;
+  const state = overlapState(
+    sides[0].coverage.state,
+    sides[1].coverage.state,
+    missingIds,
+    allItems.length > MAX_OVERLAP_ITEMS,
+  );
+  const items = allItems.slice(0, MAX_OVERLAP_ITEMS);
+  return {
+    state,
+    items,
+    coverage: {
+      state,
+      left: sides[0].coverage,
+      right: sides[1].coverage,
+      ...(state === 'unavailable' || state === 'not_computable'
+        ? {}
+        : {
+            candidateIds: new Set([...sides[0].people.keys(), ...sides[1].people.keys()]).size,
+            matchedIds: allItems.length,
+          }),
+      returned: items.length,
+      omitted: allItems.length - items.length,
+      truncated:
+        sides[0].coverage.truncated ||
+        sides[1].coverage.truncated ||
+        items.length < allItems.length,
+    },
+  };
+}
+
+function staffOverlap(
+  overviews: [SubjectOverviewResult, SubjectOverviewResult],
+  subjectIds: [number, number],
+) {
+  const sides = subjectIds.map((subjectId, index) =>
+    collectStaffSide(overviews[index]!, subjectId),
+  ) as [StaffSideData, StaffSideData];
+  const commonIds = [...sides[0].people.keys()]
+    .filter((personId) => sides[1].people.has(personId))
+    .sort((left, right) => left - right);
+  const allItems = commonIds.map((personId) => {
+    const credits = sides.map((side, index) => {
+      const person = side.people.get(personId)!;
+      const values = [...person.credits.values()][0]!;
+      return {
+        side: (index === 0 ? 'A' : 'B') as OverlapSide,
+        subjectId: subjectIds[index]!,
+        rawRelations: sortedStrings(values.rawRelations),
+        relations: sortedStrings(values.relations),
+        eps: sortedStrings(values.eps),
+      };
+    });
+    const names = sortedStrings(
+      sides.flatMap((side) => [...(side.people.get(personId)?.names || [])]),
+    );
+    return {
+      personId,
+      name: names[0] || `人物 ${personId}`,
+      ...(names.length > 1 ? { nameVariants: names } : {}),
+      career: sortedStrings(
+        sides.flatMap((side) => [...(side.people.get(personId)?.career || [])]),
+      ),
+      credits,
+    };
+  });
+  const missingIds = sides[0].coverage.missingIdRows + sides[1].coverage.missingIdRows;
+  const state = overlapState(
+    sides[0].coverage.state,
+    sides[1].coverage.state,
+    missingIds,
+    allItems.length > MAX_OVERLAP_ITEMS,
+  );
+  const items = allItems.slice(0, MAX_OVERLAP_ITEMS);
+  return {
+    state,
+    items,
+    coverage: {
+      state,
+      left: sides[0].coverage,
+      right: sides[1].coverage,
+      ...(state === 'unavailable' || state === 'not_computable'
+        ? {}
+        : {
+            candidateIds: new Set([...sides[0].people.keys(), ...sides[1].people.keys()]).size,
+            matchedIds: allItems.length,
+          }),
+      returned: items.length,
+      omitted: allItems.length - items.length,
+      truncated:
+        sides[0].coverage.truncated ||
+        sides[1].coverage.truncated ||
+        items.length < allItems.length,
+    },
+  };
+}
+
 function overallState(
   subjects: [SubjectComparisonSubject, SubjectComparisonSubject],
 ): SubjectComparisonState {
@@ -409,20 +731,30 @@ export async function getSubjectComparison(
     maxRelations: bounded(options.maxRelations, DEFAULT_LIMITS.maxRelations, 32),
   };
   const attemptedAt = new Date().toISOString();
+  const overviews: SubjectOverviewResult[] = [];
   const subjects: SubjectComparisonSubject[] = [];
   for (const subjectId of ids) {
-    subjects.push(
-      mapSubjectOverview(await getSubjectOverview(subjectId, limits, dependencies), limits),
-    );
+    const overview = await getSubjectOverview(subjectId, limits, dependencies);
+    overviews.push(overview);
+    subjects.push(mapSubjectOverview(overview, limits));
   }
+  const overviewPair = overviews as [SubjectOverviewResult, SubjectOverviewResult];
   const pair = subjects as [SubjectComparisonSubject, SubjectComparisonSubject];
   const metrics = buildMetrics(pair);
+  const overlaps = {
+    cast: castOverlap(overviewPair, ids),
+    staff: staffOverlap(overviewPair, ids),
+  };
   const subjectState = overallState(pair);
   const derivedRetrievedAt = new Date().toISOString();
   const unknownMetrics = metrics.filter((item) => item.state === 'unknown').length;
   const conflictMetrics = metrics.filter((item) => item.state === 'conflict').length;
   const state: SubjectComparisonState =
-    subjectState === 'complete' && (unknownMetrics > 0 || conflictMetrics > 0)
+    subjectState === 'complete' &&
+    (unknownMetrics > 0 ||
+      conflictMetrics > 0 ||
+      overlaps.cast.state !== 'complete' ||
+      overlaps.staff.state !== 'complete')
       ? 'partial'
       : subjectState;
   const warnings: SubjectComparisonResult['warnings'] = [];
@@ -450,6 +782,30 @@ export async function getSubjectComparison(
       message: `${conflictMetrics} 个比较字段在条目详情与统计区段之间出现冲突，差值保持不可计算。`,
     });
   }
+  for (const [kind, overlap] of [
+    ['cast', overlaps.cast] as const,
+    ['staff', overlaps.staff] as const,
+  ]) {
+    if (overlap.state !== 'complete') {
+      warnings.push({
+        code: `COMPARISON_${kind.toUpperCase()}_OVERLAP_DEGRADED`,
+        state,
+        message:
+          overlap.state === 'unavailable'
+            ? `${kind === 'cast' ? '角色声优' : '制作人员'}区段至少一侧不可用，不能把空交集解释为没有共同人物。`
+            : overlap.state === 'not_computable'
+              ? `${kind === 'cast' ? '角色声优' : '制作人员'}共同关系当前不可计算。`
+              : `${kind === 'cast' ? '角色声优' : '制作人员'}共同关系受缺失 ID 或有界截断影响，交集只代表已观察覆盖。`,
+      });
+    }
+    if (overlap.items.some((item) => (item.nameVariants?.length || 0) > 1)) {
+      warnings.push({
+        code: `COMPARISON_${kind.toUpperCase()}_OVERLAP_NAME_VARIANTS`,
+        state,
+        message: `${kind === 'cast' ? '角色声优' : '制作人员'}共同关系中存在同一稳定人物 ID 的多个官方名称，名称候选保留在 nameVariants。`,
+      });
+    }
+  }
   const evidence: SubjectComparisonResult['evidence'] = [
     ...pair.flatMap((subject) =>
       subject.evidence.map((item) => ({ ...item, subjectIds: [subject.subjectId] })),
@@ -462,10 +818,18 @@ export async function getSubjectComparison(
       formulaVersion: FORMULA_VERSION,
       description: `${DELTA_POLICY_DESCRIPTION} 差值不代表推荐或胜负。`,
     },
+    {
+      source: 'derived-s7',
+      operation: 'subject-comparison-overlap',
+      attemptedAt,
+      retrievedAt: derivedRetrievedAt,
+      formulaVersion: OVERLAP_FORMULA_VERSION,
+      description: OVERLAP_DESCRIPTION,
+    },
   ];
   const derivedComparisonSource: SubjectComparisonSourceSummary & { class: 'derived-s7' } = {
     class: 'derived-s7',
-    operations: ['subject-comparison'],
+    operations: ['subject-comparison', 'subject-comparison-overlap'],
     attemptedAt,
     retrievedAt: derivedRetrievedAt,
   };
@@ -492,7 +856,7 @@ export async function getSubjectComparison(
     metricsComplete: metrics.filter((item) => item.state === 'complete').length,
     metricsUnknown: unknownMetrics,
     metricsConflict: conflictMetrics,
-    limits: { maxSubjects: 2, ...limits },
+    limits: { maxSubjects: 2, ...limits, maxOverlapItems: MAX_OVERLAP_ITEMS },
   };
   return {
     subjectIds: ids,
@@ -500,6 +864,8 @@ export async function getSubjectComparison(
     subjects: pair,
     metrics,
     formulaVersion: FORMULA_VERSION,
+    overlapFormulaVersion: OVERLAP_FORMULA_VERSION,
+    overlaps,
     coverage,
     source,
     evidence,
@@ -508,6 +874,7 @@ export async function getSubjectComparison(
       '比较只覆盖两个条目本次官方 v0 概览读取与有界区段；缺失或截断不代表不存在。',
       `${DELTA_POLICY_DESCRIPTION} 不等同于推荐、质量结论或观看顺序。`,
       '统计是当前官方快照；本能力不计算历史趋势、社区热度、评论、偏好或 episode-row 级比较。',
+      `${OVERLAP_DESCRIPTION} 共同人物只代表两侧本次返回的角色/职员关系，不是完整演职员表或系列协作图。`,
     ],
   };
 }

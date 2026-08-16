@@ -89,6 +89,26 @@ function subjectTitle(subject: SubjectComparisonViewModel['subjects'][number]): 
   return subject.subject?.nameCn || subject.subject?.name || `条目 ${subject.subjectId}`;
 }
 
+function overlapStateLabel(state: string): string {
+  return (
+    (
+      {
+        complete: '可计算',
+        partial: '部分覆盖',
+        unavailable: '不可用',
+        not_computable: '不可计算',
+      } as Record<string, string>
+    )[state] || state
+  );
+}
+
+function overlapCoverageLabel(
+  coverage: SubjectComparisonViewModel['overlaps']['cast']['coverage'],
+): string {
+  const matched = coverage.matchedIds === undefined ? '未知' : coverage.matchedIds;
+  return `A 行 ${coverage.left.rowsReturned}/${coverage.left.rowsObserved} · B 行 ${coverage.right.rowsReturned}/${coverage.right.rowsObserved} · 共同 ID ${matched} · 返回 ${coverage.returned} · 省略 ${coverage.omitted}`;
+}
+
 export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
   viewModel,
   theme,
@@ -264,10 +284,110 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
           `未知 ${viewModel.coverage.metricsUnknown} · 冲突 ${viewModel.coverage.metricsConflict}`,
           `条目身份已读取 ${viewModel.coverage.returnedSubjects}/${viewModel.coverage.requestedSubjects}`,
           `条目状态完整 ${viewModel.coverage.subjectsComplete} · 部分 ${viewModel.coverage.subjectsPartial} · 不可用 ${viewModel.coverage.subjectsUnavailable} · 未找到 ${viewModel.coverage.subjectsNotFound}`,
-          `上限：条目 ${viewModel.coverage.limits.maxSubjects} · 角色 ${viewModel.coverage.limits.maxCast} · 职员 ${viewModel.coverage.limits.maxStaff} · 关联 ${viewModel.coverage.limits.maxRelations}`,
+          `上限：条目 ${viewModel.coverage.limits.maxSubjects} · 角色 ${viewModel.coverage.limits.maxCast} · 职员 ${viewModel.coverage.limits.maxStaff} · 关联 ${viewModel.coverage.limits.maxRelations} · 共同人物 ${viewModel.coverage.limits.maxOverlapItems}`,
           `公式 ${viewModel.formulaVersion}`,
         ]}
       />
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: theme.spacing.sm,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.md,
+          backgroundColor: theme.surfaceAlt,
+        }}
+      >
+        <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
+          共同角色与制作人员
+        </div>
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          共同人物按两侧本次有界官方关系中的稳定 ID 求交集；省略、缺失 ID
+          或不可用区段不等于没有共同人物。
+        </div>
+        {(
+          [
+            ['cast', '共同声优', viewModel.overlaps.cast],
+            ['staff', '共同制作人员', viewModel.overlaps.staff],
+          ] as const
+        ).map(([kind, title, overlap]) => {
+          const visible = overlap.items.slice(0, 12);
+          const omitted = Math.max(0, overlap.items.length - visible.length);
+          return (
+            <section key={kind} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ color: theme.text, fontSize: '12px', fontWeight: 700 }}>
+                {title} · {overlapStateLabel(overlap.state)}
+              </div>
+              <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+                {overlapCoverageLabel(overlap.coverage)}
+                {overlap.coverage.left.missingIdRows + overlap.coverage.right.missingIdRows > 0
+                  ? ` · 缺失 ID ${overlap.coverage.left.missingIdRows + overlap.coverage.right.missingIdRows}`
+                  : ''}
+                {overlap.coverage.truncated ? ' · 交集仅代表已观察覆盖' : ''}
+              </div>
+              {visible.length === 0 ? (
+                <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+                  {overlap.state === 'complete'
+                    ? '本次完整观察中没有共同人物。'
+                    : '当前不能从可用区段确认共同人物。'}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {visible.map((person) => {
+                    const credits = person.credits
+                      .map((credit) => {
+                        if (kind === 'cast') {
+                          const castCredit =
+                            credit as (typeof viewModel.overlaps.cast.items)[number]['credits'][number];
+                          return `${credit.side}：${
+                            castCredit.characters
+                              .map((character) => `${character.name}（${character.relation}）`)
+                              .join('、') || '角色未知'
+                          }`;
+                        }
+                        const staffCredit =
+                          credit as (typeof viewModel.overlaps.staff.items)[number]['credits'][number];
+                        const labels = staffCredit.rawRelations.filter(Boolean);
+                        return `${credit.side}：${labels.join('、') || staffCredit.relations.join('、') || '职位未知'}`;
+                      })
+                      .join('；');
+                    return (
+                      <div
+                        key={`${kind}-${person.personId}`}
+                        style={{
+                          color: theme.text,
+                          fontSize: '11px',
+                          lineHeight: 1.45,
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        <span style={{ color: theme.accent, fontWeight: 700 }}>{person.name}</span>{' '}
+                        <span style={{ color: theme.textMuted }}>
+                          ID {person.personId}
+                          {person.career.length ? ` · ${person.career.join('、')}` : ''} · {credits}
+                          {person.nameVariants && person.nameVariants.length > 1
+                            ? ` · 名称候选：${person.nameVariants.join('、')}`
+                            : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {overlap.coverage.omitted + omitted > 0 ? (
+                <div style={{ color: theme.warning, fontSize: '11px' }}>
+                  另有 {overlap.coverage.omitted + omitted} 个共同人物未展开。
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+        <div style={{ color: theme.textMuted, fontSize: '10px' }}>
+          共同关系公式：{viewModel.overlapFormulaVersion}
+        </div>
+      </div>
 
       {viewModel.coverage.omittedMetrics > 0 ? (
         <div style={{ color: theme.warning, fontSize: '11px' }}>

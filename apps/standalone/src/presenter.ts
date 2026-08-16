@@ -582,6 +582,79 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
   if (metrics.length > 12)
     lines.push(`另有 ${humanField(metrics.length - 12, 32)} 个比较字段未展开。`);
 
+  const overlaps = comparisonRecord(value.overlaps);
+  if (overlaps) {
+    lines.push('共同角色与制作人员：');
+    for (const [kind, label] of [
+      ['cast', '共同声优'],
+      ['staff', '共同制作人员'],
+    ] as const) {
+      const overlap = comparisonRecord(overlaps[kind]);
+      if (!overlap) continue;
+      const overlapCoverage = comparisonRecord(overlap.coverage);
+      const leftCoverage = comparisonRecord(overlapCoverage?.left);
+      const rightCoverage = comparisonRecord(overlapCoverage?.right);
+      lines.push(
+        `- ${label} · 状态 ${comparisonStateLabel(overlap.state)} · A 行 ${humanField(leftCoverage?.rowsReturned ?? '?', 32)}/${humanField(leftCoverage?.rowsObserved ?? '?', 32)} · B 行 ${humanField(rightCoverage?.rowsReturned ?? '?', 32)}/${humanField(rightCoverage?.rowsObserved ?? '?', 32)} · 共同 ID ${humanField(overlapCoverage?.matchedIds ?? '未知', 32)} · 返回 ${humanField(overlapCoverage?.returned ?? '?', 32)} · 省略 ${humanField(overlapCoverage?.omitted ?? '?', 32)}`,
+      );
+      const items = Array.isArray(overlap.items) ? overlap.items : [];
+      for (const rawItem of items.slice(0, 12)) {
+        const item = comparisonRecord(rawItem);
+        if (!item) continue;
+        const credits = Array.isArray(item.credits)
+          ? item.credits
+              .map(comparisonRecord)
+              .filter((credit): credit is Record<string, unknown> => Boolean(credit))
+              .map((credit) => {
+                if (kind === 'cast') {
+                  const characters = Array.isArray(credit.characters)
+                    ? credit.characters
+                        .map(comparisonRecord)
+                        .filter((character): character is Record<string, unknown> =>
+                          Boolean(character),
+                        )
+                        .map(
+                          (character) =>
+                            `${humanField(character.name || '角色未知', 96)}（${humanField(character.relation || '未知', 48)}）`,
+                        )
+                        .join('、')
+                    : '角色未知';
+                  return `${credit.side || '?'}：${characters}`;
+                }
+                const rawRelations = Array.isArray(credit.rawRelations)
+                  ? credit.rawRelations.filter(
+                      (relation): relation is string =>
+                        typeof relation === 'string' && relation.length > 0,
+                    )
+                  : [];
+                const relations = Array.isArray(credit.relations)
+                  ? credit.relations.filter(
+                      (relation): relation is string =>
+                        typeof relation === 'string' && relation.length > 0,
+                    )
+                  : [];
+                return `${credit.side || '?'}：${rawRelations.concat(rawRelations.length > 0 ? [] : relations).join('、') || '职位未知'}`;
+              })
+              .join('；')
+          : '共同关系未知';
+        const variants = Array.isArray(item.nameVariants)
+          ? ` · 名称候选 ${item.nameVariants.map((variant) => humanField(variant, 96)).join('、')}`
+          : '';
+        lines.push(
+          `  ${humanField(item.name || `人物 ${item.personId || '?'}`, 180)} · ID ${humanField(item.personId ?? '?', 32)}${item.career && Array.isArray(item.career) ? ` · ${item.career.map((career) => humanField(career, 48)).join('、')}` : ''} · ${credits}${variants}`,
+        );
+      }
+      if (items.length > 12)
+        lines.push(`  另有 ${humanField(items.length - 12, 32)} 个共同人物未展开。`);
+      if (overlapCoverage?.truncated) {
+        lines.push('  说明：交集仅代表已观察覆盖，未读取或缺失关系不等于没有共同人物。');
+      }
+    }
+    if (overlaps.cast || overlaps.staff) {
+      lines.push(`共同关系公式：${humanField(value.overlapFormulaVersion || '未知', 64)}`);
+    }
+  }
+
   if (coverage) {
     lines.push(
       `组合覆盖：身份已读取 ${humanField(coverage.returnedSubjects ?? '?', 32)}/${humanField(coverage.requestedSubjects ?? '?', 32)} · 完整 ${humanField(coverage.subjectsComplete ?? '?', 32)} · 部分 ${humanField(coverage.subjectsPartial ?? '?', 32)} · 不可用 ${humanField(coverage.subjectsUnavailable ?? '?', 32)} · 未找到 ${humanField(coverage.subjectsNotFound ?? '?', 32)}`,
@@ -589,7 +662,7 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
     const limits = comparisonRecord(coverage.limits);
     if (limits) {
       lines.push(
-        `组合上限：条目 ${humanField(limits.maxSubjects ?? '?', 32)} · 角色 ${humanField(limits.maxCast ?? '?', 32)} · 职员 ${humanField(limits.maxStaff ?? '?', 32)} · 关联 ${humanField(limits.maxRelations ?? '?', 32)}`,
+        `组合上限：条目 ${humanField(limits.maxSubjects ?? '?', 32)} · 角色 ${humanField(limits.maxCast ?? '?', 32)} · 职员 ${humanField(limits.maxStaff ?? '?', 32)} · 关联 ${humanField(limits.maxRelations ?? '?', 32)} · 共同人物 ${humanField(limits.maxOverlapItems ?? '?', 32)}`,
       );
     }
   }

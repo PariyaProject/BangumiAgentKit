@@ -155,7 +155,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getSubjectComparisonTool = defineTool({
     name: 'bangumi.get_subject_comparison',
     description:
-      '并列比较两个已知 Bangumi 条目的证据型官方事实：身份、日期、平台、报告话数、评分、排名、评分人数、收藏总数和各区段覆盖。只接受两个不同条目 ID；差值按输入顺序计算，不生成推荐或胜负结论，缺失/partial/unavailable/not_found 状态和来源限制会保留。',
+      '并列比较两个已知 Bangumi 条目的证据型官方事实：身份、日期、平台、报告话数、评分、排名、评分人数、收藏总数、共享声优/制作人员和各区段覆盖。共享人物按两侧本次有界官方 v0 关系中的稳定 ID 求交集，保留角色与原始职位标签、缺失 ID、截断和不可用状态；差值按输入顺序计算，不生成推荐或胜负结论，缺失/partial/unavailable/not_found 状态和来源限制会保留。',
     input: z
       .object({
         subjectIds: z

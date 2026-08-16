@@ -70,7 +70,10 @@ const characters = (subjectId: number) => [
     name: `角色 ${subjectId} A`,
     type: 1,
     relation: '主角',
-    actors: [{ id: subjectId + 10, name: `声优 ${subjectId} A`, career: ['seiyu'], images: {} }],
+    actors: [
+      { id: 900, name: '共同声优', career: ['seiyu'], images: {} },
+      { id: subjectId + 10, name: `声优 ${subjectId} A`, career: ['seiyu'], images: {} },
+    ],
   },
   {
     id: subjectId + 2,
@@ -83,8 +86,8 @@ const characters = (subjectId: number) => [
 
 const persons = (subjectId: number) => [
   {
-    id: subjectId + 30,
-    name: `职员 ${subjectId} A`,
+    id: 901,
+    name: '共同制作人员',
     type: 1,
     career: ['director'],
     relation: '导演',
@@ -126,6 +129,9 @@ function buildClient(
     subjectScoreOverrides?: Record<number, number>;
     failPath?: string;
     malformedPath?: string;
+    duplicateCreditRows?: boolean;
+    missingActorIdSubject?: number;
+    missingStaffIdSubject?: number;
   } = {},
 ) {
   const requests: string[] = [];
@@ -168,10 +174,25 @@ function buildClient(
           { status: 200 },
         );
       if (endpoint === 'characters') {
-        return new Response(JSON.stringify(characters(subjectId)), { status: 200 });
+        const data = characters(subjectId).map((item) => ({
+          ...item,
+          actors: item.actors.map((actor) =>
+            options.missingActorIdSubject === subjectId && actor.id === 900
+              ? { ...actor, id: 0 }
+              : actor,
+          ),
+        }));
+        if (options.duplicateCreditRows && data[0]) {
+          data[0] = { ...data[0], actors: [...data[0].actors, data[0].actors[0]!] };
+        }
+        return new Response(JSON.stringify(data), { status: 200 });
       }
       if (endpoint === 'persons') {
-        return new Response(JSON.stringify(persons(subjectId)), { status: 200 });
+        const data = persons(subjectId).map((item, index) =>
+          options.missingStaffIdSubject === subjectId && index === 0 ? { ...item, id: 0 } : item,
+        );
+        if (options.duplicateCreditRows && data[0]) data.push({ ...data[0] });
+        return new Response(JSON.stringify(data), { status: 200 });
       }
       if (endpoint === 'subjects') {
         return new Response(JSON.stringify(relations(subjectId)), { status: 200 });
@@ -557,6 +578,110 @@ describe('Subject comparison semantic contract', () => {
     expect(result.evidence).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'derived-s7', operation: 'subject-comparison' }),
+      ]),
+    );
+  });
+
+  it('computes bounded cast and staff overlap by stable person ID with raw credit labels', async () => {
+    const result = (await getTool(buildClient({ duplicateCreditRows: true }).client).execute(
+      { subjectIds: [123, 456] },
+      context,
+      { providerRegistry: buildProviderRegistry() },
+    )) as SubjectComparisonResult;
+
+    expect(result.overlapFormulaVersion).toBe('subject-comparison-overlap-v1');
+    expect(result.overlaps.cast).toMatchObject({
+      state: 'complete',
+      coverage: {
+        candidateIds: 5,
+        matchedIds: 1,
+        returned: 1,
+        omitted: 0,
+      },
+      items: [
+        {
+          personId: 900,
+          name: '共同声优',
+          credits: [
+            { side: 'A', characters: [{ name: '角色 123 A', relation: '主角' }] },
+            { side: 'B', characters: [{ name: '角色 456 A', relation: '主角' }] },
+          ],
+        },
+      ],
+    });
+    expect(result.overlaps.cast.items[0]?.credits[0]?.characters).toHaveLength(1);
+    expect(result.overlaps.staff).toMatchObject({
+      state: 'complete',
+      coverage: { candidateIds: 3, matchedIds: 1, returned: 1 },
+      items: [
+        {
+          personId: 901,
+          name: '共同制作人员',
+          credits: [
+            { side: 'A', rawRelations: ['导演'], relations: ['导演'] },
+            { side: 'B', rawRelations: ['导演'], relations: ['导演'] },
+          ],
+        },
+      ],
+    });
+    expect(result.overlaps.staff.items[0]?.credits).toHaveLength(2);
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'derived-s7',
+          operation: 'subject-comparison-overlap',
+          formulaVersion: 'subject-comparison-overlap-v1',
+        }),
+      ]),
+    );
+  });
+
+  it('marks overlap partial for caps and unavailable when one credit source fails', async () => {
+    const capped = (await getTool(buildClient().client).execute(
+      { subjectIds: [123, 456], maxCast: 1, maxStaff: 1 },
+      context,
+      { providerRegistry: buildProviderRegistry() },
+    )) as SubjectComparisonResult;
+    expect(capped.overlaps.cast.state).toBe('partial');
+    expect(capped.overlaps.cast.coverage.truncated).toBe(true);
+    expect(capped.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'COMPARISON_CAST_OVERLAP_DEGRADED' }),
+      ]),
+    );
+
+    const unavailable = (await getTool(
+      buildClient({ failPath: '/v0/subjects/456/characters' }).client,
+    ).execute({ subjectIds: [123, 456] }, context, {
+      providerRegistry: buildProviderRegistry(),
+    })) as SubjectComparisonResult;
+    expect(unavailable.overlaps.cast).toMatchObject({ state: 'unavailable', items: [] });
+    expect(unavailable.overlaps.cast.coverage.matchedIds).toBeUndefined();
+    expect(unavailable.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'COMPARISON_CAST_OVERLAP_DEGRADED' }),
+      ]),
+    );
+  });
+
+  it('does not treat a missing person ID as a clean empty intersection', async () => {
+    const result = (await getTool(buildClient({ missingActorIdSubject: 123 }).client).execute(
+      { subjectIds: [123, 456] },
+      context,
+      { providerRegistry: buildProviderRegistry() },
+    )) as SubjectComparisonResult;
+
+    expect(result.overlaps.cast).toMatchObject({
+      state: 'partial',
+      coverage: {
+        left: { missingIdRows: 1 },
+        truncated: true,
+      },
+    });
+    expect(result.overlaps.cast.items).toEqual([]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'COMPARISON_CAST_OVERLAP_DEGRADED' }),
       ]),
     );
   });

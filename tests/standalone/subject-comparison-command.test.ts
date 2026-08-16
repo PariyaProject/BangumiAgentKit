@@ -221,7 +221,72 @@ describe('Standalone subject comparison commands', () => {
         metricsComplete: 1,
         metricsUnknown: 1,
         metricsConflict: 0,
-        limits: { maxSubjects: 2, maxCast: 4, maxStaff: 12, maxRelations: 8 },
+        limits: { maxSubjects: 2, maxCast: 4, maxStaff: 12, maxRelations: 8, maxOverlapItems: 24 },
+      },
+      overlapFormulaVersion: 'subject-comparison-overlap-v1',
+      overlaps: {
+        cast: {
+          state: 'partial',
+          items: [
+            {
+              personId: 900,
+              name: '共同声优',
+              career: ['seiyu'],
+              credits: [
+                { side: 'A', subjectId: 123, characters: [{ name: '甲角色', relation: '主角' }] },
+                { side: 'B', subjectId: 456, characters: [{ name: '乙角色', relation: '配角' }] },
+              ],
+            },
+          ],
+          coverage: {
+            state: 'partial',
+            left: {
+              state: 'partial',
+              rowsObserved: 4,
+              rowsReturned: 4,
+              uniqueIdsReturned: 2,
+              missingIdRows: 0,
+              truncated: true,
+            },
+            right: {
+              state: 'complete',
+              rowsObserved: 3,
+              rowsReturned: 3,
+              uniqueIdsReturned: 2,
+              missingIdRows: 0,
+              truncated: false,
+            },
+            returned: 1,
+            omitted: 0,
+            truncated: true,
+          },
+        },
+        staff: {
+          state: 'unavailable',
+          items: [],
+          coverage: {
+            state: 'unavailable',
+            left: {
+              state: 'complete',
+              rowsObserved: 1,
+              rowsReturned: 1,
+              uniqueIdsReturned: 1,
+              missingIdRows: 0,
+              truncated: false,
+            },
+            right: {
+              state: 'unavailable',
+              rowsObserved: 0,
+              rowsReturned: 0,
+              uniqueIdsReturned: 0,
+              missingIdRows: 0,
+              truncated: false,
+            },
+            returned: 0,
+            omitted: 0,
+            truncated: false,
+          },
+        },
       },
       source: {
         official: {
@@ -253,6 +318,8 @@ describe('Standalone subject comparison commands', () => {
     expect(human).toContain('UPSTREAM_NOT_FOUND');
     expect(human).toContain('official-v0');
     expect(human).toContain('derived-s7');
+    expect(human).toContain('共同声优');
+    expect(human).toContain('共同关系公式：subject-comparison-overlap-v1');
     expect(human).toContain('不生成推荐或胜负结论');
     expect(human.split('\n').length).toBeLessThanOrEqual(80);
     expect(Buffer.byteLength(human, 'utf8')).toBeLessThanOrEqual(24_000);

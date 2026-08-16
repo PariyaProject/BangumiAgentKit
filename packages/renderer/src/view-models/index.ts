@@ -857,6 +857,8 @@ export interface SubjectComparisonViewModel {
   subjects: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['subjects'];
   metrics: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['metrics'];
   formulaVersion: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['formulaVersion'];
+  overlapFormulaVersion: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['overlapFormulaVersion'];
+  overlaps: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['overlaps'];
   coverage: import('@bangumi-agent-kit/bangumi-core').SubjectComparisonResult['coverage'] & {
     renderedMetrics: number;
     omittedMetrics: number;
