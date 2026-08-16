@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
-import { createReadTools, type ToolDefinition } from '@bangumi-agent-kit/tools';
+import { createReadTools, ToolRegistry, type ToolDefinition } from '@bangumi-agent-kit/tools';
+import { MemoryStorage } from '@bangumi-agent-kit/db';
 
 const context = {
   principalId: 'collection-reader',
@@ -255,6 +256,18 @@ describe('collection read parity tools', () => {
     expect(episodeTool.input.safeParse({ subjectId: 0 }).success).toBe(false);
     expect(episodeTool.input.safeParse({ subjectId: 1, offset: 1_000_001 }).success).toBe(false);
     await expect(characterTool.execute({}, context)).rejects.toThrow('AUTH_REQUIRED');
+    expect(fetchFn).not.toHaveBeenCalled();
+
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: client,
+    });
+    await expect(
+      registry.executeTool('bangumi.list_character_collections', { maxItems: 51 }, context),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(
+      registry.executeTool('bangumi.get_episode_collections', { subjectId: 0 }, context),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(fetchFn).not.toHaveBeenCalled();
   });
 });
