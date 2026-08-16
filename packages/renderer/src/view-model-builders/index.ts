@@ -603,6 +603,8 @@ export function buildSubjectComparisonViewModel(
     subjects: result.subjects,
     metrics,
     formulaVersion: result.formulaVersion,
+    overlapFormulaVersion: result.overlapFormulaVersion,
+    overlaps: result.overlaps,
     coverage: {
       ...result.coverage,
       renderedMetrics: metrics.length,

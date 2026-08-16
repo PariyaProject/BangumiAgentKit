@@ -102,12 +102,83 @@ export interface SubjectComparisonMetric {
   >;
 }
 
+export interface SubjectComparisonOverlapSideCoverage {
+  state: SubjectOverviewSectionState;
+  rowsObserved: number;
+  rowsReturned: number;
+  uniqueIdsReturned: number;
+  missingIdRows: number;
+  truncated: boolean;
+}
+
+export interface SubjectComparisonOverlapCoverage {
+  state: SubjectOverviewSectionState;
+  left: SubjectComparisonOverlapSideCoverage;
+  right: SubjectComparisonOverlapSideCoverage;
+  candidateIds?: number;
+  matchedIds?: number;
+  returned: number;
+  omitted: number;
+  truncated: boolean;
+}
+
+export interface SubjectComparisonCastOverlapCredit {
+  side: 'A' | 'B';
+  subjectId: number;
+  characters: Array<{
+    characterId?: number;
+    name: string;
+    relation: string;
+  }>;
+}
+
+export interface SubjectComparisonCastOverlapItem {
+  personId: number;
+  name: string;
+  nameVariants?: string[];
+  career: string[];
+  credits: SubjectComparisonCastOverlapCredit[];
+}
+
+export interface SubjectComparisonStaffOverlapCredit {
+  side: 'A' | 'B';
+  subjectId: number;
+  rawRelations: string[];
+  relations: string[];
+  eps: string[];
+}
+
+export interface SubjectComparisonStaffOverlapItem {
+  personId: number;
+  name: string;
+  nameVariants?: string[];
+  career: string[];
+  credits: SubjectComparisonStaffOverlapCredit[];
+}
+
+export interface SubjectComparisonCastOverlap {
+  state: SubjectOverviewSectionState;
+  items: SubjectComparisonCastOverlapItem[];
+  coverage: SubjectComparisonOverlapCoverage;
+}
+
+export interface SubjectComparisonStaffOverlap {
+  state: SubjectOverviewSectionState;
+  items: SubjectComparisonStaffOverlapItem[];
+  coverage: SubjectComparisonOverlapCoverage;
+}
+
 export interface SubjectComparisonResult {
   subjectIds: [number, number];
   state: SubjectComparisonState;
   subjects: [SubjectComparisonSubject, SubjectComparisonSubject];
   metrics: SubjectComparisonMetric[];
   formulaVersion: 'subject-comparison-v2';
+  overlapFormulaVersion: 'subject-comparison-overlap-v1';
+  overlaps: {
+    cast: SubjectComparisonCastOverlap;
+    staff: SubjectComparisonStaffOverlap;
+  };
   coverage: {
     requestedSubjects: 2;
     returnedSubjects: number;
@@ -123,6 +194,7 @@ export interface SubjectComparisonResult {
       maxCast: number;
       maxStaff: number;
       maxRelations: number;
+      maxOverlapItems: number;
     };
   };
   source: {

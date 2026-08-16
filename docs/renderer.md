@@ -71,7 +71,11 @@ official-v0 and derived-s7 source channels remain separate. Score deltas use one
 place; episode, rank, and count deltas use integer precision. Unknown, partial,
 unavailable, conflict, and capped values remain explicit, including both conflict
 candidates; the card never labels a winner or recommendation and does not fetch network
-assets.
+assets. It also shows shared voice actors and production staff by stable person ID,
+preserving the two sides' character names and raw role labels. Shared-person sections
+remain explicitly partial or unavailable when either bounded credit source is incomplete;
+an empty complete intersection is the only state that supports a “no overlap observed”
+reading.
 
 `subject-stats` is an image-free, read-only companion card for
 `bangumi.get_subject_stats_intelligence`. It keeps the official v0 rating

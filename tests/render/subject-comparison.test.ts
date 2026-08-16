@@ -178,6 +178,81 @@ const result: SubjectComparisonResult = {
     },
   ],
   formulaVersion: 'subject-comparison-v2',
+  overlapFormulaVersion: 'subject-comparison-overlap-v1',
+  overlaps: {
+    cast: {
+      state: 'partial',
+      items: [
+        {
+          personId: 900,
+          name: '共同声优：非常长的中文姓名用于换行',
+          career: ['seiyu'],
+          credits: [
+            {
+              side: 'A',
+              subjectId: 123,
+              characters: [{ characterId: 1, name: '甲角色', relation: '主角' }],
+            },
+            {
+              side: 'B',
+              subjectId: 456,
+              characters: [{ characterId: 2, name: '乙角色', relation: '配角' }],
+            },
+          ],
+        },
+      ],
+      coverage: {
+        state: 'partial',
+        left: {
+          state: 'partial',
+          rowsObserved: 5,
+          rowsReturned: 4,
+          uniqueIdsReturned: 3,
+          missingIdRows: 0,
+          truncated: true,
+        },
+        right: {
+          state: 'complete',
+          rowsObserved: 3,
+          rowsReturned: 3,
+          uniqueIdsReturned: 2,
+          missingIdRows: 0,
+          truncated: false,
+        },
+        candidateIds: 5,
+        matchedIds: 1,
+        returned: 1,
+        omitted: 0,
+        truncated: true,
+      },
+    },
+    staff: {
+      state: 'unavailable',
+      items: [],
+      coverage: {
+        state: 'unavailable',
+        left: {
+          state: 'complete',
+          rowsObserved: 2,
+          rowsReturned: 2,
+          uniqueIdsReturned: 2,
+          missingIdRows: 0,
+          truncated: false,
+        },
+        right: {
+          state: 'unavailable',
+          rowsObserved: 0,
+          rowsReturned: 0,
+          uniqueIdsReturned: 0,
+          missingIdRows: 0,
+          truncated: false,
+        },
+        returned: 0,
+        omitted: 0,
+        truncated: false,
+      },
+    },
+  },
   coverage: {
     requestedSubjects: 2,
     returnedSubjects: 2,
@@ -188,7 +263,7 @@ const result: SubjectComparisonResult = {
     metricsComplete: 2,
     metricsUnknown: 3,
     metricsConflict: 1,
-    limits: { maxSubjects: 2, maxCast: 4, maxStaff: 12, maxRelations: 8 },
+    limits: { maxSubjects: 2, maxCast: 4, maxStaff: 12, maxRelations: 8, maxOverlapItems: 24 },
   },
   source: {
     official: {
@@ -264,6 +339,10 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('截断 cast');
     expect(html).toContain('official-v0');
     expect(html).toContain('derived-s7');
+    expect(html).toContain('共同声优');
+    expect(html).toContain('共同声优：非常长的中文姓名');
+    expect(html).toContain('共同制作人员 · 不可用');
+    expect(html).toContain('subject-comparison-overlap-v1');
     expect(html).toContain('渲染器省略比较字段：2 条。');
     expect(html).toContain('限制：');
     expect(html).not.toContain('https://');
