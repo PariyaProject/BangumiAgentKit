@@ -128,6 +128,35 @@ Derived metrics must document:
 Historical claims require historical observations, not a single current
 snapshot.
 
+### Pre-authorized read-only frontiers
+
+Two narrow source frontiers are authorized to compete at equal priority during
+autonomous discovery. This is authority to research and, after a complete
+source contract, select a bounded read-only Product Epoch; it is not a mandate
+to implement either frontier or to weaken evidence requirements.
+
+**Official-statistics observation history** may append observations obtained
+from already approved official read APIs. History begins when collection is
+enabled: never backfill or present a current snapshot as past data. Storage must
+be append-only at the semantic boundary, reversible, retention-bounded, and
+independent of Bangumi write authority, credentials, or identity semantics.
+Every observation and derived series must preserve sample time, source
+coverage, retrieval state, retention policy, and versioned methodology.
+
+**Capability-specific public community Structured Web** may research one
+explicit user question against a documented public allowlist. It must not use
+login cookies, user tokens, broad crawling, site mirroring, or paid services.
+Raw untrusted community text must remain isolated from Agent/system context.
+The source contract must specify attribution, conservative rate and fan-out
+limits, caching, retained fields, content/untrusted-data handling, failure
+isolation, robots/terms evidence, and the exact claim the source can support.
+Normal Product implementation begins only after that contract establishes a
+safe bounded source.
+
+These frontiers do not authorize external writes, private-data expansion,
+destructive migrations, broad HTML/Structured Web enablement, or publication.
+All other protected boundaries remain human-only.
+
 ## Derived intelligence
 
 Where reliable source data allows deterministic analysis, explore value beyond
@@ -220,10 +249,11 @@ contracts.
 
 Human authorization is required before changes to authentication trust,
 principal/authorization semantics, write confirmation, tokens/cookies or
-credentials, SSRF protections, broad Structured Web/HTML enablement, aggressive
-crawling, destructive/write authority, breaking public contracts, irreversible
-semantic migrations, paid external services, licensing/legal policy, packages,
-releases, or tags.
+credentials, SSRF protections, Structured Web/HTML outside the narrow
+pre-authorized source-contract process above, aggressive crawling,
+destructive/write authority, breaking public contracts, irreversible semantic
+migrations, paid external services, licensing/legal policy, packages, releases,
+or tags.
 
 Writes remain conservative: trusted identity, server-side confirmation, exact
 payload binding, auditability, and no model-manufactured authorization.

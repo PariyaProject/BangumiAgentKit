@@ -27,6 +27,8 @@ context, not runtime authority.
   governed exhausted-budget Luna final-corrective gate.
 - Product runtime state lives in one Outer Run GitHub Issue and one Epoch
   GitHub PR, never in tracked repository runtime files.
+- Autonomous Goal entry runs `pnpm harness discovery:check` before `run:start`;
+  unchanged exhaustion creates no Run Issue and spends no Sol.
 - Never use Git worktrees.
 
 These are entry-point reminders, not a second execution policy. Definitions,

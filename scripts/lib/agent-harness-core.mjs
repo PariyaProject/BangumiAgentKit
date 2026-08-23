@@ -4,6 +4,8 @@ export const EPOCH_MARKER = 'bangumi-harness:v3:epoch';
 export const DEFAULT_INTEGRATION = 'AUTO_MERGE_AFTER_PASS';
 export const MAX_EPOCH_REVIEWS = 2;
 export const MAX_OUTER_REVIEWS = 4;
+export const DISCOVERY_POLICY_VERSION = 'harness-v3.1-frontier-v1';
+export const DISCOVERY_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const NO_OPPORTUNITY_STOP = 'STOPPED_NO_VALUABLE_INDEPENDENT_SAFE_OPPORTUNITY';
 export const DISCOVERY_LANES = [
   'recorded_product_opportunities',
@@ -21,6 +23,22 @@ const DISCOVERY_REJECTION_DISPOSITIONS = new Set([
   'NOT_INDEPENDENT_OF_PARKED_WORK',
   'LOW_USER_OR_AGENT_VALUE',
 ]);
+
+const DISCOVERY_FRONTIER_OUTCOMES = new Set(['IMPLEMENTATION_READY', 'RESEARCH_READY']);
+const DISCOVERY_SALVAGE_OUTCOMES = new Set([...DISCOVERY_FRONTIER_OUTCOMES, 'NO_SAFE_VARIANT']);
+const SOURCE_RESEARCH_STATES = new Set([
+  'NOT_REQUIRED',
+  'RESEARCH_REQUIRED',
+  'CLOSED_NO_SAFE_SOURCE',
+]);
+const GENERIC_DISCOVERY_TEXT = [
+  /^no changes\.?$/iu,
+  /^inspected current .+ evidence and representative seams\.?$/iu,
+  /^no independent safe high-value epoch remains in this lane\.?$/iu,
+  /^current contracts, tests, and source availability were inspected\.?$/iu,
+  /^would improve a real user or agent journey\.?$/iu,
+  /^the current safe implementation space is already complete or protected\.?$/iu,
+];
 
 export const LEGACY_RUNTIME_PATHS = [
   'docs/product/loop-status.md',
@@ -45,6 +63,28 @@ function requireText(value, code, field) {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new HarnessInvariantError(code, `${field} must be a non-empty string`, { field });
   }
+}
+
+function requireSpecificDiscoveryText(value, field, minimumLength = 32) {
+  requireText(value, 'DISCOVERY_EVIDENCE_REQUIRED', field);
+  const normalized = value.trim();
+  if (
+    normalized.length < minimumLength ||
+    GENERIC_DISCOVERY_TEXT.some((pattern) => pattern.test(normalized))
+  ) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_GENERIC',
+      `${field} must contain concrete, non-template discovery evidence`,
+      { field },
+    );
+  }
+}
+
+function requireTextList(value, code, field) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HarnessInvariantError(code, `${field} must be a non-empty string array`, { field });
+  }
+  value.forEach((item, index) => requireText(item, code, `${field}[${index}]`));
 }
 
 function assertLedger(ledger, label, hardMax) {
@@ -84,6 +124,7 @@ export function createRunState({
     parked_epoch_prs: [],
     last_merged_epoch_pr: null,
     discovery_exhaustion: null,
+    discovery_policy_version: DISCOVERY_POLICY_VERSION,
     next_action: nextAction,
   };
 }
@@ -219,6 +260,13 @@ export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
       'A no-opportunity stop requires structured discovery evidence',
     );
   }
+  if (evidence.policy_version !== DISCOVERY_POLICY_VERSION) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_POLICY_STALE',
+      'Discovery evidence must use the current frontier policy',
+      { expected: DISCOVERY_POLICY_VERSION, actual: evidence.policy_version },
+    );
+  }
   requireText(evidence.audited_sha, 'DISCOVERY_EVIDENCE_REQUIRED', 'audited_sha');
   if (evidence.audited_sha !== currentBaseSha) {
     throw new HarnessInvariantError(
@@ -227,6 +275,14 @@ export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
       { auditedSha: evidence.audited_sha, currentBaseSha },
     );
   }
+  const auditedAt = Date.parse(evidence.audited_at);
+  if (!Number.isFinite(auditedAt)) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      'audited_at must be a valid ISO timestamp',
+    );
+  }
+  requireSpecificDiscoveryText(evidence.discovery_delta, 'discovery_delta', 48);
   const lanes = evidence.lane_assessments;
   if (!lanes || typeof lanes !== 'object' || Array.isArray(lanes)) {
     throw new HarnessInvariantError(
@@ -234,17 +290,22 @@ export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
       'lane_assessments must cover every governed discovery lane',
     );
   }
+  const laneObservations = new Set();
+  const laneConclusions = new Set();
   for (const lane of DISCOVERY_LANES) {
     const assessment = lanes[lane];
-    requireText(
-      assessment?.observation,
-      'DISCOVERY_EVIDENCE_REQUIRED',
-      `lane_assessments.${lane}.observation`,
-    );
-    requireText(
-      assessment?.conclusion,
-      'DISCOVERY_EVIDENCE_REQUIRED',
-      `lane_assessments.${lane}.conclusion`,
+    requireSpecificDiscoveryText(assessment?.observation, `lane_assessments.${lane}.observation`);
+    requireSpecificDiscoveryText(assessment?.conclusion, `lane_assessments.${lane}.conclusion`);
+    laneObservations.add(assessment.observation.trim());
+    laneConclusions.add(assessment.conclusion.trim());
+  }
+  if (
+    laneObservations.size !== DISCOVERY_LANES.length ||
+    laneConclusions.size !== DISCOVERY_LANES.length
+  ) {
+    throw new HarnessInvariantError(
+      'DISCOVERY_EVIDENCE_GENERIC',
+      'Each discovery lane needs distinct evidence and a distinct conclusion',
     );
   }
   if (!Array.isArray(evidence.candidate_assessments) || evidence.candidate_assessments.length < 3) {
@@ -253,14 +314,31 @@ export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
       'Assess at least three concrete candidates before declaring the safe backlog exhausted',
     );
   }
+  const candidateIds = new Set();
   evidence.candidate_assessments.forEach((candidate, index) => {
-    for (const field of ['id', 'user_question', 'source_evidence', 'value_hypothesis', 'reason']) {
-      requireText(
+    for (const field of [
+      'id',
+      'user_question',
+      'source_evidence',
+      'value_hypothesis',
+      'source_and_coverage_limits',
+      'delta_since_previous_audit',
+      'reason',
+    ]) {
+      requireSpecificDiscoveryText(
         candidate?.[field],
-        'DISCOVERY_EVIDENCE_REQUIRED',
         `candidate_assessments[${index}].${field}`,
+        field === 'id' ? 3 : 32,
       );
     }
+    if (candidateIds.has(candidate.id)) {
+      throw new HarnessInvariantError(
+        'DISCOVERY_EVIDENCE_REQUIRED',
+        'Candidate ids must be unique across one discovery audit',
+        { id: candidate.id },
+      );
+    }
+    candidateIds.add(candidate.id);
     if (!DISCOVERY_LANES.includes(candidate.lane)) {
       throw new HarnessInvariantError(
         'DISCOVERY_EVIDENCE_REQUIRED',
@@ -269,13 +347,160 @@ export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
     }
     if (!DISCOVERY_REJECTION_DISPOSITIONS.has(candidate.disposition)) {
       throw new HarnessInvariantError(
+        'DISCOVERY_EVIDENCE_REQUIRED',
+        `candidate_assessments[${index}].disposition is invalid`,
+      );
+    }
+    const salvage = candidate.scope_salvage;
+    for (const field of [
+      'narrowed_user_question',
+      'output_semantics',
+      'coverage_and_negative_claim_limits',
+      'resource_bounds',
+      'rationale',
+    ]) {
+      requireSpecificDiscoveryText(
+        salvage?.[field],
+        `candidate_assessments[${index}].scope_salvage.${field}`,
+      );
+    }
+    if (!DISCOVERY_SALVAGE_OUTCOMES.has(salvage?.outcome)) {
+      throw new HarnessInvariantError(
+        'DISCOVERY_EVIDENCE_REQUIRED',
+        `candidate_assessments[${index}].scope_salvage.outcome is invalid`,
+      );
+    }
+    const research = candidate.source_contract_research;
+    if (!SOURCE_RESEARCH_STATES.has(research?.status)) {
+      throw new HarnessInvariantError(
+        'DISCOVERY_EVIDENCE_REQUIRED',
+        `candidate_assessments[${index}].source_contract_research.status is invalid`,
+      );
+    }
+    requireSpecificDiscoveryText(
+      research.next_step,
+      `candidate_assessments[${index}].source_contract_research.next_step`,
+    );
+    if (DISCOVERY_FRONTIER_OUTCOMES.has(salvage.outcome)) {
+      if (salvage.outcome === 'RESEARCH_READY' && research.status !== 'RESEARCH_REQUIRED') {
+        throw new HarnessInvariantError(
+          'DISCOVERY_EVIDENCE_REQUIRED',
+          'RESEARCH_READY requires a RESEARCH_REQUIRED source-contract state',
+          { id: candidate.id },
+        );
+      }
+      throw new HarnessInvariantError(
         'DISCOVERY_HAS_ACTIONABLE_CANDIDATE',
-        'A safe high-value candidate must become an Epoch instead of a no-opportunity stop',
-        { index, disposition: candidate.disposition },
+        'A safe narrowed or research-ready candidate must become the next frontier',
+        { id: candidate.id, outcome: salvage.outcome },
+      );
+    }
+    requireTextList(
+      research.closure_evidence,
+      'DISCOVERY_EVIDENCE_REQUIRED',
+      `candidate_assessments[${index}].source_contract_research.closure_evidence`,
+    );
+    if (research.status === 'RESEARCH_REQUIRED') {
+      throw new HarnessInvariantError(
+        'DISCOVERY_HAS_ACTIONABLE_CANDIDATE',
+        'Open source-contract research must become the next frontier',
+        { id: candidate.id },
+      );
+    }
+    if (
+      candidate.disposition === 'INSUFFICIENT_TRUSTWORTHY_DATA' &&
+      research.status !== 'CLOSED_NO_SAFE_SOURCE'
+    ) {
+      throw new HarnessInvariantError(
+        'DISCOVERY_SOURCE_RESEARCH_REQUIRED',
+        'Insufficient source data requires research or concrete closure evidence',
+        { id: candidate.id },
       );
     }
   });
   return true;
+}
+
+export function classifyDiscoveryCheck({
+  openRunNumbers = [],
+  openEpochPrNumbers = [],
+  latestRunState,
+  currentBaseSha,
+  now = Date.now(),
+}) {
+  if (openRunNumbers.length > 0 || openEpochPrNumbers.length > 0) {
+    return {
+      state: 'RESUME_ACTIVE_RUN',
+      control_plane: 'ACTIVE',
+      open_run_issues: openRunNumbers,
+      open_epoch_prs: openEpochPrNumbers,
+    };
+  }
+  const evidence = latestRunState?.discovery_exhaustion;
+  if (!evidence || evidence.policy_version !== DISCOVERY_POLICY_VERSION) {
+    return {
+      state: 'FRONTIER_RESEARCH_REQUIRED',
+      control_plane: 'IDLE',
+      reason: evidence ? 'DISCOVERY_POLICY_CHANGED' : 'NO_CURRENT_FRONTIER_AUDIT',
+    };
+  }
+  const actionable = (evidence.candidate_assessments ?? []).filter((candidate) =>
+    DISCOVERY_FRONTIER_OUTCOMES.has(candidate?.scope_salvage?.outcome),
+  );
+  if (actionable.length > 0) {
+    return {
+      state: 'FRONTIER_RESEARCH_REQUIRED',
+      control_plane: 'IDLE',
+      reason: 'ACTIONABLE_FRONTIER_RECORDED',
+      candidates: actionable.map((candidate) => candidate.id),
+    };
+  }
+  if (evidence.audited_sha !== currentBaseSha) {
+    return {
+      state: 'DISCOVERY_REQUIRED_MASTER_CHANGED',
+      control_plane: 'IDLE',
+      audited_sha: evidence.audited_sha,
+      current_sha: currentBaseSha,
+    };
+  }
+  try {
+    assertDiscoveryExhaustionEvidence(evidence, currentBaseSha);
+  } catch (error) {
+    if (!(error instanceof HarnessInvariantError)) throw error;
+    return {
+      state: 'FRONTIER_RESEARCH_REQUIRED',
+      control_plane: 'IDLE',
+      reason:
+        error.code === 'DISCOVERY_HAS_ACTIONABLE_CANDIDATE'
+          ? 'ACTIONABLE_FRONTIER_RECORDED'
+          : 'CURRENT_POLICY_AUDIT_INVALID',
+      evidence_error: error.code,
+    };
+  }
+  const auditedAt = Date.parse(evidence.audited_at);
+  if (!Number.isFinite(auditedAt)) {
+    return {
+      state: 'FRONTIER_RESEARCH_REQUIRED',
+      control_plane: 'IDLE',
+      reason: 'AUDIT_TIMESTAMP_MISSING_OR_INVALID',
+    };
+  }
+  if (now - auditedAt >= DISCOVERY_REFRESH_INTERVAL_MS) {
+    return {
+      state: 'DISCOVERY_REFRESH_DUE',
+      control_plane: 'IDLE',
+      audited_at: evidence.audited_at,
+      refresh_interval_days: 7,
+    };
+  }
+  return {
+    state: 'UNCHANGED_EXHAUSTION',
+    control_plane: 'IDLE',
+    audited_sha: evidence.audited_sha,
+    audited_at: evidence.audited_at,
+    policy_version: evidence.policy_version,
+    issue_created: false,
+  };
 }
 
 export function assertScopeClosure(scopeClosure) {

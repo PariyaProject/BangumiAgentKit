@@ -17,6 +17,7 @@ import {
   assertProductCommitHygiene,
   assertReviewReadiness,
   assertRunCanStartEpoch,
+  classifyDiscoveryCheck,
   completeMerge,
   createEpochState,
   createRunState,
@@ -234,6 +235,7 @@ function commandHelp() {
 Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
+  discovery:check [--now <ISO timestamp>]
   run:start --title <title> [--profile AUTONOMOUS_EVOLUTION] [--outer-sol-max 4]
   epoch:start --run <issue> --spec <json>
   epoch:open-pr --run <issue> --title <title>
@@ -273,6 +275,89 @@ function commandStatus(options) {
     };
   }
   print(result);
+}
+
+function commandDiscoveryCheck(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  if (currentBranch() !== 'master') {
+    throw new HarnessInvariantError(
+      'DISCOVERY_CHECK_MUST_RUN_ON_MASTER',
+      'Discovery check runs only from master',
+    );
+  }
+  const currentBaseSha = remoteBaseSha('master');
+  if (currentHead() !== currentBaseSha) {
+    throw new HarnessInvariantError(
+      'MASTER_NOT_SYNCHRONIZED',
+      'Discovery check requires master to equal origin/master',
+    );
+  }
+  const openRuns = JSON.parse(
+    gh(
+      'issue',
+      'list',
+      '--state',
+      'open',
+      '--limit',
+      '100',
+      '--json',
+      'number,title,body,state,url,createdAt,updatedAt,closedAt',
+    ),
+  ).filter((issue) => issue.body?.includes(`<!-- ${RUN_MARKER}:start -->`));
+  const openEpochPrs = JSON.parse(
+    gh(
+      'pr',
+      'list',
+      '--state',
+      'open',
+      '--limit',
+      '100',
+      '--json',
+      'number,title,body,state,url,createdAt,updatedAt',
+    ),
+  ).filter((pr) => pr.body?.includes(`<!-- ${EPOCH_MARKER}:start -->`));
+  let latestClosedRun;
+  if (openRuns.length === 0 && openEpochPrs.length === 0) {
+    const closedRuns = JSON.parse(
+      gh(
+        'issue',
+        'list',
+        '--state',
+        'closed',
+        '--limit',
+        '100',
+        '--json',
+        'number,title,body,state,url,createdAt,updatedAt,closedAt',
+      ),
+    )
+      .filter((issue) => issue.body?.includes(`<!-- ${RUN_MARKER}:start -->`))
+      .sort((left, right) =>
+        String(right.closedAt ?? right.updatedAt).localeCompare(
+          String(left.closedAt ?? left.updatedAt),
+        ),
+      );
+    latestClosedRun = closedRuns[0];
+  }
+  const rawNow = options.now ?? process.env.HARNESS_NOW;
+  const now = rawNow ? Date.parse(String(rawNow)) : Date.now();
+  if (!Number.isFinite(now)) {
+    throw new HarnessInvariantError('INVALID_TIMESTAMP', '--now must be a valid ISO timestamp');
+  }
+  const result = classifyDiscoveryCheck({
+    openRunNumbers: openRuns.map((issue) => issue.number),
+    openEpochPrNumbers: openEpochPrs.map((pr) => pr.number),
+    latestRunState: latestClosedRun
+      ? parseControlBlock(latestClosedRun.body, RUN_MARKER)
+      : undefined,
+    currentBaseSha,
+    now,
+  });
+  print({
+    ...result,
+    latest_closed_run_issue: latestClosedRun?.number ?? null,
+    current_sha: currentBaseSha,
+  });
 }
 
 function commandRunStart(options) {
@@ -892,6 +977,7 @@ function commandRunStop(options) {
 const commands = {
   help: commandHelp,
   status: commandStatus,
+  'discovery:check': commandDiscoveryCheck,
   'run:start': commandRunStart,
   'epoch:start': commandEpochStart,
   'epoch:open-pr': commandEpochOpenPr,

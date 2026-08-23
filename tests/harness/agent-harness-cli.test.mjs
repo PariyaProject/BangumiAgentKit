@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import {
   DISCOVERY_LANES,
+  DISCOVERY_POLICY_VERSION,
   EPOCH_MARKER,
   NO_OPPORTUNITY_STOP,
   RUN_MARKER,
@@ -145,34 +146,67 @@ function correctiveClosure(findingId = 'sol-2-finding-1') {
   ];
 }
 
-function discoveryEvidence(environment) {
-  const file = path.join(environment.directory, 'discovery-evidence.json');
+function makeDiscoveryEvidence(overrides = {}) {
   const laneAssessments = Object.fromEntries(
     DISCOVERY_LANES.map((lane) => [
       lane,
       {
-        observation: `Inspected current ${lane} evidence and representative seams.`,
-        conclusion: 'No independent safe high-value Epoch remains in this lane.',
+        observation: `Audit ${lane}: compared named catalog entries, implementation seams, and current coverage contracts at the audited SHA.`,
+        conclusion: `Lane ${lane} has no unassessed actionable frontier after the recorded candidate analysis.`,
       },
     ]),
   );
-  fs.writeFileSync(
-    file,
-    JSON.stringify({
-      audited_sha: sha('a'),
-      lane_assessments: laneAssessments,
-      candidate_assessments: DISCOVERY_LANES.slice(0, 3).map((lane, index) => ({
-        id: `candidate-${index + 1}`,
-        lane,
-        user_question: `Can the product improve journey ${index + 1}?`,
-        source_evidence: 'Current contracts, tests, and source availability were inspected.',
-        value_hypothesis: 'Would improve a real user or Agent journey if safely feasible.',
-        disposition: index === 0 ? 'ALREADY_DELIVERED' : 'PROTECTED_BOUNDARY',
-        reason: 'The current safe implementation space is already complete or protected.',
-      })),
-    }),
-  );
+  const candidates = DISCOVERY_LANES.slice(0, 3).map((lane, index) => ({
+    id: `candidate-${index + 1}`,
+    lane,
+    user_question: `Can the product improve the concrete journey ${index + 1}?`,
+    source_evidence: `Named source contract ${index + 1} was inspected at the audited SHA.`,
+    value_hypothesis: `The candidate could improve a concrete user or Agent journey ${index + 1}.`,
+    source_and_coverage_limits:
+      'The current source reports a bounded observation and cannot support unobserved negative claims.',
+    delta_since_previous_audit:
+      'The V3.1 scope-salvage analysis is new and was not present in the previous audit.',
+    disposition: index === 0 ? 'ALREADY_DELIVERED' : 'PROTECTED_BOUNDARY',
+    reason: 'The narrowed candidate was evaluated against current source and product contracts.',
+    scope_salvage: {
+      narrowed_user_question: `What bounded evidence can answer journey ${index + 1} without a completeness claim?`,
+      output_semantics: 'Return only source-observed facts with explicit partial state.',
+      coverage_and_negative_claim_limits:
+        'Expose observed, returned, and truncated; never interpret an absent match as nonexistence.',
+      resource_bounds: 'At most 3 pages, 100 observed rows, 12 hydrations, and concurrency 2.',
+      outcome: 'NO_SAFE_VARIANT',
+      rationale: 'After narrowing, the remaining result would duplicate an existing capability.',
+    },
+    source_contract_research: {
+      status: 'NOT_REQUIRED',
+      next_step: 'No source-contract research remains for this delivered or protected candidate.',
+      closure_evidence: ['Existing capability/source contract and regression evidence inspected.'],
+    },
+  }));
+  return {
+    policy_version: DISCOVERY_POLICY_VERSION,
+    audited_sha: sha('a'),
+    audited_at: '2026-08-10T00:00:00.000Z',
+    discovery_delta:
+      'Applied the new V3.1 scope-salvage and source-frontier policy to every candidate.',
+    lane_assessments: laneAssessments,
+    candidate_assessments: candidates,
+    ...overrides,
+  };
+}
+
+function discoveryEvidence(environment, overrides = {}) {
+  const file = path.join(environment.directory, 'discovery-evidence.json');
+  fs.writeFileSync(file, JSON.stringify(makeDiscoveryEvidence(overrides)));
   return file;
+}
+
+function terminalRunBody(evidence = makeDiscoveryEvidence()) {
+  const run = createRunState({ runId: 'terminal-discovery-run' });
+  run.state = NO_OPPORTUNITY_STOP;
+  run.discovery_exhaustion = evidence;
+  run.next_action = 'Recheck only after the frontier changes or refresh is due.';
+  return renderRunBody(run);
 }
 
 test('CLI run:start resumes the one open nonterminal Outer Run without creating another Issue', () => {
@@ -227,6 +261,179 @@ test('CLI run:start closes stale terminal Runs and normalizes the new Issue titl
   }
 });
 
+test('CLI discovery:check reports the active control plane without creating a Run', () => {
+  const environment = createMockEnvironment({ branch: 'master', openPrs: [] });
+  try {
+    const result = environment.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.state, 'RESUME_ACTIVE_RUN');
+    assert.equal(output.control_plane, 'ACTIVE');
+    assert.equal(
+      environment
+        .readState()
+        .calls.some(
+          (call) => call.tool === 'gh' && call.args[0] === 'issue' && call.args[1] === 'create',
+        ),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI discovery:check resumes an open Epoch PR even when no Run Issue is open', () => {
+  const { epoch } = controlFixture();
+  const environment = createMockEnvironment({
+    branch: 'master',
+    runIssueState: 'CLOSED',
+    openPrs: [{ number: 42, body: renderEpochBody(epoch) }],
+  });
+  try {
+    const result = environment.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.state, 'RESUME_ACTIVE_RUN');
+    assert.deepEqual(output.open_epoch_prs, [42]);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI discovery:check returns unchanged idle exhaustion on the same SHA within seven days', () => {
+  const environment = createMockEnvironment({
+    branch: 'master',
+    runBody: terminalRunBody(),
+    runIssueState: 'CLOSED',
+    runIssueClosedAt: '2026-08-10T00:05:00.000Z',
+    openPrs: [],
+  });
+  try {
+    const result = environment.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.state, 'UNCHANGED_EXHAUSTION');
+    assert.equal(output.control_plane, 'IDLE');
+    assert.equal(output.issue_created, false);
+    assert.equal(
+      environment
+        .readState()
+        .calls.some(
+          (call) => call.tool === 'gh' && call.args[0] === 'issue' && call.args[1] === 'create',
+        ),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI discovery:check requires discovery after master changes', () => {
+  const environment = createMockEnvironment({
+    branch: 'master',
+    baseSha: sha('d'),
+    runBody: terminalRunBody(),
+    runIssueState: 'CLOSED',
+    openPrs: [],
+  });
+  try {
+    const result = environment.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'DISCOVERY_REQUIRED_MASTER_CHANGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI discovery:check refreshes a current-policy audit after seven days', () => {
+  const environment = createMockEnvironment({
+    branch: 'master',
+    runBody: terminalRunBody(),
+    runIssueState: 'CLOSED',
+    openPrs: [],
+  });
+  try {
+    const result = environment.execute(['discovery:check', '--now', '2026-08-17T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'DISCOVERY_REFRESH_DUE');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI discovery:check sends legacy policy evidence and actionable frontiers to research', () => {
+  const legacy = createMockEnvironment({
+    branch: 'master',
+    runBody: terminalRunBody({ ...makeDiscoveryEvidence(), policy_version: 'harness-v3.0' }),
+    runIssueState: 'CLOSED',
+    openPrs: [],
+  });
+  try {
+    const result = legacy.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'FRONTIER_RESEARCH_REQUIRED');
+  } finally {
+    legacy.cleanup();
+  }
+
+  const actionableEvidence = makeDiscoveryEvidence();
+  actionableEvidence.candidate_assessments[0].scope_salvage.outcome = 'RESEARCH_READY';
+  actionableEvidence.candidate_assessments[0].source_contract_research = {
+    status: 'RESEARCH_REQUIRED',
+    next_step: 'Validate a capability-specific allowlisted public source contract.',
+    closure_evidence: [],
+  };
+  const actionable = createMockEnvironment({
+    branch: 'master',
+    runBody: terminalRunBody(actionableEvidence),
+    runIssueState: 'CLOSED',
+    openPrs: [],
+  });
+  try {
+    const result = actionable.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).state, 'FRONTIER_RESEARCH_REQUIRED');
+  } finally {
+    actionable.cleanup();
+  }
+
+  const incompleteEvidence = makeDiscoveryEvidence();
+  delete incompleteEvidence.candidate_assessments[0].scope_salvage;
+  const incomplete = createMockEnvironment({
+    branch: 'master',
+    runBody: terminalRunBody(incompleteEvidence),
+    runIssueState: 'CLOSED',
+    openPrs: [],
+  });
+  try {
+    const result = incomplete.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.state, 'FRONTIER_RESEARCH_REQUIRED');
+    assert.equal(output.reason, 'CURRENT_POLICY_AUDIT_INVALID');
+  } finally {
+    incomplete.cleanup();
+  }
+});
+
+test('CLI discovery:check treats no prior control plane as an idle research frontier', () => {
+  const environment = createMockEnvironment({
+    branch: 'master',
+    runIssueState: 'CLOSED',
+    closedIssues: [],
+    openPrs: [],
+  });
+  try {
+    const result = environment.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.state, 'FRONTIER_RESEARCH_REQUIRED');
+    assert.equal(output.control_plane, 'IDLE');
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI no-opportunity stop requires deep current-base evidence and closes the Run', () => {
   const run = createRunState({ runId: 'discovery-run' });
   const environment = createMockEnvironment({
@@ -265,6 +472,113 @@ test('CLI no-opportunity stop requires deep current-base evidence and closes the
       parseControlBlock(state.runBody, RUN_MARKER).discovery_exhaustion.audited_sha,
       sha('a'),
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI no-opportunity stop rejects generic discovery templates and duplicate candidates', () => {
+  const run = createRunState({ runId: 'generic-discovery-run' });
+  const environment = createMockEnvironment({ branch: 'master', runBody: renderRunBody(run) });
+  try {
+    const generic = makeDiscoveryEvidence({ discovery_delta: 'No changes.' });
+    for (const lane of DISCOVERY_LANES) {
+      generic.lane_assessments[lane] = {
+        observation: `Inspected current ${lane} evidence and representative seams.`,
+        conclusion: 'No independent safe high-value Epoch remains in this lane.',
+      };
+    }
+    const genericResult = environment.execute([
+      'run:stop',
+      '--run',
+      '1',
+      '--state',
+      NO_OPPORTUNITY_STOP,
+      '--next-action',
+      'Generic stop must fail',
+      '--evidence',
+      discoveryEvidence(environment, generic),
+    ]);
+    assert.equal(genericResult.status, 2);
+    assert.match(genericResult.stderr, /^DISCOVERY_EVIDENCE_GENERIC:/u);
+
+    const duplicate = makeDiscoveryEvidence();
+    duplicate.candidate_assessments[1].id = duplicate.candidate_assessments[0].id;
+    const duplicateResult = environment.execute([
+      'run:stop',
+      '--run',
+      '1',
+      '--state',
+      NO_OPPORTUNITY_STOP,
+      '--next-action',
+      'Duplicate stop must fail',
+      '--evidence',
+      discoveryEvidence(environment, duplicate),
+    ]);
+    assert.equal(duplicateResult.status, 2);
+    assert.match(duplicateResult.stderr, /^DISCOVERY_EVIDENCE_REQUIRED:/u);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI no-opportunity stop rejects implementation-ready and research-ready scope salvage', () => {
+  for (const outcome of ['IMPLEMENTATION_READY', 'RESEARCH_READY']) {
+    const run = createRunState({ runId: `actionable-${outcome}` });
+    const environment = createMockEnvironment({ branch: 'master', runBody: renderRunBody(run) });
+    try {
+      const evidence = makeDiscoveryEvidence();
+      evidence.candidate_assessments[0].scope_salvage.outcome = outcome;
+      if (outcome === 'RESEARCH_READY') {
+        evidence.candidate_assessments[0].source_contract_research = {
+          status: 'RESEARCH_REQUIRED',
+          next_step: 'Validate an allowlisted read-only source contract.',
+          closure_evidence: [],
+        };
+      }
+      const result = environment.execute([
+        'run:stop',
+        '--run',
+        '1',
+        '--state',
+        NO_OPPORTUNITY_STOP,
+        '--next-action',
+        'Actionable frontier must not stop',
+        '--evidence',
+        discoveryEvidence(environment, evidence),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /^DISCOVERY_HAS_ACTIONABLE_CANDIDATE:/u);
+    } finally {
+      environment.cleanup();
+    }
+  }
+});
+
+test('CLI no-opportunity stop requires closed research for insufficient source data', () => {
+  const run = createRunState({ runId: 'source-research-run' });
+  const environment = createMockEnvironment({ branch: 'master', runBody: renderRunBody(run) });
+  try {
+    const evidence = makeDiscoveryEvidence();
+    evidence.candidate_assessments[0].disposition = 'INSUFFICIENT_TRUSTWORTHY_DATA';
+    evidence.candidate_assessments[0].source_contract_research = {
+      status: 'NOT_REQUIRED',
+      next_step: 'No concrete source-contract research step was performed for this candidate.',
+      closure_evidence: ['No concrete source-contract closure evidence exists.'],
+    };
+    const result = environment.execute([
+      'run:stop',
+      '--run',
+      '1',
+      '--state',
+      NO_OPPORTUNITY_STOP,
+      '--next-action',
+      'Unresearched source gap must not stop',
+      '--evidence',
+      discoveryEvidence(environment, evidence),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^DISCOVERY_SOURCE_RESEARCH_REQUIRED:/u);
   } finally {
     environment.cleanup();
   }

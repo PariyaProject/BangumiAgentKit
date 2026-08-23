@@ -32,26 +32,42 @@ function flagValue(flag) {
   return index >= 0 ? args[index + 1] : undefined;
 }
 
+function mockIssue() {
+  return {
+    number: state.runIssueNumber ?? 1,
+    title: state.runIssueTitle ?? 'Mock run',
+    body: state.runBody,
+    state: state.runIssueState ?? 'OPEN',
+    url: 'https://example.test/issues/1',
+    createdAt: state.runIssueCreatedAt ?? '2026-08-01T00:00:00.000Z',
+    updatedAt: state.runIssueUpdatedAt ?? '2026-08-01T00:00:00.000Z',
+    closedAt:
+      (state.runIssueState ?? 'OPEN') === 'CLOSED'
+        ? (state.runIssueClosedAt ?? '2026-08-01T00:00:00.000Z')
+        : null,
+  };
+}
+
 if (tool === 'gh') {
   const [group, action] = args;
   if (group === '--version') output('gh version mock');
   else if (group === 'auth' && action === 'status') output('authenticated');
   else if (group === 'repo' && action === 'view') output({ nameWithOwner: 'mock/repo' });
   else if (group === 'issue' && action === 'list') {
-    output(
-      state.openIssues ??
-        (state.runIssueState === 'CLOSED'
-          ? []
-          : [
-              {
-                number: state.runIssueNumber ?? 1,
-                title: state.runIssueTitle ?? 'Mock run',
-                body: state.runBody,
-                state: 'OPEN',
-                url: 'https://example.test/issues/1',
-              },
-            ]),
-    );
+    const requestedState = flagValue('--state') ?? 'open';
+    if (state.issues) {
+      output(
+        state.issues.filter(
+          (issue) => requestedState === 'all' || issue.state.toLowerCase() === requestedState,
+        ),
+      );
+    } else if (requestedState === 'open') {
+      output(state.openIssues ?? (state.runIssueState === 'CLOSED' ? [] : [mockIssue()]));
+    } else if (requestedState === 'closed') {
+      output(state.closedIssues ?? (state.runIssueState === 'CLOSED' ? [mockIssue()] : []));
+    } else {
+      output(state.runIssueState ? [mockIssue()] : []);
+    }
   } else if (group === 'issue' && action === 'create') {
     state.runBody = stdin();
     state.runIssueTitle = flagValue('--title');
@@ -87,6 +103,8 @@ if (tool === 'gh') {
       statusCheckRollup: state.checks ?? [],
       mergeCommit: state.mergeCommit ? { oid: state.mergeCommit } : null,
     });
+  } else if (group === 'pr' && action === 'list') {
+    output(state.openPrs ?? []);
   } else if (group === 'pr' && action === 'edit') {
     state.prBody = stdin();
     output('updated');

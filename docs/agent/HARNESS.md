@@ -1,4 +1,4 @@
-# BangumiAgentKit Harness V3
+# BangumiAgentKit Harness V3.1
 
 This is the **only canonical detailed execution-governance policy** for active
 BangumiAgentKit work. Other governance and Goal files may select a mode or link
@@ -65,6 +65,7 @@ authoritative.
 - Default reviewer: one comprehensive Sol milestone reviewer at `high`.
 - Sol `xhigh` requires explicit exceptional authorization.
 - Reviews are sequential. Specialized reviewers are never automatically paired.
+- Opportunity discovery and source-contract research launch no Sol reviewer.
 - Git worktrees are prohibited.
 
 Cost is controlled by fewer launches and better batching, not weaker Luna
@@ -72,9 +73,30 @@ reasoning.
 
 ## 3. Goal modes
 
-`AUTONOMOUS_EVOLUTION` creates or resumes one Outer Run Issue, resumes its active
-Epoch PR when present, otherwise performs bounded opportunity discovery,
-selects one coherent Epoch, and proceeds until a governed stop.
+`AUTONOMOUS_EVOLUTION` first runs the read-only `discovery:check`. It creates or
+resumes an Outer Run only when the check requires work, resumes its active Epoch
+PR when present, otherwise performs bounded opportunity discovery, selects one
+coherent Epoch, and proceeds until a governed stop. Codex Goals are invoked
+manually; Harness V3.1 creates no scheduler, heartbeat, or automation.
+
+The cheap check returns exactly one state:
+
+- `RESUME_ACTIVE_RUN`: a marked Run Issue or Epoch PR is open; resume it.
+- `DISCOVERY_REQUIRED_MASTER_CHANGED`: the audited master SHA changed.
+- `FRONTIER_RESEARCH_REQUIRED`: no current-policy audit exists, the discovery
+  policy/source authorization changed, or a research/implementation frontier is
+  recorded.
+- `DISCOVERY_REFRESH_DUE`: seven days elapsed since the latest current-policy
+  full audit.
+- `UNCHANGED_EXHAUSTION`: the same master/policy remains exhausted inside the
+  seven-day window. Stop the Goal without creating an Issue, running the broad
+  validation suite, or launching Sol.
+
+`discovery:check` reads Git/GitHub state and fetches `origin/master`; it never
+creates or edits an Issue/PR. The policy version is
+`harness-v3.1-frontier-v1`. Any semantic change to discovery lanes or source
+authorization must bump that version so stale exhaustion cannot suppress a new
+frontier audit.
 
 Opportunity discovery is bounded in breadth, not superficial in depth. Absence
 of a ready entry in the opportunity log, completion of the currently named
@@ -95,6 +117,28 @@ must not create empty, status-only, speculative, or low-value work merely to
 keep a run alive. A protected direction does not block independent safe work,
 and routine correctness/remediation is not human-only merely because an older
 review budget was exhausted. Discovery itself launches no Sol reviewer.
+
+Before rejecting any candidate, Luna must attempt scope salvage: narrow the
+question, prefer positive-only or partial observations, preserve coverage and
+truncation, prohibit unsupported negative claims, and set explicit resource
+bounds. The outcome is one of:
+
+- `IMPLEMENTATION_READY`: a bounded valuable Product Epoch exists;
+- `RESEARCH_READY`: a concrete source-contract question can be resolved without
+  Product implementation or Sol;
+- `NO_SAFE_VARIANT`: narrowing and any required source research are closed with
+  concrete evidence.
+
+`IMPLEMENTATION_READY` becomes the next Product Epoch. `RESEARCH_READY` remains
+inside the same Luna-controlled Run until research either produces an
+implementation-ready contract or closes the candidate. Neither permits a
+no-opportunity stop.
+
+The two read-only frontiers pre-authorized by `PRODUCT_CHARTER.md`—official
+statistics observation history and capability-specific public community
+Structured Web—compete at equal priority by user value, trustworthiness, cost,
+and risk. Their authorization does not make an incomplete source contract
+implementation-ready.
 
 `EXECUTE_EPOCH` executes one explicitly selected Epoch PR and never selects the
 next Epoch automatically.
@@ -444,11 +488,26 @@ Canonical governed stops include:
 not a free-form Agent conclusion. The `run:stop` command accepts it only from a
 clean synchronized `master` with a structured evidence file that:
 
+- names the current discovery policy version and an ISO audit timestamp;
 - names the audited master SHA;
+- records the concrete change since the previous audit;
 - records an observation and conclusion for every discovery lane in section 3;
 - assesses at least three concrete candidates with a user question, source
-  evidence, value hypothesis, governed lane, rejection disposition, and reason;
+  evidence, source/coverage limits, value hypothesis, governed lane, rejection
+  disposition, cross-audit delta, and reason;
+- records for every candidate its narrowed question, partial/positive-only
+  semantics, coverage/truncation/negative-claim limits, resource bounds,
+  salvage outcome, and rationale;
+- records source-contract research state, next step, and closure evidence;
 - contains no safe high-value candidate that should instead become an Epoch.
+
+Candidate ids and lane evidence must be distinct. Generic templates, duplicate
+candidates, missing cross-audit delta, or missing scope salvage are rejected.
+`INSUFFICIENT_TRUSTWORTHY_DATA` is not a direct terminal disposition: it is
+`RESEARCH_READY`, or its source research must close as
+`CLOSED_NO_SAFE_SOURCE` before `NO_SAFE_VARIANT`. Any
+`IMPLEMENTATION_READY`, `RESEARCH_READY`, or still-open source research blocks
+the no-opportunity stop.
 
 This gate prevents a fresh Goal from stopping after only inventory
 classification while also preventing fabricated busywork when the safe backlog
@@ -476,6 +535,7 @@ Outer Run block contains:
   "parked_epoch_prs": [],
   "last_merged_epoch_pr": null,
   "discovery_exhaustion": null,
+  "discovery_policy_version": "harness-v3.1-frontier-v1",
   "next_action": "..."
 }
 ```
@@ -511,6 +571,9 @@ The deterministic entry point is `pnpm harness <command>`. Run `pnpm harness
 help` for exact arguments.
 
 - `status`: reconstruct runtime truth from Git, the Run Issue, and Epoch PR.
+- `discovery:check`: cheaply classify active work, changed master/policy,
+  actionable frontiers, refresh cadence, or unchanged exhaustion without any
+  control-plane write.
 - `run:start`: resume the one open nonterminal Outer Run, reconcile legacy open
   terminal Runs, or create one Run when none exists.
 - `epoch:start`: record a selected Epoch in the Run Issue before branch work.
