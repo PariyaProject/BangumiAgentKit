@@ -50,7 +50,10 @@ import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
-import { getSubjectStatsHistory } from '../subject-stats-history.js';
+import {
+  getSubjectStatsHistory,
+  SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
+} from '../subject-stats-history.js';
 
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
@@ -649,7 +652,12 @@ export function createRenderPresentationTools(
       '生成指定条目的本地官方 v0 统计观察历史图片卡片 Artifact。默认只读取既有观察，只有显式 recordCurrent=true 才追加当前只读快照；卡片显示观察时间、状态、有限保留、相邻差值、coverage、方法与限制，不宣称 Bangumi 事件历史、趋势、社区统计或推荐结论。',
     input: z
       .object({
-        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        subjectId: z
+          .number()
+          .int()
+          .positive()
+          .max(SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX)
+          .describe(`Bangumi 条目 ID（最大 ${SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX}）`),
         recordCurrent: z
           .boolean()
           .optional()

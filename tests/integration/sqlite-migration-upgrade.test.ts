@@ -53,6 +53,7 @@ describe('SQLite migration upgrade safety', () => {
       '0000_initial.sql',
       '0001_integrity_constraints.sql',
       '0002_subject_stats_observations.sql',
+      '0003_subject_stats_observation_meta.sql',
     ]);
 
     const bindings = db.prepare('SELECT * FROM account_bindings').all() as Array<

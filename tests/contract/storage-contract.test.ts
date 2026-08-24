@@ -193,12 +193,43 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
       ]);
       expect(observations[0]?.resultJson).toContain('8.1');
 
+      const beforeExpiry = await storage.getSubjectStatsObservationSummary(123, base);
+      expect(beforeExpiry.recordedCount).toBe(3);
+      expect(beforeExpiry.retainedCount).toBe(2);
+      expect(beforeExpiry.prunedCount).toBe(1);
+      expect(beforeExpiry.firstObservedAt?.toISOString()).toBe(base.toISOString());
+
       const expired = await storage.listSubjectStatsObservations({
         subjectId: 123,
         limit: 10,
         now: new Date(base.getTime() + 86_400_000),
       });
       expect(expired).toEqual([]);
+      const afterExpiry = await storage.getSubjectStatsObservationSummary(
+        123,
+        new Date(base.getTime() + 86_400_000),
+      );
+      expect(afterExpiry.recordedCount).toBe(3);
+      expect(afterExpiry.retainedCount).toBe(0);
+      expect(afterExpiry.expiredCount).toBe(2);
+
+      let active = 0;
+      let peak = 0;
+      await Promise.all([
+        storage.withSubjectStatsObservationLock(123, async () => {
+          active += 1;
+          peak = Math.max(peak, active);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          active -= 1;
+        }),
+        storage.withSubjectStatsObservationLock(123, async () => {
+          active += 1;
+          peak = Math.max(peak, active);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          active -= 1;
+        }),
+      ]);
+      expect(peak).toBe(1);
       await storage.close();
     });
   });

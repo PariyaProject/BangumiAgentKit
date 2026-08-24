@@ -51,13 +51,14 @@ function evidence(retrievedAt: string) {
   };
 }
 
-function registry(getStats: () => SubjectStatsData): ProviderRegistry {
+function registry(getStats: () => SubjectStatsData, delayMs = 0): ProviderRegistry {
   return new ProviderRegistry({
     v0: {
       async getSubject() {
         return { state: 'not_found' as const };
       },
       async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+        if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
         const retrievedAt = new Date().toISOString();
         return {
           state: 'ok',
@@ -156,5 +157,94 @@ describe('subject statistics observation history', () => {
     const meanChange = second.changes[0]?.metrics.find((metric) => metric.key === 'histogramMean');
     expect(meanChange?.state).toBe('not_computable');
     expect(meanChange?.delta).toBeUndefined();
+  });
+
+  it('admits only one concurrent sample for a subject and preserves whole-series metadata', async () => {
+    const storage = new MemoryStorage();
+    let providerCalls = 0;
+    const dependencies: SubjectStatsHistoryDependencies = {
+      storage,
+      providerRegistry: registry(() => {
+        providerCalls += 1;
+        return baseStats;
+      }),
+    };
+    const now = new Date('2026-08-26T00:00:00.000Z');
+    const [first, second] = await Promise.all([
+      getSubjectStatsHistory(321, { recordCurrent: true, now }, dependencies),
+      getSubjectStatsHistory(321, { recordCurrent: true, now }, dependencies),
+    ]);
+
+    expect(providerCalls).toBe(1);
+    expect(first.collection.recordedObservations).toBe(1);
+    expect(second.collection.retainedObservations).toBe(1);
+    expect(
+      [...first.warnings, ...second.warnings].some(
+        (warning) => warning.code === 'OBSERVATION_INTERVAL_NOT_ELAPSED',
+      ),
+    ).toBe(true);
+
+    const third = await getSubjectStatsHistory(
+      321,
+      { recordCurrent: true, maxObservations: 1, now: new Date('2026-08-27T00:00:00.000Z') },
+      dependencies,
+    );
+    expect(third.collection.recordedObservations).toBe(2);
+    expect(third.collection.retainedObservations).toBe(1);
+    expect(third.collection.observationsReturned).toBe(1);
+    expect(third.collection.truncated).toBe(false);
+    expect(third.collection.startedAt).toBe('2026-08-26T00:00:00.000Z');
+  });
+
+  it('does not compute deltas across unknown methodology or source signatures', async () => {
+    const storage = new MemoryStorage();
+    const first = await getSubjectStatsHistory(
+      654,
+      { recordCurrent: true, now: new Date('2026-08-24T00:00:00.000Z') },
+      { storage, providerRegistry: registry(() => baseStats) },
+    );
+    const snapshot = first.observations[0]!.snapshot;
+    await storage.appendSubjectStatsObservation(
+      {
+        id: 'unknown-methodology',
+        subjectId: 654,
+        observedAt: new Date('2026-08-25T00:00:00.000Z'),
+        retrievedAt: new Date('2026-08-25T00:00:00.000Z'),
+        state: 'complete',
+        resultJson: JSON.stringify(snapshot),
+        methodologyVersion: 'bangumi.subject.stats.observation-history.v999',
+        retentionUntil: new Date('2027-08-25T00:00:00.000Z'),
+      },
+      { maxObservations: 24, now: new Date('2026-08-25T00:00:00.000Z') },
+    );
+    const history = await getSubjectStatsHistory(
+      654,
+      { recordCurrent: false, now: new Date('2026-08-26T00:00:00.000Z') },
+      { storage },
+    );
+    expect(history.observations[1]?.compatibility.state).toBe('unsupported');
+    expect(history.changes[0]?.state).toBe('not_computable');
+    expect(history.changes[0]?.metrics.every((metric) => metric.delta === undefined)).toBe(true);
+  });
+
+  it('refuses a concurrent second subject instead of fanning out the official host', async () => {
+    const storage = new MemoryStorage();
+    let providerCalls = 0;
+    const providerRegistry = registry(() => {
+      providerCalls += 1;
+      return baseStats;
+    }, 30);
+    const now = new Date('2026-08-28T00:00:00.000Z');
+    const [first, second] = await Promise.all([
+      getSubjectStatsHistory(701, { recordCurrent: true, now }, { storage, providerRegistry }),
+      getSubjectStatsHistory(702, { recordCurrent: true, now }, { storage, providerRegistry }),
+    ]);
+
+    expect(providerCalls).toBe(1);
+    expect(
+      [first, second].some((result) =>
+        result.warnings.some((warning) => warning.code === 'OBSERVATION_RESOURCE_LIMIT'),
+      ),
+    ).toBe(true);
   });
 });

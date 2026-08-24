@@ -9,9 +9,25 @@ export type SubjectStatsHistoryMetricKey =
   | 'histogramMean'
   | 'populationStandardDeviation'
   | 'collectionTotal'
-  | 'completionRate';
+  | 'completionRate'
+  | 'ratingBucket1'
+  | 'ratingBucket2'
+  | 'ratingBucket3'
+  | 'ratingBucket4'
+  | 'ratingBucket5'
+  | 'ratingBucket6'
+  | 'ratingBucket7'
+  | 'ratingBucket8'
+  | 'ratingBucket9'
+  | 'ratingBucket10'
+  | 'collectionWish'
+  | 'collectionCollect'
+  | 'collectionDoing'
+  | 'collectionOnHold'
+  | 'collectionDropped';
 
 export type SubjectStatsHistoryMetricState = 'complete' | 'partial' | 'conflict' | 'not_computable';
+export type SubjectStatsHistoryCompatibilityState = 'compatible' | 'unsupported';
 
 export interface SubjectStatsHistoryObservation {
   id: string;
@@ -19,6 +35,11 @@ export interface SubjectStatsHistoryObservation {
   retrievedAt?: string;
   retentionUntil: string;
   state: SubjectStatsHistoryState;
+  methodologyVersion: string;
+  compatibility: {
+    state: SubjectStatsHistoryCompatibilityState;
+    reason?: string;
+  };
   snapshot: SubjectStatsIntelligenceResult;
 }
 
@@ -37,6 +58,10 @@ export interface SubjectStatsHistoryChange {
   fromObservedAt: string;
   toObservedAt: string;
   state: SubjectStatsHistoryMetricState;
+  compatibility: {
+    state: SubjectStatsHistoryCompatibilityState;
+    reason?: string;
+  };
   metrics: SubjectStatsHistoryMetricChange[];
 }
 
@@ -47,11 +72,23 @@ export interface SubjectStatsHistoryResult {
     startedAt?: string;
     retentionDays: number;
     maxObservations: number;
+    recordedObservations: number;
+    retainedObservations: number;
     observationsObserved: number;
     observationsReturned: number;
     completeObservations: number;
     changePairs: number;
     truncated: boolean;
+    expiredObservations: number;
+    prunedObservations: number;
+    retentionUntilEarliest?: string;
+    retentionUntilLatest?: string;
+    resourceBounds: {
+      maxActiveSubjects: number;
+      hostConcurrency: number;
+      maxSubjectId: number;
+      maxCleanupRows: number;
+    };
     recordCurrent: boolean;
     recordedObservationId?: string;
   };

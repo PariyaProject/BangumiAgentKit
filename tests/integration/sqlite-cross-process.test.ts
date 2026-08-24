@@ -168,7 +168,10 @@ describe('SQLite independent-process concurrency', () => {
       { provider: 'qq', botInstanceId: 'bot-1', externalUserId: 'user-1' },
     ]);
 
-    expect(results.every((result) => result.ok), JSON.stringify(results)).toBe(true);
+    expect(
+      results.every((result) => result.ok),
+      JSON.stringify(results),
+    ).toBe(true);
     expect(results[0]!.value?.id).toBe(results[1]!.value?.id);
 
     const db = new Database(dbPath);
@@ -288,7 +291,10 @@ describe('SQLite independent-process concurrency', () => {
     const dbPath = path.join(tmpDir, 'test.sqlite');
 
     const results = await runWorkers('migration', dbPath, [{}, {}]);
-    expect(results.every((result) => result.ok), JSON.stringify(results)).toBe(true);
+    expect(
+      results.every((result) => result.ok),
+      JSON.stringify(results),
+    ).toBe(true);
 
     const db = new Database(dbPath);
     const migrations = db.prepare('SELECT id FROM _schema_migrations ORDER BY id').all() as Array<{
@@ -298,8 +304,29 @@ describe('SQLite independent-process concurrency', () => {
       '0000_initial.sql',
       '0001_integrity_constraints.sql',
       '0002_subject_stats_observations.sql',
+      '0003_subject_stats_observation_meta.sql',
     ]);
     db.close();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }, 30000);
+
+  it('serializes subject observation admission across independent processes', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgm-sqlite-stats-lock-process-'));
+    const dbPath = path.join(tmpDir, 'test.sqlite');
+    await SQLiteStorage.create({ dbPath }).then((storage) => storage.close());
+
+    const results = await runWorkers('stats-lock', dbPath, [
+      { subjectId: 123, holdMs: 120 },
+      { subjectId: 123, holdMs: 120 },
+    ]);
+    expect(
+      results.every((result) => result.ok),
+      JSON.stringify(results),
+    ).toBe(true);
+    const elapsed = results
+      .map((result) => Number(result.value?.elapsedMs || 0))
+      .sort((a, b) => a - b);
+    expect(elapsed[1]).toBeGreaterThanOrEqual(90);
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }, 30000);
 });

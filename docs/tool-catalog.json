@@ -1137,8 +1137,8 @@
         "subjectId": {
           "type": "integer",
           "exclusiveMinimum": 0,
-          "maximum": 9007199254740991,
-          "description": "Bangumi 条目 ID"
+          "maximum": 1000000000,
+          "description": "Bangumi 条目 ID（最大 1000000000）"
         },
         "recordCurrent": {
           "default": false,
@@ -2534,8 +2534,8 @@
         "subjectId": {
           "type": "integer",
           "exclusiveMinimum": 0,
-          "maximum": 9007199254740991,
-          "description": "Bangumi 条目 ID"
+          "maximum": 1000000000,
+          "description": "Bangumi 条目 ID（最大 1000000000）"
         },
         "recordCurrent": {
           "default": false,

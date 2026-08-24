@@ -18,6 +18,21 @@ const METRIC_LABELS: Record<string, string> = {
   populationStandardDeviation: '总体标准差',
   collectionTotal: '收藏总数',
   completionRate: '完成率',
+  ratingBucket1: '评分1',
+  ratingBucket2: '评分2',
+  ratingBucket3: '评分3',
+  ratingBucket4: '评分4',
+  ratingBucket5: '评分5',
+  ratingBucket6: '评分6',
+  ratingBucket7: '评分7',
+  ratingBucket8: '评分8',
+  ratingBucket9: '评分9',
+  ratingBucket10: '评分10',
+  collectionWish: '想看',
+  collectionCollect: '看过',
+  collectionDoing: '在看',
+  collectionOnHold: '搁置',
+  collectionDropped: '抛弃',
 };
 
 function stateLabel(state: string): string {
@@ -66,6 +81,41 @@ function metricValue(
       return numberLabel(snapshot.collection.total);
     case 'completionRate':
       return rateLabel(snapshot.collection.completionRate);
+    case 'ratingBucket1':
+    case 'ratingBucket2':
+    case 'ratingBucket3':
+    case 'ratingBucket4':
+    case 'ratingBucket5':
+    case 'ratingBucket6':
+    case 'ratingBucket7':
+    case 'ratingBucket8':
+    case 'ratingBucket9':
+    case 'ratingBucket10': {
+      const score = Number(key.slice('ratingBucket'.length)) as keyof NonNullable<
+        typeof snapshot.raw
+      >['ratingHistogram'];
+      if (snapshot.raw?.ratingHistogramPresence?.[score] === false) return '未知';
+      return numberLabel(snapshot.raw?.ratingHistogram?.[score]);
+    }
+    case 'collectionWish':
+    case 'collectionCollect':
+    case 'collectionDoing':
+    case 'collectionOnHold':
+    case 'collectionDropped': {
+      const field = key.slice('collection'.length);
+      const status =
+        field === 'Wish'
+          ? 'wish'
+          : field === 'Collect'
+            ? 'collect'
+            : field === 'Doing'
+              ? 'doing'
+              : field === 'OnHold'
+                ? 'onHold'
+                : 'dropped';
+      if (snapshot.raw?.collectionPresence?.[status] === false) return '未知';
+      return numberLabel(snapshot.raw?.collection?.[status]);
+    }
     default:
       return '未知';
   }
@@ -95,6 +145,7 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
   const omittedChanges = viewModel.changes.length - changes.length;
   const officialOperations = viewModel.source.official.operations.join(' + ') || '未记录';
   const derivedOperations = viewModel.source.derived.operations.join(' + ') || '未记录';
+  const bounds = viewModel.collection.resourceBounds;
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -105,12 +156,17 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
       />
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        观察 {viewModel.collection.observationsObserved} 条 · 返回{' '}
-        {viewModel.collection.observationsReturned} 条 · 保留 {viewModel.collection.retentionDays}{' '}
-        天 · 最多 {viewModel.collection.maxObservations} 条
+        起始 {viewModel.collection.startedAt || '尚未开始'} · 记录{' '}
+        {viewModel.collection.recordedObservations} 条 · 保留{' '}
+        {viewModel.collection.retainedObservations} 条 · 返回{' '}
+        {viewModel.collection.observationsReturned} 条 · 过期{' '}
+        {viewModel.collection.expiredObservations} · 淘汰 {viewModel.collection.prunedObservations}{' '}
+        · 本次保留策略 {viewModel.collection.retentionDays} 天 · 最多{' '}
+        {viewModel.collection.maxObservations} 条
         {viewModel.collection.truncated ? ' · 输出有界' : ''}
         {' · recordCurrent='}
         {viewModel.collection.recordCurrent ? 'true' : 'false'}
+        {` · 资源 ${bounds.maxActiveSubjects} subjects / host ${bounds.hostConcurrency} / cleanup ${bounds.maxCleanupRows}`}
       </div>
 
       {observations.length === 0 ? (
@@ -158,11 +214,32 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
                   <div style={{ color: theme.text, fontWeight: 600, overflowWrap: 'anywhere' }}>
                     {observation.observedAt}
                   </div>
-                  <div style={{ color: theme.textMuted }}>{stateLabel(observation.state)}</div>
+                  <div style={{ color: theme.textMuted }}>
+                    {stateLabel(observation.state)} · {observation.compatibility.state}
+                  </div>
+                  <div style={{ color: theme.textMuted, overflowWrap: 'anywhere' }}>
+                    获取 {observation.retrievedAt || '未知'} · 覆盖{' '}
+                    {observation.snapshot.coverage.ratingBucketsObserved}/
+                    {observation.snapshot.coverage.ratingBucketsExpected} 评分桶，
+                    {observation.snapshot.coverage.collectionBucketsObserved}/
+                    {observation.snapshot.coverage.collectionBucketsExpected} 收藏桶
+                  </div>
                 </div>
                 <div>
                   <div style={{ color: theme.textMuted }}>评分</div>
                   <div style={{ color: theme.text }}>{metricValue(observation, 'score')}</div>
+                </div>
+                <div
+                  style={{ gridColumn: '1 / -1', color: theme.textMuted, overflowWrap: 'anywhere' }}
+                >
+                  分布：评分{' '}
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                    .map((score) => metricValue(observation, `ratingBucket${score}`))
+                    .join(' / ')}{' '}
+                  · 收藏{' '}
+                  {['Wish', 'Collect', 'Doing', 'OnHold', 'Dropped']
+                    .map((status) => metricValue(observation, `collection${status}`))
+                    .join(' / ')}
                 </div>
                 <div>
                   <div style={{ color: theme.textMuted }}>评分人数</div>
@@ -207,8 +284,10 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
                   lineHeight: 1.5,
                 }}
               >
-                <div style={{ color: theme.textMuted }}>
-                  {change.fromObservedAt} → {change.toObservedAt} · {stateLabel(change.state)}
+                <div style={{ color: theme.textMuted, overflowWrap: 'anywhere' }}>
+                  {change.fromObservedAt} → {change.toObservedAt} · {stateLabel(change.state)} ·{' '}
+                  {change.compatibility.state}
+                  {change.compatibility.reason ? ` · ${change.compatibility.reason}` : ''}
                 </div>
                 <div style={{ overflowWrap: 'anywhere' }}>{changeLabel(change)}</div>
               </div>

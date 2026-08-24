@@ -1,11 +1,4 @@
-import {
-  sqliteTable,
-  text,
-  integer,
-  unique,
-  index,
-  primaryKey,
-} from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique, index, primaryKey } from 'drizzle-orm/sqlite-core';
 
 export const botInstances = sqliteTable('bot_instances', {
   id: text('id').primaryKey(),
@@ -179,3 +172,12 @@ export const subjectStatsObservations = sqliteTable(
     retentionIdx: index('subject_stats_observations_retention_idx').on(table.retentionUntil),
   }),
 );
+
+export const subjectStatsObservationMeta = sqliteTable('subject_stats_observation_meta', {
+  subjectId: integer('subject_id').primaryKey(),
+  firstObservedAt: integer('first_observed_at').notNull(),
+  recordedCount: integer('recorded_count').notNull(),
+  expiredCount: integer('expired_count').notNull(),
+  prunedCount: integer('pruned_count').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});

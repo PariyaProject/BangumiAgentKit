@@ -136,6 +136,9 @@ export type SubjectStatsObservationState =
   | 'not_found'
   | 'upstream_error';
 
+export const SUBJECT_STATS_OBSERVATION_MAX_ROWS = 120;
+export const SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS = 120;
+
 /**
  * An immutable public-statistics snapshot. It intentionally has no principal,
  * account, credential, or Bangumi-write relationship.
@@ -154,6 +157,16 @@ export interface SubjectStatsObservationRecord {
 export interface SubjectStatsObservationStoreOptions {
   maxObservations: number;
   now?: Date;
+}
+
+export interface SubjectStatsObservationSummary {
+  firstObservedAt?: Date;
+  recordedCount: number;
+  retainedCount: number;
+  expiredCount: number;
+  prunedCount: number;
+  retentionUntilEarliest?: Date;
+  retentionUntilLatest?: Date;
 }
 
 export interface SubjectStatsObservationQuery {

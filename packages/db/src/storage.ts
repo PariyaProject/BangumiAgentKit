@@ -7,6 +7,7 @@ import {
   PendingActionRecord,
   AuditEventRecord,
   SubjectStatsObservationRecord,
+  SubjectStatsObservationSummary,
   SubjectStatsObservationStoreOptions,
   SubjectStatsObservationQuery,
 } from './schema.js';
@@ -42,10 +43,7 @@ export interface Storage {
     bangumiAccountId: string,
     activate?: boolean,
   ): Promise<AccountBindingRecord>;
-  setActiveBinding(
-    principalId: string,
-    bangumiAccountId: string,
-  ): Promise<AccountBindingRecord>;
+  setActiveBinding(principalId: string, bangumiAccountId: string): Promise<AccountBindingRecord>;
   removeBinding(principalId: string, bangumiAccountId: string): Promise<void>;
   replaceActiveBinding(
     principalId: string,
@@ -70,6 +68,11 @@ export interface Storage {
   listSubjectStatsObservations(
     query: SubjectStatsObservationQuery,
   ): Promise<SubjectStatsObservationRecord[]>;
+  getSubjectStatsObservationSummary(
+    subjectId: number,
+    now?: Date,
+  ): Promise<SubjectStatsObservationSummary>;
+  withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T>;
   withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }

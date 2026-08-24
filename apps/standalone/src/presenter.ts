@@ -947,10 +947,13 @@ function presentSubjectStatsHistory(value: Record<string, unknown>): string | un
   const observations = Array.isArray(value.observations) ? value.observations : undefined;
   const changes = Array.isArray(value.changes) ? value.changes : undefined;
   if (typeof subjectId !== 'number' || !collection || !observations || !changes) return undefined;
+  const methodology = comparisonRecord(value.methodology);
 
   const lines = [
     `条目统计观察历史 · 条目 ${humanField(subjectId, 32)} · 状态: ${comparisonStateLabel(value.state)}`,
-    `观察 ${humanField(collection.observationsObserved ?? '?', 32)} 条 · 返回 ${humanField(collection.observationsReturned ?? '?', 32)} 条 · 完整 ${humanField(collection.completeObservations ?? '?', 32)} 条 · 变化组 ${humanField(collection.changePairs ?? '?', 32)} · 保留 ${humanField(collection.retentionDays ?? '?', 32)} 天 · 上限 ${humanField(collection.maxObservations ?? '?', 32)}`,
+    `起始 ${humanField(collection.startedAt ?? '尚未开始', 48)} · 记录 ${humanField(collection.recordedObservations ?? '?', 32)} 条 · 保留 ${humanField(collection.retainedObservations ?? '?', 32)} 条 · 返回 ${humanField(collection.observationsReturned ?? '?', 32)} 条 · 完整 ${humanField(collection.completeObservations ?? '?', 32)} 条 · 变化组 ${humanField(collection.changePairs ?? '?', 32)}`,
+    `过期 ${humanField(collection.expiredObservations ?? '?', 32)} · 容量淘汰 ${humanField(collection.prunedObservations ?? '?', 32)} · 本次保留策略 ${humanField(collection.retentionDays ?? '?', 32)} 天 · 输出上限 ${humanField(collection.maxObservations ?? '?', 32)}${collection.truncated === true ? ' · 输出有界' : ''}`,
+    `方法 ${humanField(methodology?.id ?? '?', 96)}.v${humanField(methodology?.version ?? '?', 16)} · 资源活动条目 ${humanField(collection.resourceBounds ? (comparisonRecord(collection.resourceBounds)?.maxActiveSubjects ?? '?') : '?', 16)} · host 并发 ${humanField(collection.resourceBounds ? (comparisonRecord(collection.resourceBounds)?.hostConcurrency ?? '?') : '?', 16)}`,
     collection.recordCurrent === true
       ? '本次调用显式请求了 recordCurrent；以下包含本次尝试形成的当前观察。'
       : '本次调用只读取既有观察；需要显式 recordCurrent 才会追加当前快照。',
@@ -963,10 +966,27 @@ function presentSubjectStatsHistory(value: Record<string, unknown>): string | un
       const observation = comparisonRecord(rawObservation);
       if (!observation) continue;
       const snapshot = comparisonRecord(observation.snapshot);
+      const compatibility = comparisonRecord(observation.compatibility);
       const raw = comparisonRecord(snapshot?.raw);
       const snapshotCollection = comparisonRecord(snapshot?.collection);
+      const histogram = comparisonRecord(raw?.ratingHistogram);
+      const collectionBuckets = comparisonRecord(raw?.collection);
+      const coverage = comparisonRecord(snapshot?.coverage);
+      const ratingBuckets = histogram
+        ? Array.from({ length: 10 }, (_, index) =>
+            humanField(histogram[String(index + 1)] ?? '?', 12),
+          ).join('/')
+        : '未知';
+      const collectionValues = collectionBuckets
+        ? ['wish', 'collect', 'doing', 'onHold', 'dropped']
+            .map((key) => humanField(collectionBuckets[key] ?? '?', 12))
+            .join('/')
+        : '未知';
       lines.push(
-        `- ${humanField(observation.observedAt ?? '?', 48)} · ${comparisonStateLabel(observation.state)} · 评分 ${humanField(raw?.score ?? '?', 16)} · 评分人数 ${humanField(raw?.ratingTotal ?? '?', 32)} · 收藏总数 ${humanField(snapshotCollection?.total ?? '?', 32)} · 完成率 ${typeof snapshotCollection?.completionRate === 'number' ? `${(snapshotCollection.completionRate * 100).toFixed(1)}%` : '未知'}`,
+        `- ${humanField(observation.observedAt ?? '?', 48)} · 获取 ${humanField(observation.retrievedAt ?? '?', 48)} · ${comparisonStateLabel(observation.state)} · 兼容 ${humanField(compatibility?.state ?? '?', 24)} · 评分 ${humanField(raw?.score ?? '?', 16)} · 评分人数 ${humanField(raw?.ratingTotal ?? '?', 32)} · 收藏总数 ${humanField(snapshotCollection?.total ?? '?', 32)} · 完成率 ${typeof snapshotCollection?.completionRate === 'number' ? `${(snapshotCollection.completionRate * 100).toFixed(1)}%` : '未知'}`,
+      );
+      lines.push(
+        `  分布 评分[${humanField(ratingBuckets, 120)}] · 收藏[${humanField(collectionValues, 80)}] · 覆盖 评分 ${humanField(coverage?.ratingBucketsObserved ?? '?', 12)}/${humanField(coverage?.ratingBucketsExpected ?? '?', 12)} · 收藏 ${humanField(coverage?.collectionBucketsObserved ?? '?', 12)}/${humanField(coverage?.collectionBucketsExpected ?? '?', 12)}`,
       );
     }
     if (observations.length > 12) {
@@ -985,6 +1005,7 @@ function presentSubjectStatsHistory(value: Record<string, unknown>): string | un
     for (const rawChange of changes.slice(-12)) {
       const change = comparisonRecord(rawChange);
       if (!change) continue;
+      const compatibility = comparisonRecord(change.compatibility);
       const metrics = Array.isArray(change.metrics) ? change.metrics : [];
       const metricLabels = metrics.map((rawMetric) => {
         const metric = comparisonRecord(rawMetric);
@@ -997,7 +1018,7 @@ function presentSubjectStatsHistory(value: Record<string, unknown>): string | un
         return `${label} ${comparisonStateLabel(metric.state)}`;
       });
       lines.push(
-        `- ${humanField(change.fromObservedAt ?? '?', 32)} → ${humanField(change.toObservedAt ?? '?', 32)} · ${comparisonStateLabel(change.state)} · ${humanField(metricLabels.filter((item): item is string => Boolean(item)).join(' · ') || '无可计算指标', 360)}`,
+        `- ${humanField(change.fromObservedAt ?? '?', 32)} → ${humanField(change.toObservedAt ?? '?', 32)} · ${comparisonStateLabel(change.state)} · 兼容 ${humanField(compatibility?.state ?? '?', 24)}${compatibility?.reason ? ` · ${humanField(compatibility.reason, 160)}` : ''} · ${humanField(metricLabels.filter((item): item is string => Boolean(item)).join(' · ') || '无可计算指标', 360)}`,
       );
     }
     if (changes.length > 12)

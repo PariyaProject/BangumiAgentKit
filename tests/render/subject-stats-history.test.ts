@@ -106,11 +106,21 @@ const result: SubjectStatsHistoryResult = {
     startedAt: '2026-08-24T00:00:00.000Z',
     retentionDays: 365,
     maxObservations: 24,
+    recordedObservations: 2,
+    retainedObservations: 2,
     observationsObserved: 2,
     observationsReturned: 2,
     completeObservations: 2,
     changePairs: 1,
     truncated: false,
+    expiredObservations: 0,
+    prunedObservations: 0,
+    resourceBounds: {
+      maxActiveSubjects: 8,
+      hostConcurrency: 1,
+      maxSubjectId: 1000000000,
+      maxCleanupRows: 120,
+    },
     recordCurrent: false,
   },
   observations: [
@@ -119,6 +129,8 @@ const result: SubjectStatsHistoryResult = {
       observedAt: '2026-08-24T00:00:00.000Z',
       retentionUntil: '2027-08-24T00:00:00.000Z',
       state: 'complete',
+      methodologyVersion: 'bangumi.subject.stats.observation-history.v1',
+      compatibility: { state: 'compatible' },
       snapshot: snapshot(8.6, 100),
     },
     {
@@ -126,6 +138,8 @@ const result: SubjectStatsHistoryResult = {
       observedAt: '2026-08-25T00:00:00.000Z',
       retentionUntil: '2027-08-25T00:00:00.000Z',
       state: 'complete',
+      methodologyVersion: 'bangumi.subject.stats.observation-history.v1',
+      compatibility: { state: 'compatible' },
       snapshot: snapshot(8.8, 110),
     },
   ],
@@ -136,6 +150,7 @@ const result: SubjectStatsHistoryResult = {
       fromObservedAt: '2026-08-24T00:00:00.000Z',
       toObservedAt: '2026-08-25T00:00:00.000Z',
       state: 'complete',
+      compatibility: { state: 'compatible' },
       metrics: [
         { key: 'score', state: 'complete', from: 8.6, to: 8.8, delta: 0.2 },
         { key: 'ratingTotal', state: 'complete', from: 100, to: 110, delta: 10 },
@@ -199,5 +214,57 @@ describe('subject-stats-history renderer', () => {
     });
     expect(rendered.template).toBe('subject-stats-history');
     expect(rendered.buffer.length).toBeGreaterThan(1000);
+  });
+
+  it('renders sparse and incompatible observations truthfully at a narrow width', () => {
+    const sparseSnapshot = snapshot(8.6, 100);
+    sparseSnapshot.state = 'partial';
+    sparseSnapshot.rating.state = 'partial';
+    sparseSnapshot.collection.state = 'partial';
+    sparseSnapshot.raw!.ratingHistogramPresence = {
+      1: false,
+      2: true,
+      3: true,
+      4: true,
+      5: true,
+      6: true,
+      7: true,
+      8: true,
+      9: true,
+      10: true,
+    };
+    const sparse: SubjectStatsHistoryResult = {
+      ...result,
+      state: 'partial',
+      collection: {
+        ...result.collection,
+        recordedObservations: 3,
+        retainedObservations: 3,
+        observationsObserved: 3,
+        observationsReturned: 1,
+        truncated: true,
+      },
+      observations: [
+        {
+          ...result.observations[0]!,
+          compatibility: { state: 'unsupported', reason: 'fixture version changed' },
+          methodologyVersion: 'bangumi.subject.stats.observation-history.v999',
+          snapshot: sparseSnapshot,
+        },
+      ],
+      changes: [],
+      warnings: [{ code: 'OBSERVATION_OUTPUT_TRUNCATED', message: 'bounded fixture' }],
+    };
+    const html = renderHtmlTemplate(
+      buildSubjectStatsHistoryViewModel(sparse),
+      'bangumi-dark',
+      {},
+      320,
+    );
+    expect(html).toContain('部分覆盖');
+    expect(html).toContain('分布：评分');
+    expect(html).toContain('未知');
+    expect(html).toContain('输出有界');
+    expect(html).not.toContain('NaN');
   });
 });

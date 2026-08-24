@@ -11,7 +11,10 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
+  SUBJECT_STATS_OBSERVATION_MAX_ROWS,
   SubjectStatsObservationRecord,
+  SubjectStatsObservationSummary,
   SubjectStatsObservationStoreOptions,
   SubjectStatsObservationQuery,
 } from './schema.js';
@@ -265,10 +268,10 @@ export class PostgresStorage implements Storage {
       const now = new Date();
       if (existing.rows.length > 0) {
         const id = existing.rows[0].id;
-        await client.query(
-          'UPDATE account_bindings SET is_active = $1 WHERE id = $2',
-          [activate, id],
-        );
+        await client.query('UPDATE account_bindings SET is_active = $1 WHERE id = $2', [
+          activate,
+          id,
+        ]);
         await client.query('COMMIT');
         return { id, principalId, bangumiAccountId, isActive: activate, createdAt: now };
       }
@@ -299,12 +302,13 @@ export class PostgresStorage implements Storage {
         [principalId, bangumiAccountId],
       );
       if (existing.rows.length === 0) {
-        throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+        throw new Error(
+          `BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`,
+        );
       }
-      await client.query(
-        'UPDATE account_bindings SET is_active = false WHERE principal_id = $1',
-        [principalId],
-      );
+      await client.query('UPDATE account_bindings SET is_active = false WHERE principal_id = $1', [
+        principalId,
+      ]);
       await client.query(
         'UPDATE account_bindings SET is_active = true WHERE principal_id = $1 AND bangumi_account_id = $2',
         [principalId, bangumiAccountId],
@@ -665,10 +669,52 @@ export class PostgresStorage implements Storage {
     options: SubjectStatsObservationStoreOptions,
   ): Promise<void> {
     const now = options.now || new Date();
-    const maxObservations = Math.max(1, Math.trunc(options.maxObservations));
+    const maxObservations = Math.min(
+      SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+      Math.max(1, Math.trunc(options.maxObservations)),
+    );
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      const expired = await client.query(
+        `DELETE FROM subject_stats_observations
+         WHERE id IN (
+           SELECT id FROM subject_stats_observations
+           WHERE subject_id = $1 AND retention_until <= $2
+           ORDER BY retention_until ASC, id ASC
+           LIMIT $3
+         )
+         RETURNING id`,
+        [record.subjectId, now, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS],
+      );
+      const existingMeta = await client.query<{
+        first_observed_at: Date;
+        recorded_count: number;
+        expired_count: number;
+        pruned_count: number;
+      }>(
+        `SELECT first_observed_at, recorded_count, expired_count, pruned_count
+         FROM subject_stats_observation_meta WHERE subject_id = $1`,
+        [record.subjectId],
+      );
+      if (existingMeta.rowCount === 0) {
+        await client.query(
+          `INSERT INTO subject_stats_observation_meta
+            (subject_id, first_observed_at, recorded_count, expired_count, pruned_count, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [record.subjectId, record.observedAt, 1, expired.rowCount || 0, 0, now],
+        );
+      } else {
+        await client.query(
+          `UPDATE subject_stats_observation_meta
+           SET first_observed_at = LEAST(first_observed_at, $1),
+               recorded_count = recorded_count + 1,
+               expired_count = expired_count + $2,
+               updated_at = $3
+           WHERE subject_id = $4`,
+          [record.observedAt, expired.rowCount || 0, now, record.subjectId],
+        );
+      }
       await client.query(
         `
         INSERT INTO subject_stats_observations (
@@ -687,23 +733,33 @@ export class PostgresStorage implements Storage {
           record.retentionUntil,
         ],
       );
-      await client.query('DELETE FROM subject_stats_observations WHERE retention_until <= $1', [
-        now,
-      ]);
-      await client.query(
-        `
-        DELETE FROM subject_stats_observations
-        WHERE subject_id = $1
-          AND id NOT IN (
-            SELECT id
-            FROM subject_stats_observations
-            WHERE subject_id = $1
-            ORDER BY observed_at DESC, id DESC
-            LIMIT $2
-          )
-      `,
-        [record.subjectId, maxObservations],
+      const beforePrune = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM subject_stats_observations WHERE subject_id = $1',
+        [record.subjectId],
       );
+      const countBeforePrune = Number(beforePrune.rows[0]?.count || 0);
+      if (countBeforePrune > maxObservations) {
+        await client.query(
+          `
+          DELETE FROM subject_stats_observations
+          WHERE subject_id = $1
+            AND id NOT IN (
+              SELECT id
+              FROM subject_stats_observations
+              WHERE subject_id = $1
+              ORDER BY observed_at DESC, id DESC
+              LIMIT $2
+            )
+        `,
+          [record.subjectId, maxObservations],
+        );
+        await client.query(
+          `UPDATE subject_stats_observation_meta
+           SET pruned_count = pruned_count + $1, updated_at = $2
+           WHERE subject_id = $3`,
+          [countBeforePrune - maxObservations, now, record.subjectId],
+        );
+      }
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -718,10 +774,25 @@ export class PostgresStorage implements Storage {
   ): Promise<SubjectStatsObservationRecord[]> {
     const now = query.now || new Date();
     const limit = Math.max(1, Math.trunc(query.limit));
-    await this.pool.query(
-      'DELETE FROM subject_stats_observations WHERE subject_id = $1 AND retention_until <= $2',
-      [query.subjectId, now],
+    const expired = await this.pool.query(
+      `DELETE FROM subject_stats_observations
+       WHERE id IN (
+         SELECT id FROM subject_stats_observations
+         WHERE subject_id = $1 AND retention_until <= $2
+         ORDER BY retention_until ASC, id ASC
+         LIMIT $3
+       )
+       RETURNING id`,
+      [query.subjectId, now, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS],
     );
+    if ((expired.rowCount || 0) > 0) {
+      await this.pool.query(
+        `UPDATE subject_stats_observation_meta
+         SET expired_count = expired_count + $1, updated_at = $2
+         WHERE subject_id = $3`,
+        [expired.rowCount, now, query.subjectId],
+      );
+    }
     const result = await this.pool.query<{
       id: string;
       subject_id: number;
@@ -753,6 +824,72 @@ export class PostgresStorage implements Storage {
       methodologyVersion: row.methodology_version,
       retentionUntil: new Date(row.retention_until),
     }));
+  }
+
+  async getSubjectStatsObservationSummary(
+    subjectId: number,
+    now = new Date(),
+  ): Promise<SubjectStatsObservationSummary> {
+    await this.listSubjectStatsObservations({ subjectId, limit: 1, now });
+    const [meta, counts] = await Promise.all([
+      this.pool.query<{
+        first_observed_at: Date;
+        recorded_count: number;
+        expired_count: number;
+        pruned_count: number;
+      }>(
+        `SELECT first_observed_at, recorded_count, expired_count, pruned_count
+         FROM subject_stats_observation_meta WHERE subject_id = $1`,
+        [subjectId],
+      ),
+      this.pool.query<{
+        retained_count: string;
+        retention_until_earliest: Date | null;
+        retention_until_latest: Date | null;
+      }>(
+        `SELECT COUNT(*)::text AS retained_count,
+                MIN(retention_until) AS retention_until_earliest,
+                MAX(retention_until) AS retention_until_latest
+         FROM subject_stats_observations
+         WHERE subject_id = $1 AND retention_until > $2`,
+        [subjectId, now],
+      ),
+    ]);
+    const metaRow = meta.rows[0];
+    const countRow = counts.rows[0]!;
+    return {
+      ...(metaRow ? { firstObservedAt: new Date(metaRow.first_observed_at) } : {}),
+      recordedCount: metaRow?.recorded_count || 0,
+      retainedCount: Number(countRow.retained_count),
+      expiredCount: metaRow?.expired_count || 0,
+      prunedCount: metaRow?.pruned_count || 0,
+      ...(countRow.retention_until_earliest
+        ? { retentionUntilEarliest: new Date(countRow.retention_until_earliest) }
+        : {}),
+      ...(countRow.retention_until_latest
+        ? { retentionUntilLatest: new Date(countRow.retention_until_latest) }
+        : {}),
+    };
+  }
+
+  async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    const [key1, key2] = stringToTwoInt32(`subject_stats_observation:${subjectId}`);
+    let lockAcquired = false;
+    try {
+      await client.query('SELECT pg_advisory_lock($1, $2)', [key1, key2]);
+      lockAcquired = true;
+      return await fn();
+    } finally {
+      if (lockAcquired) {
+        try {
+          await client.query('SELECT pg_advisory_unlock($1, $2)', [key1, key2]);
+        } catch {
+          // ignore unlock error if connection closed
+        }
+      }
+      client.release();
+    }
   }
 
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {

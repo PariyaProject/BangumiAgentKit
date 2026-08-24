@@ -174,3 +174,12 @@ export const subjectStatsObservations = pgTable(
     retentionIdx: index('subject_stats_observations_retention_idx').on(table.retentionUntil),
   }),
 );
+
+export const subjectStatsObservationMeta = pgTable('subject_stats_observation_meta', {
+  subjectId: integer('subject_id').primaryKey(),
+  firstObservedAt: timestamp('first_observed_at').notNull(),
+  recordedCount: integer('recorded_count').notNull(),
+  expiredCount: integer('expired_count').notNull(),
+  prunedCount: integer('pruned_count').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+});

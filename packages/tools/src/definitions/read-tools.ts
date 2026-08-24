@@ -33,7 +33,10 @@ import {
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
-import { getSubjectStatsHistory } from '../subject-stats-history.js';
+import {
+  getSubjectStatsHistory,
+  SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
+} from '../subject-stats-history.js';
 
 export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
   let publicHttpClient: HttpClient;
@@ -293,7 +296,12 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       '读取指定条目的本地官方 v0 统计观察历史。默认只读取已有观察；只有显式 recordCurrent=true 才会追加当前只读快照。历史从首次启用开始、不回填、不读取账户/凭证/评论/社区网页、不执行 Bangumi 写操作，并保留观察时间、检索状态、覆盖、保留上限、公式方法和不可计算原因。',
     input: z
       .object({
-        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        subjectId: z
+          .number()
+          .int()
+          .positive()
+          .max(SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX)
+          .describe(`Bangumi 条目 ID（最大 ${SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX}）`),
         recordCurrent: z
           .boolean()
           .optional()
