@@ -52,6 +52,7 @@ describe('SQLite migration upgrade safety', () => {
     expect(migrations.map((row) => row.id)).toEqual([
       '0000_initial.sql',
       '0001_integrity_constraints.sql',
+      '0002_subject_stats_observations.sql',
     ]);
 
     const bindings = db.prepare('SELECT * FROM account_bindings').all() as Array<

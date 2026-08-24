@@ -297,6 +297,7 @@ describe('SQLite independent-process concurrency', () => {
     expect(migrations.map((row) => row.id)).toEqual([
       '0000_initial.sql',
       '0001_integrity_constraints.sql',
+      '0002_subject_stats_observations.sql',
     ]);
     db.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
