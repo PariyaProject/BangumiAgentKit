@@ -11,6 +11,9 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import * as schema from './drizzle/schema.js';
@@ -655,6 +658,101 @@ export class PostgresStorage implements Storage {
       requestId: event.requestId,
       createdAt: event.createdAt,
     });
+  }
+
+  async appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void> {
+    const now = options.now || new Date();
+    const maxObservations = Math.max(1, Math.trunc(options.maxObservations));
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `
+        INSERT INTO subject_stats_observations (
+          id, subject_id, observed_at, retrieved_at, state, result_json,
+          methodology_version, retention_until
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `,
+        [
+          record.id,
+          record.subjectId,
+          record.observedAt,
+          record.retrievedAt || null,
+          record.state,
+          record.resultJson,
+          record.methodologyVersion,
+          record.retentionUntil,
+        ],
+      );
+      await client.query('DELETE FROM subject_stats_observations WHERE retention_until <= $1', [
+        now,
+      ]);
+      await client.query(
+        `
+        DELETE FROM subject_stats_observations
+        WHERE subject_id = $1
+          AND id NOT IN (
+            SELECT id
+            FROM subject_stats_observations
+            WHERE subject_id = $1
+            ORDER BY observed_at DESC, id DESC
+            LIMIT $2
+          )
+      `,
+        [record.subjectId, maxObservations],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]> {
+    const now = query.now || new Date();
+    const limit = Math.max(1, Math.trunc(query.limit));
+    await this.pool.query(
+      'DELETE FROM subject_stats_observations WHERE subject_id = $1 AND retention_until <= $2',
+      [query.subjectId, now],
+    );
+    const result = await this.pool.query<{
+      id: string;
+      subject_id: number;
+      observed_at: Date;
+      retrieved_at: Date | null;
+      state: SubjectStatsObservationRecord['state'];
+      result_json: string;
+      methodology_version: string;
+      retention_until: Date;
+    }>(
+      `
+      SELECT id, subject_id, observed_at, retrieved_at, state, result_json,
+             methodology_version, retention_until
+      FROM subject_stats_observations
+      WHERE subject_id = $1 AND retention_until > $2
+      ORDER BY observed_at DESC, id DESC
+      LIMIT $3
+    `,
+      [query.subjectId, now, limit],
+    );
+
+    return result.rows.reverse().map((row) => ({
+      id: row.id,
+      subjectId: row.subject_id,
+      observedAt: new Date(row.observed_at),
+      retrievedAt: row.retrieved_at ? new Date(row.retrieved_at) : null,
+      state: row.state,
+      resultJson: row.result_json,
+      methodologyVersion: row.methodology_version,
+      retentionUntil: new Date(row.retention_until),
+    }));
   }
 
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {

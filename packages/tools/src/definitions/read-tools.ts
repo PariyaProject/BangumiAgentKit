@@ -33,6 +33,7 @@ import {
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
+import { getSubjectStatsHistory } from '../subject-stats-history.js';
 
 export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
   let publicHttpClient: HttpClient;
@@ -284,6 +285,51 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       await getSubjectStatsIntelligence(input.subjectId, {
         providerRegistry: deps?.providerRegistry,
       }),
+  });
+
+  const getSubjectStatsHistoryTool = defineTool({
+    name: 'bangumi.get_subject_stats_history',
+    description:
+      '读取指定条目的本地官方 v0 统计观察历史。默认只读取已有观察；只有显式 recordCurrent=true 才会追加当前只读快照。历史从首次启用开始、不回填、不读取账户/凭证/评论/社区网页、不执行 Bangumi 写操作，并保留观察时间、检索状态、覆盖、保留上限、公式方法和不可计算原因。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        recordCurrent: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe('是否显式追加一次当前官方 v0 统计观察，默认 false'),
+        maxObservations: z
+          .number()
+          .int()
+          .min(1)
+          .max(120)
+          .optional()
+          .default(24)
+          .describe('最多保留并返回的观察点数，默认 24，最大 120'),
+        retentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(3650)
+          .optional()
+          .default(365)
+          .describe('每个观察点的保留天数，默认 365，最大 3650'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) =>
+      await getSubjectStatsHistory(
+        input.subjectId,
+        {
+          recordCurrent: input.recordCurrent,
+          maxObservations: input.maxObservations,
+          retentionDays: input.retentionDays,
+        },
+        { storage: deps?.storage, providerRegistry: deps?.providerRegistry },
+      ),
   });
 
   const getSubjectRelations = defineTool({
@@ -1798,6 +1844,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getPersonActivity,
     getEpisodeGuide,
     getSubjectStatsIntelligenceTool,
+    getSubjectStatsHistoryTool,
     getEpisodeCollections,
     listCharacterCollections,
     getCharacterCollection,

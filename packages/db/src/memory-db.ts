@@ -9,6 +9,9 @@ import {
   ConversationContextRecord,
   PendingActionRecord,
   AuditEventRecord,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 
@@ -22,6 +25,7 @@ export class MemoryStorage implements Storage {
   private conversationContexts = new Map<string, ConversationContextRecord>();
   private pendingActions = new Map<string, PendingActionRecord>();
   private auditEvents: AuditEventRecord[] = [];
+  private subjectStatsObservations = new Map<number, SubjectStatsObservationRecord[]>();
   private credentialLocks = new Map<string, Promise<void>>();
 
   async findOrCreatePrincipal(input: FindOrCreatePrincipalInput): Promise<ExternalPrincipalRecord> {
@@ -302,6 +306,31 @@ export class MemoryStorage implements Storage {
     this.auditEvents.push({ ...event });
   }
 
+  async appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void> {
+    const now = options.now || new Date();
+    const existing = this.subjectStatsObservations.get(record.subjectId) || [];
+    const live = existing.filter((item) => item.retentionUntil > now);
+    live.push(cloneSubjectStatsObservation(record));
+    live.sort(compareSubjectStatsObservation);
+    const bounded = live.slice(-options.maxObservations);
+    this.subjectStatsObservations.set(record.subjectId, bounded);
+  }
+
+  async listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]> {
+    const now = query.now || new Date();
+    const existing = this.subjectStatsObservations.get(query.subjectId) || [];
+    const live = existing.filter((item) => item.retentionUntil > now);
+    const bounded = live.slice(-query.limit).map(cloneSubjectStatsObservation);
+    if (live.length === 0) this.subjectStatsObservations.delete(query.subjectId);
+    else this.subjectStatsObservations.set(query.subjectId, live);
+    return bounded;
+  }
+
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {
     const previous = this.credentialLocks.get(accountId) || Promise.resolve();
     let release: () => void;
@@ -335,6 +364,7 @@ export class MemoryStorage implements Storage {
     this.conversationContexts.clear();
     this.pendingActions.clear();
     this.auditEvents = [];
+    this.subjectStatsObservations.clear();
     this.credentialLocks.clear();
   }
 
@@ -346,4 +376,23 @@ export class MemoryStorage implements Storage {
   getPendingActions(): PendingActionRecord[] {
     return Array.from(this.pendingActions.values());
   }
+}
+
+function compareSubjectStatsObservation(
+  left: SubjectStatsObservationRecord,
+  right: SubjectStatsObservationRecord,
+): number {
+  const byTime = left.observedAt.getTime() - right.observedAt.getTime();
+  return byTime || left.id.localeCompare(right.id);
+}
+
+function cloneSubjectStatsObservation(
+  record: SubjectStatsObservationRecord,
+): SubjectStatsObservationRecord {
+  return {
+    ...record,
+    observedAt: new Date(record.observedAt),
+    retrievedAt: record.retrievedAt ? new Date(record.retrievedAt) : record.retrievedAt,
+    retentionUntil: new Date(record.retentionUntil),
+  };
 }

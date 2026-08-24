@@ -153,3 +153,24 @@ export const auditEvents = pgTable(
     auditIdx: index('audit_events_principal_created_idx').on(table.principalId, table.createdAt),
   }),
 );
+
+export const subjectStatsObservations = pgTable(
+  'subject_stats_observations',
+  {
+    id: text('id').primaryKey(),
+    subjectId: integer('subject_id').notNull(),
+    observedAt: timestamp('observed_at').notNull(),
+    retrievedAt: timestamp('retrieved_at'),
+    state: text('state').notNull(),
+    resultJson: text('result_json').notNull(),
+    methodologyVersion: text('methodology_version').notNull(),
+    retentionUntil: timestamp('retention_until').notNull(),
+  },
+  (table) => ({
+    subjectObservedIdx: index('subject_stats_observations_subject_observed_idx').on(
+      table.subjectId,
+      table.observedAt,
+    ),
+    retentionIdx: index('subject_stats_observations_retention_idx').on(table.retentionUntil),
+  }),
+);

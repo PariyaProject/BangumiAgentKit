@@ -15,6 +15,9 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import { runSqliteMigrations } from './migrator.js';
@@ -721,6 +724,103 @@ export class SQLiteStorage implements Storage {
       event.requestId || null,
       event.createdAt.getTime(),
     );
+  }
+
+  async appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void> {
+    const nowMs = (options.now || new Date()).getTime();
+    const maxObservations = Math.max(1, Math.trunc(options.maxObservations));
+    const append = this.sqliteDb.transaction(() => {
+      this.sqliteDb
+        .prepare(
+          `
+          INSERT INTO subject_stats_observations (
+            id, subject_id, observed_at, retrieved_at, state, result_json,
+            methodology_version, retention_until
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        )
+        .run(
+          record.id,
+          record.subjectId,
+          record.observedAt.getTime(),
+          record.retrievedAt ? record.retrievedAt.getTime() : null,
+          record.state,
+          record.resultJson,
+          record.methodologyVersion,
+          record.retentionUntil.getTime(),
+        );
+
+      this.sqliteDb
+        .prepare('DELETE FROM subject_stats_observations WHERE retention_until <= ?')
+        .run(nowMs);
+      this.sqliteDb
+        .prepare(
+          `
+          DELETE FROM subject_stats_observations
+          WHERE subject_id = ?
+            AND id NOT IN (
+              SELECT id
+              FROM subject_stats_observations
+              WHERE subject_id = ?
+              ORDER BY observed_at DESC, id DESC
+              LIMIT ?
+            )
+        `,
+        )
+        .run(record.subjectId, record.subjectId, maxObservations);
+    });
+    append();
+  }
+
+  async listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]> {
+    const nowMs = (query.now || new Date()).getTime();
+    const limit = Math.max(1, Math.trunc(query.limit));
+    const read = this.sqliteDb.transaction(() => {
+      this.sqliteDb
+        .prepare(
+          'DELETE FROM subject_stats_observations WHERE subject_id = ? AND retention_until <= ?',
+        )
+        .run(query.subjectId, nowMs);
+      return this.sqliteDb
+        .prepare(
+          `
+          SELECT id, subject_id, observed_at, retrieved_at, state, result_json,
+                 methodology_version, retention_until
+          FROM subject_stats_observations
+          WHERE subject_id = ? AND retention_until > ?
+          ORDER BY observed_at DESC, id DESC
+          LIMIT ?
+        `,
+        )
+        .all(query.subjectId, nowMs, limit) as Array<{
+        id: string;
+        subject_id: number;
+        observed_at: number;
+        retrieved_at?: number | null;
+        state: SubjectStatsObservationRecord['state'];
+        result_json: string;
+        methodology_version: string;
+        retention_until: number;
+      }>;
+    });
+
+    return read()
+      .reverse()
+      .map((row) => ({
+        id: row.id,
+        subjectId: row.subject_id,
+        observedAt: new Date(row.observed_at),
+        retrievedAt: row.retrieved_at == null ? null : new Date(row.retrieved_at),
+        state: row.state,
+        resultJson: row.result_json,
+        methodologyVersion: row.methodology_version,
+        retentionUntil: new Date(row.retention_until),
+      }));
   }
 
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {

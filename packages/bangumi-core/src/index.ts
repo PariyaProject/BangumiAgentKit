@@ -10,6 +10,7 @@ export * from './models/calendar.js';
 export * from './models/subject-overview.js';
 export * from './models/subject-comparison.js';
 export * from './models/subject-stats-intelligence.js';
+export * from './models/subject-stats-history.js';
 export * from './models/person-activity.js';
 
 export * from './services/subject-service.js';

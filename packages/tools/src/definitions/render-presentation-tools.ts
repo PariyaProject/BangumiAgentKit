@@ -37,6 +37,7 @@ import {
   buildSubjectOverviewViewModel,
   buildSubjectComparisonViewModel,
   buildSubjectStatsViewModel,
+  buildSubjectStatsHistoryViewModel,
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
   buildCollectionScheduleViewModel,
@@ -49,6 +50,7 @@ import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
+import { getSubjectStatsHistory } from '../subject-stats-history.js';
 
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
@@ -641,6 +643,53 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectStatsHistory = defineTool({
+    name: 'bangumi.render_subject_stats_history',
+    description:
+      '生成指定条目的本地官方 v0 统计观察历史图片卡片 Artifact。默认只读取既有观察，只有显式 recordCurrent=true 才追加当前只读快照；卡片显示观察时间、状态、有限保留、相邻差值、coverage、方法与限制，不宣称 Bangumi 事件历史、趋势、社区统计或推荐结论。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        recordCurrent: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe('是否显式追加一次当前官方 v0 统计观察，默认 false'),
+        maxObservations: z
+          .number()
+          .int()
+          .min(1)
+          .max(120)
+          .optional()
+          .default(24)
+          .describe('最多保留并返回的观察点数，默认 24，最大 120'),
+        retentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(3650)
+          .optional()
+          .default(365)
+          .describe('每个观察点的保留天数，默认 365，最大 3650'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const result = await getSubjectStatsHistory(
+        input.subjectId,
+        {
+          recordCurrent: input.recordCurrent,
+          maxObservations: input.maxObservations,
+          retentionDays: input.retentionDays,
+        },
+        { storage: deps?.storage, providerRegistry: deps?.providerRegistry },
+      );
+      return await executeRenderAndSave(buildSubjectStatsHistoryViewModel(result));
+    },
+  });
+
   const renderCollectionIntelligence = defineTool({
     name: 'bangumi.render_collection_intelligence',
     description:
@@ -1041,6 +1090,7 @@ export function createRenderPresentationTools(
     renderSubjectOverview,
     renderSubjectComparison,
     renderSubjectStats,
+    renderSubjectStatsHistory,
     renderCollectionIntelligence,
     renderCollectionBacklog,
     renderCollectionSchedule,

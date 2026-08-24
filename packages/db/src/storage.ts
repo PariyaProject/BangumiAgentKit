@@ -6,6 +6,9 @@ import {
   OAuthSessionRecord,
   PendingActionRecord,
   AuditEventRecord,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 
 export interface FindOrCreatePrincipalInput {
@@ -60,6 +63,13 @@ export interface Storage {
   markPendingActionFailed(id: string, reason: string, failureCode?: string): Promise<void>;
   markPendingActionUnknown(id: string, reason: string): Promise<void>;
   appendAuditEvent(event: AuditEventRecord): Promise<void>;
+  appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void>;
+  listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]>;
   withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }

@@ -121,3 +121,43 @@ export interface AuditEventRecord {
   requestId?: string;
   createdAt: Date;
 }
+
+export type SubjectStatsObservationState =
+  | 'complete'
+  | 'ok'
+  | 'partial'
+  | 'stale'
+  | 'conflict'
+  | 'auth_required'
+  | 'permission_denied'
+  | 'unavailable'
+  | 'not_computable'
+  | 'unsupported'
+  | 'not_found'
+  | 'upstream_error';
+
+/**
+ * An immutable public-statistics snapshot. It intentionally has no principal,
+ * account, credential, or Bangumi-write relationship.
+ */
+export interface SubjectStatsObservationRecord {
+  id: string;
+  subjectId: number;
+  observedAt: Date;
+  retrievedAt?: Date | null;
+  state: SubjectStatsObservationState;
+  resultJson: string;
+  methodologyVersion: string;
+  retentionUntil: Date;
+}
+
+export interface SubjectStatsObservationStoreOptions {
+  maxObservations: number;
+  now?: Date;
+}
+
+export interface SubjectStatsObservationQuery {
+  subjectId: number;
+  limit: number;
+  now?: Date;
+}

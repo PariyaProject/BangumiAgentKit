@@ -39,6 +39,8 @@ Bangumi:
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
   stats <subjectId>
+  stats-history <subjectId> [--record-current] [--max-observations 1..120]
+               [--retention-days 1..3650]
   overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
@@ -74,7 +76,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|stats|stats-history|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -252,6 +254,41 @@ function parseSubjectComparisonOptions(args: string[]): Record<string, unknown> 
       input.maxStaff = optionNumber(value, 'max-staff', true, 1, 80);
     } else {
       input.maxRelations = optionNumber(value, 'max-relations', true, 1, 32);
+    }
+  }
+  return input;
+}
+
+function parseSubjectStatsHistoryOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    subjectId: parsePositiveInteger(args[0], 'subject id'),
+  };
+  const optionNames = new Set(['--record-current', '--max-observations', '--retention-days']);
+  const seen = new Set<string>();
+  for (let index = 1; index < args.length; index += 1) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown stats-history argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    if (name === '--record-current') {
+      input.recordCurrent = true;
+      continue;
+    }
+    const value = args[++index];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--max-observations') {
+      input.maxObservations = optionNumber(value, 'max-observations', true, 1, 120);
+    } else {
+      input.retentionDays = optionNumber(value, 'retention-days', true, 1, 3650);
     }
   }
   return input;
@@ -515,6 +552,15 @@ export class StandaloneCommandRegistry {
         value: await runTool(ctx, 'bangumi.get_subject_stats_intelligence', {
           subjectId: parsePositiveInteger(args[1], 'subject id'),
         }),
+      };
+    }
+    if (command === 'stats-history') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_subject_stats_history',
+          parseSubjectStatsHistoryOptions(args.slice(1)),
+        ),
       };
     }
     if (command === 'overview') {
@@ -888,6 +934,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'stats' || kind === 'subject-stats') {
       name = 'bangumi.render_subject_stats_intelligence';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'stats-history' || kind === 'subject-stats-history') {
+      name = 'bangumi.render_subject_stats_history';
+      input = parseSubjectStatsHistoryOptions(args.slice(1));
     } else if (kind === 'overview') {
       name = 'bangumi.render_subject_overview';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };

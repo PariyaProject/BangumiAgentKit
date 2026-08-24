@@ -64,6 +64,74 @@ describe('Standalone subject statistics commands', () => {
     );
   });
 
+  it('routes bounded statistics history commands and presents observations', async () => {
+    const history = {
+      state: 'partial',
+      subjectId: 123,
+      collection: {
+        observationsObserved: 1,
+        observationsReturned: 1,
+        completeObservations: 1,
+        changePairs: 0,
+        retentionDays: 365,
+        maxObservations: 24,
+        recordCurrent: true,
+      },
+      observations: [
+        {
+          observedAt: '2026-08-24T00:00:00.000Z',
+          state: 'complete',
+          snapshot: {
+            raw: { score: 8.6, ratingTotal: 100 },
+            collection: { total: 10, completionRate: 0.4 },
+          },
+        },
+      ],
+      changes: [],
+      source: {
+        official: { operations: ['getSubjectStats'], observationCount: 1 },
+        derived: { operations: [], observationCount: 1 },
+      },
+      warnings: [],
+      limitations: ['从显式启用后开始；不会回填。'],
+    };
+    const executeTool = vi.fn().mockResolvedValue(history);
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      [
+        'stats-history',
+        '123',
+        '--record-current',
+        '--max-observations',
+        '12',
+        '--retention-days',
+        '30',
+      ],
+      context(host),
+    );
+    await registry.execute(['render', 'stats-history', '123', '--record-current'], context(host));
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_subject_stats_history',
+      { subjectId: 123, recordCurrent: true, maxObservations: 12, retentionDays: 30 },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_subject_stats_history',
+      { subjectId: 123, recordCurrent: true },
+      expect.anything(),
+    );
+
+    const output = formatHuman(history);
+    expect(output).toContain('条目统计观察历史');
+    expect(output).toContain('2026-08-24T00:00:00.000Z');
+    expect(output).toContain('recordCurrent');
+  });
+
   it('presents complete and unavailable statistics with bounded diagnostics', () => {
     const complete = formatHuman({
       state: 'complete',

@@ -158,3 +158,24 @@ export const storageLocks = sqliteTable('storage_locks', {
   expiresAt: integer('expires_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
+
+export const subjectStatsObservations = sqliteTable(
+  'subject_stats_observations',
+  {
+    id: text('id').primaryKey(),
+    subjectId: integer('subject_id').notNull(),
+    observedAt: integer('observed_at').notNull(),
+    retrievedAt: integer('retrieved_at'),
+    state: text('state').notNull(),
+    resultJson: text('result_json').notNull(),
+    methodologyVersion: text('methodology_version').notNull(),
+    retentionUntil: integer('retention_until').notNull(),
+  },
+  (table) => ({
+    subjectObservedIdx: index('subject_stats_observations_subject_observed_idx').on(
+      table.subjectId,
+      table.observedAt,
+    ),
+    retentionIdx: index('subject_stats_observations_retention_idx').on(table.retentionUntil),
+  }),
+);

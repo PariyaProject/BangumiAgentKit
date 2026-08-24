@@ -17,6 +17,7 @@ import type {
   SubjectOverviewResult,
   SubjectComparisonResult,
   SubjectStatsIntelligenceResult,
+  SubjectStatsHistoryResult,
 } from '@bangumi-agent-kit/bangumi-core';
 import type {
   SubjectCardViewModel,
@@ -45,6 +46,7 @@ import type {
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
   SubjectStatsViewModel,
+  SubjectStatsHistoryViewModel,
 } from '../view-models/index.js';
 
 export function truncateText(
@@ -635,6 +637,24 @@ export function buildSubjectStatsViewModel(
     warnings: result.warnings,
     limitations: result.limitations,
     retrievedAt: result.retrievedAt,
+  };
+}
+
+export function buildSubjectStatsHistoryViewModel(
+  result: SubjectStatsHistoryResult,
+): SubjectStatsHistoryViewModel {
+  return {
+    template: 'subject-stats-history',
+    version: 1,
+    subjectId: result.subjectId,
+    state: result.state,
+    collection: result.collection,
+    observations: result.observations,
+    changes: result.changes,
+    methodology: result.methodology,
+    source: result.source,
+    warnings: result.warnings,
+    limitations: result.limitations,
   };
 }
 

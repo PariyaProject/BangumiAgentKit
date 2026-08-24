@@ -159,6 +159,48 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
 
       await storage.close();
     });
+
+    it('stores immutable bounded subject statistics observations independently of identity', async () => {
+      const storage = await createStorage();
+      if (!storage) return;
+
+      const base = new Date('2026-08-24T00:00:00.000Z');
+      for (let index = 0; index < 3; index += 1) {
+        const observedAt = new Date(base.getTime() + index * 60_000);
+        await storage.appendSubjectStatsObservation(
+          {
+            id: `stats-observation-${index}`,
+            subjectId: 123,
+            observedAt,
+            retrievedAt: observedAt,
+            state: 'complete',
+            resultJson: JSON.stringify({ score: 8 + index / 10 }),
+            methodologyVersion: 'bangumi.subject.stats.observation-history.v1',
+            retentionUntil: new Date(base.getTime() + 86_400_000),
+          },
+          { maxObservations: 2, now: observedAt },
+        );
+      }
+
+      const observations = await storage.listSubjectStatsObservations({
+        subjectId: 123,
+        limit: 10,
+        now: base,
+      });
+      expect(observations.map((item) => item.id)).toEqual([
+        'stats-observation-1',
+        'stats-observation-2',
+      ]);
+      expect(observations[0]?.resultJson).toContain('8.1');
+
+      const expired = await storage.listSubjectStatsObservations({
+        subjectId: 123,
+        limit: 10,
+        now: new Date(base.getTime() + 86_400_000),
+      });
+      expect(expired).toEqual([]);
+      await storage.close();
+    });
   });
 }
 
