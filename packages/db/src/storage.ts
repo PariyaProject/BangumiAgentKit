@@ -6,6 +6,10 @@ import {
   OAuthSessionRecord,
   PendingActionRecord,
   AuditEventRecord,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationSummary,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 
 export interface FindOrCreatePrincipalInput {
@@ -39,10 +43,7 @@ export interface Storage {
     bangumiAccountId: string,
     activate?: boolean,
   ): Promise<AccountBindingRecord>;
-  setActiveBinding(
-    principalId: string,
-    bangumiAccountId: string,
-  ): Promise<AccountBindingRecord>;
+  setActiveBinding(principalId: string, bangumiAccountId: string): Promise<AccountBindingRecord>;
   removeBinding(principalId: string, bangumiAccountId: string): Promise<void>;
   replaceActiveBinding(
     principalId: string,
@@ -60,6 +61,22 @@ export interface Storage {
   markPendingActionFailed(id: string, reason: string, failureCode?: string): Promise<void>;
   markPendingActionUnknown(id: string, reason: string): Promise<void>;
   appendAuditEvent(event: AuditEventRecord): Promise<void>;
+  appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void>;
+  listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]>;
+  getSubjectStatsObservationSummary(
+    subjectId: number,
+    now?: Date,
+  ): Promise<SubjectStatsObservationSummary>;
+  getSubjectStatsObservationSubjectCount(): Promise<number>;
+  getSubjectStatsObservationHostBackoff(now?: Date): Promise<Date | undefined>;
+  setSubjectStatsObservationHostBackoff(until: Date): Promise<void>;
+  withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T>;
+  withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T>;
   withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }

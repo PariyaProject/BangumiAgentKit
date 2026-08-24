@@ -1,11 +1,4 @@
-import {
-  sqliteTable,
-  text,
-  integer,
-  unique,
-  index,
-  primaryKey,
-} from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique, index, primaryKey } from 'drizzle-orm/sqlite-core';
 
 export const botInstances = sqliteTable('bot_instances', {
   id: text('id').primaryKey(),
@@ -156,5 +149,35 @@ export const storageLocks = sqliteTable('storage_locks', {
   lockKey: text('lock_key').primaryKey(),
   ownerId: text('owner_id').notNull(),
   expiresAt: integer('expires_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const subjectStatsObservations = sqliteTable(
+  'subject_stats_observations',
+  {
+    id: text('id').primaryKey(),
+    subjectId: integer('subject_id').notNull(),
+    observedAt: integer('observed_at').notNull(),
+    retrievedAt: integer('retrieved_at'),
+    state: text('state').notNull(),
+    resultJson: text('result_json').notNull(),
+    methodologyVersion: text('methodology_version').notNull(),
+    retentionUntil: integer('retention_until').notNull(),
+  },
+  (table) => ({
+    subjectObservedIdx: index('subject_stats_observations_subject_observed_idx').on(
+      table.subjectId,
+      table.observedAt,
+    ),
+    retentionIdx: index('subject_stats_observations_retention_idx').on(table.retentionUntil),
+  }),
+);
+
+export const subjectStatsObservationMeta = sqliteTable('subject_stats_observation_meta', {
+  subjectId: integer('subject_id').primaryKey(),
+  firstObservedAt: integer('first_observed_at').notNull(),
+  recordedCount: integer('recorded_count').notNull(),
+  expiredCount: integer('expired_count').notNull(),
+  prunedCount: integer('pruned_count').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });

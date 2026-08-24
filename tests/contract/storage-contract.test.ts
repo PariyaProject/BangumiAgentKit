@@ -159,6 +159,103 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
 
       await storage.close();
     });
+
+    it('stores immutable bounded subject statistics observations independently of identity', async () => {
+      const storage = await createStorage();
+      if (!storage) return;
+
+      const base = new Date('2026-08-24T00:00:00.000Z');
+      for (let index = 0; index < 3; index += 1) {
+        const observedAt = new Date(base.getTime() + index * 60_000);
+        await storage.appendSubjectStatsObservation(
+          {
+            id: `stats-observation-${index}`,
+            subjectId: 123,
+            observedAt,
+            retrievedAt: observedAt,
+            state: 'complete',
+            resultJson: JSON.stringify({ score: 8 + index / 10 }),
+            methodologyVersion: 'bangumi.subject.stats.observation-history.v1',
+            retentionUntil: new Date(base.getTime() + 86_400_000),
+          },
+          { maxObservations: 2, now: observedAt },
+        );
+      }
+
+      const observations = await storage.listSubjectStatsObservations({
+        subjectId: 123,
+        limit: 10,
+        now: base,
+      });
+      expect(observations.map((item) => item.id)).toEqual([
+        'stats-observation-1',
+        'stats-observation-2',
+      ]);
+      expect(observations[0]?.resultJson).toContain('8.1');
+
+      const beforeExpiry = await storage.getSubjectStatsObservationSummary(123, base);
+      expect(beforeExpiry.recordedCount).toBe(3);
+      expect(beforeExpiry.retainedCount).toBe(2);
+      expect(beforeExpiry.prunedCount).toBe(1);
+      expect(beforeExpiry.firstObservedAt?.toISOString()).toBe(base.toISOString());
+
+      const expired = await storage.listSubjectStatsObservations({
+        subjectId: 123,
+        limit: 10,
+        now: new Date(base.getTime() + 86_400_000),
+      });
+      expect(expired).toEqual([]);
+      const afterExpiry = await storage.getSubjectStatsObservationSummary(
+        123,
+        new Date(base.getTime() + 86_400_000),
+      );
+      expect(afterExpiry.recordedCount).toBe(3);
+      expect(afterExpiry.retainedCount).toBe(0);
+      expect(afterExpiry.expiredCount).toBe(2);
+
+      let active = 0;
+      let peak = 0;
+      await Promise.all([
+        storage.withSubjectStatsObservationLock(123, async () => {
+          active += 1;
+          peak = Math.max(peak, active);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          active -= 1;
+        }),
+        storage.withSubjectStatsObservationLock(123, async () => {
+          active += 1;
+          peak = Math.max(peak, active);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          active -= 1;
+        }),
+      ]);
+      expect(peak).toBe(1);
+
+      expect(await storage.getSubjectStatsObservationSubjectCount()).toBe(0);
+      const hostBackoffUntil = new Date(Date.now() + 60_000);
+      await storage.setSubjectStatsObservationHostBackoff(hostBackoffUntil);
+      const activeBackoff = await storage.getSubjectStatsObservationHostBackoff(new Date());
+      expect(activeBackoff?.getTime()).toBe(hostBackoffUntil.getTime());
+
+      let hostActive = 0;
+      let hostPeak = 0;
+      await Promise.all([
+        storage.withSubjectStatsObservationHostLock(async () => {
+          hostActive += 1;
+          hostPeak = Math.max(hostPeak, hostActive);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          hostActive -= 1;
+        }),
+        storage.withSubjectStatsObservationHostLock(async () => {
+          hostActive += 1;
+          hostPeak = Math.max(hostPeak, hostActive);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          hostActive -= 1;
+        }),
+      ]);
+      expect(hostPeak).toBe(1);
+      await storage.close();
+    });
   });
 }
 

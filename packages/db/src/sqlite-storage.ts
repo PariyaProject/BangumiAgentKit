@@ -15,6 +15,13 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY,
+  SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
+  SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationSummary,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import { runSqliteMigrations } from './migrator.js';
@@ -23,7 +30,9 @@ const SQLITE_JOURNAL_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800, 1600, 3200];
 
 function isSqliteBusyError(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code;
-  return code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED' || /database is locked/i.test(String(error));
+  return (
+    code === 'SQLITE_BUSY' || code === 'SQLITE_LOCKED' || /database is locked/i.test(String(error))
+  );
 }
 
 async function enableWalMode(sqliteDb: Database.Database): Promise<void> {
@@ -723,52 +732,371 @@ export class SQLiteStorage implements Storage {
     );
   }
 
-  async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {
-    const lockKey = `cred_lock:${accountId}`;
+  async appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void> {
+    const nowMs = (options.now || new Date()).getTime();
+    const maxObservations = Math.min(
+      SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+      Math.max(1, Math.trunc(options.maxObservations)),
+    );
+    const append = this.sqliteDb.transaction(() => {
+      const expired = this.sqliteDb
+        .prepare(
+          'SELECT COUNT(*) AS count FROM subject_stats_observations WHERE subject_id = ? AND retention_until <= ?',
+        )
+        .get(record.subjectId, nowMs) as { count: number };
+      this.sqliteDb
+        .prepare(
+          `DELETE FROM subject_stats_observations
+           WHERE rowid IN (
+             SELECT rowid FROM subject_stats_observations
+             WHERE subject_id = ? AND retention_until <= ?
+             ORDER BY retention_until ASC, rowid ASC
+             LIMIT ?
+           )`,
+        )
+        .run(record.subjectId, nowMs, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS);
+
+      const existingMeta = this.sqliteDb
+        .prepare(
+          'SELECT subject_id, first_observed_at, recorded_count, expired_count, pruned_count FROM subject_stats_observation_meta WHERE subject_id = ?',
+        )
+        .get(record.subjectId) as
+        | {
+            subject_id: number;
+            first_observed_at: number;
+            recorded_count: number;
+            expired_count: number;
+            pruned_count: number;
+          }
+        | undefined;
+      if (!existingMeta) {
+        this.sqliteDb
+          .prepare(
+            `INSERT INTO subject_stats_observation_meta
+              (subject_id, first_observed_at, recorded_count, expired_count, pruned_count, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            record.subjectId,
+            record.observedAt.getTime(),
+            1,
+            Math.min(expired.count, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS),
+            0,
+            nowMs,
+          );
+      } else {
+        this.sqliteDb
+          .prepare(
+            `UPDATE subject_stats_observation_meta
+             SET first_observed_at = MIN(first_observed_at, ?),
+                 recorded_count = recorded_count + 1,
+                 expired_count = expired_count + ?,
+                 updated_at = ?
+             WHERE subject_id = ?`,
+          )
+          .run(
+            record.observedAt.getTime(),
+            Math.min(expired.count, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS),
+            nowMs,
+            record.subjectId,
+          );
+      }
+
+      this.sqliteDb
+        .prepare(
+          `
+          INSERT INTO subject_stats_observations (
+            id, subject_id, observed_at, retrieved_at, state, result_json,
+            methodology_version, retention_until
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        )
+        .run(
+          record.id,
+          record.subjectId,
+          record.observedAt.getTime(),
+          record.retrievedAt ? record.retrievedAt.getTime() : null,
+          record.state,
+          record.resultJson,
+          record.methodologyVersion,
+          record.retentionUntil.getTime(),
+        );
+
+      const beforePrune = this.sqliteDb
+        .prepare('SELECT COUNT(*) AS count FROM subject_stats_observations WHERE subject_id = ?')
+        .get(record.subjectId) as { count: number };
+      if (beforePrune.count > maxObservations) {
+        this.sqliteDb
+          .prepare(
+            `
+            DELETE FROM subject_stats_observations
+            WHERE subject_id = ?
+              AND id NOT IN (
+                SELECT id
+                FROM subject_stats_observations
+                WHERE subject_id = ?
+                ORDER BY observed_at DESC, id DESC
+                LIMIT ?
+              )
+          `,
+          )
+          .run(record.subjectId, record.subjectId, maxObservations);
+        this.sqliteDb
+          .prepare(
+            'UPDATE subject_stats_observation_meta SET pruned_count = pruned_count + ?, updated_at = ? WHERE subject_id = ?',
+          )
+          .run(beforePrune.count - maxObservations, nowMs, record.subjectId);
+      }
+    });
+    append();
+  }
+
+  async listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]> {
+    const nowMs = (query.now || new Date()).getTime();
+    const limit = Math.max(1, Math.trunc(query.limit));
+    const read = this.sqliteDb.transaction(() => {
+      const expired = this.sqliteDb
+        .prepare(
+          'SELECT COUNT(*) AS count FROM subject_stats_observations WHERE subject_id = ? AND retention_until <= ?',
+        )
+        .get(query.subjectId, nowMs) as { count: number };
+      this.sqliteDb
+        .prepare(
+          `DELETE FROM subject_stats_observations
+           WHERE rowid IN (
+             SELECT rowid FROM subject_stats_observations
+             WHERE subject_id = ? AND retention_until <= ?
+             ORDER BY retention_until ASC, rowid ASC
+             LIMIT ?
+           )`,
+        )
+        .run(query.subjectId, nowMs, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS);
+      if (expired.count > 0) {
+        this.sqliteDb
+          .prepare(
+            'UPDATE subject_stats_observation_meta SET expired_count = expired_count + ?, updated_at = ? WHERE subject_id = ?',
+          )
+          .run(
+            Math.min(expired.count, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS),
+            nowMs,
+            query.subjectId,
+          );
+      }
+      return this.sqliteDb
+        .prepare(
+          `
+          SELECT id, subject_id, observed_at, retrieved_at, state, result_json,
+                 methodology_version, retention_until
+          FROM subject_stats_observations
+          WHERE subject_id = ? AND retention_until > ?
+          ORDER BY observed_at DESC, id DESC
+          LIMIT ?
+        `,
+        )
+        .all(query.subjectId, nowMs, limit) as Array<{
+        id: string;
+        subject_id: number;
+        observed_at: number;
+        retrieved_at?: number | null;
+        state: SubjectStatsObservationRecord['state'];
+        result_json: string;
+        methodology_version: string;
+        retention_until: number;
+      }>;
+    });
+
+    return read()
+      .reverse()
+      .map((row) => ({
+        id: row.id,
+        subjectId: row.subject_id,
+        observedAt: new Date(row.observed_at),
+        retrievedAt: row.retrieved_at == null ? null : new Date(row.retrieved_at),
+        state: row.state,
+        resultJson: row.result_json,
+        methodologyVersion: row.methodology_version,
+        retentionUntil: new Date(row.retention_until),
+      }));
+  }
+
+  async getSubjectStatsObservationSummary(
+    subjectId: number,
+    now = new Date(),
+  ): Promise<SubjectStatsObservationSummary> {
+    await this.listSubjectStatsObservations({ subjectId, limit: 1, now });
+    const meta = this.sqliteDb
+      .prepare(
+        'SELECT first_observed_at, recorded_count, expired_count, pruned_count FROM subject_stats_observation_meta WHERE subject_id = ?',
+      )
+      .get(subjectId) as
+      | {
+          first_observed_at: number;
+          recorded_count: number;
+          expired_count: number;
+          pruned_count: number;
+        }
+      | undefined;
+    const counts = this.sqliteDb
+      .prepare(
+        `SELECT COUNT(*) AS retained_count,
+                MIN(retention_until) AS retention_until_earliest,
+                MAX(retention_until) AS retention_until_latest
+         FROM subject_stats_observations
+         WHERE subject_id = ? AND retention_until > ?`,
+      )
+      .get(subjectId, now.getTime()) as {
+      retained_count: number;
+      retention_until_earliest?: number | null;
+      retention_until_latest?: number | null;
+    };
+    return {
+      firstObservedAt: meta ? new Date(meta.first_observed_at) : undefined,
+      recordedCount: meta?.recorded_count || 0,
+      retainedCount: counts.retained_count,
+      expiredCount: meta?.expired_count || 0,
+      prunedCount: meta?.pruned_count || 0,
+      ...(counts.retention_until_earliest == null
+        ? {}
+        : { retentionUntilEarliest: new Date(counts.retention_until_earliest) }),
+      ...(counts.retention_until_latest == null
+        ? {}
+        : { retentionUntilLatest: new Date(counts.retention_until_latest) }),
+    };
+  }
+
+  async getSubjectStatsObservationSubjectCount(): Promise<number> {
+    const row = this.sqliteDb
+      .prepare('SELECT COUNT(DISTINCT subject_id) AS count FROM subject_stats_observations')
+      .get() as { count: number };
+    return row.count;
+  }
+
+  async getSubjectStatsObservationHostBackoff(now = new Date()): Promise<Date | undefined> {
+    const row = this.sqliteDb
+      .prepare(
+        `SELECT backoff_until FROM subject_stats_observation_host_meta
+         WHERE id = 1 AND backoff_until > ?`,
+      )
+      .get(now.getTime()) as { backoff_until: number } | undefined;
+    return row ? new Date(row.backoff_until) : undefined;
+  }
+
+  async setSubjectStatsObservationHostBackoff(until: Date): Promise<void> {
+    const nowMs = Date.now();
+    this.sqliteDb
+      .prepare(
+        `INSERT INTO subject_stats_observation_host_meta (id, backoff_until, updated_at)
+         VALUES (1, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           backoff_until = MAX(subject_stats_observation_host_meta.backoff_until, excluded.backoff_until),
+           updated_at = excluded.updated_at`,
+      )
+      .run(until.getTime(), nowMs);
+  }
+
+  async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
+    return this.withStorageLock(
+      `subject_stats_lock:${subjectId}`,
+      fn,
+      `subject ${subjectId} observation lock`,
+    );
+  }
+
+  async withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T> {
+    return this.withStorageLock(
+      SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY,
+      fn,
+      'official subject statistics host lock',
+    );
+  }
+
+  private async withStorageLock<T>(
+    lockKey: string,
+    fn: () => Promise<T>,
+    description: string,
+  ): Promise<T> {
     const ownerId = `owner_${crypto.randomUUID()}`;
-    const timeoutMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_TIMEOUT_MS || '10000', 10);
-    const leaseMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_LEASE_MS || '30000', 10);
+    const configuredTimeoutMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_TIMEOUT_MS || '10000', 10);
+    const configuredLeaseMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_LEASE_MS || '30000', 10);
+    const timeoutMs = Number.isFinite(configuredTimeoutMs)
+      ? Math.max(100, configuredTimeoutMs)
+      : 10000;
+    const leaseMs = Number.isFinite(configuredLeaseMs) ? Math.max(20, configuredLeaseMs) : 30000;
+    const renewEveryMs = Math.max(10, Math.floor(leaseMs / 3));
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
       const nowMs = Date.now();
       const expiresAt = nowMs + leaseMs;
-
       let acquired = false;
       try {
-        const stmt = this.sqliteDb.prepare(`
-          INSERT INTO storage_locks (lock_key, owner_id, expires_at, updated_at)
-          VALUES (?, ?, ?, ?)
-          ON CONFLICT(lock_key) DO UPDATE SET
-            owner_id = excluded.owner_id,
-            expires_at = excluded.expires_at,
-            updated_at = excluded.updated_at
-          WHERE storage_locks.expires_at < ?
-        `);
-        const result = stmt.run(lockKey, ownerId, expiresAt, nowMs, nowMs);
-        if (result.changes > 0) {
-          acquired = true;
-        }
+        const result = this.sqliteDb
+          .prepare(
+            `
+            INSERT INTO storage_locks (lock_key, owner_id, expires_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(lock_key) DO UPDATE SET
+              owner_id = excluded.owner_id,
+              expires_at = excluded.expires_at,
+              updated_at = excluded.updated_at
+            WHERE storage_locks.expires_at < ?
+          `,
+          )
+          .run(lockKey, ownerId, expiresAt, nowMs, nowMs);
+        acquired = result.changes > 0;
       } catch {
-        // Retry on lock contention
+        // Retry on database lock contention.
       }
 
       if (acquired) {
+        let lockLost = false;
+        const renewLease = (): void => {
+          if (lockLost) return;
+          try {
+            const renewed = this.sqliteDb
+              .prepare(
+                `UPDATE storage_locks
+                 SET expires_at = ?, updated_at = ?
+                 WHERE lock_key = ? AND owner_id = ? AND expires_at >= ?`,
+              )
+              .run(Date.now() + leaseMs, Date.now(), lockKey, ownerId, Date.now());
+            if (renewed.changes !== 1) lockLost = true;
+          } catch {
+            lockLost = true;
+          }
+        };
+        const renewalTimer = setInterval(renewLease, renewEveryMs);
+        renewalTimer.unref?.();
         try {
-          return await fn();
+          const value = await fn();
+          if (lockLost) {
+            throw new Error(`LOCK_LOST: ${description} lease expired before completion`);
+          }
+          return value;
         } finally {
-          const relStmt = this.sqliteDb.prepare(`
-            DELETE FROM storage_locks WHERE lock_key = ? AND owner_id = ?
-          `);
-          relStmt.run(lockKey, ownerId);
+          clearInterval(renewalTimer);
+          this.sqliteDb
+            .prepare('DELETE FROM storage_locks WHERE lock_key = ? AND owner_id = ?')
+            .run(lockKey, ownerId);
         }
       }
-
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
     }
-
     throw new Error(
-      `LOCK_TIMEOUT: Failed to acquire credential lock for account ${accountId} within ${timeoutMs}ms`,
+      `LOCK_TIMEOUT: Failed to acquire ${description} observation lock within ${timeoutMs}ms`,
+    );
+  }
+
+  async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {
+    return this.withStorageLock(
+      `cred_lock:${accountId}`,
+      fn,
+      `credential lock for account ${accountId}`,
     );
   }
 

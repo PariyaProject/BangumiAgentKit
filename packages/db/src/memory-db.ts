@@ -9,6 +9,11 @@ import {
   ConversationContextRecord,
   PendingActionRecord,
   AuditEventRecord,
+  SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationSummary,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 
@@ -22,6 +27,11 @@ export class MemoryStorage implements Storage {
   private conversationContexts = new Map<string, ConversationContextRecord>();
   private pendingActions = new Map<string, PendingActionRecord>();
   private auditEvents: AuditEventRecord[] = [];
+  private subjectStatsObservations = new Map<number, SubjectStatsObservationRecord[]>();
+  private subjectStatsObservationMeta = new Map<number, SubjectStatsObservationSummary>();
+  private subjectStatsObservationLocks = new Map<number, Promise<void>>();
+  private subjectStatsObservationHostLock: Promise<void> = Promise.resolve();
+  private subjectStatsObservationHostBackoffUntil = 0;
   private credentialLocks = new Map<string, Promise<void>>();
 
   async findOrCreatePrincipal(input: FindOrCreatePrincipalInput): Promise<ExternalPrincipalRecord> {
@@ -145,7 +155,9 @@ export class MemoryStorage implements Storage {
       }
     }
     if (!found) {
-      throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+      throw new Error(
+        `BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`,
+      );
     }
 
     await this.deactivateBindings(principalId);
@@ -155,7 +167,9 @@ export class MemoryStorage implements Storage {
         return { ...b };
       }
     }
-    throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+    throw new Error(
+      `BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`,
+    );
   }
 
   async removeBinding(principalId: string, bangumiAccountId: string): Promise<void> {
@@ -302,6 +316,134 @@ export class MemoryStorage implements Storage {
     this.auditEvents.push({ ...event });
   }
 
+  async appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void> {
+    const now = options.now || new Date();
+    const existing = this.subjectStatsObservations.get(record.subjectId) || [];
+    const live = existing.filter((item) => item.retentionUntil > now);
+    const meta = this.subjectStatsObservationMeta.get(record.subjectId) || {
+      recordedCount: 0,
+      retainedCount: 0,
+      expiredCount: 0,
+      prunedCount: 0,
+    };
+    meta.firstObservedAt = meta.firstObservedAt
+      ? new Date(Math.min(meta.firstObservedAt.getTime(), record.observedAt.getTime()))
+      : new Date(record.observedAt);
+    meta.recordedCount += 1;
+    meta.expiredCount += existing.length - live.length;
+    live.push(cloneSubjectStatsObservation(record));
+    live.sort(compareSubjectStatsObservation);
+    const maxObservations = Math.min(
+      SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+      Math.max(1, Math.trunc(options.maxObservations)),
+    );
+    const prunedCount = Math.max(0, live.length - maxObservations);
+    meta.prunedCount += prunedCount;
+    const bounded = live.slice(-maxObservations);
+    meta.retainedCount = bounded.length;
+    this.subjectStatsObservations.set(record.subjectId, bounded);
+    this.subjectStatsObservationMeta.set(record.subjectId, meta);
+  }
+
+  async listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]> {
+    const now = query.now || new Date();
+    const existing = this.subjectStatsObservations.get(query.subjectId) || [];
+    const live = existing.filter((item) => item.retentionUntil > now);
+    const meta = this.subjectStatsObservationMeta.get(query.subjectId);
+    if (meta) {
+      meta.expiredCount += existing.length - live.length;
+      meta.retainedCount = live.length;
+    }
+    const bounded = live.slice(-query.limit).map(cloneSubjectStatsObservation);
+    if (live.length === 0) this.subjectStatsObservations.delete(query.subjectId);
+    else this.subjectStatsObservations.set(query.subjectId, live);
+    if (meta) this.subjectStatsObservationMeta.set(query.subjectId, meta);
+    return bounded;
+  }
+
+  async getSubjectStatsObservationSummary(
+    subjectId: number,
+    now = new Date(),
+  ): Promise<SubjectStatsObservationSummary> {
+    await this.listSubjectStatsObservations({ subjectId, limit: 1, now });
+    const live = this.subjectStatsObservations.get(subjectId) || [];
+    const meta = this.subjectStatsObservationMeta.get(subjectId) || {
+      recordedCount: 0,
+      retainedCount: live.length,
+      expiredCount: 0,
+      prunedCount: 0,
+    };
+    meta.retainedCount = live.length;
+    const retention = live.map((item) => item.retentionUntil.getTime());
+    return {
+      ...meta,
+      ...(meta.firstObservedAt ? { firstObservedAt: new Date(meta.firstObservedAt) } : {}),
+      ...(retention.length > 0
+        ? {
+            retentionUntilEarliest: new Date(Math.min(...retention)),
+            retentionUntilLatest: new Date(Math.max(...retention)),
+          }
+        : {}),
+    };
+  }
+
+  async getSubjectStatsObservationSubjectCount(): Promise<number> {
+    return this.subjectStatsObservations.size;
+  }
+
+  async getSubjectStatsObservationHostBackoff(now = new Date()): Promise<Date | undefined> {
+    return this.subjectStatsObservationHostBackoffUntil > now.getTime()
+      ? new Date(this.subjectStatsObservationHostBackoffUntil)
+      : undefined;
+  }
+
+  async setSubjectStatsObservationHostBackoff(until: Date): Promise<void> {
+    this.subjectStatsObservationHostBackoffUntil = Math.max(
+      this.subjectStatsObservationHostBackoffUntil,
+      until.getTime(),
+    );
+  }
+
+  async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
+    const previous = this.subjectStatsObservationLocks.get(subjectId) || Promise.resolve();
+    let release: () => void;
+    const next = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.subjectStatsObservationLocks.set(
+      subjectId,
+      previous.then(() => next),
+    );
+
+    try {
+      await previous;
+      return await fn();
+    } finally {
+      release!();
+    }
+  }
+
+  async withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = this.subjectStatsObservationHostLock;
+    let release: () => void;
+    const next = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.subjectStatsObservationHostLock = previous.then(() => next);
+
+    try {
+      await previous;
+      return await fn();
+    } finally {
+      release!();
+    }
+  }
+
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {
     const previous = this.credentialLocks.get(accountId) || Promise.resolve();
     let release: () => void;
@@ -335,6 +477,11 @@ export class MemoryStorage implements Storage {
     this.conversationContexts.clear();
     this.pendingActions.clear();
     this.auditEvents = [];
+    this.subjectStatsObservations.clear();
+    this.subjectStatsObservationMeta.clear();
+    this.subjectStatsObservationLocks.clear();
+    this.subjectStatsObservationHostLock = Promise.resolve();
+    this.subjectStatsObservationHostBackoffUntil = 0;
     this.credentialLocks.clear();
   }
 
@@ -346,4 +493,23 @@ export class MemoryStorage implements Storage {
   getPendingActions(): PendingActionRecord[] {
     return Array.from(this.pendingActions.values());
   }
+}
+
+function compareSubjectStatsObservation(
+  left: SubjectStatsObservationRecord,
+  right: SubjectStatsObservationRecord,
+): number {
+  const byTime = left.observedAt.getTime() - right.observedAt.getTime();
+  return byTime || left.id.localeCompare(right.id);
+}
+
+function cloneSubjectStatsObservation(
+  record: SubjectStatsObservationRecord,
+): SubjectStatsObservationRecord {
+  return {
+    ...record,
+    observedAt: new Date(record.observedAt),
+    retrievedAt: record.retrievedAt ? new Date(record.retrievedAt) : record.retrievedAt,
+    retentionUntil: new Date(record.retentionUntil),
+  };
 }

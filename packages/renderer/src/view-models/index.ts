@@ -887,6 +887,20 @@ export interface SubjectStatsViewModel {
   retrievedAt?: string;
 }
 
+export interface SubjectStatsHistoryViewModel {
+  template: 'subject-stats-history';
+  version: 1;
+  subjectId: number;
+  state: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryState;
+  collection: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryResult['collection'];
+  observations: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryResult['observations'];
+  changes: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryResult['changes'];
+  methodology: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryResult['methodology'];
+  source: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryResult['source'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').SubjectStatsHistoryResult['warnings'];
+  limitations: string[];
+}
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
@@ -906,4 +920,5 @@ export type RenderViewModel =
   | PersonActivityViewModel
   | SubjectOverviewViewModel
   | SubjectComparisonViewModel
-  | SubjectStatsViewModel;
+  | SubjectStatsViewModel
+  | SubjectStatsHistoryViewModel;

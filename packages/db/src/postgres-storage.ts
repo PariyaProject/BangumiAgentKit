@@ -11,6 +11,13 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY,
+  SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
+  SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+  SubjectStatsObservationRecord,
+  SubjectStatsObservationSummary,
+  SubjectStatsObservationStoreOptions,
+  SubjectStatsObservationQuery,
 } from './schema.js';
 import { Storage, FindOrCreatePrincipalInput, ClaimPendingActionInput } from './storage.js';
 import * as schema from './drizzle/schema.js';
@@ -262,10 +269,10 @@ export class PostgresStorage implements Storage {
       const now = new Date();
       if (existing.rows.length > 0) {
         const id = existing.rows[0].id;
-        await client.query(
-          'UPDATE account_bindings SET is_active = $1 WHERE id = $2',
-          [activate, id],
-        );
+        await client.query('UPDATE account_bindings SET is_active = $1 WHERE id = $2', [
+          activate,
+          id,
+        ]);
         await client.query('COMMIT');
         return { id, principalId, bangumiAccountId, isActive: activate, createdAt: now };
       }
@@ -296,12 +303,13 @@ export class PostgresStorage implements Storage {
         [principalId, bangumiAccountId],
       );
       if (existing.rows.length === 0) {
-        throw new Error(`BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`);
+        throw new Error(
+          `BINDING_NOT_FOUND: Account ${bangumiAccountId} is not bound to principal ${principalId}`,
+        );
       }
-      await client.query(
-        'UPDATE account_bindings SET is_active = false WHERE principal_id = $1',
-        [principalId],
-      );
+      await client.query('UPDATE account_bindings SET is_active = false WHERE principal_id = $1', [
+        principalId,
+      ]);
       await client.query(
         'UPDATE account_bindings SET is_active = true WHERE principal_id = $1 AND bangumi_account_id = $2',
         [principalId, bangumiAccountId],
@@ -655,6 +663,283 @@ export class PostgresStorage implements Storage {
       requestId: event.requestId,
       createdAt: event.createdAt,
     });
+  }
+
+  async appendSubjectStatsObservation(
+    record: SubjectStatsObservationRecord,
+    options: SubjectStatsObservationStoreOptions,
+  ): Promise<void> {
+    const now = options.now || new Date();
+    const maxObservations = Math.min(
+      SUBJECT_STATS_OBSERVATION_MAX_ROWS,
+      Math.max(1, Math.trunc(options.maxObservations)),
+    );
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const expired = await client.query(
+        `DELETE FROM subject_stats_observations
+         WHERE id IN (
+           SELECT id FROM subject_stats_observations
+           WHERE subject_id = $1 AND retention_until <= $2
+           ORDER BY retention_until ASC, id ASC
+           LIMIT $3
+         )
+         RETURNING id`,
+        [record.subjectId, now, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS],
+      );
+      const existingMeta = await client.query<{
+        first_observed_at: Date;
+        recorded_count: number;
+        expired_count: number;
+        pruned_count: number;
+      }>(
+        `SELECT first_observed_at, recorded_count, expired_count, pruned_count
+         FROM subject_stats_observation_meta WHERE subject_id = $1`,
+        [record.subjectId],
+      );
+      if (existingMeta.rowCount === 0) {
+        await client.query(
+          `INSERT INTO subject_stats_observation_meta
+            (subject_id, first_observed_at, recorded_count, expired_count, pruned_count, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [record.subjectId, record.observedAt, 1, expired.rowCount || 0, 0, now],
+        );
+      } else {
+        await client.query(
+          `UPDATE subject_stats_observation_meta
+           SET first_observed_at = LEAST(first_observed_at, $1),
+               recorded_count = recorded_count + 1,
+               expired_count = expired_count + $2,
+               updated_at = $3
+           WHERE subject_id = $4`,
+          [record.observedAt, expired.rowCount || 0, now, record.subjectId],
+        );
+      }
+      await client.query(
+        `
+        INSERT INTO subject_stats_observations (
+          id, subject_id, observed_at, retrieved_at, state, result_json,
+          methodology_version, retention_until
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `,
+        [
+          record.id,
+          record.subjectId,
+          record.observedAt,
+          record.retrievedAt || null,
+          record.state,
+          record.resultJson,
+          record.methodologyVersion,
+          record.retentionUntil,
+        ],
+      );
+      const beforePrune = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM subject_stats_observations WHERE subject_id = $1',
+        [record.subjectId],
+      );
+      const countBeforePrune = Number(beforePrune.rows[0]?.count || 0);
+      if (countBeforePrune > maxObservations) {
+        await client.query(
+          `
+          DELETE FROM subject_stats_observations
+          WHERE subject_id = $1
+            AND id NOT IN (
+              SELECT id
+              FROM subject_stats_observations
+              WHERE subject_id = $1
+              ORDER BY observed_at DESC, id DESC
+              LIMIT $2
+            )
+        `,
+          [record.subjectId, maxObservations],
+        );
+        await client.query(
+          `UPDATE subject_stats_observation_meta
+           SET pruned_count = pruned_count + $1, updated_at = $2
+           WHERE subject_id = $3`,
+          [countBeforePrune - maxObservations, now, record.subjectId],
+        );
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async listSubjectStatsObservations(
+    query: SubjectStatsObservationQuery,
+  ): Promise<SubjectStatsObservationRecord[]> {
+    const now = query.now || new Date();
+    const limit = Math.max(1, Math.trunc(query.limit));
+    const expired = await this.pool.query(
+      `DELETE FROM subject_stats_observations
+       WHERE id IN (
+         SELECT id FROM subject_stats_observations
+         WHERE subject_id = $1 AND retention_until <= $2
+         ORDER BY retention_until ASC, id ASC
+         LIMIT $3
+       )
+       RETURNING id`,
+      [query.subjectId, now, SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS],
+    );
+    if ((expired.rowCount || 0) > 0) {
+      await this.pool.query(
+        `UPDATE subject_stats_observation_meta
+         SET expired_count = expired_count + $1, updated_at = $2
+         WHERE subject_id = $3`,
+        [expired.rowCount, now, query.subjectId],
+      );
+    }
+    const result = await this.pool.query<{
+      id: string;
+      subject_id: number;
+      observed_at: Date;
+      retrieved_at: Date | null;
+      state: SubjectStatsObservationRecord['state'];
+      result_json: string;
+      methodology_version: string;
+      retention_until: Date;
+    }>(
+      `
+      SELECT id, subject_id, observed_at, retrieved_at, state, result_json,
+             methodology_version, retention_until
+      FROM subject_stats_observations
+      WHERE subject_id = $1 AND retention_until > $2
+      ORDER BY observed_at DESC, id DESC
+      LIMIT $3
+    `,
+      [query.subjectId, now, limit],
+    );
+
+    return result.rows.reverse().map((row) => ({
+      id: row.id,
+      subjectId: row.subject_id,
+      observedAt: new Date(row.observed_at),
+      retrievedAt: row.retrieved_at ? new Date(row.retrieved_at) : null,
+      state: row.state,
+      resultJson: row.result_json,
+      methodologyVersion: row.methodology_version,
+      retentionUntil: new Date(row.retention_until),
+    }));
+  }
+
+  async getSubjectStatsObservationSummary(
+    subjectId: number,
+    now = new Date(),
+  ): Promise<SubjectStatsObservationSummary> {
+    await this.listSubjectStatsObservations({ subjectId, limit: 1, now });
+    const [meta, counts] = await Promise.all([
+      this.pool.query<{
+        first_observed_at: Date;
+        recorded_count: number;
+        expired_count: number;
+        pruned_count: number;
+      }>(
+        `SELECT first_observed_at, recorded_count, expired_count, pruned_count
+         FROM subject_stats_observation_meta WHERE subject_id = $1`,
+        [subjectId],
+      ),
+      this.pool.query<{
+        retained_count: string;
+        retention_until_earliest: Date | null;
+        retention_until_latest: Date | null;
+      }>(
+        `SELECT COUNT(*)::text AS retained_count,
+                MIN(retention_until) AS retention_until_earliest,
+                MAX(retention_until) AS retention_until_latest
+         FROM subject_stats_observations
+         WHERE subject_id = $1 AND retention_until > $2`,
+        [subjectId, now],
+      ),
+    ]);
+    const metaRow = meta.rows[0];
+    const countRow = counts.rows[0]!;
+    return {
+      ...(metaRow ? { firstObservedAt: new Date(metaRow.first_observed_at) } : {}),
+      recordedCount: metaRow?.recorded_count || 0,
+      retainedCount: Number(countRow.retained_count),
+      expiredCount: metaRow?.expired_count || 0,
+      prunedCount: metaRow?.pruned_count || 0,
+      ...(countRow.retention_until_earliest
+        ? { retentionUntilEarliest: new Date(countRow.retention_until_earliest) }
+        : {}),
+      ...(countRow.retention_until_latest
+        ? { retentionUntilLatest: new Date(countRow.retention_until_latest) }
+        : {}),
+    };
+  }
+
+  async getSubjectStatsObservationSubjectCount(): Promise<number> {
+    const result = await this.pool.query<{ count: string }>(
+      'SELECT COUNT(DISTINCT subject_id)::text AS count FROM subject_stats_observations',
+    );
+    return Number(result.rows[0]?.count || 0);
+  }
+
+  async getSubjectStatsObservationHostBackoff(now = new Date()): Promise<Date | undefined> {
+    const result = await this.pool.query<{ backoff_until: Date }>(
+      `SELECT backoff_until
+       FROM subject_stats_observation_host_meta
+       WHERE id = 1 AND backoff_until > $1`,
+      [now],
+    );
+    const value = result.rows[0]?.backoff_until;
+    return value ? new Date(value) : undefined;
+  }
+
+  async setSubjectStatsObservationHostBackoff(until: Date): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO subject_stats_observation_host_meta (id, backoff_until, updated_at)
+       VALUES (1, $1, $2)
+       ON CONFLICT (id) DO UPDATE SET
+         backoff_until = GREATEST(subject_stats_observation_host_meta.backoff_until, EXCLUDED.backoff_until),
+         updated_at = EXCLUDED.updated_at`,
+      [until, new Date()],
+    );
+  }
+
+  async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    const [key1, key2] = stringToTwoInt32(`subject_stats_observation:${subjectId}`);
+    let lockAcquired = false;
+    try {
+      await client.query('SELECT pg_advisory_lock($1, $2)', [key1, key2]);
+      lockAcquired = true;
+      return await fn();
+    } finally {
+      if (lockAcquired) {
+        try {
+          await client.query('SELECT pg_advisory_unlock($1, $2)', [key1, key2]);
+        } catch {
+          // ignore unlock error if connection closed
+        }
+      }
+      client.release();
+    }
+  }
+
+  async withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    const [key1, key2] = stringToTwoInt32(SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY);
+    let lockAcquired = false;
+    try {
+      await client.query('SELECT pg_advisory_lock($1, $2)', [key1, key2]);
+      lockAcquired = true;
+      return await fn();
+    } finally {
+      if (lockAcquired) {
+        try {
+          await client.query('SELECT pg_advisory_unlock($1, $2)', [key1, key2]);
+        } catch {
+          // ignore unlock error if connection closed
+        }
+      }
+      client.release();
+    }
   }
 
   async withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T> {

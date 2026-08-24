@@ -64,6 +64,136 @@ describe('Standalone subject statistics commands', () => {
     );
   });
 
+  it('routes bounded statistics history commands and presents observations', async () => {
+    const history = {
+      state: 'partial',
+      subjectId: 123,
+      collection: {
+        observationsObserved: 1,
+        observationsReturned: 1,
+        retainedObservations: 1,
+        recordedObservations: 1,
+        completeObservations: 1,
+        changePairs: 0,
+        retentionDays: 365,
+        maxObservations: 24,
+        truncated: false,
+        expiredObservations: 0,
+        prunedObservations: 0,
+        resourceBounds: { maxActiveSubjects: 8, maxTrackedSubjects: 64, hostConcurrency: 1 },
+        recordCurrent: true,
+      },
+      observations: [
+        {
+          observedAt: '2026-08-24T00:00:00.000Z',
+          retrievedAt: '2026-08-24T00:00:01.000Z',
+          state: 'complete',
+          compatibility: { state: 'compatible' },
+          snapshot: {
+            raw: { score: 8.6, ratingTotal: 100 },
+            collection: { total: 10, completionRate: 0.4 },
+            coverage: {
+              ratingBucketsObserved: 10,
+              ratingBucketsExpected: 10,
+              collectionBucketsObserved: 5,
+              collectionBucketsExpected: 5,
+            },
+          },
+        },
+      ],
+      changes: [],
+      source: {
+        official: { operations: ['getSubjectStats'], observationCount: 1 },
+        derived: { operations: [], observationCount: 1 },
+      },
+      warnings: [],
+      limitations: ['从显式启用后开始；不会回填。'],
+    };
+    const executeTool = vi.fn().mockResolvedValue(history);
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      [
+        'stats-history',
+        '123',
+        '--record-current',
+        '--max-observations',
+        '12',
+        '--retention-days',
+        '30',
+      ],
+      context(host),
+    );
+    await registry.execute(['render', 'stats-history', '123', '--record-current'], context(host));
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_subject_stats_history',
+      { subjectId: 123, recordCurrent: true, maxObservations: 12, retentionDays: 30 },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_subject_stats_history',
+      { subjectId: 123, recordCurrent: true },
+      expect.anything(),
+    );
+
+    const output = formatHuman(history);
+    expect(output).toContain('条目统计观察历史');
+    expect(output).toContain('2026-08-24T00:00:00.000Z');
+    expect(output).toContain('2026-08-24T00:00:01.000Z');
+    expect(output).toContain('兼容 compatible');
+    expect(output).toContain('覆盖 评分 10/10');
+    expect(output).toContain('跟踪条目上限 64');
+    expect(output).toContain('recordCurrent');
+
+    const noHistory = formatHuman({
+      state: 'not_computable',
+      subjectId: 123,
+      collection: {
+        observationsReturned: 0,
+        recordedObservations: 0,
+        retainedObservations: 0,
+        completeObservations: 0,
+        changePairs: 0,
+        recordCurrent: false,
+      },
+      observations: [],
+      changes: [],
+      methodology: { id: 'bangumi.subject.stats.observation-history', version: 1 },
+      warnings: [{ code: 'NO_HISTORY', message: '尚无历史观察。' }],
+    });
+    expect(noHistory).toContain('尚无历史观察');
+
+    const unavailableHistory = formatHuman({
+      ...history,
+      state: 'unavailable',
+      observations: [],
+      changes: [],
+      warnings: [{ code: 'UPSTREAM_UNAVAILABLE', message: '统计源不可用。' }],
+    });
+    expect(unavailableHistory).toContain('状态: 不可用');
+    expect(unavailableHistory).toContain('UPSTREAM_UNAVAILABLE');
+
+    const conflictHistory = formatHuman({
+      ...history,
+      state: 'conflict',
+      observations: [
+        {
+          ...history.observations[0],
+          state: 'conflict',
+          compatibility: { state: 'unsupported', reason: 'source conflict fixture' },
+        },
+      ],
+      changes: [],
+      warnings: [{ code: 'SOURCE_CONFLICT', message: '评分来源存在冲突。' }],
+    });
+    expect(conflictHistory).toContain('状态: 冲突');
+    expect(conflictHistory).toContain('兼容 unsupported');
+  });
+
   it('presents complete and unavailable statistics with bounded diagnostics', () => {
     const complete = formatHuman({
       state: 'complete',

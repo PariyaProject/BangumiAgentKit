@@ -121,3 +121,57 @@ export interface AuditEventRecord {
   requestId?: string;
   createdAt: Date;
 }
+
+export type SubjectStatsObservationState =
+  | 'complete'
+  | 'ok'
+  | 'partial'
+  | 'stale'
+  | 'conflict'
+  | 'auth_required'
+  | 'permission_denied'
+  | 'unavailable'
+  | 'not_computable'
+  | 'unsupported'
+  | 'not_found'
+  | 'upstream_error';
+
+export const SUBJECT_STATS_OBSERVATION_MAX_ROWS = 120;
+export const SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS = 120;
+export const SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY = 'subject_stats_observation_host_lock';
+
+/**
+ * An immutable public-statistics snapshot. It intentionally has no principal,
+ * account, credential, or Bangumi-write relationship.
+ */
+export interface SubjectStatsObservationRecord {
+  id: string;
+  subjectId: number;
+  observedAt: Date;
+  retrievedAt?: Date | null;
+  state: SubjectStatsObservationState;
+  resultJson: string;
+  methodologyVersion: string;
+  retentionUntil: Date;
+}
+
+export interface SubjectStatsObservationStoreOptions {
+  maxObservations: number;
+  now?: Date;
+}
+
+export interface SubjectStatsObservationSummary {
+  firstObservedAt?: Date;
+  recordedCount: number;
+  retainedCount: number;
+  expiredCount: number;
+  prunedCount: number;
+  retentionUntilEarliest?: Date;
+  retentionUntilLatest?: Date;
+}
+
+export interface SubjectStatsObservationQuery {
+  subjectId: number;
+  limit: number;
+  now?: Date;
+}

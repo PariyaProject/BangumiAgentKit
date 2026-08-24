@@ -66,6 +66,22 @@ async function main(): Promise<void> {
     case 'migration':
       value = { migrated: true };
       break;
+    case 'stats-lock': {
+      const startedAt = Date.now();
+      await storage.withSubjectStatsObservationLock(Number(payload.subjectId), async () => {
+        await sleep(Number(payload.holdMs || 0));
+      });
+      value = { elapsedMs: Date.now() - startedAt };
+      break;
+    }
+    case 'stats-host-lock': {
+      const startedAt = Date.now();
+      await storage.withSubjectStatsObservationHostLock(async () => {
+        await sleep(Number(payload.holdMs || 0));
+      });
+      value = { elapsedMs: Date.now() - startedAt };
+      break;
+    }
     default:
       throw new Error(`Unknown worker mode: ${mode}`);
   }
