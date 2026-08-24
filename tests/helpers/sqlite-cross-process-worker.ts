@@ -74,6 +74,14 @@ async function main(): Promise<void> {
       value = { elapsedMs: Date.now() - startedAt };
       break;
     }
+    case 'stats-host-lock': {
+      const startedAt = Date.now();
+      await storage.withSubjectStatsObservationHostLock(async () => {
+        await sleep(Number(payload.holdMs || 0));
+      });
+      value = { elapsedMs: Date.now() - startedAt };
+      break;
+    }
     default:
       throw new Error(`Unknown worker mode: ${mode}`);
   }

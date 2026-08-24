@@ -227,6 +227,117 @@ describe('subject statistics observation history', () => {
     expect(history.changes[0]?.metrics.every((metric) => metric.delta === undefined)).toBe(true);
   });
 
+  it('excludes malformed nested snapshots without crashing neighboring history', async () => {
+    const storage = new MemoryStorage();
+    const first = await getSubjectStatsHistory(
+      655,
+      { recordCurrent: true, now: new Date('2026-08-24T00:00:00.000Z') },
+      { storage, providerRegistry: registry(() => baseStats) },
+    );
+    const malformed = JSON.parse(JSON.stringify(first.observations[0]!.snapshot)) as {
+      rating: { formulas?: unknown };
+    };
+    delete malformed.rating.formulas;
+    await storage.appendSubjectStatsObservation(
+      {
+        id: 'malformed-nested-observation',
+        subjectId: 655,
+        observedAt: new Date('2026-08-25T00:00:00.000Z'),
+        retrievedAt: new Date('2026-08-25T00:00:00.000Z'),
+        state: 'complete',
+        resultJson: JSON.stringify(malformed),
+        methodologyVersion: 'bangumi.subject.stats.observation-history.v1',
+        retentionUntil: new Date('2027-08-25T00:00:00.000Z'),
+      },
+      { maxObservations: 24, now: new Date('2026-08-25T00:00:00.000Z') },
+    );
+
+    const history = await getSubjectStatsHistory(
+      655,
+      { recordCurrent: false, now: new Date('2026-08-26T00:00:00.000Z') },
+      { storage },
+    );
+    expect(history.observations).toHaveLength(1);
+    expect(history.changes).toEqual([]);
+    expect(history.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'INVALID_STORED_OBSERVATION' })]),
+    );
+  });
+
+  it('activates shared backoff for returned upstream failures before another subject can sample', async () => {
+    const storage = new MemoryStorage();
+    let providerCalls = 0;
+    const providerRegistry = new ProviderRegistry({
+      v0: {
+        async getSubject() {
+          return { state: 'not_found' as const };
+        },
+        async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+          providerCalls += 1;
+          return {
+            state: 'unavailable',
+            error: { code: 'timeout', retryable: true },
+            warnings: [{ code: 'UPSTREAM_TIMEOUT', message: 'timeout' }],
+          };
+        },
+      },
+    });
+    const first = await getSubjectStatsHistory(
+      801,
+      { recordCurrent: true, now: new Date('2026-08-24T00:00:00.000Z') },
+      { storage, providerRegistry },
+    );
+    const second = await getSubjectStatsHistory(
+      802,
+      { recordCurrent: true, now: new Date('2026-08-24T00:01:00.000Z') },
+      { storage, providerRegistry },
+    );
+
+    expect(first.state).toBe('unavailable');
+    expect(providerCalls).toBe(1);
+    expect(second.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'OBSERVATION_RESOURCE_LIMIT' })]),
+    );
+  });
+
+  it('refuses a new subject after the finite tracked-subject bound is reached', async () => {
+    const storage = new MemoryStorage();
+    const retentionUntil = new Date('2027-08-24T00:00:00.000Z');
+    for (let subjectId = 1; subjectId <= 64; subjectId += 1) {
+      await storage.appendSubjectStatsObservation(
+        {
+          id: `bounded-subject-${subjectId}`,
+          subjectId,
+          observedAt: new Date('2026-08-24T00:00:00.000Z'),
+          state: 'unavailable',
+          resultJson: '{}',
+          methodologyVersion: 'bangumi.subject.stats.observation-history.v1',
+          retentionUntil,
+        },
+        { maxObservations: 1, now: new Date('2026-08-24T00:00:00.000Z') },
+      );
+    }
+    let providerCalls = 0;
+    const result = await getSubjectStatsHistory(
+      1000,
+      { recordCurrent: true, now: new Date('2026-08-24T00:00:00.000Z') },
+      {
+        storage,
+        providerRegistry: registry(() => {
+          providerCalls += 1;
+          return baseStats;
+        }),
+      },
+    );
+
+    expect(providerCalls).toBe(0);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'OBSERVATION_SUBJECT_CARDINALITY_LIMIT' }),
+      ]),
+    );
+  });
+
   it('refuses a concurrent second subject instead of fanning out the official host', async () => {
     const storage = new MemoryStorage();
     let providerCalls = 0;

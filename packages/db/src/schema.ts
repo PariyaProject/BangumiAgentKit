@@ -138,6 +138,7 @@ export type SubjectStatsObservationState =
 
 export const SUBJECT_STATS_OBSERVATION_MAX_ROWS = 120;
 export const SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS = 120;
+export const SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY = 'subject_stats_observation_host_lock';
 
 /**
  * An immutable public-statistics snapshot. It intentionally has no principal,

@@ -72,7 +72,11 @@ export interface Storage {
     subjectId: number,
     now?: Date,
   ): Promise<SubjectStatsObservationSummary>;
+  getSubjectStatsObservationSubjectCount(): Promise<number>;
+  getSubjectStatsObservationHostBackoff(now?: Date): Promise<Date | undefined>;
+  setSubjectStatsObservationHostBackoff(until: Date): Promise<void>;
   withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T>;
+  withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T>;
   withCredentialLock<T>(accountId: string, fn: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }

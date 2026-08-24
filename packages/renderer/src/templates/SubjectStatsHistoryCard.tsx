@@ -166,7 +166,7 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
         {viewModel.collection.truncated ? ' · 输出有界' : ''}
         {' · recordCurrent='}
         {viewModel.collection.recordCurrent ? 'true' : 'false'}
-        {` · 资源 ${bounds.maxActiveSubjects} subjects / host ${bounds.hostConcurrency} / cleanup ${bounds.maxCleanupRows}`}
+        {` · 资源 ${bounds.maxActiveSubjects} active / ${bounds.maxTrackedSubjects} tracked / host ${bounds.hostConcurrency} / cleanup ${bounds.maxCleanupRows}`}
       </div>
 
       {observations.length === 0 ? (
@@ -204,7 +204,10 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
                   borderRadius: theme.radius.sm,
                   padding: theme.spacing.sm,
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(180px, 1.2fr) repeat(4, minmax(70px, 1fr))',
+                  gridTemplateColumns:
+                    width !== undefined && width < 480
+                      ? 'minmax(0, 1fr)'
+                      : 'minmax(180px, 1.2fr) repeat(4, minmax(70px, 1fr))',
                   gap: theme.spacing.xs,
                   alignItems: 'center',
                   fontSize: '10px',

@@ -30,6 +30,8 @@ export class MemoryStorage implements Storage {
   private subjectStatsObservations = new Map<number, SubjectStatsObservationRecord[]>();
   private subjectStatsObservationMeta = new Map<number, SubjectStatsObservationSummary>();
   private subjectStatsObservationLocks = new Map<number, Promise<void>>();
+  private subjectStatsObservationHostLock: Promise<void> = Promise.resolve();
+  private subjectStatsObservationHostBackoffUntil = 0;
   private credentialLocks = new Map<string, Promise<void>>();
 
   async findOrCreatePrincipal(input: FindOrCreatePrincipalInput): Promise<ExternalPrincipalRecord> {
@@ -390,6 +392,23 @@ export class MemoryStorage implements Storage {
     };
   }
 
+  async getSubjectStatsObservationSubjectCount(): Promise<number> {
+    return this.subjectStatsObservations.size;
+  }
+
+  async getSubjectStatsObservationHostBackoff(now = new Date()): Promise<Date | undefined> {
+    return this.subjectStatsObservationHostBackoffUntil > now.getTime()
+      ? new Date(this.subjectStatsObservationHostBackoffUntil)
+      : undefined;
+  }
+
+  async setSubjectStatsObservationHostBackoff(until: Date): Promise<void> {
+    this.subjectStatsObservationHostBackoffUntil = Math.max(
+      this.subjectStatsObservationHostBackoffUntil,
+      until.getTime(),
+    );
+  }
+
   async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
     const previous = this.subjectStatsObservationLocks.get(subjectId) || Promise.resolve();
     let release: () => void;
@@ -400,6 +419,22 @@ export class MemoryStorage implements Storage {
       subjectId,
       previous.then(() => next),
     );
+
+    try {
+      await previous;
+      return await fn();
+    } finally {
+      release!();
+    }
+  }
+
+  async withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = this.subjectStatsObservationHostLock;
+    let release: () => void;
+    const next = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.subjectStatsObservationHostLock = previous.then(() => next);
 
     try {
       await previous;
@@ -445,6 +480,8 @@ export class MemoryStorage implements Storage {
     this.subjectStatsObservations.clear();
     this.subjectStatsObservationMeta.clear();
     this.subjectStatsObservationLocks.clear();
+    this.subjectStatsObservationHostLock = Promise.resolve();
+    this.subjectStatsObservationHostBackoffUntil = 0;
     this.credentialLocks.clear();
   }
 

@@ -15,6 +15,7 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY,
   SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
   SUBJECT_STATS_OBSERVATION_MAX_ROWS,
   SubjectStatsObservationRecord,
@@ -968,11 +969,49 @@ export class SQLiteStorage implements Storage {
     };
   }
 
+  async getSubjectStatsObservationSubjectCount(): Promise<number> {
+    const row = this.sqliteDb
+      .prepare('SELECT COUNT(DISTINCT subject_id) AS count FROM subject_stats_observations')
+      .get() as { count: number };
+    return row.count;
+  }
+
+  async getSubjectStatsObservationHostBackoff(now = new Date()): Promise<Date | undefined> {
+    const row = this.sqliteDb
+      .prepare(
+        `SELECT backoff_until FROM subject_stats_observation_host_meta
+         WHERE id = 1 AND backoff_until > ?`,
+      )
+      .get(now.getTime()) as { backoff_until: number } | undefined;
+    return row ? new Date(row.backoff_until) : undefined;
+  }
+
+  async setSubjectStatsObservationHostBackoff(until: Date): Promise<void> {
+    const nowMs = Date.now();
+    this.sqliteDb
+      .prepare(
+        `INSERT INTO subject_stats_observation_host_meta (id, backoff_until, updated_at)
+         VALUES (1, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           backoff_until = MAX(subject_stats_observation_host_meta.backoff_until, excluded.backoff_until),
+           updated_at = excluded.updated_at`,
+      )
+      .run(until.getTime(), nowMs);
+  }
+
   async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
     return this.withStorageLock(
       `subject_stats_lock:${subjectId}`,
       fn,
       `subject ${subjectId} observation lock`,
+    );
+  }
+
+  async withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T> {
+    return this.withStorageLock(
+      SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY,
+      fn,
+      'official subject statistics host lock',
     );
   }
 
@@ -982,8 +1021,13 @@ export class SQLiteStorage implements Storage {
     description: string,
   ): Promise<T> {
     const ownerId = `owner_${crypto.randomUUID()}`;
-    const timeoutMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_TIMEOUT_MS || '10000', 10);
-    const leaseMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_LEASE_MS || '30000', 10);
+    const configuredTimeoutMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_TIMEOUT_MS || '10000', 10);
+    const configuredLeaseMs = parseInt(process.env.BANGUMI_SQLITE_LOCK_LEASE_MS || '30000', 10);
+    const timeoutMs = Number.isFinite(configuredTimeoutMs)
+      ? Math.max(100, configuredTimeoutMs)
+      : 10000;
+    const leaseMs = Number.isFinite(configuredLeaseMs) ? Math.max(20, configuredLeaseMs) : 30000;
+    const renewEveryMs = Math.max(10, Math.floor(leaseMs / 3));
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeoutMs) {
@@ -1010,9 +1054,32 @@ export class SQLiteStorage implements Storage {
       }
 
       if (acquired) {
+        let lockLost = false;
+        const renewLease = (): void => {
+          if (lockLost) return;
+          try {
+            const renewed = this.sqliteDb
+              .prepare(
+                `UPDATE storage_locks
+                 SET expires_at = ?, updated_at = ?
+                 WHERE lock_key = ? AND owner_id = ? AND expires_at >= ?`,
+              )
+              .run(Date.now() + leaseMs, Date.now(), lockKey, ownerId, Date.now());
+            if (renewed.changes !== 1) lockLost = true;
+          } catch {
+            lockLost = true;
+          }
+        };
+        const renewalTimer = setInterval(renewLease, renewEveryMs);
+        renewalTimer.unref?.();
         try {
-          return await fn();
+          const value = await fn();
+          if (lockLost) {
+            throw new Error(`LOCK_LOST: ${description} lease expired before completion`);
+          }
+          return value;
         } finally {
+          clearInterval(renewalTimer);
           this.sqliteDb
             .prepare('DELETE FROM storage_locks WHERE lock_key = ? AND owner_id = ?')
             .run(lockKey, ownerId);

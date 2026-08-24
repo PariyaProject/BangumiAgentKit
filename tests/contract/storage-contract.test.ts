@@ -230,6 +230,30 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
         }),
       ]);
       expect(peak).toBe(1);
+
+      expect(await storage.getSubjectStatsObservationSubjectCount()).toBe(0);
+      const hostBackoffUntil = new Date(Date.now() + 60_000);
+      await storage.setSubjectStatsObservationHostBackoff(hostBackoffUntil);
+      const activeBackoff = await storage.getSubjectStatsObservationHostBackoff(new Date());
+      expect(activeBackoff?.getTime()).toBe(hostBackoffUntil.getTime());
+
+      let hostActive = 0;
+      let hostPeak = 0;
+      await Promise.all([
+        storage.withSubjectStatsObservationHostLock(async () => {
+          hostActive += 1;
+          hostPeak = Math.max(hostPeak, hostActive);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          hostActive -= 1;
+        }),
+        storage.withSubjectStatsObservationHostLock(async () => {
+          hostActive += 1;
+          hostPeak = Math.max(hostPeak, hostActive);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          hostActive -= 1;
+        }),
+      ]);
+      expect(hostPeak).toBe(1);
       await storage.close();
     });
   });

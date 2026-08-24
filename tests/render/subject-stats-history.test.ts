@@ -118,6 +118,7 @@ const result: SubjectStatsHistoryResult = {
     resourceBounds: {
       maxActiveSubjects: 8,
       hostConcurrency: 1,
+      maxTrackedSubjects: 64,
       maxSubjectId: 1000000000,
       maxCleanupRows: 120,
     },
@@ -266,5 +267,101 @@ describe('subject-stats-history renderer', () => {
     expect(html).toContain('未知');
     expect(html).toContain('输出有界');
     expect(html).not.toContain('NaN');
+  });
+
+  it('renders no-history, unavailable, conflict, and long-CJK states without clipping', async () => {
+    const noHistory: SubjectStatsHistoryResult = {
+      ...result,
+      state: 'not_computable',
+      collection: {
+        ...result.collection,
+        startedAt: undefined,
+        recordedObservations: 0,
+        retainedObservations: 0,
+        observationsObserved: 0,
+        observationsReturned: 0,
+        completeObservations: 0,
+        changePairs: 0,
+      },
+      observations: [],
+      changes: [],
+      warnings: [{ code: 'NO_HISTORY', message: '尚无历史观察。' }],
+    };
+    const unavailableSnapshot = snapshot(8.6, 100);
+    unavailableSnapshot.state = 'unavailable';
+    unavailableSnapshot.raw = undefined;
+    unavailableSnapshot.rating.state = 'unavailable';
+    unavailableSnapshot.collection.state = 'unavailable';
+    unavailableSnapshot.collection.completionState = 'unavailable';
+    unavailableSnapshot.coverage.ratingBucketsObserved = 0;
+    unavailableSnapshot.coverage.collectionBucketsObserved = 0;
+    const unavailable: SubjectStatsHistoryResult = {
+      ...result,
+      state: 'unavailable',
+      observations: [
+        {
+          ...result.observations[0]!,
+          state: 'unavailable',
+          snapshot: unavailableSnapshot,
+        },
+      ],
+      changes: [],
+      warnings: [{ code: 'UPSTREAM_UNAVAILABLE', message: '官方统计源暂时不可用。' }],
+    };
+    const conflictSnapshot = snapshot(8.6, 100);
+    conflictSnapshot.state = 'conflict';
+    conflictSnapshot.rating.state = 'conflict';
+    conflictSnapshot.collection.state = 'conflict';
+    const conflict: SubjectStatsHistoryResult = {
+      ...result,
+      state: 'conflict',
+      observations: [
+        {
+          ...result.observations[0]!,
+          state: 'conflict',
+          snapshot: conflictSnapshot,
+        },
+      ],
+      changes: [],
+      warnings: [{ code: 'SOURCE_CONFLICT', message: '评分来源存在冲突。' }],
+    };
+    const longCjk = {
+      ...result,
+      state: 'partial' as const,
+      warnings: [
+        {
+          code: 'LONG_CJK_FIXTURE',
+          message:
+            '这是用于移动端布局验证的很长中文告警文本：统计源字段覆盖不完整，当前只展示可审计的部分观察证据。',
+        },
+      ],
+    };
+
+    const cases = [
+      [noHistory, '尚无历史观察'],
+      [unavailable, '不可用'],
+      [conflict, '存在冲突'],
+      [longCjk, '很长中文告警文本'],
+    ] as const;
+    for (const [fixture, expected] of cases) {
+      const html = renderHtmlTemplate(
+        buildSubjectStatsHistoryViewModel(fixture),
+        'bangumi-dark',
+        {},
+        320,
+      );
+      expect(html).toContain(expected);
+      if (fixture.observations.length > 0) {
+        expect(html).toContain('grid-template-columns:minmax(0, 1fr)');
+      }
+      expect(html).not.toContain('NaN');
+      expect(html).not.toContain('Infinity');
+    }
+
+    const rendered = await renderService.renderCard(buildSubjectStatsHistoryViewModel(longCjk), {
+      width: 640,
+      deviceScaleFactor: 1,
+    });
+    expect(rendered.buffer.length).toBeGreaterThan(1000);
   });
 });

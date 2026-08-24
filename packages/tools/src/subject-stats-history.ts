@@ -28,6 +28,7 @@ export const SUBJECT_STATS_HISTORY_MAX_RETENTION_DAYS = 3650;
 export const SUBJECT_STATS_HISTORY_MIN_INTERVAL_HOURS = 1;
 export const SUBJECT_STATS_HISTORY_MAX_ACTIVE_SUBJECTS = 8;
 export const SUBJECT_STATS_HISTORY_HOST_CONCURRENCY = 1;
+export const SUBJECT_STATS_HISTORY_MAX_TRACKED_SUBJECTS = 64;
 export const SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX = 1_000_000_000;
 export const SUBJECT_STATS_HISTORY_FAILURE_BACKOFF_MS = 1_000;
 
@@ -63,11 +64,38 @@ const HISTORY_LIMITATIONS = [
   '每个点来自一次官方 v0 统计读取；同一条目观察至少间隔 1 小时，观察次数、输出点数和保留天数均有硬上限，达到上限时必须结合 retained/recorded/pruned/expired coverage 解读。',
   '变化是相邻且 source/methodology 兼容观察点之间的确定性差值，包含评分与收藏分桶；不是趋势、质量、极化、推荐或因果结论；缺失、partial、conflict、unavailable 值不会被转换为零。',
   '本能力不读取账户、凭证、评论、社区统计或网站专有图表，也不执行 Bangumi 写操作；采样只在调用者显式请求 recordCurrent 时发生。',
-  '采样受单进程最多 8 个活动条目、official-v0 host 并发 1、失败后短暂退避和有限条目 ID 范围约束；超出资源边界会返回明确的不可用告警，不会无限排队或扇出请求。',
+  '采样受最多 8 个活动条目、最多 64 个已跟踪条目、official-v0 host 并发 1、失败后短暂退避和有限条目 ID 范围约束；超出资源边界会返回明确的不可用告警，不会无限排队或扇出请求。',
 ];
 
+const SUBJECT_STATS_STATES = new Set([
+  'complete',
+  'partial',
+  'conflict',
+  'unavailable',
+  'not_found',
+  'not_computable',
+]);
+const SUBJECT_STATS_METRIC_STATES = new Set([
+  'complete',
+  'partial',
+  'conflict',
+  'unavailable',
+  'not_computable',
+]);
+const SUBJECT_STATS_FORMULA_EVIDENCE_STATUSES = new Set([
+  'official_contract',
+  'empirically_verified',
+  'derived',
+]);
+const SUBJECT_STATS_COLLECTION_STATUSES = new Set([
+  'wish',
+  'collect',
+  'doing',
+  'on_hold',
+  'dropped',
+]);
+
 const activeSourceSubjects = new Set<number>();
-let sourceBackoffUntil = 0;
 
 export interface SubjectStatsHistoryOptions {
   recordCurrent?: boolean;
@@ -187,52 +215,88 @@ export async function getSubjectStatsHistory(
         }
 
         try {
-          const result = await getSubjectStatsIntelligence(subjectId, {
-            providerRegistry: dependencies.providerRegistry,
-          });
-          for (const evidence of result.evidence) {
-            assertSafeEvidence({
-              source: {
-                class: evidence.source === 'official-v0' ? 'official_v0' : 'derived',
-                provider: evidence.provider,
-                ...(evidence.operation ? { operation: evidence.operation } : {}),
-                ...(evidence.formulaVersion !== undefined
-                  ? { version: String(evidence.formulaVersion) }
-                  : {}),
-              },
-              retrievedAt: evidence.retrievedAt || result.retrievedAt || now.toISOString(),
-              ...(evidence.fieldPath ? { fieldPath: evidence.fieldPath } : {}),
-              ...(evidence.formula ? { formula: evidence.formula } : {}),
+          return await dependencies.storage!.withSubjectStatsObservationHostLock(async () => {
+            const backoffUntil = await dependencies.storage!.getSubjectStatsObservationHostBackoff(
+              new Date(),
+            );
+            if (backoffUntil) {
+              transientWarnings.push({
+                code: 'OBSERVATION_RESOURCE_LIMIT',
+                message: `官方统计 host 正在退避至 ${backoffUntil.toISOString()}；本次未发起请求。`,
+              });
+              return lockedRecords;
+            }
+
+            if (lockedRecords.length === 0) {
+              const trackedSubjects =
+                await dependencies.storage!.getSubjectStatsObservationSubjectCount();
+              if (trackedSubjects >= SUBJECT_STATS_HISTORY_MAX_TRACKED_SUBJECTS) {
+                transientWarnings.push({
+                  code: 'OBSERVATION_SUBJECT_CARDINALITY_LIMIT',
+                  message: `本地统计观察最多保留 ${SUBJECT_STATS_HISTORY_MAX_TRACKED_SUBJECTS} 个条目；本次未发起请求。`,
+                });
+                return lockedRecords;
+              }
+            }
+
+            const result = await getSubjectStatsIntelligence(subjectId, {
+              providerRegistry: dependencies.providerRegistry,
             });
-          }
-          const record: SubjectStatsObservationRecord = {
-            id: `obs_${crypto.randomUUID()}`,
-            subjectId,
-            observedAt: now,
-            retrievedAt: parseDate(result.retrievedAt),
-            state: result.state,
-            resultJson: JSON.stringify(result),
-            methodologyVersion: `${SUBJECT_STATS_HISTORY_METHODOLOGY_ID}.v${SUBJECT_STATS_HISTORY_METHODOLOGY_VERSION}`,
-            retentionUntil: new Date(now.getTime() + retentionDays * 24 * 60 * 60 * 1000),
-          };
-          await dependencies.storage!.appendSubjectStatsObservation(record, {
-            maxObservations,
-            now,
-          });
-          recordedObservationId = record.id;
-          transientWarnings.push(
-            ...result.warnings.map((warning) => ({
-              code: warning.code,
-              message: warning.message,
-            })),
-          );
-          return await dependencies.storage!.listSubjectStatsObservations({
-            subjectId,
-            limit: maxObservations,
-            now,
+            if (shouldBackoffSource(result)) {
+              await dependencies.storage!.setSubjectStatsObservationHostBackoff(
+                new Date(Date.now() + SUBJECT_STATS_HISTORY_FAILURE_BACKOFF_MS),
+              );
+            }
+            for (const evidence of result.evidence) {
+              assertSafeEvidence({
+                source: {
+                  class: evidence.source === 'official-v0' ? 'official_v0' : 'derived',
+                  provider: evidence.provider,
+                  ...(evidence.operation ? { operation: evidence.operation } : {}),
+                  ...(evidence.formulaVersion !== undefined
+                    ? { version: String(evidence.formulaVersion) }
+                    : {}),
+                },
+                retrievedAt: evidence.retrievedAt || result.retrievedAt || now.toISOString(),
+                ...(evidence.fieldPath ? { fieldPath: evidence.fieldPath } : {}),
+                ...(evidence.formula ? { formula: evidence.formula } : {}),
+              });
+            }
+            const record: SubjectStatsObservationRecord = {
+              id: `obs_${crypto.randomUUID()}`,
+              subjectId,
+              observedAt: now,
+              retrievedAt: parseDate(result.retrievedAt),
+              state: result.state,
+              resultJson: JSON.stringify(result),
+              methodologyVersion: `${SUBJECT_STATS_HISTORY_METHODOLOGY_ID}.v${SUBJECT_STATS_HISTORY_METHODOLOGY_VERSION}`,
+              retentionUntil: new Date(now.getTime() + retentionDays * 24 * 60 * 60 * 1000),
+            };
+            await dependencies.storage!.appendSubjectStatsObservation(record, {
+              maxObservations,
+              now,
+            });
+            recordedObservationId = record.id;
+            transientWarnings.push(
+              ...result.warnings.map((warning) => ({
+                code: warning.code,
+                message: warning.message,
+              })),
+            );
+            return await dependencies.storage!.listSubjectStatsObservations({
+              subjectId,
+              limit: maxObservations,
+              now,
+            });
           });
         } catch {
-          sourceBackoffUntil = Date.now() + SUBJECT_STATS_HISTORY_FAILURE_BACKOFF_MS;
+          try {
+            await dependencies.storage!.setSubjectStatsObservationHostBackoff(
+              new Date(Date.now() + SUBJECT_STATS_HISTORY_FAILURE_BACKOFF_MS),
+            );
+          } catch {
+            // Preserve the source failure state even if the backoff marker cannot be stored.
+          }
           transientWarnings.push({
             code: 'OBSERVATION_NOT_RECORDED',
             message: '当前官方统计观察未能写入本地历史；未伪造新的历史点。',
@@ -244,8 +308,8 @@ export async function getSubjectStatsHistory(
       });
     } catch {
       transientWarnings.push({
-        code: 'OBSERVATION_LOCK_UNAVAILABLE',
-        message: '本次未能取得条目观察锁；未发起官方统计请求。',
+        code: 'OBSERVATION_RESOURCE_LIMIT',
+        message: '本次未能取得条目或 official-v0 host 观察锁；未发起官方统计请求。',
       });
     }
   }
@@ -265,15 +329,11 @@ export async function getSubjectStatsHistory(
   const observations: SubjectStatsHistoryObservation[] = [];
   for (const record of records) {
     try {
-      const snapshot = JSON.parse(record.resultJson) as SubjectStatsIntelligenceResult;
-      if (
-        snapshot.subjectId !== subjectId ||
-        !snapshot.state ||
-        !snapshot.rating ||
-        !snapshot.collection
-      ) {
+      const parsed: unknown = JSON.parse(record.resultJson);
+      if (!isSubjectStatsIntelligenceResult(parsed, subjectId)) {
         throw new Error('invalid observation payload');
       }
+      const snapshot = parsed;
       observations.push({
         id: record.id,
         observedAt: record.observedAt.toISOString(),
@@ -324,7 +384,7 @@ function buildHistoryResult(input: {
   const latestState = input.observations.at(-1)?.state;
   const retainedObservations = Math.max(input.summary.retainedCount, input.observations.length);
   const truncated = retainedObservations > input.observations.length;
-  const state = historyState(input.observations, completeObservations);
+  const state = truncated ? 'partial' : historyState(input.observations, completeObservations);
   const officialOperations = unique(
     input.observations.flatMap((item) => item.snapshot.source.official.operations),
   );
@@ -370,6 +430,7 @@ function buildHistoryResult(input: {
       resourceBounds: {
         maxActiveSubjects: SUBJECT_STATS_HISTORY_MAX_ACTIVE_SUBJECTS,
         hostConcurrency: SUBJECT_STATS_HISTORY_HOST_CONCURRENCY,
+        maxTrackedSubjects: SUBJECT_STATS_HISTORY_MAX_TRACKED_SUBJECTS,
         maxSubjectId: SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
         maxCleanupRows: SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
       },
@@ -583,8 +644,6 @@ function compatibilityForPair(
 }
 
 function tryAcquireSourceBudget(subjectId: number): (() => void) | undefined {
-  const now = Date.now();
-  if (sourceBackoffUntil > now) return undefined;
   if (
     activeSourceSubjects.size >= SUBJECT_STATS_HISTORY_MAX_ACTIVE_SUBJECTS ||
     activeSourceSubjects.size >= SUBJECT_STATS_HISTORY_HOST_CONCURRENCY
@@ -595,6 +654,199 @@ function tryAcquireSourceBudget(subjectId: number): (() => void) | undefined {
   return () => {
     activeSourceSubjects.delete(subjectId);
   };
+}
+
+function shouldBackoffSource(result: SubjectStatsIntelligenceResult): boolean {
+  if (result.error?.retryable === true) return true;
+  if (result.state !== 'unavailable') return false;
+  return result.warnings.some((warning) =>
+    /UPSTREAM|TIMEOUT|RATE_LIMIT/u.test(warning.code.toUpperCase()),
+  );
+}
+
+function isSubjectStatsIntelligenceResult(
+  value: unknown,
+  subjectId: number,
+): value is SubjectStatsIntelligenceResult {
+  if (
+    !isRecord(value) ||
+    value.subjectId !== subjectId ||
+    !hasSetValue(SUBJECT_STATS_STATES, value.state)
+  ) {
+    return false;
+  }
+  const rating = value.rating;
+  const collection = value.collection;
+  const coverage = value.coverage;
+  const source = value.source;
+  if (!isRecord(rating) || !isRecord(collection) || !isRecord(coverage) || !isRecord(source)) {
+    return false;
+  }
+  if (
+    !hasSetValue(SUBJECT_STATS_METRIC_STATES, rating.state) ||
+    !hasSetValue(SUBJECT_STATS_METRIC_STATES, collection.state) ||
+    !hasSetValue(SUBJECT_STATS_METRIC_STATES, collection.completionState) ||
+    !Array.isArray(rating.distribution) ||
+    !rating.distribution.every(isRatingDistribution) ||
+    !Array.isArray(collection.distribution) ||
+    !collection.distribution.every(isCollectionDistribution) ||
+    !isRecord(rating.formulas) ||
+    !isFormulaDescriptor(rating.formulas.percentages) ||
+    !isFormulaDescriptor(rating.formulas.histogramMean) ||
+    !isFormulaDescriptor(rating.formulas.populationStandardDeviation) ||
+    !isRecord(collection.formulas) ||
+    !isFormulaDescriptor(collection.formulas.percentages) ||
+    !isFormulaDescriptor(collection.formulas.completion) ||
+    !isStatsSourceChannel(source.official, 'official-v0') ||
+    !isStatsSourceChannel(source.derived, 'derived-s7') ||
+    !isCoverage(coverage) ||
+    !Array.isArray(value.evidence) ||
+    !value.evidence.every(isEvidence) ||
+    !Array.isArray(value.warnings) ||
+    !value.warnings.every(isWarning) ||
+    !Array.isArray(value.limitations) ||
+    !value.limitations.every((item) => typeof item === 'string')
+  ) {
+    return false;
+  }
+  if (value.raw !== undefined && !isRawStats(value.raw)) return false;
+  if (value.conflicts !== undefined && !Array.isArray(value.conflicts)) return false;
+  if (value.retrievedAt !== undefined && typeof value.retrievedAt !== 'string') return false;
+  if (value.error !== undefined && !isRecord(value.error)) return false;
+  return true;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasSetValue(values: Set<string>, value: unknown): value is string {
+  return typeof value === 'string' && values.has(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isOptionalFiniteNumber(value: unknown): boolean {
+  return value === undefined || isFiniteNumber(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isFormulaDescriptor(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.version === 'number' &&
+    Number.isInteger(value.version) &&
+    value.version >= 0 &&
+    isStringArray(value.inputs) &&
+    hasSetValue(SUBJECT_STATS_FORMULA_EVIDENCE_STATUSES, value.evidenceStatus) &&
+    typeof value.description === 'string'
+  );
+}
+
+function isRatingDistribution(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.score) &&
+    isOptionalFiniteNumber(value.count) &&
+    isOptionalFiniteNumber(value.percentage)
+  );
+}
+
+function isCollectionDistribution(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasSetValue(SUBJECT_STATS_COLLECTION_STATUSES, value.status) &&
+    isOptionalFiniteNumber(value.count) &&
+    isOptionalFiniteNumber(value.percentage)
+  );
+}
+
+function isStatsSourceChannel(
+  value: unknown,
+  expectedClass: 'official-v0' | 'derived-s7',
+): boolean {
+  return (
+    isRecord(value) &&
+    value.class === expectedClass &&
+    isStringArray(value.operations) &&
+    (value.retrievedAt === undefined || typeof value.retrievedAt === 'string')
+  );
+}
+
+function isCoverage(value: Record<string, unknown>): boolean {
+  const required = [
+    'sourceRequestsAttempted',
+    'sourceRequestsSucceeded',
+    'ratingBucketsExpected',
+    'ratingBucketsObserved',
+    'collectionBucketsExpected',
+    'collectionBucketsObserved',
+    'formulasAttempted',
+    'formulasComplete',
+    'formulasPartial',
+    'formulasNotComputable',
+    'formulasConflict',
+  ];
+  return (
+    required.every((key) => isFiniteNumber(value[key]) && value[key] >= 0) &&
+    isOptionalFiniteNumber(value.ratingPopulation) &&
+    isOptionalFiniteNumber(value.collectionPopulation)
+  );
+}
+
+function isEvidence(value: unknown): boolean {
+  return isRecord(value) && typeof value.source === 'string' && typeof value.provider === 'string';
+}
+
+function isWarning(value: unknown): boolean {
+  return isRecord(value) && typeof value.code === 'string' && typeof value.message === 'string';
+}
+
+function isRawStats(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const histogram = value.ratingHistogram;
+  const collection = value.collection;
+  if (
+    !isFiniteNumber(value.score) ||
+    !isFiniteNumber(value.rank) ||
+    !isFiniteNumber(value.ratingTotal) ||
+    !isRecord(histogram) ||
+    !isRecord(collection) ||
+    ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((score) => isFiniteNumber(histogram[score])) ||
+    !['wish', 'collect', 'doing', 'onHold', 'dropped'].every((key) =>
+      isFiniteNumber(collection[key]),
+    )
+  ) {
+    return false;
+  }
+  if (value.ratingHistogramPresence !== undefined) {
+    const presence = value.ratingHistogramPresence;
+    if (
+      !isRecord(presence) ||
+      ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].every((score) => typeof presence[score] === 'boolean')
+    ) {
+      return false;
+    }
+  }
+  if (value.collectionPresence !== undefined) {
+    const presence = value.collectionPresence;
+    if (
+      !isRecord(presence) ||
+      !['wish', 'collect', 'doing', 'onHold', 'dropped'].every(
+        (key) => typeof presence[key] === 'boolean',
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function summaryFromRecords(
@@ -667,6 +919,7 @@ function emptyHistory(
       resourceBounds: {
         maxActiveSubjects: SUBJECT_STATS_HISTORY_MAX_ACTIVE_SUBJECTS,
         hostConcurrency: SUBJECT_STATS_HISTORY_HOST_CONCURRENCY,
+        maxTrackedSubjects: SUBJECT_STATS_HISTORY_MAX_TRACKED_SUBJECTS,
         maxSubjectId: SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
         maxCleanupRows: SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
       },

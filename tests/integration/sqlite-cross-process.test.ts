@@ -305,6 +305,7 @@ describe('SQLite independent-process concurrency', () => {
       '0001_integrity_constraints.sql',
       '0002_subject_stats_observations.sql',
       '0003_subject_stats_observation_meta.sql',
+      '0004_subject_stats_observation_host_meta.sql',
     ]);
     db.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -328,5 +329,45 @@ describe('SQLite independent-process concurrency', () => {
       .sort((a, b) => a - b);
     expect(elapsed[1]).toBeGreaterThanOrEqual(90);
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }, 30000);
+
+  it('renews subject leases and serializes the official host across independent processes', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgm-sqlite-stats-host-process-'));
+    const dbPath = path.join(tmpDir, 'test.sqlite');
+    await SQLiteStorage.create({ dbPath }).then((storage) => storage.close());
+
+    const previousLease = process.env.BANGUMI_SQLITE_LOCK_LEASE_MS;
+    process.env.BANGUMI_SQLITE_LOCK_LEASE_MS = '60';
+    try {
+      const subjectResults = await runWorkers('stats-lock', dbPath, [
+        { subjectId: 123, holdMs: 240 },
+        { subjectId: 123, holdMs: 240 },
+      ]);
+      expect(
+        subjectResults.every((result) => result.ok),
+        JSON.stringify(subjectResults),
+      ).toBe(true);
+      const subjectElapsed = subjectResults
+        .map((result) => Number(result.value?.elapsedMs || 0))
+        .sort((a, b) => a - b);
+      expect(subjectElapsed[1]).toBeGreaterThanOrEqual(180);
+
+      const hostResults = await runWorkers('stats-host-lock', dbPath, [
+        { holdMs: 120 },
+        { holdMs: 120 },
+      ]);
+      expect(
+        hostResults.every((result) => result.ok),
+        JSON.stringify(hostResults),
+      ).toBe(true);
+      const hostElapsed = hostResults
+        .map((result) => Number(result.value?.elapsedMs || 0))
+        .sort((a, b) => a - b);
+      expect(hostElapsed[1]).toBeGreaterThanOrEqual(90);
+    } finally {
+      if (previousLease === undefined) delete process.env.BANGUMI_SQLITE_LOCK_LEASE_MS;
+      else process.env.BANGUMI_SQLITE_LOCK_LEASE_MS = previousLease;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   }, 30000);
 });

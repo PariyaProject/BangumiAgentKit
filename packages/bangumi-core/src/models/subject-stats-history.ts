@@ -86,6 +86,7 @@ export interface SubjectStatsHistoryResult {
     resourceBounds: {
       maxActiveSubjects: number;
       hostConcurrency: number;
+      maxTrackedSubjects: number;
       maxSubjectId: number;
       maxCleanupRows: number;
     };

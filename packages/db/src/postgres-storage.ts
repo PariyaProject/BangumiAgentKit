@@ -11,6 +11,7 @@ import {
   PendingActionRecord,
   PendingActionStatus,
   AuditEventRecord,
+  SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY,
   SUBJECT_STATS_OBSERVATION_MAX_CLEANUP_ROWS,
   SUBJECT_STATS_OBSERVATION_MAX_ROWS,
   SubjectStatsObservationRecord,
@@ -872,9 +873,58 @@ export class PostgresStorage implements Storage {
     };
   }
 
+  async getSubjectStatsObservationSubjectCount(): Promise<number> {
+    const result = await this.pool.query<{ count: string }>(
+      'SELECT COUNT(DISTINCT subject_id)::text AS count FROM subject_stats_observations',
+    );
+    return Number(result.rows[0]?.count || 0);
+  }
+
+  async getSubjectStatsObservationHostBackoff(now = new Date()): Promise<Date | undefined> {
+    const result = await this.pool.query<{ backoff_until: Date }>(
+      `SELECT backoff_until
+       FROM subject_stats_observation_host_meta
+       WHERE id = 1 AND backoff_until > $1`,
+      [now],
+    );
+    const value = result.rows[0]?.backoff_until;
+    return value ? new Date(value) : undefined;
+  }
+
+  async setSubjectStatsObservationHostBackoff(until: Date): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO subject_stats_observation_host_meta (id, backoff_until, updated_at)
+       VALUES (1, $1, $2)
+       ON CONFLICT (id) DO UPDATE SET
+         backoff_until = GREATEST(subject_stats_observation_host_meta.backoff_until, EXCLUDED.backoff_until),
+         updated_at = EXCLUDED.updated_at`,
+      [until, new Date()],
+    );
+  }
+
   async withSubjectStatsObservationLock<T>(subjectId: number, fn: () => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     const [key1, key2] = stringToTwoInt32(`subject_stats_observation:${subjectId}`);
+    let lockAcquired = false;
+    try {
+      await client.query('SELECT pg_advisory_lock($1, $2)', [key1, key2]);
+      lockAcquired = true;
+      return await fn();
+    } finally {
+      if (lockAcquired) {
+        try {
+          await client.query('SELECT pg_advisory_unlock($1, $2)', [key1, key2]);
+        } catch {
+          // ignore unlock error if connection closed
+        }
+      }
+      client.release();
+    }
+  }
+
+  async withSubjectStatsObservationHostLock<T>(fn: () => Promise<T>): Promise<T> {
+    const client = await this.pool.connect();
+    const [key1, key2] = stringToTwoInt32(SUBJECT_STATS_OBSERVATION_HOST_LOCK_KEY);
     let lockAcquired = false;
     try {
       await client.query('SELECT pg_advisory_lock($1, $2)', [key1, key2]);
