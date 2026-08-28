@@ -1041,9 +1041,9 @@
       "kind": "scenario",
       "user_question": "我的在看清单按预计观看时间怎么排？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Extend the bounded account watch plan with schedule alignment and explicit confidence before delivery.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

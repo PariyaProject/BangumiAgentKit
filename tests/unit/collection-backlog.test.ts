@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   CollectionBacklogService,
   COLLECTION_BACKLOG_DEFAULT_MAX_EPISODES_PER_SUBJECT,
+  parseEpisodeDurationSeconds,
 } from '@bangumi-agent-kit/bangumi-core';
 
 function buildClient(fetchFn: typeof fetch): GeneratedBangumiOpenApiClient {
@@ -45,7 +46,12 @@ function collectionRow(
   };
 }
 
-function episodeRow(id: number, type: number, collectionType: number): Record<string, unknown> {
+function episodeRow(
+  id: number,
+  type: number,
+  collectionType: number,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
   return {
     type: collectionType,
     updated_at: 1_723_600_000,
@@ -59,11 +65,26 @@ function episodeRow(id: number, type: number, collectionType: number): Record<st
       ep: id,
       airdate: '2026-01-01',
       duration: '24m',
+      ...extra,
     },
   };
 }
 
 describe('CollectionBacklogService', () => {
+  it('parses explicit duration formats without guessing ambiguous values', () => {
+    expect(parseEpisodeDurationSeconds('24m')).toBe(24 * 60);
+    expect(parseEpisodeDurationSeconds('00:59')).toBe(59);
+    expect(parseEpisodeDurationSeconds('00:24:00')).toBe(24 * 60);
+    expect(parseEpisodeDurationSeconds('1h 30m')).toBe(90 * 60);
+    expect(parseEpisodeDurationSeconds('00:60')).toBeUndefined();
+    expect(parseEpisodeDurationSeconds('1:99')).toBeUndefined();
+    expect(parseEpisodeDurationSeconds('01:59:59')).toBe(1 * 3600 + 59 * 60 + 59);
+    expect(parseEpisodeDurationSeconds('01:60:00')).toBeUndefined();
+    expect(parseEpisodeDurationSeconds('01:00:60')).toBeUndefined();
+    expect(parseEpisodeDurationSeconds('runtime unknown')).toBeUndefined();
+    expect(parseEpisodeDurationSeconds('0m')).toBeUndefined();
+  });
+
   it('joins current-account collection rows with main-episode progress without exposing comments', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
@@ -136,6 +157,216 @@ describe('CollectionBacklogService', () => {
     });
     expect(JSON.stringify(result)).not.toContain('private comment');
     expect(result.evidence[1]?.formulaVersion).toBe('collection-backlog-v2');
+  });
+
+  it('calculates observed pending minutes and stably sorts known estimates before unknown ones', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 3,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                ep_status: 1,
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+              collectionRow(2, 3, {
+                subject: { ...(collectionRow(2, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+              collectionRow(3, 3, {
+                subject: { ...(collectionRow(3, 3).subject as Record<string, unknown>), eps: 1 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      const subjectId = Number(url.pathname.split('/').at(-2));
+      if (subjectId === 1) {
+        return new Response(
+          JSON.stringify({
+            total: 2,
+            limit: 100,
+            offset: 0,
+            data: [
+              episodeRow(1, 0, 2, { duration_seconds: 1500, duration: '24m' }),
+              episodeRow(2, 0, 1, { duration: '30m' }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (subjectId === 2) {
+        return new Response(
+          JSON.stringify({
+            total: 2,
+            limit: 100,
+            offset: 0,
+            data: [
+              episodeRow(1, 0, 1, { duration_seconds: 600 }),
+              episodeRow(2, 0, 1, { duration: 'not supplied' }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 100,
+          offset: 0,
+          data: [episodeRow(1, 0, 1, { duration: '45m' })],
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+      { sortBy: 'estimated_minutes_desc' },
+    );
+
+    expect(result.data.sortBy).toBe('estimated_minutes_desc');
+    expect(result.data.items.map((item) => item.subjectId)).toEqual([3, 1, 2]);
+    expect(result.data.items[0]).toMatchObject({
+      subjectId: 3,
+      plannedEpisodes: 1,
+      knownDurationEpisodes: 1,
+      unknownDurationEpisodes: 0,
+      estimatedRemainingMinutes: 45,
+      durationSource: 'raw',
+      durationState: 'complete',
+    });
+    expect(result.data.items[1]).toMatchObject({
+      subjectId: 1,
+      plannedEpisodes: 1,
+      knownDurationEpisodes: 1,
+      estimatedRemainingMinutes: 30,
+      durationSource: 'raw',
+      durationState: 'complete',
+    });
+    expect(result.data.items[2]).toMatchObject({
+      subjectId: 2,
+      plannedEpisodes: 2,
+      knownDurationEpisodes: 1,
+      unknownDurationEpisodes: 1,
+      estimatedRemainingMinutes: 10,
+      durationSource: 'server',
+      durationState: 'partial',
+    });
+    expect(result.data.summary).toMatchObject({
+      knownEstimatedRemainingMinutes: 85,
+      durationCompleteItems: 2,
+      durationPartialItems: 1,
+      unknownDurationEpisodes: 1,
+    });
+    expect(result.warnings.some((warning) => warning.code === 'UNKNOWN_EPISODE_DURATIONS')).toBe(
+      true,
+    );
+  });
+
+  it('keeps malformed progress rows in explicit partial duration coverage', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({
+            total: 1,
+            limit: 50,
+            offset: 0,
+            data: [
+              collectionRow(1, 3, {
+                subject: { ...(collectionRow(1, 3).subject as Record<string, unknown>), eps: 2 },
+              }),
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          total: 2,
+          limit: 100,
+          offset: 0,
+          data: [
+            { type: 1, updated_at: 1_723_600_000 },
+            episodeRow(2, 0, 1, { id: 0, duration: '24m' }),
+          ],
+        }),
+        { status: 200 },
+      );
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+      { sortBy: 'estimated_minutes_desc' },
+    );
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('partial');
+    expect(row).toMatchObject({
+      state: 'partial',
+      plannedEpisodes: 2,
+      knownDurationEpisodes: 0,
+      unknownDurationEpisodes: 2,
+      durationState: 'not_computable',
+    });
+    expect(row?.estimatedRemainingMinutes).toBeUndefined();
+    expect(row?.reasons).toEqual(
+      expect.arrayContaining([
+        'episode progress row lacks episode metadata',
+        'episode progress row lacks a valid episode ID',
+      ]),
+    );
+    expect(result.data.summary.knownEstimatedRemainingMinutes).toBeUndefined();
+  });
+
+  it('does not fabricate aggregate minutes when episode hydration is unavailable', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(
+          JSON.stringify({ total: 1, limit: 50, offset: 0, data: [collectionRow(1, 3)] }),
+          { status: 200 },
+        );
+      }
+      throw new BangumiError('PERMISSION_DENIED', 'no episode permission', false, 403);
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.data.summary.knownEstimatedRemainingMinutes).toBeUndefined();
+    expect(result.data.items[0]).toMatchObject({
+      state: 'unavailable',
+      durationState: 'not_computable',
+    });
+    expect(result.data.items[0]?.estimatedRemainingMinutes).toBeUndefined();
+  });
+
+  it('reports a genuinely empty account backlog as not-applicable zero', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/collections')) {
+        return new Response(JSON.stringify({ total: 0, limit: 50, offset: 0, data: [] }), {
+          status: 200,
+        });
+      }
+      throw new Error(`unexpected request: ${url}`);
+    };
+
+    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
+      'account-owner',
+    );
+
+    expect(result.state).toBe('complete');
+    expect(result.data.items).toEqual([]);
+    expect(result.data.summary.knownEstimatedRemainingMinutes).toBe(0);
   });
 
   it('does not fabricate completion when the source total is missing', async () => {

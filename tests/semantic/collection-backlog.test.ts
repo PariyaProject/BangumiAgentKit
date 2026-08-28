@@ -93,9 +93,16 @@ describe('bangumi.get_collection_backlog', () => {
     expect(tool?.input.safeParse({ username: 'other-user' }).success).toBe(false);
     expect(tool?.input.safeParse({ maxSubjects: 31 }).success).toBe(false);
     expect(tool?.input.safeParse({ statuses: [] }).success).toBe(false);
+    expect(tool?.input.safeParse({ sortBy: 'estimated_minutes_desc' }).success).toBe(true);
+    expect(tool?.input.safeParse({ sortBy: 'estimated_minutes' }).success).toBe(false);
 
     const result = await tool!.execute(
-      { maxItems: 1, maxSubjects: 1, maxEpisodesPerSubject: 2 },
+      {
+        maxItems: 1,
+        maxSubjects: 1,
+        maxEpisodesPerSubject: 2,
+        sortBy: 'estimated_minutes_desc',
+      },
       { principalId: 'principal-1', botInstanceId: 'bot', conversationId: 'conversation' },
       {
         executionSession: {
@@ -106,9 +113,16 @@ describe('bangumi.get_collection_backlog', () => {
     );
 
     expect(result).toMatchObject({
-      state: 'complete',
+      state: 'partial',
       coverage: { collection: { sourceTotal: 1 }, hydration: { succeededSubjects: 1 } },
-      data: { summary: { knownRemainingEpisodes: 1 } },
+      data: {
+        sortBy: 'estimated_minutes_desc',
+        summary: {
+          knownRemainingEpisodes: 1,
+          knownEstimatedRemainingMinutes: undefined,
+          unknownDurationEpisodes: 1,
+        },
+      },
     });
     expect(JSON.stringify(result)).not.toContain('private comment');
     expect(requests.some((url) => url.searchParams.get('episode_type') === '0')).toBe(true);

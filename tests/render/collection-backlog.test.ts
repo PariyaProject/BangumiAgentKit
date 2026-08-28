@@ -83,6 +83,7 @@ describe('collection-backlog renderer', () => {
                 sort: 1,
                 ep: 1,
                 airdate: '2026-01-01',
+                duration_seconds: 1500,
               },
             },
             {
@@ -97,6 +98,7 @@ describe('collection-backlog renderer', () => {
                 sort: 2,
                 ep: 2,
                 airdate: '2026-01-02',
+                duration: '24m',
               },
             },
             {
@@ -111,6 +113,7 @@ describe('collection-backlog renderer', () => {
                 sort: 3,
                 ep: 3,
                 airdate: '2026-01-03',
+                duration: '24m',
               },
             },
           ],
@@ -133,6 +136,8 @@ describe('collection-backlog renderer', () => {
     expect(html).toContain('剩余 2 集');
     expect(html).toContain('collection-backlog-v2');
     expect(html).toContain('一个需要在窄卡片中安全换行的超长收藏标题');
+    expect(html).toContain('已知待看时长');
+    expect(html).toContain('已知约 48 分');
     expect(html).not.toContain('private comment');
 
     const rendered = await renderService.renderCard(viewModel, { width: 640 });

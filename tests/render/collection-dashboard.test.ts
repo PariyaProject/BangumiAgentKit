@@ -74,6 +74,7 @@ describe('collection-dashboard renderer', () => {
                 name: 'Episode 1',
                 ep: 1,
                 airdate: '2026-01-01',
+                duration: '24m',
               },
             },
             {
@@ -85,6 +86,7 @@ describe('collection-dashboard renderer', () => {
                 name: 'Episode 2',
                 ep: 2,
                 airdate: '2026-01-02',
+                duration: '24m',
               },
             },
           ],

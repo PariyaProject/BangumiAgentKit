@@ -84,6 +84,7 @@ function episodePayload(): Record<string, unknown> {
           sort: 1,
           ep: 1,
           airdate: '2026-01-01',
+          duration: '24m',
         },
       },
       {
@@ -98,6 +99,7 @@ function episodePayload(): Record<string, unknown> {
           sort: 2,
           ep: 2,
           airdate: '2026-01-02',
+          duration: '24m',
         },
       },
     ],

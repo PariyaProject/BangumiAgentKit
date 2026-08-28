@@ -57,6 +57,24 @@ function airingLabel(state: CollectionBacklogViewModel['items'][number]['airingS
   return '播出状态未知';
 }
 
+function sortLabel(sortBy: CollectionBacklogViewModel['sortBy']): string {
+  if (sortBy === 'estimated_minutes_asc') return '预计分钟数升序';
+  if (sortBy === 'estimated_minutes_desc') return '预计分钟数降序';
+  return '源顺序';
+}
+
+function durationLabel(item: CollectionBacklogViewModel['items'][number]): string {
+  if (item.durationState === 'not_applicable') return '待看时长 0 分';
+  const estimate =
+    item.estimatedRemainingMinutes === undefined
+      ? '预计分钟数未知'
+      : `已知约 ${item.estimatedRemainingMinutes} 分`;
+  const coverage = `时长 ${item.knownDurationEpisodes}/${item.plannedEpisodes} 集`;
+  return item.unknownDurationEpisodes > 0
+    ? `${estimate} · ${coverage} · 未解析 ${item.unknownDurationEpisodes} 集`
+    : `${estimate} · ${coverage}`;
+}
+
 export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
   viewModel,
   theme,
@@ -67,6 +85,12 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
     ['符合状态', String(viewModel.summary.eligibleItems)],
     ['已返回', String(viewModel.summary.returnedItems)],
     ['已知剩余', `${viewModel.summary.knownRemainingEpisodes} 集`],
+    [
+      '已知待看时长',
+      viewModel.summary.knownEstimatedRemainingMinutes === undefined
+        ? '未知'
+        : `${viewModel.summary.knownEstimatedRemainingMinutes} 分`,
+    ],
     ['已播完未看完*', String(viewModel.summary.finishedIncompleteItems)],
     ['可计算条目', String(viewModel.summary.completeItems)],
   ];
@@ -75,7 +99,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
     <CardFrame theme={theme} width={width}>
       <TitleBlock
         title="我的收藏 backlog"
-        subtitle={`当前账号 · 官方 v0 · ${stateLabel(viewModel.state)}`}
+        subtitle={`当前账号 · 官方 v0 · ${stateLabel(viewModel.state)} · 排序：${sortLabel(viewModel.sortBy)}`}
         theme={theme}
       />
 
@@ -155,7 +179,7 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
 
           <section>
             <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
-              收藏条目（源顺序）
+              收藏条目（{sortLabel(viewModel.sortBy)}）
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '6px' }}>
               {viewModel.items.map((item) => (
@@ -177,8 +201,8 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
                     </span>
                   </div>
                   <div style={{ color: theme.textMuted, lineHeight: 1.5, marginTop: '2px' }}>
-                    {progressLabel(item)} · {airingLabel(item.airingState)} ·{' '}
-                    {rowStateLabel(item.state)}
+                    {progressLabel(item)} · {durationLabel(item)} · {airingLabel(item.airingState)}{' '}
+                    · {rowStateLabel(item.state)}
                     {item.airingState === 'unknown' && item.airingReason
                       ? ` · ${boundedText(item.airingReason)}`
                       : ''}
@@ -211,6 +235,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
         公式：{viewModel.evidence.formulaVersion || '未生成'} · 账号范围：
         {viewModel.evidence.authScope}
+        {viewModel.evidence.durationFormulaVersion
+          ? ` · 时长公式：${viewModel.evidence.durationFormulaVersion}`
+          : ''}
         {viewModel.source.retrievedAt ? ` · ${viewModel.source.retrievedAt}` : ''}
       </div>
       <Footer theme={theme} />

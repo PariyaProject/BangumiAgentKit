@@ -352,6 +352,7 @@ export interface CollectionBacklogViewModel {
   state: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['state'];
   items: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['data']['items'];
   summary: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['data']['summary'];
+  sortBy?: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogSort;
   coverage: import('@bangumi-agent-kit/bangumi-core').CollectionBacklogResult['coverage'] & {
     renderedItems: number;
     omittedItems: number;
@@ -362,6 +363,7 @@ export interface CollectionBacklogViewModel {
   evidence: {
     operations: string[];
     formulaVersion?: string;
+    durationFormulaVersion?: string;
     authScope: 'account';
     retrievedAt?: string;
   };

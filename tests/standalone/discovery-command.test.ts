@@ -200,6 +200,8 @@ describe('Standalone discovery and raw tool playground', () => {
         '120',
         '--status',
         'doing,on_hold',
+        '--sort',
+        'estimated-minutes-desc',
       ],
       context(host),
     );
@@ -215,6 +217,8 @@ describe('Standalone discovery and raw tool playground', () => {
         '80',
         '--status',
         'wish',
+        '--sort',
+        'estimated-minutes-asc',
       ],
       context(host),
     );
@@ -227,6 +231,7 @@ describe('Standalone discovery and raw tool playground', () => {
         maxSubjects: 6,
         maxEpisodesPerSubject: 120,
         statuses: ['doing', 'on_hold'],
+        sortBy: 'estimated_minutes_desc',
       },
       expect.anything(),
     );
@@ -238,6 +243,7 @@ describe('Standalone discovery and raw tool playground', () => {
         maxSubjects: 4,
         maxEpisodesPerSubject: 80,
         statuses: ['wish'],
+        sortBy: 'estimated_minutes_asc',
       },
       expect.anything(),
     );
