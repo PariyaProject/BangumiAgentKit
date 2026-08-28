@@ -4,6 +4,8 @@ import { CollectionStatus } from './collection-service.js';
 import { UserService } from './user-service.js';
 import { UserCollectionItem, UserEpisodeCollectionItem } from '../models/user.js';
 import type { DomainEpisode } from '../models/episode.js';
+import type { CalendarAnimeItem, DomainCalendarDay } from '../models/calendar.js';
+import { CalendarService } from './calendar-service.js';
 
 export const COLLECTION_BACKLOG_FORMULA_VERSION = 'collection-backlog-v2';
 export const COLLECTION_BACKLOG_DEFAULT_MAX_ITEMS = 50;
@@ -18,6 +20,9 @@ export const COLLECTION_BACKLOG_EPISODE_PAGE_SIZE = 100;
 export const COLLECTION_BACKLOG_MAX_EPISODE_PAGES = 10;
 export const COLLECTION_BACKLOG_MAX_CONCURRENCY = 3;
 export const COLLECTION_BACKLOG_DURATION_FORMULA_VERSION = 'collection-backlog-duration-v1';
+export const COLLECTION_BACKLOG_SCHEDULE_FORMULA_VERSION = 'collection-backlog-schedule-v1';
+export const COLLECTION_BACKLOG_CONFIDENCE_FORMULA_VERSION = 'collection-backlog-confidence-v1';
+export const COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS = 7;
 
 export type CollectionBacklogState =
   | 'complete'
@@ -48,12 +53,20 @@ export type CollectionBacklogDurationSource = 'server' | 'raw' | 'mixed' | 'none
 export type CollectionBacklogDurationState =
   'complete' | 'partial' | 'not_computable' | 'not_applicable';
 
+export type CollectionBacklogScheduleState = 'matched' | 'not_observed' | 'unknown';
+
+export type CollectionBacklogScheduleCoverageState =
+  'complete' | 'partial' | 'unavailable' | 'not_requested';
+
+export type CollectionBacklogConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown';
+
 export interface CollectionBacklogOptions {
   maxItems?: number;
   maxSubjects?: number;
   maxEpisodesPerSubject?: number;
   statuses?: CollectionBacklogStatus[];
   sortBy?: CollectionBacklogSort;
+  includeSchedule?: boolean;
   signal?: AbortSignal;
 }
 
@@ -86,6 +99,17 @@ export interface CollectionBacklogItem {
   estimatedRemainingMinutes?: number;
   durationSource: CollectionBacklogDurationSource;
   durationState: CollectionBacklogDurationState;
+  schedule: {
+    state: CollectionBacklogScheduleState;
+    weekday?: DomainCalendarDay['weekday'];
+    airDate?: string;
+    airWeekday?: number;
+    reason: string;
+  };
+  confidence: {
+    level: CollectionBacklogConfidenceLevel;
+    reasons: string[];
+  };
   state: CollectionBacklogRowState;
   reasons: string[];
   error?: PublicErrorInfo;
@@ -125,6 +149,13 @@ export interface CollectionBacklogData {
     durationPartialItems?: number;
     durationNotComputableItems?: number;
     unknownDurationEpisodes?: number;
+    scheduleMatchedItems?: number;
+    scheduleNotObservedItems?: number;
+    scheduleUnknownItems?: number;
+    confidenceHighItems?: number;
+    confidenceMediumItems?: number;
+    confidenceLowItems?: number;
+    confidenceUnknownItems?: number;
   };
   sortBy?: CollectionBacklogSort;
 }
@@ -167,6 +198,23 @@ export interface CollectionBacklogCoverage {
     sourceTotalChangedSubjects: number;
     failedSubjects: number;
   };
+  schedule: {
+    state: CollectionBacklogScheduleCoverageState;
+    attempted: boolean;
+    expectedDays: 7;
+    sourceDayCount: number;
+    missingWeekdays: number[];
+    duplicateWeekdays: number[];
+    invalidWeekdayCount: number;
+    observedRows: number;
+    uniqueRows: number;
+    duplicateRows: number;
+    invalidItemWeekdayCount: number;
+    weekdayConflictCount: number;
+    matchedItems: number;
+    nonAnimeRows: number;
+    truncated: boolean;
+  };
 }
 
 export interface CollectionBacklogResult {
@@ -182,12 +230,18 @@ export interface CollectionBacklogResult {
     authScope: 'account';
     attemptedAt: string;
     retrievedAt?: string;
+    calendar?: {
+      class: 'official-legacy';
+      operation: 'GET /calendar';
+      attemptedAt: string;
+      retrievedAt?: string;
+    };
   };
   evidence: Array<{
-    source: 'official_v0' | 'derived';
+    source: 'official_v0' | 'official-legacy' | 'derived';
     operations: string[];
     formulaVersion?: string;
-    authScope: 'account';
+    authScope: 'account' | 'public';
     attemptedAt?: string;
     retrievedAt?: string;
   }>;
@@ -238,6 +292,22 @@ interface HydratedRow {
   error?: PublicErrorInfo;
 }
 
+interface ScheduleCalendarRow {
+  item: CalendarAnimeItem;
+  weekday: DomainCalendarDay['weekday'];
+  sourceIndex: number;
+}
+
+interface ScheduleCalendarScan {
+  rows: ScheduleCalendarRow[];
+  duplicateSubjectIds: number[];
+  conflictSubjectIds: number[];
+  coverage: CollectionBacklogCoverage['schedule'];
+  attemptedAt: string;
+  retrievedAt?: string;
+  error?: PublicErrorInfo;
+}
+
 function bounded(value: number | undefined, fallback: number, maximum: number): number {
   if (!Number.isFinite(value)) return fallback;
   return Math.min(maximum, Math.max(1, Math.trunc(value as number)));
@@ -271,9 +341,298 @@ function emptyData(): CollectionBacklogData {
       durationPartialItems: 0,
       durationNotComputableItems: 0,
       unknownDurationEpisodes: 0,
+      scheduleMatchedItems: 0,
+      scheduleNotObservedItems: 0,
+      scheduleUnknownItems: 0,
+      confidenceHighItems: 0,
+      confidenceMediumItems: 0,
+      confidenceLowItems: 0,
+      confidenceUnknownItems: 0,
     },
     sortBy: 'source',
   };
+}
+
+function emptyScheduleCoverage(
+  state: CollectionBacklogScheduleCoverageState,
+  attempted: boolean,
+): CollectionBacklogCoverage['schedule'] {
+  return {
+    state,
+    attempted,
+    expectedDays: COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS,
+    sourceDayCount: 0,
+    missingWeekdays: Array.from(
+      { length: COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS },
+      (_, index) => index + 1,
+    ),
+    duplicateWeekdays: [],
+    invalidWeekdayCount: 0,
+    observedRows: 0,
+    uniqueRows: 0,
+    duplicateRows: 0,
+    invalidItemWeekdayCount: 0,
+    weekdayConflictCount: 0,
+    matchedItems: 0,
+    nonAnimeRows: 0,
+    truncated: false,
+  };
+}
+
+function noScheduleScan(): ScheduleCalendarScan {
+  return {
+    rows: [],
+    duplicateSubjectIds: [],
+    conflictSubjectIds: [],
+    coverage: emptyScheduleCoverage('not_requested', false),
+    attemptedAt: '',
+  };
+}
+
+function isAnimeCalendarItem(item: CalendarAnimeItem): boolean {
+  return item.type === undefined || item.type === 2;
+}
+
+function buildScheduleCalendarScan(
+  days: readonly DomainCalendarDay[],
+  attemptedAt: string,
+  retrievedAt: string,
+): ScheduleCalendarScan {
+  const canonicalByWeekday = new Map<number, DomainCalendarDay>();
+  const duplicateWeekdays = new Set<number>();
+  let invalidWeekdayCount = 0;
+  for (const day of days) {
+    const weekdayId = day.weekday.id;
+    if (
+      !Number.isInteger(weekdayId) ||
+      weekdayId < 1 ||
+      weekdayId > COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS
+    ) {
+      invalidWeekdayCount += 1;
+      continue;
+    }
+    const existing = canonicalByWeekday.get(weekdayId);
+    if (existing) {
+      duplicateWeekdays.add(weekdayId);
+      existing.items.push(...day.items);
+    } else {
+      canonicalByWeekday.set(weekdayId, { ...day, items: [...day.items] });
+    }
+  }
+
+  const missingWeekdays = Array.from(
+    { length: COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS },
+    (_, index) => index + 1,
+  ).filter((weekday) => !canonicalByWeekday.has(weekday));
+  const rows: ScheduleCalendarRow[] = [];
+  const duplicateSubjectIds = new Set<number>();
+  const conflictSubjectIds = new Set<number>();
+  const seenSubjectIds = new Set<number>();
+  let invalidItemWeekdayCount = 0;
+  let weekdayConflictCount = 0;
+  let observedRows = 0;
+  let nonAnimeRows = 0;
+  let sourceIndex = 0;
+
+  for (const day of canonicalByWeekday.values()) {
+    for (const item of day.items) {
+      observedRows += 1;
+      const itemIsAnime = isAnimeCalendarItem(item);
+      if (!itemIsAnime) {
+        nonAnimeRows += 1;
+        sourceIndex += 1;
+        continue;
+      }
+      if (
+        item.airWeekday !== undefined &&
+        (!Number.isInteger(item.airWeekday) ||
+          item.airWeekday < 1 ||
+          item.airWeekday > COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS)
+      ) {
+        invalidItemWeekdayCount += 1;
+        conflictSubjectIds.add(item.id);
+      } else if (item.airWeekday !== undefined && item.airWeekday !== day.weekday.id) {
+        weekdayConflictCount += 1;
+        conflictSubjectIds.add(item.id);
+      }
+      if (seenSubjectIds.has(item.id)) duplicateSubjectIds.add(item.id);
+      seenSubjectIds.add(item.id);
+      rows.push({ item, weekday: day.weekday, sourceIndex });
+      sourceIndex += 1;
+    }
+  }
+
+  const partial =
+    days.length !== COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS ||
+    missingWeekdays.length > 0 ||
+    duplicateWeekdays.size > 0 ||
+    invalidWeekdayCount > 0 ||
+    invalidItemWeekdayCount > 0 ||
+    weekdayConflictCount > 0 ||
+    duplicateSubjectIds.size > 0;
+  return {
+    rows,
+    duplicateSubjectIds: [...duplicateSubjectIds],
+    conflictSubjectIds: [...conflictSubjectIds],
+    coverage: {
+      state: partial ? 'partial' : 'complete',
+      attempted: true,
+      expectedDays: COLLECTION_BACKLOG_SCHEDULE_EXPECTED_DAYS,
+      sourceDayCount: days.length,
+      missingWeekdays,
+      duplicateWeekdays: [...duplicateWeekdays],
+      invalidWeekdayCount,
+      observedRows,
+      uniqueRows: seenSubjectIds.size,
+      duplicateRows: duplicateSubjectIds.size,
+      invalidItemWeekdayCount,
+      weekdayConflictCount,
+      matchedItems: 0,
+      nonAnimeRows,
+      truncated: false,
+    },
+    attemptedAt,
+    retrievedAt,
+  };
+}
+
+async function scanScheduleCalendar(
+  calendarService: CalendarService | undefined,
+  signal?: AbortSignal,
+): Promise<ScheduleCalendarScan> {
+  if (!calendarService) return noScheduleScan();
+  const attemptedAt = new Date().toISOString();
+  try {
+    const days = await calendarService.getCalendar({ useCache: false, signal });
+    return buildScheduleCalendarScan(days, attemptedAt, new Date().toISOString());
+  } catch (error: unknown) {
+    if (signal?.aborted) throw error;
+    const publicError = toPublicError(error);
+    return {
+      rows: [],
+      duplicateSubjectIds: [],
+      conflictSubjectIds: [],
+      coverage: emptyScheduleCoverage('unavailable', true),
+      attemptedAt,
+      error: publicError,
+    };
+  }
+}
+
+function unknownSchedule(
+  reason = '未请求官方七日 calendar，schedule 证据未知',
+): CollectionBacklogItem['schedule'] {
+  return { state: 'unknown', reason };
+}
+
+function unknownConfidence(
+  reasons: string[] = ['confidence 只表示证据完整度，不是概率、推荐或未来播出预测'],
+): CollectionBacklogItem['confidence'] {
+  return { level: 'unknown', reasons: [...new Set(reasons)] };
+}
+
+function confidenceForItem(
+  item: CollectionBacklogItem,
+  coverage: CollectionBacklogCoverage['schedule'],
+): CollectionBacklogItem['confidence'] {
+  const confidenceBoundary = 'confidence 只表示证据完整度，不是概率、推荐或未来播出预测';
+  const durationComplete =
+    item.durationState === 'complete' || item.durationState === 'not_applicable';
+  if (
+    item.state === 'unavailable' ||
+    item.state === 'conflict' ||
+    item.state === 'not_computable'
+  ) {
+    return unknownConfidence([confidenceBoundary, '进度源不可用、冲突或无法计算']);
+  }
+  if (item.schedule.state === 'unknown') {
+    return unknownConfidence([confidenceBoundary, item.schedule.reason]);
+  }
+  if (
+    item.state === 'complete' &&
+    durationComplete &&
+    item.schedule.state === 'matched' &&
+    coverage.state === 'complete'
+  ) {
+    return {
+      level: 'high',
+      reasons: [
+        confidenceBoundary,
+        '进度与待看时长 evidence complete，且官方七日 calendar 完整观察到匹配 schedule',
+      ],
+    };
+  }
+  if (item.state === 'complete' && durationComplete) {
+    return {
+      level: 'medium',
+      reasons: [confidenceBoundary, item.schedule.reason],
+    };
+  }
+  if (item.remainingEpisodes !== undefined || item.knownDurationEpisodes > 0) {
+    return {
+      level: 'low',
+      reasons: [confidenceBoundary, ...item.reasons.slice(0, 2), item.schedule.reason].filter(
+        (reason): reason is string => Boolean(reason),
+      ),
+    };
+  }
+  return unknownConfidence([confidenceBoundary, '没有足够的进度或时长 evidence 形成可解释计划']);
+}
+
+function attachScheduleEvidence(
+  items: CollectionBacklogItem[],
+  scan: ScheduleCalendarScan,
+  requested: boolean,
+): void {
+  const bySubjectId = new Map<number, ScheduleCalendarRow>();
+  for (const row of scan.rows) {
+    if (!bySubjectId.has(row.item.id)) bySubjectId.set(row.item.id, row);
+  }
+  const duplicateSubjectIds = new Set(scan.duplicateSubjectIds);
+  const conflictSubjectIds = new Set(scan.conflictSubjectIds);
+  let matchedItems = 0;
+
+  for (const item of items) {
+    let schedule: CollectionBacklogItem['schedule'];
+    if (!requested || scan.coverage.state === 'not_requested') {
+      schedule = unknownSchedule();
+    } else if (scan.coverage.state === 'unavailable') {
+      schedule = unknownSchedule(
+        '官方七日 calendar source 不可用，未生成猜测的 schedule；这不等于没有播出计划',
+      );
+    } else if (duplicateSubjectIds.has(item.subjectId)) {
+      schedule = unknownSchedule('官方 calendar 含重复 subject id，无法确定该条目的唯一 schedule');
+    } else if (conflictSubjectIds.has(item.subjectId)) {
+      schedule = unknownSchedule('官方 calendar 的 air_weekday 与所属星期冲突，schedule 保持未知');
+    } else {
+      const row = bySubjectId.get(item.subjectId);
+      if (row) {
+        matchedItems += 1;
+        schedule = {
+          state: 'matched',
+          weekday: row.weekday,
+          ...(row.item.airDate ? { airDate: row.item.airDate } : {}),
+          ...(row.item.airWeekday !== undefined ? { airWeekday: row.item.airWeekday } : {}),
+          reason:
+            scan.coverage.state === 'complete'
+              ? '官方完整七日 calendar 观察到匹配 schedule'
+              : '官方 calendar 观察到匹配 schedule，但整体 coverage 为 partial；未观察条目保持未知',
+        };
+      } else if (scan.coverage.state === 'complete') {
+        schedule = {
+          state: 'not_observed',
+          reason: '官方完整七日 calendar 未观察到该 subject；这不等于本周没有播出或未来没有安排',
+        };
+      } else {
+        schedule = unknownSchedule(
+          '官方 calendar coverage 为 partial，未观察到该 subject 不能证明没有 schedule',
+        );
+      }
+    }
+    item.schedule = schedule;
+    item.confidence = confidenceForItem(item, scan.coverage);
+  }
+  scan.coverage.matchedItems = matchedItems;
 }
 
 function buildLimitations(): string[] {
@@ -285,7 +644,10 @@ function buildLimitations(): string[] {
     '仅请求正篇（episode_type=0）；SP、OP、ED、PV、MAD 和其他章节不会消耗正篇完成度分子或分母。',
     'estimatedRemainingMinutes 只汇总已观察到的未看/想看正篇 episode 时长；durationState=partial 时它是已知时长小计，不是作品总时长，未解析时长会显式保留。已抛弃章节不计入该待看时长，但 remainingEpisodes 仍按正篇分母减已看数计算。',
     'duration_seconds 是官方服务器解析值；仅对带明确单位的原始 duration 做保守解析。无法解析、缺失或 duration_seconds=0 的值不会被猜成零分钟。',
-    '结果不读取或返回收藏评论、历史状态、日历计划、推荐、口味推断、跨用户比较或任何收藏写入。',
+    'includeSchedule=true 时，schedule 只来自官方 legacy GET /calendar 的七日首播日/weekday 观察；air_date 不是具体播出时刻或时区，not_observed 不等于没有播出计划，partial/unavailable coverage 保持 unknown。',
+    '官方 calendar parser 对源最多保留 32 个星期封套、每星期 128 条条目和总计 512 条条目；达到边界或 schema drift 时不生成猜测的 schedule。',
+    'confidence 只表示进度、时长与 schedule evidence 的完整度，不是概率、推荐、未来播出预测或跨用户比较；未请求 schedule 时 confidence 保持 unknown。',
+    '结果不读取或返回收藏评论、历史状态、推荐、口味推断、跨用户比较或任何收藏写入。',
     'collection.updated_at 与 episode.updated_at 只作为源字段；不能解释为可靠的收藏活动或观看事件时间。',
   ];
 }
@@ -333,6 +695,7 @@ function emptyCoverage(
       sourceTotalChangedSubjects: 0,
       failedSubjects: 0,
     },
+    schedule: emptyScheduleCoverage('not_requested', false),
   };
 }
 
@@ -747,6 +1110,8 @@ function buildRow(
       ? Number(((watchedEpisodes / episodeReportedEpisodes) * 100).toFixed(1))
       : undefined,
     ...duration,
+    schedule: unknownSchedule(),
+    confidence: unknownConfidence(),
     state,
     reasons: uniqueReasons,
     progressCoverage: {
@@ -796,6 +1161,11 @@ function buildUnavailableRow(
     unknownDurationEpisodes: 0,
     durationSource: 'none',
     durationState: 'not_computable',
+    schedule: unknownSchedule('episode collection 不可用，schedule evidence 仍需单独观察'),
+    confidence: unknownConfidence([
+      'confidence 只表示证据完整度，不是概率、推荐或未来播出预测',
+      error.code,
+    ]),
     state: 'unavailable',
     reasons: [error.code],
     error,
@@ -1097,6 +1467,13 @@ function summarize(
       (total, item) => total + (item.unknownDurationEpisodes || 0),
       0,
     ),
+    scheduleMatchedItems: items.filter((item) => item.schedule.state === 'matched').length,
+    scheduleNotObservedItems: items.filter((item) => item.schedule.state === 'not_observed').length,
+    scheduleUnknownItems: items.filter((item) => item.schedule.state === 'unknown').length,
+    confidenceHighItems: items.filter((item) => item.confidence.level === 'high').length,
+    confidenceMediumItems: items.filter((item) => item.confidence.level === 'medium').length,
+    confidenceLowItems: items.filter((item) => item.confidence.level === 'low').length,
+    confidenceUnknownItems: items.filter((item) => item.confidence.level === 'unknown').length,
   };
   return { items, summary, sortBy };
 }
@@ -1166,6 +1543,81 @@ function warningForScan(scan: CollectionScan): CollectionBacklogResult['warnings
   return warnings;
 }
 
+function warningForSchedule(
+  scan: ScheduleCalendarScan,
+  requested: boolean,
+  items: readonly CollectionBacklogItem[],
+): CollectionBacklogResult['warnings'] {
+  if (!requested) return [];
+  const warnings: CollectionBacklogResult['warnings'] = [];
+  if (scan.coverage.state === 'unavailable') {
+    const state = scan.error ? stateForError(scan.error) : 'unavailable';
+    warnings.push({
+      code: 'SCHEDULE_SOURCE_UNAVAILABLE',
+      state,
+      message: scan.error?.message || '官方七日 calendar source 不可用，schedule 保持 unknown。',
+    });
+  } else if (scan.coverage.state === 'not_requested') {
+    warnings.push({
+      code: 'SCHEDULE_NOT_REQUESTED',
+      state: 'partial',
+      message: '没有可用的 public HttpClient 来读取官方七日 calendar；schedule 保持 unknown。',
+    });
+  } else if (scan.coverage.state === 'partial') {
+    const details = [
+      `官方 calendar 返回 ${scan.coverage.sourceDayCount} 个星期，预期 7 个`,
+      scan.coverage.missingWeekdays.length
+        ? `缺少星期 ${scan.coverage.missingWeekdays.join('、')}`
+        : undefined,
+      scan.coverage.duplicateWeekdays.length
+        ? `重复星期 ${scan.coverage.duplicateWeekdays.join('、')}`
+        : undefined,
+      scan.coverage.duplicateRows > 0
+        ? `重复 subject ${scan.coverage.duplicateRows} 个`
+        : undefined,
+      scan.coverage.weekdayConflictCount > 0
+        ? `${scan.coverage.weekdayConflictCount} 条 air_weekday 冲突`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join('；');
+    warnings.push({
+      code: 'PARTIAL_SCHEDULE_COVERAGE',
+      state: 'partial',
+      message: `${details || '官方 calendar 观察不完整'}；未匹配条目的 schedule 保持 unknown。`,
+    });
+  }
+  const unknownCount = items.filter((item) => item.schedule.state === 'unknown').length;
+  if (unknownCount > 0) {
+    warnings.push({
+      code: 'UNKNOWN_SCHEDULE_EVIDENCE',
+      state: 'partial',
+      message: `${unknownCount} 个 backlog 条目没有足够的唯一、完整 schedule evidence；unknown 不等于没有播出计划。`,
+    });
+  }
+  return warnings;
+}
+
+function resultStateWithSchedule(
+  baseState: CollectionBacklogState,
+  requested: boolean,
+  schedule: ScheduleCalendarScan,
+): CollectionBacklogState {
+  if (!requested || schedule.coverage.state === 'complete') return baseState;
+  if (
+    baseState === 'conflict' ||
+    baseState === 'not_computable' ||
+    baseState === 'auth_required' ||
+    baseState === 'permission_denied' ||
+    baseState === 'rate_limited' ||
+    baseState === 'upstream_error' ||
+    baseState === 'unavailable'
+  ) {
+    return baseState;
+  }
+  return 'partial';
+}
+
 function stateForError(error: PublicErrorInfo): CollectionBacklogState {
   if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_EXPIRED') return 'auth_required';
   if (error.code === 'PERMISSION_DENIED') return 'permission_denied';
@@ -1178,9 +1630,15 @@ function stateForError(error: PublicErrorInfo): CollectionBacklogState {
 
 export class CollectionBacklogService {
   private readonly userService: UserService;
+  private readonly calendarService?: CalendarService;
 
-  constructor(client: GeneratedBangumiOpenApiClient | HttpClient) {
+  constructor(client: GeneratedBangumiOpenApiClient | HttpClient, publicClient?: HttpClient) {
     this.userService = new UserService(client);
+    this.calendarService = publicClient
+      ? new CalendarService(publicClient)
+      : client instanceof HttpClient
+        ? new CalendarService(client)
+        : undefined;
   }
 
   async getCollectionBacklog(
@@ -1309,10 +1767,20 @@ export class CollectionBacklogService {
     );
 
     const sourceRows = hydrated.map((entry) => entry.item);
+    const scheduleRequested = options.includeSchedule === true;
+    const scheduleScan = scheduleRequested
+      ? await scanScheduleCalendar(this.calendarService, options.signal)
+      : noScheduleScan();
+    attachScheduleEvidence(sourceRows, scheduleScan, scheduleRequested);
     const rows = sortItems(sourceRows, sortBy);
-    const state = resultState(scan, hydrationBudgetExceeded, rows);
+    const state = resultStateWithSchedule(
+      resultState(scan, hydrationBudgetExceeded, rows),
+      scheduleRequested,
+      scheduleScan,
+    );
     const data = summarize(rows, eligible.length, sortBy);
     const warnings = warningForScan(scan);
+    warnings.push(...warningForSchedule(scheduleScan, scheduleRequested, rows));
     if (hydrationBudgetExceeded) {
       warnings.push({
         code: 'HYDRATION_BUDGET_EXCEEDED',
@@ -1431,7 +1899,76 @@ export class CollectionBacklogService {
           .length,
         failedSubjects: hydrated.filter((entry) => Boolean(entry.error)).length,
       },
+      schedule: scheduleScan.coverage,
     };
+
+    const evidence: CollectionBacklogResult['evidence'] = [
+      {
+        source: 'official_v0',
+        operations: [
+          'GET /v0/users/{username}/collections',
+          'GET /v0/users/-/collections/{subject_id}/episodes',
+        ],
+        authScope: 'account',
+        attemptedAt,
+        retrievedAt,
+      },
+      {
+        source: 'derived',
+        operations: [
+          'episode collection sourceTotal - watched main episodes',
+          'watched main episodes / episode collection sourceTotal',
+        ],
+        formulaVersion: COLLECTION_BACKLOG_FORMULA_VERSION,
+        authScope: 'account',
+        attemptedAt,
+        retrievedAt,
+      },
+      {
+        source: 'derived',
+        operations: [
+          'uncollected/wish main episode duration_seconds or strict raw duration parsing',
+          'known planned episode duration seconds / 60',
+        ],
+        formulaVersion: COLLECTION_BACKLOG_DURATION_FORMULA_VERSION,
+        authScope: 'account',
+        attemptedAt,
+        retrievedAt,
+      },
+    ];
+    if (scheduleRequested && scheduleScan.attemptedAt) {
+      evidence.push(
+        {
+          source: 'official-legacy',
+          operations: ['GET /calendar'],
+          authScope: 'public',
+          attemptedAt: scheduleScan.attemptedAt,
+          retrievedAt: scheduleScan.retrievedAt,
+        },
+        {
+          source: 'derived',
+          operations: [
+            'official seven-day calendar subject id - current account backlog subject id',
+            'calendar weekday/air_date observation with coverage guard',
+          ],
+          formulaVersion: COLLECTION_BACKLOG_SCHEDULE_FORMULA_VERSION,
+          authScope: 'account',
+          attemptedAt: scheduleScan.attemptedAt,
+          retrievedAt: scheduleScan.retrievedAt,
+        },
+        {
+          source: 'derived',
+          operations: [
+            'complete progress + complete duration + matched complete calendar evidence',
+            'evidence completeness level, not probability or recommendation',
+          ],
+          formulaVersion: COLLECTION_BACKLOG_CONFIDENCE_FORMULA_VERSION,
+          authScope: 'account',
+          attemptedAt: scheduleScan.attemptedAt,
+          retrievedAt: scheduleScan.retrievedAt,
+        },
+      );
+    }
 
     return {
       state,
@@ -1446,41 +1983,18 @@ export class CollectionBacklogService {
         authScope: 'account',
         attemptedAt,
         retrievedAt,
+        ...(scheduleRequested && scheduleScan.attemptedAt
+          ? {
+              calendar: {
+                class: 'official-legacy' as const,
+                operation: 'GET /calendar' as const,
+                attemptedAt: scheduleScan.attemptedAt,
+                retrievedAt: scheduleScan.retrievedAt,
+              },
+            }
+          : {}),
       },
-      evidence: [
-        {
-          source: 'official_v0',
-          operations: [
-            'GET /v0/users/{username}/collections',
-            'GET /v0/users/-/collections/{subject_id}/episodes',
-          ],
-          authScope: 'account',
-          attemptedAt,
-          retrievedAt,
-        },
-        {
-          source: 'derived',
-          operations: [
-            'episode collection sourceTotal - watched main episodes',
-            'watched main episodes / episode collection sourceTotal',
-          ],
-          formulaVersion: COLLECTION_BACKLOG_FORMULA_VERSION,
-          authScope: 'account',
-          attemptedAt,
-          retrievedAt,
-        },
-        {
-          source: 'derived',
-          operations: [
-            'uncollected/wish main episode duration_seconds or strict raw duration parsing',
-            'known planned episode duration seconds / 60',
-          ],
-          formulaVersion: COLLECTION_BACKLOG_DURATION_FORMULA_VERSION,
-          authScope: 'account',
-          attemptedAt,
-          retrievedAt,
-        },
-      ],
+      evidence,
       limitations: buildLimitations(),
       warnings,
     };

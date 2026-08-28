@@ -38,6 +38,34 @@ describe('bangumi.get_collection_backlog', () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
       requests.push(url);
+      if (url.pathname === '/calendar') {
+        return new Response(
+          JSON.stringify(
+            Array.from({ length: 7 }, (_, index) => ({
+              weekday: {
+                id: index + 1,
+                en: `Day${index + 1}`,
+                cn: `星期${index + 1}`,
+                ja: `曜日${index + 1}`,
+              },
+              items:
+                index === 0
+                  ? [
+                      {
+                        id: 10,
+                        type: 2,
+                        name: 'Original',
+                        name_cn: '中文',
+                        air_date: '2026-08-24',
+                        air_weekday: 1,
+                      },
+                    ]
+                  : [],
+            })),
+          ),
+          { status: 200 },
+        );
+      }
       if (url.pathname.endsWith('/collections')) {
         return new Response(
           JSON.stringify({ total: 1, limit: 50, offset: 0, data: [collectionRow()] }),
@@ -96,7 +124,7 @@ describe('bangumi.get_collection_backlog', () => {
     expect(tool?.input.safeParse({ sortBy: 'estimated_minutes_desc' }).success).toBe(true);
     expect(tool?.input.safeParse({ sortBy: 'estimated_minutes' }).success).toBe(false);
 
-    const result = await tool!.execute(
+    const result = (await tool!.execute(
       {
         maxItems: 1,
         maxSubjects: 1,
@@ -110,7 +138,23 @@ describe('bangumi.get_collection_backlog', () => {
           client: new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn })),
         },
       },
-    );
+    )) as {
+      state: string;
+      coverage: {
+        schedule: { state: string; sourceDayCount: number; matchedItems: number };
+        collection: { sourceTotal: number };
+        hydration: { succeededSubjects: number };
+      };
+      data: {
+        sortBy: string;
+        summary: {
+          knownRemainingEpisodes: number;
+          knownEstimatedRemainingMinutes?: number;
+          unknownDurationEpisodes: number;
+        };
+        items: Array<{ schedule: { state: string }; confidence: { level: string } }>;
+      };
+    };
 
     expect(result).toMatchObject({
       state: 'partial',
@@ -124,7 +168,15 @@ describe('bangumi.get_collection_backlog', () => {
         },
       },
     });
+    expect(result.coverage.schedule).toMatchObject({
+      state: 'complete',
+      sourceDayCount: 7,
+      matchedItems: 1,
+    });
+    expect(result.data.items[0]?.schedule.state).toBe('matched');
+    expect(result.data.items[0]?.confidence.level).toBe('low');
     expect(JSON.stringify(result)).not.toContain('private comment');
     expect(requests.some((url) => url.searchParams.get('episode_type') === '0')).toBe(true);
+    expect(requests.filter((url) => url.pathname === '/calendar')).toHaveLength(1);
   });
 });

@@ -1384,7 +1384,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getCollectionBacklog = defineTool({
     name: 'bangumi.get_collection_backlog',
     description:
-      '获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、已知剩余集数、完成度、结构化完结状态，以及未看/想看正篇的已观察预计分钟数。可按预计分钟数升序或降序排序；未知时长会置后并显式返回。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial、duration partial 和 not_computable 状态都会显式返回。',
+      '获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、已知剩余集数、完成度、结构化完结状态，以及未看/想看正篇的已观察预计分钟数。可按预计分钟数升序或降序排序；未知时长会置后并显式返回。结果还会用官方 legacy 七日 calendar 对齐 schedule，并以 evidence completeness confidence 标出证据边界；confidence 不是概率或推荐，未观察不等于没有播出计划。只接受当前账号，不读取评论，不执行写入；分页、hydration、schedule/source conflict、auth、partial、duration partial 和 not_computable 状态都会显式返回。',
     input: z
       .object({
         maxItems: z
@@ -1451,12 +1451,16 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           '调用 bangumi.auth_start',
         );
       }
-      return await new CollectionBacklogService(client).getCollectionBacklog(username, {
+      return await new CollectionBacklogService(
+        client,
+        deps?.publicHttpClient || publicHttpClient,
+      ).getCollectionBacklog(username, {
         maxItems: input.maxItems,
         maxSubjects: input.maxSubjects,
         maxEpisodesPerSubject: input.maxEpisodesPerSubject,
         statuses: input.statuses,
         sortBy: input.sortBy,
+        includeSchedule: true,
       });
     },
   });

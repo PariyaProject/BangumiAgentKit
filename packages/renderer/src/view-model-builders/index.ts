@@ -1,4 +1,8 @@
-import { COLLECTION_BACKLOG_DURATION_FORMULA_VERSION } from '@bangumi-agent-kit/bangumi-core';
+import {
+  COLLECTION_BACKLOG_CONFIDENCE_FORMULA_VERSION,
+  COLLECTION_BACKLOG_DURATION_FORMULA_VERSION,
+  COLLECTION_BACKLOG_SCHEDULE_FORMULA_VERSION,
+} from '@bangumi-agent-kit/bangumi-core';
 import type {
   DomainSubject,
   DomainCalendarDay,
@@ -207,6 +211,12 @@ export function buildCollectionBacklogViewModel(
   const durationFormulaEvidence = result.evidence.find(
     (item) => item.formulaVersion === COLLECTION_BACKLOG_DURATION_FORMULA_VERSION,
   );
+  const scheduleFormulaEvidence = result.evidence.find(
+    (item) => item.formulaVersion === COLLECTION_BACKLOG_SCHEDULE_FORMULA_VERSION,
+  );
+  const confidenceFormulaEvidence = result.evidence.find(
+    (item) => item.formulaVersion === COLLECTION_BACKLOG_CONFIDENCE_FORMULA_VERSION,
+  );
   const retrievedAt = result.source.retrievedAt;
 
   return {
@@ -226,9 +236,14 @@ export function buildCollectionBacklogViewModel(
       label: options.sourceLabel || 'Bangumi v0 · 当前账号 backlog',
     },
     evidence: {
-      operations: result.source.operations,
+      operations: [
+        ...result.source.operations,
+        ...(result.source.calendar ? [result.source.calendar.operation] : []),
+      ],
       formulaVersion: formulaEvidence?.formulaVersion,
       durationFormulaVersion: durationFormulaEvidence?.formulaVersion,
+      scheduleFormulaVersion: scheduleFormulaEvidence?.formulaVersion,
+      confidenceFormulaVersion: confidenceFormulaEvidence?.formulaVersion,
       authScope: result.source.authScope,
       retrievedAt,
     },

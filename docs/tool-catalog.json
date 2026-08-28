@@ -286,7 +286,7 @@
   },
   {
     "name": "bangumi.get_collection_backlog",
-    "description": "获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、已知剩余集数、完成度、结构化完结状态，以及未看/想看正篇的已观察预计分钟数。可按预计分钟数升序或降序排序；未知时长会置后并显式返回。只接受当前账号，不读取评论，不执行写入；分页、hydration、source conflict、auth、partial、duration partial 和 not_computable 状态都会显式返回。",
+    "description": "获取当前绑定 Bangumi 账号的有界动画收藏 backlog：按收藏状态读取官方正篇 episode collection，报告已看/想看/抛弃章节、episode sourceTotal 分母、SlimSubject.eps 交叉证据、已知剩余集数、完成度、结构化完结状态，以及未看/想看正篇的已观察预计分钟数。可按预计分钟数升序或降序排序；未知时长会置后并显式返回。结果还会用官方 legacy 七日 calendar 对齐 schedule，并以 evidence completeness confidence 标出证据边界；confidence 不是概率或推荐，未观察不等于没有播出计划。只接受当前账号，不读取评论，不执行写入；分页、hydration、schedule/source conflict、auth、partial、duration partial 和 not_computable 状态都会显式返回。",
     "auth": "required",
     "risk": "read",
     "scopes": ["read:collection"],
@@ -1769,7 +1769,7 @@
   },
   {
     "name": "bangumi.render_collection_backlog",
-    "description": "生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示正篇 episode progress、episode sourceTotal 分母、已知剩余集数、已观察的未看/想看正篇预计分钟数、排序方式、结构化完结状态、来源冲突与无法计算原因；未知时长置后并保留覆盖证据。明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。",
+    "description": "生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示正篇 episode progress、episode sourceTotal 分母、已知剩余集数、已观察的未看/想看正篇预计分钟数、排序方式、结构化完结状态、官方七日 calendar schedule、evidence-completeness confidence、来源冲突与无法计算原因；未知时长置后并保留覆盖证据。confidence 不是概率或推荐，未观察不等于没有播出计划。明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。",
     "auth": "required",
     "risk": "read",
     "scopes": ["read:collection"],

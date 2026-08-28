@@ -21,6 +21,17 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
         unknownDurationEpisodes: 0,
         estimatedRemainingMinutes: 48,
         durationState: 'complete',
+        schedule: {
+          state: 'matched',
+          weekday: { id: 1, en: 'Mon', cn: '星期一', ja: '月曜日' },
+          airDate: '2026-08-24',
+          airWeekday: 1,
+          reason: '官方完整七日 calendar 观察到匹配 schedule',
+        },
+        confidence: {
+          level: 'high',
+          reasons: ['confidence 只表示证据完整度，不是概率、推荐或未来播出预测'],
+        },
         comment: 'private comment must not be shown',
         reasons: [],
       })),
@@ -50,6 +61,12 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
       authScope: 'account',
       attemptedAt: '2026-08-28T00:00:00.000Z',
       retrievedAt: '2026-08-28T00:01:00.000Z',
+      calendar: {
+        class: 'official-legacy',
+        operation: 'GET /calendar',
+        attemptedAt: '2026-08-28T00:00:30.000Z',
+        retrievedAt: '2026-08-28T00:00:45.000Z',
+      },
     },
     evidence: [
       {
@@ -69,6 +86,23 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
         formulaVersion: 'collection-backlog-duration-v1',
         authScope: 'account',
       },
+      {
+        source: 'official-legacy',
+        operations: ['GET /calendar'],
+        authScope: 'public',
+      },
+      {
+        source: 'derived',
+        operations: ['calendar subject id alignment'],
+        formulaVersion: 'collection-backlog-schedule-v1',
+        authScope: 'account',
+      },
+      {
+        source: 'derived',
+        operations: ['evidence completeness confidence'],
+        formulaVersion: 'collection-backlog-confidence-v1',
+        authScope: 'account',
+      },
     ],
     limitations: [
       'estimatedRemainingMinutes 只汇总已观察的未看/想看正篇 episode 时长；partial 是已知小计。',
@@ -86,6 +120,23 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
       },
       hydration: { succeededSubjects: 30, attemptedSubjects: 30, budgetExceeded: false },
       episodeProgress: { observedRows: 90, uniqueRows: 90 },
+      schedule: {
+        state: 'complete',
+        attempted: true,
+        expectedDays: 7,
+        sourceDayCount: 7,
+        missingWeekdays: [],
+        duplicateWeekdays: [],
+        invalidWeekdayCount: 0,
+        observedRows: 30,
+        uniqueRows: 30,
+        duplicateRows: 0,
+        invalidItemWeekdayCount: 0,
+        weekdayConflictCount: 0,
+        matchedItems: 30,
+        nonAnimeRows: 0,
+        truncated: false,
+      },
     },
     warnings: [],
     ...overrides,
@@ -105,6 +156,11 @@ describe('Standalone collection backlog presenter', () => {
     expect(output).toContain('来源: official_v0');
     expect(output).toContain('证据公式');
     expect(output).toContain('collection-backlog-duration-v1');
+    expect(output).toContain('collection-backlog-schedule-v1');
+    expect(output).toContain('collection-backlog-confidence-v1');
+    expect(output).toContain('计划 星期一 · 2026-08-24');
+    expect(output).toContain('证据完整度 high');
+    expect(output).toContain('计划覆盖: complete');
     expect(output).toContain('限制：');
     expect(output).toContain('partial 是已知小计');
     expect(output).toContain('已知约 48 分');

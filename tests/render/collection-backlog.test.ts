@@ -27,6 +27,34 @@ describe('collection-backlog renderer', () => {
   it('renders a dense CJK backlog card without resolving personal assets or comments', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
+      if (url.pathname === '/calendar') {
+        return new Response(
+          JSON.stringify(
+            Array.from({ length: 7 }, (_, index) => ({
+              weekday: {
+                id: index + 1,
+                en: `Day${index + 1}`,
+                cn: `星期${index + 1}`,
+                ja: `曜日${index + 1}`,
+              },
+              items:
+                index === 0
+                  ? [
+                      {
+                        id: 1,
+                        type: 2,
+                        name: 'Long Original Title',
+                        name_cn: '一个需要在窄卡片中安全换行的超长收藏标题：少女终末旅行与更多文字',
+                        air_date: '2026-08-24',
+                        air_weekday: 1,
+                      },
+                    ]
+                  : [],
+            })),
+          ),
+          { status: 200 },
+        );
+      }
       if (url.pathname.endsWith('/collections')) {
         return new Response(
           JSON.stringify({
@@ -121,9 +149,10 @@ describe('collection-backlog renderer', () => {
         { status: 200 },
       );
     };
-    const result = await new CollectionBacklogService(buildClient(fetchFn)).getCollectionBacklog(
-      'account-owner',
-    );
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
     const viewModel = buildCollectionBacklogViewModel(result);
 
     expect(viewModel.template).toBe('collection-backlog');
@@ -138,6 +167,10 @@ describe('collection-backlog renderer', () => {
     expect(html).toContain('一个需要在窄卡片中安全换行的超长收藏标题');
     expect(html).toContain('已知待看时长');
     expect(html).toContain('已知约 48 分');
+    expect(html).toContain('计划 星期1');
+    expect(html).toContain('证据完整度 高');
+    expect(html).toContain('collection-backlog-schedule-v1');
+    expect(html).toContain('collection-backlog-confidence-v1');
     expect(html).not.toContain('private comment');
 
     const rendered = await renderService.renderCard(viewModel, { width: 640 });
@@ -199,6 +232,23 @@ describe('collection-backlog renderer', () => {
           truncatedSubjects: 0,
           sourceTotalChangedSubjects: 0,
           failedSubjects: 0,
+        },
+        schedule: {
+          state: 'not_requested' as const,
+          attempted: false,
+          expectedDays: 7 as const,
+          sourceDayCount: 0,
+          missingWeekdays: [1, 2, 3, 4, 5, 6, 7],
+          duplicateWeekdays: [],
+          invalidWeekdayCount: 0,
+          observedRows: 0,
+          uniqueRows: 0,
+          duplicateRows: 0,
+          invalidItemWeekdayCount: 0,
+          weekdayConflictCount: 0,
+          matchedItems: 0,
+          nonAnimeRows: 0,
+          truncated: false,
         },
       },
       source: {

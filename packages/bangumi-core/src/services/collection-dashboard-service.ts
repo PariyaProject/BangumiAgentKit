@@ -402,11 +402,15 @@ export class CollectionDashboardService {
           ? skippedSection(maxDurationMs)
           : await executeSectionUntil(
               () =>
-                new CollectionBacklogService(this.client).getCollectionBacklog(username, {
+                new CollectionBacklogService(
+                  this.client,
+                  this.publicHttpClient,
+                ).getCollectionBacklog(username, {
                   maxItems: maxCollectionItems,
                   maxSubjects,
                   maxEpisodesPerSubject,
                   statuses: options.statuses,
+                  includeSchedule: false,
                   signal: deadlineController.signal,
                 }),
               deadlineAt,
