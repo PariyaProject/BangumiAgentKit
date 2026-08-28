@@ -4,11 +4,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
+  DISCOVERY_POLICY_VERSION,
   EPOCH_MARKER,
   RUN_MARKER,
   HarnessInvariantError,
   NO_OPPORTUNITY_STOP,
   afterPassBaseAction,
+  applyFrontierReviewResult,
   applyReviewResult,
   assertCandidateInvariant,
   assertDiscoveryExhaustionEvidence,
@@ -17,23 +19,41 @@ import {
   assertProductCommitHygiene,
   assertReviewReadiness,
   assertRunCanStartEpoch,
+  assertTrustedFrontierStop,
   classifyDiscoveryCheck,
   completeMerge,
   createEpochState,
   createRunState,
   isTerminalRunState,
   markReviewStarted,
+  markFrontierReviewStarted,
   parseControlBlock,
   recordIntegrationBlocked,
+  reconcileFrontierReviewReservation,
   reconcileReviewReservation,
+  resumeDiscoveryAfterFrontierRejection,
   resumeReviewLimitForFinalCorrective,
   renderEpochBody,
   renderRunBody,
   reserveReview,
+  reserveFrontierReview,
+  waitForFrontierReviewer,
   waitForSameReviewer,
 } from './lib/agent-harness-core.mjs';
+import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const frontierLedgerPath =
+  process.env.HARNESS_MOCK_STATE && process.env.HARNESS_FRONTIER_LEDGER_PATH
+    ? path.resolve(process.env.HARNESS_FRONTIER_LEDGER_PATH)
+    : path.join(root, 'docs/product/frontier-ledger.json');
+const scenarioCatalogPath = path.join(root, 'docs/research/user-scenario-catalog.md');
+const opportunityLogPath = path.join(root, 'docs/product/opportunity-log.md');
+const toolCatalogPath = path.join(root, 'docs/tool-catalog.json');
+const expectedOpportunityIds = Array.from(
+  { length: 12 },
+  (_, index) => `OP-${String(index + 1).padStart(3, '0')}`,
+);
 const mandatoryCiChecks = [
   'harness-control',
   'sqlite-default',
@@ -229,12 +249,74 @@ function print(value) {
   process.stdout.write(`${typeof value === 'string' ? value : JSON.stringify(value, null, 2)}\n`);
 }
 
+function expectedCatalogQuestions() {
+  const questions = {};
+  for (const line of fs.readFileSync(scenarioCatalogPath, 'utf8').split('\n')) {
+    const cells = line
+      .split('|')
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+    const id = cells[0];
+    if (!/^(?:G\d{2}|[DCPSTMALUR]\d{2})$/u.test(id ?? '')) continue;
+    questions[id] = id.startsWith('G') ? cells[2] : cells[1];
+  }
+  for (const match of fs
+    .readFileSync(opportunityLogPath, 'utf8')
+    .matchAll(/^## (OP-\d{3}) (.+)$/gmu)) {
+    questions[match[1]] =
+      `Can BangumiAgentKit deliver the bounded user value described by ${match[2]}?`;
+  }
+  return questions;
+}
+
+function frontierContext() {
+  if (!fs.existsSync(frontierLedgerPath)) {
+    return {
+      ok: false,
+      issues: [{ code: 'FRONTIER_LEDGER_REQUIRED', message: 'Canonical ledger is missing' }],
+      actionable_ids: [],
+    };
+  }
+  const ledger = readJsonFile(frontierLedgerPath);
+  const expectedQuestions = expectedCatalogQuestions();
+  const scenarioIds = Object.keys(expectedQuestions).filter((id) => !id.startsWith('OP-'));
+  const pathExists = (relativePath) => fs.existsSync(path.join(root, relativePath));
+  const knownCapabilities = readJsonFile(toolCatalogPath).map((tool) => tool.name);
+  return {
+    ...inspectFrontierLedger(ledger, {
+      pathExists,
+      expectedScenarioIds: scenarioIds,
+      expectedOpportunityIds,
+      expectedQuestions,
+      knownCapabilities,
+      expectedPolicyVersion: DISCOVERY_POLICY_VERSION,
+    }),
+    ledger,
+    pathExists,
+    expectedScenarioIds: scenarioIds,
+    expectedOpportunityIds,
+    expectedQuestions,
+    knownCapabilities,
+  };
+}
+
+function requireValidFrontier() {
+  const frontier = frontierContext();
+  if (!frontier.ok) {
+    const [first] = frontier.issues;
+    throw new HarnessInvariantError(first.code, first.message, first.details);
+  }
+  return frontier;
+}
+
 function commandHelp() {
   print(`BangumiAgentKit Harness V3
 
 Usage: pnpm harness <command> [options]
 
   status --run <issue> [--pr <number>]
+  frontier:check
+  frontier:status
   discovery:check [--now <ISO timestamp>]
   run:start --title <title> [--profile AUTONOMOUS_EVOLUTION] [--outer-sol-max 4]
   epoch:start --run <issue> --spec <json>
@@ -246,6 +328,12 @@ Usage: pnpm harness <command> [options]
   review:reconcile --run <issue> --pr <number> [--definitely-not-started]
   review:wait --run <issue> --pr <number> --reviewer-id <id>
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
+  frontier:review-reserve --run <issue> --evidence <json>
+  frontier:review-started --run <issue> --reviewer-id <id>
+  frontier:review-reconcile --run <issue> [--definitely-not-started]
+  frontier:review-wait --run <issue> --reviewer-id <id>
+  frontier:review-result --run <issue> --verdict <PASS|DISCOVERY_REQUIRED> [--findings <json>]
+  frontier:resume-discovery --run <issue>
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
   epoch:resume-final-corrective --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
@@ -253,6 +341,40 @@ Usage: pnpm harness <command> [options]
 
 Complex Epoch selection and Candidate evidence are supplied as local JSON input;
 the durable source becomes the edited GitHub Issue/PR body.`);
+}
+
+function commandFrontierCheck() {
+  const frontier = requireValidFrontier();
+  print({
+    state: 'FRONTIER_LEDGER_VALID',
+    schema: frontier.ledger.schema,
+    version: frontier.ledger.version,
+    policy_version: frontier.ledger.policy_version,
+    ledger_hash: frontier.hash,
+    counts: frontier.counts,
+    actionable_count: frontier.actionable_ids.length,
+  });
+}
+
+function commandFrontierStatus() {
+  const frontier = requireValidFrontier();
+  print({
+    state: frontier.actionable_ids.length
+      ? 'FRONTIER_RESEARCH_REQUIRED'
+      : 'FRONTIER_REVIEW_REQUIRED',
+    ledger_hash: frontier.hash,
+    counts: frontier.counts,
+    next_candidates: frontier.records
+      .filter((record) => frontier.actionable_ids.includes(record.id))
+      .slice(0, 20)
+      .map(({ id, status, lane, user_question, next_action }) => ({
+        id,
+        status,
+        lane,
+        user_question,
+        next_action,
+      })),
+  });
 }
 
 function commandStatus(options) {
@@ -344,6 +466,7 @@ function commandDiscoveryCheck(options) {
   if (!Number.isFinite(now)) {
     throw new HarnessInvariantError('INVALID_TIMESTAMP', '--now must be a valid ISO timestamp');
   }
+  const frontier = frontierContext();
   const result = classifyDiscoveryCheck({
     openRunNumbers: openRuns.map((issue) => issue.number),
     openEpochPrNumbers: openEpochPrs.map((pr) => pr.number),
@@ -351,12 +474,14 @@ function commandDiscoveryCheck(options) {
       ? parseControlBlock(latestClosedRun.body, RUN_MARKER)
       : undefined,
     currentBaseSha,
+    frontier,
     now,
   });
   print({
     ...result,
     latest_closed_run_issue: latestClosedRun?.number ?? null,
     current_sha: currentBaseSha,
+    ledger_hash: frontier.hash ?? null,
   });
 }
 
@@ -429,6 +554,50 @@ function commandEpochStart(options) {
   const spec = readJsonFile(required(options, 'spec'));
   const runResult = issueState(runNumber);
   assertRunCanStartEpoch(runResult.state);
+  const frontier = requireValidFrontier();
+  const frontierIds = spec.advances_frontier_ids;
+  if (!Array.isArray(frontierIds) || frontierIds.length === 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_REQUIRED',
+      'A Product Epoch must advance at least one canonical frontier id',
+    );
+  }
+  if (new Set(frontierIds).size !== frontierIds.length) {
+    throw new HarnessInvariantError(
+      'EPOCH_FRONTIER_INVALID',
+      'advances_frontier_ids must not contain duplicates',
+    );
+  }
+  const frontierById = new Map(frontier.records.map((record) => [record.id, record]));
+  for (const id of frontierIds) {
+    if (!frontier.actionable_ids.includes(id)) {
+      throw new HarnessInvariantError(
+        'EPOCH_FRONTIER_INVALID',
+        `Epoch frontier ${id} is missing or already closed`,
+      );
+    }
+  }
+  if (!Array.isArray(spec.non_scope) || spec.non_scope.length === 0) {
+    throw new HarnessInvariantError(
+      'EPOCH_NON_SCOPE_UNMAPPED',
+      'A Product Epoch must record at least one explicit mapped non-scope item',
+    );
+  }
+  for (const [index, item] of spec.non_scope.entries()) {
+    const mapping = item?.mapping;
+    const valid =
+      typeof item?.description === 'string' &&
+      ((mapping?.kind === 'frontier' && frontierById.has(mapping.id)) ||
+        (mapping?.kind === 'boundary' &&
+          frontier.ledger.protected_boundaries.some((boundary) => boundary.id === mapping.id)) ||
+        (mapping?.kind === 'non_product' && typeof mapping.reason === 'string'));
+    if (!valid) {
+      throw new HarnessInvariantError(
+        'EPOCH_NON_SCOPE_UNMAPPED',
+        `non_scope[${index}] must map to a frontier, Charter boundary, or non-product reason`,
+      );
+    }
+  }
   const baseBranch = spec.base_branch ?? 'master';
   const baseSha = remoteBaseSha(baseBranch);
   if (currentBranch() !== baseBranch || currentHead() !== baseSha) {
@@ -446,6 +615,7 @@ function commandEpochStart(options) {
     questions: spec.questions,
     workPackages: spec.work_packages,
     nonScope: spec.non_scope,
+    advancesFrontierIds: frontierIds,
     acceptanceCriteria: spec.acceptance_criteria,
   });
   const nextRun = structuredClone(runResult.state);
@@ -583,10 +753,47 @@ function commandCandidateCheck(options) {
     }
     epoch.base_sha = baseSha;
   }
+  const candidatePaths = changedPaths(epoch.base_sha);
+  if (
+    (epoch.advances_frontier_ids?.length ?? 0) > 0 &&
+    !candidatePaths.includes('docs/product/frontier-ledger.json')
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_LEDGER_UPDATE_REQUIRED',
+      'A Product Epoch must update the canonical records it advances',
+    );
+  }
+  if ((epoch.advances_frontier_ids?.length ?? 0) > 0) {
+    const baseLedger = JSON.parse(
+      git('show', `${epoch.base_sha}:docs/product/frontier-ledger.json`),
+    );
+    const currentLedger = requireValidFrontier().ledger;
+    const baseById = new Map(baseLedger.records.map((record) => [record.id, record]));
+    const currentById = new Map(currentLedger.records.map((record) => [record.id, record]));
+    const unchanged = epoch.advances_frontier_ids.filter(
+      (id) => canonicalHash(baseById.get(id)) === canonicalHash(currentById.get(id)),
+    );
+    if (unchanged.length > 0) {
+      throw new HarnessInvariantError(
+        'FRONTIER_RECORD_NOT_ADVANCED',
+        'Every declared frontier id must receive a material ledger update',
+        { unchanged },
+      );
+    }
+  }
+  if (
+    candidatePaths.includes('docs/product/frontier-ledger.json') &&
+    !candidatePaths.some((file) => /^(?:apps|packages|tests)\//u.test(file))
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_STATUS_ONLY_CHANGE',
+      'Frontier ledger transitions require durable implementation or test evidence',
+    );
+  }
   assertProductCommitHygiene(commitSubjects(epoch.base_sha));
   assertReviewReadiness({
     epoch,
-    changedPaths: changedPaths(epoch.base_sha),
+    changedPaths: candidatePaths,
     branchHeadSha: head,
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha: baseSha,
@@ -708,6 +915,115 @@ function commandReviewResult(options) {
   updatePr(prNumber, result.epoch);
   updateIssue(runNumber, result.run);
   print({ state: result.epoch.state, outer_state: result.run.state });
+}
+
+function commandFrontierReviewReserve(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const evidence = readJsonFile(required(options, 'evidence'));
+  const runResult = issueState(runNumber);
+  if (currentBranch() !== 'master') {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_MUST_RUN_ON_MASTER',
+      'Frontier closure review must start from synchronized master',
+    );
+  }
+  const baseSha = remoteBaseSha('master');
+  if (currentHead() !== baseSha) {
+    throw new HarnessInvariantError('MASTER_NOT_SYNCHRONIZED', 'master must equal origin/master');
+  }
+  const frontier = requireValidFrontier();
+  assertDiscoveryExhaustionEvidence(evidence, baseSha, frontier);
+  let next;
+  try {
+    next = reserveFrontierReview(runResult.state, {
+      baseSha,
+      ledgerHash: frontier.hash,
+      evidenceHash: canonicalHash(evidence),
+    });
+  } catch (error) {
+    if (
+      !(error instanceof HarnessInvariantError) ||
+      !['FRONTIER_REVIEW_BUDGET_EXHAUSTED', 'FRONTIER_REVIEW_REJECTED'].includes(error.code)
+    ) {
+      throw error;
+    }
+    next = structuredClone(runResult.state);
+    next.state = 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE';
+    next.next_action = 'START_NEW_OUTER_RUN_TO_CONTINUE_FRONTIER_DISCOVERY';
+    updateIssue(runNumber, next);
+    gh('issue', 'close', String(runNumber), '--reason', 'completed');
+    print({ state: next.state, issue_state: 'CLOSED' });
+    return;
+  }
+  updateIssue(runNumber, next);
+  print({
+    state: 'FRONTIER_REVIEW_REQUIRED',
+    base_sha: baseSha,
+    ledger_hash: frontier.hash,
+    evidence_hash: canonicalHash(evidence),
+  });
+}
+
+function commandFrontierReviewReconcile(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const runResult = issueState(runNumber);
+  const next = reconcileFrontierReviewReservation(
+    runResult.state,
+    options['definitely-not-started'] === true,
+  );
+  updateIssue(runNumber, next);
+  print({
+    state: next.state,
+    counted_as_consumed: options['definitely-not-started'] !== true,
+  });
+}
+
+function commandFrontierReviewStarted(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const reviewerId = required(options, 'reviewer-id');
+  const runResult = issueState(runNumber);
+  const next = markFrontierReviewStarted(runResult.state, reviewerId);
+  updateIssue(runNumber, next);
+  print({ state: 'FRONTIER_REVIEW_RUNNING', reviewer_id: reviewerId });
+}
+
+function commandFrontierReviewWait(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const reviewerId = required(options, 'reviewer-id');
+  const runResult = issueState(runNumber);
+  const result = waitForFrontierReviewer(runResult.state, reviewerId);
+  print({
+    state: 'WAIT_TIMEOUT_FRONTIER_REVIEWER_STILL_RUNNING',
+    reviewer_id: reviewerId,
+    durable_write: result.durableWrite,
+    git_mutations: result.gitMutations,
+    launches: result.launches,
+  });
+}
+
+function commandFrontierReviewResult(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const verdict = required(options, 'verdict');
+  const findings = options.findings ? readJsonFile(options.findings) : [];
+  const runResult = issueState(runNumber);
+  const next = applyFrontierReviewResult(runResult.state, { verdict, findings });
+  updateIssue(runNumber, next);
+  print({ state: next.state, verdict });
+}
+
+function commandFrontierResumeDiscovery(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const runResult = issueState(runNumber);
+  const next = resumeDiscoveryAfterFrontierRejection(runResult.state);
+  updateIssue(runNumber, next);
+  print({ state: next.state, closure_state: next.frontier_closure.state });
 }
 
 function commandEpochPark(options) {
@@ -946,7 +1262,7 @@ function commandRunStop(options) {
     if (next.active_epoch_pr || next.pending_epoch) {
       throw new HarnessInvariantError(
         'ACTIVE_EPOCH_EXISTS',
-        'A no-opportunity stop cannot abandon an active or pending Epoch',
+        'Trusted frontier exhaustion cannot abandon an active or pending Epoch',
       );
     }
     ensureCleanWorkingTree();
@@ -964,7 +1280,14 @@ function commandRunStop(options) {
       );
     }
     const evidence = readJsonFile(required(options, 'evidence'));
-    assertDiscoveryExhaustionEvidence(evidence, currentBaseSha);
+    const frontier = requireValidFrontier();
+    assertDiscoveryExhaustionEvidence(evidence, currentBaseSha, frontier);
+    const evidenceHash = canonicalHash(evidence);
+    assertTrustedFrontierStop(next, {
+      baseSha: currentBaseSha,
+      ledgerHash: frontier.hash,
+      evidenceHash,
+    });
     next.discovery_exhaustion = evidence;
   }
   next.state = state;
@@ -977,6 +1300,8 @@ function commandRunStop(options) {
 const commands = {
   help: commandHelp,
   status: commandStatus,
+  'frontier:check': commandFrontierCheck,
+  'frontier:status': commandFrontierStatus,
   'discovery:check': commandDiscoveryCheck,
   'run:start': commandRunStart,
   'epoch:start': commandEpochStart,
@@ -988,6 +1313,12 @@ const commands = {
   'review:reconcile': commandReviewReconcile,
   'review:wait': commandReviewWait,
   'review:result': commandReviewResult,
+  'frontier:review-reserve': commandFrontierReviewReserve,
+  'frontier:review-started': commandFrontierReviewStarted,
+  'frontier:review-reconcile': commandFrontierReviewReconcile,
+  'frontier:review-wait': commandFrontierReviewWait,
+  'frontier:review-result': commandFrontierReviewResult,
+  'frontier:resume-discovery': commandFrontierResumeDiscovery,
   'epoch:park': commandEpochPark,
   'epoch:resume-final-corrective': commandEpochResumeFinalCorrective,
   'epoch:merge': commandEpochMerge,

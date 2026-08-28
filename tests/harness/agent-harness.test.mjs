@@ -2,20 +2,25 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { canonicalHash } from '../../scripts/lib/frontier-ledger.mjs';
 import {
+  DISCOVERY_POLICY_VERSION,
   EPOCH_MARKER,
   MAX_EPOCH_REVIEWS,
   MAX_OUTER_REVIEWS,
   RUN_MARKER,
   HarnessInvariantError,
   afterPassBaseAction,
+  applyFrontierReviewResult,
   applyReviewResult,
   assertCandidateInvariant,
   assertCorrectiveClosure,
+  assertDiscoveryExhaustionEvidence,
   assertMergeReadiness,
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
   assertRunCanStartEpoch,
+  assertTrustedFrontierStop,
   assertReviewReadiness,
   assertScopeClosure,
   beforeReviewBaseAction,
@@ -23,13 +28,16 @@ import {
   createEpochState,
   createRunState,
   markReviewStarted,
+  markFrontierReviewStarted,
   parseControlBlock,
   reconcileReviewReservation,
   recordIntegrationBlocked,
   resumeReviewLimitForFinalCorrective,
+  resumeDiscoveryAfterFrontierRejection,
   renderEpochBody,
   renderRunBody,
   reserveReview,
+  reserveFrontierReview,
   waitForSameReviewer,
 } from '../../scripts/lib/agent-harness-core.mjs';
 
@@ -113,6 +121,208 @@ test('A. NORMAL PASS: engineering Candidate passes once, auto-merges, and adds n
     'feat(subject): compose intelligence',
     'test(subject): cover journey',
   ]);
+});
+
+test('frontier exhaustion rejects evidence that omits an actionable ledger record', () => {
+  const evidence = {
+    policy_version: DISCOVERY_POLICY_VERSION,
+    audited_sha: sha('a'),
+    audited_at: '2026-08-28T00:00:00.000Z',
+    discovery_delta:
+      'This audit records concrete changes across the complete governed frontier inventory.',
+    lane_assessments: Object.fromEntries(
+      [
+        'recorded_product_opportunities',
+        'capability_maturity_and_user_journeys',
+        'agent_ux_and_discoverability',
+        'renderer_and_standalone_experience',
+        'correctness_evidence_and_resource_bounds',
+        'architecture_maintenance_and_testability',
+      ].map((lane, index) => [
+        lane,
+        {
+          observation: `Concrete governed observation ${index} covers named records and repository evidence.`,
+          conclusion: `Distinct governed conclusion ${index} follows from the named evidence and coverage.`,
+        },
+      ]),
+    ),
+    candidate_assessments: Array.from({ length: 3 }, (_, index) => ({
+      id: `candidate-${index}`,
+      lane: 'recorded_product_opportunities',
+      user_question: `Can a bounded product journey answer concrete question number ${index}?`,
+      source_evidence: `Repository source and contract evidence number ${index} was inspected directly.`,
+      value_hypothesis: `The concrete journey number ${index} could improve an observable user outcome.`,
+      source_and_coverage_limits:
+        'Only bounded positive observations are supported and negative claims remain prohibited.',
+      delta_since_previous_audit:
+        'This candidate has a newly recorded repository comparison and explicit coverage analysis.',
+      disposition: 'LOW_USER_OR_AGENT_VALUE',
+      reason:
+        'The narrowed result duplicates an existing journey without sufficient incremental value.',
+      scope_salvage: {
+        narrowed_user_question:
+          'Can a smaller positive-only result preserve useful bounded semantics?',
+        output_semantics:
+          'Return only directly observed positive facts with partial state exposed.',
+        coverage_and_negative_claim_limits:
+          'Expose scan coverage and truncation and never infer nonexistence from absence.',
+        resource_bounds: 'Scan at most three pages and return no more than one hundred records.',
+        outcome: 'NO_SAFE_VARIANT',
+        rationale: 'The bounded result remains duplicative after the complete salvage analysis.',
+      },
+      source_contract_research: {
+        status: 'NOT_REQUIRED',
+        next_step:
+          'No source research remains because the candidate uses an existing official contract.',
+        closure_evidence: [
+          'Named contract and regression evidence were inspected at the audited SHA.',
+        ],
+      },
+    })),
+  };
+  const ledger = {
+    schema: 'bangumi-frontier/v1',
+    version: 1,
+    policy_version: DISCOVERY_POLICY_VERSION,
+    records: [
+      {
+        id: 'OP-004',
+        kind: 'opportunity',
+        user_question: 'Can collection relationships answer a bounded positive-only question?',
+        lane: 'recorded_product_opportunities',
+        status: 'UNASSESSED',
+        source_refs: ['docs/product/opportunity-log.md'],
+        next_action: 'Assess the positive-only scope salvage.',
+        reopen_when: 'The source or bounded product contract changes.',
+        related_ids: [],
+      },
+    ],
+    protected_boundaries: [],
+  };
+  evidence.ledger_hash = canonicalHash(ledger);
+  evidence.frontier_assessments = evidence.candidate_assessments.map((candidate) => ({
+    id: candidate.id,
+    status: 'CLOSED_LOW_VALUE',
+    conclusion: candidate.reason,
+    delta_since_previous_audit: candidate.delta_since_previous_audit,
+    evidence_refs: ['docs/product/opportunity-log.md'],
+  }));
+  evidence.assessed_frontier_ids = evidence.frontier_assessments.map(({ id }) => id);
+  evidence.frontier_inventory = {
+    total: 1,
+    by_status: { UNASSESSED: 1 },
+    by_lane: { recorded_product_opportunities: 1 },
+    by_kind: { opportunity: 1 },
+  };
+  assert.throws(
+    () =>
+      assertDiscoveryExhaustionEvidence(evidence, sha('a'), {
+        ledger,
+        pathExists: () => true,
+      }),
+    (error) =>
+      error instanceof HarnessInvariantError && error.code === 'FRONTIER_COVERAGE_INCOMPLETE',
+  );
+});
+
+test('Epoch human projection renders structured validation without object coercion', () => {
+  const { epoch } = fixture();
+  epoch.validation = [{ command: 'pnpm harness:test', status: 'PASS' }];
+  const body = renderEpochBody(epoch);
+  assert.doesNotMatch(body, /\[object Object\]/u);
+  assert.match(body, /pnpm harness:test/u);
+  assert.match(body, /PASS/u);
+});
+
+test('outer review budget reserves three Product launches and one independent closure launch', () => {
+  const run = createRunState({ runId: 'partitioned-budget' });
+  run.outer_sol.consumed = 3;
+  run.outer_sol.product.consumed = 3;
+  const { epoch } = fixture();
+  assert.throws(
+    () => reserveReview(run, epoch),
+    (error) => error instanceof HarnessInvariantError && error.code === 'REVIEW_BUDGET_EXHAUSTED',
+  );
+  const reserved = reserveFrontierReview(run, {
+    baseSha: sha('a'),
+    ledgerHash: sha('b'),
+    evidenceHash: sha('c'),
+  });
+  const started = markFrontierReviewStarted(reserved, 'sol-closure');
+  assert.equal(started.outer_sol.consumed, 4);
+  assert.equal(started.outer_sol.product.consumed, 3);
+  assert.equal(started.outer_sol.closure.consumed, 1);
+});
+
+test('the third Outer Product review corrective enters Luna final-corrective and preserves closure Sol', () => {
+  let { run, epoch } = fixture();
+  run.outer_sol.consumed = 2;
+  run.outer_sol.product.consumed = 2;
+  ({ run, epoch } = startReview(run, epoch, 'sol-final-product-slot'));
+  ({ run, epoch } = applyReviewResult(run, epoch, {
+    verdict: 'CORRECTIVE_REQUIRED',
+    findings: [{ priority: 'P1', summary: 'The third Product launch found one bounded issue.' }],
+  }));
+  assert.equal(epoch.review.consumed, 1);
+  assert.equal(epoch.state, 'FINAL_CORRECTIVE_REQUIRED');
+  assert.equal(run.outer_sol.product.consumed, 3);
+  assert.equal(run.outer_sol.closure.consumed, 0);
+});
+
+test('frontier closure rejection resumes Luna and can never launch a second closure reviewer', () => {
+  const run = createRunState({ runId: 'rejected-closure' });
+  const reserved = reserveFrontierReview(run, {
+    baseSha: sha('a'),
+    ledgerHash: sha('b'),
+    evidenceHash: sha('c'),
+  });
+  const started = markFrontierReviewStarted(reserved, 'sol-closure');
+  const rejected = applyFrontierReviewResult(started, {
+    verdict: 'DISCOVERY_REQUIRED',
+    findings: [{ id: 'missing-op-004', summary: 'OP-004 was not closed consistently.' }],
+  });
+  assert.equal(rejected.state, 'FRONTIER_REVIEW_REJECTED');
+  assert.equal(rejected.next_action, 'LUNA_RESUME_DISCOVERY_WITHOUT_SECOND_CLOSURE_REVIEW');
+  const resumed = resumeDiscoveryAfterFrontierRejection(rejected);
+  assert.equal(resumed.state, 'ACTIVE');
+  assert.equal(resumed.frontier_closure.state, 'REJECTED');
+  assert.throws(
+    () =>
+      reserveFrontierReview(resumed, {
+        baseSha: sha('a'),
+        ledgerHash: sha('b'),
+        evidenceHash: sha('d'),
+      }),
+    (error) => error instanceof HarnessInvariantError && error.code === 'FRONTIER_REVIEW_REJECTED',
+  );
+});
+
+test('trusted stop authority is bound to exact master, ledger, evidence, and closure PASS', () => {
+  const run = createRunState({ runId: 'trusted-closure' });
+  const reserved = reserveFrontierReview(run, {
+    baseSha: sha('a'),
+    ledgerHash: sha('b'),
+    evidenceHash: sha('c'),
+  });
+  const started = markFrontierReviewStarted(reserved, 'sol-closure');
+  const passed = applyFrontierReviewResult(started, { verdict: 'PASS' });
+  assert.equal(
+    assertTrustedFrontierStop(passed, {
+      baseSha: sha('a'),
+      ledgerHash: sha('b'),
+      evidenceHash: sha('c'),
+    }),
+    true,
+  );
+  assert.throws(
+    () =>
+      assertTrustedFrontierStop(passed, {
+        baseSha: sha('a'),
+        ledgerHash: sha('b'),
+        evidenceHash: sha('d'),
+      }),
+    (error) => error instanceof HarnessInvariantError && error.code === 'FRONTIER_REVIEW_REQUIRED',
+  );
 });
 
 test('B. CORRECTIVE PASS: one consolidated Luna corrective creates a new Candidate for Sol #2', () => {

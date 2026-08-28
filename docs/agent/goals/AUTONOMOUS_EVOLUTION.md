@@ -8,14 +8,20 @@ Read [`../PRODUCT_CHARTER.md`](../PRODUCT_CHARTER.md) and
 - Generic subagents: `0`
 - Expected Sol per reviewed Epoch: `1`
 - Automatic Sol maximum per Epoch: `2`
-- Outer Sol maximum: `4`
+- Outer Product-review maximum: `3`
+- Independent frontier-closure Sol maximum: `1`
+- Total Outer Sol maximum: `4`
 
 Run `pnpm harness discovery:check` before `run:start` or broad validation.
 
 - `RESUME_ACTIVE_RUN`: resume the exact marked Run/PR.
 - `DISCOVERY_REQUIRED_MASTER_CHANGED`, `FRONTIER_RESEARCH_REQUIRED`, or
   `DISCOVERY_REFRESH_DUE`: create/resume one Run and perform canonical discovery.
-- `UNCHANGED_EXHAUSTION`: report the cheap unchanged stop and end this Goal. Do
+- `FRONTIER_LEDGER_REQUIRED`: repair the canonical ledger before selecting work.
+- `FRONTIER_REVIEW_REQUIRED`: resume/create the Run and perform the single
+  independent exact-hash frontier-closure review.
+- `UNCHANGED_EXHAUSTION`: report the cheap unchanged stop only when the exact
+  master, policy, ledger hash, evidence hash, and closure PASS still match; do
   not create an Issue, rerun the full suite, or launch Sol.
 
 When work is required, create or resume one Outer Run GitHub Issue. If it names
@@ -30,12 +36,16 @@ and both pre-authorized read-only source frontiers. Discovery and source
 research launch no Sol.
 
 Do not create work merely to avoid stopping. Conversely, do not use
-`STOPPED_NO_VALUABLE_INDEPENDENT_SAFE_OPPORTUNITY` as an unverified shortcut:
-it requires the current-master evidence and concrete candidate assessments
-enforced by `pnpm harness run:stop`. A governed stop closes the Run Issue; a
+`STOPPED_TRUSTED_FRONTIER_EXHAUSTED` as an unverified shortcut: it requires a
+complete valid frontier ledger, current-master evidence, concrete scope
+salvage, cross-source consistency, and one Sol High closure `PASS` bound to the
+exact master/ledger/evidence hashes. A governed stop closes the Run Issue; a
 later invocation creates a fresh Run only when no nonterminal Run remains.
 Every rejected candidate must first attempt a bounded partial/positive-only
 variant. `RESEARCH_READY` remains actionable work, not a stopping disposition.
+So do `UNASSESSED`, `PARTIAL`, and `IMPLEMENTATION_READY`. Update advanced
+ledger records only together with durable implementation/test evidence; never
+create a ledger-only status commit.
 
 After a successful PASS, merge and clean up by default, update the Run Issue,
 then continue discovery while budget and safety permit. If Sol #2 returns
@@ -44,6 +54,14 @@ governed final corrective, obtains exact-SHA CI, integrates, and then continues
 discovery; never launch Sol #3 or wait for a human on routine engineering
 findings. A genuinely protected human-only direction may be parked while
 independent safe work continues.
+
+After Product work and Luna discovery have closed every ledger record, run
+`pnpm harness frontier:check`, persist complete closure evidence, then spend the
+reserved one Sol High frontier review. `DISCOVERY_REQUIRED` returns to Luna but
+first records `FRONTIER_REVIEW_REJECTED` and runs
+`frontier:resume-discovery`; it never launches a second closure reviewer in the
+same Run. If the closure slot is unavailable, stop
+`STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`, not exhausted.
 
 Normal invocation:
 

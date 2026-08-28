@@ -1,4 +1,4 @@
-# BangumiAgentKit Harness V3.1
+# BangumiAgentKit Harness V3.2
 
 This is the **only canonical detailed execution-governance policy** for active
 BangumiAgentKit work. Other governance and Goal files may select a mode or link
@@ -15,6 +15,14 @@ Harness V3 separates three planes.
 
 Git tracks source code, tests, meaningful product documentation, and stable
 product knowledge. Normal Agent runtime state is not product history.
+
+[`docs/product/frontier-ledger.json`](../product/frontier-ledger.json) is the
+canonical versioned product-opportunity inventory. It is stable product
+knowledge, not runtime state: it covers the 103 scenario catalog entries,
+OP-001 through OP-012, both authorized source frontiers, and cross-cutting
+product-quality dimensions. `pnpm harness frontier:check` validates its schema,
+ids, references, evidence, relations, and canonical hash. `frontier:status`
+reports counts and the next actionable records.
 
 Normal Product Epoch branches must not modify the legacy runtime paths:
 
@@ -66,6 +74,9 @@ authoritative.
 - Sol `xhigh` requires explicit exceptional authorization.
 - Reviews are sequential. Specialized reviewers are never automatically paired.
 - Opportunity discovery and source-contract research launch no Sol reviewer.
+- Product review launches may consume at most three of the Outer Run's slots.
+  One separate Sol High slot is reserved for independent frontier-closure
+  review. The total Outer ceiling remains four.
 - Git worktrees are prohibited.
 
 Cost is controlled by fewer launches and better batching, not weaker Luna
@@ -77,31 +88,41 @@ reasoning.
 resumes an Outer Run only when the check requires work, resumes its active Epoch
 PR when present, otherwise performs bounded opportunity discovery, selects one
 coherent Epoch, and proceeds until a governed stop. Codex Goals are invoked
-manually; Harness V3.1 creates no scheduler, heartbeat, or automation.
+manually; Harness V3.2 creates no scheduler, heartbeat, or automation. This is
+an execution-policy statement only: it is not a Product Charter boundary and
+does not prohibit a future explicit, bounded product scheduling capability.
 
 The cheap check returns exactly one state:
 
 - `RESUME_ACTIVE_RUN`: a marked Run Issue or Epoch PR is open; resume it.
 - `DISCOVERY_REQUIRED_MASTER_CHANGED`: the audited master SHA changed.
+- `FRONTIER_LEDGER_REQUIRED`: the canonical ledger is missing or invalid.
 - `FRONTIER_RESEARCH_REQUIRED`: no current-policy audit exists, the discovery
-  policy/source authorization changed, or a research/implementation frontier is
-  recorded.
+  policy/source authorization changed, or any ledger record remains
+  `UNASSESSED`, `PARTIAL`, `RESEARCH_READY`, or `IMPLEMENTATION_READY`.
+- `FRONTIER_REVIEW_REQUIRED`: Luna has closed every ledger record and the exact
+  closure evidence now requires the one independent Sol High review.
 - `DISCOVERY_REFRESH_DUE`: seven days elapsed since the latest current-policy
-  full audit.
-- `UNCHANGED_EXHAUSTION`: the same master/policy remains exhausted inside the
-  seven-day window. Stop the Goal without creating an Issue, running the broad
-  validation suite, or launching Sol.
+  trusted closure audit.
+- `UNCHANGED_EXHAUSTION`: the same master, policy version, ledger hash, closure
+  evidence hash, and closure `PASS` remain unchanged inside the seven-day
+  window. Stop the Goal without creating an Issue, running the broad validation
+  suite, or launching Sol.
 
 `discovery:check` reads Git/GitHub state and fetches `origin/master`; it never
 creates or edits an Issue/PR. The policy version is
-`harness-v3.1-frontier-v1`. Any semantic change to discovery lanes or source
+`harness-v3.2-frontier-closure-v1`. Any semantic change to discovery lanes or source
 authorization must bump that version so stale exhaustion cannot suppress a new
 frontier audit.
+
+Run #35 and every earlier exhaustion record predate the V3.2 ledger and closure
+review. They are historical evidence only and mechanically classify as
+`FRONTIER_RESEARCH_REQUIRED`; they cannot authorize `UNCHANGED_EXHAUSTION`.
 
 Opportunity discovery is bounded in breadth, not superficial in depth. Absence
 of a ready entry in the opportunity log, completion of the currently named
 official-v0 domains, or completion of one implementation stage is not evidence
-that valuable work is exhausted. Before selecting a no-opportunity stop, Luna
+that valuable work is exhausted. Before selecting trusted frontier closure, Luna
 must inspect all of these lanes against the current synchronized `master`:
 
 1. recorded product opportunities and deferred/remediation state;
@@ -111,6 +132,22 @@ must inspect all of these lanes against the current synchronized `master`:
 5. correctness, evidence/coverage, degraded states, and resource bounds;
 6. architecture, maintenance, and testability that unlock concrete product
    value.
+
+Every governed item has one ledger status. Actionable statuses are
+`UNASSESSED`, `PARTIAL`, `RESEARCH_READY`, and `IMPLEMENTATION_READY`. Closed
+statuses are `DELIVERED`, `SUPERSEDED`, `CLOSED_NO_SAFE_SOURCE`,
+`CLOSED_LOW_VALUE`, and `PROTECTED_BOUNDARY`. Closed records require concrete
+evidence and a reopen condition. `DELIVERED` names real capabilities and test
+paths. `PROTECTED_BOUNDARY` names an exact boundary id declared in the ledger
+and anchored to the Charter. `CLOSED_NO_SAFE_SOURCE` names completed source
+research, its evidence, time, and reopen trigger.
+
+The ledger is complete only when it contains every scenario catalog id,
+OP-001 through OP-012, both source frontiers, and all governed lanes. Research
+documents, the opportunity log, code/test references, closure evidence, and the
+Issue control body must agree. A missing id, invented boundary, stale source
+claim, generic repeated assessment, contradictory status, or missing evidence
+invalidates closure. An Epoch's previous non-scope is not a permanent boundary.
 
 Discovery must prefer a substantial independent safe Epoch from any lane. It
 must not create empty, status-only, speculative, or low-value work merely to
@@ -132,7 +169,7 @@ bounds. The outcome is one of:
 `IMPLEMENTATION_READY` becomes the next Product Epoch. `RESEARCH_READY` remains
 inside the same Luna-controlled Run until research either produces an
 implementation-ready contract or closes the candidate. Neither permits a
-no-opportunity stop.
+trusted frontier closure.
 
 The two read-only frontiers pre-authorized by `PRODUCT_CHARTER.md`—official
 statistics observation history and capability-specific public community
@@ -167,6 +204,13 @@ A Work Package is a meaningful engineering segment inside the same Epoch. Its
 completion is a logical `LUNA_STABLE` event only. It does not trigger a runtime
 Git commit, control-plane heartbeat, PR update, CI run, Candidate, push, or
 review. Commit only durable engineering/product work at natural boundaries.
+
+Every Product Epoch records `advances_frontier_ids` before implementation.
+Each id must name an actionable canonical ledger record. Every explicit
+non-scope item maps to another frontier id, an exact Charter boundary id, or a
+concrete non-product reason. Product implementation updates the advanced ledger
+records in the same durable code/test change. A ledger-only status commit or a
+status transition without direct implementation/test evidence is rejected.
 
 ### Scope Closure
 
@@ -297,11 +341,16 @@ An Autonomous outer run records:
 - `max: 4`
 - `consumed: 0`
 - `reserved: 0`
+- `product: { max: 3, consumed: 0, reserved: 0 }`
+- `closure: { max: 1, consumed: 0, reserved: 0 }`
 
 The automatic ceilings are executable hard caps: Epoch `max` can never exceed
-`2` and Outer `max` can never exceed `4`, including caller options and edited
-GitHub control blocks. A user may lower a budget but cannot raise either cap
-inside the run.
+`2`, Outer Product launches can never exceed `3`, frontier-closure launches can
+never exceed `1`, and their sum can never exceed Outer `4`, including caller
+options and edited GitHub control blocks. The fourth slot is not available to a
+Product review. After the third Product launch, any remaining Product finding
+uses the Luna final-corrective gate so the independent closure slot remains
+available. A user may lower a budget but cannot raise a cap inside the run.
 
 Before a reviewer launch, create one paired reservation id for exactly one Epoch
 slot and one Outer slot in the GitHub control planes. Another launch is
@@ -314,6 +363,11 @@ When the reviewer actually starts, convert both reserved slots to consumed.
 
 Each reviewer start consumes one slot even if it later fails or terminates.
 Waiting/polling the same reviewer consumes no slot.
+
+Frontier-closure review uses only the Run Issue and therefore has one atomic
+reservation. An interrupted reservation is reconciled before continuing. If
+runtime truth cannot prove the reviewer did not start, its one slot is consumed
+and no replacement closure reviewer launches in that Run.
 
 Normal sequence:
 
@@ -382,6 +436,33 @@ Review history, stable finding ids, verdicts, and corrective closure live in the
 PR control body, never in a tracked review file. Findings should describe the
 root-cause class and likely neighboring cases, not only a single literal
 example.
+
+### Frontier-closure reviewer
+
+Trusted exhaustion is a different review job from Product review. After Luna
+has made the ledger valid, closed every actionable record, produced a complete
+cross-consistent evidence inventory, and bound it to the exact synchronized
+master SHA, policy version, ledger hash, and evidence hash, reserve the single
+Outer closure slot and launch one comprehensive Sol High reviewer sequentially.
+
+The closure reviewer independently checks inventory completeness, scope
+salvage, delivered capability/test evidence, source-research closure, Charter
+boundary ids, contradictions among research/log/code/Issue claims, cross-Run
+delta, and the claimed absence of valuable safe work. Its verdicts are:
+
+- `PASS`: the exact closure inputs may enter
+  `STOPPED_TRUSTED_FRONTIER_EXHAUSTED`;
+- `DISCOVERY_REQUIRED`: record consolidated missing or contradictory frontiers,
+  enter `FRONTIER_REVIEW_REJECTED`, then use the explicit zero-budget
+  `frontier:resume-discovery` transition to return the Run to `ACTIVE` Luna
+  discovery while preserving the rejected closure record.
+
+There is no automatic second closure review. A rejection never permits trusted
+exhaustion in that Run. Luna may resolve the findings and continue Product work,
+but the next closure attempt stops the Run as
+`STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`; a fresh Run must revalidate current
+inputs before using its closure slot. Do not relabel budget exhaustion as
+frontier exhaustion.
 
 ## 10. Parking and autonomous correction
 
@@ -481,19 +562,26 @@ Canonical governed stops include:
 - `INTEGRATION_BLOCKED`
 - explicit user stop/change
 - unsafe repository state
-- exhausted outer budget
-- no valuable independent safe opportunity in autonomous discovery.
+- `STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`
+- `STOPPED_TRUSTED_FRONTIER_EXHAUSTED`.
 
-`STOPPED_NO_VALUABLE_INDEPENDENT_SAFE_OPPORTUNITY` is an evidence-gated claim,
-not a free-form Agent conclusion. The `run:stop` command accepts it only from a
-clean synchronized `master` with a structured evidence file that:
+`STOPPED_TRUSTED_FRONTIER_EXHAUSTED` is an evidence-and-review-gated claim, not
+a free-form Agent conclusion. The `run:stop` command accepts it only from a
+clean synchronized `master` with a valid canonical ledger and structured
+evidence that:
 
-- names the current discovery policy version and an ISO audit timestamp;
-- names the audited master SHA;
+- binds the current policy version, ISO audit timestamp, exact master SHA, and
+  canonical ledger hash;
 - records the concrete change since the previous audit;
-- records an observation and conclusion for every discovery lane in section 3;
-- assesses at least three concrete candidates with a user question, source
-  evidence, source/coverage limits, value hypothesis, governed lane, rejection
+- records an exact inventory and assessment for every canonical ledger id and
+  every discovery lane in section 3;
+- leaves no actionable ledger status;
+- reconciles every `DELIVERED`, source-closure, and protected-boundary claim
+  with real repository references and exact canonical ids;
+- contains no contradiction among the ledger, research, opportunity log,
+  implementation/tests, and Issue evidence;
+- assesses concrete rejected candidates with a user question, source evidence,
+  source/coverage limits, value hypothesis, governed lane, rejection
   disposition, cross-audit delta, and reason;
 - records for every candidate its narrowed question, partial/positive-only
   semantics, coverage/truncation/negative-claim limits, resource bounds,
@@ -506,8 +594,14 @@ candidates, missing cross-audit delta, or missing scope salvage are rejected.
 `INSUFFICIENT_TRUSTWORTHY_DATA` is not a direct terminal disposition: it is
 `RESEARCH_READY`, or its source research must close as
 `CLOSED_NO_SAFE_SOURCE` before `NO_SAFE_VARIANT`. Any
-`IMPLEMENTATION_READY`, `RESEARCH_READY`, or still-open source research blocks
-the no-opportunity stop.
+`UNASSESSED`, `PARTIAL`, `IMPLEMENTATION_READY`, `RESEARCH_READY`, or still-open
+source research blocks trusted closure.
+
+After mechanical validation, the one frontier-closure Sol reviewer must return
+`PASS` on the exact master SHA, ledger hash, and evidence hash. Missing review,
+`DISCOVERY_REQUIRED`, runtime uncertainty, or any hash drift blocks the stop.
+`UNCHANGED_EXHAUSTION` may reuse only this trusted closure for seven days while
+all four exact inputs remain unchanged.
 
 This gate prevents a fresh Goal from stopping after only inventory
 classification while also preventing fabricated busywork when the safe backlog
@@ -530,12 +624,27 @@ Outer Run block contains:
   "run_id": "run-...",
   "profile": "AUTONOMOUS_EVOLUTION",
   "state": "...",
-  "outer_sol": { "max": 4, "consumed": 0, "reserved": 0 },
+  "outer_sol": {
+    "max": 4,
+    "consumed": 0,
+    "reserved": 0,
+    "product": { "max": 3, "consumed": 0, "reserved": 0 },
+    "closure": { "max": 1, "consumed": 0, "reserved": 0 }
+  },
   "active_epoch_pr": null,
   "parked_epoch_prs": [],
   "last_merged_epoch_pr": null,
   "discovery_exhaustion": null,
-  "discovery_policy_version": "harness-v3.1-frontier-v1",
+  "frontier_closure": {
+    "state": "NOT_READY",
+    "base_sha": null,
+    "ledger_hash": null,
+    "evidence_hash": null,
+    "reviewer_id": null,
+    "verdict": null,
+    "findings": []
+  },
+  "discovery_policy_version": "harness-v3.2-frontier-closure-v1",
   "next_action": "..."
 }
 ```
@@ -550,6 +659,7 @@ An Epoch PR block contains:
   "state": "...",
   "base_sha": "...",
   "candidate_sha": null,
+  "advances_frontier_ids": ["OP-..."],
   "review": { "expected": 1, "max": 2, "consumed": 0, "reserved": 0 },
   "review_history": [],
   "findings": [],
@@ -571,6 +681,8 @@ The deterministic entry point is `pnpm harness <command>`. Run `pnpm harness
 help` for exact arguments.
 
 - `status`: reconstruct runtime truth from Git, the Run Issue, and Epoch PR.
+- `frontier:check`: validate the complete canonical ledger and print its hash.
+- `frontier:status`: report status/lane/kind counts and next actionable records.
 - `discovery:check`: cheaply classify active work, changed master/policy,
   actionable frontiers, refresh cadence, or unchanged exhaustion without any
   control-plane write.
@@ -586,6 +698,13 @@ help` for exact arguments.
 - `review:result`: record a verdict/history and enter PASS, correction, final
   correction, or protected-human semantics.
 - `review:wait`: validate same-reviewer identity and make no durable write.
+- `frontier:review-reserve`, `frontier:review-started`,
+  `frontier:review-reconcile`, `frontier:review-wait`, and
+  `frontier:review-result`: execute the single exact-hash closure review without
+  spending a Product-review slot or allowing a second closure launch.
+- `frontier:resume-discovery`: after `DISCOVERY_REQUIRED` or uncertain closure
+  runtime, restore Product discovery without clearing the rejected closure or
+  authorizing another closure reviewer in the same Run.
 - `epoch:park`: park the same PR/branch truthfully.
 - `epoch:resume-final-corrective`: migrate an exhausted legacy review-limit PR
   into the same-branch Luna final-corrective path.

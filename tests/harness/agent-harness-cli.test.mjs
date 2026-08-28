@@ -16,6 +16,7 @@ import {
   renderEpochBody,
   renderRunBody,
 } from '../../scripts/lib/agent-harness-core.mjs';
+import { canonicalHash, inspectFrontierLedger } from '../../scripts/lib/frontier-ledger.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(root, 'scripts/agent-harness.mjs');
@@ -59,6 +60,7 @@ function createMockEnvironment(overrides = {}) {
     fs.writeFileSync(wrapper, `#!/bin/sh\nexec "${process.execPath}" "${mockBin}" ${tool} "$@"\n`);
     fs.chmodSync(wrapper, 0o755);
   }
+  const { frontierLedger, ...stateOverrides } = overrides;
   const { run, epoch } = controlFixture();
   const statePath = path.join(directory, 'state.json');
   const state = {
@@ -81,9 +83,19 @@ function createMockEnvironment(overrides = {}) {
     commitSubjects: ['feat(example): complete coherent capability'],
     checks: mandatoryChecks.map((name) => ({ name, conclusion: 'SUCCESS' })),
     calls: [],
-    ...overrides,
+    ...stateOverrides,
   };
   fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+  const frontierLedgerPath = path.join(directory, 'frontier-ledger.json');
+  fs.writeFileSync(
+    frontierLedgerPath,
+    `${JSON.stringify(
+      frontierLedger ??
+        JSON.parse(fs.readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8')),
+      null,
+      2,
+    )}\n`,
+  );
   return {
     directory,
     statePath,
@@ -97,6 +109,7 @@ function createMockEnvironment(overrides = {}) {
           ...process.env,
           PATH: `${binDirectory}:${process.env.PATH}`,
           HARNESS_MOCK_STATE: statePath,
+          HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
           ...envOverrides,
         },
       });
@@ -165,7 +178,7 @@ function makeDiscoveryEvidence(overrides = {}) {
     source_and_coverage_limits:
       'The current source reports a bounded observation and cannot support unobserved negative claims.',
     delta_since_previous_audit:
-      'The V3.1 scope-salvage analysis is new and was not present in the previous audit.',
+      'The V3.2 scope-salvage analysis is new and was not present in the previous audit.',
     disposition: index === 0 ? 'ALREADY_DELIVERED' : 'PROTECTED_BOUNDARY',
     reason: 'The narrowed candidate was evaluated against current source and product contracts.',
     scope_salvage: {
@@ -188,11 +201,83 @@ function makeDiscoveryEvidence(overrides = {}) {
     audited_sha: sha('a'),
     audited_at: '2026-08-10T00:00:00.000Z',
     discovery_delta:
-      'Applied the new V3.1 scope-salvage and source-frontier policy to every candidate.',
+      'Applied the V3.2 scope-salvage and source-frontier policy to every candidate.',
     lane_assessments: laneAssessments,
     candidate_assessments: candidates,
     ...overrides,
   };
+}
+
+function makeClosedFrontierLedger() {
+  const ledger = JSON.parse(
+    fs.readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
+  );
+  for (const record of ledger.records) {
+    if (record.status === 'DELIVERED') continue;
+    record.status = 'CLOSED_LOW_VALUE';
+    record.closure_reason =
+      'A complete bounded scope-salvage audit found no independent incremental user value at this policy version.';
+    delete record.boundary_id;
+    delete record.research_closure;
+  }
+  return ledger;
+}
+
+function bindFrontierEvidence(evidence, ledger) {
+  const inspected = inspectFrontierLedger(ledger, {
+    pathExists: (relativePath) => fs.existsSync(path.join(root, relativePath)),
+  });
+  assert.equal(inspected.ok, true, JSON.stringify(inspected.issues));
+  evidence.ledger_hash = inspected.hash;
+  evidence.frontier_assessments = ledger.records.map((record) => ({
+    id: record.id,
+    status: record.status,
+    conclusion: `${record.id}: for “${record.user_question}”, ${
+      record.closure_reason ??
+      'The canonical delivered evidence directly proves this bounded frontier is implemented.'
+    }`,
+    delta_since_previous_audit: `${record.id}: the V3.2 audit now binds “${record.user_question}” to exact ledger and repository evidence.`,
+    evidence_refs: record.source_refs,
+  }));
+  evidence.assessed_frontier_ids = ledger.records.map((record) => record.id);
+  evidence.frontier_inventory = inspected.counts;
+  return { evidence, inspected };
+}
+
+function trustedTerminalRunBody(ledger, evidence = makeDiscoveryEvidence()) {
+  const bound = bindFrontierEvidence(evidence, ledger);
+  const run = createRunState({ runId: 'terminal-discovery-run' });
+  run.state = NO_OPPORTUNITY_STOP;
+  run.discovery_exhaustion = bound.evidence;
+  run.frontier_closure = {
+    state: 'PASS',
+    base_sha: bound.evidence.audited_sha,
+    ledger_hash: bound.inspected.hash,
+    evidence_hash: canonicalHash(bound.evidence),
+    reviewer_id: 'sol-frontier-closure',
+    verdict: 'PASS',
+    findings: [],
+  };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.closure.consumed = 1;
+  run.next_action = 'Recheck only after the frontier changes or refresh is due.';
+  return renderRunBody(run);
+}
+
+function authorizeFrontierStop(run, ledger, evidence) {
+  const bound = bindFrontierEvidence(evidence, ledger);
+  run.frontier_closure = {
+    state: 'PASS',
+    base_sha: evidence.audited_sha,
+    ledger_hash: bound.inspected.hash,
+    evidence_hash: canonicalHash(evidence),
+    reviewer_id: 'sol-frontier-closure',
+    verdict: 'PASS',
+    findings: [],
+  };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.closure.consumed = 1;
+  return evidence;
 }
 
 function discoveryEvidence(environment, overrides = {}) {
@@ -301,9 +386,11 @@ test('CLI discovery:check resumes an open Epoch PR even when no Run Issue is ope
 });
 
 test('CLI discovery:check returns unchanged idle exhaustion on the same SHA within seven days', () => {
+  const frontierLedger = makeClosedFrontierLedger();
   const environment = createMockEnvironment({
     branch: 'master',
-    runBody: terminalRunBody(),
+    runBody: trustedTerminalRunBody(frontierLedger),
+    frontierLedger,
     runIssueState: 'CLOSED',
     runIssueClosedAt: '2026-08-10T00:05:00.000Z',
     openPrs: [],
@@ -329,10 +416,12 @@ test('CLI discovery:check returns unchanged idle exhaustion on the same SHA with
 });
 
 test('CLI discovery:check requires discovery after master changes', () => {
+  const frontierLedger = makeClosedFrontierLedger();
   const environment = createMockEnvironment({
     branch: 'master',
     baseSha: sha('d'),
-    runBody: terminalRunBody(),
+    runBody: trustedTerminalRunBody(frontierLedger),
+    frontierLedger,
     runIssueState: 'CLOSED',
     openPrs: [],
   });
@@ -346,9 +435,11 @@ test('CLI discovery:check requires discovery after master changes', () => {
 });
 
 test('CLI discovery:check refreshes a current-policy audit after seven days', () => {
+  const frontierLedger = makeClosedFrontierLedger();
   const environment = createMockEnvironment({
     branch: 'master',
-    runBody: terminalRunBody(),
+    runBody: trustedTerminalRunBody(frontierLedger),
+    frontierLedger,
     runIssueState: 'CLOSED',
     openPrs: [],
   });
@@ -399,11 +490,14 @@ test('CLI discovery:check sends legacy policy evidence and actionable frontiers 
 
   const incompleteEvidence = makeDiscoveryEvidence();
   delete incompleteEvidence.candidate_assessments[0].scope_salvage;
+  const incompleteLedger = makeClosedFrontierLedger();
+  bindFrontierEvidence(incompleteEvidence, incompleteLedger);
   const incomplete = createMockEnvironment({
     branch: 'master',
     runBody: terminalRunBody(incompleteEvidence),
     runIssueState: 'CLOSED',
     openPrs: [],
+    frontierLedger: incompleteLedger,
   });
   try {
     const result = incomplete.execute(['discovery:check', '--now', '2026-08-12T00:00:00.000Z']);
@@ -434,11 +528,14 @@ test('CLI discovery:check treats no prior control plane as an idle research fron
   }
 });
 
-test('CLI no-opportunity stop requires deep current-base evidence and closes the Run', () => {
+test('CLI trusted exhaustion requires deep current-base evidence and closes the Run', () => {
   const run = createRunState({ runId: 'discovery-run' });
+  const frontierLedger = makeClosedFrontierLedger();
+  const evidence = authorizeFrontierStop(run, frontierLedger, makeDiscoveryEvidence());
   const environment = createMockEnvironment({
     runBody: renderRunBody(run),
     branch: 'master',
+    frontierLedger,
   });
   try {
     const missing = environment.execute([
@@ -463,7 +560,7 @@ test('CLI no-opportunity stop requires deep current-base evidence and closes the
       '--next-action',
       'Evidence-backed safe backlog exhaustion',
       '--evidence',
-      discoveryEvidence(environment),
+      discoveryEvidence(environment, evidence),
     ]);
     assert.equal(stopped.status, 0, stopped.stderr);
     const state = environment.readState();
@@ -477,9 +574,75 @@ test('CLI no-opportunity stop requires deep current-base evidence and closes the
   }
 });
 
-test('CLI no-opportunity stop rejects generic discovery templates and duplicate candidates', () => {
+test('CLI performs one exact-hash frontier review before trusted exhaustion', () => {
+  const run = createRunState({ runId: 'frontier-review-run' });
+  const frontierLedger = makeClosedFrontierLedger();
+  const evidence = bindFrontierEvidence(makeDiscoveryEvidence(), frontierLedger).evidence;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    branch: 'master',
+    frontierLedger,
+  });
+  try {
+    const evidencePath = discoveryEvidence(environment, evidence);
+    const reserved = environment.execute([
+      'frontier:review-reserve',
+      '--run',
+      '1',
+      '--evidence',
+      evidencePath,
+    ]);
+    assert.equal(reserved.status, 0, reserved.stderr);
+    assert.equal(JSON.parse(reserved.stdout).state, 'FRONTIER_REVIEW_REQUIRED');
+
+    const started = environment.execute([
+      'frontier:review-started',
+      '--run',
+      '1',
+      '--reviewer-id',
+      'sol-frontier-closure',
+    ]);
+    assert.equal(started.status, 0, started.stderr);
+
+    const passed = environment.execute([
+      'frontier:review-result',
+      '--run',
+      '1',
+      '--verdict',
+      'PASS',
+    ]);
+    assert.equal(passed.status, 0, passed.stderr);
+
+    const stopped = environment.execute([
+      'run:stop',
+      '--run',
+      '1',
+      '--state',
+      NO_OPPORTUNITY_STOP,
+      '--next-action',
+      'Reuse only while all exact closure inputs remain unchanged.',
+      '--evidence',
+      evidencePath,
+    ]);
+    assert.equal(stopped.status, 0, stopped.stderr);
+    const finalRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(finalRun.state, NO_OPPORTUNITY_STOP);
+    assert.equal(finalRun.frontier_closure.verdict, 'PASS');
+    assert.equal(finalRun.outer_sol.closure.consumed, 1);
+    assert.equal(finalRun.outer_sol.product.consumed, 0);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI trusted exhaustion rejects generic discovery templates and duplicate candidates', () => {
   const run = createRunState({ runId: 'generic-discovery-run' });
-  const environment = createMockEnvironment({ branch: 'master', runBody: renderRunBody(run) });
+  const frontierLedger = makeClosedFrontierLedger();
+  const environment = createMockEnvironment({
+    branch: 'master',
+    runBody: renderRunBody(run),
+    frontierLedger,
+  });
   try {
     const generic = makeDiscoveryEvidence({ discovery_delta: 'No changes.' });
     for (const lane of DISCOVERY_LANES) {
@@ -488,6 +651,7 @@ test('CLI no-opportunity stop rejects generic discovery templates and duplicate 
         conclusion: 'No independent safe high-value Epoch remains in this lane.',
       };
     }
+    bindFrontierEvidence(generic, frontierLedger);
     const genericResult = environment.execute([
       'run:stop',
       '--run',
@@ -504,6 +668,7 @@ test('CLI no-opportunity stop rejects generic discovery templates and duplicate 
 
     const duplicate = makeDiscoveryEvidence();
     duplicate.candidate_assessments[1].id = duplicate.candidate_assessments[0].id;
+    bindFrontierEvidence(duplicate, frontierLedger);
     const duplicateResult = environment.execute([
       'run:stop',
       '--run',
@@ -522,10 +687,15 @@ test('CLI no-opportunity stop rejects generic discovery templates and duplicate 
   }
 });
 
-test('CLI no-opportunity stop rejects implementation-ready and research-ready scope salvage', () => {
+test('CLI trusted exhaustion rejects implementation-ready and research-ready scope salvage', () => {
   for (const outcome of ['IMPLEMENTATION_READY', 'RESEARCH_READY']) {
     const run = createRunState({ runId: `actionable-${outcome}` });
-    const environment = createMockEnvironment({ branch: 'master', runBody: renderRunBody(run) });
+    const frontierLedger = makeClosedFrontierLedger();
+    const environment = createMockEnvironment({
+      branch: 'master',
+      runBody: renderRunBody(run),
+      frontierLedger,
+    });
     try {
       const evidence = makeDiscoveryEvidence();
       evidence.candidate_assessments[0].scope_salvage.outcome = outcome;
@@ -536,6 +706,7 @@ test('CLI no-opportunity stop rejects implementation-ready and research-ready sc
           closure_evidence: [],
         };
       }
+      bindFrontierEvidence(evidence, frontierLedger);
       const result = environment.execute([
         'run:stop',
         '--run',
@@ -555,9 +726,14 @@ test('CLI no-opportunity stop rejects implementation-ready and research-ready sc
   }
 });
 
-test('CLI no-opportunity stop requires closed research for insufficient source data', () => {
+test('CLI trusted exhaustion requires closed research for insufficient source data', () => {
   const run = createRunState({ runId: 'source-research-run' });
-  const environment = createMockEnvironment({ branch: 'master', runBody: renderRunBody(run) });
+  const frontierLedger = makeClosedFrontierLedger();
+  const environment = createMockEnvironment({
+    branch: 'master',
+    runBody: renderRunBody(run),
+    frontierLedger,
+  });
   try {
     const evidence = makeDiscoveryEvidence();
     evidence.candidate_assessments[0].disposition = 'INSUFFICIENT_TRUSTWORTHY_DATA';
@@ -566,6 +742,7 @@ test('CLI no-opportunity stop requires closed research for insufficient source d
       next_step: 'No concrete source-contract research step was performed for this candidate.',
       closure_evidence: ['No concrete source-contract closure evidence exists.'],
     };
+    bindFrontierEvidence(evidence, frontierLedger);
     const result = environment.execute([
       'run:stop',
       '--run',
@@ -725,6 +902,7 @@ function mergeReadyEnvironment(overrides = {}) {
     },
   ];
   run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
   return createMockEnvironment({
     runBody: renderRunBody(run),
     prBody: renderEpochBody(epoch),
@@ -772,7 +950,7 @@ test('CLI base drift with exhausted review budget returns to Luna final validati
   const epoch = parseControlBlock(state.prBody, EPOCH_MARKER);
   const run = parseControlBlock(state.runBody, RUN_MARKER);
   epoch.review.max = 1;
-  run.outer_sol.max = 1;
+  run.outer_sol.product.max = 1;
   fs.writeFileSync(
     environment.statePath,
     `${JSON.stringify(

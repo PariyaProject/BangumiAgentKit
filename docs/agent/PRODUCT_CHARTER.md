@@ -157,6 +157,11 @@ These frontiers do not authorize external writes, private-data expansion,
 destructive migrations, broad HTML/Structured Web enablement, or publication.
 All other protected boundaries remain human-only.
 
+Harness scheduling policy is not a product boundary. The fact that autonomous
+Goals are currently started manually does not prohibit a separately designed,
+explicitly bounded product scheduling capability; such a capability competes
+on user value, source trust, permissions, and ordinary Charter boundaries.
+
 ## Derived intelligence
 
 Where reliable source data allows deterministic analysis, explore value beyond
@@ -207,6 +212,13 @@ Record durable product opportunities in
 user problem, example question, value, available data, source classes, derived
 logic, Renderer/Agent opportunity, complexity, risk, priority, provenance, and
 status. The log is a hypothesis backlog, not authority to implement everything.
+
+[`docs/product/frontier-ledger.json`](../product/frontier-ledger.json) is the
+machine-readable reconciliation layer across the scenario catalog, opportunity
+log, source frontiers, shipped evidence, and reopen conditions. It must remain
+conservative: uncertainty stays `UNASSESSED`, `PARTIAL`, or `RESEARCH_READY`;
+only direct capability and test evidence earns `DELIVERED`. Harness runtime
+state remains in GitHub and does not belong in this ledger.
 
 Prioritize high user value, Agent leverage, information gain, reliable data,
 and maintainable scope over novelty or feature count. Ten mature semantic

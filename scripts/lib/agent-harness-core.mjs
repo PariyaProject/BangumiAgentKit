@@ -1,12 +1,16 @@
+import { canonicalHash, inspectFrontierClosure } from './frontier-ledger.mjs';
+
 export const SCHEMA = 'bangumi-harness/v3';
 export const RUN_MARKER = 'bangumi-harness:v3:outer-run';
 export const EPOCH_MARKER = 'bangumi-harness:v3:epoch';
 export const DEFAULT_INTEGRATION = 'AUTO_MERGE_AFTER_PASS';
 export const MAX_EPOCH_REVIEWS = 2;
 export const MAX_OUTER_REVIEWS = 4;
-export const DISCOVERY_POLICY_VERSION = 'harness-v3.1-frontier-v1';
+export const MAX_OUTER_PRODUCT_REVIEWS = 3;
+export const MAX_OUTER_CLOSURE_REVIEWS = 1;
+export const DISCOVERY_POLICY_VERSION = 'harness-v3.2-frontier-closure-v1';
 export const DISCOVERY_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
-export const NO_OPPORTUNITY_STOP = 'STOPPED_NO_VALUABLE_INDEPENDENT_SAFE_OPPORTUNITY';
+export const NO_OPPORTUNITY_STOP = 'STOPPED_TRUSTED_FRONTIER_EXHAUSTED';
 export const DISCOVERY_LANES = [
   'recorded_product_opportunities',
   'capability_maturity_and_user_journeys',
@@ -103,6 +107,21 @@ function assertLedger(ledger, label, hardMax) {
   }
 }
 
+function assertOuterLedger(ledger) {
+  assertLedger(ledger, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertLedger(ledger?.product, 'run.outer_sol.product', MAX_OUTER_PRODUCT_REVIEWS);
+  assertLedger(ledger?.closure, 'run.outer_sol.closure', MAX_OUTER_CLOSURE_REVIEWS);
+  if (
+    ledger.product.consumed + ledger.closure.consumed !== ledger.consumed ||
+    ledger.product.reserved + ledger.closure.reserved !== ledger.reserved
+  ) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_LEDGER',
+      'Outer total must equal Product plus frontier-closure review ledgers',
+    );
+  }
+}
+
 export function createRunState({
   runId,
   profile = 'AUTONOMOUS_EVOLUTION',
@@ -110,8 +129,18 @@ export function createRunState({
   nextAction = 'SELECT_OR_RESUME_EPOCH',
 }) {
   requireText(runId, 'INVALID_RUN', 'run_id');
-  const outerSol = { max: outerSolMax, consumed: 0, reserved: 0 };
-  assertLedger(outerSol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  const outerSol = {
+    max: outerSolMax,
+    consumed: 0,
+    reserved: 0,
+    product: { max: Math.min(outerSolMax, MAX_OUTER_PRODUCT_REVIEWS), consumed: 0, reserved: 0 },
+    closure: {
+      max: outerSolMax === MAX_OUTER_REVIEWS ? MAX_OUTER_CLOSURE_REVIEWS : 0,
+      consumed: 0,
+      reserved: 0,
+    },
+  };
+  assertOuterLedger(outerSol);
   return {
     schema: SCHEMA,
     kind: 'outer-run',
@@ -124,6 +153,15 @@ export function createRunState({
     parked_epoch_prs: [],
     last_merged_epoch_pr: null,
     discovery_exhaustion: null,
+    frontier_closure: {
+      state: 'NOT_READY',
+      base_sha: null,
+      ledger_hash: null,
+      evidence_hash: null,
+      reviewer_id: null,
+      verdict: null,
+      findings: [],
+    },
     discovery_policy_version: DISCOVERY_POLICY_VERSION,
     next_action: nextAction,
   };
@@ -137,6 +175,7 @@ export function createEpochState({
   questions = [],
   workPackages = [],
   nonScope = [],
+  advancesFrontierIds = [],
   acceptanceCriteria = [],
   expectedReviews = 1,
   maxReviews = 2,
@@ -175,6 +214,7 @@ export function createEpochState({
     questions,
     work_packages: workPackages,
     non_scope: nonScope,
+    advances_frontier_ids: advancesFrontierIds,
     acceptance_criteria: acceptanceCriteria,
     validation: [],
     scope_closure: {
@@ -253,12 +293,44 @@ export function isTerminalRunState(state) {
   );
 }
 
-export function assertDiscoveryExhaustionEvidence(evidence, currentBaseSha) {
+export function assertDiscoveryExhaustionEvidence(
+  evidence,
+  currentBaseSha,
+  {
+    ledger,
+    pathExists = () => true,
+    expectedScenarioIds = [],
+    expectedOpportunityIds = [],
+    expectedQuestions = {},
+    knownCapabilities = [],
+  } = {},
+) {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
     throw new HarnessInvariantError(
       'DISCOVERY_EVIDENCE_REQUIRED',
-      'A no-opportunity stop requires structured discovery evidence',
+      'Trusted frontier exhaustion requires structured discovery evidence',
     );
+  }
+  if (!ledger) {
+    throw new HarnessInvariantError(
+      'FRONTIER_LEDGER_REQUIRED',
+      'Trusted frontier exhaustion requires the canonical frontier ledger',
+    );
+  }
+  const frontier = inspectFrontierClosure({
+    ledger,
+    evidence,
+    currentBaseSha,
+    policyVersion: DISCOVERY_POLICY_VERSION,
+    pathExists,
+    expectedScenarioIds,
+    expectedOpportunityIds,
+    expectedQuestions,
+    knownCapabilities,
+  });
+  if (!frontier.ok) {
+    const [first] = frontier.issues;
+    throw new HarnessInvariantError(first.code, first.message, first.details);
   }
   if (evidence.policy_version !== DISCOVERY_POLICY_VERSION) {
     throw new HarnessInvariantError(
@@ -426,6 +498,7 @@ export function classifyDiscoveryCheck({
   openEpochPrNumbers = [],
   latestRunState,
   currentBaseSha,
+  frontier,
   now = Date.now(),
 }) {
   if (openRunNumbers.length > 0 || openEpochPrNumbers.length > 0) {
@@ -436,23 +509,20 @@ export function classifyDiscoveryCheck({
       open_epoch_prs: openEpochPrNumbers,
     };
   }
+  if (!frontier?.ok) {
+    return {
+      state: 'FRONTIER_LEDGER_REQUIRED',
+      control_plane: 'IDLE',
+      reason: frontier?.issues?.[0]?.code ?? 'FRONTIER_LEDGER_MISSING',
+    };
+  }
   const evidence = latestRunState?.discovery_exhaustion;
+  const closure = latestRunState?.frontier_closure;
   if (!evidence || evidence.policy_version !== DISCOVERY_POLICY_VERSION) {
     return {
       state: 'FRONTIER_RESEARCH_REQUIRED',
       control_plane: 'IDLE',
       reason: evidence ? 'DISCOVERY_POLICY_CHANGED' : 'NO_CURRENT_FRONTIER_AUDIT',
-    };
-  }
-  const actionable = (evidence.candidate_assessments ?? []).filter((candidate) =>
-    DISCOVERY_FRONTIER_OUTCOMES.has(candidate?.scope_salvage?.outcome),
-  );
-  if (actionable.length > 0) {
-    return {
-      state: 'FRONTIER_RESEARCH_REQUIRED',
-      control_plane: 'IDLE',
-      reason: 'ACTIONABLE_FRONTIER_RECORDED',
-      candidates: actionable.map((candidate) => candidate.id),
     };
   }
   if (evidence.audited_sha !== currentBaseSha) {
@@ -463,8 +533,23 @@ export function classifyDiscoveryCheck({
       current_sha: currentBaseSha,
     };
   }
+  if (frontier.actionable_ids.length > 0) {
+    return {
+      state: 'FRONTIER_RESEARCH_REQUIRED',
+      control_plane: 'IDLE',
+      reason: 'ACTIONABLE_FRONTIER_RECORDED',
+      candidates: frontier.actionable_ids,
+    };
+  }
   try {
-    assertDiscoveryExhaustionEvidence(evidence, currentBaseSha);
+    assertDiscoveryExhaustionEvidence(evidence, currentBaseSha, {
+      ledger: frontier.ledger,
+      pathExists: frontier.pathExists,
+      expectedScenarioIds: frontier.expectedScenarioIds,
+      expectedOpportunityIds: frontier.expectedOpportunityIds,
+      expectedQuestions: frontier.expectedQuestions,
+      knownCapabilities: frontier.knownCapabilities,
+    });
   } catch (error) {
     if (!(error instanceof HarnessInvariantError)) throw error;
     return {
@@ -475,6 +560,20 @@ export function classifyDiscoveryCheck({
           ? 'ACTIONABLE_FRONTIER_RECORDED'
           : 'CURRENT_POLICY_AUDIT_INVALID',
       evidence_error: error.code,
+    };
+  }
+  const evidenceHash = canonicalHash(evidence);
+  if (
+    closure?.state !== 'PASS' ||
+    closure.verdict !== 'PASS' ||
+    closure.base_sha !== currentBaseSha ||
+    closure.ledger_hash !== frontier.hash ||
+    closure.evidence_hash !== evidenceHash
+  ) {
+    return {
+      state: 'FRONTIER_REVIEW_REQUIRED',
+      control_plane: 'IDLE',
+      reason: 'TRUSTED_CLOSURE_REVIEW_MISSING_OR_STALE',
     };
   }
   const auditedAt = Date.parse(evidence.audited_at);
@@ -499,6 +598,8 @@ export function classifyDiscoveryCheck({
     audited_sha: evidence.audited_sha,
     audited_at: evidence.audited_at,
     policy_version: evidence.policy_version,
+    ledger_hash: frontier.hash,
+    closure_review: 'PASS',
     issue_created: false,
   };
 }
@@ -666,10 +767,10 @@ export function afterPassBaseAction({ reviewedBaseSha, currentBaseSha, epochRevi
     return { ready: true, action: 'AUTO_MERGE' };
   }
   assertLedger(epochReview, 'epoch.review', MAX_EPOCH_REVIEWS);
-  assertLedger(outerReview, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertOuterLedger(outerReview);
   const budgetRemains =
     epochReview.consumed + epochReview.reserved < epochReview.max &&
-    outerReview.consumed + outerReview.reserved < outerReview.max;
+    outerReview.product.consumed + outerReview.product.reserved < outerReview.product.max;
   return budgetRemains
     ? {
         ready: false,
@@ -720,16 +821,20 @@ export function assertReviewReadiness({
 export function reserveReview(run, epoch) {
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
-  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
-  if (nextRun.outer_sol.reserved || nextEpoch.review.reserved) {
+  if (
+    nextRun.outer_sol.reserved ||
+    nextRun.outer_sol.product.reserved ||
+    nextEpoch.review.reserved
+  ) {
     throw new HarnessInvariantError(
       'REVIEW_RESERVATION_EXISTS',
       'Reconcile the existing reservation before another launch',
     );
   }
   if (
-    nextRun.outer_sol.consumed >= nextRun.outer_sol.max ||
+    nextRun.outer_sol.product.consumed >= nextRun.outer_sol.product.max ||
     nextEpoch.review.consumed >= nextEpoch.review.max
   ) {
     throw new HarnessInvariantError('REVIEW_BUDGET_EXHAUSTED', 'No review launch remains');
@@ -741,6 +846,7 @@ export function reserveReview(run, epoch) {
     );
   }
   nextRun.outer_sol.reserved = 1;
+  nextRun.outer_sol.product.reserved = 1;
   nextEpoch.review.reserved = 1;
   nextEpoch.state = 'REVIEW_RESERVED';
   nextEpoch.next_action = 'START_RESERVED_REVIEWER';
@@ -751,7 +857,7 @@ export function markReviewStarted(run, epoch, reviewerId) {
   requireText(reviewerId, 'INVALID_REVIEWER', 'reviewer_id');
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
-  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextRun.outer_sol.reserved !== 1 || nextEpoch.review.reserved !== 1) {
     throw new HarnessInvariantError(
@@ -783,6 +889,8 @@ export function markReviewStarted(run, epoch, reviewerId) {
   }
   nextRun.outer_sol.reserved = 0;
   nextRun.outer_sol.consumed += 1;
+  nextRun.outer_sol.product.reserved = 0;
+  nextRun.outer_sol.product.consumed += 1;
   nextEpoch.review.reserved = 0;
   nextEpoch.review.consumed += 1;
   nextEpoch.review.reviewer_id = reviewerId;
@@ -795,15 +903,17 @@ export function markReviewStarted(run, epoch, reviewerId) {
 export function reconcileReviewReservation(run, epoch, launchDefinitelyDidNotOccur) {
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
-  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextRun.outer_sol.reserved !== 1 && nextEpoch.review.reserved !== 1) {
     throw new HarnessInvariantError('NO_REVIEW_RESERVATION', 'No reservation exists');
   }
   nextRun.outer_sol.reserved = 0;
+  nextRun.outer_sol.product.reserved = 0;
   nextEpoch.review.reserved = 0;
   if (!launchDefinitelyDidNotOccur) {
     nextRun.outer_sol.consumed += 1;
+    nextRun.outer_sol.product.consumed += 1;
     nextEpoch.review.consumed += 1;
   }
   nextEpoch.state = 'REVIEW_RESERVATION_RECONCILED';
@@ -821,10 +931,206 @@ export function waitForSameReviewer(run, epoch, reviewerId) {
   return { run, epoch, durableWrite: false, gitMutations: 0, launches: 0 };
 }
 
+export function reserveFrontierReview(run, { baseSha, ledgerHash, evidenceHash }) {
+  requireText(baseSha, 'FRONTIER_REVIEW_INVALID', 'base_sha');
+  requireText(ledgerHash, 'FRONTIER_REVIEW_INVALID', 'ledger_hash');
+  requireText(evidenceHash, 'FRONTIER_REVIEW_INVALID', 'evidence_hash');
+  const nextRun = cloneState(run);
+  assertOuterLedger(nextRun.outer_sol);
+  if (nextRun.active_epoch_pr || nextRun.pending_epoch) {
+    throw new HarnessInvariantError(
+      'ACTIVE_EPOCH_EXISTS',
+      'Frontier closure review cannot overlap a Product Epoch',
+    );
+  }
+  if (nextRun.frontier_closure?.state === 'REJECTED') {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_REJECTED',
+      'A rejected closure review must return to Luna discovery; no second closure launch is allowed',
+    );
+  }
+  if (
+    nextRun.outer_sol.reserved ||
+    nextRun.outer_sol.closure.reserved ||
+    nextRun.outer_sol.closure.consumed >= nextRun.outer_sol.closure.max
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_BUDGET_EXHAUSTED',
+      'The single reserved frontier-closure review is unavailable',
+    );
+  }
+  nextRun.outer_sol.reserved = 1;
+  nextRun.outer_sol.closure.reserved = 1;
+  nextRun.frontier_closure = {
+    state: 'RESERVED',
+    base_sha: baseSha,
+    ledger_hash: ledgerHash,
+    evidence_hash: evidenceHash,
+    reviewer_id: null,
+    verdict: null,
+    findings: [],
+  };
+  nextRun.state = 'FRONTIER_REVIEW_REQUIRED';
+  nextRun.next_action = 'START_RESERVED_FRONTIER_REVIEW';
+  return nextRun;
+}
+
+export function markFrontierReviewStarted(run, reviewerId) {
+  requireText(reviewerId, 'INVALID_REVIEWER', 'reviewer_id');
+  const nextRun = cloneState(run);
+  assertOuterLedger(nextRun.outer_sol);
+  if (
+    nextRun.frontier_closure?.state !== 'RESERVED' ||
+    nextRun.outer_sol.reserved !== 1 ||
+    nextRun.outer_sol.closure.reserved !== 1
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_NOT_RESERVED',
+      'Reserve the exact frontier closure before starting its reviewer',
+    );
+  }
+  nextRun.outer_sol.reserved = 0;
+  nextRun.outer_sol.consumed += 1;
+  nextRun.outer_sol.closure.reserved = 0;
+  nextRun.outer_sol.closure.consumed += 1;
+  nextRun.frontier_closure.state = 'RUNNING';
+  nextRun.frontier_closure.reviewer_id = reviewerId;
+  nextRun.state = 'FRONTIER_REVIEW_RUNNING';
+  nextRun.next_action = 'WAIT_FRONTIER_REVIEWER';
+  return nextRun;
+}
+
+export function reconcileFrontierReviewReservation(run, launchDefinitelyDidNotOccur) {
+  const nextRun = cloneState(run);
+  assertOuterLedger(nextRun.outer_sol);
+  if (
+    nextRun.frontier_closure?.state !== 'RESERVED' ||
+    nextRun.outer_sol.reserved !== 1 ||
+    nextRun.outer_sol.closure.reserved !== 1
+  ) {
+    throw new HarnessInvariantError(
+      'NO_FRONTIER_REVIEW_RESERVATION',
+      'No frontier review reservation exists',
+    );
+  }
+  nextRun.outer_sol.reserved = 0;
+  nextRun.outer_sol.closure.reserved = 0;
+  if (launchDefinitelyDidNotOccur) {
+    nextRun.frontier_closure.state = 'NOT_READY';
+    nextRun.frontier_closure.reviewer_id = null;
+    nextRun.state = 'ACTIVE';
+    nextRun.next_action = 'REASSESS_FRONTIER_REVIEW_READINESS';
+  } else {
+    nextRun.outer_sol.consumed += 1;
+    nextRun.outer_sol.closure.consumed += 1;
+    nextRun.frontier_closure.state = 'REJECTED';
+    nextRun.frontier_closure.verdict = 'RUNTIME_UNCERTAIN';
+    nextRun.frontier_closure.findings = [
+      {
+        id: 'frontier-review-runtime-uncertain',
+        summary: 'Runtime truth cannot prove the reserved closure reviewer did not launch.',
+      },
+    ];
+    nextRun.state = 'FRONTIER_REVIEW_REJECTED';
+    nextRun.next_action = 'LUNA_RESUME_DISCOVERY_WITHOUT_SECOND_CLOSURE_REVIEW';
+  }
+  return nextRun;
+}
+
+export function waitForFrontierReviewer(run, reviewerId) {
+  if (
+    run.state !== 'FRONTIER_REVIEW_RUNNING' ||
+    run.frontier_closure?.state !== 'RUNNING' ||
+    run.frontier_closure.reviewer_id !== reviewerId
+  ) {
+    throw new HarnessInvariantError(
+      'REVIEWER_ID_MISMATCH',
+      'Polling is allowed only for the running frontier reviewer',
+    );
+  }
+  return { run, durableWrite: false, gitMutations: 0, launches: 0 };
+}
+
+export function applyFrontierReviewResult(run, { verdict, findings = [] }) {
+  const nextRun = cloneState(run);
+  assertOuterLedger(nextRun.outer_sol);
+  if (
+    nextRun.state !== 'FRONTIER_REVIEW_RUNNING' ||
+    nextRun.frontier_closure?.state !== 'RUNNING'
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_NOT_RUNNING',
+      'No running frontier reviewer can return a result',
+    );
+  }
+  if (!['PASS', 'DISCOVERY_REQUIRED'].includes(verdict)) {
+    throw new HarnessInvariantError(
+      'INVALID_FRONTIER_REVIEW_VERDICT',
+      `Unsupported frontier verdict: ${verdict}`,
+    );
+  }
+  if (verdict === 'DISCOVERY_REQUIRED' && (!Array.isArray(findings) || findings.length === 0)) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_FINDINGS',
+      'DISCOVERY_REQUIRED must identify at least one missing or contradictory frontier',
+    );
+  }
+  nextRun.frontier_closure.verdict = verdict;
+  nextRun.frontier_closure.findings = cloneState(findings);
+  if (verdict === 'PASS') {
+    nextRun.frontier_closure.state = 'PASS';
+    nextRun.state = 'ACTIVE';
+    nextRun.next_action = 'STOP_TRUSTED_FRONTIER_EXHAUSTED';
+  } else {
+    nextRun.frontier_closure.state = 'REJECTED';
+    nextRun.state = 'FRONTIER_REVIEW_REJECTED';
+    nextRun.next_action = 'LUNA_RESUME_DISCOVERY_WITHOUT_SECOND_CLOSURE_REVIEW';
+  }
+  return nextRun;
+}
+
+export function resumeDiscoveryAfterFrontierRejection(run) {
+  const nextRun = cloneState(run);
+  assertOuterLedger(nextRun.outer_sol);
+  if (
+    nextRun.state !== 'FRONTIER_REVIEW_REJECTED' ||
+    nextRun.frontier_closure?.state !== 'REJECTED'
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_NOT_REJECTED',
+      'Only a rejected frontier closure can resume Luna discovery',
+    );
+  }
+  nextRun.state = 'ACTIVE';
+  nextRun.next_action = 'LUNA_DISCOVER_OR_SELECT_ACTIONABLE_FRONTIER';
+  return nextRun;
+}
+
+export function assertTrustedFrontierStop(run, { baseSha, ledgerHash, evidenceHash }) {
+  const closure = run?.frontier_closure;
+  if (
+    closure?.state !== 'PASS' ||
+    closure.verdict !== 'PASS' ||
+    closure.base_sha !== baseSha ||
+    closure.ledger_hash !== ledgerHash ||
+    closure.evidence_hash !== evidenceHash
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_REQUIRED',
+      'Trusted frontier exhaustion requires one PASS bound to the exact master, ledger, and evidence',
+      {
+        expected: { base_sha: baseSha, ledger_hash: ledgerHash, evidence_hash: evidenceHash },
+        actual: closure ?? null,
+      },
+    );
+  }
+  return true;
+}
+
 export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
-  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (nextEpoch.state !== 'REVIEW_RUNNING') {
     throw new HarnessInvariantError(
@@ -872,7 +1178,10 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
     nextEpoch.final_corrective_sha = null;
     nextEpoch.final_corrective_base_sha = null;
     nextEpoch.final_corrective_reason = null;
-    if (nextEpoch.review.consumed >= nextEpoch.review.max) {
+    if (
+      nextEpoch.review.consumed >= nextEpoch.review.max ||
+      nextRun.outer_sol.product.consumed >= nextRun.outer_sol.product.max
+    ) {
       nextEpoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
       nextEpoch.state = 'FINAL_CORRECTIVE_REQUIRED';
       nextEpoch.next_action = 'LUNA_FIX_REVIEW_LIMIT_FINDINGS';
@@ -895,7 +1204,7 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
 export function resumeReviewLimitForFinalCorrective(run, epoch) {
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
-  assertLedger(nextRun.outer_sol, 'run.outer_sol', MAX_OUTER_REVIEWS);
+  assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (
     nextEpoch.state !== 'PARKED_REVIEW_LIMIT' ||
@@ -1062,7 +1371,20 @@ export function renderRunBody(state) {
 }
 
 function list(items) {
-  return items.length ? items.map((item) => `- ${item}`).join('\n') : '- None recorded';
+  return items.length
+    ? items
+        .map((item) => {
+          if (typeof item === 'string') return `- ${item}`;
+          if (item && typeof item === 'object') {
+            const summary = Object.entries(item)
+              .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+              .join('; ');
+            return `- ${summary}`;
+          }
+          return `- ${String(item)}`;
+        })
+        .join('\n')
+    : '- None recorded';
 }
 
 export function renderEpochBody(state) {
