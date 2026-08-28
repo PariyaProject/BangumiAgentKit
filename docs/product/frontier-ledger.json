@@ -1041,11 +1041,23 @@
       "kind": "scenario",
       "user_question": "我的在看清单按预计观看时间怎么排？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Monitor duration parsing coverage, sort semantics, and account-source bounds.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "The bounded account backlog now exposes observed pending main-episode duration coverage and stable estimated-minute ordering with explicit unknown and partial semantics.",
+      "evidence": {
+        "capabilities": ["bangumi.get_collection_backlog", "bangumi.render_collection_backlog"],
+        "tests": [
+          "tests/unit/domain-mappers.test.ts",
+          "tests/unit/collection-backlog.test.ts",
+          "tests/semantic/collection-backlog.test.ts",
+          "tests/render/collection-backlog.test.ts",
+          "tests/standalone/collection-backlog-presenter.test.ts",
+          "tests/standalone/discovery-command.test.ts"
+        ]
+      }
     },
     {
       "id": "U06",

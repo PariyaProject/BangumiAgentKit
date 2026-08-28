@@ -1067,9 +1067,19 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
   }
 
   const summary = details.summary as Record<string, unknown>;
+  const sortBy =
+    details.sortBy === 'estimated_minutes_asc'
+      ? '预计分钟数升序'
+      : details.sortBy === 'estimated_minutes_desc'
+        ? '预计分钟数降序'
+        : '源顺序';
+  const knownMinutes =
+    typeof summary.knownEstimatedRemainingMinutes === 'number'
+      ? ` · 已知待看时长 ${humanField(summary.knownEstimatedRemainingMinutes, 32)} 分`
+      : '';
   const lines = [
-    `收藏 backlog · 状态: ${humanField(value.state || 'unknown', 64)}`,
-    `摘要: 符合 ${humanField(summary.eligibleItems ?? '?', 32)} · 返回 ${humanField(summary.returnedItems ?? '?', 32)} · 已知剩余 ${humanField(summary.knownRemainingEpisodes ?? '?', 32)} 集 · 已播完未看完 ${humanField(summary.finishedIncompleteItems ?? '?', 32)} · 可计算 ${humanField(summary.completeItems ?? '?', 32)}`,
+    `收藏 backlog · 状态: ${humanField(value.state || 'unknown', 64)} · 排序: ${sortBy}`,
+    `摘要: 符合 ${humanField(summary.eligibleItems ?? '?', 32)} · 返回 ${humanField(summary.returnedItems ?? '?', 32)} · 已知剩余 ${humanField(summary.knownRemainingEpisodes ?? '?', 32)} 集${knownMinutes} · 已播完未看完 ${humanField(summary.finishedIncompleteItems ?? '?', 32)} · 可计算 ${humanField(summary.completeItems ?? '?', 32)}`,
     '说明：已播完仅表示当前报告的正篇 airdate 均已过去，不证明未发布后续或排除 hiatus。',
   ];
 
@@ -1138,8 +1148,14 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
             : humanField(
                 Array.isArray(item.reasons) ? item.reasons[0] || '进度无法计算' : '进度无法计算',
               );
+      const duration =
+        typeof item.estimatedRemainingMinutes === 'number'
+          ? `已知约 ${humanField(item.estimatedRemainingMinutes, 32)} 分 · 时长 ${humanField(item.knownDurationEpisodes ?? 0, 32)}/${humanField(item.plannedEpisodes ?? 0, 32)} 集${item.unknownDurationEpisodes ? ` · 未解析 ${humanField(item.unknownDurationEpisodes, 32)} 集` : ''}`
+          : item.durationState === 'not_applicable'
+            ? '待看时长 0 分'
+            : '预计分钟数未知';
       lines.push(`${index + 1}. ${title} · ${status} · ${airing}`);
-      lines.push(`   ${progress} · ${humanField(item.state || 'unknown', 64)}`);
+      lines.push(`   ${progress} · ${duration} · ${humanField(item.state || 'unknown', 64)}`);
       if (airingState === 'unknown' && item.airingReason) {
         lines.push(`   播出证据：${humanField(item.airingReason)}`);
       }

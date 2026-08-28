@@ -3,6 +3,7 @@ import { HttpClient, PublicErrorInfo, toPublicError } from '@bangumi-agent-kit/b
 import { CollectionStatus } from './collection-service.js';
 import { UserService } from './user-service.js';
 import { UserCollectionItem, UserEpisodeCollectionItem } from '../models/user.js';
+import type { DomainEpisode } from '../models/episode.js';
 
 export const COLLECTION_BACKLOG_FORMULA_VERSION = 'collection-backlog-v2';
 export const COLLECTION_BACKLOG_DEFAULT_MAX_ITEMS = 50;
@@ -16,6 +17,7 @@ export const COLLECTION_BACKLOG_MAX_COLLECTION_PAGES = 8;
 export const COLLECTION_BACKLOG_EPISODE_PAGE_SIZE = 100;
 export const COLLECTION_BACKLOG_MAX_EPISODE_PAGES = 10;
 export const COLLECTION_BACKLOG_MAX_CONCURRENCY = 3;
+export const COLLECTION_BACKLOG_DURATION_FORMULA_VERSION = 'collection-backlog-duration-v1';
 
 export type CollectionBacklogState =
   | 'complete'
@@ -39,11 +41,19 @@ export type CollectionBacklogSourceEvidenceState = 'valid' | 'missing' | 'unknow
 
 export type CollectionBacklogStatus = Exclude<CollectionStatus, 'unknown'>;
 
+export type CollectionBacklogSort = 'source' | 'estimated_minutes_asc' | 'estimated_minutes_desc';
+
+export type CollectionBacklogDurationSource = 'server' | 'raw' | 'mixed' | 'none';
+
+export type CollectionBacklogDurationState =
+  'complete' | 'partial' | 'not_computable' | 'not_applicable';
+
 export interface CollectionBacklogOptions {
   maxItems?: number;
   maxSubjects?: number;
   maxEpisodesPerSubject?: number;
   statuses?: CollectionBacklogStatus[];
+  sortBy?: CollectionBacklogSort;
   signal?: AbortSignal;
 }
 
@@ -70,6 +80,12 @@ export interface CollectionBacklogItem {
   airingReason: string;
   remainingEpisodes?: number;
   completionPercentage?: number;
+  plannedEpisodes: number;
+  knownDurationEpisodes: number;
+  unknownDurationEpisodes: number;
+  estimatedRemainingMinutes?: number;
+  durationSource: CollectionBacklogDurationSource;
+  durationState: CollectionBacklogDurationState;
   state: CollectionBacklogRowState;
   reasons: string[];
   error?: PublicErrorInfo;
@@ -104,7 +120,13 @@ export interface CollectionBacklogData {
     finishedIncompleteItems: number;
     ongoingItems: number;
     airingUnknownItems: number;
+    knownEstimatedRemainingMinutes?: number;
+    durationCompleteItems?: number;
+    durationPartialItems?: number;
+    durationNotComputableItems?: number;
+    unknownDurationEpisodes?: number;
   };
+  sortBy?: CollectionBacklogSort;
 }
 
 export interface CollectionBacklogCoverage {
@@ -245,7 +267,13 @@ function emptyData(): CollectionBacklogData {
       finishedIncompleteItems: 0,
       ongoingItems: 0,
       airingUnknownItems: 0,
+      knownEstimatedRemainingMinutes: 0,
+      durationCompleteItems: 0,
+      durationPartialItems: 0,
+      durationNotComputableItems: 0,
+      unknownDurationEpisodes: 0,
     },
+    sortBy: 'source',
   };
 }
 
@@ -256,6 +284,8 @@ function buildLimitations(): string[] {
     'remainingEpisodes = episodeReportedEpisodes - watched main episodes；仅在 episode collection 分页完整、总集数有效且来源字段没有冲突时计算。',
     'airingState 只根据完整、稳定、去重且全为正篇的 episode metadata airdate 推导；finished 只表示当前报告的章节日期均已过去，不能证明未发布后续或排除 hiatus；缺日期、未完成分页或日期矛盾时保持 unknown，不调用日历或 HTML 猜测。',
     '仅请求正篇（episode_type=0）；SP、OP、ED、PV、MAD 和其他章节不会消耗正篇完成度分子或分母。',
+    'estimatedRemainingMinutes 只汇总已观察到的未看/想看正篇 episode 时长；durationState=partial 时它是已知时长小计，不是作品总时长，未解析时长会显式保留。已抛弃章节不计入该待看时长，但 remainingEpisodes 仍按正篇分母减已看数计算。',
+    'duration_seconds 是官方服务器解析值；仅对带明确单位的原始 duration 做保守解析。无法解析、缺失或 duration_seconds=0 的值不会被猜成零分钟。',
     '结果不读取或返回收藏评论、历史状态、日历计划、推荐、口味推断、跨用户比较或任何收藏写入。',
     'collection.updated_at 与 episode.updated_at 只作为源字段；不能解释为可靠的收藏活动或观看事件时间。',
   ];
@@ -327,6 +357,116 @@ function uniqueCollectionItems(items: readonly UserCollectionItem[]): {
 
 function positiveInteger(value: number | undefined): value is number {
   return value !== undefined && Number.isSafeInteger(value) && value > 0;
+}
+
+/**
+ * Parse only duration formats whose units are explicit. A missing or ambiguous
+ * source value remains unknown rather than being treated as zero minutes.
+ */
+export function parseEpisodeDurationSeconds(value: string | undefined): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 64) return undefined;
+
+  const clock = /^(\d{1,4}):(\d{2})(?::(\d{2}))?$/u.exec(trimmed);
+  if (clock) {
+    const first = Number(clock[1]);
+    const second = Number(clock[2]);
+    const third = clock[3] === undefined ? undefined : Number(clock[3]);
+    if (third !== undefined && second >= 60) return undefined;
+    if ((third !== undefined && third >= 60) || !Number.isSafeInteger(first)) {
+      return undefined;
+    }
+    const seconds = third === undefined ? first * 60 + second : first * 3600 + second * 60 + third;
+    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
+  }
+
+  const hours =
+    /^(\d{1,4})\s*(?:h|hr|hrs|hour|hours|小时)(?:\s*(\d{1,5})\s*(?:m|min|mins|minute|minutes|分|分钟))?$/iu.exec(
+      trimmed,
+    );
+  if (hours) {
+    const hourValue = Number(hours[1]);
+    const minuteValue = hours[2] === undefined ? 0 : Number(hours[2]);
+    if (minuteValue >= 60) return undefined;
+    const seconds = hourValue * 3600 + minuteValue * 60;
+    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
+  }
+
+  const minutes = /^(\d{1,5})\s*(?:m|min|mins|minute|minutes|分|分钟)$/iu.exec(trimmed);
+  if (minutes) {
+    const seconds = Number(minutes[1]) * 60;
+    return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined;
+  }
+
+  return undefined;
+}
+
+function episodeDuration(episode: DomainEpisode | undefined): {
+  seconds?: number;
+  source: Exclude<CollectionBacklogDurationSource, 'mixed' | 'none'>;
+} {
+  if (!episode) return { source: 'raw' };
+  if (positiveInteger(episode.durationSeconds)) {
+    return { seconds: episode.durationSeconds, source: 'server' };
+  }
+  const rawSeconds = parseEpisodeDurationSeconds(episode.duration);
+  return rawSeconds === undefined ? { source: 'raw' } : { seconds: rawSeconds, source: 'raw' };
+}
+
+interface DurationSummary {
+  plannedEpisodes: number;
+  knownDurationEpisodes: number;
+  unknownDurationEpisodes: number;
+  estimatedRemainingMinutes?: number;
+  durationSource: CollectionBacklogDurationSource;
+  durationState: CollectionBacklogDurationState;
+}
+
+function minutesFromSeconds(seconds: number): number {
+  return Number((seconds / 60).toFixed(1));
+}
+
+function summarizeDurations(rows: UserEpisodeCollectionItem[]): DurationSummary {
+  const plannedRows = rows.filter((row) => row.type === 0 || row.type === 1);
+  let knownDurationEpisodes = 0;
+  let unknownDurationEpisodes = 0;
+  let knownSeconds = 0;
+  const sources = new Set<'server' | 'raw'>();
+
+  for (const row of plannedRows) {
+    const duration = episodeDuration(row.episode);
+    if (duration.seconds === undefined) {
+      unknownDurationEpisodes += 1;
+      continue;
+    }
+    knownDurationEpisodes += 1;
+    knownSeconds += duration.seconds;
+    sources.add(duration.source);
+  }
+
+  const durationSource: CollectionBacklogDurationSource =
+    sources.size === 2 ? 'mixed' : sources.values().next().value || 'none';
+  const durationState: CollectionBacklogDurationState =
+    plannedRows.length === 0
+      ? 'not_applicable'
+      : unknownDurationEpisodes === 0
+        ? 'complete'
+        : knownDurationEpisodes === 0
+          ? 'not_computable'
+          : 'partial';
+
+  return {
+    plannedEpisodes: plannedRows.length,
+    knownDurationEpisodes,
+    unknownDurationEpisodes,
+    estimatedRemainingMinutes:
+      plannedRows.length === 0 || knownDurationEpisodes > 0
+        ? minutesFromSeconds(knownSeconds)
+        : undefined,
+    durationSource,
+    durationState,
+  };
 }
 
 function parseAirdate(value: unknown): number | undefined {
@@ -546,6 +686,8 @@ function buildRow(
   const airing = deriveAiringState(progress);
   if (airing.state === 'unknown') reasons.push(airing.reason);
 
+  const duration = summarizeDurations(mainRows);
+
   const canCompute =
     state === 'complete' &&
     positiveInteger(episodeReportedEpisodes) &&
@@ -576,6 +718,7 @@ function buildRow(
     completionPercentage: canCompute
       ? Number(((watchedEpisodes / episodeReportedEpisodes) * 100).toFixed(1))
       : undefined,
+    ...duration,
     state,
     reasons: uniqueReasons,
     progressCoverage: {
@@ -620,6 +763,11 @@ function buildUnavailableRow(
     observedProgressRows: progress.items.length,
     airingState: 'unknown',
     airingReason,
+    plannedEpisodes: 0,
+    knownDurationEpisodes: 0,
+    unknownDurationEpisodes: 0,
+    durationSource: 'none',
+    durationState: 'not_computable',
     state: 'unavailable',
     reasons: [error.code],
     error,
@@ -844,7 +992,37 @@ async function mapConcurrent<T, R>(
   return results;
 }
 
-function summarize(items: CollectionBacklogItem[], eligibleItems: number): CollectionBacklogData {
+function sortItems(
+  items: CollectionBacklogItem[],
+  sortBy: CollectionBacklogSort,
+): CollectionBacklogItem[] {
+  if (sortBy === 'source') return items;
+
+  return items
+    .map((item, sourceIndex) => ({ item, sourceIndex }))
+    .sort((left, right) => {
+      const leftUnknown =
+        left.item.durationState === 'partial' || left.item.durationState === 'not_computable';
+      const rightUnknown =
+        right.item.durationState === 'partial' || right.item.durationState === 'not_computable';
+      if (leftUnknown !== rightUnknown) return leftUnknown ? 1 : -1;
+      if (!leftUnknown && !rightUnknown) {
+        const difference =
+          (left.item.estimatedRemainingMinutes || 0) - (right.item.estimatedRemainingMinutes || 0);
+        if (difference !== 0) {
+          return sortBy === 'estimated_minutes_asc' ? difference : -difference;
+        }
+      }
+      return left.sourceIndex - right.sourceIndex;
+    })
+    .map(({ item }) => item);
+}
+
+function summarize(
+  items: CollectionBacklogItem[],
+  eligibleItems: number,
+  sortBy: CollectionBacklogSort,
+): CollectionBacklogData {
   const summary = {
     eligibleItems,
     returnedItems: items.length,
@@ -868,8 +1046,16 @@ function summarize(items: CollectionBacklogItem[], eligibleItems: number): Colle
     ).length,
     ongoingItems: items.filter((item) => item.airingState === 'ongoing').length,
     airingUnknownItems: items.filter((item) => item.airingState === 'unknown').length,
+    knownEstimatedRemainingMinutes: Number(
+      items.reduce((total, item) => total + (item.estimatedRemainingMinutes || 0), 0).toFixed(1),
+    ),
+    durationCompleteItems: items.filter((item) => item.durationState === 'complete').length,
+    durationPartialItems: items.filter((item) => item.durationState === 'partial').length,
+    durationNotComputableItems: items.filter((item) => item.durationState === 'not_computable')
+      .length,
+    unknownDurationEpisodes: items.reduce((total, item) => total + item.unknownDurationEpisodes, 0),
   };
-  return { items, summary };
+  return { items, summary, sortBy };
 }
 
 function resultState(
@@ -974,6 +1160,10 @@ export class CollectionBacklogService {
       COLLECTION_BACKLOG_MAX_EPISODES_PER_SUBJECT,
     );
     const statuses = new Set<CollectionBacklogStatus>(options.statuses || defaultStatuses());
+    const sortBy: CollectionBacklogSort =
+      options.sortBy === 'estimated_minutes_asc' || options.sortBy === 'estimated_minutes_desc'
+        ? options.sortBy
+        : 'source';
     const attemptedAt = new Date().toISOString();
 
     let scan: CollectionScan;
@@ -982,9 +1172,11 @@ export class CollectionBacklogService {
     } catch (error: unknown) {
       const publicError = toPublicError(error);
       const errorState = stateForError(publicError);
+      const data = emptyData();
+      data.sortBy = sortBy;
       return {
         state: errorState,
-        data: emptyData(),
+        data,
         coverage: emptyCoverage(errorState, { maxItems, maxSubjects, maxEpisodesPerSubject }),
         source: {
           class: 'official_v0',
@@ -1073,9 +1265,10 @@ export class CollectionBacklogService {
       },
     );
 
-    const rows = hydrated.map((entry) => entry.item);
+    const sourceRows = hydrated.map((entry) => entry.item);
+    const rows = sortItems(sourceRows, sortBy);
     const state = resultState(scan, hydrationBudgetExceeded, rows);
-    const data = summarize(rows, eligible.length);
+    const data = summarize(rows, eligible.length, sortBy);
     const warnings = warningForScan(scan);
     if (hydrationBudgetExceeded) {
       warnings.push({
@@ -1131,6 +1324,14 @@ export class CollectionBacklogService {
         code: 'NOT_COMPUTABLE_ROWS',
         state: 'not_computable',
         message: '部分条目缺少有效源报告正篇总数，无法计算剩余集数或完成百分比。',
+      });
+    }
+    const unknownDurationCount = rows.filter((row) => row.unknownDurationEpisodes > 0).length;
+    if (unknownDurationCount > 0) {
+      warnings.push({
+        code: 'UNKNOWN_EPISODE_DURATIONS',
+        state: 'partial',
+        message: `${unknownDurationCount} 个条目含未解析或缺失的待看正篇时长；estimatedRemainingMinutes 只代表已知时长小计。`,
       });
     }
 
@@ -1208,6 +1409,17 @@ export class CollectionBacklogService {
             'watched main episodes / episode collection sourceTotal',
           ],
           formulaVersion: COLLECTION_BACKLOG_FORMULA_VERSION,
+          authScope: 'account',
+          attemptedAt,
+          retrievedAt,
+        },
+        {
+          source: 'derived',
+          operations: [
+            'uncollected/wish main episode duration_seconds or strict raw duration parsing',
+            'known planned episode duration seconds / 60',
+          ],
+          formulaVersion: COLLECTION_BACKLOG_DURATION_FORMULA_VERSION,
           authScope: 'account',
           attemptedAt,
           retrievedAt,

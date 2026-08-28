@@ -63,6 +63,25 @@ describe('Domain Mappers Unit Tests', () => {
     expect(ep.category).toBe('other');
   });
 
+  it('preserves a positive server-parsed episode duration and ignores zero', () => {
+    expect(
+      mapEpisode({
+        id: 51,
+        type: 0,
+        name: 'Timed episode',
+        duration_seconds: 1440,
+      } as any).durationSeconds,
+    ).toBe(1440);
+    expect(
+      mapEpisode({
+        id: 52,
+        type: 0,
+        name: 'Unknown duration',
+        duration_seconds: 0,
+      } as any).durationSeconds,
+    ).toBeUndefined();
+  });
+
   it('maps unknown collection status to "unknown" and NEVER silently defaults to "doing"', () => {
     expect(mapCollectionStatus(1)).toBe('wish');
     expect(mapCollectionStatus(2)).toBe('done');

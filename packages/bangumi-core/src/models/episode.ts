@@ -12,6 +12,7 @@ export interface DomainEpisode {
   airdate?: string;
   comment?: number;
   duration?: string;
+  durationSeconds?: number;
   desc?: string;
   disc?: number;
 }

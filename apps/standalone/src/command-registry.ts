@@ -62,6 +62,7 @@ Bangumi:
                       [--timeout-ms 1000..120000] [--status wish,doing,on_hold]
   collection backlog [--max-items 1..100] [--max-subjects 1..30]
                     [--max-episodes 1..1000] [--status wish,doing,on_hold]
+                    [--sort source|estimated-minutes-asc|estimated-minutes-desc]
   collection schedule [--max-items 1..200] [--max-rows 1..100]
                       [--status wish,doing,done,on_hold,dropped]
   collection series [--max-items 1..100] [--max-relation-subjects 1..36]
@@ -365,6 +366,7 @@ function parseBacklogOptions(args: string[]): Record<string, unknown> {
   const maxSubjects = takeOption(args, '--max-subjects');
   const maxEpisodes = takeOption(args, '--max-episodes');
   const statuses = takeOption(args, '--status');
+  const sort = takeOption(args, '--sort');
   if (maxItems !== undefined) input.maxItems = optionNumber(maxItems, 'max-items', true);
   if (maxSubjects !== undefined)
     input.maxSubjects = optionNumber(maxSubjects, 'max-subjects', true);
@@ -381,6 +383,23 @@ function parseBacklogOptions(args: string[]): Record<string, unknown> {
       throw new StandaloneCliError('USAGE_ERROR: --status requires at least one status.', 2);
     }
     input.statuses = [...new Set(values)];
+  }
+  if (sort !== undefined) {
+    const sortBy =
+      sort === 'source'
+        ? 'source'
+        : sort === 'estimated-minutes-asc'
+          ? 'estimated_minutes_asc'
+          : sort === 'estimated-minutes-desc'
+            ? 'estimated_minutes_desc'
+            : undefined;
+    if (!sortBy) {
+      throw new StandaloneCliError(
+        'USAGE_ERROR: --sort must be source, estimated-minutes-asc, or estimated-minutes-desc.',
+        2,
+      );
+    }
+    input.sortBy = sortBy;
   }
   return input;
 }

@@ -16,6 +16,11 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
         watchedEpisodes: 1,
         episodeReportedEpisodes: 3,
         remainingEpisodes: 2,
+        plannedEpisodes: 2,
+        knownDurationEpisodes: 2,
+        unknownDurationEpisodes: 0,
+        estimatedRemainingMinutes: 48,
+        durationState: 'complete',
         comment: 'private comment must not be shown',
         reasons: [],
       })),
@@ -32,7 +37,9 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
         finishedIncompleteItems: 30,
         ongoingItems: 0,
         airingUnknownItems: 0,
+        knownEstimatedRemainingMinutes: 1440,
       },
+      sortBy: 'estimated_minutes_desc',
     },
     coverage: {
       collection: {
@@ -58,6 +65,9 @@ describe('Standalone collection backlog presenter', () => {
     expect(output).toContain('已播完未看完 30');
     expect(output).toContain('不证明未发布后续或排除 hiatus');
     expect(output).toContain('正篇行 raw=90/unique=90');
+    expect(output).toContain('预计分钟数降序');
+    expect(output).toContain('已知待看时长 1440 分');
+    expect(output).toContain('已知约 48 分');
     expect(output).toContain('一个很长的中文收藏标题 1');
     expect(output).toContain('一个很长的中文收藏标题 12');
     expect(output).not.toContain('一个很长的中文收藏标题 13');

@@ -1,3 +1,4 @@
+import { COLLECTION_BACKLOG_DURATION_FORMULA_VERSION } from '@bangumi-agent-kit/bangumi-core';
 import type {
   DomainSubject,
   DomainCalendarDay,
@@ -203,6 +204,9 @@ export function buildCollectionBacklogViewModel(
   const items = result.data.items.slice(0, maxItems);
   const omittedItems = Math.max(0, result.data.items.length - items.length);
   const formulaEvidence = result.evidence.find((item) => item.source === 'derived');
+  const durationFormulaEvidence = result.evidence.find(
+    (item) => item.formulaVersion === COLLECTION_BACKLOG_DURATION_FORMULA_VERSION,
+  );
   const retrievedAt = result.source.retrievedAt;
 
   return {
@@ -211,6 +215,7 @@ export function buildCollectionBacklogViewModel(
     state: result.state,
     items,
     summary: result.data.summary,
+    sortBy: result.data.sortBy,
     coverage: {
       ...result.coverage,
       renderedItems: items.length,
@@ -223,6 +228,7 @@ export function buildCollectionBacklogViewModel(
     evidence: {
       operations: result.source.operations,
       formulaVersion: formulaEvidence?.formulaVersion,
+      durationFormulaVersion: durationFormulaEvidence?.formulaVersion,
       authScope: result.source.authScope,
       retrievedAt,
     },

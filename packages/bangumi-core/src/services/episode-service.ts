@@ -22,6 +22,13 @@ export function mapEpisodeCategory(typeNum: number): DomainEpisodeCategory {
 }
 
 export function mapEpisode(raw: Episode, subjectId?: number): DomainEpisode {
+  const durationSeconds =
+    typeof raw.duration_seconds === 'number' &&
+    Number.isSafeInteger(raw.duration_seconds) &&
+    raw.duration_seconds > 0
+      ? raw.duration_seconds
+      : undefined;
+
   return {
     id: raw.id,
     subjectId: subjectId ?? (raw as unknown as { subject_id?: number }).subject_id ?? 0,
@@ -34,6 +41,7 @@ export function mapEpisode(raw: Episode, subjectId?: number): DomainEpisode {
     airdate: raw.airdate || undefined,
     comment: raw.comment ?? undefined,
     duration: raw.duration || undefined,
+    ...(durationSeconds === undefined ? {} : { durationSeconds }),
     desc: raw.desc || undefined,
     disc: raw.disc ?? undefined,
   };

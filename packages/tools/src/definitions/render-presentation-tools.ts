@@ -751,7 +751,7 @@ export function createRenderPresentationTools(
   const renderCollectionBacklog = defineTool({
     name: 'bangumi.render_collection_backlog',
     description:
-      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示源顺序条目、正篇 episode progress、episode sourceTotal 分母、已知剩余集数、结构化完结状态、来源冲突与无法计算原因；明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
+      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示正篇 episode progress、episode sourceTotal 分母、已知剩余集数、已观察的未看/想看正篇预计分钟数、排序方式、结构化完结状态、来源冲突与无法计算原因；未知时长置后并保留覆盖证据。明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
     input: z
       .object({
         maxItems: z
@@ -781,6 +781,10 @@ export function createRenderPresentationTools(
           .max(5)
           .optional()
           .describe('收藏状态过滤，默认 wish/doing/on_hold；顺序保留源顺序，不代表优先级'),
+        sortBy: z
+          .enum(['source', 'estimated_minutes_asc', 'estimated_minutes_desc'])
+          .optional()
+          .describe('排序方式，默认 source；预计分钟数只覆盖已观察的未看/想看正篇，未知估算置后'),
       })
       .strict(),
     auth: 'required',
@@ -815,6 +819,7 @@ export function createRenderPresentationTools(
         maxSubjects: input.maxSubjects,
         maxEpisodesPerSubject: input.maxEpisodesPerSubject,
         statuses: input.statuses,
+        sortBy: input.sortBy,
       });
       return await executeRenderAndSave(buildCollectionBacklogViewModel(result));
     },
