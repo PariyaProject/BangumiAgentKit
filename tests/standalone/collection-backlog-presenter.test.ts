@@ -41,6 +41,41 @@ function backlogResult(overrides: Record<string, unknown> = {}): Record<string, 
       },
       sortBy: 'estimated_minutes_desc',
     },
+    source: {
+      class: 'official_v0',
+      operations: [
+        'GET /v0/users/{username}/collections',
+        'GET /v0/users/-/collections/{subject_id}/episodes',
+      ],
+      authScope: 'account',
+      attemptedAt: '2026-08-28T00:00:00.000Z',
+      retrievedAt: '2026-08-28T00:01:00.000Z',
+    },
+    evidence: [
+      {
+        source: 'official_v0',
+        operations: ['GET /v0/users/{username}/collections'],
+        authScope: 'account',
+      },
+      {
+        source: 'derived',
+        operations: ['episode collection sourceTotal - watched main episodes'],
+        formulaVersion: 'collection-backlog-v2',
+        authScope: 'account',
+      },
+      {
+        source: 'derived',
+        operations: ['known pending episode durations'],
+        formulaVersion: 'collection-backlog-duration-v1',
+        authScope: 'account',
+      },
+    ],
+    limitations: [
+      'estimatedRemainingMinutes 只汇总已观察的未看/想看正篇 episode 时长；partial 是已知小计。',
+      'duration_seconds 优先；原始 duration 仅在明确格式时解析。',
+      '不读取评论、不执行收藏写入。',
+      '超过读取上限的条目不会展开。',
+    ],
     coverage: {
       collection: {
         observedRows: 30,
@@ -67,6 +102,11 @@ describe('Standalone collection backlog presenter', () => {
     expect(output).toContain('正篇行 raw=90/unique=90');
     expect(output).toContain('预计分钟数降序');
     expect(output).toContain('已知待看时长 1440 分');
+    expect(output).toContain('来源: official_v0');
+    expect(output).toContain('证据公式');
+    expect(output).toContain('collection-backlog-duration-v1');
+    expect(output).toContain('限制：');
+    expect(output).toContain('partial 是已知小计');
     expect(output).toContain('已知约 48 分');
     expect(output).toContain('一个很长的中文收藏标题 1');
     expect(output).toContain('一个很长的中文收藏标题 12');

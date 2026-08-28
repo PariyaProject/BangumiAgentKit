@@ -1121,6 +1121,29 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
     }
   }
 
+  const source = value.source;
+  if (source && typeof source === 'object') {
+    const sourceDetails = source as Record<string, unknown>;
+    lines.push(
+      `来源: ${humanField(sourceDetails.class || 'unknown', 64)} · 账号范围 ${humanField(sourceDetails.authScope || 'unknown', 32)}${sourceDetails.retrievedAt ? ` · 取数 ${humanField(sourceDetails.retrievedAt, 64)}` : ''}`,
+    );
+  }
+  const evidence = value.evidence;
+  if (Array.isArray(evidence)) {
+    const formulas = [
+      ...new Set(
+        evidence
+          .filter((candidate) => candidate && typeof candidate === 'object')
+          .map((candidate) => (candidate as Record<string, unknown>).formulaVersion)
+          .filter(
+            (formula): formula is string => typeof formula === 'string' && formula.length > 0,
+          ),
+      ),
+    ];
+    if (formulas.length > 0)
+      lines.push(`证据公式: ${formulas.map((item) => humanField(item, 64)).join(' · ')}`);
+  }
+
   const items = details.items as unknown[];
   if (items.length === 0) {
     lines.push('条目: 没有可展示的收藏条目。');
@@ -1150,10 +1173,10 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
               );
       const duration =
         typeof item.estimatedRemainingMinutes === 'number'
-          ? `已知约 ${humanField(item.estimatedRemainingMinutes, 32)} 分 · 时长 ${humanField(item.knownDurationEpisodes ?? 0, 32)}/${humanField(item.plannedEpisodes ?? 0, 32)} 集${item.unknownDurationEpisodes ? ` · 未解析 ${humanField(item.unknownDurationEpisodes, 32)} 集` : ''}`
+          ? `已知约 ${humanField(item.estimatedRemainingMinutes, 32)} 分 · 时长 ${humanField(item.knownDurationEpisodes ?? 0, 32)}/${humanField(item.plannedEpisodes ?? 0, 32)} 集 · 来源 ${humanField(item.durationSource || 'unknown', 48)}${item.unknownDurationEpisodes ? ` · 未解析 ${humanField(item.unknownDurationEpisodes, 32)} 集` : ''}`
           : item.durationState === 'not_applicable'
             ? '待看时长 0 分'
-            : '预计分钟数未知';
+            : `预计分钟数未知 · 来源 ${humanField(item.durationSource || 'unknown', 48)}`;
       lines.push(`${index + 1}. ${title} · ${status} · ${airing}`);
       lines.push(`   ${progress} · ${duration} · ${humanField(item.state || 'unknown', 64)}`);
       if (airingState === 'unknown' && item.airingReason) {
@@ -1179,6 +1202,17 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
     }
     if (warnings.length > 3)
       lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条告警未展开。`);
+  }
+
+  const limitations = value.limitations;
+  if (Array.isArray(limitations) && limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 3)) {
+      lines.push(`- ${humanField(limitation)}`);
+    }
+    if (limitations.length > 3) {
+      lines.push(`- 另有 ${humanField(limitations.length - 3, 32)} 条限制未展开。`);
+    }
   }
 
   return boundHumanLines(lines);

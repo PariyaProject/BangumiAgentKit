@@ -113,13 +113,13 @@ describe('bangumi.get_collection_backlog', () => {
     );
 
     expect(result).toMatchObject({
-      state: 'complete',
+      state: 'partial',
       coverage: { collection: { sourceTotal: 1 }, hydration: { succeededSubjects: 1 } },
       data: {
         sortBy: 'estimated_minutes_desc',
         summary: {
           knownRemainingEpisodes: 1,
-          knownEstimatedRemainingMinutes: 0,
+          knownEstimatedRemainingMinutes: undefined,
           unknownDurationEpisodes: 1,
         },
       },

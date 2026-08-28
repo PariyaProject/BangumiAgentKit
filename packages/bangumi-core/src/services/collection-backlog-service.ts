@@ -267,7 +267,6 @@ function emptyData(): CollectionBacklogData {
       finishedIncompleteItems: 0,
       ongoingItems: 0,
       airingUnknownItems: 0,
-      knownEstimatedRemainingMinutes: 0,
       durationCompleteItems: 0,
       durationPartialItems: 0,
       durationNotComputableItems: 0,
@@ -360,8 +359,9 @@ function positiveInteger(value: number | undefined): value is number {
 }
 
 /**
- * Parse only duration formats whose units are explicit. A missing or ambiguous
- * source value remains unknown rather than being treated as zero minutes.
+ * Parse only duration formats whose units are explicit. Two-field clocks are
+ * MM:SS and three-field clocks are HH:MM:SS. A missing or ambiguous source
+ * value remains unknown rather than being treated as zero minutes.
  */
 export function parseEpisodeDurationSeconds(value: string | undefined): number | undefined {
   if (typeof value !== 'string') return undefined;
@@ -373,8 +373,7 @@ export function parseEpisodeDurationSeconds(value: string | undefined): number |
     const first = Number(clock[1]);
     const second = Number(clock[2]);
     const third = clock[3] === undefined ? undefined : Number(clock[3]);
-    if (third !== undefined && second >= 60) return undefined;
-    if ((third !== undefined && third >= 60) || !Number.isSafeInteger(first)) {
+    if (second >= 60 || (third !== undefined && third >= 60) || !Number.isSafeInteger(first)) {
       return undefined;
     }
     const seconds = third === undefined ? first * 60 + second : first * 3600 + second * 60 + third;
@@ -427,7 +426,10 @@ function minutesFromSeconds(seconds: number): number {
   return Number((seconds / 60).toFixed(1));
 }
 
-function summarizeDurations(rows: UserEpisodeCollectionItem[]): DurationSummary {
+function summarizeDurations(
+  rows: UserEpisodeCollectionItem[],
+  coverageComplete: boolean,
+): DurationSummary {
   const plannedRows = rows.filter((row) => row.type === 0 || row.type === 1);
   let knownDurationEpisodes = 0;
   let unknownDurationEpisodes = 0;
@@ -435,7 +437,10 @@ function summarizeDurations(rows: UserEpisodeCollectionItem[]): DurationSummary 
   const sources = new Set<'server' | 'raw'>();
 
   for (const row of plannedRows) {
-    const duration = episodeDuration(row.episode);
+    const duration =
+      row.episode?.category === 'main' && positiveInteger(row.episode.id)
+        ? episodeDuration(row.episode)
+        : { source: 'raw' as const };
     if (duration.seconds === undefined) {
       unknownDurationEpisodes += 1;
       continue;
@@ -447,8 +452,11 @@ function summarizeDurations(rows: UserEpisodeCollectionItem[]): DurationSummary 
 
   const durationSource: CollectionBacklogDurationSource =
     sources.size === 2 ? 'mixed' : sources.values().next().value || 'none';
-  const durationState: CollectionBacklogDurationState =
-    plannedRows.length === 0
+  const durationState: CollectionBacklogDurationState = !coverageComplete
+    ? knownDurationEpisodes > 0
+      ? 'partial'
+      : 'not_computable'
+    : plannedRows.length === 0
       ? 'not_applicable'
       : unknownDurationEpisodes === 0
         ? 'complete'
@@ -461,7 +469,7 @@ function summarizeDurations(rows: UserEpisodeCollectionItem[]): DurationSummary 
     knownDurationEpisodes,
     unknownDurationEpisodes,
     estimatedRemainingMinutes:
-      plannedRows.length === 0 || knownDurationEpisodes > 0
+      (coverageComplete && plannedRows.length === 0) || knownDurationEpisodes > 0
         ? minutesFromSeconds(knownSeconds)
         : undefined,
     durationSource,
@@ -586,18 +594,27 @@ function buildRow(
   const reasons: string[] = [];
   const progressRows = progress.items;
   const uniqueProgress = new Map<number, UserEpisodeCollectionItem>();
+  const uniqueProgressRows: UserEpisodeCollectionItem[] = [];
   for (const row of progressRows) {
     const episodeId = row.episode?.id;
-    if (episodeId !== undefined && !uniqueProgress.has(episodeId)) {
+    if (!positiveInteger(episodeId)) {
+      uniqueProgressRows.push(row);
+    } else if (!uniqueProgress.has(episodeId)) {
       uniqueProgress.set(episodeId, row);
+      uniqueProgressRows.push(row);
     }
     if (!row.episode) reasons.push('episode progress row lacks episode metadata');
+    if (row.episode && !positiveInteger(row.episode.id)) {
+      reasons.push('episode progress row lacks a valid episode ID');
+    }
     if (row.episode && row.episode.category !== 'main') {
       reasons.push('episode collection returned a non-main episode despite episode_type=0');
     }
   }
 
-  const mainRows = [...uniqueProgress.values()].filter((row) => row.episode?.category === 'main');
+  const mainRows = [...uniqueProgress.values()].filter(
+    (row) => row.episode?.category === 'main' && positiveInteger(row.episode.id),
+  );
   const watchedEpisodes = mainRows.filter((row) => row.type === 2).length;
   const wishEpisodes = mainRows.filter((row) => row.type === 1).length;
   const droppedEpisodes = mainRows.filter((row) => row.type === 3).length;
@@ -686,12 +703,23 @@ function buildRow(
   const airing = deriveAiringState(progress);
   if (airing.state === 'unknown') reasons.push(airing.reason);
 
-  const duration = summarizeDurations(mainRows);
+  const duration = summarizeDurations(uniqueProgressRows, progressComplete);
 
   const canCompute =
     state === 'complete' &&
     positiveInteger(episodeReportedEpisodes) &&
     episodeReportedEpisodes >= watchedEpisodes;
+  if (
+    state === 'complete' &&
+    (duration.durationState === 'partial' || duration.durationState === 'not_computable')
+  ) {
+    state = 'partial';
+    reasons.push(
+      duration.unknownDurationEpisodes > 0
+        ? `待看正篇有 ${duration.unknownDurationEpisodes} 集时长无法验证`
+        : '待看正篇时长覆盖不完整，预计分钟数不是完整总量',
+    );
+  }
   const uniqueReasons = [...new Set(reasons)];
   return {
     subjectId: collection.subjectId,
@@ -1002,9 +1030,13 @@ function sortItems(
     .map((item, sourceIndex) => ({ item, sourceIndex }))
     .sort((left, right) => {
       const leftUnknown =
-        left.item.durationState === 'partial' || left.item.durationState === 'not_computable';
+        left.item.state !== 'complete' ||
+        left.item.durationState === 'partial' ||
+        left.item.durationState === 'not_computable';
       const rightUnknown =
-        right.item.durationState === 'partial' || right.item.durationState === 'not_computable';
+        right.item.state !== 'complete' ||
+        right.item.durationState === 'partial' ||
+        right.item.durationState === 'not_computable';
       if (leftUnknown !== rightUnknown) return leftUnknown ? 1 : -1;
       if (!leftUnknown && !rightUnknown) {
         const difference =
@@ -1023,6 +1055,10 @@ function summarize(
   eligibleItems: number,
   sortBy: CollectionBacklogSort,
 ): CollectionBacklogData {
+  const hasDurationEvidence =
+    items.length === 0 ||
+    items.some((item) => item.knownDurationEpisodes > 0) ||
+    items.every((item) => item.durationState === 'not_applicable');
   const summary = {
     eligibleItems,
     returnedItems: items.length,
@@ -1046,14 +1082,21 @@ function summarize(
     ).length,
     ongoingItems: items.filter((item) => item.airingState === 'ongoing').length,
     airingUnknownItems: items.filter((item) => item.airingState === 'unknown').length,
-    knownEstimatedRemainingMinutes: Number(
-      items.reduce((total, item) => total + (item.estimatedRemainingMinutes || 0), 0).toFixed(1),
-    ),
+    knownEstimatedRemainingMinutes: hasDurationEvidence
+      ? Number(
+          items
+            .reduce((total, item) => total + (item.estimatedRemainingMinutes || 0), 0)
+            .toFixed(1),
+        )
+      : undefined,
     durationCompleteItems: items.filter((item) => item.durationState === 'complete').length,
     durationPartialItems: items.filter((item) => item.durationState === 'partial').length,
     durationNotComputableItems: items.filter((item) => item.durationState === 'not_computable')
       .length,
-    unknownDurationEpisodes: items.reduce((total, item) => total + item.unknownDurationEpisodes, 0),
+    unknownDurationEpisodes: items.reduce(
+      (total, item) => total + (item.unknownDurationEpisodes || 0),
+      0,
+    ),
   };
   return { items, summary, sortBy };
 }
@@ -1332,6 +1375,19 @@ export class CollectionBacklogService {
         code: 'UNKNOWN_EPISODE_DURATIONS',
         state: 'partial',
         message: `${unknownDurationCount} 个条目含未解析或缺失的待看正篇时长；estimatedRemainingMinutes 只代表已知时长小计。`,
+      });
+    }
+    const partialDurationCoverageCount = rows.filter(
+      (row) =>
+        row.state !== 'unavailable' &&
+        row.unknownDurationEpisodes === 0 &&
+        (row.durationState === 'partial' || row.durationState === 'not_computable'),
+    ).length;
+    if (partialDurationCoverageCount > 0) {
+      warnings.push({
+        code: 'PARTIAL_DURATION_COVERAGE',
+        state: 'partial',
+        message: `${partialDurationCoverageCount} 个条目的 episode coverage 不完整；预计分钟数只代表已观察的待看正篇小计。`,
       });
     }
 
