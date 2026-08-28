@@ -751,7 +751,7 @@ export function createRenderPresentationTools(
   const renderCollectionBacklog = defineTool({
     name: 'bangumi.render_collection_backlog',
     description:
-      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示正篇 episode progress、episode sourceTotal 分母、已知剩余集数、已观察的未看/想看正篇预计分钟数、排序方式、结构化完结状态、来源冲突与无法计算原因；未知时长置后并保留覆盖证据。明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
+      '生成当前绑定 Bangumi 账号有界动画收藏 backlog 图片卡片 Artifact。卡片显示正篇 episode progress、episode sourceTotal 分母、已知剩余集数、已观察的未看/想看正篇预计分钟数、排序方式、结构化完结状态、官方七日 calendar schedule、evidence-completeness confidence、来源冲突与无法计算原因；未知时长置后并保留覆盖证据。confidence 不是概率或推荐，未观察不等于没有播出计划。明确账号范围、覆盖、auth/permission、partial/unavailable/not_computable、公式和限制。不接受任意用户名、不显示评论、不执行写入。',
     input: z
       .object({
         maxItems: z
@@ -814,12 +814,16 @@ export function createRenderPresentationTools(
           false,
         );
       }
-      const result = await new CollectionBacklogService(client).getCollectionBacklog(username, {
+      const result = await new CollectionBacklogService(
+        client,
+        deps?.publicHttpClient,
+      ).getCollectionBacklog(username, {
         maxItems: input.maxItems,
         maxSubjects: input.maxSubjects,
         maxEpisodesPerSubject: input.maxEpisodesPerSubject,
         statuses: input.statuses,
         sortBy: input.sortBy,
+        includeSchedule: true,
       });
       return await executeRenderAndSave(buildCollectionBacklogViewModel(result));
     },

@@ -364,6 +364,8 @@ export interface CollectionBacklogViewModel {
     operations: string[];
     formulaVersion?: string;
     durationFormulaVersion?: string;
+    scheduleFormulaVersion?: string;
+    confidenceFormulaVersion?: string;
     authScope: 'account';
     retrievedAt?: string;
   };

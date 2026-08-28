@@ -1080,6 +1080,7 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
   const lines = [
     `收藏 backlog · 状态: ${humanField(value.state || 'unknown', 64)} · 排序: ${sortBy}`,
     `摘要: 符合 ${humanField(summary.eligibleItems ?? '?', 32)} · 返回 ${humanField(summary.returnedItems ?? '?', 32)} · 已知剩余 ${humanField(summary.knownRemainingEpisodes ?? '?', 32)} 集${knownMinutes} · 已播完未看完 ${humanField(summary.finishedIncompleteItems ?? '?', 32)} · 可计算 ${humanField(summary.completeItems ?? '?', 32)}`,
+    `证据摘要: 计划匹配 ${humanField(summary.scheduleMatchedItems ?? '?', 32)} · 未观察 ${humanField(summary.scheduleNotObservedItems ?? '?', 32)} · 未知 ${humanField(summary.scheduleUnknownItems ?? '?', 32)} · 完整度高/中/低/未知 ${humanField(summary.confidenceHighItems ?? '?', 32)}/${humanField(summary.confidenceMediumItems ?? '?', 32)}/${humanField(summary.confidenceLowItems ?? '?', 32)}/${humanField(summary.confidenceUnknownItems ?? '?', 32)}`,
     '说明：已播完仅表示当前报告的正篇 airdate 均已过去，不证明未发布后续或排除 hiatus。',
   ];
 
@@ -1109,6 +1110,9 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
       episodeProgress && typeof episodeProgress === 'object'
         ? (episodeProgress as Record<string, unknown>)
         : undefined;
+    const schedule = coverageDetails.schedule;
+    const scheduleDetails =
+      schedule && typeof schedule === 'object' ? (schedule as Record<string, unknown>) : undefined;
     if (collectionDetails) {
       lines.push(
         `覆盖: 收藏原始 ${humanField(collectionDetails.observedRows ?? '?', 32)} · 去重 ${humanField(collectionDetails.uniqueRows ?? '?', 32)} · 源总数 ${humanField(collectionDetails.sourceTotal ?? '?', 32)}${collectionDetails.truncated ? ' · 已截断' : ''}${collectionDetails.duplicateRows ? ` · 重复 ${humanField(collectionDetails.duplicateRows, 32)}` : ''}`,
@@ -1119,6 +1123,14 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
         `读取: 条目 ${humanField(hydrationDetails?.succeededSubjects ?? 0, 32)}/${humanField(hydrationDetails?.attemptedSubjects ?? 0, 32)} 成功 · 正篇行 raw=${humanField(episodeDetails?.observedRows ?? 0, 32)}/unique=${humanField(episodeDetails?.uniqueRows ?? '?', 32)}${hydrationDetails?.budgetExceeded ? ' · 达到 hydration 上限' : ''}`,
       );
     }
+    if (scheduleDetails) {
+      const missingWeekdays = Array.isArray(scheduleDetails.missingWeekdays)
+        ? scheduleDetails.missingWeekdays.join('、') || '无'
+        : '?';
+      lines.push(
+        `计划覆盖: ${humanField(scheduleDetails.state || 'unknown', 48)} · 星期 ${humanField(scheduleDetails.sourceDayCount ?? '?', 32)}/7 · 日历行 ${humanField(scheduleDetails.observedRows ?? '?', 32)}/unique ${humanField(scheduleDetails.uniqueRows ?? '?', 32)} · 已匹配 ${humanField(scheduleDetails.matchedItems ?? '?', 32)} · 缺少星期 ${humanField(missingWeekdays, 48)}${scheduleDetails.truncated ? ' · 已截断' : ''}`,
+      );
+    }
   }
 
   const source = value.source;
@@ -1127,6 +1139,13 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
     lines.push(
       `来源: ${humanField(sourceDetails.class || 'unknown', 64)} · 账号范围 ${humanField(sourceDetails.authScope || 'unknown', 32)}${sourceDetails.retrievedAt ? ` · 取数 ${humanField(sourceDetails.retrievedAt, 64)}` : ''}`,
     );
+    const calendar = sourceDetails.calendar;
+    if (calendar && typeof calendar === 'object') {
+      const calendarDetails = calendar as Record<string, unknown>;
+      lines.push(
+        `日历来源: ${humanField(calendarDetails.class || 'unknown', 64)} · ${humanField(calendarDetails.operation || '未记录', 96)}${calendarDetails.retrievedAt ? ` · 取数 ${humanField(calendarDetails.retrievedAt, 64)}` : ''}`,
+      );
+    }
   }
   const evidence = value.evidence;
   if (Array.isArray(evidence)) {
@@ -1177,8 +1196,23 @@ function presentCollectionBacklog(value: Record<string, unknown>): string | unde
           : item.durationState === 'not_applicable'
             ? '待看时长 0 分'
             : `预计分钟数未知 · 来源 ${humanField(item.durationSource || 'unknown', 48)}`;
+      const scheduleEvidence = comparisonRecord(item.schedule);
+      const weekday = comparisonRecord(scheduleEvidence?.weekday);
+      const scheduleLabel =
+        scheduleEvidence?.state === 'matched'
+          ? `计划 ${humanField(weekday?.cn || weekday?.en || weekday?.ja || '星期未知', 48)}${scheduleEvidence.airDate ? ` · ${humanField(scheduleEvidence.airDate, 48)}` : ''}`
+          : scheduleEvidence?.state === 'not_observed'
+            ? '计划未在完整七日观察中出现'
+            : `计划未知 · ${humanField(scheduleEvidence?.reason || 'schedule evidence 不足', 180)}`;
+      const confidence = comparisonRecord(item.confidence);
+      const confidenceLabel = `证据完整度 ${humanField(confidence?.level || 'unknown', 32)}`;
       lines.push(`${index + 1}. ${title} · ${status} · ${airing}`);
-      lines.push(`   ${progress} · ${duration} · ${humanField(item.state || 'unknown', 64)}`);
+      lines.push(
+        `   ${progress} · ${duration} · ${scheduleLabel} · ${confidenceLabel} · ${humanField(item.state || 'unknown', 64)}`,
+      );
+      if (Array.isArray(confidence?.reasons) && confidence.reasons.length > 0) {
+        lines.push(`   证据边界：${humanField(confidence.reasons[0], 220)}`);
+      }
       if (airingState === 'unknown' && item.airingReason) {
         lines.push(`   播出证据：${humanField(item.airingReason)}`);
       }

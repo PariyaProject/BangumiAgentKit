@@ -70,6 +70,75 @@ function episodeRow(
   };
 }
 
+function calendarPayload(
+  itemsByWeekday: Record<number, Array<Record<string, unknown>>> = {},
+): Array<Record<string, unknown>> {
+  return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((en, index) => ({
+    weekday: { en, cn: `星期${index + 1}`, ja: `曜日${index + 1}`, id: index + 1 },
+    items: itemsByWeekday[index + 1] || [],
+  }));
+}
+
+function calendarItem(id: number, weekday: number): Record<string, unknown> {
+  return {
+    id,
+    type: 2,
+    name: `Calendar Original ${id}`,
+    name_cn: `日历中文 ${id}`,
+    air_date: '2026-08-24',
+    air_weekday: weekday,
+  };
+}
+
+function scheduledFetch(
+  calendar: unknown,
+  options: {
+    episodeBody?: Record<string, unknown>;
+    calendarStatus?: number;
+    collectionEpisodes?: number;
+  } = {},
+): typeof fetch {
+  return async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === '/calendar') {
+      return new Response(JSON.stringify(calendar), { status: options.calendarStatus || 200 });
+    }
+    if (url.pathname.endsWith('/collections')) {
+      return new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 50,
+          offset: 0,
+          data: [
+            collectionRow(1, 3, {
+              ep_status: 1,
+              subject: {
+                ...(collectionRow(1, 3).subject as Record<string, unknown>),
+                eps: options.collectionEpisodes ?? 2,
+              },
+            }),
+          ],
+        }),
+        { status: 200 },
+      );
+    }
+    if (url.pathname.endsWith('/collections/1/episodes')) {
+      return new Response(
+        JSON.stringify(
+          options.episodeBody || {
+            total: 2,
+            limit: 100,
+            offset: 0,
+            data: [episodeRow(1, 0, 2), episodeRow(2, 0, 1)],
+          },
+        ),
+        { status: 200 },
+      );
+    }
+    throw new Error(`unexpected request: ${url}`);
+  };
+}
+
 describe('CollectionBacklogService', () => {
   it('parses explicit duration formats without guessing ambiguous values', () => {
     expect(parseEpisodeDurationSeconds('24m')).toBe(24 * 60);
@@ -157,6 +226,160 @@ describe('CollectionBacklogService', () => {
     });
     expect(JSON.stringify(result)).not.toContain('private comment');
     expect(result.evidence[1]?.formulaVersion).toBe('collection-backlog-v2');
+  });
+
+  it('matches a complete official calendar and assigns high evidence-completeness confidence', async () => {
+    const fetchFn = scheduledFetch(calendarPayload({ 1: [calendarItem(1, 1)] }));
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('complete');
+    expect(result.coverage.schedule).toMatchObject({
+      state: 'complete',
+      attempted: true,
+      expectedDays: 7,
+      sourceDayCount: 7,
+      matchedItems: 1,
+    });
+    expect(row?.schedule).toMatchObject({
+      state: 'matched',
+      weekday: { id: 1, cn: '星期1' },
+      airDate: '2026-08-24',
+      airWeekday: 1,
+    });
+    expect(row?.confidence).toMatchObject({ level: 'high' });
+    expect(result.data.summary).toMatchObject({
+      scheduleMatchedItems: 1,
+      scheduleNotObservedItems: 0,
+      scheduleUnknownItems: 0,
+      confidenceHighItems: 1,
+    });
+    expect(result.source.calendar).toMatchObject({
+      class: 'official-legacy',
+      operation: 'GET /calendar',
+    });
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'official-legacy', operations: ['GET /calendar'] }),
+        expect.objectContaining({
+          formulaVersion: 'collection-backlog-schedule-v1',
+        }),
+        expect.objectContaining({
+          formulaVersion: 'collection-backlog-confidence-v1',
+        }),
+      ]),
+    );
+  });
+
+  it('distinguishes a complete calendar no-match from an unobserved schedule claim', async () => {
+    const fetchFn = scheduledFetch(calendarPayload({ 1: [calendarItem(2, 1)] }));
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('complete');
+    expect(row?.schedule.state).toBe('not_observed');
+    expect(row?.schedule.reason).toContain('不等于本周没有播出');
+    expect(row?.confidence.level).toBe('medium');
+    expect(result.data.summary.scheduleNotObservedItems).toBe(1);
+    expect(result.data.summary.scheduleUnknownItems).toBe(0);
+  });
+
+  it('keeps a missing calendar weekday unknown instead of treating it as no schedule', async () => {
+    const incompleteCalendar = calendarPayload({ 1: [calendarItem(2, 1)] }).slice(0, 6);
+    const fetchFn = scheduledFetch(incompleteCalendar);
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.schedule).toMatchObject({
+      state: 'partial',
+      sourceDayCount: 6,
+      missingWeekdays: [7],
+    });
+    expect(row?.schedule.state).toBe('unknown');
+    expect(row?.schedule.reason).toContain('不能证明没有 schedule');
+    expect(row?.confidence.level).toBe('unknown');
+    expect(result.warnings.some((warning) => warning.code === 'PARTIAL_SCHEDULE_COVERAGE')).toBe(
+      true,
+    );
+  });
+
+  it('keeps a duplicate calendar subject explicitly unknown', async () => {
+    const completeCalendar = calendarPayload({ 1: [calendarItem(1, 1)] });
+    const duplicateCalendar = [...completeCalendar, completeCalendar[0]];
+    const fetchFn = scheduledFetch(duplicateCalendar);
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.schedule.duplicateWeekdays).toEqual([1]);
+    expect(result.coverage.schedule.duplicateRows).toBe(1);
+    expect(row?.schedule).toMatchObject({
+      state: 'unknown',
+      reason: '官方 calendar 含重复 subject id，无法确定该条目的唯一 schedule',
+    });
+  });
+
+  it('keeps calendar transport and parser failures unavailable and confidence unknown', async () => {
+    const fetchFn = scheduledFetch({ message: 'calendar unavailable' }, { calendarStatus: 503 });
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.schedule.state).toBe('unavailable');
+    expect(row?.schedule.state).toBe('unknown');
+    expect(row?.confidence.level).toBe('unknown');
+    expect(result.warnings.some((warning) => warning.code === 'SCHEDULE_SOURCE_UNAVAILABLE')).toBe(
+      true,
+    );
+
+    const invalidCalendarFetch = scheduledFetch(
+      calendarPayload({ 1: [{ ...calendarItem(1, 1), air_weekday: 8 }] }),
+    );
+    const invalidResult = await new CollectionBacklogService(
+      buildClient(invalidCalendarFetch),
+      new HttpClient({ fetchFn: invalidCalendarFetch }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    expect(invalidResult.coverage.schedule.state).toBe('unavailable');
+    expect(invalidResult.data.items[0]?.schedule.state).toBe('unknown');
+  });
+
+  it('reports low confidence when episode coverage is partial even with a matched schedule', async () => {
+    const fetchFn = scheduledFetch(calendarPayload({ 1: [calendarItem(1, 1)] }), {
+      collectionEpisodes: 3,
+      episodeBody: {
+        total: 3,
+        limit: 2,
+        offset: 0,
+        data: [episodeRow(1, 0, 2), episodeRow(2, 0, 1)],
+      },
+    });
+    const result = await new CollectionBacklogService(
+      buildClient(fetchFn),
+      new HttpClient({ fetchFn }),
+    ).getCollectionBacklog('account-owner', { includeSchedule: true });
+    const row = result.data.items[0];
+
+    expect(result.state).toBe('partial');
+    expect(row?.state).toBe('partial');
+    expect(row?.schedule.state).toBe('matched');
+    expect(row?.confidence.level).toBe('low');
+    expect(row?.confidence.reasons.join(' ')).toContain('confidence 只表示证据完整度');
   });
 
   it('calculates observed pending minutes and stably sorts known estimates before unknown ones', async () => {

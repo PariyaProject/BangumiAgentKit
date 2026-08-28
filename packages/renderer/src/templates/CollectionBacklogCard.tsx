@@ -75,12 +75,31 @@ function durationLabel(item: CollectionBacklogViewModel['items'][number]): strin
     : `${estimate} · ${coverage}`;
 }
 
+function scheduleLabel(item: CollectionBacklogViewModel['items'][number]): string {
+  if (item.schedule.state === 'matched') {
+    const weekday =
+      item.schedule.weekday?.cn ||
+      item.schedule.weekday?.en ||
+      item.schedule.weekday?.ja ||
+      '星期未知';
+    return `计划 ${weekday}${item.schedule.airDate ? ` · ${item.schedule.airDate}` : ''}`;
+  }
+  if (item.schedule.state === 'not_observed') return '计划未在完整七日观察中出现';
+  return `计划未知 · ${boundedText(item.schedule.reason, 120)}`;
+}
+
+function confidenceLabel(item: CollectionBacklogViewModel['items'][number]): string {
+  const labels = { high: '高', medium: '中', low: '低', unknown: '未知' } as const;
+  return `证据完整度 ${labels[item.confidence.level]}`;
+}
+
 export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
   viewModel,
   theme,
   width,
 }) => {
   const hasItems = viewModel.items.length > 0 && viewModel.state !== 'unavailable';
+  const scheduleCoverage = viewModel.coverage.schedule;
   const summary = [
     ['符合状态', String(viewModel.summary.eligibleItems)],
     ['已返回', String(viewModel.summary.returnedItems)],
@@ -93,6 +112,8 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
     ],
     ['已播完未看完*', String(viewModel.summary.finishedIncompleteItems)],
     ['可计算条目', String(viewModel.summary.completeItems)],
+    ['计划已匹配', String(viewModel.summary.scheduleMatchedItems ?? 0)],
+    ['完整度高', String(viewModel.summary.confidenceHighItems ?? 0)],
   ];
 
   return (
@@ -105,6 +126,14 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
         只读取当前账号的动画收藏与正篇 episode collection；不显示评论或写入任何进度。
+      </div>
+      <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
+        来源：{viewModel.source.class}
+        {viewModel.source.calendar
+          ? ` + ${viewModel.source.calendar.class} ${viewModel.source.calendar.operation}`
+          : ' · 未请求七日 calendar'}{' '}
+        · 计划覆盖：{scheduleCoverage.state} · 星期 {scheduleCoverage.sourceDayCount}/7 · 已匹配{' '}
+        {scheduleCoverage.matchedItems}
       </div>
 
       {viewModel.coverage.hydration.budgetExceeded || viewModel.coverage.collection.truncated ? (
@@ -201,8 +230,9 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
                     </span>
                   </div>
                   <div style={{ color: theme.textMuted, lineHeight: 1.5, marginTop: '2px' }}>
-                    {progressLabel(item)} · {durationLabel(item)} · {airingLabel(item.airingState)}{' '}
-                    · {rowStateLabel(item.state)}
+                    {progressLabel(item)} · {durationLabel(item)} · {scheduleLabel(item)} ·{' '}
+                    {confidenceLabel(item)} · {airingLabel(item.airingState)} ·{' '}
+                    {rowStateLabel(item.state)}
                     {item.airingState === 'unknown' && item.airingReason
                       ? ` · ${boundedText(item.airingReason)}`
                       : ''}
@@ -237,6 +267,12 @@ export const CollectionBacklogCard: React.FC<CollectionBacklogCardProps> = ({
         {viewModel.evidence.authScope}
         {viewModel.evidence.durationFormulaVersion
           ? ` · 时长公式：${viewModel.evidence.durationFormulaVersion}`
+          : ''}
+        {viewModel.evidence.scheduleFormulaVersion
+          ? ` · schedule 公式：${viewModel.evidence.scheduleFormulaVersion}`
+          : ''}
+        {viewModel.evidence.confidenceFormulaVersion
+          ? ` · confidence 公式：${viewModel.evidence.confidenceFormulaVersion}`
           : ''}
         {viewModel.source.retrievedAt ? ` · ${viewModel.source.retrievedAt}` : ''}
       </div>
