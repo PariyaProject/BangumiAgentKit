@@ -3,6 +3,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   PersonCollaborationService,
   PERSON_COLLABORATION_FANOUT_CONCURRENCY,
+  PERSON_COLLABORATION_MAX_SOURCE_ROWS,
 } from '@bangumi-agent-kit/bangumi-core';
 
 function json(value: unknown, status = 200): Response {
@@ -183,5 +184,298 @@ describe('PersonCollaborationService', () => {
         expect.objectContaining({ reason: 'collaborator_role_excluded', count: 1 }),
       ]),
     );
+  });
+
+  it('marks a combined result partial when one required relation source fails', async () => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) return json([]);
+      if (url.endsWith('/v0/persons/20/characters')) return json({ error: 'temporary' }, 503);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'all', media: 'all' });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      relationRowsObserved: 0,
+      participantRequests: 0,
+      participantRequestsFailed: 0,
+    });
+    expect(result.sourceOperations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/persons/{person_id}/characters',
+          attempted: 1,
+          succeeded: 0,
+          failed: 1,
+          outcomes: [
+            expect.objectContaining({ state: 'failed', errorCode: 'UPSTREAM_UNAVAILABLE' }),
+          ],
+        }),
+      ]),
+    );
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/persons/{person_id}/characters',
+          outcome: 'failed',
+          errorCode: 'UPSTREAM_UNAVAILABLE',
+        }),
+      ]),
+    );
+  });
+
+  it('prioritizes a person NOT_FOUND result over unavailable relation sources', async () => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json({ message: 'missing' }, 404);
+      if (url.endsWith('/v0/persons/20/subjects')) return json({ error: 'temporary' }, 503);
+      if (url.endsWith('/v0/persons/20/characters')) return json({ error: 'temporary' }, 503);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'all', media: 'all' });
+
+    expect(result.state).toBe('not_found');
+    expect(result.person).toBeUndefined();
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'PERSON_NOT_FOUND' })]),
+    );
+  });
+
+  it.each([
+    ['object envelope', { data: [] }],
+    ['null envelope', null],
+    ['primitive envelope', 'malformed'],
+  ])('does not throw for a malformed relation %s', async (_label, malformed) => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) return json(malformed);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'staff', media: 'all' });
+
+    expect(result.state).toBe('unavailable');
+    expect(result.collaborators).toEqual([]);
+    expect(result.sourceOperations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/persons/{person_id}/subjects',
+          failed: 1,
+          outcomes: [expect.objectContaining({ errorCode: 'SCHEMA_DRIFT' })],
+        }),
+      ]),
+    );
+  });
+
+  it('validates the person identity envelope before mapping it', async () => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json({ name: 'Missing stable id' });
+      if (url.endsWith('/v0/persons/20/subjects')) return json([]);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'staff', media: 'all' });
+
+    expect(result.state).toBe('partial');
+    expect(result.person).toBeUndefined();
+    expect(result.sourceOperations[0]).toMatchObject({
+      operation: 'GET /v0/persons/{person_id}',
+      failed: 1,
+      outcomes: [expect.objectContaining({ errorCode: 'SCHEMA_DRIFT' })],
+    });
+  });
+
+  it('marks missing target identity fields as partial instead of silently treating them as valid', async () => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return json([
+          { id: 1, name: 'Known subject', staff: '导演' },
+          { type: 2, name: 'Missing subject id', staff: '导演' },
+        ]);
+      }
+      if (url.endsWith('/v0/subjects/1/persons')) return json([]);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'staff', media: 'all' });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      relationRowsObserved: 2,
+      relationRowsMatchingFilters: 1,
+      missingSubjectIdRows: 1,
+      missingSubjectTypeRows: 1,
+    });
+    expect(result.exclusions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: 'missing_subject_id', count: 1 }),
+        expect.objectContaining({ reason: 'missing_subject_type', count: 1 }),
+      ]),
+    );
+  });
+
+  it('preserves source row omissions and partial state at the relation response boundary', async () => {
+    const subjects = Array.from(
+      { length: PERSON_COLLABORATION_MAX_SOURCE_ROWS + 1 },
+      (_, index) => ({
+        id: index + 1,
+        type: 2,
+        name: `Subject ${index + 1}`,
+        staff: '导演',
+      }),
+    );
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) return json(subjects);
+      if (/\/v0\/subjects\/\d+\/persons$/.test(url)) return json([]);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'staff', media: 'all', maxSubjects: 1 });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      relationRowsObserved: PERSON_COLLABORATION_MAX_SOURCE_ROWS,
+      relationRowsDroppedAtSourceLimit: 1,
+      sampled: true,
+    });
+    expect(result.sourceOperations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/persons/{person_id}/subjects',
+          rowsOmitted: 1,
+          outcomes: [expect.objectContaining({ rowsOmitted: 1 })],
+        }),
+      ]),
+    );
+  });
+
+  it('preserves source row omissions and partial state at the participant response boundary', async () => {
+    const participants = Array.from(
+      { length: PERSON_COLLABORATION_MAX_SOURCE_ROWS + 1 },
+      (_, index) => ({ id: index + 1000, name: `Collaborator ${index + 1000}`, relation: '编剧' }),
+    );
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return json([{ id: 1, type: 2, name: 'Subject', staff: '导演' }]);
+      }
+      if (url.endsWith('/v0/subjects/1/persons')) return json(participants);
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, {
+      kind: 'staff',
+      media: 'all',
+      maxSubjects: 1,
+      maxCollaborators: 50,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      participantRowsObserved: PERSON_COLLABORATION_MAX_SOURCE_ROWS,
+      participantRowsDroppedAtSourceLimit: 1,
+      collaboratorsObserved: PERSON_COLLABORATION_MAX_SOURCE_ROWS,
+      collaboratorsReturned: 50,
+      truncated: true,
+    });
+    expect(result.sourceOperations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/subjects/{subject_id}/persons',
+          rowsOmitted: 1,
+          outcomes: [expect.objectContaining({ rowsOmitted: 1 })],
+        }),
+      ]),
+    );
+  });
+
+  it('marks shared-work evidence omissions as partial', async () => {
+    const subjects = Array.from({ length: 13 }, (_, index) => ({
+      id: index + 1,
+      type: 2,
+      name: `Subject ${index + 1}`,
+      staff: '导演',
+    }));
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) return json(subjects);
+      if (/\/v0\/subjects\/\d+\/persons$/.test(url)) {
+        return json([{ id: 2, name: 'Collaborator', relation: '编剧' }]);
+      }
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, {
+      kind: 'staff',
+      media: 'all',
+      maxSubjects: 13,
+      maxSharedSubjects: 1,
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage).toMatchObject({
+      sharedSubjectRowsObserved: 13,
+      sharedSubjectRowsReturned: 1,
+      sharedSubjectRowsOmittedAtLimit: 12,
+      truncated: true,
+    });
+    expect(result.collaborators[0]).toMatchObject({ sharedSubjectsOmitted: 12 });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'SHARED_SUBJECT_OUTPUT_LIMIT_REACHED' }),
+      ]),
+    );
+  });
+
+  it('sorts equal collaboration counts with locale-independent normalization and ID tie breaks', async () => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return json([1, 2, 3].map((id) => ({ id, type: 2, name: `Subject ${id}`, staff: '导演' })));
+      }
+      if (/\/v0\/subjects\/\d+\/persons$/.test(url)) {
+        return json([
+          { id: 2, name: 'I', relation: '编剧' },
+          { id: 3, name: 'İ', relation: '编剧' },
+          { id: 4, name: 'i', relation: '编剧' },
+        ]);
+      }
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'staff', media: 'all', maxSubjects: 3 });
+
+    expect(result.collaborators.map((collaborator) => collaborator.id)).toEqual([2, 4, 3]);
   });
 });

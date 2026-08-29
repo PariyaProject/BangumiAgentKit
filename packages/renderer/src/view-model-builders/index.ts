@@ -1867,6 +1867,7 @@ export function buildPersonCollaborationViewModel(
     coverage,
     exclusions: result.exclusions,
     sourceOperations: result.sourceOperations,
+    evidence: result.evidence,
     limitations: result.limitations,
     warnings: result.warnings,
     source: {

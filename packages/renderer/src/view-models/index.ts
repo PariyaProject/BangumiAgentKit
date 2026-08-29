@@ -746,6 +746,9 @@ export interface PersonCollaborationViewModel {
     subjectIdsSelected: number;
     subjectIdsDroppedAtRelationLimit: number;
     subjectIdsDroppedAtSubjectLimit: number;
+    relationRowsDroppedAtSourceLimit: number;
+    fanoutRowsDroppedAtSourceLimit: number;
+    participantRowsDroppedAtSourceLimit: number;
     participantRequests: number;
     participantRequestsSucceeded: number;
     participantRequestsFailed: number;
@@ -771,6 +774,7 @@ export interface PersonCollaborationViewModel {
     mediaUnknownRows: number;
     targetRoleExcludedRows: number;
     missingSubjectIdRows: number;
+    missingSubjectTypeRows: number;
     truncated: boolean;
   };
   exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
@@ -779,6 +783,23 @@ export interface PersonCollaborationViewModel {
     attempted: number;
     succeeded: number;
     failed: number;
+    rowsOmitted?: number;
+    outcomes: Array<{
+      state: 'succeeded' | 'failed';
+      retrievedAt: string;
+      errorCode?: string;
+      rowsOmitted?: number;
+    }>;
+  }>;
+  evidence: Array<{
+    source: 'official-v0' | 'derived-s7';
+    operation: string;
+    retrievedAt?: string;
+    outcome?: 'succeeded' | 'failed';
+    errorCode?: string;
+    rowsOmitted?: number;
+    formulaVersion?: string;
+    description?: string;
   }>;
   limitations: string[];
   warnings: Array<{ code: string; state: string; message: string }>;

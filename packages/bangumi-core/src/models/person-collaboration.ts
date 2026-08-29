@@ -46,6 +46,7 @@ export interface PersonCollaborationCollaborator {
 
 export type PersonCollaborationExclusionReason =
   | 'missing_subject_id'
+  | 'missing_subject_type'
   | 'target_role_excluded'
   | 'media_excluded'
   | 'media_unknown'
@@ -56,7 +57,8 @@ export type PersonCollaborationExclusionReason =
   | 'self_collaboration'
   | 'fanout_unavailable'
   | 'collaborator_output_cap'
-  | 'shared_subject_output_cap';
+  | 'shared_subject_output_cap'
+  | 'source_response_cap';
 
 export interface PersonCollaborationExclusion {
   reason: PersonCollaborationExclusionReason;
@@ -69,6 +71,13 @@ export interface PersonCollaborationSourceOperation {
   attempted: number;
   succeeded: number;
   failed: number;
+  rowsOmitted?: number;
+  outcomes: Array<{
+    state: 'succeeded' | 'failed';
+    retrievedAt: string;
+    errorCode?: string;
+    rowsOmitted?: number;
+  }>;
 }
 
 export interface PersonCollaborationCoverage {
@@ -82,6 +91,9 @@ export interface PersonCollaborationCoverage {
   subjectIdsSelected: number;
   subjectIdsDroppedAtRelationLimit: number;
   subjectIdsDroppedAtSubjectLimit: number;
+  relationRowsDroppedAtSourceLimit: number;
+  fanoutRowsDroppedAtSourceLimit: number;
+  participantRowsDroppedAtSourceLimit: number;
   participantRequests: number;
   participantRequestsSucceeded: number;
   participantRequestsFailed: number;
@@ -107,6 +119,7 @@ export interface PersonCollaborationCoverage {
   mediaUnknownRows: number;
   targetRoleExcludedRows: number;
   missingSubjectIdRows: number;
+  missingSubjectTypeRows: number;
   truncated: boolean;
   retrievedAt: string;
 }
@@ -127,6 +140,9 @@ export interface PersonCollaborationResult {
     source: 'official-v0' | 'derived-s7';
     operation: string;
     retrievedAt?: string;
+    outcome?: 'succeeded' | 'failed';
+    errorCode?: string;
+    rowsOmitted?: number;
     formulaVersion?: string;
     description?: string;
   }>;

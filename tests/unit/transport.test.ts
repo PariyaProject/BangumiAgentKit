@@ -157,6 +157,25 @@ describe('Phase 2: HTTP Transport Tests', () => {
     }
   });
 
+  it('rejects response bodies above the explicit byte ceiling before JSON parsing', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ payload: 'x'.repeat(128) }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    const client = new HttpClient();
+    await expect(
+      client.request({
+        path: '/v0/subjects/1',
+        fetchFn: mockFetch as any,
+        maxResponseBytes: 32,
+      }),
+    ).rejects.toMatchObject({ code: 'RESPONSE_TOO_LARGE' });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('retries read-only (GET) requests up to maxRetries on 500', async () => {
     const mockFetch = vi
       .fn()

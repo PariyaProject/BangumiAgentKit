@@ -1592,6 +1592,133 @@ function presentArtifact(value: Record<string, unknown>): string | undefined {
   return `Artifact: ${String(ref.id)}${dimensions}`;
 }
 
+function presentPersonCollaboration(value: Record<string, unknown>): string | undefined {
+  const personId = value.personId;
+  const collaborators = Array.isArray(value.collaborators) ? value.collaborators : undefined;
+  const coverage = comparisonRecord(value.coverage);
+  const sourceOperations = Array.isArray(value.sourceOperations)
+    ? value.sourceOperations
+    : undefined;
+  const evidence = Array.isArray(value.evidence) ? value.evidence : undefined;
+  if (
+    typeof personId !== 'number' ||
+    !collaborators ||
+    !coverage ||
+    !sourceOperations ||
+    !evidence
+  ) {
+    return undefined;
+  }
+
+  const person = comparisonRecord(value.person);
+  const kindLabels: Record<string, string> = {
+    voice: '声优合作',
+    staff: '制作人员合作',
+    all: '声优与制作人员合作',
+  };
+  const mediaLabels: Record<string, string> = { anime: '动画', all: '全部媒介' };
+  const lines = [
+    `人物合作网络 · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 32)}`,
+    `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)}`,
+  ];
+  if (value.targetRole || value.collaboratorRole) {
+    lines.push(
+      `筛选: ${value.targetRole ? `目标标签 ${humanField(value.targetRole, 96)}` : ''}${value.targetRole && value.collaboratorRole ? ' · ' : ''}${value.collaboratorRole ? `合作方职位 ${humanField(value.collaboratorRole, 96)}` : ''}`,
+    );
+  }
+  lines.push(
+    `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · fan-out ${humanField(coverage.participantRequestsSucceeded ?? '?', 32)}/${humanField(coverage.participantRequests ?? '?', 32)} 成功 · 参与者 ${humanField(coverage.participantRowsReturned ?? '?', 32)}/${humanField(coverage.participantRowsObserved ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
+  );
+  lines.push(
+    `安全边界: 关系响应省略 ${humanField(coverage.relationRowsDroppedAtSourceLimit ?? 0, 32)} · fan-out 响应省略 ${humanField(coverage.fanoutRowsDroppedAtSourceLimit ?? 0, 32)} · 参与者省略 ${humanField(coverage.participantRowsDroppedAtSourceLimit ?? 0, 32)} · 共同作品证据省略 ${humanField(coverage.sharedSubjectRowsOmittedAtLimit ?? 0, 32)}`,
+  );
+
+  lines.push('来源操作：');
+  for (const rawOperation of sourceOperations.slice(0, 8)) {
+    const operation = comparisonRecord(rawOperation);
+    if (!operation) continue;
+    const outcomes = Array.isArray(operation.outcomes) ? operation.outcomes : [];
+    const outcomeText = outcomes
+      .slice(0, 4)
+      .map((rawOutcome) => {
+        const outcome = comparisonRecord(rawOutcome);
+        if (!outcome) return undefined;
+        return `${outcome.state || 'unknown'}${outcome.errorCode ? `/${outcome.errorCode}` : ''}${outcome.retrievedAt ? ` @ ${outcome.retrievedAt}` : ''}`;
+      })
+      .filter((item): item is string => Boolean(item))
+      .join(' · ');
+    lines.push(
+      `- ${humanField(operation.operation || 'unknown', 180)} · ${humanField(operation.succeeded ?? '?', 16)}/${humanField(operation.attempted ?? '?', 16)} 成功${operation.failed ? ` · 失败 ${humanField(operation.failed, 16)}` : ''}${operation.rowsOmitted ? ` · 省略 ${humanField(operation.rowsOmitted, 16)}` : ''}${outcomeText ? ` · ${humanField(outcomeText, 260)}` : ''}`,
+    );
+  }
+  if (sourceOperations.length > 8) {
+    lines.push(`- 另有 ${humanField(sourceOperations.length - 8, 32)} 个来源操作未展开。`);
+  }
+
+  lines.push('共同人物：');
+  for (const [index, rawCollaborator] of collaborators.slice(0, 12).entries()) {
+    const collaborator = comparisonRecord(rawCollaborator);
+    if (!collaborator) continue;
+    const sharedSubjects = Array.isArray(collaborator.sharedSubjects)
+      ? collaborator.sharedSubjects
+      : [];
+    const names = sharedSubjects
+      .slice(0, 3)
+      .map((rawSubject) => {
+        const subject = comparisonRecord(rawSubject);
+        return subject
+          ? humanField(subject.nameCn || subject.name || `条目 ${subject.id || '?'}`, 96)
+          : undefined;
+      })
+      .filter((item): item is string => Boolean(item));
+    const relationLabels = Array.isArray(collaborator.relationLabels)
+      ? collaborator.relationLabels
+          .filter((label): label is string => typeof label === 'string')
+          .join('、')
+      : '关系';
+    lines.push(
+      `${index + 1}. ${humanField(collaborator.nameCn || collaborator.name || `人物 ${collaborator.id || '?'}`, 180)} · ID ${humanField(collaborator.id ?? '?', 32)} · 共同作品 ${humanField(collaborator.uniqueSubjects ?? '?', 32)} · ${humanField(relationLabels, 64)}${names.length ? ` · ${names.join('、')}` : ''}${collaborator.sharedSubjectsOmitted ? ` · 另有 ${humanField(collaborator.sharedSubjectsOmitted, 32)} 部证据省略` : ''}`,
+    );
+  }
+  if (collaborators.length > 12) {
+    lines.push(`另有 ${humanField(collaborators.length - 12, 32)} 位合作人物未展开。`);
+  }
+
+  const formula = evidence.find((item) => {
+    const details = comparisonRecord(item);
+    return details?.source === 'derived-s7';
+  });
+  const formulaDetails = comparisonRecord(formula);
+  if (formulaDetails) {
+    lines.push(
+      `推导公式: ${humanField(formulaDetails.formulaVersion || '未记录', 96)} · ${humanField(formulaDetails.description || '未记录', 360)}${formulaDetails.retrievedAt ? ` · 获取于 ${humanField(formulaDetails.retrievedAt, 64)}` : ''}`,
+    );
+  }
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 4)) {
+      const warning = comparisonRecord(rawWarning);
+      if (!warning) continue;
+      lines.push(
+        `- ${humanField(warning.code || 'WARNING', 80)} · ${humanField(warning.message || '')}`,
+      );
+    }
+    if (warnings.length > 4) {
+      lines.push(`- 另有 ${humanField(warnings.length - 4, 32)} 条告警未展开。`);
+    }
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 4) {
+      lines.push(`- 另有 ${humanField(limitations.length - 4, 32)} 条限制未展开。`);
+    }
+  }
+  return boundHumanLines(lines);
+}
+
 function presentCollectionDashboard(value: Record<string, unknown>): string | undefined {
   const data = value.data;
   if (!data || typeof data !== 'object') return undefined;
@@ -1753,6 +1880,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const personCollaboration = presentPersonCollaboration(safe as Record<string, unknown>);
+    if (personCollaboration) return personCollaboration;
     const calendar = presentCalendar(safe as Record<string, unknown>);
     if (calendar) return calendar;
     const subjectStatsHistory = presentSubjectStatsHistory(safe as Record<string, unknown>);

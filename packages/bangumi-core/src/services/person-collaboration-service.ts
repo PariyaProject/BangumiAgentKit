@@ -22,9 +22,8 @@ export const PERSON_COLLABORATION_MAX_RELATIONS = 120;
 export const PERSON_COLLABORATION_MAX_SUBJECTS = 36;
 export const PERSON_COLLABORATION_MAX_COLLABORATORS = 50;
 export const PERSON_COLLABORATION_MAX_SHARED_SUBJECTS = 20;
-
-type RelatedPerson = components['schemas']['RelatedPerson'];
-type RelatedCharacter = components['schemas']['RelatedCharacter'];
+export const PERSON_COLLABORATION_MAX_RESPONSE_BYTES = 1_048_576;
+export const PERSON_COLLABORATION_MAX_SOURCE_ROWS = 2_000;
 
 interface TargetCandidate {
   relationKind: PersonCollaborationRelationKind;
@@ -83,6 +82,18 @@ interface DetailFailure {
 interface SafeResult<T> {
   value?: T;
   failure?: DetailFailure;
+  attempted: boolean;
+  retrievedAt?: string;
+  rowsOmitted: number;
+}
+
+class CollaborationSchemaError extends Error {
+  readonly code = 'SCHEMA_DRIFT';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'CollaborationSchemaError';
+  }
 }
 
 function bounded(value: number | undefined, fallback: number, maximum: number): number {
@@ -99,7 +110,13 @@ function text(value: unknown): string | undefined {
 }
 
 function normalized(value: string): string {
-  return value.trim().toLocaleLowerCase();
+  return value.trim().toLowerCase();
+}
+
+function stableTextCompare(left: string, right: string): number {
+  const normalizedLeft = normalized(left);
+  const normalizedRight = normalized(right);
+  return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
 }
 
 function matchesLiteral(value: string | undefined, filter: string | undefined): boolean {
@@ -141,17 +158,36 @@ function selectEvenly<T>(values: readonly T[], limit: number): T[] {
   return selected;
 }
 
+function boundedSourceRows<T>(values: readonly T[]): { rows: T[]; omitted: number } {
+  const rows = selectEvenly(values, PERSON_COLLABORATION_MAX_SOURCE_ROWS);
+  return { rows, omitted: values.length - rows.length };
+}
+
 function sourceOperation(
   operations: PersonCollaborationSourceOperation[],
   operation: string,
-  attempted: number,
-  succeeded: number,
-  failed: number,
+  results: readonly SafeResult<unknown>[],
 ): void {
-  operations.push({ operation, attempted, succeeded, failed });
+  const attempted = results.filter((result) => result.attempted);
+  const succeeded = attempted.filter((result) => result.value !== undefined);
+  const failed = attempted.filter((result) => result.value === undefined);
+  operations.push({
+    operation,
+    attempted: attempted.length,
+    succeeded: succeeded.length,
+    failed: failed.length,
+    rowsOmitted: results.reduce((total, result) => total + result.rowsOmitted, 0),
+    outcomes: attempted.map((result) => ({
+      state: result.value !== undefined ? ('succeeded' as const) : ('failed' as const),
+      retrievedAt: result.retrievedAt!,
+      ...(result.failure?.code ? { errorCode: result.failure.code } : {}),
+      ...(result.rowsOmitted > 0 ? { rowsOmitted: result.rowsOmitted } : {}),
+    })),
+  });
 }
 
 function sourceFailureCode(error: unknown): string {
+  if (error instanceof CollaborationSchemaError) return error.code;
   return toPublicError(error).code;
 }
 
@@ -184,7 +220,9 @@ function exclusionList(
       count: value.count,
       sampleSubjectIds: Array.from(value.sampleSubjectIds),
     }))
-    .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason));
+    .sort(
+      (left, right) => right.count - left.count || stableTextCompare(left.reason, right.reason),
+    );
 }
 
 function operationUnavailable(
@@ -206,7 +244,7 @@ function relationKindsForKind(kind: PersonCollaborationKind): PersonCollaboratio
 }
 
 function personImage(value: unknown): string | undefined {
-  if (!value || typeof value !== 'object') return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const images = value as Record<string, unknown>;
   return text(images.medium) || text(images.small) || text(images.grid) || text(images.large);
 }
@@ -217,8 +255,24 @@ function personCareer(value: unknown): string[] {
     : [];
 }
 
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function validatePersonEnvelope(raw: unknown, expectedId: number): components['schemas']['Person'] {
+  const value = recordValue(raw);
+  if (positiveInteger(value.id) !== expectedId) {
+    throw new CollaborationSchemaError(
+      `Person response must contain the requested stable id ${expectedId}.`,
+    );
+  }
+  return raw as components['schemas']['Person'];
+}
+
 function mapSubjectTarget(raw: unknown): TargetCandidate {
-  const value = (raw || {}) as Record<string, unknown>;
+  const value = recordValue(raw);
   const subjectTypeCode = positiveInteger(value.type);
   return {
     relationKind: 'staff',
@@ -233,7 +287,7 @@ function mapSubjectTarget(raw: unknown): TargetCandidate {
 }
 
 function mapCharacterTarget(raw: unknown): TargetCandidate {
-  const value = (raw || {}) as Record<string, unknown>;
+  const value = recordValue(raw);
   const subjectTypeCode = positiveInteger(value.subject_type);
   return {
     relationKind: 'voice',
@@ -249,6 +303,10 @@ function mapCharacterTarget(raw: unknown): TargetCandidate {
 
 function addString(set: Set<string>, value: string | undefined): void {
   if (value) set.add(value);
+}
+
+function skippedResult<T>(): SafeResult<T[]> {
+  return { attempted: false, rowsOmitted: 0 };
 }
 
 export class PersonCollaborationService {
@@ -287,23 +345,29 @@ export class PersonCollaborationService {
       { count: number; sampleSubjectIds: Set<number> }
     >();
 
-    const personResult = await this.safeRequest(() => this.api.getPersonById(personId));
-    sourceOperation(
-      sourceOperations,
-      'GET /v0/persons/{person_id}',
-      1,
-      personResult.value ? 1 : 0,
-      personResult.value ? 0 : 1,
+    const personResult = await this.safeRequest(() =>
+      this.api
+        .getPersonById(personId, { maxResponseBytes: PERSON_COLLABORATION_MAX_RESPONSE_BYTES })
+        .then((value) => validatePersonEnvelope(value, personId)),
     );
+    sourceOperation(sourceOperations, 'GET /v0/persons/{person_id}', [personResult]);
 
     const subjectPromise =
       kind === 'voice'
-        ? Promise.resolve<SafeResult<RelatedPerson[]>>({ value: undefined })
-        : this.safeRequest(() => this.api.getRelatedSubjectsByPersonId(personId));
+        ? Promise.resolve(skippedResult<unknown>())
+        : this.safeArrayRequest<unknown>(() =>
+            this.api.getRelatedSubjectsByPersonId(personId, {
+              maxResponseBytes: PERSON_COLLABORATION_MAX_RESPONSE_BYTES,
+            }),
+          );
     const characterPromise =
       kind === 'staff'
-        ? Promise.resolve<SafeResult<RelatedCharacter[]>>({ value: undefined })
-        : this.safeRequest(() => this.api.getRelatedCharactersByPersonId(personId));
+        ? Promise.resolve(skippedResult<unknown>())
+        : this.safeArrayRequest<unknown>(() =>
+            this.api.getRelatedCharactersByPersonId(personId, {
+              maxResponseBytes: PERSON_COLLABORATION_MAX_RESPONSE_BYTES,
+            }),
+          );
     const [subjectResult, characterResult] = await Promise.all([subjectPromise, characterPromise]);
 
     const rawCandidates: TargetCandidate[] = [
@@ -320,25 +384,22 @@ export class PersonCollaborationService {
       ...(kind === 'voice' || kind === 'all' ? ['GET /v0/persons/{person_id}/characters'] : []),
     ];
     if (kind === 'staff' || kind === 'all') {
-      sourceOperation(
-        sourceOperations,
-        'GET /v0/persons/{person_id}/subjects',
-        1,
-        subjectResult.value ? 1 : 0,
-        subjectResult.value ? 0 : 1,
-      );
+      sourceOperation(sourceOperations, 'GET /v0/persons/{person_id}/subjects', [subjectResult]);
     }
     if (kind === 'voice' || kind === 'all') {
-      sourceOperation(
-        sourceOperations,
-        'GET /v0/persons/{person_id}/characters',
-        1,
-        characterResult.value ? 1 : 0,
-        characterResult.value ? 0 : 1,
-      );
+      sourceOperation(sourceOperations, 'GET /v0/persons/{person_id}/characters', [
+        characterResult,
+      ]);
+    }
+
+    const relationRowsDroppedAtSourceLimit =
+      subjectResult.rowsOmitted + characterResult.rowsOmitted;
+    if (relationRowsDroppedAtSourceLimit > 0) {
+      addExclusion(exclusions, 'source_response_cap', undefined, relationRowsDroppedAtSourceLimit);
     }
 
     let missingSubjectIdRows = 0;
+    let missingSubjectTypeRows = 0;
     let targetRoleExcludedRows = 0;
     let mediaExcludedRows = 0;
     let mediaUnknownRows = 0;
@@ -348,6 +409,10 @@ export class PersonCollaborationService {
         missingSubjectIdRows += 1;
         addExclusion(exclusions, 'missing_subject_id');
         continue;
+      }
+      if (candidate.subjectTypeCode === undefined) {
+        missingSubjectTypeRows += 1;
+        addExclusion(exclusions, 'missing_subject_type', candidate.subjectId);
       }
       if (!matchesLiteral(candidate.targetRole, targetRole)) {
         targetRoleExcludedRows += 1;
@@ -443,16 +508,25 @@ export class PersonCollaborationService {
       const results = await Promise.all(
         batch.map(async (task) => ({
           task,
-          result: await this.safeRequest(async (): Promise<unknown[]> => {
+          result: await this.safeArrayRequest(async (): Promise<unknown[]> => {
             if (task.relationKind === 'voice') {
-              return await this.api.getRelatedCharactersBySubjectId(task.subjectId);
+              return await this.api.getRelatedCharactersBySubjectId(task.subjectId, {
+                maxResponseBytes: PERSON_COLLABORATION_MAX_RESPONSE_BYTES,
+              });
             }
-            return await this.api.getRelatedPersonsBySubjectId(task.subjectId);
+            return await this.api.getRelatedPersonsBySubjectId(task.subjectId, {
+              maxResponseBytes: PERSON_COLLABORATION_MAX_RESPONSE_BYTES,
+            });
           }),
         })),
       );
       fanoutResults.push(...results);
     }
+
+    const fanoutRowsDroppedAtSourceLimit = fanoutResults.reduce(
+      (total, item) => total + item.result.rowsOmitted,
+      0,
+    );
 
     const sourceOperationNames = new Map<PersonCollaborationRelationKind, string>([
       ['voice', 'GET /v0/subjects/{subject_id}/characters'],
@@ -463,9 +537,7 @@ export class PersonCollaborationService {
       sourceOperation(
         sourceOperations,
         sourceOperationNames.get(relationKind)!,
-        relevant.length,
-        relevant.filter((item) => item.result.value !== undefined).length,
-        relevant.filter((item) => item.result.value === undefined).length,
+        relevant.map((item) => item.result),
       );
     }
 
@@ -477,6 +549,7 @@ export class PersonCollaborationService {
     let collaboratorRoleExcludedRows = 0;
     let collaboratorRoleUnavailableRows = 0;
     let fanoutFailures = 0;
+    let participantRowsDroppedAtSourceLimit = 0;
 
     const addCollaborator = (
       task: FanoutTask,
@@ -522,10 +595,21 @@ export class PersonCollaborationService {
         addExclusion(exclusions, 'fanout_unavailable', item.task.subjectId);
         continue;
       }
+      if (item.result.rowsOmitted > 0) {
+        addExclusion(
+          exclusions,
+          'source_response_cap',
+          item.task.subjectId,
+          item.result.rowsOmitted,
+        );
+        if (item.task.relationKind === 'staff') {
+          participantRowsDroppedAtSourceLimit += item.result.rowsOmitted;
+        }
+      }
       if (item.task.relationKind === 'staff') {
         for (const raw of item.result.value) {
           participantRowsObserved += 1;
-          const value = (raw || {}) as Record<string, unknown>;
+          const value = recordValue(raw);
           const id = positiveInteger(value.id);
           if (id === undefined) {
             malformedParticipantRows += 1;
@@ -558,15 +642,20 @@ export class PersonCollaborationService {
       }
 
       for (const raw of item.result.value) {
-        const value = (raw || {}) as Record<string, unknown>;
+        const value = recordValue(raw);
         if (!Array.isArray(value.actors)) {
           malformedParticipantRows += 1;
           addExclusion(exclusions, 'malformed_participant', item.task.subjectId);
           continue;
         }
-        for (const actor of value.actors) {
+        const actorRows = boundedSourceRows(value.actors);
+        if (actorRows.omitted > 0) {
+          participantRowsDroppedAtSourceLimit += actorRows.omitted;
+          addExclusion(exclusions, 'source_response_cap', item.task.subjectId, actorRows.omitted);
+        }
+        for (const actor of actorRows.rows) {
           participantRowsObserved += 1;
-          const actorValue = (actor || {}) as Record<string, unknown>;
+          const actorValue = recordValue(actor);
           const id = positiveInteger(actorValue.id);
           if (id === undefined) {
             malformedParticipantRows += 1;
@@ -627,7 +716,7 @@ export class PersonCollaborationService {
         (left, right) =>
           right.uniqueSubjects - left.uniqueSubjects ||
           right.creditRows - left.creditRows ||
-          (left.nameCn || left.name).localeCompare(right.nameCn || right.name) ||
+          stableTextCompare(left.nameCn || left.name, right.nameCn || right.name) ||
           left.id - right.id,
       );
 
@@ -661,10 +750,14 @@ export class PersonCollaborationService {
     );
     const sharedSubjectRowsOmittedAtLimit = sharedSubjectRowsObserved - sharedSubjectRowsReturned;
     const outputTruncated = collaboratorIdsDroppedAtLimit > 0;
+    const sharedOutputTruncated = sharedSubjectRowsOmittedAtLimit > 0;
     const subjectCap = subjectIdsDroppedAtSubjectLimit > 0;
     const relationCap = relationRowsDroppedAtLimit > 0;
     const fanoutSkippedForRoleFilter = skippedRoleFilterTasks > 0;
     const relationSourceUnavailable = operationUnavailable(sourceOperations, relationSourceNames);
+    const relationSourceFailures = sourceOperations
+      .filter((operation) => relationSourceNames.includes(operation.operation))
+      .reduce((total, operation) => total + operation.failed, 0);
     const personNotFound = personResult.failure?.code === 'NOT_FOUND';
     const personUnavailable = !personResult.value;
     const roleFilterNotComputable = Boolean(collaboratorRole && kind === 'voice');
@@ -672,24 +765,65 @@ export class PersonCollaborationService {
       relationCap ||
       subjectCap ||
       outputTruncated ||
+      sharedOutputTruncated ||
+      relationSourceFailures > 0 ||
+      relationRowsDroppedAtSourceLimit > 0 ||
+      fanoutRowsDroppedAtSourceLimit > 0 ||
+      participantRowsDroppedAtSourceLimit > 0 ||
       fanoutFailures > 0 ||
       malformedParticipantRows > 0 ||
+      missingSubjectIdRows > 0 ||
+      missingSubjectTypeRows > 0 ||
       personUnavailable ||
       fanoutSkippedForRoleFilter ||
       collaboratorRoleUnavailableRows > 0;
 
     let state: PersonCollaborationState = 'complete';
-    if (relationSourceUnavailable) state = 'unavailable';
-    else if (personNotFound && !personResult.value) state = 'not_found';
+    if (personNotFound && !personResult.value) state = 'not_found';
+    else if (relationSourceUnavailable) state = 'unavailable';
     else if (roleFilterNotComputable) state = 'not_computable';
     else if (incomplete) state = 'partial';
 
     const warnings: PersonCollaborationResult['warnings'] = [];
-    if (personUnavailable && state !== 'not_found') {
+    if (personNotFound) {
+      warnings.push({
+        code: 'PERSON_NOT_FOUND',
+        state: 'not_found',
+        message: '官方人物详情返回未找到；合作关系结果不能代表该人物的完整身份。',
+      });
+    } else if (personUnavailable) {
       warnings.push({
         code: 'PERSON_DETAIL_UNAVAILABLE',
         state: 'partial',
         message: '人物详情暂时不可用；合作关系仍按可获取的官方关系源返回。',
+      });
+    }
+    if (relationSourceFailures > 0) {
+      const failedOperations = sourceOperations
+        .filter((operation) => relationSourceNames.includes(operation.operation))
+        .flatMap((operation) =>
+          operation.outcomes
+            .filter((outcome) => outcome.state === 'failed')
+            .map((outcome) => `${operation.operation} (${outcome.errorCode || 'UNKNOWN_ERROR'})`),
+        );
+      warnings.push({
+        code: 'RELATION_SOURCE_PARTIAL',
+        state: relationSourceUnavailable ? 'unavailable' : 'partial',
+        message: `官方人物关系源有 ${relationSourceFailures} 次请求失败：${failedOperations.join('；')}。结果未将失败源当作完整覆盖。`,
+      });
+    }
+    if (relationRowsDroppedAtSourceLimit > 0 || fanoutRowsDroppedAtSourceLimit > 0) {
+      warnings.push({
+        code: 'SOURCE_RESPONSE_LIMIT_REACHED',
+        state: 'partial',
+        message: `官方响应行数安全上限省略了 ${relationRowsDroppedAtSourceLimit + fanoutRowsDroppedAtSourceLimit} 行；coverage 保留关系与 fan-out 的省略数量。`,
+      });
+    }
+    if (participantRowsDroppedAtSourceLimit > 0) {
+      warnings.push({
+        code: 'PARTICIPANT_RESPONSE_LIMIT_REACHED',
+        state: 'partial',
+        message: `参与者响应行数安全上限省略了 ${participantRowsDroppedAtSourceLimit} 行；未将其猜测为合作关系。`,
       });
     }
     if (relationRowsDroppedAtLimit > 0) {
@@ -735,6 +869,13 @@ export class PersonCollaborationService {
         message: `${malformedParticipantRows} 行官方合作参与者缺少稳定人物 ID 或演员列表，已明确排除。`,
       });
     }
+    if (missingSubjectIdRows > 0 || missingSubjectTypeRows > 0) {
+      warnings.push({
+        code: 'MISSING_TARGET_IDENTITY',
+        state: 'partial',
+        message: `官方目标关系中有 ${missingSubjectIdRows} 行缺少作品 ID、${missingSubjectTypeRows} 行缺少媒介类型，已明确降低覆盖状态。`,
+      });
+    }
     if (collaboratorIdsDroppedAtLimit > 0) {
       warnings.push({
         code: 'COLLABORATOR_OUTPUT_LIMIT_REACHED',
@@ -759,47 +900,16 @@ export class PersonCollaborationService {
 
     const retrievedAt = new Date().toISOString();
     const evidence: PersonCollaborationResult['evidence'] = [
-      {
-        source: 'official-v0',
-        operation: 'GET /v0/persons/{person_id}',
-        retrievedAt,
-      },
-      ...(kind === 'staff' || kind === 'all'
-        ? [
-            {
-              source: 'official-v0' as const,
-              operation: 'GET /v0/persons/{person_id}/subjects',
-              retrievedAt,
-            },
-          ]
-        : []),
-      ...(kind === 'voice' || kind === 'all'
-        ? [
-            {
-              source: 'official-v0' as const,
-              operation: 'GET /v0/persons/{person_id}/characters',
-              retrievedAt,
-            },
-          ]
-        : []),
-      ...(tasks.some((task) => task.relationKind === 'staff')
-        ? [
-            {
-              source: 'official-v0' as const,
-              operation: 'GET /v0/subjects/{subject_id}/persons (bounded fan-out)',
-              retrievedAt,
-            },
-          ]
-        : []),
-      ...(tasks.some((task) => task.relationKind === 'voice')
-        ? [
-            {
-              source: 'official-v0' as const,
-              operation: 'GET /v0/subjects/{subject_id}/characters (bounded fan-out)',
-              retrievedAt,
-            },
-          ]
-        : []),
+      ...sourceOperations.flatMap((operation) =>
+        operation.outcomes.map((outcome) => ({
+          source: 'official-v0' as const,
+          operation: operation.operation,
+          retrievedAt: outcome.retrievedAt,
+          outcome: outcome.state,
+          ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
+          ...(outcome.rowsOmitted ? { rowsOmitted: outcome.rowsOmitted } : {}),
+        })),
+      ),
       {
         source: 'derived-s7',
         operation: 'person-collaboration-composition',
@@ -826,11 +936,19 @@ export class PersonCollaborationService {
         relationRowsDroppedAtLimit,
         relationSelectionStrategy:
           relationRowsDroppedAtLimit > 0 ? 'deterministic_even_spread' : 'all',
-        sampled: relationCap || subjectCap,
+        sampled:
+          relationCap ||
+          subjectCap ||
+          relationRowsDroppedAtSourceLimit > 0 ||
+          fanoutRowsDroppedAtSourceLimit > 0 ||
+          participantRowsDroppedAtSourceLimit > 0,
         subjectIdsObserved: matchingSubjectIds.length,
         subjectIdsSelected: selectedSubjectIds.length,
         subjectIdsDroppedAtRelationLimit,
         subjectIdsDroppedAtSubjectLimit,
+        relationRowsDroppedAtSourceLimit,
+        fanoutRowsDroppedAtSourceLimit,
+        participantRowsDroppedAtSourceLimit,
         participantRequests: tasks.length,
         participantRequestsSucceeded: fanoutResults.filter(
           (item) => item.result.value !== undefined,
@@ -858,11 +976,15 @@ export class PersonCollaborationService {
         mediaUnknownRows,
         targetRoleExcludedRows,
         missingSubjectIdRows,
+        missingSubjectTypeRows,
         truncated:
           relationCap ||
           subjectCap ||
           outputTruncated ||
-          selectedCollaborators.some((collaborator) => collaborator.sharedSubjectsOmitted > 0),
+          sharedOutputTruncated ||
+          relationRowsDroppedAtSourceLimit > 0 ||
+          fanoutRowsDroppedAtSourceLimit > 0 ||
+          participantRowsDroppedAtSourceLimit > 0,
         retrievedAt,
       },
       exclusions: exclusionList(exclusions),
@@ -872,18 +994,42 @@ export class PersonCollaborationService {
         '合作频次只表示在本次观察到的官方 v0 共同作品中，按稳定人物 ID 和作品 ID 去重后的共同作品数；不等同于现实合作关系、亲密度或完整行业网络。',
         '制作人员合作方职位筛选只做 collaboratorRole 对官方 relation 原文的字面、不区分大小写匹配；不建立隐含的职位分类。',
         '声优演员关系没有合作方职位字段；请求 collaboratorRole 时不把演员 career 字段冒充职位，并将该限制单独标记。',
-        '关系、作品、合作人物和共同作品都有上限；超过上限时保留观察/选取/省略数量，并在达到关系预算时按来源返回顺序做确定性等距抽样。',
+        `关系、作品、合作人物和共同作品都有上限；每个官方响应还受 ${PERSON_COLLABORATION_MAX_RESPONSE_BYTES} 字节和 ${PERSON_COLLABORATION_MAX_SOURCE_ROWS} 行的硬安全边界约束，超过上限时保留观察/选取/省略数量，并在达到关系预算时按来源返回顺序做确定性等距抽样。`,
         '结果没有历史快照，不计算连续合作趋势、工作量、时长、收入、热度或推荐。',
       ],
       warnings,
     };
   }
 
+  private async safeArrayRequest<T>(request: () => Promise<T[]>): Promise<SafeResult<T[]>> {
+    const result = await this.safeRequest(request);
+    if (result.value === undefined) return result;
+    if (!Array.isArray(result.value)) {
+      return {
+        ...result,
+        value: undefined,
+        failure: { code: 'SCHEMA_DRIFT' },
+      };
+    }
+    const boundedRows = boundedSourceRows(result.value);
+    return { ...result, value: boundedRows.rows, rowsOmitted: boundedRows.omitted };
+  }
+
   private async safeRequest<T>(request: () => Promise<T>): Promise<SafeResult<T>> {
     try {
-      return { value: await request() };
+      return {
+        value: await request(),
+        attempted: true,
+        retrievedAt: new Date().toISOString(),
+        rowsOmitted: 0,
+      };
     } catch (error) {
-      return { failure: { code: sourceFailureCode(error) } };
+      return {
+        failure: { code: sourceFailureCode(error) },
+        attempted: true,
+        retrievedAt: new Date().toISOString(),
+        rowsOmitted: 0,
+      };
     }
   }
 }

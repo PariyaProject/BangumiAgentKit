@@ -8,6 +8,7 @@ export type BangumiErrorCode =
   | 'UPSTREAM_UNAVAILABLE'
   | 'NETWORK_ERROR'
   | 'PARSER_ERROR'
+  | 'RESPONSE_TOO_LARGE'
   | 'UNKNOWN_ERROR'
   | 'CONFIRMATION_REQUIRED'
   | 'CONFIRMATION_INVALID'
@@ -58,6 +59,7 @@ export const BANGUMI_ERROR_CODES = new Set<BangumiErrorCode>([
   'UPSTREAM_UNAVAILABLE',
   'NETWORK_ERROR',
   'PARSER_ERROR',
+  'RESPONSE_TOO_LARGE',
   'UNKNOWN_ERROR',
   'CONFIRMATION_REQUIRED',
   'CONFIRMATION_INVALID',
@@ -123,6 +125,9 @@ const PUBLIC_ERROR_POLICY: Partial<
   },
   PARSER_ERROR: {
     message: '响应解析失败。',
+  },
+  RESPONSE_TOO_LARGE: {
+    message: '上游响应超过安全大小限制。',
   },
   KEY_VERSION_UNAVAILABLE: {
     message: '密钥版本不可用，请重新绑定或更新凭据。',

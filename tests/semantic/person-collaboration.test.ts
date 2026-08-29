@@ -70,7 +70,8 @@ describe('bangumi.get_person_collaboration', () => {
       expect.arrayContaining([
         expect.objectContaining({
           source: 'official-v0',
-          operation: 'GET /v0/subjects/{subject_id}/characters (bounded fan-out)',
+          operation: 'GET /v0/subjects/{subject_id}/characters',
+          outcome: 'succeeded',
         }),
       ]),
     );

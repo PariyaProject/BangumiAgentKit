@@ -1439,16 +1439,21 @@
       "user_question": "Do Renderer and Standalone surfaces present the full useful result truthfully and without silent loss?",
       "lane": "renderer_and_standalone_experience",
       "status": "DELIVERED",
-      "source_refs": ["docs/agent/PRODUCT_CHARTER.md#renderer-north-star", "tests/render"],
+      "source_refs": [
+        "docs/agent/PRODUCT_CHARTER.md#renderer-north-star",
+        "packages/renderer/src/templates/PersonCollaborationCard.tsx",
+        "apps/standalone/src/presenter.ts"
+      ],
       "next_action": "Monitor dense and degraded collaboration cards for new source fields or display limits.",
       "reopen_when": "Renderer templates, ViewModels, Standalone presentation, or capability result shapes change.",
       "related_ids": ["OP-004"],
-      "closure_reason": "Image-free PersonCollaborationCard and Standalone collaborators/render routes preserve ranking, raw labels, warnings, exclusions, limits, and hidden/omitted evidence with representative narrow-width QA.",
+      "closure_reason": "Image-free PersonCollaborationCard and Standalone collaborators/render routes preserve ranking, raw labels, source-operation outcomes, derivation formula, warnings, exclusions, limits, and hidden/omitted evidence; narrow-width geometry is covered for long ASCII/CJK and degraded states.",
       "evidence": {
         "capabilities": ["bangumi.render_person_collaboration"],
         "tests": [
           "tests/render/person-collaboration.test.ts",
-          "tests/standalone/person-collaboration-command.test.ts"
+          "tests/standalone/person-collaboration-command.test.ts",
+          "tests/standalone/person-collaboration-presenter.test.ts"
         ]
       }
     },
@@ -1458,16 +1463,23 @@
       "user_question": "Do shipped capabilities preserve evidence, coverage, failure semantics, and explicit resource bounds end to end?",
       "lane": "correctness_evidence_and_resource_bounds",
       "status": "DELIVERED",
-      "source_refs": ["docs/agent/PRODUCT_CHARTER.md#sources-and-evidence", "tests/semantic"],
+      "source_refs": [
+        "docs/agent/PRODUCT_CHARTER.md#sources-and-evidence",
+        "packages/bangumi-core/src/services/person-collaboration-service.ts",
+        "packages/bangumi-transport/src/http-client.ts"
+      ],
       "next_action": "Monitor source-operation and coverage fields when official v0 relation schemas change.",
       "reopen_when": "Provider contracts, evidence models, pagination, caching, or resource limits change.",
       "related_ids": ["OP-004"],
-      "closure_reason": "The service records source operations, deterministic sampling, fan-out concurrency, malformed/self/filter exclusions, partial/unavailable/not-computable states, and output omissions without negative completeness claims.",
+      "closure_reason": "The service records per-operation outcomes with actual retrieval timestamps and error codes, validates upstream identity/envelopes, propagates partial/unavailable/not-found states, applies deterministic locale-independent ordering, and enforces response byte/row ceilings while preserving omission coverage through Renderer and Standalone.",
       "evidence": {
         "capabilities": ["bangumi.get_person_collaboration"],
         "tests": [
           "tests/unit/person-collaboration.test.ts",
-          "tests/semantic/person-collaboration.test.ts"
+          "tests/unit/transport.test.ts",
+          "tests/semantic/person-collaboration.test.ts",
+          "tests/render/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-presenter.test.ts"
         ]
       }
     },
