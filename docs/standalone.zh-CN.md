@@ -68,6 +68,8 @@ subject <id>
 stats <subjectId>
 overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
 compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+overlap <subjectId...> [--kind cast|staff|all] [--cast-role all|main]
+        [--max-cast 1..80] [--max-staff 1..80] [--max-pairs 1..28] [--max-people 1..24]
 watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
 cast <subjectId>
 activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
@@ -106,6 +108,14 @@ collection set <subjectId> <wish|watching|watched|dropped|...>
 声优演员关系没有合作方职位字段，因此不会把演员 `career` 冒充职位；关系、作品
 fan-out、合作人物、共同作品、并发、失败、异常行、自身关系和省略数量都会保留。
 它表示有界官方共同作品观察，不表示完整行业网络、历史趋势、工作量或关系强度。
+
+`overlap` 接受调用方提供的 2–8 个已知条目 ID，按官方 v0 本次有界角色声优或制作人员
+关系中的稳定人物 ID 对候选条目对排序。`--kind` 可选择声优、制作人员或两者；`--cast-role
+main` 只保留两侧都出现明确“主角/主役”等原始角色标签的人物，无法识别的角色标签会保留为
+未知并使相关覆盖变为 partial。每个条目对保留两侧角色名/原始职位、观察到的并集与交集及
+Jaccard 重合比例；区段不完整或并集为空时不生成完整比例。条目、条目对、每对人物和每个
+关系区段都有上限，输出不发现全目录候选，也不宣称完整演职员表、主要团队质量、历史连续
+合作或推荐结论。
 
 认证和账号命令：
 

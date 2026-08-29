@@ -830,6 +830,163 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
   return boundHumanLines(lines);
 }
 
+function presentSubjectOverlap(value: Record<string, unknown>): string | undefined {
+  const subjectIds = value.subjectIds;
+  const subjects = value.subjects;
+  const pairs = value.pairs;
+  if (
+    !Array.isArray(subjectIds) ||
+    subjectIds.length < 2 ||
+    !Array.isArray(subjects) ||
+    !Array.isArray(pairs) ||
+    typeof value.kind !== 'string'
+  ) {
+    return undefined;
+  }
+
+  const kindLabels: Record<string, string> = {
+    cast: '角色声优重合',
+    staff: '制作人员重合',
+    all: '角色声优与制作人员重合',
+  };
+  const coverage = comparisonRecord(value.coverage);
+  const castRole = value.castRole === 'main' ? '明确主角/主役标签' : '全部原始角色标签';
+  const lines = [
+    `条目关系重合 · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[value.kind] || value.kind, 64)}`,
+    `输入条目: ${subjectIds.map((id) => humanField(id, 32)).join('、')} · 角色口径: ${castRole}`,
+  ];
+
+  if (coverage) {
+    lines.push(
+      `组合覆盖: 条目 ${humanField(coverage.returnedSubjects ?? '?', 32)}/${humanField(coverage.requestedSubjects ?? '?', 32)} · 条目对 ${humanField(coverage.returnedPairs ?? '?', 32)}/${humanField(coverage.requestedPairs ?? '?', 32)}${coverage.omittedPairs ? ` · 省略 ${humanField(coverage.omittedPairs, 32)}` : ''}${coverage.truncated ? ' · 有界/截断' : ''}`,
+    );
+    const limits = comparisonRecord(coverage.limits);
+    if (limits) {
+      lines.push(
+        `资源上限: 角色 ${humanField(limits.maxCast ?? '?', 32)} · 职员 ${humanField(limits.maxStaff ?? '?', 32)} · 条目对 ${humanField(limits.maxPairs ?? '?', 32)} · 每对人物 ${humanField(limits.maxPeople ?? '?', 32)}`,
+      );
+    }
+  }
+
+  lines.push('条目：');
+  for (const rawSubject of subjects.slice(0, 8)) {
+    const subject = comparisonRecord(rawSubject);
+    if (!subject) continue;
+    const identity = comparisonRecord(subject.subject);
+    const subjectCoverage = comparisonRecord(subject.coverage);
+    const castCoverage = comparisonRecord(subjectCoverage?.cast);
+    const staffCoverage = comparisonRecord(subjectCoverage?.staff);
+    lines.push(
+      `- ${humanField(identity?.nameCn || identity?.name || `条目 ${subject.subjectId || '?'}`, 180)} · ID ${humanField(subject.subjectId ?? '?', 32)} · ${comparisonStateLabel(subject.state)}`,
+    );
+    lines.push(
+      `  声优 ${humanField(castCoverage?.returned ?? '?', 32)}/${humanField(castCoverage?.observed ?? '?', 32)} · 职员 ${humanField(staffCoverage?.returned ?? '?', 32)}/${humanField(staffCoverage?.observed ?? '?', 32)}`,
+    );
+  }
+
+  lines.push('条目对排名：');
+  for (const rawPair of pairs.slice(0, 12)) {
+    const pair = comparisonRecord(rawPair);
+    if (!pair) continue;
+    const leftSubject = subjects.find(
+      (item) => comparisonRecord(item)?.subjectId === pair.leftSubjectId,
+    );
+    const rightSubject = subjects.find(
+      (item) => comparisonRecord(item)?.subjectId === pair.rightSubjectId,
+    );
+    const leftIdentity = comparisonRecord(comparisonRecord(leftSubject)?.subject);
+    const rightIdentity = comparisonRecord(comparisonRecord(rightSubject)?.subject);
+    lines.push(
+      `${humanField(pair.rank ?? '?', 16)}. ${humanField(leftIdentity?.nameCn || leftIdentity?.name || `条目 ${pair.leftSubjectId || '?'}`, 120)} ↔ ${humanField(rightIdentity?.nameCn || rightIdentity?.name || `条目 ${pair.rightSubjectId || '?'}`, 120)} · 分数 ${humanField(pair.rankScore ?? '不可用', 32)} · ${humanField(pair.rankBasis || '未知', 64)}`,
+    );
+    for (const [key, label] of [
+      ['cast', '声优'],
+      ['staff', '制作人员'],
+    ] as const) {
+      const relation = comparisonRecord(pair[key]);
+      if (!relation) continue;
+      const relationCoverage = comparisonRecord(relation.coverage);
+      const leftCoverage = comparisonRecord(relationCoverage?.left);
+      const rightCoverage = comparisonRecord(relationCoverage?.right);
+      const rate =
+        typeof relationCoverage?.overlapRate === 'number'
+          ? `${(relationCoverage.overlapRate * 100).toFixed(1)}%`
+          : '不可计算';
+      lines.push(
+        `  ${label}: ${comparisonStateLabel(relation.state)} · 共同 ID ${humanField(relationCoverage?.matchedIds ?? '未知', 32)} · 并集 ${humanField(relationCoverage?.unionIds ?? '未知', 32)} · 重合 ${rate} · 左 ${humanField(leftCoverage?.rowsReturned ?? '?', 32)}/${humanField(leftCoverage?.rowsObserved ?? '?', 32)} · 右 ${humanField(rightCoverage?.rowsReturned ?? '?', 32)}/${humanField(rightCoverage?.rowsObserved ?? '?', 32)}${relationCoverage?.truncated ? ' · 仅代表已观察覆盖' : ''}`,
+      );
+      const items = Array.isArray(relation.items) ? relation.items : [];
+      for (const rawItem of items.slice(0, 8)) {
+        const item = comparisonRecord(rawItem);
+        if (!item) continue;
+        const credits = Array.isArray(item.credits)
+          ? item.credits
+              .map(comparisonRecord)
+              .filter((credit): credit is Record<string, unknown> => Boolean(credit))
+              .map((credit) => {
+                if (key === 'cast') {
+                  const characters = Array.isArray(credit.characters)
+                    ? credit.characters
+                        .map(comparisonRecord)
+                        .filter((character): character is Record<string, unknown> =>
+                          Boolean(character),
+                        )
+                        .map(
+                          (character) =>
+                            `${humanField(character.name || '角色未知', 80)}（${humanField(character.relation || '未知', 48)}）`,
+                        )
+                        .join('、')
+                    : '角色未知';
+                  return `${humanField(credit.subjectId ?? '?', 32)}：${characters}`;
+                }
+                const rawRelations = Array.isArray(credit.rawRelations)
+                  ? credit.rawRelations.filter(
+                      (role): role is string => typeof role === 'string' && role.length > 0,
+                    )
+                  : [];
+                return `${humanField(credit.subjectId ?? '?', 32)}：${humanField(rawRelations.join('、') || '职位未知', 96)}`;
+              })
+              .join('；')
+          : '共同关系未知';
+        lines.push(
+          `    ${humanField(item.name || `人物 ${item.personId || '?'}`, 150)} · ID ${humanField(item.personId ?? '?', 32)}${credits ? ` · ${credits}` : ''}`,
+        );
+      }
+      if (items.length > 8)
+        lines.push(`    另有 ${humanField(items.length - 8, 32)} 位共同人物未展开。`);
+    }
+  }
+  if (pairs.length > 12) lines.push(`另有 ${humanField(pairs.length - 12, 32)} 个条目对未展开。`);
+
+  const source = comparisonRecord(value.source);
+  for (const key of ['official', 'derived']) {
+    const channel = comparisonRecord(source?.[key]);
+    if (!channel) continue;
+    const operations = Array.isArray(channel.operations) ? channel.operations : [];
+    lines.push(
+      `来源 ${key === 'official' ? 'official-v0' : 'derived-s7'}: ${humanField(operations.join(' + ') || '未记录', 220)}${channel.retrievedAt ? ` · 获取于 ${humanField(channel.retrievedAt, 64)}` : ''}`,
+    );
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 4)) {
+      const warning = comparisonRecord(rawWarning);
+      if (warning)
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 80)} · ${humanField(warning.message || '')}`,
+        );
+    }
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentSubjectStats(value: Record<string, unknown>): string | undefined {
   const subjectId = value.subjectId;
   const raw = comparisonRecord(value.raw);
@@ -1930,6 +2087,8 @@ export function formatHuman(value: unknown): string {
     if (subjectStatsHistory) return subjectStatsHistory;
     const subjectStats = presentSubjectStats(safe as Record<string, unknown>);
     if (subjectStats) return subjectStats;
+    const subjectOverlap = presentSubjectOverlap(safe as Record<string, unknown>);
+    if (subjectOverlap) return subjectOverlap;
     const subjectComparison = presentSubjectComparison(safe as Record<string, unknown>);
     if (subjectComparison) return subjectComparison;
     const collectionDashboard = presentCollectionDashboard(safe as Record<string, unknown>);

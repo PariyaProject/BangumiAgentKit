@@ -983,6 +983,22 @@ export interface SubjectComparisonViewModel {
   limitations: string[];
 }
 
+export interface SubjectOverlapViewModel {
+  template: 'subject-overlap';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['state'];
+  kind: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['kind'];
+  castRole: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['castRole'];
+  subjects: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['subjects'];
+  pairs: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['pairs'];
+  formulaVersion: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['formulaVersion'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['coverage'];
+  source: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['evidence'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['warnings'];
+  limitations: string[];
+}
+
 export interface SubjectStatsViewModel {
   template: 'subject-stats';
   version: 1;
@@ -1033,5 +1049,6 @@ export type RenderViewModel =
   | PersonCollaborationViewModel
   | SubjectOverviewViewModel
   | SubjectComparisonViewModel
+  | SubjectOverlapViewModel
   | SubjectStatsViewModel
   | SubjectStatsHistoryViewModel;

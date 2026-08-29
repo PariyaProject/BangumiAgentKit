@@ -37,6 +37,7 @@ import {
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
   buildSubjectComparisonViewModel,
+  buildSubjectOverlapViewModel,
   buildSubjectStatsViewModel,
   buildSubjectStatsHistoryViewModel,
   buildCollectionIntelligenceViewModel,
@@ -51,6 +52,7 @@ import {
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
+import { getSubjectOverlap } from '../subject-overlap.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
 import {
   getSubjectStatsHistory,
@@ -672,6 +674,52 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectOverlap = defineTool({
+    name: 'bangumi.render_subject_overlap',
+    description:
+      '生成调用方提供的 2–8 个已知 Bangumi 条目关系重合图片卡片 Artifact。卡片按官方 v0 有界角色声优/制作人员稳定人物 ID 交集排序条目对，展示主角/主役原始标签筛选、每侧关系证据、观察到的并集/交集与 Jaccard 比例、覆盖、来源、截断和限制；不发现全目录候选，不宣称完整演职员表、主要团队质量、历史连续合作或推荐结论，渲染器不读取网络资产。',
+    input: z
+      .object({
+        subjectIds: z
+          .array(z.number().int().positive())
+          .min(2)
+          .max(8)
+          .refine((subjectIds) => new Set(subjectIds).size === subjectIds.length, {
+            message: 'subjectIds 必须包含不同的条目 ID',
+          })
+          .describe('2–8 个不同的 Bangumi 条目 ID；输出按候选条目对排序'),
+        kind: z.enum(['cast', 'staff', 'all']).optional(),
+        castRole: z.enum(['all', 'main']).optional(),
+        maxCast: z.number().int().min(1).max(80).optional(),
+        maxStaff: z.number().int().min(1).max(80).optional(),
+        maxPairs: z.number().int().min(1).max(28).optional(),
+        maxPeople: z.number().int().min(1).max(24).optional(),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.executionSession?.client || deps?.publicHttpClient;
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const result = await getSubjectOverlap(
+        input.subjectIds,
+        {
+          kind: input.kind,
+          castRole: input.castRole,
+          maxCast: input.maxCast,
+          maxStaff: input.maxStaff,
+          maxPairs: input.maxPairs,
+          maxPeople: input.maxPeople,
+        },
+        { client },
+      );
+      return await executeRenderAndSave(buildSubjectOverlapViewModel(result));
+    },
+  });
+
   const renderSubjectStats = defineTool({
     name: 'bangumi.render_subject_stats_intelligence',
     description:
@@ -1150,6 +1198,7 @@ export function createRenderPresentationTools(
     renderEpisodeGuide,
     renderSubjectOverview,
     renderSubjectComparison,
+    renderSubjectOverlap,
     renderSubjectStats,
     renderSubjectStatsHistory,
     renderCollectionIntelligence,

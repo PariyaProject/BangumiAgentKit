@@ -1089,6 +1089,66 @@
     }
   },
   {
+    "name": "bangumi.get_subject_overlap",
+    "description": "比较调用方提供的 2–8 个已知 Bangumi 条目在官方 v0 有界关系中的角色声优/制作人员重合，并按共同稳定人物 ID 对条目对排序。支持 cast、staff、all 以及保守的主角/主役原始标签筛选；保留每侧角色或职位证据、观察到的并集/交集与 Jaccard 比例、source operations、检索时间、缺失 ID、未知角色、区段/输出截断和 partial/unavailable 状态。不发现全目录候选，不宣称完整演职员表、主要团队质量、历史连续合作或推荐结论。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectIds": {
+          "minItems": 2,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "description": "2–8 个不同的 Bangumi 条目 ID；输出按候选条目对排序"
+        },
+        "kind": {
+          "description": "重合关系：cast 声优、staff 制作人员、all 两者；默认 all",
+          "type": "string",
+          "enum": ["cast", "staff", "all"]
+        },
+        "castRole": {
+          "description": "声优关系筛选：all 全部原始角色标签、main 仅明确识别为主角/主役；默认 all",
+          "type": "string",
+          "enum": ["all", "main"]
+        },
+        "maxCast": {
+          "description": "每个条目的角色读取上限，默认 24",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80
+        },
+        "maxStaff": {
+          "description": "每个条目的职员读取上限，默认 48",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80
+        },
+        "maxPairs": {
+          "description": "最多返回排序后的条目对，默认 28",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 28
+        },
+        "maxPeople": {
+          "description": "每个条目对每种关系最多返回共同人物，默认 24",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        }
+      },
+      "required": ["subjectIds"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_subject_overview",
     "description": "一次获取指定条目的证据型智能概览：基本信息、官方评分/收藏统计、角色与声优、制作人员和关联条目。各区段独立保留 complete/partial/unavailable/not_computable 状态、覆盖、来源和限制；不宣称完整角色表、职员表、系列图或历史趋势。",
     "auth": "none",
@@ -2612,6 +2672,60 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 32
+        }
+      },
+      "required": ["subjectIds"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_subject_overlap",
+    "description": "生成调用方提供的 2–8 个已知 Bangumi 条目关系重合图片卡片 Artifact。卡片按官方 v0 有界角色声优/制作人员稳定人物 ID 交集排序条目对，展示主角/主役原始标签筛选、每侧关系证据、观察到的并集/交集与 Jaccard 比例、覆盖、来源、截断和限制；不发现全目录候选，不宣称完整演职员表、主要团队质量、历史连续合作或推荐结论，渲染器不读取网络资产。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectIds": {
+          "minItems": 2,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "description": "2–8 个不同的 Bangumi 条目 ID；输出按候选条目对排序"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["cast", "staff", "all"]
+        },
+        "castRole": {
+          "type": "string",
+          "enum": ["all", "main"]
+        },
+        "maxCast": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80
+        },
+        "maxStaff": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80
+        },
+        "maxPairs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 28
+        },
+        "maxPeople": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
         }
       },
       "required": ["subjectIds"],

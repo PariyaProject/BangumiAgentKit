@@ -29,7 +29,7 @@
 | G15 | COMPARISON     | 《葬送的芙莉莲》和《药屋少女的呢喃》在评分、集数、完成率上有什么差异？ | two subject details、rating/collection/stats/episodes                                     | detail 可对比基础字段                                             | stats 与标准化字段缺失                         | `compare_subjects`                 | SubjectDeepDive                     |
 | G16 | PERSON         | 某导演过去三年执导过哪些 TV 动画？                                     | person career/role、subject air date/platform/type                                        | person relationships 可读                                         | role filter、日期聚合、媒体判定                | `staff_activity`                   | PersonProfile + SearchResults       |
 | G17 | STAFF          | 这部作品的原作、导演、脚本和音乐分别是谁？                             | subject persons grouped by relation                                                       | API relationship raw 可用                                         | semantic 职位视图                              | `get_subject_staff`                | Staff                               |
-| G18 | SEIYUU         | 哪些声优同时出演了这两部动画？                                         | each subject cast、person identity normalization、role                                    | 两边 cast 可手工取得                                              | intersection semantic                          | `compare_cast`                     | Cast                                |
+| G18 | SEIYUU         | 哪些声优同时出演了这两部动画？                                         | each subject cast、person identity normalization、role                                    | `bangumi.get_subject_overlap` 支持有界两条目声优交集              | 全目录候选发现、完整 cast 语义仍不承诺         | `subject_overlap`                  | Cast                                |
 | G19 | PERSON         | 这个人物最近参与的作品中，哪些是原创、哪些是改编？                     | person works、source tags/infobox、concept evidence                                       | API 有 subjects/tags                                              | “原创”不是统一 API 字段                        | `person_works` + `concept_resolve` | PersonProfile                       |
 | G20 | RELATION GRAPH | 某系列中哪些作品是前传、续作、外传，应该按什么顺序看？                 | directed relation edges、dates、series membership、ambiguity                              | edges 可用                                                        | relation label normalization/order policy      | `series_watch_order`               | Relations                           |
 | G21 | COMMUNITY      | 这部动画最近一周新增了多少主题和回复？                                 | board/Rakuen snapshots、time window、subject key                                          | 无                                                                | HTML + snapshot delta                          | `community_trend`                  | CommunityTrending                   |
@@ -64,7 +64,7 @@
 | C03 | 两位声优在共同作品数量和主役比例上谁更高？               | person-character edges、role classifier、unique subjects |
 | C04 | 两个季度的原创动画热度和评分哪个更高？                   | season cohorts、heat/score、sample-size caveat           |
 | C05 | 同一导演的早期和近期作品，评分趋势是否变化？             | person→subjects、date bins、scores and snapshots         |
-| C06 | 这两部作品的主要制作团队重合度是多少？                   | staff/person sets、role weights、overlap definition      |
+| C06 | 这两部作品的主要制作团队重合度是多少？                   | staff/person sets、role weights、overlap definition      | `bangumi.get_subject_overlap` 提供有界制作人员交集与观察到的 Jaccard 比例 | “主要团队”不做完整或质量性推断 |
 | C07 | “收藏多但评分低”和“评分高但收藏少”的作品各有哪些？       | collection/rating metrics、分箱规则、sampling bias       |
 
 ## 扩展场景：PERSON（7）
@@ -157,7 +157,7 @@
 | R03 | 从一部作品出发，两跳内评分最高的关联作品是什么？ | graph traversal + subject scores                    |
 | R04 | 某系列是否有剧场版必须插入 TV 观看顺序？         | relation type + date + order policy                 |
 | R05 | 两个作品之间是否通过系列或人物相连？             | subject/person/character heterogeneous graph        |
-| R06 | 哪些作品共享最多的主要角色配音者？               | cast graph、main-role filter、weighted intersection |
+| R06 | 哪些作品共享最多的主要角色配音者？               | cast graph、main-role filter、weighted intersection | `bangumi.get_subject_overlap` 在调用方提供的 2–8 个候选条目中按明确主角/主役标签排序 | 不发现全目录候选，未知角色不作否定 |
 
 ## 扩展场景：CONTENT（7）
 

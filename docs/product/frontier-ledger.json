@@ -260,11 +260,20 @@
       "kind": "scenario",
       "user_question": "哪些声优同时出演了这两部动画？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_subject_overlap with two known subject IDs and read cast coverage before interpreting the intersection.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "Delivered a bounded official-v0 two-subject cast intersection by stable person ID with raw character evidence, explicit role filtering, coverage, and non-claims.",
+      "evidence": {
+        "capabilities": ["bangumi.get_subject_overlap", "bangumi.render_subject_overlap"],
+        "tests": [
+          "tests/semantic/subject-overlap.test.ts",
+          "tests/render/subject-overlap.test.ts",
+          "tests/standalone/subject-overlap-command.test.ts"
+        ]
+      }
     },
     {
       "id": "G19",
@@ -544,11 +553,20 @@
       "kind": "scenario",
       "user_question": "这两部作品的主要制作团队重合度是多少？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "PARTIAL",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Add a bounded subject-to-subject staff overlap composition before claiming a team percentage.",
+      "next_action": "Use the bounded observed staff intersection/union ratio and read both section states before interpreting it as a comparison.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": ["OP-004"]
+      "related_ids": ["OP-004"],
+      "closure_reason": "Delivered a bounded official-v0 staff overlap for two known subjects, with stable-ID intersection/union ratio, raw relation evidence, coverage, and an explicit prohibition on complete-team or quality claims.",
+      "evidence": {
+        "capabilities": ["bangumi.get_subject_overlap", "bangumi.render_subject_overlap"],
+        "tests": [
+          "tests/semantic/subject-overlap.test.ts",
+          "tests/render/subject-overlap.test.ts",
+          "tests/standalone/subject-overlap-command.test.ts"
+        ]
+      }
     },
     {
       "id": "C07",
@@ -1153,11 +1171,20 @@
       "kind": "scenario",
       "user_question": "哪些作品共享最多的主要角色配音者？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "PARTIAL",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Add bounded subject-to-subject shared-cast comparison before ranking works by shared main-role actors.",
+      "next_action": "Provide a bounded candidate subject set, request castRole=main, and read partial coverage before interpreting pair ranking.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": ["OP-004"]
+      "related_ids": ["OP-004"],
+      "closure_reason": "Delivered bounded ranking of caller-supplied subject pairs by shared cast stable IDs, with conservative main-role label recognition, raw role evidence, pair limits, and unknown-role partial semantics; it does not search the full catalog.",
+      "evidence": {
+        "capabilities": ["bangumi.get_subject_overlap", "bangumi.render_subject_overlap"],
+        "tests": [
+          "tests/semantic/subject-overlap.test.ts",
+          "tests/render/subject-overlap.test.ts",
+          "tests/standalone/subject-overlap-command.test.ts"
+        ]
+      }
     },
     {
       "id": "C08",

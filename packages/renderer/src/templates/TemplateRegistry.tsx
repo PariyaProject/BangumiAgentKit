@@ -15,6 +15,7 @@ import {
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
+  SubjectOverlapViewModel,
   SubjectStatsViewModel,
   SubjectStatsHistoryViewModel,
   CollectionIntelligenceViewModel,
@@ -39,6 +40,7 @@ import { PersonCollaborationCard } from './PersonCollaborationCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { SubjectComparisonCard } from './SubjectComparisonCard.js';
+import { SubjectOverlapCard } from './SubjectOverlapCard.js';
 import { SubjectStatsCard } from './SubjectStatsCard.js';
 import { SubjectStatsHistoryCard } from './SubjectStatsHistoryCard.js';
 import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
@@ -200,6 +202,14 @@ registerTemplate<SubjectComparisonViewModel>({
       theme={theme}
       width={width}
     />
+  ),
+});
+
+registerTemplate<SubjectOverlapViewModel>({
+  id: 'subject-overlap',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <SubjectOverlapCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

@@ -43,6 +43,8 @@ Bangumi:
                [--retention-days 1..3650]
   overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+  overlap <subjectId...> [--kind cast|staff|all] [--cast-role all|main]
+          [--max-cast 1..80] [--max-staff 1..80] [--max-pairs 1..28] [--max-people 1..24]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
   cast <subjectId>
   person <personId>
@@ -81,7 +83,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|stats-history|overview|compare|watch-order|cast|person|activity|collaboration|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|stats|stats-history|overview|compare|overlap|watch-order|cast|person|activity|collaboration|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -317,6 +319,65 @@ function parseSubjectComparisonOptions(args: string[]): Record<string, unknown> 
       input.maxStaff = optionNumber(value, 'max-staff', true, 1, 80);
     } else {
       input.maxRelations = optionNumber(value, 'max-relations', true, 1, 32);
+    }
+  }
+  return input;
+}
+
+function parseSubjectOverlapOptions(args: string[]): Record<string, unknown> {
+  const subjectIds: number[] = [];
+  let index = 0;
+  while (index < args.length && !args[index]!.startsWith('--')) {
+    subjectIds.push(parsePositiveInteger(args[index], 'subject id'));
+    index += 1;
+  }
+  if (subjectIds.length < 2 || subjectIds.length > 8) {
+    throw new StandaloneCliError('USAGE_ERROR: overlap requires 2 to 8 subject ids.', 2);
+  }
+  if (new Set(subjectIds).size !== subjectIds.length) {
+    throw new StandaloneCliError('USAGE_ERROR: overlap subject ids must be different.', 2);
+  }
+  const input: Record<string, unknown> = { subjectIds };
+  const optionNames = new Set([
+    '--kind',
+    '--cast-role',
+    '--max-cast',
+    '--max-staff',
+    '--max-pairs',
+    '--max-people',
+  ]);
+  const seen = new Set<string>();
+  for (; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: unknown overlap argument "${name || ''}".`, 2);
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--kind') {
+      if (value !== 'cast' && value !== 'staff' && value !== 'all') {
+        throw new StandaloneCliError('USAGE_ERROR: --kind must be cast, staff, or all.', 2);
+      }
+      input.kind = value;
+    } else if (name === '--cast-role') {
+      if (value !== 'all' && value !== 'main') {
+        throw new StandaloneCliError('USAGE_ERROR: --cast-role must be all or main.', 2);
+      }
+      input.castRole = value;
+    } else if (name === '--max-cast') {
+      input.maxCast = optionNumber(value, 'max-cast', true, 1, 80);
+    } else if (name === '--max-staff') {
+      input.maxStaff = optionNumber(value, 'max-staff', true, 1, 80);
+    } else if (name === '--max-pairs') {
+      input.maxPairs = optionNumber(value, 'max-pairs', true, 1, 28);
+    } else {
+      input.maxPeople = optionNumber(value, 'max-people', true, 1, 24);
     }
   }
   return input;
@@ -665,6 +726,15 @@ export class StandaloneCommandRegistry {
           ctx,
           'bangumi.get_subject_comparison',
           parseSubjectComparisonOptions(args.slice(1)),
+        ),
+      };
+    }
+    if (command === 'overlap') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_subject_overlap',
+          parseSubjectOverlapOptions(args.slice(1)),
         ),
       };
     }
@@ -1041,6 +1111,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'compare') {
       name = 'bangumi.render_subject_comparison';
       input = parseSubjectComparisonOptions(args.slice(1));
+    } else if (kind === 'overlap') {
+      name = 'bangumi.render_subject_overlap';
+      input = parseSubjectOverlapOptions(args.slice(1));
     } else if (kind === 'watch-order') {
       input = {
         subjectId: parsePositiveInteger(args[1], 'subject id'),
