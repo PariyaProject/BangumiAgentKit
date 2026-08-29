@@ -297,6 +297,101 @@ describe('EpisodeIntegrityService', () => {
     expect(result.integrity.dateCoverage.rows.filter((row) => !row.returned)).toHaveLength(2);
   });
 
+  it('analyzes omitted logical conflicts and preserves bounded row-quality scope', async () => {
+    const result = await new EpisodeIntegrityService(
+      buildClient({
+        total: 6,
+        limit: 50,
+        offset: 0,
+        data: [
+          episode(1, { airdate: '2026-04-01' }),
+          episode(2, { airdate: '2026-04-02' }),
+          episode(3, { ep: 3, sort: 3, airdate: '2026-04-05' }),
+          episode(4, { ep: 3, sort: 3, airdate: '2026-04-04' }),
+          episode(5, { ep: 4, sort: 4, airdate: undefined }),
+          episode(6, { ep: 5, sort: 5, airdate: '2026-02-30' }),
+        ],
+      }),
+    ).getEpisodeIntegrity(123, { maxEpisodes: 2, asOfDate: '2026-04-04' });
+
+    expect(result.items.map((item) => item.id)).toEqual([1, 2]);
+    expect(result.state).toBe('conflict');
+    expect(result.integrity.dateCoverage.populations).toMatchObject({
+      observed: { rows: 6, missingRows: 1, invalidRows: 1 },
+      unique: { rows: 6, missingRows: 1, invalidRows: 1 },
+      returned: { rows: 2, missingRows: 0, invalidRows: 0 },
+      omitted: { rows: 4, missingRows: 1, invalidRows: 1 },
+    });
+    expect(result.integrity.anomalies).toMatchObject({
+      duplicateLogicalKeys: 1,
+      airdateConflictGroups: 1,
+      nonMonotonicMainAirdates: 1,
+    });
+    expect(result.integrity.anomalies.logicalAirdateConflicts).toEqual([
+      expect.objectContaining({
+        key: 'main:ep:3',
+        ids: [3, 4],
+        airdates: ['2026-04-05', '2026-04-04'],
+        members: [
+          expect.objectContaining({ id: 3, unique: true, returned: false, quality: 'valid' }),
+          expect.objectContaining({ id: 4, unique: true, returned: false, quality: 'valid' }),
+        ],
+      }),
+    ]);
+    expect(result.integrity.dateCoverage.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 5, quality: 'missing', unique: true, returned: false }),
+        expect.objectContaining({
+          id: 6,
+          quality: 'invalid',
+          rawAirdate: '2026-02-30',
+          unique: true,
+          returned: false,
+        }),
+      ]),
+    );
+
+    const boundary = await new EpisodeIntegrityService(
+      buildClient({
+        total: 8,
+        limit: 50,
+        offset: 0,
+        data: [
+          episode(1, { airdate: '2026-04-01' }),
+          episode(2, { ep: 2, sort: 2, airdate: '2026-04-05' }),
+          episode(3, { ep: 2, sort: 2, airdate: '2026-04-04' }),
+          episode(4, { ep: 3, sort: 3, airdate: '2026-04-03' }),
+          episode(5, { ep: 4, sort: 4, airdate: '2026-04-02' }),
+          episode(5, { ep: 4, sort: 4, airdate: '2026-04-06' }),
+          episode(6, { ep: 5, sort: 5, airdate: undefined }),
+          episode(7, { ep: 6, sort: 6, airdate: '2026-02-30' }),
+        ],
+      }),
+    ).getEpisodeIntegrity(123, { maxEpisodes: 2, asOfDate: '2026-04-05' });
+
+    expect(boundary.integrity.anomalies).toMatchObject({
+      duplicateEpisodeIds: 1,
+      duplicateAirdateConflicts: 1,
+      duplicateLogicalKeys: 1,
+      airdateConflictGroups: 1,
+      nonMonotonicMainAirdates: 3,
+    });
+    expect(boundary.integrity.anomalies.logicalAirdateConflicts[0]).toMatchObject({
+      key: 'main:ep:2',
+      members: [
+        expect.objectContaining({ id: 2, returned: true }),
+        expect.objectContaining({ id: 3, returned: false }),
+      ],
+    });
+    expect(boundary.integrity.anomalies.duplicateEpisodeIdsList).toEqual([5]);
+    expect(boundary.integrity.anomalies.duplicateAirdateConflictIds).toEqual([5]);
+    expect(boundary.integrity.dateCoverage.populations.omitted).toMatchObject({
+      rows: 5,
+      missingRows: 1,
+      invalidRows: 1,
+    });
+  });
+
   it('does not use failed or subject retrieval timestamps as the implicit as-of', async () => {
     const successful = await new EpisodeIntegrityService(
       buildClient({ total: 1, limit: 50, offset: 0, data: [episode(1)] }),

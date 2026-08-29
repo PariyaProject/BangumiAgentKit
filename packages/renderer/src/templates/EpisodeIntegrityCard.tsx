@@ -69,6 +69,29 @@ function episodeNumber(item: EpisodeIntegrityViewModel['items'][number]): string
   return 'ID ' + item.id;
 }
 
+type EpisodeIntegrityAirdateRow =
+  EpisodeIntegrityViewModel['integrity']['dateCoverage']['rows'][number];
+
+function airdateRowNumber(row: EpisodeIntegrityAirdateRow): string {
+  if (row.ep !== undefined) return 'EP ' + row.ep;
+  if (row.sort !== undefined) return '#' + row.sort;
+  return 'ID ' + row.id;
+}
+
+function airdateRowScope(row: EpisodeIntegrityAirdateRow): string {
+  if (!row.unique) return '重复观察';
+  return row.returned ? '返回' : '省略';
+}
+
+function airdateRowQuality(row: EpisodeIntegrityAirdateRow, asOfDate: string): string {
+  if (row.quality === 'missing') return '首播缺失';
+  if (row.quality === 'invalid') {
+    return '首播无效（原值 ' + (row.rawAirdate || '未知') + '）';
+  }
+  if (!row.airdate) return '首播未知';
+  return '首播 ' + row.airdate + (row.airdate <= asOfDate ? ' · 已播' : ' · 未来');
+}
+
 export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
   viewModel,
   theme,
@@ -84,7 +107,8 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
   const compact = width !== undefined && width < 720;
   const itemBasis = width && width >= 720 ? 'calc(50% - 4px)' : '100%';
   const populationText = (population: typeof populations.returned): string =>
-    `行 ${population.rows} · 合法 ${population.validRows} · 已播 ${population.airedRows} · 未来 ${population.futureRows} · 未知 ${population.unknownRows}`;
+    `行 ${population.rows} · 合法 ${population.validRows} · 已播 ${population.airedRows} · 未来 ${population.futureRows} · 缺失 ${population.missingRows} · 无效 ${population.invalidRows} · 未知 ${population.unknownRows}`;
+  const affectedDateRows = dates.rows.filter((row) => row.quality !== 'valid' || !row.unique);
   const totalLabel = [
     viewModel.integrity.subjectTotals.episodesReported !== undefined
       ? 'eps ' + viewModel.integrity.subjectTotals.episodesReported
@@ -231,8 +255,7 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
           首播日期覆盖 · 截止 {dates.asOfDate} UTC
         </div>
         <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.6 }}>
-          返回人口：{populationText(populations.returned)} · 缺失 {dates.missingRows} · 无效{' '}
-          {dates.invalidRows}
+          返回人口摘要（顶层指标仅统计返回行）：{populationText(populations.returned)}
           <br />
           观察人口：{populationText(populations.observed)} · 去重人口：
           {populationText(populations.unique)} · 省略人口：{populationText(populations.omitted)}
@@ -240,6 +263,31 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
         <div style={{ color: theme.textMuted, fontSize: '11px' }}>
           日期依据：{dates.basis} · 状态：{dates.state}；未知日期不计入已播。
         </div>
+        {affectedDateRows.length > 0 ? (
+          <div
+            style={{
+              color: theme.textMuted,
+              fontSize: '11px',
+              lineHeight: 1.5,
+              borderTop: '1px solid ' + theme.border,
+              paddingTop: theme.spacing.xs,
+            }}
+          >
+            <div style={{ color: theme.warning, fontWeight: 700 }}>
+              日期质量明细（异常/未知，最多 12 条）
+            </div>
+            {affectedDateRows.slice(0, 12).map((row, index) => (
+              <div key={row.id + '-' + index} style={{ overflowWrap: 'anywhere' }}>
+                {airdateRowNumber(row)} / ID {row.id} · {airdateRowScope(row)} ·{' '}
+                {CATEGORY_LABELS[row.category] || row.category} ·{' '}
+                {airdateRowQuality(row, dates.asOfDate)}
+              </div>
+            ))}
+            {affectedDateRows.length > 12 ? (
+              <div>另有 {affectedDateRows.length - 12} 条日期质量明细未展开。</div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -271,6 +319,38 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
         重复日期冲突 {anomalies.duplicateAirdateConflicts} · 日期冲突组{' '}
         {anomalies.airdateConflictGroups} · 日期逆序 {anomalies.nonMonotonicMainAirdates}
       </div>
+      {anomalies.logicalAirdateConflicts.length > 0 ? (
+        <div
+          style={{
+            color: theme.warning,
+            fontSize: '11px',
+            lineHeight: 1.5,
+            overflowWrap: 'anywhere',
+          }}
+        >
+          日期冲突明细：
+          {anomalies.logicalAirdateConflicts.slice(0, 3).map((conflict) => {
+            const members = conflict.members?.slice(0, 12).map((member) => {
+              const scope = !member.unique ? '重复' : member.returned ? '返回' : '省略';
+              const quality =
+                member.quality === 'missing'
+                  ? '缺失'
+                  : member.quality === 'invalid'
+                    ? '无效'
+                    : member.airdate || '未知';
+              return member.id + '/' + scope + '/' + quality;
+            });
+            const memberText = members?.length
+              ? members.join(',')
+              : conflict.ids.join(',') + ' · ' + conflict.airdates.join('/');
+            return (
+              <div key={conflict.key}>
+                {conflict.key} [{memberText}]
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {viewModel.items.length === 0 ? (
         <div

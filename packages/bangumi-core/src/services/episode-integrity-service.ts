@@ -101,6 +101,8 @@ export interface EpisodeIntegrityResult {
         key: string;
         ids: number[];
         airdates: string[];
+        /** Bounded members retain returned/omitted and missing/invalid scope. */
+        members?: EpisodeGuideAirdateRow[];
       }>;
     };
   };
@@ -186,54 +188,74 @@ function countByCategory(items: EpisodeGuideItem[]): Partial<Record<EpisodeGuide
   return counts;
 }
 
-function logicalKey(item: EpisodeGuideItem): string | undefined {
+function logicalKey(
+  item: Pick<EpisodeGuideAirdateRow, 'category' | 'ep' | 'sort'>,
+): string | undefined {
   if (item.ep !== undefined) return `${item.category}:ep:${item.ep}`;
   if (item.sort !== undefined) return `${item.category}:sort:${item.sort}`;
   return undefined;
 }
 
-function findLogicalAnomalies(items: EpisodeGuideItem[]): {
+function findLogicalAnomalies(rows: EpisodeGuideAirdateRow[]): {
   duplicateLogicalKeys: number;
   airdateConflictGroups: number;
   nonMonotonicMainAirdates: number;
-  logicalAirdateConflicts: Array<{ key: string; ids: number[]; airdates: string[] }>;
+  logicalAirdateConflicts: Array<{
+    key: string;
+    ids: number[];
+    airdates: string[];
+    members: EpisodeGuideAirdateRow[];
+  }>;
 } {
-  const groups = new Map<string, EpisodeGuideItem[]>();
-  for (const item of items) {
-    const key = logicalKey(item);
+  const groups = new Map<string, EpisodeGuideAirdateRow[]>();
+  for (const row of rows) {
+    const key = logicalKey(row);
     if (!key) continue;
     const group = groups.get(key) || [];
-    group.push(item);
+    group.push(row);
     groups.set(key, group);
   }
 
   let duplicateLogicalKeys = 0;
   let airdateConflictGroups = 0;
-  const logicalAirdateConflicts: Array<{ key: string; ids: number[]; airdates: string[] }> = [];
+  const logicalAirdateConflicts: Array<{
+    key: string;
+    ids: number[];
+    airdates: string[];
+    members: EpisodeGuideAirdateRow[];
+  }> = [];
   for (const [key, group] of groups.entries()) {
     if (group.length > 1) duplicateLogicalKeys += group.length - 1;
     const dates = new Set(
-      group.map((item) => item.airdate).filter((date): date is string => Boolean(date)),
+      group.map((row) => row.airdate).filter((date): date is string => Boolean(date)),
     );
     if (dates.size > 1) {
       airdateConflictGroups += 1;
       if (logicalAirdateConflicts.length < 24) {
         logicalAirdateConflicts.push({
           key,
-          ids: group.slice(0, 12).map((item) => item.id),
+          ids: group.slice(0, 12).map((row) => row.id),
           airdates: Array.from(dates).slice(0, 12),
+          members: group.slice(0, 12).map((row) => ({ ...row })),
         });
       }
     }
   }
 
-  const mainItems = items.filter((item) => item.category === 'main');
+  const mainItems = rows
+    .filter((row) => row.category === 'main')
+    .sort((left, right) => {
+      const leftNumber = left.ep ?? left.sort ?? Number.POSITIVE_INFINITY;
+      const rightNumber = right.ep ?? right.sort ?? Number.POSITIVE_INFINITY;
+      if (leftNumber !== rightNumber) return leftNumber - rightNumber;
+      return left.id - right.id;
+    });
   let previousDate: string | undefined;
   let nonMonotonicMainAirdates = 0;
-  for (const item of mainItems) {
-    if (!item.airdate) continue;
-    if (previousDate && item.airdate < previousDate) nonMonotonicMainAirdates += 1;
-    previousDate = item.airdate;
+  for (const row of mainItems) {
+    if (!row.airdate) continue;
+    if (previousDate && row.airdate < previousDate) nonMonotonicMainAirdates += 1;
+    previousDate = row.airdate;
   }
 
   return {
@@ -413,7 +435,10 @@ export class EpisodeIntegrityService {
     };
     const missingAirdates = datePopulations.returned.missingRows;
     const invalidAirdates = datePopulations.returned.invalidRows;
-    const anomalies = findLogicalAnomalies(guide.items);
+    // Integrity anomalies must be computed before the human-facing item slice. The
+    // guide keeps one bounded raw row per observed ID, including rows omitted from
+    // `items` because maxEpisodes is smaller than the source response.
+    const anomalies = findLogicalAnomalies(uniqueDateRows);
     const duplicateAirdateConflicts = guide.coverage.duplicateConflicts?.['episode.airdate'] || 0;
     const duplicateEpisodeIdsList = Array.from(
       new Set(dateRows.filter((row) => !row.unique).map((row) => row.id)),

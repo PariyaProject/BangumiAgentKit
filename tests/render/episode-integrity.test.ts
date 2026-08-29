@@ -301,6 +301,142 @@ describe('episode-integrity renderer', () => {
     expect(rendered.buffer.length).toBeGreaterThan(1000);
   });
 
+  it('keeps omitted missing and invalid date rows visible on the human card', () => {
+    const population = {
+      rows: 4,
+      validRows: 2,
+      airedRows: 1,
+      futureRows: 1,
+      missingRows: 1,
+      invalidRows: 1,
+      unknownRows: 2,
+    };
+    const qualityResult = {
+      ...result,
+      state: 'partial',
+      integrity: {
+        ...result.integrity,
+        state: 'partial',
+        dateCoverage: {
+          ...result.integrity.dateCoverage,
+          observedRows: 4,
+          uniqueRows: 4,
+          returnedRows: 2,
+          validRows: 2,
+          airedRows: 1,
+          futureRows: 1,
+          missingRows: 0,
+          invalidRows: 0,
+          unknownRows: 0,
+          populations: {
+            observed: population,
+            unique: population,
+            returned: {
+              ...population,
+              rows: 2,
+              missingRows: 0,
+              invalidRows: 0,
+              unknownRows: 0,
+            },
+            omitted: {
+              ...population,
+              rows: 2,
+              validRows: 0,
+              airedRows: 0,
+              futureRows: 0,
+            },
+          },
+          rows: [
+            {
+              id: 1,
+              quality: 'valid' as const,
+              airdate: '2026-04-01',
+              category: 'main' as const,
+              unique: true,
+              returned: true,
+            },
+            {
+              id: 2,
+              quality: 'valid' as const,
+              airdate: '2026-04-05',
+              category: 'main' as const,
+              unique: true,
+              returned: true,
+            },
+            {
+              id: 3,
+              quality: 'missing' as const,
+              category: 'main' as const,
+              unique: true,
+              returned: false,
+            },
+            {
+              id: 4,
+              quality: 'invalid' as const,
+              rawAirdate: '2026-02-30',
+              category: 'main' as const,
+              unique: true,
+              returned: false,
+            },
+          ],
+        },
+        anomalies: {
+          ...result.integrity.anomalies,
+          logicalAirdateConflicts: [
+            {
+              key: 'main:ep:3',
+              ids: [3, 4],
+              airdates: ['2026-04-05', '2026-04-04'],
+              members: [
+                {
+                  id: 3,
+                  quality: 'valid' as const,
+                  airdate: '2026-04-05',
+                  category: 'main' as const,
+                  unique: true,
+                  returned: false,
+                },
+                {
+                  id: 4,
+                  quality: 'valid' as const,
+                  airdate: '2026-04-04',
+                  category: 'main' as const,
+                  unique: true,
+                  returned: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      coverage: {
+        ...result.coverage,
+        state: 'partial',
+        episodeGuide: {
+          ...result.coverage.episodeGuide,
+          observedRows: 4,
+          uniqueRows: 4,
+          returnedRows: 2,
+          truncated: true,
+        },
+      },
+    } as unknown as EpisodeIntegrityResult;
+
+    const html = renderHtmlTemplate(
+      buildEpisodeIntegrityViewModel(qualityResult),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(html).toContain('顶层指标仅统计返回行');
+    expect(html).toContain('缺失 1');
+    expect(html).toContain('无效 1');
+    expect(html).toContain('日期质量明细');
+    expect(html).toContain('省略');
+    expect(html).toContain('2026-02-30');
+    expect(html).toContain('日期冲突明细');
+  });
+
   it('keeps mobile dense output bounded and renders desktop density', async () => {
     const denseItems = Array.from({ length: 24 }, (_, index) => ({
       ...result.items[0],

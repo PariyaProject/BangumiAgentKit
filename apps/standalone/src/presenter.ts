@@ -246,7 +246,7 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
   const populationLine = (label: string, candidate: unknown): string => {
     const population =
       candidate && typeof candidate === 'object' ? (candidate as Record<string, unknown>) : {};
-    return `${label} ${humanField(population.rows ?? '?', 20)}行/合法 ${humanField(population.validRows ?? '?', 20)} · 已播 ${humanField(population.airedRows ?? '?', 20)} · 未来 ${humanField(population.futureRows ?? '?', 20)} · 未知 ${humanField(population.unknownRows ?? '?', 20)}`;
+    return `${label} ${humanField(population.rows ?? '?', 20)}行 · 合法 ${humanField(population.validRows ?? '?', 20)} · 已播 ${humanField(population.airedRows ?? '?', 20)} · 未来 ${humanField(population.futureRows ?? '?', 20)} · 缺失 ${humanField(population.missingRows ?? '?', 20)} · 无效 ${humanField(population.invalidRows ?? '?', 20)} · 未知 ${humanField(population.unknownRows ?? '?', 20)}`;
   };
   const asOfSource =
     asOf?.source === 'explicit'
@@ -288,7 +288,7 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       ' · eps vs 观察正篇 ' +
       formatIntegrityCheck(checks.reportedVsObservedMain),
     '总数/已播: eps vs 已播正篇 ' + formatIntegrityCheck(checks.reportedVsAiredMain),
-    '日期: 合法 ' +
+    '日期摘要（返回人口，仅统计返回行）: 合法 ' +
       humanField(dates.validRows ?? '?', 32) +
       ' · 已播 ' +
       humanField(dates.airedRows ?? '?', 32) +
@@ -298,7 +298,7 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       humanField(dates.missingRows ?? '?', 32) +
       ' · 无效 ' +
       humanField(dates.invalidRows ?? '?', 32),
-    '日期人口: ' +
+    '日期人口（每项分别统计缺失/无效）: ' +
       populationLine('观察', populations.observed) +
       '；' +
       populationLine('去重', populations.unique) +
@@ -325,6 +325,54 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       (guideCoverage.truncated ? '有界样本' : '未显示截断'),
     '说明：合法首播日期不晚于 UTC as-of 才计入已播；未知日期不是未播。观看进度、观看顺序和播出历史不可计算。',
   ];
+
+  const dateRows = Array.isArray(dates.rows)
+    ? dates.rows.filter((candidate): candidate is Record<string, unknown> =>
+        Boolean(candidate && typeof candidate === 'object'),
+      )
+    : [];
+  const affectedDateRows = dateRows.filter(
+    (row) => row.quality !== 'valid' || row.unique === false,
+  );
+  if (affectedDateRows.length > 0) {
+    lines.push('日期质量明细（异常/未知，最多 12 条）：');
+    for (const row of affectedDateRows.slice(0, 12)) {
+      const airdate = typeof row.airdate === 'string' ? row.airdate : undefined;
+      const asOfDate = typeof dates.asOfDate === 'string' ? dates.asOfDate : undefined;
+      const number =
+        row.ep !== undefined
+          ? 'EP ' + row.ep
+          : row.sort !== undefined
+            ? '#' + row.sort
+            : 'ID ' + row.id;
+      const scope = row.unique === false ? '重复观察' : row.returned ? '返回' : '省略';
+      const quality =
+        row.quality === 'missing'
+          ? '首播缺失'
+          : row.quality === 'invalid'
+            ? '首播无效（原值 ' + humanField(row.rawAirdate || '未知', 48) + '）'
+            : airdate && asOfDate && airdate <= asOfDate
+              ? '首播 ' + airdate + ' · 已播'
+              : '首播 ' + humanField(airdate || '未知', 32) + ' · 未来';
+      const identifier =
+        row.ep !== undefined || row.sort !== undefined
+          ? number + ' / ID ' + humanField(row.id, 24)
+          : number;
+      lines.push(
+        '- ' +
+          identifier +
+          ' · ' +
+          scope +
+          ' · ' +
+          humanField(row.category || '未知类别', 32) +
+          ' · ' +
+          quality,
+      );
+    }
+    if (affectedDateRows.length > 12) {
+      lines.push('另有 ' + (affectedDateRows.length - 12) + ' 条日期质量明细未展开。');
+    }
+  }
   if (attempts.length > 0) {
     lines.push('来源操作：');
     for (const candidate of attempts.slice(0, 2)) {
@@ -386,9 +434,28 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
     const conflictLabels = logicalAirdateConflicts.slice(0, 3).map((candidate) => {
       if (!candidate || typeof candidate !== 'object') return '';
       const conflict = candidate as Record<string, unknown>;
-      const ids = Array.isArray(conflict.ids) ? conflict.ids.join(',') : '?';
+      const members = Array.isArray(conflict.members)
+        ? conflict.members
+            .filter((member): member is Record<string, unknown> =>
+              Boolean(member && typeof member === 'object'),
+            )
+            .slice(0, 12)
+            .map((member) => {
+              const scope = member.unique === false ? '重复' : member.returned ? '返回' : '省略';
+              const quality =
+                member.quality === 'missing'
+                  ? '缺失'
+                  : member.quality === 'invalid'
+                    ? '无效'
+                    : humanField(member.airdate || '未知', 24);
+              return `${member.id}/${scope}/${quality}`;
+            })
+            .join(',')
+        : Array.isArray(conflict.ids)
+          ? conflict.ids.join(',')
+          : '?';
       const airdates = Array.isArray(conflict.airdates) ? conflict.airdates.join('/') : '?';
-      return `${conflict.key || '?'} [${ids}] ${airdates}`;
+      return `${conflict.key || '?'} [${members}] ${airdates}`;
     });
     if (conflictLabels.some(Boolean)) {
       lines.push('日期冲突明细: ' + humanField(conflictLabels.filter(Boolean).join('；'), 220));

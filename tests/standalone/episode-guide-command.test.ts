@@ -112,6 +112,9 @@ describe('Standalone episode guide commands', () => {
         counts: { main: 2, special: 1, unknown: 0, airedMain: 1, futureMain: 1 },
         dateCoverage: {
           asOfDate: '2026-08-30',
+          observedRows: 4,
+          uniqueRows: 4,
+          returnedRows: 2,
           validRows: 2,
           airedRows: 1,
           futureRows: 1,
@@ -121,43 +124,69 @@ describe('Standalone episode guide commands', () => {
           basis: 'explicit',
           populations: {
             observed: {
-              rows: 3,
+              rows: 4,
               validRows: 2,
               airedRows: 1,
               futureRows: 1,
               missingRows: 1,
-              invalidRows: 0,
-              unknownRows: 1,
+              invalidRows: 1,
+              unknownRows: 2,
             },
             unique: {
-              rows: 3,
+              rows: 4,
               validRows: 2,
               airedRows: 1,
               futureRows: 1,
               missingRows: 1,
-              invalidRows: 0,
-              unknownRows: 1,
+              invalidRows: 1,
+              unknownRows: 2,
             },
             returned: {
-              rows: 3,
+              rows: 2,
               validRows: 2,
               airedRows: 1,
               futureRows: 1,
-              missingRows: 1,
-              invalidRows: 0,
-              unknownRows: 1,
-            },
-            omitted: {
-              rows: 0,
-              validRows: 0,
-              airedRows: 0,
-              futureRows: 0,
               missingRows: 0,
               invalidRows: 0,
               unknownRows: 0,
             },
+            omitted: {
+              rows: 2,
+              validRows: 0,
+              airedRows: 0,
+              futureRows: 0,
+              missingRows: 1,
+              invalidRows: 1,
+              unknownRows: 2,
+            },
           },
-          rows: [],
+          rows: [
+            {
+              id: 1,
+              quality: 'valid',
+              airdate: '2026-08-01',
+              category: 'main',
+              unique: true,
+              returned: true,
+            },
+            {
+              id: 2,
+              quality: 'valid',
+              airdate: '2026-09-01',
+              category: 'main',
+              unique: true,
+              returned: true,
+            },
+            { id: 3, quality: 'missing', category: 'main', unique: true, returned: false },
+            {
+              id: 4,
+              quality: 'invalid',
+              rawAirdate: '2026-02-30',
+              category: 'main',
+              unique: true,
+              returned: false,
+            },
+          ],
         },
         anomalies: {
           duplicateEpisodeIds: 0,
@@ -179,10 +208,10 @@ describe('Standalone episode guide commands', () => {
       },
       coverage: {
         episodeGuide: {
-          observedRows: 3,
-          uniqueRows: 3,
-          returnedRows: 3,
-          truncated: false,
+          observedRows: 4,
+          uniqueRows: 4,
+          returnedRows: 2,
+          truncated: true,
         },
         integrity: { denominator: 'bounded', comparisons: 'partial' },
       },
@@ -250,6 +279,11 @@ describe('Standalone episode guide commands', () => {
     expect(output).toContain('章节完整性');
     expect(output).toContain('已播正篇');
     expect(output).toContain('日期冲突组');
+    expect(output).toContain('日期摘要（返回人口');
+    expect(output).toContain('缺失 1');
+    expect(output).toContain('无效 1');
+    expect(output).toContain('日期质量明细');
+    expect(output).toContain('2026-02-30');
     expect(output).toContain('UTC as-of');
     expect(output).toContain('方法: episode-integrity-v1');
     expect(output).toContain('GET /v0/episodes');
