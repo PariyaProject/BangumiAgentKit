@@ -763,6 +763,73 @@
     }
   },
   {
+    "name": "bangumi.get_person_collaboration",
+    "description": "基于官方 v0 人物关系和作品关系，计算指定人物与其他人物共同出现于多少个官方作品，并返回按去重作品数排序的合作人物、共同作品和原始职位/角色证据。支持声优、制作人员或两者、动画/全部媒介、目标人物关系标签和制作人员合作方职位的字面筛选；所有人物/作品 fan-out、关系行、合作人物和共同作品都有显式上限，确定性报告观察/选取/失败/省略覆盖。不把演员 career 推断为合作方职位，不宣称完整行业网络、历史趋势、工作量或关系强度。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "kind": {
+          "description": "目标关系类型：voice 声优、staff 制作人员、all 两者；默认 voice",
+          "type": "string",
+          "enum": ["voice", "staff", "all"]
+        },
+        "media": {
+          "description": "媒介范围：anime 动画、all 全部媒介；默认 anime",
+          "type": "string",
+          "enum": ["anime", "all"]
+        },
+        "targetRole": {
+          "description": "对目标人物官方原始角色/职位标签做不区分大小写的字面包含匹配",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "collaboratorRole": {
+          "description": "对制作人员合作方官方 relation 原文做不区分大小写的字面包含匹配",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "maxRelations": {
+          "description": "最多观察的目标人物关系行数，默认 80",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "maxSubjects": {
+          "description": "最多 fan-out 的去重作品数，默认 24",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 36
+        },
+        "maxCollaborators": {
+          "description": "最多返回的合作人物数，默认 20",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "maxSharedSubjects": {
+          "description": "每位合作人物最多返回的共同作品数，默认 12",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "required": ["personId"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_person_collection",
     "description": "读取用户对单个人物的收藏信息。传入 username 时使用官方公开接口；省略 username 时读取当前绑定账号。用户或人物不存在时返回 found:false，并保留官方 career 原始标签。",
     "auth": "optional",
@@ -2087,6 +2154,65 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 60
+        }
+      },
+      "required": ["personId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_person_collaboration",
+    "description": "生成官方 v0 人物合作关系图片卡片 Artifact。卡片展示按去重共同作品数排序的合作人物、共同作品、原始职位/角色标签、fan-out 覆盖、确定性边界、失败和声优合作方职位不可用限制；不把演员 career 推断为职位，不显示或推断完整行业网络、历史趋势、工作量或关系强度。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "personId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Bangumi 人物 ID"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["voice", "staff", "all"]
+        },
+        "media": {
+          "type": "string",
+          "enum": ["anime", "all"]
+        },
+        "targetRole": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "collaboratorRole": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "maxRelations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "maxSubjects": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 36
+        },
+        "maxCollaborators": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "maxSharedSubjects": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
         }
       },
       "required": ["personId"],

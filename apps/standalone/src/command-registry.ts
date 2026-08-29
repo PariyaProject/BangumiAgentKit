@@ -49,6 +49,10 @@ Bangumi:
   activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
            [--months 3|6|12] [--max-relations 1..120]
            [--max-details 1..48] [--max-rows 1..60]
+  collaborators <personId> [--kind voice|staff|all] [--media anime|all]
+               [--target-role <label>] [--collaborator-role <label>]
+               [--max-relations 1..120] [--max-subjects 1..36]
+               [--max-collaborators 1..50] [--max-shared-subjects 1..20]
   staff <subjectId>
   calendar [--weekday 1..7] [--max-per-day 1..8] [--max-total 1..56]
            官方日历；首播日期是首播日期证据，不是具体播出时刻；时区未由源提供；顺序不等同于推荐
@@ -77,7 +81,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|stats-history|overview|compare|watch-order|cast|person|activity|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|stats|stats-history|overview|compare|watch-order|cast|person|activity|collaboration|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -199,6 +203,64 @@ function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
   if (maxDetails !== undefined)
     input.maxSubjectDetails = optionNumber(maxDetails, 'max-details', true);
   if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
+  return input;
+}
+
+function parsePersonCollaborationOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    personId: parsePositiveInteger(args[0], 'person id'),
+  };
+  const optionNames = new Set([
+    '--kind',
+    '--media',
+    '--target-role',
+    '--collaborator-role',
+    '--max-relations',
+    '--max-subjects',
+    '--max-collaborators',
+    '--max-shared-subjects',
+  ]);
+  const seen = new Set<string>();
+  for (let index = 1; index < args.length; index += 1) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown collaborators argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[++index];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--kind') {
+      if (value !== 'voice' && value !== 'staff' && value !== 'all') {
+        throw new StandaloneCliError('USAGE_ERROR: --kind must be voice, staff, or all.', 2);
+      }
+      input.kind = value;
+    } else if (name === '--media') {
+      if (value !== 'anime' && value !== 'all') {
+        throw new StandaloneCliError('USAGE_ERROR: --media must be anime or all.', 2);
+      }
+      input.media = value;
+    } else if (name === '--target-role') {
+      input.targetRole = requireArg(value.trim(), 'target role');
+    } else if (name === '--collaborator-role') {
+      input.collaboratorRole = requireArg(value.trim(), 'collaborator role');
+    } else if (name === '--max-relations') {
+      input.maxRelations = optionNumber(value, 'max-relations', true, 1, 120);
+    } else if (name === '--max-subjects') {
+      input.maxSubjects = optionNumber(value, 'max-subjects', true, 1, 36);
+    } else if (name === '--max-collaborators') {
+      input.maxCollaborators = optionNumber(value, 'max-collaborators', true, 1, 50);
+    } else {
+      input.maxSharedSubjects = optionNumber(value, 'max-shared-subjects', true, 1, 20);
+    }
+  }
   return input;
 }
 
@@ -645,6 +707,15 @@ export class StandaloneCommandRegistry {
         ),
       };
     }
+    if (command === 'collaborators') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_person_collaboration',
+          parsePersonCollaborationOptions(args.slice(1)),
+        ),
+      };
+    }
     if (command === 'staff') {
       return {
         value: await runTool(ctx, 'bangumi.get_subject_staff', {
@@ -993,6 +1064,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'activity') {
       name = 'bangumi.render_person_activity';
       input = parsePersonActivityOptions(args.slice(1));
+    } else if (kind === 'collaboration' || kind === 'collaborators') {
+      name = 'bangumi.render_person_collaboration';
+      input = parsePersonCollaborationOptions(args.slice(1));
     } else if (kind === 'episode-guide' || kind === 'episodes-guide') {
       name = 'bangumi.render_episode_guide';
       input = parseEpisodeGuideOptions(args.slice(1));

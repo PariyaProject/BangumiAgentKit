@@ -19,9 +19,9 @@ paths have independent smoke tests. No v0.1.0 tag or release has been created.
 - Standalone local console with interactive REPL, non-interactive CLI, JSON
   output, profiles, raw ToolRegistry playground, and `pnpm self-test`.
 - Semantic search, subjects, evidence-bearing subject overview/comparison (including
-  bounded shared-cast/staff overlap) and statistics intelligence, cast, calendar,
-  episodes, bounded episode guides, collection intelligence, auth, and renderer
-  presentation tools.
+  bounded shared-cast/staff overlap), statistics intelligence, cast, calendar,
+  episodes, bounded episode guides, person collaboration, collection intelligence,
+  auth, and renderer presentation tools.
 - OAuth account binding with encrypted credentials, active-account switching,
   and principal isolation.
 - SQLite by default, PostgreSQL compatibility, migrations, audit events, and

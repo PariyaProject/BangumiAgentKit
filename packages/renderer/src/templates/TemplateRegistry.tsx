@@ -11,6 +11,7 @@ import {
   EpisodeGuideViewModel,
   PersonProfileViewModel,
   PersonActivityViewModel,
+  PersonCollaborationViewModel,
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
@@ -34,6 +35,7 @@ import { RevisionTimelineCard } from './RevisionTimelineCard.js';
 import { EpisodeGuideCard } from './EpisodeGuideCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
 import { PersonActivityCard } from './PersonActivityCard.js';
+import { PersonCollaborationCard } from './PersonCollaborationCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { SubjectComparisonCard } from './SubjectComparisonCard.js';
@@ -152,6 +154,14 @@ registerTemplate<PersonActivityViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <PersonActivityCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<PersonCollaborationViewModel>({
+  id: 'person-collaboration',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <PersonCollaborationCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

@@ -17,6 +17,7 @@ import type {
   EpisodeGuideResult,
   PersonActivityProfile,
   PersonActivityResult,
+  PersonCollaborationResult,
   SubjectSearchResult,
   SeriesWatchOrderResult,
   SubjectOverviewResult,
@@ -45,6 +46,7 @@ import type {
   PersonProfileCreditViewModel,
   PersonProfileViewModel,
   PersonActivityViewModel,
+  PersonCollaborationViewModel,
   SeriesRelationsViewModel,
   SeriesRelationsRelatedViewModel,
   SeriesRelationPathViewModel,
@@ -1777,6 +1779,101 @@ export function buildPersonActivityViewModel(
         options.sourceLabel ||
         `Bangumi v0 · ${PERSON_ACTIVITY_KIND_LABELS[result.kind]} · ${PERSON_ACTIVITY_MEDIA_LABELS[result.media]}`,
       retrievedAt: result.coverage.retrievedAt,
+    },
+  };
+}
+
+const PERSON_COLLABORATION_KIND_LABELS: Record<PersonCollaborationResult['kind'], string> = {
+  voice: '声优合作',
+  staff: '制作人员合作',
+  all: '声优与制作人员合作',
+};
+
+const PERSON_COLLABORATION_MEDIA_LABELS: Record<PersonCollaborationResult['media'], string> = {
+  anime: '动画',
+  all: '全部媒介',
+};
+
+function collaborationRelationLabel(kind: string): string {
+  return kind === 'voice' ? '声优' : kind === 'staff' ? '制作人员' : kind;
+}
+
+export function buildPersonCollaborationViewModel(
+  result: PersonCollaborationResult,
+  options: { sourceLabel?: string; maxCollaborators?: number; maxSharedSubjects?: number } = {},
+): PersonCollaborationViewModel {
+  const maxCollaborators = Math.min(
+    24,
+    Math.max(1, Math.trunc(options.maxCollaborators ?? result.coverage.maxCollaborators)),
+  );
+  const maxSharedSubjects = Math.min(
+    20,
+    Math.max(1, Math.trunc(options.maxSharedSubjects ?? result.coverage.maxSharedSubjects)),
+  );
+  const visibleCollaborators = result.collaborators.slice(0, maxCollaborators).map((item) => {
+    const sharedSubjects = item.sharedSubjects.slice(0, maxSharedSubjects);
+    return {
+      id: item.id,
+      name: item.name,
+      nameCn: item.nameCn,
+      image: item.image,
+      career: item.career,
+      uniqueSubjects: item.uniqueSubjects,
+      creditRows: item.creditRows,
+      relationLabels: item.relationKinds.map(collaborationRelationLabel),
+      roleLabels: item.roleLabels,
+      sharedSubjects: sharedSubjects.map((subject) => ({
+        id: subject.id,
+        name: subject.name,
+        nameCn: subject.nameCn,
+        type: subject.type,
+        relationLabels: subject.relationKinds.map(collaborationRelationLabel),
+        targetRoles: subject.targetRoles,
+        collaboratorRoles: subject.collaboratorRoles,
+      })),
+      sharedSubjectsOmitted:
+        item.sharedSubjectsOmitted +
+        Math.max(0, item.sharedSubjects.length - sharedSubjects.length),
+    };
+  });
+  const hiddenCollaborators = Math.max(
+    0,
+    result.collaborators.length - visibleCollaborators.length,
+  );
+  const filterLabel = [
+    result.targetRole ? `目标标签：${result.targetRole}` : undefined,
+    result.collaboratorRole ? `合作方职位：${result.collaboratorRole}` : undefined,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' · ');
+  const { retrievedAt, ...coverage } = result.coverage;
+
+  return {
+    template: 'person-collaboration',
+    version: 1,
+    state: result.state,
+    person: {
+      id: result.personId,
+      name: result.person?.name || '未知人物',
+      nameCn: result.person?.nameCn,
+      career: result.person?.career || [],
+    },
+    kind: result.kind,
+    media: result.media,
+    targetRole: result.targetRole,
+    collaboratorRole: result.collaboratorRole,
+    collaborators: visibleCollaborators,
+    hiddenCollaborators,
+    coverage,
+    exclusions: result.exclusions,
+    sourceOperations: result.sourceOperations,
+    limitations: result.limitations,
+    warnings: result.warnings,
+    source: {
+      label:
+        options.sourceLabel ||
+        `Bangumi v0 · ${PERSON_COLLABORATION_KIND_LABELS[result.kind]} · ${PERSON_COLLABORATION_MEDIA_LABELS[result.media]}${filterLabel ? ` · ${filterLabel}` : ''}`,
+      retrievedAt,
     },
   };
 }

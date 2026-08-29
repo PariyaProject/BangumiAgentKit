@@ -60,7 +60,8 @@ The `TemplateRegistry` maps `RenderViewModel['template']` to React card template
 (`subject-card`, `subject-overview`, `subject-stats`, `search-list`, `discovery-results`, `cast-card`,
 `collection-progress`, `collection-intelligence`, `collection-backlog`,
 `collection-schedule`, `collection-dashboard`, `calendar`,
-`revision-timeline`, `person-profile`, `person-activity`, and `subject-comparison`).
+`revision-timeline`, `person-profile`, `person-activity`, `person-collaboration`,
+and `subject-comparison`).
 It also includes `series-relations` for bounded Series / Watch-Order evidence.
 
 `subject-comparison` is an image-free, read-only companion card for
@@ -169,6 +170,17 @@ infer labor time, historical trend, popularity, income, or recommendations.
 Narrow layouts keep the summary and visible rows readable while reporting
 hidden rows separately, including the requested person ID when person detail
 hydration fails.
+
+The `person-collaboration` card is the image-free companion to
+`bangumi.get_person_collaboration`. It presents collaborators ranked by
+deduplicated official-v0 shared subject count, lists bounded shared-work
+evidence, and keeps target labels and staff collaborator `relation` labels raw.
+The card reports relation filtering, subject fan-out, participant failures and
+malformed rows, self-edge exclusions, concurrency, collaborator/shared-subject
+output caps, and voice-side collaborator-role unavailability. It preserves
+complete, partial, unavailable, not-found, and not-computable states and does
+not infer a complete industry graph, historical trend, workload, relationship
+strength, or recommendation.
 
 All operations use structured `RendererError` types:
 

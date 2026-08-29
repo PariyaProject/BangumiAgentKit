@@ -16,6 +16,7 @@ import {
   COLLECTION_SERIES_LIMITS,
   PersonService,
   PersonActivityService,
+  PersonCollaborationService,
   RevisionService,
   RevisionEntityType,
   EpisodeGuideService,
@@ -44,6 +45,7 @@ import {
   buildCollectionDashboardViewModel,
   buildCollectionSeriesViewModel,
   buildPersonActivityViewModel,
+  buildPersonCollaborationViewModel,
   buildEpisodeGuideViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
@@ -531,6 +533,48 @@ export function createRenderPresentationTools(
         maxRows: input.maxRows,
       });
       return await executeRenderAndSave(buildPersonActivityViewModel(result));
+    },
+  });
+
+  const renderPersonCollaboration = defineTool({
+    name: 'bangumi.render_person_collaboration',
+    description:
+      '生成官方 v0 人物合作关系图片卡片 Artifact。卡片展示按去重共同作品数排序的合作人物、共同作品、原始职位/角色标签、fan-out 覆盖、确定性边界、失败和声优合作方职位不可用限制；不把演员 career 推断为职位，不显示或推断完整行业网络、历史趋势、工作量或关系强度。',
+    input: z
+      .object({
+        personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+        kind: z.enum(['voice', 'staff', 'all']).optional(),
+        media: z.enum(['anime', 'all']).optional(),
+        targetRole: z.string().trim().min(1).max(80).optional(),
+        collaboratorRole: z.string().trim().min(1).max(80).optional(),
+        maxRelations: z.number().int().min(1).max(120).optional(),
+        maxSubjects: z.number().int().min(1).max(36).optional(),
+        maxCollaborators: z.number().int().min(1).max(50).optional(),
+        maxSharedSubjects: z.number().int().min(1).max(20).optional(),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      if (!deps?.clientProvider) {
+        throw new BangumiError('INTERNAL_ERROR', 'ClientProvider unavailable', false);
+      }
+      const client = await deps.clientProvider.getPublicClient();
+      const result = await new PersonCollaborationService(client).getPersonCollaboration(
+        input.personId,
+        {
+          kind: input.kind,
+          media: input.media,
+          targetRole: input.targetRole,
+          collaboratorRole: input.collaboratorRole,
+          maxRelations: input.maxRelations,
+          maxSubjects: input.maxSubjects,
+          maxCollaborators: input.maxCollaborators,
+          maxSharedSubjects: input.maxSharedSubjects,
+        },
+      );
+      return await executeRenderAndSave(buildPersonCollaborationViewModel(result));
     },
   });
 
@@ -1114,5 +1158,6 @@ export function createRenderPresentationTools(
     renderCollectionDashboard,
     renderCollectionSeriesGroups,
     renderPersonActivity,
+    renderPersonCollaboration,
   ] as const;
 }
