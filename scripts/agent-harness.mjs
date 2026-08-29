@@ -1183,6 +1183,7 @@ function commandEpochMerge(options) {
   }
   assertMergeReadiness({
     epoch,
+    outerSol: runResult.state.outer_sol,
     branchHeadSha: currentHead(),
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha,

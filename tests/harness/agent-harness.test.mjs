@@ -267,6 +267,20 @@ test('the third Outer Product review corrective enters Luna final-corrective and
   assert.equal(epoch.state, 'FINAL_CORRECTIVE_REQUIRED');
   assert.equal(run.outer_sol.product.consumed, 3);
   assert.equal(run.outer_sol.closure.consumed, 0);
+
+  epoch.corrective_closure = closeFindings(epoch.findings);
+  epoch.candidate_sha = sha('d');
+  epoch.ci = { sha: sha('d'), status: 'SUCCESS', url: 'https://example.test/ci-final' };
+  epoch.final_corrective_sha = sha('d');
+  epoch.final_corrective_base_sha = sha('a');
+  epoch.state = 'FINAL_CORRECTIVE_READY';
+  assertMergeReadiness({
+    epoch,
+    outerSol: run.outer_sol,
+    branchHeadSha: sha('d'),
+    prHeadSha: sha('d'),
+    currentBaseSha: sha('a'),
+  });
 });
 
 test('frontier closure rejection resumes Luna and can never launch a second closure reviewer', () => {
