@@ -1,6 +1,7 @@
 import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import {
   EpisodeGuideCategory,
+  EpisodeGuideAirdateRow,
   EpisodeGuideItem,
   EpisodeGuideOptions,
   EpisodeGuideResult,
@@ -35,8 +36,9 @@ export interface EpisodeIntegrityResult {
   summary: EpisodeGuideResult['summary'];
   asOf: {
     date: string;
-    source: 'explicit' | 'retrieval';
+    source: 'explicit' | 'retrieval' | 'evaluation';
     retrievedAt?: string;
+    evaluatedAt: string;
   };
   integrity: {
     state: EpisodeIntegrityState;
@@ -47,6 +49,7 @@ export interface EpisodeIntegrityResult {
       returnedRows: number;
       main: number;
       special: number;
+      unknown: number;
       airedMain: number;
       futureMain: number;
       mainWithValidAirdate: number;
@@ -74,6 +77,15 @@ export interface EpisodeIntegrityResult {
       missingRows: number;
       invalidRows: number;
       unknownRows: number;
+      state: 'complete' | 'partial' | 'not_computable';
+      basis: 'explicit' | 'episode_retrieval' | 'evaluation';
+      populations: {
+        observed: EpisodeIntegrityDatePopulation;
+        unique: EpisodeIntegrityDatePopulation;
+        returned: EpisodeIntegrityDatePopulation;
+        omitted: EpisodeIntegrityDatePopulation;
+      };
+      rows: EpisodeGuideAirdateRow[];
     };
     anomalies: {
       duplicateEpisodeIds: number;
@@ -83,6 +95,13 @@ export interface EpisodeIntegrityResult {
       nonMonotonicMainAirdates: number;
       missingAirdates: number;
       invalidAirdates: number;
+      duplicateEpisodeIdsList: number[];
+      duplicateAirdateConflictIds: number[];
+      logicalAirdateConflicts: Array<{
+        key: string;
+        ids: number[];
+        airdates: string[];
+      }>;
     };
   };
   coverage: {
@@ -112,6 +131,16 @@ export interface EpisodeIntegrityResult {
 
 export const EPISODE_INTEGRITY_FORMULA_VERSION = 'episode-integrity-v1' as const;
 
+export interface EpisodeIntegrityDatePopulation {
+  rows: number;
+  validRows: number;
+  airedRows: number;
+  futureRows: number;
+  missingRows: number;
+  invalidRows: number;
+  unknownRows: number;
+}
+
 function validIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
@@ -124,6 +153,7 @@ function validIsoDate(value: string): boolean {
 function resolveAsOfDate(
   requestedDate: string | undefined,
   retrievedAt: string | undefined,
+  evaluatedAt: string,
 ): EpisodeIntegrityResult['asOf'] {
   if (requestedDate !== undefined) {
     if (!validIsoDate(requestedDate)) {
@@ -133,11 +163,21 @@ function resolveAsOfDate(
         false,
       );
     }
-    return { date: requestedDate, source: 'explicit', ...(retrievedAt ? { retrievedAt } : {}) };
+    return {
+      date: requestedDate,
+      source: 'explicit',
+      evaluatedAt,
+      ...(retrievedAt ? { retrievedAt } : {}),
+    };
   }
-  const fallback = new Date().toISOString();
-  const retrieval = retrievedAt || fallback;
-  return { date: retrieval.slice(0, 10), source: 'retrieval', retrievedAt: retrieval };
+  if (retrievedAt && validIsoDate(retrievedAt.slice(0, 10))) {
+    return { date: retrievedAt.slice(0, 10), source: 'retrieval', retrievedAt, evaluatedAt };
+  }
+  return {
+    date: evaluatedAt.slice(0, 10),
+    source: 'evaluation',
+    evaluatedAt,
+  };
 }
 
 function countByCategory(items: EpisodeGuideItem[]): Partial<Record<EpisodeGuideCategory, number>> {
@@ -156,6 +196,7 @@ function findLogicalAnomalies(items: EpisodeGuideItem[]): {
   duplicateLogicalKeys: number;
   airdateConflictGroups: number;
   nonMonotonicMainAirdates: number;
+  logicalAirdateConflicts: Array<{ key: string; ids: number[]; airdates: string[] }>;
 } {
   const groups = new Map<string, EpisodeGuideItem[]>();
   for (const item of items) {
@@ -168,10 +209,22 @@ function findLogicalAnomalies(items: EpisodeGuideItem[]): {
 
   let duplicateLogicalKeys = 0;
   let airdateConflictGroups = 0;
-  for (const group of groups.values()) {
+  const logicalAirdateConflicts: Array<{ key: string; ids: number[]; airdates: string[] }> = [];
+  for (const [key, group] of groups.entries()) {
     if (group.length > 1) duplicateLogicalKeys += group.length - 1;
-    const dates = new Set(group.map((item) => item.airdate).filter(Boolean));
-    if (dates.size > 1) airdateConflictGroups += 1;
+    const dates = new Set(
+      group.map((item) => item.airdate).filter((date): date is string => Boolean(date)),
+    );
+    if (dates.size > 1) {
+      airdateConflictGroups += 1;
+      if (logicalAirdateConflicts.length < 24) {
+        logicalAirdateConflicts.push({
+          key,
+          ids: group.slice(0, 12).map((item) => item.id),
+          airdates: Array.from(dates).slice(0, 12),
+        });
+      }
+    }
   }
 
   const mainItems = items.filter((item) => item.category === 'main');
@@ -183,7 +236,52 @@ function findLogicalAnomalies(items: EpisodeGuideItem[]): {
     previousDate = item.airdate;
   }
 
-  return { duplicateLogicalKeys, airdateConflictGroups, nonMonotonicMainAirdates };
+  return {
+    duplicateLogicalKeys,
+    airdateConflictGroups,
+    nonMonotonicMainAirdates,
+    logicalAirdateConflicts,
+  };
+}
+
+function dateRowsForGuide(guide: EpisodeGuideResult): EpisodeGuideAirdateRow[] {
+  if (
+    guide.coverage.airdateRows &&
+    (guide.coverage.airdateRows.length > 0 || guide.items.length === 0)
+  ) {
+    return guide.coverage.airdateRows;
+  }
+  return guide.items.map((item) => ({
+    id: item.id,
+    quality: item.airdate ? 'valid' : 'missing',
+    ...(item.airdate ? { airdate: item.airdate } : {}),
+    category: item.category,
+    ...(item.rawType === undefined ? {} : { rawType: item.rawType }),
+    ...(item.ep === undefined ? {} : { ep: item.ep }),
+    ...(item.sort === undefined ? {} : { sort: item.sort }),
+    unique: true,
+    returned: true,
+  }));
+}
+
+function summarizeDatePopulation(
+  rows: EpisodeGuideAirdateRow[],
+  asOfDate: string,
+): EpisodeIntegrityDatePopulation {
+  const validRows = rows.filter((row) => row.quality === 'valid');
+  const airedRows = validRows.filter((row) => Boolean(row.airdate && row.airdate <= asOfDate));
+  const futureRows = validRows.filter((row) => Boolean(row.airdate && row.airdate > asOfDate));
+  const missingRows = rows.filter((row) => row.quality === 'missing').length;
+  const invalidRows = rows.filter((row) => row.quality === 'invalid').length;
+  return {
+    rows: rows.length,
+    validRows: validRows.length,
+    airedRows: airedRows.length,
+    futureRows: futureRows.length,
+    missingRows,
+    invalidRows,
+    unknownRows: missingRows + invalidRows,
+  };
 }
 
 function comparison(
@@ -224,6 +322,12 @@ function countValue(
 ): number | undefined {
   const value = subject?.[field];
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function episodeSourceAttempt(
+  source: EpisodeGuideResult['source'],
+): EpisodeGuideResult['source']['attempts'][number] | undefined {
+  return source.attempts.find((attempt) => attempt.operation === 'GET /v0/episodes');
 }
 
 function integrityState(
@@ -280,24 +384,64 @@ export class EpisodeIntegrityService {
       ...guideOptions,
       includeDescriptions: guideOptions.includeDescriptions ?? false,
     });
-    const retrievedAt = guide.source.retrievedAt;
-    const asOf = requestedAsOfDate
-      ? resolveAsOfDate(requestedAsOfDate, retrievedAt)
-      : resolveAsOfDate(undefined, retrievedAt || this.clock().toISOString());
+    const evaluatedAt = this.clock().toISOString();
+    const episodeAttempt = episodeSourceAttempt(guide.source);
+    const episodeRetrievedAt =
+      episodeAttempt?.state === 'complete' ? episodeAttempt.retrievedAt : undefined;
+    const asOf = resolveAsOfDate(requestedAsOfDate, episodeRetrievedAt, evaluatedAt);
     const asOfDate = asOf.date;
     const mainItems = guide.items.filter((item) => item.category === 'main');
-    const specialItems = guide.items.filter((item) => item.category !== 'main');
-    const validDateItems = guide.items.filter((item) => Boolean(item.airdate));
+    const specialItems = guide.items.filter(
+      (item) => item.category !== 'main' && item.category !== 'unknown',
+    );
+    const unknownItems = guide.items.filter((item) => item.category === 'unknown');
     const airedMainItems = mainItems.filter((item) =>
       Boolean(item.airdate && item.airdate <= asOfDate),
     );
     const futureMainItems = mainItems.filter((item) =>
       Boolean(item.airdate && item.airdate > asOfDate),
     );
-    const missingAirdates = guide.coverage.missingFields['episode.airdate'] || 0;
-    const invalidAirdates = guide.coverage.invalidFields['episode.airdate'] || 0;
+    const dateRows = dateRowsForGuide(guide);
+    const uniqueDateRows = dateRows.filter((row) => row.unique);
+    const returnedDateRows = dateRows.filter((row) => row.returned);
+    const omittedDateRows = dateRows.filter((row) => row.unique && !row.returned);
+    const datePopulations = {
+      observed: summarizeDatePopulation(dateRows, asOfDate),
+      unique: summarizeDatePopulation(uniqueDateRows, asOfDate),
+      returned: summarizeDatePopulation(returnedDateRows, asOfDate),
+      omitted: summarizeDatePopulation(omittedDateRows, asOfDate),
+    };
+    const missingAirdates = datePopulations.returned.missingRows;
+    const invalidAirdates = datePopulations.returned.invalidRows;
     const anomalies = findLogicalAnomalies(guide.items);
     const duplicateAirdateConflicts = guide.coverage.duplicateConflicts?.['episode.airdate'] || 0;
+    const duplicateEpisodeIdsList = Array.from(
+      new Set(dateRows.filter((row) => !row.unique).map((row) => row.id)),
+    ).slice(0, 24);
+    const duplicateAirdateConflictIds = Array.from(
+      new Set(
+        Array.from(
+          dateRows
+            .reduce((groups, row) => {
+              const group = groups.get(row.id) || [];
+              group.push(row);
+              groups.set(row.id, group);
+              return groups;
+            }, new Map<number, EpisodeGuideAirdateRow[]>())
+            .entries(),
+        )
+          .filter(([, rows]) => {
+            if (rows.length < 2) return false;
+            const dates = new Set(
+              rows
+                .map((row) => row.airdate || row.rawAirdate)
+                .filter((value): value is string => Boolean(value)),
+            );
+            return dates.size > 1;
+          })
+          .map(([id]) => id),
+      ),
+    ).slice(0, 24);
     const subjectEpisodes = countValue(guide.subject, 'episodesReported');
     const subjectTotalEpisodes = countValue(guide.subject, 'totalEpisodesReported');
     const categoryFiltered = guide.filters.category !== 'all';
@@ -306,6 +450,23 @@ export class EpisodeIntegrityService {
       guide.coverage.truncated ||
       guide.coverage.duplicateRows > 0 ||
       guide.coverage.episodes.state !== 'complete';
+    const episodeSourceAvailable =
+      guide.coverage.episodes.state === 'complete' &&
+      (!episodeAttempt || episodeAttempt.state === 'complete');
+    const dateCoverageState = !episodeSourceAvailable
+      ? 'not_computable'
+      : categoryFiltered ||
+          guide.state === 'partial' ||
+          guide.coverage.truncated ||
+          dateRows.some((row) => !row.unique)
+        ? 'partial'
+        : 'complete';
+    const dateCoverageBasis =
+      requestedAsOfDate !== undefined
+        ? 'explicit'
+        : episodeRetrievedAt !== undefined
+          ? 'episode_retrieval'
+          : 'evaluation';
     const comparisonUnavailableReason = categoryFiltered
       ? '类别筛选只返回部分章节类别，不能将观察行与条目总数作完整比较。'
       : '官方条目总数或章节页面覆盖不足，不能作完整比较。';
@@ -354,6 +515,7 @@ export class EpisodeIntegrityService {
       anomalies.nonMonotonicMainAirdates > 0 ||
       missingAirdates > 0 ||
       invalidAirdates > 0 ||
+      (guide.coverage.unknownTypeRows || 0) > 0 ||
       hasNotComputableCheck;
     const state = integrityState(guide, hardConflict, hasAnomalies);
     const comparisons =
@@ -390,8 +552,14 @@ export class EpisodeIntegrityService {
         message: '本次没有足够的章节观察来计算完整性结论；空结果不证明条目没有章节。',
       });
     }
-
-    const derivedRetrievedAt = guide.source.retrievedAt || guide.source.attemptedAt;
+    if (asOf.source === 'evaluation') {
+      warnings.push({
+        code: 'AS_OF_EVALUATION_ONLY',
+        state,
+        message:
+          '章节源没有成功返回可用的获取时间；UTC as-of 仅标记本次评估日期，不把评估时钟伪装成章节源获取时间。',
+      });
+    }
     return {
       subjectId,
       state,
@@ -409,6 +577,7 @@ export class EpisodeIntegrityService {
           returnedRows: guide.coverage.returnedRows,
           main: mainItems.length,
           special: specialItems.length,
+          unknown: unknownItems.length,
           airedMain: airedMainItems.length,
           futureMain: futureMainItems.length,
           mainWithValidAirdate: mainItems.filter((item) => Boolean(item.airdate)).length,
@@ -424,17 +593,19 @@ export class EpisodeIntegrityService {
         checks,
         dateCoverage: {
           asOfDate,
-          observedRows: guide.coverage.observedRows,
-          uniqueRows: guide.coverage.uniqueRows,
-          returnedRows: guide.coverage.returnedRows,
-          validRows: validDateItems.length,
-          airedRows: guide.items.filter((item) => Boolean(item.airdate && item.airdate <= asOfDate))
-            .length,
-          futureRows: guide.items.filter((item) => Boolean(item.airdate && item.airdate > asOfDate))
-            .length,
-          missingRows: missingAirdates,
-          invalidRows: invalidAirdates,
-          unknownRows: Math.max(0, guide.coverage.uniqueRows - validDateItems.length),
+          observedRows: datePopulations.observed.rows,
+          uniqueRows: datePopulations.unique.rows,
+          returnedRows: datePopulations.returned.rows,
+          validRows: datePopulations.returned.validRows,
+          airedRows: datePopulations.returned.airedRows,
+          futureRows: datePopulations.returned.futureRows,
+          missingRows: datePopulations.returned.missingRows,
+          invalidRows: datePopulations.returned.invalidRows,
+          unknownRows: datePopulations.returned.unknownRows,
+          state: dateCoverageState,
+          basis: dateCoverageBasis,
+          populations: datePopulations,
+          rows: dateRows,
         },
         anomalies: {
           duplicateEpisodeIds: guide.coverage.duplicateRows,
@@ -444,6 +615,9 @@ export class EpisodeIntegrityService {
           nonMonotonicMainAirdates: anomalies.nonMonotonicMainAirdates,
           missingAirdates,
           invalidAirdates,
+          duplicateEpisodeIdsList,
+          duplicateAirdateConflictIds,
+          logicalAirdateConflicts: anomalies.logicalAirdateConflicts,
         },
       },
       coverage: {
@@ -466,8 +640,7 @@ export class EpisodeIntegrityService {
         {
           source: 'derived',
           operations: ['episode-integrity-composition'],
-          attemptedAt: guide.source.attemptedAt,
-          retrievedAt: derivedRetrievedAt,
+          attemptedAt: evaluatedAt,
           formulaVersion: EPISODE_INTEGRITY_FORMULA_VERSION,
           description:
             '由官方 v0 subject 与 episodes 章节指南组合；只比较合法日期与明确 UTC as-of 日期，保留观察/去重/截断、类别、日期和逻辑冲突状态。',

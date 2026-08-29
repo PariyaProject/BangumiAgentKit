@@ -229,8 +229,33 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
     coverageDetails.episodeGuide && typeof coverageDetails.episodeGuide === 'object'
       ? (coverageDetails.episodeGuide as Record<string, unknown>)
       : {};
+  const integrityCoverage =
+    coverageDetails.integrity && typeof coverageDetails.integrity === 'object'
+      ? (coverageDetails.integrity as Record<string, unknown>)
+      : {};
   const subject = value.subject && typeof value.subject === 'object' ? value.subject : undefined;
   const subjectDetails = subject as Record<string, unknown> | undefined;
+  const source = value.source && typeof value.source === 'object' ? value.source : undefined;
+  const sourceDetails = source as Record<string, unknown> | undefined;
+  const attempts = Array.isArray(sourceDetails?.attempts) ? sourceDetails.attempts : [];
+  const evidence = Array.isArray(value.evidence) ? value.evidence : [];
+  const populations =
+    dates.populations && typeof dates.populations === 'object'
+      ? (dates.populations as Record<string, unknown>)
+      : {};
+  const populationLine = (label: string, candidate: unknown): string => {
+    const population =
+      candidate && typeof candidate === 'object' ? (candidate as Record<string, unknown>) : {};
+    return `${label} ${humanField(population.rows ?? '?', 20)}行/合法 ${humanField(population.validRows ?? '?', 20)} · 已播 ${humanField(population.airedRows ?? '?', 20)} · 未来 ${humanField(population.futureRows ?? '?', 20)} · 未知 ${humanField(population.unknownRows ?? '?', 20)}`;
+  };
+  const asOfSource =
+    asOf?.source === 'explicit'
+      ? '明确日期'
+      : asOf?.source === 'retrieval'
+        ? '章节源获取日期'
+        : '评估日期（章节源获取时间不可用）';
+  const denominator = integrityCoverage.denominator || 'unknown';
+  const comparisons = integrityCoverage.comparisons || 'not_computable';
   const lines = [
     '章节完整性 · 状态: ' +
       humanField(value.state || 'unknown', 64) +
@@ -239,11 +264,21 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
     'UTC as-of: ' +
       humanField(asOf?.date || dates.asOfDate || '未知', 32) +
       ' · ' +
-      (asOf?.source === 'explicit' ? '明确日期' : '读取日期'),
+      asOfSource +
+      ' · 评估于 ' +
+      humanField(asOf?.evaluatedAt || '未知', 64),
+    '方法: ' +
+      humanField(details.formulaVersion || 'episode-integrity-v1', 64) +
+      ' · 分母 ' +
+      humanField(denominator, 32) +
+      ' · 比较 ' +
+      humanField(comparisons, 32),
     '计数: 正篇 ' +
       humanField(counts.main ?? '?', 32) +
       ' · 特别/其他 ' +
       humanField(counts.special ?? '?', 32) +
+      ' · 未知类别 ' +
+      humanField(counts.unknown ?? '?', 32) +
       ' · 已播正篇 ' +
       humanField(counts.airedMain ?? '?', 32) +
       ' · 未来正篇 ' +
@@ -263,6 +298,13 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       humanField(dates.missingRows ?? '?', 32) +
       ' · 无效 ' +
       humanField(dates.invalidRows ?? '?', 32),
+    '日期人口: ' +
+      populationLine('观察', populations.observed) +
+      '；' +
+      populationLine('去重', populations.unique) +
+      '；' +
+      populationLine('返回', populations.returned),
+    '日期省略: ' + populationLine('未返回去重', populations.omitted),
     '异常: 重复 ID ' +
       humanField(anomalies.duplicateEpisodeIds ?? 0, 32) +
       ' · 逻辑重复 ' +
@@ -283,6 +325,42 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       (guideCoverage.truncated ? '有界样本' : '未显示截断'),
     '说明：合法首播日期不晚于 UTC as-of 才计入已播；未知日期不是未播。观看进度、观看顺序和播出历史不可计算。',
   ];
+  if (attempts.length > 0) {
+    lines.push('来源操作：');
+    for (const candidate of attempts.slice(0, 2)) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const attempt = candidate as Record<string, unknown>;
+      const error = attempt.error && typeof attempt.error === 'object' ? attempt.error : undefined;
+      const errorDetails = error as Record<string, unknown> | undefined;
+      lines.push(
+        '- ' +
+          humanField(attempt.operation || '未记录', 120) +
+          ' · ' +
+          humanField(attempt.state || 'unknown', 32) +
+          ' · 尝试 ' +
+          humanField(attempt.attemptedAt || '未知', 64) +
+          ' · 获取 ' +
+          humanField(attempt.retrievedAt || '无', 64) +
+          (errorDetails?.code ? ' · 错误 ' + humanField(errorDetails.code, 48) : ''),
+      );
+    }
+  }
+  const evidenceLabels = evidence
+    .filter((candidate): candidate is Record<string, unknown> =>
+      Boolean(candidate && typeof candidate === 'object'),
+    )
+    .flatMap((candidate) => [
+      ...(typeof candidate.formulaVersion === 'string' ? [candidate.formulaVersion] : []),
+      ...(typeof candidate.operation === 'string' ? [candidate.operation] : []),
+      ...(Array.isArray(candidate.operations)
+        ? candidate.operations.filter(
+            (operation): operation is string => typeof operation === 'string',
+          )
+        : []),
+    ]);
+  if (evidenceLabels.length > 0) {
+    lines.push('证据: ' + humanField([...new Set(evidenceLabels)].join(' · '), 220));
+  }
   const items = value.items as unknown[];
   for (const [index, candidate] of items.slice(0, 12).entries()) {
     if (!candidate || typeof candidate !== 'object') continue;
@@ -303,6 +381,19 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       '渲染器省略: ' + humanField(coverageDetails.renderedOmitted, 32) + ' 条已返回章节。',
     );
   }
+  const logicalAirdateConflicts = anomalies.logicalAirdateConflicts;
+  if (Array.isArray(logicalAirdateConflicts) && logicalAirdateConflicts.length > 0) {
+    const conflictLabels = logicalAirdateConflicts.slice(0, 3).map((candidate) => {
+      if (!candidate || typeof candidate !== 'object') return '';
+      const conflict = candidate as Record<string, unknown>;
+      const ids = Array.isArray(conflict.ids) ? conflict.ids.join(',') : '?';
+      const airdates = Array.isArray(conflict.airdates) ? conflict.airdates.join('/') : '?';
+      return `${conflict.key || '?'} [${ids}] ${airdates}`;
+    });
+    if (conflictLabels.some(Boolean)) {
+      lines.push('日期冲突明细: ' + humanField(conflictLabels.filter(Boolean).join('；'), 220));
+    }
+  }
   const warnings = value.warnings;
   if (Array.isArray(warnings) && warnings.length > 0) {
     lines.push('告警：');
@@ -312,6 +403,13 @@ function presentEpisodeIntegrity(value: Record<string, unknown>): string | undef
       lines.push('- ' + humanField(warningDetails.message || warningDetails.code || 'WARNING'));
     }
     if (warnings.length > 3) lines.push('- 另有 ' + (warnings.length - 3) + ' 条告警未展开。');
+  }
+  const limitations = value.limitations;
+  if (Array.isArray(limitations) && limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 2)) lines.push('- ' + humanField(limitation));
+    if (limitations.length > 2)
+      lines.push('- 另有 ' + (limitations.length - 2) + ' 条限制未展开。');
   }
   return boundHumanLines(lines);
 }

@@ -1526,10 +1526,10 @@ export function buildEpisodeIntegrityViewModel(
   result: EpisodeIntegrityResult,
   options: { maxItems?: number } = {},
 ): EpisodeIntegrityViewModel {
-  const requestedMax = options.maxItems ?? 18;
+  const requestedMax = options.maxItems ?? 12;
   const maxItems = Number.isFinite(requestedMax)
     ? Math.min(24, Math.max(1, Math.trunc(requestedMax)))
-    : 18;
+    : 12;
   const items = result.items.slice(0, maxItems);
   const renderedOmitted = Math.max(0, result.items.length - items.length);
   const warnings = [...result.warnings];

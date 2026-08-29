@@ -55,6 +55,20 @@ function buildClient(episodes: unknown, subject: unknown = subjectPayload()) {
   return client;
 }
 
+function buildClientWithStatuses(subjectStatus: number, episodeStatus: number) {
+  const client = new HttpClient({
+    fetchFn: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/v0/subjects/123') return response(subjectPayload(), subjectStatus);
+      if (url.pathname === '/v0/episodes') {
+        return response({ message: 'source unavailable' }, episodeStatus);
+      }
+      return response({ message: 'not found' }, 404);
+    },
+  });
+  return client;
+}
+
 describe('EpisodeIntegrityService', () => {
   it('computes bounded counts and UTC aired status without inferring watch state', async () => {
     const result = await new EpisodeIntegrityService(
@@ -145,6 +159,17 @@ describe('EpisodeIntegrityService', () => {
       missingRows: 1,
       invalidRows: 1,
     });
+    expect(result.integrity.dateCoverage.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 1, quality: 'missing', returned: true }),
+        expect.objectContaining({ id: 5, quality: 'invalid', rawAirdate: '2026-02-30' }),
+      ]),
+    );
+    expect(result.integrity.anomalies.logicalAirdateConflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'main:ep:2', ids: expect.arrayContaining([2, 3]) }),
+      ]),
+    );
     expect(result.integrity.checks.reportedVsDatabase.state).toBe('consistent');
     expect(result.coverage.integrity.denominator).toBe('source_exact');
     expect(result.warnings).toEqual(
@@ -198,9 +223,40 @@ describe('EpisodeIntegrityService', () => {
     ).getEpisodeIntegrity(123, { asOfDate: '2026-04-05' });
 
     expect(unknown.state).toBe('partial');
+    expect(unknown.integrity.counts).toMatchObject({ special: 0, unknown: 1 });
     expect(unknown.integrity.counts.byCategory).toEqual({ unknown: 1 });
     expect(unknown.items[0]).toMatchObject({ category: 'unknown' });
     expect(unknown.items[0]).not.toHaveProperty('rawType');
+
+    const futureType = await new EpisodeIntegrityService(
+      buildClient({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [episode(10, { type: 7 })],
+      }),
+    ).getEpisodeIntegrity(123, { asOfDate: '2026-04-05' });
+    expect(futureType.items[0]).toMatchObject({ category: 'unknown', rawType: 7 });
+    expect(futureType.integrity.counts).toMatchObject({ special: 0, unknown: 1 });
+    expect(futureType.coverage.episodeGuide).toMatchObject({ unknownTypeRows: 1 });
+    expect(futureType.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'UNKNOWN_EPISODE_TYPES' })]),
+    );
+
+    const malformedType = await new EpisodeIntegrityService(
+      buildClient({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [episode(11, { type: 'future' })],
+      }),
+      () => new Date('2040-01-02T03:04:05.000Z'),
+    ).getEpisodeIntegrity(123);
+    expect(malformedType.state).toBe('partial');
+    expect(malformedType.source.attempts[1]).toMatchObject({ state: 'unavailable' });
+    expect(malformedType.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
+    );
 
     const empty = await new EpisodeIntegrityService(
       buildClient({ total: 0, limit: 50, offset: 0, data: [] }),
@@ -213,5 +269,72 @@ describe('EpisodeIntegrityService', () => {
         expect.objectContaining({ code: 'EPISODE_INTEGRITY_NOT_COMPUTABLE' }),
       ]),
     );
+  });
+
+  it('keeps omitted valid dates separate from returned unknown dates', async () => {
+    const result = await new EpisodeIntegrityService(
+      buildClient({
+        total: 4,
+        limit: 50,
+        offset: 0,
+        data: [
+          episode(1, { airdate: '2026-04-01' }),
+          episode(2, { airdate: '2026-04-02' }),
+          episode(3, { airdate: '2026-04-03' }),
+          episode(4, { airdate: '2026-04-04' }),
+        ],
+      }),
+    ).getEpisodeIntegrity(123, { maxEpisodes: 2, asOfDate: '2026-04-04' });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.integrity.dateCoverage.populations).toMatchObject({
+      observed: { rows: 4, validRows: 4, unknownRows: 0 },
+      unique: { rows: 4, validRows: 4, unknownRows: 0 },
+      returned: { rows: 2, validRows: 2, unknownRows: 0 },
+      omitted: { rows: 2, validRows: 2, unknownRows: 0 },
+    });
+    expect(result.integrity.dateCoverage.unknownRows).toBe(0);
+    expect(result.integrity.dateCoverage.rows.filter((row) => !row.returned)).toHaveLength(2);
+  });
+
+  it('does not use failed or subject retrieval timestamps as the implicit as-of', async () => {
+    const successful = await new EpisodeIntegrityService(
+      buildClient({ total: 1, limit: 50, offset: 0, data: [episode(1)] }),
+      () => new Date('2040-01-02T03:04:05.000Z'),
+    ).getEpisodeIntegrity(123);
+    const episodeAttempt = successful.source.attempts.find(
+      (attempt) => attempt.operation === 'GET /v0/episodes',
+    );
+    expect(successful.asOf).toMatchObject({
+      source: 'retrieval',
+      retrievedAt: episodeAttempt?.retrievedAt,
+      evaluatedAt: '2040-01-02T03:04:05.000Z',
+    });
+    expect(successful.asOf.retrievedAt).toBe(
+      successful.source.attempts.find((attempt) => attempt.operation === 'GET /v0/episodes')
+        ?.retrievedAt,
+    );
+
+    const subjectOnly = await new EpisodeIntegrityService(
+      buildClientWithStatuses(200, 503),
+      () => new Date('2040-01-02T03:04:05.000Z'),
+    ).getEpisodeIntegrity(123);
+    expect(subjectOnly.asOf).toEqual({
+      date: '2040-01-02',
+      source: 'evaluation',
+      evaluatedAt: '2040-01-02T03:04:05.000Z',
+    });
+    expect(subjectOnly.asOf).not.toHaveProperty('retrievedAt');
+    expect(subjectOnly.source.attempts[0]).toHaveProperty('retrievedAt');
+    expect(subjectOnly.source.attempts[1]).not.toHaveProperty('retrievedAt');
+    expect(subjectOnly.integrity.dateCoverage.state).toBe('not_computable');
+
+    const bothUnavailable = await new EpisodeIntegrityService(
+      buildClientWithStatuses(503, 503),
+      () => new Date('2040-01-02T03:04:05.000Z'),
+    ).getEpisodeIntegrity(123);
+    expect(bothUnavailable.asOf.source).toBe('evaluation');
+    expect(bothUnavailable.asOf).not.toHaveProperty('retrievedAt');
+    expect(bothUnavailable.integrity.dateCoverage.state).toBe('not_computable');
   });
 });

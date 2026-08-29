@@ -80,7 +80,11 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
   const dates = viewModel.integrity.dateCoverage;
   const anomalies = viewModel.integrity.anomalies;
   const checks = viewModel.integrity.checks;
-  const itemBasis = width && width >= 900 ? 'calc(50% - 4px)' : '100%';
+  const populations = dates.populations;
+  const compact = width !== undefined && width < 720;
+  const itemBasis = width && width >= 720 ? 'calc(50% - 4px)' : '100%';
+  const populationText = (population: typeof populations.returned): string =>
+    `行 ${population.rows} · 合法 ${population.validRows} · 已播 ${population.airedRows} · 未来 ${population.futureRows} · 未知 ${population.unknownRows}`;
   const totalLabel = [
     viewModel.integrity.subjectTotals.episodesReported !== undefined
       ? 'eps ' + viewModel.integrity.subjectTotals.episodesReported
@@ -108,8 +112,13 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
         theme={theme}
         items={[
           'UTC as-of ' + viewModel.asOf.date,
-          viewModel.asOf.source === 'explicit' ? '明确日期' : '读取日期',
+          viewModel.asOf.source === 'explicit'
+            ? '明确日期'
+            : viewModel.asOf.source === 'retrieval'
+              ? '章节源获取日期'
+              : '评估日期',
           '观察 ' + counts.observedRows,
+          '去重 ' + counts.uniqueRows,
           '返回 ' +
             counts.returnedRows +
             '/' +
@@ -117,6 +126,35 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
           viewModel.coverage.episodeGuide.truncated ? '有界样本' : undefined,
         ]}
       />
+
+      <div
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          border: '1px solid ' + theme.border,
+          borderRadius: theme.radius.md,
+          padding: compact ? theme.spacing.sm : theme.spacing.md,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: theme.spacing.xs,
+          fontSize: '11px',
+          color: theme.textMuted,
+        }}
+      >
+        <div style={{ color: theme.accent, fontWeight: 700 }}>
+          方法与证据 · {viewModel.integrity.formulaVersion}
+        </div>
+        <div>
+          分母：{viewModel.coverage.integrity.denominator} · 比较：
+          {viewModel.coverage.integrity.comparisons} · 评估于 {viewModel.asOf.evaluatedAt}
+        </div>
+        {viewModel.source.attempts.slice(0, 2).map((attempt) => (
+          <div key={attempt.operation} style={{ overflowWrap: 'anywhere' }}>
+            {attempt.operation} · {attempt.state} · 尝试 {attempt.attemptedAt} · 获取{' '}
+            {attempt.retrievedAt || '无'}
+            {attempt.error ? ' · 错误 ' + attempt.error.code : ''}
+          </div>
+        ))}
+      </div>
 
       <div
         style={{
@@ -128,7 +166,8 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
       >
         {[
           ['正篇', counts.main],
-          ['特别/其他', counts.special],
+          ['已知特别/其他', counts.special],
+          ['未知类别', counts.unknown],
           ['已播正篇', counts.airedMain],
           ['未来正篇', counts.futureMain],
           ['正篇日期未知', counts.mainWithUnknownAirdate],
@@ -192,11 +231,14 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
           首播日期覆盖 · 截止 {dates.asOfDate} UTC
         </div>
         <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.6 }}>
-          合法日期 {dates.validRows} · 已播 {dates.airedRows} · 未来 {dates.futureRows} · 缺失{' '}
-          {dates.missingRows} · 无效 {dates.invalidRows} · 未知 {dates.unknownRows}
+          返回人口：{populationText(populations.returned)} · 缺失 {dates.missingRows} · 无效{' '}
+          {dates.invalidRows}
+          <br />
+          观察人口：{populationText(populations.observed)} · 去重人口：
+          {populationText(populations.unique)} · 省略人口：{populationText(populations.omitted)}
         </div>
         <div style={{ color: theme.textMuted, fontSize: '11px' }}>
-          公式版本：{viewModel.integrity.formulaVersion}；未知日期不计入已播。
+          日期依据：{dates.basis} · 状态：{dates.state}；未知日期不计入已播。
         </div>
       </div>
 
@@ -258,14 +300,20 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
               backgroundColor: theme.surfaceAlt,
               border: '1px solid ' + theme.border,
               borderRadius: theme.radius.md,
-              padding: theme.spacing.md,
-              display: 'flex',
-              flexDirection: 'column',
+              padding: compact ? theme.spacing.sm : theme.spacing.md,
+              display: compact ? 'grid' : 'flex',
+              gridTemplateColumns: compact ? 'minmax(58px, auto) minmax(0, 1fr)' : undefined,
+              flexDirection: compact ? undefined : 'column',
               gap: theme.spacing.xs,
             }}
           >
             <div
-              style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.sm }}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: theme.spacing.sm,
+                gridColumn: compact ? '1 / 2' : undefined,
+              }}
             >
               <strong style={{ color: theme.accent, fontSize: '12px' }}>
                 {episodeNumber(item)}
@@ -274,16 +322,25 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
                 {CATEGORY_LABELS[item.category] || item.category}
               </span>
             </div>
-            <div style={{ fontSize: '13px', fontWeight: 600, overflowWrap: 'anywhere' }}>
+            <div
+              style={{
+                fontSize: compact ? '12px' : '13px',
+                fontWeight: 600,
+                overflowWrap: 'anywhere',
+                gridColumn: compact ? '2 / 3' : undefined,
+              }}
+            >
               {item.nameCn || item.name || '章节 ' + item.id}
             </div>
-            <MetaRow
-              theme={theme}
-              items={[
-                item.airdate ? '首播 ' + item.airdate : '首播未知',
-                item.duration ? '时长 ' + item.duration : '时长未知',
-              ]}
-            />
+            <div style={{ gridColumn: compact ? '1 / 3' : undefined }}>
+              <MetaRow
+                theme={theme}
+                items={[
+                  item.airdate ? '首播 ' + item.airdate : '首播未知',
+                  item.duration ? '时长 ' + item.duration : '时长未知',
+                ]}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -310,12 +367,15 @@ export const EpisodeIntegrityCard: React.FC<EpisodeIntegrityCardProps> = ({
       ) : null}
       {viewModel.limitations.length > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          限制：{viewModel.limitations[0]}
+          限制：{viewModel.limitations.slice(0, 2).join('；')}
+          {viewModel.limitations.length > 2
+            ? '；另有 ' + (viewModel.limitations.length - 2) + ' 条限制'
+            : ''}
         </div>
       ) : null}
       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-        来源：Bangumi official v0 · {viewModel.source.operations.join(' + ')}
-        {viewModel.source.retrievedAt ? ' · 获取于 ' + viewModel.source.retrievedAt : ''}
+        来源：Bangumi official v0 ·
+        每个操作的获取时间与错误码见“方法与证据”；不以聚合时间覆盖失败操作。
       </div>
       <Footer theme={theme} />
     </CardFrame>

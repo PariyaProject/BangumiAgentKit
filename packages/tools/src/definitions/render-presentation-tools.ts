@@ -375,7 +375,7 @@ export function createRenderPresentationTools(
   const renderEpisodeIntegrity = defineTool({
     name: 'bangumi.render_episode_integrity',
     description:
-      '生成官方 v0 章节完整性分析图片卡片 Artifact。卡片展示 eps/total_episodes 与观察/去重/正篇/特别篇/已播/未来计数、合法 UTC as-of 日期、缺失/无效/逻辑日期冲突、覆盖状态、来源证据、公式和限制；不读取网络图片资产，不推断观看进度、观看顺序、播出历史或社区信息。',
+      '生成官方 v0 章节完整性分析图片卡片 Artifact。卡片展示 eps/total_episodes 与观察/去重/正篇/特别篇/未知类别/已播/未来计数、合法 UTC as-of 日期、缺失/无效/逻辑日期冲突、覆盖状态、逐操作来源证据、公式和限制；省略明确日期时优先使用章节源成功获取时间，否则只标记评估日期；不读取网络图片资产，不推断观看进度、观看顺序、播出历史或社区信息。',
     input: z
       .object({
         subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),

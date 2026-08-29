@@ -728,7 +728,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           .regex(/^\d{4}-\d{2}-\d{2}$/u)
           .optional()
           .describe(
-            '用于已播判断的明确 UTC 日历日期 YYYY-MM-DD；省略则使用官方读取时间的 UTC 日期',
+            '用于已播判断的明确 UTC 日历日期 YYYY-MM-DD；省略则优先使用章节源成功获取时间的 UTC 日期，否则只标记评估日期且日期结论不可计算',
           ),
       })
       .strict(),
