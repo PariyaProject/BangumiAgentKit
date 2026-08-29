@@ -11,6 +11,7 @@ Read [`../PRODUCT_CHARTER.md`](../PRODUCT_CHARTER.md) and
 - Outer Product-review maximum: `3`
 - Independent frontier-closure Sol maximum: `1`
 - Total Outer Sol maximum: `4`
+- Shared exceptional reviewer-runtime recovery maximum: `1`
 
 Run `pnpm harness discovery:check` before `run:start` or broad validation.
 
@@ -59,9 +60,21 @@ After Product work and Luna discovery have closed every ledger record, run
 `pnpm harness frontier:check`, persist complete closure evidence, then spend the
 reserved one Sol High frontier review. `DISCOVERY_REQUIRED` returns to Luna but
 first records `FRONTIER_REVIEW_REJECTED` and runs
-`frontier:resume-discovery`; it never launches a second closure reviewer in the
-same Run. If the closure slot is unavailable, stop
+`frontier:resume-discovery`; it never launches a second ordinary closure verdict
+round in the same Run. If the closure slot is unavailable, stop
 `STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`, not exhausted.
+
+For any Product or frontier reviewer, inspect the real task runtime before
+waiting. Use the Harness runtime command to record `ACTIVE`, `INTERRUPTED`, or
+confirmed `UNAVAILABLE`; never infer activity from durable `*_REVIEW_RUNNING`
+state alone. Resume an interrupted reviewer by the same id without another
+reservation. Use the shared runtime-recovery context only after confirmed
+unavailability and never as a new verdict round. A capacity limit is a
+resumable pause, not Goal completion.
+
+Immediately before reporting the Goal complete, run `pnpm harness goal:check`
+with the authoritative Run and active Epoch arguments when applicable. Continue
+unless it returns `GOAL_STOP_ALLOWED`.
 
 Normal invocation:
 

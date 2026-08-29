@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import {
   DISCOVERY_POLICY_VERSION,
   EPOCH_MARKER,
@@ -12,6 +13,7 @@ import {
   afterPassBaseAction,
   applyFrontierReviewResult,
   applyReviewResult,
+  assertGoalStopAllowed,
   assertCandidateInvariant,
   assertDiscoveryExhaustionEvidence,
   assertMergeReadiness,
@@ -63,6 +65,7 @@ const mandatoryCiChecks = [
   'provider-foundation',
   'discovery-foundation',
 ];
+const MAX_CONTROL_BODY_BYTES = 65_536;
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
@@ -118,6 +121,37 @@ function readJsonFile(filePath) {
   return JSON.parse(fs.readFileSync(path.resolve(root, filePath), 'utf8'));
 }
 
+function archiveEvidence(evidence) {
+  const json = JSON.stringify(evidence);
+  return {
+    encoding: 'gzip+base64',
+    uncompressed_bytes: Buffer.byteLength(json, 'utf8'),
+    data: gzipSync(json).toString('base64'),
+  };
+}
+
+function restoreEvidence(archive) {
+  if (!archive) return null;
+  if (archive.encoding !== 'gzip+base64' || typeof archive.data !== 'string') return archive;
+  let json;
+  try {
+    json = gunzipSync(Buffer.from(archive.data, 'base64')).toString('utf8');
+  } catch (error) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_EVIDENCE_CORRUPT',
+      'The durable frontier closure evidence cannot be reconstructed',
+      { cause: error instanceof Error ? error.message : String(error) },
+    );
+  }
+  if (Buffer.byteLength(json, 'utf8') !== archive.uncompressed_bytes) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_EVIDENCE_CORRUPT',
+      'The durable frontier closure evidence length does not match its archive metadata',
+    );
+  }
+  return JSON.parse(json);
+}
+
 function ensureCleanWorkingTree() {
   const status = git('status', '--porcelain');
   if (status) {
@@ -171,14 +205,27 @@ function epochState(number) {
 
 function updateIssue(number, state) {
   const body = renderRunBody(state);
+  assertControlBodyFits(body, 'Run Issue');
   gh('issue', 'edit', String(number), '--body-file', '-', { input: body });
   return body;
 }
 
 function updatePr(number, state) {
   const body = renderEpochBody(state);
+  assertControlBodyFits(body, 'Epoch PR');
   gh('pr', 'edit', String(number), '--body-file', '-', { input: body });
   return body;
+}
+
+function assertControlBodyFits(body, label) {
+  const bytes = Buffer.byteLength(body, 'utf8');
+  if (bytes > MAX_CONTROL_BODY_BYTES) {
+    throw new HarnessInvariantError(
+      'CONTROL_BODY_TOO_LARGE',
+      `${label} control state cannot be serialized without truncation`,
+      { bytes, max_bytes: MAX_CONTROL_BODY_BYTES },
+    );
+  }
 }
 
 function currentBranch() {
@@ -310,7 +357,7 @@ function requireValidFrontier() {
 }
 
 function commandHelp() {
-  print(`BangumiAgentKit Harness V3
+  print(`BangumiAgentKit Harness V3.3
 
 Usage: pnpm harness <command> [options]
 
@@ -323,21 +370,25 @@ Usage: pnpm harness <command> [options]
   epoch:open-pr --run <issue> --title <title>
   guard:legacy-paths [--base origin/master] [--product-epoch]
   candidate:check --pr <number> --evidence <json>
-  review:reserve --run <issue> --pr <number>
-  review:started --run <issue> --pr <number> --reviewer-id <id>
-  review:reconcile --run <issue> --pr <number> [--definitely-not-started]
-  review:wait --run <issue> --pr <number> --reviewer-id <id>
+  review:reserve --run <issue> --pr <number> [--runtime-recovery]
+  review:started --run <issue> --pr <number> --reviewer-id <id> [--runtime-recovery]
+  review:reconcile --run <issue> --pr <number> [--definitely-not-started] [--runtime-recovery]
+  review:runtime --run <issue> --pr <number> --reviewer-id <id> --runtime-state <ACTIVE|INTERRUPTED|UNAVAILABLE> [--reason <text>]
+  review:wait --run <issue> --pr <number> --reviewer-id <id> --runtime-state ACTIVE
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
-  frontier:review-reserve --run <issue> --evidence <json>
-  frontier:review-started --run <issue> --reviewer-id <id>
-  frontier:review-reconcile --run <issue> [--definitely-not-started]
-  frontier:review-wait --run <issue> --reviewer-id <id>
+  frontier:review-reserve --run <issue> [--evidence <json>] [--runtime-recovery]
+  frontier:review-started --run <issue> --reviewer-id <id> [--runtime-recovery]
+  frontier:review-reconcile --run <issue> [--definitely-not-started] [--runtime-recovery]
+  frontier:review-runtime --run <issue> --reviewer-id <id> --runtime-state <ACTIVE|INTERRUPTED|UNAVAILABLE> [--reason <text>]
+  frontier:review-wait --run <issue> --reviewer-id <id> --runtime-state ACTIVE
+  frontier:review-context --run <issue>
   frontier:review-result --run <issue> --verdict <PASS|DISCOVERY_REQUIRED> [--findings <json>]
   frontier:resume-discovery --run <issue>
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
   epoch:resume-final-corrective --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
   run:stop --run <issue> --state <state> --next-action <text> [--evidence <json>]
+  goal:check [--run <issue>] [--pr <number>] [--discovery-state UNCHANGED_EXHAUSTION]
 
 Complex Epoch selection and Candidate evidence are supplied as local JSON input;
 the durable source becomes the edited GitHub Issue/PR body.`);
@@ -399,7 +450,7 @@ function commandStatus(options) {
   print(result);
 }
 
-function commandDiscoveryCheck(options) {
+function inspectDiscoveryCheck(options) {
   ensureControlPlane();
   ensureCleanWorkingTree();
   if (currentBranch() !== 'master') {
@@ -467,22 +518,33 @@ function commandDiscoveryCheck(options) {
     throw new HarnessInvariantError('INVALID_TIMESTAMP', '--now must be a valid ISO timestamp');
   }
   const frontier = frontierContext();
+  let latestRunState = latestClosedRun
+    ? parseControlBlock(latestClosedRun.body, RUN_MARKER)
+    : undefined;
+  if (latestRunState?.discovery_exhaustion?.evidence_archive) {
+    latestRunState = structuredClone(latestRunState);
+    latestRunState.discovery_exhaustion = restoreEvidence(
+      latestRunState.discovery_exhaustion.evidence_archive,
+    );
+  }
   const result = classifyDiscoveryCheck({
     openRunNumbers: openRuns.map((issue) => issue.number),
     openEpochPrNumbers: openEpochPrs.map((pr) => pr.number),
-    latestRunState: latestClosedRun
-      ? parseControlBlock(latestClosedRun.body, RUN_MARKER)
-      : undefined,
+    latestRunState,
     currentBaseSha,
     frontier,
     now,
   });
-  print({
+  return {
     ...result,
     latest_closed_run_issue: latestClosedRun?.number ?? null,
     current_sha: currentBaseSha,
     ledger_hash: frontier.hash ?? null,
-  });
+  };
+}
+
+function commandDiscoveryCheck(options) {
+  print(inspectDiscoveryCheck(options));
 }
 
 function commandRunStart(options) {
@@ -835,13 +897,18 @@ function commandReviewReserve(options) {
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha: remoteBaseSha(epochResult.state.base_branch),
   });
-  const reserved = reserveReview(runResult.state, epochResult.state);
+  const runtimeRecovery = options['runtime-recovery'] === true;
+  const reserved = reserveReview(runResult.state, epochResult.state, { runtimeRecovery });
   const reservationId = `review-${Date.now()}`;
-  reserved.run.outer_sol.reservation_id = reservationId;
-  reserved.epoch.review.reservation_id = reservationId;
+  const reservationKey = runtimeRecovery ? 'runtime_recovery_reservation_id' : 'reservation_id';
+  reserved.run.outer_sol[reservationKey] = reservationId;
+  reserved.epoch.review[reservationKey] = reservationId;
   updatePr(prNumber, reserved.epoch);
   updateIssue(runNumber, reserved.run);
-  print({ state: 'REVIEW_RESERVED', reservation_id: reservationId });
+  print({
+    state: runtimeRecovery ? 'REVIEW_RUNTIME_RECOVERY_RESERVED' : 'REVIEW_RESERVED',
+    reservation_id: reservationId,
+  });
 }
 
 function commandReviewStarted(options) {
@@ -851,9 +918,25 @@ function commandReviewStarted(options) {
   const reviewerId = required(options, 'reviewer-id');
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
-  const started = markReviewStarted(runResult.state, epochResult.state, reviewerId);
-  delete started.run.outer_sol.reservation_id;
-  delete started.epoch.review.reservation_id;
+  const runtimeRecovery = options['runtime-recovery'] === true;
+  const reservationKey = runtimeRecovery ? 'runtime_recovery_reservation_id' : 'reservation_id';
+  const runReservationId = runResult.state.outer_sol[reservationKey];
+  const epochReservationId = epochResult.state.review[reservationKey];
+  if (
+    typeof runReservationId !== 'string' ||
+    runReservationId.length === 0 ||
+    runReservationId !== epochReservationId
+  ) {
+    throw new HarnessInvariantError(
+      'REVIEW_RESERVATION_MISMATCH',
+      'Run and Epoch review reservations must name the same launch',
+    );
+  }
+  const started = markReviewStarted(runResult.state, epochResult.state, reviewerId, {
+    runtimeRecovery,
+  });
+  delete started.run.outer_sol[reservationKey];
+  delete started.epoch.review[reservationKey];
   updatePr(prNumber, started.epoch);
   updateIssue(runNumber, started.run);
   print({ state: 'REVIEW_RUNNING', reviewer_id: reviewerId });
@@ -869,9 +952,12 @@ function commandReviewReconcile(options) {
     runResult.state,
     epochResult.state,
     options['definitely-not-started'] === true,
+    { runtimeRecovery: options['runtime-recovery'] === true },
   );
-  delete reconciled.run.outer_sol.reservation_id;
-  delete reconciled.epoch.review.reservation_id;
+  const reservationKey =
+    options['runtime-recovery'] === true ? 'runtime_recovery_reservation_id' : 'reservation_id';
+  delete reconciled.run.outer_sol[reservationKey];
+  delete reconciled.epoch.review[reservationKey];
   updatePr(prNumber, reconciled.epoch);
   updateIssue(runNumber, reconciled.run);
   print({
@@ -887,9 +973,45 @@ function commandReviewWait(options) {
   const reviewerId = required(options, 'reviewer-id');
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
-  const result = waitForSameReviewer(runResult.state, epochResult.state, reviewerId);
+  const runtimeState = options['runtime-state'];
+  if (runtimeState && runtimeState !== 'ACTIVE') {
+    throw new HarnessInvariantError(
+      'REVIEW_RUNTIME_STATE_INVALID',
+      'review:wait is a compatibility entry point for an observed ACTIVE runtime only',
+    );
+  }
+  const result = waitForSameReviewer(runResult.state, epochResult.state, reviewerId, runtimeState);
   print({
     state: 'WAIT_TIMEOUT_REVIEWER_STILL_RUNNING',
+    reviewer_id: reviewerId,
+    durable_write: result.durableWrite,
+    git_mutations: result.gitMutations,
+    launches: result.launches,
+  });
+}
+
+function commandReviewRuntime(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const reviewerId = required(options, 'reviewer-id');
+  const runtimeState = required(options, 'runtime-state');
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const result = waitForSameReviewer(
+    runResult.state,
+    epochResult.state,
+    reviewerId,
+    runtimeState,
+    options.reason,
+  );
+  if (result.durableWrite) {
+    updatePr(prNumber, result.epoch);
+    updateIssue(runNumber, result.run);
+  }
+  print({
+    state: result.epoch.state,
+    runtime_state: runtimeState,
     reviewer_id: reviewerId,
     durable_write: result.durableWrite,
     git_mutations: result.gitMutations,
@@ -923,7 +1045,7 @@ function commandFrontierReviewReserve(options) {
   ensureControlPlane();
   ensureCleanWorkingTree();
   const runNumber = required(options, 'run');
-  const evidence = readJsonFile(required(options, 'evidence'));
+  const runtimeRecovery = options['runtime-recovery'] === true;
   const runResult = issueState(runNumber);
   if (currentBranch() !== 'master') {
     throw new HarnessInvariantError(
@@ -936,13 +1058,34 @@ function commandFrontierReviewReserve(options) {
     throw new HarnessInvariantError('MASTER_NOT_SYNCHRONIZED', 'master must equal origin/master');
   }
   const frontier = requireValidFrontier();
+  const evidence = runtimeRecovery
+    ? restoreEvidence(runResult.state.frontier_closure?.evidence)
+    : readJsonFile(required(options, 'evidence'));
+  if (!evidence) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_EVIDENCE_MISSING',
+      'Runtime recovery requires the complete durable frontier closure evidence',
+    );
+  }
   assertDiscoveryExhaustionEvidence(evidence, baseSha, frontier);
+  if (
+    runtimeRecovery &&
+    (runResult.state.frontier_closure.base_sha !== baseSha ||
+      runResult.state.frontier_closure.ledger_hash !== frontier.hash ||
+      runResult.state.frontier_closure.evidence_hash !== canonicalHash(evidence))
+  ) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_EVIDENCE_CORRUPT',
+      'Runtime recovery must reconstruct the exact originally reserved closure inputs',
+    );
+  }
   let next;
   try {
     next = reserveFrontierReview(runResult.state, {
       baseSha,
       ledgerHash: frontier.hash,
       evidenceHash: canonicalHash(evidence),
+      runtimeRecovery,
     });
   } catch (error) {
     if (
@@ -959,9 +1102,12 @@ function commandFrontierReviewReserve(options) {
     print({ state: next.state, issue_state: 'CLOSED' });
     return;
   }
+  next.frontier_closure.evidence = archiveEvidence(evidence);
   updateIssue(runNumber, next);
   print({
-    state: 'FRONTIER_REVIEW_REQUIRED',
+    state: runtimeRecovery
+      ? 'FRONTIER_REVIEW_RUNTIME_RECOVERY_RESERVED'
+      : 'FRONTIER_REVIEW_REQUIRED',
     base_sha: baseSha,
     ledger_hash: frontier.hash,
     evidence_hash: canonicalHash(evidence),
@@ -975,6 +1121,7 @@ function commandFrontierReviewReconcile(options) {
   const next = reconcileFrontierReviewReservation(
     runResult.state,
     options['definitely-not-started'] === true,
+    { runtimeRecovery: options['runtime-recovery'] === true },
   );
   updateIssue(runNumber, next);
   print({
@@ -988,7 +1135,9 @@ function commandFrontierReviewStarted(options) {
   const runNumber = required(options, 'run');
   const reviewerId = required(options, 'reviewer-id');
   const runResult = issueState(runNumber);
-  const next = markFrontierReviewStarted(runResult.state, reviewerId);
+  const next = markFrontierReviewStarted(runResult.state, reviewerId, {
+    runtimeRecovery: options['runtime-recovery'] === true,
+  });
   updateIssue(runNumber, next);
   print({ state: 'FRONTIER_REVIEW_RUNNING', reviewer_id: reviewerId });
 }
@@ -998,7 +1147,14 @@ function commandFrontierReviewWait(options) {
   const runNumber = required(options, 'run');
   const reviewerId = required(options, 'reviewer-id');
   const runResult = issueState(runNumber);
-  const result = waitForFrontierReviewer(runResult.state, reviewerId);
+  const runtimeState = options['runtime-state'];
+  if (runtimeState && runtimeState !== 'ACTIVE') {
+    throw new HarnessInvariantError(
+      'REVIEW_RUNTIME_STATE_INVALID',
+      'frontier:review-wait is compatible only with an observed ACTIVE runtime',
+    );
+  }
+  const result = waitForFrontierReviewer(runResult.state, reviewerId, runtimeState);
   print({
     state: 'WAIT_TIMEOUT_FRONTIER_REVIEWER_STILL_RUNNING',
     reviewer_id: reviewerId,
@@ -1006,6 +1162,47 @@ function commandFrontierReviewWait(options) {
     git_mutations: result.gitMutations,
     launches: result.launches,
   });
+}
+
+function commandFrontierReviewRuntime(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const reviewerId = required(options, 'reviewer-id');
+  const runtimeState = required(options, 'runtime-state');
+  const runResult = issueState(runNumber);
+  const result = waitForFrontierReviewer(runResult.state, reviewerId, runtimeState, options.reason);
+  if (result.durableWrite) updateIssue(runNumber, result.run);
+  print({
+    state: result.run.state,
+    runtime_state: runtimeState,
+    reviewer_id: reviewerId,
+    durable_write: result.durableWrite,
+    git_mutations: result.gitMutations,
+    launches: result.launches,
+  });
+}
+
+function commandFrontierReviewContext(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const runResult = issueState(runNumber);
+  const evidence = restoreEvidence(
+    runResult.state.frontier_closure?.evidence ??
+      runResult.state.discovery_exhaustion?.evidence_archive,
+  );
+  if (!evidence) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_EVIDENCE_MISSING',
+      'No durable frontier closure evidence is available for reconstruction',
+    );
+  }
+  if (canonicalHash(evidence) !== runResult.state.frontier_closure.evidence_hash) {
+    throw new HarnessInvariantError(
+      'FRONTIER_REVIEW_EVIDENCE_CORRUPT',
+      'Reconstructed frontier closure evidence does not match its bound hash',
+    );
+  }
+  print(evidence);
 }
 
 function commandFrontierReviewResult(options) {
@@ -1291,13 +1488,82 @@ function commandRunStop(options) {
       ledgerHash: frontier.hash,
       evidenceHash,
     });
-    next.discovery_exhaustion = evidence;
+    const evidenceArchive =
+      next.frontier_closure?.evidence?.encoding === 'gzip+base64'
+        ? next.frontier_closure.evidence
+        : archiveEvidence(evidence);
+    next.discovery_exhaustion = {
+      policy_version: evidence.policy_version,
+      audited_sha: evidence.audited_sha,
+      audited_at: evidence.audited_at,
+      ledger_hash: evidence.ledger_hash,
+      evidence_hash: evidenceHash,
+      evidence_archive: evidenceArchive,
+    };
+    next.frontier_closure.evidence = null;
   }
   next.state = state;
   next.next_action = nextAction;
   updateIssue(runNumber, next);
   gh('issue', 'close', String(runNumber), '--reason', 'completed');
   print({ state, next_action: nextAction, issue_state: 'CLOSED' });
+}
+
+function commandGoalCheck(options) {
+  const discoveryState = options['discovery-state'];
+  if (discoveryState === 'UNCHANGED_EXHAUSTION' && options.run === undefined) {
+    const discovery = inspectDiscoveryCheck(options);
+    if (discovery.state !== 'UNCHANGED_EXHAUSTION') {
+      throw new HarnessInvariantError(
+        'GOAL_CONTINUATION_REQUIRED',
+        'UNCHANGED_EXHAUSTION must be revalidated from the current repository and control plane',
+        { discovery_state: discovery.state },
+      );
+    }
+    assertGoalStopAllowed({ discoveryState });
+    print({
+      state: 'GOAL_STOP_ALLOWED',
+      discovery_state: discoveryState,
+      current_sha: discovery.current_sha,
+      ledger_hash: discovery.ledger_hash,
+    });
+    return;
+  }
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const runResult = issueState(runNumber);
+  const epochResult = options.pr ? epochState(String(options.pr)) : null;
+  if (!epochResult) {
+    const openEpochPrs = JSON.parse(
+      gh(
+        'pr',
+        'list',
+        '--state',
+        'open',
+        '--limit',
+        '100',
+        '--json',
+        'number,title,body,state,url,createdAt,updatedAt',
+      ),
+    ).filter((pr) => pr.body?.includes(`<!-- ${EPOCH_MARKER}:start -->`));
+    if (openEpochPrs.length > 0) {
+      throw new HarnessInvariantError(
+        'GOAL_CONTINUATION_REQUIRED',
+        'An open nonterminal Epoch PR prevents Goal completion',
+        { open_epoch_prs: openEpochPrs.map((pr) => pr.number) },
+      );
+    }
+  }
+  assertGoalStopAllowed({
+    run: runResult.state,
+    epoch: epochResult?.state,
+    discoveryState,
+  });
+  print({
+    state: 'GOAL_STOP_ALLOWED',
+    run_state: runResult.state.state,
+    epoch_state: epochResult?.state.state ?? null,
+  });
 }
 
 const commands = {
@@ -1314,18 +1580,22 @@ const commands = {
   'review:reserve': commandReviewReserve,
   'review:started': commandReviewStarted,
   'review:reconcile': commandReviewReconcile,
+  'review:runtime': commandReviewRuntime,
   'review:wait': commandReviewWait,
   'review:result': commandReviewResult,
   'frontier:review-reserve': commandFrontierReviewReserve,
   'frontier:review-started': commandFrontierReviewStarted,
   'frontier:review-reconcile': commandFrontierReviewReconcile,
+  'frontier:review-runtime': commandFrontierReviewRuntime,
   'frontier:review-wait': commandFrontierReviewWait,
+  'frontier:review-context': commandFrontierReviewContext,
   'frontier:review-result': commandFrontierReviewResult,
   'frontier:resume-discovery': commandFrontierResumeDiscovery,
   'epoch:park': commandEpochPark,
   'epoch:resume-final-corrective': commandEpochResumeFinalCorrective,
   'epoch:merge': commandEpochMerge,
   'run:stop': commandRunStop,
+  'goal:check': commandGoalCheck,
 };
 
 function main() {

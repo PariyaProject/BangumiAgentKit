@@ -402,6 +402,15 @@ test('CLI discovery:check returns unchanged idle exhaustion on the same SHA with
     assert.equal(output.state, 'UNCHANGED_EXHAUSTION');
     assert.equal(output.control_plane, 'IDLE');
     assert.equal(output.issue_created, false);
+    const goal = environment.execute([
+      'goal:check',
+      '--discovery-state',
+      'UNCHANGED_EXHAUSTION',
+      '--now',
+      '2026-08-12T00:00:00.000Z',
+    ]);
+    assert.equal(goal.status, 0, goal.stderr);
+    assert.equal(JSON.parse(goal.stdout).state, 'GOAL_STOP_ALLOWED');
     assert.equal(
       environment
         .readState()
@@ -604,6 +613,12 @@ test('CLI performs one exact-hash frontier review before trusted exhaustion', ()
     ]);
     assert.equal(started.status, 0, started.stderr);
 
+    const storedBeforeVerdict = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(storedBeforeVerdict.frontier_closure.evidence.encoding, 'gzip+base64');
+    const reconstructed = environment.execute(['frontier:review-context', '--run', '1']);
+    assert.equal(reconstructed.status, 0, reconstructed.stderr);
+    assert.deepEqual(JSON.parse(reconstructed.stdout), evidence);
+
     const passed = environment.execute([
       'frontier:review-result',
       '--run',
@@ -630,6 +645,142 @@ test('CLI performs one exact-hash frontier review before trusted exhaustion', ()
     assert.equal(finalRun.frontier_closure.verdict, 'PASS');
     assert.equal(finalRun.outer_sol.closure.consumed, 1);
     assert.equal(finalRun.outer_sol.product.consumed, 0);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI frontier runtime resumes the same id and replacement preserves closure evidence', () => {
+  const run = createRunState({ runId: 'frontier-runtime-run' });
+  const frontierLedger = makeClosedFrontierLedger();
+  const evidence = bindFrontierEvidence(makeDiscoveryEvidence(), frontierLedger).evidence;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    branch: 'master',
+    frontierLedger,
+  });
+  try {
+    const evidencePath = discoveryEvidence(environment, evidence);
+    assert.equal(
+      environment.execute(['frontier:review-reserve', '--run', '1', '--evidence', evidencePath])
+        .status,
+      0,
+    );
+    assert.equal(
+      environment.execute([
+        'frontier:review-started',
+        '--run',
+        '1',
+        '--reviewer-id',
+        'sol-frontier-lost',
+      ]).status,
+      0,
+    );
+
+    const unobserved = environment.execute([
+      'frontier:review-wait',
+      '--run',
+      '1',
+      '--reviewer-id',
+      'sol-frontier-lost',
+    ]);
+    assert.equal(unobserved.status, 2);
+    assert.match(unobserved.stderr, /^REVIEW_RUNTIME_OBSERVATION_REQUIRED:/u);
+
+    const interrupted = environment.execute([
+      'frontier:review-runtime',
+      '--run',
+      '1',
+      '--reviewer-id',
+      'sol-frontier-lost',
+      '--runtime-state',
+      'INTERRUPTED',
+      '--reason',
+      'CAPACITY_PAUSE',
+    ]);
+    assert.equal(interrupted.status, 0, interrupted.stderr);
+    const resumed = environment.execute([
+      'frontier:review-runtime',
+      '--run',
+      '1',
+      '--reviewer-id',
+      'sol-frontier-lost',
+      '--runtime-state',
+      'ACTIVE',
+    ]);
+    assert.equal(resumed.status, 0, resumed.stderr);
+
+    const unavailable = environment.execute([
+      'frontier:review-runtime',
+      '--run',
+      '1',
+      '--reviewer-id',
+      'sol-frontier-lost',
+      '--runtime-state',
+      'UNAVAILABLE',
+      '--reason',
+      'TASK_NOT_FOUND',
+    ]);
+    assert.equal(unavailable.status, 0, unavailable.stderr);
+    const reserved = environment.execute([
+      'frontier:review-reserve',
+      '--run',
+      '1',
+      '--runtime-recovery',
+    ]);
+    assert.equal(reserved.status, 0, reserved.stderr);
+    const started = environment.execute([
+      'frontier:review-started',
+      '--run',
+      '1',
+      '--reviewer-id',
+      'sol-frontier-replacement',
+      '--runtime-recovery',
+    ]);
+    assert.equal(started.status, 0, started.stderr);
+
+    const stored = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(stored.outer_sol.closure.consumed, 1);
+    assert.equal(stored.outer_sol.runtime_recovery.consumed, 1);
+    assert.equal(stored.frontier_closure.reviewer_id, 'sol-frontier-replacement');
+    assert.equal(stored.frontier_closure.runtime.replaces_reviewer_id, 'sol-frontier-lost');
+    assert.equal(stored.frontier_closure.evidence.encoding, 'gzip+base64');
+    const reconstructed = environment.execute(['frontier:review-context', '--run', '1']);
+    assert.equal(reconstructed.status, 0, reconstructed.stderr);
+    assert.deepEqual(JSON.parse(reconstructed.stdout), evidence);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI refuses silently truncated frontier closure control state', () => {
+  const run = createRunState({ runId: 'frontier-large-body-run' });
+  const frontierLedger = makeClosedFrontierLedger();
+  const evidence = bindFrontierEvidence(
+    makeDiscoveryEvidence({
+      serialization_probe: Array.from({ length: 5_000 }, (_, index) =>
+        canonicalHash({ index, salt: `control-body-${index}` }),
+      ),
+    }),
+    frontierLedger,
+  ).evidence;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    branch: 'master',
+    frontierLedger,
+  });
+  try {
+    const result = environment.execute([
+      'frontier:review-reserve',
+      '--run',
+      '1',
+      '--evidence',
+      discoveryEvidence(environment, evidence),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^CONTROL_BODY_TOO_LARGE:/u);
+    const stored = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(stored.frontier_closure.state, 'NOT_READY');
   } finally {
     environment.cleanup();
   }
@@ -859,6 +1010,187 @@ test('CLI review reservation rejects dirty post-Candidate work before any contro
       environment.readState().calls.some((call) => call.tool === 'gh' && call.args[1] === 'edit'),
       false,
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Product runtime observation is explicit and same-id resume spends no budget', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RUNNING';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'All related Work Packages are complete.',
+    why_not_extend_further: 'Further work is an independent objective.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = { completed: true, summary: 'Preflight complete.' };
+  epoch.review.consumed = 1;
+  epoch.review.reviewer_id = 'sol-product';
+  epoch.review.runtime = { state: 'ACTIVE', reason: null, allocation: 'NORMAL' };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    draft: false,
+  });
+  try {
+    const unobserved = environment.execute([
+      'review:wait',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--reviewer-id',
+      'sol-product',
+    ]);
+    assert.equal(unobserved.status, 2);
+    assert.match(unobserved.stderr, /^REVIEW_RUNTIME_OBSERVATION_REQUIRED:/u);
+
+    const interrupted = environment.execute([
+      'review:runtime',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--reviewer-id',
+      'sol-product',
+      '--runtime-state',
+      'INTERRUPTED',
+      '--reason',
+      'CAPACITY_PAUSE',
+    ]);
+    assert.equal(interrupted.status, 0, interrupted.stderr);
+    let stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_INTERRUPTED_RESUMABLE');
+
+    const resumed = environment.execute([
+      'review:runtime',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--reviewer-id',
+      'sol-product',
+      '--runtime-state',
+      'ACTIVE',
+    ]);
+    assert.equal(resumed.status, 0, resumed.stderr);
+    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const storedRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(stored.state, 'REVIEW_RUNNING');
+    assert.equal(stored.review.consumed, 1);
+    assert.equal(storedRun.outer_sol.product.consumed, 1);
+    assert.equal(stored.candidate_sha, sha('b'));
+    assert.equal(stored.ci.sha, sha('b'));
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Product runtime replacement uses the paired shared recovery ledger', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RUNNING';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'All related Work Packages are complete.',
+    why_not_extend_further: 'Further work is an independent objective.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = { completed: true, summary: 'Preflight complete.' };
+  epoch.review.consumed = 1;
+  epoch.review.reviewer_id = 'sol-lost';
+  epoch.review.runtime = { state: 'ACTIVE', reason: null, allocation: 'NORMAL' };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    draft: false,
+  });
+  try {
+    const unavailable = environment.execute([
+      'review:runtime',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--reviewer-id',
+      'sol-lost',
+      '--runtime-state',
+      'UNAVAILABLE',
+      '--reason',
+      'TASK_NOT_FOUND',
+    ]);
+    assert.equal(unavailable.status, 0, unavailable.stderr);
+    const reserved = environment.execute([
+      'review:reserve',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--runtime-recovery',
+    ]);
+    assert.equal(reserved.status, 0, reserved.stderr);
+    const started = environment.execute([
+      'review:started',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--reviewer-id',
+      'sol-replacement',
+      '--runtime-recovery',
+    ]);
+    assert.equal(started.status, 0, started.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    const storedRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(stored.review.runtime_recovery.consumed, 1);
+    assert.equal(storedRun.outer_sol.runtime_recovery.consumed, 1);
+    assert.equal(stored.review.consumed, 1);
+    assert.equal(storedRun.outer_sol.product.consumed, 1);
+    assert.equal(stored.review.runtime.replaces_reviewer_id, 'sol-lost');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Goal gate rejects an active Epoch and permits a true terminal Run', () => {
+  const { run, epoch } = controlFixture();
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+  });
+  try {
+    const active = environment.execute(['goal:check', '--run', '1', '--pr', '42']);
+    assert.equal(active.status, 2);
+    assert.match(active.stderr, /^GOAL_CONTINUATION_REQUIRED:/u);
+
+    run.state = 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE';
+    run.active_epoch_pr = null;
+    environment.readState();
+    const state = environment.readState();
+    state.runBody = renderRunBody(run);
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+    const stopped = environment.execute(['goal:check', '--run', '1']);
+    assert.equal(stopped.status, 0, stopped.stderr);
+    assert.equal(JSON.parse(stopped.stdout).state, 'GOAL_STOP_ALLOWED');
+
+    const stoppedState = environment.readState();
+    stoppedState.branch = 'master';
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(stoppedState, null, 2)}\n`);
+    const unchanged = environment.execute([
+      'goal:check',
+      '--discovery-state',
+      'UNCHANGED_EXHAUSTION',
+    ]);
+    assert.equal(unchanged.status, 2);
+    assert.match(unchanged.stderr, /^GOAL_CONTINUATION_REQUIRED:/u);
   } finally {
     environment.cleanup();
   }

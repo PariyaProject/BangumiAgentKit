@@ -8,6 +8,7 @@ export const MAX_EPOCH_REVIEWS = 2;
 export const MAX_OUTER_REVIEWS = 4;
 export const MAX_OUTER_PRODUCT_REVIEWS = 3;
 export const MAX_OUTER_CLOSURE_REVIEWS = 1;
+export const MAX_OUTER_RUNTIME_RECOVERIES = 1;
 export const DISCOVERY_POLICY_VERSION = 'harness-v3.2-frontier-closure-v1';
 export const DISCOVERY_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const NO_OPPORTUNITY_STOP = 'STOPPED_TRUSTED_FRONTIER_EXHAUSTED';
@@ -107,10 +108,25 @@ function assertLedger(ledger, label, hardMax) {
   }
 }
 
+function defaultRuntimeRecoveryLedger() {
+  return { max: MAX_OUTER_RUNTIME_RECOVERIES, consumed: 0, reserved: 0 };
+}
+
+function assertRuntimeRecoveryLedger(ledger, label) {
+  assertLedger(ledger ?? defaultRuntimeRecoveryLedger(), label, MAX_OUTER_RUNTIME_RECOVERIES);
+}
+
+function ensureRuntimeRecoveryLedger(owner) {
+  owner.runtime_recovery ??= defaultRuntimeRecoveryLedger();
+  assertRuntimeRecoveryLedger(owner.runtime_recovery, 'runtime_recovery');
+  return owner.runtime_recovery;
+}
+
 function assertOuterLedger(ledger) {
   assertLedger(ledger, 'run.outer_sol', MAX_OUTER_REVIEWS);
   assertLedger(ledger?.product, 'run.outer_sol.product', MAX_OUTER_PRODUCT_REVIEWS);
   assertLedger(ledger?.closure, 'run.outer_sol.closure', MAX_OUTER_CLOSURE_REVIEWS);
+  assertRuntimeRecoveryLedger(ledger?.runtime_recovery, 'run.outer_sol.runtime_recovery');
   if (
     ledger.product.consumed + ledger.closure.consumed !== ledger.consumed ||
     ledger.product.reserved + ledger.closure.reserved !== ledger.reserved
@@ -139,6 +155,7 @@ export function createRunState({
       consumed: 0,
       reserved: 0,
     },
+    runtime_recovery: defaultRuntimeRecoveryLedger(),
   };
   assertOuterLedger(outerSol);
   return {
@@ -161,6 +178,9 @@ export function createRunState({
       reviewer_id: null,
       verdict: null,
       findings: [],
+      evidence: null,
+      runtime: { state: 'NOT_STARTED', reason: null, allocation: null },
+      runtime_history: [],
     },
     discovery_policy_version: DISCOVERY_POLICY_VERSION,
     next_action: nextAction,
@@ -189,6 +209,9 @@ export function createEpochState({
     consumed: 0,
     reserved: 0,
     reviewer_id: null,
+    runtime: { state: 'NOT_STARTED', reason: null, allocation: null },
+    runtime_history: [],
+    runtime_recovery: defaultRuntimeRecoveryLedger(),
   };
   assertLedger(review, 'epoch.review', MAX_EPOCH_REVIEWS);
   if (!Number.isInteger(expectedReviews) || expectedReviews < 0 || expectedReviews > maxReviews) {
@@ -291,6 +314,36 @@ export function isTerminalRunState(state) {
     (state.startsWith('STOPPED_') ||
       ['COMPLETED', 'MERGED_GOAL_COMPLETE', 'QUALITY_CIRCUIT_BREAKER'].includes(state))
   );
+}
+
+export function assertGoalStopAllowed({ run, epoch, discoveryState } = {}) {
+  if (discoveryState === 'UNCHANGED_EXHAUSTION' && !run) return true;
+  if (!run || !isTerminalRunState(run.state)) {
+    throw new HarnessInvariantError(
+      'GOAL_CONTINUATION_REQUIRED',
+      'A nonterminal Outer Run cannot be reported as Goal complete',
+      { run_state: run?.state ?? null, epoch_state: epoch?.state ?? null },
+    );
+  }
+  if (run.active_epoch_pr || run.pending_epoch) {
+    throw new HarnessInvariantError(
+      'GOAL_CONTINUATION_REQUIRED',
+      'A terminal Goal cannot abandon an active or pending Epoch',
+      {
+        run_state: run.state,
+        active_epoch_pr: run.active_epoch_pr ?? null,
+        pending_epoch: run.pending_epoch ?? null,
+      },
+    );
+  }
+  if (epoch && epoch.state !== 'MERGED') {
+    throw new HarnessInvariantError(
+      'GOAL_CONTINUATION_REQUIRED',
+      'A nonterminal Epoch cannot be reported as Goal complete',
+      { run_state: run.state, epoch_state: epoch.state },
+    );
+  }
+  return true;
 }
 
 export function assertDiscoveryExhaustionEvidence(
@@ -818,20 +871,49 @@ export function assertReviewReadiness({
   return true;
 }
 
-export function reserveReview(run, epoch) {
+export function reserveReview(run, epoch, { runtimeRecovery = false } = {}) {
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
   assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  const outerRecovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+  const epochRecovery = ensureRuntimeRecoveryLedger(nextEpoch.review);
   if (
     nextRun.outer_sol.reserved ||
     nextRun.outer_sol.product.reserved ||
-    nextEpoch.review.reserved
+    nextEpoch.review.reserved ||
+    outerRecovery.reserved ||
+    epochRecovery.reserved
   ) {
     throw new HarnessInvariantError(
       'REVIEW_RESERVATION_EXISTS',
       'Reconcile the existing reservation before another launch',
     );
+  }
+  if (runtimeRecovery) {
+    if (
+      nextEpoch.state !== 'REVIEW_RUNTIME_RECOVERY_REQUIRED' ||
+      nextEpoch.review.runtime?.replacement_allocation !== 'RECOVERY'
+    ) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_RECOVERY_NOT_READY',
+        'A runtime recovery reviewer requires confirmed unavailable runtime state',
+      );
+    }
+    if (
+      outerRecovery.consumed >= outerRecovery.max ||
+      epochRecovery.consumed >= epochRecovery.max
+    ) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_RECOVERY_EXHAUSTED',
+        'The shared runtime recovery context is already consumed',
+      );
+    }
+    outerRecovery.reserved = 1;
+    epochRecovery.reserved = 1;
+    nextEpoch.state = 'REVIEW_RUNTIME_RECOVERY_RESERVED';
+    nextEpoch.next_action = 'START_RESERVED_RUNTIME_RECOVERY_REVIEWER';
+    return { run: nextRun, epoch: nextEpoch };
   }
   if (
     nextRun.outer_sol.product.consumed >= nextRun.outer_sol.product.max ||
@@ -839,7 +921,10 @@ export function reserveReview(run, epoch) {
   ) {
     throw new HarnessInvariantError('REVIEW_BUDGET_EXHAUSTED', 'No review launch remains');
   }
-  if (nextEpoch.state !== 'REVIEW_READY') {
+  const normalReplacement =
+    nextEpoch.state === 'REVIEW_RUNTIME_RECOVERY_REQUIRED' &&
+    nextEpoch.review.runtime?.replacement_allocation === 'NORMAL';
+  if (nextEpoch.state !== 'REVIEW_READY' && !normalReplacement) {
     throw new HarnessInvariantError(
       'REVIEW_NOT_READY',
       `Epoch state ${nextEpoch.state} cannot reserve a reviewer`,
@@ -853,12 +938,48 @@ export function reserveReview(run, epoch) {
   return { run: nextRun, epoch: nextEpoch };
 }
 
-export function markReviewStarted(run, epoch, reviewerId) {
+export function markReviewStarted(run, epoch, reviewerId, { runtimeRecovery = false } = {}) {
   requireText(reviewerId, 'INVALID_REVIEWER', 'reviewer_id');
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
   assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  const outerRecovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+  const epochRecovery = ensureRuntimeRecoveryLedger(nextEpoch.review);
+  if (runtimeRecovery) {
+    if (
+      nextEpoch.state !== 'REVIEW_RUNTIME_RECOVERY_RESERVED' ||
+      outerRecovery.reserved !== 1 ||
+      epochRecovery.reserved !== 1
+    ) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_RECOVERY_NOT_RESERVED',
+        'Reserve the paired runtime recovery ledgers before replacement start',
+      );
+    }
+    const lostReviewerId = nextEpoch.review.runtime?.lost_reviewer_id;
+    if (!lostReviewerId || reviewerId === lostReviewerId) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_REPLACEMENT_INVALID',
+        'A runtime replacement must name a new reviewer context',
+      );
+    }
+    outerRecovery.reserved = 0;
+    outerRecovery.consumed += 1;
+    epochRecovery.reserved = 0;
+    epochRecovery.consumed += 1;
+    nextEpoch.review.reviewer_id = reviewerId;
+    nextEpoch.review.runtime = {
+      state: 'ACTIVE',
+      reason: null,
+      allocation: 'RECOVERY',
+      replaces_reviewer_id: lostReviewerId,
+    };
+    nextEpoch.reviewed_base_sha = nextEpoch.base_sha;
+    nextEpoch.state = 'REVIEW_RUNNING';
+    nextEpoch.next_action = 'WAIT_SAME_REVIEWER';
+    return { run: nextRun, epoch: nextEpoch };
+  }
   if (nextRun.outer_sol.reserved !== 1 || nextEpoch.review.reserved !== 1) {
     throw new HarnessInvariantError(
       'REVIEW_NOT_RESERVED',
@@ -876,10 +997,12 @@ export function markReviewStarted(run, epoch, reviewerId) {
     );
   }
   const previousReview = nextEpoch.review_history?.at(-1);
+  const replacementAuthorized = Boolean(nextEpoch.review.runtime?.lost_reviewer_id);
   if (
     nextEpoch.review.consumed > 0 &&
     previousReview?.reviewer_id &&
-    previousReview.reviewer_id !== reviewerId
+    previousReview.reviewer_id !== reviewerId &&
+    !replacementAuthorized
   ) {
     throw new HarnessInvariantError(
       'SAME_REVIEWER_REQUIRED',
@@ -894,17 +1017,67 @@ export function markReviewStarted(run, epoch, reviewerId) {
   nextEpoch.review.reserved = 0;
   nextEpoch.review.consumed += 1;
   nextEpoch.review.reviewer_id = reviewerId;
+  nextEpoch.review.runtime = {
+    state: 'ACTIVE',
+    reason: null,
+    allocation: 'NORMAL',
+    replaces_reviewer_id: nextEpoch.review.runtime?.lost_reviewer_id ?? null,
+  };
+  nextEpoch.review.runtime_history ??= [];
+  ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+  ensureRuntimeRecoveryLedger(nextEpoch.review);
   nextEpoch.reviewed_base_sha = nextEpoch.base_sha;
   nextEpoch.state = 'REVIEW_RUNNING';
   nextEpoch.next_action = 'WAIT_SAME_REVIEWER';
   return { run: nextRun, epoch: nextEpoch };
 }
 
-export function reconcileReviewReservation(run, epoch, launchDefinitelyDidNotOccur) {
+export function reconcileReviewReservation(
+  run,
+  epoch,
+  launchDefinitelyDidNotOccur,
+  { runtimeRecovery = false } = {},
+) {
   const nextRun = cloneState(run);
   const nextEpoch = cloneState(epoch);
   assertOuterLedger(nextRun.outer_sol);
   assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  const outerRecovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+  const epochRecovery = ensureRuntimeRecoveryLedger(nextEpoch.review);
+  if (runtimeRecovery) {
+    if (outerRecovery.reserved !== 1 && epochRecovery.reserved !== 1) {
+      throw new HarnessInvariantError(
+        'NO_REVIEW_RESERVATION',
+        'No runtime recovery reservation exists',
+      );
+    }
+    outerRecovery.reserved = 0;
+    epochRecovery.reserved = 0;
+    if (!launchDefinitelyDidNotOccur) {
+      outerRecovery.consumed = Math.max(outerRecovery.consumed, 1);
+      epochRecovery.consumed = Math.max(epochRecovery.consumed, 1);
+    }
+    const normalAvailable =
+      nextRun.outer_sol.product.consumed < nextRun.outer_sol.product.max &&
+      nextEpoch.review.consumed < nextEpoch.review.max;
+    const canRetryRecovery = launchDefinitelyDidNotOccur && outerRecovery.consumed === 0;
+    nextEpoch.review.runtime = {
+      ...(nextEpoch.review.runtime ?? {}),
+      state: canRetryRecovery || normalAvailable ? 'RECOVERY_REQUIRED' : 'BLOCKED',
+      allocation: null,
+      replacement_allocation: canRetryRecovery ? 'RECOVERY' : normalAvailable ? 'NORMAL' : null,
+    };
+    nextEpoch.state =
+      canRetryRecovery || normalAvailable
+        ? 'REVIEW_RUNTIME_RECOVERY_REQUIRED'
+        : 'REVIEW_RUNTIME_BLOCKED';
+    nextEpoch.next_action = canRetryRecovery
+      ? 'RESERVE_RUNTIME_RECOVERY_REVIEWER'
+      : normalAvailable
+        ? 'RESERVE_NORMAL_REPLACEMENT_REVIEWER'
+        : 'AWAIT_REVIEWER_RUNTIME_OR_NEW_AUTHORIZATION';
+    return { run: nextRun, epoch: nextEpoch };
+  }
   if (nextRun.outer_sol.reserved !== 1 && nextEpoch.review.reserved !== 1) {
     throw new HarnessInvariantError('NO_REVIEW_RESERVATION', 'No reservation exists');
   }
@@ -921,17 +1094,168 @@ export function reconcileReviewReservation(run, epoch, launchDefinitelyDidNotOcc
   return { run: nextRun, epoch: nextEpoch };
 }
 
-export function waitForSameReviewer(run, epoch, reviewerId) {
-  if (epoch.state !== 'REVIEW_RUNNING' || epoch.review?.reviewer_id !== reviewerId) {
+export function waitForSameReviewer(run, epoch, reviewerId, runtimeState, reason) {
+  if (epoch.review?.reviewer_id !== reviewerId) {
     throw new HarnessInvariantError(
       'REVIEWER_ID_MISMATCH',
-      'Polling is allowed only for the currently running reviewer',
+      'Runtime observation is allowed only for the recorded reviewer',
     );
   }
-  return { run, epoch, durableWrite: false, gitMutations: 0, launches: 0 };
+  if (!runtimeState) {
+    throw new HarnessInvariantError(
+      'REVIEW_RUNTIME_OBSERVATION_REQUIRED',
+      'Stored control-plane state cannot prove that the reviewer runtime is active',
+    );
+  }
+  if (runtimeState === 'ACTIVE') {
+    if (epoch.state === 'REVIEW_RUNNING') {
+      return { run, epoch, durableWrite: false, gitMutations: 0, launches: 0 };
+    }
+    if (epoch.state !== 'REVIEW_INTERRUPTED_RESUMABLE') {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_STATE_INVALID',
+        `Epoch state ${epoch.state} cannot resume the recorded reviewer`,
+      );
+    }
+    const nextRun = cloneState(run);
+    const nextEpoch = cloneState(epoch);
+    nextEpoch.review.runtime = {
+      ...(nextEpoch.review.runtime ?? {}),
+      state: 'ACTIVE',
+      reason: null,
+    };
+    nextEpoch.state = 'REVIEW_RUNNING';
+    nextEpoch.next_action = 'WAIT_SAME_REVIEWER';
+    nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}`;
+    return {
+      run: nextRun,
+      epoch: nextEpoch,
+      durableWrite: true,
+      gitMutations: 0,
+      launches: 0,
+    };
+  }
+  if (runtimeState === 'INTERRUPTED') {
+    if (!['REVIEW_RUNNING', 'REVIEW_INTERRUPTED_RESUMABLE'].includes(epoch.state)) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_STATE_INVALID',
+        `Epoch state ${epoch.state} cannot record an interrupted reviewer`,
+      );
+    }
+    requireText(reason, 'REVIEW_RUNTIME_REASON_REQUIRED', 'reason');
+    const nextRun = cloneState(run);
+    const nextEpoch = cloneState(epoch);
+    nextEpoch.review.runtime = {
+      ...(nextEpoch.review.runtime ?? {}),
+      state: 'INTERRUPTED_RESUMABLE',
+      reason,
+    };
+    nextEpoch.state = 'REVIEW_INTERRUPTED_RESUMABLE';
+    nextEpoch.next_action = 'RESUME_SAME_REVIEWER';
+    nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}_SAME_REVIEWER`;
+    return {
+      run: nextRun,
+      epoch: nextEpoch,
+      durableWrite: true,
+      gitMutations: 0,
+      launches: 0,
+    };
+  }
+  if (runtimeState === 'UNAVAILABLE') {
+    if (!['REVIEW_RUNNING', 'REVIEW_INTERRUPTED_RESUMABLE'].includes(epoch.state)) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_STATE_INVALID',
+        `Epoch state ${epoch.state} cannot lose a reviewer runtime`,
+      );
+    }
+    requireText(reason, 'REVIEW_RUNTIME_REASON_REQUIRED', 'reason');
+    const nextRun = cloneState(run);
+    const nextEpoch = cloneState(epoch);
+    const outerRecovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+    const epochRecovery = ensureRuntimeRecoveryLedger(nextEpoch.review);
+    const lostAllocation = nextEpoch.review.runtime?.allocation ?? 'NORMAL';
+    nextEpoch.review.runtime_history ??= [];
+    nextEpoch.review.runtime_history.push({
+      reviewer_id: reviewerId,
+      allocation: lostAllocation,
+      outcome: 'UNAVAILABLE',
+      reason,
+    });
+    const recoveryAvailable =
+      outerRecovery.consumed + outerRecovery.reserved < outerRecovery.max &&
+      epochRecovery.consumed + epochRecovery.reserved < epochRecovery.max;
+    const normalAvailable =
+      nextRun.outer_sol.product.consumed + nextRun.outer_sol.product.reserved <
+        nextRun.outer_sol.product.max &&
+      nextEpoch.review.consumed + nextEpoch.review.reserved < nextEpoch.review.max;
+    const replacementAllocation = recoveryAvailable
+      ? 'RECOVERY'
+      : normalAvailable
+        ? 'NORMAL'
+        : null;
+    nextEpoch.review.reviewer_id = null;
+    nextEpoch.review.runtime = {
+      state: replacementAllocation ? 'RECOVERY_REQUIRED' : 'BLOCKED',
+      reason,
+      allocation: null,
+      lost_reviewer_id: reviewerId,
+      replacement_allocation: replacementAllocation,
+    };
+    if (replacementAllocation) {
+      nextEpoch.state = 'REVIEW_RUNTIME_RECOVERY_REQUIRED';
+      nextEpoch.next_action =
+        replacementAllocation === 'RECOVERY'
+          ? 'RESERVE_RUNTIME_RECOVERY_REVIEWER'
+          : 'RESERVE_NORMAL_REPLACEMENT_REVIEWER';
+      nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}_REVIEW_RUNTIME_RECOVERY`;
+    } else {
+      nextEpoch.state = 'REVIEW_RUNTIME_BLOCKED';
+      nextEpoch.next_action = 'AWAIT_REVIEWER_RUNTIME_OR_NEW_AUTHORIZATION';
+      nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}_REVIEW_RUNTIME_BLOCKED`;
+    }
+    return {
+      run: nextRun,
+      epoch: nextEpoch,
+      durableWrite: true,
+      gitMutations: 0,
+      launches: 0,
+    };
+  }
+  throw new HarnessInvariantError(
+    'REVIEW_RUNTIME_STATE_INVALID',
+    `Unsupported reviewer runtime state: ${runtimeState}`,
+  );
 }
 
-export function reserveFrontierReview(run, { baseSha, ledgerHash, evidenceHash }) {
+export function reserveFrontierReview(
+  run,
+  { baseSha, ledgerHash, evidenceHash, runtimeRecovery = false },
+) {
+  if (runtimeRecovery) {
+    const nextRun = cloneState(run);
+    assertOuterLedger(nextRun.outer_sol);
+    const recovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+    if (
+      nextRun.state !== 'FRONTIER_REVIEW_RUNTIME_RECOVERY_REQUIRED' ||
+      nextRun.frontier_closure?.state !== 'RUNTIME_RECOVERY_REQUIRED'
+    ) {
+      throw new HarnessInvariantError(
+        'FRONTIER_REVIEW_RUNTIME_RECOVERY_NOT_READY',
+        'Frontier runtime recovery requires a confirmed unavailable reviewer',
+      );
+    }
+    if (recovery.consumed >= recovery.max || recovery.reserved) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_RECOVERY_EXHAUSTED',
+        'The shared runtime recovery context is already consumed or reserved',
+      );
+    }
+    recovery.reserved = 1;
+    nextRun.frontier_closure.state = 'RUNTIME_RECOVERY_RESERVED';
+    nextRun.state = 'FRONTIER_REVIEW_RUNTIME_RECOVERY_RESERVED';
+    nextRun.next_action = 'START_RESERVED_FRONTIER_RUNTIME_RECOVERY';
+    return nextRun;
+  }
   requireText(baseSha, 'FRONTIER_REVIEW_INVALID', 'base_sha');
   requireText(ledgerHash, 'FRONTIER_REVIEW_INVALID', 'ledger_hash');
   requireText(evidenceHash, 'FRONTIER_REVIEW_INVALID', 'evidence_hash');
@@ -969,16 +1293,52 @@ export function reserveFrontierReview(run, { baseSha, ledgerHash, evidenceHash }
     reviewer_id: null,
     verdict: null,
     findings: [],
+    evidence: null,
+    runtime: { state: 'NOT_STARTED', reason: null, allocation: null },
+    runtime_history: [],
   };
   nextRun.state = 'FRONTIER_REVIEW_REQUIRED';
   nextRun.next_action = 'START_RESERVED_FRONTIER_REVIEW';
   return nextRun;
 }
 
-export function markFrontierReviewStarted(run, reviewerId) {
+export function markFrontierReviewStarted(run, reviewerId, { runtimeRecovery = false } = {}) {
   requireText(reviewerId, 'INVALID_REVIEWER', 'reviewer_id');
   const nextRun = cloneState(run);
   assertOuterLedger(nextRun.outer_sol);
+  const recovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+  if (runtimeRecovery) {
+    if (
+      nextRun.state !== 'FRONTIER_REVIEW_RUNTIME_RECOVERY_RESERVED' ||
+      nextRun.frontier_closure?.state !== 'RUNTIME_RECOVERY_RESERVED' ||
+      recovery.reserved !== 1
+    ) {
+      throw new HarnessInvariantError(
+        'FRONTIER_REVIEW_RUNTIME_RECOVERY_NOT_RESERVED',
+        'Reserve the shared runtime recovery context before replacement start',
+      );
+    }
+    const lostReviewerId = nextRun.frontier_closure.runtime?.lost_reviewer_id;
+    if (!lostReviewerId || reviewerId === lostReviewerId) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_REPLACEMENT_INVALID',
+        'A frontier runtime replacement must name a new reviewer context',
+      );
+    }
+    recovery.reserved = 0;
+    recovery.consumed += 1;
+    nextRun.frontier_closure.state = 'RUNNING';
+    nextRun.frontier_closure.reviewer_id = reviewerId;
+    nextRun.frontier_closure.runtime = {
+      state: 'ACTIVE',
+      reason: null,
+      allocation: 'RECOVERY',
+      replaces_reviewer_id: lostReviewerId,
+    };
+    nextRun.state = 'FRONTIER_REVIEW_RUNNING';
+    nextRun.next_action = 'WAIT_FRONTIER_REVIEWER';
+    return nextRun;
+  }
   if (
     nextRun.frontier_closure?.state !== 'RESERVED' ||
     nextRun.outer_sol.reserved !== 1 ||
@@ -995,14 +1355,53 @@ export function markFrontierReviewStarted(run, reviewerId) {
   nextRun.outer_sol.closure.consumed += 1;
   nextRun.frontier_closure.state = 'RUNNING';
   nextRun.frontier_closure.reviewer_id = reviewerId;
+  nextRun.frontier_closure.runtime = {
+    state: 'ACTIVE',
+    reason: null,
+    allocation: 'NORMAL',
+  };
+  nextRun.frontier_closure.runtime_history ??= [];
   nextRun.state = 'FRONTIER_REVIEW_RUNNING';
   nextRun.next_action = 'WAIT_FRONTIER_REVIEWER';
   return nextRun;
 }
 
-export function reconcileFrontierReviewReservation(run, launchDefinitelyDidNotOccur) {
+export function reconcileFrontierReviewReservation(
+  run,
+  launchDefinitelyDidNotOccur,
+  { runtimeRecovery = false } = {},
+) {
   const nextRun = cloneState(run);
   assertOuterLedger(nextRun.outer_sol);
+  const recovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+  if (runtimeRecovery) {
+    if (
+      nextRun.frontier_closure?.state !== 'RUNTIME_RECOVERY_RESERVED' ||
+      recovery.reserved !== 1
+    ) {
+      throw new HarnessInvariantError(
+        'NO_FRONTIER_REVIEW_RESERVATION',
+        'No frontier runtime recovery reservation exists',
+      );
+    }
+    recovery.reserved = 0;
+    if (launchDefinitelyDidNotOccur) {
+      nextRun.frontier_closure.state = 'RUNTIME_RECOVERY_REQUIRED';
+      nextRun.state = 'FRONTIER_REVIEW_RUNTIME_RECOVERY_REQUIRED';
+      nextRun.next_action = 'RESERVE_FRONTIER_RUNTIME_RECOVERY';
+    } else {
+      recovery.consumed = Math.max(recovery.consumed, 1);
+      nextRun.frontier_closure.state = 'RUNTIME_BLOCKED';
+      nextRun.frontier_closure.runtime = {
+        ...(nextRun.frontier_closure.runtime ?? {}),
+        state: 'BLOCKED',
+        reason: 'RECOVERY_LAUNCH_UNCERTAIN',
+      };
+      nextRun.state = 'FRONTIER_REVIEW_RUNTIME_BLOCKED';
+      nextRun.next_action = 'STOP_WITHOUT_TRUSTED_FRONTIER_EXHAUSTION';
+    }
+    return nextRun;
+  }
   if (
     nextRun.frontier_closure?.state !== 'RESERVED' ||
     nextRun.outer_sol.reserved !== 1 ||
@@ -1037,18 +1436,104 @@ export function reconcileFrontierReviewReservation(run, launchDefinitelyDidNotOc
   return nextRun;
 }
 
-export function waitForFrontierReviewer(run, reviewerId) {
-  if (
-    run.state !== 'FRONTIER_REVIEW_RUNNING' ||
-    run.frontier_closure?.state !== 'RUNNING' ||
-    run.frontier_closure.reviewer_id !== reviewerId
-  ) {
+export function waitForFrontierReviewer(run, reviewerId, runtimeState, reason) {
+  if (run.frontier_closure?.reviewer_id !== reviewerId) {
     throw new HarnessInvariantError(
       'REVIEWER_ID_MISMATCH',
-      'Polling is allowed only for the running frontier reviewer',
+      'Runtime observation is allowed only for the recorded frontier reviewer',
     );
   }
-  return { run, durableWrite: false, gitMutations: 0, launches: 0 };
+  if (!runtimeState) {
+    throw new HarnessInvariantError(
+      'REVIEW_RUNTIME_OBSERVATION_REQUIRED',
+      'Stored control-plane state cannot prove that the frontier reviewer is active',
+    );
+  }
+  if (runtimeState === 'ACTIVE') {
+    if (run.state === 'FRONTIER_REVIEW_RUNNING' && run.frontier_closure?.state === 'RUNNING') {
+      return { run, durableWrite: false, gitMutations: 0, launches: 0 };
+    }
+    if (
+      run.state !== 'FRONTIER_REVIEW_INTERRUPTED_RESUMABLE' ||
+      run.frontier_closure?.state !== 'INTERRUPTED_RESUMABLE'
+    ) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_STATE_INVALID',
+        `Run state ${run.state} cannot resume the frontier reviewer`,
+      );
+    }
+    const nextRun = cloneState(run);
+    nextRun.frontier_closure.state = 'RUNNING';
+    nextRun.frontier_closure.runtime = {
+      ...(nextRun.frontier_closure.runtime ?? {}),
+      state: 'ACTIVE',
+      reason: null,
+    };
+    nextRun.state = 'FRONTIER_REVIEW_RUNNING';
+    nextRun.next_action = 'WAIT_FRONTIER_REVIEWER';
+    return { run: nextRun, durableWrite: true, gitMutations: 0, launches: 0 };
+  }
+  if (runtimeState === 'INTERRUPTED') {
+    if (!['FRONTIER_REVIEW_RUNNING', 'FRONTIER_REVIEW_INTERRUPTED_RESUMABLE'].includes(run.state)) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_STATE_INVALID',
+        `Run state ${run.state} cannot record an interrupted frontier reviewer`,
+      );
+    }
+    requireText(reason, 'REVIEW_RUNTIME_REASON_REQUIRED', 'reason');
+    const nextRun = cloneState(run);
+    nextRun.frontier_closure.state = 'INTERRUPTED_RESUMABLE';
+    nextRun.frontier_closure.runtime = {
+      ...(nextRun.frontier_closure.runtime ?? {}),
+      state: 'INTERRUPTED_RESUMABLE',
+      reason,
+    };
+    nextRun.state = 'FRONTIER_REVIEW_INTERRUPTED_RESUMABLE';
+    nextRun.next_action = 'RESUME_SAME_FRONTIER_REVIEWER';
+    return { run: nextRun, durableWrite: true, gitMutations: 0, launches: 0 };
+  }
+  if (runtimeState === 'UNAVAILABLE') {
+    if (!['FRONTIER_REVIEW_RUNNING', 'FRONTIER_REVIEW_INTERRUPTED_RESUMABLE'].includes(run.state)) {
+      throw new HarnessInvariantError(
+        'REVIEW_RUNTIME_STATE_INVALID',
+        `Run state ${run.state} cannot lose the frontier reviewer runtime`,
+      );
+    }
+    requireText(reason, 'REVIEW_RUNTIME_REASON_REQUIRED', 'reason');
+    const nextRun = cloneState(run);
+    const recovery = ensureRuntimeRecoveryLedger(nextRun.outer_sol);
+    const lostAllocation = nextRun.frontier_closure.runtime?.allocation ?? 'NORMAL';
+    nextRun.frontier_closure.runtime_history ??= [];
+    nextRun.frontier_closure.runtime_history.push({
+      reviewer_id: reviewerId,
+      allocation: lostAllocation,
+      outcome: 'UNAVAILABLE',
+      reason,
+    });
+    const recoveryAvailable = recovery.consumed + recovery.reserved < recovery.max;
+    nextRun.frontier_closure.reviewer_id = null;
+    nextRun.frontier_closure.runtime = {
+      state: recoveryAvailable ? 'RECOVERY_REQUIRED' : 'BLOCKED',
+      reason,
+      allocation: null,
+      lost_reviewer_id: reviewerId,
+      replacement_allocation: recoveryAvailable ? 'RECOVERY' : null,
+    };
+    if (recoveryAvailable) {
+      nextRun.frontier_closure.state = 'RUNTIME_RECOVERY_REQUIRED';
+      nextRun.state = 'FRONTIER_REVIEW_RUNTIME_RECOVERY_REQUIRED';
+      nextRun.next_action = 'RESERVE_FRONTIER_RUNTIME_RECOVERY';
+    } else {
+      nextRun.frontier_closure.state = 'RUNTIME_BLOCKED';
+      nextRun.state = 'FRONTIER_REVIEW_RUNTIME_BLOCKED';
+      nextRun.next_action = 'AWAIT_FRONTIER_REVIEWER_RUNTIME_OR_NEW_AUTHORIZATION';
+    }
+    return { run: nextRun, durableWrite: true, gitMutations: 0, launches: 0 };
+  }
+  throw new HarnessInvariantError(
+    'REVIEW_RUNTIME_STATE_INVALID',
+    `Unsupported frontier reviewer runtime state: ${runtimeState}`,
+  );
 }
 
 export function applyFrontierReviewResult(run, { verdict, findings = [] }) {
@@ -1077,6 +1562,20 @@ export function applyFrontierReviewResult(run, { verdict, findings = [] }) {
   }
   nextRun.frontier_closure.verdict = verdict;
   nextRun.frontier_closure.findings = cloneState(findings);
+  nextRun.frontier_closure.runtime_history ??= [];
+  nextRun.frontier_closure.runtime_history.push({
+    reviewer_id: nextRun.frontier_closure.reviewer_id,
+    allocation: nextRun.frontier_closure.runtime?.allocation ?? 'NORMAL',
+    replaces_reviewer_id: nextRun.frontier_closure.runtime?.replaces_reviewer_id ?? null,
+    outcome: 'VERDICT',
+    verdict,
+  });
+  nextRun.frontier_closure.reviewer_id = null;
+  nextRun.frontier_closure.runtime = {
+    state: 'COMPLETED',
+    reason: null,
+    allocation: null,
+  };
   if (verdict === 'PASS') {
     nextRun.frontier_closure.state = 'PASS';
     nextRun.state = 'ACTIVE';
@@ -1139,6 +1638,8 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
     );
   }
   const reviewerId = nextEpoch.review.reviewer_id;
+  const runtimeAllocation = nextEpoch.review.runtime?.allocation ?? 'NORMAL';
+  const replacesReviewerId = nextEpoch.review.runtime?.replaces_reviewer_id ?? null;
   const normalizedFindings = normalizeFindings(findings, nextEpoch.review.consumed);
   if (verdict === 'CORRECTIVE_REQUIRED' && normalizedFindings.length === 0) {
     throw new HarnessInvariantError(
@@ -1154,8 +1655,11 @@ export function applyReviewResult(run, epoch, { verdict, findings = [] }) {
     reviewed_base_sha: nextEpoch.reviewed_base_sha,
     verdict,
     findings: normalizedFindings,
+    runtime_allocation: runtimeAllocation,
+    replaces_reviewer_id: replacesReviewerId,
   });
   nextEpoch.review.reviewer_id = null;
+  nextEpoch.review.runtime = { state: 'COMPLETED', reason: null, allocation: null };
   nextEpoch.findings = normalizedFindings;
   if (verdict === 'PASS') {
     nextEpoch.state = 'REVIEW_PASSED';
@@ -1341,7 +1845,9 @@ export function recordIntegrationBlocked(run, epoch, reason) {
 }
 
 export function renderControlBlock(marker, state) {
-  return `<!-- ${marker}:start -->\n\`\`\`json\n${JSON.stringify(state, null, 2)}\n\`\`\`\n<!-- ${marker}:end -->`;
+  // Keep the canonical machine state compact so complete frontier evidence fits
+  // GitHub's control-body limit without lossy summaries or silent truncation.
+  return `<!-- ${marker}:start -->\n\`\`\`json\n${JSON.stringify(state)}\n\`\`\`\n<!-- ${marker}:end -->`;
 }
 
 export function parseControlBlock(body, marker) {
@@ -1357,6 +1863,27 @@ export function parseControlBlock(body, marker) {
   const state = JSON.parse(json);
   if (state.schema !== SCHEMA) {
     throw new HarnessInvariantError('CONTROL_SCHEMA_MISMATCH', `Expected ${SCHEMA}`);
+  }
+  if (marker === RUN_MARKER && state.outer_sol) {
+    state.outer_sol.runtime_recovery ??= defaultRuntimeRecoveryLedger();
+    if (state.frontier_closure) {
+      state.frontier_closure.evidence ??= null;
+      state.frontier_closure.runtime ??= {
+        state: state.frontier_closure.reviewer_id ? 'OBSERVATION_REQUIRED' : 'NOT_STARTED',
+        reason: null,
+        allocation: state.frontier_closure.reviewer_id ? 'NORMAL' : null,
+      };
+      state.frontier_closure.runtime_history ??= [];
+    }
+  }
+  if (marker === EPOCH_MARKER && state.review) {
+    state.review.runtime_recovery ??= defaultRuntimeRecoveryLedger();
+    state.review.runtime ??= {
+      state: state.review.reviewer_id ? 'OBSERVATION_REQUIRED' : 'NOT_STARTED',
+      reason: null,
+      allocation: state.review.reviewer_id ? 'NORMAL' : null,
+    };
+    state.review.runtime_history ??= [];
   }
   return state;
 }

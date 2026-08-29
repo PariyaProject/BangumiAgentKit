@@ -31,6 +31,8 @@ context, not runtime authority.
 - Autonomous Goal entry runs `pnpm harness discovery:check` before `run:start`;
   unchanged exhaustion is reusable only after exact-hash frontier-closure PASS,
   creates no Run Issue, and spends no Sol.
+- Reviewer waits require observed runtime truth; interruptions resume the same
+  id, and Goal completion requires `pnpm harness goal:check`.
 - Never use Git worktrees.
 
 These are entry-point reminders, not a second execution policy. Definitions,

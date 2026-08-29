@@ -1,4 +1,4 @@
-# BangumiAgentKit Harness V3.2
+# BangumiAgentKit Harness V3.3
 
 This is the **only canonical detailed execution-governance policy** for active
 BangumiAgentKit work. Other governance and Goal files may select a mode or link
@@ -76,7 +76,10 @@ authoritative.
 - Opportunity discovery and source-contract research launch no Sol reviewer.
 - Product review launches may consume at most three of the Outer Run's slots.
   One separate Sol High slot is reserved for independent frontier-closure
-  review. The total Outer ceiling remains four.
+  review. The normal verdict-bearing Outer ceiling remains four.
+- One Product/frontier-shared runtime-recovery context may replace a reviewer
+  that started, returned no verdict, and is confirmed unavailable. It is an
+  exceptional execution context, not a normal review round and not a refund.
 - Git worktrees are prohibited.
 
 Cost is controlled by fewer launches and better batching, not weaker Luna
@@ -88,7 +91,7 @@ reasoning.
 resumes an Outer Run only when the check requires work, resumes its active Epoch
 PR when present, otherwise performs bounded opportunity discovery, selects one
 coherent Epoch, and proceeds until a governed stop. Codex Goals are invoked
-manually; Harness V3.2 creates no scheduler, heartbeat, or automation. This is
+manually; Harness V3.3 creates no scheduler, heartbeat, or automation. This is
 an execution-policy statement only: it is not a Product Charter boundary and
 does not prohibit a future explicit, bounded product scheduling capability.
 
@@ -343,6 +346,7 @@ An Autonomous outer run records:
 - `reserved: 0`
 - `product: { max: 3, consumed: 0, reserved: 0 }`
 - `closure: { max: 1, consumed: 0, reserved: 0 }`
+- `runtime_recovery: { max: 1, consumed: 0, reserved: 0 }`
 
 The automatic ceilings are executable hard caps: Epoch `max` can never exceed
 `2`, Outer Product launches can never exceed `3`, frontier-closure launches can
@@ -350,7 +354,10 @@ never exceed `1`, and their sum can never exceed Outer `4`, including caller
 options and edited GitHub control blocks. The fourth slot is not available to a
 Product review. After the third Product launch, any remaining Product finding
 uses the Luna final-corrective gate so the independent closure slot remains
-available. A user may lower a budget but cannot raise a cap inside the run.
+available. The separate shared runtime-recovery ledger can add at most one
+replacement context, making the worst-case context count five while leaving
+the normal Product/closure ceilings unchanged. A user may lower a budget but
+cannot raise a cap inside the run.
 
 Before a reviewer launch, create one paired reservation id for exactly one Epoch
 slot and one Outer slot in the GitHub control planes. Another launch is
@@ -367,7 +374,20 @@ Waiting/polling the same reviewer consumes no slot.
 Frontier-closure review uses only the Run Issue and therefore has one atomic
 reservation. An interrupted reservation is reconciled before continuing. If
 runtime truth cannot prove the reviewer did not start, its one slot is consumed
-and no replacement closure reviewer launches in that Run.
+without a verdict. The one shared runtime-recovery context may replace that
+confirmed-unavailable reviewer; it never creates another ordinary closure
+round and can never authorize trusted exhaustion without an independent
+verdict.
+
+The runtime-recovery reservation is paired across the Run and Epoch for Product
+review and atomic in the Run for frontier review. Partial writes are reconciled
+conservatively. A launch known not to have occurred releases the reservation;
+otherwise the recovery context is consumed. Recovery consumption never
+decrements or rewrites normal Sol consumption. If recovery itself becomes
+unavailable, Product may transparently spend an otherwise-available normal
+slot. With no normal slot it enters `REVIEW_RUNTIME_BLOCKED`. Frontier enters
+`FRONTIER_REVIEW_RUNTIME_BLOCKED` because it has no second ordinary closure
+slot. Both states prohibit integration or trusted exhaustion.
 
 Normal sequence:
 
@@ -410,9 +430,21 @@ contracts, tests, evidence/coverage, resource bounds, user value, Agent UX, and
 Renderer when applicable. It inspects the repository and evidence, not merely
 the implementation report.
 
-A launched reviewer has a durable id. A wait timeout while that same reviewer
-remains active is ephemeral telemetry. Any number of same-reviewer timeouts
-produce:
+A launched reviewer has a durable id. Durable control state alone never proves
+that its backing task is still active. The Goal runner must observe the real
+task runtime and record exactly one runtime classification:
+
+- `ACTIVE`: the real task is visibly running or has returned a verdict;
+- `INTERRUPTED_RESUMABLE`: the task ended or paused without a verdict but the
+  same reviewer id remains deliverable/resumable;
+- `UNAVAILABLE`: delivery/resume to that exact id was attempted and confirmed
+  impossible, with a concrete failure reason.
+
+Product persistence uses `REVIEW_RUNNING`,
+`REVIEW_INTERRUPTED_RESUMABLE`, `REVIEW_RUNTIME_RECOVERY_REQUIRED`, and
+`REVIEW_RUNTIME_BLOCKED`; frontier uses the corresponding
+`FRONTIER_REVIEW_*` states. A wait timeout after a fresh `ACTIVE` observation is
+ephemeral telemetry. Any number of such same-reviewer waits produce:
 
 - zero Git mutations;
 - zero PR/Issue heartbeat edits or comments;
@@ -420,11 +452,28 @@ produce:
 - zero extra launches;
 - zero budget changes.
 
-Continue waiting on the same id. Any Sol #2 continues that same reviewer id so
+`review:wait` and `frontier:review-wait` are compatibility entries. Without an
+explicit `--runtime-state ACTIVE` they return
+`REVIEW_RUNTIME_OBSERVATION_REQUIRED`; they never infer activity from the PR or
+Issue body. Use `review:runtime` / `frontier:review-runtime` for all three
+classifications. Recording `INTERRUPTED` retains the same reviewer id. Returning
+that same id to `ACTIVE` performs no reserve, consumes no budget, changes no
+Candidate/CI, launches nothing, and creates no Git or polling write.
+
+Continue or resume the same id whenever possible. Any Sol #2 continues that
+same reviewer id so
 the second launch spends its context on verifying the fix or changed
-integration instead of rebuilding repository understanding. A reviewer hard
-failure or missing runtime truth is recorded truthfully; reconcile any
-outstanding reservation before another launch.
+integration instead of rebuilding repository understanding. Only a confirmed
+`UNAVAILABLE` state may request a replacement. The lost id, replacement id,
+allocation (`RECOVERY` or remaining `NORMAL`), relationship, and reason remain
+durable. Use `--runtime-recovery` on reserve/started/reconcile only for the
+shared exceptional context. Wrong ids and repeated recovery are rejected.
+
+An account/model usage limit is an external capacity pause. It records
+`INTERRUPTED_RESUMABLE`; it does not close the Run, fabricate a verdict, consume
+a new slot, or mark the Goal complete. Because no automation is created, a
+later manually started Goal resumes the exact Issue/PR and same id after
+capacity returns.
 
 Reviewer verdicts are:
 
@@ -444,6 +493,11 @@ has made the ledger valid, closed every actionable record, produced a complete
 cross-consistent evidence inventory, and bound it to the exact synchronized
 master SHA, policy version, ledger hash, and evidence hash, reserve the single
 Outer closure slot and launch one comprehensive Sol High reviewer sequentially.
+The reservation persists the complete verified closure evidence in a
+hash-bound, lossless compressed control payload. Before any Issue update the CLI
+checks that the complete body fits; silent truncation is prohibited.
+`frontier:review-context` reconstructs the exact evidence for a fresh Goal or
+replacement reviewer.
 
 The closure reviewer independently checks inventory completeness, scope
 salvage, delivered capability/test evidence, source-research closure, Charter
@@ -457,19 +511,24 @@ delta, and the claimed absence of valuable safe work. Its verdicts are:
   `frontier:resume-discovery` transition to return the Run to `ACTIVE` Luna
   discovery while preserving the rejected closure record.
 
-There is no automatic second closure review. A rejection never permits trusted
-exhaustion in that Run. Luna may resolve the findings and continue Product work,
-but the next closure attempt stops the Run as
+There is no automatic second verdict-bearing closure review. A rejection never
+permits trusted exhaustion in that Run. Luna may resolve the findings and
+continue Product work, but the next closure attempt stops the Run as
 `STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`; a fresh Run must revalidate current
 inputs before using its closure slot. Do not relabel budget exhaustion as
-frontier exhaustion.
+frontier exhaustion. The shared recovery context is allowed only for a started,
+verdict-less, confirmed-unavailable closure runtime and does not change this
+one-verdict-round rule.
 
 ## 10. Parking and autonomous correction
 
 Parked work remains on the **same PR and same branch**. Do not automatically
 create Recovery, Finalization, Replacement, or Recovery-of-Recovery chains. A
 replacement requires an exceptional recorded reason and explicit human
-authorization.
+authorization, except for the single mechanically bounded reviewer-runtime
+replacement in section 9. That exception replaces only a confirmed-unavailable
+verdict-less review context and never replaces Product work, a branch, a PR, or
+a verdict round.
 
 `PARKED_FOR_HUMAN` isolates a protected direction. In autonomous mode, other
 independent safe work may continue when the repository is safe.
@@ -555,6 +614,14 @@ Proposal explains product intent; this rule controls execution authority.
 
 ## 13. Failure and truthful stops
 
+Before either Goal profile reports completion it must run `pnpm harness
+goal:check`. Only a real terminal Outer Run with no active/pending nonterminal
+Epoch, or trusted `UNCHANGED_EXHAUSTION`, returns `GOAL_STOP_ALLOWED`.
+`REVIEW_RUNNING`, reviewer interruption/recovery/runtime-blocked states, an
+active Epoch, and every other nonterminal state return
+`GOAL_CONTINUATION_REQUIRED`. External capacity exhaustion pauses execution in
+place; it never closes the Run or satisfies the Goal gate.
+
 Canonical governed stops include:
 
 - `CONTROL_PLANE_UNAVAILABLE`
@@ -564,6 +631,10 @@ Canonical governed stops include:
 - unsafe repository state
 - `STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`
 - `STOPPED_TRUSTED_FRONTIER_EXHAUSTED`.
+
+This list includes truthful invocation stops. Only entries durably represented
+as a terminal Outer Run satisfy `goal:check`; an operational pause or blocker
+does not become Goal completion merely because execution must yield.
 
 `STOPPED_TRUSTED_FRONTIER_EXHAUSTED` is an evidence-and-review-gated claim, not
 a free-form Agent conclusion. The `run:stop` command accepts it only from a
@@ -629,7 +700,8 @@ Outer Run block contains:
     "consumed": 0,
     "reserved": 0,
     "product": { "max": 3, "consumed": 0, "reserved": 0 },
-    "closure": { "max": 1, "consumed": 0, "reserved": 0 }
+    "closure": { "max": 1, "consumed": 0, "reserved": 0 },
+    "runtime_recovery": { "max": 1, "consumed": 0, "reserved": 0 }
   },
   "active_epoch_pr": null,
   "parked_epoch_prs": [],
@@ -640,7 +712,10 @@ Outer Run block contains:
     "base_sha": null,
     "ledger_hash": null,
     "evidence_hash": null,
+    "evidence": null,
     "reviewer_id": null,
+    "runtime": { "state": "NOT_STARTED", "reason": null, "allocation": null },
+    "runtime_history": [],
     "verdict": null,
     "findings": []
   },
@@ -660,7 +735,15 @@ An Epoch PR block contains:
   "base_sha": "...",
   "candidate_sha": null,
   "advances_frontier_ids": ["OP-..."],
-  "review": { "expected": 1, "max": 2, "consumed": 0, "reserved": 0 },
+  "review": {
+    "expected": 1,
+    "max": 2,
+    "consumed": 0,
+    "reserved": 0,
+    "runtime": { "state": "NOT_STARTED", "reason": null, "allocation": null },
+    "runtime_history": [],
+    "runtime_recovery": { "max": 1, "consumed": 0, "reserved": 0 }
+  },
   "review_history": [],
   "findings": [],
   "corrective_closure": [],
@@ -674,6 +757,11 @@ An Epoch PR block contains:
 The human-readable PR body supplies Product Objective, Representative User
 Questions, Included Work Packages, Explicit Non-Scope, Acceptance Criteria,
 Validation, Why Not Review Earlier?, and Why Not Extend Further?.
+
+The schema identifier remains `bangumi-harness/v3`. V3.3 fields are additive.
+When an older V3.2 block omits them, the CLI normalizes zero recovery usage and
+an observation-required reviewer runtime in memory; it creates no migration
+commit and does not infer that the old task is active.
 
 ## 15. Harness CLI
 
@@ -693,15 +781,22 @@ help` for exact arguments.
 - `guard:legacy-paths`: reject V3 Product changes to legacy runtime paths.
 - `candidate:check`: enforce path, Scope Closure, preflight, Candidate, base,
   and exact-SHA CI invariants.
-- `review:reserve`: reserve Epoch and outer review slots.
-- `review:started`: convert a reservation to consumed and record reviewer id.
+- `review:reserve`: reserve Epoch and outer review slots; `--runtime-recovery`
+  addresses only an authorized exceptional replacement.
+- `review:started`: convert the matching reservation to consumed and record
+  reviewer id/replacement relationship.
 - `review:result`: record a verdict/history and enter PASS, correction, final
   correction, or protected-human semantics.
-- `review:wait`: validate same-reviewer identity and make no durable write.
+- `review:runtime`: record explicit `ACTIVE`, `INTERRUPTED`, or `UNAVAILABLE`
+  runtime truth for the exact reviewer id.
+- `review:wait`: after explicit `ACTIVE` observation, validate same-reviewer
+  identity and make no durable write.
 - `frontier:review-reserve`, `frontier:review-started`,
-  `frontier:review-reconcile`, `frontier:review-wait`, and
+  `frontier:review-reconcile`, `frontier:review-runtime`,
+  `frontier:review-wait`, `frontier:review-context`, and
   `frontier:review-result`: execute the single exact-hash closure review without
-  spending a Product-review slot or allowing a second closure launch.
+  spending a Product-review slot or allowing a second ordinary closure launch;
+  runtime recovery uses the one shared exceptional ledger.
 - `frontier:resume-discovery`: after `DISCOVERY_REQUIRED` or uncertain closure
   runtime, restore Product discovery without clearing the rejected closure or
   authorizing another closure reviewer in the same Run.
@@ -713,6 +808,8 @@ help` for exact arguments.
   master, and update the Run Issue.
 - `run:stop`: validate any required stop evidence, record the governed outer
   stop, and close the Run Issue.
+- `goal:check`: mechanically allow Goal completion only at a real terminal Run
+  or trusted unchanged-exhaustion result.
 
 Harness unit/simulation tests and the CI guard are mandatory readiness evidence
 for changes to this control plane.

@@ -13,6 +13,7 @@ import {
   afterPassBaseAction,
   applyFrontierReviewResult,
   applyReviewResult,
+  assertGoalStopAllowed,
   assertCandidateInvariant,
   assertCorrectiveClosure,
   assertDiscoveryExhaustionEvidence,
@@ -30,6 +31,7 @@ import {
   markReviewStarted,
   markFrontierReviewStarted,
   parseControlBlock,
+  reconcileFrontierReviewReservation,
   reconcileReviewReservation,
   recordIntegrationBlocked,
   resumeReviewLimitForFinalCorrective,
@@ -38,6 +40,7 @@ import {
   renderRunBody,
   reserveReview,
   reserveFrontierReview,
+  waitForFrontierReviewer,
   waitForSameReviewer,
 } from '../../scripts/lib/agent-harness-core.mjs';
 
@@ -311,6 +314,61 @@ test('frontier closure rejection resumes Luna and can never launch a second clos
   );
 });
 
+test('frontier reviewer requires runtime proof and resumes the same identity without budget change', () => {
+  let run = createRunState({ runId: 'frontier-runtime' });
+  run = reserveFrontierReview(run, {
+    baseSha: sha('a'),
+    ledgerHash: sha('b'),
+    evidenceHash: sha('c'),
+  });
+  run = markFrontierReviewStarted(run, 'sol-frontier');
+  assert.throws(
+    () => waitForFrontierReviewer(run, 'sol-frontier'),
+    (error) =>
+      error instanceof HarnessInvariantError &&
+      error.code === 'REVIEW_RUNTIME_OBSERVATION_REQUIRED',
+  );
+
+  const interrupted = waitForFrontierReviewer(run, 'sol-frontier', 'INTERRUPTED', 'CAPACITY_LIMIT');
+  assert.equal(interrupted.run.state, 'FRONTIER_REVIEW_INTERRUPTED_RESUMABLE');
+  assert.equal(interrupted.run.frontier_closure.reviewer_id, 'sol-frontier');
+  assert.equal(interrupted.run.outer_sol.closure.consumed, 1);
+  const resumed = waitForFrontierReviewer(interrupted.run, 'sol-frontier', 'ACTIVE');
+  assert.equal(resumed.run.state, 'FRONTIER_REVIEW_RUNNING');
+  assert.equal(resumed.run.outer_sol.closure.consumed, 1);
+  assert.equal(resumed.launches, 0);
+});
+
+test('frontier reviewer replacement uses the one shared recovery context and preserves hashes', () => {
+  let run = createRunState({ runId: 'frontier-recovery' });
+  run = reserveFrontierReview(run, {
+    baseSha: sha('a'),
+    ledgerHash: sha('b'),
+    evidenceHash: sha('c'),
+  });
+  run = markFrontierReviewStarted(run, 'sol-frontier-lost');
+  const unavailable = waitForFrontierReviewer(
+    run,
+    'sol-frontier-lost',
+    'UNAVAILABLE',
+    'REVIEWER_TASK_NOT_FOUND',
+  );
+  assert.equal(unavailable.run.state, 'FRONTIER_REVIEW_RUNTIME_RECOVERY_REQUIRED');
+  assert.equal(unavailable.run.frontier_closure.base_sha, sha('a'));
+  assert.equal(unavailable.run.frontier_closure.ledger_hash, sha('b'));
+  assert.equal(unavailable.run.frontier_closure.evidence_hash, sha('c'));
+
+  run = reserveFrontierReview(unavailable.run, { runtimeRecovery: true });
+  assert.equal(run.outer_sol.runtime_recovery.reserved, 1);
+  run = markFrontierReviewStarted(run, 'sol-frontier-replacement', {
+    runtimeRecovery: true,
+  });
+  assert.equal(run.outer_sol.closure.consumed, 1);
+  assert.equal(run.outer_sol.runtime_recovery.consumed, 1);
+  assert.equal(run.frontier_closure.runtime.allocation, 'RECOVERY');
+  assert.equal(run.frontier_closure.runtime.replaces_reviewer_id, 'sol-frontier-lost');
+});
+
 test('trusted stop authority is bound to exact master, ledger, evidence, and closure PASS', () => {
   const run = createRunState({ runId: 'trusted-closure' });
   const reserved = reserveFrontierReview(run, {
@@ -363,11 +421,48 @@ test('B. CORRECTIVE PASS: one consolidated Luna corrective creates a new Candida
   });
 });
 
+test('stored REVIEW_RUNNING state alone cannot prove that the reviewer is active', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-1'));
+  assert.throws(
+    () => waitForSameReviewer(run, epoch, 'sol-1'),
+    (error) =>
+      error instanceof HarnessInvariantError &&
+      error.code === 'REVIEW_RUNTIME_OBSERVATION_REQUIRED',
+  );
+});
+
+test('runtime recovery rejects wrong reviewer ids and requires confirmed unavailability', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-recorded'));
+  assert.throws(
+    () => waitForSameReviewer(run, epoch, 'sol-wrong', 'ACTIVE'),
+    (error) => error instanceof HarnessInvariantError && error.code === 'REVIEWER_ID_MISMATCH',
+  );
+  assert.throws(
+    () => reserveReview(run, epoch, { runtimeRecovery: true }),
+    (error) =>
+      error instanceof HarnessInvariantError && error.code === 'REVIEW_RUNTIME_RECOVERY_NOT_READY',
+  );
+
+  let frontierRun = createRunState({ runId: 'frontier-id-check' });
+  frontierRun = reserveFrontierReview(frontierRun, {
+    baseSha: sha('a'),
+    ledgerHash: 'ledger',
+    evidenceHash: 'evidence',
+  });
+  frontierRun = markFrontierReviewStarted(frontierRun, 'frontier-recorded');
+  assert.throws(
+    () => waitForFrontierReviewer(frontierRun, 'frontier-wrong', 'ACTIVE'),
+    (error) => error instanceof HarnessInvariantError && error.code === 'REVIEWER_ID_MISMATCH',
+  );
+});
+
 test('C. POLLING: six timeouts cause zero durable writes, Git mutations, or launches', () => {
   let { run, epoch } = fixture();
   ({ run, epoch } = startReview(run, epoch, 'sol-1'));
   for (let count = 0; count < 6; count += 1) {
-    const waited = waitForSameReviewer(run, epoch, 'sol-1');
+    const waited = waitForSameReviewer(run, epoch, 'sol-1', 'ACTIVE');
     assert.equal(waited.run, run);
     assert.equal(waited.epoch, epoch);
     assert.equal(waited.durableWrite, false);
@@ -376,6 +471,230 @@ test('C. POLLING: six timeouts cause zero durable writes, Git mutations, or laun
   }
   assert.equal(epoch.review.consumed, 1);
   assert.equal(run.outer_sol.consumed, 1);
+});
+
+test('an interrupted Product reviewer resumes with the same identity and no budget change', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-1'));
+  const candidateSha = epoch.candidate_sha;
+  const ci = structuredClone(epoch.ci);
+
+  const interrupted = waitForSameReviewer(run, epoch, 'sol-1', 'INTERRUPTED', 'CAPACITY_LIMIT');
+  assert.equal(interrupted.epoch.state, 'REVIEW_INTERRUPTED_RESUMABLE');
+  assert.equal(interrupted.epoch.review.reviewer_id, 'sol-1');
+  assert.equal(interrupted.epoch.review.runtime.reason, 'CAPACITY_LIMIT');
+  assert.equal(interrupted.run.outer_sol.consumed, 1);
+  assert.equal(interrupted.epoch.review.consumed, 1);
+  assert.equal(interrupted.epoch.candidate_sha, candidateSha);
+  assert.deepEqual(interrupted.epoch.ci, ci);
+
+  const resumed = waitForSameReviewer(interrupted.run, interrupted.epoch, 'sol-1', 'ACTIVE');
+  assert.equal(resumed.epoch.state, 'REVIEW_RUNNING');
+  assert.equal(resumed.epoch.review.runtime.state, 'ACTIVE');
+  assert.equal(resumed.run.outer_sol.consumed, 1);
+  assert.equal(resumed.epoch.review.consumed, 1);
+  assert.equal(resumed.launches, 0);
+});
+
+test('an unavailable Product reviewer preserves consumption and requests one recovery context', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-lost'));
+
+  const unavailable = waitForSameReviewer(
+    run,
+    epoch,
+    'sol-lost',
+    'UNAVAILABLE',
+    'REVIEWER_TASK_NOT_FOUND',
+  );
+  assert.equal(unavailable.epoch.state, 'REVIEW_RUNTIME_RECOVERY_REQUIRED');
+  assert.equal(unavailable.epoch.review.reviewer_id, null);
+  assert.equal(unavailable.epoch.review.consumed, 1);
+  assert.equal(unavailable.run.outer_sol.consumed, 1);
+  assert.deepEqual(unavailable.run.outer_sol.runtime_recovery, {
+    max: 1,
+    consumed: 0,
+    reserved: 0,
+  });
+  assert.deepEqual(unavailable.epoch.review.runtime_recovery, {
+    max: 1,
+    consumed: 0,
+    reserved: 0,
+  });
+  assert.deepEqual(unavailable.epoch.review.runtime_history, [
+    {
+      reviewer_id: 'sol-lost',
+      allocation: 'NORMAL',
+      outcome: 'UNAVAILABLE',
+      reason: 'REVIEWER_TASK_NOT_FOUND',
+    },
+  ]);
+  assert.equal(unavailable.epoch.review.runtime.replacement_allocation, 'RECOVERY');
+});
+
+test('a Product runtime replacement consumes the paired recovery ledger exactly once', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-lost'));
+  ({ run, epoch } = waitForSameReviewer(
+    run,
+    epoch,
+    'sol-lost',
+    'UNAVAILABLE',
+    'REVIEWER_TASK_NOT_FOUND',
+  ));
+
+  ({ run, epoch } = reserveReview(run, epoch, { runtimeRecovery: true }));
+  assert.equal(run.outer_sol.runtime_recovery.reserved, 1);
+  assert.equal(epoch.review.runtime_recovery.reserved, 1);
+  assert.equal(run.outer_sol.product.reserved, 0);
+  assert.equal(epoch.review.reserved, 0);
+
+  ({ run, epoch } = markReviewStarted(run, epoch, 'sol-replacement', {
+    runtimeRecovery: true,
+  }));
+  assert.equal(run.outer_sol.runtime_recovery.consumed, 1);
+  assert.equal(epoch.review.runtime_recovery.consumed, 1);
+  assert.equal(run.outer_sol.product.consumed, 1);
+  assert.equal(epoch.review.consumed, 1);
+  assert.equal(epoch.review.reviewer_id, 'sol-replacement');
+  assert.equal(epoch.review.runtime.allocation, 'RECOVERY');
+  assert.equal(epoch.review.runtime.replaces_reviewer_id, 'sol-lost');
+  assert.equal(epoch.state, 'REVIEW_RUNNING');
+
+  ({ run, epoch } = applyReviewResult(run, epoch, { verdict: 'PASS' }));
+  assert.equal(epoch.review_history.at(-1).runtime_allocation, 'RECOVERY');
+  assert.equal(epoch.review_history.at(-1).replaces_reviewer_id, 'sol-lost');
+  assert.equal(epoch.review.runtime.state, 'COMPLETED');
+});
+
+test('an interrupted Product reviewer cannot return a verdict until runtime is ACTIVE', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-interrupted'));
+  ({ run, epoch } = waitForSameReviewer(
+    run,
+    epoch,
+    'sol-interrupted',
+    'INTERRUPTED',
+    'CAPACITY_PAUSE',
+  ));
+  assert.throws(
+    () => applyReviewResult(run, epoch, { verdict: 'PASS' }),
+    (error) => error instanceof HarnessInvariantError && error.code === 'REVIEW_NOT_RUNNING',
+  );
+});
+
+test('runtime recovery exhaustion uses one remaining normal slot then blocks without refund', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-normal-1'));
+  ({ run, epoch } = waitForSameReviewer(
+    run,
+    epoch,
+    'sol-normal-1',
+    'UNAVAILABLE',
+    'NORMAL_CONTEXT_LOST',
+  ));
+  ({ run, epoch } = reserveReview(run, epoch, { runtimeRecovery: true }));
+  ({ run, epoch } = markReviewStarted(run, epoch, 'sol-recovery', {
+    runtimeRecovery: true,
+  }));
+
+  ({ run, epoch } = waitForSameReviewer(
+    run,
+    epoch,
+    'sol-recovery',
+    'UNAVAILABLE',
+    'RECOVERY_CONTEXT_LOST',
+  ));
+  assert.equal(epoch.review.runtime.replacement_allocation, 'NORMAL');
+  ({ run, epoch } = reserveReview(run, epoch));
+  ({ run, epoch } = markReviewStarted(run, epoch, 'sol-normal-2'));
+  assert.equal(epoch.review.consumed, 2);
+  assert.equal(epoch.review.runtime_recovery.consumed, 1);
+
+  ({ run, epoch } = waitForSameReviewer(
+    run,
+    epoch,
+    'sol-normal-2',
+    'UNAVAILABLE',
+    'FINAL_CONTEXT_LOST',
+  ));
+  assert.equal(epoch.state, 'REVIEW_RUNTIME_BLOCKED');
+  assert.equal(epoch.review.consumed, 2);
+  assert.equal(epoch.review.runtime_recovery.consumed, 1);
+  assert.throws(
+    () => reserveReview(run, epoch),
+    (error) => error instanceof HarnessInvariantError && error.code === 'REVIEW_BUDGET_EXHAUSTED',
+  );
+});
+
+test('uncertain recovery reservation reconciliation consumes only recovery and never invents a verdict', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-lost'));
+  ({ run, epoch } = waitForSameReviewer(run, epoch, 'sol-lost', 'UNAVAILABLE', 'TASK_NOT_FOUND'));
+  ({ run, epoch } = reserveReview(run, epoch, { runtimeRecovery: true }));
+  ({ run, epoch } = reconcileReviewReservation(run, epoch, false, {
+    runtimeRecovery: true,
+  }));
+  assert.equal(run.outer_sol.runtime_recovery.consumed, 1);
+  assert.equal(epoch.review.runtime_recovery.consumed, 1);
+  assert.equal(run.outer_sol.product.consumed, 1);
+  assert.equal(epoch.review.consumed, 1);
+  assert.equal(epoch.review.runtime.replacement_allocation, 'NORMAL');
+
+  let frontierRun = createRunState({ runId: 'frontier-reconcile' });
+  frontierRun.state = 'FRONTIER_REVIEW_RUNNING';
+  frontierRun.frontier_closure = {
+    state: 'RUNNING',
+    base_sha: sha('a'),
+    ledger_hash: 'ledger',
+    evidence_hash: 'evidence',
+    reviewer_id: 'frontier-lost',
+    verdict: null,
+    findings: [],
+    evidence: { encoding: 'gzip+base64', uncompressed_bytes: 2, data: 'e30=' },
+    runtime: { state: 'ACTIVE', reason: null, allocation: 'NORMAL' },
+    runtime_history: [],
+  };
+  frontierRun.outer_sol.consumed = 1;
+  frontierRun.outer_sol.closure.consumed = 1;
+  ({ run: frontierRun } = waitForFrontierReviewer(
+    frontierRun,
+    'frontier-lost',
+    'UNAVAILABLE',
+    'TASK_NOT_FOUND',
+  ));
+  frontierRun = reserveFrontierReview(frontierRun, { runtimeRecovery: true });
+  frontierRun = reconcileFrontierReviewReservation(frontierRun, false, {
+    runtimeRecovery: true,
+  });
+  assert.equal(frontierRun.outer_sol.runtime_recovery.consumed, 1);
+  assert.equal(frontierRun.outer_sol.closure.consumed, 1);
+  assert.equal(frontierRun.state, 'FRONTIER_REVIEW_RUNTIME_BLOCKED');
+  assert.notEqual(frontierRun.frontier_closure.verdict, 'PASS');
+});
+
+test('legacy V3.2 control blocks normalize additive recovery fields without claiming activity', () => {
+  const { run, epoch } = fixture();
+  delete run.outer_sol.runtime_recovery;
+  delete run.frontier_closure.runtime;
+  delete run.frontier_closure.runtime_history;
+  delete run.frontier_closure.evidence;
+  delete epoch.review.runtime_recovery;
+  delete epoch.review.runtime_history;
+  delete epoch.review.runtime;
+  epoch.state = 'REVIEW_RUNNING';
+  epoch.review.reviewer_id = 'legacy-sol';
+  const parsedRun = parseControlBlock(renderRunBody(run), RUN_MARKER);
+  const parsedEpoch = parseControlBlock(renderEpochBody(epoch), EPOCH_MARKER);
+  assert.deepEqual(parsedRun.outer_sol.runtime_recovery, { max: 1, consumed: 0, reserved: 0 });
+  assert.deepEqual(parsedEpoch.review.runtime_recovery, { max: 1, consumed: 0, reserved: 0 });
+  assert.equal(parsedEpoch.review.runtime.state, 'OBSERVATION_REQUIRED');
+  assert.throws(
+    () => waitForSameReviewer(parsedRun, parsedEpoch, 'legacy-sol'),
+    (error) =>
+      error instanceof HarnessInvariantError &&
+      error.code === 'REVIEW_RUNTIME_OBSERVATION_REQUIRED',
+  );
 });
 
 test('review reservation reconciliation closes a partial write conservatively', () => {
@@ -670,4 +989,33 @@ test('terminal and circuit-breaker runs cannot start another Epoch', () => {
     );
   }
   assert.equal(assertRunCanStartEpoch(createRunState({ runId: 'active' })), true);
+});
+
+test('Goal completion is rejected for every active review runtime and allowed only at a true stop', () => {
+  let { run, epoch } = fixture();
+  ({ run, epoch } = startReview(run, epoch, 'sol-1'));
+  for (const state of [
+    'REVIEW_RUNNING',
+    'REVIEW_INTERRUPTED_RESUMABLE',
+    'REVIEW_RUNTIME_RECOVERY_REQUIRED',
+    'REVIEW_RUNTIME_BLOCKED',
+  ]) {
+    epoch.state = state;
+    assert.throws(
+      () => assertGoalStopAllowed({ run, epoch }),
+      (error) =>
+        error instanceof HarnessInvariantError && error.code === 'GOAL_CONTINUATION_REQUIRED',
+    );
+  }
+
+  run.state = 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE';
+  run.active_epoch_pr = null;
+  epoch.state = 'REVIEW_RUNTIME_BLOCKED';
+  assert.throws(
+    () => assertGoalStopAllowed({ run, epoch }),
+    (error) =>
+      error instanceof HarnessInvariantError && error.code === 'GOAL_CONTINUATION_REQUIRED',
+  );
+  assert.equal(assertGoalStopAllowed({ run }), true);
+  assert.equal(assertGoalStopAllowed({ discoveryState: 'UNCHANGED_EXHAUSTION' }), true);
 });
