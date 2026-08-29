@@ -659,6 +659,7 @@ export function buildSubjectOverlapViewModel(
     formulaVersion: result.formulaVersion,
     coverage: result.coverage,
     source: result.source,
+    operationEvidence: result.operationEvidence,
     evidence: result.evidence,
     warnings: result.warnings,
     limitations: result.limitations,

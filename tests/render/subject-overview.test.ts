@@ -77,6 +77,7 @@ function charactersPayload(imageMode: ImageMode) {
     id: index + 1,
     name: `非常に長い角色名称 ${index + 1} チトとユーリの旅路`,
     type: index % 2 === 0 ? 1 : 2,
+    summary: '',
     relation: index % 2 === 0 ? '主角' : '配角',
     images: { medium: imageUrl('character', index, imageMode) },
     actors: [
@@ -97,6 +98,7 @@ function personsPayload(imageMode: ImageMode) {
     type: 1,
     career: index % 2 === 0 ? ['director'] : ['writer'],
     relation: index % 2 === 0 ? '导演' : '作画监督',
+    eps: '',
     images: { common: imageUrl('staff', index, imageMode) },
   }));
 }

@@ -57,15 +57,15 @@
 
 ## 扩展场景：COMPARISON（7）
 
-|  ID | 用户问题                                                 | 需要的数据/判断                                          |
-| --: | -------------------------------------------------------- | -------------------------------------------------------- |
-| C01 | 两部作品的评分人数差多少，差异是否足够大？               | rating、rating_count、阈值和统计解释                     |
-| C02 | 同一原作的 TV 版和剧场版在集数、评分、收藏量上差异如何？ | series/relations、subject fields、normalized metrics     |
-| C03 | 两位声优在共同作品数量和主役比例上谁更高？               | person-character edges、role classifier、unique subjects |
-| C04 | 两个季度的原创动画热度和评分哪个更高？                   | season cohorts、heat/score、sample-size caveat           |
-| C05 | 同一导演的早期和近期作品，评分趋势是否变化？             | person→subjects、date bins、scores and snapshots         |
-| C06 | 这两部作品的主要制作团队重合度是多少？                   | staff/person sets、role weights、overlap definition      | `bangumi.get_subject_overlap` 提供有界制作人员交集与观察到的 Jaccard 比例 | “主要团队”不做完整或质量性推断 |
-| C07 | “收藏多但评分低”和“评分高但收藏少”的作品各有哪些？       | collection/rating metrics、分箱规则、sampling bias       |
+|  ID | 用户问题                                                 | 需要的数据/判断                                                                                                                                                |
+| --: | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C01 | 两部作品的评分人数差多少，差异是否足够大？               | rating、rating_count、阈值和统计解释                                                                                                                           |
+| C02 | 同一原作的 TV 版和剧场版在集数、评分、收藏量上差异如何？ | series/relations、subject fields、normalized metrics                                                                                                           |
+| C03 | 两位声优在共同作品数量和主役比例上谁更高？               | person-character edges、role classifier、unique subjects                                                                                                       |
+| C04 | 两个季度的原创动画热度和评分哪个更高？                   | season cohorts、heat/score、sample-size caveat                                                                                                                 |
+| C05 | 同一导演的早期和近期作品，评分趋势是否变化？             | person→subjects、date bins、scores and snapshots                                                                                                               |
+| C06 | 这两部作品的主要制作团队重合度是多少？                   | staff/person sets、role weights、overlap definition；`bangumi.get_subject_overlap` 提供有界制作人员交集与观察到的 Jaccard 比例；“主要团队”不做完整或质量性推断 |
+| C07 | “收藏多但评分低”和“评分高但收藏少”的作品各有哪些？       | collection/rating metrics、分箱规则、sampling bias                                                                                                             |
 
 ## 扩展场景：PERSON（7）
 
@@ -150,14 +150,14 @@
 
 ## 扩展场景：RELATION GRAPH（6）
 
-|  ID | 用户问题                                         | 需要的数据/判断                                     |
-| --: | ------------------------------------------------ | --------------------------------------------------- |
-| R01 | 某作品的所有前传、续作和外传是什么？             | relation edge traversal、dedupe                     |
-| R02 | 哪些系列存在多条改编链？                         | subject graph、relation labels、cycle handling      |
-| R03 | 从一部作品出发，两跳内评分最高的关联作品是什么？ | graph traversal + subject scores                    |
-| R04 | 某系列是否有剧场版必须插入 TV 观看顺序？         | relation type + date + order policy                 |
-| R05 | 两个作品之间是否通过系列或人物相连？             | subject/person/character heterogeneous graph        |
-| R06 | 哪些作品共享最多的主要角色配音者？               | cast graph、main-role filter、weighted intersection | `bangumi.get_subject_overlap` 在调用方提供的 2–8 个候选条目中按明确主角/主役标签排序 | 不发现全目录候选，未知角色不作否定 |
+|  ID | 用户问题                                         | 需要的数据/判断                                                                                                                                                               |
+| --: | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R01 | 某作品的所有前传、续作和外传是什么？             | relation edge traversal、dedupe                                                                                                                                               |
+| R02 | 哪些系列存在多条改编链？                         | subject graph、relation labels、cycle handling                                                                                                                                |
+| R03 | 从一部作品出发，两跳内评分最高的关联作品是什么？ | graph traversal + subject scores                                                                                                                                              |
+| R04 | 某系列是否有剧场版必须插入 TV 观看顺序？         | relation type + date + order policy                                                                                                                                           |
+| R05 | 两个作品之间是否通过系列或人物相连？             | subject/person/character heterogeneous graph                                                                                                                                  |
+| R06 | 哪些作品共享最多的主要角色配音者？               | cast graph、main-role filter、weighted intersection；`bangumi.get_subject_overlap` 在调用方提供的 2–8 个候选条目中按明确主角/主役标签排序；不发现全目录候选，未知角色不作否定 |
 
 ## 扩展场景：CONTENT（7）
 

@@ -74,6 +74,16 @@ export interface SubjectOverlapCastPerson {
   credits: SubjectOverlapCastCredit[];
 }
 
+export interface SubjectOverlapCastRoleEvidence {
+  subjectId: number;
+  personId: number;
+  name: string;
+  nameVariants?: string[];
+  career: string[];
+  roleFamily: SubjectOverlapRoleFamily;
+  credits: SubjectOverlapCastCredit[];
+}
+
 export interface SubjectOverlapStaffCredit {
   subjectId: number;
   rawRelations: string[];
@@ -93,6 +103,8 @@ export interface SubjectOverlapCastRelation {
   state: SubjectOverlapRelationState;
   items: SubjectOverlapCastPerson[];
   coverage: SubjectOverlapCoverage;
+  roleEvidence?: SubjectOverlapCastRoleEvidence[];
+  roleEvidenceOmitted?: number;
 }
 
 export interface SubjectOverlapStaffRelation {
@@ -117,6 +129,20 @@ export interface SubjectOverlapSourceSummary {
   operations: string[];
   attemptedAt: string;
   retrievedAt?: string;
+}
+
+export type SubjectOverlapOperationOutcome =
+  'succeeded' | 'partial' | 'unavailable' | 'not_found' | 'not_computable' | 'schema_drift';
+
+export interface SubjectOverlapOperationEvidence {
+  source: 'official-v0' | 'derived-s7';
+  operation: string;
+  subjectId?: number;
+  attemptedAt: string;
+  retrievedAt?: string;
+  outcome: SubjectOverlapOperationOutcome;
+  code?: string;
+  message?: string;
 }
 
 export interface SubjectOverlapResult {
@@ -146,6 +172,7 @@ export interface SubjectOverlapResult {
     official: SubjectOverlapSourceSummary & { class: 'official-v0' };
     derived: SubjectOverlapSourceSummary & { class: 'derived-s7' };
   };
+  operationEvidence: SubjectOverlapOperationEvidence[];
   evidence: Array<{
     source: 'official-v0' | 'derived-s7';
     operation: string;

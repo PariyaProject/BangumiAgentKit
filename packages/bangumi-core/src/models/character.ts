@@ -23,6 +23,19 @@ export interface DomainRelatedCharacter {
   actors: PersonCandidate[];
 }
 
+export interface SubjectCharactersCoverage {
+  observed: number;
+  returned: number;
+  truncated: boolean;
+  schemaDriftRows: number;
+  invalidActorIdRows: number;
+}
+
+export interface SubjectCharactersResult {
+  items: DomainRelatedCharacter[];
+  coverage: SubjectCharactersCoverage;
+}
+
 export interface CharacterRelationSubject {
   id: number;
   name: string;

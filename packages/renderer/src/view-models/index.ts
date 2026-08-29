@@ -994,6 +994,7 @@ export interface SubjectOverlapViewModel {
   formulaVersion: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['formulaVersion'];
   coverage: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['coverage'];
   source: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['source'];
+  operationEvidence: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['operationEvidence'];
   evidence: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['evidence'];
   warnings: import('@bangumi-agent-kit/bangumi-core').SubjectOverlapResult['warnings'];
   limitations: string[];

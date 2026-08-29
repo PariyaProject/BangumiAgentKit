@@ -703,7 +703,7 @@ function overlapSideCoverage(
 
 function collectCastSide(overview: SubjectOverviewResult, subjectId: number): CastSideData {
   const people = new Map<number, CastAccumulator>();
-  let missingIdRows = 0;
+  let missingIdRows = overview.cast.actorCoverage.missingIdRows || 0;
   let rowsReturned = 0;
 
   for (const item of overview.cast.items) {

@@ -156,6 +156,16 @@ const result: SubjectOverlapResult = {
       retrievedAt: '2026-08-29T00:00:01.000Z',
     },
   },
+  operationEvidence: [
+    {
+      source: 'official-v0',
+      operation: 'GET /v0/subjects/{subject_id}/characters',
+      subjectId: 101,
+      attemptedAt: '2026-08-29T00:00:00.000Z',
+      retrievedAt: '2026-08-29T00:00:01.000Z',
+      outcome: 'succeeded',
+    },
+  ],
   evidence: [
     {
       source: 'derived-s7',
@@ -182,6 +192,31 @@ describe('subject-overlap renderer', () => {
     expect(html).toContain('PAIR_LIMIT_REACHED');
     expect(html).toContain('subject-overlap-v1');
     expect(html).toContain('不代表完整演职员表');
+    expect(html).toContain('官方获取于：2026-08-29T00:00:01.000Z');
     expect(html).not.toContain('https://');
+  });
+
+  it('reports bounded renderer omissions for high-cardinality evidence', () => {
+    const firstPair = result.pairs[0]!;
+    const firstPerson = firstPair.cast!.items[0]!;
+    const crowded = {
+      ...result,
+      pairs: [
+        {
+          ...firstPair,
+          cast: {
+            ...firstPair.cast!,
+            items: Array.from({ length: 9 }, (_, index) => ({
+              ...firstPerson,
+              personId: firstPerson.personId + index,
+              name: `${firstPerson.name}-${index}`,
+            })),
+          },
+        },
+      ],
+    };
+    const html = renderHtmlTemplate(buildSubjectOverlapViewModel(crowded), 'bangumi-dark', {}, 640);
+    expect(html).toContain('人物渲染上限：8');
+    expect(html).toContain('另有 1 位共同人物未展开');
   });
 });

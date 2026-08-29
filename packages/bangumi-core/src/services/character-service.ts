@@ -5,9 +5,10 @@ import {
   DomainRelatedCharacter,
   CharacterRelationSubject,
   CharacterRelatedPerson,
+  SubjectCharactersCoverage,
+  SubjectCharactersResult,
 } from '../models/character.js';
 import { CharacterCandidate, SearchResult, SearchStatus } from '../results/result.js';
-import { mapPersonCandidate } from './person-service.js';
 import { normalizeSearchText } from '../workflows/resolve-subject.js';
 
 export function mapCharacter(raw: Character): DomainCharacter {
@@ -35,6 +36,81 @@ export interface SearchCharactersOptions {
   offset?: number;
   nsfw?: boolean;
 }
+
+interface ValidSubjectCharacterRow {
+  id: number;
+  name: string;
+  type: number;
+  summary: string;
+  images?: Record<string, string>;
+  relation: string;
+  actors: Array<{
+    id: number;
+    name: string;
+    career: string[];
+    images?: Record<string, string>;
+  }>;
+}
+
+function positiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function imageMap(value: unknown): value is Record<string, string> {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === 'object' &&
+      !Array.isArray(value) &&
+      Object.values(value as Record<string, unknown>).every((item) => typeof item === 'string'))
+  );
+}
+
+function validActor(value: unknown): value is ValidSubjectCharacterRow['actors'][number] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    positiveInteger(row.id) &&
+    typeof row.name === 'string' &&
+    Array.isArray(row.career) &&
+    row.career.every((item) => typeof item === 'string') &&
+    imageMap(row.images)
+  );
+}
+
+function validSubjectCharacter(value: unknown): value is ValidSubjectCharacterRow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    positiveInteger(row.id) &&
+    typeof row.name === 'string' &&
+    typeof row.type === 'number' &&
+    Number.isInteger(row.type) &&
+    row.type >= 1 &&
+    row.type <= 4 &&
+    typeof row.summary === 'string' &&
+    typeof row.relation === 'string' &&
+    Array.isArray(row.actors) &&
+    row.actors.every(validActor) &&
+    imageMap(row.images)
+  );
+}
+
+function countInvalidActorIds(rows: readonly unknown[]): number {
+  let count = 0;
+  for (const value of rows) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+    const actors = (value as Record<string, unknown>).actors;
+    if (!Array.isArray(actors)) continue;
+    count += actors.filter((actor) => {
+      if (!actor || typeof actor !== 'object' || Array.isArray(actor)) return true;
+      return !positiveInteger((actor as Record<string, unknown>).id);
+    }).length;
+  }
+  return count;
+}
+
+const subjectCharacterCoverage = new WeakMap<DomainRelatedCharacter[], SubjectCharactersCoverage>();
 
 export class CharacterService {
   private api: GeneratedBangumiOpenApiClient;
@@ -134,18 +210,69 @@ export class CharacterService {
     }));
   }
 
-  async getSubjectCharacters(subjectId: number): Promise<DomainRelatedCharacter[]> {
-    const raw = await this.api.getRelatedCharactersBySubjectId(subjectId);
-    return (raw || []).map((item) => ({
+  async getSubjectCharacters(
+    subjectId: number,
+    options: { limit?: number; maxResponseBytes?: number } = {},
+  ): Promise<DomainRelatedCharacter[]> {
+    const result = await this.getSubjectCharactersWithCoverage(subjectId, options);
+    subjectCharacterCoverage.set(result.items, result.coverage);
+    return result.items;
+  }
+
+  async getSubjectCharactersWithCoverage(
+    subjectId: number,
+    options: { limit?: number; maxResponseBytes?: number } = {},
+  ): Promise<SubjectCharactersResult> {
+    const raw = await this.api.getRelatedCharactersBySubjectId(subjectId, {
+      ...(options.maxResponseBytes === undefined
+        ? {}
+        : { maxResponseBytes: options.maxResponseBytes }),
+    });
+    const rawRows = Array.isArray(raw) ? raw : [];
+    const validRows = rawRows.filter(validSubjectCharacter);
+    const schemaDriftRows = Array.isArray(raw) ? rawRows.length - validRows.length : 1;
+    const invalidActorIdRows = countInvalidActorIds(rawRows);
+    const limit = Math.max(0, Math.floor(options.limit ?? Number.MAX_SAFE_INTEGER));
+    const selectedRows = validRows.slice(0, limit);
+    const items = selectedRows.map((item) => ({
       character: {
         id: item.id,
-        name: item.name || '',
-        type: item.type || 1,
-        summary: item.summary || undefined,
-        images: item.images ? (item.images as Record<string, string>) : undefined,
+        name: item.name,
+        type: item.type,
+        summary: item.summary,
+        ...(item.images === undefined || item.images === null ? {} : { images: item.images }),
       },
-      relation: item.relation || '',
-      actors: (item.actors || []).map((actor) => mapPersonCandidate(actor)),
+      relation: item.relation,
+      actors: item.actors.map((actor) => ({
+        id: actor.id,
+        name: actor.name,
+        career: [...actor.career],
+        ...(actor.images
+          ? {
+              image:
+                actor.images.medium ||
+                actor.images.small ||
+                actor.images.grid ||
+                actor.images.large,
+            }
+          : {}),
+      })),
     }));
+    return {
+      items,
+      coverage: {
+        observed: rawRows.length,
+        returned: items.length,
+        truncated: validRows.length > selectedRows.length || schemaDriftRows > 0,
+        schemaDriftRows,
+        invalidActorIdRows,
+      },
+    };
   }
+}
+
+export function getSubjectCharacterCoverage(
+  items: readonly DomainRelatedCharacter[],
+): SubjectCharactersCoverage | undefined {
+  return subjectCharacterCoverage.get(items as DomainRelatedCharacter[]);
 }

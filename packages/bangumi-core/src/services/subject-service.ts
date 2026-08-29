@@ -1,4 +1,4 @@
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   GeneratedBangumiOpenApiClient,
   Subject,
@@ -85,6 +85,77 @@ export function mapSubjectCandidate(raw: Subject): SubjectCandidate {
   };
 }
 
+export interface SubjectRequestOptions {
+  maxResponseBytes?: number;
+  strict?: boolean;
+}
+
+export interface SubjectRelationsCoverage {
+  observed: number;
+  returned: number;
+  truncated: boolean;
+  schemaDriftRows: number;
+}
+
+export interface SubjectRelationsResult {
+  items: SubjectRelationItem[];
+  coverage: SubjectRelationsCoverage;
+}
+
+function positiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function imageMap(value: unknown): value is Record<string, string> {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === 'object' &&
+      !Array.isArray(value) &&
+      Object.values(value as Record<string, unknown>).every((item) => typeof item === 'string'))
+  );
+}
+
+function validSubjectIdentity(value: unknown): value is Subject {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    positiveInteger(row.id) &&
+    typeof row.type === 'number' &&
+    Number.isInteger(row.type) &&
+    [1, 2, 3, 4, 6].includes(row.type) &&
+    typeof row.name === 'string' &&
+    row.name.trim().length > 0 &&
+    typeof row.name_cn === 'string' &&
+    typeof row.summary === 'string' &&
+    typeof row.nsfw === 'boolean' &&
+    typeof row.locked === 'boolean' &&
+    typeof row.platform === 'string' &&
+    imageMap(row.images)
+  );
+}
+
+function validSubjectRelation(value: unknown): value is {
+  id: number;
+  type: number;
+  name: string;
+  name_cn: string;
+  images?: Record<string, string>;
+  relation: string;
+} {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    positiveInteger(row.id) &&
+    typeof row.type === 'number' &&
+    Number.isInteger(row.type) &&
+    typeof row.name === 'string' &&
+    typeof row.name_cn === 'string' &&
+    typeof row.relation === 'string' &&
+    imageMap(row.images)
+  );
+}
+
 export interface SearchSubjectsOptions {
   limit?: number;
   offset?: number;
@@ -155,20 +226,63 @@ export class SubjectService {
     };
   }
 
-  async getSubjectById(subjectId: number): Promise<DomainSubject> {
-    const raw = await this.api.getSubjectById(subjectId);
+  async getSubjectById(
+    subjectId: number,
+    options: SubjectRequestOptions = {},
+  ): Promise<DomainSubject> {
+    const raw = await this.api.getSubjectById(subjectId, {
+      ...(options.maxResponseBytes === undefined
+        ? {}
+        : { maxResponseBytes: options.maxResponseBytes }),
+    });
+    if (options.strict && !validSubjectIdentity(raw)) {
+      throw new BangumiError(
+        'PARSER_ERROR',
+        `SCHEMA_DRIFT: subject ${subjectId} is missing required identity fields.`,
+        false,
+      );
+    }
     return mapSubject(raw);
   }
 
-  async getSubjectRelations(subjectId: number): Promise<SubjectRelationItem[]> {
-    const raw = await this.api.getRelatedSubjectsBySubjectId(subjectId);
-    return (raw || []).map((item) => ({
+  async getSubjectRelations(
+    subjectId: number,
+    options: { limit?: number; maxResponseBytes?: number } = {},
+  ): Promise<SubjectRelationItem[]> {
+    const result = await this.getSubjectRelationsWithCoverage(subjectId, options);
+    return result.items;
+  }
+
+  async getSubjectRelationsWithCoverage(
+    subjectId: number,
+    options: { limit?: number; maxResponseBytes?: number } = {},
+  ): Promise<SubjectRelationsResult> {
+    const raw = await this.api.getRelatedSubjectsBySubjectId(subjectId, {
+      ...(options.maxResponseBytes === undefined
+        ? {}
+        : { maxResponseBytes: options.maxResponseBytes }),
+    });
+    const rawRows = Array.isArray(raw) ? raw : [];
+    const validRows = rawRows.filter(validSubjectRelation);
+    const schemaDriftRows = rawRows.length - validRows.length;
+    const limit = Math.max(0, Math.floor(options.limit ?? Number.MAX_SAFE_INTEGER));
+    const selectedRows = validRows.slice(0, limit);
+    const items = selectedRows.map((item) => ({
       id: item.id,
       type: mapSubjectType(item.type),
-      name: item.name || '',
-      nameCn: item.name_cn || item.name || '',
-      relation: item.relation || '关联条目',
-      images: item.images ? (item.images as Record<string, string>) : undefined,
+      name: item.name,
+      nameCn: item.name_cn,
+      relation: item.relation,
+      ...(item.images === undefined || item.images === null ? {} : { images: item.images }),
     }));
+    return {
+      items,
+      coverage: {
+        observed: rawRows.length,
+        returned: items.length,
+        truncated: validRows.length > selectedRows.length || schemaDriftRows > 0,
+        schemaDriftRows,
+      },
+    };
   }
 }

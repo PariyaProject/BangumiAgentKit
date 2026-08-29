@@ -2,6 +2,7 @@ import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
 import type {
   SubjectOverlapCastCredit,
   SubjectOverlapCastPerson,
+  SubjectOverlapCastRoleEvidence,
   SubjectOverlapCastRelation,
   SubjectOverlapCastRole,
   SubjectOverlapCoverage,
@@ -16,6 +17,8 @@ import type {
   SubjectOverlapState,
   SubjectOverlapSubject,
   SubjectOverlapRoleFamily,
+  SubjectOverlapOperationEvidence,
+  SubjectOverlapOperationOutcome,
   SubjectOverviewResult,
   SubjectOverviewSectionState,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -73,6 +76,7 @@ interface CastAccumulator {
     }
   >;
   hasMainRole: boolean;
+  roleFamilies: Set<SubjectOverlapRoleFamily>;
 }
 
 interface StaffAccumulator {
@@ -116,16 +120,37 @@ function positiveId(value: unknown): number | undefined {
 }
 
 function classifyCastRole(rawRelation: string): SubjectOverlapRoleFamily {
-  const normalized = rawRelation.trim().toLowerCase();
+  const normalized = rawRelation
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/gu, ' ');
   if (!normalized) return 'unknown';
   if (
-    /主角|主役|主要角色|protagonist|lead(?:ing)?(?:\s+role|\s+character)?|main(?:\s+role|\s+character)?/u.test(
+    /^(?:非主角|不是主角|非主役|不是主役|非主要角色|not (?:a )?(?:main|lead|protagonist)|non ?main)$/u.test(
       normalized,
     )
   ) {
+    return 'unknown';
+  }
+  if (
+    new Set([
+      '主角',
+      '主役',
+      '主要角色',
+      'protagonist',
+      'lead',
+      'leading role',
+      'leading character',
+      'main',
+      'main role',
+      'main character',
+    ]).has(normalized)
+  ) {
     return 'main';
   }
-  if (/配角|配役|support(?:ing)?(?:\s+role|\s+character)?/u.test(normalized)) {
+  if (
+    new Set(['配角', '配役', 'support', 'supporting role', 'supporting character']).has(normalized)
+  ) {
     return 'support';
   }
   return 'unknown';
@@ -180,7 +205,7 @@ function makeSideCoverage(
 
 function collectCastSide(overview: SubjectOverviewResult, subjectId: number): CastSideData {
   const people = new Map<number, CastAccumulator>();
-  let missingIdRows = 0;
+  let missingIdRows = overview.cast.actorCoverage.missingIdRows || 0;
   let rowsReturned = 0;
   let unknownRoleRows = 0;
 
@@ -200,12 +225,14 @@ function collectCastSide(overview: SubjectOverviewResult, subjectId: number): Ca
         career: new Set<string>(),
         credits: new Map(),
         hasMainRole: false,
+        roleFamilies: new Set<SubjectOverlapRoleFamily>(),
       };
       if (actor.name.trim()) person.names.add(actor.name.trim());
       for (const career of actor.career) {
         if (career.trim()) person.career.add(career.trim());
       }
       if (roleFamily === 'main') person.hasMainRole = true;
+      person.roleFamilies.add(roleFamily);
       const creditKey = String(subjectId);
       const credit = person.credits.get(creditKey) || {
         subjectId,
@@ -353,6 +380,40 @@ function castPerson(
   };
 }
 
+function castRoleEvidence(
+  subjectId: number,
+  personId: number,
+  person: CastAccumulator,
+): SubjectOverlapCastRoleEvidence {
+  const names = sortedStrings(person.names);
+  return {
+    subjectId,
+    personId,
+    name: names[0] || `人物 ${personId}`,
+    ...(names.length > 1 ? { nameVariants: names } : {}),
+    career: sortedStrings(person.career),
+    roleFamily: person.hasMainRole
+      ? 'main'
+      : person.roleFamilies.size === 1
+        ? [...person.roleFamilies][0]!
+        : 'unknown',
+    credits: [
+      {
+        subjectId,
+        characters: [...person.credits.values()]
+          .flatMap((credit) => [...credit.characters.values()])
+          .sort(
+            (a, b) =>
+              (a.characterId ?? Number.MAX_SAFE_INTEGER) -
+                (b.characterId ?? Number.MAX_SAFE_INTEGER) ||
+              compareStrings(a.name, b.name) ||
+              compareStrings(a.relation, b.relation),
+          ),
+      },
+    ],
+  };
+}
+
 function staffPerson(
   personId: number,
   left: StaffAccumulator,
@@ -414,6 +475,18 @@ function buildCastRelation(
     coverage.candidateIds = unionIds.size;
     coverage.unionIds = unionIds.size;
   }
+  const roleEvidenceCandidates =
+    castRole === 'main'
+      ? [
+          ...[...left.people.entries()]
+            .filter(([personId]) => !leftIds.has(personId))
+            .map(([personId, person]) => castRoleEvidence(left.subjectId, personId, person)),
+          ...[...right.people.entries()]
+            .filter(([personId]) => !rightIds.has(personId))
+            .map(([personId, person]) => castRoleEvidence(right.subjectId, personId, person)),
+        ].sort((a, b) => a.subjectId - b.subjectId || a.personId - b.personId)
+      : [];
+  const roleEvidence = roleEvidenceCandidates.slice(0, maxPeople);
   return {
     state: coverage.state,
     items: commonIds
@@ -429,6 +502,12 @@ function buildCastRelation(
         ),
       ),
     coverage,
+    ...(castRole === 'main'
+      ? {
+          roleEvidence,
+          roleEvidenceOmitted: roleEvidenceCandidates.length - roleEvidence.length,
+        }
+      : {}),
   };
 }
 
@@ -545,6 +624,58 @@ function uniqueStrings(values: Iterable<string>): string[] {
   return [...new Set(values)].sort(compareStrings);
 }
 
+function operationSection(
+  operation: string,
+): 'subject' | 'stats' | 'cast' | 'staff' | 'relations' | undefined {
+  if (operation.includes('/characters')) return 'cast';
+  if (operation.includes('/persons')) return 'staff';
+  if (operation.includes('/subjects') && operation.includes('rating/collection')) return 'stats';
+  if (operation.endsWith('/subjects')) return 'relations';
+  if (operation.includes('/v0/subjects/{subject_id}')) return 'subject';
+  return undefined;
+}
+
+function operationOutcome(
+  evidence: SubjectOverviewResult['evidence'][number],
+  warning: SubjectOverviewResult['warnings'][number] | undefined,
+): SubjectOverlapOperationOutcome {
+  if (warning?.code.includes('SCHEMA_DRIFT')) return 'schema_drift';
+  if (warning?.state === 'not_computable') return 'not_computable';
+  if (warning?.state === 'partial') return 'partial';
+  if (!evidence.retrievedAt) {
+    return warning?.code.includes('NOT_FOUND') || warning?.state === 'not_found'
+      ? 'not_found'
+      : 'unavailable';
+  }
+  return 'succeeded';
+}
+
+function overviewOperationEvidence(
+  overview: SubjectOverviewResult,
+  subjectId: number,
+  fallbackAttemptedAt: string,
+): SubjectOverlapOperationEvidence[] {
+  return overview.evidence.map((evidence) => {
+    const section = operationSection(evidence.operation);
+    const warning = section
+      ? overview.warnings.find(
+          (candidate) => candidate.section === section && candidate.code.includes('SCHEMA_DRIFT'),
+        ) || overview.warnings.find((candidate) => candidate.section === section)
+      : undefined;
+    const outcome = operationOutcome(evidence, warning);
+    return {
+      source: evidence.source,
+      operation: evidence.operation,
+      subjectId,
+      attemptedAt: evidence.attemptedAt || evidence.retrievedAt || fallbackAttemptedAt,
+      ...(evidence.retrievedAt ? { retrievedAt: evidence.retrievedAt } : {}),
+      outcome,
+      ...(warning?.code ? { code: warning.code } : {}),
+      ...(warning?.message ? { message: warning.message } : {}),
+    };
+  });
+}
+
 function pairScore(pair: SubjectOverlapPair, kind: SubjectOverlapKind): number | null {
   const cast = pair.cast?.coverage.matchedIds;
   const staff = pair.staff?.coverage.matchedIds;
@@ -563,6 +694,7 @@ function resultState(
   if (returned === 0) {
     return subjects.every((subject) => subject.state === 'not_found') ? 'not_found' : 'unavailable';
   }
+  if (subjects.some((subject) => !subject.subject)) return 'partial';
   const relevantStates = pairs.flatMap((pair) =>
     kind === 'cast'
       ? [pair.cast?.state]
@@ -626,7 +758,11 @@ export async function getSubjectOverlap(
     const batch = subjectIds.slice(index, index + SUBJECT_OVERLAP_SUBJECT_CONCURRENCY);
     const results = await Promise.all(
       batch.map((subjectId) =>
-        getSubjectOverview(subjectId, limits, { client: dependencies.client }),
+        getSubjectOverview(subjectId, limits, {
+          client: dependencies.client,
+          includeStats: false,
+          includeRelations: false,
+        }),
       ),
     );
     overviews.push(...results);
@@ -701,6 +837,16 @@ export async function getSubjectOverlap(
   const officialOperations = uniqueStrings(officialEvidence.map((item) => item.operation));
   const subjectViews = overviews.map((overview) => subjectView(overview, kind));
   const warnings: SubjectOverlapResult['warnings'] = [];
+  for (const [index, overview] of overviews.entries()) {
+    for (const warning of overview.warnings) {
+      warnings.push({
+        code: warning.code,
+        state: warning.state as SubjectOverlapState,
+        subjectId: subjectIds[index],
+        message: warning.message,
+      });
+    }
+  }
   const partialSubjects = subjectViews.filter((subject) => subject.state !== 'complete').length;
   if (partialSubjects > 0) {
     warnings.push({
@@ -742,6 +888,9 @@ export async function getSubjectOverlap(
       }
     }
   }
+  const operationEvidence = overviews.flatMap((overview, index) =>
+    overviewOperationEvidence(overview, subjectIds[index]!, attemptedAt),
+  );
 
   return {
     subjectIds,
@@ -788,6 +937,7 @@ export async function getSubjectOverlap(
         retrievedAt,
       },
     },
+    operationEvidence,
     evidence,
     warnings,
     limitations: [

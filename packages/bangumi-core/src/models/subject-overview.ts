@@ -14,12 +14,14 @@ export interface SubjectOverviewSectionCoverage {
   observed: number;
   returned: number;
   truncated: boolean;
+  schemaDriftRows?: number;
 }
 
 export interface SubjectOverviewActorCoverage {
   observed: number;
   returned: number;
   truncated: boolean;
+  missingIdRows?: number;
 }
 
 export interface SubjectOverviewStats {

@@ -10,11 +10,13 @@ const SIGNALABLE_OPERATIONS = new Set([
   'getUserSubjectEpisodeCollection',
 ]);
 const RESPONSE_LIMITABLE_OPERATIONS = new Set([
+  'getSubjectById',
   'getPersonById',
   'getRelatedSubjectsByPersonId',
   'getRelatedCharactersByPersonId',
   'getRelatedPersonsBySubjectId',
   'getRelatedCharactersBySubjectId',
+  'getRelatedSubjectsBySubjectId',
 ]);
 
 function resolveRef(spec: any, item: any): any {

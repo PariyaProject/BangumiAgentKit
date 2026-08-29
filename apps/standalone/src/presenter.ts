@@ -954,6 +954,37 @@ function presentSubjectOverlap(value: Record<string, unknown>): string | undefin
       }
       if (items.length > 8)
         lines.push(`    另有 ${humanField(items.length - 8, 32)} 位共同人物未展开。`);
+      const roleEvidence = Array.isArray(relation.roleEvidence) ? relation.roleEvidence : [];
+      for (const rawEvidence of roleEvidence.slice(0, 8)) {
+        const evidence = comparisonRecord(rawEvidence);
+        if (!evidence) continue;
+        const credits = Array.isArray(evidence.credits)
+          ? evidence.credits
+              .map(comparisonRecord)
+              .filter((credit): credit is Record<string, unknown> => Boolean(credit))
+              .flatMap((credit) =>
+                Array.isArray(credit.characters)
+                  ? credit.characters
+                      .map(comparisonRecord)
+                      .filter((character): character is Record<string, unknown> =>
+                        Boolean(character),
+                      )
+                      .map(
+                        (character) =>
+                          `${humanField(character.name || '角色未知', 80)}（${humanField(character.relation || '未知', 48)}）`,
+                      )
+                  : [],
+              )
+              .join('、')
+          : '角色未知';
+        lines.push(
+          `  原始角色标签证据：${humanField(evidence.name || `人物 ${evidence.personId || '?'}`, 150)} · ID ${humanField(evidence.personId ?? '?', 32)} · ${humanField(credits || '角色未知', 180)} · ${humanField(evidence.roleFamily || 'unknown', 32)}`,
+        );
+      }
+      const roleEvidenceOmitted = relation.roleEvidenceOmitted;
+      if (typeof roleEvidenceOmitted === 'number' && roleEvidenceOmitted > 0) {
+        lines.push(`  另有 ${humanField(roleEvidenceOmitted, 32)} 条原始角色标签证据未展开。`);
+      }
     }
   }
   if (pairs.length > 12) lines.push(`另有 ${humanField(pairs.length - 12, 32)} 个条目对未展开。`);
@@ -966,6 +997,21 @@ function presentSubjectOverlap(value: Record<string, unknown>): string | undefin
     lines.push(
       `来源 ${key === 'official' ? 'official-v0' : 'derived-s7'}: ${humanField(operations.join(' + ') || '未记录', 220)}${channel.retrievedAt ? ` · 获取于 ${humanField(channel.retrievedAt, 64)}` : ''}`,
     );
+  }
+
+  const operationEvidence = Array.isArray(value.operationEvidence) ? value.operationEvidence : [];
+  if (operationEvidence.length > 0) {
+    lines.push('操作溯源：');
+    for (const rawOperation of operationEvidence.slice(0, 6)) {
+      const operation = comparisonRecord(rawOperation);
+      if (!operation) continue;
+      lines.push(
+        `- ${operation.subjectId ? `条目 ${humanField(operation.subjectId, 32)} · ` : ''}${humanField(operation.operation || '未知操作', 180)} · ${humanField(operation.outcome || '未知', 32)} · ${humanField(operation.retrievedAt || '未获取', 64)}${operation.code ? ` · ${humanField(operation.code, 80)}` : ''}`,
+      );
+    }
+    if (operationEvidence.length > 6) {
+      lines.push(`另有 ${humanField(operationEvidence.length - 6, 32)} 条操作溯源未展开。`);
+    }
   }
 
   const warnings = Array.isArray(value.warnings) ? value.warnings : [];

@@ -38,6 +38,7 @@ const characters: Record<number, unknown[]> = {
       id: 1001,
       name: '主角 101',
       type: 1,
+      summary: '',
       relation: '主角',
       actors: [
         { id: 900, name: '共同主役', career: ['seiyuu'], images: {} },
@@ -50,6 +51,7 @@ const characters: Record<number, unknown[]> = {
       id: 1002,
       name: '主角 102',
       type: 1,
+      summary: '',
       relation: '主役',
       actors: [{ id: 900, name: '共同主役', career: ['seiyuu'], images: {} }],
     },
@@ -57,6 +59,7 @@ const characters: Record<number, unknown[]> = {
       id: 1003,
       name: '另一主角 102',
       type: 1,
+      summary: '',
       relation: '主角',
       actors: [{ id: 902, name: '另一共同主役', career: ['seiyuu'], images: {} }],
     },
@@ -66,6 +69,7 @@ const characters: Record<number, unknown[]> = {
       id: 1004,
       name: '主角 103',
       type: 1,
+      summary: '',
       relation: '主角',
       actors: [{ id: 902, name: '另一共同主役', career: ['seiyuu'], images: {} }],
     },
@@ -73,7 +77,8 @@ const characters: Record<number, unknown[]> = {
       id: 1005,
       name: '未分类角色 103',
       type: 1,
-      relation: '客串',
+      summary: '',
+      relation: '非主角',
       actors: [{ id: 903, name: '未知角色声优', career: ['seiyuu'], images: {} }],
     },
   ],
@@ -81,20 +86,68 @@ const characters: Record<number, unknown[]> = {
 
 const persons: Record<number, unknown[]> = {
   101: [
-    { id: 910, name: '共同导演', type: 1, career: ['director'], relation: '导演', images: {} },
-    { id: 911, name: '独有脚本', type: 1, career: ['writer'], relation: '脚本', images: {} },
+    {
+      id: 910,
+      name: '共同导演',
+      type: 1,
+      career: ['director'],
+      relation: '导演',
+      eps: '',
+      images: {},
+    },
+    {
+      id: 911,
+      name: '独有脚本',
+      type: 1,
+      career: ['writer'],
+      relation: '脚本',
+      eps: '',
+      images: {},
+    },
   ],
   102: [
-    { id: 910, name: '共同导演', type: 1, career: ['director'], relation: '导演', images: {} },
-    { id: 912, name: '另一共同脚本', type: 1, career: ['writer'], relation: '脚本', images: {} },
+    {
+      id: 910,
+      name: '共同导演',
+      type: 1,
+      career: ['director'],
+      relation: '导演',
+      eps: '',
+      images: {},
+    },
+    {
+      id: 912,
+      name: '另一共同脚本',
+      type: 1,
+      career: ['writer'],
+      relation: '脚本',
+      eps: '',
+      images: {},
+    },
   ],
   103: [
-    { id: 912, name: '另一共同脚本', type: 1, career: ['writer'], relation: '脚本', images: {} },
-    { id: 913, name: '独有音乐', type: 1, career: ['music'], relation: '音乐', images: {} },
+    {
+      id: 912,
+      name: '另一共同脚本',
+      type: 1,
+      career: ['writer'],
+      relation: '脚本',
+      eps: '',
+      images: {},
+    },
+    {
+      id: 913,
+      name: '独有音乐',
+      type: 1,
+      career: ['music'],
+      relation: '音乐',
+      eps: '',
+      images: {},
+    },
   ],
 };
 
-function buildClient(): HttpClient {
+function buildClient(options: { characters?: unknown[] } = {}): HttpClient {
   return new HttpClient({
     fetchFn: async (input) => {
       const url = String(input);
@@ -106,7 +159,9 @@ function buildClient(): HttpClient {
       }
       if (!endpoint) return new Response(JSON.stringify(subjects[subjectId]), { status: 200 });
       if (endpoint === 'characters') {
-        return new Response(JSON.stringify(characters[subjectId]), { status: 200 });
+        return new Response(JSON.stringify(options.characters ?? characters[subjectId]), {
+          status: 200,
+        });
       }
       if (endpoint === 'persons') {
         return new Response(JSON.stringify(persons[subjectId]), { status: 200 });
@@ -207,6 +262,83 @@ describe('bangumi.get_subject_overlap', () => {
         coverage: { matchedIds: 0, unionIds: 4, overlapRate: 0 },
       },
     });
+  });
+
+  it('does not classify negated main-role labels as main and retains raw evidence', async () => {
+    const result = (await getTool(buildClient()).execute(
+      { subjectIds: [101, 103], kind: 'cast', castRole: 'main', maxCast: 4, maxPeople: 10 },
+      context,
+    )) as SubjectOverlapResult;
+    const roleEvidence = result.pairs[0]?.cast?.roleEvidence || [];
+    expect(roleEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          personId: 903,
+          roleFamily: 'unknown',
+          credits: [
+            expect.objectContaining({
+              subjectId: 103,
+              characters: [expect.objectContaining({ relation: '非主角', roleFamily: 'unknown' })],
+            }),
+          ],
+        }),
+      ]),
+    );
+    expect(result.pairs[0]?.cast?.items).toEqual([]);
+  });
+
+  it('keeps a mixed valid and not-found input partial instead of globally unavailable', async () => {
+    const result = (await getTool(buildClient()).execute(
+      { subjectIds: [101, 999], kind: 'cast' },
+      context,
+    )) as SubjectOverlapResult;
+    expect(result.state).toBe('partial');
+    expect(result.subjects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ subjectId: 999, state: 'not_found' })]),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'UPSTREAM_NOT_FOUND', subjectId: 999 }),
+      ]),
+    );
+    expect(result.operationEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          subjectId: 999,
+          operation: 'GET /v0/subjects/{subject_id}',
+          outcome: 'not_found',
+        }),
+      ]),
+    );
+  });
+
+  it('rejects malformed source rows and records schema-drift provenance', async () => {
+    const malformed = {
+      id: 'not-an-id',
+      name: '坏记录',
+      type: 1,
+      relation: '主角',
+      actors: [],
+    } as unknown;
+    const result = (await getTool(
+      buildClient({ characters: [...characters[101]!, malformed] }),
+    ).execute({ subjectIds: [101, 102], kind: 'cast' }, context)) as SubjectOverlapResult;
+    expect(result.state).toBe('partial');
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'CAST_SCHEMA_DRIFT', subjectId: 101 }),
+      ]),
+    );
+    expect(result.operationEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          subjectId: 101,
+          operation: 'GET /v0/subjects/{subject_id}/characters',
+          outcome: 'schema_drift',
+          code: 'CAST_SCHEMA_DRIFT',
+        }),
+      ]),
+    );
   });
 
   it('marks the result partial when the pair output is bounded', async () => {

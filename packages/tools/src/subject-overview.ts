@@ -41,6 +41,10 @@ export interface SubjectOverviewDependencies {
   statsResult?: Promise<CapabilityResult<SubjectStatsData>>;
   /** Starts the shared statistics request only after subject identity succeeds. */
   statsResultFactory?: () => Promise<CapabilityResult<SubjectStatsData>>;
+  /** Avoids unrelated relation retrieval when a composed capability does not use it. */
+  includeRelations?: boolean;
+  /** Avoids unrelated statistics retrieval when a composed capability does not use it. */
+  includeStats?: boolean;
 }
 
 const SUBJECT_OPERATION = 'GET /v0/subjects/{subject_id}';
@@ -54,14 +58,22 @@ const COMPOSITION_DESCRIPTION =
   'Deterministically composes subject, stats, cast, staff, and relations in that order; preserves each section state including partial, unavailable, and not-computable states, applies the recorded section and actor limits, and derives only from constituent official-v0 observations without asserting a new upstream source.';
 const MAX_ACTORS_PER_CHARACTER = 4;
 const MAX_ACTOR_REFERENCES = 32;
+export const SUBJECT_OVERVIEW_MAX_RESPONSE_BYTES = 1_048_576;
 
 function coverage(
   state: SubjectOverviewSectionState,
   observed: number,
   returned: number,
   truncated = false,
+  schemaDriftRows = 0,
 ): SubjectOverviewSectionCoverage {
-  return { state, observed, returned, truncated };
+  return {
+    state,
+    observed,
+    returned,
+    truncated,
+    ...(schemaDriftRows > 0 ? { schemaDriftRows } : {}),
+  };
 }
 
 function unavailableCoverage(): SubjectOverviewSectionCoverage {
@@ -370,9 +382,14 @@ export async function getSubjectOverview(
   const subjectService = new SubjectService(dependencies.client);
   let subject;
   try {
-    subject = await subjectService.getSubjectById(subjectId);
+    subject = await subjectService.getSubjectById(subjectId, {
+      maxResponseBytes: SUBJECT_OVERVIEW_MAX_RESPONSE_BYTES,
+      strict: true,
+    });
   } catch (error) {
     const publicError = toPublicError(error);
+    const schemaDrift =
+      publicError.code === 'PARSER_ERROR' && String(error).includes('SCHEMA_DRIFT');
     const result = emptyResult(subjectId, limits);
     result.state = publicError.code === 'NOT_FOUND' ? 'not_found' : 'unavailable';
     result.coverage.sourceRequestsAttempted = 1;
@@ -383,8 +400,11 @@ export async function getSubjectOverview(
     });
     result.warnings.push({
       ...failureWarning('subject', error, '官方条目详情不可用，未继续请求概览的其他区段。'),
-      code:
-        publicError.code === 'NOT_FOUND' ? 'UPSTREAM_NOT_FOUND' : 'UPSTREAM_SUBJECT_UNAVAILABLE',
+      code: schemaDrift
+        ? 'UPSTREAM_SCHEMA_DRIFT'
+        : publicError.code === 'NOT_FOUND'
+          ? 'UPSTREAM_NOT_FOUND'
+          : 'UPSTREAM_SUBJECT_UNAVAILABLE',
     });
     result.limitations.push('条目详情不可用时，不对统计、角色、职员或关联条目做猜测。');
     return result;
@@ -404,31 +424,47 @@ export async function getSubjectOverview(
   const sharedStatsResult = dependencies.statsResultFactory
     ? Promise.resolve().then(() => dependencies.statsResultFactory!())
     : dependencies.statsResult;
-  const statsRequest = sharedStatsResult
-    ? {
-        attemptedAt: new Date().toISOString(),
-        promise: sharedStatsResult.then((value) => ({
-          value,
-          retrievedAt: value.retrievedAt || new Date().toISOString(),
-        })),
-      }
-    : dependencies.providerRegistry
-      ? startTimedOperation(() =>
-          dependencies.providerRegistry!.getSubjectStats(subjectId, { authScope: 'public' }),
-        )
-      : undefined;
+  const statsRequest =
+    dependencies.includeStats === false
+      ? undefined
+      : sharedStatsResult
+        ? {
+            attemptedAt: new Date().toISOString(),
+            promise: sharedStatsResult.then((value) => ({
+              value,
+              retrievedAt: value.retrievedAt || new Date().toISOString(),
+            })),
+          }
+        : dependencies.providerRegistry
+          ? startTimedOperation(() =>
+              dependencies.providerRegistry!.getSubjectStats(subjectId, { authScope: 'public' }),
+            )
+          : undefined;
   const castRequest = startTimedOperation(() =>
-    getSubjectCast(characterService, subjectId, { limit: limits.maxCast }),
+    getSubjectCast(characterService, subjectId, {
+      limit: limits.maxCast,
+      maxResponseBytes: SUBJECT_OVERVIEW_MAX_RESPONSE_BYTES,
+    }),
   );
   const staffRequest = startTimedOperation(() =>
-    personService.getSubjectStaff(subjectId, limits.maxStaff),
+    personService.getSubjectStaff(subjectId, limits.maxStaff, {
+      maxResponseBytes: SUBJECT_OVERVIEW_MAX_RESPONSE_BYTES,
+    }),
   );
-  const relationsRequest = startTimedOperation(() => subjectService.getSubjectRelations(subjectId));
+  const relationsRequest =
+    dependencies.includeRelations === false
+      ? undefined
+      : startTimedOperation(() =>
+          subjectService.getSubjectRelationsWithCoverage(subjectId, {
+            limit: limits.maxRelations,
+            maxResponseBytes: SUBJECT_OVERVIEW_MAX_RESPONSE_BYTES,
+          }),
+        );
   const settled = await Promise.allSettled([
     statsRequest?.promise ?? Promise.resolve(undefined),
     castRequest.promise,
     staffRequest.promise,
-    relationsRequest.promise,
+    relationsRequest?.promise ?? Promise.resolve(undefined),
   ]);
   const [statsResult, castResult, staffResult, relationsResult] = settled;
   const warnings: SubjectOverviewWarning[] = [];
@@ -483,6 +519,8 @@ export async function getSubjectOverview(
     warnings.push(
       failureWarning('stats', statsResult.reason, '官方统计区段不可用，未填充猜测的统计值。'),
     );
+  } else if (dependencies.includeStats === false) {
+    stats = { state: 'not_computable', coverage: coverage('not_computable', 0, 0) };
   } else {
     stats = { state: 'unavailable', coverage: unavailableCoverage() };
     warnings.push({
@@ -523,16 +561,23 @@ export async function getSubjectOverview(
       };
     });
     const actorCoverage: SubjectOverviewActorCoverage = {
-      observed: actorReferencesObserved,
+      observed: actorReferencesObserved + castData.invalidActorIdRows,
       returned: actorReferencesReturned,
-      truncated: actorReferencesReturned < actorReferencesObserved,
+      truncated: actorReferencesReturned < actorReferencesObserved + castData.invalidActorIdRows,
+      ...(castData.invalidActorIdRows > 0 ? { missingIdRows: castData.invalidActorIdRows } : {}),
     };
     const truncated = castData.truncated || actorCoverage.truncated;
     const state: SubjectOverviewSectionState = truncated ? 'partial' : 'complete';
     cast = {
       state,
       items,
-      coverage: coverage(state, castData.observed, castData.returned, truncated),
+      coverage: coverage(
+        state,
+        castData.observed,
+        castData.returned,
+        truncated,
+        castData.schemaDriftRows,
+      ),
       actorCoverage,
     };
     successfulSections += 1;
@@ -542,6 +587,14 @@ export async function getSubjectOverview(
         state: 'partial',
         section: 'cast',
         message: '角色/声优区段达到本次显示上限，未宣称完整角色表。',
+      });
+    }
+    if (castData.schemaDriftRows > 0) {
+      warnings.push({
+        code: 'CAST_SCHEMA_DRIFT',
+        state: 'partial',
+        section: 'cast',
+        message: `${castData.schemaDriftRows} 条角色/声优原始记录未通过边界 schema 校验，已省略且未填充默认值。`,
       });
     }
     if (actorCoverage.truncated) {
@@ -583,7 +636,13 @@ export async function getSubjectOverview(
       state,
       items: staffData.items,
       groups: groupSubjectStaffByRawRelation(staffData.items),
-      coverage: coverage(state, staffData.observed, staffData.returned, staffData.truncated),
+      coverage: coverage(
+        state,
+        staffData.observed,
+        staffData.returned,
+        staffData.truncated,
+        staffData.schemaDriftRows ?? 0,
+      ),
     };
     successfulSections += 1;
     if (staffData.truncated) {
@@ -592,6 +651,14 @@ export async function getSubjectOverview(
         state: 'partial',
         section: 'staff',
         message: '制作人员区段达到本次显示上限，保留官方原始职位标签但未宣称完整职员表。',
+      });
+    }
+    if ((staffData.schemaDriftRows ?? 0) > 0) {
+      warnings.push({
+        code: 'STAFF_SCHEMA_DRIFT',
+        state: 'partial',
+        section: 'staff',
+        message: `${staffData.schemaDriftRows} 条制作人员原始记录未通过边界 schema 校验，已省略且未填充默认值。`,
       });
     }
     evidence.push({
@@ -613,18 +680,28 @@ export async function getSubjectOverview(
   }
 
   let relations: SubjectOverviewResult['relations'];
-  if (relationsResult.status === 'fulfilled') {
+  if (relationsResult.status === 'fulfilled' && relationsResult.value) {
     const relationData = relationsResult.value.value;
-    const observed = relationData.length;
-    const items = relationData.slice(0, limits.maxRelations);
-    const truncated = observed > items.length;
+    const observed = relationData.coverage.observed;
+    const items = relationData.items;
+    const truncated = relationData.coverage.truncated;
     const state: SubjectOverviewSectionState = truncated ? 'partial' : 'complete';
-    relations = { state, items, coverage: coverage(state, observed, items.length, truncated) };
+    relations = {
+      state,
+      items,
+      coverage: coverage(
+        state,
+        observed,
+        relationData.coverage.returned,
+        truncated,
+        relationData.coverage.schemaDriftRows,
+      ),
+    };
     successfulSections += 1;
     evidence.push({
       source: 'official-v0',
       operation: RELATIONS_OPERATION,
-      attemptedAt: relationsRequest.attemptedAt,
+      attemptedAt: relationsRequest?.attemptedAt ?? relationsResult.value.retrievedAt,
       retrievedAt: relationsResult.value.retrievedAt,
     });
     if (truncated) {
@@ -635,16 +712,34 @@ export async function getSubjectOverview(
         message: '关联条目区段达到本次显示上限，未宣称完整关系表。',
       });
     }
-  } else {
-    relations = { state: 'unavailable', items: [], coverage: unavailableCoverage() };
+    if (relationData.coverage.schemaDriftRows > 0) {
+      warnings.push({
+        code: 'RELATIONS_SCHEMA_DRIFT',
+        state: 'partial',
+        section: 'relations',
+        message: `${relationData.coverage.schemaDriftRows} 条关联条目原始记录未通过边界 schema 校验，已省略且未填充默认值。`,
+      });
+    }
+  } else if (relationsResult.status === 'rejected') {
+    relations = {
+      state: 'unavailable',
+      items: [],
+      coverage: unavailableCoverage(),
+    };
     evidence.push({
       source: 'official-v0',
       operation: RELATIONS_OPERATION,
-      attemptedAt: relationsRequest.attemptedAt,
+      attemptedAt: relationsRequest!.attemptedAt,
     });
     warnings.push(
       failureWarning('relations', relationsResult.reason, '关联条目区段不可用，未生成猜测内容。'),
     );
+  } else {
+    relations = {
+      state: 'not_computable',
+      items: [],
+      coverage: coverage('not_computable', 0, 0),
+    };
   }
 
   const result: SubjectOverviewResult = {
@@ -656,7 +751,7 @@ export async function getSubjectOverview(
     staff,
     relations,
     coverage: {
-      sourceRequestsAttempted: 4 + (statsRequest ? 1 : 0),
+      sourceRequestsAttempted: 1 + (statsRequest ? 1 : 0) + 2 + (relationsRequest ? 1 : 0),
       sourceRequestsSucceeded: successfulSections + 1,
       sectionsComplete: 0,
       sectionsPartial: 0,

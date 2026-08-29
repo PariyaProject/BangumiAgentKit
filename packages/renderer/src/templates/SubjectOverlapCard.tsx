@@ -1,5 +1,6 @@
 import React from 'react';
 import type {
+  SubjectOverlapCastRoleEvidence,
   SubjectOverlapCastRelation,
   SubjectOverlapStaffRelation,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -22,6 +23,8 @@ const wrapStyle: React.CSSProperties = {
   overflowWrap: 'anywhere',
   wordBreak: 'break-word',
 };
+
+const RENDER_PERSON_LIMIT = 8;
 
 function stateLabel(state: SubjectOverlapViewModel['state'] | string): string {
   return (
@@ -71,7 +74,7 @@ function relationSummary(
 
 function castEvidence(relation: SubjectOverlapCastRelation): string {
   return relation.items
-    .slice(0, 8)
+    .slice(0, RENDER_PERSON_LIMIT)
     .map((person) => {
       const credits = person.credits
         .map(
@@ -90,7 +93,7 @@ function castEvidence(relation: SubjectOverlapCastRelation): string {
 
 function staffEvidence(relation: SubjectOverlapStaffRelation): string {
   return relation.items
-    .slice(0, 8)
+    .slice(0, RENDER_PERSON_LIMIT)
     .map((person) => {
       const credits = person.credits
         .map(
@@ -99,6 +102,20 @@ function staffEvidence(relation: SubjectOverlapStaffRelation): string {
         )
         .join('；');
       return `${person.name} [${person.personId}] · ${credits}`;
+    })
+    .join(' | ');
+}
+
+function castRoleEvidence(relation: SubjectOverlapCastRelation): string {
+  return (relation.roleEvidence || [])
+    .slice(0, RENDER_PERSON_LIMIT)
+    .map((person: SubjectOverlapCastRoleEvidence) => {
+      const roles = person.credits
+        .flatMap((credit) =>
+          credit.characters.map((character) => `${character.name}（${character.relation}）`),
+        )
+        .join('、');
+      return `${person.name} [${person.personId}] · ${roles || '角色未知'} · ${person.roleFamily}`;
     })
     .join(' | ');
 }
@@ -210,6 +227,21 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
                 >
                   <div>声优：{relationSummary(pair.cast)}</div>
                   {pair.cast.items.length > 0 ? <div>证据：{castEvidence(pair.cast)}</div> : null}
+                  {pair.cast.items.length > RENDER_PERSON_LIMIT ? (
+                    <div>
+                      人物渲染上限：{RENDER_PERSON_LIMIT}；另有{' '}
+                      {pair.cast.items.length - RENDER_PERSON_LIMIT} 位共同人物未展开。
+                    </div>
+                  ) : null}
+                  {pair.cast.roleEvidence && pair.cast.roleEvidence.length > 0 ? (
+                    <div>未纳入明确主役交集的原始标签：{castRoleEvidence(pair.cast)}</div>
+                  ) : null}
+                  {pair.cast.roleEvidenceOmitted && pair.cast.roleEvidenceOmitted > 0 ? (
+                    <div>
+                      原始标签证据渲染上限：{RENDER_PERSON_LIMIT}；另有{' '}
+                      {pair.cast.roleEvidenceOmitted} 条未展开。
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               {pair.staff ? (
@@ -226,6 +258,12 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
                   {pair.staff.items.length > 0 ? (
                     <div>证据：{staffEvidence(pair.staff)}</div>
                   ) : null}
+                  {pair.staff.items.length > RENDER_PERSON_LIMIT ? (
+                    <div>
+                      人物渲染上限：{RENDER_PERSON_LIMIT}；另有{' '}
+                      {pair.staff.items.length - RENDER_PERSON_LIMIT} 位共同人物未展开。
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -241,8 +279,27 @@ export const SubjectOverlapCard: React.FC<SubjectOverlapCardProps> = ({
       <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
         公式：{viewModel.formulaVersion} · 官方操作：
         {viewModel.source.official.operations.join('、') || '未记录'}
+        {' · '}官方获取于：{viewModel.source.official.retrievedAt || '不可用'}
         {' · '}派生操作：{viewModel.source.derived.operations.join('、') || '未记录'}
+        {' · '}派生获取于：{viewModel.source.derived.retrievedAt || '不可用'}
       </div>
+
+      {viewModel.operationEvidence.length > 0 ? (
+        <div style={{ ...wrapStyle, color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          操作溯源：
+          {viewModel.operationEvidence.slice(0, 6).map((operation) => (
+            <div key={`${operation.subjectId || 'all'}-${operation.operation}`}>
+              {operation.subjectId ? `条目 ${operation.subjectId} · ` : ''}
+              {operation.operation} · {operation.outcome}
+              {operation.retrievedAt ? ` · ${operation.retrievedAt}` : ' · 未获取'}
+              {operation.code ? ` · ${operation.code}` : ''}
+            </div>
+          ))}
+          {viewModel.operationEvidence.length > 6 ? (
+            <div>另有 {viewModel.operationEvidence.length - 6} 条操作溯源未展开。</div>
+          ) : null}
+        </div>
+      ) : null}
 
       {viewModel.warnings.length > 0 ? (
         <div style={{ ...wrapStyle, color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
