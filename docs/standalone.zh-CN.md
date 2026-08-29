@@ -73,6 +73,10 @@ cast <subjectId>
 activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
          [--months 3|6|12] [--max-relations 1..120]
          [--max-details 1..48] [--max-rows 1..60]
+collaborators <personId> [--kind voice|staff|all] [--media anime|all]
+             [--target-role <label>] [--collaborator-role <label>]
+             [--max-relations 1..120] [--max-subjects 1..36]
+             [--max-collaborators 1..50] [--max-shared-subjects 1..20]
 calendar
 episodes <subjectId>
 episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
@@ -94,6 +98,14 @@ collection set <subjectId> <wish|watching|watched|dropped|...>
 抽样，而不是按条目 ID 取前缀，并分别报告观察、选取、详情请求和省略的 ID 数量；
 此时状态为 `partial`。它描述当前官方关系的可观测覆盖，不推断实际工作时长、
 历史趋势、热度或推荐。
+
+`collaborators` 从官方 v0 人物关系进入作品关系，按稳定人物 ID 和作品 ID 去重，
+按观察到的共同作品数排序，并列出共同作品和官方原始职位/角色标签。`--kind`
+支持声优、制作人员或两者；`--target-role` 对目标人物标签做字面包含筛选，
+`--collaborator-role` 只对制作人员合作方的官方 `relation` 原文做字面包含筛选。
+声优演员关系没有合作方职位字段，因此不会把演员 `career` 冒充职位；关系、作品
+fan-out、合作人物、共同作品、并发、失败、异常行、自身关系和省略数量都会保留。
+它表示有界官方共同作品观察，不表示完整行业网络、历史趋势、工作量或关系强度。
 
 认证和账号命令：
 
@@ -172,6 +184,12 @@ render cast <id>
 render activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
                      [--months 3|6|12] [--max-relations 1..120]
                      [--max-details 1..48] [--max-rows 1..60]
+render collaboration|collaborators <personId> [--kind voice|staff|all]
+                              [--media anime|all] [--target-role <label>]
+                              [--collaborator-role <label>]
+                              [--max-relations 1..120] [--max-subjects 1..36]
+                              [--max-collaborators 1..50]
+                              [--max-shared-subjects 1..20]
 render episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
                    [--max-episodes 1..200] [--no-descriptions]
 render calendar

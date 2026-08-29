@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-08-28",
+  "updated_at": "2026-08-29",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -381,11 +381,20 @@
       "kind": "scenario",
       "user_question": "找出和某导演合作次数最多的编剧，并列出共同作品。",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use the bounded official-v0 collaboration result and read its coverage before ranking.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "Delivered as a bounded official-v0 staff collaboration query with literal role filters, stable-ID deduplication, shared-work evidence, and explicit fan-out coverage.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration", "bangumi.render_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/render/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-command.test.ts"
+        ]
+      }
     },
     {
       "id": "G30",
@@ -535,11 +544,11 @@
       "kind": "scenario",
       "user_question": "这两部作品的主要制作团队重合度是多少？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Add a bounded subject-to-subject staff overlap composition before claiming a team percentage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"]
     },
     {
       "id": "C07",
@@ -590,11 +599,19 @@
       "kind": "scenario",
       "user_question": "这位人物与哪些人合作最频繁？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use collaborator ranking with explicit observed-subject and output coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "Delivered collaborator ranking by deduplicated official-v0 shared subject count, with deterministic tie-breakers and visible source evidence.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration", "bangumi.render_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/render/person-collaboration.test.ts"
+        ]
+      }
     },
     {
       "id": "P05",
@@ -689,11 +706,19 @@
       "kind": "scenario",
       "user_question": "某声优的合作网络中，哪三位共同作品最多？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Request kind=voice and an explicit collaborator output cap; interpret results as bounded observations.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "Delivered bounded voice-collaboration ranking with stable person/subject deduplication, top-N output, shared-work samples, and actor self-edge exclusion.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration", "bangumi.render_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-command.test.ts"
+        ]
+      }
     },
     {
       "id": "S07",
@@ -733,11 +758,11 @@
       "kind": "scenario",
       "user_question": "同一制作人员连续合作的团队有哪些？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Add bounded dated relation evidence before claiming continuous collaboration or team continuity.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"]
     },
     {
       "id": "T04",
@@ -1128,11 +1153,11 @@
       "kind": "scenario",
       "user_question": "哪些作品共享最多的主要角色配音者？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Add bounded subject-to-subject shared-cast comparison before ranking works by shared main-role actors.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-004"]
     },
     {
       "id": "C08",
@@ -1249,11 +1274,20 @@
       "kind": "opportunity",
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Staff Collaboration Graph?",
       "lane": "recorded_product_opportunities",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "next_action": "Monitor official-v0 relation semantics and reopen only if a source contract or bounded user journey changes.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": ["G29", "P04", "S06", "T03", "C06", "R06"],
+      "closure_reason": "Delivered the safe bounded official-v0 slice of the opportunity across semantic, renderer, standalone, tests, catalog, and product-ledger surfaces; community/HTML and historical claims remain deferred.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration", "bangumi.render_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/render/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-command.test.ts"
+        ]
+      }
     },
     {
       "id": "OP-005",
@@ -1385,44 +1419,89 @@
       "kind": "product_dimension",
       "user_question": "Can an Agent discover and compose every shipped semantic capability without fragile low-level orchestration?",
       "lane": "agent_ux_and_discoverability",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/agent/PRODUCT_CHARTER.md#agent-perspective", "docs/tool-catalog.json"],
-      "next_action": "Audit names, descriptions, input intent, output evidence, and representative orchestration cost.",
+      "next_action": "Monitor the catalog description and schema as official-v0 collaboration semantics evolve.",
       "reopen_when": "The tool catalog, semantic contracts, or representative Agent journeys change.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "The collaboration capability is discoverable as a bounded semantic tool with role/media filters, explicit caps, evidence, warnings, and a generated catalog entry.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration", "bangumi.render_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-command.test.ts"
+        ]
+      }
     },
     {
       "id": "DIM-RENDERER-STANDALONE",
       "kind": "product_dimension",
       "user_question": "Do Renderer and Standalone surfaces present the full useful result truthfully and without silent loss?",
       "lane": "renderer_and_standalone_experience",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/agent/PRODUCT_CHARTER.md#renderer-north-star", "tests/render"],
-      "next_action": "Audit representative dense, sparse, partial, unavailable, and high-cardinality outputs.",
+      "status": "DELIVERED",
+      "source_refs": [
+        "docs/agent/PRODUCT_CHARTER.md#renderer-north-star",
+        "packages/renderer/src/templates/PersonCollaborationCard.tsx",
+        "apps/standalone/src/presenter.ts"
+      ],
+      "next_action": "Monitor dense and degraded collaboration cards for new source fields or display limits.",
       "reopen_when": "Renderer templates, ViewModels, Standalone presentation, or capability result shapes change.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "Image-free PersonCollaborationCard and Standalone collaborators/render routes preserve ranking, raw labels, source-operation outcomes, derivation formula, warnings, exclusions, limits, and hidden/omitted evidence; narrow-width geometry is covered for long ASCII/CJK and degraded states.",
+      "evidence": {
+        "capabilities": ["bangumi.render_person_collaboration"],
+        "tests": [
+          "tests/render/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-command.test.ts",
+          "tests/standalone/person-collaboration-presenter.test.ts"
+        ]
+      }
     },
     {
       "id": "DIM-EVIDENCE-BOUNDS",
       "kind": "product_dimension",
       "user_question": "Do shipped capabilities preserve evidence, coverage, failure semantics, and explicit resource bounds end to end?",
       "lane": "correctness_evidence_and_resource_bounds",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/agent/PRODUCT_CHARTER.md#sources-and-evidence", "tests/semantic"],
-      "next_action": "Audit unknown, partial, truncation, fan-out, pagination, concurrency, and negative-claim behavior.",
+      "status": "DELIVERED",
+      "source_refs": [
+        "docs/agent/PRODUCT_CHARTER.md#sources-and-evidence",
+        "packages/bangumi-core/src/services/person-collaboration-service.ts",
+        "packages/bangumi-transport/src/http-client.ts"
+      ],
+      "next_action": "Monitor source-operation and coverage fields when official v0 relation schemas change.",
       "reopen_when": "Provider contracts, evidence models, pagination, caching, or resource limits change.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "The service records per-operation outcomes with actual retrieval timestamps and error codes, validates upstream identity/envelopes, propagates partial/unavailable/not-found states, applies deterministic locale-independent ordering, and enforces response byte/row ceilings while preserving omission coverage through Renderer and Standalone.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/unit/transport.test.ts",
+          "tests/semantic/person-collaboration.test.ts",
+          "tests/render/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-presenter.test.ts"
+        ]
+      }
     },
     {
       "id": "DIM-ARCHITECTURE-TESTABILITY",
       "kind": "product_dimension",
       "user_question": "Is there a bounded architecture or testability improvement that unlocks concrete product value?",
       "lane": "architecture_maintenance_and_testability",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/agent/PRODUCT_CHARTER.md#capability-maturity-and-quality", "tests"],
-      "next_action": "Inspect deep module seams and test gaps only where they unlock a named user or Agent journey.",
+      "next_action": "Keep person collaboration aggregation behind the core service seam and extend only with a named bounded journey.",
       "reopen_when": "A product journey is blocked by architecture, testability, or maintenance cost.",
-      "related_ids": []
+      "related_ids": ["OP-004"],
+      "closure_reason": "A dedicated core service isolates official-v0 relation fan-out and aggregation from ToolRegistry, Renderer, and Standalone adapters, with fixture-driven unit, render, and command tests.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_collaboration"],
+        "tests": [
+          "tests/unit/person-collaboration.test.ts",
+          "tests/render/person-collaboration.test.ts",
+          "tests/standalone/person-collaboration-command.test.ts"
+        ]
+      }
     }
   ]
 }

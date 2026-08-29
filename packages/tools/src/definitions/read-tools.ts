@@ -14,6 +14,7 @@ import {
   CharacterService,
   PersonService,
   PersonActivityService,
+  PersonCollaborationService,
   UserService,
   RevisionService,
   IndexReadService,
@@ -903,6 +904,86 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         maxSubjectDetails: input.maxSubjectDetails,
         maxRows: input.maxRows,
       });
+    },
+  });
+
+  const getPersonCollaboration = defineTool({
+    name: 'bangumi.get_person_collaboration',
+    description:
+      '基于官方 v0 人物关系和作品关系，计算指定人物与其他人物共同出现于多少个官方作品，并返回按去重作品数排序的合作人物、共同作品和原始职位/角色证据。支持声优、制作人员或两者、动画/全部媒介、目标人物关系标签和制作人员合作方职位的字面筛选；所有人物/作品 fan-out、关系行、合作人物和共同作品都有显式上限，确定性报告观察/选取/失败/省略覆盖。不把演员 career 推断为合作方职位，不宣称完整行业网络、历史趋势、工作量或关系强度。',
+    input: z
+      .object({
+        personId: z.number().int().positive().describe('Bangumi 人物 ID'),
+        kind: z
+          .enum(['voice', 'staff', 'all'])
+          .optional()
+          .describe('目标关系类型：voice 声优、staff 制作人员、all 两者；默认 voice'),
+        media: z
+          .enum(['anime', 'all'])
+          .optional()
+          .describe('媒介范围：anime 动画、all 全部媒介；默认 anime'),
+        targetRole: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('对目标人物官方原始角色/职位标签做不区分大小写的字面包含匹配'),
+        collaboratorRole: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('对制作人员合作方官方 relation 原文做不区分大小写的字面包含匹配'),
+        maxRelations: z
+          .number()
+          .int()
+          .min(1)
+          .max(120)
+          .optional()
+          .describe('最多观察的目标人物关系行数，默认 80'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(36)
+          .optional()
+          .describe('最多 fan-out 的去重作品数，默认 24'),
+        maxCollaborators: z
+          .number()
+          .int()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe('最多返回的合作人物数，默认 20'),
+        maxSharedSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe('每位合作人物最多返回的共同作品数，默认 12'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient = deps?.executionSession?.client || publicHttpClient;
+      return await new PersonCollaborationService(activeClient).getPersonCollaboration(
+        input.personId,
+        {
+          kind: input.kind,
+          media: input.media,
+          targetRole: input.targetRole,
+          collaboratorRole: input.collaboratorRole,
+          maxRelations: input.maxRelations,
+          maxSubjects: input.maxSubjects,
+          maxCollaborators: input.maxCollaborators,
+          maxSharedSubjects: input.maxSharedSubjects,
+        },
+      );
     },
   });
 
@@ -1859,6 +1940,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCollectionDashboard,
     getCollectionSeriesGroups,
     getPersonActivity,
+    getPersonCollaboration,
     getEpisodeGuide,
     getSubjectStatsIntelligenceTool,
     getSubjectStatsHistoryTool,

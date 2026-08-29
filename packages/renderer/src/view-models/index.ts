@@ -699,6 +699,114 @@ export interface PersonActivityViewModel {
   source: { label: string; retrievedAt: string };
 }
 
+export interface PersonCollaborationViewModel {
+  template: 'person-collaboration';
+  version: 1;
+  state: 'complete' | 'partial' | 'not_computable' | 'unavailable' | 'not_found';
+  person: {
+    id: number;
+    name: string;
+    nameCn?: string;
+    career: string[];
+  };
+  kind: 'voice' | 'staff' | 'all';
+  media: 'anime' | 'all';
+  targetRole?: string;
+  collaboratorRole?: string;
+  collaborators: Array<{
+    id: number;
+    name: string;
+    nameCn?: string;
+    image?: string;
+    career: string[];
+    uniqueSubjects: number;
+    creditRows: number;
+    relationLabels: string[];
+    roleLabels: string[];
+    sharedSubjects: Array<{
+      id: number;
+      name: string;
+      nameCn: string;
+      type: string;
+      relationLabels: string[];
+      targetRoles: string[];
+      collaboratorRoles: string[];
+    }>;
+    sharedSubjectsOmitted: number;
+  }>;
+  hiddenCollaborators: number;
+  coverage: {
+    relationRowsObserved: number;
+    relationRowsMatchingFilters: number;
+    relationRowsSelected: number;
+    relationRowsDroppedAtLimit: number;
+    relationSelectionStrategy: 'all' | 'deterministic_even_spread';
+    sampled: boolean;
+    subjectIdsObserved: number;
+    subjectIdsSelected: number;
+    subjectIdsDroppedAtRelationLimit: number;
+    subjectIdsDroppedAtSubjectLimit: number;
+    relationRowsDroppedAtSourceLimit: number;
+    malformedRelationRows: number;
+    fanoutRowsDroppedAtSourceLimit: number;
+    participantRowsDroppedAtSourceLimit: number;
+    participantRequests: number;
+    participantRequestsSucceeded: number;
+    participantRequestsFailed: number;
+    participantRequestsSkippedForRoleFilter: number;
+    participantRowsObserved: number;
+    participantRowsReturned: number;
+    malformedParticipantRows: number;
+    selfRowsExcluded: number;
+    collaboratorRoleExcludedRows: number;
+    collaboratorRoleUnavailableRows: number;
+    collaboratorsObserved: number;
+    collaboratorsReturned: number;
+    collaboratorIdsDroppedAtLimit: number;
+    sharedSubjectRowsObserved: number;
+    sharedSubjectRowsReturned: number;
+    sharedSubjectRowsOmittedAtLimit: number;
+    maxRelations: number;
+    maxSubjects: number;
+    maxCollaborators: number;
+    maxSharedSubjects: number;
+    fanoutConcurrency: number;
+    mediaExcludedRows: number;
+    mediaUnknownRows: number;
+    targetRoleExcludedRows: number;
+    missingSubjectIdRows: number;
+    missingSubjectTypeRows: number;
+    truncated: boolean;
+  };
+  exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
+  sourceOperations: Array<{
+    operation: string;
+    attempted: number;
+    succeeded: number;
+    failed: number;
+    rowsOmitted?: number;
+    outcomes: Array<{
+      state: 'succeeded' | 'failed';
+      retrievedAt: string;
+      errorCode?: string;
+      rowsOmitted?: number;
+    }>;
+  }>;
+  evidence: Array<{
+    source: 'official-v0' | 'derived-s7';
+    operation: string;
+    retrievedAt?: string;
+    outcome?: 'succeeded' | 'failed';
+    errorCode?: string;
+    rowsOmitted?: number;
+    formulaVersion?: string;
+    description?: string;
+  }>;
+  limitations: string[];
+  warnings: Array<{ code: string; state: string; message: string }>;
+  source: { label: string; retrievedAt: string };
+}
+
 export interface RevisionTimelineViewModel {
   template: 'revision-timeline';
   version: 1;
@@ -922,6 +1030,7 @@ export type RenderViewModel =
   | EpisodeGuideViewModel
   | PersonProfileViewModel
   | PersonActivityViewModel
+  | PersonCollaborationViewModel
   | SubjectOverviewViewModel
   | SubjectComparisonViewModel
   | SubjectStatsViewModel

@@ -149,20 +149,24 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Subject Persons (GET /v0/subjects/{subject_id}/persons) */
   async getRelatedPersonsBySubjectId(
     subject_id: OperationPath<'getRelatedPersonsBySubjectId'>['subject_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedPersonsBySubjectId'>> {
     return this.transport.request<OperationResponse<'getRelatedPersonsBySubjectId'>>({
       method: 'GET',
       path: `/v0/subjects/${encodeURIComponent(String(subject_id))}/persons`,
+      ...requestOptions,
     });
   }
 
   /** Get Subject Characters (GET /v0/subjects/{subject_id}/characters) */
   async getRelatedCharactersBySubjectId(
     subject_id: OperationPath<'getRelatedCharactersBySubjectId'>['subject_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedCharactersBySubjectId'>> {
     return this.transport.request<OperationResponse<'getRelatedCharactersBySubjectId'>>({
       method: 'GET',
       path: `/v0/subjects/${encodeURIComponent(String(subject_id))}/characters`,
+      ...requestOptions,
     });
   }
 
@@ -262,10 +266,12 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Person (GET /v0/persons/{person_id}) */
   async getPersonById(
     person_id: OperationPath<'getPersonById'>['person_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getPersonById'>> {
     return this.transport.request<OperationResponse<'getPersonById'>>({
       method: 'GET',
       path: `/v0/persons/${encodeURIComponent(String(person_id))}`,
+      ...requestOptions,
     });
   }
 
@@ -284,20 +290,24 @@ export class GeneratedBangumiOpenApiClient {
   /** get person related subjects (GET /v0/persons/{person_id}/subjects) */
   async getRelatedSubjectsByPersonId(
     person_id: OperationPath<'getRelatedSubjectsByPersonId'>['person_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedSubjectsByPersonId'>> {
     return this.transport.request<OperationResponse<'getRelatedSubjectsByPersonId'>>({
       method: 'GET',
       path: `/v0/persons/${encodeURIComponent(String(person_id))}/subjects`,
+      ...requestOptions,
     });
   }
 
   /** get person related characters (GET /v0/persons/{person_id}/characters) */
   async getRelatedCharactersByPersonId(
     person_id: OperationPath<'getRelatedCharactersByPersonId'>['person_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedCharactersByPersonId'>> {
     return this.transport.request<OperationResponse<'getRelatedCharactersByPersonId'>>({
       method: 'GET',
       path: `/v0/persons/${encodeURIComponent(String(person_id))}/characters`,
+      ...requestOptions,
     });
   }
 

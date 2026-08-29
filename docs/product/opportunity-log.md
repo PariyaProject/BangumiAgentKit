@@ -503,7 +503,65 @@ S3 + S6 + S7
 
 ## OP-004 Staff Collaboration Graph
 
-...
+Status:
+DELIVERED_IN_PERSON_COLLABORATION_V1 / BOUNDED_OFFICIAL_V0
+
+User questions:
+
+“找出和某导演合作次数最多的编剧，并列出共同作品。”
+
+“这位人物与哪些人合作最频繁？”
+
+User Value:
+5/5
+
+Agent Leverage:
+5/5
+
+Information Gain:
+5/5
+
+Data Availability:
+4/5 — official v0 exposes person-to-work/character and subject-to-person/character relations
+
+Reliability:
+4/5 — shared-work observations are official and stable-ID based, but the graph is bounded and source labels are not a normalized taxonomy
+
+Implementation Cost:
+3/5 — bounded subject fan-out with deterministic concurrency and output caps
+
+Maintenance Risk:
+3/5
+
+Source Risk:
+1/5 for the shipped path; community/HTML sources remain outside the product scope
+
+Possible Sources:
+Official v0 `/v0/persons/{person_id}/subjects`, `/characters`, and per-subject
+`/persons`, `/characters` endpoints.
+
+Potential Capability:
+`get_person_collaboration`
+
+Potential Renderer:
+`PersonCollaboration`
+
+Notes:
+
+The shipped bounded capability starts from one official person relation list,
+selects at most 120 relation rows and 36 unique subjects, and fan-outs at most
+four official subject relation requests concurrently. It deduplicates counts by
+stable person and subject ID, ranks by observed shared-subject count and raw
+credit-row tie-breakers, and preserves each shared work plus target and
+collaborator source labels. `targetRole` is a literal source-label filter;
+`collaboratorRole` is limited to the official staff `relation` field. Voice
+actor endpoints do not expose a collaborator role, so actor `career` is never
+used as a substitute. The Agent, image-free Renderer, Standalone command, unit,
+semantic, render, catalog, and ledger surfaces share the same bounded contract.
+
+The result is explicitly not a complete industry graph, historical trend,
+workload or relationship-strength measure, and it does not enable the deferred
+community/Structured Web source frontier.
 
 ---
 

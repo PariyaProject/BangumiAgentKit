@@ -9,6 +9,13 @@ const SIGNALABLE_OPERATIONS = new Set([
   'getUserCollectionsByUsername',
   'getUserSubjectEpisodeCollection',
 ]);
+const RESPONSE_LIMITABLE_OPERATIONS = new Set([
+  'getPersonById',
+  'getRelatedSubjectsByPersonId',
+  'getRelatedCharactersByPersonId',
+  'getRelatedPersonsBySubjectId',
+  'getRelatedCharactersBySubjectId',
+]);
 
 function resolveRef(spec: any, item: any): any {
   if (item && typeof item === 'object' && typeof item.$ref === 'string') {
@@ -92,6 +99,7 @@ function generateClient() {
         const opId = op.operationId;
         const summary = op.summary || opId;
         const supportsSignal = SIGNALABLE_OPERATIONS.has(opId);
+        const supportsResponseLimit = RESPONSE_LIMITABLE_OPERATIONS.has(opId);
 
         const rawParams = [...(pathItem.parameters || []), ...(op.parameters || [])];
         const resolvedParamsMap = new Map<string, any>();
@@ -197,8 +205,12 @@ function generateClient() {
             argsList.push(`body?: OperationBody<'${opId}'>`);
           }
         }
-        if (supportsSignal) {
-          argsList.push(`requestOptions?: Pick<HttpRequestOptions, 'signal'>`);
+        if (supportsSignal || supportsResponseLimit) {
+          const requestOptionFields = [
+            ...(supportsSignal ? ["'signal'"] : []),
+            ...(supportsResponseLimit ? ["'maxResponseBytes'"] : []),
+          ].join(' | ');
+          argsList.push(`requestOptions?: Pick<HttpRequestOptions, ${requestOptionFields}>`);
         }
 
         const argsStr = argsList.join(', ');
@@ -219,7 +231,7 @@ function generateClient() {
         if (hasBody) {
           code.push(`      body: body as unknown,`);
         }
-        if (supportsSignal) {
+        if (supportsSignal || supportsResponseLimit) {
           code.push(`      ...requestOptions,`);
         }
         code.push(`    });`);

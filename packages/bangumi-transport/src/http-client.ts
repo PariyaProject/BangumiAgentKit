@@ -20,6 +20,8 @@ export interface HttpRequestOptions {
   cacheContext?: CacheKeyContext;
   cacheTtlSeconds?: number;
   retryOptions?: RetryOptions;
+  /** Hard limit for the response body in UTF-8 bytes. */
+  maxResponseBytes?: number;
   fetchFn?: typeof fetch;
   signal?: AbortSignal;
 }
@@ -46,6 +48,7 @@ export class HttpClient {
   async request<T>(options: HttpRequestOptions): Promise<T> {
     const method = (options.method || 'GET').toUpperCase() as HttpRequestOptions['method'];
     const isReadOnly = method === 'GET';
+    const maxResponseBytes = normalizeResponseLimit(options.maxResponseBytes);
 
     // Check Cache
     let cacheKey: string | undefined;
@@ -139,10 +142,12 @@ export class HttpClient {
         return { location: response.headers.get('location') || response.url || '' } as T;
       }
 
+      assertResponseContentLength(response, maxResponseBytes);
+
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status} ${response.statusText}`;
         try {
-          const bodyText = await response.text();
+          const bodyText = await readResponseText(response, maxResponseBytes);
           if (bodyText) {
             try {
               const json = JSON.parse(bodyText);
@@ -193,13 +198,14 @@ export class HttpClient {
 
       let dataText = '';
       try {
-        dataText = await response.text();
+        dataText = await readResponseText(response, maxResponseBytes);
         if (!dataText) {
           return {} as T;
         }
         const data = JSON.parse(dataText) as T;
         return data;
-      } catch {
+      } catch (error) {
+        if (error instanceof BangumiError) throw error;
         if (contentType.includes('image') || response.status === 302) {
           return { location: response.url || response.headers.get('location') || '' } as T;
         }
@@ -225,4 +231,74 @@ export class HttpClient {
 
     return result;
   }
+}
+
+function normalizeResponseLimit(value: number | undefined): number {
+  return Number.isFinite(value) && value !== undefined && value > 0
+    ? Math.floor(value)
+    : Number.POSITIVE_INFINITY;
+}
+
+function assertResponseContentLength(response: Response, maxResponseBytes: number): void {
+  if (!Number.isFinite(maxResponseBytes)) return;
+  const contentLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxResponseBytes) {
+    throw new BangumiError(
+      'RESPONSE_TOO_LARGE',
+      `Response body is ${contentLength} bytes; limit is ${maxResponseBytes} bytes.`,
+      false,
+      response.status,
+    );
+  }
+}
+
+async function readResponseText(response: Response, maxResponseBytes: number): Promise<string> {
+  assertResponseContentLength(response, maxResponseBytes);
+  if (!Number.isFinite(maxResponseBytes) || !response.body) {
+    const text = await response.text();
+    if (
+      Number.isFinite(maxResponseBytes) &&
+      new TextEncoder().encode(text).byteLength > maxResponseBytes
+    ) {
+      throw new BangumiError(
+        'RESPONSE_TOO_LARGE',
+        `Response body exceeds the ${maxResponseBytes}-byte limit.`,
+        false,
+        response.status,
+      );
+    }
+    return text;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxResponseBytes) {
+        await reader.cancel();
+        throw new BangumiError(
+          'RESPONSE_TOO_LARGE',
+          `Response body exceeds the ${maxResponseBytes}-byte limit.`,
+          false,
+          response.status,
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }

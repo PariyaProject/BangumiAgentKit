@@ -14,6 +14,8 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
       style={{
         width: `${width}px`,
         boxSizing: 'border-box',
+        minWidth: 0,
+        maxWidth: '100%',
         backgroundColor: theme.background,
         color: theme.text,
         fontFamily:
@@ -25,6 +27,9 @@ export const CardFrame: React.FC<CardFrameProps> = ({ theme, children, width = 9
     >
       <div
         style={{
+          boxSizing: 'border-box',
+          minWidth: 0,
+          maxWidth: '100%',
           backgroundColor: theme.surface,
           border: `1px solid ${theme.border}`,
           borderRadius: theme.radius.lg,
