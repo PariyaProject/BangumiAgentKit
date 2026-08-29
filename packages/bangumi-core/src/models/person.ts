@@ -71,6 +71,7 @@ export interface RelationCollection<T> {
   observed: number;
   returned: number;
   truncated: boolean;
+  schemaDriftRows?: number;
 }
 
 export interface PersonActivityDistribution {

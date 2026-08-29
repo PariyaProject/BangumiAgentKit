@@ -69,6 +69,7 @@ const characters = (subjectId: number) => [
     id: subjectId + 1,
     name: `角色 ${subjectId} A`,
     type: 1,
+    summary: '',
     relation: '主角',
     actors: [
       { id: 900, name: '共同声优', career: ['seiyu'], images: {} },
@@ -79,6 +80,7 @@ const characters = (subjectId: number) => [
     id: subjectId + 2,
     name: `角色 ${subjectId} B`,
     type: 2,
+    summary: '',
     relation: '配角',
     actors: [{ id: subjectId + 20, name: `声优 ${subjectId} B`, career: ['seiyu'], images: {} }],
   },
@@ -91,6 +93,7 @@ const persons = (subjectId: number) => [
     type: 1,
     career: ['director'],
     relation: '导演',
+    eps: '',
     images: {},
   },
   {
@@ -99,6 +102,7 @@ const persons = (subjectId: number) => [
     type: 1,
     career: ['writer'],
     relation: '脚本',
+    eps: '',
     images: {},
   },
 ];
@@ -477,7 +481,7 @@ describe('Subject comparison semantic contract', () => {
     });
     expect(
       (malformed as { subjects: Array<{ sections: { cast: string } }> }).subjects[1]?.sections.cast,
-    ).toBe('unavailable');
+    ).toBe('partial');
 
     const conflict = await getTool(buildClient().client).execute(
       { subjectIds: [123, 456] },

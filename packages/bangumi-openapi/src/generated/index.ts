@@ -127,10 +127,12 @@ export class GeneratedBangumiOpenApiClient {
   /** 获取条目 (GET /v0/subjects/{subject_id}) */
   async getSubjectById(
     subject_id: OperationPath<'getSubjectById'>['subject_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getSubjectById'>> {
     return this.transport.request<OperationResponse<'getSubjectById'>>({
       method: 'GET',
       path: `/v0/subjects/${encodeURIComponent(String(subject_id))}`,
+      ...requestOptions,
     });
   }
 
@@ -173,10 +175,12 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Subject Relations (GET /v0/subjects/{subject_id}/subjects) */
   async getRelatedSubjectsBySubjectId(
     subject_id: OperationPath<'getRelatedSubjectsBySubjectId'>['subject_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedSubjectsBySubjectId'>> {
     return this.transport.request<OperationResponse<'getRelatedSubjectsBySubjectId'>>({
       method: 'GET',
       path: `/v0/subjects/${encodeURIComponent(String(subject_id))}/subjects`,
+      ...requestOptions,
     });
   }
 

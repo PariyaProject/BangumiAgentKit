@@ -61,7 +61,7 @@ The `TemplateRegistry` maps `RenderViewModel['template']` to React card template
 `collection-progress`, `collection-intelligence`, `collection-backlog`,
 `collection-schedule`, `collection-dashboard`, `calendar`,
 `revision-timeline`, `person-profile`, `person-activity`, `person-collaboration`,
-and `subject-comparison`).
+`subject-comparison`, and `subject-overlap`).
 It also includes `series-relations` for bounded Series / Watch-Order evidence.
 
 `subject-comparison` is an image-free, read-only companion card for
@@ -80,6 +80,18 @@ reading. The statistics section additionally shows each side's official rating
 histogram and collection distribution, derived histogram mean, population standard
 deviation, observed completion rate, formula version, and not-computable/partial
 states without turning a current snapshot into a trend or recommendation.
+
+`subject-overlap` is the image-free companion to
+`bangumi.get_subject_overlap`. It accepts a caller-supplied set of 2–8 known
+subjects, ranks bounded subject pairs by stable-person-ID cast/staff overlap,
+and preserves each side's raw character or staff-role evidence. A cast
+`main` filter recognizes only explicit source labels such as 主角/主役; unknown
+labels remain visible as partial coverage. Cast and staff ratios use observed
+intersection divided by observed union and are omitted when either side is
+incomplete or the union is empty. Pair/section limits, unavailable subjects,
+warnings, source operations, formula version, and the non-claim that this is
+not a complete team, catalog-wide ranking, or historical collaboration graph
+remain visible. The card does not fetch network assets.
 
 `subject-stats` is an image-free, read-only companion card for
 `bangumi.get_subject_stats_intelligence`. It keeps the official v0 rating

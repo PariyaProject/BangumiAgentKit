@@ -706,6 +706,7 @@ function commandCandidateCheck(options) {
       'CORRECTIVE_REQUIRED',
       'PASS_INVALIDATED_BASE_DRIFT',
       'FINAL_CORRECTIVE_REQUIRED',
+      'FINAL_CORRECTIVE_READY',
     ].includes(epoch.state)
   ) {
     throw new HarnessInvariantError(
@@ -713,7 +714,8 @@ function commandCandidateCheck(options) {
       `Epoch state ${epoch.state} cannot establish a Candidate`,
     );
   }
-  const finalCorrective = epoch.state === 'FINAL_CORRECTIVE_REQUIRED';
+  const finalCorrective =
+    epoch.state === 'FINAL_CORRECTIVE_REQUIRED' || epoch.state === 'FINAL_CORRECTIVE_READY';
   git('fetch', 'origin', epoch.base_branch, epoch.branch);
   const head = currentHead();
   if (currentBranch() !== epoch.branch) {
@@ -1183,6 +1185,7 @@ function commandEpochMerge(options) {
   }
   assertMergeReadiness({
     epoch,
+    outerSol: runResult.state.outer_sol,
     branchHeadSha: currentHead(),
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha,

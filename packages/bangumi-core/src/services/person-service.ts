@@ -17,6 +17,46 @@ import { mapSubjectType } from './subject-service.js';
 
 export type { PersonRelationCharacter } from '../models/person.js';
 
+function positiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function imageMap(value: unknown): value is Record<string, string> {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === 'object' &&
+      !Array.isArray(value) &&
+      Object.values(value as Record<string, unknown>).every((item) => typeof item === 'string'))
+  );
+}
+
+function validSubjectStaffRow(value: unknown): value is {
+  id: number;
+  name: string;
+  type: number;
+  career: string[];
+  images?: Record<string, string>;
+  relation: string;
+  eps: string;
+} {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    positiveInteger(row.id) &&
+    typeof row.name === 'string' &&
+    typeof row.type === 'number' &&
+    Number.isInteger(row.type) &&
+    row.type >= 1 &&
+    row.type <= 3 &&
+    Array.isArray(row.career) &&
+    row.career.every((item) => typeof item === 'string') &&
+    typeof row.relation === 'string' &&
+    typeof row.eps === 'string' &&
+    imageMap(row.images)
+  );
+}
+
 function mapPersonTypeLabel(type?: number): string {
   switch (type) {
     case 1:
@@ -435,15 +475,25 @@ export class PersonService {
   async getSubjectStaff(
     subjectId: number,
     limit = 100,
+    options: { maxResponseBytes?: number } = {},
   ): Promise<RelationCollection<SubjectStaffMember>> {
-    const raw = await this.api.getRelatedPersonsBySubjectId(subjectId);
-    const allStaff = (raw || []).map(mapSubjectStaffMember);
+    const raw = await this.api.getRelatedPersonsBySubjectId(subjectId, {
+      ...(options.maxResponseBytes === undefined
+        ? {}
+        : { maxResponseBytes: options.maxResponseBytes }),
+    });
+    const rawRows = Array.isArray(raw) ? raw : [];
+    const validRows = rawRows.filter(validSubjectStaffRow);
+    const schemaDriftRows = rawRows.length - validRows.length;
     const safeLimit = Math.max(0, Math.floor(limit));
+    const selectedRows = validRows.slice(0, safeLimit);
+    const items = selectedRows.map(mapSubjectStaffMember);
     return {
-      items: allStaff.slice(0, safeLimit),
-      observed: allStaff.length,
-      returned: Math.min(allStaff.length, safeLimit),
-      truncated: allStaff.length > safeLimit,
+      items,
+      observed: rawRows.length,
+      returned: items.length,
+      truncated: validRows.length > items.length || schemaDriftRows > 0,
+      schemaDriftRows,
     };
   }
 

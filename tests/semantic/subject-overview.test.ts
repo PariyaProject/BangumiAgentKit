@@ -49,6 +49,7 @@ const charactersPayload = [
     id: 1,
     name: 'チト',
     type: 1,
+    summary: '',
     relation: '主角',
     actors: [{ id: 11, name: '水瀬いのり', career: ['seiyu'], images: {} }],
   },
@@ -56,14 +57,23 @@ const charactersPayload = [
     id: 2,
     name: 'ユーリ',
     type: 2,
+    summary: '',
     relation: '主角',
     actors: [{ id: 12, name: '久保ユリカ', career: ['seiyu'], images: {} }],
   },
 ];
 
 const personsPayload = [
-  { id: 21, name: '尾崎隆晴', type: 1, career: ['director'], relation: '导演', images: {} },
-  { id: 22, name: '筆安一幸', type: 1, career: ['writer'], relation: '脚本', images: {} },
+  {
+    id: 21,
+    name: '尾崎隆晴',
+    type: 1,
+    career: ['director'],
+    relation: '导演',
+    eps: '',
+    images: {},
+  },
+  { id: 22, name: '筆安一幸', type: 1, career: ['writer'], relation: '脚本', eps: '', images: {} },
 ];
 
 const relationsPayload = [
@@ -237,6 +247,24 @@ describe('Subject Intelligence Overview semantic contract', () => {
     expect(overview.coverage.actorLimits).toEqual({ perCharacter: 4, total: 32 });
     expect(overview.warnings).toEqual(
       expect.arrayContaining([expect.objectContaining({ code: 'CAST_ACTOR_OUTPUT_TRUNCATED' })]),
+    );
+  });
+
+  it('fails closed on an oversized upstream relation response before mapping it', async () => {
+    const { client } = buildClient({
+      characters: [{ ...charactersPayload[0], summary: 'x'.repeat(1_100_000) }],
+    });
+    const result = await getTool(client).execute({ subjectId: 123 }, context, {});
+    const overview = result as {
+      cast: { state: string; items: unknown[] };
+      warnings: Array<{ code: string; section?: string }>;
+    };
+
+    expect(overview.cast).toMatchObject({ state: 'unavailable', items: [] });
+    expect(overview.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'UPSTREAM_RESPONSE_TOO_LARGE', section: 'cast' }),
+      ]),
     );
   });
 

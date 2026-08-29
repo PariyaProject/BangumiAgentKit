@@ -33,6 +33,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
+import { getSubjectOverlap } from '../subject-overlap.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
 import {
   getSubjectStatsHistory,
@@ -252,6 +253,79 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           maxRelations: input.maxRelations,
         },
         { client: activeClient, providerRegistry: deps?.providerRegistry },
+      );
+    },
+  });
+
+  const getSubjectOverlapTool = defineTool({
+    name: 'bangumi.get_subject_overlap',
+    description:
+      '比较调用方提供的 2–8 个已知 Bangumi 条目在官方 v0 有界关系中的角色声优/制作人员重合，并按共同稳定人物 ID 对条目对排序。支持 cast、staff、all 以及保守的主角/主役原始标签筛选；保留每侧角色或职位证据、观察到的并集/交集与 Jaccard 比例、source operations、检索时间、缺失 ID、未知角色、区段/输出截断和 partial/unavailable 状态。不发现全目录候选，不宣称完整演职员表、主要团队质量、历史连续合作或推荐结论。',
+    input: z
+      .object({
+        subjectIds: z
+          .array(z.number().int().positive())
+          .min(2)
+          .max(8)
+          .refine((subjectIds) => new Set(subjectIds).size === subjectIds.length, {
+            message: 'subjectIds 必须包含不同的条目 ID',
+          })
+          .describe('2–8 个不同的 Bangumi 条目 ID；输出按候选条目对排序'),
+        kind: z
+          .enum(['cast', 'staff', 'all'])
+          .optional()
+          .describe('重合关系：cast 声优、staff 制作人员、all 两者；默认 all'),
+        castRole: z
+          .enum(['all', 'main'])
+          .optional()
+          .describe('声优关系筛选：all 全部原始角色标签、main 仅明确识别为主角/主役；默认 all'),
+        maxCast: z
+          .number()
+          .int()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('每个条目的角色读取上限，默认 24'),
+        maxStaff: z
+          .number()
+          .int()
+          .min(1)
+          .max(80)
+          .optional()
+          .describe('每个条目的职员读取上限，默认 48'),
+        maxPairs: z
+          .number()
+          .int()
+          .min(1)
+          .max(28)
+          .optional()
+          .describe('最多返回排序后的条目对，默认 28'),
+        maxPeople: z
+          .number()
+          .int()
+          .min(1)
+          .max(24)
+          .optional()
+          .describe('每个条目对每种关系最多返回共同人物，默认 24'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      return await getSubjectOverlap(
+        input.subjectIds,
+        {
+          kind: input.kind,
+          castRole: input.castRole,
+          maxCast: input.maxCast,
+          maxStaff: input.maxStaff,
+          maxPairs: input.maxPairs,
+          maxPeople: input.maxPeople,
+        },
+        { client: activeClient },
       );
     },
   });
@@ -1934,6 +2008,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getRevisionIntelligence,
     getSubjectOverviewTool,
     getSubjectComparisonTool,
+    getSubjectOverlapTool,
     getCollectionIntelligence,
     getCollectionBacklog,
     getCollectionSchedule,

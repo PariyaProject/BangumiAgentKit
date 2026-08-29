@@ -1254,13 +1254,21 @@ export function resumeReviewLimitForFinalCorrective(run, epoch) {
   return { run: nextRun, epoch: nextEpoch };
 }
 
-export function assertMergeReadiness({ epoch, branchHeadSha, prHeadSha, currentBaseSha }) {
+export function assertMergeReadiness({
+  epoch,
+  outerSol,
+  branchHeadSha,
+  prHeadSha,
+  currentBaseSha,
+}) {
   const latestReview = epoch.review_history?.at(-1);
   const passAuthority =
     epoch.state === 'REVIEW_PASSED' && epoch.review_pass_sha === epoch.candidate_sha;
+  const reviewBudgetExhausted = epoch.review?.consumed >= epoch.review?.max;
+  const outerProductBudgetExhausted = outerSol?.product?.consumed >= outerSol?.product?.max;
   const finalCorrectiveAuthority =
     epoch.state === 'FINAL_CORRECTIVE_READY' &&
-    epoch.review?.consumed >= epoch.review?.max &&
+    (reviewBudgetExhausted || outerProductBudgetExhausted) &&
     ((epoch.final_corrective_reason === 'REVIEW_LIMIT_FINDINGS' &&
       latestReview?.verdict === 'CORRECTIVE_REQUIRED') ||
       (epoch.final_corrective_reason === 'BASE_DRIFT_AFTER_PASS' &&

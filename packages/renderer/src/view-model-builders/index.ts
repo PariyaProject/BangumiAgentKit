@@ -22,6 +22,7 @@ import type {
   SeriesWatchOrderResult,
   SubjectOverviewResult,
   SubjectComparisonResult,
+  SubjectOverlapResult,
   SubjectStatsIntelligenceResult,
   SubjectStatsHistoryResult,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -52,6 +53,7 @@ import type {
   SeriesRelationPathViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
+  SubjectOverlapViewModel,
   SubjectStatsViewModel,
   SubjectStatsHistoryViewModel,
 } from '../view-models/index.js';
@@ -637,6 +639,27 @@ export function buildSubjectComparisonViewModel(
       omittedMetrics: result.metrics.length - metrics.length,
     },
     source: result.source,
+    evidence: result.evidence,
+    warnings: result.warnings,
+    limitations: result.limitations,
+  };
+}
+
+export function buildSubjectOverlapViewModel(
+  result: SubjectOverlapResult,
+): SubjectOverlapViewModel {
+  return {
+    template: 'subject-overlap',
+    version: 1,
+    state: result.state,
+    kind: result.kind,
+    castRole: result.castRole,
+    subjects: result.subjects,
+    pairs: result.pairs,
+    formulaVersion: result.formulaVersion,
+    coverage: result.coverage,
+    source: result.source,
+    operationEvidence: result.operationEvidence,
     evidence: result.evidence,
     warnings: result.warnings,
     limitations: result.limitations,
