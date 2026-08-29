@@ -874,6 +874,29 @@ export interface EpisodeGuideViewModel {
   error?: import('@bangumi-agent-kit/bangumi-core').EpisodeGuideResult['error'];
 }
 
+export interface EpisodeIntegrityViewModel {
+  template: 'episode-integrity';
+  version: 1;
+  subjectId: number;
+  state: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityState;
+  subject: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['subject'];
+  filters: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['filters'];
+  items: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['items'];
+  summary: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['summary'];
+  asOf: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['asOf'];
+  integrity: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['integrity'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['coverage'] & {
+    renderedRows: number;
+    renderedOmitted: number;
+  };
+  capabilityStates: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['capabilityStates'];
+  source: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['evidence'];
+  limitations: string[];
+  warnings: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['warnings'];
+  error?: import('@bangumi-agent-kit/bangumi-core').EpisodeIntegrityResult['error'];
+}
+
 export type SubjectOverviewState = 'complete' | 'partial' | 'unavailable' | 'not_found';
 export type SubjectOverviewSectionState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
 
@@ -1045,6 +1068,7 @@ export type RenderViewModel =
   | CalendarViewModel
   | RevisionTimelineViewModel
   | EpisodeGuideViewModel
+  | EpisodeIntegrityViewModel
   | PersonProfileViewModel
   | PersonActivityViewModel
   | PersonCollaborationViewModel

@@ -20,6 +20,7 @@ import {
   RevisionService,
   RevisionEntityType,
   EpisodeGuideService,
+  EpisodeIntegrityService,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
@@ -48,6 +49,7 @@ import {
   buildPersonActivityViewModel,
   buildPersonCollaborationViewModel,
   buildEpisodeGuideViewModel,
+  buildEpisodeIntegrityViewModel,
 } from '@bangumi-agent-kit/renderer';
 import { discoveryQueryInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -367,6 +369,53 @@ export function createRenderPresentationTools(
         includeDescriptions: input.includeDescriptions,
       });
       return await executeRenderAndSave(buildEpisodeGuideViewModel(result));
+    },
+  });
+
+  const renderEpisodeIntegrity = defineTool({
+    name: 'bangumi.render_episode_integrity',
+    description:
+      '生成官方 v0 章节完整性分析图片卡片 Artifact。卡片展示 eps/total_episodes 与观察/去重/正篇/特别篇/已播/未来计数、合法 UTC as-of 日期、缺失/无效/逻辑日期冲突、覆盖状态、来源证据、公式和限制；不读取网络图片资产，不推断观看进度、观看顺序、播出历史或社区信息。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        category: z
+          .enum(['all', 'main', 'sp', 'op', 'ed', 'pv', 'mad', 'other'])
+          .optional()
+          .describe('章节类别，默认 all；非 all 时总数比较会标记为不完整'),
+        maxEpisodes: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多读取章节数，默认 50'),
+        includeDescriptions: z.boolean().optional().describe('是否保留章节描述，默认 false'),
+        asOfDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/u)
+          .optional()
+          .describe('用于已播判断的明确 UTC 日历日期 YYYY-MM-DD'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.publicHttpClient;
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const result = await new EpisodeIntegrityService(client).getEpisodeIntegrity(
+        input.subjectId,
+        {
+          category: input.category,
+          maxEpisodes: input.maxEpisodes,
+          includeDescriptions: input.includeDescriptions,
+          asOfDate: input.asOfDate,
+        },
+      );
+      return await executeRenderAndSave(buildEpisodeIntegrityViewModel(result));
     },
   });
 
@@ -1196,6 +1245,7 @@ export function createRenderPresentationTools(
     renderPersonProfile,
     renderRevisionTimeline,
     renderEpisodeGuide,
+    renderEpisodeIntegrity,
     renderSubjectOverview,
     renderSubjectComparison,
     renderSubjectOverlap,

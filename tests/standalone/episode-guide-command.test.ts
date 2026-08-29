@@ -96,4 +96,80 @@ describe('Standalone episode guide commands', () => {
     expect(output).toContain('第一集');
     expect(output).toContain('缺失字段');
   });
+
+  it('routes and presents episode integrity with an explicit UTC as-of date', async () => {
+    const executeTool = vi.fn().mockResolvedValue({
+      state: 'partial',
+      subjectId: 123,
+      subject: { nameCn: '中文条目' },
+      asOf: { date: '2026-08-30', source: 'explicit' },
+      integrity: {
+        counts: { main: 2, special: 1, airedMain: 1, futureMain: 1 },
+        dateCoverage: {
+          asOfDate: '2026-08-30',
+          validRows: 2,
+          airedRows: 1,
+          futureRows: 1,
+          missingRows: 1,
+          invalidRows: 1,
+        },
+        anomalies: {
+          duplicateEpisodeIds: 0,
+          duplicateLogicalKeys: 1,
+          airdateConflictGroups: 1,
+          nonMonotonicMainAirdates: 0,
+        },
+        checks: {
+          reportedVsDatabase: { state: 'consistent', left: 2, right: 2 },
+          reportedVsObservedMain: { state: 'partial', left: 2, right: 2 },
+          reportedVsAiredMain: { state: 'different', left: 2, right: 1 },
+        },
+      },
+      coverage: {
+        episodeGuide: {
+          observedRows: 3,
+          uniqueRows: 3,
+          returnedRows: 3,
+          truncated: false,
+        },
+      },
+      items: [
+        { id: 1, ep: 1, nameCn: '第一集', airdate: '2026-08-01' },
+        { id: 2, ep: 2, nameCn: '第二集', airdate: '2026-09-01' },
+      ],
+      warnings: [{ code: 'EPISODE_INTEGRITY_PARTIAL', message: '日期质量不完整。' }],
+    });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      ['episode-integrity', '123', '--max-episodes', '8', '--as-of-date', '2026-08-30'],
+      context(host),
+    );
+    await registry.execute(
+      ['render', 'episode-integrity', '123', '--as-of-date', '2026-08-30'],
+      context(host),
+    );
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_episode_integrity',
+      { subjectId: 123, maxEpisodes: 8, asOfDate: '2026-08-30' },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_episode_integrity',
+      { subjectId: 123, asOfDate: '2026-08-30' },
+      expect.anything(),
+    );
+
+    const output = formatHuman(
+      executeTool.mock.results[0]?.value ? await executeTool.mock.results[0].value : {},
+    );
+    expect(output).toContain('章节完整性');
+    expect(output).toContain('已播正篇');
+    expect(output).toContain('日期冲突组');
+    expect(output).toContain('UTC as-of');
+  });
 });

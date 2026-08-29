@@ -81,6 +81,7 @@ export interface EpisodeGuideResult {
     missingFields: Record<string, number>;
     truncatedFields: Record<string, number>;
     invalidFields: Record<string, number>;
+    duplicateConflicts?: Record<string, number>;
     subject: {
       state: 'complete' | 'unavailable' | 'not_found';
       attempted: boolean;
@@ -634,8 +635,17 @@ export class EpisodeGuideService {
     const observedRows = rawRows.length;
     const uniqueSources = new Map<number, GuideEpisodeSource>();
     let duplicateRows = 0;
+    const duplicateConflicts: Record<string, number> = {};
     for (const raw of rawRows) {
       if (uniqueSources.has(raw.id)) {
+        const first = uniqueSources.get(raw.id)!;
+        if (
+          first.airdate !== undefined &&
+          raw.airdate !== undefined &&
+          first.airdate !== raw.airdate
+        ) {
+          increment(duplicateConflicts, 'episode.airdate');
+        }
         duplicateRows += 1;
         continue;
       }
@@ -884,6 +894,7 @@ export class EpisodeGuideService {
         missingFields,
         truncatedFields,
         invalidFields,
+        ...(Object.keys(duplicateConflicts).length > 0 ? { duplicateConflicts } : {}),
         subject: {
           state: subjectAttempt.state,
           attempted: true,

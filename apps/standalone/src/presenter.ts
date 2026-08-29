@@ -196,6 +196,134 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
   return lines.join('\n');
 }
 
+function presentEpisodeIntegrity(value: Record<string, unknown>): string | undefined {
+  if (typeof value.subjectId !== 'number' || !Array.isArray(value.items)) return undefined;
+  const integrity = value.integrity;
+  const coverage = value.coverage;
+  if (!integrity || typeof integrity !== 'object' || !coverage || typeof coverage !== 'object') {
+    return undefined;
+  }
+  const details = integrity as Record<string, unknown>;
+  const counts =
+    details.counts && typeof details.counts === 'object'
+      ? (details.counts as Record<string, unknown>)
+      : {};
+  const dates =
+    details.dateCoverage && typeof details.dateCoverage === 'object'
+      ? (details.dateCoverage as Record<string, unknown>)
+      : {};
+  const anomalies =
+    details.anomalies && typeof details.anomalies === 'object'
+      ? (details.anomalies as Record<string, unknown>)
+      : {};
+  const checks =
+    details.checks && typeof details.checks === 'object'
+      ? (details.checks as Record<string, unknown>)
+      : {};
+  const asOf =
+    value.asOf && typeof value.asOf === 'object'
+      ? (value.asOf as Record<string, unknown>)
+      : undefined;
+  const coverageDetails = coverage as Record<string, unknown>;
+  const guideCoverage =
+    coverageDetails.episodeGuide && typeof coverageDetails.episodeGuide === 'object'
+      ? (coverageDetails.episodeGuide as Record<string, unknown>)
+      : {};
+  const subject = value.subject && typeof value.subject === 'object' ? value.subject : undefined;
+  const subjectDetails = subject as Record<string, unknown> | undefined;
+  const lines = [
+    '章节完整性 · 状态: ' +
+      humanField(value.state || 'unknown', 64) +
+      ' · ' +
+      humanField(subjectDetails?.nameCn || subjectDetails?.name || '条目 ' + value.subjectId),
+    'UTC as-of: ' +
+      humanField(asOf?.date || dates.asOfDate || '未知', 32) +
+      ' · ' +
+      (asOf?.source === 'explicit' ? '明确日期' : '读取日期'),
+    '计数: 正篇 ' +
+      humanField(counts.main ?? '?', 32) +
+      ' · 特别/其他 ' +
+      humanField(counts.special ?? '?', 32) +
+      ' · 已播正篇 ' +
+      humanField(counts.airedMain ?? '?', 32) +
+      ' · 未来正篇 ' +
+      humanField(counts.futureMain ?? '?', 32),
+    '总数: eps vs total_episodes ' +
+      formatIntegrityCheck(checks.reportedVsDatabase) +
+      ' · eps vs 观察正篇 ' +
+      formatIntegrityCheck(checks.reportedVsObservedMain),
+    '总数/已播: eps vs 已播正篇 ' + formatIntegrityCheck(checks.reportedVsAiredMain),
+    '日期: 合法 ' +
+      humanField(dates.validRows ?? '?', 32) +
+      ' · 已播 ' +
+      humanField(dates.airedRows ?? '?', 32) +
+      ' · 未来 ' +
+      humanField(dates.futureRows ?? '?', 32) +
+      ' · 缺失 ' +
+      humanField(dates.missingRows ?? '?', 32) +
+      ' · 无效 ' +
+      humanField(dates.invalidRows ?? '?', 32),
+    '异常: 重复 ID ' +
+      humanField(anomalies.duplicateEpisodeIds ?? 0, 32) +
+      ' · 逻辑重复 ' +
+      humanField(anomalies.duplicateLogicalKeys ?? 0, 32) +
+      ' · 重复日期冲突 ' +
+      humanField(anomalies.duplicateAirdateConflicts ?? 0, 32) +
+      ' · 日期冲突组 ' +
+      humanField(anomalies.airdateConflictGroups ?? 0, 32) +
+      ' · 日期逆序 ' +
+      humanField(anomalies.nonMonotonicMainAirdates ?? 0, 32),
+    '覆盖: 观察 ' +
+      humanField(guideCoverage.observedRows ?? '?', 32) +
+      ' · 去重 ' +
+      humanField(guideCoverage.uniqueRows ?? '?', 32) +
+      ' · 返回 ' +
+      humanField(guideCoverage.returnedRows ?? '?', 32) +
+      ' · ' +
+      (guideCoverage.truncated ? '有界样本' : '未显示截断'),
+    '说明：合法首播日期不晚于 UTC as-of 才计入已播；未知日期不是未播。观看进度、观看顺序和播出历史不可计算。',
+  ];
+  const items = value.items as unknown[];
+  for (const [index, candidate] of items.slice(0, 12).entries()) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const item = candidate as Record<string, unknown>;
+    const number =
+      item.ep !== undefined
+        ? 'EP ' + item.ep
+        : item.sort !== undefined
+          ? '#' + item.sort
+          : 'ID ' + item.id;
+    lines.push(
+      index + 1 + '. ' + number + ' · ' + humanField(item.nameCn || item.name || '章节 ' + item.id),
+    );
+  }
+  if (items.length > 12) lines.push('另有 ' + (items.length - 12) + ' 条章节未展开。');
+  if (coverageDetails.renderedOmitted) {
+    lines.push(
+      '渲染器省略: ' + humanField(coverageDetails.renderedOmitted, 32) + ' 条已返回章节。',
+    );
+  }
+  const warnings = value.warnings;
+  if (Array.isArray(warnings) && warnings.length > 0) {
+    lines.push('告警：');
+    for (const warning of warnings.slice(0, 3)) {
+      if (!warning || typeof warning !== 'object') continue;
+      const warningDetails = warning as Record<string, unknown>;
+      lines.push('- ' + humanField(warningDetails.message || warningDetails.code || 'WARNING'));
+    }
+    if (warnings.length > 3) lines.push('- 另有 ' + (warnings.length - 3) + ' 条告警未展开。');
+  }
+  return boundHumanLines(lines);
+}
+
+function formatIntegrityCheck(value: unknown): string {
+  if (!value || typeof value !== 'object') return '不可计算';
+  const check = value as Record<string, unknown>;
+  const state = humanField(check.state || 'not_computable', 32);
+  if (check.left === undefined || check.right === undefined) return state;
+  return state + ' (' + humanField(check.left, 32) + ' / ' + humanField(check.right, 32) + ')';
+}
+
 function presentEpisodeGuide(value: Record<string, unknown>): string | undefined {
   if (typeof value.subjectId !== 'number' || !Array.isArray(value.items)) return undefined;
   const summary = value.summary;
@@ -2145,6 +2273,8 @@ export function formatHuman(value: unknown): string {
     if (collectionSchedule) return collectionSchedule;
     const collectionBacklog = presentCollectionBacklog(safe as Record<string, unknown>);
     if (collectionBacklog) return collectionBacklog;
+    const episodeIntegrity = presentEpisodeIntegrity(safe as Record<string, unknown>);
+    if (episodeIntegrity) return episodeIntegrity;
     const episodeGuide = presentEpisodeGuide(safe as Record<string, unknown>);
     if (episodeGuide) return episodeGuide;
     const discovery = presentDiscovery(safe as Record<string, unknown>);

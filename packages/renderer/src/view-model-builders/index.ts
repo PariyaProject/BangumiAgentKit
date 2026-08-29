@@ -15,6 +15,7 @@ import type {
   CollectionSeriesResult,
   RevisionIntelligenceResult,
   EpisodeGuideResult,
+  EpisodeIntegrityResult,
   PersonActivityProfile,
   PersonActivityResult,
   PersonCollaborationResult,
@@ -39,6 +40,7 @@ import type {
   CalendarViewModel,
   RevisionTimelineViewModel,
   EpisodeGuideViewModel,
+  EpisodeIntegrityViewModel,
   SearchItemViewModel,
   DiscoveryResultsViewModel,
   DiscoveryResultsItemViewModel,
@@ -1505,6 +1507,60 @@ export function buildEpisodeGuideViewModel(
     filters: result.filters,
     items,
     summary: result.summary,
+    coverage: {
+      ...result.coverage,
+      state,
+      renderedRows: items.length,
+      renderedOmitted,
+    },
+    capabilityStates: result.capabilityStates,
+    source: result.source,
+    evidence: result.evidence,
+    limitations: result.limitations,
+    warnings,
+    error: result.error,
+  };
+}
+
+export function buildEpisodeIntegrityViewModel(
+  result: EpisodeIntegrityResult,
+  options: { maxItems?: number } = {},
+): EpisodeIntegrityViewModel {
+  const requestedMax = options.maxItems ?? 18;
+  const maxItems = Number.isFinite(requestedMax)
+    ? Math.min(24, Math.max(1, Math.trunc(requestedMax)))
+    : 18;
+  const items = result.items.slice(0, maxItems);
+  const renderedOmitted = Math.max(0, result.items.length - items.length);
+  const warnings = [...result.warnings];
+  if (renderedOmitted > 0) {
+    warnings.push({
+      code: 'RENDERER_OUTPUT_TRUNCATED',
+      state: 'partial',
+      message:
+        '渲染器对章节完整性列表应用安全显示上限；省略 ' +
+        renderedOmitted +
+        ' 条已返回章节，完整结果请使用 JSON。',
+    });
+  }
+  const state =
+    renderedOmitted > 0 &&
+    result.state !== 'not_found' &&
+    result.state !== 'unavailable' &&
+    result.state !== 'conflict'
+      ? 'partial'
+      : result.state;
+  return {
+    template: 'episode-integrity',
+    version: 1,
+    subjectId: result.subjectId,
+    state,
+    subject: result.subject,
+    filters: result.filters,
+    items,
+    summary: result.summary,
+    asOf: result.asOf,
+    integrity: result.integrity,
     coverage: {
       ...result.coverage,
       state,

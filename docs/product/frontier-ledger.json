@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-08-29",
+  "updated_at": "2026-08-30",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -368,22 +368,42 @@
       "kind": "scenario",
       "user_question": "某条目每一集的中文标题、首播日期和时长是什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_episode_integrity with an explicit UTC as-of date and read per-episode evidence before claiming completeness.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded official-v0 episode integrity result that preserves per-episode Chinese/original titles, air dates, durations, coverage, and unknown fields without inventing missing values.",
+      "evidence": {
+        "capabilities": ["bangumi.get_episode_integrity", "bangumi.render_episode_integrity"],
+        "tests": [
+          "tests/unit/episode-integrity.test.ts",
+          "tests/semantic/episode-integrity.test.ts",
+          "tests/render/episode-integrity.test.ts",
+          "tests/standalone/episode-guide-command.test.ts"
+        ]
+      }
     },
     {
       "id": "G28",
       "kind": "scenario",
       "user_question": "这部动画有没有 OVA、SP、OP/ED 或特别篇？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_episode_integrity to read the official raw episode type taxonomy and its bounded category coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered official-v0 category counts and per-episode raw type preservation for main, SP, OP, ED, PV, MAD, other, and unknown rows.",
+      "evidence": {
+        "capabilities": ["bangumi.get_episode_integrity", "bangumi.render_episode_integrity"],
+        "tests": [
+          "tests/unit/episode-integrity.test.ts",
+          "tests/semantic/episode-integrity.test.ts",
+          "tests/render/episode-integrity.test.ts",
+          "tests/standalone/episode-guide-command.test.ts"
+        ]
+      }
     },
     {
       "id": "G29",
@@ -1191,33 +1211,63 @@
       "kind": "scenario",
       "user_question": "某作品的总集数和已播集数是否一致？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use the explicit UTC as-of date and read total-versus-aired checks together with bounded-page coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered separate official eps/total_episodes, observed and aired-main counts with an explicit UTC date formula and partial/not-computable states for bounded coverage.",
+      "evidence": {
+        "capabilities": ["bangumi.get_episode_integrity", "bangumi.render_episode_integrity"],
+        "tests": [
+          "tests/unit/episode-integrity.test.ts",
+          "tests/semantic/episode-integrity.test.ts",
+          "tests/render/episode-integrity.test.ts",
+          "tests/standalone/episode-guide-command.test.ts"
+        ]
+      }
     },
     {
       "id": "C09",
       "kind": "scenario",
       "user_question": "哪些集是特别篇而不是正篇？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_episode_integrity and inspect category counts plus raw type evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered bounded main-versus-special classification from official episode type values while preserving unknown categories and source coverage.",
+      "evidence": {
+        "capabilities": ["bangumi.get_episode_integrity", "bangumi.render_episode_integrity"],
+        "tests": [
+          "tests/unit/episode-integrity.test.ts",
+          "tests/semantic/episode-integrity.test.ts",
+          "tests/render/episode-integrity.test.ts",
+          "tests/standalone/episode-guide-command.test.ts"
+        ]
+      }
     },
     {
       "id": "C10",
       "kind": "scenario",
       "user_question": "某作品每集的首播日期是否有空缺或冲突？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_episode_integrity and inspect missing/invalid/duplicate/logical date anomaly counts.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered explicit missing, invalid, duplicate-ID, logical-key date-conflict, and non-monotonic-date anomaly counts without converting unknown dates into aired or unaired claims.",
+      "evidence": {
+        "capabilities": ["bangumi.get_episode_integrity", "bangumi.render_episode_integrity"],
+        "tests": [
+          "tests/unit/episode-integrity.test.ts",
+          "tests/semantic/episode-integrity.test.ts",
+          "tests/render/episode-integrity.test.ts",
+          "tests/standalone/episode-guide-command.test.ts"
+        ]
+      }
     },
     {
       "id": "C11",
