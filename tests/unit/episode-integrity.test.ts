@@ -173,4 +173,45 @@ describe('EpisodeIntegrityService', () => {
       ]),
     );
   });
+
+  it('keeps unknown raw types and empty source pages as degraded states', async () => {
+    const unknown = await new EpisodeIntegrityService(
+      buildClient({
+        total: 1,
+        limit: 50,
+        offset: 0,
+        data: [
+          {
+            id: 9,
+            subject_id: 123,
+            name: 'Unclassified',
+            name_cn: '未分类章节',
+            sort: 1,
+            ep: 1,
+            airdate: '2026-04-01',
+            comment: 0,
+            duration: '00:24:00',
+            desc: 'Description',
+          },
+        ],
+      }),
+    ).getEpisodeIntegrity(123, { asOfDate: '2026-04-05' });
+
+    expect(unknown.state).toBe('partial');
+    expect(unknown.integrity.counts.byCategory).toEqual({ unknown: 1 });
+    expect(unknown.items[0]).toMatchObject({ category: 'unknown' });
+    expect(unknown.items[0]).not.toHaveProperty('rawType');
+
+    const empty = await new EpisodeIntegrityService(
+      buildClient({ total: 0, limit: 50, offset: 0, data: [] }),
+    ).getEpisodeIntegrity(123, { asOfDate: '2026-04-05' });
+
+    expect(empty.state).toBe('not_computable');
+    expect(empty.capabilityStates.airingHistory).toBe('not_computable');
+    expect(empty.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'EPISODE_INTEGRITY_NOT_COMPUTABLE' }),
+      ]),
+    );
+  });
 });
