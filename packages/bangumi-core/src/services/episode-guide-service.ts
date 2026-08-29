@@ -35,6 +35,21 @@ export interface EpisodeGuideItem {
   description?: string;
 }
 
+export type EpisodeGuideAirdateQuality = 'valid' | 'missing' | 'invalid';
+
+export interface EpisodeGuideAirdateRow {
+  id: number;
+  quality: EpisodeGuideAirdateQuality;
+  airdate?: string;
+  rawAirdate?: string;
+  category: EpisodeGuideCategory;
+  rawType?: number;
+  ep?: number;
+  sort?: number;
+  unique: boolean;
+  returned: boolean;
+}
+
 export interface EpisodeGuideResult {
   subjectId: number;
   state: EpisodeGuideState;
@@ -81,6 +96,12 @@ export interface EpisodeGuideResult {
     missingFields: Record<string, number>;
     truncatedFields: Record<string, number>;
     invalidFields: Record<string, number>;
+    duplicateConflicts?: Record<string, number>;
+    /** Bounded raw-row airdate quality evidence, when the source page parsed successfully. */
+    airdateRows?: EpisodeGuideAirdateRow[];
+    /** Rows whose type is missing or outside the known official taxonomy. */
+    unknownTypeRows?: number;
+    unknownTypeValues?: Record<string, number>;
     subject: {
       state: 'complete' | 'unavailable' | 'not_found';
       attempted: boolean;
@@ -153,6 +174,9 @@ interface EpisodePage {
   invalidFields: Record<string, number>;
   identityConflicts: Record<string, number>;
   filterConflicts: Record<string, number>;
+  airdateRows: Array<Omit<EpisodeGuideAirdateRow, 'unique' | 'returned'>>;
+  unknownTypeRows: number;
+  unknownTypeValues: Record<string, number>;
 }
 
 interface EpisodeSourceAttempt {
@@ -293,6 +317,9 @@ function parseEpisodePage(
   const invalidFields: Record<string, number> = {};
   const identityConflicts: Record<string, number> = {};
   const filterConflicts: Record<string, number> = {};
+  const airdateRows: EpisodePage['airdateRows'] = [];
+  const unknownTypeValues: Record<string, number> = {};
+  let unknownTypeRows = 0;
   const requestedType = category && category !== 'all' ? CATEGORY_TO_TYPE[category] : undefined;
   const data = value.data.map((rawItem, index) => {
     if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
@@ -308,8 +335,12 @@ function parseEpisodePage(
       throw parserError(`data[${index}].subject_id`, '正整数');
     }
     if (item.type !== undefined && item.type !== null) {
-      if (!Number.isInteger(item.type) || (item.type as number) < 0 || (item.type as number) > 6) {
-        throw parserError(`data[${index}].type`, '0 到 6 的整数');
+      if (!Number.isInteger(item.type) || (item.type as number) < 0) {
+        throw parserError(`data[${index}].type`, '非负整数');
+      }
+      if ((item.type as number) > 6) {
+        unknownTypeRows += 1;
+        increment(unknownTypeValues, String(item.type));
       }
     }
     for (const field of ['name', 'name_cn', 'airdate', 'duration', 'desc']) {
@@ -358,7 +389,13 @@ function parseEpisodePage(
       normalizedItem.categoryFilterConflict = true;
       increment(filterConflicts, 'episode.category');
     }
-    if (typeof item.airdate === 'string' && item.airdate !== '' && !validIsoDate(item.airdate)) {
+    const airdateQuality: EpisodeGuideAirdateQuality =
+      item.airdate === undefined || item.airdate === null || item.airdate === ''
+        ? 'missing'
+        : validIsoDate(item.airdate as string)
+          ? 'valid'
+          : 'invalid';
+    if (airdateQuality === 'invalid') {
       increment(invalidFields, 'episode.airdate');
       delete normalizedItem.airdate;
     }
@@ -369,6 +406,25 @@ function parseEpisodePage(
       increment(invalidFields, 'episode.discussionCount');
       delete normalizedItem.comment;
     }
+
+    if (normalizedItem.type === undefined || normalizedItem.type > 6) {
+      unknownTypeRows += normalizedItem.type === undefined ? 1 : 0;
+      if (normalizedItem.type === undefined) increment(unknownTypeValues, 'missing');
+    }
+    airdateRows.push({
+      id: normalizedItem.id,
+      quality: airdateQuality,
+      ...(airdateQuality === 'valid' && normalizedItem.airdate
+        ? { airdate: normalizedItem.airdate }
+        : {}),
+      ...(airdateQuality === 'invalid' && typeof item.airdate === 'string'
+        ? { rawAirdate: item.airdate }
+        : {}),
+      category: categoryForType(normalizedItem.type),
+      ...(normalizedItem.type === undefined ? {} : { rawType: normalizedItem.type }),
+      ...(normalizedItem.ep === undefined ? {} : { ep: normalizedItem.ep }),
+      ...(normalizedItem.sort === undefined ? {} : { sort: normalizedItem.sort }),
+    });
 
     return normalizedItem;
   });
@@ -383,6 +439,9 @@ function parseEpisodePage(
     invalidFields,
     identityConflicts,
     filterConflicts,
+    airdateRows,
+    unknownTypeRows,
+    unknownTypeValues,
   };
 }
 
@@ -634,8 +693,17 @@ export class EpisodeGuideService {
     const observedRows = rawRows.length;
     const uniqueSources = new Map<number, GuideEpisodeSource>();
     let duplicateRows = 0;
+    const duplicateConflicts: Record<string, number> = {};
     for (const raw of rawRows) {
       if (uniqueSources.has(raw.id)) {
+        const first = uniqueSources.get(raw.id)!;
+        if (
+          first.airdate !== undefined &&
+          raw.airdate !== undefined &&
+          first.airdate !== raw.airdate
+        ) {
+          increment(duplicateConflicts, 'episode.airdate');
+        }
         duplicateRows += 1;
         continue;
       }
@@ -664,6 +732,17 @@ export class EpisodeGuideService {
       ),
     );
     const items = allItems.slice(0, maxEpisodes);
+    const returnedIds = new Set(items.map((item) => item.id));
+    const seenAirdateIds = new Set<number>();
+    const airdateRows = (sourcePage?.airdateRows || []).map((row) => {
+      const unique = !seenAirdateIds.has(row.id);
+      seenAirdateIds.add(row.id);
+      return {
+        ...row,
+        unique,
+        returned: unique && returnedIds.has(row.id),
+      };
+    });
     if (!includeDescriptions) {
       delete missingFields['episode.description'];
       delete truncatedFields['episode.description'];
@@ -689,6 +768,7 @@ export class EpisodeGuideService {
       Object.keys(missingFields).length > 0 ||
       Object.keys(truncatedFields).length > 0 ||
       Object.keys(invalidFields).length > 0 ||
+      (sourcePage?.unknownTypeRows || 0) > 0 ||
       subjectAttempt.state !== 'complete';
 
     const byCategory: Partial<Record<EpisodeGuideCategory, number>> = {};
@@ -823,6 +903,19 @@ export class EpisodeGuideService {
         ),
       );
     }
+    if ((sourcePage?.unknownTypeRows || 0) > 0) {
+      const unknownTypes = Object.keys(sourcePage?.unknownTypeValues || {})
+        .filter((value) => value !== 'missing')
+        .slice(0, 6)
+        .join(', ');
+      warnings.push(
+        warning(
+          'UNKNOWN_EPISODE_TYPES',
+          'partial',
+          `发现 ${sourcePage?.unknownTypeRows} 条未知章节类型${unknownTypes ? `（raw type: ${unknownTypes}）` : ''}；已保留原始类型并按 unknown 分类，未计入已知特别篇。`,
+        ),
+      );
+    }
     if (inconsistentTotal) {
       warnings.push(
         warning(
@@ -884,6 +977,10 @@ export class EpisodeGuideService {
         missingFields,
         truncatedFields,
         invalidFields,
+        ...(Object.keys(duplicateConflicts).length > 0 ? { duplicateConflicts } : {}),
+        airdateRows,
+        unknownTypeRows: sourcePage?.unknownTypeRows || 0,
+        unknownTypeValues: sourcePage?.unknownTypeValues || {},
         subject: {
           state: subjectAttempt.state,
           attempted: true,

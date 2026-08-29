@@ -96,4 +96,198 @@ describe('Standalone episode guide commands', () => {
     expect(output).toContain('第一集');
     expect(output).toContain('缺失字段');
   });
+
+  it('routes and presents episode integrity with an explicit UTC as-of date', async () => {
+    const executeTool = vi.fn().mockResolvedValue({
+      state: 'partial',
+      subjectId: 123,
+      subject: { nameCn: '中文条目' },
+      asOf: {
+        date: '2026-08-30',
+        source: 'explicit',
+        evaluatedAt: '2026-08-30T00:00:00.000Z',
+      },
+      integrity: {
+        formulaVersion: 'episode-integrity-v1',
+        counts: { main: 2, special: 1, unknown: 0, airedMain: 1, futureMain: 1 },
+        dateCoverage: {
+          asOfDate: '2026-08-30',
+          observedRows: 4,
+          uniqueRows: 4,
+          returnedRows: 2,
+          validRows: 2,
+          airedRows: 1,
+          futureRows: 1,
+          missingRows: 1,
+          invalidRows: 1,
+          state: 'partial',
+          basis: 'explicit',
+          populations: {
+            observed: {
+              rows: 4,
+              validRows: 2,
+              airedRows: 1,
+              futureRows: 1,
+              missingRows: 1,
+              invalidRows: 1,
+              unknownRows: 2,
+            },
+            unique: {
+              rows: 4,
+              validRows: 2,
+              airedRows: 1,
+              futureRows: 1,
+              missingRows: 1,
+              invalidRows: 1,
+              unknownRows: 2,
+            },
+            returned: {
+              rows: 2,
+              validRows: 2,
+              airedRows: 1,
+              futureRows: 1,
+              missingRows: 0,
+              invalidRows: 0,
+              unknownRows: 0,
+            },
+            omitted: {
+              rows: 2,
+              validRows: 0,
+              airedRows: 0,
+              futureRows: 0,
+              missingRows: 1,
+              invalidRows: 1,
+              unknownRows: 2,
+            },
+          },
+          rows: [
+            {
+              id: 1,
+              quality: 'valid',
+              airdate: '2026-08-01',
+              category: 'main',
+              unique: true,
+              returned: true,
+            },
+            {
+              id: 2,
+              quality: 'valid',
+              airdate: '2026-09-01',
+              category: 'main',
+              unique: true,
+              returned: true,
+            },
+            { id: 3, quality: 'missing', category: 'main', unique: true, returned: false },
+            {
+              id: 4,
+              quality: 'invalid',
+              rawAirdate: '2026-02-30',
+              category: 'main',
+              unique: true,
+              returned: false,
+            },
+          ],
+        },
+        anomalies: {
+          duplicateEpisodeIds: 0,
+          duplicateAirdateConflicts: 0,
+          duplicateLogicalKeys: 1,
+          airdateConflictGroups: 1,
+          nonMonotonicMainAirdates: 0,
+          missingAirdates: 1,
+          invalidAirdates: 1,
+          duplicateEpisodeIdsList: [],
+          duplicateAirdateConflictIds: [],
+          logicalAirdateConflicts: [],
+        },
+        checks: {
+          reportedVsDatabase: { state: 'consistent', left: 2, right: 2 },
+          reportedVsObservedMain: { state: 'partial', left: 2, right: 2 },
+          reportedVsAiredMain: { state: 'different', left: 2, right: 1 },
+        },
+      },
+      coverage: {
+        episodeGuide: {
+          observedRows: 4,
+          uniqueRows: 4,
+          returnedRows: 2,
+          truncated: true,
+        },
+        integrity: { denominator: 'bounded', comparisons: 'partial' },
+      },
+      items: [
+        { id: 1, ep: 1, nameCn: '第一集', airdate: '2026-08-01' },
+        { id: 2, ep: 2, nameCn: '第二集', airdate: '2026-09-01' },
+      ],
+      warnings: [{ code: 'EPISODE_INTEGRITY_PARTIAL', message: '日期质量不完整。' }],
+      source: {
+        class: 'official_v0',
+        operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/episodes'],
+        attemptedAt: '2026-08-30T00:00:00.000Z',
+        attempts: [
+          {
+            operation: 'GET /v0/subjects/{subject_id}',
+            state: 'complete',
+            attemptedAt: '2026-08-30T00:00:00.000Z',
+            retrievedAt: '2026-08-30T00:00:00.100Z',
+          },
+          {
+            operation: 'GET /v0/episodes',
+            state: 'complete',
+            attemptedAt: '2026-08-30T00:00:00.000Z',
+            retrievedAt: '2026-08-30T00:00:00.200Z',
+          },
+        ],
+      },
+      evidence: [
+        {
+          source: 'derived',
+          operations: ['episode-integrity-composition'],
+          formulaVersion: 'episode-integrity-v1',
+        },
+      ],
+      limitations: ['仅覆盖本次官方有界章节页。', '不推断观看进度。'],
+    });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+
+    await registry.execute(
+      ['episode-integrity', '123', '--max-episodes', '8', '--as-of-date', '2026-08-30'],
+      context(host),
+    );
+    await registry.execute(
+      ['render', 'episode-integrity', '123', '--as-of-date', '2026-08-30'],
+      context(host),
+    );
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.get_episode_integrity',
+      { subjectId: 123, maxEpisodes: 8, asOfDate: '2026-08-30' },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_episode_integrity',
+      { subjectId: 123, asOfDate: '2026-08-30' },
+      expect.anything(),
+    );
+
+    const output = formatHuman(
+      executeTool.mock.results[0]?.value ? await executeTool.mock.results[0].value : {},
+    );
+    expect(output).toContain('章节完整性');
+    expect(output).toContain('已播正篇');
+    expect(output).toContain('日期冲突组');
+    expect(output).toContain('日期摘要（返回人口');
+    expect(output).toContain('缺失 1');
+    expect(output).toContain('无效 1');
+    expect(output).toContain('日期质量明细');
+    expect(output).toContain('2026-02-30');
+    expect(output).toContain('UTC as-of');
+    expect(output).toContain('方法: episode-integrity-v1');
+    expect(output).toContain('GET /v0/episodes');
+    expect(output).toContain('证据:');
+    expect(output).toContain('限制：');
+  });
 });

@@ -61,6 +61,8 @@ Bangumi:
   episodes <subjectId>
   episode-guide <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
                 [--max-episodes 1..200] [--no-descriptions]
+  episode-integrity <subjectId> [--category all|main|sp|op|ed|pv|mad|other]
+                   [--max-episodes 1..200] [--as-of-date YYYY-MM-DD] [--no-descriptions]
   collection status <subjectId>
   collection intelligence [--max-items 1..200]
   collection dashboard [--max-items 1..100] [--max-subjects 1..30]
@@ -83,7 +85,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|stats-history|overview|compare|overlap|watch-order|cast|person|activity|collaboration|episode-guide|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|stats|stats-history|overview|compare|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -286,6 +288,18 @@ function parseEpisodeGuideOptions(args: string[]): Record<string, unknown> {
     input.maxEpisodes = optionNumber(maxEpisodes, 'max-episodes', true, 1, 200);
   }
   if (args.includes('--no-descriptions')) input.includeDescriptions = false;
+  return input;
+}
+
+function parseEpisodeIntegrityOptions(args: string[]): Record<string, unknown> {
+  const input = parseEpisodeGuideOptions(args);
+  const asOfDate = takeOption(args, '--as-of-date');
+  if (asOfDate !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/u.test(asOfDate)) {
+      throw new StandaloneCliError('USAGE_ERROR: --as-of-date must use YYYY-MM-DD.', 2);
+    }
+    input.asOfDate = asOfDate;
+  }
   return input;
 }
 
@@ -818,6 +832,15 @@ export class StandaloneCommandRegistry {
         ),
       };
     }
+    if (command === 'episode-integrity') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_episode_integrity',
+          parseEpisodeIntegrityOptions(args.slice(1)),
+        ),
+      };
+    }
     if (command === 'collection') return { value: await this.collection(args.slice(1), ctx) };
     if (command === 'auth' || command === 'login' || command === 'accounts') {
       const authArgs = command === 'auth' ? args.slice(1) : [command, ...args.slice(1)];
@@ -1143,6 +1166,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'episode-guide' || kind === 'episodes-guide') {
       name = 'bangumi.render_episode_guide';
       input = parseEpisodeGuideOptions(args.slice(1));
+    } else if (kind === 'episode-integrity' || kind === 'episodes-integrity') {
+      name = 'bangumi.render_episode_integrity';
+      input = parseEpisodeIntegrityOptions(args.slice(1));
     } else if (kind === 'collection') {
       name = 'bangumi.render_collection_progress';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };

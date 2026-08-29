@@ -19,6 +19,7 @@ export * from './services/subject-service.js';
 export * from './services/series-service.js';
 export * from './services/episode-service.js';
 export * from './services/episode-guide-service.js';
+export * from './services/episode-integrity-service.js';
 export * from './services/character-service.js';
 export * from './services/person-service.js';
 export * from './services/person-activity-service.js';

@@ -26,6 +26,7 @@ import {
   CollectionSeriesService,
   COLLECTION_SERIES_LIMITS,
   EpisodeGuideService,
+  EpisodeIntegrityService,
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
@@ -696,6 +697,52 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         category: input.category,
         maxEpisodes: input.maxEpisodes,
         includeDescriptions: input.includeDescriptions,
+      });
+    },
+  });
+
+  const getEpisodeIntegrity = defineTool({
+    name: 'bangumi.get_episode_integrity',
+    description:
+      '获取指定条目的证据型章节完整性分析：组合官方 v0 条目 eps/total_episodes 与有界章节页，分别报告观察/去重/正篇/特别篇/已播/未来计数、类别与首播日期缺失/无效/逻辑冲突；已播只计算不晚于明确 UTC as-of 日期的合法 YYYY-MM-DD，不把未知日期当作未播。默认不返回描述以避免无关字段影响完整性状态。完整保留来源尝试、公式、覆盖、告警、限制和 not_computable 状态；不推断观看进度、观看顺序、播出历史或社区信息。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+        category: z
+          .enum(['all', 'main', 'sp', 'op', 'ed', 'pv', 'mad', 'other'])
+          .optional()
+          .describe('章节类别；默认 all；非 all 时总数比较会标记为不完整'),
+        maxEpisodes: z
+          .number()
+          .int()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe('最多读取章节数，默认 50；超过上限的官方观察保留为 truncated'),
+        includeDescriptions: z
+          .boolean()
+          .optional()
+          .describe('是否返回章节描述，默认 false；开启会增加输出体积'),
+        asOfDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/u)
+          .optional()
+          .describe(
+            '用于已播判断的明确 UTC 日历日期 YYYY-MM-DD；省略则优先使用章节源成功获取时间的 UTC 日期，否则只标记评估日期且日期结论不可计算',
+          ),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeClient =
+        deps?.executionSession?.client || deps?.publicHttpClient || publicHttpClient;
+      return await new EpisodeIntegrityService(activeClient).getEpisodeIntegrity(input.subjectId, {
+        category: input.category,
+        maxEpisodes: input.maxEpisodes,
+        includeDescriptions: input.includeDescriptions,
+        asOfDate: input.asOfDate,
       });
     },
   });
@@ -2017,6 +2064,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getPersonActivity,
     getPersonCollaboration,
     getEpisodeGuide,
+    getEpisodeIntegrity,
     getSubjectStatsIntelligenceTool,
     getSubjectStatsHistoryTool,
     getEpisodeCollections,

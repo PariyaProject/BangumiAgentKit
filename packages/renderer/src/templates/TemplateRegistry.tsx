@@ -9,6 +9,7 @@ import {
   CalendarViewModel,
   RevisionTimelineViewModel,
   EpisodeGuideViewModel,
+  EpisodeIntegrityViewModel,
   PersonProfileViewModel,
   PersonActivityViewModel,
   PersonCollaborationViewModel,
@@ -34,6 +35,7 @@ import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
 import { RevisionTimelineCard } from './RevisionTimelineCard.js';
 import { EpisodeGuideCard } from './EpisodeGuideCard.js';
+import { EpisodeIntegrityCard } from './EpisodeIntegrityCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
 import { PersonActivityCard } from './PersonActivityCard.js';
 import { PersonCollaborationCard } from './PersonCollaborationCard.js';
@@ -140,6 +142,14 @@ registerTemplate<EpisodeGuideViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <EpisodeGuideCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<EpisodeIntegrityViewModel>({
+  id: 'episode-integrity',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <EpisodeIntegrityCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 
