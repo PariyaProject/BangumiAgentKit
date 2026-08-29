@@ -54,6 +54,7 @@ const result: PersonCollaborationResult = {
     subjectIdsDroppedAtRelationLimit: 1,
     subjectIdsDroppedAtSubjectLimit: 0,
     relationRowsDroppedAtSourceLimit: 0,
+    malformedRelationRows: 0,
     fanoutRowsDroppedAtSourceLimit: 0,
     participantRowsDroppedAtSourceLimit: 0,
     participantRequests: 2,
@@ -139,6 +140,8 @@ describe('Person collaboration renderer', () => {
         name: 'A'.repeat(1400),
         nameCn: '长'.repeat(700),
       },
+      targetRole: 'A'.repeat(80),
+      collaboratorRole: 'B'.repeat(80),
       collaborators: [
         {
           ...collaborator,

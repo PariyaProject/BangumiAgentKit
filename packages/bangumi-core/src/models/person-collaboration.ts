@@ -51,6 +51,7 @@ export type PersonCollaborationExclusionReason =
   | 'media_excluded'
   | 'media_unknown'
   | 'subject_cap'
+  | 'malformed_relation'
   | 'collaborator_role_excluded'
   | 'collaborator_role_unavailable'
   | 'malformed_participant'
@@ -72,11 +73,13 @@ export interface PersonCollaborationSourceOperation {
   succeeded: number;
   failed: number;
   rowsOmitted?: number;
+  rowsMalformed?: number;
   outcomes: Array<{
     state: 'succeeded' | 'failed';
     retrievedAt: string;
     errorCode?: string;
     rowsOmitted?: number;
+    rowsMalformed?: number;
   }>;
 }
 
@@ -92,6 +95,7 @@ export interface PersonCollaborationCoverage {
   subjectIdsDroppedAtRelationLimit: number;
   subjectIdsDroppedAtSubjectLimit: number;
   relationRowsDroppedAtSourceLimit: number;
+  malformedRelationRows: number;
   fanoutRowsDroppedAtSourceLimit: number;
   participantRowsDroppedAtSourceLimit: number;
   participantRequests: number;
@@ -143,6 +147,7 @@ export interface PersonCollaborationResult {
     outcome?: 'succeeded' | 'failed';
     errorCode?: string;
     rowsOmitted?: number;
+    rowsMalformed?: number;
     formulaVersion?: string;
     description?: string;
   }>;

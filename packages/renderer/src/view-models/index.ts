@@ -747,6 +747,7 @@ export interface PersonCollaborationViewModel {
     subjectIdsDroppedAtRelationLimit: number;
     subjectIdsDroppedAtSubjectLimit: number;
     relationRowsDroppedAtSourceLimit: number;
+    malformedRelationRows: number;
     fanoutRowsDroppedAtSourceLimit: number;
     participantRowsDroppedAtSourceLimit: number;
     participantRequests: number;

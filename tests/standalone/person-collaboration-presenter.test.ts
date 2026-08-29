@@ -14,8 +14,20 @@ describe('Standalone person collaboration presenter', () => {
           id: 2,
           name: 'Collaborator',
           uniqueSubjects: 1,
-          relationLabels: ['声优'],
-          sharedSubjects: [{ id: 1, name: 'Subject', nameCn: '作品一' }],
+          career: ['seiyu'],
+          relationKinds: ['voice'],
+          roleLabels: ['配音'],
+          sharedSubjects: [
+            {
+              id: 1,
+              name: 'Subject',
+              nameCn: '作品一',
+              type: 'anime',
+              relationKinds: ['voice'],
+              targetRoles: ['主角'],
+              collaboratorRoles: ['配音'],
+            },
+          ],
           sharedSubjectsOmitted: 2,
         },
       ],
@@ -29,11 +41,16 @@ describe('Standalone person collaboration presenter', () => {
         participantRowsObserved: 4,
         participantRowsReturned: 1,
         relationRowsDroppedAtSourceLimit: 1,
+        malformedRelationRows: 0,
         fanoutRowsDroppedAtSourceLimit: 0,
         participantRowsDroppedAtSourceLimit: 0,
         sharedSubjectRowsOmittedAtLimit: 2,
         truncated: true,
       },
+      exclusions: [
+        { reason: 'collaborator_output_cap', count: 1, sampleSubjectIds: [102] },
+        { reason: 'malformed_participant', count: 1, sampleSubjectIds: [1] },
+      ],
       sourceOperations: [
         {
           operation: 'GET /v0/persons/{person_id}/characters',
@@ -69,6 +86,12 @@ describe('Standalone person collaboration presenter', () => {
     expect(output).toContain('UPSTREAM_UNAVAILABLE');
     expect(output).toContain('person-collaboration-v1');
     expect(output).toContain('关系响应省略 1');
+    expect(output).toContain('关系格式异常 0');
+    expect(output).toContain('职位 配音');
+    expect(output).toContain('目标标签 主角');
+    expect(output).toContain('合作方标签 配音');
+    expect(output).toContain('malformed_participant');
+    expect(output).toContain('示例 ID：1');
     expect(output).not.toContain('[object Object]');
   });
 });

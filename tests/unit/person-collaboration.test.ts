@@ -17,7 +17,10 @@ function personPayload() {
   return {
     id: 20,
     name: 'Person',
+    type: 1,
     career: ['seiyu'],
+    short_summary: '',
+    locked: false,
     infobox: [{ key: '简体中文名', value: '人物' }],
   };
 }
@@ -32,25 +35,31 @@ describe('PersonCollaborationService', () => {
           {
             id: 101,
             name: '主角',
+            type: 1,
             subject_id: 1,
             subject_type: 2,
             subject_name: 'One',
+            subject_name_cn: '一',
             staff: '主角',
           },
           {
             id: 102,
             name: '配角',
+            type: 1,
             subject_id: 1,
             subject_type: 2,
             subject_name: 'One',
+            subject_name_cn: '一',
             staff: '配角',
           },
           {
             id: 103,
             name: '主角',
+            type: 1,
             subject_id: 2,
             subject_type: 2,
             subject_name: 'Two',
+            subject_name_cn: '二',
             staff: '主角',
           },
         ]);
@@ -60,17 +69,44 @@ describe('PersonCollaborationService', () => {
           {
             id: 201,
             name: '主角',
+            summary: '',
+            type: 1,
             relation: '主角',
             actors: [
-              { id: 2, name: 'Collaborator', career: ['seiyu'] },
-              { id: 20, name: 'Person', career: ['seiyu'] },
+              {
+                id: 2,
+                name: 'Collaborator',
+                type: 1,
+                career: ['seiyu'],
+                short_summary: '',
+                locked: false,
+              },
+              {
+                id: 20,
+                name: 'Person',
+                type: 1,
+                career: ['seiyu'],
+                short_summary: '',
+                locked: false,
+              },
             ],
           },
           {
             id: 202,
             name: '配角',
+            summary: '',
+            type: 1,
             relation: '配角',
-            actors: [{ id: 2, name: 'Collaborator', career: ['seiyu'] }],
+            actors: [
+              {
+                id: 2,
+                name: 'Collaborator',
+                type: 1,
+                career: ['seiyu'],
+                short_summary: '',
+                locked: false,
+              },
+            ],
           },
         ]);
       }
@@ -79,8 +115,19 @@ describe('PersonCollaborationService', () => {
           {
             id: 203,
             name: '另一角色',
+            summary: '',
+            type: 1,
             relation: '配角',
-            actors: [{ id: 2, name: 'Collaborator', career: ['seiyu'] }],
+            actors: [
+              {
+                id: 2,
+                name: 'Collaborator',
+                type: 1,
+                career: ['seiyu'],
+                short_summary: '',
+                locked: false,
+              },
+            ],
           },
         ]);
       }
@@ -135,15 +182,15 @@ describe('PersonCollaborationService', () => {
       if (url.endsWith('/v0/persons/20')) return json(personPayload());
       if (url.endsWith('/v0/persons/20/subjects')) {
         return json([
-          { id: 1, type: 2, name: 'One', name_cn: '一', staff: '导演' },
-          { id: 2, type: 2, name: 'Two', name_cn: '二', staff: '导演' },
-          { id: 3, type: 2, name: 'Three', name_cn: '三', staff: '编剧' },
+          { id: 1, type: 2, name: 'One', name_cn: '一', eps: '', staff: '导演' },
+          { id: 2, type: 2, name: 'Two', name_cn: '二', eps: '', staff: '导演' },
+          { id: 3, type: 2, name: 'Three', name_cn: '三', eps: '', staff: '编剧' },
         ]);
       }
       if (url.endsWith('/v0/subjects/1/persons')) {
         return json([
-          { id: 2, name: 'Writer', career: ['writer'], relation: '编剧', eps: '' },
-          { id: 3, name: 'Producer', career: ['producer'], relation: '制片', eps: '' },
+          { id: 2, name: 'Writer', type: 1, career: ['writer'], relation: '编剧', eps: '' },
+          { id: 3, name: 'Producer', type: 1, career: ['producer'], relation: '制片', eps: '' },
         ]);
       }
       if (url.endsWith('/v0/subjects/2/persons')) return json({ error: 'temporary' }, 503);
@@ -299,7 +346,7 @@ describe('PersonCollaborationService', () => {
     });
   });
 
-  it('marks missing target identity fields as partial instead of silently treating them as valid', async () => {
+  it('rejects target rows with missing required identity fields as schema drift', async () => {
     const fetchFn = async (input: string | URL | Request): Promise<Response> => {
       const url = String(input);
       if (url.endsWith('/v0/persons/20')) return json(personPayload());
@@ -320,14 +367,90 @@ describe('PersonCollaborationService', () => {
     expect(result.state).toBe('partial');
     expect(result.coverage).toMatchObject({
       relationRowsObserved: 2,
-      relationRowsMatchingFilters: 1,
-      missingSubjectIdRows: 1,
-      missingSubjectTypeRows: 1,
+      relationRowsMatchingFilters: 0,
+      malformedRelationRows: 2,
     });
     expect(result.exclusions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ reason: 'malformed_relation', count: 2 })]),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'SCHEMA_DRIFT' })]),
+    );
+  });
+
+  it('excludes malformed relation and participant rows while preserving schema-drift evidence', async () => {
+    const fetchFn = async (input: string | URL | Request): Promise<Response> => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return json([
+          { id: 1, type: 2, name: 'One', name_cn: '一', eps: '', staff: '导演' },
+          { id: 2, type: 99, name: 'Invalid type', name_cn: '坏类型', eps: '', staff: '导演' },
+          { id: 3, type: 2, name: 'Missing eps', name_cn: '缺字段', staff: '导演' },
+        ]);
+      }
+      if (url.endsWith('/v0/subjects/1/persons')) {
+        return json([
+          { id: 2, name: 'Writer', type: 1, career: ['writer'], relation: '编剧', eps: '' },
+          {
+            id: 3,
+            name: 'Unknown career',
+            type: 1,
+            career: ['unknown'],
+            relation: '编剧',
+            eps: '',
+          },
+          { id: 4, name: 'Missing eps', type: 1, career: ['writer'], relation: '编剧' },
+        ]);
+      }
+      return json({ error: 'not found' }, 404);
+    };
+
+    const result = await new PersonCollaborationService(
+      new HttpClient({ fetchFn }),
+    ).getPersonCollaboration(20, { kind: 'staff', media: 'all' });
+
+    expect(result.state).toBe('partial');
+    expect(result.collaborators).toEqual([
+      expect.objectContaining({ id: 2, name: 'Writer', uniqueSubjects: 1 }),
+    ]);
+    expect(result.collaborators.some((collaborator) => collaborator.id === 4)).toBe(false);
+    expect(result.coverage).toMatchObject({
+      relationRowsObserved: 3,
+      relationRowsMatchingFilters: 1,
+      malformedRelationRows: 2,
+      participantRowsObserved: 3,
+      participantRowsReturned: 1,
+      malformedParticipantRows: 2,
+    });
+    expect(result.sourceOperations).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ reason: 'missing_subject_id', count: 1 }),
-        expect.objectContaining({ reason: 'missing_subject_type', count: 1 }),
+        expect.objectContaining({
+          operation: 'GET /v0/persons/{person_id}/subjects',
+          rowsMalformed: 2,
+          outcomes: [expect.objectContaining({ errorCode: 'SCHEMA_DRIFT', rowsMalformed: 2 })],
+        }),
+        expect.objectContaining({
+          operation: 'GET /v0/subjects/{subject_id}/persons',
+          rowsMalformed: 2,
+          outcomes: [expect.objectContaining({ errorCode: 'SCHEMA_DRIFT', rowsMalformed: 2 })],
+        }),
+      ]),
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'SCHEMA_DRIFT' }),
+        expect.objectContaining({ code: 'MALFORMED_PARTICIPANT_ROWS' }),
+      ]),
+    );
+    expect(result.exclusions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: 'malformed_relation', count: 2 }),
+        expect.objectContaining({
+          reason: 'malformed_participant',
+          count: 2,
+          sampleSubjectIds: [1],
+        }),
       ]),
     );
   });
@@ -339,6 +462,8 @@ describe('PersonCollaborationService', () => {
         id: index + 1,
         type: 2,
         name: `Subject ${index + 1}`,
+        name_cn: `作品 ${index + 1}`,
+        eps: '',
         staff: '导演',
       }),
     );
@@ -374,13 +499,20 @@ describe('PersonCollaborationService', () => {
   it('preserves source row omissions and partial state at the participant response boundary', async () => {
     const participants = Array.from(
       { length: PERSON_COLLABORATION_MAX_SOURCE_ROWS + 1 },
-      (_, index) => ({ id: index + 1000, name: `Collaborator ${index + 1000}`, relation: '编剧' }),
+      (_, index) => ({
+        id: index + 1000,
+        name: `Collaborator ${index + 1000}`,
+        type: 1,
+        career: ['writer'],
+        relation: '编剧',
+        eps: '',
+      }),
     );
     const fetchFn = async (input: string | URL | Request): Promise<Response> => {
       const url = String(input);
       if (url.endsWith('/v0/persons/20')) return json(personPayload());
       if (url.endsWith('/v0/persons/20/subjects')) {
-        return json([{ id: 1, type: 2, name: 'Subject', staff: '导演' }]);
+        return json([{ id: 1, type: 2, name: 'Subject', name_cn: '作品', eps: '', staff: '导演' }]);
       }
       if (url.endsWith('/v0/subjects/1/persons')) return json(participants);
       return json({ error: 'not found' }, 404);
@@ -419,6 +551,8 @@ describe('PersonCollaborationService', () => {
       id: index + 1,
       type: 2,
       name: `Subject ${index + 1}`,
+      name_cn: `作品 ${index + 1}`,
+      eps: '',
       staff: '导演',
     }));
     const fetchFn = async (input: string | URL | Request): Promise<Response> => {
@@ -426,7 +560,9 @@ describe('PersonCollaborationService', () => {
       if (url.endsWith('/v0/persons/20')) return json(personPayload());
       if (url.endsWith('/v0/persons/20/subjects')) return json(subjects);
       if (/\/v0\/subjects\/\d+\/persons$/.test(url)) {
-        return json([{ id: 2, name: 'Collaborator', relation: '编剧' }]);
+        return json([
+          { id: 2, name: 'Collaborator', type: 1, career: ['writer'], relation: '编剧', eps: '' },
+        ]);
       }
       return json({ error: 'not found' }, 404);
     };
@@ -460,13 +596,22 @@ describe('PersonCollaborationService', () => {
       const url = String(input);
       if (url.endsWith('/v0/persons/20')) return json(personPayload());
       if (url.endsWith('/v0/persons/20/subjects')) {
-        return json([1, 2, 3].map((id) => ({ id, type: 2, name: `Subject ${id}`, staff: '导演' })));
+        return json(
+          [1, 2, 3].map((id) => ({
+            id,
+            type: 2,
+            name: `Subject ${id}`,
+            name_cn: `作品 ${id}`,
+            eps: '',
+            staff: '导演',
+          })),
+        );
       }
       if (/\/v0\/subjects\/\d+\/persons$/.test(url)) {
         return json([
-          { id: 2, name: 'I', relation: '编剧' },
-          { id: 3, name: 'İ', relation: '编剧' },
-          { id: 4, name: 'i', relation: '编剧' },
+          { id: 2, name: 'I', type: 1, career: ['writer'], relation: '编剧', eps: '' },
+          { id: 3, name: 'İ', type: 1, career: ['writer'], relation: '编剧', eps: '' },
+          { id: 4, name: 'i', type: 1, career: ['writer'], relation: '编剧', eps: '' },
         ]);
       }
       return json({ error: 'not found' }, 404);

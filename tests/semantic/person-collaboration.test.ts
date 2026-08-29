@@ -22,17 +22,46 @@ describe('bangumi.get_person_collaboration', () => {
     const fetchFn = async (input: string | URL | Request) => {
       const url = String(input);
       if (url.endsWith('/v0/persons/20'))
-        return json({ id: 20, name: 'Person', career: ['seiyu'] });
+        return json({
+          id: 20,
+          name: 'Person',
+          type: 1,
+          career: ['seiyu'],
+          short_summary: '',
+          locked: false,
+        });
       if (url.endsWith('/v0/persons/20/characters')) {
-        return json([{ id: 1, name: '主角', subject_id: 10, subject_type: 2, staff: '主角' }]);
+        return json([
+          {
+            id: 1,
+            name: '主角',
+            type: 1,
+            subject_id: 10,
+            subject_type: 2,
+            subject_name: 'Subject',
+            subject_name_cn: '作品',
+            staff: '主角',
+          },
+        ]);
       }
       if (url.endsWith('/v0/subjects/10/characters')) {
         return json([
           {
             id: 2,
             name: '角色',
+            summary: '',
+            type: 1,
             relation: '主角',
-            actors: [{ id: 30, name: '合作声优', career: ['seiyu'] }],
+            actors: [
+              {
+                id: 30,
+                name: '合作声优',
+                type: 1,
+                career: ['seiyu'],
+                short_summary: '',
+                locked: false,
+              },
+            ],
           },
         ]);
       }

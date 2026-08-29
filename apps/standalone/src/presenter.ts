@@ -1630,7 +1630,7 @@ function presentPersonCollaboration(value: Record<string, unknown>): string | un
     `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · fan-out ${humanField(coverage.participantRequestsSucceeded ?? '?', 32)}/${humanField(coverage.participantRequests ?? '?', 32)} 成功 · 参与者 ${humanField(coverage.participantRowsReturned ?? '?', 32)}/${humanField(coverage.participantRowsObserved ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
   );
   lines.push(
-    `安全边界: 关系响应省略 ${humanField(coverage.relationRowsDroppedAtSourceLimit ?? 0, 32)} · fan-out 响应省略 ${humanField(coverage.fanoutRowsDroppedAtSourceLimit ?? 0, 32)} · 参与者省略 ${humanField(coverage.participantRowsDroppedAtSourceLimit ?? 0, 32)} · 共同作品证据省略 ${humanField(coverage.sharedSubjectRowsOmittedAtLimit ?? 0, 32)}`,
+    `安全边界: 关系响应省略 ${humanField(coverage.relationRowsDroppedAtSourceLimit ?? 0, 32)} · 关系格式异常 ${humanField(coverage.malformedRelationRows ?? 0, 32)} · fan-out 响应省略 ${humanField(coverage.fanoutRowsDroppedAtSourceLimit ?? 0, 32)} · 参与者省略 ${humanField(coverage.participantRowsDroppedAtSourceLimit ?? 0, 32)} · 共同作品证据省略 ${humanField(coverage.sharedSubjectRowsOmittedAtLimit ?? 0, 32)}`,
   );
 
   lines.push('来源操作：');
@@ -1662,26 +1662,68 @@ function presentPersonCollaboration(value: Record<string, unknown>): string | un
     const sharedSubjects = Array.isArray(collaborator.sharedSubjects)
       ? collaborator.sharedSubjects
       : [];
-    const names = sharedSubjects
+    const sharedEvidence = sharedSubjects
       .slice(0, 3)
       .map((rawSubject) => {
         const subject = comparisonRecord(rawSubject);
-        return subject
-          ? humanField(subject.nameCn || subject.name || `条目 ${subject.id || '?'}`, 96)
-          : undefined;
+        if (!subject) return undefined;
+        const relationLabels = Array.isArray(subject.relationKinds)
+          ? subject.relationKinds
+              .filter((kind): kind is string => typeof kind === 'string')
+              .map((kind) => (kind === 'voice' ? '声优' : kind === 'staff' ? '制作人员' : kind))
+              .join('、')
+          : '关系';
+        const targetRoles = Array.isArray(subject.targetRoles)
+          ? subject.targetRoles
+              .filter((role): role is string => typeof role === 'string')
+              .join('、')
+          : '';
+        const collaboratorRoles = Array.isArray(subject.collaboratorRoles)
+          ? subject.collaboratorRoles
+              .filter((role): role is string => typeof role === 'string')
+              .join('、')
+          : '';
+        return `${humanField(subject.nameCn || subject.name || `条目 ${subject.id || '?'}`, 96)} · ${humanField(relationLabels || '关系', 64)}${targetRoles ? ` · 目标标签 ${humanField(targetRoles, 96)}` : ''}${collaboratorRoles ? ` · 合作方标签 ${humanField(collaboratorRoles, 96)}` : ''}`;
       })
       .filter((item): item is string => Boolean(item));
-    const relationLabels = Array.isArray(collaborator.relationLabels)
-      ? collaborator.relationLabels
-          .filter((label): label is string => typeof label === 'string')
+    const relationLabels = Array.isArray(collaborator.relationKinds)
+      ? collaborator.relationKinds
+          .filter((kind): kind is string => typeof kind === 'string')
+          .map((kind) => (kind === 'voice' ? '声优' : kind === 'staff' ? '制作人员' : kind))
           .join('、')
       : '关系';
+    const roleLabels = Array.isArray(collaborator.roleLabels)
+      ? collaborator.roleLabels
+          .filter((role): role is string => typeof role === 'string')
+          .join('、')
+      : '';
     lines.push(
-      `${index + 1}. ${humanField(collaborator.nameCn || collaborator.name || `人物 ${collaborator.id || '?'}`, 180)} · ID ${humanField(collaborator.id ?? '?', 32)} · 共同作品 ${humanField(collaborator.uniqueSubjects ?? '?', 32)} · ${humanField(relationLabels, 64)}${names.length ? ` · ${names.join('、')}` : ''}${collaborator.sharedSubjectsOmitted ? ` · 另有 ${humanField(collaborator.sharedSubjectsOmitted, 32)} 部证据省略` : ''}`,
+      `${index + 1}. ${humanField(collaborator.nameCn || collaborator.name || `人物 ${collaborator.id || '?'}`, 180)} · ID ${humanField(collaborator.id ?? '?', 32)} · 共同作品 ${humanField(collaborator.uniqueSubjects ?? '?', 32)} · ${humanField(relationLabels || '关系', 64)}${roleLabels ? ` · 职位 ${humanField(roleLabels, 96)}` : ''}${sharedEvidence.length ? ` · ${sharedEvidence.join('；')}` : ''}${collaborator.sharedSubjectsOmitted ? ` · 另有 ${humanField(collaborator.sharedSubjectsOmitted, 32)} 部证据省略` : ''}`,
     );
   }
   if (collaborators.length > 12) {
     lines.push(`另有 ${humanField(collaborators.length - 12, 32)} 位合作人物未展开。`);
+  }
+
+  const exclusions = Array.isArray(value.exclusions) ? value.exclusions : [];
+  if (exclusions.length > 0) {
+    lines.push('未计入原因：');
+    for (const rawExclusion of exclusions.slice(0, 8)) {
+      const exclusion = comparisonRecord(rawExclusion);
+      if (!exclusion) continue;
+      const sampleSubjectIds = Array.isArray(exclusion.sampleSubjectIds)
+        ? exclusion.sampleSubjectIds
+            .filter((id): id is string | number => typeof id === 'string' || typeof id === 'number')
+            .slice(0, 5)
+            .join('、')
+        : '';
+      lines.push(
+        `- ${humanField(exclusion.reason || 'unknown', 80)}：${humanField(exclusion.count ?? '?', 32)} 条${sampleSubjectIds ? `（示例 ID：${humanField(sampleSubjectIds, 96)}）` : ''}`,
+      );
+    }
+    if (exclusions.length > 8) {
+      lines.push(`- 另有 ${humanField(exclusions.length - 8, 32)} 个未计入原因未展开。`);
+    }
   }
 
   const formula = evidence.find((item) => {
