@@ -33,6 +33,7 @@ import {
   recordIntegrationBlocked,
   reconcileFrontierReviewReservation,
   reconcileReviewReservation,
+  restoreIntegrationAuthority,
   resumeDiscoveryAfterFrontierRejection,
   resumeReviewLimitForFinalCorrective,
   renderEpochBody,
@@ -357,7 +358,7 @@ function requireValidFrontier() {
 }
 
 function commandHelp() {
-  print(`BangumiAgentKit Harness V3.3
+  print(`BangumiAgentKit Harness V3.4
 
 Usage: pnpm harness <command> [options]
 
@@ -386,6 +387,7 @@ Usage: pnpm harness <command> [options]
   frontier:resume-discovery --run <issue>
   epoch:park --run <issue> --pr <number> --state <state> --reason <text>
   epoch:resume-final-corrective --run <issue> --pr <number>
+  epoch:resume-integration --run <issue> --pr <number>
   epoch:merge --run <issue> --pr <number>
   run:stop --run <issue> --state <state> --next-action <text> [--evidence <json>]
   goal:check [--run <issue>] [--pr <number>] [--discovery-state UNCHANGED_EXHAUSTION]
@@ -1280,24 +1282,139 @@ function commandEpochResumeFinalCorrective(options) {
   });
 }
 
-function commandEpochMerge(options) {
+function completeMergedIntegration({ runNumber, prNumber, runState, epoch, mergedPr }) {
+  let result;
+  try {
+    if (currentBranch() !== epoch.base_branch) git('switch', epoch.base_branch);
+    git('pull', '--ff-only', 'origin', epoch.base_branch);
+    const candidateIsAncestor = isAncestor(epoch.candidate_sha, `origin/${epoch.base_branch}`);
+    const mergeIsAncestor = isAncestor(mergedPr.mergeCommit.oid, `origin/${epoch.base_branch}`);
+    if (!candidateIsAncestor || !mergeIsAncestor) {
+      throw new HarnessInvariantError(
+        'MERGE_VERIFICATION_FAILED',
+        'The pushed target does not contain the reviewed Candidate and reported merge commit',
+      );
+    }
+    result = completeMerge(runState, epoch, {
+      mergeSha: mergedPr.mergeCommit.oid,
+      candidateIsAncestor: true,
+    });
+    if (remoteBranchExists(epoch.branch)) git('push', 'origin', '--delete', epoch.branch);
+    if (git('branch', '--list', epoch.branch)) git('branch', '-d', epoch.branch);
+    git('fetch', 'origin', '--prune');
+  } catch (error) {
+    const blocked = recordIntegrationBlocked(
+      runState,
+      epoch,
+      `PR MERGED as ${mergedPr.mergeCommit.oid}, but post-merge verification/cleanup failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    blocked.epoch.merge_sha = mergedPr.mergeCommit.oid;
+    blocked.epoch.github_pr_state = 'MERGED';
+    updatePr(prNumber, blocked.epoch);
+    updateIssue(runNumber, blocked.run);
+    throw new HarnessInvariantError(
+      'INTEGRATION_BLOCKED',
+      'The PR merged, but verification or cleanup failed; control state records the blocker',
+    );
+  }
+  updatePr(prNumber, result.epoch);
+  updateIssue(runNumber, result.run);
+  print({
+    state: 'MERGED',
+    merge_sha: mergedPr.mergeCommit.oid,
+    candidate_sha: epoch.candidate_sha,
+    branch_cleaned: epoch.branch,
+  });
+}
+
+function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   ensureControlPlane();
   ensureCleanWorkingTree();
   const runNumber = required(options, 'run');
   const prNumber = required(options, 'pr');
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
-  const epoch = epochResult.state;
-  if (!['REVIEW_PASSED', 'FINAL_CORRECTIVE_READY'].includes(epoch.state)) {
+  const persistedEpoch = epochResult.state;
+  const runState = structuredClone(runResult.state);
+  let epoch = persistedEpoch;
+  if (resumeBlocked) {
+    epoch = restoreIntegrationAuthority(persistedEpoch, runState.outer_sol);
+    runState.state = 'EPOCH_ACTIVE';
+    runState.next_action = `RETRY_AUTOMATIC_INTEGRATION_PR_${prNumber}`;
+  } else if (!['REVIEW_PASSED', 'FINAL_CORRECTIVE_READY'].includes(epoch.state)) {
     throw new HarnessInvariantError(
       'INTEGRATION_AUTHORITY_REQUIRED',
       `Epoch state ${epoch.state} cannot enter automatic integration`,
     );
   }
-  if (runResult.state.active_epoch_pr !== Number(prNumber)) {
+  if (runState.active_epoch_pr !== Number(prNumber)) {
     throw new HarnessInvariantError(
       'ACTIVE_EPOCH_MISMATCH',
       'The Run Issue does not identify this PR as its active Epoch',
+    );
+  }
+  if (
+    resumeBlocked &&
+    (epochResult.view.headRefName !== epoch.branch ||
+      epochResult.view.baseRefName !== epoch.base_branch)
+  ) {
+    throw new HarnessInvariantError(
+      'INTEGRATION_PR_MISMATCH',
+      'The blocked PR no longer has the recorded feature and target branches',
+      {
+        recorded_head: epoch.branch,
+        current_head: epochResult.view.headRefName,
+        recorded_base: epoch.base_branch,
+        current_base: epochResult.view.baseRefName,
+      },
+    );
+  }
+  if (resumeBlocked && !mandatoryChecksSuccessful(epochResult.view.statusCheckRollup)) {
+    throw new HarnessInvariantError(
+      'EXACT_SHA_CI_REQUIRED',
+      'Every mandatory check must still report SUCCESS for the exact blocked Candidate',
+    );
+  }
+  if (resumeBlocked && epochResult.view.state === 'MERGED') {
+    if (!epochResult.view.mergeCommit?.oid) {
+      throw new HarnessInvariantError(
+        'MERGE_VERIFICATION_FAILED',
+        'GitHub reports MERGED without a merge commit SHA',
+      );
+    }
+    const authorizedBaseSha =
+      epoch.state === 'REVIEW_PASSED' ? epoch.reviewed_base_sha : epoch.final_corrective_base_sha;
+    assertMergeReadiness({
+      epoch,
+      outerSol: runState.outer_sol,
+      branchHeadSha: epoch.candidate_sha,
+      prHeadSha: epochResult.view.headRefOid,
+      currentBaseSha: authorizedBaseSha,
+    });
+    git('fetch', 'origin', epoch.base_branch);
+    completeMergedIntegration({
+      runNumber,
+      prNumber,
+      runState,
+      epoch,
+      mergedPr: epochResult.view,
+    });
+    return;
+  }
+  if (epochResult.view.state !== 'OPEN' || epochResult.view.isDraft) {
+    throw new HarnessInvariantError(
+      'INTEGRATION_BLOCKED',
+      'Automatic integration requires an open, review-ready PR',
+      { pr_state: epochResult.view.state, is_draft: epochResult.view.isDraft },
+    );
+  }
+  if (resumeBlocked && epochResult.view.mergeStateStatus !== 'CLEAN') {
+    throw new HarnessInvariantError(
+      'INTEGRATION_BLOCKED',
+      'The blocked PR is not currently cleanly mergeable',
+      { merge_state_status: epochResult.view.mergeStateStatus },
     );
   }
   if (currentBranch() !== epoch.branch) {
@@ -1310,7 +1427,7 @@ function commandEpochMerge(options) {
     epoch.final_corrective_base_sha !== currentBaseSha
   ) {
     const driftedEpoch = structuredClone(epoch);
-    const driftedRun = structuredClone(runResult.state);
+    const driftedRun = structuredClone(runState);
     driftedEpoch.state = 'FINAL_CORRECTIVE_REQUIRED';
     driftedEpoch.candidate_sha = null;
     driftedEpoch.review_pass_sha = null;
@@ -1339,11 +1456,11 @@ function commandEpochMerge(options) {
       reviewedBaseSha: epoch.reviewed_base_sha,
       currentBaseSha,
       epochReview: epoch.review,
-      outerReview: runResult.state.outer_sol,
+      outerReview: runState.outer_sol,
     });
     if (!baseAction.ready) {
       const driftedEpoch = structuredClone(epoch);
-      const driftedRun = structuredClone(runResult.state);
+      const driftedRun = structuredClone(runState);
       driftedEpoch.candidate_sha = null;
       driftedEpoch.review_pass_sha = null;
       driftedEpoch.ci = { sha: null, status: 'NOT_RUN', url: null };
@@ -1382,7 +1499,7 @@ function commandEpochMerge(options) {
   }
   assertMergeReadiness({
     epoch,
-    outerSol: runResult.state.outer_sol,
+    outerSol: runState.outer_sol,
     branchHeadSha: currentHead(),
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha,
@@ -1391,7 +1508,7 @@ function commandEpochMerge(options) {
     gh('pr', 'merge', String(prNumber), '--merge');
   } catch (error) {
     const blocked = recordIntegrationBlocked(
-      runResult.state,
+      runState,
       epoch,
       error instanceof Error ? error.message : String(error),
     );
@@ -1406,49 +1523,17 @@ function commandEpochMerge(options) {
   if (mergedPr.state !== 'MERGED' || !mergedPr.mergeCommit?.oid) {
     throw new HarnessInvariantError('INTEGRATION_BLOCKED', 'GitHub did not report MERGED');
   }
-  let result;
-  try {
-    git('switch', epoch.base_branch);
-    git('pull', '--ff-only', 'origin', epoch.base_branch);
-    const ancestor = isAncestor(epoch.candidate_sha, `origin/${epoch.base_branch}`);
-    if (!ancestor) {
-      throw new HarnessInvariantError(
-        'MERGE_VERIFICATION_FAILED',
-        'The merged target does not contain the reviewed Candidate',
-      );
-    }
-    result = completeMerge(runResult.state, epoch, {
-      mergeSha: mergedPr.mergeCommit.oid,
-      candidateIsAncestor: true,
-    });
-    if (remoteBranchExists(epoch.branch)) git('push', 'origin', '--delete', epoch.branch);
-    if (git('branch', '--list', epoch.branch)) git('branch', '-d', epoch.branch);
-    git('fetch', 'origin', '--prune');
-  } catch (error) {
-    const blocked = recordIntegrationBlocked(
-      runResult.state,
-      epoch,
-      `PR MERGED as ${mergedPr.mergeCommit.oid}, but post-merge verification/cleanup failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-    blocked.epoch.merge_sha = mergedPr.mergeCommit.oid;
-    blocked.epoch.github_pr_state = 'MERGED';
-    updatePr(prNumber, blocked.epoch);
-    updateIssue(runNumber, blocked.run);
-    throw new HarnessInvariantError(
-      'INTEGRATION_BLOCKED',
-      'The PR merged, but verification or cleanup failed; control state records the blocker',
-    );
-  }
-  updatePr(prNumber, result.epoch);
-  updateIssue(runNumber, result.run);
-  print({
-    state: 'MERGED',
-    merge_sha: mergedPr.mergeCommit.oid,
-    candidate_sha: epoch.candidate_sha,
-    branch_cleaned: epoch.branch,
+  completeMergedIntegration({
+    runNumber,
+    prNumber,
+    runState,
+    epoch,
+    mergedPr,
   });
+}
+
+function commandEpochResumeIntegration(options) {
+  commandEpochMerge(options, { resumeBlocked: true });
 }
 
 function commandRunStop(options) {
@@ -1593,6 +1678,7 @@ const commands = {
   'frontier:resume-discovery': commandFrontierResumeDiscovery,
   'epoch:park': commandEpochPark,
   'epoch:resume-final-corrective': commandEpochResumeFinalCorrective,
+  'epoch:resume-integration': commandEpochResumeIntegration,
   'epoch:merge': commandEpochMerge,
   'run:stop': commandRunStop,
   'goal:check': commandGoalCheck,

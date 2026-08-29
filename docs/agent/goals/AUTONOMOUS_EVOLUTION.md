@@ -56,6 +56,13 @@ discovery; never launch Sol #3 or wait for a human on routine engineering
 findings. A genuinely protected human-only direction may be parked while
 independent safe work continues.
 
+If the active Epoch is `INTEGRATION_BLOCKED`, inspect the current PR and run
+`pnpm harness epoch:resume-integration --run <issue> --pr <number>`. This is a
+nonterminal recovery path: do not repeatedly audit the unchanged blocker, mark
+the Goal complete, or merge directly. The command revalidates all original
+authority, Candidate, CI, base-freshness, PR-state, and ancestry gates; it also
+reconciles a merge already accepted by GitHub when only the response was lost.
+
 After Product work and Luna discovery have closed every ledger record, run
 `pnpm harness frontier:check`, persist complete closure evidence, then spend the
 reserved one Sol High frontier review. `DISCOVERY_REQUIRED` returns to Luna but

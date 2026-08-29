@@ -117,7 +117,8 @@ if (tool === 'gh') {
       state.prState = 'MERGED';
       state.mergeCommit = state.mergeSha;
       state.baseSha = state.mergeSha;
-      output('merged');
+      if (state.mergeResponseLostAfterSuccess) fail('GraphQL EOF after merge acceptance');
+      else output('merged');
     }
   } else fail(`unsupported gh call: ${args.join(' ')}`);
 } else if (tool === 'git') {

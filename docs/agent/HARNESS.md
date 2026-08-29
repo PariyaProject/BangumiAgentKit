@@ -1,4 +1,4 @@
-# BangumiAgentKit Harness V3.3
+# BangumiAgentKit Harness V3.4
 
 This is the **only canonical detailed execution-governance policy** for active
 BangumiAgentKit work. Other governance and Goal files may select a mode or link
@@ -91,7 +91,7 @@ reasoning.
 resumes an Outer Run only when the check requires work, resumes its active Epoch
 PR when present, otherwise performs bounded opportunity discovery, selects one
 coherent Epoch, and proceeds until a governed stop. Codex Goals are invoked
-manually; Harness V3.3 creates no scheduler, heartbeat, or automation. This is
+manually; Harness V3.4 creates no scheduler, heartbeat, or automation. This is
 an execution-policy statement only: it is not a Product Charter boundary and
 does not prohibit a future explicit, bounded product scheduling capability.
 
@@ -585,6 +585,30 @@ gate prevents integration, update the PR control state to
 `INTEGRATION_BLOCKED` and stop. Do not claim merge success or create a Git
 runtime commit.
 
+`INTEGRATION_BLOCKED` retains the same PR, Candidate, review/final-corrective
+evidence, CI record, and active-Epoch relationship. It is not permission to
+merge directly and it is not Goal completion. On the next execution, use
+`epoch:resume-integration` once the GitHub control plane can be observed. The
+command is the only normal autonomous recovery transition from this state. It
+reconstructs the prior PASS or final-corrective authority from durable fields,
+then re-runs the ordinary integration gates without changing review
+consumption.
+
+For an open PR, recovery fetches the base and feature branch and requires the
+same review-ready, cleanly mergeable PR, exact Candidate/branch/PR head, exact
+CI authority, and unchanged authorized Base SHA before retrying the merge. Base
+drift enters the existing fresh-Candidate/review or final-corrective path;
+Candidate, CI, authority, PR-state, or mergeability drift blocks the retry.
+
+Because a transport error may hide a merge that GitHub already accepted,
+recovery first observes the PR state. If it is already `MERGED`, it sends no
+second merge request. It verifies the original authority and exact PR head,
+fetches and synchronizes the target base, proves both the Candidate and reported
+merge commit are ancestors, then completes the existing cleanup/control-plane
+transition. If the PR remains open, it retries the normal merge exactly once per
+command invocation. Repeated external failure remains truthful
+`INTEGRATION_BLOCKED`; it never weakens a quality gate.
+
 If GitHub reports the PR merged but subsequent ancestry verification,
 synchronization, or branch cleanup fails, record both the actual merged PR/SHA
 and `INTEGRATION_BLOCKED` in the PR and Run Issue before stopping. Never leave
@@ -622,7 +646,7 @@ active Epoch, and every other nonterminal state return
 `GOAL_CONTINUATION_REQUIRED`. External capacity exhaustion pauses execution in
 place; it never closes the Run or satisfies the Goal gate.
 
-Canonical governed stops include:
+Canonical governed invocation stops include:
 
 - `CONTROL_PLANE_UNAVAILABLE`
 - `PARKED_FOR_HUMAN`
@@ -635,6 +659,10 @@ Canonical governed stops include:
 This list includes truthful invocation stops. Only entries durably represented
 as a terminal Outer Run satisfy `goal:check`; an operational pause or blocker
 does not become Goal completion merely because execution must yield.
+In particular, an open `INTEGRATION_BLOCKED` Epoch is a resumable integration
+operation. A resumed Goal must run `epoch:resume-integration` after observing
+current GitHub state rather than repeating a read-only audit of the same
+blocker or marking the Goal complete.
 
 `STOPPED_TRUSTED_FRONTIER_EXHAUSTED` is an evidence-and-review-gated claim, not
 a free-form Agent conclusion. The `run:stop` command accepts it only from a
@@ -758,10 +786,12 @@ The human-readable PR body supplies Product Objective, Representative User
 Questions, Included Work Packages, Explicit Non-Scope, Acceptance Criteria,
 Validation, Why Not Review Earlier?, and Why Not Extend Further?.
 
-The schema identifier remains `bangumi-harness/v3`. V3.3 fields are additive.
-When an older V3.2 block omits them, the CLI normalizes zero recovery usage and
-an observation-required reviewer runtime in memory; it creates no migration
-commit and does not infer that the old task is active.
+The schema identifier remains `bangumi-harness/v3`. V3.3 reviewer-runtime fields
+are additive. When an older V3.2 block omits them, the CLI normalizes zero
+recovery usage and an observation-required reviewer runtime in memory; it
+creates no migration commit and does not infer that the old task is active.
+V3.4 integration recovery derives authority from the existing exact Candidate,
+CI, base, review, and corrective fields, so it requires no schema migration.
 
 ## 15. Harness CLI
 
@@ -803,6 +833,9 @@ help` for exact arguments.
 - `epoch:park`: park the same PR/branch truthfully.
 - `epoch:resume-final-corrective`: migrate an exhausted legacy review-limit PR
   into the same-branch Luna final-corrective path.
+- `epoch:resume-integration`: revalidate an `INTEGRATION_BLOCKED` PR and either
+  retry an unchanged open integration or reconcile a merge whose response was
+  lost, without spending review budget or bypassing freshness/CI/ancestry.
 - `epoch:merge`: enforce PASS or final-corrective authority plus
   freshness/CI/Candidate gates, merge, verify, clean branches, synchronize
   master, and update the Run Issue.

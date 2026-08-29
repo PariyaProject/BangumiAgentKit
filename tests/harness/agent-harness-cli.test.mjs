@@ -1276,6 +1276,152 @@ test('CLI merge permission failure records INTEGRATION_BLOCKED on the same PR an
   }
 });
 
+test('CLI retries an unchanged blocked integration through the full Harness gate', () => {
+  const environment = mergeReadyEnvironment({ mergeAllowed: false });
+  try {
+    const blocked = environment.execute(['epoch:merge', '--run', '1', '--pr', '42']);
+    assert.equal(blocked.status, 2);
+
+    const state = environment.readState();
+    fs.writeFileSync(
+      environment.statePath,
+      `${JSON.stringify({ ...state, mergeAllowed: true }, null, 2)}\n`,
+    );
+
+    const resumed = environment.execute(['epoch:resume-integration', '--run', '1', '--pr', '42']);
+    assert.equal(resumed.status, 0, resumed.stderr);
+
+    const completed = environment.readState();
+    const epoch = parseControlBlock(completed.prBody, EPOCH_MARKER);
+    const run = parseControlBlock(completed.runBody, RUN_MARKER);
+    assert.equal(epoch.state, 'MERGED');
+    assert.equal(run.state, 'ACTIVE');
+    assert.equal(run.active_epoch_pr, null);
+    assert.equal(epoch.review.consumed, 1);
+    assert.equal(run.outer_sol.product.consumed, 1);
+    assert.equal(completed.branch, 'master');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI blocked-integration resume honors base drift instead of reusing old PASS', () => {
+  const environment = mergeReadyEnvironment({ mergeAllowed: false });
+  try {
+    const blocked = environment.execute(['epoch:merge', '--run', '1', '--pr', '42']);
+    assert.equal(blocked.status, 2);
+
+    const state = environment.readState();
+    fs.writeFileSync(
+      environment.statePath,
+      `${JSON.stringify({ ...state, mergeAllowed: true, baseSha: sha('d') }, null, 2)}\n`,
+    );
+
+    const resumed = environment.execute(['epoch:resume-integration', '--run', '1', '--pr', '42']);
+    assert.equal(resumed.status, 2);
+    assert.match(resumed.stderr, /^PASS_INVALIDATED_BASE_DRIFT:/u);
+
+    const drifted = environment.readState();
+    const epoch = parseControlBlock(drifted.prBody, EPOCH_MARKER);
+    const run = parseControlBlock(drifted.runBody, RUN_MARKER);
+    assert.equal(epoch.state, 'PASS_INVALIDATED_BASE_DRIFT');
+    assert.equal(epoch.candidate_sha, null);
+    assert.equal(run.state, 'EPOCH_ACTIVE');
+    assert.equal(run.active_epoch_pr, 42);
+    assert.equal(
+      drifted.calls.filter(
+        (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'merge',
+      ).length,
+      1,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI blocked-integration resume rejects Candidate drift', () => {
+  const environment = mergeReadyEnvironment({ mergeAllowed: false });
+  try {
+    const blocked = environment.execute(['epoch:merge', '--run', '1', '--pr', '42']);
+    assert.equal(blocked.status, 2);
+
+    const state = environment.readState();
+    fs.writeFileSync(
+      environment.statePath,
+      `${JSON.stringify({ ...state, mergeAllowed: true, featureHeadSha: sha('d') }, null, 2)}\n`,
+    );
+
+    const resumed = environment.execute(['epoch:resume-integration', '--run', '1', '--pr', '42']);
+    assert.equal(resumed.status, 2);
+    assert.match(resumed.stderr, /^CANDIDATE_INVARIANT_FAILED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI blocked-integration resume requires live mandatory exact-SHA CI success', () => {
+  const environment = mergeReadyEnvironment({ mergeAllowed: false });
+  try {
+    const blocked = environment.execute(['epoch:merge', '--run', '1', '--pr', '42']);
+    assert.equal(blocked.status, 2);
+
+    const state = environment.readState();
+    fs.writeFileSync(
+      environment.statePath,
+      `${JSON.stringify(
+        {
+          ...state,
+          mergeAllowed: true,
+          checks: state.checks.map((check) =>
+            check.name === 'harness-control' ? { ...check, conclusion: 'FAILURE' } : check,
+          ),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const resumed = environment.execute(['epoch:resume-integration', '--run', '1', '--pr', '42']);
+    assert.equal(resumed.status, 2);
+    assert.match(resumed.stderr, /^EXACT_SHA_CI_REQUIRED:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI reconciles a merge accepted by GitHub when the merge response was lost', () => {
+  const environment = mergeReadyEnvironment({ mergeResponseLostAfterSuccess: true });
+  try {
+    const interrupted = environment.execute(['epoch:merge', '--run', '1', '--pr', '42']);
+    assert.equal(interrupted.status, 2);
+    let state = environment.readState();
+    assert.equal(state.prState, 'MERGED');
+    assert.equal(parseControlBlock(state.prBody, EPOCH_MARKER).state, 'INTEGRATION_BLOCKED');
+
+    const resumed = environment.execute(['epoch:resume-integration', '--run', '1', '--pr', '42']);
+    assert.equal(resumed.status, 0, resumed.stderr);
+
+    state = environment.readState();
+    const epoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    const run = parseControlBlock(state.runBody, RUN_MARKER);
+    assert.equal(epoch.state, 'MERGED');
+    assert.equal(epoch.merge_sha, sha('c'));
+    assert.equal(run.last_merged_epoch_pr, 42);
+    assert.equal(run.active_epoch_pr, null);
+    assert.equal(state.branch, 'master');
+    assert.equal(
+      state.calls.filter(
+        (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'merge',
+      ).length,
+      1,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI base drift with exhausted review budget returns to Luna final validation', () => {
   const environment = mergeReadyEnvironment({ baseSha: sha('d') });
   const state = environment.readState();
@@ -1406,6 +1552,60 @@ test('CLI final corrective gate requires closure evidence then auto-merges witho
       ),
       true,
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI resumes blocked final-corrective integration without another review', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'FINAL_CORRECTIVE_READY';
+  epoch.review.consumed = 2;
+  epoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
+  epoch.findings = [
+    { id: 'sol-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
+  ];
+  epoch.review_history = [
+    {
+      review_number: 2,
+      reviewer_id: 'sol-1',
+      candidate_sha: sha('d'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'CORRECTIVE_REQUIRED',
+      findings: epoch.findings,
+    },
+  ];
+  epoch.corrective_closure = correctiveClosure();
+  epoch.candidate_sha = sha('b');
+  epoch.final_corrective_sha = sha('b');
+  epoch.final_corrective_base_sha = sha('a');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci-final' };
+  run.outer_sol.consumed = 2;
+  run.outer_sol.product.consumed = 2;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    draft: false,
+    mergeAllowed: false,
+  });
+  try {
+    const blocked = environment.execute(['epoch:merge', '--run', '1', '--pr', '42']);
+    assert.equal(blocked.status, 2);
+
+    const state = environment.readState();
+    fs.writeFileSync(
+      environment.statePath,
+      `${JSON.stringify({ ...state, mergeAllowed: true }, null, 2)}\n`,
+    );
+    const resumed = environment.execute(['epoch:resume-integration', '--run', '1', '--pr', '42']);
+    assert.equal(resumed.status, 0, resumed.stderr);
+
+    const completed = environment.readState();
+    const mergedEpoch = parseControlBlock(completed.prBody, EPOCH_MARKER);
+    const completedRun = parseControlBlock(completed.runBody, RUN_MARKER);
+    assert.equal(mergedEpoch.state, 'MERGED');
+    assert.equal(mergedEpoch.review.consumed, 2);
+    assert.equal(completedRun.outer_sol.product.consumed, 2);
   } finally {
     environment.cleanup();
   }

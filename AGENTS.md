@@ -33,6 +33,8 @@ context, not runtime authority.
   creates no Run Issue, and spends no Sol.
 - Reviewer waits require observed runtime truth; interruptions resume the same
   id, and Goal completion requires `pnpm harness goal:check`.
+- An active `INTEGRATION_BLOCKED` Epoch resumes only through
+  `pnpm harness epoch:resume-integration`; never merge it directly.
 - Never use Git worktrees.
 
 These are entry-point reminders, not a second execution policy. Definitions,

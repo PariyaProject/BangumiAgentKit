@@ -16,6 +16,12 @@ PASS-to-merge cleanup path. If Sol #2 returns corrective findings, complete the
 same-PR Luna final-corrective and exact-SHA integration path without Sol #3.
 Do not discover or select another Epoch.
 
+If that PR is `INTEGRATION_BLOCKED`, run `pnpm harness
+epoch:resume-integration --run <issue> --pr <number>`. Do not merge directly or
+stop after repeating the same read-only audit; the recovery command revalidates
+the original authority, live exact-SHA CI, base freshness, PR identity/state,
+and ancestry before retrying or reconciling integration.
+
 Before waiting, inspect the real reviewer task and use `review:runtime` to
 record `ACTIVE`, `INTERRUPTED`, or confirmed `UNAVAILABLE`. Resume an
 interrupted reviewer by the same id without another reservation. The bounded

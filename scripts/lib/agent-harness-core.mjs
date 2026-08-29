@@ -1758,13 +1758,7 @@ export function resumeReviewLimitForFinalCorrective(run, epoch) {
   return { run: nextRun, epoch: nextEpoch };
 }
 
-export function assertMergeReadiness({
-  epoch,
-  outerSol,
-  branchHeadSha,
-  prHeadSha,
-  currentBaseSha,
-}) {
+function assertIntegrationAuthority(epoch, outerSol) {
   const latestReview = epoch.review_history?.at(-1);
   const passAuthority =
     epoch.state === 'REVIEW_PASSED' && epoch.review_pass_sha === epoch.candidate_sha;
@@ -1786,6 +1780,43 @@ export function assertMergeReadiness({
     );
   }
   if (finalCorrectiveAuthority) assertCorrectiveClosure(epoch);
+  return { passAuthority, finalCorrectiveAuthority };
+}
+
+export function restoreIntegrationAuthority(epoch, outerSol) {
+  if (epoch.state !== 'INTEGRATION_BLOCKED') {
+    throw new HarnessInvariantError(
+      'INTEGRATION_RESUME_NOT_APPLICABLE',
+      'Only an INTEGRATION_BLOCKED Epoch can resume automatic integration',
+    );
+  }
+  for (const state of ['FINAL_CORRECTIVE_READY', 'REVIEW_PASSED']) {
+    const restored = cloneState(epoch);
+    restored.state = state;
+    try {
+      assertIntegrationAuthority(restored, outerSol);
+      restored.next_action = 'REVALIDATE_AND_RETRY_AUTOMATIC_INTEGRATION';
+      return restored;
+    } catch (error) {
+      if (!(error instanceof HarnessInvariantError) || error.code !== 'REVIEW_PASS_REQUIRED') {
+        throw error;
+      }
+    }
+  }
+  throw new HarnessInvariantError(
+    'INTEGRATION_AUTHORITY_REQUIRED',
+    'The blocked Epoch no longer contains reconstructable PASS or final-corrective authority',
+  );
+}
+
+export function assertMergeReadiness({
+  epoch,
+  outerSol,
+  branchHeadSha,
+  prHeadSha,
+  currentBaseSha,
+}) {
+  const { passAuthority, finalCorrectiveAuthority } = assertIntegrationAuthority(epoch, outerSol);
   assertCandidateInvariant({
     candidateSha: epoch.candidate_sha,
     branchHeadSha,
