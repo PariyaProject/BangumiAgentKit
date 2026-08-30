@@ -551,16 +551,45 @@ export function buildCharacterCreditIntegrityViewModel(
   const maxSubjects = Math.min(16, Math.max(1, Math.trunc(options.maxSubjects ?? 12)));
   const maxPersons = Math.min(16, Math.max(1, Math.trunc(options.maxPersons ?? 12)));
   const maxRisks = Math.min(16, Math.max(1, Math.trunc(options.maxRisks ?? 12)));
+  const maxPersonSubjects = 5;
   const subjectCredits = result.subjectCredits.slice(0, maxSubjects);
-  const personCredits = result.personCredits.slice(0, maxPersons).map((person) => ({
-    ...person,
-    subjects: person.subjects.slice(0, 16),
-  }));
+  const sourcePersonCredits = result.personCredits.slice(0, maxPersons);
+  const personCredits = sourcePersonCredits.map((person) => {
+    const subjects = person.subjects.slice(0, maxPersonSubjects);
+    return {
+      ...person,
+      subjects,
+      subjectsOmitted:
+        person.subjectsOmitted + Math.max(0, person.subjects.length - subjects.length),
+    };
+  });
   const risks = result.risks.slice(0, maxRisks);
-  const omittedSubjects = Math.max(0, result.subjectCredits.length - subjectCredits.length);
-  const omittedPersons = Math.max(0, result.personCredits.length - personCredits.length);
-  const omittedRisks = Math.max(0, result.risks.length - risks.length);
-  const hasOmissions = omittedSubjects > 0 || omittedPersons > 0 || omittedRisks > 0;
+  const availableSubjects = Math.max(
+    result.subjectCredits.length,
+    result.coverage.subjects.uniqueIdsObserved,
+  );
+  const availablePersons = Math.max(
+    result.personCredits.length,
+    result.coverage.persons.uniqueIdsObserved,
+  );
+  const availableRisks = Math.max(
+    result.risks.length,
+    result.coverage.output.risksReturned + result.coverage.output.risksOmitted,
+  );
+  const omittedSubjects = Math.max(0, availableSubjects - subjectCredits.length);
+  const omittedPersons = Math.max(0, availablePersons - personCredits.length);
+  const omittedRisks = Math.max(0, availableRisks - risks.length);
+  const availablePersonSubjects = sourcePersonCredits.reduce(
+    (total, person) => total + person.subjects.length + person.subjectsOmitted,
+    0,
+  );
+  const renderedPersonSubjects = personCredits.reduce(
+    (total, person) => total + person.subjects.length,
+    0,
+  );
+  const omittedPersonSubjects = Math.max(0, availablePersonSubjects - renderedPersonSubjects);
+  const hasOmissions =
+    omittedSubjects > 0 || omittedPersons > 0 || omittedPersonSubjects > 0 || omittedRisks > 0;
 
   return {
     template: 'character-credit-integrity',
@@ -588,7 +617,8 @@ export function buildCharacterCreditIntegrityViewModel(
           {
             code: 'RENDERER_OUTPUT_TRUNCATED',
             state: 'partial' as const,
-            message: '渲染器对作品、人物或风险记录应用了显示上限；完整返回数量仍见 coverage。',
+            message:
+              '渲染器对作品、人物、人物作品关系或风险记录应用了显示上限；完整返回数量仍见 coverage。',
           },
         ]
       : result.warnings,
@@ -596,17 +626,22 @@ export function buildCharacterCreditIntegrityViewModel(
     presentation: {
       state: hasOmissions || result.state !== 'complete' ? 'partial' : 'complete',
       subjects: {
-        available: result.subjectCredits.length,
+        available: availableSubjects,
         rendered: subjectCredits.length,
         omitted: omittedSubjects,
       },
       persons: {
-        available: result.personCredits.length,
+        available: availablePersons,
         rendered: personCredits.length,
         omitted: omittedPersons,
       },
+      personSubjects: {
+        available: availablePersonSubjects,
+        rendered: renderedPersonSubjects,
+        omitted: omittedPersonSubjects,
+      },
       risks: {
-        available: result.risks.length,
+        available: availableRisks,
         rendered: risks.length,
         omitted: omittedRisks,
       },

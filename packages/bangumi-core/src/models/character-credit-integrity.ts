@@ -70,6 +70,7 @@ export interface CharacterCreditPerson {
   name: string;
   observedRows: number;
   duplicateRows: number;
+  duplicateRelationRows: number;
   subjects: CharacterCreditPersonSubject[];
   subjectsOmitted: number;
   nameVariants?: string[];
@@ -85,6 +86,7 @@ export interface CharacterCreditIntegrityRisk {
   normalizedName?: string;
   observedRows: number;
   membersOmitted?: number;
+  namesOmitted?: number;
   message: string;
 }
 
@@ -98,6 +100,7 @@ export interface CharacterCreditIntegrityListCoverage {
   returnedRows: number;
   malformedRows: number;
   duplicateRows: number;
+  duplicateRelationRows?: number;
   duplicateIds: number[];
   conflictRows: number;
   conflictingIds: number[];
@@ -139,6 +142,7 @@ export interface CharacterCreditIntegrityOperationEvidence {
   returnedRows: number;
   malformedRows: number;
   duplicateRows: number;
+  duplicateRelationRows?: number;
   conflictRows: number;
   truncated: boolean;
   errorCode?: string;

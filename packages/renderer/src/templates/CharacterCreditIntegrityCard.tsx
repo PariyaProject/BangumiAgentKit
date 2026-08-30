@@ -77,6 +77,10 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
       `${viewModel.presentation.persons.rendered}/${viewModel.presentation.persons.available}`,
     ],
     [
+      'CV作品关系',
+      `${viewModel.presentation.personSubjects.rendered}/${viewModel.presentation.personSubjects.available}`,
+    ],
+    [
       '风险记录',
       `${viewModel.presentation.risks.rendered}/${viewModel.presentation.risks.available}`,
     ],
@@ -98,7 +102,8 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
 
       <div style={{ color: tone, fontSize: '11px', lineHeight: 1.5 }}>
         状态：{stateLabel(viewModel.state)} · 来源：{viewModel.source.class} · 检索{' '}
-        {boundedText(viewModel.source.retrievedAt, 32)}
+        {boundedText(viewModel.source.retrievedAt, 32)} · 显示：
+        {viewModel.presentation.state === 'complete' ? '完整' : '部分'}
       </div>
 
       <div
@@ -132,12 +137,13 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
             出演作品（稳定条目 ID）
           </h2>
           <div style={{ color: theme.text, fontSize: '11px', lineHeight: 1.5 }}>
-            {viewModel.subjectCredits
-              .map(
-                (item) =>
-                  `#${item.id} · ${boundedText(item.nameCn || item.name, 80)} · ${boundedText(item.staff || '关系未提供', 50)} · 观测 ${item.observedRows} 次${item.duplicateRows > 0 ? `（重复 ${item.duplicateRows}）` : ''}`,
-              )
-              .join('\n')}
+            {viewModel.subjectCredits.map((item) => (
+              <div key={item.id}>
+                #{item.id} · {boundedText(item.nameCn || item.name, 80)} ·{' '}
+                {boundedText(item.staff || '关系未提供', 50)} · 观测 {item.observedRows} 次
+                {item.duplicateRows > 0 ? `（重复 ${item.duplicateRows}）` : ''}
+              </div>
+            ))}
           </div>
         </section>
       ) : null}
@@ -148,18 +154,27 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
             相关人物 / CV（稳定人物 ID）
           </h2>
           <div style={{ color: theme.text, fontSize: '11px', lineHeight: 1.5 }}>
-            {viewModel.personCredits
-              .map((person) => {
-                const subjects = person.subjects
-                  .slice(0, 5)
-                  .map(
-                    (subject) =>
-                      `#${subject.subjectId} ${boundedText(subject.subjectNameCn || subject.subjectName, 52)}`,
-                  )
-                  .join('、');
-                return `#${person.id} · ${boundedText(person.name, 70)} · ${subjects || '作品关系未提供'}${person.subjectsOmitted > 0 ? ` · 另有 ${person.subjectsOmitted} 个作品关系省略` : ''}`;
-              })
-              .join('\n')}
+            {viewModel.personCredits.map((person) => {
+              const subjects = person.subjects
+                .map(
+                  (subject) =>
+                    `#${subject.subjectId} ${boundedText(subject.subjectNameCn || subject.subjectName, 52)}`,
+                )
+                .join('、');
+              return (
+                <div key={person.id}>
+                  #{person.id} · {boundedText(person.name, 70)} · 观测 {person.observedRows} 次
+                  {person.duplicateRows > 0 ? `（重复 ${person.duplicateRows}）` : ''}
+                  {person.duplicateRelationRows > 0
+                    ? ` · 同作品关系重复 ${person.duplicateRelationRows}`
+                    : ''}{' '}
+                  · {subjects || '作品关系未提供'}
+                  {person.subjectsOmitted > 0
+                    ? ` · 另有 ${person.subjectsOmitted} 个作品关系省略`
+                    : ''}
+                </div>
+              );
+            })}
           </div>
         </section>
       ) : null}
@@ -175,7 +190,7 @@ export const CharacterCreditIntegrityCard: React.FC<CharacterCreditIntegrityCard
             {viewModel.risks
               .map(
                 (risk) =>
-                  `· ${riskLabel(risk.kind)}：${risk.ids.map((id) => `#${id}`).join('、')} · ${boundedText(risk.names.join(' / '), 130)}${risk.normalizedName ? ` · 归一化键 ${boundedText(risk.normalizedName, 80)}` : ''}\n  ${boundedText(risk.message, 220)}`,
+                  `· ${riskLabel(risk.kind)}：${risk.ids.map((id) => `#${id}`).join('、')} · ${boundedText(risk.names.join(' / '), 130)}${risk.normalizedName ? ` · 归一化键 ${boundedText(risk.normalizedName, 80)}` : ''}${risk.membersOmitted ? ` · 另有 ${risk.membersOmitted} 个 ID 省略` : ''}${risk.namesOmitted ? ` · 另有 ${risk.namesOmitted} 个名称省略` : ''}\n  ${boundedText(risk.message, 220)}`,
               )
               .join('\n')}
           </div>

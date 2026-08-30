@@ -4,7 +4,7 @@ import {
   type StandaloneCommandContext,
 } from '../../apps/standalone/src/command-registry.js';
 import { parseCliArgs } from '../../apps/standalone/src/command-parser.js';
-import { Presenter } from '../../apps/standalone/src/presenter.js';
+import { formatHuman, Presenter } from '../../apps/standalone/src/presenter.js';
 
 function context(executeTool: ReturnType<typeof vi.fn>): StandaloneCommandContext {
   return {
@@ -71,5 +71,38 @@ describe('Standalone character integrity commands', () => {
       ),
     ).rejects.toMatchObject({ exitCode: 2 });
     expect(executeTool).not.toHaveBeenCalled();
+  });
+
+  it('reports standalone nested omissions and duplicate relation evidence', () => {
+    const output = formatHuman({
+      state: 'complete',
+      character: { id: 100, name: '角色' },
+      subjectCredits: [{ id: 10, nameCn: '作品', name: '作品', staff: '主角', duplicateRows: 0 }],
+      personCredits: [
+        {
+          id: 20,
+          name: 'CV',
+          duplicateRows: 5,
+          duplicateRelationRows: 1,
+          subjects: Array.from({ length: 6 }, (_, index) => ({
+            subjectId: index + 10,
+            subjectName: `作品${index}`,
+            subjectNameCn: `作品${index}`,
+          })),
+          subjectsOmitted: 0,
+        },
+      ],
+      risks: [],
+      coverage: {
+        subjects: { returnedRows: 1, uniqueIdsObserved: 1 },
+        persons: { returnedRows: 1, uniqueIdsObserved: 1 },
+        output: { risksReturned: 0, risksOmitted: 0, truncated: false },
+      },
+      operationEvidence: [],
+    });
+
+    expect(output).toContain('显示: 部分');
+    expect(output).toContain('CV作品关系省略 2');
+    expect(output).toContain('同作品关系重复 1');
   });
 });

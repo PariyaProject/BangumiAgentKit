@@ -505,6 +505,7 @@ export interface CharacterCreditIntegrityViewModel {
     state: 'complete' | 'partial';
     subjects: { available: number; rendered: number; omitted: number };
     persons: { available: number; rendered: number; omitted: number };
+    personSubjects: { available: number; rendered: number; omitted: number };
     risks: { available: number; rendered: number; omitted: number };
   };
   error?: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['error'];

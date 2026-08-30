@@ -77,6 +77,9 @@ describe('CharacterCreditIntegrityService', () => {
     expect(result.personCredits).toHaveLength(2);
     expect(result.personCredits[0]).toMatchObject({
       id: 20,
+      observedRows: 3,
+      duplicateRows: 2,
+      duplicateRelationRows: 1,
       subjects: [{ subjectId: 10 }, { subjectId: 11 }],
     });
     expect(result.coverage.subjects).toMatchObject({
@@ -94,7 +97,8 @@ describe('CharacterCreditIntegrityService', () => {
       validRows: 4,
       uniqueIdsObserved: 2,
       malformedRows: 1,
-      duplicateRows: 1,
+      duplicateRows: 2,
+      duplicateRelationRows: 1,
       truncated: true,
     });
     expect(result.risks).toEqual(
@@ -151,6 +155,122 @@ describe('CharacterCreditIntegrityService', () => {
     expect(result.coverage.persons.truncated).toBe(true);
     expect(result.risks).toEqual([]);
     expect(requests).toHaveLength(3);
+  });
+
+  it('counts cross-work person repeats separately from repeated relation pairs', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/characters/100')) return json(detail());
+      if (path.endsWith('/subjects')) return json([]);
+      if (path.endsWith('/persons')) {
+        return json([person(20, 10), person(20, 11), person(20, 11), person(21, 12)]);
+      }
+      return json({ message: 'unexpected' }, 500);
+    };
+
+    const result = await service(fetchFn).getCharacterCreditIntegrity(100);
+    expect(result.personCredits[0]).toMatchObject({
+      id: 20,
+      observedRows: 3,
+      duplicateRows: 2,
+      duplicateRelationRows: 1,
+      subjects: [{ subjectId: 10 }, { subjectId: 11 }],
+    });
+    expect(result.coverage.persons).toMatchObject({
+      duplicateRows: 2,
+      duplicateRelationRows: 1,
+      duplicateIds: [20],
+    });
+    expect(result.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'duplicate_stable_id',
+          entity: 'person',
+          ids: [20],
+          observedRows: 2,
+        }),
+      ]),
+    );
+  });
+
+  it('keeps positive list evidence when character detail is missing or unavailable', async () => {
+    for (const status of [404, 503]) {
+      const fetchFn: typeof fetch = async (input) => {
+        const path = new URL(String(input)).pathname;
+        if (path.endsWith('/characters/100')) return json({ message: 'detail failure' }, status);
+        if (path.endsWith('/subjects')) return json([subject(10)]);
+        if (path.endsWith('/persons')) return json([person(20, 10)]);
+        return json({ message: 'unexpected' }, 500);
+      };
+
+      const result = await service(fetchFn).getCharacterCreditIntegrity(100);
+      expect(result.state).toBe('partial');
+      expect(result.character).toBeUndefined();
+      expect(result.subjectCredits).toHaveLength(1);
+      expect(result.personCredits).toHaveLength(1);
+      expect(result.coverage.detail.state).toBe(status === 404 ? 'not_found' : 'unavailable');
+    }
+  });
+
+  it('counts each entity once per normalized key and preserves all risk candidates before capping', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/characters/100')) return json(detail());
+      if (path.endsWith('/subjects')) {
+        const rows = Array.from({ length: 66 }, (_, index) => {
+          const id = 1000 + index;
+          return [subject(id, '共享名称'), { ...subject(id, '共享名称'), staff: '配角' }];
+        }).flat();
+        return json(rows);
+      }
+      if (path.endsWith('/persons')) return json([]);
+      return json({ message: 'unexpected' }, 500);
+    };
+
+    const result = await service(fetchFn).getCharacterCreditIntegrity(100);
+    const sameNameRisk = result.risks.find(
+      (risk) => risk.kind === 'same_name_distinct_ids' && risk.entity === 'subject',
+    );
+    expect(sameNameRisk).toMatchObject({ observedRows: 132, membersOmitted: 50 });
+    expect(result.risks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'duplicate_stable_id', entity: 'subject' }),
+        expect.objectContaining({ kind: 'same_name_distinct_ids', entity: 'subject' }),
+      ]),
+    );
+    expect(result.risks).toHaveLength(64);
+    expect(result.coverage.output.risksOmitted).toBe(4);
+  });
+
+  it('records an upstream response-size failure without hiding list evidence', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/characters/100')) {
+        return json({ ...detail(), summary: '超大响应'.repeat(600) });
+      }
+      if (path.endsWith('/subjects')) return json([subject(10)]);
+      if (path.endsWith('/persons')) return json([]);
+      return json({ message: 'unexpected' }, 500);
+    };
+
+    const result = await service(fetchFn).getCharacterCreditIntegrity(100, {
+      maxResponseBytes: 1_024,
+    });
+    expect(result.state).toBe('partial');
+    expect(result.coverage.detail).toMatchObject({
+      state: 'unavailable',
+      errorCode: 'RESPONSE_TOO_LARGE',
+      maxResponseBytes: 1_024,
+    });
+    expect(result.operationEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/characters/{character_id}',
+          errorCode: 'RESPONSE_TOO_LARGE',
+        }),
+      ]),
+    );
+    expect(result.subjectCredits).toHaveLength(1);
   });
 
   it('keeps source failures explicit instead of turning them into empty negative conclusions', async () => {

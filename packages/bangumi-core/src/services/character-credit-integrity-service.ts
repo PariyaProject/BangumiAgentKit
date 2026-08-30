@@ -87,6 +87,7 @@ interface PersonAccumulator {
   name: string;
   observedRows: number;
   duplicateRows: number;
+  duplicateRelationRows: number;
   names: Set<string>;
   types: Set<number>;
   subjects: Map<number, PersonSubjectAccumulator>;
@@ -378,6 +379,7 @@ function personItem(accumulator: PersonAccumulator): CharacterCreditPerson {
     name: accumulator.name,
     observedRows: accumulator.observedRows,
     duplicateRows: accumulator.duplicateRows,
+    duplicateRelationRows: accumulator.duplicateRelationRows,
     subjects,
     subjectsOmitted: Math.max(
       0,
@@ -390,6 +392,7 @@ function personItem(accumulator: PersonAccumulator): CharacterCreditPerson {
 
 function parsePersons(source: SourceRead, maxPersons: number): PersonParse {
   const coverage = listCoverageBase(source.operation, maxPersons);
+  coverage.duplicateRelationRows = 0;
   coverage.state = sourceState(source.outcome);
   coverage.errorCode = source.error?.code;
   if (source.raw === undefined) {
@@ -431,6 +434,7 @@ function parsePersons(source: SourceRead, maxPersons: number): PersonParse {
         name: row.name,
         observedRows: 0,
         duplicateRows: 0,
+        duplicateRelationRows: 0,
         names: new Set([row.name]),
         types: new Set([row.type]),
         subjects: new Map(),
@@ -444,14 +448,17 @@ function parsePersons(source: SourceRead, maxPersons: number): PersonParse {
     person.names.add(row.name);
     person.types.add(row.type);
     const relationKey = `${row.id}:${row.subject_id}`;
-    const duplicateRelation = person.relationKeys.has(relationKey);
-    if (duplicateRelation) {
+    if (person.observedRows > 1) {
       person.duplicateRows += 1;
       coverage.duplicateRows += 1;
       if (!duplicateIdSet.has(row.id)) {
         duplicateIdSet.add(row.id);
         duplicateIds.push(row.id);
       }
+    }
+    if (person.relationKeys.has(relationKey)) {
+      person.duplicateRelationRows += 1;
+      coverage.duplicateRelationRows += 1;
     } else {
       person.relationKeys.add(relationKey);
     }
@@ -565,12 +572,19 @@ function duplicateRisk(
   if (duplicateIds.length === 0) return undefined;
   const byId = new Map(allItems.map((item) => [item.id, item]));
   const visibleIds = duplicateIds.slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS);
-  const names = uniqueStrings(
+  const visibleNames = uniqueStrings(
     visibleIds.flatMap((id) => {
       const item = byId.get(id);
       return item ? riskNames(item) : [];
     }),
-  ).slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS);
+  );
+  const allNames = uniqueStrings(
+    duplicateIds.flatMap((id) => {
+      const item = byId.get(id);
+      return item ? riskNames(item) : [];
+    }),
+  );
+  const names = visibleNames.slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS);
   return {
     kind: 'duplicate_stable_id',
     entity,
@@ -581,6 +595,7 @@ function duplicateRisk(
     ...(duplicateIds.length > visibleIds.length
       ? { membersOmitted: duplicateIds.length - visibleIds.length }
       : {}),
+    ...(allNames.length > names.length ? { namesOmitted: allNames.length - names.length } : {}),
     message:
       entity === 'subject'
         ? '同一官方条目 ID 在角色出演作品响应中重复出现；视图按 ID 去重，但保留重复观测计数。'
@@ -595,10 +610,13 @@ function sameNameRisks(
 ): CharacterCreditIntegrityRisk[] {
   const byName = new Map<string, { ids: Set<number>; names: Set<string>; observedRows: number }>();
   for (const item of items) {
+    const itemKeys = new Set<string>();
     const values = riskNameValues(item);
     for (const value of values) {
       const normalized = normalizedName(value);
       if (!normalized) continue;
+      if (itemKeys.has(normalized)) continue;
+      itemKeys.add(normalized);
       const group = byName.get(normalized) || {
         ids: new Set<number>(),
         names: new Set<string>(),
@@ -613,7 +631,6 @@ function sameNameRisks(
   return Array.from(byName.entries())
     .filter(([, group]) => group.ids.size > 1)
     .sort(([left], [right]) => left.localeCompare(right))
-    .slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISKS)
     .map(([normalized, group]) => {
       const ids = Array.from(group.ids).slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS);
       const names = Array.from(group.names).slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS);
@@ -626,6 +643,9 @@ function sameNameRisks(
         normalizedName: normalized,
         observedRows: group.observedRows,
         ...(group.ids.size > ids.length ? { membersOmitted: group.ids.size - ids.length } : {}),
+        ...(group.names.size > names.length
+          ? { namesOmitted: group.names.size - names.length }
+          : {}),
         message:
           entity === 'subject'
             ? '不同官方条目 ID 共享归一化名称；这是同名碰撞风险，不是条目身份匹配。'
@@ -641,16 +661,21 @@ function stableIdConflictRisks(
 ): CharacterCreditIntegrityRisk[] {
   return items
     .filter((item) => item.conflictingFields.length > 0)
-    .slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISKS)
-    .map((item) => ({
-      kind: 'stable_id_name_conflict' as const,
-      entity,
-      scope,
-      ids: [item.id],
-      names: riskNames(item).slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS),
-      observedRows: item.observedRows,
-      message: `官方稳定 ID #${item.id} 的重复观测出现字段冲突（${item.conflictingFields.join('、')}）；未合并为不同实体。`,
-    }));
+    .map((item) => {
+      const allNames = riskNames(item);
+      return {
+        kind: 'stable_id_name_conflict' as const,
+        entity,
+        scope,
+        ids: [item.id],
+        names: allNames.slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS),
+        ...(allNames.length > CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS
+          ? { namesOmitted: allNames.length - CHARACTER_CREDIT_INTEGRITY_MAX_RISK_MEMBERS }
+          : {}),
+        observedRows: item.observedRows,
+        message: `官方稳定 ID #${item.id} 的重复观测出现字段冲突（${item.conflictingFields.join('、')}）；未合并为不同实体。`,
+      };
+    });
 }
 
 function makeOperationEvidence(
@@ -660,6 +685,7 @@ function makeOperationEvidence(
     returnedRows: number;
     malformedRows: number;
     duplicateRows: number;
+    duplicateRelationRows?: number;
     conflictRows: number;
     truncated: boolean;
     errorCode?: string;
@@ -682,6 +708,9 @@ function makeOperationEvidence(
     returnedRows: values.returnedRows,
     malformedRows: values.malformedRows,
     duplicateRows: values.duplicateRows,
+    ...(values.duplicateRelationRows === undefined
+      ? {}
+      : { duplicateRelationRows: values.duplicateRelationRows }),
     conflictRows: values.conflictRows,
     truncated: values.truncated,
     ...(source.error?.code || values.errorCode
@@ -752,15 +781,13 @@ function overallState(
   persons: CharacterCreditIntegrityListCoverage,
   risks: readonly CharacterCreditIntegrityRisk[],
 ): CharacterCreditIntegrityState {
-  if (detail.state === 'not_found') return 'not_found';
-  if (
-    detail.state === 'unavailable' &&
-    subjects.state !== 'complete' &&
-    persons.state !== 'complete'
-  ) {
-    return 'unavailable';
-  }
   if (risks.some((risk) => risk.kind === 'stable_id_name_conflict')) return 'conflict';
+  const hasPositiveEvidence =
+    detail.state === 'complete' || subjects.validRows > 0 || persons.validRows > 0;
+  if (!hasPositiveEvidence) {
+    if (detail.state === 'not_found') return 'not_found';
+    if (detail.state === 'unavailable') return 'unavailable';
+  }
   if (
     detail.state !== 'complete' ||
     subjects.state !== 'complete' ||
@@ -881,8 +908,15 @@ export class CharacterCreditIntegrityService {
       ...sameNameRisks('subject', 'subject_credits', subjectsParsed.allItems),
       ...sameNameRisks('person', 'person_credits', personsParsed.allItems),
     ];
-    const risks = allRisks.slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISKS);
-    const state = overallState(detail, subjectsParsed.coverage, personsParsed.coverage, risks);
+    const riskPriority: Record<CharacterCreditIntegrityRisk['kind'], number> = {
+      duplicate_stable_id: 0,
+      same_name_distinct_ids: 1,
+      stable_id_name_conflict: 2,
+    };
+    const risks = [...allRisks]
+      .sort((left, right) => riskPriority[left.kind] - riskPriority[right.kind])
+      .slice(0, CHARACTER_CREDIT_INTEGRITY_MAX_RISKS);
+    const state = overallState(detail, subjectsParsed.coverage, personsParsed.coverage, allRisks);
 
     const detailError =
       detailSource.error ||
