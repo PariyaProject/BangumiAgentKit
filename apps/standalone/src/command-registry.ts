@@ -52,6 +52,7 @@ Bangumi:
           [--max-cast 1..80] [--max-staff 1..80] [--max-pairs 1..28] [--max-people 1..24]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
   cast <subjectId>
+  character-integrity <characterId> [--max-subjects 1..64] [--max-persons 1..64]
   person <personId>
   activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
            [--months 3|6|12] [--max-relations 1..120]
@@ -94,7 +95,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|subject-identity|revision-latest|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series|collection-consistency <args> [--output <path>] [--force]
+  render subject|subject-identity|revision-latest|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|character-integrity|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series|collection-consistency <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -310,6 +311,37 @@ function parseEpisodeIntegrityOptions(args: string[]): Record<string, unknown> {
       throw new StandaloneCliError('USAGE_ERROR: --as-of-date must use YYYY-MM-DD.', 2);
     }
     input.asOfDate = asOfDate;
+  }
+  return input;
+}
+
+function parseCharacterCreditIntegrityOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    characterId: parsePositiveInteger(args[0], 'character id'),
+  };
+  const optionNames = new Set(['--max-subjects', '--max-persons']);
+  const seen = new Set<string>();
+  for (let index = 1; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown character-integrity argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--max-subjects') {
+      input.maxSubjects = optionNumber(value, 'max-subjects', true, 1, 64);
+    } else {
+      input.maxPersons = optionNumber(value, 'max-persons', true, 1, 64);
+    }
   }
   return input;
 }
@@ -976,6 +1008,15 @@ export class StandaloneCommandRegistry {
         }),
       };
     }
+    if (command === 'character-integrity' || command === 'character-credits') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_character_credit_integrity',
+          parseCharacterCreditIntegrityOptions(args.slice(1)),
+        ),
+      };
+    }
     if (command === 'person') {
       return {
         value: await runTool(ctx, 'bangumi.get_person_profile', {
@@ -1374,6 +1415,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'cast') {
       name = 'bangumi.render_cast_card';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'character-integrity' || kind === 'character-credits') {
+      name = 'bangumi.render_character_credit_integrity';
+      input = parseCharacterCreditIntegrityOptions(args.slice(1));
     } else if (kind === 'person') {
       name = 'bangumi.render_person_profile';
       input = { personId: parsePositiveInteger(args[1], 'person id') };

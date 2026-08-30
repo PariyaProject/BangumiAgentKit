@@ -14,6 +14,7 @@ import type {
   CollectionDashboardResult,
   CollectionSeriesResult,
   CollectionEntityConsistencyResult,
+  CharacterCreditIntegrityResult,
   RevisionIntelligenceResult,
   SubjectLatestRevisionResult,
   EpisodeGuideResult,
@@ -43,6 +44,7 @@ import type {
   CollectionDashboardViewModel,
   CollectionSeriesViewModel,
   CollectionEntityConsistencyViewModel,
+  CharacterCreditIntegrityViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SubjectLatestRevisionViewModel,
@@ -539,6 +541,77 @@ export function buildCollectionEntityConsistencyViewModel(
         omitted: omittedUnmatched,
       },
     },
+  };
+}
+
+export function buildCharacterCreditIntegrityViewModel(
+  result: CharacterCreditIntegrityResult,
+  options: { maxSubjects?: number; maxPersons?: number; maxRisks?: number } = {},
+): CharacterCreditIntegrityViewModel {
+  const maxSubjects = Math.min(16, Math.max(1, Math.trunc(options.maxSubjects ?? 12)));
+  const maxPersons = Math.min(16, Math.max(1, Math.trunc(options.maxPersons ?? 12)));
+  const maxRisks = Math.min(16, Math.max(1, Math.trunc(options.maxRisks ?? 12)));
+  const subjectCredits = result.subjectCredits.slice(0, maxSubjects);
+  const personCredits = result.personCredits.slice(0, maxPersons).map((person) => ({
+    ...person,
+    subjects: person.subjects.slice(0, 16),
+  }));
+  const risks = result.risks.slice(0, maxRisks);
+  const omittedSubjects = Math.max(0, result.subjectCredits.length - subjectCredits.length);
+  const omittedPersons = Math.max(0, result.personCredits.length - personCredits.length);
+  const omittedRisks = Math.max(0, result.risks.length - risks.length);
+  const hasOmissions = omittedSubjects > 0 || omittedPersons > 0 || omittedRisks > 0;
+
+  return {
+    template: 'character-credit-integrity',
+    version: 1,
+    state: result.state,
+    formulaVersion: result.formulaVersion,
+    ...(result.character
+      ? {
+          character: {
+            id: result.character.id,
+            name: result.character.name,
+            summary: truncateText(result.character.summary, 240).text,
+          },
+        }
+      : {}),
+    subjectCredits,
+    personCredits,
+    risks,
+    coverage: result.coverage,
+    source: result.source,
+    operationEvidence: result.operationEvidence,
+    warnings: hasOmissions
+      ? [
+          ...result.warnings,
+          {
+            code: 'RENDERER_OUTPUT_TRUNCATED',
+            state: 'partial' as const,
+            message: '渲染器对作品、人物或风险记录应用了显示上限；完整返回数量仍见 coverage。',
+          },
+        ]
+      : result.warnings,
+    limitations: result.limitations,
+    presentation: {
+      state: hasOmissions || result.state !== 'complete' ? 'partial' : 'complete',
+      subjects: {
+        available: result.subjectCredits.length,
+        rendered: subjectCredits.length,
+        omitted: omittedSubjects,
+      },
+      persons: {
+        available: result.personCredits.length,
+        rendered: personCredits.length,
+        omitted: omittedPersons,
+      },
+      risks: {
+        available: result.risks.length,
+        rendered: risks.length,
+        omitted: omittedRisks,
+      },
+    },
+    error: result.error,
   };
 }
 

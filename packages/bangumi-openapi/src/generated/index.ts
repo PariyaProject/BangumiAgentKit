@@ -208,10 +208,12 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Character Detail (GET /v0/characters/{character_id}) */
   async getCharacterById(
     character_id: OperationPath<'getCharacterById'>['character_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getCharacterById'>> {
     return this.transport.request<OperationResponse<'getCharacterById'>>({
       method: 'GET',
       path: `/v0/characters/${encodeURIComponent(String(character_id))}`,
+      ...requestOptions,
     });
   }
 
@@ -230,20 +232,24 @@ export class GeneratedBangumiOpenApiClient {
   /** get character related subjects (GET /v0/characters/{character_id}/subjects) */
   async getRelatedSubjectsByCharacterId(
     character_id: OperationPath<'getRelatedSubjectsByCharacterId'>['character_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedSubjectsByCharacterId'>> {
     return this.transport.request<OperationResponse<'getRelatedSubjectsByCharacterId'>>({
       method: 'GET',
       path: `/v0/characters/${encodeURIComponent(String(character_id))}/subjects`,
+      ...requestOptions,
     });
   }
 
   /** get character related persons (GET /v0/characters/{character_id}/persons) */
   async getRelatedPersonsByCharacterId(
     character_id: OperationPath<'getRelatedPersonsByCharacterId'>['character_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedPersonsByCharacterId'>> {
     return this.transport.request<OperationResponse<'getRelatedPersonsByCharacterId'>>({
       method: 'GET',
       path: `/v0/characters/${encodeURIComponent(String(character_id))}/persons`,
+      ...requestOptions,
     });
   }
 

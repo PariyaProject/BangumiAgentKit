@@ -2473,6 +2473,112 @@ function presentArtifact(value: Record<string, unknown>): string | undefined {
   return `Artifact: ${String(ref.id)}${dimensions}`;
 }
 
+function presentCharacterCreditIntegrity(value: Record<string, unknown>): string | undefined {
+  const coverage = comparisonRecord(value.coverage);
+  const character = comparisonRecord(value.character);
+  const subjects = Array.isArray(value.subjectCredits) ? value.subjectCredits : undefined;
+  const persons = Array.isArray(value.personCredits) ? value.personCredits : undefined;
+  const risks = Array.isArray(value.risks) ? value.risks : undefined;
+  if (!coverage || !subjects || !persons || !risks) return undefined;
+
+  const lines = [
+    `角色出演作品与 CV 完整性 · 状态: ${humanField(value.state || 'unknown', 48)}`,
+    `角色: ${humanField(character?.name || '未知角色', 160)} · ID ${humanField(character?.id || '?', 32)}`,
+    '说明：只按 official v0 稳定 ID 观察已知角色；同名不同 ID 是碰撞风险，不是实体合并。',
+  ];
+  const subjectCoverage = comparisonRecord(coverage.subjects);
+  const personCoverage = comparisonRecord(coverage.persons);
+  const outputCoverage = comparisonRecord(coverage.output);
+  lines.push(
+    `覆盖: 作品 ${humanField(subjectCoverage?.returnedRows ?? '?', 24)}/${humanField(subjectCoverage?.uniqueIdsObserved ?? '?', 24)} · 人物 ${humanField(personCoverage?.returnedRows ?? '?', 24)}/${humanField(personCoverage?.uniqueIdsObserved ?? '?', 24)} · 风险 ${humanField(risks.length, 24)}`,
+  );
+  if (outputCoverage?.truncated) {
+    lines.push(
+      `输出裁剪: 作品上限 ${humanField(outputCoverage.maxSubjects ?? '?', 24)} · 人物上限 ${humanField(outputCoverage.maxPersons ?? '?', 24)} · 作品关系省略 ${humanField(outputCoverage.omittedPersonSubjectCredits ?? '?', 24)}`,
+    );
+  }
+
+  if (subjects.length > 0) {
+    lines.push('出演作品：');
+    for (const raw of subjects.slice(0, 10)) {
+      const item = comparisonRecord(raw);
+      if (!item) continue;
+      lines.push(
+        `- #${humanField(item.id, 32)} · ${humanField(item.nameCn || item.name || '未知作品', 150)} · ${humanField(item.staff || '关系未提供', 72)}${item.duplicateRows ? ` · 重复 ${humanField(item.duplicateRows, 24)}` : ''}`,
+      );
+    }
+    if (subjects.length > 10)
+      lines.push(`- 另有 ${humanField(subjects.length - 10, 24)} 个作品未展开。`);
+  }
+  if (persons.length > 0) {
+    lines.push('相关人物 / CV：');
+    for (const raw of persons.slice(0, 10)) {
+      const person = comparisonRecord(raw);
+      if (!person) continue;
+      const personSubjects = Array.isArray(person.subjects)
+        ? person.subjects
+            .slice(0, 4)
+            .map((subject) => {
+              const details = comparisonRecord(subject);
+              return details
+                ? `#${humanField(details.subjectId, 24)} ${humanField(details.subjectNameCn || details.subjectName || '未知作品', 80)}`
+                : undefined;
+            })
+            .filter((item): item is string => Boolean(item))
+            .join('、')
+        : '作品关系未提供';
+      lines.push(
+        `- #${humanField(person.id, 32)} · ${humanField(person.name, 140)} · ${personSubjects || '作品关系未提供'}${person.subjectsOmitted ? ` · 另有 ${humanField(person.subjectsOmitted, 24)} 个作品关系省略` : ''}`,
+      );
+    }
+    if (persons.length > 10)
+      lines.push(`- 另有 ${humanField(persons.length - 10, 24)} 个人物未展开。`);
+  }
+  if (risks.length > 0) {
+    lines.push('身份风险：');
+    for (const raw of risks.slice(0, 8)) {
+      const risk = comparisonRecord(raw);
+      if (!risk) continue;
+      const ids = Array.isArray(risk.ids)
+        ? risk.ids.map((id) => `#${humanField(id, 24)}`).join('、')
+        : '?';
+      const names = Array.isArray(risk.names)
+        ? risk.names.map((name) => humanField(name, 90)).join(' / ')
+        : '未知';
+      lines.push(`- ${humanField(risk.kind, 64)} · ${ids} · ${names}`);
+      lines.push(`  ${humanField(risk.message || '保留风险，未执行实体合并。', 220)}`);
+    }
+    if (risks.length > 8) lines.push(`- 另有 ${humanField(risks.length - 8, 24)} 条风险未展开。`);
+  }
+  const evidence = Array.isArray(value.operationEvidence) ? value.operationEvidence : [];
+  if (evidence.length > 0) {
+    lines.push(
+      `证据操作: ${evidence
+        .slice(0, 4)
+        .map((item) => comparisonRecord(item)?.operation)
+        .filter(Boolean)
+        .join(' · ')}`,
+    );
+  }
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const raw of warnings.slice(0, 4)) {
+      const warning = comparisonRecord(raw);
+      if (warning)
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 72)} · ${humanField(warning.message || '')}`,
+        );
+    }
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentPersonCollaboration(value: Record<string, unknown>): string | undefined {
   const personId = value.personId;
   const collaborators = Array.isArray(value.collaborators) ? value.collaborators : undefined;
@@ -2803,6 +2909,10 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const characterCreditIntegrity = presentCharacterCreditIntegrity(
+      safe as Record<string, unknown>,
+    );
+    if (characterCreditIntegrity) return characterCreditIntegrity;
     const personCollaboration = presentPersonCollaboration(safe as Record<string, unknown>);
     if (personCollaboration) return personCollaboration;
     const calendar = presentCalendar(safe as Record<string, unknown>);

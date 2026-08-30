@@ -12,6 +12,11 @@ import {
   SeriesService,
   EpisodeService,
   CharacterService,
+  CharacterCreditIntegrityService,
+  CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_PERSONS,
+  CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_SUBJECTS,
+  CHARACTER_CREDIT_INTEGRITY_MAX_PERSONS,
+  CHARACTER_CREDIT_INTEGRITY_MAX_SUBJECTS,
   PersonService,
   PersonActivityService,
   PersonCollaborationService,
@@ -819,6 +824,43 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         relatedPersons: persons,
       };
     },
+  });
+
+  const getCharacterCreditIntegrity = defineTool({
+    name: 'bangumi.get_character_credit_integrity',
+    description:
+      '读取一个已知 Bangumi 角色的官方 v0 详情、出演作品和相关人物，并按稳定 ID 检查重复观测、稳定 ID 字段冲突和同名不同 ID 碰撞风险。结果明确区分 complete/partial/conflict/unavailable/not_found；只对本次已知 ID 范围作正向观察，不做名称合并、全局搜索或完整性推断。',
+    input: z
+      .object({
+        characterId: z.number().int().positive().describe('Bangumi 角色 ID'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(CHARACTER_CREDIT_INTEGRITY_MAX_SUBJECTS)
+          .optional()
+          .describe(
+            `最多返回出演作品稳定 ID，默认 ${CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_SUBJECTS}`,
+          ),
+        maxPersons: z
+          .number()
+          .int()
+          .min(1)
+          .max(CHARACTER_CREDIT_INTEGRITY_MAX_PERSONS)
+          .optional()
+          .describe(
+            `最多返回相关人物稳定 ID，默认 ${CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_PERSONS}`,
+          ),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input) =>
+      await new CharacterCreditIntegrityService(publicHttpClient).getCharacterCreditIntegrity(
+        input.characterId,
+        { maxSubjects: input.maxSubjects, maxPersons: input.maxPersons },
+      ),
   });
 
   const searchPersons = defineTool({
@@ -2217,5 +2259,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getPersonCollection,
     getSubjectIdentityTool,
     getCollectionEntityConsistency,
+    getCharacterCreditIntegrity,
   ] as const;
 }

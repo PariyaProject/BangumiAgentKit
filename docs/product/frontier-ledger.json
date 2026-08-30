@@ -1464,11 +1464,40 @@
       "kind": "scenario",
       "user_question": "某角色的出演作品和 CV 是否有重复或同名实体风险？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Maintain the known-character stable-ID integrity observation; reopen if official credit shape or bounded evidence semantics change.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded known-character official-v0 observation that reports stable-ID duplicates, repeated-ID field conflicts, and same-name distinct-ID collision risks without entity merging or global completeness claims.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_character_credit_integrity",
+          "bangumi.render_character_credit_integrity"
+        ],
+        "tests": [
+          "tests/unit/character-credit-integrity.test.ts",
+          "tests/semantic/character-credit-integrity.test.ts",
+          "tests/render/character-credit-integrity.test.ts",
+          "tests/standalone/character-credit-integrity-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/character-credit-integrity.ts",
+          "packages/bangumi-core/src/services/character-credit-integrity-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/CharacterCreditIntegrityCard.tsx",
+          "packages/renderer/src/templates/TemplateRegistry.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts",
+          "packages/bangumi-openapi/src/generated/index.ts",
+          "scripts/generate-openapi-client.ts"
+        ],
+        "source_contract": "Read exactly one known-character official GET /v0/characters/{character_id} detail and the two official GET /v0/characters/{character_id}/subjects and /persons responses, each with a 1 MiB response cap. Validate source rows, retain positive stable IDs, deduplicate only the returned view, count duplicate/conflicting observations, and report same normalized names across distinct IDs as collision risks. Source failures, malformed rows, and caps remain explicit partial/unavailable/not_found states.",
+        "formula_version": "character-credit-integrity-v1"
+      }
     },
     {
       "id": "OP-001",
