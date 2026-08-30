@@ -2562,6 +2562,7 @@ export function buildPersonActivityViewModel(
     },
     kind: result.kind,
     media: result.media,
+    ...(result.staffRole ? { staffRole: result.staffRole } : {}),
     window: {
       months: result.window.months,
       start: result.window.start,
@@ -2643,6 +2644,8 @@ export function buildPersonActivityViewModel(
       outsideWindowRows: result.coverage.outsideWindowRows,
       mediaExcludedRows: result.coverage.mediaExcludedRows,
       mediaUnknownRows: result.coverage.mediaUnknownRows,
+      staffRoleExcludedRows: result.coverage.staffRoleExcludedRows,
+      staffRoleUnknownRows: result.coverage.staffRoleUnknownRows,
       maxRelations: result.coverage.maxRelations,
       maxSubjectDetails: result.coverage.maxSubjectDetails,
       maxRows: result.coverage.maxRows,

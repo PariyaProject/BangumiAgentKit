@@ -86,6 +86,45 @@ describe('bangumi.get_person_activity', () => {
     const tool = getTool(new HttpClient({ fetchFn: async () => json({}) }));
     expect(() => tool.input.parse({ personId: 20, maxRelations: 121 })).toThrow();
     expect(() => tool.input.parse({ personId: 20, windowMonths: 9 })).toThrow();
+    expect(() =>
+      tool.input.parse({ personId: 20, staffRole: 'director', kind: 'voice' }),
+    ).toThrow();
     expect(() => tool.input.parse({ personId: 20, media: 'movie' })).toThrow();
+    expect(() =>
+      tool.input.parse({ personId: 20, staffRole: 'director', windowMonths: 36 }),
+    ).not.toThrow();
+  });
+
+  it('defaults a role-filtered query to staff and preserves the 36-month contract', async () => {
+    const fetchFn = async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json({ id: 20, name: 'Person' });
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return json([{ id: 10, name: 'Subject', staff: '导演' }]);
+      }
+      if (url.endsWith('/v0/subjects/10')) {
+        return json({
+          id: 10,
+          type: 2,
+          name: 'Subject',
+          name_cn: '条目',
+          date: '2026-07-01',
+          platform: 'TV',
+        });
+      }
+      return json({ error: 'not found' }, 404);
+    };
+    const tool = getTool(new HttpClient({ fetchFn }));
+    const result = (await tool.execute(
+      { personId: 20, staffRole: 'director', windowMonths: 36, media: 'tv' },
+      { principalId: 'p', botInstanceId: 'b', conversationId: 'c' },
+    )) as Record<string, any>;
+
+    expect(result).toMatchObject({
+      kind: 'staff',
+      staffRole: 'director',
+      window: { months: 36 },
+      rows: [{ subjectId: 10, rawRole: '导演' }],
+    });
   });
 });

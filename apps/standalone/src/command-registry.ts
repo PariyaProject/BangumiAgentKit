@@ -57,7 +57,7 @@ Bangumi:
   character-integrity <characterId> [--max-subjects 1..64] [--max-persons 1..64]
   person <personId>
   activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
-           [--months 3|6|12] [--max-relations 1..120]
+           [--staff-role director] [--months 3|6|12|36] [--max-relations 1..120]
            [--max-details 1..48] [--max-rows 1..60] [--compare-previous]
   collaborators <personId> [--kind voice|staff|all] [--media anime|all]
                [--target-role <label>] [--collaborator-role <label>]
@@ -237,6 +237,7 @@ function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
   };
   const kind = takeOption(args, '--kind');
   const media = takeOption(args, '--media');
+  const staffRole = takeOption(args, '--staff-role');
   const months = takeOption(args, '--months');
   const maxRelations = takeOption(args, '--max-relations');
   const maxDetails = takeOption(args, '--max-details');
@@ -254,10 +255,16 @@ function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
     }
     input.media = media;
   }
+  if (staffRole !== undefined) {
+    if (staffRole !== 'director') {
+      throw new StandaloneCliError('USAGE_ERROR: --staff-role must be director.', 2);
+    }
+    input.staffRole = staffRole;
+  }
   if (months !== undefined) {
     const parsed = parsePositiveInteger(months, 'months');
-    if (parsed !== 3 && parsed !== 6 && parsed !== 12) {
-      throw new StandaloneCliError('USAGE_ERROR: --months must be 3, 6, or 12.', 2);
+    if (parsed !== 3 && parsed !== 6 && parsed !== 12 && parsed !== 36) {
+      throw new StandaloneCliError('USAGE_ERROR: --months must be 3, 6, 12, or 36.', 2);
     }
     input.windowMonths = parsed;
   }

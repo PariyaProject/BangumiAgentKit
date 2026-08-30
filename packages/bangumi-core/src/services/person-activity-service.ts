@@ -19,6 +19,7 @@ import {
   PersonActivityRelationKind,
   PersonActivityResult,
   PersonActivityRoleFamily,
+  PersonActivityStaffRole,
   PersonActivityRow,
   PersonActivitySourceOperation,
   PersonActivityState,
@@ -37,11 +38,14 @@ export const PERSON_ACTIVITY_DETAIL_CONCURRENCY = 4;
 export const PERSON_ACTIVITY_MAX_RELATIONS = 120;
 export const PERSON_ACTIVITY_MAX_SUBJECT_DETAILS = 48;
 export const PERSON_ACTIVITY_MAX_ROWS = 60;
+export const PERSON_ACTIVITY_MAX_WINDOW_MONTHS = 36;
 export const PERSON_ACTIVITY_MAX_RESPONSE_BYTES = 1_048_576;
 
 export interface PersonActivityOptions {
   kind?: PersonActivityKind;
   media?: PersonActivityMedia;
+  /** Exact official staff-role filter; supplying it defaults kind to staff. */
+  staffRole?: PersonActivityStaffRole;
   windowMonths?: number;
   maxRelations?: number;
   maxSubjectDetails?: number;
@@ -144,6 +148,34 @@ function classifyVoiceRole(rawRole?: string): PersonActivityRoleFamily {
 
 function classifyStaffRole(rawRole?: string): PersonActivityRoleFamily {
   return rawRole?.trim() ? 'staff' : 'unknown';
+}
+
+const PERSON_ACTIVITY_DIRECTOR_ROLE_LABELS = new Set([
+  '导演',
+  '監督',
+  '总导演',
+  '総監督',
+  'director',
+  'chief director',
+  'series director',
+]);
+
+function matchesStaffRole(
+  rawRole: string | undefined,
+  staffRole: PersonActivityStaffRole,
+): 'match' | 'non_match' | 'unknown' {
+  const labels = rawRole
+    ?.split(/[、,，/|+&;；]+/u)
+    .map((label) => label.trim().toLowerCase())
+    .filter(Boolean);
+  if (!labels || labels.length === 0) return 'unknown';
+  if (
+    staffRole === 'director' &&
+    labels.some((label) => PERSON_ACTIVITY_DIRECTOR_ROLE_LABELS.has(label))
+  ) {
+    return 'match';
+  }
+  return 'non_match';
 }
 
 function classifyRole(candidate: ActivityCandidate): PersonActivityRoleFamily {
@@ -515,9 +547,13 @@ export class PersonActivityService {
     if (options.comparePreviousWindow) {
       return await this.getPersonActivityWithComparison(personId, options);
     }
-    const kind = options.kind ?? 'voice';
+    const staffRole = options.staffRole;
+    const kind = options.kind ?? (staffRole ? 'staff' : 'voice');
+    if (staffRole && kind !== 'staff') {
+      throw new Error('staffRole requires kind=staff');
+    }
     const media = options.media ?? 'tv';
-    const windowMonths = bounded(options.windowMonths, 12, 12);
+    const windowMonths = bounded(options.windowMonths, 12, PERSON_ACTIVITY_MAX_WINDOW_MONTHS);
     const maxRelations = bounded(options.maxRelations, 80, PERSON_ACTIVITY_MAX_RELATIONS);
     const maxSubjectDetails = bounded(
       options.maxSubjectDetails,
@@ -587,9 +623,27 @@ export class PersonActivityService {
           }))
         : []),
     ];
-    const selectedCandidates = selectEvenly(candidates, maxRelations);
-    const relationRowsDroppedAtLimit = Math.max(0, candidates.length - selectedCandidates.length);
-    const observedSubjectIds = uniqueNumbers(candidates.map((candidate) => candidate.subjectId));
+    let staffRoleExcludedRows = 0;
+    let staffRoleUnknownRows = 0;
+    const roleFilteredCandidates = staffRole
+      ? candidates.filter((candidate) => {
+          const match =
+            candidate.relationKind === 'staff'
+              ? matchesStaffRole(candidate.rawRole, staffRole)
+              : 'non_match';
+          if (match !== 'match') staffRoleExcludedRows += 1;
+          if (match === 'unknown') staffRoleUnknownRows += 1;
+          return match === 'match';
+        })
+      : candidates;
+    const selectedCandidates = selectEvenly(roleFilteredCandidates, maxRelations);
+    const relationRowsDroppedAtLimit = Math.max(
+      0,
+      roleFilteredCandidates.length - selectedCandidates.length,
+    );
+    const observedSubjectIds = uniqueNumbers(
+      roleFilteredCandidates.map((candidate) => candidate.subjectId),
+    );
     const selectedSubjectIds = uniqueNumbers(
       selectedCandidates.map((candidate) => candidate.subjectId),
     );
@@ -762,6 +816,7 @@ export class PersonActivityService {
       personUnavailable ||
       detailPartial ||
       relationFailures > 0 ||
+      staffRoleUnknownRows > 0 ||
       unknownRoleRows > 0 ||
       originCoverage.subjectsPartial > 0 ||
       originCoverage.malformedTagValues > 0 ||
@@ -792,6 +847,20 @@ export class PersonActivityService {
         code: 'RELATION_LIMIT_REACHED',
         state: 'partial',
         message: `官方关系共 ${candidates.length} 行，本次按来源顺序等距选取 ${selectedCandidates.length} 行；未按条目 ID 或日期排序，未读取的关系没有进入作品详情预算。`,
+      });
+    }
+    if (staffRoleExcludedRows > 0) {
+      warnings.push({
+        code: 'STAFF_ROLE_FILTER',
+        state: staffRoleUnknownRows > 0 ? 'partial' : 'complete',
+        message: `职位筛选“${staffRole}”按官方 person-subject relation 的精确标签执行，排除 ${staffRoleExcludedRows} 条关系；未把不匹配关系当作目标职位。`,
+      });
+    }
+    if (staffRoleUnknownRows > 0) {
+      warnings.push({
+        code: 'STAFF_ROLE_FILTER_UNKNOWN',
+        state: 'partial',
+        message: `${staffRoleUnknownRows} 条制作人员关系缺少职位标签，无法判断是否匹配“${staffRole}”；结果不是完整的职位负面结论。`,
       });
     }
     if (subjectDetailIdsDroppedAtLimit > 0 || detailFailures.size > 0) {
@@ -889,8 +958,7 @@ export class PersonActivityService {
         source: 'derived-s7',
         operation: 'person-activity-window-composition',
         formulaVersion: PERSON_ACTIVITY_FORMULA_VERSION,
-        description:
-          '按稳定 subject/character ID 去重；超过预算时按官方关系返回顺序做确定性等距抽样，不假设条目 ID 或返回顺序代表新旧；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类。',
+        description: `按稳定 subject/character ID 去重；超过预算时按官方关系返回顺序做确定性等距抽样，不假设条目 ID 或返回顺序代表新旧；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类${staffRole ? `；职位筛选“${staffRole}”只匹配记录在案的精确官方标签` : ''}。`,
         retrievedAt,
       },
       {
@@ -908,6 +976,7 @@ export class PersonActivityService {
       person: personResult.value ? mapPerson(personResult.value) : undefined,
       kind,
       media,
+      ...(staffRole ? { staffRole } : {}),
       window: {
         months: windowMonths,
         start: formatDateOnly(window.start),
@@ -943,6 +1012,8 @@ export class PersonActivityService {
         outsideWindowRows,
         mediaExcludedRows,
         mediaUnknownRows,
+        staffRoleExcludedRows,
+        staffRoleUnknownRows,
         maxRelations,
         maxSubjectDetails,
         maxRows,
@@ -959,6 +1030,12 @@ export class PersonActivityService {
         '时间窗按官方作品 first_air_date 的日期归属，不代表实际配音、制作或劳动发生时间。',
         '没有历史快照；本结果只描述当前官方关系与作品详情观察，不能计算增长、趋势或前后窗口变化。',
         '主役、配角和职位分类只对可识别的官方关系标签做保守映射，未知标签保留原文并单独计数。',
+        ...(staffRole
+          ? [
+              '职位筛选只匹配官方 person-subject relation 中精确记录的导演标签（导演、監督、总导演、総監督、director、chief director、series director）；未识别或缺失的标签不会被推断为导演。',
+              '职位筛选基于当前官方关系，不代表完整历史履历；关系、作品详情或输出达到上限时，结果只能作为有界观察。',
+            ]
+          : []),
         '关系或作品详情达到上限时，结果是官方关系返回顺序上的确定性等距样本，不代表完整最近活动；coverage 会分别报告观察、选取、详情请求和省略的 ID 数量。',
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
         `只有官方 subject.meta_tags 完整响应中精确观察到“原创”才标记明确原创；person-activity 每个条目最多保留 ${SUBJECT_META_TAGS_MAX_COUNT} 项、每项 ${SUBJECT_META_TAG_MAX_CHARACTERS} 个字符，coverage 会报告省略、异常和文本截断；未观察到该标签不等于改编，meta_tags 缺失或字段异常保持来源未知。`,

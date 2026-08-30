@@ -3018,6 +3018,7 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     tv: '可判断为 TV 的动画',
     all: '全部媒介',
   };
+  const staffRoleLabels: Record<string, string> = { director: '导演' };
   const originLabels: Record<string, string> = {
     explicit_original: '明确原创',
     not_observed: '未观察到原创标签',
@@ -3030,12 +3031,21 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
   const count = (record: Record<string, unknown> | undefined, key: string): unknown =>
     record?.[key] ?? '?';
   const window = comparisonRecord(value.window);
+  const staffRole = value.staffRole
+    ? ` · 职位筛选: ${humanField(staffRoleLabels[String(value.staffRole)] || value.staffRole, 48)}`
+    : '';
   const lines = [
-    `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}`,
+    `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}${staffRole}`,
     `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
     `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · 详情 ${humanField(coverage.subjectDetailsSucceeded ?? '?', 32)}/${humanField(coverage.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(coverage.rowsReturned ?? '?', 32)}/${humanField(coverage.rowsEligible ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
     `上限: 关系 ${humanField(coverage.maxRelations ?? '?', 32)} · 详情 ${humanField(coverage.maxSubjectDetails ?? '?', 32)} · 行 ${humanField(coverage.maxRows ?? '?', 32)} · 并发 ${humanField(coverage.detailConcurrency ?? '?', 32)} · 采样 ${coverage.sampled ? '是' : '否'}`,
   ];
+
+  if (coverage.staffRoleExcludedRows !== undefined || coverage.staffRoleUnknownRows !== undefined) {
+    lines.push(
+      `职位筛选覆盖: 排除 ${humanField(coverage.staffRoleExcludedRows ?? '?', 32)} · 未知 ${humanField(coverage.staffRoleUnknownRows ?? '?', 32)}（缺失职位不会被当作否定证据）`,
+    );
+  }
 
   if (origin || coverageOrigin) {
     const sourceOrigin = coverageOrigin || origin;

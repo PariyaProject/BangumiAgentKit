@@ -220,6 +220,76 @@ describe('PersonActivityService', () => {
     );
   });
 
+  it('filters exact director labels and supports a bounded 36-month staff window', async () => {
+    const detailIds: number[] = [];
+    const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return json([
+          { id: 301, name: '导演作品', staff: '导演' },
+          { id: 302, name: '脚本作品', staff: '脚本' },
+          { id: 303, name: '監督作品', staff: '監督' },
+          { id: 304, name: '缺失职位作品' },
+          { id: 305, name: '副导演作品', staff: '副导演' },
+        ]);
+      }
+      if (url.includes('/v0/subjects/')) {
+        const id = Number(url.split('/').pop());
+        detailIds.push(id);
+        if (id === 301) return json(subjectPayload(id, { date: '2024-01-10' }));
+        if (id === 303) return json(subjectPayload(id, { date: '2025-11-10' }));
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-08-15',
+        kind: 'staff',
+        staffRole: 'director',
+        media: 'tv',
+        windowMonths: 36,
+      },
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result).toMatchObject({
+      kind: 'staff',
+      staffRole: 'director',
+      window: {
+        months: 36,
+        start: '2023-09-01',
+        end: '2026-08-15',
+      },
+      rows: [
+        { subjectId: 303, rawRole: '監督' },
+        { subjectId: 301, rawRole: '导演' },
+      ],
+      coverage: {
+        relationRowsObserved: 5,
+        relationRowsSelected: 2,
+        staffRoleExcludedRows: 3,
+        staffRoleUnknownRows: 1,
+        subjectIdsObserved: 2,
+        subjectIdsSelected: 2,
+        subjectDetailRequests: 2,
+        subjectDetailsSucceeded: 2,
+      },
+    });
+    expect(detailIds).toEqual([301, 303]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'STAFF_ROLE_FILTER' }),
+        expect.objectContaining({ code: 'STAFF_ROLE_FILTER_UNKNOWN', state: 'partial' }),
+      ]),
+    );
+    expect(result.limitations).toEqual(
+      expect.arrayContaining([expect.stringContaining('只匹配官方 person-subject relation')]),
+    );
+  });
+
   it('bounds tag projections, retains a positive original tag beyond the prefix, and reports drift', async () => {
     const longTag = '界'.repeat(140);
     const metaTags = [
