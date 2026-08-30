@@ -14,6 +14,11 @@ import {
   CollectionDashboardService,
   CollectionSeriesService,
   COLLECTION_SERIES_LIMITS,
+  CollectionEntityConsistencyService,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_RELATIONS_PER_SUBJECT,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS,
   PersonService,
   PersonActivityService,
   PersonCollaborationService,
@@ -49,6 +54,7 @@ import {
   buildCollectionScheduleViewModel,
   buildCollectionDashboardViewModel,
   buildCollectionSeriesViewModel,
+  buildCollectionEntityConsistencyViewModel,
   buildPersonActivityViewModel,
   buildPersonCollaborationViewModel,
   buildEpisodeGuideViewModel,
@@ -1332,6 +1338,96 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionEntityConsistency = defineTool({
+    name: 'bangumi.render_collection_entity_consistency',
+    description:
+      '生成当前绑定 Bangumi 账号收藏角色/人物一致性观察的无图片资产私有卡片 Artifact。卡片展示官方 v0 稳定 ID 正向关联、selected-subject-roots 范围内未匹配项、character-actor 与直接人物关系的区别、分页/关系/输出 coverage、失败和限制；不接受任意用户名，不把未观察到解释为不存在，不读取评论，不执行写入，Artifact 使用当前账号主体隔离。',
+    input: z
+      .object({
+        subjectType: z.enum(['book', 'anime', 'music', 'game', 'real']).optional(),
+        status: z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']).optional(),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS)
+          .optional()
+          .describe(`最多选取收藏作品根条目数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS}`),
+        maxSubjectPages: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES)
+          .optional()
+          .describe(
+            `最多读取收藏作品页数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES}`,
+          ),
+        maxRelationsPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_RELATIONS_PER_SUBJECT)
+          .optional()
+          .describe('每个作品最多保留角色关系和人物关系行数，默认 80'),
+        maxOutputRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS)
+          .optional()
+          .describe(
+            `正向关联和观察范围内未匹配项最多返回行数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS}`,
+          ),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能渲染收藏角色/人物一致性观察。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能渲染收藏角色/人物一致性观察。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      const result = await new CollectionEntityConsistencyService(
+        client,
+      ).getCollectionEntityConsistency(username, {
+        subjectType: input.subjectType,
+        status: input.status,
+        maxSubjects: input.maxSubjects,
+        maxSubjectPages: input.maxSubjectPages,
+        maxRelationsPerSubject: input.maxRelationsPerSubject,
+        maxOutputRows: input.maxOutputRows,
+      });
+      return await executeRenderAndSave(
+        buildCollectionEntityConsistencyViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -1360,5 +1456,6 @@ export function createRenderPresentationTools(
     renderCollectionSeriesGroups,
     renderPersonActivity,
     renderPersonCollaboration,
+    renderCollectionEntityConsistency,
   ] as const;
 }

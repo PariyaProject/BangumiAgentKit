@@ -81,6 +81,10 @@ Bangumi:
   collection series [--max-items 1..100] [--max-relation-subjects 1..36]
                     [--max-relations-per-subject 1..96] [--max-groups 1..36]
                     [--max-edges 1..144] [--status wish,doing,done,on_hold,dropped]
+  collection consistency [--subject-type book|anime|music|game|real]
+                       [--status wish|doing|done|on_hold|dropped]
+                       [--max-subjects 1..24] [--max-pages 1..8]
+                       [--max-relations 1..80] [--max-output 1..60]
   collection list
   collection set <subjectId> <status>
 
@@ -90,7 +94,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|subject-identity|revision-latest|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|subject-identity|revision-latest|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series|collection-consistency <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -752,6 +756,56 @@ function parseCollectionSeriesOptions(args: string[]): Record<string, unknown> {
   return input;
 }
 
+function parseCollectionEntityConsistencyOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  const optionNames = new Set([
+    '--subject-type',
+    '--status',
+    '--max-subjects',
+    '--max-pages',
+    '--max-relations',
+    '--max-output',
+  ]);
+  const seen = new Set<string>();
+  for (let index = 0; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown collection consistency argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--subject-type') {
+      if (!['book', 'anime', 'music', 'game', 'real'].includes(value)) {
+        throw new StandaloneCliError(
+          'USAGE_ERROR: --subject-type must be book, anime, music, game, or real.',
+          2,
+        );
+      }
+      input.subjectType = value;
+    } else if (name === '--status') {
+      input.status = parseStatus(value);
+    } else if (name === '--max-subjects') {
+      input.maxSubjects = optionNumber(value, 'max-subjects', true, 1, 24);
+    } else if (name === '--max-pages') {
+      input.maxSubjectPages = optionNumber(value, 'max-pages', true, 1, 8);
+    } else if (name === '--max-relations') {
+      input.maxRelationsPerSubject = optionNumber(value, 'max-relations', true, 1, 80);
+    } else {
+      input.maxOutputRows = optionNumber(value, 'max-output', true, 1, 60);
+    }
+  }
+  return input;
+}
+
 async function runTool(
   ctx: StandaloneCommandContext,
   name: string,
@@ -1208,6 +1262,13 @@ export class StandaloneCommandRegistry {
         parseCollectionSeriesOptions(args),
       );
     }
+    if (subcommand === 'consistency' || subcommand === 'entity-consistency') {
+      return runTool(
+        ctx,
+        'bangumi.get_collection_entity_consistency',
+        parseCollectionEntityConsistencyOptions(args.slice(1)),
+      );
+    }
     if (subcommand === 'set') {
       return runTool(ctx, 'bangumi.update_collection', {
         subjectId: parsePositiveInteger(args[1], 'subject id'),
@@ -1347,6 +1408,13 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'collection-series' || kind === 'series-groups') {
       name = 'bangumi.render_collection_series_groups';
       input = parseCollectionSeriesOptions(args);
+    } else if (
+      kind === 'collection-consistency' ||
+      kind === 'collection-entity-consistency' ||
+      kind === 'consistency'
+    ) {
+      name = 'bangumi.render_collection_entity_consistency';
+      input = parseCollectionEntityConsistencyOptions(args.slice(1));
     } else if (kind === 'calendar') {
       name = 'bangumi.render_calendar';
       input = parseCalendarOptions(args.slice(1));

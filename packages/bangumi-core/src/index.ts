@@ -15,6 +15,7 @@ export * from './models/subject-stats-history.js';
 export * from './models/subject-identity.js';
 export * from './models/person-activity.js';
 export * from './models/person-collaboration.js';
+export * from './models/collection-entity-consistency.js';
 
 export * from './services/subject-service.js';
 export * from './services/series-service.js';
@@ -25,6 +26,7 @@ export * from './services/character-service.js';
 export * from './services/person-service.js';
 export * from './services/person-activity-service.js';
 export * from './services/person-collaboration-service.js';
+export * from './services/collection-entity-consistency-service.js';
 export * from './services/user-service.js';
 export * from './services/revision-service.js';
 export * from './services/index-service.js';
