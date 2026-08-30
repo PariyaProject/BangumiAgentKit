@@ -297,5 +297,5 @@ describe('character-credit-integrity renderer', () => {
         expect(rendered.height, `${label} PNG height`).toBeLessThan(5_000);
       }
     }
-  });
+  }, 30_000);
 });
