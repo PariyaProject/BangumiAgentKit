@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
-import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { compareSubjectCohorts, DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
   SubjectService,
@@ -31,6 +31,18 @@ import {
   RevisionEntityType,
   EpisodeGuideService,
   EpisodeIntegrityService,
+  SubjectIndexMembershipService,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_ID,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_PAGE_SIZE,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_PAGES,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_RESPONSE_BYTES,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_ROWS,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_SUBJECT_ID,
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
@@ -54,6 +66,7 @@ import {
   buildSubjectOverlapViewModel,
   buildSubjectStatsViewModel,
   buildSubjectIdentityViewModel,
+  buildSubjectIndexMembershipViewModel,
   buildSubjectStatsHistoryViewModel,
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
@@ -970,6 +983,77 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectIndexMembership = defineTool({
+    name: 'bangumi.render_subject_index_membership',
+    description:
+      '生成已知条目在调用方提供目录中的有界归属观察图片卡片 Artifact。卡片只展示官方 v0 精确 subject ID 匹配、完整 supplied observed scope 内未匹配和 unknown 状态，以及分页/响应大小/失败 coverage；不发现所有推荐目录，不读取 HTML/Structured Web、评论或目录描述，不执行写入，卡片不下载图片资产。',
+    input: z
+      .object({
+        subjectId: z
+          .number()
+          .int()
+          .positive()
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_SUBJECT_ID)
+          .describe(`Bangumi 条目 ID（最大 ${SUBJECT_INDEX_MEMBERSHIP_MAX_SUBJECT_ID}）`),
+        indexIds: z
+          .array(z.number().int().positive().max(SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_ID))
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS)
+          .refine((indexIds) => new Set(indexIds).size === indexIds.length, {
+            message: 'indexIds 必须包含不同的目录 ID',
+          })
+          .meta({ uniqueItems: true })
+          .describe(`1–${SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS} 个不同的已知 Bangumi 目录 ID`),
+        pageSize: z
+          .number()
+          .int()
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_PAGE_SIZE)
+          .optional()
+          .describe(`每页最多读取条数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE}`),
+        maxPages: z
+          .number()
+          .int()
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_PAGES)
+          .optional()
+          .describe(`每个目录最多读取页数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES}`),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_ROWS)
+          .optional()
+          .describe(`每个目录最多观察行数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS}`),
+        maxResponseBytes: z
+          .number()
+          .int()
+          .min(65_536)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_RESPONSE_BYTES)
+          .optional()
+          .describe('每个官方响应的最大 UTF-8 字节数'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.publicHttpClient || new HttpClient();
+      const result = await new SubjectIndexMembershipService(client).getSubjectIndexMembership(
+        input.subjectId,
+        input.indexIds,
+        {
+          pageSize: input.pageSize ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE,
+          maxPages: input.maxPages ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES,
+          maxRows: input.maxRows ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS,
+          maxResponseBytes:
+            input.maxResponseBytes ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES,
+        },
+      );
+      return await executeRenderAndSave(buildSubjectIndexMembershipViewModel(result));
+    },
+  });
+
   const renderSubjectStatsHistory = defineTool({
     name: 'bangumi.render_subject_stats_history',
     description:
@@ -1546,5 +1630,6 @@ export function createRenderPresentationTools(
     renderPersonActivity,
     renderPersonCollaboration,
     renderCollectionEntityConsistency,
+    renderSubjectIndexMembership,
   ] as const;
 }

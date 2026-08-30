@@ -1826,6 +1826,67 @@ function presentSubjectIdentity(value: Record<string, unknown>): string | undefi
   return boundHumanLines(lines);
 }
 
+function presentSubjectIndexMembership(value: Record<string, unknown>): string | undefined {
+  const subjectId = value.subjectId;
+  const indexes = Array.isArray(value.indexes) ? value.indexes : undefined;
+  const summary = comparisonRecord(value.summary);
+  const source = comparisonRecord(value.source);
+  if (
+    typeof subjectId !== 'number' ||
+    !indexes ||
+    !summary ||
+    typeof summary.requested !== 'number' ||
+    !Array.isArray(source?.operations)
+  ) {
+    return undefined;
+  }
+
+  const lines = [
+    `条目目录归属观察 · 条目 ${humanField(subjectId, 32)} · 状态: ${comparisonStateLabel(value.state)}`,
+    `汇总：请求 ${humanField(summary.requested, 24)} · 精确匹配 ${humanField(summary.matched ?? '?', 24)} · observed scope 未匹配 ${humanField(summary.notMatchedInObservedScope ?? '?', 32)} · 未知 ${humanField(summary.unknown ?? '?', 24)}`,
+    '口径：只扫描调用方提供的目录 ID；未匹配不是所有目录中的全局否定。',
+  ];
+
+  for (const rawIndex of indexes.slice(0, 8)) {
+    const index = comparisonRecord(rawIndex);
+    if (!index) continue;
+    const coverage = comparisonRecord(index.coverage);
+    const membershipLabel =
+      index.membership === 'matched'
+        ? '已观察到精确匹配'
+        : index.membership === 'not_matched_in_observed_scope'
+          ? '完整 observed scope 内未匹配'
+          : '未知（未完整扫描）';
+    lines.push(
+      `- 目录 #${humanField(index.indexId ?? '?', 32)} · ${membershipLabel} · ${comparisonStateLabel(index.state)} · 页 ${humanField(coverage?.pagesSucceeded ?? '?', 16)}/${humanField(coverage?.pagesAttempted ?? '?', 16)} · 行 ${humanField(coverage?.rowsReturned ?? '?', 24)}${coverage?.truncated ? ` · ${humanField(coverage.completionReason ?? 'truncated', 64)}` : ''}`,
+    );
+  }
+  if (indexes.length > 8) lines.push(`- 另有 ${humanField(indexes.length - 8, 24)} 个目录未展开。`);
+
+  const coverage = comparisonRecord(value.coverage);
+  if (coverage) {
+    lines.push(
+      `覆盖：目录完整 ${humanField(coverage.indexesComplete ?? '?', 16)} · 部分 ${humanField(coverage.indexesPartial ?? '?', 16)} · 不可用 ${humanField(coverage.indexesUnavailable ?? '?', 16)} · 请求 ${humanField(coverage.requestsSucceeded ?? '?', 24)}/${humanField(coverage.requestsAttempted ?? '?', 24)} 成功 · 响应上限 ${humanField(coverage.responseLimitBytes ?? '?', 32)} bytes`,
+    );
+  }
+  lines.push(`来源：${humanField(source.operations.join(' + '), 220)}`);
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  for (const rawWarning of warnings.slice(0, 3)) {
+    const warning = comparisonRecord(rawWarning);
+    if (warning) {
+      lines.push(
+        `警告：${humanField(warning.code || 'WARNING', 64)} · ${humanField(warning.message || '')}`,
+      );
+    }
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  for (const limitation of limitations.slice(0, 3)) {
+    lines.push(`限制：${humanField(limitation)}`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentSubjectStatsHistory(value: Record<string, unknown>): string | undefined {
   const subjectId = value.subjectId;
   const collection = comparisonRecord(value.collection);
@@ -3307,6 +3368,8 @@ export function formatHuman(value: unknown): string {
     if (subjectStatsHistory) return subjectStatsHistory;
     const subjectLatestRevision = presentSubjectLatestRevision(safe as Record<string, unknown>);
     if (subjectLatestRevision) return subjectLatestRevision;
+    const subjectIndexMembership = presentSubjectIndexMembership(safe as Record<string, unknown>);
+    if (subjectIndexMembership) return subjectIndexMembership;
     const subjectIdentity = presentSubjectIdentity(safe as Record<string, unknown>);
     if (subjectIdentity) return subjectIdentity;
     const subjectStats = presentSubjectStats(safe as Record<string, unknown>);
