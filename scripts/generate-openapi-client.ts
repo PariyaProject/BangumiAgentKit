@@ -8,8 +8,15 @@ const CLIENT_OUTPUT_PATH = path.join(GENERATED_DIR, 'index.ts');
 const SIGNALABLE_OPERATIONS = new Set([
   'getUserCollectionsByUsername',
   'getUserSubjectEpisodeCollection',
+  'getUserCharacterCollections',
+  'getUserPersonCollections',
+  'getRelatedPersonsBySubjectId',
+  'getRelatedCharactersBySubjectId',
 ]);
 const RESPONSE_LIMITABLE_OPERATIONS = new Set([
+  'getUserCollectionsByUsername',
+  'getUserCharacterCollections',
+  'getUserPersonCollections',
   'getSubjectById',
   'getPersonById',
   'getRelatedSubjectsByPersonId',

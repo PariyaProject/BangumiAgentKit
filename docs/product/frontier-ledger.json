@@ -1141,11 +1141,37 @@
       "kind": "scenario",
       "user_question": "我的角色和人物收藏是否与我的作品收藏一致？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_collection_entity_consistency for positive stable-ID evidence in the selected current-account scope; retain partial status for unobserved roots, capped relations, and unsupported history.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded current-account consistency observation across selected subject roots, character collections, person collections, direct subject-person staff links, and nested character-actor links; unmatched output is limited to successfully observed scope and does not claim global consistency or collection history.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_collection_entity_consistency",
+          "bangumi.render_collection_entity_consistency",
+          "Standalone collection consistency"
+        ],
+        "tests": [
+          "tests/unit/collection-entity-consistency.test.ts",
+          "tests/semantic/collection-entity-consistency.test.ts",
+          "tests/render/collection-entity-consistency.test.ts",
+          "tests/standalone/collection-entity-consistency-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/collection-entity-consistency.ts",
+          "packages/bangumi-core/src/services/collection-entity-consistency-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/CollectionEntityConsistencyCard.tsx",
+          "apps/standalone/src/command-registry.ts"
+        ],
+        "source_contract": "Official v0 current-account collection, character, person, subject-character, and subject-person endpoints are joined by stable IDs; names are display-only and direct staff links remain distinct from nested character-actor links. Requests share one abortable 60-second aggregate deadline and are bounded at 24 selected roots, 8 collection pages, 80 relation rows per source per root, 60 output rows, 1 MiB per upstream response, and four concurrent relation requests. Positive matches are retained, malformed rows and conflicting repeated IDs are reported with affected unmatched claims suppressed, and caps, truncation, schema drift, source failures, deadline expiry, and not-computable states remain explicit. Provenance lists only operations with actual evidence and omits retrieval timestamps when no source succeeded; private rendering requires a non-empty principal-scoped ArtifactStore. Unmatched means not observed in the selected successful scope. Comments, tags, images, tokens, recommendations, collection timestamps, and history are not used.",
+        "formula_version": "collection-entity-consistency-v1"
+      }
     },
     {
       "id": "U01",

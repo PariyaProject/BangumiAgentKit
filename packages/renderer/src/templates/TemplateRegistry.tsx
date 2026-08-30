@@ -27,6 +27,7 @@ import {
   CollectionScheduleViewModel,
   CollectionDashboardViewModel,
   CollectionSeriesViewModel,
+  CollectionEntityConsistencyViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -56,6 +57,7 @@ import { CollectionBacklogCard } from './CollectionBacklogCard.js';
 import { CollectionScheduleCard } from './CollectionScheduleCard.js';
 import { CollectionDashboardCard } from './CollectionDashboardCard.js';
 import { CollectionSeriesCard } from './CollectionSeriesCard.js';
+import { CollectionEntityConsistencyCard } from './CollectionEntityConsistencyCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
@@ -306,6 +308,14 @@ registerTemplate<CollectionSeriesViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <CollectionSeriesCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<CollectionEntityConsistencyViewModel>({
+  id: 'collection-entity-consistency',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <CollectionEntityConsistencyCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

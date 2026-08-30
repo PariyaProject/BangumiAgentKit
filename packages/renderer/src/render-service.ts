@@ -34,6 +34,15 @@ const SERIES_MAX_RENDERED_STEPS = 17;
 const SERIES_MAX_RENDERED_RELATED = 24;
 const SERIES_MAX_RENDERED_EDGES = 64;
 const SUBJECT_OVERVIEW_MAX_RENDERED_CAST = 6;
+const PRIVATE_COLLECTION_RENDER_TEMPLATES = new Set<RenderViewModel['template']>([
+  'collection-progress',
+  'collection-intelligence',
+  'collection-backlog',
+  'collection-schedule',
+  'collection-dashboard',
+  'collection-series',
+  'collection-entity-consistency',
+]);
 
 export function canonicalizeJson(obj: unknown): string {
   if (obj === null || typeof obj !== 'object') {
@@ -306,8 +315,7 @@ export class RenderService {
     const theme = options.theme ?? 'bangumi-dark';
     const cacheEnabled =
       options.cache !== false &&
-      normalizedViewModel.template !== 'collection-dashboard' &&
-      normalizedViewModel.template !== 'collection-series';
+      !PRIVATE_COLLECTION_RENDER_TEMPLATES.has(normalizedViewModel.template);
 
     if (width < 640 || width > 1200) {
       throw new RendererError(

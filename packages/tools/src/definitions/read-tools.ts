@@ -25,6 +25,11 @@ import {
   CollectionDashboardService,
   CollectionSeriesService,
   COLLECTION_SERIES_LIMITS,
+  CollectionEntityConsistencyService,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_RELATIONS_PER_SUBJECT,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS,
   EpisodeGuideService,
   EpisodeIntegrityService,
   resolveSubject,
@@ -2072,6 +2077,99 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getCollectionEntityConsistency = defineTool({
+    name: 'bangumi.get_collection_entity_consistency',
+    description:
+      '获取当前绑定 Bangumi 账号收藏条目与已收藏角色/人物的有界一致性观察。只按官方 v0 稳定 ID 返回观察到的正向关系，并把未匹配项限定为 selected-subject-roots 范围；不接受任意用户名，不比较账号，不把未观察到解释为不存在，也不推断收藏历史、偏好或推荐。角色演员关系以 character-actor 单独标记，关系读取最多并发 4 个并保留分页、截断、失败、schema drift、响应大小和输出覆盖。',
+    input: z
+      .object({
+        subjectType: z
+          .enum(['book', 'anime', 'music', 'game', 'real'])
+          .optional()
+          .describe('作品收藏媒介过滤'),
+        status: z
+          .enum(['wish', 'doing', 'done', 'on_hold', 'dropped'])
+          .optional()
+          .describe('作品收藏状态过滤；不表示优先级'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS)
+          .optional()
+          .describe(`最多选取收藏作品根条目数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS}`),
+        maxSubjectPages: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES)
+          .optional()
+          .describe(
+            `最多读取收藏作品页数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES}`,
+          ),
+        maxRelationsPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_RELATIONS_PER_SUBJECT)
+          .optional()
+          .describe('每个作品最多保留角色关系和人物关系行数，默认 80'),
+        maxOutputRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS)
+          .optional()
+          .describe(
+            `正向匹配和观察范围内未匹配项最多返回行数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS}`,
+          ),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能读取收藏角色/人物一致性观察。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能读取收藏角色/人物一致性观察。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      return await new CollectionEntityConsistencyService(client).getCollectionEntityConsistency(
+        username,
+        {
+          subjectType: input.subjectType,
+          status: input.status,
+          maxSubjects: input.maxSubjects,
+          maxSubjectPages: input.maxSubjectPages,
+          maxRelationsPerSubject: input.maxRelationsPerSubject,
+          maxOutputRows: input.maxOutputRows,
+        },
+      );
+    },
+  });
+
   return [
     searchSubjects,
     getSubject,
@@ -2118,5 +2216,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     listPersonCollections,
     getPersonCollection,
     getSubjectIdentityTool,
+    getCollectionEntityConsistency,
   ] as const;
 }

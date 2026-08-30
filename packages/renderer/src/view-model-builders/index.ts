@@ -13,6 +13,7 @@ import type {
   CollectionScheduleResult,
   CollectionDashboardResult,
   CollectionSeriesResult,
+  CollectionEntityConsistencyResult,
   RevisionIntelligenceResult,
   SubjectLatestRevisionResult,
   EpisodeGuideResult,
@@ -41,6 +42,7 @@ import type {
   CollectionScheduleViewModel,
   CollectionDashboardViewModel,
   CollectionSeriesViewModel,
+  CollectionEntityConsistencyViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SubjectLatestRevisionViewModel,
@@ -483,6 +485,60 @@ export function buildCollectionSeriesViewModel(
       },
     },
     error: result.error,
+  };
+}
+
+export function buildCollectionEntityConsistencyViewModel(
+  result: CollectionEntityConsistencyResult,
+  options: { maxMatches?: number; maxUnmatched?: number } = {},
+): CollectionEntityConsistencyViewModel {
+  const maxMatches = Math.min(30, Math.max(0, Math.trunc(options.maxMatches ?? 24)));
+  const maxUnmatched = Math.min(30, Math.max(0, Math.trunc(options.maxUnmatched ?? 24)));
+  const matches = result.matches.slice(0, maxMatches);
+  const unmatched = result.unmatchedInObservedScope.slice(0, maxUnmatched);
+  const availableMatches = result.coverage.output.matchesObserved;
+  const availableUnmatched = result.coverage.output.unmatchedObserved;
+  const omittedMatches = Math.max(0, availableMatches - matches.length);
+  const omittedUnmatched = Math.max(0, availableUnmatched - unmatched.length);
+  const hasOmissions = omittedMatches > 0 || omittedUnmatched > 0;
+
+  return {
+    template: 'collection-entity-consistency',
+    version: 1,
+    state: result.state,
+    account: result.account,
+    filters: result.filters,
+    matches,
+    unmatchedInObservedScope: unmatched,
+    coverage: result.coverage,
+    formulaVersion: result.formulaVersion,
+    source: result.source,
+    operationEvidence: result.operationEvidence,
+    warnings: hasOmissions
+      ? [
+          ...result.warnings,
+          {
+            code: 'RENDERER_OUTPUT_TRUNCATED',
+            state: 'partial',
+            message:
+              '渲染器对正向匹配或观察范围内未匹配项应用了显示上限；完整观察数量仍见 coverage。',
+          },
+        ]
+      : result.warnings,
+    limitations: result.limitations,
+    presentation: {
+      state: hasOmissions || result.state !== 'complete' ? 'partial' : 'complete',
+      matches: {
+        available: availableMatches,
+        rendered: matches.length,
+        omitted: omittedMatches,
+      },
+      unmatched: {
+        available: availableUnmatched,
+        rendered: unmatched.length,
+        omitted: omittedUnmatched,
+      },
+    },
   };
 }
 

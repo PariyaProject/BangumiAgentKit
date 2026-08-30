@@ -14,6 +14,11 @@ import {
   CollectionDashboardService,
   CollectionSeriesService,
   COLLECTION_SERIES_LIMITS,
+  CollectionEntityConsistencyService,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_RELATIONS_PER_SUBJECT,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES,
+  COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS,
   PersonService,
   PersonActivityService,
   PersonCollaborationService,
@@ -49,6 +54,7 @@ import {
   buildCollectionScheduleViewModel,
   buildCollectionDashboardViewModel,
   buildCollectionSeriesViewModel,
+  buildCollectionEntityConsistencyViewModel,
   buildPersonActivityViewModel,
   buildPersonCollaborationViewModel,
   buildEpisodeGuideViewModel,
@@ -72,6 +78,16 @@ import {
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
 
+const PRIVATE_COLLECTION_RENDER_TEMPLATES = new Set([
+  'collection-progress',
+  'collection-intelligence',
+  'collection-backlog',
+  'collection-schedule',
+  'collection-dashboard',
+  'collection-series',
+  'collection-entity-consistency',
+]);
+
 function getArtifactStore(): ArtifactStore {
   if (!globalArtifactStore) {
     globalArtifactStore = new LocalArtifactStore();
@@ -86,6 +102,77 @@ function getRenderService(): RenderService {
   return globalRenderService;
 }
 
+export function getPrivateArtifactPrincipal(
+  template: unknown,
+  privatePrincipalId?: string,
+): string | undefined {
+  const privatePrincipal =
+    typeof privatePrincipalId === 'string' && privatePrincipalId.trim().length > 0
+      ? privatePrincipalId
+      : undefined;
+  if (PRIVATE_COLLECTION_RENDER_TEMPLATES.has(String(template)) && !privatePrincipal) {
+    throw new BangumiError(
+      'AUTH_REQUIRED',
+      '私有收藏卡片必须绑定明确的账号主体才能保存渲染 Artifact。',
+      false,
+      401,
+      '使用当前账号上下文重试',
+    );
+  }
+  return privatePrincipal;
+}
+
+export async function renderAndSaveArtifact(
+  viewModel: any,
+  renderService: Pick<RenderService, 'renderCard'>,
+  artifactStore: ArtifactStore,
+  privatePrincipalId?: string,
+) {
+  try {
+    const privatePrincipal = getPrivateArtifactPrincipal(viewModel.template, privatePrincipalId);
+    const renderResult = privatePrincipal
+      ? await renderService.renderCard(viewModel, { cache: false })
+      : await renderService.renderCard(viewModel);
+    const artifactRef = privatePrincipal
+      ? isPrincipalScopedArtifactStore(artifactStore)
+        ? await artifactStore.saveArtifactForPrincipal(
+            privatePrincipal,
+            renderResult.buffer,
+            'image/png',
+            { width: renderResult.width, height: renderResult.height },
+          )
+        : (() => {
+            throw new BangumiError(
+              'RENDERER_UNAVAILABLE',
+              '当前 ArtifactStore 未提供账号隔离的私有渲染存储。',
+              false,
+              503,
+              '配置 PrincipalScopedArtifactStore',
+            );
+          })()
+      : await artifactStore.saveArtifact(renderResult.buffer, 'image/png', {
+          width: renderResult.width,
+          height: renderResult.height,
+        });
+    return { artifact: artifactRef };
+  } catch (err: any) {
+    if (
+      err?.code === 'RENDERER_UNAVAILABLE' ||
+      err?.message?.includes("Executable doesn't exist") ||
+      err?.message?.includes('playwright')
+    ) {
+      throw new BangumiError(
+        'RENDERER_UNAVAILABLE',
+        'Chromium / Renderer runtime unavailable. Run `pnpm renderer:install` to enable image cards.',
+        false,
+        503,
+        '运行 pnpm renderer:install',
+      );
+    }
+    throw err;
+  }
+}
+
 export function createRenderPresentationTools(
   renderServiceOverride?: RenderService,
   artifactStoreOverride?: ArtifactStore,
@@ -94,61 +181,7 @@ export function createRenderPresentationTools(
   const renderService = renderServiceOverride || getRenderService();
 
   async function executeRenderAndSave(viewModel: any, privatePrincipalId?: string) {
-    try {
-      if (
-        (viewModel.template === 'collection-dashboard' ||
-          viewModel.template === 'collection-series') &&
-        !privatePrincipalId
-      ) {
-        throw new BangumiError(
-          'AUTH_REQUIRED',
-          '私有收藏卡片必须绑定明确的账号主体才能保存渲染 Artifact。',
-          false,
-          401,
-          '使用当前账号上下文重试',
-        );
-      }
-      const renderResult = privatePrincipalId
-        ? await renderService.renderCard(viewModel, { cache: false })
-        : await renderService.renderCard(viewModel);
-      const artifactRef = privatePrincipalId
-        ? isPrincipalScopedArtifactStore(artifactStore)
-          ? await artifactStore.saveArtifactForPrincipal(
-              privatePrincipalId,
-              renderResult.buffer,
-              'image/png',
-              { width: renderResult.width, height: renderResult.height },
-            )
-          : (() => {
-              throw new BangumiError(
-                'RENDERER_UNAVAILABLE',
-                '当前 ArtifactStore 未提供账号隔离的私有渲染存储。',
-                false,
-                503,
-                '配置 PrincipalScopedArtifactStore',
-              );
-            })()
-        : await artifactStore.saveArtifact(renderResult.buffer, 'image/png', {
-            width: renderResult.width,
-            height: renderResult.height,
-          });
-      return { artifact: artifactRef };
-    } catch (err: any) {
-      if (
-        err?.code === 'RENDERER_UNAVAILABLE' ||
-        err?.message?.includes("Executable doesn't exist") ||
-        err?.message?.includes('playwright')
-      ) {
-        throw new BangumiError(
-          'RENDERER_UNAVAILABLE',
-          'Chromium / Renderer runtime unavailable. Run `pnpm renderer:install` to enable image cards.',
-          false,
-          503,
-          '运行 pnpm renderer:install',
-        );
-      }
-      throw err;
-    }
+    return renderAndSaveArtifact(viewModel, renderService, artifactStore, privatePrincipalId);
   }
 
   const renderSubjectCard = defineTool({
@@ -279,7 +312,10 @@ export function createRenderPresentationTools(
         },
       );
 
-      return await executeRenderAndSave(viewModel);
+      return await executeRenderAndSave(
+        viewModel,
+        _context.artifactPrincipalKey || _context.principalId,
+      );
     },
   });
 
@@ -983,7 +1019,10 @@ export function createRenderPresentationTools(
         username,
         { maxItems: input.maxItems },
       );
-      return await executeRenderAndSave(buildCollectionIntelligenceViewModel(result));
+      return await executeRenderAndSave(
+        buildCollectionIntelligenceViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
     },
   });
 
@@ -1064,7 +1103,10 @@ export function createRenderPresentationTools(
         sortBy: input.sortBy,
         includeSchedule: true,
       });
-      return await executeRenderAndSave(buildCollectionBacklogViewModel(result));
+      return await executeRenderAndSave(
+        buildCollectionBacklogViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
     },
   });
 
@@ -1135,7 +1177,10 @@ export function createRenderPresentationTools(
         maxRows: input.maxRows,
         statuses: input.statuses,
       });
-      return await executeRenderAndSave(buildCollectionScheduleViewModel(result));
+      return await executeRenderAndSave(
+        buildCollectionScheduleViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
     },
   });
 
@@ -1332,6 +1377,96 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderCollectionEntityConsistency = defineTool({
+    name: 'bangumi.render_collection_entity_consistency',
+    description:
+      '生成当前绑定 Bangumi 账号收藏角色/人物一致性观察的无图片资产私有卡片 Artifact。卡片展示官方 v0 稳定 ID 正向关联、selected-subject-roots 范围内未匹配项、character-actor 与直接人物关系的区别、分页/关系/输出 coverage、失败和限制；不接受任意用户名，不把未观察到解释为不存在，不读取评论，不执行写入，Artifact 使用当前账号主体隔离。',
+    input: z
+      .object({
+        subjectType: z.enum(['book', 'anime', 'music', 'game', 'real']).optional(),
+        status: z.enum(['wish', 'doing', 'done', 'on_hold', 'dropped']).optional(),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS)
+          .optional()
+          .describe(`最多选取收藏作品根条目数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECTS}`),
+        maxSubjectPages: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES)
+          .optional()
+          .describe(
+            `最多读取收藏作品页数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_SUBJECT_PAGES}`,
+          ),
+        maxRelationsPerSubject: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_RELATIONS_PER_SUBJECT)
+          .optional()
+          .describe('每个作品最多保留角色关系和人物关系行数，默认 80'),
+        maxOutputRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS)
+          .optional()
+          .describe(
+            `正向关联和观察范围内未匹配项最多返回行数，默认 ${COLLECTION_ENTITY_CONSISTENCY_MAX_OUTPUT_ROWS}`,
+          ),
+      })
+      .strict(),
+    auth: 'required',
+    scopes: ['read:collection'],
+    risk: 'read',
+    execute: async (input, context, deps) => {
+      let client = deps?.executionSession?.client;
+      let username = deps?.executionSession?.account?.username;
+      if (!client || !username) {
+        if (!deps?.clientProvider) {
+          throw new BangumiError(
+            'AUTH_REQUIRED',
+            '必须先绑定 Bangumi 账号才能渲染收藏角色/人物一致性观察。',
+            false,
+            401,
+            '调用 bangumi.auth_start',
+          );
+        }
+        const authed = await deps.clientProvider.requireAuthenticatedClient(context.principalId, [
+          'read:collection',
+        ]);
+        client = authed.client;
+        username = authed.account.username;
+      }
+      if (!client || !username) {
+        throw new BangumiError(
+          'AUTH_REQUIRED',
+          '必须先绑定 Bangumi 账号才能渲染收藏角色/人物一致性观察。',
+          false,
+          401,
+          '调用 bangumi.auth_start',
+        );
+      }
+      const result = await new CollectionEntityConsistencyService(
+        client,
+      ).getCollectionEntityConsistency(username, {
+        subjectType: input.subjectType,
+        status: input.status,
+        maxSubjects: input.maxSubjects,
+        maxSubjectPages: input.maxSubjectPages,
+        maxRelationsPerSubject: input.maxRelationsPerSubject,
+        maxOutputRows: input.maxOutputRows,
+      });
+      return await executeRenderAndSave(
+        buildCollectionEntityConsistencyViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
+    },
+  });
+
   return [
     renderSubjectCard,
     renderCastCard,
@@ -1360,5 +1495,6 @@ export function createRenderPresentationTools(
     renderCollectionSeriesGroups,
     renderPersonActivity,
     renderPersonCollaboration,
+    renderCollectionEntityConsistency,
   ] as const;
 }

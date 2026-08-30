@@ -160,6 +160,9 @@ jobs:
       - name: Build workspace
         run: pnpm build
 
+      - name: Run Standalone tests
+        run: pnpm test:standalone
+
       - name: Run local self-test
         run: pnpm self-test
 

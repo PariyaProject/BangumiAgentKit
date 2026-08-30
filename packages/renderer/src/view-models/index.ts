@@ -462,6 +462,27 @@ export interface CollectionSeriesViewModel {
   error?: import('@bangumi-agent-kit/bangumi-core').CollectionSeriesResult['error'];
 }
 
+export interface CollectionEntityConsistencyViewModel {
+  template: 'collection-entity-consistency';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['state'];
+  account: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['account'];
+  filters: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['filters'];
+  matches: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['matches'];
+  unmatchedInObservedScope: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['unmatchedInObservedScope'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['coverage'];
+  formulaVersion: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['formulaVersion'];
+  source: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['source'];
+  operationEvidence: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['operationEvidence'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').CollectionEntityConsistencyResult['warnings'];
+  limitations: string[];
+  presentation: {
+    state: 'complete' | 'partial';
+    matches: { available: number; rendered: number; omitted: number };
+    unmatched: { available: number; rendered: number; omitted: number };
+  };
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -1240,6 +1261,7 @@ export type RenderViewModel =
   | CollectionScheduleViewModel
   | CollectionDashboardViewModel
   | CollectionSeriesViewModel
+  | CollectionEntityConsistencyViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | SubjectLatestRevisionViewModel

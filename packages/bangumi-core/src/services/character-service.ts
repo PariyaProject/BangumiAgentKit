@@ -212,7 +212,7 @@ export class CharacterService {
 
   async getSubjectCharacters(
     subjectId: number,
-    options: { limit?: number; maxResponseBytes?: number } = {},
+    options: { limit?: number; maxResponseBytes?: number; signal?: AbortSignal } = {},
   ): Promise<DomainRelatedCharacter[]> {
     const result = await this.getSubjectCharactersWithCoverage(subjectId, options);
     subjectCharacterCoverage.set(result.items, result.coverage);
@@ -221,12 +221,13 @@ export class CharacterService {
 
   async getSubjectCharactersWithCoverage(
     subjectId: number,
-    options: { limit?: number; maxResponseBytes?: number } = {},
+    options: { limit?: number; maxResponseBytes?: number; signal?: AbortSignal } = {},
   ): Promise<SubjectCharactersResult> {
     const raw = await this.api.getRelatedCharactersBySubjectId(subjectId, {
       ...(options.maxResponseBytes === undefined
         ? {}
         : { maxResponseBytes: options.maxResponseBytes }),
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     const rawRows = Array.isArray(raw) ? raw : [];
     const validRows = rawRows.filter(validSubjectCharacter);
