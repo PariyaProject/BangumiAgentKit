@@ -16,6 +16,7 @@ import {
   SeriesRelationsViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
+  SubjectCohortComparisonViewModel,
   SubjectOverlapViewModel,
   SubjectStatsViewModel,
   SubjectStatsHistoryViewModel,
@@ -42,6 +43,7 @@ import { PersonCollaborationCard } from './PersonCollaborationCard.js';
 import { SeriesRelationsCard } from './SeriesRelationsCard.js';
 import { SubjectOverviewCard } from './SubjectOverviewCard.js';
 import { SubjectComparisonCard } from './SubjectComparisonCard.js';
+import { SubjectCohortComparisonCard } from './SubjectCohortComparisonCard.js';
 import { SubjectOverlapCard } from './SubjectOverlapCard.js';
 import { SubjectStatsCard } from './SubjectStatsCard.js';
 import { SubjectStatsHistoryCard } from './SubjectStatsHistoryCard.js';
@@ -212,6 +214,14 @@ registerTemplate<SubjectComparisonViewModel>({
       theme={theme}
       width={width}
     />
+  ),
+});
+
+registerTemplate<SubjectCohortComparisonViewModel>({
+  id: 'subject-cohort-comparison',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <SubjectCohortComparisonCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

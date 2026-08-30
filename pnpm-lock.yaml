@@ -243,6 +243,9 @@ importers:
       '@bangumi-agent-kit/bangumi-transport':
         specifier: workspace:*
         version: link:../bangumi-transport
+      '@bangumi-agent-kit/discovery':
+        specifier: workspace:*
+        version: link:../discovery
       playwright:
         specifier: ^1.49.1
         version: 1.62.1

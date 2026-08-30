@@ -551,11 +551,38 @@
       "kind": "scenario",
       "user_question": "两个季度的原创动画热度和评分哪个更高？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.compare_subject_cohorts with two queries that each explicitly set media=anime, season, and metaTags=[原创] (or an equivalent original-work meta-tag constraint); interpret heat as collection total over the returned sample.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded official-v0 comparison of two discovery-defined anime season cohorts constrained by the original-work meta tag, with average score, collection-total heat, explicit B−A deltas, query/detail coverage, conflict handling, evidence/warning bounds, and non-claims about complete seasonal populations or trend quality.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.compare_subject_cohorts",
+          "bangumi.render_subject_cohort_comparison",
+          "bangumi.aggregate_subject_cohort",
+          "bangumi.render_subject_cohort_aggregation"
+        ],
+        "implementation": [
+          "packages/discovery/src/cohort.ts",
+          "packages/tools/src/definitions/discovery-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "tests": [
+          "tests/discovery/cohort.test.ts",
+          "tests/discovery/cohort-tool.test.ts",
+          "tests/discovery/render-cohort-tool.test.ts",
+          "tests/render/subject-cohort-comparison.test.ts",
+          "tests/standalone/subject-cohort-command.test.ts"
+        ],
+        "source_contract": "Official Bangumi v0 discovery and subject detail fields; media=anime + season + original-work meta-tag are explicit query constraints; derived formula subject-cohort-comparison-v1 with bounded sample, state, evidence, warning, and renderer semantics."
+      }
     },
     {
       "id": "C05",
@@ -950,11 +977,38 @@
       "kind": "scenario",
       "user_question": "某季度动画的平均集数和平均评分是多少？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.aggregate_subject_cohort (or the one-cohort form of bangumi.compare_subject_cohorts) with media=anime, an explicit season, and the original-work meta-tag constraint; read average score and reported-episode metrics as bounded sample observations.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["C04"],
+      "closure_reason": "Delivered a bounded official-v0 one-cohort aggregation that reports average score and average subject.eps for an explicitly anime/season/original-work-constrained returned sample, with missing/detail failure states, partial-observation labeling, evidence bounds, and an explicit distinction between reported episodes and aired/progress counts.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.compare_subject_cohorts",
+          "bangumi.render_subject_cohort_comparison",
+          "bangumi.aggregate_subject_cohort",
+          "bangumi.render_subject_cohort_aggregation"
+        ],
+        "implementation": [
+          "packages/discovery/src/cohort.ts",
+          "packages/tools/src/definitions/discovery-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "tests": [
+          "tests/discovery/cohort.test.ts",
+          "tests/discovery/cohort-tool.test.ts",
+          "tests/discovery/render-cohort-tool.test.ts",
+          "tests/render/subject-cohort-comparison.test.ts",
+          "tests/standalone/subject-cohort-command.test.ts"
+        ],
+        "source_contract": "Official Bangumi v0 subject.eps and rating.score fields; media=anime + season + original-work meta-tag are explicit query constraints; derived formula subject-cohort-comparison-v1 with bounded sample semantics."
+      }
     },
     {
       "id": "A05",

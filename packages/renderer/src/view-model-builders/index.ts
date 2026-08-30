@@ -27,6 +27,7 @@ import type {
   SubjectStatsIntelligenceResult,
   SubjectStatsHistoryResult,
 } from '@bangumi-agent-kit/bangumi-core';
+import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 import type {
   SubjectCardViewModel,
   SearchListViewModel,
@@ -55,6 +56,7 @@ import type {
   SeriesRelationPathViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
+  SubjectCohortComparisonViewModel,
   SubjectOverlapViewModel,
   SubjectStatsViewModel,
   SubjectStatsHistoryViewModel,
@@ -644,6 +646,45 @@ export function buildSubjectComparisonViewModel(
     evidence: result.evidence,
     warnings: result.warnings,
     limitations: result.limitations,
+  };
+}
+
+export function buildSubjectCohortComparisonViewModel(
+  result: SubjectCohortComparisonResult,
+  options: { maxSubjectsPerCohort?: number } = {},
+): SubjectCohortComparisonViewModel {
+  const maxSubjectsPerCohort = Number.isFinite(options.maxSubjectsPerCohort)
+    ? Math.min(8, Math.max(1, Math.trunc(options.maxSubjectsPerCohort as number)))
+    : 8;
+  const cohorts = result.cohorts.map((cohort) => ({
+    ...cohort,
+    label: truncateText(cohort.label, 72).text,
+    querySummary: truncateText(cohort.querySummary, 180).text,
+    subjects: cohort.subjects.slice(0, maxSubjectsPerCohort).map((subject) => ({
+      ...subject,
+      name: truncateText(subject.name, 80).text,
+      displayName: truncateText(subject.displayName, 80).text,
+    })),
+  })) as SubjectCohortComparisonResult['cohorts'];
+  return {
+    template: 'subject-cohort-comparison',
+    version: 1,
+    state: result.state,
+    cohorts,
+    metrics: result.metrics,
+    formulaVersion: result.formulaVersion,
+    coverage: {
+      ...result.coverage,
+      renderedSubjectsPerCohort: maxSubjectsPerCohort,
+      omittedSubjectsPerCohort: result.cohorts.map((cohort, index) =>
+        Math.max(0, cohort.subjects.length - (cohorts[index]?.subjects.length ?? 0)),
+      ),
+    },
+    source: result.source,
+    evidence: result.evidence,
+    warnings: result.warnings,
+    limitations: result.limitations,
+    ...(result.retrievedAt ? { retrievedAt: result.retrievedAt } : {}),
   };
 }
 

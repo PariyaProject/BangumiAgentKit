@@ -43,6 +43,9 @@ Bangumi:
                [--retention-days 1..3650]
   overview <subjectId> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
   compare <subjectIdA> <subjectIdB> [--max-cast 1..20] [--max-staff 1..80] [--max-relations 1..32]
+  compare-cohorts --a-query '<json>' --b-query '<json>' [--a-label <label>] [--b-label <label>]
+                  [--max-subjects 1..60]
+  aggregate-cohort --query '<json>' [--label <label>] [--max-subjects 1..60]
   overlap <subjectId...> [--kind cast|staff|all] [--cast-role all|main]
           [--max-cast 1..80] [--max-staff 1..80] [--max-pairs 1..28] [--max-people 1..24]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
@@ -85,7 +88,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|stats-history|overview|compare|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -336,6 +339,114 @@ function parseSubjectComparisonOptions(args: string[]): Record<string, unknown> 
     }
   }
   return input;
+}
+
+function parseSubjectCohortComparisonOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  const optionNames = new Set([
+    '--a-query',
+    '--b-query',
+    '--a-label',
+    '--b-label',
+    '--max-subjects',
+  ]);
+  const seen = new Set<string>();
+  for (let index = 0; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown compare-cohorts argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--max-subjects') {
+      input.maxSubjects = optionNumber(value, 'max-subjects', true, 1, 60);
+      continue;
+    }
+    if (name.endsWith('label')) {
+      input[name === '--a-label' ? 'aLabel' : 'bLabel'] = requireArg(value.trim(), name.slice(2));
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} must be valid JSON.`, 2);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} must be a JSON object.`, 2);
+    }
+    input[name === '--a-query' ? 'aQuery' : 'bQuery'] = parsed;
+  }
+  if (!input.aQuery || !input.bQuery) {
+    throw new StandaloneCliError(
+      'USAGE_ERROR: compare-cohorts requires both --a-query and --b-query.',
+      2,
+    );
+  }
+  return {
+    cohorts: [
+      { ...(input.aLabel ? { label: input.aLabel } : {}), query: input.aQuery },
+      { ...(input.bLabel ? { label: input.bLabel } : {}), query: input.bQuery },
+    ],
+    ...(input.maxSubjects ? { maxSubjects: input.maxSubjects } : {}),
+  };
+}
+
+function parseSubjectCohortAggregationOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  const optionNames = new Set(['--query', '--label', '--max-subjects']);
+  const seen = new Set<string>();
+  for (let index = 0; index < args.length; index += 2) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown aggregate-cohort argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--max-subjects') {
+      input.maxSubjects = optionNumber(value, 'max-subjects', true, 1, 60);
+      continue;
+    }
+    if (name === '--label') {
+      input.label = requireArg(value.trim(), 'label');
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      throw new StandaloneCliError('USAGE_ERROR: --query must be valid JSON.', 2);
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new StandaloneCliError('USAGE_ERROR: --query must be a JSON object.', 2);
+    }
+    input.query = parsed;
+  }
+  if (!input.query) {
+    throw new StandaloneCliError('USAGE_ERROR: aggregate-cohort requires --query.', 2);
+  }
+  return {
+    cohort: { ...(input.label ? { label: input.label } : {}), query: input.query },
+    ...(input.maxSubjects ? { maxSubjects: input.maxSubjects } : {}),
+  };
 }
 
 function parseSubjectOverlapOptions(args: string[]): Record<string, unknown> {
@@ -743,6 +854,24 @@ export class StandaloneCommandRegistry {
         ),
       };
     }
+    if (command === 'compare-cohorts') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.compare_subject_cohorts',
+          parseSubjectCohortComparisonOptions(args.slice(1)),
+        ),
+      };
+    }
+    if (command === 'aggregate-cohort') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.aggregate_subject_cohort',
+          parseSubjectCohortAggregationOptions(args.slice(1)),
+        ),
+      };
+    }
     if (command === 'overlap') {
       return {
         value: await runTool(
@@ -1134,6 +1263,12 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'compare') {
       name = 'bangumi.render_subject_comparison';
       input = parseSubjectComparisonOptions(args.slice(1));
+    } else if (kind === 'compare-cohorts' || kind === 'cohorts') {
+      name = 'bangumi.render_subject_cohort_comparison';
+      input = parseSubjectCohortComparisonOptions(args.slice(1));
+    } else if (kind === 'aggregate-cohort' || kind === 'cohort') {
+      name = 'bangumi.render_subject_cohort_aggregation';
+      input = parseSubjectCohortAggregationOptions(args.slice(1));
     } else if (kind === 'overlap') {
       name = 'bangumi.render_subject_overlap';
       input = parseSubjectOverlapOptions(args.slice(1));
