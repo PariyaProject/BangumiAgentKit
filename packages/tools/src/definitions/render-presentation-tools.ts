@@ -41,6 +41,7 @@ import {
   buildSubjectCohortComparisonViewModel,
   buildSubjectOverlapViewModel,
   buildSubjectStatsViewModel,
+  buildSubjectIdentityViewModel,
   buildSubjectStatsHistoryViewModel,
   buildCollectionIntelligenceViewModel,
   buildCollectionBacklogViewModel,
@@ -61,6 +62,7 @@ import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectOverlap } from '../subject-overlap.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
+import { getSubjectIdentity } from '../subject-identity.js';
 import {
   getSubjectStatsHistory,
   SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
@@ -836,6 +838,24 @@ export function createRenderPresentationTools(
     },
   });
 
+  const renderSubjectIdentity = defineTool({
+    name: 'bangumi.render_subject_identity',
+    description:
+      '生成指定条目的证据型身份与内容元数据图片卡片 Artifact。卡片展示官方名称、中文名、平台、媒介、书籍 series 标记、eps/totalEpisodes、有限标签、别名原始键与有界 infobox 覆盖；图片 URL 只显示为链接存在性，渲染器不读取网络图片资产，也不宣称 canonical identity、franchise 归属或完整历史。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const result = await getSubjectIdentity(input.subjectId, {
+        providerRegistry: deps?.providerRegistry,
+      });
+      return await executeRenderAndSave(buildSubjectIdentityViewModel(result));
+    },
+  });
+
   const renderSubjectStatsHistory = defineTool({
     name: 'bangumi.render_subject_stats_history',
     description:
@@ -1301,6 +1321,7 @@ export function createRenderPresentationTools(
     renderSubjectCohortAggregation,
     renderSubjectOverlap,
     renderSubjectStats,
+    renderSubjectIdentity,
     renderSubjectStatsHistory,
     renderCollectionIntelligence,
     renderCollectionBacklog,

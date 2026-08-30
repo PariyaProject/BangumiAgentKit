@@ -12,6 +12,7 @@ export * from './models/subject-comparison.js';
 export * from './models/subject-overlap.js';
 export * from './models/subject-stats-intelligence.js';
 export * from './models/subject-stats-history.js';
+export * from './models/subject-identity.js';
 export * from './models/person-activity.js';
 export * from './models/person-collaboration.js';
 

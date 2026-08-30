@@ -25,6 +25,7 @@ import type {
   SubjectComparisonResult,
   SubjectOverlapResult,
   SubjectStatsIntelligenceResult,
+  SubjectIdentityResult,
   SubjectStatsHistoryResult,
 } from '@bangumi-agent-kit/bangumi-core';
 import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
@@ -59,6 +60,7 @@ import type {
   SubjectCohortComparisonViewModel,
   SubjectOverlapViewModel,
   SubjectStatsViewModel,
+  SubjectIdentityViewModel,
   SubjectStatsHistoryViewModel,
 } from '../view-models/index.js';
 
@@ -726,6 +728,95 @@ export function buildSubjectStatsViewModel(
     warnings: result.warnings,
     limitations: result.limitations,
     retrievedAt: result.retrievedAt,
+  };
+}
+
+export function buildSubjectIdentityViewModel(
+  result: SubjectIdentityResult,
+  options: { maxRows?: number; maxAliases?: number; maxTags?: number } = {},
+): SubjectIdentityViewModel {
+  const maxRows = Math.min(16, Math.max(0, Math.trunc(options.maxRows ?? 12)));
+  const maxAliases = Math.min(16, Math.max(0, Math.trunc(options.maxAliases ?? 8)));
+  const maxTags = Math.min(16, Math.max(0, Math.trunc(options.maxTags ?? 8)));
+  const data = result.data;
+  const sourceInfobox = data?.infobox;
+  const infobox =
+    sourceInfobox ||
+    ({
+      state: result.coverage.infobox.state,
+      rows: [],
+      aliases: { state: 'unknown', values: [], sourceKeys: [], sourceRowIndexes: [] },
+      coverage: result.coverage.infobox,
+    } satisfies SubjectIdentityViewModel['infobox']);
+  const rows = infobox.rows.slice(0, maxRows);
+  const aliases = {
+    ...infobox.aliases,
+    values: infobox.aliases.values.slice(0, maxAliases),
+  };
+  const metaTags = data?.metaTags?.slice(0, maxTags);
+  const tags = data?.tags?.slice(0, maxTags);
+  const availableMetaTags = data?.metaTags?.length ?? 0;
+  const availableTags = data?.tags?.length ?? 0;
+  const availableAliases = infobox.aliases.values.length;
+  const availableRows = infobox.rows.length;
+  const omittedRows = Math.max(0, availableRows - rows.length);
+  const omittedAliases = Math.max(0, availableAliases - aliases.values.length);
+  const omittedMetaTags = Math.max(0, availableMetaTags - (metaTags?.length ?? 0));
+  const omittedTags = Math.max(0, availableTags - (tags?.length ?? 0));
+
+  return {
+    template: 'subject-identity',
+    version: 1,
+    subjectId: result.subjectId,
+    state: result.state,
+    subject: data
+      ? {
+          id: data.id,
+          type: data.type,
+          typeLabel: data.typeLabel,
+          name: data.name,
+          ...(data.nameCn === undefined ? {} : { nameCn: data.nameCn }),
+          ...(data.date === undefined ? {} : { date: data.date }),
+          ...(data.platform === undefined ? {} : { platform: data.platform }),
+          ...(data.locked === undefined ? {} : { locked: data.locked }),
+          ...(data.nsfw === undefined ? {} : { nsfw: data.nsfw }),
+          ...(data.series === undefined ? {} : { series: data.series }),
+          ...(data.volumes === undefined ? {} : { volumes: data.volumes }),
+          ...(data.eps === undefined ? {} : { eps: data.eps }),
+          ...(data.totalEpisodes === undefined ? {} : { totalEpisodes: data.totalEpisodes }),
+          ...(metaTags === undefined ? {} : { metaTags }),
+          ...(tags === undefined ? {} : { tags }),
+          imageLinksAvailable: Object.values(data.images || {}).some(
+            (value) => typeof value === 'string' && value.length > 0,
+          ),
+        }
+      : undefined,
+    infobox: { ...infobox, rows, aliases },
+    coverage: result.coverage,
+    source: result.source,
+    evidence: result.evidence,
+    presentation: {
+      state:
+        omittedRows > 0 || omittedAliases > 0 || omittedMetaTags > 0 || omittedTags > 0
+          ? 'partial'
+          : 'complete',
+      infobox: { available: availableRows, rendered: rows.length, omitted: omittedRows },
+      aliases: {
+        available: availableAliases,
+        rendered: aliases.values.length,
+        omitted: omittedAliases,
+      },
+      metaTags: {
+        available: availableMetaTags,
+        rendered: metaTags?.length ?? 0,
+        omitted: omittedMetaTags,
+      },
+      tags: { available: availableTags, rendered: tags?.length ?? 0, omitted: omittedTags },
+    },
+    warnings: result.warnings,
+    limitations: result.limitations,
+    retrievedAt: result.retrievedAt,
+    error: result.error,
   };
 }
 
