@@ -99,6 +99,7 @@ describe('subject latest revision renderer', () => {
     expect(html).toContain('条目最新修订证据');
     expect(html).toContain('offset=0');
     expect(html).toContain('before/after');
+    expect(html).toContain('安全投影');
     expect(html).toContain('字段-0');
     expect(html).not.toContain('NaN');
     expect(html).not.toContain('Infinity');
@@ -143,6 +144,45 @@ describe('subject latest revision renderer', () => {
       expect(rendered.height).toBeLessThan(4_000);
       expect(rendered.buffer.length).toBeLessThan(5 * 1024 * 1024);
     }
+  });
+
+  it('keeps source and presentation truncation counts separate', () => {
+    const mixed = structuredClone(baseResult);
+    mixed.detail.payload = {
+      ...mixed.detail.payload,
+      observedFields: 1,
+      returnedFields: 1,
+      omittedFields: 0,
+      truncatedFields: 1,
+      fields: [
+        {
+          key: 'name_cn',
+          value: '长值'.repeat(400),
+          valueKind: 'string',
+          truncated: true,
+        },
+      ],
+    };
+
+    const viewModel = buildSubjectLatestRevisionViewModel(mixed);
+
+    expect(viewModel.presentation.fields).toMatchObject({
+      observed: 1,
+      available: 1,
+      rendered: 1,
+      omitted: 0,
+      truncated: 1,
+      sourceOmitted: 0,
+      sourceTruncated: 1,
+      presentationOmitted: 0,
+      presentationTruncated: 1,
+    });
+    expect(viewModel.presentation.fields.truncated).not.toBe(2);
+    expect(viewModel.presentation.fieldValues[0]).toMatchObject({
+      sourceTruncated: true,
+      presentationTruncated: true,
+      truncated: true,
+    });
   });
 
   it('keeps unavailable and empty states explicit', () => {

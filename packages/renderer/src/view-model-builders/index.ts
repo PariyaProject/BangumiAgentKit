@@ -1953,13 +1953,15 @@ export function buildSubjectLatestRevisionViewModel(
         Math.max(0, remaining - keyTake.rendered),
       ),
     );
-    const fieldTruncated = field.truncated || keyTake.truncated || valueTake.truncated;
+    const sourceTruncated = field.truncated;
+    const presentationTruncated = keyTake.truncated || valueTake.truncated;
+    const fieldTruncated = sourceTruncated || presentationTruncated;
     if (!keyTake.text && !valueTake.text) {
       rendererTruncated += 1;
       return;
     }
     renderedGraphemes += keyTake.rendered + valueTake.rendered;
-    if (fieldTruncated) rendererTruncated += 1;
+    if (presentationTruncated) rendererTruncated += 1;
     presentationFields.push({
       ...field,
       key: keyTake.text || '…',
@@ -1968,15 +1970,15 @@ export function buildSubjectLatestRevisionViewModel(
           ? field.value
           : valueTake.text,
       truncated: fieldTruncated,
+      sourceTruncated,
+      presentationTruncated,
     });
   });
 
-  const omittedFields = Math.max(
-    0,
-    result.detail.payload.observedFields - presentationFields.length,
-  );
+  const sourceOmittedFields = result.detail.payload.omittedFields;
+  const presentationOmittedFields = Math.max(0, sourceFields.length - presentationFields.length);
   const sourceTruncatedFields = result.detail.payload.truncatedFields;
-  const presentationTruncatedFields = sourceTruncatedFields + rendererTruncated;
+  const presentationTruncatedFields = rendererTruncated;
   const textOmitted = Math.max(0, availableGraphemes - renderedGraphemes);
   const revision = result.revision
     ? {
@@ -2028,10 +2030,15 @@ export function buildSubjectLatestRevisionViewModel(
         truncated: textOmitted > 0,
       },
       fields: {
-        available: result.detail.payload.observedFields,
+        observed: result.detail.payload.observedFields,
+        available: sourceFields.length,
         rendered: presentationFields.length,
-        omitted: omittedFields,
+        omitted: presentationOmittedFields,
         truncated: presentationTruncatedFields,
+        sourceOmitted: sourceOmittedFields,
+        sourceTruncated: sourceTruncatedFields,
+        presentationOmitted: presentationOmittedFields,
+        presentationTruncated: presentationTruncatedFields,
       },
       fieldValues: presentationFields,
     },

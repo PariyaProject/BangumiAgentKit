@@ -1608,7 +1608,7 @@ function presentSubjectLatestRevision(value: Record<string, unknown>): string | 
 
   lines.push(
     `列表覆盖：观察 ${humanField(list.observed ?? '?', 24)} · 返回 ${humanField(list.returned ?? '?', 24)} · 总数 ${list.totalKind === 'exact' ? humanField(list.total ?? '?', 24) : '未知'} · ${comparisonStateLabel(list.state)}${list.truncated === true ? ' · 有界/部分' : ''}`,
-    `详情：${comparisonStateLabel(detail.state)} · data ${comparisonStateLabel(payload.state)} · 官方观察字段 ${humanField(payload.observedFields ?? '?', 24)} · 返回 ${humanField(payload.returnedFields ?? '?', 24)} · 源省略 ${humanField(payload.omittedFields ?? '?', 24)} · 源裁剪 ${humanField(payload.truncatedFields ?? '?', 24)}`,
+    `详情：${comparisonStateLabel(detail.state)} · data ${comparisonStateLabel(payload.state)} · 源观察字段 ${humanField(payload.observedFields ?? '?', 24)} · 安全投影返回 ${humanField(payload.returnedFields ?? '?', 24)} · 安全投影省略 ${humanField(payload.omittedFields ?? '?', 24)} · 安全投影裁剪 ${humanField(payload.truncatedFields ?? '?', 24)}`,
   );
 
   const presentation = comparisonRecord(value.presentation);
@@ -1635,7 +1635,7 @@ function presentSubjectLatestRevision(value: Record<string, unknown>): string | 
     const fields = comparisonRecord(presentation.fields);
     if (text || fields) {
       lines.push(
-        `展示覆盖：字段 ${humanField(fields?.rendered ?? '?', 24)}/${humanField(fields?.available ?? '?', 24)} · 展示省略 ${humanField(fields?.omitted ?? '?', 24)} · 文本 ${humanField(text?.renderedGraphemes ?? '?', 24)}/${humanField(text?.availableGraphemes ?? '?', 24)} · 上限 ${humanField(text?.maxGraphemes ?? '?', 24)}`,
+        `展示覆盖：字段 ${humanField(fields?.rendered ?? '?', 24)}/${humanField(fields?.available ?? '?', 24)} · 展示省略 ${humanField(fields?.omitted ?? '?', 24)} · 展示裁剪 ${humanField(fields?.truncated ?? '?', 24)} · 文本 ${humanField(text?.renderedGraphemes ?? '?', 24)}/${humanField(text?.availableGraphemes ?? '?', 24)} · 上限 ${humanField(text?.maxGraphemes ?? '?', 24)}`,
       );
     }
   }

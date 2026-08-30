@@ -132,10 +132,10 @@ export const SubjectLatestRevisionCard: React.FC<SubjectLatestRevisionCardProps>
       )}
 
       <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        字段覆盖：官方观察 {payload.observedFields} · 返回 {payload.returnedFields} · 源省略{' '}
-        {payload.omittedFields} · 源裁剪 {payload.truncatedFields} · 展示省略{' '}
-        {viewModel.presentation.fields.omitted} · 展示文本{' '}
-        {viewModel.presentation.text.renderedGraphemes}/
+        字段覆盖：源观察 {payload.observedFields} · 安全投影返回 {payload.returnedFields} ·
+        安全投影省略 {payload.omittedFields} · 安全投影裁剪 {payload.truncatedFields} · 展示返回{' '}
+        {viewModel.presentation.fields.rendered} · 展示省略 {viewModel.presentation.fields.omitted}{' '}
+        · 展示文本 {viewModel.presentation.text.renderedGraphemes}/
         {viewModel.presentation.text.availableGraphemes}（上限{' '}
         {viewModel.presentation.text.maxGraphemes}）
       </div>

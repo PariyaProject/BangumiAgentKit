@@ -25,6 +25,7 @@ export type RevisionEntityType = 'subject' | 'episode' | 'character' | 'person';
 export interface RevisionIntelligenceOptions {
   limit?: number;
   offset?: number;
+  maxResponseBytes?: number;
 }
 
 export interface RevisionIntelligenceItem {
@@ -486,24 +487,43 @@ export class RevisionService {
   async listRevisions(
     entityType: RevisionEntityType,
     entityId: number,
-    options: { limit?: number; offset?: number } = {},
+    options: { limit?: number; offset?: number; maxResponseBytes?: number } = {},
   ): Promise<{ total: number; limit: number; offset: number; items: DomainRevision[] }> {
     const limit = options.limit ?? 10;
     const offset = options.offset ?? 0;
+    const requestOptions =
+      options.maxResponseBytes === undefined
+        ? undefined
+        : {
+            maxResponseBytes: options.maxResponseBytes,
+            retryOptions: { maxRetries: 0 },
+          };
 
     let res: { total?: number; limit?: number; offset?: number; data?: Revision[] };
     switch (entityType) {
       case 'subject':
-        res = await this.api.getSubjectRevisions({ subject_id: entityId, limit, offset });
+        res = await this.api.getSubjectRevisions(
+          { subject_id: entityId, limit, offset },
+          requestOptions,
+        );
         break;
       case 'episode':
-        res = await this.api.getEpisodeRevisions({ episode_id: entityId, limit, offset });
+        res = await this.api.getEpisodeRevisions(
+          { episode_id: entityId, limit, offset },
+          requestOptions,
+        );
         break;
       case 'character':
-        res = await this.api.getCharacterRevisions({ character_id: entityId, limit, offset });
+        res = await this.api.getCharacterRevisions(
+          { character_id: entityId, limit, offset },
+          requestOptions,
+        );
         break;
       case 'person':
-        res = await this.api.getPersonRevisions({ person_id: entityId, limit, offset });
+        res = await this.api.getPersonRevisions(
+          { person_id: entityId, limit, offset },
+          requestOptions,
+        );
         break;
       default:
         throw new Error(`Unsupported entityType: ${entityType}`);
@@ -512,9 +532,9 @@ export class RevisionService {
     const data = res.data || [];
     const items = data.map(mapRevision);
     return {
-      total: res.total || items.length,
-      limit: res.limit || limit,
-      offset: res.offset || offset,
+      total: res.total ?? items.length,
+      limit: res.limit ?? limit,
+      offset: res.offset ?? offset,
       items,
     };
   }
@@ -552,10 +572,17 @@ export class RevisionService {
               method: 'GET',
               path: route.path,
               query: { [route.idKey]: entityId, limit, offset },
+              ...(options.maxResponseBytes === undefined
+                ? {}
+                : { maxResponseBytes: options.maxResponseBytes }),
               retryOptions: { maxRetries: 0 },
             }),
           )
-        : await this.listRevisions(entityType, entityId, { limit, offset }).then((result) => ({
+        : await this.listRevisions(entityType, entityId, {
+            limit,
+            offset,
+            maxResponseBytes: options.maxResponseBytes,
+          }).then((result) => ({
             total: result.total,
             limit: result.limit,
             offset: result.offset,
@@ -571,7 +598,7 @@ export class RevisionService {
             ),
           }));
       const retrievedAt = new Date().toISOString();
-      const sourceLimit = Math.min(REVISION_MAX_LIMIT, page.limit || limit);
+      const sourceLimit = Math.min(REVISION_MAX_LIMIT, page.limit ?? limit);
       const sourceOffset = Math.min(REVISION_MAX_OFFSET, page.offset ?? offset);
       const totalKind = page.total === undefined ? 'estimated' : 'exact';
       const total = page.total ?? page.data.length;
@@ -623,8 +650,10 @@ export class RevisionService {
         if (!item.creator?.nickname) recordMissing('revision.creator.nickname');
       }
       const inconsistentTotal = total < items.length;
+      const overReturned = items.length > sourceLimit;
+      const sourceInconsistent = inconsistentTotal || overReturned;
       const truncated =
-        total > items.length || sourceOffset > 0 || totalKind === 'estimated' || inconsistentTotal;
+        total > items.length || sourceOffset > 0 || totalKind === 'estimated' || sourceInconsistent;
       const missing = Object.keys(missingFields).length > 0;
       const fieldTruncated = Object.keys(truncatedFields).length > 0;
       const partial = truncated || missing || fieldTruncated;
@@ -682,12 +711,14 @@ export class RevisionService {
                 },
               ]
             : []),
-          ...(inconsistentTotal
+          ...(sourceInconsistent
             ? [
                 {
                   code: 'SOURCE_INCONSISTENT',
                   state: 'partial' as const,
-                  message: '官方修订源的 total 小于本次返回条数，覆盖状态按 partial 处理。',
+                  message: overReturned
+                    ? '官方修订源返回条数超过其声明的 limit，覆盖状态按 partial 处理。'
+                    : '官方修订源的 total 小于本次返回条数，覆盖状态按 partial 处理。',
                 },
               ]
             : []),
@@ -722,16 +753,7 @@ export class RevisionService {
         ],
         warnings: [
           {
-            code:
-              publicError.code === 'PARSER_ERROR'
-                ? 'SCHEMA_DRIFT'
-                : publicError.code === 'NOT_FOUND'
-                  ? 'UPSTREAM_NOT_FOUND'
-                  : publicError.code === 'RATE_LIMITED'
-                    ? 'UPSTREAM_RATE_LIMITED'
-                    : publicError.code === 'NETWORK_ERROR'
-                      ? 'UPSTREAM_NETWORK_ERROR'
-                      : 'UPSTREAM_UNAVAILABLE',
+            code: latestRevisionErrorCode(publicError),
             state: 'unavailable',
             message: '官方修订源暂时不可用，未生成变更历史样本。',
           },
@@ -745,6 +767,7 @@ export class RevisionService {
     const listResult = await this.getRevisionIntelligence('subject', subjectId, {
       limit: 1,
       offset: 0,
+      maxResponseBytes: SUBJECT_LATEST_REVISION_MAX_RESPONSE_BYTES,
     });
     const listCoverage = listResult.coverage;
     const listOperation = listResult.source.operation;
@@ -785,8 +808,28 @@ export class RevisionService {
         '当前源未提供可验证的 before/after 快照差异；summary 或 data 不等同精确字段变更列表。',
       ),
     );
+    const selectionMetadataConflicts: string[] = [];
+    if (listCoverage.limit !== 1) {
+      selectionMetadataConflicts.push(`source limit=${listCoverage.limit}（请求 limit=1）`);
+    }
+    if (listCoverage.offset !== 0) {
+      selectionMetadataConflicts.push(`source offset=${listCoverage.offset}（请求 offset=0）`);
+    }
+    if (listCoverage.returned > 1) {
+      selectionMetadataConflicts.push(`返回 ${listCoverage.returned} 条记录（请求 limit=1）`);
+    }
+    if (listCoverage.totalKind === 'exact' && listCoverage.total < listCoverage.returned) {
+      selectionMetadataConflicts.push(
+        `source total=${listCoverage.total} 小于返回条数 ${listCoverage.returned}`,
+      );
+    }
+    const positiveTotalWithoutRows =
+      listCoverage.returned === 0 && listCoverage.totalKind === 'exact' && listCoverage.total > 0;
     const list = {
-      state: listCoverage.state,
+      state:
+        selectionMetadataConflicts.length > 0 || positiveTotalWithoutRows
+          ? ('partial' as const)
+          : listCoverage.state,
       observed: listCoverage.observed,
       returned: listCoverage.returned,
       total: listCoverage.total,
@@ -800,6 +843,23 @@ export class RevisionService {
       strategy: 'offset-zero-source-order' as const,
       limit: 1 as const,
       offset: 0 as const,
+    };
+    const noSelection = (code: string, message: string): SubjectLatestRevisionResult => {
+      warnings.push(latestRevisionWarning(code, 'partial', message));
+      return {
+        state: 'partial',
+        subjectId,
+        selection,
+        list,
+        detail: {
+          state: 'not_computable',
+          payload: emptyLatestRevisionPayload(),
+        },
+        source,
+        evidence,
+        limitations,
+        warnings,
+      };
     };
 
     if (listResult.state === 'unavailable') {
@@ -827,6 +887,19 @@ export class RevisionService {
         warnings,
         error: listResult.error,
       };
+    }
+
+    if (positiveTotalWithoutRows) {
+      return noSelection(
+        'SOURCE_PAGE_CONTRADICTION',
+        `官方修订列表返回 0 条记录但声明 total=${listCoverage.total}；无法安全选择第一条记录，也不报告 not_found。`,
+      );
+    }
+    if (selectionMetadataConflicts.length > 0) {
+      return noSelection(
+        'SOURCE_SELECTION_UNVERIFIED',
+        `官方修订列表元数据与有界选择请求矛盾：${selectionMetadataConflicts.join('；')}；未发起详情请求。`,
+      );
     }
 
     const selected = listResult.items[0];
@@ -869,28 +942,84 @@ export class RevisionService {
       const detail = await this.getRevision('subject', selected.id, {
         maxResponseBytes: SUBJECT_LATEST_REVISION_MAX_RESPONSE_BYTES,
       });
+      const detailRetrievedAt = new Date().toISOString();
+      operations[1]!.retrievedAt = detailRetrievedAt;
+      evidence[1]!.retrievedAt = detailRetrievedAt;
       if (detail.id !== selected.id) {
-        throw new BangumiError(
+        const detailIdentityError = new BangumiError(
           'PARSER_ERROR',
           `revision.detail.id ${detail.id} 与请求的 ${selected.id} 不一致`,
           false,
         );
+        warnings.push(
+          latestRevisionWarning(
+            'DETAIL_IDENTITY_CONFLICT',
+            'unavailable',
+            '官方修订详情的 ID 与列表选择不一致；已保留列表元数据，不猜测详情字段。',
+          ),
+        );
+        return {
+          state: 'partial',
+          subjectId,
+          selection,
+          list,
+          revision: selected,
+          detail: {
+            state: 'unavailable',
+            payload: emptyLatestRevisionPayload(),
+          },
+          source,
+          evidence,
+          limitations,
+          warnings,
+          error: toPublicError(detailIdentityError),
+        };
       }
-      const detailRetrievedAt = new Date().toISOString();
-      operations[1]!.retrievedAt = detailRetrievedAt;
-      evidence[1]!.retrievedAt = detailRetrievedAt;
       const payload = projectLatestRevisionPayload(detail.data);
+      const metadataConflicts: string[] = [];
+      if (detail.type !== selected.type) metadataConflicts.push('type');
+      const compareMetadata = (
+        label: string,
+        listValue: string | undefined,
+        detailValue: string | undefined,
+      ) => {
+        if (listValue && detailValue && listValue !== detailValue) {
+          metadataConflicts.push(label);
+        }
+      };
+      compareMetadata('summary', selected.summary, detail.summary || undefined);
+      compareMetadata('createdAt', selected.createdAt, detail.createdAt || undefined);
+      compareMetadata('creator.username', selected.creator?.username, detail.creator?.username);
+      compareMetadata('creator.nickname', selected.creator?.nickname, detail.creator?.nickname);
+      if (metadataConflicts.length > 0) {
+        warnings.push(
+          latestRevisionWarning(
+            'DETAIL_METADATA_CONFLICT',
+            'partial',
+            `官方详情与列表选择的 ${metadataConflicts.join('、')} 元数据不一致；优先保留列表证据。`,
+          ),
+        );
+      }
       const revision = {
-        id: detail.id,
-        type: detail.type,
-        ...(detail.summary || selected.summary
-          ? { summary: detail.summary || selected.summary }
+        id: selected.id,
+        type: selected.type,
+        ...(selected.summary || detail.summary
+          ? { summary: selected.summary || detail.summary }
           : {}),
-        ...(detail.createdAt || selected.createdAt
-          ? { createdAt: detail.createdAt || selected.createdAt }
+        ...(selected.createdAt || detail.createdAt
+          ? { createdAt: selected.createdAt || detail.createdAt }
           : {}),
-        ...(detail.creator || selected.creator
-          ? { creator: detail.creator || selected.creator }
+        ...(selected.creator || detail.creator
+          ? {
+              creator: {
+                ...(selected.creator?.username || detail.creator?.username
+                  ? { username: selected.creator?.username || detail.creator?.username }
+                  : {}),
+                ...(selected.creator?.nickname || detail.creator?.nickname
+                  ? { nickname: selected.creator?.nickname || detail.creator?.nickname }
+                  : {}),
+              },
+            }
           : {}),
       };
       if (payload.state === 'not_computable') {
@@ -913,7 +1042,7 @@ export class RevisionService {
         );
       }
       const detailState =
-        payload.state === 'complete'
+        payload.state === 'complete' && metadataConflicts.length === 0
           ? ('complete' as const)
           : payload.state === 'not_computable'
             ? ('not_computable' as const)
@@ -973,29 +1102,35 @@ export class RevisionService {
       );
     }
 
+    const requestOptions =
+      options.maxResponseBytes === undefined
+        ? undefined
+        : {
+            maxResponseBytes: options.maxResponseBytes,
+            retryOptions: { maxRetries: 0 },
+          };
     let raw: Revision;
     if (this.transport) {
       raw = parseRevisionDetail(
         await this.transport.request<unknown>({
           method: 'GET',
           path: `${route.path}/${encodeURIComponent(String(revisionId))}`,
-          maxResponseBytes: options.maxResponseBytes,
-          retryOptions: { maxRetries: 0 },
+          ...requestOptions,
         }),
       );
     } else {
       switch (entityType) {
         case 'subject':
-          raw = await this.api.getSubjectRevisionByRevisionId(revisionId);
+          raw = await this.api.getSubjectRevisionByRevisionId(revisionId, requestOptions);
           break;
         case 'episode':
-          raw = await this.api.getEpisodeRevisionByRevisionId(revisionId);
+          raw = await this.api.getEpisodeRevisionByRevisionId(revisionId, requestOptions);
           break;
         case 'character':
-          raw = await this.api.getCharacterRevisionByRevisionId(revisionId);
+          raw = await this.api.getCharacterRevisionByRevisionId(revisionId, requestOptions);
           break;
         case 'person':
-          raw = await this.api.getPersonRevisionByRevisionId(revisionId);
+          raw = await this.api.getPersonRevisionByRevisionId(revisionId, requestOptions);
           break;
         default:
           throw new Error(`Unsupported entityType: ${entityType}`);

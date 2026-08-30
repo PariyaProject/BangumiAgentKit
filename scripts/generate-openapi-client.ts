@@ -17,6 +17,24 @@ const RESPONSE_LIMITABLE_OPERATIONS = new Set([
   'getRelatedPersonsBySubjectId',
   'getRelatedCharactersBySubjectId',
   'getRelatedSubjectsBySubjectId',
+  'getPersonRevisions',
+  'getPersonRevisionByRevisionId',
+  'getCharacterRevisions',
+  'getCharacterRevisionByRevisionId',
+  'getSubjectRevisions',
+  'getSubjectRevisionByRevisionId',
+  'getEpisodeRevisions',
+  'getEpisodeRevisionByRevisionId',
+]);
+const RETRY_CONFIGURABLE_OPERATIONS = new Set([
+  'getPersonRevisions',
+  'getPersonRevisionByRevisionId',
+  'getCharacterRevisions',
+  'getCharacterRevisionByRevisionId',
+  'getSubjectRevisions',
+  'getSubjectRevisionByRevisionId',
+  'getEpisodeRevisions',
+  'getEpisodeRevisionByRevisionId',
 ]);
 
 function resolveRef(spec: any, item: any): any {
@@ -102,6 +120,7 @@ function generateClient() {
         const summary = op.summary || opId;
         const supportsSignal = SIGNALABLE_OPERATIONS.has(opId);
         const supportsResponseLimit = RESPONSE_LIMITABLE_OPERATIONS.has(opId);
+        const supportsRetryOptions = RETRY_CONFIGURABLE_OPERATIONS.has(opId);
 
         const rawParams = [...(pathItem.parameters || []), ...(op.parameters || [])];
         const resolvedParamsMap = new Map<string, any>();
@@ -207,10 +226,11 @@ function generateClient() {
             argsList.push(`body?: OperationBody<'${opId}'>`);
           }
         }
-        if (supportsSignal || supportsResponseLimit) {
+        if (supportsSignal || supportsResponseLimit || supportsRetryOptions) {
           const requestOptionFields = [
             ...(supportsSignal ? ["'signal'"] : []),
             ...(supportsResponseLimit ? ["'maxResponseBytes'"] : []),
+            ...(supportsRetryOptions ? ["'retryOptions'"] : []),
           ].join(' | ');
           argsList.push(`requestOptions?: Pick<HttpRequestOptions, ${requestOptionFields}>`);
         }
@@ -233,7 +253,7 @@ function generateClient() {
         if (hasBody) {
           code.push(`      body: body as unknown,`);
         }
-        if (supportsSignal || supportsResponseLimit) {
+        if (supportsSignal || supportsResponseLimit || supportsRetryOptions) {
           code.push(`      ...requestOptions,`);
         }
         code.push(`    });`);

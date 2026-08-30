@@ -882,12 +882,22 @@ export interface SubjectLatestRevisionViewModel {
       truncated: boolean;
     };
     fields: {
+      observed: number;
       available: number;
       rendered: number;
       omitted: number;
       truncated: number;
+      sourceOmitted: number;
+      sourceTruncated: number;
+      presentationOmitted: number;
+      presentationTruncated: number;
     };
-    fieldValues: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionPayloadField[];
+    fieldValues: Array<
+      import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionPayloadField & {
+        sourceTruncated: boolean;
+        presentationTruncated: boolean;
+      }
+    >;
   };
   limitations: string[];
   warnings: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['warnings'];
