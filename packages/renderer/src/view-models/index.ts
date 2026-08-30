@@ -1086,10 +1086,34 @@ export interface SubjectIdentityViewModel {
   evidence: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityEvidence[];
   presentation: {
     state: 'complete' | 'partial';
-    infobox: { available: number; rendered: number; omitted: number };
-    aliases: { available: number; rendered: number; omitted: number };
-    metaTags: { available: number; rendered: number; omitted: number };
-    tags: { available: number; rendered: number; omitted: number };
+    text: {
+      maxGraphemes: number;
+      availableGraphemes: number;
+      renderedGraphemes: number;
+      omittedGraphemes: number;
+      truncated: boolean;
+    };
+    direct: { available: number; rendered: number; omitted: number; truncated: number };
+    infobox: {
+      available: number;
+      rendered: number;
+      omitted: number;
+      truncated: number;
+      valuesAvailable: number;
+      valuesRendered: number;
+      valuesOmitted: number;
+    };
+    aliases: {
+      available: number;
+      rendered: number;
+      omitted: number;
+      truncated: number;
+      sourceKeysAvailable: number;
+      sourceKeysRendered: number;
+      sourceKeysOmitted: number;
+    };
+    metaTags: { available: number; rendered: number; omitted: number; truncated: number };
+    tags: { available: number; rendered: number; omitted: number; truncated: number };
   };
   warnings: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityResult['warnings'];
   limitations: string[];

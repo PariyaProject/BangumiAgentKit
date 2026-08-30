@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SubjectIdentityResult } from '@bangumi-agent-kit/bangumi-core';
 import {
   buildSubjectIdentityViewModel,
   extractImageUrls,
+  RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 const result: SubjectIdentityResult = {
   subjectId: 41529,
@@ -116,6 +119,16 @@ const result: SubjectIdentityResult = {
 };
 
 describe('subject identity renderer', () => {
+  let renderService: RenderService;
+
+  beforeAll(() => {
+    renderService = new RenderService();
+  });
+
+  afterAll(async () => {
+    await renderService.close();
+  });
+
   it('renders bounded text-first identity metadata without image asset resolution', () => {
     const viewModel = buildSubjectIdentityViewModel(result);
 
@@ -167,5 +180,65 @@ describe('subject identity renderer', () => {
     expect(html).toContain('未生成身份数据');
     expect(html).toContain('不可用');
     expect(html).not.toContain('少女终末旅行');
+  });
+
+  it('keeps dense long identity data within an aggregate presentation budget', async () => {
+    const longCjk = '长值'.repeat(500);
+    const dense: SubjectIdentityResult = structuredClone(result);
+    dense.data = {
+      ...result.data!,
+      name: longCjk,
+      nameCn: longCjk,
+      platform: longCjk,
+      metaTags: Array.from({ length: 16 }, () => longCjk),
+      tags: Array.from({ length: 16 }, () => longCjk),
+      infobox: {
+        ...result.data!.infobox,
+        rows: Array.from({ length: 16 }, (_, rowIndex) => ({
+          key: `row-${rowIndex}-${longCjk}`,
+          value: Array.from({ length: 8 }, (_, valueIndex) => ({
+            k: `k-${valueIndex}`,
+            v: longCjk,
+          })),
+        })),
+        aliases: {
+          state: 'known',
+          values: Array.from({ length: 16 }, () => longCjk),
+          sourceKeys: Array.from({ length: 16 }, (_, index) => `别名-${index}-${longCjk}`),
+          sourceRowIndexes: Array.from({ length: 16 }, (_, index) => index),
+        },
+        coverage: {
+          ...result.data!.infobox.coverage,
+          state: 'partial',
+          observedRows: 16,
+          returnedRows: 16,
+          nestedValuesObserved: 128,
+          nestedValuesReturned: 128,
+        },
+      },
+    };
+
+    const viewModel = buildSubjectIdentityViewModel(dense, {
+      maxRows: 16,
+      maxAliases: 16,
+      maxTags: 16,
+    });
+    expect(viewModel.presentation.text.truncated).toBe(true);
+    expect(viewModel.presentation.text.renderedGraphemes).toBeLessThanOrEqual(
+      viewModel.presentation.text.maxGraphemes,
+    );
+    expect(viewModel.presentation.infobox.valuesOmitted).toBeGreaterThan(0);
+    expect(viewModel.presentation.aliases.sourceKeysOmitted).toBeGreaterThan(0);
+
+    for (const width of [640, 960]) {
+      const rendered = await renderService.renderCard(viewModel, {
+        width,
+        deviceScaleFactor: 1,
+      });
+      expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC)).toBe(true);
+      expect(rendered.width).toBe(width);
+      expect(rendered.height).toBeLessThan(4_000);
+      expect(rendered.buffer.length).toBeLessThan(5 * 1024 * 1024);
+    }
   });
 });

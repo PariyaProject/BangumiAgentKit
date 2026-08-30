@@ -17,6 +17,8 @@ function stateLabel(state: string): string {
       {
         complete: '覆盖完整',
         partial: '部分覆盖',
+        known: '已知覆盖',
+        unknown: '覆盖未知',
         unavailable: '不可用',
         not_found: '未找到',
         upstream_error: '上游错误',
@@ -87,6 +89,16 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
         subtitle={`条目 ${viewModel.subjectId} · official v0 · ${stateLabel(viewModel.state)}`}
         theme={theme}
       />
+
+      {viewModel.presentation.text.truncated ? (
+        <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
+          为保证移动端可读，数据文本展示为 {display(viewModel.presentation.text.renderedGraphemes)}/
+          {display(viewModel.presentation.text.availableGraphemes)} 个字符（聚合上限{' '}
+          {display(viewModel.presentation.text.maxGraphemes)}
+          ）；另有 {display(viewModel.presentation.text.omittedGraphemes)}{' '}
+          个字符未展示，源覆盖统计未改变。
+        </div>
+      ) : null}
 
       {subject ? (
         <div style={panelStyle(theme)}>
@@ -160,7 +172,8 @@ export const SubjectIdentityCard: React.FC<SubjectIdentityCardProps> = ({
         )}
         {aliases.sourceKeys.length > 0 ? (
           <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: theme.spacing.xs }}>
-            原始键：{aliases.sourceKeys.join(' · ')}
+            原始键（展示 {aliases.sourceKeys.length}/
+            {viewModel.presentation.aliases.sourceKeysAvailable}）：{aliases.sourceKeys.join(' · ')}
           </div>
         ) : null}
       </div>

@@ -1348,7 +1348,7 @@
           "packages/renderer/src/templates/SubjectIdentityCard.tsx",
           "apps/standalone/src/presenter.ts"
         ],
-        "source_contract": "One positive known subjectId and one official GET /v0/subjects/{subject_id} request with a 1 MiB response limit; preserve source identity/content fields and image URLs as links, cap infobox output at 64 rows/8 nested values/1000 scalar characters, report observed/returned/malformed/omitted coverage, and treat recognized aliases as derived extraction rather than canonical identity.",
+        "source_contract": "One positive known subjectId and one official GET /v0/subjects/{subject_id} request with a 1 MiB response limit; preserve source identity/content fields and image URLs as links, cap infobox output at 64 rows/8 nested values/1000 scalar characters, apply a deterministic 3600-grapheme aggregate renderer budget plus bounded presentation fields, report source and presentation observed/returned/malformed/omitted coverage, and treat recognized aliases as derived extraction rather than canonical identity.",
         "closure_reason": "Focused C11 implementation is covered end to end by provider, semantic, renderer, Standalone, and generated-catalog evidence."
       }
     },

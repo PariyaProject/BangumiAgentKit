@@ -160,4 +160,40 @@ describe('subject identity provider contract', () => {
     expect(JSON.stringify(tooLarge)).not.toContain('secret oversized body');
     expect(JSON.stringify(notFound)).not.toContain('private upstream body');
   });
+
+  it('keeps scalar and nested values within the exact grapheme cap', async () => {
+    const raw = identityFixture() as unknown as Record<string, unknown>;
+    raw.infobox = [
+      { key: '999', value: 'x'.repeat(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS - 1) },
+      { key: '1000', value: 'x'.repeat(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS) },
+      { key: '1001', value: 'x'.repeat(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS + 1) },
+      { key: 'emoji', value: '😀'.repeat(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS + 1) },
+      { key: 'combining', value: 'e\u0301'.repeat(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS + 1) },
+      {
+        key: '别名',
+        value: [{ v: '别名'.repeat(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS + 1) }],
+      },
+    ];
+
+    const result = await new OfficialV0Provider({
+      getSubjectById: async () => raw as Subject,
+    }).getSubjectIdentity(41529);
+    const rows = result.data?.infobox.rows || [];
+    const row = (key: string) => rows.find((item) => item.key === key)?.value;
+    const scalarLength = (value: unknown) =>
+      typeof value === 'string' ? Array.from(value).length : 0;
+
+    expect(scalarLength(row('999'))).toBe(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS - 1);
+    expect(scalarLength(row('1000'))).toBe(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS);
+    expect(scalarLength(row('1001'))).toBe(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS);
+    expect(scalarLength(row('emoji'))).toBe(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS);
+    expect(scalarLength(row('combining'))).toBe(SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS);
+
+    const alias = row('别名');
+    expect(Array.isArray(alias) ? scalarLength(alias[0]?.v) : 0).toBe(
+      SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS,
+    );
+    expect(result.data?.infobox.coverage.truncatedValues).toBeGreaterThanOrEqual(4);
+    expect(result.warnings?.map((item) => item.code)).toContain('INFOBOX_TRUNCATED');
+  });
 });

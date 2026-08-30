@@ -731,6 +731,197 @@ export function buildSubjectStatsViewModel(
   };
 }
 
+export const SUBJECT_IDENTITY_PRESENTATION_MAX_GRAPHEMES = 3_600;
+export const SUBJECT_IDENTITY_PRESENTATION_MAX_FIELD_GRAPHEMES = 220;
+
+type SubjectIdentityPresentationTextSection =
+  'direct' | 'aliases' | 'aliasKeys' | 'infobox' | 'metaTags' | 'tags';
+
+const SUBJECT_IDENTITY_PRESENTATION_SECTION_LIMITS: Record<
+  SubjectIdentityPresentationTextSection,
+  number
+> = {
+  direct: 720,
+  aliases: 600,
+  aliasKeys: 240,
+  infobox: 1_800,
+  metaTags: 240,
+  tags: 240,
+};
+
+type SubjectIdentityGraphemeSegmenter = new (
+  locales?: string | string[],
+  options?: { granularity: 'grapheme' },
+) => { segment(value: string): Iterable<{ segment: string }> };
+
+function subjectIdentityGraphemes(value: string): string[] {
+  const segmenterConstructor = (Intl as unknown as { Segmenter?: SubjectIdentityGraphemeSegmenter })
+    .Segmenter;
+  if (segmenterConstructor) {
+    const segmenter = new segmenterConstructor('zh-CN', { granularity: 'grapheme' });
+    return Array.from(segmenter.segment(value), (item) => item.segment);
+  }
+  return Array.from(value);
+}
+
+function clipSubjectIdentityText(
+  value: string,
+  maximum: number,
+): {
+  text: string;
+  available: number;
+  rendered: number;
+  truncated: boolean;
+} {
+  const units = subjectIdentityGraphemes(value);
+  if (units.length <= maximum) {
+    return { text: value, available: units.length, rendered: units.length, truncated: false };
+  }
+  if (maximum <= 0) {
+    return { text: '', available: units.length, rendered: 0, truncated: true };
+  }
+  const text = maximum === 1 ? '…' : `${units.slice(0, maximum - 1).join('')}…`;
+  return { text, available: units.length, rendered: maximum, truncated: true };
+}
+
+interface SubjectIdentityTextTake {
+  text: string;
+  available: number;
+  rendered: number;
+  truncated: boolean;
+}
+
+class SubjectIdentityPresentationBudget {
+  private readonly sectionRendered = new Map<SubjectIdentityPresentationTextSection, number>();
+  private readonly sectionLimits = SUBJECT_IDENTITY_PRESENTATION_SECTION_LIMITS;
+  available = 0;
+  rendered = 0;
+
+  take(
+    value: string,
+    section: SubjectIdentityPresentationTextSection,
+    fieldLimit = SUBJECT_IDENTITY_PRESENTATION_MAX_FIELD_GRAPHEMES,
+  ): SubjectIdentityTextTake {
+    const available = subjectIdentityGraphemes(value).length;
+    this.available += available;
+    if (available === 0) return { text: '', available: 0, rendered: 0, truncated: false };
+
+    const sectionRendered = this.sectionRendered.get(section) ?? 0;
+    const remaining = Math.min(
+      fieldLimit,
+      SUBJECT_IDENTITY_PRESENTATION_MAX_GRAPHEMES - this.rendered,
+      this.sectionLimits[section] - sectionRendered,
+    );
+    const clipped = clipSubjectIdentityText(value, Math.max(0, remaining));
+    this.rendered += clipped.rendered;
+    this.sectionRendered.set(section, sectionRendered + clipped.rendered);
+    return clipped;
+  }
+
+  skip(value: string, _section: SubjectIdentityPresentationTextSection): SubjectIdentityTextTake {
+    const available = subjectIdentityGraphemes(value).length;
+    this.available += available;
+    return { text: '', available, rendered: 0, truncated: available > 0 };
+  }
+}
+
+interface SubjectIdentityItemPresentation {
+  values: string[];
+  omitted: number;
+  truncated: number;
+}
+
+function presentSubjectIdentityTextList(
+  values: readonly string[],
+  maxItems: number,
+  section: Extract<SubjectIdentityPresentationTextSection, 'metaTags' | 'tags' | 'aliases'>,
+  budget: SubjectIdentityPresentationBudget,
+): SubjectIdentityItemPresentation {
+  const visible: string[] = [];
+  let omitted = 0;
+  let truncated = 0;
+  values.forEach((value, index) => {
+    const take = index < maxItems ? budget.take(value, section) : budget.skip(value, section);
+    if (take.text) visible.push(take.text);
+    else omitted += 1;
+    if (take.truncated) truncated += 1;
+  });
+  return { values: visible, omitted, truncated };
+}
+
+function presentSubjectIdentityInfobox(
+  infobox: SubjectIdentityViewModel['infobox'],
+  maxRows: number,
+  budget: SubjectIdentityPresentationBudget,
+): {
+  infobox: SubjectIdentityViewModel['infobox'];
+  presentation: SubjectIdentityViewModel['presentation']['infobox'];
+} {
+  const sourceRows = infobox.rows;
+  const rows: SubjectIdentityViewModel['infobox']['rows'] = [];
+  let truncated = 0;
+  let valuesRendered = 0;
+  const valuesAvailable = sourceRows.reduce(
+    (total, row) => total + (typeof row.value === 'string' ? 1 : row.value.length),
+    0,
+  );
+
+  sourceRows.forEach((row, rowIndex) => {
+    if (rowIndex >= maxRows) {
+      budget.skip(row.key, 'infobox');
+      if (typeof row.value === 'string') budget.skip(row.value, 'infobox');
+      else
+        row.value.forEach((value) => {
+          if (value.k !== undefined) budget.skip(value.k, 'infobox');
+          budget.skip(value.v, 'infobox');
+        });
+      return;
+    }
+
+    const key = budget.take(row.key, 'infobox', 120);
+    let rowTruncated = key.truncated;
+    if (typeof row.value === 'string') {
+      const value = budget.take(row.value, 'infobox');
+      rowTruncated ||= value.truncated;
+      if (value.text || row.value.length === 0 || key.text) {
+        rows.push({ key: key.text, value: value.text });
+        valuesRendered += 1;
+      }
+    } else {
+      const nested: Array<{ k?: string; v: string }> = [];
+      for (const value of row.value) {
+        const nestedValue = budget.take(value.v, 'infobox');
+        const nestedKey = value.k === undefined ? undefined : budget.take(value.k, 'infobox', 96);
+        rowTruncated ||= nestedValue.truncated || Boolean(nestedKey?.truncated);
+        if (nestedValue.text) {
+          nested.push({
+            ...(nestedKey?.text ? { k: nestedKey.text } : {}),
+            v: nestedValue.text,
+          });
+          valuesRendered += 1;
+        }
+      }
+      if (nested.length > 0 || key.text || row.value.length === 0) {
+        rows.push({ key: key.text, value: nested });
+      }
+    }
+    if (rowTruncated) truncated += 1;
+  });
+
+  return {
+    infobox: { ...infobox, rows },
+    presentation: {
+      available: sourceRows.length,
+      rendered: rows.length,
+      omitted: Math.max(0, sourceRows.length - rows.length),
+      truncated,
+      valuesAvailable,
+      valuesRendered,
+      valuesOmitted: Math.max(0, valuesAvailable - valuesRendered),
+    },
+  };
+}
+
 export function buildSubjectIdentityViewModel(
   result: SubjectIdentityResult,
   options: { maxRows?: number; maxAliases?: number; maxTags?: number } = {},
@@ -748,70 +939,158 @@ export function buildSubjectIdentityViewModel(
       aliases: { state: 'unknown', values: [], sourceKeys: [], sourceRowIndexes: [] },
       coverage: result.coverage.infobox,
     } satisfies SubjectIdentityViewModel['infobox']);
-  const rows = infobox.rows.slice(0, maxRows);
-  const aliases = {
-    ...infobox.aliases,
-    values: infobox.aliases.values.slice(0, maxAliases),
+  const budget = new SubjectIdentityPresentationBudget();
+  const direct = { available: 0, rendered: 0, omitted: 0, truncated: 0 };
+  const presentDirect = (value: string | undefined, required = false): string | undefined => {
+    if (value === undefined) return undefined;
+    direct.available += 1;
+    if (value.length === 0) {
+      direct.rendered += 1;
+      return value;
+    }
+    const take = budget.take(value, 'direct');
+    if (!take.text && !required) {
+      direct.omitted += 1;
+      return undefined;
+    }
+    direct.rendered += 1;
+    if (take.truncated) direct.truncated += 1;
+    return take.text || '…';
   };
-  const metaTags = data?.metaTags?.slice(0, maxTags);
-  const tags = data?.tags?.slice(0, maxTags);
+
+  let subject: SubjectIdentityViewModel['subject'];
+  let metaTags: SubjectIdentityItemPresentation = { values: [], omitted: 0, truncated: 0 };
+  let tags: SubjectIdentityItemPresentation = { values: [], omitted: 0, truncated: 0 };
+  let aliasValuesPresentation: SubjectIdentityItemPresentation = {
+    values: [],
+    omitted: 0,
+    truncated: 0,
+  };
+  let aliases = {
+    state: infobox.aliases.state,
+    values: [] as string[],
+    sourceKeys: [] as string[],
+    sourceRowIndexes: [] as number[],
+  };
+
+  if (data) {
+    const name = presentDirect(data.name, true) || '…';
+    direct.available += 1;
+    const typeLabel = data.typeLabel;
+    const typeLabelTake = budget.take(typeLabel, 'direct');
+    direct.rendered += 1;
+    if (typeLabelTake.truncated) direct.truncated += 1;
+    const nameCn = presentDirect(data.nameCn);
+    const date = presentDirect(data.date);
+    const platform = presentDirect(data.platform);
+    metaTags = presentSubjectIdentityTextList(data.metaTags || [], maxTags, 'metaTags', budget);
+    tags = presentSubjectIdentityTextList(data.tags || [], maxTags, 'tags', budget);
+    aliasValuesPresentation = presentSubjectIdentityTextList(
+      infobox.aliases.values,
+      maxAliases,
+      'aliases',
+      budget,
+    );
+    const sourceKeys: string[] = [];
+    const sourceRowIndexes: number[] = [];
+    infobox.aliases.sourceKeys.forEach((value, index) => {
+      const take = budget.take(value, 'aliasKeys', 120);
+      if (take.text) {
+        sourceKeys.push(take.text);
+        sourceRowIndexes.push(infobox.aliases.sourceRowIndexes[index] ?? -1);
+      }
+    });
+    aliases = {
+      ...infobox.aliases,
+      values: aliasValuesPresentation.values,
+      sourceKeys,
+      sourceRowIndexes,
+    };
+    subject = {
+      id: data.id,
+      type: data.type,
+      typeLabel,
+      name,
+      ...(nameCn === undefined ? {} : { nameCn }),
+      ...(date === undefined ? {} : { date }),
+      ...(platform === undefined ? {} : { platform }),
+      ...(data.locked === undefined ? {} : { locked: data.locked }),
+      ...(data.nsfw === undefined ? {} : { nsfw: data.nsfw }),
+      ...(data.series === undefined ? {} : { series: data.series }),
+      ...(data.volumes === undefined ? {} : { volumes: data.volumes }),
+      ...(data.eps === undefined ? {} : { eps: data.eps }),
+      ...(data.totalEpisodes === undefined ? {} : { totalEpisodes: data.totalEpisodes }),
+      ...(metaTags.values.length > 0 ? { metaTags: metaTags.values } : {}),
+      ...(tags.values.length > 0 ? { tags: tags.values } : {}),
+      imageLinksAvailable: Object.values(data.images || {}).some(
+        (value) => typeof value === 'string' && value.length > 0,
+      ),
+    };
+  }
+
+  const infoboxPresentation = presentSubjectIdentityInfobox(infobox, maxRows, budget);
+  const availableAliases = infobox.aliases.values.length;
   const availableMetaTags = data?.metaTags?.length ?? 0;
   const availableTags = data?.tags?.length ?? 0;
-  const availableAliases = infobox.aliases.values.length;
-  const availableRows = infobox.rows.length;
-  const omittedRows = Math.max(0, availableRows - rows.length);
-  const omittedAliases = Math.max(0, availableAliases - aliases.values.length);
-  const omittedMetaTags = Math.max(0, availableMetaTags - (metaTags?.length ?? 0));
-  const omittedTags = Math.max(0, availableTags - (tags?.length ?? 0));
+  const presentation = {
+    state: 'complete' as const,
+    text: {
+      maxGraphemes: SUBJECT_IDENTITY_PRESENTATION_MAX_GRAPHEMES,
+      availableGraphemes: budget.available,
+      renderedGraphemes: budget.rendered,
+      omittedGraphemes: Math.max(0, budget.available - budget.rendered),
+      truncated: budget.available > budget.rendered,
+    },
+    direct,
+    infobox: infoboxPresentation.presentation,
+    aliases: {
+      available: availableAliases,
+      rendered: aliases.values.length,
+      omitted: Math.max(0, availableAliases - aliases.values.length),
+      truncated: aliasValuesPresentation.truncated,
+      sourceKeysAvailable: infobox.aliases.sourceKeys.length,
+      sourceKeysRendered: aliases.sourceKeys.length,
+      sourceKeysOmitted: Math.max(0, infobox.aliases.sourceKeys.length - aliases.sourceKeys.length),
+    },
+    metaTags: {
+      available: availableMetaTags,
+      rendered: metaTags.values.length,
+      omitted: Math.max(0, availableMetaTags - metaTags.values.length),
+      truncated: metaTags.truncated,
+    },
+    tags: {
+      available: availableTags,
+      rendered: tags.values.length,
+      omitted: Math.max(0, availableTags - tags.values.length),
+      truncated: tags.truncated,
+    },
+  } satisfies SubjectIdentityViewModel['presentation'];
+  const hasPresentationOmissions =
+    presentation.text.truncated ||
+    presentation.direct.omitted > 0 ||
+    presentation.infobox.omitted > 0 ||
+    presentation.infobox.truncated > 0 ||
+    presentation.aliases.omitted > 0 ||
+    presentation.aliases.truncated > 0 ||
+    presentation.aliases.sourceKeysOmitted > 0 ||
+    presentation.metaTags.omitted > 0 ||
+    presentation.metaTags.truncated > 0 ||
+    presentation.tags.omitted > 0 ||
+    presentation.tags.truncated > 0;
 
   return {
     template: 'subject-identity',
     version: 1,
     subjectId: result.subjectId,
     state: result.state,
-    subject: data
-      ? {
-          id: data.id,
-          type: data.type,
-          typeLabel: data.typeLabel,
-          name: data.name,
-          ...(data.nameCn === undefined ? {} : { nameCn: data.nameCn }),
-          ...(data.date === undefined ? {} : { date: data.date }),
-          ...(data.platform === undefined ? {} : { platform: data.platform }),
-          ...(data.locked === undefined ? {} : { locked: data.locked }),
-          ...(data.nsfw === undefined ? {} : { nsfw: data.nsfw }),
-          ...(data.series === undefined ? {} : { series: data.series }),
-          ...(data.volumes === undefined ? {} : { volumes: data.volumes }),
-          ...(data.eps === undefined ? {} : { eps: data.eps }),
-          ...(data.totalEpisodes === undefined ? {} : { totalEpisodes: data.totalEpisodes }),
-          ...(metaTags === undefined ? {} : { metaTags }),
-          ...(tags === undefined ? {} : { tags }),
-          imageLinksAvailable: Object.values(data.images || {}).some(
-            (value) => typeof value === 'string' && value.length > 0,
-          ),
-        }
-      : undefined,
-    infobox: { ...infobox, rows, aliases },
+    subject,
+    infobox: { ...infoboxPresentation.infobox, aliases },
     coverage: result.coverage,
     source: result.source,
     evidence: result.evidence,
     presentation: {
-      state:
-        omittedRows > 0 || omittedAliases > 0 || omittedMetaTags > 0 || omittedTags > 0
-          ? 'partial'
-          : 'complete',
-      infobox: { available: availableRows, rendered: rows.length, omitted: omittedRows },
-      aliases: {
-        available: availableAliases,
-        rendered: aliases.values.length,
-        omitted: omittedAliases,
-      },
-      metaTags: {
-        available: availableMetaTags,
-        rendered: metaTags?.length ?? 0,
-        omitted: omittedMetaTags,
-      },
-      tags: { available: availableTags, rendered: tags?.length ?? 0, omitted: omittedTags },
+      ...presentation,
+      state: hasPresentationOmissions ? 'partial' : 'complete',
     },
     warnings: result.warnings,
     limitations: result.limitations,

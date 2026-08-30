@@ -633,7 +633,8 @@ function truncateIdentityScalar(value: string): { value: string; truncated: bool
     return { value, truncated: false };
   }
   return {
-    value: codePoints.slice(0, SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS).join('') + '...',
+    value:
+      codePoints.slice(0, Math.max(0, SUBJECT_IDENTITY_MAX_SCALAR_CHARACTERS - 1)).join('') + '…',
     truncated: true,
   };
 }
