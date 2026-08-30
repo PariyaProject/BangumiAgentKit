@@ -95,10 +95,13 @@ const result: PersonActivityResult = {
     outsideWindowRows: 1,
     mediaExcludedRows: 0,
     mediaUnknownRows: 1,
+    staffRoleExcludedRows: 0,
+    staffRoleUnknownRows: 0,
     maxRelations: 24,
     maxSubjectDetails: 24,
     maxRows: 40,
     detailConcurrency: 4,
+    responseLimitBytes: 1048576,
     truncated: true,
     retrievedAt: '2026-08-15T00:00:00.000Z',
     origin: {
@@ -269,6 +272,49 @@ describe('Person activity renderer', () => {
     } finally {
       await service.close();
     }
+  });
+
+  it('renders the exact director filter and its coverage separately from the window', () => {
+    const directorResult: PersonActivityResult = {
+      ...result,
+      kind: 'staff',
+      staffRole: 'director',
+      window: {
+        ...result.window,
+        months: 36,
+        start: '2023-09-01',
+        monthKeys: Array.from({ length: 36 }, (_, index) => {
+          const date = new Date(Date.UTC(2023, 8 + index, 1));
+          return date.toISOString().slice(0, 7);
+        }),
+      },
+      rows: [
+        {
+          ...result.rows[0]!,
+          relationKind: 'staff',
+          relationId: 301,
+          characterName: undefined,
+          rawRole: '导演',
+          roleFamily: 'staff',
+        },
+      ],
+      coverage: {
+        ...result.coverage,
+        staffRoleExcludedRows: 2,
+        staffRoleUnknownRows: 1,
+      },
+    };
+    const html = renderHtmlTemplate(
+      buildPersonActivityViewModel(directorResult, { maxRows: 1 }),
+      'bangumi-dark',
+      {},
+      640,
+    );
+
+    expect(html).toContain('36 个日历月');
+    expect(html).toContain('职位筛选：导演');
+    expect(html).toContain('职位筛选排除 2 · 职位未知 1');
+    expect(html).toContain('响应上限 1048576 bytes');
   });
 
   it('renders complete, partial, failed, and zero-request source operations at supported widths', () => {

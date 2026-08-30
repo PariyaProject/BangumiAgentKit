@@ -663,6 +663,7 @@ export interface PersonActivityViewModel {
   };
   kind: 'voice' | 'staff' | 'all';
   media: 'anime' | 'tv' | 'all';
+  staffRole?: 'director';
   window: {
     months: number;
     start: string;
@@ -785,10 +786,13 @@ export interface PersonActivityViewModel {
     outsideWindowRows: number;
     mediaExcludedRows: number;
     mediaUnknownRows: number;
+    staffRoleExcludedRows: number;
+    staffRoleUnknownRows: number;
     maxRelations: number;
     maxSubjectDetails: number;
     maxRows: number;
     detailConcurrency: number;
+    responseLimitBytes: number;
     truncated: boolean;
     origin: import('@bangumi-agent-kit/bangumi-core').PersonActivityOriginCoverage;
   };

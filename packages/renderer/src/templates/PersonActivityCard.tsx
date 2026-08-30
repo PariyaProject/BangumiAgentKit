@@ -37,6 +37,10 @@ function mediaLabel(media: PersonActivityViewModel['media']): string {
   return media === 'tv' ? '可判断为 TV 的动画' : media === 'anime' ? '全部动画' : '全部媒介';
 }
 
+function staffRoleLabel(staffRole: NonNullable<PersonActivityViewModel['staffRole']>): string {
+  return staffRole === 'director' ? '导演' : staffRole;
+}
+
 function comparisonStateLabel(
   state: NonNullable<PersonActivityViewModel['comparison']>['state'],
 ): string {
@@ -147,6 +151,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         状态：{stateLabel(viewModel.state)} · 窗口：{viewModel.window.start} 至{' '}
         {viewModel.window.end}（{viewModel.window.months} 个日历月） · 媒介：
         {mediaLabel(viewModel.media)}
+        {viewModel.staffRole ? ` · 职位筛选：${staffRoleLabel(viewModel.staffRole)}` : ''}
       </div>
 
       <div
@@ -201,6 +206,11 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         {viewModel.coverage.detailConcurrency} · 缺少作品 ID{' '}
         {viewModel.coverage.missingSubjectIdRows} · 输出 {viewModel.coverage.rowsReturned}/
         {viewModel.coverage.rowsEligible}
+        {viewModel.staffRole
+          ? ` · 职位筛选排除 ${viewModel.coverage.staffRoleExcludedRows} · 职位未知 ${viewModel.coverage.staffRoleUnknownRows}`
+          : ''}
+        {' · 响应上限 '}
+        {viewModel.coverage.responseLimitBytes} bytes
         {viewModel.coverage.truncated
           ? ` · 已达到边界${viewModel.coverage.sampled ? '（确定性等距样本）' : ''}`
           : ''}

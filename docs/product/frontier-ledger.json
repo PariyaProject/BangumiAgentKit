@@ -260,11 +260,50 @@
       "kind": "scenario",
       "user_question": "某导演过去三年执导过哪些 TV 动画？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/autonomous-frontier-audit-2026-08-31-run56-person-staff-activity.md",
+        "packages/bangumi-core/src/models/person-activity.ts",
+        "packages/bangumi-core/src/services/person-activity-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "packages/renderer/src/templates/PersonActivityCard.tsx",
+        "apps/standalone/src/command-registry.ts",
+        "apps/standalone/src/presenter.ts",
+        "tests/unit/person-activity.test.ts",
+        "tests/semantic/person-activity.test.ts",
+        "tests/render/person-activity.test.ts",
+        "tests/standalone/discovery-command.test.ts",
+        "tests/standalone/person-activity-presenter.test.ts"
+      ],
+      "next_action": "Use staffRole=director with kind=staff and a bounded 36-month window for current official person-subject observations; complete historical director coverage remains unsupported.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded exact-label director-role observation over current official person-subject relations and first_air_date windows, with 36-month support, raw-role evidence, and explicit unknown/exclusion/cap coverage; this is not a complete historical career result.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "tests": [
+          "tests/unit/person-activity.test.ts",
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/discovery-command.test.ts",
+          "tests/standalone/person-activity-presenter.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/person-activity.ts",
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "source_contract": "Official v0 person-subject relations are filtered by an exact normalized director-label allow-list before bounded subject hydration. Subject first_air_date assigns rows to calendar months ending on as_of; TV classification remains conservative. Missing role labels are unknown, while non-matching labels are excluded without being presented as proof of no directing work. Existing relation/detail/row/concurrency/response caps and current-source limitations remain visible.",
+        "formula_version": "person-activity-window-v1"
+      }
     },
     {
       "id": "G17",

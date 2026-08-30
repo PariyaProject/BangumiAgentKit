@@ -3,6 +3,7 @@ import type { DomainSubjectMetaTagsCoverage, SubjectType } from './subject.js';
 
 export type PersonActivityKind = 'voice' | 'staff' | 'all';
 export type PersonActivityMedia = 'anime' | 'tv' | 'all';
+export type PersonActivityStaffRole = 'director';
 export type PersonActivityState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
 export type PersonActivityRelationKind = 'voice' | 'staff';
 export type PersonActivityRoleFamily = 'main' | 'support' | 'staff' | 'unknown';
@@ -176,10 +177,13 @@ export interface PersonActivityCoverage {
   outsideWindowRows: number;
   mediaExcludedRows: number;
   mediaUnknownRows: number;
+  staffRoleExcludedRows: number;
+  staffRoleUnknownRows: number;
   maxRelations: number;
   maxSubjectDetails: number;
   maxRows: number;
   detailConcurrency: number;
+  responseLimitBytes: number;
   truncated: boolean;
   retrievedAt: string;
   origin: PersonActivityOriginCoverage;
@@ -191,6 +195,7 @@ export interface PersonActivityResult {
   person?: DomainPerson;
   kind: PersonActivityKind;
   media: PersonActivityMedia;
+  staffRole?: PersonActivityStaffRole;
   window: PersonActivityWindow;
   rows: PersonActivityRow[];
   summary: PersonActivityWindowSummary;

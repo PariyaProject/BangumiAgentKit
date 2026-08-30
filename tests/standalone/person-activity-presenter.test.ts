@@ -9,6 +9,7 @@ describe('Standalone person activity presenter', () => {
       person: { id: 20, name: 'Person', nameCn: '人物' },
       kind: 'staff',
       media: 'tv',
+      staffRole: 'director',
       window: { start: '2026-03-01', end: '2026-08-15' },
       rows: [
         {
@@ -17,6 +18,7 @@ describe('Standalone person activity presenter', () => {
           subjectNameCn: '作品一',
           firstAirDate: '2026-05-10',
           relationKind: 'staff',
+          rawRole: '監督',
           roleFamily: '制作人员',
           origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
         },
@@ -58,10 +60,13 @@ describe('Standalone person activity presenter', () => {
         outsideWindowRows: 0,
         mediaExcludedRows: 0,
         mediaUnknownRows: 0,
+        staffRoleExcludedRows: 1,
+        staffRoleUnknownRows: 0,
         maxRelations: 120,
         maxSubjectDetails: 48,
         maxRows: 60,
         detailConcurrency: 4,
+        responseLimitBytes: 1048576,
         truncated: false,
         origin: {
           subjectsObserved: 2,
@@ -105,6 +110,11 @@ describe('Standalone person activity presenter', () => {
     });
 
     expect(output).toContain('人物 activity · 状态: 部分');
+    expect(output).toContain('职位筛选: 导演');
+    expect(output).toContain('职位筛选覆盖: 排除 1 · 未知 0');
+    expect(output).toContain('原始职位/角色：監督');
+    expect(output).toContain('原始职位/角色：未知（来源未提供）');
+    expect(output).toContain('响应 1048576 bytes');
     expect(output).toContain('作品来源观察（官方 v0 subject.meta_tags）');
     expect(output).toContain('明确原创 1');
     expect(output).toContain('未观察到原创标签 1');
@@ -129,6 +139,7 @@ describe('Standalone person activity presenter', () => {
       maxSubjectDetails: 8,
       maxRows: 6,
       detailConcurrency: 4,
+      responseLimitBytes: 1048576,
       sampled: true,
       truncated: true,
     };
