@@ -682,6 +682,11 @@ export interface PersonActivityViewModel {
     characterName?: string;
     rawRole?: string;
     roleFamily: string;
+    origin: {
+      state: 'explicit_original' | 'not_observed' | 'unknown';
+      label: string;
+      metaTags?: string[];
+    };
   }>;
   hiddenRows: number;
   summary: {
@@ -706,6 +711,11 @@ export interface PersonActivityViewModel {
       uniqueSubjects: number;
       uniqueCharacters: number;
     }>;
+    origin: {
+      explicitOriginalSubjects: number;
+      notObservedSubjects: number;
+      unknownSubjects: number;
+    };
   };
   comparison?: {
     state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
@@ -777,6 +787,12 @@ export interface PersonActivityViewModel {
     maxRows: number;
     detailConcurrency: number;
     truncated: boolean;
+    origin: {
+      subjectsObserved: number;
+      explicitOriginalSubjects: number;
+      notObservedSubjects: number;
+      unknownSubjects: number;
+    };
   };
   exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
   sourceOperations: Array<{

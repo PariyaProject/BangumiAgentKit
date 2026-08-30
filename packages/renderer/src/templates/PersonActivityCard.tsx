@@ -152,6 +152,34 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           : ''}
       </div>
 
+      <div
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.md,
+          color: theme.textMuted,
+          fontSize: '12px',
+          lineHeight: 1.55,
+        }}
+      >
+        <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
+          作品来源观察（官方 v0 subject.meta_tags）
+        </div>
+        <div>
+          覆盖 {viewModel.coverage.origin.subjectsObserved} 部去重作品 · 明确原创{' '}
+          {viewModel.coverage.origin.explicitOriginalSubjects} 部 · 未观察到原创标签{' '}
+          {viewModel.coverage.origin.notObservedSubjects} 部 · 来源未知{' '}
+          {viewModel.coverage.origin.unknownSubjects} 部
+        </div>
+        <div style={{ marginTop: theme.spacing.xs }}>
+          来源与检索：{viewModel.source.label} · {viewModel.source.retrievedAt}
+        </div>
+        <div style={{ color: theme.text, marginTop: theme.spacing.xs }}>
+          未观察到“原创”标签不等于“改编”；这里只报告官方字段中的正向观察，不从其他字段推断。
+        </div>
+      </div>
+
       {viewModel.comparison && (
         <div
           style={{
@@ -332,6 +360,10 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
                   {row.firstAirDate} · {row.relationLabel} · {row.roleFamily}
                   {row.characterName ? ` · ${row.characterName}` : ''}
                   {row.rawRole ? ` · 原始：${row.rawRole}` : ''}
+                  {` · 来源观察：${row.origin.label}`}
+                  {row.origin.metaTags !== undefined
+                    ? ` · 官方 meta_tags：${row.origin.metaTags.join('、') || '（空）'}`
+                    : ''}
                 </div>
               </div>
             ))}

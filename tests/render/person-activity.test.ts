@@ -40,6 +40,12 @@ const result: PersonActivityResult = {
     characterName: `角色 ${index + 1}`,
     rawRole: index % 2 === 0 ? '主角' : '配角',
     roleFamily: index % 2 === 0 ? ('main' as const) : ('support' as const),
+    origin:
+      index % 3 === 0
+        ? { state: 'explicit_original' as const, metaTags: ['原创', '奇幻'] }
+        : index % 3 === 1
+          ? { state: 'not_observed' as const, metaTags: ['漫画'] }
+          : { state: 'unknown' as const },
   })),
   summary: {
     creditRows: 22,
@@ -58,6 +64,11 @@ const result: PersonActivityResult = {
       uniqueSubjects: 3,
       uniqueCharacters: 3,
     })),
+    origin: {
+      explicitOriginalSubjects: 8,
+      notObservedSubjects: 7,
+      unknownSubjects: 7,
+    },
   },
   coverage: {
     relationRowsObserved: 24,
@@ -90,6 +101,12 @@ const result: PersonActivityResult = {
     detailConcurrency: 4,
     truncated: true,
     retrievedAt: '2026-08-15T00:00:00.000Z',
+    origin: {
+      subjectsObserved: 22,
+      explicitOriginalSubjects: 8,
+      notObservedSubjects: 7,
+      unknownSubjects: 7,
+    },
   },
   exclusions: [
     { reason: 'missing_date', count: 1, sampleSubjectIds: [90] },
@@ -120,6 +137,11 @@ describe('Person activity renderer', () => {
     expect(html).toContain('另有 10 条窗口内关系因展示上限未显示');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
+    expect(html).toContain('作品来源观察（官方 v0 subject.meta_tags）');
+    expect(html).toContain('未观察到“原创”标签不等于“改编”');
+    expect(html).toContain('官方 meta_tags：原创、奇幻');
+    expect(html).toContain('来源与检索：Bangumi v0 · 声优关系 · 可判断为 TV 的动画');
+    expect(html).toContain('2026-08-15T00:00:00.000Z');
 
     const comparisonResult: PersonActivityResult = {
       ...result,

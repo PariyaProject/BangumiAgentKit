@@ -16,12 +16,14 @@ describe('Domain Mappers Unit Tests', () => {
       id: 101,
       name: 'Original Title',
       type: 2,
+      meta_tags: ['原创', '奇幻'],
     };
     const mappedNoCn = mapSubject(rawNoCn as any);
     expect(mappedNoCn.nameCn).toBe('Original Title');
     expect(mappedNoCn.score).toBeUndefined();
     expect(mappedNoCn.rank).toBeUndefined();
     expect(mappedNoCn.type).toBe('anime');
+    expect(mappedNoCn.metaTags).toEqual(['原创', '奇幻']);
 
     const rawZeroScore = {
       id: 102,

@@ -76,9 +76,12 @@ function activityFetch(options: { failSubjectIds?: number[] } = {}) {
       await new Promise((resolve) => setTimeout(resolve, 2));
       activeDetails -= 1;
       if (options.failSubjectIds?.includes(id)) return json({ error: 'fixture failure' }, 503);
+      if (id === 1) return json(subjectPayload(id, { meta_tags: ['原创', '奇幻'] }));
       if (id === 2) return json(subjectPayload(id, { date: '2026-02-12' }));
       if (id === 3)
-        return json(subjectPayload(id, { type: 3, platform: 'CD', date: '2026-06-02' }));
+        return json(
+          subjectPayload(id, { type: 3, platform: 'CD', date: '2026-06-02', meta_tags: [] }),
+        );
       if (id === 4) return json(subjectPayload(id, { platform: undefined, date: '2026-06-02' }));
       return json(subjectPayload(id));
     }
@@ -110,6 +113,11 @@ describe('PersonActivityService', () => {
       creditRows: 1,
       uniqueSubjects: 1,
       uniqueCharacters: 1,
+      origin: {
+        explicitOriginalSubjects: 1,
+        notObservedSubjects: 0,
+        unknownSubjects: 0,
+      },
     });
     expect(result.summary.byRole).toEqual([
       expect.objectContaining({ key: 'main', creditRows: 1 }),
@@ -119,6 +127,7 @@ describe('PersonActivityService', () => {
       firstAirDate: '2026-05-10',
       roleFamily: 'main',
       rawRole: '主角',
+      origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
     });
     expect(result.coverage).toMatchObject({
       relationRowsObserved: 4,
@@ -137,6 +146,12 @@ describe('PersonActivityService', () => {
       mediaExcludedRows: 1,
       mediaUnknownRows: 1,
       detailConcurrency: PERSON_ACTIVITY_DETAIL_CONCURRENCY,
+      origin: {
+        subjectsObserved: 1,
+        explicitOriginalSubjects: 1,
+        notObservedSubjects: 0,
+        unknownSubjects: 0,
+      },
     });
     expect(result.exclusions).toEqual(
       expect.arrayContaining([
@@ -154,6 +169,41 @@ describe('PersonActivityService', () => {
       ]),
     );
     expect(fixture.getPeakDetails()).toBeLessThanOrEqual(PERSON_ACTIVITY_DETAIL_CONCURRENCY);
+  });
+
+  it('keeps positive-only origin observations distinct from not-observed and unknown states', async () => {
+    const fixture = activityFetch();
+    const result = await new PersonActivityService(
+      new HttpClient({ fetchFn: fixture.fetchFn }),
+    ).getPersonActivity(20, { asOf: '2026-08-15', windowMonths: 6, kind: 'voice', media: 'all' });
+
+    expect(result.summary.origin).toEqual({
+      explicitOriginalSubjects: 1,
+      notObservedSubjects: 1,
+      unknownSubjects: 1,
+    });
+    expect(result.coverage.origin).toEqual({
+      subjectsObserved: 3,
+      explicitOriginalSubjects: 1,
+      notObservedSubjects: 1,
+      unknownSubjects: 1,
+    });
+    expect(result.rows.map((row) => row.origin)).toEqual([
+      { state: 'not_observed', metaTags: [] },
+      { state: 'unknown' },
+      { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
+    ]);
+    expect(result.limitations).toEqual(
+      expect.arrayContaining([expect.stringContaining('未观察到该标签不等于改编')]),
+    );
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'person-activity-origin-observation',
+          formulaVersion: 'person-activity-origin-v1',
+        }),
+      ]),
+    );
   });
 
   it('compares the recent window with the immediately preceding equal window', async () => {

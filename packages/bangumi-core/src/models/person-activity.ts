@@ -6,6 +6,19 @@ export type PersonActivityMedia = 'anime' | 'tv' | 'all';
 export type PersonActivityState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
 export type PersonActivityRelationKind = 'voice' | 'staff';
 export type PersonActivityRoleFamily = 'main' | 'support' | 'staff' | 'unknown';
+export type PersonActivityOriginState = 'explicit_original' | 'not_observed' | 'unknown';
+
+export interface PersonActivityOriginObservation {
+  state: PersonActivityOriginState;
+  /** Raw official subject.meta_tags, retained when the source returned the field. */
+  metaTags?: string[];
+}
+
+export interface PersonActivityOriginSummary {
+  explicitOriginalSubjects: number;
+  notObservedSubjects: number;
+  unknownSubjects: number;
+}
 
 export interface PersonActivityWindow {
   months: number;
@@ -28,6 +41,7 @@ export interface PersonActivityRow {
   characterName?: string;
   rawRole?: string;
   roleFamily: PersonActivityRoleFamily;
+  origin: PersonActivityOriginObservation;
 }
 
 export type PersonActivityExclusionReason =
@@ -68,6 +82,7 @@ export interface PersonActivityWindowSummary {
   byRole: PersonActivityWindowDistribution[];
   byMedia: PersonActivityWindowDistribution[];
   byMonth: PersonActivityMonthBucket[];
+  origin: PersonActivityOriginSummary;
 }
 
 export interface PersonActivityComparisonDelta {
@@ -147,6 +162,7 @@ export interface PersonActivityCoverage {
   detailConcurrency: number;
   truncated: boolean;
   retrievedAt: string;
+  origin: PersonActivityOriginSummary & { subjectsObserved: number };
 }
 
 export interface PersonActivityResult {

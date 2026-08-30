@@ -2826,6 +2826,131 @@ function presentPersonCollaboration(value: Record<string, unknown>): string | un
   return boundHumanLines(lines);
 }
 
+function presentPersonActivity(value: Record<string, unknown>): string | undefined {
+  const personId = value.personId;
+  const rows = Array.isArray(value.rows) ? value.rows : undefined;
+  const summary = comparisonRecord(value.summary);
+  const coverage = comparisonRecord(value.coverage);
+  const sourceOperations = Array.isArray(value.sourceOperations)
+    ? value.sourceOperations
+    : undefined;
+  const evidence = Array.isArray(value.evidence) ? value.evidence : undefined;
+  if (
+    typeof personId !== 'number' ||
+    !rows ||
+    !summary ||
+    !coverage ||
+    !sourceOperations ||
+    !evidence
+  ) {
+    return undefined;
+  }
+
+  const person = comparisonRecord(value.person);
+  const kindLabels: Record<string, string> = {
+    voice: '声优关系',
+    staff: '制作人员关系',
+    all: '声优与制作人员关系',
+  };
+  const mediaLabels: Record<string, string> = {
+    anime: '全部动画',
+    tv: '可判断为 TV 的动画',
+    all: '全部媒介',
+  };
+  const originLabels: Record<string, string> = {
+    explicit_original: '明确原创',
+    not_observed: '未观察到原创标签',
+    unknown: '来源未知',
+  };
+  const origin = comparisonRecord(summary.origin);
+  const coverageOrigin = comparisonRecord(coverage.origin);
+  const labelOrigin = (state: unknown): string =>
+    originLabels[String(state)] || String(state || '未知');
+  const count = (record: Record<string, unknown> | undefined, key: string): unknown =>
+    record?.[key] ?? '?';
+  const window = comparisonRecord(value.window);
+  const lines = [
+    `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}`,
+    `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
+    `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · 详情 ${humanField(coverage.subjectDetailsSucceeded ?? '?', 32)}/${humanField(coverage.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(coverage.rowsReturned ?? '?', 32)}/${humanField(coverage.rowsEligible ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
+  ];
+
+  if (origin || coverageOrigin) {
+    const sourceOrigin = coverageOrigin || origin;
+    lines.push(
+      `作品来源观察（官方 v0 subject.meta_tags）：覆盖 ${humanField(sourceOrigin?.subjectsObserved ?? '?', 32)} 部去重作品 · ${labelOrigin('explicit_original')} ${humanField(count(origin, 'explicitOriginalSubjects'), 32)} · ${labelOrigin('not_observed')} ${humanField(count(origin, 'notObservedSubjects'), 32)} · ${labelOrigin('unknown')} ${humanField(count(origin, 'unknownSubjects'), 32)}`,
+    );
+    lines.push(
+      '说明：未观察到“原创”标签不等于“改编”；这里只报告官方字段中的正向观察，不从其他字段推断。',
+    );
+  }
+  if (coverage.retrievedAt) {
+    lines.push(`来源与检索：official-v0 · ${humanField(coverage.retrievedAt, 64)}`);
+  }
+
+  lines.push('窗口内作品：');
+  for (const [index, rawRow] of rows.slice(0, 12).entries()) {
+    const row = comparisonRecord(rawRow);
+    if (!row) continue;
+    const rowOrigin = comparisonRecord(row.origin);
+    const tags = Array.isArray(rowOrigin?.metaTags)
+      ? ` · 官方 meta_tags：${rowOrigin.metaTags.join('、') || '（空）'}`
+      : '';
+    lines.push(
+      `${index + 1}. ${humanField(row.subjectNameCn || row.subjectName || `条目 ${row.subjectId || '?'}`, 180)} #${humanField(row.subjectId ?? '?', 32)} · ${humanField(row.firstAirDate || '日期未知', 32)} · ${row.relationKind === 'voice' ? '声优' : row.relationKind === 'staff' ? '制作人员' : humanField(row.relationKind || '关系未知', 32)} · ${humanField(row.roleFamily || '职位未知', 64)} · 来源观察：${labelOrigin(rowOrigin?.state)}${tags}`,
+    );
+  }
+  if (rows.length > 12) lines.push(`另有 ${humanField(rows.length - 12, 32)} 条窗口内关系未展开。`);
+
+  const operations = sourceOperations
+    .slice(0, 6)
+    .map((rawOperation) => {
+      const operation = comparisonRecord(rawOperation);
+      if (!operation) return undefined;
+      return `${humanField(operation.operation || 'unknown', 180)} · ${humanField(operation.succeeded ?? '?', 16)}/${humanField(operation.attempted ?? '?', 16)} 成功${operation.failed ? ` · 失败 ${humanField(operation.failed, 16)}` : ''}`;
+    })
+    .filter((item): item is string => Boolean(item));
+  if (operations.length > 0) lines.push(`来源操作：${operations.join('；')}`);
+  if (sourceOperations.length > 6) {
+    lines.push(`来源操作另有 ${humanField(sourceOperations.length - 6, 32)} 项未展开。`);
+  }
+
+  const evidenceOperations = evidence
+    .map(comparisonRecord)
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .slice(0, 6)
+    .map(
+      (item) =>
+        `${item.operation || 'evidence'}${item.formulaVersion ? `@${item.formulaVersion}` : ''}`,
+    );
+  if (evidenceOperations.length > 0) {
+    lines.push(`证据：${humanField(evidenceOperations.join(' · '), 360)}`);
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 3)) {
+      const warning = comparisonRecord(rawWarning);
+      if (warning)
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 72)} · ${humanField(warning.message || '')}`,
+        );
+    }
+    if (warnings.length > 3)
+      lines.push(`- 另有 ${humanField(warnings.length - 3, 32)} 条告警未展开。`);
+  }
+
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 4)
+      lines.push(`- 另有 ${humanField(limitations.length - 4, 32)} 条限制未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentCollectionDashboard(value: Record<string, unknown>): string | undefined {
   const data = value.data;
   if (!data || typeof data !== 'object') return undefined;
@@ -2991,6 +3116,8 @@ export function formatHuman(value: unknown): string {
       safe as Record<string, unknown>,
     );
     if (characterCreditIntegrity) return characterCreditIntegrity;
+    const personActivity = presentPersonActivity(safe as Record<string, unknown>);
+    if (personActivity) return personActivity;
     const personCollaboration = presentPersonCollaboration(safe as Record<string, unknown>);
     if (personCollaboration) return personCollaboration;
     const calendar = presentCalendar(safe as Record<string, unknown>);

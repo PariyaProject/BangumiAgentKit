@@ -44,6 +44,7 @@ export function mapSubject(raw: Subject): DomainSubject {
     locked: Boolean(raw.locked),
     date: raw.date || undefined,
     platform: raw.platform || undefined,
+    metaTags: Array.isArray(raw.meta_tags) ? [...raw.meta_tags] : undefined,
     images: raw.images ? (raw.images as Record<string, string>) : undefined,
     score:
       raw.rating?.score !== undefined && raw.rating?.score !== 0 ? raw.rating.score : undefined,

@@ -1039,7 +1039,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const getPersonActivity = defineTool({
     name: 'bangumi.get_person_activity',
     description:
-      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月；达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算。可选 comparePreviousWindow=true 计算最近窗口与紧邻等长窗口的作品/角色数量差值和观察到的发布月份峰值；每个窗口及差值/峰值都保留完整、部分、不可用或不可计算状态，不把不可用窗口当作零；这仍基于当前关系与作品首播日期，不是历史快照、劳动时长或实际配音时间。',
+      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月；达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算。对每个有界作品观察保留官方 subject.meta_tags，并只将精确的“原创”字面量标为明确原创；未观察到原创标签或字段缺失分别标为 not_observed/unknown，均不等于改编。可选 comparePreviousWindow=true 计算最近窗口与紧邻等长窗口的作品/角色数量差值和观察到的发布月份峰值；每个窗口及差值/峰值都保留完整、部分、不可用或不可计算状态，不把不可用窗口当作零；这仍基于当前关系与作品首播日期，不是历史快照、劳动时长或实际配音时间。',
     input: z
       .object({
         personId: z.number().int().positive().describe('Bangumi 人物 ID'),

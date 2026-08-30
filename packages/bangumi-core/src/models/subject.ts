@@ -10,6 +10,8 @@ export interface DomainSubject {
   locked: boolean;
   date?: string;
   platform?: string;
+  /** Raw official v0 subject.meta_tags, when the source returned the field. */
+  metaTags?: string[];
   images?: {
     large?: string;
     common?: string;

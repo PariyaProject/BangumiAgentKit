@@ -2496,6 +2496,12 @@ const PERSON_ACTIVITY_ROLE_LABELS: Record<string, string> = {
   unknown: '未知',
 };
 
+const PERSON_ACTIVITY_ORIGIN_LABELS: Record<string, string> = {
+  explicit_original: '明确原创',
+  not_observed: '未观察到原创标签',
+  unknown: '来源未知',
+};
+
 function canExposeComparisonCounts(period: PersonActivityComparisonPeriod): boolean {
   return (
     period.state === 'complete' || (period.state === 'partial' && period.coverage.rowsEligible > 0)
@@ -2558,6 +2564,11 @@ export function buildPersonActivityViewModel(
       characterName: row.characterName,
       rawRole: row.rawRole,
       roleFamily: PERSON_ACTIVITY_ROLE_LABELS[row.roleFamily] || row.roleFamily,
+      origin: {
+        state: row.origin.state,
+        label: PERSON_ACTIVITY_ORIGIN_LABELS[row.origin.state] || row.origin.state,
+        metaTags: row.origin.metaTags,
+      },
     })),
     hiddenRows: Math.max(0, result.rows.length - visibleRows.length),
     summary: {
@@ -2577,6 +2588,7 @@ export function buildPersonActivityViewModel(
         uniqueCharacters: item.uniqueCharacters,
       })),
       byMonth: result.summary.byMonth,
+      origin: result.summary.origin,
     },
     ...(result.comparison
       ? {
@@ -2618,6 +2630,7 @@ export function buildPersonActivityViewModel(
       maxRows: result.coverage.maxRows,
       detailConcurrency: result.coverage.detailConcurrency,
       truncated: result.coverage.truncated,
+      origin: result.coverage.origin,
     },
     exclusions: result.exclusions.map((item) => ({
       reason: PERSON_ACTIVITY_REASON_LABELS[item.reason] || item.reason,

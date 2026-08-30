@@ -11,6 +11,9 @@ import {
   PersonActivityExclusionReason,
   PersonActivityKind,
   PersonActivityMedia,
+  PersonActivityOriginObservation,
+  PersonActivityOriginState,
+  PersonActivityOriginSummary,
   PersonActivityComparison,
   PersonActivityRelationKind,
   PersonActivityResult,
@@ -24,6 +27,7 @@ import { mapSubject } from './subject-service.js';
 import type { DomainSubject } from '../models/subject.js';
 
 export const PERSON_ACTIVITY_FORMULA_VERSION = 'person-activity-window-v1';
+export const PERSON_ACTIVITY_ORIGIN_FORMULA_VERSION = 'person-activity-origin-v1';
 export const PERSON_ACTIVITY_DETAIL_CONCURRENCY = 4;
 export const PERSON_ACTIVITY_MAX_RELATIONS = 120;
 export const PERSON_ACTIVITY_MAX_SUBJECT_DETAILS = 48;
@@ -225,6 +229,35 @@ function makeDistribution(
     );
 }
 
+function originForSubject(metaTags?: readonly string[]): PersonActivityOriginObservation {
+  if (!metaTags) return { state: 'unknown' };
+  return {
+    state: metaTags.includes('原创') ? 'explicit_original' : 'not_observed',
+    metaTags: [...metaTags],
+  };
+}
+
+function makeOriginSummary(rows: readonly ActivityRowWithSets[]): PersonActivityOriginSummary {
+  const bySubject = new Map<number, PersonActivityOriginState>();
+  for (const row of rows) {
+    const existing = bySubject.get(row.subjectId);
+    if (existing === undefined) {
+      bySubject.set(row.subjectId, row.origin.state);
+    } else if (existing !== row.origin.state) {
+      bySubject.set(row.subjectId, 'unknown');
+    }
+  }
+  return Array.from(bySubject.values()).reduce<PersonActivityOriginSummary>(
+    (summary, state) => {
+      if (state === 'explicit_original') summary.explicitOriginalSubjects += 1;
+      else if (state === 'not_observed') summary.notObservedSubjects += 1;
+      else summary.unknownSubjects += 1;
+      return summary;
+    },
+    { explicitOriginalSubjects: 0, notObservedSubjects: 0, unknownSubjects: 0 },
+  );
+}
+
 function makeSummary(
   rows: readonly ActivityRowWithSets[],
   monthKeys: readonly string[],
@@ -251,6 +284,7 @@ function makeSummary(
         ).size,
       };
     }),
+    origin: makeOriginSummary(rows),
   };
 }
 
@@ -587,6 +621,7 @@ export class PersonActivityService {
         relationId: candidate.relationId,
         characterName: candidate.characterName,
         rawRole: candidate.rawRole,
+        origin: originForSubject(subject.metaTags),
         roleFamily: classifyRole(candidate),
         characterId: candidate.relationKind === 'voice' ? candidate.relationId : undefined,
       });
@@ -750,6 +785,14 @@ export class PersonActivityService {
           '按稳定 subject/character ID 去重；超过预算时按官方关系返回顺序做确定性等距抽样，不假设条目 ID 或返回顺序代表新旧；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类。',
         retrievedAt,
       },
+      {
+        source: 'derived-s7',
+        operation: 'person-activity-origin-observation',
+        formulaVersion: PERSON_ACTIVITY_ORIGIN_FORMULA_VERSION,
+        description:
+          '只把官方 subject.meta_tags 中精确观察到的“原创”标记为 explicit_original；not_observed 和 unknown 都不等于改编，不从其他字段推断作品来源。',
+        retrievedAt,
+      },
     ];
 
     return {
@@ -800,6 +843,13 @@ export class PersonActivityService {
         truncated:
           relationRowsDroppedAtLimit > 0 || subjectDetailIdsDroppedAtLimit > 0 || outputTruncated,
         retrievedAt,
+        origin: {
+          subjectsObserved:
+            summary.origin.explicitOriginalSubjects +
+            summary.origin.notObservedSubjects +
+            summary.origin.unknownSubjects,
+          ...summary.origin,
+        },
       },
       exclusions: exclusionValues,
       sourceOperations,
@@ -810,6 +860,7 @@ export class PersonActivityService {
         '主役、配角和职位分类只对可识别的官方关系标签做保守映射，未知标签保留原文并单独计数。',
         '关系或作品详情达到上限时，结果是官方关系返回顺序上的确定性等距样本，不代表完整最近活动；coverage 会分别报告观察、选取、详情请求和省略的 ID 数量。',
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
+        '只有官方 subject.meta_tags 中精确观察到“原创”才标记明确原创；未观察到该标签不等于改编，meta_tags 缺失保持来源未知。',
       ],
       warnings,
     };

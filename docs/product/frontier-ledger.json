@@ -302,11 +302,36 @@
       "kind": "scenario",
       "user_question": "这个人物最近参与的作品中，哪些是原创、哪些是改编？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_person_activity for a bounded current window and group only exact official subject.meta_tags observations; treat not_observed and unknown as insufficient evidence, not adaptation.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded current person-work origin observation over official v0 subject details. It reports exact 原创 tags, preserves raw meta_tags, and distinguishes absent fields from tags without claiming that either state means 改编; infobox, concept, and historical origin evidence remain unsupported.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+          "tests": [
+          "tests/unit/person-activity.test.ts",
+          "tests/unit/domain-mappers.test.ts",
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/person-activity-presenter.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/subject.ts",
+          "packages/bangumi-core/src/services/subject-service.ts",
+          "packages/bangumi-core/src/models/person-activity.ts",
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "source_contract": "Use current official v0 person relation endpoints and bounded GET /v0/subjects/{subject_id} details under the existing relation, detail, row, and concurrency caps. If subject.meta_tags is present, preserve its raw values and mark explicit_original only when the exact 原创 string is present; an empty or non-matching array is not_observed, while a missing field is unknown. Counts are per unique accepted subject in the selected window. Neither not_observed nor unknown means adaptation, and no infobox, concept, HTML, history, workload, or ranking inference is made.",
+        "formula_version": "person-activity-origin-v1"
+      }
     },
     {
       "id": "G20",
@@ -850,11 +875,31 @@
       "kind": "scenario",
       "user_question": "某编剧参与的作品按原创/改编分组是什么样？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_person_activity with kind=staff for bounded current works and report only exact official subject.meta_tags observations; do not label the remainder as adaptation.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "The staff activity path now carries the same bounded positive-only origin observation as voice activity, including raw tags, unique-subject counts, source coverage, and renderer/standalone limitations. It does not resolve adaptation status from absent tags or from unsupported infobox/concept/history sources.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "tests": [
+          "tests/unit/person-activity.test.ts",
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/person-activity-presenter.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/bangumi-core/src/models/person-activity.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "source_contract": "kind=staff selects official current person-to-subject relations and hydrates selected subject details within the existing bounded caps. Origin groups are derived only from subject.meta_tags: exact 原创 is explicit_original, a present array without that exact value is not_observed, and a missing field is unknown. The groups are observations, not a complete original/adaptation classifier; absent or unknown values are never called adaptation.",
+        "formula_version": "person-activity-origin-v1"
+      }
     },
     {
       "id": "T03",
