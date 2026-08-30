@@ -78,6 +78,16 @@ import {
 let globalArtifactStore: ArtifactStore | null = null;
 let globalRenderService: RenderService | null = null;
 
+const PRIVATE_COLLECTION_RENDER_TEMPLATES = new Set([
+  'collection-progress',
+  'collection-intelligence',
+  'collection-backlog',
+  'collection-schedule',
+  'collection-dashboard',
+  'collection-series',
+  'collection-entity-consistency',
+]);
+
 function getArtifactStore(): ArtifactStore {
   if (!globalArtifactStore) {
     globalArtifactStore = new LocalArtifactStore();
@@ -92,6 +102,77 @@ function getRenderService(): RenderService {
   return globalRenderService;
 }
 
+export function getPrivateArtifactPrincipal(
+  template: unknown,
+  privatePrincipalId?: string,
+): string | undefined {
+  const privatePrincipal =
+    typeof privatePrincipalId === 'string' && privatePrincipalId.trim().length > 0
+      ? privatePrincipalId
+      : undefined;
+  if (PRIVATE_COLLECTION_RENDER_TEMPLATES.has(String(template)) && !privatePrincipal) {
+    throw new BangumiError(
+      'AUTH_REQUIRED',
+      '私有收藏卡片必须绑定明确的账号主体才能保存渲染 Artifact。',
+      false,
+      401,
+      '使用当前账号上下文重试',
+    );
+  }
+  return privatePrincipal;
+}
+
+export async function renderAndSaveArtifact(
+  viewModel: any,
+  renderService: Pick<RenderService, 'renderCard'>,
+  artifactStore: ArtifactStore,
+  privatePrincipalId?: string,
+) {
+  try {
+    const privatePrincipal = getPrivateArtifactPrincipal(viewModel.template, privatePrincipalId);
+    const renderResult = privatePrincipal
+      ? await renderService.renderCard(viewModel, { cache: false })
+      : await renderService.renderCard(viewModel);
+    const artifactRef = privatePrincipal
+      ? isPrincipalScopedArtifactStore(artifactStore)
+        ? await artifactStore.saveArtifactForPrincipal(
+            privatePrincipal,
+            renderResult.buffer,
+            'image/png',
+            { width: renderResult.width, height: renderResult.height },
+          )
+        : (() => {
+            throw new BangumiError(
+              'RENDERER_UNAVAILABLE',
+              '当前 ArtifactStore 未提供账号隔离的私有渲染存储。',
+              false,
+              503,
+              '配置 PrincipalScopedArtifactStore',
+            );
+          })()
+      : await artifactStore.saveArtifact(renderResult.buffer, 'image/png', {
+          width: renderResult.width,
+          height: renderResult.height,
+        });
+    return { artifact: artifactRef };
+  } catch (err: any) {
+    if (
+      err?.code === 'RENDERER_UNAVAILABLE' ||
+      err?.message?.includes("Executable doesn't exist") ||
+      err?.message?.includes('playwright')
+    ) {
+      throw new BangumiError(
+        'RENDERER_UNAVAILABLE',
+        'Chromium / Renderer runtime unavailable. Run `pnpm renderer:install` to enable image cards.',
+        false,
+        503,
+        '运行 pnpm renderer:install',
+      );
+    }
+    throw err;
+  }
+}
+
 export function createRenderPresentationTools(
   renderServiceOverride?: RenderService,
   artifactStoreOverride?: ArtifactStore,
@@ -100,61 +181,7 @@ export function createRenderPresentationTools(
   const renderService = renderServiceOverride || getRenderService();
 
   async function executeRenderAndSave(viewModel: any, privatePrincipalId?: string) {
-    try {
-      if (
-        (viewModel.template === 'collection-dashboard' ||
-          viewModel.template === 'collection-series') &&
-        !privatePrincipalId
-      ) {
-        throw new BangumiError(
-          'AUTH_REQUIRED',
-          '私有收藏卡片必须绑定明确的账号主体才能保存渲染 Artifact。',
-          false,
-          401,
-          '使用当前账号上下文重试',
-        );
-      }
-      const renderResult = privatePrincipalId
-        ? await renderService.renderCard(viewModel, { cache: false })
-        : await renderService.renderCard(viewModel);
-      const artifactRef = privatePrincipalId
-        ? isPrincipalScopedArtifactStore(artifactStore)
-          ? await artifactStore.saveArtifactForPrincipal(
-              privatePrincipalId,
-              renderResult.buffer,
-              'image/png',
-              { width: renderResult.width, height: renderResult.height },
-            )
-          : (() => {
-              throw new BangumiError(
-                'RENDERER_UNAVAILABLE',
-                '当前 ArtifactStore 未提供账号隔离的私有渲染存储。',
-                false,
-                503,
-                '配置 PrincipalScopedArtifactStore',
-              );
-            })()
-        : await artifactStore.saveArtifact(renderResult.buffer, 'image/png', {
-            width: renderResult.width,
-            height: renderResult.height,
-          });
-      return { artifact: artifactRef };
-    } catch (err: any) {
-      if (
-        err?.code === 'RENDERER_UNAVAILABLE' ||
-        err?.message?.includes("Executable doesn't exist") ||
-        err?.message?.includes('playwright')
-      ) {
-        throw new BangumiError(
-          'RENDERER_UNAVAILABLE',
-          'Chromium / Renderer runtime unavailable. Run `pnpm renderer:install` to enable image cards.',
-          false,
-          503,
-          '运行 pnpm renderer:install',
-        );
-      }
-      throw err;
-    }
+    return renderAndSaveArtifact(viewModel, renderService, artifactStore, privatePrincipalId);
   }
 
   const renderSubjectCard = defineTool({
@@ -285,7 +312,10 @@ export function createRenderPresentationTools(
         },
       );
 
-      return await executeRenderAndSave(viewModel);
+      return await executeRenderAndSave(
+        viewModel,
+        _context.artifactPrincipalKey || _context.principalId,
+      );
     },
   });
 
@@ -989,7 +1019,10 @@ export function createRenderPresentationTools(
         username,
         { maxItems: input.maxItems },
       );
-      return await executeRenderAndSave(buildCollectionIntelligenceViewModel(result));
+      return await executeRenderAndSave(
+        buildCollectionIntelligenceViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
     },
   });
 
@@ -1070,7 +1103,10 @@ export function createRenderPresentationTools(
         sortBy: input.sortBy,
         includeSchedule: true,
       });
-      return await executeRenderAndSave(buildCollectionBacklogViewModel(result));
+      return await executeRenderAndSave(
+        buildCollectionBacklogViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
     },
   });
 
@@ -1141,7 +1177,10 @@ export function createRenderPresentationTools(
         maxRows: input.maxRows,
         statuses: input.statuses,
       });
-      return await executeRenderAndSave(buildCollectionScheduleViewModel(result));
+      return await executeRenderAndSave(
+        buildCollectionScheduleViewModel(result),
+        context.artifactPrincipalKey || context.principalId,
+      );
     },
   });
 

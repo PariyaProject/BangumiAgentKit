@@ -277,6 +277,118 @@ describe('CollectionEntityConsistencyService', () => {
     expect(result.coverage.relations.sourceRequestsAttempted).toBe(8);
     expect(maximum).toBeLessThanOrEqual(4);
   });
+
+  it('reports malformed and conflicting rows and suppresses affected negative claims', async () => {
+    const result = await runService(
+      buildFetch({
+        subjectRows: [subjectRow(100, '第一份'), subjectRow(100, '冲突份'), {}],
+        subjectTotal: 3,
+        characterCollections: [
+          { id: 10, name: '收藏角色10', type: 1, created_at: '2026-01-01T00:00:00Z' },
+          { id: 10, name: '冲突角色10', type: 1, created_at: '2026-01-01T00:00:00Z' },
+          { id: 11, name: '坏角色', type: 'unknown', created_at: '2026-01-01T00:00:00Z' },
+        ],
+        characterRows: [characterRow(10)],
+      }),
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.coverage.subjectCollections).toMatchObject({
+      malformedRows: 1,
+      conflictRows: 1,
+      conflictingSubjectIds: [100],
+    });
+    expect(result.coverage.entityCollections.characters).toMatchObject({
+      malformedRows: 1,
+      conflictRows: 1,
+      conflictingIds: [10],
+    });
+    expect(result.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ scope: 'subject-root', id: 100, observed: 2 }),
+        expect.objectContaining({ scope: 'character-collection', id: 10, observed: 2 }),
+      ]),
+    );
+    expect(result.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entity: expect.objectContaining({ kind: 'character', id: 10 }),
+        }),
+      ]),
+    );
+    expect(result.unmatchedInObservedScope).toEqual([]);
+    expect(result.operationEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'GET /v0/users/{username}/collections',
+          malformedRows: 1,
+        }),
+        expect.objectContaining({
+          operation: 'GET /v0/users/{username}/collections/-/characters',
+          malformedRows: 1,
+          conflictRows: 1,
+        }),
+      ]),
+    );
+  });
+
+  it('does not fabricate provenance when every source fails', async () => {
+    const result = await runService(async () => new Response('not found', { status: 404 }));
+
+    expect(result.state).toBe('unavailable');
+    expect(result.source).not.toHaveProperty('retrievedAt');
+    expect(result.source.operations).toEqual([
+      'GET /v0/users/{username}/collections',
+      'GET /v0/users/{username}/collections/-/characters',
+      'GET /v0/users/{username}/collections/-/persons',
+    ]);
+    expect(result.operationEvidence.every((item) => item.retrievedAt === undefined)).toBe(true);
+  });
+
+  it('passes a shared abort signal and response-byte cap to every initial source read', async () => {
+    const controller = new AbortController();
+    const observedSignals: AbortSignal[] = [];
+    const baseFetch = buildFetch({
+      subjectRows: [subjectRow(100)],
+      characterCollections: [
+        { id: 10, name: '收藏角色10', type: 1, created_at: '2026-01-01T00:00:00Z' },
+      ],
+      characterRows: [characterRow(10)],
+    });
+    const result = await runService(
+      async (_input, init) => {
+        if (init?.signal) observedSignals.push(init.signal);
+        return baseFetch(_input, init);
+      },
+      { signal: controller.signal },
+    );
+
+    expect(result.state).toBe('complete');
+    expect(observedSignals.length).toBe(5);
+    expect(observedSignals.every((signal) => !signal.aborted)).toBe(true);
+
+    controller.abort();
+    const aborted = await runService(
+      async (_input, init) => {
+        if (init?.signal) observedSignals.push(init.signal);
+        throw new DOMException('aborted', 'AbortError');
+      },
+      { signal: controller.signal },
+    );
+    expect(aborted.state).toBe('unavailable');
+
+    const oversized = await runService(
+      async () =>
+        new Response('[]', {
+          status: 200,
+          headers: { 'content-type': 'application/json', 'content-length': '1048577' },
+        }),
+    );
+    expect(oversized.state).toBe('unavailable');
+    expect(oversized.operationEvidence).toEqual(
+      expect.arrayContaining([expect.objectContaining({ errorCode: 'RESPONSE_TOO_LARGE' })]),
+    );
+  });
 });
 
 const _resultTypeCheck: CollectionEntityConsistencyResult | undefined = undefined;

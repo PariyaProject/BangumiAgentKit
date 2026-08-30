@@ -475,16 +475,17 @@ export class PersonService {
   async getSubjectStaff(
     subjectId: number,
     limit = 100,
-    options: { maxResponseBytes?: number } = {},
+    options: { maxResponseBytes?: number; signal?: AbortSignal } = {},
   ): Promise<RelationCollection<SubjectStaffMember>> {
     const raw = await this.api.getRelatedPersonsBySubjectId(subjectId, {
       ...(options.maxResponseBytes === undefined
         ? {}
         : { maxResponseBytes: options.maxResponseBytes }),
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     const rawRows = Array.isArray(raw) ? raw : [];
     const validRows = rawRows.filter(validSubjectStaffRow);
-    const schemaDriftRows = rawRows.length - validRows.length;
+    const schemaDriftRows = Array.isArray(raw) ? rawRows.length - validRows.length : 1;
     const safeLimit = Math.max(0, Math.floor(limit));
     const selectedRows = validRows.slice(0, safeLimit);
     const items = selectedRows.map(mapSubjectStaffMember);

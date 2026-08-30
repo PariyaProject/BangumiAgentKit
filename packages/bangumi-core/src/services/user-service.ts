@@ -53,6 +53,14 @@ function mapCollectionImages(
   return images ? { ...images } : undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function positiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
 export function mapUserEpisodeCollectionStatus(value: unknown): UserEpisodeCollectionStatus {
   switch (value) {
     case 0:
@@ -68,13 +76,28 @@ export function mapUserEpisodeCollectionStatus(value: unknown): UserEpisodeColle
   }
 }
 
-function mapUserCharacterCollection(raw: {
+type RawUserCharacterCollection = {
   id: number;
   name: string;
   type: number;
   images?: Record<string, string> | null;
   created_at: string;
-}): UserCharacterCollectionItem {
+};
+
+function isRawUserCharacterCollection(value: unknown): value is RawUserCharacterCollection {
+  if (!isRecord(value)) return false;
+  return (
+    positiveInteger(value.id) &&
+    typeof value.name === 'string' &&
+    typeof value.type === 'number' &&
+    Number.isInteger(value.type) &&
+    value.type > 0 &&
+    typeof value.created_at === 'string' &&
+    (value.images === undefined || value.images === null || isRecord(value.images))
+  );
+}
+
+function mapUserCharacterCollection(raw: RawUserCharacterCollection): UserCharacterCollectionItem {
   return {
     id: raw.id,
     name: raw.name,
@@ -84,14 +107,31 @@ function mapUserCharacterCollection(raw: {
   };
 }
 
-function mapUserPersonCollection(raw: {
+type RawUserPersonCollection = {
   id: number;
   name: string;
   type: number;
   career: string[];
   images?: Record<string, string> | null;
   created_at: string;
-}): UserPersonCollectionItem {
+};
+
+function isRawUserPersonCollection(value: unknown): value is RawUserPersonCollection {
+  if (!isRecord(value)) return false;
+  return (
+    positiveInteger(value.id) &&
+    typeof value.name === 'string' &&
+    typeof value.type === 'number' &&
+    Number.isInteger(value.type) &&
+    value.type > 0 &&
+    Array.isArray(value.career) &&
+    value.career.every((career) => typeof career === 'string') &&
+    typeof value.created_at === 'string' &&
+    (value.images === undefined || value.images === null || isRecord(value.images))
+  );
+}
+
+function mapUserPersonCollection(raw: RawUserPersonCollection): UserPersonCollectionItem {
   return {
     id: raw.id,
     name: raw.name,
@@ -108,6 +148,8 @@ function mapUserCollectionPage<T>(
   offset: number,
   data: T[],
   maxItems: number,
+  observedCount = data.length,
+  invalidRows = 0,
 ): {
   total?: number;
   limit: number;
@@ -116,8 +158,9 @@ function mapUserCollectionPage<T>(
   observed: number;
   returned: number;
   truncated: boolean;
+  invalidRows: number;
 } {
-  const responseTotal = Number.isInteger(total) && total >= data.length ? total : undefined;
+  const responseTotal = Number.isInteger(total) && total >= observedCount ? total : undefined;
   const responseLimit = Number.isInteger(limit) && limit >= 0 ? limit : data.length;
   const responseOffset = Number.isInteger(offset) && offset >= 0 ? offset : 0;
   const items = data.slice(0, maxItems);
@@ -126,10 +169,12 @@ function mapUserCollectionPage<T>(
     limit: responseLimit,
     offset: responseOffset,
     items,
-    observed: data.length,
+    observed: observedCount,
     returned: items.length,
+    invalidRows,
     truncated:
-      items.length < data.length || (responseTotal !== undefined && data.length < responseTotal),
+      items.length < observedCount ||
+      (responseTotal !== undefined && observedCount < responseTotal),
   };
 }
 
@@ -162,12 +207,14 @@ export class UserService {
       limit?: number;
       offset?: number;
       signal?: AbortSignal;
+      maxResponseBytes?: number;
     } = {},
   ): Promise<{
     total?: number;
     limit: number;
     offset: number;
     items: (UserCollectionItem & { statusLabel: string })[];
+    invalidRows: number;
   }> {
     const limit = options.limit ?? 20;
     const offset = options.offset ?? 0;
@@ -196,41 +243,49 @@ export class UserService {
         limit,
         offset,
       },
-      { signal: options.signal },
+      { signal: options.signal, maxResponseBytes: options.maxResponseBytes },
     );
 
-    const data = res.data || [];
-    const items = data.map((col) => {
+    const rawData = res.data;
+    const data = Array.isArray(rawData) ? rawData : [];
+    const invalidRows = Array.isArray(rawData) ? rawData.length - data.filter(isRecord).length : 1;
+    const items = data.flatMap((rawCollection) => {
+      if (!isRecord(rawCollection)) return [];
+      const col = rawCollection as (typeof data)[number];
       const status = mapCollectionStatus(col.type);
       const subjectTypeStr = mapSubjectType(col.subject_type ?? col.subject?.type);
       const statusLabel = getCollectionStatusLabel(subjectTypeStr, status);
       const subjectEpisodeTotal = mapSubjectEpisodeTotal(col.subject);
 
-      return {
-        subjectId: col.subject_id,
-        subjectName: col.subject?.name,
-        subjectNameCn: col.subject?.name_cn || col.subject?.name,
-        subjectType: subjectTypeStr,
-        status,
-        statusLabel,
-        rating: col.rate,
-        comment: col.comment,
-        tags: col.tags,
-        epStatus: col.ep_status,
-        updatedAt: col.updated_at,
-        subjectDate: col.subject?.date || undefined,
-        subjectImage:
-          col.subject?.images?.large || col.subject?.images?.common || col.subject?.images?.medium,
-        subjectTotalEpisodes: subjectEpisodeTotal.value,
-        subjectTotalEpisodesRaw: subjectEpisodeTotal.raw,
-        subjectTotalEpisodesValidity: subjectEpisodeTotal.validity,
-      };
+      return [
+        {
+          subjectId: col.subject_id,
+          subjectName: col.subject?.name,
+          subjectNameCn: col.subject?.name_cn || col.subject?.name,
+          subjectType: subjectTypeStr,
+          status,
+          statusLabel,
+          rating: col.rate,
+          comment: col.comment,
+          tags: col.tags,
+          epStatus: col.ep_status,
+          updatedAt: col.updated_at,
+          subjectDate: col.subject?.date || undefined,
+          subjectImage:
+            col.subject?.images?.large ||
+            col.subject?.images?.common ||
+            col.subject?.images?.medium,
+          subjectTotalEpisodes: subjectEpisodeTotal.value,
+          subjectTotalEpisodesRaw: subjectEpisodeTotal.raw,
+          subjectTotalEpisodesValidity: subjectEpisodeTotal.validity,
+        },
+      ];
     });
 
     const responseOffset = Number.isInteger(res.offset) && res.offset >= 0 ? res.offset : offset;
     const responseLimit = Number.isInteger(res.limit) && res.limit > 0 ? res.limit : limit;
     const responseTotal =
-      Number.isInteger(res.total) && res.total >= responseOffset + items.length
+      Number.isInteger(res.total) && res.total >= responseOffset + data.length
         ? res.total
         : undefined;
 
@@ -239,6 +294,7 @@ export class UserService {
       limit: responseLimit,
       offset: responseOffset,
       items,
+      invalidRows,
     };
   }
 
@@ -345,7 +401,7 @@ export class UserService {
 
   async getUserCharacterCollections(
     username: string,
-    options: { maxItems?: number; signal?: AbortSignal } = {},
+    options: { maxItems?: number; signal?: AbortSignal; maxResponseBytes?: number } = {},
   ): Promise<{
     total?: number;
     limit: number;
@@ -354,16 +410,24 @@ export class UserService {
     observed: number;
     returned: number;
     truncated: boolean;
+    invalidRows: number;
   }> {
     const maxItems = options.maxItems ?? 50;
-    const res = await this.api.getUserCharacterCollections(username);
-    const data = res.data || [];
+    const res = await this.api.getUserCharacterCollections(username, {
+      signal: options.signal,
+      maxResponseBytes: options.maxResponseBytes,
+    });
+    const rawData = res.data;
+    const data = Array.isArray(rawData) ? rawData : [];
+    const validData = data.filter(isRawUserCharacterCollection);
     return mapUserCollectionPage(
       res.total,
       res.limit,
       res.offset,
-      data.map(mapUserCharacterCollection),
+      validData.map(mapUserCharacterCollection),
       maxItems,
+      data.length,
+      Array.isArray(rawData) ? data.length - validData.length : 1,
     );
   }
 
@@ -389,7 +453,7 @@ export class UserService {
 
   async getUserPersonCollections(
     username: string,
-    options: { maxItems?: number; signal?: AbortSignal } = {},
+    options: { maxItems?: number; signal?: AbortSignal; maxResponseBytes?: number } = {},
   ): Promise<{
     total?: number;
     limit: number;
@@ -398,16 +462,24 @@ export class UserService {
     observed: number;
     returned: number;
     truncated: boolean;
+    invalidRows: number;
   }> {
     const maxItems = options.maxItems ?? 50;
-    const res = await this.api.getUserPersonCollections(username);
-    const data = res.data || [];
+    const res = await this.api.getUserPersonCollections(username, {
+      signal: options.signal,
+      maxResponseBytes: options.maxResponseBytes,
+    });
+    const rawData = res.data;
+    const data = Array.isArray(rawData) ? rawData : [];
+    const validData = data.filter(isRawUserPersonCollection);
     return mapUserCollectionPage(
       res.total,
       res.limit,
       res.offset,
-      data.map(mapUserPersonCollection),
+      validData.map(mapUserPersonCollection),
       maxItems,
+      Array.isArray(rawData) ? data.length : 1,
+      Array.isArray(rawData) ? data.length - validData.length : 1,
     );
   }
 

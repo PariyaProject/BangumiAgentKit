@@ -3,6 +3,16 @@ export type CollectionEntityConsistencyState =
 
 export type CollectionEntityKind = 'character' | 'person';
 
+export type CollectionEntityConsistencyConflictScope =
+  'subject-root' | 'character-collection' | 'person-collection';
+
+export interface CollectionEntityConsistencyConflict {
+  scope: CollectionEntityConsistencyConflictScope;
+  id: number;
+  observed: number;
+  fields: string[];
+}
+
 export interface CollectionEntityConsistencyOptions {
   subjectType?: number | string;
   status?: number | string;
@@ -10,6 +20,7 @@ export interface CollectionEntityConsistencyOptions {
   maxSubjectPages?: number;
   maxRelationsPerSubject?: number;
   maxOutputRows?: number;
+  signal?: AbortSignal;
 }
 
 export type CollectionEntityConsistencyEvidenceKind =
@@ -63,6 +74,9 @@ export interface CollectionEntityConsistencySubjectCoverage {
   rowsObserved: number;
   uniqueRootsObserved: number;
   rootsSelected: number;
+  malformedRows: number;
+  conflictRows: number;
+  conflictingSubjectIds: number[];
   duplicateSubjectIds: number;
   truncated: boolean;
   stalled: boolean;
@@ -76,6 +90,9 @@ export interface CollectionEntityConsistencyEntityListCoverage {
   sourceTotal?: number;
   observed: number;
   returned: number;
+  malformedRows: number;
+  conflictRows: number;
+  conflictingIds: number[];
   truncated: boolean;
   duplicateIds: number;
 }
@@ -134,6 +151,8 @@ export interface CollectionEntityConsistencyOperationEvidence {
   observed?: number;
   returned?: number;
   truncated?: boolean;
+  malformedRows?: number;
+  conflictRows?: number;
   errorCode?: string;
 }
 
@@ -148,13 +167,14 @@ export interface CollectionEntityConsistencyResult {
   };
   matches: CollectionEntityConsistencyMatch[];
   unmatchedInObservedScope: CollectionEntityConsistencyUnmatched[];
+  conflicts: CollectionEntityConsistencyConflict[];
   coverage: CollectionEntityConsistencyCoverage;
   formulaVersion: 'collection-entity-consistency-v1';
   source: {
     class: 'official-v0';
     operations: string[];
     authScope: 'account';
-    retrievedAt: string;
+    retrievedAt?: string;
   };
   operationEvidence: CollectionEntityConsistencyOperationEvidence[];
   warnings: Array<{

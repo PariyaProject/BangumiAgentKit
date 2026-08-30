@@ -151,7 +151,7 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Subject Persons (GET /v0/subjects/{subject_id}/persons) */
   async getRelatedPersonsBySubjectId(
     subject_id: OperationPath<'getRelatedPersonsBySubjectId'>['subject_id'],
-    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedPersonsBySubjectId'>> {
     return this.transport.request<OperationResponse<'getRelatedPersonsBySubjectId'>>({
       method: 'GET',
@@ -163,7 +163,7 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Subject Characters (GET /v0/subjects/{subject_id}/characters) */
   async getRelatedCharactersBySubjectId(
     subject_id: OperationPath<'getRelatedCharactersBySubjectId'>['subject_id'],
-    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getRelatedCharactersBySubjectId'>> {
     return this.transport.request<OperationResponse<'getRelatedCharactersBySubjectId'>>({
       method: 'GET',
@@ -369,7 +369,7 @@ export class GeneratedBangumiOpenApiClient {
   async getUserCollectionsByUsername(
     username: OperationPath<'getUserCollectionsByUsername'>['username'],
     query?: OperationQuery<'getUserCollectionsByUsername'>,
-    requestOptions?: Pick<HttpRequestOptions, 'signal'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getUserCollectionsByUsername'>> {
     return this.transport.request<OperationResponse<'getUserCollectionsByUsername'>>({
       method: 'GET',
@@ -465,10 +465,12 @@ export class GeneratedBangumiOpenApiClient {
   /** 获取用户角色收藏列表 (GET /v0/users/{username}/collections/-/characters) */
   async getUserCharacterCollections(
     username: OperationPath<'getUserCharacterCollections'>['username'],
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getUserCharacterCollections'>> {
     return this.transport.request<OperationResponse<'getUserCharacterCollections'>>({
       method: 'GET',
       path: `/v0/users/${encodeURIComponent(String(username))}/collections/-/characters`,
+      ...requestOptions,
     });
   }
 
@@ -486,10 +488,12 @@ export class GeneratedBangumiOpenApiClient {
   /** 获取用户人物收藏列表 (GET /v0/users/{username}/collections/-/persons) */
   async getUserPersonCollections(
     username: OperationPath<'getUserPersonCollections'>['username'],
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getUserPersonCollections'>> {
     return this.transport.request<OperationResponse<'getUserPersonCollections'>>({
       method: 'GET',
       path: `/v0/users/${encodeURIComponent(String(username))}/collections/-/persons`,
+      ...requestOptions,
     });
   }
 
