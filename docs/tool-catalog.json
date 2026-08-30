@@ -1197,7 +1197,7 @@
   },
   {
     "name": "bangumi.get_person_activity",
-    "description": "按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月；达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算；不宣称历史增长、劳动时长或实际配音时间。",
+    "description": "按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月；达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算。可选 comparePreviousWindow=true 计算最近窗口与紧邻等长窗口的作品/角色数量差值和观察到的发布月份峰值；每个窗口及差值/峰值都保留完整、部分、不可用或不可计算状态，不把不可用窗口当作零；这仍基于当前关系与作品首播日期，不是历史快照、劳动时长或实际配音时间。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -1255,6 +1255,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 60
+        },
+        "comparePreviousWindow": {
+          "description": "是否比较最近窗口与紧邻的等长日历月窗口；会保留不可用/不可计算状态，不把它们当作零；默认 false，不使用历史快照",
+          "type": "boolean"
         }
       },
       "required": ["personId"],
@@ -2744,7 +2748,7 @@
   },
   {
     "name": "bangumi.render_person_activity",
-    "description": "生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算、确定性等距抽样、观察/选取/省略 ID 和来源限制可见；不显示或推断历史增长、劳动时长或实际配音时间。",
+    "description": "生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算、确定性等距抽样、观察/选取/省略 ID 和来源限制可见；可选 comparePreviousWindow=true 展示最近与紧邻等长窗口的作品/角色差值和观察到的发布月份峰值，并保留每个窗口及指标的覆盖状态，不把不可用窗口当作零；不显示或推断历史快照、劳动时长或实际配音时间。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -2796,6 +2800,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 60
+        },
+        "comparePreviousWindow": {
+          "description": "是否展示最近窗口与紧邻等长窗口的比较；会保留不可用/不可计算状态，不把它们当作零；默认 false，不使用历史快照",
+          "type": "boolean"
         }
       },
       "required": ["personId"],

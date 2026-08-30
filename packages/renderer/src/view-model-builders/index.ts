@@ -18,6 +18,7 @@ import type {
   EpisodeGuideResult,
   EpisodeIntegrityResult,
   PersonActivityProfile,
+  PersonActivityComparisonPeriod,
   PersonActivityResult,
   PersonCollaborationResult,
   SubjectSearchResult,
@@ -2327,6 +2328,30 @@ const PERSON_ACTIVITY_ROLE_LABELS: Record<string, string> = {
   unknown: '未知',
 };
 
+function canExposeComparisonCounts(period: PersonActivityComparisonPeriod): boolean {
+  return (
+    period.state === 'complete' || (period.state === 'partial' && period.coverage.rowsEligible > 0)
+  );
+}
+
+function buildPersonActivityComparisonPeriodViewModel(period: PersonActivityComparisonPeriod) {
+  return {
+    state: period.state,
+    start: period.window.start,
+    end: period.window.end,
+    ...(canExposeComparisonCounts(period)
+      ? {
+          creditRows: period.summary.creditRows,
+          uniqueSubjects: period.summary.uniqueSubjects,
+          uniqueCharacters: period.summary.uniqueCharacters,
+        }
+      : {}),
+    rowsEligible: period.coverage.rowsEligible,
+    sampled: period.coverage.sampled,
+    truncated: period.coverage.truncated,
+  };
+}
+
 export function buildPersonActivityViewModel(
   result: PersonActivityResult,
   options: { sourceLabel?: string; maxRows?: number } = {},
@@ -2385,6 +2410,18 @@ export function buildPersonActivityViewModel(
       })),
       byMonth: result.summary.byMonth,
     },
+    ...(result.comparison
+      ? {
+          comparison: {
+            state: result.comparison.state,
+            windowMonths: result.comparison.windowMonths,
+            recent: buildPersonActivityComparisonPeriodViewModel(result.comparison.recent),
+            previous: buildPersonActivityComparisonPeriodViewModel(result.comparison.previous),
+            delta: result.comparison.delta,
+            peak: result.comparison.peak,
+          },
+        }
+      : {}),
     coverage: {
       relationRowsObserved: result.coverage.relationRowsObserved,
       relationRowsSelected: result.coverage.relationRowsSelected,

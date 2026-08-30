@@ -121,6 +121,90 @@ describe('Person activity renderer', () => {
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
 
+    const comparisonResult: PersonActivityResult = {
+      ...result,
+      comparison: {
+        state: 'partial',
+        windowMonths: 6,
+        recent: {
+          window: result.window,
+          summary: result.summary,
+          state: 'partial',
+          coverage: result.coverage,
+        },
+        previous: {
+          window: {
+            ...result.window,
+            start: '2025-09-01',
+            end: '2026-02-28',
+            monthKeys: ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'],
+          },
+          summary: result.summary,
+          state: 'complete',
+          coverage: result.coverage,
+        },
+        delta: { state: 'partial', creditRows: 0, uniqueSubjects: 0, uniqueCharacters: 0 },
+        peak: {
+          metric: 'uniqueSubjects',
+          state: 'partial',
+          months: [
+            {
+              period: 'recent',
+              month: '2026-03',
+              creditRows: 3,
+              uniqueSubjects: 3,
+              uniqueCharacters: 3,
+            },
+          ],
+        },
+        sourceOperations: { recent: result.sourceOperations, previous: result.sourceOperations },
+      },
+    };
+    const comparisonViewModel = buildPersonActivityViewModel(comparisonResult, { maxRows: 12 });
+    const comparisonHtml = renderHtmlTemplate(comparisonViewModel, 'bangumi-dark', {}, 640);
+    expect(comparisonHtml).toContain('前后窗口对比');
+    expect(comparisonHtml).toContain('部分覆盖下观察到的发布月份峰值');
+    expect(comparisonHtml).toContain('不代表历史快照、实际工作量或劳动时长');
+
+    const unavailableComparisonResult: PersonActivityResult = {
+      ...result,
+      state: 'unavailable',
+      comparison: {
+        state: 'unavailable',
+        windowMonths: 6,
+        recent: {
+          window: result.window,
+          summary: result.summary,
+          state: 'unavailable',
+          coverage: { ...result.coverage, rowsEligible: 0 },
+        },
+        previous: {
+          window: {
+            ...result.window,
+            start: '2025-09-01',
+            end: '2026-02-28',
+            monthKeys: ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'],
+          },
+          summary: result.summary,
+          state: 'unavailable',
+          coverage: { ...result.coverage, rowsEligible: 0 },
+        },
+        delta: { state: 'unavailable' },
+        peak: { metric: 'uniqueSubjects', state: 'unavailable', months: [] },
+        sourceOperations: { recent: result.sourceOperations, previous: result.sourceOperations },
+      },
+    };
+    const unavailableComparisonHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(unavailableComparisonResult, { maxRows: 1 }),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(unavailableComparisonHtml).toContain('不可用（来源不可用）');
+    expect(unavailableComparisonHtml).toContain('不把不可用窗口当作零');
+    expect(unavailableComparisonHtml).toContain('发布月份峰值不可用（来源不可用）');
+    expect(unavailableComparisonHtml).not.toContain('差值（最近 − 之前）：+0 部作品');
+
     const failedPersonViewModel = buildPersonActivityViewModel(
       { ...result, personId: 99, person: undefined },
       { maxRows: 1 },

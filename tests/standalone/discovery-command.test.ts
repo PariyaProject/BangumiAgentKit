@@ -116,6 +116,7 @@ describe('Standalone discovery and raw tool playground', () => {
         '20',
         '--max-rows',
         '12',
+        '--compare-previous',
       ],
       context(host),
     );
@@ -132,6 +133,7 @@ describe('Standalone discovery and raw tool playground', () => {
         '3',
         '--max-relations',
         '18',
+        '--compare-previous',
       ],
       context(host),
     );
@@ -147,13 +149,21 @@ describe('Standalone discovery and raw tool playground', () => {
         maxRelations: 40,
         maxSubjectDetails: 20,
         maxRows: 12,
+        comparePreviousWindow: true,
       },
       expect.anything(),
     );
     expect(executeTool).toHaveBeenNthCalledWith(
       2,
       'bangumi.render_person_activity',
-      { personId: 10868, kind: 'staff', media: 'anime', windowMonths: 3, maxRelations: 18 },
+      {
+        personId: 10868,
+        kind: 'staff',
+        media: 'anime',
+        windowMonths: 3,
+        maxRelations: 18,
+        comparePreviousWindow: true,
+      },
       expect.anything(),
     );
   });

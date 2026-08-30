@@ -117,11 +117,33 @@
       "kind": "scenario",
       "user_question": "水濑祈最近半年工作量和之前半年相比如何？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_person_activity with comparePreviousWindow=true for a bounded release-date comparison; do not interpret the result as workload, labor time, or historical change.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-001"],
+      "closure_reason": "Delivered a bounded recent-versus-previous calendar-window comparison over current official-v0 person relations and subject first_air_date, with explicit deltas and partial coverage; actual workload and historical snapshots remain unsupported.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "tests": [
+          "tests/unit/person-activity.test.ts",
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/discovery-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/person-activity.ts",
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx",
+          "apps/standalone/src/command-registry.ts"
+        ],
+        "source_contract": "Official v0 person relation endpoints plus bounded current GET /v0/subjects/{subject_id} details are read once per period with the existing relation/detail/output caps and sequential detail concurrency. Each period uses calendar months ending at its as-of date; the previous period ends the day before the recent period starts. Delta is recent minus previous only when both periods expose observed counts, and peak is the maximum observed unique-subject count by month with ties preserved; unavailable, not-computable, and partial coverage states remain explicit and never become zero or a complete workload claim.",
+        "formula_version": "person-activity-comparison-v1"
+      }
     },
     {
       "id": "G06",
@@ -790,11 +812,27 @@
       "kind": "scenario",
       "user_question": "某声优的工作量峰值出现在什么月份？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_person_activity with comparePreviousWindow=true and read the observed release-month peak; do not call it a workload peak when dates or relation coverage are partial.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-001"],
+      "closure_reason": "Delivered deterministic observed release-month peak reporting by unique official-v0 subjects across two bounded windows, retaining ties and non-computable coverage; the source does not establish workload intensity.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "tests": [
+          "tests/unit/person-activity.test.ts",
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/discovery-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/person-activity.ts",
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx"
+        ],
+        "formula_version": "person-activity-comparison-v1"
+      }
     },
     {
       "id": "T01",
@@ -1413,9 +1451,31 @@
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
       "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "next_action": "Use the bounded person activity comparison for release-date observations; retain a separate research need for actual workload, historical snapshots, and labor-time semantics.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": ["G05", "S07"],
+      "closure_reason": "Reconciled the opportunity with a usable bounded release-activity comparison and monthly peak view while retaining PARTIAL status because official v0 lacks labor-time evidence and historical person snapshots.",
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "tests": [
+          "tests/unit/person-activity.test.ts",
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/discovery-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/models/person-activity.ts",
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/view-models/index.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx",
+          "apps/standalone/src/command-registry.ts"
+        ],
+        "source_contract": "The comparison is opt-in and derives two equal calendar windows from current official-v0 person relations and current subject first_air_date. It exposes per-period coverage states, with no numeric delta when a period is unavailable or not-computable and no complete peak claim under partial coverage. It is not a historical snapshot or workload measurement.",
+        "formula_version": "person-activity-comparison-v1"
+      }
     },
     {
       "id": "OP-002",

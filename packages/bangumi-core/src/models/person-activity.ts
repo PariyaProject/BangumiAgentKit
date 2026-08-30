@@ -70,6 +70,45 @@ export interface PersonActivityWindowSummary {
   byMonth: PersonActivityMonthBucket[];
 }
 
+export interface PersonActivityComparisonDelta {
+  state: PersonActivityState;
+  creditRows?: number;
+  uniqueSubjects?: number;
+  uniqueCharacters?: number;
+}
+
+export interface PersonActivityComparisonPeriod {
+  window: PersonActivityWindow;
+  summary: PersonActivityWindowSummary;
+  state: PersonActivityState;
+  coverage: PersonActivityCoverage;
+}
+
+export interface PersonActivityPeakMonth {
+  period: 'recent' | 'previous';
+  month: string;
+  creditRows: number;
+  uniqueSubjects: number;
+  uniqueCharacters: number;
+}
+
+export interface PersonActivityComparison {
+  state: PersonActivityState;
+  windowMonths: number;
+  recent: PersonActivityComparisonPeriod;
+  previous: PersonActivityComparisonPeriod;
+  delta: PersonActivityComparisonDelta;
+  peak: {
+    metric: 'uniqueSubjects';
+    state: PersonActivityState;
+    months: PersonActivityPeakMonth[];
+  };
+  sourceOperations: {
+    recent: PersonActivitySourceOperation[];
+    previous: PersonActivitySourceOperation[];
+  };
+}
+
 export interface PersonActivitySourceOperation {
   operation: string;
   attempted: number;
@@ -119,6 +158,7 @@ export interface PersonActivityResult {
   window: PersonActivityWindow;
   rows: PersonActivityRow[];
   summary: PersonActivityWindowSummary;
+  comparison?: PersonActivityComparison;
   coverage: PersonActivityCoverage;
   exclusions: PersonActivityExclusion[];
   sourceOperations: PersonActivitySourceOperation[];

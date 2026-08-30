@@ -55,7 +55,7 @@ Bangumi:
   person <personId>
   activity <personId> [--kind voice|staff|all] [--media tv|anime|all]
            [--months 3|6|12] [--max-relations 1..120]
-           [--max-details 1..48] [--max-rows 1..60]
+           [--max-details 1..48] [--max-rows 1..60] [--compare-previous]
   collaborators <personId> [--kind voice|staff|all] [--media anime|all]
                [--target-role <label>] [--collaborator-role <label>]
                [--max-relations 1..120] [--max-subjects 1..36]
@@ -188,6 +188,7 @@ function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
   const maxRelations = takeOption(args, '--max-relations');
   const maxDetails = takeOption(args, '--max-details');
   const maxRows = takeOption(args, '--max-rows');
+  const comparePrevious = args.includes('--compare-previous');
   if (kind !== undefined) {
     if (kind !== 'voice' && kind !== 'staff' && kind !== 'all') {
       throw new StandaloneCliError('USAGE_ERROR: --kind must be voice, staff, or all.', 2);
@@ -212,6 +213,7 @@ function parsePersonActivityOptions(args: string[]): Record<string, unknown> {
   if (maxDetails !== undefined)
     input.maxSubjectDetails = optionNumber(maxDetails, 'max-details', true);
   if (maxRows !== undefined) input.maxRows = optionNumber(maxRows, 'max-rows', true);
+  if (comparePrevious) input.comparePreviousWindow = true;
   return input;
 }
 
