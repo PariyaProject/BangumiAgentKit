@@ -1694,6 +1694,66 @@
     }
   },
   {
+    "name": "bangumi.get_subject_index_membership",
+    "description": "判断一个已知 Bangumi 条目是否出现在调用方提供的 1–8 个目录中。只读取官方 v0 目录条目列表，按精确数值 subject ID 产生 matched；只有完整扫描 supplied index observed scope 后才产生 not_matched_in_observed_scope，其余情况保持 unknown。保留每个目录的分页、行数、响应大小、失败、source operation、检索时间和证据；不发现全部推荐目录，不读取 HTML/Structured Web、评论或目录描述，不执行写入。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 10000000,
+          "description": "Bangumi 条目 ID（最大 10000000）"
+        },
+        "indexIds": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 10000000
+          },
+          "description": "1–8 个不同的已知 Bangumi 目录 ID"
+        },
+        "pageSize": {
+          "default": 50,
+          "description": "每页最多读取条数，默认 50",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "maxPages": {
+          "default": 8,
+          "description": "每个目录最多读取页数，默认 8",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "maxRows": {
+          "default": 400,
+          "description": "每个目录最多观察行数，默认 400",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 400
+        },
+        "maxResponseBytes": {
+          "default": 1048576,
+          "description": "每个官方响应的最大 UTF-8 字节数",
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 4194304
+        }
+      },
+      "required": ["subjectId", "indexIds", "pageSize", "maxPages", "maxRows", "maxResponseBytes"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.get_subject_overlap",
     "description": "比较调用方提供的 2–8 个已知 Bangumi 条目在官方 v0 有界关系中的角色声优/制作人员重合，并按共同稳定人物 ID 对条目对排序。支持 cast、staff、all 以及保守的主角/主役原始标签筛选；保留每侧角色或职位证据、观察到的并集/交集与 Jaccard 比例、source operations、检索时间、缺失 ID、未知角色、区段/输出截断和 partial/unavailable 状态。不发现全目录候选，不宣称完整演职员表、主要团队质量、历史连续合作或推荐结论。",
     "auth": "none",
@@ -3883,6 +3943,62 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_subject_index_membership",
+    "description": "生成已知条目在调用方提供目录中的有界归属观察图片卡片 Artifact。卡片只展示官方 v0 精确 subject ID 匹配、完整 supplied observed scope 内未匹配和 unknown 状态，以及分页/响应大小/失败 coverage；不发现所有推荐目录，不读取 HTML/Structured Web、评论或目录描述，不执行写入，卡片不下载图片资产。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "subjectId": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 10000000,
+          "description": "Bangumi 条目 ID（最大 10000000）"
+        },
+        "indexIds": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 10000000
+          },
+          "description": "1–8 个不同的已知 Bangumi 目录 ID"
+        },
+        "pageSize": {
+          "default": 50,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "maxPages": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "maxRows": {
+          "default": 400,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 400
+        },
+        "maxResponseBytes": {
+          "default": 1048576,
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 4194304
+        }
+      },
+      "required": ["subjectId", "indexIds", "pageSize", "maxPages", "maxRows", "maxResponseBytes"],
       "additionalProperties": false
     }
   },

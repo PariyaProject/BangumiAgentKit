@@ -39,6 +39,8 @@ Bangumi:
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
   subject-identity <subjectId>
+  subject-index-membership <subjectId> --index <indexId> [--index <indexId> ...]
+                            [--page-size 1..50] [--max-pages 1..8] [--max-rows 1..400]
   revision-latest <subjectId>
   stats <subjectId>
   stats-history <subjectId> [--record-current] [--max-observations 1..120]
@@ -95,7 +97,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|subject-identity|revision-latest|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|character-integrity|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series|collection-consistency <args> [--output <path>] [--force]
+  render subject|subject-identity|revision-latest|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|character-integrity|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series|collection-consistency|subject-index-membership <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -180,6 +182,52 @@ function parseCalendarOptions(args: string[]): Record<string, unknown> {
     if (name === '--max-total') input.maxTotal = optionNumber(value, 'max-total', true, 1, 56);
   }
 
+  return input;
+}
+
+function parseSubjectIndexMembershipOptions(args: string[]): Record<string, unknown> {
+  const input: Record<string, unknown> = {
+    subjectId: parsePositiveInteger(args[0], 'subject id'),
+  };
+  const indexIds: number[] = [];
+  const optionNames = new Set(['--index', '--page-size', '--max-pages', '--max-rows']);
+  const seen = new Set<string>();
+  for (let index = 1; index < args.length; index += 1) {
+    const name = args[index];
+    if (!name || !optionNames.has(name)) {
+      throw new StandaloneCliError(
+        `USAGE_ERROR: unknown subject-index-membership argument "${name || ''}".`,
+        2,
+      );
+    }
+    if (name === '--index') {
+      const value = args[++index];
+      if (!value || value.startsWith('--')) {
+        throw new StandaloneCliError('USAGE_ERROR: --index requires a value.', 2);
+      }
+      indexIds.push(parsePositiveInteger(value, 'index id'));
+      continue;
+    }
+    if (seen.has(name)) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} may only be specified once.`, 2);
+    }
+    seen.add(name);
+    const value = args[++index];
+    if (!value || value.startsWith('--')) {
+      throw new StandaloneCliError(`USAGE_ERROR: ${name} requires a value.`, 2);
+    }
+    if (name === '--page-size') {
+      input.pageSize = optionNumber(value, 'page-size', true, 1, 50);
+    } else if (name === '--max-pages') {
+      input.maxPages = optionNumber(value, 'max-pages', true, 1, 8);
+    } else {
+      input.maxRows = optionNumber(value, 'max-rows', true, 1, 400);
+    }
+  }
+  if (indexIds.length === 0) {
+    throw new StandaloneCliError('USAGE_ERROR: at least one --index is required.', 2);
+  }
+  input.indexIds = indexIds;
   return input;
 }
 
@@ -911,6 +959,15 @@ export class StandaloneCommandRegistry {
         }),
       };
     }
+    if (command === 'subject-index-membership' || command === 'index-membership') {
+      return {
+        value: await runTool(
+          ctx,
+          'bangumi.get_subject_index_membership',
+          parseSubjectIndexMembershipOptions(args.slice(1)),
+        ),
+      };
+    }
     if (command === 'revision-latest' || command === 'latest-revision') {
       return {
         value: await runTool(ctx, 'bangumi.get_latest_subject_revision', {
@@ -1366,6 +1423,9 @@ export class StandaloneCommandRegistry {
     } else if (kind === 'subject-identity' || kind === 'identity') {
       name = 'bangumi.render_subject_identity';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'subject-index-membership' || kind === 'index-membership') {
+      name = 'bangumi.render_subject_index_membership';
+      input = parseSubjectIndexMembershipOptions(args.slice(1));
     } else if (kind === 'revision-latest' || kind === 'latest-revision') {
       name = 'bangumi.render_latest_subject_revision';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };

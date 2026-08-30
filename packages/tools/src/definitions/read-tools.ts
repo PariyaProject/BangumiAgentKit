@@ -23,6 +23,18 @@ import {
   UserService,
   RevisionService,
   IndexReadService,
+  SubjectIndexMembershipService,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE,
+  SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_ID,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_PAGE_SIZE,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_PAGES,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_RESPONSE_BYTES,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_ROWS,
+  SUBJECT_INDEX_MEMBERSHIP_MAX_SUBJECT_ID,
   CalendarService,
   CollectionIntelligenceService,
   CollectionBacklogService,
@@ -68,6 +80,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
   const personService = new PersonService(publicHttpClient);
   const userService = new UserService(publicHttpClient);
   const indexService = new IndexReadService(publicHttpClient);
+  const subjectIndexMembershipService = new SubjectIndexMembershipService(publicHttpClient);
 
   const subjectTypeMap: Record<string, number> = {
     book: 1,
@@ -2119,6 +2132,76 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getSubjectIndexMembership = defineTool({
+    name: 'bangumi.get_subject_index_membership',
+    description:
+      '判断一个已知 Bangumi 条目是否出现在调用方提供的 1–8 个目录中。只读取官方 v0 目录条目列表，按精确数值 subject ID 产生 matched；只有完整扫描 supplied index observed scope 后才产生 not_matched_in_observed_scope，其余情况保持 unknown。保留每个目录的分页、行数、响应大小、失败、source operation、检索时间和证据；不发现全部推荐目录，不读取 HTML/Structured Web、评论或目录描述，不执行写入。',
+    input: z
+      .object({
+        subjectId: z
+          .number()
+          .int()
+          .positive()
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_SUBJECT_ID)
+          .describe(`Bangumi 条目 ID（最大 ${SUBJECT_INDEX_MEMBERSHIP_MAX_SUBJECT_ID}）`),
+        indexIds: z
+          .array(z.number().int().positive().max(SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_ID))
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS)
+          .refine((indexIds) => new Set(indexIds).size === indexIds.length, {
+            message: 'indexIds 必须包含不同的目录 ID',
+          })
+          .describe(`1–${SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS} 个不同的已知 Bangumi 目录 ID`),
+        pageSize: z
+          .number()
+          .int()
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_PAGE_SIZE)
+          .optional()
+          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE)
+          .describe(`每页最多读取条数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE}`),
+        maxPages: z
+          .number()
+          .int()
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_PAGES)
+          .optional()
+          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES)
+          .describe(`每个目录最多读取页数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES}`),
+        maxRows: z
+          .number()
+          .int()
+          .min(1)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_ROWS)
+          .optional()
+          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS)
+          .describe(`每个目录最多观察行数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS}`),
+        maxResponseBytes: z
+          .number()
+          .int()
+          .min(65_536)
+          .max(SUBJECT_INDEX_MEMBERSHIP_MAX_RESPONSE_BYTES)
+          .optional()
+          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES)
+          .describe('每个官方响应的最大 UTF-8 字节数'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input) =>
+      await subjectIndexMembershipService.getSubjectIndexMembership(
+        input.subjectId,
+        input.indexIds,
+        {
+          pageSize: input.pageSize,
+          maxPages: input.maxPages,
+          maxRows: input.maxRows,
+          maxResponseBytes: input.maxResponseBytes,
+        },
+      ),
+  });
+
   const getCollectionEntityConsistency = defineTool({
     name: 'bangumi.get_collection_entity_consistency',
     description:
@@ -2260,5 +2343,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubjectIdentityTool,
     getCollectionEntityConsistency,
     getCharacterCreditIntegrity,
+    getSubjectIndexMembership,
   ] as const;
 }

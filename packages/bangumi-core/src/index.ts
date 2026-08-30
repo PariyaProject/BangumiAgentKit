@@ -17,6 +17,7 @@ export * from './models/person-activity.js';
 export * from './models/person-collaboration.js';
 export * from './models/collection-entity-consistency.js';
 export * from './models/character-credit-integrity.js';
+export * from './models/subject-index-membership.js';
 
 export * from './services/subject-service.js';
 export * from './services/series-service.js';
@@ -41,6 +42,7 @@ export * from './services/collection-dashboard-service.js';
 export * from './services/collection-series-service.js';
 export * from './services/audit-service.js';
 export * from './services/calendar-service.js';
+export * from './services/subject-index-membership-service.js';
 
 export * from './workflows/resolve-subject.js';
 export * from './workflows/subject-cast.js';

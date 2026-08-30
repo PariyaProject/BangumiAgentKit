@@ -22,6 +22,7 @@ import {
   SubjectStatsViewModel,
   SubjectIdentityViewModel,
   SubjectStatsHistoryViewModel,
+  SubjectIndexMembershipViewModel,
   CollectionIntelligenceViewModel,
   CollectionBacklogViewModel,
   CollectionScheduleViewModel,
@@ -53,6 +54,7 @@ import { SubjectOverlapCard } from './SubjectOverlapCard.js';
 import { SubjectStatsCard } from './SubjectStatsCard.js';
 import { SubjectIdentityCard } from './SubjectIdentityCard.js';
 import { SubjectStatsHistoryCard } from './SubjectStatsHistoryCard.js';
+import { SubjectIndexMembershipCard } from './SubjectIndexMembershipCard.js';
 import { CollectionIntelligenceCard } from './CollectionIntelligenceCard.js';
 import { CollectionBacklogCard } from './CollectionBacklogCard.js';
 import { CollectionScheduleCard } from './CollectionScheduleCard.js';
@@ -270,6 +272,14 @@ registerTemplate<SubjectStatsHistoryViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <SubjectStatsHistoryCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<SubjectIndexMembershipViewModel>({
+  id: 'subject-index-membership',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <SubjectIndexMembershipCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

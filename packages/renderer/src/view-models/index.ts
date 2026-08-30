@@ -1291,6 +1291,12 @@ export interface SubjectStatsHistoryViewModel {
   limitations: string[];
 }
 
+export type SubjectIndexMembershipViewModel =
+  import('@bangumi-agent-kit/bangumi-core').SubjectIndexMembershipResult & {
+    template: 'subject-index-membership';
+    version: 1;
+  };
+
 export type RenderViewModel =
   | SubjectCardViewModel
   | SearchListViewModel
@@ -1319,4 +1325,5 @@ export type RenderViewModel =
   | SubjectOverlapViewModel
   | SubjectStatsViewModel
   | SubjectIdentityViewModel
-  | SubjectStatsHistoryViewModel;
+  | SubjectStatsHistoryViewModel
+  | SubjectIndexMembershipViewModel;
