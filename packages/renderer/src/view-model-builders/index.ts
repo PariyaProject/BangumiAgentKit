@@ -579,10 +579,14 @@ export function buildCharacterCreditIntegrityViewModel(
   const omittedSubjects = Math.max(0, availableSubjects - subjectCredits.length);
   const omittedPersons = Math.max(0, availablePersons - personCredits.length);
   const omittedRisks = Math.max(0, availableRisks - risks.length);
-  const availablePersonSubjects = sourcePersonCredits.reduce(
+  const knownPersonSubjects = sourcePersonCredits.reduce(
     (total, person) => total + person.subjects.length + person.subjectsOmitted,
     0,
   );
+  const sourcePersonSubjects =
+    result.coverage.output.returnedPersonSubjectCredits +
+    result.coverage.output.omittedPersonSubjectCredits;
+  const availablePersonSubjects = Math.max(sourcePersonSubjects, knownPersonSubjects);
   const renderedPersonSubjects = personCredits.reduce(
     (total, person) => total + person.subjects.length,
     0,

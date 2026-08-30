@@ -233,7 +233,50 @@ describe('character-credit-integrity renderer', () => {
       '另有 15 个作品关系省略',
     );
 
-    for (const [label, stateResult] of [...variants, ['nested-cap', denseResult] as const]) {
+    const personCapResult: CharacterCreditIntegrityResult = {
+      ...baseResult,
+      personCredits: Array.from({ length: 13 }, (_, personIndex) => ({
+        ...baseResult.personCredits[0]!,
+        id: 200 + personIndex,
+        name: `CV ${personIndex}`,
+        observedRows: 1,
+        duplicateRows: 0,
+        duplicateRelationRows: 0,
+        subjects: Array.from({ length: personIndex === 12 ? 3 : 1 }, (_, subjectIndex) => ({
+          subjectId: 1_000 + personIndex * 10 + subjectIndex,
+          subjectType: 2,
+          subjectName: `作品 ${personIndex}-${subjectIndex}`,
+          subjectNameCn: `作品 ${personIndex}-${subjectIndex}`,
+          staff: '声优',
+        })),
+        subjectsOmitted: 0,
+      })),
+      coverage: {
+        ...baseResult.coverage,
+        persons: { ...baseResult.coverage.persons, uniqueIdsObserved: 13, returnedRows: 13 },
+        output: {
+          ...baseResult.coverage.output,
+          returnedPersons: 13,
+          returnedPersonSubjectCredits: 15,
+          omittedPersonSubjectCredits: 0,
+        },
+      },
+    };
+    const personCapViewModel = buildCharacterCreditIntegrityViewModel(personCapResult, {
+      maxPersons: 12,
+    });
+    expect(personCapViewModel.presentation).toMatchObject({
+      state: 'partial',
+      persons: { available: 13, rendered: 12, omitted: 1 },
+      personSubjects: { available: 15, rendered: 12, omitted: 3 },
+    });
+    expect(renderHtmlTemplate(personCapViewModel, 'bangumi-dark', {}, 640)).toContain('12/15');
+
+    for (const [label, stateResult] of [
+      ...variants,
+      ['nested-cap', denseResult] as const,
+      ['person-cap', personCapResult] as const,
+    ]) {
       const viewModel = buildCharacterCreditIntegrityViewModel(stateResult);
       expect(extractImageUrls(viewModel), label).toEqual([]);
       for (const width of [640, 960]) {

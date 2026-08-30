@@ -193,6 +193,31 @@ describe('CharacterCreditIntegrityService', () => {
     );
   });
 
+  it('reports nested relation omissions across the source person cap and per-person cap', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/characters/100')) return json(detail());
+      if (path.endsWith('/subjects')) return json([]);
+      if (path.endsWith('/persons')) {
+        return json(Array.from({ length: 33 }, (_, index) => person(20, 100 + index)));
+      }
+      return json({ message: 'unexpected' }, 500);
+    };
+
+    const result = await service(fetchFn).getCharacterCreditIntegrity(100);
+    expect(result.personCredits[0]).toMatchObject({
+      subjects: expect.any(Array),
+      subjectsOmitted: 1,
+    });
+    expect(result.personCredits[0]?.subjects).toHaveLength(32);
+    expect(result.coverage.output).toMatchObject({
+      returnedPersonSubjectCredits: 32,
+      omittedPersonSubjectCredits: 1,
+      truncated: true,
+    });
+    expect(result.coverage.persons.truncated).toBe(true);
+  });
+
   it('keeps positive list evidence when character detail is missing or unavailable', async () => {
     for (const status of [404, 503]) {
       const fetchFn: typeof fetch = async (input) => {
@@ -212,6 +237,34 @@ describe('CharacterCreditIntegrityService', () => {
     }
   });
 
+  it('preserves every source spelling while counting each entity once per normalized key', async () => {
+    const fetchFn: typeof fetch = async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/characters/100')) return json(detail());
+      if (path.endsWith('/subjects')) {
+        return json([
+          subject(10, 'ＡＢＣ'),
+          subject(10, 'ABC'),
+          subject(10, 'abc'),
+          subject(11, ' ABC  '),
+        ]);
+      }
+      if (path.endsWith('/persons')) return json([]);
+      return json({ message: 'unexpected' }, 500);
+    };
+
+    const result = await service(fetchFn).getCharacterCreditIntegrity(100);
+    const sameNameRisk = result.risks.find(
+      (risk) => risk.kind === 'same_name_distinct_ids' && risk.entity === 'subject',
+    );
+    expect(sameNameRisk).toMatchObject({
+      ids: [10, 11],
+      names: ['ＡＢＣ', 'ABC', 'abc', ' ABC  '],
+      observedRows: 4,
+    });
+    expect(sameNameRisk?.namesOmitted).toBeUndefined();
+  });
+
   it('counts each entity once per normalized key and preserves all risk candidates before capping', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const path = new URL(String(input)).pathname;
@@ -219,7 +272,8 @@ describe('CharacterCreditIntegrityService', () => {
       if (path.endsWith('/subjects')) {
         const rows = Array.from({ length: 66 }, (_, index) => {
           const id = 1000 + index;
-          return [subject(id, '共享名称'), { ...subject(id, '共享名称'), staff: '配角' }];
+          const name = `共享名称${' '.repeat(index)}`;
+          return [subject(id, name), { ...subject(id, name), staff: '配角' }];
         }).flat();
         return json(rows);
       }
@@ -231,7 +285,12 @@ describe('CharacterCreditIntegrityService', () => {
     const sameNameRisk = result.risks.find(
       (risk) => risk.kind === 'same_name_distinct_ids' && risk.entity === 'subject',
     );
-    expect(sameNameRisk).toMatchObject({ observedRows: 132, membersOmitted: 50 });
+    expect(sameNameRisk).toMatchObject({
+      observedRows: 132,
+      membersOmitted: 50,
+      namesOmitted: 50,
+    });
+    expect(sameNameRisk?.names).toHaveLength(16);
     expect(result.risks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: 'duplicate_stable_id', entity: 'subject' }),

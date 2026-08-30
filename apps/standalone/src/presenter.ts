@@ -2511,15 +2511,31 @@ function presentCharacterCreditIntegrity(value: Record<string, unknown>): string
   const omittedSubjects = Math.max(0, availableSubjects - renderedSubjects);
   const omittedPersons = Math.max(0, availablePersons - renderedPersons);
   const omittedRisks = Math.max(0, availableRisks - Math.min(risks.length, maxVisibleRisks));
-  let omittedPersonSubjects = 0;
-  for (const raw of persons.slice(0, maxVisiblePersons)) {
+  const knownPersonSubjects = persons.reduce((total, raw) => {
     const person = comparisonRecord(raw);
-    if (!person) continue;
+    if (!person) return total;
     const personSubjects = Array.isArray(person.subjects) ? person.subjects : [];
     const sourceOmitted = nonNegativeInteger(person.subjectsOmitted) ?? 0;
-    const rendered = Math.min(personSubjects.length, maxVisiblePersonSubjects);
-    omittedPersonSubjects += Math.max(0, personSubjects.length + sourceOmitted - rendered);
-  }
+    return total + personSubjects.length + sourceOmitted;
+  }, 0);
+  const sourceReturnedPersonSubjects = nonNegativeInteger(
+    outputCoverage?.returnedPersonSubjectCredits,
+  );
+  const sourceOmittedPersonSubjects = nonNegativeInteger(
+    outputCoverage?.omittedPersonSubjectCredits,
+  );
+  const sourcePersonSubjects =
+    sourceReturnedPersonSubjects !== undefined && sourceOmittedPersonSubjects !== undefined
+      ? sourceReturnedPersonSubjects + sourceOmittedPersonSubjects
+      : knownPersonSubjects;
+  const availablePersonSubjects = Math.max(sourcePersonSubjects, knownPersonSubjects);
+  const renderedPersonSubjects = persons.slice(0, maxVisiblePersons).reduce((total, raw) => {
+    const person = comparisonRecord(raw);
+    if (!person) return total;
+    const personSubjects = Array.isArray(person.subjects) ? person.subjects : [];
+    return total + Math.min(personSubjects.length, maxVisiblePersonSubjects);
+  }, 0);
+  const omittedPersonSubjects = Math.max(0, availablePersonSubjects - renderedPersonSubjects);
   const presentationTruncated =
     Boolean(outputCoverage?.truncated) ||
     omittedSubjects > 0 ||
@@ -2531,7 +2547,7 @@ function presentCharacterCreditIntegrity(value: Record<string, unknown>): string
   );
   if (presentationTruncated) {
     lines.push(
-      `输出裁剪: 作品省略 ${humanField(omittedSubjects, 24)} · 人物省略 ${humanField(omittedPersons, 24)} · 本次展开的 CV作品关系省略 ${humanField(omittedPersonSubjects, 24)} · 风险省略 ${humanField(omittedRisks, 24)}${outputCoverage?.omittedPersonSubjectCredits ? ` · 来源记录作品关系省略 ${humanField(outputCoverage.omittedPersonSubjectCredits, 24)}` : ''}`,
+      `输出裁剪: 作品省略 ${humanField(omittedSubjects, 24)} · 人物省略 ${humanField(omittedPersons, 24)} · CV作品关系省略 ${humanField(omittedPersonSubjects, 24)} · 风险省略 ${humanField(omittedRisks, 24)}${sourceOmittedPersonSubjects ? ` · 来源记录作品关系省略 ${humanField(sourceOmittedPersonSubjects, 24)}` : ''}`,
     );
   }
 

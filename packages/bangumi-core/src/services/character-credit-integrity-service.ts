@@ -615,16 +615,17 @@ function sameNameRisks(
     for (const value of values) {
       const normalized = normalizedName(value);
       if (!normalized) continue;
-      if (itemKeys.has(normalized)) continue;
-      itemKeys.add(normalized);
       const group = byName.get(normalized) || {
         ids: new Set<number>(),
         names: new Set<string>(),
         observedRows: 0,
       };
-      group.ids.add(item.id);
       group.names.add(value);
-      group.observedRows += item.observedRows;
+      if (!itemKeys.has(normalized)) {
+        itemKeys.add(normalized);
+        group.ids.add(item.id);
+        group.observedRows += item.observedRows;
+      }
       byName.set(normalized, group);
     }
   }

@@ -105,4 +105,43 @@ describe('Standalone character integrity commands', () => {
     expect(output).toContain('CV作品关系省略 2');
     expect(output).toContain('同作品关系重复 1');
   });
+
+  it('counts relations belonging to people hidden by the presentation cap', () => {
+    const personCredits = Array.from({ length: 13 }, (_, personIndex) => ({
+      id: 200 + personIndex,
+      name: `CV ${personIndex}`,
+      duplicateRows: 0,
+      duplicateRelationRows: 0,
+      subjects: Array.from({ length: personIndex === 12 ? 3 : 1 }, (_, subjectIndex) => ({
+        subjectId: 1_000 + personIndex * 10 + subjectIndex,
+        subjectName: `作品 ${personIndex}-${subjectIndex}`,
+        subjectNameCn: `作品 ${personIndex}-${subjectIndex}`,
+      })),
+      subjectsOmitted: 0,
+    }));
+    const output = formatHuman({
+      state: 'complete',
+      character: { id: 100, name: '角色' },
+      subjectCredits: [],
+      personCredits,
+      risks: [],
+      coverage: {
+        subjects: { returnedRows: 0, uniqueIdsObserved: 0 },
+        persons: { returnedRows: 13, uniqueIdsObserved: 13 },
+        output: {
+          returnedPersons: 13,
+          returnedPersonSubjectCredits: 15,
+          omittedPersonSubjectCredits: 0,
+          risksReturned: 0,
+          risksOmitted: 0,
+          truncated: false,
+        },
+      },
+      operationEvidence: [],
+    });
+
+    expect(output).toContain('显示: 部分');
+    expect(output).toContain('人物省略 3');
+    expect(output).toContain('CV作品关系省略 5');
+  });
 });
