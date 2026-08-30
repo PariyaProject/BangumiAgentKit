@@ -427,11 +427,12 @@ VoiceActorWorkload
 Notes:
 The bounded person activity surface now optionally compares two equal,
 contiguous calendar windows and reports recent-minus-previous observed release
-counts plus a tied monthly peak. It uses current official v0 person relations
-and subject first_air_date values, so it remains a release-date observation,
-not a workload, labor-time, or historical-snapshot measurement. Actual workload
-and historical person snapshots remain deferred pending a compatible source
-and retention contract.
+counts plus a tied monthly peak with explicit per-period coverage states.
+Unavailable or not-computable periods never become zero or a complete peak
+claim. It uses current official v0 person relations and subject first_air_date
+values, so it remains a release-date observation, not a workload, labor-time,
+or historical-snapshot measurement. Actual workload and historical person
+snapshots remain deferred pending a compatible source and retention contract.
 
 ---
 

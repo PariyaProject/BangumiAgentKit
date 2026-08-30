@@ -70,6 +70,13 @@ export interface PersonActivityWindowSummary {
   byMonth: PersonActivityMonthBucket[];
 }
 
+export interface PersonActivityComparisonDelta {
+  state: PersonActivityState;
+  creditRows?: number;
+  uniqueSubjects?: number;
+  uniqueCharacters?: number;
+}
+
 export interface PersonActivityComparisonPeriod {
   window: PersonActivityWindow;
   summary: PersonActivityWindowSummary;
@@ -90,14 +97,10 @@ export interface PersonActivityComparison {
   windowMonths: number;
   recent: PersonActivityComparisonPeriod;
   previous: PersonActivityComparisonPeriod;
-  delta: {
-    creditRows: number;
-    uniqueSubjects: number;
-    uniqueCharacters: number;
-  };
+  delta: PersonActivityComparisonDelta;
   peak: {
     metric: 'uniqueSubjects';
-    state: 'complete' | 'not_computable';
+    state: PersonActivityState;
     months: PersonActivityPeakMonth[];
   };
   sourceOperations: {

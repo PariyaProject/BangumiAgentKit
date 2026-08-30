@@ -141,7 +141,7 @@
           "packages/renderer/src/templates/PersonActivityCard.tsx",
           "apps/standalone/src/command-registry.ts"
         ],
-        "source_contract": "Official v0 person relation endpoints plus bounded current GET /v0/subjects/{subject_id} details are read once per period with the existing relation/detail/output caps and sequential detail concurrency. Each period uses calendar months ending at its as-of date; the previous period ends the day before the recent period starts. Delta is recent minus previous, and peak is the maximum observed unique-subject count by month with ties preserved.",
+        "source_contract": "Official v0 person relation endpoints plus bounded current GET /v0/subjects/{subject_id} details are read once per period with the existing relation/detail/output caps and sequential detail concurrency. Each period uses calendar months ending at its as-of date; the previous period ends the day before the recent period starts. Delta is recent minus previous only when both periods expose observed counts, and peak is the maximum observed unique-subject count by month with ties preserved; unavailable, not-computable, and partial coverage states remain explicit and never become zero or a complete workload claim.",
         "formula_version": "person-activity-comparison-v1"
       }
     },
@@ -1473,7 +1473,7 @@
           "packages/renderer/src/templates/PersonActivityCard.tsx",
           "apps/standalone/src/command-registry.ts"
         ],
-        "source_contract": "The comparison is opt-in and derives two equal calendar windows from current official-v0 person relations and current subject first_air_date. It is not a historical snapshot or workload measurement.",
+        "source_contract": "The comparison is opt-in and derives two equal calendar windows from current official-v0 person relations and current subject first_air_date. It exposes per-period coverage states, with no numeric delta when a period is unavailable or not-computable and no complete peak claim under partial coverage. It is not a historical snapshot or workload measurement.",
         "formula_version": "person-activity-comparison-v1"
       }
     },

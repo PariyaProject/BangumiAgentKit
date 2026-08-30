@@ -662,32 +662,35 @@ export interface PersonActivityViewModel {
     state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
     windowMonths: number;
     recent: {
+      state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
       start: string;
       end: string;
-      creditRows: number;
-      uniqueSubjects: number;
-      uniqueCharacters: number;
+      creditRows?: number;
+      uniqueSubjects?: number;
+      uniqueCharacters?: number;
       rowsEligible: number;
       sampled: boolean;
       truncated: boolean;
     };
     previous: {
+      state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
       start: string;
       end: string;
-      creditRows: number;
-      uniqueSubjects: number;
-      uniqueCharacters: number;
+      creditRows?: number;
+      uniqueSubjects?: number;
+      uniqueCharacters?: number;
       rowsEligible: number;
       sampled: boolean;
       truncated: boolean;
     };
     delta: {
-      creditRows: number;
-      uniqueSubjects: number;
-      uniqueCharacters: number;
+      state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
+      creditRows?: number;
+      uniqueSubjects?: number;
+      uniqueCharacters?: number;
     };
     peak: {
-      state: 'complete' | 'not_computable';
+      state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
       months: Array<{
         period: 'recent' | 'previous';
         month: string;

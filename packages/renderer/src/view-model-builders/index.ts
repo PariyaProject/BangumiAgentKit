@@ -18,6 +18,7 @@ import type {
   EpisodeGuideResult,
   EpisodeIntegrityResult,
   PersonActivityProfile,
+  PersonActivityComparisonPeriod,
   PersonActivityResult,
   PersonCollaborationResult,
   SubjectSearchResult,
@@ -2327,6 +2328,30 @@ const PERSON_ACTIVITY_ROLE_LABELS: Record<string, string> = {
   unknown: '未知',
 };
 
+function canExposeComparisonCounts(period: PersonActivityComparisonPeriod): boolean {
+  return (
+    period.state === 'complete' || (period.state === 'partial' && period.coverage.rowsEligible > 0)
+  );
+}
+
+function buildPersonActivityComparisonPeriodViewModel(period: PersonActivityComparisonPeriod) {
+  return {
+    state: period.state,
+    start: period.window.start,
+    end: period.window.end,
+    ...(canExposeComparisonCounts(period)
+      ? {
+          creditRows: period.summary.creditRows,
+          uniqueSubjects: period.summary.uniqueSubjects,
+          uniqueCharacters: period.summary.uniqueCharacters,
+        }
+      : {}),
+    rowsEligible: period.coverage.rowsEligible,
+    sampled: period.coverage.sampled,
+    truncated: period.coverage.truncated,
+  };
+}
+
 export function buildPersonActivityViewModel(
   result: PersonActivityResult,
   options: { sourceLabel?: string; maxRows?: number } = {},
@@ -2390,26 +2415,8 @@ export function buildPersonActivityViewModel(
           comparison: {
             state: result.comparison.state,
             windowMonths: result.comparison.windowMonths,
-            recent: {
-              start: result.comparison.recent.window.start,
-              end: result.comparison.recent.window.end,
-              creditRows: result.comparison.recent.summary.creditRows,
-              uniqueSubjects: result.comparison.recent.summary.uniqueSubjects,
-              uniqueCharacters: result.comparison.recent.summary.uniqueCharacters,
-              rowsEligible: result.comparison.recent.coverage.rowsEligible,
-              sampled: result.comparison.recent.coverage.sampled,
-              truncated: result.comparison.recent.coverage.truncated,
-            },
-            previous: {
-              start: result.comparison.previous.window.start,
-              end: result.comparison.previous.window.end,
-              creditRows: result.comparison.previous.summary.creditRows,
-              uniqueSubjects: result.comparison.previous.summary.uniqueSubjects,
-              uniqueCharacters: result.comparison.previous.summary.uniqueCharacters,
-              rowsEligible: result.comparison.previous.coverage.rowsEligible,
-              sampled: result.comparison.previous.coverage.sampled,
-              truncated: result.comparison.previous.coverage.truncated,
-            },
+            recent: buildPersonActivityComparisonPeriodViewModel(result.comparison.recent),
+            previous: buildPersonActivityComparisonPeriodViewModel(result.comparison.previous),
             delta: result.comparison.delta,
             peak: result.comparison.peak,
           },

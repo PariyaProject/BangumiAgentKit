@@ -49,6 +49,15 @@ function signed(value: number): string {
   return value > 0 ? `+${value}` : String(value);
 }
 
+function comparisonPeriodSummary(
+  period: NonNullable<PersonActivityViewModel['comparison']>['recent'],
+): string {
+  if (period.uniqueSubjects === undefined) {
+    return `作品数、关系行和角色数不可用（${comparisonStateLabel(period.state)}）`;
+  }
+  return `${period.uniqueSubjects} 部作品 · ${period.creditRows} 行 · ${period.uniqueCharacters} 个角色`;
+}
+
 export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
   viewModel,
   theme,
@@ -57,6 +66,11 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
   const tone = stateColor(viewModel.state, theme);
   const visibleWarnings = viewModel.warnings.slice(0, 4);
   const visibleLimitations = viewModel.limitations.slice(0, 3);
+  const primaryCountsAvailable =
+    viewModel.state === 'complete' ||
+    (viewModel.state === 'partial' && viewModel.coverage.rowsEligible > 0);
+  const primaryCount = (value: number): number | string =>
+    primaryCountsAvailable ? value : '不可用';
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
@@ -89,10 +103,10 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         }}
       >
         {[
-          ['去重作品', viewModel.summary.uniqueSubjects],
-          ['关系行', viewModel.summary.creditRows],
-          ['去重角色', viewModel.summary.uniqueCharacters],
-          ['落入窗口', viewModel.coverage.rowsEligible],
+          ['去重作品', primaryCount(viewModel.summary.uniqueSubjects)],
+          ['关系行', primaryCount(viewModel.summary.creditRows)],
+          ['去重角色', primaryCount(viewModel.summary.uniqueCharacters)],
+          ['落入窗口', primaryCount(viewModel.coverage.rowsEligible)],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -170,23 +184,34 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
                   padding: theme.spacing.sm,
                 }}
               >
-                <div style={{ color: theme.text, fontWeight: 600 }}>{label}</div>
+                <div style={{ color: theme.text, fontWeight: 600 }}>
+                  {label} · {comparisonStateLabel(period.state)}
+                </div>
                 <div>
                   {period.start} 至 {period.end}
                 </div>
                 <div>
-                  {period.uniqueSubjects} 部作品 · {period.creditRows} 行 ·{' '}
-                  {period.uniqueCharacters} 个角色
+                  {comparisonPeriodSummary(period)}
                   {period.truncated || period.sampled ? ' · 部分覆盖' : ''}
                 </div>
               </div>
             ))}
           </div>
-          <div style={{ color: theme.text, marginTop: theme.spacing.sm }}>
-            差值（最近 − 之前）：{signed(viewModel.comparison.delta.uniqueSubjects)} 部作品 ·{' '}
-            {signed(viewModel.comparison.delta.creditRows)} 行 ·{' '}
-            {signed(viewModel.comparison.delta.uniqueCharacters)} 个角色
-          </div>
+          {viewModel.comparison.delta.uniqueSubjects === undefined ? (
+            <div style={{ color: theme.text, marginTop: theme.spacing.sm }}>
+              差值（最近 − 之前）：不可用（{comparisonStateLabel(viewModel.comparison.delta.state)}
+              ； 不把不可用窗口当作零）
+            </div>
+          ) : (
+            <div style={{ color: theme.text, marginTop: theme.spacing.sm }}>
+              {viewModel.comparison.delta.state === 'complete' ? '差值' : '观察差值'}（最近 −
+              之前）：
+              {signed(viewModel.comparison.delta.uniqueSubjects)} 部作品 ·{' '}
+              {signed(viewModel.comparison.delta.creditRows ?? 0)} 行 ·{' '}
+              {signed(viewModel.comparison.delta.uniqueCharacters ?? 0)} 个角色
+              {viewModel.comparison.delta.state !== 'complete' ? ' · 仅代表部分覆盖观察' : ''}
+            </div>
+          )}
           <div style={{ marginTop: theme.spacing.xs }}>
             {viewModel.comparison.peak.state === 'complete'
               ? `观察到的发布月份峰值（按去重作品）：${viewModel.comparison.peak.months
@@ -195,7 +220,15 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
                       `${item.month}（${item.period === 'recent' ? '最近' : '之前'}，${item.uniqueSubjects} 部）`,
                   )
                   .join('、')}`
-              : '没有足够的作品首播日期来计算发布月份峰值。'}
+              : viewModel.comparison.peak.state === 'partial' &&
+                  viewModel.comparison.peak.months.length > 0
+                ? `部分覆盖下观察到的发布月份峰值（按去重作品）：${viewModel.comparison.peak.months
+                    .map(
+                      (item) =>
+                        `${item.month}（${item.period === 'recent' ? '最近' : '之前'}，${item.uniqueSubjects} 部）`,
+                    )
+                    .join('、')}`
+                : `发布月份峰值不可用（${comparisonStateLabel(viewModel.comparison.peak.state)}）。`}
           </div>
           <div style={{ marginTop: theme.spacing.xs }}>
             以上按当前官方关系中的作品首播日期归窗，不代表历史快照、实际工作量或劳动时长。
@@ -209,17 +242,27 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
             按月分布
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {viewModel.summary.byMonth.map((item) => (
-              <div
-                key={item.month}
-                style={{ display: 'flex', justifyContent: 'space-between', gap: theme.spacing.sm }}
-              >
-                <span style={{ color: theme.textMuted, fontSize: '12px' }}>{item.month}</span>
-                <span style={{ color: theme.text, fontSize: '12px' }}>
-                  {item.creditRows} 行 · {item.uniqueSubjects} 部
-                </span>
-              </div>
-            ))}
+            {primaryCountsAvailable ? (
+              viewModel.summary.byMonth.map((item) => (
+                <div
+                  key={item.month}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: theme.spacing.sm,
+                  }}
+                >
+                  <span style={{ color: theme.textMuted, fontSize: '12px' }}>{item.month}</span>
+                  <span style={{ color: theme.text, fontSize: '12px' }}>
+                    {item.creditRows} 行 · {item.uniqueSubjects} 部
+                  </span>
+                </div>
+              ))
+            ) : (
+              <span style={{ color: theme.textMuted, fontSize: '12px' }}>
+                当前窗口的月度计数不可用（{stateLabel(viewModel.state)}）。
+              </span>
+            )}
           </div>
         </div>
         <div style={{ flex: '1 1 280px' }}>
