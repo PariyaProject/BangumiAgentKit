@@ -79,12 +79,18 @@ function parseRow(value: unknown): IndexSubjectRow | undefined {
 }
 
 function classifyError(error: unknown, pagesSucceeded: number): SubjectIndexMembershipState {
+  if (pagesSucceeded > 0) return 'partial';
   if (isBangumiError(error) && error.code === 'NOT_FOUND') return 'not_found';
-  return pagesSucceeded > 0 ? 'partial' : 'unavailable';
+  return 'unavailable';
 }
 
-function errorReason(error: unknown): SubjectIndexMembershipCoverage['completionReason'] {
-  if (isBangumiError(error) && error.code === 'NOT_FOUND') return 'not_found';
+function errorReason(
+  error: unknown,
+  pagesSucceeded: number,
+): SubjectIndexMembershipCoverage['completionReason'] {
+  if (pagesSucceeded === 0 && isBangumiError(error) && error.code === 'NOT_FOUND') {
+    return 'not_found';
+  }
   if (isBangumiError(error) && error.code === 'PARSER_ERROR') return 'invalid_response';
   return 'upstream_error';
 }
@@ -162,7 +168,7 @@ export class SubjectIndexMembershipService {
       SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES,
       SUBJECT_INDEX_MEMBERSHIP_MAX_RESPONSE_BYTES,
     );
-    const retrievedAt = new Date().toISOString();
+    const attemptedAt = new Date().toISOString();
 
     const indexes: SubjectIndexMembershipIndexResult[] = [];
     for (const indexId of indexIds) {
@@ -172,7 +178,6 @@ export class SubjectIndexMembershipService {
           maxPages,
           maxRows,
           maxResponseBytes,
-          retrievedAt,
         }),
       );
     }
@@ -199,6 +204,10 @@ export class SubjectIndexMembershipService {
 
     const warnings = indexes.flatMap((index) => index.warnings);
     const evidence = indexes.flatMap((index) => index.evidence);
+    const retrievedAt = indexes
+      .map((index) => index.source.retrievedAt)
+      .filter((value): value is string => value !== undefined)
+      .at(-1);
     const requestsSucceeded = indexes.reduce(
       (sum, index) => sum + index.coverage.pagesSucceeded,
       0,
@@ -213,9 +222,21 @@ export class SubjectIndexMembershipService {
       '只使用官方 v0 目录条目列表的精确数值 ID；不读取 HTML、Structured Web、评论、目录描述或其他社区文本。',
     ];
     for (const index of indexes) {
-      if (index.coverage.truncated) {
+      if (index.coverage.completionReason === 'page_cap') {
         limitations.push(
-          `目录 ${index.indexId} 达到有界扫描上限（${index.coverage.completionReason}）；未匹配不可解释为该目录不存在此条目。`,
+          `目录 ${index.indexId} 达到页数上限；未匹配不可解释为该目录不存在此条目。`,
+        );
+      } else if (index.coverage.completionReason === 'row_cap') {
+        limitations.push(
+          `目录 ${index.indexId} 达到行数上限；未匹配不可解释为该目录不存在此条目。`,
+        );
+      } else if (index.coverage.completionReason === 'invalid_response') {
+        limitations.push(
+          `目录 ${index.indexId} 的响应证据不一致；未匹配不可解释为该目录不存在此条目。`,
+        );
+      } else if (index.coverage.completionReason === 'upstream_error') {
+        limitations.push(
+          `目录 ${index.indexId} 在完整扫描前发生上游错误；未匹配不可解释为该目录不存在此条目。`,
         );
       }
     }
@@ -243,18 +264,22 @@ export class SubjectIndexMembershipService {
         maxPages,
         maxRows,
         responseLimitBytes: maxResponseBytes,
+        attemptedAt,
+        ...(retrievedAt ? { retrievedAt } : {}),
       },
       source: {
         class: 'official-v0',
         provider: 'bangumi',
         operations: [INDEX_SUBJECTS_OPERATION],
         responseLimitBytes: maxResponseBytes,
-        retrievedAt,
+        attemptedAt,
+        ...(retrievedAt ? { retrievedAt } : {}),
       },
       evidence,
       warnings,
       limitations: [...new Set(limitations)],
-      retrievedAt,
+      attemptedAt,
+      ...(retrievedAt ? { retrievedAt } : {}),
     };
   }
 
@@ -266,9 +291,9 @@ export class SubjectIndexMembershipService {
       maxPages: number;
       maxRows: number;
       maxResponseBytes: number;
-      retrievedAt: string;
     },
   ): Promise<SubjectIndexMembershipIndexResult> {
+    const attemptedAt = new Date().toISOString();
     let offset = 0;
     let pagesAttempted = 0;
     let pagesSucceeded = 0;
@@ -278,14 +303,20 @@ export class SubjectIndexMembershipService {
     let malformedRows = 0;
     let duplicateRows = 0;
     let total: number | undefined;
+    let retrievedAt: string | undefined;
     let upstreamExhausted = false;
     let truncated = false;
+    const integrityIssues: string[] = [];
     let completionReason: SubjectIndexMembershipCoverage['completionReason'] = 'page_cap';
     const seenSubjectIds = new Set<number>();
     const matches: SubjectIndexMembershipMatch[] = [];
     let state: SubjectIndexMembershipState = 'partial';
     let error: SubjectIndexMembershipIndexResult['error'];
     const warnings: SubjectIndexMembershipIndexResult['warnings'] = [];
+
+    const markIntegrityIssue = (reason: string): void => {
+      if (!integrityIssues.includes(reason)) integrityIssues.push(reason);
+    };
 
     while (pagesAttempted < options.maxPages && rowsObserved < options.maxRows) {
       const requestLimit = Math.min(options.pageSize, options.maxRows - rowsObserved);
@@ -306,22 +337,35 @@ export class SubjectIndexMembershipService {
           );
         }
         pagesSucceeded += 1;
+        retrievedAt = new Date().toISOString();
         const data = response.data;
         const rows = data.slice(0, requestLimit);
         rowsObserved += rows.length;
         rowsReturned += rows.length;
         const responseTotal = parseNonNegativeInteger(response.total);
-        if (responseTotal !== undefined) total = responseTotal;
+        if (response.total !== undefined && responseTotal === undefined) {
+          markIntegrityIssue('invalid_total');
+        } else if (responseTotal !== undefined) {
+          if (total !== undefined && responseTotal !== total) {
+            markIntegrityIssue('changing_total');
+          } else if (total === undefined) {
+            total = responseTotal;
+          }
+        }
 
         for (const rawRow of rows) {
           const row = parseRow(rawRow);
           const rowId = row?.id;
           if (typeof rowId !== 'number' || !Number.isInteger(rowId) || rowId <= 0) {
             malformedRows += 1;
+            markIntegrityIssue('malformed_row');
             continue;
           }
           validRows += 1;
-          if (seenSubjectIds.has(rowId)) duplicateRows += 1;
+          if (seenSubjectIds.has(rowId)) {
+            duplicateRows += 1;
+            markIntegrityIssue('duplicate_row');
+          }
           seenSubjectIds.add(rowId);
           if (rowId === subjectId && !matches.some((match) => match.subjectId === rowId)) {
             const order = row?.order;
@@ -333,6 +377,26 @@ export class SubjectIndexMembershipService {
         }
 
         const responseOverReturned = data.length > rows.length;
+        const responseEndOffset = offset + data.length;
+        if (total !== undefined && (offset > total || responseEndOffset > total)) {
+          markIntegrityIssue('contradictory_total');
+        }
+        if (data.length === 0 && total !== undefined && offset < total) {
+          markIntegrityIssue('empty_page_before_total');
+        } else if (data.length < requestLimit && total !== undefined && responseEndOffset < total) {
+          markIntegrityIssue('short_page_before_total');
+        }
+        if (integrityIssues.length > 0) {
+          truncated = true;
+          completionReason = 'invalid_response';
+          state = 'partial';
+          warnings.push({
+            code: 'INDEX_MEMBERSHIP_INVALID_RESPONSE',
+            state,
+            message: `Official index response was inconsistent (${integrityIssues.join(', ')}).`,
+          });
+          break;
+        }
         const reachedTotal =
           !responseOverReturned && total !== undefined && offset + data.length >= total;
         const shortPage = !responseOverReturned && data.length < requestLimit;
@@ -357,8 +421,9 @@ export class SubjectIndexMembershipService {
         offset += data.length;
       } catch (caught: unknown) {
         state = classifyError(caught, pagesSucceeded);
-        completionReason = errorReason(caught);
+        completionReason = errorReason(caught, pagesSucceeded);
         error = toPublicError(caught);
+        if (pagesSucceeded > 0) truncated = true;
         warnings.push(stateWarning(state, caught));
         break;
       }
@@ -371,19 +436,23 @@ export class SubjectIndexMembershipService {
     }
 
     const membership = membershipFor(state, matches);
-    const evidence: SubjectIndexMembershipEvidence[] = [
-      {
-        source: 'official-v0',
-        provider: 'bangumi',
-        operation: INDEX_SUBJECTS_OPERATION,
-        version: 'v0',
-        indexId,
-        subjectId,
-        fieldPath: 'data[].id',
-        observation: membership,
-        retrievedAt: options.retrievedAt,
-      },
-    ];
+    const evidence: SubjectIndexMembershipEvidence[] =
+      pagesSucceeded > 0 && retrievedAt
+        ? [
+            {
+              source: 'official-v0',
+              provider: 'bangumi',
+              operation: INDEX_SUBJECTS_OPERATION,
+              version: 'v0',
+              indexId,
+              subjectId,
+              fieldPath: 'data[].id',
+              observation: membership,
+              observationScope: state === 'complete' ? 'complete_scan' : 'successful_pages',
+              retrievedAt,
+            },
+          ]
+        : [];
     const totalCoverage =
       total === undefined
         ? { totalKind: 'unknown' as const }
@@ -393,6 +462,8 @@ export class SubjectIndexMembershipService {
       maxPages: options.maxPages,
       maxRows: options.maxRows,
       responseLimitBytes: options.maxResponseBytes,
+      attemptedAt,
+      ...(retrievedAt ? { retrievedAt } : {}),
       pagesAttempted,
       pagesSucceeded,
       rowsObserved,
@@ -403,6 +474,7 @@ export class SubjectIndexMembershipService {
       ...totalCoverage,
       upstreamExhausted,
       truncated,
+      integrity: integrityIssues.length > 0 ? 'inconsistent' : 'consistent',
       completionReason,
     };
 
@@ -417,7 +489,8 @@ export class SubjectIndexMembershipService {
         provider: 'bangumi',
         operation: INDEX_SUBJECTS_OPERATION,
         responseLimitBytes: options.maxResponseBytes,
-        retrievedAt: options.retrievedAt,
+        attemptedAt,
+        ...(retrievedAt ? { retrievedAt } : {}),
       },
       evidence,
       warnings,

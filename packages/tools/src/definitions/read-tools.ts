@@ -2151,6 +2151,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           .refine((indexIds) => new Set(indexIds).size === indexIds.length, {
             message: 'indexIds 必须包含不同的目录 ID',
           })
+          .meta({ uniqueItems: true })
           .describe(`1–${SUBJECT_INDEX_MEMBERSHIP_MAX_INDEX_IDS} 个不同的已知 Bangumi 目录 ID`),
         pageSize: z
           .number()
@@ -2158,7 +2159,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           .min(1)
           .max(SUBJECT_INDEX_MEMBERSHIP_MAX_PAGE_SIZE)
           .optional()
-          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE)
           .describe(`每页最多读取条数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE}`),
         maxPages: z
           .number()
@@ -2166,7 +2166,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           .min(1)
           .max(SUBJECT_INDEX_MEMBERSHIP_MAX_PAGES)
           .optional()
-          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES)
           .describe(`每个目录最多读取页数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES}`),
         maxRows: z
           .number()
@@ -2174,7 +2173,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           .min(1)
           .max(SUBJECT_INDEX_MEMBERSHIP_MAX_ROWS)
           .optional()
-          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS)
           .describe(`每个目录最多观察行数，默认 ${SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS}`),
         maxResponseBytes: z
           .number()
@@ -2182,7 +2180,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
           .min(65_536)
           .max(SUBJECT_INDEX_MEMBERSHIP_MAX_RESPONSE_BYTES)
           .optional()
-          .default(SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES)
           .describe('每个官方响应的最大 UTF-8 字节数'),
       })
       .strict(),
@@ -2194,10 +2191,11 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
         input.subjectId,
         input.indexIds,
         {
-          pageSize: input.pageSize,
-          maxPages: input.maxPages,
-          maxRows: input.maxRows,
-          maxResponseBytes: input.maxResponseBytes,
+          pageSize: input.pageSize ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_PAGE_SIZE,
+          maxPages: input.maxPages ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_PAGES,
+          maxRows: input.maxRows ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_MAX_ROWS,
+          maxResponseBytes:
+            input.maxResponseBytes ?? SUBJECT_INDEX_MEMBERSHIP_DEFAULT_RESPONSE_BYTES,
         },
       ),
   });

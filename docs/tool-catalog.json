@@ -1718,38 +1718,35 @@
             "exclusiveMinimum": 0,
             "maximum": 10000000
           },
+          "uniqueItems": true,
           "description": "1–8 个不同的已知 Bangumi 目录 ID"
         },
         "pageSize": {
-          "default": 50,
           "description": "每页最多读取条数，默认 50",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "maxPages": {
-          "default": 8,
           "description": "每个目录最多读取页数，默认 8",
           "type": "integer",
           "minimum": 1,
           "maximum": 8
         },
         "maxRows": {
-          "default": 400,
           "description": "每个目录最多观察行数，默认 400",
           "type": "integer",
           "minimum": 1,
           "maximum": 400
         },
         "maxResponseBytes": {
-          "default": 1048576,
           "description": "每个官方响应的最大 UTF-8 字节数",
           "type": "integer",
           "minimum": 65536,
           "maximum": 4194304
         }
       },
-      "required": ["subjectId", "indexIds", "pageSize", "maxPages", "maxRows", "maxResponseBytes"],
+      "required": ["subjectId", "indexIds"],
       "additionalProperties": false
     }
   },
@@ -3971,34 +3968,35 @@
             "exclusiveMinimum": 0,
             "maximum": 10000000
           },
+          "uniqueItems": true,
           "description": "1–8 个不同的已知 Bangumi 目录 ID"
         },
         "pageSize": {
-          "default": 50,
+          "description": "每页最多读取条数，默认 50",
           "type": "integer",
           "minimum": 1,
           "maximum": 50
         },
         "maxPages": {
-          "default": 8,
+          "description": "每个目录最多读取页数，默认 8",
           "type": "integer",
           "minimum": 1,
           "maximum": 8
         },
         "maxRows": {
-          "default": 400,
+          "description": "每个目录最多观察行数，默认 400",
           "type": "integer",
           "minimum": 1,
           "maximum": 400
         },
         "maxResponseBytes": {
-          "default": 1048576,
+          "description": "每个官方响应的最大 UTF-8 字节数",
           "type": "integer",
           "minimum": 65536,
           "maximum": 4194304
         }
       },
-      "required": ["subjectId", "indexIds", "pageSize", "maxPages", "maxRows", "maxResponseBytes"],
+      "required": ["subjectId", "indexIds"],
       "additionalProperties": false
     }
   },

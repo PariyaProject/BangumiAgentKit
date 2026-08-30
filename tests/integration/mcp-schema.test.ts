@@ -92,4 +92,41 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
 
     await client.close();
   });
+
+  it('publishes optional bounded controls and distinct index IDs for membership tools', async () => {
+    const mcpApp = new BangumiMcpServer({ storage: new MemoryStorage() });
+    const server = mcpApp.getMcpServer();
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+
+    const client = new Client(
+      { name: 'membership-schema-test', version: '1.0' },
+      { capabilities: {} },
+    );
+    await client.connect(clientTransport);
+    const response = await client.listTools();
+
+    for (const name of [
+      'bangumi.get_subject_index_membership',
+      'bangumi.render_subject_index_membership',
+    ]) {
+      const tool = response.tools.find((candidate) => candidate.name === name);
+      expect(tool).toBeDefined();
+      const schema = tool?.inputSchema as {
+        required?: string[];
+        properties?: Record<string, Record<string, unknown>>;
+      };
+      expect(schema.required).toEqual(['subjectId', 'indexIds']);
+      expect(schema.properties?.indexIds?.uniqueItems).toBe(true);
+      expect(schema.properties?.pageSize).not.toHaveProperty('default');
+      expect(schema.properties?.maxPages).not.toHaveProperty('default');
+      expect(schema.properties?.maxRows).not.toHaveProperty('default');
+      expect(schema.properties?.maxResponseBytes).not.toHaveProperty('default');
+      expect(schema.properties?.pageSize?.minimum).toBe(1);
+      expect(schema.properties?.maxPages?.maximum).toBe(8);
+      expect(schema.properties?.maxRows?.maximum).toBe(400);
+    }
+
+    await client.close();
+  });
 });

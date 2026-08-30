@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createReadTools, type ToolDefinition } from '@bangumi-agent-kit/tools';
 
@@ -19,6 +20,17 @@ describe('subject index membership semantic tool', () => {
     ) as ToolDefinition | undefined;
     expect(tool).toBeDefined();
     expect(tool).toMatchObject({ auth: 'none', risk: 'read' });
+
+    const schema = z.toJSONSchema(tool!.input) as {
+      required?: string[];
+      properties?: Record<string, { uniqueItems?: boolean; default?: unknown }>;
+    };
+    expect(schema.required).toEqual(['subjectId', 'indexIds']);
+    expect(schema.properties?.indexIds?.uniqueItems).toBe(true);
+    expect(schema.properties?.pageSize).not.toHaveProperty('default');
+    expect(schema.properties?.maxPages).not.toHaveProperty('default');
+    expect(schema.properties?.maxRows).not.toHaveProperty('default');
+    expect(schema.properties?.maxResponseBytes).not.toHaveProperty('default');
 
     const parsed = tool?.input.safeParse({ subjectId: 41529, indexIds: [77] });
     expect(parsed?.success).toBe(true);

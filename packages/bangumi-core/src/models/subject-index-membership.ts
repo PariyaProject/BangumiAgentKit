@@ -18,6 +18,7 @@ export interface SubjectIndexMembershipEvidence {
   subjectId: number;
   fieldPath: 'data[].id';
   observation: SubjectIndexMembership;
+  observationScope: 'complete_scan' | 'successful_pages';
   retrievedAt: string;
 }
 
@@ -26,6 +27,8 @@ export interface SubjectIndexMembershipCoverage {
   maxPages: number;
   maxRows: number;
   responseLimitBytes: number;
+  attemptedAt: string;
+  retrievedAt?: string;
   pagesAttempted: number;
   pagesSucceeded: number;
   rowsObserved: number;
@@ -37,6 +40,7 @@ export interface SubjectIndexMembershipCoverage {
   totalKind: 'exact' | 'unknown';
   upstreamExhausted: boolean;
   truncated: boolean;
+  integrity: 'consistent' | 'inconsistent';
   completionReason:
     | 'upstream_exhausted'
     | 'page_cap'
@@ -57,7 +61,8 @@ export interface SubjectIndexMembershipIndexResult {
     provider: 'bangumi';
     operation: 'GET /v0/indices/{index_id}/subjects';
     responseLimitBytes: number;
-    retrievedAt: string;
+    attemptedAt: string;
+    retrievedAt?: string;
   };
   evidence: SubjectIndexMembershipEvidence[];
   warnings: Array<{
@@ -91,13 +96,16 @@ export interface SubjectIndexMembershipResult {
     maxPages: number;
     maxRows: number;
     responseLimitBytes: number;
+    attemptedAt: string;
+    retrievedAt?: string;
   };
   source: {
     class: 'official-v0';
     provider: 'bangumi';
     operations: Array<'GET /v0/indices/{index_id}/subjects'>;
     responseLimitBytes: number;
-    retrievedAt: string;
+    attemptedAt: string;
+    retrievedAt?: string;
   };
   evidence: SubjectIndexMembershipEvidence[];
   warnings: Array<{
@@ -106,5 +114,6 @@ export interface SubjectIndexMembershipResult {
     message: string;
   }>;
   limitations: string[];
-  retrievedAt: string;
+  attemptedAt: string;
+  retrievedAt?: string;
 }
