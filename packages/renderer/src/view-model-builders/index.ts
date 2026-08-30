@@ -14,6 +14,7 @@ import type {
   CollectionDashboardResult,
   CollectionSeriesResult,
   CollectionEntityConsistencyResult,
+  CharacterCreditIntegrityResult,
   RevisionIntelligenceResult,
   SubjectLatestRevisionResult,
   EpisodeGuideResult,
@@ -43,6 +44,7 @@ import type {
   CollectionDashboardViewModel,
   CollectionSeriesViewModel,
   CollectionEntityConsistencyViewModel,
+  CharacterCreditIntegrityViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
   SubjectLatestRevisionViewModel,
@@ -539,6 +541,116 @@ export function buildCollectionEntityConsistencyViewModel(
         omitted: omittedUnmatched,
       },
     },
+  };
+}
+
+export function buildCharacterCreditIntegrityViewModel(
+  result: CharacterCreditIntegrityResult,
+  options: { maxSubjects?: number; maxPersons?: number; maxRisks?: number } = {},
+): CharacterCreditIntegrityViewModel {
+  const maxSubjects = Math.min(16, Math.max(1, Math.trunc(options.maxSubjects ?? 12)));
+  const maxPersons = Math.min(16, Math.max(1, Math.trunc(options.maxPersons ?? 12)));
+  const maxRisks = Math.min(16, Math.max(1, Math.trunc(options.maxRisks ?? 12)));
+  const maxPersonSubjects = 5;
+  const subjectCredits = result.subjectCredits.slice(0, maxSubjects);
+  const sourcePersonCredits = result.personCredits.slice(0, maxPersons);
+  const personCredits = sourcePersonCredits.map((person) => {
+    const subjects = person.subjects.slice(0, maxPersonSubjects);
+    return {
+      ...person,
+      subjects,
+      subjectsOmitted:
+        person.subjectsOmitted + Math.max(0, person.subjects.length - subjects.length),
+    };
+  });
+  const risks = result.risks.slice(0, maxRisks);
+  const availableSubjects = Math.max(
+    result.subjectCredits.length,
+    result.coverage.subjects.uniqueIdsObserved,
+  );
+  const availablePersons = Math.max(
+    result.personCredits.length,
+    result.coverage.persons.uniqueIdsObserved,
+  );
+  const availableRisks = Math.max(
+    result.risks.length,
+    result.coverage.output.risksReturned + result.coverage.output.risksOmitted,
+  );
+  const omittedSubjects = Math.max(0, availableSubjects - subjectCredits.length);
+  const omittedPersons = Math.max(0, availablePersons - personCredits.length);
+  const omittedRisks = Math.max(0, availableRisks - risks.length);
+  const knownPersonSubjects = sourcePersonCredits.reduce(
+    (total, person) => total + person.subjects.length + person.subjectsOmitted,
+    0,
+  );
+  const sourcePersonSubjects =
+    result.coverage.output.returnedPersonSubjectCredits +
+    result.coverage.output.omittedPersonSubjectCredits;
+  const availablePersonSubjects = Math.max(sourcePersonSubjects, knownPersonSubjects);
+  const renderedPersonSubjects = personCredits.reduce(
+    (total, person) => total + person.subjects.length,
+    0,
+  );
+  const omittedPersonSubjects = Math.max(0, availablePersonSubjects - renderedPersonSubjects);
+  const hasOmissions =
+    omittedSubjects > 0 || omittedPersons > 0 || omittedPersonSubjects > 0 || omittedRisks > 0;
+
+  return {
+    template: 'character-credit-integrity',
+    version: 1,
+    state: result.state,
+    formulaVersion: result.formulaVersion,
+    ...(result.character
+      ? {
+          character: {
+            id: result.character.id,
+            name: result.character.name,
+            summary: truncateText(result.character.summary, 240).text,
+          },
+        }
+      : {}),
+    subjectCredits,
+    personCredits,
+    risks,
+    coverage: result.coverage,
+    source: result.source,
+    operationEvidence: result.operationEvidence,
+    warnings: hasOmissions
+      ? [
+          ...result.warnings,
+          {
+            code: 'RENDERER_OUTPUT_TRUNCATED',
+            state: 'partial' as const,
+            message:
+              '渲染器对作品、人物、人物作品关系或风险记录应用了显示上限；完整返回数量仍见 coverage。',
+          },
+        ]
+      : result.warnings,
+    limitations: result.limitations,
+    presentation: {
+      state: hasOmissions || result.state !== 'complete' ? 'partial' : 'complete',
+      subjects: {
+        available: availableSubjects,
+        rendered: subjectCredits.length,
+        omitted: omittedSubjects,
+      },
+      persons: {
+        available: availablePersons,
+        rendered: personCredits.length,
+        omitted: omittedPersons,
+      },
+      personSubjects: {
+        available: availablePersonSubjects,
+        rendered: renderedPersonSubjects,
+        omitted: omittedPersonSubjects,
+      },
+      risks: {
+        available: availableRisks,
+        rendered: risks.length,
+        omitted: omittedRisks,
+      },
+    },
+    error: result.error,
   };
 }
 

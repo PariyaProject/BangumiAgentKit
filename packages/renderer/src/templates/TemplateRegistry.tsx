@@ -28,6 +28,7 @@ import {
   CollectionDashboardViewModel,
   CollectionSeriesViewModel,
   CollectionEntityConsistencyViewModel,
+  CharacterCreditIntegrityViewModel,
 } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { RendererError } from '../errors.js';
@@ -58,6 +59,7 @@ import { CollectionScheduleCard } from './CollectionScheduleCard.js';
 import { CollectionDashboardCard } from './CollectionDashboardCard.js';
 import { CollectionSeriesCard } from './CollectionSeriesCard.js';
 import { CollectionEntityConsistencyCard } from './CollectionEntityConsistencyCard.js';
+import { CharacterCreditIntegrityCard } from './CharacterCreditIntegrityCard.js';
 
 export interface CardTemplate<T extends RenderViewModel = RenderViewModel> {
   id: T['template'];
@@ -316,6 +318,14 @@ registerTemplate<CollectionEntityConsistencyViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <CollectionEntityConsistencyCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<CharacterCreditIntegrityViewModel>({
+  id: 'character-credit-integrity',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <CharacterCreditIntegrityCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

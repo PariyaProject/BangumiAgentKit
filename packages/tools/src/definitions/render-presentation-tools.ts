@@ -7,6 +7,11 @@ import {
   SeriesService,
   UserService,
   CharacterService,
+  CharacterCreditIntegrityService,
+  CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_PERSONS,
+  CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_SUBJECTS,
+  CHARACTER_CREDIT_INTEGRITY_MAX_PERSONS,
+  CHARACTER_CREDIT_INTEGRITY_MAX_SUBJECTS,
   CalendarService,
   CollectionIntelligenceService,
   CollectionBacklogService,
@@ -34,6 +39,7 @@ import {
   isPrincipalScopedArtifactStore,
   buildSubjectCardViewModel,
   buildCastCardViewModel,
+  buildCharacterCreditIntegrityViewModel,
   buildCollectionProgressViewModel,
   buildCalendarIntelligenceViewModel,
   buildSearchListViewModel,
@@ -258,6 +264,49 @@ export function createRenderPresentationTools(
         castItems as any,
       );
       return await executeRenderAndSave(viewModel);
+    },
+  });
+
+  const renderCharacterCreditIntegrity = defineTool({
+    name: 'bangumi.render_character_credit_integrity',
+    description:
+      '生成一个已知 Bangumi 角色的官方 v0 作品/相关人物稳定 ID 完整性观察无图片卡片 Artifact。卡片展示 source operations、重复 ID、同名不同 ID 碰撞风险、字段冲突、partial/unavailable/not_found 状态与覆盖限制；不做名称合并、全局搜索、完整性推断或图片下载。',
+    input: z
+      .object({
+        characterId: z.number().int().positive().describe('Bangumi 角色 ID'),
+        maxSubjects: z
+          .number()
+          .int()
+          .min(1)
+          .max(CHARACTER_CREDIT_INTEGRITY_MAX_SUBJECTS)
+          .optional()
+          .describe(
+            `最多返回出演作品稳定 ID，默认 ${CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_SUBJECTS}`,
+          ),
+        maxPersons: z
+          .number()
+          .int()
+          .min(1)
+          .max(CHARACTER_CREDIT_INTEGRITY_MAX_PERSONS)
+          .optional()
+          .describe(
+            `最多返回相关人物稳定 ID，默认 ${CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_PERSONS}`,
+          ),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const client = deps?.executionSession?.client || deps?.publicHttpClient;
+      if (!client) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const result = await new CharacterCreditIntegrityService(client).getCharacterCreditIntegrity(
+        input.characterId,
+        { maxSubjects: input.maxSubjects, maxPersons: input.maxPersons },
+      );
+      return await executeRenderAndSave(buildCharacterCreditIntegrityViewModel(result));
     },
   });
 
@@ -1470,6 +1519,7 @@ export function createRenderPresentationTools(
   return [
     renderSubjectCard,
     renderCastCard,
+    renderCharacterCreditIntegrity,
     renderCollectionProgress,
     renderCalendar,
     renderSearch,

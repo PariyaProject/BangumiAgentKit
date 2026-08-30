@@ -728,6 +728,10 @@ function comparisonRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
+function nonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
 function comparisonStateLabel(value: unknown): string {
   const labels: Record<string, string> = {
     complete: '完整',
@@ -2473,6 +2477,186 @@ function presentArtifact(value: Record<string, unknown>): string | undefined {
   return `Artifact: ${String(ref.id)}${dimensions}`;
 }
 
+function presentCharacterCreditIntegrity(value: Record<string, unknown>): string | undefined {
+  const coverage = comparisonRecord(value.coverage);
+  const character = comparisonRecord(value.character);
+  const subjects = Array.isArray(value.subjectCredits) ? value.subjectCredits : undefined;
+  const persons = Array.isArray(value.personCredits) ? value.personCredits : undefined;
+  const risks = Array.isArray(value.risks) ? value.risks : undefined;
+  if (!coverage || !subjects || !persons || !risks) return undefined;
+
+  const lines = [
+    `角色出演作品与 CV 完整性 · 状态: ${humanField(value.state || 'unknown', 48)}`,
+    `角色: ${humanField(character?.name || '未知角色', 160)} · ID ${humanField(character?.id || '?', 32)}`,
+    '说明：只按 official v0 稳定 ID 观察已知角色；同名不同 ID 是碰撞风险，不是实体合并。',
+  ];
+  const subjectCoverage = comparisonRecord(coverage.subjects);
+  const personCoverage = comparisonRecord(coverage.persons);
+  const outputCoverage = comparisonRecord(coverage.output);
+  const maxVisibleSubjects = 10;
+  const maxVisiblePersons = 10;
+  const maxVisiblePersonSubjects = 4;
+  const maxVisibleRisks = 8;
+  const availableSubjects =
+    nonNegativeInteger(subjectCoverage?.uniqueIdsObserved) ?? subjects.length;
+  const availablePersons = nonNegativeInteger(personCoverage?.uniqueIdsObserved) ?? persons.length;
+  const risksReturned = nonNegativeInteger(outputCoverage?.risksReturned);
+  const risksOmittedAtSource = nonNegativeInteger(outputCoverage?.risksOmitted);
+  const availableRisks =
+    risksReturned !== undefined && risksOmittedAtSource !== undefined
+      ? risksReturned + risksOmittedAtSource
+      : risks.length;
+  const renderedSubjects = Math.min(subjects.length, maxVisibleSubjects);
+  const renderedPersons = Math.min(persons.length, maxVisiblePersons);
+  const omittedSubjects = Math.max(0, availableSubjects - renderedSubjects);
+  const omittedPersons = Math.max(0, availablePersons - renderedPersons);
+  const omittedRisks = Math.max(0, availableRisks - Math.min(risks.length, maxVisibleRisks));
+  const knownPersonSubjects = persons.reduce((total, raw) => {
+    const person = comparisonRecord(raw);
+    if (!person) return total;
+    const personSubjects = Array.isArray(person.subjects) ? person.subjects : [];
+    const sourceOmitted = nonNegativeInteger(person.subjectsOmitted) ?? 0;
+    return total + personSubjects.length + sourceOmitted;
+  }, 0);
+  const sourceReturnedPersonSubjects = nonNegativeInteger(
+    outputCoverage?.returnedPersonSubjectCredits,
+  );
+  const sourceOmittedPersonSubjects = nonNegativeInteger(
+    outputCoverage?.omittedPersonSubjectCredits,
+  );
+  const sourcePersonSubjects =
+    sourceReturnedPersonSubjects !== undefined && sourceOmittedPersonSubjects !== undefined
+      ? sourceReturnedPersonSubjects + sourceOmittedPersonSubjects
+      : knownPersonSubjects;
+  const availablePersonSubjects = Math.max(sourcePersonSubjects, knownPersonSubjects);
+  const renderedPersonSubjects = persons.slice(0, maxVisiblePersons).reduce((total, raw) => {
+    const person = comparisonRecord(raw);
+    if (!person) return total;
+    const personSubjects = Array.isArray(person.subjects) ? person.subjects : [];
+    return total + Math.min(personSubjects.length, maxVisiblePersonSubjects);
+  }, 0);
+  const omittedPersonSubjects = Math.max(0, availablePersonSubjects - renderedPersonSubjects);
+  const presentationTruncated =
+    Boolean(outputCoverage?.truncated) ||
+    omittedSubjects > 0 ||
+    omittedPersons > 0 ||
+    omittedPersonSubjects > 0 ||
+    omittedRisks > 0;
+  lines.push(
+    `覆盖: 作品 ${humanField(subjectCoverage?.returnedRows ?? '?', 24)}/${humanField(subjectCoverage?.uniqueIdsObserved ?? '?', 24)} · 人物 ${humanField(personCoverage?.returnedRows ?? '?', 24)}/${humanField(personCoverage?.uniqueIdsObserved ?? '?', 24)} · 风险 ${humanField(risks.length, 24)} · 显示: ${presentationTruncated ? '部分' : '完整'}`,
+  );
+  if (presentationTruncated) {
+    lines.push(
+      `输出裁剪: 作品省略 ${humanField(omittedSubjects, 24)} · 人物省略 ${humanField(omittedPersons, 24)} · CV作品关系省略 ${humanField(omittedPersonSubjects, 24)} · 风险省略 ${humanField(omittedRisks, 24)}${sourceOmittedPersonSubjects ? ` · 来源记录作品关系省略 ${humanField(sourceOmittedPersonSubjects, 24)}` : ''}`,
+    );
+  }
+
+  if (subjects.length > 0) {
+    lines.push('出演作品：');
+    for (const raw of subjects.slice(0, maxVisibleSubjects)) {
+      const item = comparisonRecord(raw);
+      if (!item) continue;
+      lines.push(
+        `- #${humanField(item.id, 32)} · ${humanField(item.nameCn || item.name || '未知作品', 150)} · ${humanField(item.staff || '关系未提供', 72)}${item.duplicateRows ? ` · 重复 ${humanField(item.duplicateRows, 24)}` : ''}`,
+      );
+    }
+    if (omittedSubjects > 0) lines.push(`- 另有 ${humanField(omittedSubjects, 24)} 个作品未展开。`);
+  }
+  if (persons.length > 0) {
+    lines.push('相关人物 / CV：');
+    for (const raw of persons.slice(0, maxVisiblePersons)) {
+      const person = comparisonRecord(raw);
+      if (!person) continue;
+      const rawPersonSubjects = Array.isArray(person.subjects) ? person.subjects : [];
+      const personSubjects = rawPersonSubjects
+        .slice(0, maxVisiblePersonSubjects)
+        .map((subject) => {
+          const details = comparisonRecord(subject);
+          return details
+            ? `#${humanField(details.subjectId, 24)} ${humanField(details.subjectNameCn || details.subjectName || '未知作品', 80)}`
+            : undefined;
+        })
+        .filter((item): item is string => Boolean(item))
+        .join('、');
+      const sourceOmitted = nonNegativeInteger(person.subjectsOmitted) ?? 0;
+      const visibleCount = Math.min(rawPersonSubjects.length, maxVisiblePersonSubjects);
+      const personSubjectsOmitted = Math.max(
+        0,
+        rawPersonSubjects.length + sourceOmitted - visibleCount,
+      );
+      const duplicateRowsValue = nonNegativeInteger(person.duplicateRows);
+      const duplicateRelationRowsValue = nonNegativeInteger(person.duplicateRelationRows);
+      const duplicateRows =
+        duplicateRowsValue !== undefined && duplicateRowsValue > 0
+          ? ` · 重复 ${humanField(duplicateRowsValue, 24)}`
+          : '';
+      const duplicateRelationRows =
+        duplicateRelationRowsValue !== undefined && duplicateRelationRowsValue > 0
+          ? ` · 同作品关系重复 ${humanField(duplicateRelationRowsValue, 24)}`
+          : '';
+      lines.push(
+        `- #${humanField(person.id, 32)} · ${humanField(person.name, 140)}${duplicateRows}${duplicateRelationRows} · ${personSubjects || '作品关系未提供'}${personSubjectsOmitted > 0 ? ` · 另有 ${humanField(personSubjectsOmitted, 24)} 个作品关系省略` : ''}`,
+      );
+    }
+    if (omittedPersons > 0) lines.push(`- 另有 ${humanField(omittedPersons, 24)} 个人物未展开。`);
+  }
+  if (risks.length > 0) {
+    lines.push('身份风险：');
+    for (const raw of risks.slice(0, maxVisibleRisks)) {
+      const risk = comparisonRecord(raw);
+      if (!risk) continue;
+      const ids = Array.isArray(risk.ids)
+        ? risk.ids.map((id) => `#${humanField(id, 24)}`).join('、')
+        : '?';
+      const names = Array.isArray(risk.names)
+        ? risk.names.map((name) => humanField(name, 90)).join(' / ')
+        : '未知';
+      const membersOmitted = nonNegativeInteger(risk.membersOmitted);
+      const namesOmitted = nonNegativeInteger(risk.namesOmitted);
+      const omittedMembers =
+        membersOmitted !== undefined && membersOmitted > 0
+          ? ` · ID 省略 ${humanField(membersOmitted, 24)}`
+          : '';
+      const omittedNames =
+        namesOmitted !== undefined && namesOmitted > 0
+          ? ` · 名称省略 ${humanField(namesOmitted, 24)}`
+          : '';
+      lines.push(
+        `- ${humanField(risk.kind, 64)} · ${ids} · ${names}${omittedMembers}${omittedNames}`,
+      );
+      lines.push(`  ${humanField(risk.message || '保留风险，未执行实体合并。', 220)}`);
+    }
+    if (omittedRisks > 0) lines.push(`- 另有 ${humanField(omittedRisks, 24)} 条风险未展开。`);
+  }
+  const evidence = Array.isArray(value.operationEvidence) ? value.operationEvidence : [];
+  if (evidence.length > 0) {
+    lines.push(
+      `证据操作: ${evidence
+        .slice(0, 4)
+        .map((item) => comparisonRecord(item)?.operation)
+        .filter(Boolean)
+        .join(' · ')}`,
+    );
+  }
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const raw of warnings.slice(0, 4)) {
+      const warning = comparisonRecord(raw);
+      if (warning)
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 72)} · ${humanField(warning.message || '')}`,
+        );
+    }
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentPersonCollaboration(value: Record<string, unknown>): string | undefined {
   const personId = value.personId;
   const collaborators = Array.isArray(value.collaborators) ? value.collaborators : undefined;
@@ -2803,6 +2987,10 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const characterCreditIntegrity = presentCharacterCreditIntegrity(
+      safe as Record<string, unknown>,
+    );
+    if (characterCreditIntegrity) return characterCreditIntegrity;
     const personCollaboration = presentPersonCollaboration(safe as Record<string, unknown>);
     if (personCollaboration) return personCollaboration;
     const calendar = presentCalendar(safe as Record<string, unknown>);

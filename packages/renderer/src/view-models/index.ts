@@ -483,6 +483,34 @@ export interface CollectionEntityConsistencyViewModel {
   };
 }
 
+export interface CharacterCreditIntegrityViewModel {
+  template: 'character-credit-integrity';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['state'];
+  formulaVersion: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['formulaVersion'];
+  character?: {
+    id: number;
+    name: string;
+    summary: string;
+  };
+  subjectCredits: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['subjectCredits'];
+  personCredits: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['personCredits'];
+  risks: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['risks'];
+  coverage: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['coverage'];
+  source: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['source'];
+  operationEvidence: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['operationEvidence'];
+  warnings: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['warnings'];
+  limitations: string[];
+  presentation: {
+    state: 'complete' | 'partial';
+    subjects: { available: number; rendered: number; omitted: number };
+    persons: { available: number; rendered: number; omitted: number };
+    personSubjects: { available: number; rendered: number; omitted: number };
+    risks: { available: number; rendered: number; omitted: number };
+  };
+  error?: import('@bangumi-agent-kit/bangumi-core').CharacterCreditIntegrityResult['error'];
+}
+
 export interface CalendarDayViewModel {
   weekdayCn: string;
   observed?: number;
@@ -1262,6 +1290,7 @@ export type RenderViewModel =
   | CollectionDashboardViewModel
   | CollectionSeriesViewModel
   | CollectionEntityConsistencyViewModel
+  | CharacterCreditIntegrityViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
   | SubjectLatestRevisionViewModel
