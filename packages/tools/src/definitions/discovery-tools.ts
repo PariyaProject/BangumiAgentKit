@@ -66,26 +66,36 @@ export const discoveryQueryInput = z
   })
   .strict();
 
+const subjectCohortDefinitionInput = z
+  .object({
+    label: z.string().trim().min(1).max(80).optional(),
+    query: discoveryQueryInput,
+  })
+  .strict();
+
+const subjectCohortLimitInput = z
+  .number()
+  .int()
+  .min(1)
+  .max(SUBJECT_COHORT_MAX_SUBJECTS)
+  .optional()
+  .describe('每个 cohort 最多保留的返回条目数，默认 40；不代表完整数据库枚举');
+
 export const subjectCohortComparisonInput = z
   .object({
     cohorts: z
-      .array(
-        z
-          .object({
-            label: z.string().trim().min(1).max(80).optional(),
-            query: discoveryQueryInput,
-          })
-          .strict(),
-      )
-      .length(2)
-      .describe('两个 cohort 定义；差值按输入顺序计算为 B − A'),
-    maxSubjects: z
-      .number()
-      .int()
+      .array(subjectCohortDefinitionInput)
       .min(1)
-      .max(SUBJECT_COHORT_MAX_SUBJECTS)
-      .optional()
-      .describe('每个 cohort 最多保留的返回条目数，默认 40；不代表完整数据库枚举'),
+      .max(2)
+      .describe('一个或两个 cohort 定义；两侧时差值按输入顺序计算为 B − A'),
+    maxSubjects: subjectCohortLimitInput,
+  })
+  .strict();
+
+export const subjectCohortAggregationInput = z
+  .object({
+    cohort: subjectCohortDefinitionInput.describe('一个用于聚合观察的 cohort 定义'),
+    maxSubjects: subjectCohortLimitInput,
   })
   .strict();
 
@@ -109,7 +119,7 @@ export function createDiscoveryTools() {
   const compareSubjectCohortsTool = defineTool({
     name: 'bangumi.compare_subject_cohorts',
     description:
-      '比较两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）和平均报告话数、B−A 差值、每项有效/缺失/冲突计数、两侧查询覆盖与检索证据；结果是有界返回样本，不生成推荐、质量、因果或历史趋势结论。',
+      '比较一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）和平均报告话数；两侧时才输出 B−A 差值，同时输出每项有效/缺失/冲突计数、查询覆盖与检索证据。结果是有界返回样本，不生成推荐、质量、因果或历史趋势结论。',
     input: subjectCohortComparisonInput,
     auth: 'none',
     scopes: [],
@@ -120,6 +130,27 @@ export function createDiscoveryTools() {
       }
       return compareSubjectCohorts(
         input.cohorts,
+        { maxSubjects: input.maxSubjects },
+        deps.providerRegistry,
+        { authScope: 'public' },
+      );
+    },
+  });
+
+  const aggregateSubjectCohortTool = defineTool({
+    name: 'bangumi.aggregate_subject_cohort',
+    description:
+      '聚合一个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）、平均报告话数、覆盖状态、检索证据和明确限制；不生成推荐、质量、因果或历史趋势结论。',
+    input: subjectCohortAggregationInput,
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      if (!deps?.providerRegistry) {
+        throw new Error('ProviderRegistry is required to run aggregate_subject_cohort tool');
+      }
+      return compareSubjectCohorts(
+        [input.cohort],
         { maxSubjects: input.maxSubjects },
         deps.providerRegistry,
         { authScope: 'public' },
@@ -138,8 +169,14 @@ export function createDiscoveryTools() {
     execute: async (input) => new ConceptResolver().resolve(input.concept),
   });
 
-  return [querySubjects, compareSubjectCohortsTool, resolveConcept] as const;
+  return [
+    querySubjects,
+    compareSubjectCohortsTool,
+    aggregateSubjectCohortTool,
+    resolveConcept,
+  ] as const;
 }
 
 export type DiscoveryQueryToolInput = z.infer<typeof discoveryQueryInput>;
 export type SubjectCohortComparisonToolInput = z.infer<typeof subjectCohortComparisonInput>;
+export type SubjectCohortAggregationToolInput = z.infer<typeof subjectCohortAggregationInput>;

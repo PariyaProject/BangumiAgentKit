@@ -83,6 +83,40 @@ describe('Standalone subject cohort commands', () => {
     );
   });
 
+  it('routes the natural one-cohort aggregate command and renderer', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'complete', cohorts: [], metrics: [] });
+    const host = { executeTool } as unknown as StandaloneHost;
+    const registry = new StandaloneCommandRegistry();
+    const query = JSON.stringify({ season: '2026-spring', media: 'anime', metaTags: ['原创'] });
+
+    await registry.execute(
+      ['aggregate-cohort', '--query', query, '--label', 'Spring originals', '--max-subjects', '8'],
+      context(host),
+    );
+    await registry.execute(['render', 'aggregate-cohort', '--query', query], context(host));
+
+    expect(executeTool).toHaveBeenNthCalledWith(
+      1,
+      'bangumi.aggregate_subject_cohort',
+      {
+        cohort: {
+          label: 'Spring originals',
+          query: { season: '2026-spring', media: 'anime', metaTags: ['原创'] },
+        },
+        maxSubjects: 8,
+      },
+      expect.anything(),
+    );
+    expect(executeTool).toHaveBeenNthCalledWith(
+      2,
+      'bangumi.render_subject_cohort_aggregation',
+      {
+        cohort: { query: { season: '2026-spring', media: 'anime', metaTags: ['原创'] } },
+      },
+      expect.anything(),
+    );
+  });
+
   it('rejects missing, duplicate, malformed, and out-of-range cohort arguments', async () => {
     const executeTool = vi.fn();
     const host = { executeTool } as unknown as StandaloneHost;
@@ -168,7 +202,8 @@ describe('Standalone subject cohort commands', () => {
         {
           key: 'score',
           label: '平均评分',
-          averages: [8, undefined],
+          averages: [undefined, undefined],
+          partialAverages: [8, undefined],
           validCounts: [1, 0],
           missingCounts: [0, 1],
           conflictCounts: [0, 0],
@@ -192,5 +227,6 @@ describe('Standalone subject cohort commands', () => {
     expect(human).toContain('平均评分');
     expect(human).toContain('有效');
     expect(human).toContain('达到预算');
+    expect(human).toContain('partial observation');
   });
 });

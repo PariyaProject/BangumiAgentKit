@@ -1015,7 +1015,7 @@ export interface SubjectCohortComparisonViewModel {
   formulaVersion: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['formulaVersion'];
   coverage: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['coverage'] & {
     renderedSubjectsPerCohort: number;
-    omittedSubjectsPerCohort: [number, number];
+    omittedSubjectsPerCohort: number[];
   };
   source: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['source'];
   evidence: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['evidence'];

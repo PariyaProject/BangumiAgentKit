@@ -26,11 +26,25 @@ export const SUBJECT_COHORT_MAX_PAGES = 6;
 export const SUBJECT_COHORT_MAX_CANDIDATES = 300;
 export const SUBJECT_COHORT_MAX_QUERY_HYDRATIONS = 60;
 export const SUBJECT_COHORT_DETAIL_CONCURRENCY = 6;
+export const SUBJECT_COHORT_MAX_EVIDENCE_REFS = 256;
+export const SUBJECT_COHORT_MAX_EVIDENCE_BYTES = 96_000;
+export const SUBJECT_COHORT_MAX_WARNINGS = 12;
+export const SUBJECT_COHORT_MAX_TEXT_LENGTH = 240;
 
 export const SUBJECT_COHORT_METRICS = ['score', 'heat', 'episodesReported'] as const;
 export type SubjectCohortMetricKey = (typeof SUBJECT_COHORT_METRICS)[number];
 export type SubjectCohortMetricState =
-  'complete' | 'partial' | 'conflict' | 'unavailable' | 'not_computable';
+  | 'complete'
+  | 'partial'
+  | 'conflict'
+  | 'unavailable'
+  | 'not_computable'
+  | 'not_found'
+  | 'upstream_error'
+  | 'unsupported'
+  | 'stale'
+  | 'auth_required'
+  | 'permission_denied';
 
 export interface SubjectCohortDefinition {
   label?: string;
@@ -85,10 +99,11 @@ export interface SubjectCohortMetric {
   key: SubjectCohortMetricKey;
   label: string;
   sourceField: string;
-  averages: [number | undefined, number | undefined];
-  validCounts: [number, number];
-  missingCounts: [number, number];
-  conflictCounts: [number, number];
+  averages: Array<number | undefined>;
+  partialAverages?: Array<number | undefined>;
+  validCounts: number[];
+  missingCounts: number[];
+  conflictCounts: number[];
   delta?: number;
   state: SubjectCohortMetricState;
 }
@@ -115,11 +130,14 @@ export type SubjectCohortComparisonState =
   | 'not_computable'
   | 'not_found'
   | 'upstream_error'
-  | 'unsupported';
+  | 'unsupported'
+  | 'stale'
+  | 'auth_required'
+  | 'permission_denied';
 
 export interface SubjectCohortComparisonResult {
   state: SubjectCohortComparisonState;
-  cohorts: [SubjectCohort, SubjectCohort];
+  cohorts: SubjectCohort[];
   metrics: SubjectCohortMetric[];
   formulaVersion: typeof SUBJECT_COHORT_COMPARISON_FORMULA_VERSION;
   coverage: {
@@ -131,6 +149,22 @@ export interface SubjectCohortComparisonResult {
     detailHydrationsSucceeded: number;
     detailHydrationsFailed: number;
     truncated: boolean;
+    evidence: {
+      retained: number;
+      omitted: number;
+      deduplicated: number;
+      omittedByBound: number;
+      bytes: number;
+      maxRefs: number;
+      maxBytes: number;
+      truncated: boolean;
+    };
+    warnings: {
+      retained: number;
+      omitted: number;
+      max: number;
+      truncated: boolean;
+    };
   };
   source: {
     official: SubjectCohortSourceSummary & { class: 'official-v0' };
@@ -160,11 +194,11 @@ const METRIC_SOURCE_FIELDS: Record<SubjectCohortMetricKey, string> = {
 };
 
 const LIMITATIONS = [
-  '比较对象是两次官方 v0 discovery 在本次硬上限内返回的条目样本；不把实验性搜索或估计总数转换为完整数据库枚举。',
+  '每个 cohort 是官方 v0 discovery 在本次硬上限内返回的条目样本；不把实验性搜索或估计总数转换为完整数据库枚举。',
   '热度使用官方 collection 各状态之和（收藏总数）；它不是社区趋势、质量、偏好或推荐分数。',
   '报告话数使用官方 subject.eps；它不等同于已播话数、观看进度、总生命周期或章节源完整性。',
   '均值只对该指标有有效值的返回条目计算；缺失、来源冲突、不可用和未找到不会转换为零。',
-  '差值按输入顺序计算为 B − A；部分覆盖时保留可用均值，但不生成完整总体差值。',
+  '差值按输入顺序计算为 B − A；部分观察均值会明确标为 partial observation，不生成完整总体差值。',
 ];
 
 function boundedInteger(value: number | undefined, fallback: number, maximum: number): number {
@@ -174,6 +208,11 @@ function boundedInteger(value: number | undefined, fallback: number, maximum: nu
 
 function nowIso(options: SubjectCohortComparisonOptions): string {
   return options.now?.() || new Date().toISOString();
+}
+
+function boundedText(value: string, maximum = SUBJECT_COHORT_MAX_TEXT_LENGTH): string {
+  const text = Array.from(value);
+  return text.length <= maximum ? value : `${text.slice(0, Math.max(0, maximum - 1)).join('')}…`;
 }
 
 function uniqueStrings(values: Array<string | undefined>): string[] {
@@ -219,17 +258,18 @@ function finiteScore(value: unknown): number | undefined {
 }
 
 function queryForCohort(query: DiscoveryQuery, maxSubjects: number): DiscoveryQuery {
+  const limit = Math.min(maxSubjects, query.limit ?? maxSubjects);
   return {
     ...query,
     resultMode: 'all',
-    limit: maxSubjects,
+    limit,
     budget: {
       maxPages: SUBJECT_COHORT_MAX_PAGES,
       maxCandidates: SUBJECT_COHORT_MAX_CANDIDATES,
       maxHydrations: SUBJECT_COHORT_MAX_QUERY_HYDRATIONS,
       concurrency: SUBJECT_COHORT_DETAIL_CONCURRENCY,
       maxConceptProbes: 8,
-      maxReturnedItems: maxSubjects,
+      maxReturnedItems: limit,
     },
   };
 }
@@ -335,8 +375,8 @@ function buildSubjectRow(
   const totalEpisodesReported = finiteNonNegative(detail?.totalEpisodes);
   const subject: SubjectCohortSubject = {
     id: item.id,
-    name: item.name,
-    displayName: item.displayName,
+    name: boundedText(item.name, 180),
+    displayName: boundedText(item.displayName, 180),
     ...(item.date ? { date: item.date } : {}),
     ...(score?.value === undefined ? {} : { score: score.value }),
     ...(heat?.value === undefined ? {} : { collectionTotal: heat.value }),
@@ -377,11 +417,13 @@ function metricCoverage(
   const valid = subjects.filter((subject) => subject.metricStates[key] === 'available').length;
   const conflicts = subjects.filter((subject) => subject.metricStates[key] === 'conflict').length;
   const missing = subjects.length - valid - conflicts;
+  const queryState: SubjectCohortMetricState | undefined =
+    query.state === 'ok' ? undefined : query.state === 'not_found' ? 'not_computable' : query.state;
   let state: SubjectCohortMetricState;
-  if (conflicts > 0) state = 'conflict';
-  else if (valid === 0 && query.state !== 'ok') state = 'unavailable';
+  if (queryState !== undefined && queryState !== 'partial') state = queryState;
+  else if (conflicts > 0) state = 'conflict';
   else if (valid === 0) state = 'not_computable';
-  else if (query.state !== 'ok' || query.coverage.state !== 'complete' || missing > 0)
+  else if (queryState === 'partial' || query.coverage.state !== 'complete' || missing > 0)
     state = 'partial';
   else state = 'complete';
   return { valid, missing, conflicts, state };
@@ -411,9 +453,9 @@ function buildGroup(
   ) as Record<SubjectCohortMetricKey, SubjectCohortMetricCoverage>;
   return {
     cohort: {
-      label,
+      label: boundedText(label, 80),
       query: definition.query,
-      querySummary: querySummary(label, definition.query),
+      querySummary: boundedText(querySummary(boundedText(label, 80), definition.query)),
       subjects,
       coverage: {
         query,
@@ -442,33 +484,39 @@ function average(
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function metricState(
-  left: SubjectCohortMetricCoverage,
-  right: SubjectCohortMetricCoverage,
-): SubjectCohortMetricState {
-  if (left.state === 'conflict' || right.state === 'conflict') return 'conflict';
-  if (left.state === 'unavailable' && right.state === 'unavailable') return 'unavailable';
-  if (left.state === 'not_computable' && right.state === 'not_computable') return 'not_computable';
-  if (left.state !== 'complete' || right.state !== 'complete') return 'partial';
-  return 'complete';
+function metricState(coverages: SubjectCohortMetricCoverage[]): SubjectCohortMetricState {
+  if (coverages.some((coverage) => coverage.state === 'upstream_error')) return 'upstream_error';
+  if (coverages.some((coverage) => coverage.state === 'auth_required')) return 'auth_required';
+  if (coverages.some((coverage) => coverage.state === 'permission_denied')) {
+    return 'permission_denied';
+  }
+  if (coverages.some((coverage) => coverage.state === 'unavailable')) return 'unavailable';
+  if (coverages.some((coverage) => coverage.state === 'unsupported')) return 'unsupported';
+  if (coverages.some((coverage) => coverage.state === 'stale')) return 'stale';
+  if (coverages.some((coverage) => coverage.state === 'conflict')) return 'conflict';
+  if (coverages.every((coverage) => coverage.state === 'not_computable')) return 'not_computable';
+  if (coverages.every((coverage) => coverage.state === 'complete')) return 'complete';
+  return 'partial';
 }
 
 function comparisonState(
-  cohorts: [SubjectCohort, SubjectCohort],
+  cohorts: SubjectCohort[],
   metrics: SubjectCohortMetric[],
 ): SubjectCohortComparisonState {
-  if (cohorts.every((cohort) => cohort.coverage.query.state === 'unavailable'))
-    return 'unavailable';
-  if (cohorts.every((cohort) => cohort.coverage.query.state === 'not_found')) return 'not_found';
-  if (cohorts.some((cohort) => cohort.coverage.query.state === 'unsupported')) return 'unsupported';
+  const queryStates = cohorts.map((cohort) => cohort.coverage.query.state);
+  if (queryStates.some((state) => state === 'upstream_error')) return 'upstream_error';
+  if (queryStates.some((state) => state === 'auth_required')) return 'auth_required';
+  if (queryStates.some((state) => state === 'permission_denied')) return 'permission_denied';
+  if (queryStates.some((state) => state === 'unavailable')) return 'unavailable';
+  if (queryStates.some((state) => state === 'unsupported')) return 'unsupported';
+  if (queryStates.some((state) => state === 'stale')) return 'stale';
+  if (queryStates.every((state) => state === 'not_found')) return 'not_found';
   if (metrics.some((metric) => metric.state === 'conflict')) return 'conflict';
-  if (
-    metrics.every((metric) => metric.state === 'not_computable' || metric.state === 'unavailable')
-  ) {
+  if (metrics.every((metric) => metric.state === 'not_computable')) {
     return 'not_computable';
   }
   if (
-    cohorts.some((cohort) => cohort.coverage.query.state !== 'ok') ||
+    queryStates.some((state) => state !== 'ok') ||
     metrics.some((metric) => metric.state !== 'complete')
   ) {
     return 'partial';
@@ -481,11 +529,97 @@ function warningFromDiscovery(
   result: DiscoveryResult,
 ): SubjectCohortComparisonWarning[] {
   return result.warnings.map((warning) => ({
-    code: warning.code,
+    code: boundedText(warning.code, 80),
     state: result.state,
-    message: warning.message,
-    cohort: label,
+    message: boundedText(warning.message),
+    cohort: boundedText(label, 80),
   }));
+}
+
+function evidenceBytes(value: EvidenceRef): number {
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+function capEvidence(raw: EvidenceRef[]): {
+  evidence: EvidenceRef[];
+  coverage: SubjectCohortComparisonResult['coverage']['evidence'];
+} {
+  const unique: EvidenceRef[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const key = JSON.stringify(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+
+  const required = unique.filter((item) => item.source.class === 'derived');
+  const optional = unique.filter((item) => item.source.class !== 'derived');
+  const requiredBytes = required.reduce((sum, item) => sum + evidenceBytes(item), 0);
+  const evidence: EvidenceRef[] = [];
+  let bytes = 0;
+  for (const item of optional) {
+    const itemBytes = evidenceBytes(item);
+    if (
+      evidence.length + required.length >= SUBJECT_COHORT_MAX_EVIDENCE_REFS ||
+      bytes + itemBytes + requiredBytes > SUBJECT_COHORT_MAX_EVIDENCE_BYTES
+    ) {
+      continue;
+    }
+    evidence.push(item);
+    bytes += itemBytes;
+  }
+  for (const item of required) {
+    if (
+      evidence.length >= SUBJECT_COHORT_MAX_EVIDENCE_REFS ||
+      bytes + evidenceBytes(item) > SUBJECT_COHORT_MAX_EVIDENCE_BYTES
+    ) {
+      continue;
+    }
+    evidence.push(item);
+    bytes += evidenceBytes(item);
+  }
+  return {
+    evidence,
+    coverage: {
+      retained: evidence.length,
+      omitted: raw.length - evidence.length,
+      deduplicated: raw.length - unique.length,
+      omittedByBound: Math.max(0, unique.length - evidence.length),
+      bytes,
+      maxRefs: SUBJECT_COHORT_MAX_EVIDENCE_REFS,
+      maxBytes: SUBJECT_COHORT_MAX_EVIDENCE_BYTES,
+      truncated: evidence.length < unique.length,
+    },
+  };
+}
+
+function capWarnings(warnings: SubjectCohortComparisonWarning[]): {
+  warnings: SubjectCohortComparisonWarning[];
+  coverage: SubjectCohortComparisonResult['coverage']['warnings'];
+} {
+  const bounded = warnings.slice(0, SUBJECT_COHORT_MAX_WARNINGS).map((warning) => ({
+    ...warning,
+    message: boundedText(warning.message),
+  }));
+  return {
+    warnings: bounded,
+    coverage: {
+      retained: bounded.length,
+      omitted: Math.max(0, warnings.length - bounded.length),
+      max: SUBJECT_COHORT_MAX_WARNINGS,
+      truncated: bounded.length < warnings.length,
+    },
+  };
+}
+
+function metricAverageState(
+  state: SubjectCohortMetricState,
+  averages: Array<number | undefined>,
+): Pick<SubjectCohortMetric, 'averages' | 'partialAverages'> {
+  return state === 'complete'
+    ? { averages }
+    : { averages: averages.map(() => undefined), partialAverages: averages };
 }
 
 export async function compareSubjectCohorts(
@@ -495,11 +629,15 @@ export async function compareSubjectCohorts(
   context: ProviderRequestContext = { authScope: 'public' },
 ): Promise<SubjectCohortComparisonResult> {
   const issues: string[] = [];
-  if (definitions.length !== 2) issues.push('cohorts must contain exactly two cohort definitions');
+  if (definitions.length < 1 || definitions.length > 2) {
+    issues.push('cohorts must contain one or two cohort definitions');
+  }
   definitions.forEach((definition, index) => {
     if (!definition || typeof definition !== 'object') issues.push(`cohorts[${index}] is required`);
     if (!definition?.query || typeof definition.query !== 'object') {
       issues.push(`cohorts[${index}].query is required`);
+    } else if (definition.query.resultMode === 'top') {
+      issues.push(`cohorts[${index}].query.resultMode must be all for cohort aggregation`);
     }
   });
   if (issues.length > 0) throw new DiscoveryValidationError(issues);
@@ -518,31 +656,33 @@ export async function compareSubjectCohorts(
   }> = [];
 
   for (const definition of definitions) {
-    const result = await engine.query(queryForCohort(definition.query, maxSubjects), context);
+    const query = queryForCohort(definition.query, maxSubjects);
+    const result = await engine.query(query, context);
     const hydrated = await hydrate(provider, result.items, context);
-    groups.push({ definition, result, hydrated });
+    groups.push({ definition: { ...definition, query }, result, hydrated });
   }
 
   const built = groups.map(({ definition, result, hydrated }) =>
     buildGroup(definition, result, hydrated),
   );
-  const cohorts = [built[0]!.cohort, built[1]!.cohort] as [SubjectCohort, SubjectCohort];
+  const cohorts = built.map(({ cohort }) => cohort);
   const metrics = SUBJECT_COHORT_METRICS.map((key): SubjectCohortMetric => {
-    const leftCoverage = cohorts[0].coverage.metrics[key];
-    const rightCoverage = cohorts[1].coverage.metrics[key];
-    const leftAverage = average(cohorts[0].subjects, key);
-    const rightAverage = average(cohorts[1].subjects, key);
-    const state = metricState(leftCoverage, rightCoverage);
+    const coverages = cohorts.map((cohort) => cohort.coverage.metrics[key]);
+    const averages = cohorts.map((cohort) => average(cohort.subjects, key));
+    const state = metricState(coverages);
     return {
       key,
       label: METRIC_LABELS[key],
       sourceField: METRIC_SOURCE_FIELDS[key],
-      averages: [leftAverage, rightAverage],
-      validCounts: [leftCoverage.valid, rightCoverage.valid],
-      missingCounts: [leftCoverage.missing, rightCoverage.missing],
-      conflictCounts: [leftCoverage.conflicts, rightCoverage.conflicts],
-      ...(state === 'complete' && leftAverage !== undefined && rightAverage !== undefined
-        ? { delta: rightAverage - leftAverage }
+      ...metricAverageState(state, averages),
+      validCounts: coverages.map((coverage) => coverage.valid),
+      missingCounts: coverages.map((coverage) => coverage.missing),
+      conflictCounts: coverages.map((coverage) => coverage.conflicts),
+      ...(cohorts.length === 2 &&
+      state === 'complete' &&
+      averages[0] !== undefined &&
+      averages[1] !== undefined
+        ? { delta: averages[1] - averages[0] }
         : {}),
       state,
     };
@@ -571,8 +711,9 @@ export async function compareSubjectCohorts(
     confidence: 'high',
     formula: SUBJECT_COHORT_COMPARISON_FORMULA_VERSION,
   });
-  const evidence = [...discoveryEvidence, ...detailEvidence, derivedEvidence];
-  evidence.forEach((item) => assertSafeEvidence(item));
+  const rawEvidence = [...discoveryEvidence, ...detailEvidence, derivedEvidence];
+  rawEvidence.forEach((item) => assertSafeEvidence(item));
+  const boundedEvidence = capEvidence(rawEvidence);
 
   const warnings: SubjectCohortComparisonWarning[] = groups.flatMap(({ definition, result }) =>
     warningFromDiscovery(definition.label?.trim() || '未命名组', result),
@@ -601,9 +742,17 @@ export async function compareSubjectCohorts(
       message: '部分条目详情读取失败或未找到；报告话数及冲突检查保留为未知，不填充猜测值。',
     });
   }
+  if (boundedEvidence.coverage.truncated) {
+    warnings.push({
+      code: 'COHORT_EVIDENCE_TRUNCATED',
+      state: 'partial',
+      message: `检索证据已按 ${SUBJECT_COHORT_MAX_EVIDENCE_REFS} 条/${SUBJECT_COHORT_MAX_EVIDENCE_BYTES} 字节硬上限保留；省略项不会用于额外推断。`,
+    });
+  }
 
-  const officialEvidence = evidence.filter((item) => item.source.class === 'official_v0');
-  const retrievedAt = latestTimestamp(evidence.map((item) => item.retrievedAt));
+  const officialEvidence = rawEvidence.filter((item) => item.source.class === 'official_v0');
+  const retrievedAt = latestTimestamp(rawEvidence.map((item) => item.retrievedAt));
+  const boundedWarnings = capWarnings(warnings);
   const result: SubjectCohortComparisonResult = {
     state: comparisonState(cohorts, metrics),
     cohorts,
@@ -630,11 +779,16 @@ export async function compareSubjectCohorts(
         (sum, cohort) => sum + cohort.coverage.detailHydrationsFailed,
         0,
       ),
-      truncated: cohorts.some(
-        (cohort) =>
-          cohort.coverage.query.coverage.budgetExceeded ||
-          cohort.coverage.query.coverage.state !== 'complete',
-      ),
+      truncated:
+        cohorts.some(
+          (cohort) =>
+            cohort.coverage.query.coverage.budgetExceeded ||
+            cohort.coverage.query.coverage.state !== 'complete',
+        ) ||
+        boundedEvidence.coverage.truncated ||
+        boundedWarnings.coverage.truncated,
+      evidence: boundedEvidence.coverage,
+      warnings: boundedWarnings.coverage,
     },
     source: {
       official: {
@@ -655,8 +809,8 @@ export async function compareSubjectCohorts(
         retrievedAt: derivedRetrievedAt,
       },
     },
-    evidence,
-    warnings,
+    evidence: boundedEvidence.evidence,
+    warnings: boundedWarnings.warnings,
     limitations: [...LIMITATIONS],
     ...(retrievedAt ? { retrievedAt } : {}),
   };

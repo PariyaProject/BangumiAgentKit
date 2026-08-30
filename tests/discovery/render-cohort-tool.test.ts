@@ -47,10 +47,16 @@ describe('bangumi.render_subject_cohort_comparison', () => {
       height: 320,
       expiresAt: '2026-08-30T00:00:00.000Z',
     }));
-    const [tool] = createRenderPresentationTools(
+    const renderTools = createRenderPresentationTools(
       { renderCard } as never,
       { saveArtifact } as never,
-    ).filter((item) => item.name === 'bangumi.render_subject_cohort_comparison');
+    );
+    const tool = renderTools.find(
+      (item) => item.name === 'bangumi.render_subject_cohort_comparison',
+    );
+    const aggregateTool = renderTools.find(
+      (item) => item.name === 'bangumi.render_subject_cohort_aggregation',
+    );
 
     const execute = tool!.execute as unknown as (
       input: unknown,
@@ -73,6 +79,20 @@ describe('bangumi.render_subject_cohort_comparison', () => {
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'subject-cohort-comparison', state: 'not_found' }),
     );
-    expect(provider.searchSubjects).toHaveBeenCalledTimes(2);
+
+    const executeAggregate = aggregateTool!.execute as unknown as (
+      input: unknown,
+      context: unknown,
+      deps: { providerRegistry: ProviderRegistry },
+    ) => Promise<unknown>;
+    await executeAggregate(
+      { cohort: { label: 'Spring', query: { season: '2026-spring', media: 'anime' } } },
+      {},
+      { providerRegistry },
+    );
+    expect(renderCard).toHaveBeenLastCalledWith(
+      expect.objectContaining({ template: 'subject-cohort-comparison', state: 'not_found' }),
+    );
+    expect(provider.searchSubjects).toHaveBeenCalledTimes(3);
   });
 });

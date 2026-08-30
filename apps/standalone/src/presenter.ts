@@ -737,6 +737,11 @@ function comparisonStateLabel(value: unknown): string {
     not_computable: '不可计算',
     unknown: '未知',
     conflict: '冲突',
+    unsupported: '不支持',
+    upstream_error: '上游错误',
+    stale: '数据过期',
+    auth_required: '需要授权',
+    permission_denied: '无权限',
   };
   return labels[String(value)] || String(value || '未知');
 }
@@ -1126,10 +1131,18 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
 function presentSubjectCohortComparison(value: Record<string, unknown>): string | undefined {
   const cohorts = value.cohorts;
   const metrics = value.metrics;
-  if (!Array.isArray(cohorts) || cohorts.length !== 2 || !Array.isArray(metrics)) return undefined;
+  if (
+    !Array.isArray(cohorts) ||
+    cohorts.length < 1 ||
+    cohorts.length > 2 ||
+    !Array.isArray(metrics)
+  ) {
+    return undefined;
+  }
+  const showComparison = cohorts.length === 2;
 
   const lines = [
-    `条目群体比较 · 状态: ${comparisonStateLabel(value.state)} · B−A · 不生成推荐或质量结论`,
+    `条目群体${showComparison ? '比较' : '聚合'} · 状态: ${comparisonStateLabel(value.state)} · ${showComparison ? 'B−A · ' : ''}不生成推荐或质量结论`,
   ];
   for (const [index, rawCohort] of cohorts.entries()) {
     const cohort = comparisonRecord(rawCohort);
@@ -1166,12 +1179,29 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
     const metric = comparisonRecord(rawMetric);
     if (!metric) continue;
     const averages = Array.isArray(metric.averages) ? metric.averages : [];
+    const partialAverages = Array.isArray(metric.partialAverages) ? metric.partialAverages : [];
     const valid = Array.isArray(metric.validCounts) ? metric.validCounts : [];
     const missing = Array.isArray(metric.missingCounts) ? metric.missingCounts : [];
     const conflicts = Array.isArray(metric.conflictCounts) ? metric.conflictCounts : [];
-    const delta = metric.delta === undefined ? '不可计算' : humanField(metric.delta, 32);
+    const values = cohorts
+      .map((_, index) => {
+        const accepted = averages[index];
+        if (accepted !== undefined) return humanField(accepted, 32);
+        const partial = partialAverages[index];
+        return partial === undefined ? '未知' : `${humanField(partial, 32)}（partial observation）`;
+      })
+      .map(
+        (average, index) =>
+          `${index === 0 ? 'A' : 'B'} ${average} (${humanField(valid[index] ?? '?', 24)} 有效/${humanField(missing[index] ?? '?', 24)} 缺失/${humanField(conflicts[index] ?? '?', 24)} 冲突)`,
+      )
+      .join(' · ');
+    const delta = !showComparison
+      ? '不适用'
+      : metric.delta === undefined
+        ? '不可计算'
+        : humanField(metric.delta, 32);
     lines.push(
-      `- ${humanField(metric.label || metric.key || '指标', 100)} · A ${humanField(averages[0] ?? '未知', 32)} (${humanField(valid[0] ?? '?', 24)} 有效/${humanField(missing[0] ?? '?', 24)} 缺失/${humanField(conflicts[0] ?? '?', 24)} 冲突) · B ${humanField(averages[1] ?? '未知', 32)} (${humanField(valid[1] ?? '?', 24)} 有效/${humanField(missing[1] ?? '?', 24)} 缺失/${humanField(conflicts[1] ?? '?', 24)} 冲突) · B−A ${delta} · ${comparisonStateLabel(metric.state)}`,
+      `- ${humanField(metric.label || metric.key || '指标', 100)} · ${values} · ${showComparison ? `B−A ${delta}` : '单 cohort，无 delta'} · ${comparisonStateLabel(metric.state)}`,
     );
   }
 
@@ -1180,6 +1210,12 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
     lines.push(
       `资源：每侧最多 ${humanField(coverage.maxSubjectsPerCohort ?? '?', 32)} 条 · 返回 ${humanField(coverage.totalSubjectsReturned ?? '?', 32)} 条 · 详情 ${humanField(coverage.detailHydrationsSucceeded ?? '?', 32)}/${humanField(coverage.detailHydrationsAttempted ?? '?', 32)} 成功${coverage.truncated ? ' · 至少一侧有界/部分' : ''}`,
     );
+    const evidence = comparisonRecord(coverage.evidence);
+    if (evidence) {
+      lines.push(
+        `证据：保留 ${humanField(evidence.retained ?? '?', 32)}/${humanField(evidence.maxRefs ?? '?', 32)} 条 · ${humanField(evidence.bytes ?? '?', 32)}/${humanField(evidence.maxBytes ?? '?', 32)} 字节 · 省略 ${humanField(evidence.omitted ?? 0, 32)} · 去重 ${humanField(evidence.deduplicated ?? 0, 32)}`,
+      );
+    }
   }
   const source = comparisonRecord(value.source);
   const official = comparisonRecord(source?.official);
@@ -1203,13 +1239,17 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
           `- ${humanField(warning.code || 'WARNING', 64)} · ${humanField(warning.message || '')}`,
         );
     }
-    if (warnings.length > 3) lines.push(`- 另有 ${warnings.length - 3} 条告警未展开。`);
+    if (warnings.length > 3) lines.push(`- 卡片另有 ${warnings.length - 3} 条告警未展开。`);
+    const warningCoverage = comparisonRecord(coverage?.warnings);
+    if (warningCoverage?.omitted) {
+      lines.push(`- 语义结果另省略 ${humanField(warningCoverage.omitted, 32)} 条告警。`);
+    }
   }
   const limitations = Array.isArray(value.limitations) ? value.limitations : [];
   if (limitations.length > 0) {
     lines.push('限制：');
-    for (const limitation of limitations.slice(0, 3)) lines.push(`- ${humanField(limitation)}`);
-    if (limitations.length > 3) lines.push(`- 另有 ${limitations.length - 3} 条限制未展开。`);
+    for (const limitation of limitations.slice(0, 5)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 5) lines.push(`- 另有 ${limitations.length - 5} 条限制未展开。`);
   }
   return boundHumanLines(lines);
 }

@@ -654,11 +654,17 @@ export function buildSubjectCohortComparisonViewModel(
   options: { maxSubjectsPerCohort?: number } = {},
 ): SubjectCohortComparisonViewModel {
   const maxSubjectsPerCohort = Number.isFinite(options.maxSubjectsPerCohort)
-    ? Math.min(12, Math.max(1, Math.trunc(options.maxSubjectsPerCohort as number)))
+    ? Math.min(8, Math.max(1, Math.trunc(options.maxSubjectsPerCohort as number)))
     : 8;
   const cohorts = result.cohorts.map((cohort) => ({
     ...cohort,
-    subjects: cohort.subjects.slice(0, maxSubjectsPerCohort),
+    label: truncateText(cohort.label, 72).text,
+    querySummary: truncateText(cohort.querySummary, 180).text,
+    subjects: cohort.subjects.slice(0, maxSubjectsPerCohort).map((subject) => ({
+      ...subject,
+      name: truncateText(subject.name, 80).text,
+      displayName: truncateText(subject.displayName, 80).text,
+    })),
   })) as SubjectCohortComparisonResult['cohorts'];
   return {
     template: 'subject-cohort-comparison',
@@ -670,10 +676,9 @@ export function buildSubjectCohortComparisonViewModel(
     coverage: {
       ...result.coverage,
       renderedSubjectsPerCohort: maxSubjectsPerCohort,
-      omittedSubjectsPerCohort: [
-        Math.max(0, result.cohorts[0].subjects.length - cohorts[0].subjects.length),
-        Math.max(0, result.cohorts[1].subjects.length - cohorts[1].subjects.length),
-      ],
+      omittedSubjectsPerCohort: result.cohorts.map((cohort, index) =>
+        Math.max(0, cohort.subjects.length - (cohorts[index]?.subjects.length ?? 0)),
+      ),
     },
     source: result.source,
     evidence: result.evidence,

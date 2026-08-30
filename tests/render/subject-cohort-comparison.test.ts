@@ -3,6 +3,7 @@ import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery
 import {
   buildSubjectCohortComparisonViewModel,
   extractImageUrls,
+  RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 
@@ -155,6 +156,17 @@ const result = {
     detailHydrationsSucceeded: 2,
     detailHydrationsFailed: 0,
     truncated: false,
+    evidence: {
+      retained: 0,
+      omitted: 0,
+      deduplicated: 0,
+      omittedByBound: 0,
+      bytes: 0,
+      maxRefs: 256,
+      maxBytes: 96000,
+      truncated: false,
+    },
+    warnings: { retained: 0, omitted: 0, max: 12, truncated: false },
   },
   source: {
     official: {
@@ -187,5 +199,78 @@ describe('subject cohort comparison renderer', () => {
     expect(html).toContain('条目群体比较');
     expect(html).toContain('2026 春季');
     expect(html).toContain('B − A');
+  });
+
+  it('labels partial observations separately from accepted averages', () => {
+    const partial = buildSubjectCohortComparisonViewModel({
+      ...result,
+      state: 'partial',
+      metrics: [
+        {
+          ...result.metrics[0]!,
+          averages: [undefined, undefined],
+          partialAverages: [8, 7],
+          delta: undefined,
+          state: 'partial',
+        },
+        ...result.metrics.slice(1),
+      ],
+    });
+    const html = renderHtmlTemplate(partial, 'bangumi-dark', {}, 720);
+    expect(html).toContain('partial observation');
+  });
+
+  it('renders a bounded long cohort card at both supported widths', async () => {
+    const longResult: SubjectCohortComparisonResult = {
+      ...result,
+      cohorts: result.cohorts.map((cohort, cohortIndex) => ({
+        ...cohort,
+        label: `${cohort.label} ${'非常长的标题'.repeat(20)}`,
+        querySummary: `${cohort.querySummary} ${'很长的查询摘要'.repeat(40)}`,
+        subjects: Array.from({ length: 60 }, (_, index) => ({
+          ...cohort.subjects[0]!,
+          id: cohortIndex * 1000 + index + 1,
+          name: `${'原始条目名称'.repeat(30)} ${index}`,
+          displayName: `${'超长中文条目名称'.repeat(30)} ${index}`,
+        })),
+      })),
+      warnings: Array.from({ length: 12 }, (_, index) => ({
+        code: `LONG_WARNING_${index}`,
+        state: 'partial' as const,
+        message: '有界渲染告警'.repeat(40),
+      })),
+      limitations: Array.from({ length: 8 }, (_, index) => `限制 ${index} ${'说明'.repeat(80)}`),
+    };
+    const viewModel = buildSubjectCohortComparisonViewModel(longResult, {
+      maxSubjectsPerCohort: 12,
+    });
+    const service = new RenderService();
+    try {
+      for (const width of [640, 960]) {
+        const rendered = await service.renderCard(viewModel, { width, cache: false });
+        expect(rendered.buffer.subarray(0, 8)).toEqual(
+          Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        );
+        expect(rendered.height).toBeLessThan(6000);
+      }
+    } finally {
+      await service.close();
+    }
+  });
+
+  it('renders one cohort without inventing a B-minus-A column', () => {
+    const oneCohort = buildSubjectCohortComparisonViewModel({
+      ...result,
+      cohorts: [result.cohorts[0]!],
+      metrics: result.metrics.map((metric) => ({
+        ...metric,
+        averages: [metric.averages[0]],
+        delta: undefined,
+      })),
+    });
+    const html = renderHtmlTemplate(oneCohort, 'bangumi-dark', {}, 720);
+    expect(html).toContain('条目群体聚合');
+    expect(html).toContain('单 cohort 观察');
+    expect(html).not.toContain('B − A');
   });
 });
