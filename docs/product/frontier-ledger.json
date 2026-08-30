@@ -1368,11 +1368,32 @@
       "kind": "scenario",
       "user_question": "某条目最近一次资料修改改了什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_latest_subject_revision for official summary/detail evidence; only claim exact changed fields if the source later supplies verifiable before/after semantics.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-007"],
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_latest_subject_revision",
+          "bangumi.render_latest_subject_revision"
+        ],
+        "tests": [
+          "tests/semantic/subject-latest-revision.test.ts",
+          "tests/render/subject-latest-revision.test.ts",
+          "tests/standalone/revision-latest-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/services/revision-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/templates/SubjectLatestRevisionCard.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "source_contract": "Read one official GET /v0/revisions/subjects page at limit=1 and offset=0, select only its first source-order record, then read at most one GET /v0/revisions/subjects/{revision_id} detail with a 1 MiB response limit; preserve bounded id/type/summary/created_at/creator and flexible data key/value evidence, with explicit partial/not_found/unavailable states and no source-order or exact before/after claim.",
+        "closure_reason": "Delivered the safe bounded official-v0 latest-revision evidence slice; exact before/after field diffs remain unsupported by the current source contract."
+      }
     },
     {
       "id": "C14",
@@ -1467,9 +1488,29 @@
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
       "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "next_action": "Use the latest-subject-revision evidence slice for official summary/detail context; keep exact before/after change claims deferred until the source contract proves them.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": ["C13"],
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_revision_intelligence",
+          "bangumi.render_revision_timeline",
+          "bangumi.get_latest_subject_revision",
+          "bangumi.render_latest_subject_revision"
+        ],
+        "tests": [
+          "tests/semantic/subject-latest-revision.test.ts",
+          "tests/render/subject-latest-revision.test.ts",
+          "tests/standalone/revision-latest-command.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/services/revision-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts"
+        ],
+        "source_contract": "The existing bounded revision timeline remains compatible; the new subject slice adds one offset-zero official list record plus one bounded detail payload, and reports the evidence without presenting flexible data as a guaranteed diff.",
+        "closure_reason": "Reconciled the remaining OP-007 gap with a bounded latest-subject evidence path while retaining PARTIAL status for unsupported exact change reconstruction."
+      }
     },
     {
       "id": "OP-008",

@@ -8,6 +8,7 @@ import {
   CollectionProgressViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
+  SubjectLatestRevisionViewModel,
   EpisodeGuideViewModel,
   EpisodeIntegrityViewModel,
   PersonProfileViewModel,
@@ -36,6 +37,7 @@ import { CastCard } from './CastCard.js';
 import { CollectionProgressCard } from './CollectionProgressCard.js';
 import { CalendarCard } from './CalendarCard.js';
 import { RevisionTimelineCard } from './RevisionTimelineCard.js';
+import { SubjectLatestRevisionCard } from './SubjectLatestRevisionCard.js';
 import { EpisodeGuideCard } from './EpisodeGuideCard.js';
 import { EpisodeIntegrityCard } from './EpisodeIntegrityCard.js';
 import { PersonProfileCard } from './PersonProfileCard.js';
@@ -138,6 +140,14 @@ registerTemplate<RevisionTimelineViewModel>({
   version: 1,
   render: (vm, theme, _resolvedImages, width) => (
     <RevisionTimelineCard viewModel={vm} theme={theme} width={width} />
+  ),
+});
+
+registerTemplate<SubjectLatestRevisionViewModel>({
+  id: 'subject-latest-revision',
+  version: 1,
+  render: (vm, theme, _resolvedImages, width) => (
+    <SubjectLatestRevisionCard viewModel={vm} theme={theme} width={width} />
   ),
 });
 

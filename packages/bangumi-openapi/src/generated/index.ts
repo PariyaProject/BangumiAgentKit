@@ -507,84 +507,100 @@ export class GeneratedBangumiOpenApiClient {
   /** Get Person Revisions (GET /v0/revisions/persons) */
   async getPersonRevisions(
     query: OperationQuery<'getPersonRevisions'>,
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getPersonRevisions'>> {
     return this.transport.request<OperationResponse<'getPersonRevisions'>>({
       method: 'GET',
       path: `/v0/revisions/persons`,
       query: query as Record<string, unknown> | undefined,
+      ...requestOptions,
     });
   }
 
   /** Get Person Revision (GET /v0/revisions/persons/{revision_id}) */
   async getPersonRevisionByRevisionId(
     revision_id: OperationPath<'getPersonRevisionByRevisionId'>['revision_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getPersonRevisionByRevisionId'>> {
     return this.transport.request<OperationResponse<'getPersonRevisionByRevisionId'>>({
       method: 'GET',
       path: `/v0/revisions/persons/${encodeURIComponent(String(revision_id))}`,
+      ...requestOptions,
     });
   }
 
   /** Get Character Revisions (GET /v0/revisions/characters) */
   async getCharacterRevisions(
     query: OperationQuery<'getCharacterRevisions'>,
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getCharacterRevisions'>> {
     return this.transport.request<OperationResponse<'getCharacterRevisions'>>({
       method: 'GET',
       path: `/v0/revisions/characters`,
       query: query as Record<string, unknown> | undefined,
+      ...requestOptions,
     });
   }
 
   /** Get Character Revision (GET /v0/revisions/characters/{revision_id}) */
   async getCharacterRevisionByRevisionId(
     revision_id: OperationPath<'getCharacterRevisionByRevisionId'>['revision_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getCharacterRevisionByRevisionId'>> {
     return this.transport.request<OperationResponse<'getCharacterRevisionByRevisionId'>>({
       method: 'GET',
       path: `/v0/revisions/characters/${encodeURIComponent(String(revision_id))}`,
+      ...requestOptions,
     });
   }
 
   /** Get Subject Revisions (GET /v0/revisions/subjects) */
   async getSubjectRevisions(
     query: OperationQuery<'getSubjectRevisions'>,
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getSubjectRevisions'>> {
     return this.transport.request<OperationResponse<'getSubjectRevisions'>>({
       method: 'GET',
       path: `/v0/revisions/subjects`,
       query: query as Record<string, unknown> | undefined,
+      ...requestOptions,
     });
   }
 
   /** Get Subject Revision (GET /v0/revisions/subjects/{revision_id}) */
   async getSubjectRevisionByRevisionId(
     revision_id: OperationPath<'getSubjectRevisionByRevisionId'>['revision_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getSubjectRevisionByRevisionId'>> {
     return this.transport.request<OperationResponse<'getSubjectRevisionByRevisionId'>>({
       method: 'GET',
       path: `/v0/revisions/subjects/${encodeURIComponent(String(revision_id))}`,
+      ...requestOptions,
     });
   }
 
   /** Get Episode Revisions (GET /v0/revisions/episodes) */
   async getEpisodeRevisions(
     query: OperationQuery<'getEpisodeRevisions'>,
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getEpisodeRevisions'>> {
     return this.transport.request<OperationResponse<'getEpisodeRevisions'>>({
       method: 'GET',
       path: `/v0/revisions/episodes`,
       query: query as Record<string, unknown> | undefined,
+      ...requestOptions,
     });
   }
 
   /** Get Episode Revision (GET /v0/revisions/episodes/{revision_id}) */
   async getEpisodeRevisionByRevisionId(
     revision_id: OperationPath<'getEpisodeRevisionByRevisionId'>['revision_id'],
+    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes' | 'retryOptions'>,
   ): Promise<OperationResponse<'getEpisodeRevisionByRevisionId'>> {
     return this.transport.request<OperationResponse<'getEpisodeRevisionByRevisionId'>>({
       method: 'GET',
       path: `/v0/revisions/episodes/${encodeURIComponent(String(revision_id))}`,
+      ...requestOptions,
     });
   }
 
