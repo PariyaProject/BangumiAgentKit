@@ -33,6 +33,22 @@ function mediaLabel(media: PersonActivityViewModel['media']): string {
   return media === 'tv' ? '可判断为 TV 的动画' : media === 'anime' ? '全部动画' : '全部媒介';
 }
 
+function comparisonStateLabel(
+  state: NonNullable<PersonActivityViewModel['comparison']>['state'],
+): string {
+  return state === 'complete'
+    ? '完整'
+    : state === 'partial'
+      ? '部分覆盖'
+      : state === 'unavailable'
+        ? '来源不可用'
+        : '当前不可计算';
+}
+
+function signed(value: number): string {
+  return value > 0 ? `+${value}` : String(value);
+}
+
 export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
   viewModel,
   theme,
@@ -121,6 +137,71 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           ? ` · 已达到边界${viewModel.coverage.sampled ? '（确定性等距样本）' : ''}`
           : ''}
       </div>
+
+      {viewModel.comparison && (
+        <div
+          style={{
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            color: theme.textMuted,
+            fontSize: '12px',
+            lineHeight: 1.55,
+          }}
+        >
+          <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
+            前后窗口对比 · {viewModel.comparison.windowMonths} 个日历月 · 状态：
+            {comparisonStateLabel(viewModel.comparison.state)}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {(
+              [
+                { label: '最近窗口', period: viewModel.comparison.recent },
+                { label: '之前窗口', period: viewModel.comparison.previous },
+              ] as const
+            ).map(({ label, period }) => (
+              <div
+                key={String(label)}
+                style={{
+                  flex: '1 1 210px',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: theme.radius.sm,
+                  padding: theme.spacing.sm,
+                }}
+              >
+                <div style={{ color: theme.text, fontWeight: 600 }}>{label}</div>
+                <div>
+                  {period.start} 至 {period.end}
+                </div>
+                <div>
+                  {period.uniqueSubjects} 部作品 · {period.creditRows} 行 ·{' '}
+                  {period.uniqueCharacters} 个角色
+                  {period.truncated || period.sampled ? ' · 部分覆盖' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ color: theme.text, marginTop: theme.spacing.sm }}>
+            差值（最近 − 之前）：{signed(viewModel.comparison.delta.uniqueSubjects)} 部作品 ·{' '}
+            {signed(viewModel.comparison.delta.creditRows)} 行 ·{' '}
+            {signed(viewModel.comparison.delta.uniqueCharacters)} 个角色
+          </div>
+          <div style={{ marginTop: theme.spacing.xs }}>
+            {viewModel.comparison.peak.state === 'complete'
+              ? `观察到的发布月份峰值（按去重作品）：${viewModel.comparison.peak.months
+                  .map(
+                    (item) =>
+                      `${item.month}（${item.period === 'recent' ? '最近' : '之前'}，${item.uniqueSubjects} 部）`,
+                  )
+                  .join('、')}`
+              : '没有足够的作品首播日期来计算发布月份峰值。'}
+          </div>
+          <div style={{ marginTop: theme.spacing.xs }}>
+            以上按当前官方关系中的作品首播日期归窗，不代表历史快照、实际工作量或劳动时长。
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         <div style={{ flex: '1 1 280px' }}>

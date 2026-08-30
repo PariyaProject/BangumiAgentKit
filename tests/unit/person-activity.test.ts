@@ -156,6 +156,99 @@ describe('PersonActivityService', () => {
     expect(fixture.getPeakDetails()).toBeLessThanOrEqual(PERSON_ACTIVITY_DETAIL_CONCURRENCY);
   });
 
+  it('compares the recent window with the immediately preceding equal window', async () => {
+    const fixture = activityFetch();
+    const result = await new PersonActivityService(
+      new HttpClient({ fetchFn: fixture.fetchFn }),
+    ).getPersonActivity(20, {
+      asOf: '2026-08-15',
+      windowMonths: 6,
+      kind: 'voice',
+      media: 'tv',
+      comparePreviousWindow: true,
+    });
+
+    expect(result.summary).toMatchObject({ creditRows: 1, uniqueSubjects: 1 });
+    expect(result.comparison).toMatchObject({
+      state: 'partial',
+      windowMonths: 6,
+      recent: {
+        window: {
+          start: '2026-03-01',
+          end: '2026-08-15',
+        },
+        summary: { creditRows: 1, uniqueSubjects: 1 },
+      },
+      previous: {
+        window: {
+          start: '2025-09-01',
+          end: '2026-02-28',
+        },
+        summary: { creditRows: 1, uniqueSubjects: 1 },
+      },
+      delta: { creditRows: 0, uniqueSubjects: 0, uniqueCharacters: 0 },
+    });
+    expect(result.comparison?.peak).toMatchObject({
+      state: 'complete',
+      metric: 'uniqueSubjects',
+      months: [
+        expect.objectContaining({ period: 'recent', month: '2026-05', uniqueSubjects: 1 }),
+        expect.objectContaining({ period: 'previous', month: '2026-02', uniqueSubjects: 1 }),
+      ],
+    });
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'person-activity-period-comparison',
+          formulaVersion: 'person-activity-comparison-v1',
+        }),
+      ]),
+    );
+    expect(result.limitations.join(' ')).toContain('没有历史快照');
+    expect(
+      fixture.fetchFn.mock.calls.filter(([input]) =>
+        String(input).endsWith('/v0/persons/20/characters'),
+      ),
+    ).toHaveLength(2);
+  });
+
+  it('keeps a failed previous relation source partial and preserves recent evidence', async () => {
+    const fixture = activityFetch();
+    let characterCalls = 0;
+    const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20/characters')) {
+        characterCalls += 1;
+        if (characterCalls >= 2) return json({ error: 'previous relation unavailable' }, 503);
+      }
+      return await fixture.fetchFn(input, init);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-08-15',
+        windowMonths: 6,
+        kind: 'voice',
+        media: 'tv',
+        comparePreviousWindow: true,
+      },
+    );
+
+    expect(result.comparison).toMatchObject({
+      state: 'partial',
+      recent: { state: 'partial', summary: { uniqueSubjects: 1 } },
+      previous: { state: 'unavailable', summary: { uniqueSubjects: 0 } },
+      delta: { uniqueSubjects: 1 },
+    });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'COMPARISON_PERIOD_COVERAGE', state: 'partial' }),
+      ]),
+    );
+    expect(result.comparison?.peak.state).toBe('complete');
+  });
+
   it('distinguishes detail caps and detail failures from empty success', async () => {
     const fixture = activityFetch({ failSubjectIds: [2] });
     const service = new PersonActivityService(new HttpClient({ fetchFn: fixture.fetchFn }));

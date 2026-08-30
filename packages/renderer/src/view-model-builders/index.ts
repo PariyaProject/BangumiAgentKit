@@ -2385,6 +2385,36 @@ export function buildPersonActivityViewModel(
       })),
       byMonth: result.summary.byMonth,
     },
+    ...(result.comparison
+      ? {
+          comparison: {
+            state: result.comparison.state,
+            windowMonths: result.comparison.windowMonths,
+            recent: {
+              start: result.comparison.recent.window.start,
+              end: result.comparison.recent.window.end,
+              creditRows: result.comparison.recent.summary.creditRows,
+              uniqueSubjects: result.comparison.recent.summary.uniqueSubjects,
+              uniqueCharacters: result.comparison.recent.summary.uniqueCharacters,
+              rowsEligible: result.comparison.recent.coverage.rowsEligible,
+              sampled: result.comparison.recent.coverage.sampled,
+              truncated: result.comparison.recent.coverage.truncated,
+            },
+            previous: {
+              start: result.comparison.previous.window.start,
+              end: result.comparison.previous.window.end,
+              creditRows: result.comparison.previous.summary.creditRows,
+              uniqueSubjects: result.comparison.previous.summary.uniqueSubjects,
+              uniqueCharacters: result.comparison.previous.summary.uniqueCharacters,
+              rowsEligible: result.comparison.previous.coverage.rowsEligible,
+              sampled: result.comparison.previous.coverage.sampled,
+              truncated: result.comparison.previous.coverage.truncated,
+            },
+            delta: result.comparison.delta,
+            peak: result.comparison.peak,
+          },
+        }
+      : {}),
     coverage: {
       relationRowsObserved: result.coverage.relationRowsObserved,
       relationRowsSelected: result.coverage.relationRowsSelected,

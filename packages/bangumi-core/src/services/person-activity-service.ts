@@ -11,6 +11,7 @@ import {
   PersonActivityExclusionReason,
   PersonActivityKind,
   PersonActivityMedia,
+  PersonActivityComparison,
   PersonActivityRelationKind,
   PersonActivityResult,
   PersonActivityRoleFamily,
@@ -35,6 +36,8 @@ export interface PersonActivityOptions {
   maxRelations?: number;
   maxSubjectDetails?: number;
   maxRows?: number;
+  /** Compare the selected recent window with the immediately preceding equal window. */
+  comparePreviousWindow?: boolean;
   /** Test-only clock seam; not exposed by the public tool schema. */
   asOf?: string;
 }
@@ -285,6 +288,74 @@ function sourceStatus(
   return status.failed > 0 ? 'partial' : 'complete';
 }
 
+function dayBefore(value: string): string {
+  const date = parseDateOnly(value);
+  if (!date) return value;
+  date.setUTCDate(date.getUTCDate() - 1);
+  return formatDateOnly(date);
+}
+
+function comparisonState(
+  recent: PersonActivityState,
+  previous: PersonActivityState,
+): PersonActivityState {
+  if (recent === 'unavailable' && previous === 'unavailable') return 'unavailable';
+  if (recent === 'not_computable' && previous === 'not_computable') return 'not_computable';
+  if (recent === 'complete' && previous === 'complete') return 'complete';
+  return 'partial';
+}
+
+function makePeak(
+  recent: PersonActivityWindowSummary,
+  previous: PersonActivityWindowSummary,
+): NonNullable<PersonActivityComparison['peak']> {
+  const months = [
+    ...recent.byMonth.map((item) => ({ period: 'recent' as const, ...item })),
+    ...previous.byMonth.map((item) => ({ period: 'previous' as const, ...item })),
+  ];
+  const maximum = Math.max(0, ...months.map((item) => item.uniqueSubjects));
+  if (maximum === 0) {
+    return { metric: 'uniqueSubjects', state: 'not_computable', months: [] };
+  }
+  return {
+    metric: 'uniqueSubjects',
+    state: 'complete',
+    months: months.filter((item) => item.uniqueSubjects === maximum),
+  };
+}
+
+function makeComparison(
+  recent: PersonActivityResult,
+  previous: PersonActivityResult,
+): PersonActivityComparison {
+  return {
+    state: comparisonState(recent.state, previous.state),
+    windowMonths: recent.window.months,
+    recent: {
+      window: recent.window,
+      summary: recent.summary,
+      state: recent.state,
+      coverage: recent.coverage,
+    },
+    previous: {
+      window: previous.window,
+      summary: previous.summary,
+      state: previous.state,
+      coverage: previous.coverage,
+    },
+    delta: {
+      creditRows: recent.summary.creditRows - previous.summary.creditRows,
+      uniqueSubjects: recent.summary.uniqueSubjects - previous.summary.uniqueSubjects,
+      uniqueCharacters: recent.summary.uniqueCharacters - previous.summary.uniqueCharacters,
+    },
+    peak: makePeak(recent.summary, previous.summary),
+    sourceOperations: {
+      recent: recent.sourceOperations,
+      previous: previous.sourceOperations,
+    },
+  };
+}
+
 export class PersonActivityService {
   private api: GeneratedBangumiOpenApiClient;
 
@@ -299,6 +370,9 @@ export class PersonActivityService {
     personId: number,
     options: PersonActivityOptions = {},
   ): Promise<PersonActivityResult> {
+    if (options.comparePreviousWindow) {
+      return await this.getPersonActivityWithComparison(personId, options);
+    }
     const kind = options.kind ?? 'voice';
     const media = options.media ?? 'tv';
     const windowMonths = bounded(options.windowMonths, 12, 12);
@@ -714,6 +788,53 @@ export class PersonActivityService {
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
       ],
       warnings,
+    };
+  }
+
+  private async getPersonActivityWithComparison(
+    personId: number,
+    options: PersonActivityOptions,
+  ): Promise<PersonActivityResult> {
+    const baseOptions: PersonActivityOptions = { ...options, comparePreviousWindow: false };
+    const recent = await this.getPersonActivity(personId, baseOptions);
+    const previous = await this.getPersonActivity(personId, {
+      ...baseOptions,
+      asOf: dayBefore(recent.window.start),
+    });
+    const comparison = makeComparison(recent, previous);
+    const comparisonWarnings: PersonActivityResult['warnings'] = [];
+    if (comparison.state !== 'complete') {
+      comparisonWarnings.push({
+        code: 'COMPARISON_PERIOD_COVERAGE',
+        state: comparison.state,
+        message: `前后窗口覆盖状态为 ${recent.state}/${previous.state}；差值只对各窗口已计算的官方作品首播日期观察负责。`,
+      });
+    }
+    if (comparison.peak.state === 'not_computable') {
+      comparisonWarnings.push({
+        code: 'COMPARISON_PEAK_NOT_COMPUTABLE',
+        state: 'not_computable',
+        message: '前后窗口都没有可用于比较的作品首播日期，无法确定观察到的发布月份峰值。',
+      });
+    }
+    return {
+      ...recent,
+      comparison,
+      evidence: [
+        ...recent.evidence,
+        {
+          source: 'derived-s7',
+          operation: 'person-activity-period-comparison',
+          formulaVersion: 'person-activity-comparison-v1',
+          description:
+            '将当前官方人物关系按作品 first_air_date 分入最近与紧邻的等长日历月窗口；差值按最近窗口减去前一窗口，峰值按去重作品数并保留并列月份。该比较不使用历史快照。',
+        },
+      ],
+      limitations: [
+        ...recent.limitations,
+        '前后窗口都从当前官方人物关系和当前作品详情重新观察；没有历史快照，因此差值不是关系变更或真实工作量趋势。',
+      ],
+      warnings: [...recent.warnings, ...comparisonWarnings],
     };
   }
 

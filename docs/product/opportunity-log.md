@@ -400,7 +400,7 @@ Standalone command. The Epoch stays within the public read-only source boundary.
 ## OP-001 Voice Actor Workload
 
 Status:
-DELIVERED_IN_PR-7D_BOUNDED
+PARTIAL_BOUNDED_COMPARISON
 
 User question:
 
@@ -425,11 +425,13 @@ Potential Renderer:
 VoiceActorWorkload
 
 Notes:
-The full 3/6/12 month comparison is deferred: official person relationship
-payloads do not include air dates and the repository has no compatible snapshots.
-PR-7D will first deliver evidence-bearing static person/media/role/credit counts;
-time-window workload remains explicitly not-computable until its source contract
-is bounded.
+The bounded person activity surface now optionally compares two equal,
+contiguous calendar windows and reports recent-minus-previous observed release
+counts plus a tied monthly peak. It uses current official v0 person relations
+and subject first_air_date values, so it remains a release-date observation,
+not a workload, labor-time, or historical-snapshot measurement. Actual workload
+and historical person snapshots remain deferred pending a compatible source
+and retention contract.
 
 ---
 

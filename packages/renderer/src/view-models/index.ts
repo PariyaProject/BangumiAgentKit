@@ -658,6 +658,45 @@ export interface PersonActivityViewModel {
       uniqueCharacters: number;
     }>;
   };
+  comparison?: {
+    state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
+    windowMonths: number;
+    recent: {
+      start: string;
+      end: string;
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+      rowsEligible: number;
+      sampled: boolean;
+      truncated: boolean;
+    };
+    previous: {
+      start: string;
+      end: string;
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+      rowsEligible: number;
+      sampled: boolean;
+      truncated: boolean;
+    };
+    delta: {
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+    };
+    peak: {
+      state: 'complete' | 'not_computable';
+      months: Array<{
+        period: 'recent' | 'previous';
+        month: string;
+        creditRows: number;
+        uniqueSubjects: number;
+        uniqueCharacters: number;
+      }>;
+    };
+  };
   coverage: {
     relationRowsObserved: number;
     relationRowsSelected: number;

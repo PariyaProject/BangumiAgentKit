@@ -46,12 +46,17 @@ describe('bangumi.get_person_activity', () => {
         maxRelations: 12,
         maxSubjectDetails: 8,
         maxRows: 6,
+        comparePreviousWindow: true,
       },
       { principalId: 'p', botInstanceId: 'b', conversationId: 'c' },
     )) as Record<string, any>;
 
     expect(result.state).toBe('complete');
     expect(result.summary).toMatchObject({ uniqueSubjects: 1, uniqueCharacters: 1 });
+    expect(result.comparison).toMatchObject({
+      windowMonths: 6,
+      delta: expect.objectContaining({ creditRows: expect.any(Number) }),
+    });
     expect(result.coverage).toMatchObject({ maxRelations: 12, maxSubjectDetails: 8, maxRows: 6 });
     expect(result.evidence).toEqual(
       expect.arrayContaining([
