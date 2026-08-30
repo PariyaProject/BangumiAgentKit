@@ -2826,6 +2826,106 @@ function presentPersonCollaboration(value: Record<string, unknown>): string | un
   return boundHumanLines(lines);
 }
 
+function personActivityMetric(record: Record<string, unknown> | undefined, key: string): string {
+  const value = record?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? humanField(value, 32) : '不可用';
+}
+
+function personActivitySignedMetric(
+  record: Record<string, unknown> | undefined,
+  key: string,
+): string {
+  const value = record?.[key];
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '不可用';
+  return humanField(value > 0 ? `+${value}` : value, 32);
+}
+
+function personActivityPeriodMetric(
+  period: Record<string, unknown> | undefined,
+  key: string,
+): string {
+  const coverage = comparisonRecord(period?.coverage);
+  const rowsEligible = coverage?.rowsEligible;
+  const observable =
+    period?.state === 'complete' ||
+    (period?.state === 'partial' && typeof rowsEligible === 'number' && rowsEligible > 0);
+  return observable ? personActivityMetric(comparisonRecord(period?.summary), key) : '不可用';
+}
+
+function personActivityOperationLines(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, 8)
+    .map((rawOperation) => {
+      const operation = comparisonRecord(rawOperation);
+      if (!operation) return undefined;
+      const attempted = Number(operation.attempted);
+      const failed = Number(operation.failed);
+      const status =
+        attempted === 0
+          ? '未请求'
+          : failed >= attempted
+            ? '失败'
+            : failed > 0
+              ? '部分成功'
+              : '成功';
+      return `${humanField(operation.operation || 'unknown', 180)} · ${status} · 尝试 ${humanField(operation.attempted ?? '?', 16)} · 成功 ${humanField(operation.succeeded ?? '?', 16)} · 失败 ${humanField(operation.failed ?? '?', 16)}`;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
+function personActivityExclusionLines(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, 6)
+    .map((rawExclusion) => {
+      const exclusion = comparisonRecord(rawExclusion);
+      if (!exclusion) return undefined;
+      const samples = Array.isArray(exclusion.sampleSubjectIds)
+        ? exclusion.sampleSubjectIds.slice(0, 5).join('、')
+        : '';
+      const reasonLabels: Record<string, string> = {
+        missing_subject_id: '关系缺少条目 ID',
+        subject_detail_cap: '作品详情预算上限',
+        subject_detail_unavailable: '作品详情不可用',
+        missing_date: '缺少作品首播日期',
+        invalid_date: '作品首播日期无效',
+        outside_window: '不在时间窗内',
+        media_excluded: '媒介筛选排除',
+        media_unknown: '平台字段不足以判断 TV',
+      };
+      return `${humanField(reasonLabels[String(exclusion.reason)] || exclusion.reason || 'unknown', 96)} ${humanField(exclusion.count ?? '?', 32)}${samples ? `（示例 ID：${humanField(samples, 96)}）` : ''}`;
+    })
+    .filter((item): item is string => Boolean(item));
+}
+
+function personActivityTagText(origin: Record<string, unknown> | undefined): string {
+  if (!origin || !Array.isArray(origin.metaTags)) {
+    const malformed = Number(
+      origin?.metaTagsCoverage && typeof origin.metaTagsCoverage === 'object'
+        ? (origin.metaTagsCoverage as Record<string, unknown>).malformed
+        : 0,
+    );
+    return malformed > 0 ? `官方 meta_tags：字段异常 ${humanField(malformed, 32)} 项` : '';
+  }
+  const valid = origin.metaTags.filter((tag): tag is string => typeof tag === 'string');
+  const visible = valid.slice(0, 32).map((tag) => humanField(tag, 96));
+  const tagsCoverage =
+    origin.metaTagsCoverage && typeof origin.metaTagsCoverage === 'object'
+      ? (origin.metaTagsCoverage as Record<string, unknown>)
+      : undefined;
+  const omitted = Math.max(
+    Number(tagsCoverage?.omitted) || 0,
+    Math.max(0, valid.length - visible.length),
+  );
+  const malformed = Number(tagsCoverage?.malformed) || origin.metaTags.length - valid.length;
+  const textTruncated = Math.max(
+    Number(tagsCoverage?.textTruncated) || 0,
+    valid.slice(0, 32).filter((tag) => graphemes(tag).length > 96).length,
+  );
+  return `官方 meta_tags：${visible.join('、') || '（空）'}${omitted > 0 ? ` · 另有 ${humanField(omitted, 32)} 项省略` : ''}${textTruncated > 0 ? ` · 文本截断 ${humanField(textTruncated, 32)} 项` : ''}${malformed > 0 ? ` · 异常 ${humanField(malformed, 32)} 项` : ''}`;
+}
+
 function presentPersonActivity(value: Record<string, unknown>): string | undefined {
   const personId = value.personId;
   const rows = Array.isArray(value.rows) ? value.rows : undefined;
@@ -2873,12 +2973,16 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}`,
     `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
     `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · 详情 ${humanField(coverage.subjectDetailsSucceeded ?? '?', 32)}/${humanField(coverage.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(coverage.rowsReturned ?? '?', 32)}/${humanField(coverage.rowsEligible ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
+    `上限: 关系 ${humanField(coverage.maxRelations ?? '?', 32)} · 详情 ${humanField(coverage.maxSubjectDetails ?? '?', 32)} · 行 ${humanField(coverage.maxRows ?? '?', 32)} · 并发 ${humanField(coverage.detailConcurrency ?? '?', 32)} · 采样 ${coverage.sampled ? '是' : '否'}`,
   ];
 
   if (origin || coverageOrigin) {
     const sourceOrigin = coverageOrigin || origin;
     lines.push(
       `作品来源观察（官方 v0 subject.meta_tags）：覆盖 ${humanField(sourceOrigin?.subjectsObserved ?? '?', 32)} 部去重作品 · ${labelOrigin('explicit_original')} ${humanField(count(origin, 'explicitOriginalSubjects'), 32)} · ${labelOrigin('not_observed')} ${humanField(count(origin, 'notObservedSubjects'), 32)} · ${labelOrigin('unknown')} ${humanField(count(origin, 'unknownSubjects'), 32)}`,
+    );
+    lines.push(
+      `标签覆盖：观察 ${humanField(sourceOrigin?.tagsObserved ?? '?', 32)} · 合法 ${humanField(sourceOrigin?.tagsValid ?? '?', 32)} · 返回 ${humanField(sourceOrigin?.tagsReturned ?? '?', 32)} · 省略 ${humanField(sourceOrigin?.tagsOmitted ?? '?', 32)} · 异常 ${humanField(sourceOrigin?.malformedTagValues ?? '?', 32)} · 文本截断 ${humanField(sourceOrigin?.textTruncatedTags ?? '?', 32)} · 截断作品 ${humanField(sourceOrigin?.truncatedSubjects ?? '?', 32)} · 上限 ${humanField(sourceOrigin?.maxTagsPerSubject ?? '?', 32)} 项/${humanField(sourceOrigin?.maxTagCharacters ?? '?', 32)} 字 · 响应上限 ${humanField(sourceOrigin?.responseLimitBytes ?? '?', 32)} bytes`,
     );
     lines.push(
       '说明：未观察到“原创”标签不等于“改编”；这里只报告官方字段中的正向观察，不从其他字段推断。',
@@ -2888,19 +2992,96 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     lines.push(`来源与检索：official-v0 · ${humanField(coverage.retrievedAt, 64)}`);
   }
 
+  const comparison = comparisonRecord(value.comparison);
+  if (comparison) {
+    lines.push(
+      `前后窗口对比 · 状态: ${comparisonStateLabel(comparison.state)} · 每窗 ${humanField(comparison.windowMonths ?? '?', 32)} 个日历月 · 差值为最近窗口减之前窗口`,
+    );
+    for (const [label, key] of [
+      ['最近窗口', 'recent'],
+      ['之前窗口', 'previous'],
+    ] as const) {
+      const period = comparisonRecord(comparison[key]);
+      if (!period) {
+        lines.push(`${label}: 未记录窗口结果。`);
+        continue;
+      }
+      const periodWindow = comparisonRecord(period.window);
+      const periodCoverage = comparisonRecord(period.coverage);
+      lines.push(
+        `${label}: ${humanField(periodWindow?.start || '未知', 32)} 至 ${humanField(periodWindow?.end || '未知', 32)} · 状态 ${comparisonStateLabel(period.state)} · 作品 ${personActivityPeriodMetric(period, 'uniqueSubjects')} · 关系 ${personActivityPeriodMetric(period, 'creditRows')} · 角色 ${personActivityPeriodMetric(period, 'uniqueCharacters')}`,
+      );
+      lines.push(
+        `  覆盖: 关系 ${humanField(periodCoverage?.relationRowsSelected ?? '?', 32)}/${humanField(periodCoverage?.relationRowsObserved ?? '?', 32)} · 详情 ${humanField(periodCoverage?.subjectDetailsSucceeded ?? '?', 32)}/${humanField(periodCoverage?.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(periodCoverage?.rowsReturned ?? '?', 32)}/${humanField(periodCoverage?.rowsEligible ?? '?', 32)} · 详情省略 ${humanField(periodCoverage?.subjectDetailIdsDroppedAtLimit ?? '?', 32)} · 截断 ${periodCoverage?.truncated ? '是' : '否'} · 采样 ${periodCoverage?.sampled ? '是' : '否'}`,
+      );
+      lines.push(
+        `  上限: 关系 ${humanField(periodCoverage?.maxRelations ?? '?', 32)} · 详情 ${humanField(periodCoverage?.maxSubjectDetails ?? '?', 32)} · 行 ${humanField(periodCoverage?.maxRows ?? '?', 32)} · 并发 ${humanField(periodCoverage?.detailConcurrency ?? '?', 32)}`,
+      );
+      const exclusionLines = personActivityExclusionLines(period.exclusions);
+      if (exclusionLines.length > 0) {
+        lines.push(`  未计入：${humanField(exclusionLines.join('；'), 420)}`);
+        if (Array.isArray(period.exclusions) && period.exclusions.length > 6) {
+          lines.push(`  另有 ${humanField(period.exclusions.length - 6, 32)} 个未计入原因未展开。`);
+        }
+      }
+    }
+
+    const delta = comparisonRecord(comparison.delta);
+    lines.push(
+      `差值（最近 − 之前）：状态 ${comparisonStateLabel(delta?.state)} · 作品 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'uniqueSubjects') : '不可用'} · 关系 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'creditRows') : '不可用'} · 角色 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'uniqueCharacters') : '不可用'}（不可用窗口不按零计算）`,
+    );
+    const peak = comparisonRecord(comparison.peak);
+    const peakMonths = Array.isArray(peak?.months) ? peak.months : [];
+    if (peakMonths.length > 0) {
+      lines.push(
+        `发布月份峰值（按去重作品）：${peakMonths
+          .slice(0, 8)
+          .map((rawMonth) => {
+            const month = comparisonRecord(rawMonth);
+            return month
+              ? `${humanField(month.month || '未知', 32)}（${month.period === 'recent' ? '最近' : '之前'}，${personActivityMetric(month, 'uniqueSubjects')} 部）`
+              : undefined;
+          })
+          .filter((item): item is string => Boolean(item))
+          .join(
+            '、',
+          )}${peakMonths.length > 8 ? `；另有 ${humanField(peakMonths.length - 8, 32)} 个并列月份未展开` : ''}`,
+      );
+    } else {
+      lines.push(`发布月份峰值不可用（${comparisonStateLabel(peak?.state)}）。`);
+    }
+    const comparisonOperations = comparisonRecord(comparison.sourceOperations);
+    for (const [label, key] of [
+      ['最近窗口', 'recent'],
+      ['之前窗口', 'previous'],
+    ] as const) {
+      const operationLines = personActivityOperationLines(comparisonOperations?.[key]);
+      if (operationLines.length > 0) {
+        lines.push(`  ${label}来源操作：${humanField(operationLines.join('；'), 520)}`);
+      }
+    }
+    lines.push('说明：前后窗口是当前官方关系按作品首播日期的观察，不是历史快照或实际工作量。');
+  }
+
   lines.push('窗口内作品：');
   for (const [index, rawRow] of rows.slice(0, 12).entries()) {
     const row = comparisonRecord(rawRow);
     if (!row) continue;
     const rowOrigin = comparisonRecord(row.origin);
-    const tags = Array.isArray(rowOrigin?.metaTags)
-      ? ` · 官方 meta_tags：${rowOrigin.metaTags.join('、') || '（空）'}`
-      : '';
+    const tags = personActivityTagText(rowOrigin);
     lines.push(
-      `${index + 1}. ${humanField(row.subjectNameCn || row.subjectName || `条目 ${row.subjectId || '?'}`, 180)} #${humanField(row.subjectId ?? '?', 32)} · ${humanField(row.firstAirDate || '日期未知', 32)} · ${row.relationKind === 'voice' ? '声优' : row.relationKind === 'staff' ? '制作人员' : humanField(row.relationKind || '关系未知', 32)} · ${humanField(row.roleFamily || '职位未知', 64)} · 来源观察：${labelOrigin(rowOrigin?.state)}${tags}`,
+      `${index + 1}. ${humanField(row.subjectNameCn || row.subjectName || `条目 ${row.subjectId || '?'}`, 180)} #${humanField(row.subjectId ?? '?', 32)} · ${humanField(row.firstAirDate || '日期未知', 32)} · ${row.relationKind === 'voice' ? '声优' : row.relationKind === 'staff' ? '制作人员' : humanField(row.relationKind || '关系未知', 32)} · ${humanField(row.roleFamily || '职位未知', 64)} · 来源观察：${labelOrigin(rowOrigin?.state)}${tags ? ` · ${tags}` : ''}`,
     );
   }
   if (rows.length > 12) lines.push(`另有 ${humanField(rows.length - 12, 32)} 条窗口内关系未展开。`);
+
+  const exclusionLines = personActivityExclusionLines(value.exclusions);
+  if (exclusionLines.length > 0) {
+    lines.push(`未计入原因：${humanField(exclusionLines.join('；'), 420)}`);
+    if (Array.isArray(value.exclusions) && value.exclusions.length > 6) {
+      lines.push(`另有 ${humanField(value.exclusions.length - 6, 32)} 个未计入原因未展开。`);
+    }
+  }
 
   const operations = sourceOperations
     .slice(0, 6)

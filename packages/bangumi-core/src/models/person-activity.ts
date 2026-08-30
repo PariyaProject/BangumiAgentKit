@@ -1,5 +1,5 @@
 import type { DomainPerson } from './person.js';
-import type { SubjectType } from './subject.js';
+import type { DomainSubjectMetaTagsCoverage, SubjectType } from './subject.js';
 
 export type PersonActivityKind = 'voice' | 'staff' | 'all';
 export type PersonActivityMedia = 'anime' | 'tv' | 'all';
@@ -12,12 +12,31 @@ export interface PersonActivityOriginObservation {
   state: PersonActivityOriginState;
   /** Raw official subject.meta_tags, retained when the source returned the field. */
   metaTags?: string[];
+  metaTagsCoverage?: DomainSubjectMetaTagsCoverage;
 }
 
 export interface PersonActivityOriginSummary {
   explicitOriginalSubjects: number;
   notObservedSubjects: number;
   unknownSubjects: number;
+}
+
+export interface PersonActivityOriginCoverage extends PersonActivityOriginSummary {
+  subjectsObserved: number;
+  subjectsWithMetaTags: number;
+  subjectsPartial: number;
+  subjectsUnknown: number;
+  tagsObserved: number;
+  tagsValid: number;
+  tagsReturned: number;
+  tagsOmitted: number;
+  malformedTagValues: number;
+  textTruncatedTags: number;
+  truncatedSubjects: number;
+  truncated: boolean;
+  maxTagsPerSubject: number;
+  maxTagCharacters: number;
+  responseLimitBytes: number;
 }
 
 export interface PersonActivityWindow {
@@ -97,6 +116,7 @@ export interface PersonActivityComparisonPeriod {
   summary: PersonActivityWindowSummary;
   state: PersonActivityState;
   coverage: PersonActivityCoverage;
+  exclusions: PersonActivityExclusion[];
 }
 
 export interface PersonActivityPeakMonth {
@@ -162,7 +182,7 @@ export interface PersonActivityCoverage {
   detailConcurrency: number;
   truncated: boolean;
   retrievedAt: string;
-  origin: PersonActivityOriginSummary & { subjectsObserved: number };
+  origin: PersonActivityOriginCoverage;
 }
 
 export interface PersonActivityResult {

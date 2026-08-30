@@ -686,6 +686,7 @@ export interface PersonActivityViewModel {
       state: 'explicit_original' | 'not_observed' | 'unknown';
       label: string;
       metaTags?: string[];
+      metaTagsCoverage?: import('@bangumi-agent-kit/bangumi-core').DomainSubjectMetaTagsCoverage;
     };
   }>;
   hiddenRows: number;
@@ -730,6 +731,7 @@ export interface PersonActivityViewModel {
       rowsEligible: number;
       sampled: boolean;
       truncated: boolean;
+      exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
     };
     previous: {
       state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
@@ -741,6 +743,7 @@ export interface PersonActivityViewModel {
       rowsEligible: number;
       sampled: boolean;
       truncated: boolean;
+      exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
     };
     delta: {
       state: 'complete' | 'partial' | 'not_computable' | 'unavailable';
@@ -787,12 +790,7 @@ export interface PersonActivityViewModel {
     maxRows: number;
     detailConcurrency: number;
     truncated: boolean;
-    origin: {
-      subjectsObserved: number;
-      explicitOriginalSubjects: number;
-      notObservedSubjects: number;
-      unknownSubjects: number;
-    };
+    origin: import('@bangumi-agent-kit/bangumi-core').PersonActivityOriginCoverage;
   };
   exclusions: Array<{ reason: string; count: number; sampleSubjectIds: number[] }>;
   sourceOperations: Array<{

@@ -44,6 +44,45 @@ describe('Domain Mappers Unit Tests', () => {
     expect(mapSubjectType(99)).toBe('other');
   });
 
+  it('validates meta_tags elements and preserves bounded original evidence', () => {
+    const malformed = mapSubject({
+      id: 103,
+      name: 'Malformed tags',
+      type: 2,
+      meta_tags: ['原创', 42, null, '漫画'],
+    } as any);
+    expect(malformed.metaTags).toEqual(['原创', '漫画']);
+    expect(malformed.metaTagsCoverage).toMatchObject({
+      state: 'partial',
+      observed: 4,
+      valid: 2,
+      returned: 2,
+      omitted: 0,
+      malformed: 2,
+      truncated: false,
+    });
+
+    const tags = Array.from({ length: 40 }, (_, index) => `标签-${index}`);
+    tags.push('原创');
+    const bounded = mapSubject({ id: 104, name: 'Bounded tags', type: 2, meta_tags: tags } as any, {
+      metaTagsProjection: 'bounded',
+    });
+    expect(bounded.metaTags).toHaveLength(32);
+    expect(bounded.metaTags).toContain('原创');
+    expect(bounded.metaTagsCoverage).toMatchObject({
+      state: 'partial',
+      observed: 41,
+      valid: 41,
+      returned: 32,
+      omitted: 9,
+      malformed: 0,
+      textTruncated: 0,
+      truncated: true,
+      maxItems: 32,
+      maxCharacters: 96,
+    });
+  });
+
   it('maps Character and Person correctly', () => {
     const char = mapCharacter({ id: 10, name: 'Hitori Gotou', type: 1 } as any);
     expect(char.id).toBe(10);

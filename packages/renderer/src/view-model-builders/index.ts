@@ -2523,6 +2523,11 @@ function buildPersonActivityComparisonPeriodViewModel(period: PersonActivityComp
     rowsEligible: period.coverage.rowsEligible,
     sampled: period.coverage.sampled,
     truncated: period.coverage.truncated,
+    exclusions: period.exclusions.map((item) => ({
+      reason: PERSON_ACTIVITY_REASON_LABELS[item.reason] || item.reason,
+      count: item.count,
+      sampleSubjectIds: item.sampleSubjectIds,
+    })),
   };
 }
 
@@ -2568,6 +2573,7 @@ export function buildPersonActivityViewModel(
         state: row.origin.state,
         label: PERSON_ACTIVITY_ORIGIN_LABELS[row.origin.state] || row.origin.state,
         metaTags: row.origin.metaTags,
+        metaTagsCoverage: row.origin.metaTagsCoverage,
       },
     })),
     hiddenRows: Math.max(0, result.rows.length - visibleRows.length),
