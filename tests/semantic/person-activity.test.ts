@@ -65,7 +65,12 @@ describe('bangumi.get_person_activity', () => {
       windowMonths: 6,
       delta: expect.objectContaining({ creditRows: expect.any(Number) }),
     });
-    expect(result.coverage).toMatchObject({ maxRelations: 12, maxSubjectDetails: 8, maxRows: 6 });
+    expect(result.coverage).toMatchObject({
+      maxRelations: 12,
+      maxSubjectDetails: 8,
+      maxRows: 6,
+      responseLimitBytes: 1048576,
+    });
     expect(result.evidence).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -80,6 +85,9 @@ describe('bangumi.get_person_activity', () => {
     );
     expect(result.limitations.join(' ')).toContain('first_air_date');
     expect(result.limitations.join(' ')).toContain('未观察到该标签不等于改编');
+    expect(result.limitations.join(' ')).toContain(
+      '每个官方 v0 人物、人物关系和作品详情响应最多读取',
+    );
   });
 
   it('rejects authority values outside the published bounds', () => {

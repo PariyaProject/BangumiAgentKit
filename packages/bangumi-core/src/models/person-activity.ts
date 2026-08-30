@@ -183,6 +183,7 @@ export interface PersonActivityCoverage {
   maxSubjectDetails: number;
   maxRows: number;
   detailConcurrency: number;
+  responseLimitBytes: number;
   truncated: boolean;
   retrievedAt: string;
   origin: PersonActivityOriginCoverage;

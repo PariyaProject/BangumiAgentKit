@@ -3,6 +3,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   PersonActivityService,
   PERSON_ACTIVITY_DETAIL_CONCURRENCY,
+  PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
 } from '@bangumi-agent-kit/bangumi-core';
 
 function json(value: unknown, status = 200): Response {
@@ -288,6 +289,85 @@ describe('PersonActivityService', () => {
     expect(result.limitations).toEqual(
       expect.arrayContaining([expect.stringContaining('只匹配官方 person-subject relation')]),
     );
+  });
+
+  it('keeps role-filter empty results complete or partial without vacuous date failures', async () => {
+    const run = async (
+      relations: Record<string, unknown>[],
+      detailOverrides: Record<number, Record<string, unknown>> = {},
+      options: Record<string, unknown> = {},
+    ) => {
+      const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/v0/persons/20')) return json(personPayload());
+        if (url.endsWith('/v0/persons/20/subjects')) return json(relations);
+        if (url.includes('/v0/subjects/')) {
+          const id = Number(url.split('/').pop());
+          return json(subjectPayload(id, detailOverrides[id]));
+        }
+        return json({ error: 'not found' }, 404);
+      });
+      return await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(20, {
+        asOf: '2026-08-15',
+        kind: 'staff',
+        staffRole: 'director',
+        media: 'all',
+        ...options,
+      });
+    };
+
+    const knownNonmatches = await run([{ id: 401, name: '脚本作品', staff: '脚本' }]);
+    expect(knownNonmatches.state).toBe('complete');
+    expect(knownNonmatches.rows).toEqual([]);
+    expect(knownNonmatches.coverage).toMatchObject({
+      staffRoleExcludedRows: 1,
+      staffRoleUnknownRows: 0,
+    });
+    expect(knownNonmatches.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'NO_WINDOW_MATCHES', state: 'complete' }),
+      ]),
+    );
+
+    const unknownOnly = await run([{ id: 402, name: '缺失职位作品' }]);
+    expect(unknownOnly.state).toBe('partial');
+    expect(unknownOnly.rows).toEqual([]);
+    expect(unknownOnly.coverage).toMatchObject({
+      staffRoleExcludedRows: 1,
+      staffRoleUnknownRows: 1,
+    });
+    expect(unknownOnly.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'STAFF_ROLE_FILTER_UNKNOWN' })]),
+    );
+
+    const mixedUnknown = await run([
+      { id: 403, name: '脚本作品', staff: '脚本' },
+      { id: 404, name: '缺失职位作品' },
+    ]);
+    expect(mixedUnknown.state).toBe('partial');
+    expect(mixedUnknown.coverage.staffRoleUnknownRows).toBe(1);
+
+    const matchingWithoutDate = await run([{ id: 405, name: '无日期导演作品', staff: '导演' }], {
+      405: { date: undefined },
+    });
+    expect(matchingWithoutDate.state).toBe('not_computable');
+    expect(matchingWithoutDate.coverage.missingDateRows).toBe(1);
+
+    const comparedUnknown = await run(
+      [{ id: 406, name: '缺失职位作品' }],
+      {},
+      {
+        comparePreviousWindow: true,
+      },
+    );
+    expect(comparedUnknown).toMatchObject({
+      state: 'partial',
+      comparison: {
+        state: 'partial',
+        recent: { state: 'partial' },
+        previous: { state: 'partial' },
+      },
+    });
   });
 
   it('bounds tag projections, retains a positive original tag beyond the prefix, and reports drift', async () => {
@@ -843,5 +923,169 @@ describe('PersonActivityService', () => {
     expect(result.coverage.missingDateRows).toBe(1);
     expect(result.rows).toEqual([]);
     expect(fixture.getPeakDetails()).toBe(0);
+  });
+
+  it('passes a finite response cap to every official activity source', async () => {
+    const client = new HttpClient();
+    const request = vi.spyOn(client, 'request').mockImplementation(async (options) => {
+      if (options.path === '/v0/persons/20') return personPayload();
+      if (options.path === '/v0/persons/20/characters') {
+        return [{ id: 701, name: '角色', subject_id: 1, subject_type: 2, staff: '主角' }];
+      }
+      if (options.path === '/v0/persons/20/subjects') {
+        return [{ id: 2, name: '作品', staff: '导演' }];
+      }
+      if (options.path === '/v0/subjects/1' || options.path === '/v0/subjects/2') {
+        return subjectPayload(Number(options.path.split('/').pop()));
+      }
+      throw new Error(`Unexpected request path: ${options.path}`);
+    });
+
+    const result = await new PersonActivityService(client).getPersonActivity(20, {
+      asOf: '2026-08-15',
+      kind: 'all',
+      media: 'all',
+    });
+
+    expect(result.state).toBe('complete');
+    expect(request.mock.calls).toHaveLength(5);
+    expect(request.mock.calls.map(([options]) => options.maxResponseBytes)).toEqual(
+      Array(5).fill(PERSON_ACTIVITY_MAX_RESPONSE_BYTES),
+    );
+    expect(result.coverage.responseLimitBytes).toBe(PERSON_ACTIVITY_MAX_RESPONSE_BYTES);
+    expect(result.limitations).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('maxRelations 是完整的有界关系响应后的本地选取上限'),
+      ]),
+    );
+  });
+
+  it('fails closed for oversized person and relation envelopes in both response modes', async () => {
+    const oversizedResponse = (mode: 'content-length' | 'streamed'): Response => {
+      if (mode === 'content-length') {
+        return new Response('[]', {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+            'content-length': String(PERSON_ACTIVITY_MAX_RESPONSE_BYTES + 1),
+          },
+        });
+      }
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array(PERSON_ACTIVITY_MAX_RESPONSE_BYTES + 1));
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    };
+
+    const run = async (
+      kind: 'staff' | 'voice' | 'all',
+      oversizedPath: 'person' | 'subjects' | 'characters',
+      mode: 'content-length' | 'streamed',
+    ) => {
+      const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/v0/persons/20')) {
+          return oversizedPath === 'person' ? oversizedResponse(mode) : json(personPayload());
+        }
+        if (url.endsWith('/v0/persons/20/subjects')) {
+          return oversizedPath === 'subjects'
+            ? oversizedResponse(mode)
+            : json([{ id: 2, name: '导演作品', staff: '导演' }]);
+        }
+        if (url.endsWith('/v0/persons/20/characters')) {
+          return oversizedPath === 'characters'
+            ? oversizedResponse(mode)
+            : json([{ id: 701, name: '角色', subject_id: 1, subject_type: 2, staff: '主角' }]);
+        }
+        if (url.endsWith('/v0/subjects/1') || url.endsWith('/v0/subjects/2')) {
+          return json(subjectPayload(Number(url.split('/').pop())));
+        }
+        return json({ error: 'not found' }, 404);
+      });
+      const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+        20,
+        { asOf: '2026-08-15', kind, media: 'all' },
+      );
+      return { fetchFn, result };
+    };
+
+    for (const mode of ['content-length', 'streamed'] as const) {
+      const oversizedPerson = await run('staff', 'person', mode);
+      expect(oversizedPerson.result.state).toBe('partial');
+      expect(oversizedPerson.result.person).toBeUndefined();
+      expect(oversizedPerson.result.rows).toHaveLength(1);
+      expect(oversizedPerson.result.sourceOperations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            operation: 'GET /v0/persons/{person_id}',
+            attempted: 1,
+            succeeded: 0,
+            failed: 1,
+          }),
+        ]),
+      );
+
+      const oversizedStaffRelation = await run('staff', 'subjects', mode);
+      expect(oversizedStaffRelation.result.state).toBe('unavailable');
+      expect(oversizedStaffRelation.result.rows).toEqual([]);
+      expect(oversizedStaffRelation.result.coverage.subjectDetailRequests).toBe(0);
+
+      const oversizedVoiceRelation = await run('voice', 'characters', mode);
+      expect(oversizedVoiceRelation.result.state).toBe('unavailable');
+      expect(oversizedVoiceRelation.result.rows).toEqual([]);
+      expect(oversizedVoiceRelation.result.coverage.subjectDetailRequests).toBe(0);
+
+      const oversizedAllStaffRelation = await run('all', 'subjects', mode);
+      expect(oversizedAllStaffRelation.result.state).toBe('partial');
+      expect(oversizedAllStaffRelation.result.rows).toHaveLength(1);
+      expect(oversizedAllStaffRelation.result.coverage.subjectDetailRequests).toBe(1);
+    }
+  });
+
+  it('keeps oversized relation failures unavailable across both comparison windows', async () => {
+    const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/subjects')) {
+        return new Response('[]', {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+            'content-length': String(PERSON_ACTIVITY_MAX_RESPONSE_BYTES + 1),
+          },
+        });
+      }
+      return json({ error: 'unexpected detail request' }, 500);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-08-15',
+        kind: 'staff',
+        media: 'all',
+        comparePreviousWindow: true,
+      },
+    );
+
+    expect(result).toMatchObject({
+      state: 'unavailable',
+      comparison: {
+        state: 'unavailable',
+        recent: { state: 'unavailable' },
+        previous: { state: 'unavailable' },
+      },
+    });
+    expect(
+      fetchFn.mock.calls.filter(([input]) => String(input).endsWith('/v0/persons/20/subjects')),
+    ).toHaveLength(2);
+    expect(fetchFn.mock.calls.some(([input]) => String(input).includes('/v0/subjects/'))).toBe(
+      false,
+    );
   });
 });

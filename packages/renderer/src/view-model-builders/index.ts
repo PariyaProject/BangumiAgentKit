@@ -2650,6 +2650,7 @@ export function buildPersonActivityViewModel(
       maxSubjectDetails: result.coverage.maxSubjectDetails,
       maxRows: result.coverage.maxRows,
       detailConcurrency: result.coverage.detailConcurrency,
+      responseLimitBytes: result.coverage.responseLimitBytes,
       truncated: result.coverage.truncated,
       origin: result.coverage.origin,
     },

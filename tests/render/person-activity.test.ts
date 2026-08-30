@@ -101,6 +101,7 @@ const result: PersonActivityResult = {
     maxSubjectDetails: 24,
     maxRows: 40,
     detailConcurrency: 4,
+    responseLimitBytes: 1048576,
     truncated: true,
     retrievedAt: '2026-08-15T00:00:00.000Z',
     origin: {
@@ -313,6 +314,7 @@ describe('Person activity renderer', () => {
     expect(html).toContain('36 个日历月');
     expect(html).toContain('职位筛选：导演');
     expect(html).toContain('职位筛选排除 2 · 职位未知 1');
+    expect(html).toContain('响应上限 1048576 bytes');
   });
 
   it('renders complete, partial, failed, and zero-request source operations at supported widths', () => {

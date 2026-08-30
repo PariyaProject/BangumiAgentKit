@@ -209,6 +209,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         {viewModel.staffRole
           ? ` · 职位筛选排除 ${viewModel.coverage.staffRoleExcludedRows} · 职位未知 ${viewModel.coverage.staffRoleUnknownRows}`
           : ''}
+        {' · 响应上限 '}
+        {viewModel.coverage.responseLimitBytes} bytes
         {viewModel.coverage.truncated
           ? ` · 已达到边界${viewModel.coverage.sampled ? '（确定性等距样本）' : ''}`
           : ''}

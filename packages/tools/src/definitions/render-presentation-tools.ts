@@ -726,7 +726,7 @@ export function createRenderPresentationTools(
   const renderPersonActivity = defineTool({
     name: 'bangumi.render_person_activity',
     description:
-      '生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系/精确职位筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算、确定性等距抽样、观察/选取/省略 ID 和来源限制可见；职位筛选支持 director，并可使用 36 个日历月，但不会把缺失或未识别职位标签当成否定证据。同时展示基于官方 subject.meta_tags 的明确原创、未观察到原创标签和来源未知分组，明确未观察到原创标签不等于改编。可选 comparePreviousWindow=true 展示最近与紧邻等长窗口的作品/角色差值和观察到的发布月份峰值，并保留每个窗口及指标的覆盖状态，不把不可用窗口当作零；不显示或推断历史快照、劳动时长或实际配音时间。',
+      '生成官方 v0 人物 activity 时间窗图片卡片 Artifact。卡片保持窗口、媒介/关系/精确职位筛选、作品计数、月度分布、原始角色标签、缺日期/未知媒介/详情预算、确定性等距抽样、观察/选取/省略 ID 和来源限制可见；每个人物、人物关系和作品详情官方响应均受 1048576 字节硬上限，卡片显示该限制，maxRelations 明确为有界关系响应后的本地选取上限；职位筛选支持 director，并可使用 36 个日历月，但不会把缺失或未识别职位标签当成否定证据。同时展示基于官方 subject.meta_tags 的明确原创、未观察到原创标签和来源未知分组，明确未观察到原创标签不等于改编。可选 comparePreviousWindow=true 展示最近与紧邻等长窗口的作品/角色差值和观察到的发布月份峰值，并保留每个窗口及指标的覆盖状态，不把不可用窗口当作零；不显示或推断历史快照、劳动时长或实际配音时间。',
     input: z
       .object({
         personId: z.number().int().positive().describe('Bangumi 人物 ID'),

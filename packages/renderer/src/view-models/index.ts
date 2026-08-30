@@ -792,6 +792,7 @@ export interface PersonActivityViewModel {
     maxSubjectDetails: number;
     maxRows: number;
     detailConcurrency: number;
+    responseLimitBytes: number;
     truncated: boolean;
     origin: import('@bangumi-agent-kit/bangumi-core').PersonActivityOriginCoverage;
   };

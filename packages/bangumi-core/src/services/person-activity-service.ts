@@ -564,7 +564,11 @@ export class PersonActivityService {
     const window = buildWindow(windowMonths, options.asOf);
     const sourceOperations: PersonActivitySourceOperation[] = [];
 
-    const personResult = await this.safeRequest(() => this.api.getPersonById(personId));
+    const personResult = await this.safeRequest(() =>
+      this.api.getPersonById(personId, {
+        maxResponseBytes: PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
+      }),
+    );
     sourceOperation(
       sourceOperations,
       'GET /v0/persons/{person_id}',
@@ -576,11 +580,19 @@ export class PersonActivityService {
     const subjectPromise =
       kind === 'voice'
         ? Promise.resolve<SafeResult<never>>({ value: undefined as never })
-        : this.safeRequest(() => this.api.getRelatedSubjectsByPersonId(personId));
+        : this.safeRequest(() =>
+            this.api.getRelatedSubjectsByPersonId(personId, {
+              maxResponseBytes: PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
+            }),
+          );
     const characterPromise =
       kind === 'staff'
         ? Promise.resolve<SafeResult<never>>({ value: undefined as never })
-        : this.safeRequest(() => this.api.getRelatedCharactersByPersonId(personId));
+        : this.safeRequest(() =>
+            this.api.getRelatedCharactersByPersonId(personId, {
+              maxResponseBytes: PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
+            }),
+          );
     const [subjectResult, characterResult] = await Promise.all([subjectPromise, characterPromise]);
 
     const subjectRelations = (subjectResult.value || []).map(mapPersonRelationSubject);
@@ -806,7 +818,7 @@ export class PersonActivityService {
     const personUnavailable = !personResult.value;
     const unknownRoleRows = accepted.filter((row) => row.roleFamily === 'unknown').length;
     const noComputableRows =
-      candidates.length > 0 &&
+      selectedCandidates.length > 0 &&
       accepted.length === 0 &&
       missingDateRows + invalidDateRows === selectedCandidates.length;
     const sampled = relationRowsDroppedAtLimit > 0 || subjectDetailIdsDroppedAtLimit > 0;
@@ -828,6 +840,7 @@ export class PersonActivityService {
       !personUnavailable &&
       relationFailures === 0 &&
       detailFailures.size === 0 &&
+      staffRoleUnknownRows === 0 &&
       unknownRoleRows === 0;
     let state: PersonActivityState = 'complete';
     if (sourceUnavailable) state = 'unavailable';
@@ -1018,6 +1031,7 @@ export class PersonActivityService {
         maxSubjectDetails,
         maxRows,
         detailConcurrency: PERSON_ACTIVITY_DETAIL_CONCURRENCY,
+        responseLimitBytes: PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
         truncated:
           relationRowsDroppedAtLimit > 0 || subjectDetailIdsDroppedAtLimit > 0 || outputTruncated,
         retrievedAt,
@@ -1037,6 +1051,7 @@ export class PersonActivityService {
             ]
           : []),
         '关系或作品详情达到上限时，结果是官方关系返回顺序上的确定性等距样本，不代表完整最近活动；coverage 会分别报告观察、选取、详情请求和省略的 ID 数量。',
+        `每个官方 v0 人物、人物关系和作品详情响应最多读取 ${PERSON_ACTIVITY_MAX_RESPONSE_BYTES} 字节；超出上限按来源失败处理，不当作空结果；maxRelations 是完整的有界关系响应后的本地选取上限，不是上游响应行数上限。`,
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
         `只有官方 subject.meta_tags 完整响应中精确观察到“原创”才标记明确原创；person-activity 每个条目最多保留 ${SUBJECT_META_TAGS_MAX_COUNT} 项、每项 ${SUBJECT_META_TAG_MAX_CHARACTERS} 个字符，coverage 会报告省略、异常和文本截断；未观察到该标签不等于改编，meta_tags 缺失或字段异常保持来源未知。`,
       ],
