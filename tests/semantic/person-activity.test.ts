@@ -32,6 +32,7 @@ describe('bangumi.get_person_activity', () => {
           name_cn: '条目',
           date: '2026-07-01',
           platform: 'TV',
+          meta_tags: ['原创', '奇幻'],
         });
       }
       return json({ error: 'not found' }, 404);
@@ -52,7 +53,14 @@ describe('bangumi.get_person_activity', () => {
     )) as Record<string, any>;
 
     expect(result.state).toBe('complete');
-    expect(result.summary).toMatchObject({ uniqueSubjects: 1, uniqueCharacters: 1 });
+    expect(result.summary).toMatchObject({
+      uniqueSubjects: 1,
+      uniqueCharacters: 1,
+      origin: { explicitOriginalSubjects: 1, notObservedSubjects: 0, unknownSubjects: 0 },
+    });
+    expect(result.rows[0]).toMatchObject({
+      origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
+    });
     expect(result.comparison).toMatchObject({
       windowMonths: 6,
       delta: expect.objectContaining({ creditRows: expect.any(Number) }),
@@ -64,9 +72,14 @@ describe('bangumi.get_person_activity', () => {
           source: 'derived-s7',
           formulaVersion: 'person-activity-window-v1',
         }),
+        expect.objectContaining({
+          operation: 'person-activity-origin-observation',
+          formulaVersion: 'person-activity-origin-v1',
+        }),
       ]),
     );
     expect(result.limitations.join(' ')).toContain('first_air_date');
+    expect(result.limitations.join(' ')).toContain('未观察到该标签不等于改编');
   });
 
   it('rejects authority values outside the published bounds', () => {

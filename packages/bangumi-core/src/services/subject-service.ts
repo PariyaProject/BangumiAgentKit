@@ -6,6 +6,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   DomainSubject,
+  DomainSubjectMetaTagsCoverage,
   SubjectSearchResult,
   SubjectRelationItem,
   SubjectType,
@@ -29,10 +30,107 @@ export function mapSubjectType(typeNum?: number): SubjectType {
   }
 }
 
-export function mapSubject(raw: Subject): DomainSubject {
+export const SUBJECT_META_TAGS_MAX_COUNT = 32;
+export const SUBJECT_META_TAG_MAX_CHARACTERS = 96;
+
+export type SubjectMetaTagsProjection = 'full' | 'bounded';
+
+export interface SubjectMappingOptions {
+  /** The bounded projection is used by fan-out capabilities with a public output contract. */
+  metaTagsProjection?: SubjectMetaTagsProjection;
+}
+
+interface MetaTagsProjection {
+  metaTags?: string[];
+  coverage: DomainSubjectMetaTagsCoverage;
+}
+
+function truncateMetaTag(value: string): { value: string; truncated: boolean } {
+  const characters = Array.from(value);
+  if (characters.length <= SUBJECT_META_TAG_MAX_CHARACTERS) {
+    return { value, truncated: false };
+  }
+  return {
+    value: `${characters.slice(0, SUBJECT_META_TAG_MAX_CHARACTERS - 1).join('')}…`,
+    truncated: true,
+  };
+}
+
+function projectMetaTags(value: unknown, mode: SubjectMetaTagsProjection): MetaTagsProjection {
+  const baseCoverage = {
+    observed: 0,
+    valid: 0,
+    returned: 0,
+    omitted: 0,
+    malformed: 0,
+    textTruncated: 0,
+    truncated: false,
+    ...(mode === 'bounded'
+      ? {
+          maxItems: SUBJECT_META_TAGS_MAX_COUNT,
+          maxCharacters: SUBJECT_META_TAG_MAX_CHARACTERS,
+        }
+      : {}),
+  };
+  if (!Array.isArray(value)) {
+    return {
+      coverage: {
+        ...baseCoverage,
+        state: 'unknown',
+        malformed: value === undefined ? 0 : 1,
+      },
+    };
+  }
+
+  const valid = value.filter((item): item is string => typeof item === 'string');
+  const malformed = value.length - valid.length;
+  let selected = mode === 'bounded' ? valid.slice(0, SUBJECT_META_TAGS_MAX_COUNT) : [...valid];
+  if (
+    mode === 'bounded' &&
+    valid.length > SUBJECT_META_TAGS_MAX_COUNT &&
+    valid.includes('原创') &&
+    !selected.includes('原创')
+  ) {
+    selected = [...selected.slice(0, SUBJECT_META_TAGS_MAX_COUNT - 1), '原创'];
+  }
+  const projected = selected.map((item) =>
+    mode === 'bounded' ? truncateMetaTag(item) : { value: item, truncated: false },
+  );
+  const metaTags = projected.map((item) => item.value);
+  const textTruncated = projected.filter((item) => item.truncated).length;
+  const omitted = valid.length - selected.length;
+  const state: DomainSubjectMetaTagsCoverage['state'] =
+    malformed > 0
+      ? valid.length > 0
+        ? 'partial'
+        : 'unknown'
+      : omitted > 0 || textTruncated > 0
+        ? 'partial'
+        : 'complete';
+  return {
+    metaTags,
+    coverage: {
+      ...baseCoverage,
+      state,
+      observed: value.length,
+      valid: valid.length,
+      returned: metaTags.length,
+      omitted,
+      malformed,
+      textTruncated,
+      truncated: omitted > 0 || textTruncated > 0,
+    },
+  };
+}
+
+export function mapSubject(raw: Subject, options: SubjectMappingOptions = {}): DomainSubject {
   const ratingCount: Record<string, number> | undefined = raw.rating?.count
     ? (raw.rating.count as Record<string, number>)
     : undefined;
+  const metaTagsProjection = projectMetaTags(
+    (raw as unknown as Record<string, unknown>).meta_tags,
+    options.metaTagsProjection ?? 'full',
+  );
 
   return {
     id: raw.id,
@@ -44,6 +142,10 @@ export function mapSubject(raw: Subject): DomainSubject {
     locked: Boolean(raw.locked),
     date: raw.date || undefined,
     platform: raw.platform || undefined,
+    metaTags: metaTagsProjection.metaTags,
+    ...(options.metaTagsProjection === 'bounded' || metaTagsProjection.coverage.malformed > 0
+      ? { metaTagsCoverage: metaTagsProjection.coverage }
+      : {}),
     images: raw.images ? (raw.images as Record<string, string>) : undefined,
     score:
       raw.rating?.score !== undefined && raw.rating?.score !== 0 ? raw.rating.score : undefined,
@@ -222,7 +324,7 @@ export class SubjectService {
       total: res.total || 0,
       limit: res.limit || limit,
       offset: res.offset || offset,
-      items: data.map(mapSubject),
+      items: data.map((item) => mapSubject(item)),
     };
   }
 

@@ -76,9 +76,12 @@ function activityFetch(options: { failSubjectIds?: number[] } = {}) {
       await new Promise((resolve) => setTimeout(resolve, 2));
       activeDetails -= 1;
       if (options.failSubjectIds?.includes(id)) return json({ error: 'fixture failure' }, 503);
+      if (id === 1) return json(subjectPayload(id, { meta_tags: ['原创', '奇幻'] }));
       if (id === 2) return json(subjectPayload(id, { date: '2026-02-12' }));
       if (id === 3)
-        return json(subjectPayload(id, { type: 3, platform: 'CD', date: '2026-06-02' }));
+        return json(
+          subjectPayload(id, { type: 3, platform: 'CD', date: '2026-06-02', meta_tags: [] }),
+        );
       if (id === 4) return json(subjectPayload(id, { platform: undefined, date: '2026-06-02' }));
       return json(subjectPayload(id));
     }
@@ -110,6 +113,11 @@ describe('PersonActivityService', () => {
       creditRows: 1,
       uniqueSubjects: 1,
       uniqueCharacters: 1,
+      origin: {
+        explicitOriginalSubjects: 1,
+        notObservedSubjects: 0,
+        unknownSubjects: 0,
+      },
     });
     expect(result.summary.byRole).toEqual([
       expect.objectContaining({ key: 'main', creditRows: 1 }),
@@ -119,6 +127,7 @@ describe('PersonActivityService', () => {
       firstAirDate: '2026-05-10',
       roleFamily: 'main',
       rawRole: '主角',
+      origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
     });
     expect(result.coverage).toMatchObject({
       relationRowsObserved: 4,
@@ -137,6 +146,12 @@ describe('PersonActivityService', () => {
       mediaExcludedRows: 1,
       mediaUnknownRows: 1,
       detailConcurrency: PERSON_ACTIVITY_DETAIL_CONCURRENCY,
+      origin: {
+        subjectsObserved: 1,
+        explicitOriginalSubjects: 1,
+        notObservedSubjects: 0,
+        unknownSubjects: 0,
+      },
     });
     expect(result.exclusions).toEqual(
       expect.arrayContaining([
@@ -154,6 +169,149 @@ describe('PersonActivityService', () => {
       ]),
     );
     expect(fixture.getPeakDetails()).toBeLessThanOrEqual(PERSON_ACTIVITY_DETAIL_CONCURRENCY);
+  });
+
+  it('keeps positive-only origin observations distinct from not-observed and unknown states', async () => {
+    const fixture = activityFetch();
+    const result = await new PersonActivityService(
+      new HttpClient({ fetchFn: fixture.fetchFn }),
+    ).getPersonActivity(20, { asOf: '2026-08-15', windowMonths: 6, kind: 'voice', media: 'all' });
+
+    expect(result.summary.origin).toEqual({
+      explicitOriginalSubjects: 1,
+      notObservedSubjects: 1,
+      unknownSubjects: 1,
+    });
+    expect(result.coverage.origin).toEqual({
+      subjectsObserved: 3,
+      explicitOriginalSubjects: 1,
+      notObservedSubjects: 1,
+      unknownSubjects: 1,
+      subjectsWithMetaTags: 2,
+      subjectsPartial: 0,
+      subjectsUnknown: 1,
+      tagsObserved: 2,
+      tagsValid: 2,
+      tagsReturned: 2,
+      tagsOmitted: 0,
+      malformedTagValues: 0,
+      textTruncatedTags: 0,
+      truncatedSubjects: 0,
+      truncated: false,
+      maxTagsPerSubject: 32,
+      maxTagCharacters: 96,
+      responseLimitBytes: 1048576,
+    });
+    expect(result.rows.map((row) => row.origin)).toEqual([
+      expect.objectContaining({ state: 'not_observed', metaTags: [] }),
+      expect.objectContaining({ state: 'unknown' }),
+      expect.objectContaining({ state: 'explicit_original', metaTags: ['原创', '奇幻'] }),
+    ]);
+    expect(result.limitations).toEqual(
+      expect.arrayContaining([expect.stringContaining('未观察到该标签不等于改编')]),
+    );
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'person-activity-origin-observation',
+          formulaVersion: 'person-activity-origin-v1',
+        }),
+      ]),
+    );
+  });
+
+  it('bounds tag projections, retains a positive original tag beyond the prefix, and reports drift', async () => {
+    const longTag = '界'.repeat(140);
+    const metaTags = [
+      longTag,
+      ...Array.from({ length: 40 }, (_, index) => `标签-${index}`),
+      '原创',
+      42,
+    ];
+    const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return json([{ id: 101, name: '角色', subject_id: 1, subject_type: 2, staff: '主角' }]);
+      }
+      if (url.endsWith('/v0/subjects/1')) {
+        return json(subjectPayload(1, { date: '2026-08-01', meta_tags: metaTags }));
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      { asOf: '2026-08-15', kind: 'voice', media: 'all' },
+    );
+
+    expect(result.state).toBe('partial');
+    expect(result.rows[0]?.origin).toMatchObject({
+      state: 'explicit_original',
+      metaTags: expect.arrayContaining(['原创']),
+      metaTagsCoverage: {
+        state: 'partial',
+        observed: 43,
+        valid: 42,
+        returned: 32,
+        omitted: 10,
+        malformed: 1,
+        textTruncated: 1,
+        truncated: true,
+      },
+    });
+    expect(result.rows[0]?.origin.metaTags).toHaveLength(32);
+    expect(result.rows[0]?.origin.metaTags?.some((tag) => tag.length > 96)).toBe(false);
+    expect(result.coverage.origin).toMatchObject({
+      subjectsObserved: 1,
+      subjectsWithMetaTags: 1,
+      subjectsPartial: 1,
+      subjectsUnknown: 0,
+      tagsObserved: 43,
+      tagsValid: 42,
+      tagsReturned: 32,
+      tagsOmitted: 10,
+      malformedTagValues: 1,
+      textTruncatedTags: 1,
+      truncatedSubjects: 1,
+      truncated: true,
+      maxTagsPerSubject: 32,
+      maxTagCharacters: 96,
+      responseLimitBytes: 1048576,
+    });
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'ORIGIN_META_TAG_COVERAGE' })]),
+    );
+  });
+
+  it('does not call malformed meta_tags not-observed when no positive tag is reliable', async () => {
+    const fetchFn = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return json([{ id: 101, name: '角色', subject_id: 1, subject_type: 2, staff: '主角' }]);
+      }
+      if (url.endsWith('/v0/subjects/1')) {
+        return json(subjectPayload(1, { date: '2026-08-01', meta_tags: [42, '漫画'] }));
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      { asOf: '2026-08-15', kind: 'voice', media: 'all' },
+    );
+
+    expect(result.rows[0]?.origin).toMatchObject({
+      state: 'unknown',
+      metaTags: ['漫画'],
+      metaTagsCoverage: { state: 'partial', malformed: 1 },
+    });
+    expect(result.summary.origin).toEqual({
+      explicitOriginalSubjects: 0,
+      notObservedSubjects: 0,
+      unknownSubjects: 1,
+    });
   });
 
   it('compares the recent window with the immediately preceding equal window', async () => {

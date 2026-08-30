@@ -1,4 +1,8 @@
 import React from 'react';
+import {
+  SUBJECT_META_TAGS_MAX_COUNT,
+  SUBJECT_META_TAG_MAX_CHARACTERS,
+} from '@bangumi-agent-kit/bangumi-core';
 import { PersonActivityViewModel } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
@@ -47,6 +51,56 @@ function comparisonStateLabel(
 
 function signed(value: number): string {
   return value > 0 ? `+${value}` : String(value);
+}
+
+function sourceOperationState(
+  operation: PersonActivityViewModel['sourceOperations'][number],
+): string {
+  if (operation.attempted === 0) return '未请求';
+  if (operation.failed >= operation.attempted) return '失败';
+  if (operation.failed > 0) return '部分成功';
+  return '成功';
+}
+
+function boundedMetaTag(value: string): { value: string; truncated: boolean } {
+  const characters = Array.from(value);
+  if (characters.length <= SUBJECT_META_TAG_MAX_CHARACTERS) {
+    return { value, truncated: false };
+  }
+  return {
+    value: `${characters.slice(0, SUBJECT_META_TAG_MAX_CHARACTERS - 1).join('')}…`,
+    truncated: true,
+  };
+}
+
+function originTags(origin: PersonActivityViewModel['rows'][number]['origin']): {
+  values: string[];
+  omitted: number;
+  malformed: number;
+  textTruncated: number;
+} {
+  if (!Array.isArray(origin.metaTags)) {
+    return {
+      values: [],
+      omitted: 0,
+      malformed: origin.metaTagsCoverage?.malformed ?? 0,
+      textTruncated: 0,
+    };
+  }
+  const valid = origin.metaTags.filter((tag): tag is string => typeof tag === 'string');
+  const visible = valid.slice(0, SUBJECT_META_TAGS_MAX_COUNT).map(boundedMetaTag);
+  return {
+    values: visible.map((tag) => tag.value),
+    omitted: Math.max(
+      origin.metaTagsCoverage?.omitted ?? 0,
+      Math.max(0, valid.length - visible.length),
+    ),
+    malformed: origin.metaTagsCoverage?.malformed ?? origin.metaTags.length - valid.length,
+    textTruncated: Math.max(
+      origin.metaTagsCoverage?.textTruncated ?? 0,
+      visible.filter((tag) => tag.truncated).length,
+    ),
+  };
 }
 
 function comparisonPeriodSummary(
@@ -152,6 +206,74 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           : ''}
       </div>
 
+      <div
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.md,
+          color: theme.textMuted,
+          fontSize: '12px',
+          lineHeight: 1.55,
+        }}
+      >
+        <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
+          作品来源观察（官方 v0 subject.meta_tags）
+        </div>
+        <div>
+          覆盖 {viewModel.coverage.origin.subjectsObserved} 部去重作品 · 明确原创{' '}
+          {viewModel.coverage.origin.explicitOriginalSubjects} 部 · 未观察到原创标签{' '}
+          {viewModel.coverage.origin.notObservedSubjects} 部 · 来源未知{' '}
+          {viewModel.coverage.origin.unknownSubjects} 部
+        </div>
+        <div style={{ marginTop: theme.spacing.xs }}>
+          标签覆盖：观察 {viewModel.coverage.origin.tagsObserved} · 合法{' '}
+          {viewModel.coverage.origin.tagsValid} · 返回 {viewModel.coverage.origin.tagsReturned} ·
+          省略 {viewModel.coverage.origin.tagsOmitted} · 异常{' '}
+          {viewModel.coverage.origin.malformedTagValues} · 文本截断{' '}
+          {viewModel.coverage.origin.textTruncatedTags} · 截断作品{' '}
+          {viewModel.coverage.origin.truncatedSubjects} · 上限{' '}
+          {viewModel.coverage.origin.maxTagsPerSubject} 项/
+          {viewModel.coverage.origin.maxTagCharacters} 字 · 响应上限{' '}
+          {viewModel.coverage.origin.responseLimitBytes} bytes
+        </div>
+        <div style={{ marginTop: theme.spacing.xs }}>
+          来源与检索：{viewModel.source.label} · {viewModel.source.retrievedAt}
+        </div>
+        <div style={{ color: theme.text, marginTop: theme.spacing.xs }}>
+          未观察到“原创”标签不等于“改编”；这里只报告官方字段中的正向观察，不从其他字段推断。
+        </div>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: theme.surfaceAlt,
+          border: `1px solid ${theme.border}`,
+          borderRadius: theme.radius.md,
+          padding: theme.spacing.md,
+          color: theme.textMuted,
+          fontSize: '12px',
+          lineHeight: 1.55,
+        }}
+      >
+        <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
+          来源操作（官方 v0 请求）
+        </div>
+        {viewModel.sourceOperations.length === 0 ? (
+          <div>未记录来源操作。</div>
+        ) : (
+          viewModel.sourceOperations.slice(0, 8).map((operation) => (
+            <div key={operation.operation} style={{ overflowWrap: 'anywhere' }}>
+              {operation.operation} · {sourceOperationState(operation)} · 尝试 {operation.attempted}{' '}
+              · 成功 {operation.succeeded} · 失败 {operation.failed}
+            </div>
+          ))
+        )}
+        {viewModel.sourceOperations.length > 8 && (
+          <div>另有 {viewModel.sourceOperations.length - 8} 项来源操作未展开。</div>
+        )}
+      </div>
+
       {viewModel.comparison && (
         <div
           style={{
@@ -194,6 +316,19 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
                   {comparisonPeriodSummary(period)}
                   {period.truncated || period.sampled ? ' · 部分覆盖' : ''}
                 </div>
+                {period.exclusions.length > 0 && (
+                  <div style={{ marginTop: theme.spacing.xs, color: theme.textMuted }}>
+                    未计入：
+                    {period.exclusions
+                      .slice(0, 4)
+                      .map(
+                        (item) =>
+                          `${item.reason} ${item.count}${item.sampleSubjectIds.length > 0 ? `（${item.sampleSubjectIds.join('、')}）` : ''}`,
+                      )
+                      .join('；')}
+                    {period.exclusions.length > 4 ? '；另有原因未展开' : ''}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -312,29 +447,38 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-            {viewModel.rows.map((row, index) => (
-              <div
-                key={`${row.subjectId}-${row.relationId || index}`}
-                style={{
-                  backgroundColor: theme.surfaceAlt,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: theme.radius.sm,
-                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                }}
-              >
-                <div style={{ color: theme.text, fontSize: '13px', fontWeight: 600 }}>
-                  {row.subjectNameCn || row.subjectName}
+            {viewModel.rows.map((row, index) => {
+              const tags = originTags(row.origin);
+              return (
+                <div
+                  key={`${row.subjectId}-${row.relationId || index}`}
+                  style={{
+                    backgroundColor: theme.surfaceAlt,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: theme.radius.sm,
+                    padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                  }}
+                >
+                  <div style={{ color: theme.text, fontSize: '13px', fontWeight: 600 }}>
+                    {row.subjectNameCn || row.subjectName}
+                  </div>
+                  {row.subjectNameCn && row.subjectNameCn !== row.subjectName && (
+                    <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+                      {row.subjectName}
+                    </div>
+                  )}
+                  <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.45 }}>
+                    {row.firstAirDate} · {row.relationLabel} · {row.roleFamily}
+                    {row.characterName ? ` · ${row.characterName}` : ''}
+                    {row.rawRole ? ` · 原始：${row.rawRole}` : ''}
+                    {` · 来源观察：${row.origin.label}`}
+                    {row.origin.metaTags !== undefined
+                      ? ` · 官方 meta_tags：${tags.values.join('、') || '（空）'}${tags.omitted > 0 ? ` · 另有 ${tags.omitted} 项省略` : ''}${tags.textTruncated > 0 ? ` · 文本截断 ${tags.textTruncated} 项` : ''}${tags.malformed > 0 ? ` · 异常 ${tags.malformed} 项` : ''}`
+                      : ''}
+                  </div>
                 </div>
-                {row.subjectNameCn && row.subjectNameCn !== row.subjectName && (
-                  <div style={{ color: theme.textMuted, fontSize: '11px' }}>{row.subjectName}</div>
-                )}
-                <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.45 }}>
-                  {row.firstAirDate} · {row.relationLabel} · {row.roleFamily}
-                  {row.characterName ? ` · ${row.characterName}` : ''}
-                  {row.rawRole ? ` · 原始：${row.rawRole}` : ''}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {viewModel.hiddenRows > 0 && (
               <div style={{ color: theme.warning, fontSize: '11px', textAlign: 'center' }}>
                 另有 {viewModel.hiddenRows} 条窗口内关系因展示上限未显示。

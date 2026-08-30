@@ -11,6 +11,10 @@ import {
   PersonActivityExclusionReason,
   PersonActivityKind,
   PersonActivityMedia,
+  PersonActivityOriginObservation,
+  PersonActivityOriginState,
+  PersonActivityOriginCoverage,
+  PersonActivityOriginSummary,
   PersonActivityComparison,
   PersonActivityRelationKind,
   PersonActivityResult,
@@ -20,14 +24,20 @@ import {
   PersonActivityState,
   PersonActivityWindowSummary,
 } from '../models/person-activity.js';
-import { mapSubject } from './subject-service.js';
+import {
+  mapSubject,
+  SUBJECT_META_TAGS_MAX_COUNT,
+  SUBJECT_META_TAG_MAX_CHARACTERS,
+} from './subject-service.js';
 import type { DomainSubject } from '../models/subject.js';
 
 export const PERSON_ACTIVITY_FORMULA_VERSION = 'person-activity-window-v1';
+export const PERSON_ACTIVITY_ORIGIN_FORMULA_VERSION = 'person-activity-origin-v1';
 export const PERSON_ACTIVITY_DETAIL_CONCURRENCY = 4;
 export const PERSON_ACTIVITY_MAX_RELATIONS = 120;
 export const PERSON_ACTIVITY_MAX_SUBJECT_DETAILS = 48;
 export const PERSON_ACTIVITY_MAX_ROWS = 60;
+export const PERSON_ACTIVITY_MAX_RESPONSE_BYTES = 1_048_576;
 
 export interface PersonActivityOptions {
   kind?: PersonActivityKind;
@@ -225,6 +235,111 @@ function makeDistribution(
     );
 }
 
+function originForSubject(
+  metaTags?: readonly string[],
+  metaTagsCoverage?: PersonActivityOriginObservation['metaTagsCoverage'],
+): PersonActivityOriginObservation {
+  const copiedMetaTags = metaTags === undefined ? undefined : [...metaTags];
+  const reliableField = metaTagsCoverage?.state !== 'unknown';
+  const state: PersonActivityOriginState =
+    metaTags === undefined
+      ? 'unknown'
+      : reliableField && metaTags.includes('原创')
+        ? 'explicit_original'
+        : !metaTagsCoverage || metaTagsCoverage.state === 'complete'
+          ? 'not_observed'
+          : 'unknown';
+  return {
+    state,
+    ...(copiedMetaTags === undefined ? {} : { metaTags: copiedMetaTags }),
+    ...(metaTagsCoverage === undefined ? {} : { metaTagsCoverage }),
+  };
+}
+
+function uniqueOriginObservations(
+  rows: readonly ActivityRowWithSets[],
+): Map<number, PersonActivityOriginObservation> {
+  const bySubject = new Map<number, PersonActivityOriginObservation>();
+  for (const row of rows) {
+    const existing = bySubject.get(row.subjectId);
+    if (existing === undefined) {
+      bySubject.set(row.subjectId, row.origin);
+    } else if (existing.state !== row.origin.state) {
+      bySubject.set(row.subjectId, {
+        state: 'unknown',
+        ...(existing.metaTagsCoverage === undefined
+          ? {}
+          : { metaTagsCoverage: existing.metaTagsCoverage }),
+      });
+    }
+  }
+  return bySubject;
+}
+
+function makeOriginSummary(rows: readonly ActivityRowWithSets[]): PersonActivityOriginSummary {
+  const bySubject = uniqueOriginObservations(rows);
+  return Array.from(bySubject.values()).reduce<PersonActivityOriginSummary>(
+    (summary, state) => {
+      if (state.state === 'explicit_original') summary.explicitOriginalSubjects += 1;
+      else if (state.state === 'not_observed') summary.notObservedSubjects += 1;
+      else summary.unknownSubjects += 1;
+      return summary;
+    },
+    { explicitOriginalSubjects: 0, notObservedSubjects: 0, unknownSubjects: 0 },
+  );
+}
+
+function makeOriginCoverage(rows: readonly ActivityRowWithSets[]): PersonActivityOriginCoverage {
+  const bySubject = uniqueOriginObservations(rows);
+  const coverage: PersonActivityOriginCoverage = {
+    ...makeOriginSummary(rows),
+    subjectsObserved: bySubject.size,
+    subjectsWithMetaTags: 0,
+    subjectsPartial: 0,
+    subjectsUnknown: 0,
+    tagsObserved: 0,
+    tagsValid: 0,
+    tagsReturned: 0,
+    tagsOmitted: 0,
+    malformedTagValues: 0,
+    textTruncatedTags: 0,
+    truncatedSubjects: 0,
+    truncated: false,
+    maxTagsPerSubject: SUBJECT_META_TAGS_MAX_COUNT,
+    maxTagCharacters: SUBJECT_META_TAG_MAX_CHARACTERS,
+    responseLimitBytes: PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
+  };
+  for (const observation of bySubject.values()) {
+    const tagsCoverage = observation.metaTagsCoverage;
+    if (!tagsCoverage) {
+      if (observation.metaTags !== undefined) {
+        coverage.subjectsWithMetaTags += 1;
+        coverage.tagsObserved += observation.metaTags.length;
+        coverage.tagsValid += observation.metaTags.length;
+        coverage.tagsReturned += observation.metaTags.length;
+      } else {
+        coverage.subjectsUnknown += 1;
+      }
+      continue;
+    }
+    if (tagsCoverage.state === 'unknown') coverage.subjectsUnknown += 1;
+    else {
+      coverage.subjectsWithMetaTags += 1;
+      if (tagsCoverage.state === 'partial') coverage.subjectsPartial += 1;
+    }
+    coverage.tagsObserved += tagsCoverage.observed;
+    coverage.tagsValid += tagsCoverage.valid;
+    coverage.tagsReturned += tagsCoverage.returned;
+    coverage.tagsOmitted += tagsCoverage.omitted;
+    coverage.malformedTagValues += tagsCoverage.malformed;
+    coverage.textTruncatedTags += tagsCoverage.textTruncated;
+    if (tagsCoverage.truncated) coverage.truncatedSubjects += 1;
+  }
+  coverage.truncated =
+    coverage.tagsOmitted > 0 || coverage.textTruncatedTags > 0 || coverage.truncatedSubjects > 0;
+  return coverage;
+}
+
 function makeSummary(
   rows: readonly ActivityRowWithSets[],
   monthKeys: readonly string[],
@@ -251,6 +366,7 @@ function makeSummary(
         ).size,
       };
     }),
+    origin: makeOriginSummary(rows),
   };
 }
 
@@ -364,12 +480,14 @@ function makeComparison(
       summary: recent.summary,
       state: recent.state,
       coverage: recent.coverage,
+      exclusions: recent.exclusions,
     },
     previous: {
       window: previous.window,
       summary: previous.summary,
       state: previous.state,
       coverage: previous.coverage,
+      exclusions: previous.exclusions,
     },
     delta: makeDelta(recent, previous),
     peak: makePeak(recent, previous),
@@ -490,12 +608,21 @@ export class PersonActivityService {
       const results = await Promise.all(
         batch.map(async (subjectId) => ({
           subjectId,
-          result: await this.safeRequest(() => this.api.getSubjectById(subjectId)),
+          result: await this.safeRequest(() =>
+            this.api.getSubjectById(subjectId, {
+              maxResponseBytes: PERSON_ACTIVITY_MAX_RESPONSE_BYTES,
+            }),
+          ),
         })),
       );
       for (const item of results) {
-        if (item.result.value) detailMap.set(item.subjectId, mapSubject(item.result.value));
-        else detailFailures.set(item.subjectId, item.result.failure || { code: 'INTERNAL_ERROR' });
+        if (item.result.value) {
+          detailMap.set(
+            item.subjectId,
+            mapSubject(item.result.value, { metaTagsProjection: 'bounded' }),
+          );
+        } else
+          detailFailures.set(item.subjectId, item.result.failure || { code: 'INTERNAL_ERROR' });
       }
     }
     sourceOperation(
@@ -587,6 +714,7 @@ export class PersonActivityService {
         relationId: candidate.relationId,
         characterName: candidate.characterName,
         rawRole: candidate.rawRole,
+        origin: originForSubject(subject.metaTags, subject.metaTagsCoverage),
         roleFamily: classifyRole(candidate),
         characterId: candidate.relationKind === 'voice' ? candidate.relationId : undefined,
       });
@@ -602,6 +730,7 @@ export class PersonActivityService {
     const rows = accepted.slice(0, maxRows);
     const outputTruncated = accepted.length > rows.length;
     const summary = makeSummary(accepted, window.monthKeys);
+    const originCoverage = makeOriginCoverage(accepted);
     const exclusionValues = exclusionList(exclusions);
     const relationFailures = sourceOperations
       .filter((operation) =>
@@ -633,7 +762,10 @@ export class PersonActivityService {
       personUnavailable ||
       detailPartial ||
       relationFailures > 0 ||
-      unknownRoleRows > 0;
+      unknownRoleRows > 0 ||
+      originCoverage.subjectsPartial > 0 ||
+      originCoverage.malformedTagValues > 0 ||
+      originCoverage.truncated;
     const onlyDateCoverageIsUnavailable =
       noComputableRows &&
       !sampled &&
@@ -704,6 +836,17 @@ export class PersonActivityService {
         message: `窗口内可返回 ${accepted.length} 行，但输出上限只返回 ${rows.length} 行。`,
       });
     }
+    if (
+      originCoverage.subjectsPartial > 0 ||
+      originCoverage.malformedTagValues > 0 ||
+      originCoverage.truncated
+    ) {
+      warnings.push({
+        code: 'ORIGIN_META_TAG_COVERAGE',
+        state: 'partial',
+        message: `官方 meta_tags 观察存在部分覆盖：观察 ${originCoverage.tagsObserved} 项，返回 ${originCoverage.tagsReturned} 项，省略 ${originCoverage.tagsOmitted} 项，异常 ${originCoverage.malformedTagValues} 项，文本截断 ${originCoverage.textTruncatedTags} 项；明确原创仍只依据完整响应中的精确“原创”值。`,
+      });
+    }
     if (accepted.length === 0 && state === 'complete') {
       warnings.push({
         code: 'NO_WINDOW_MATCHES',
@@ -748,6 +891,13 @@ export class PersonActivityService {
         formulaVersion: PERSON_ACTIVITY_FORMULA_VERSION,
         description:
           '按稳定 subject/character ID 去重；超过预算时按官方关系返回顺序做确定性等距抽样，不假设条目 ID 或返回顺序代表新旧；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类。',
+        retrievedAt,
+      },
+      {
+        source: 'derived-s7',
+        operation: 'person-activity-origin-observation',
+        formulaVersion: PERSON_ACTIVITY_ORIGIN_FORMULA_VERSION,
+        description: `只把官方 subject.meta_tags 完整响应中精确观察到的“原创”标记为 explicit_original；person-activity 输出最多 ${SUBJECT_META_TAGS_MAX_COUNT} 项、每项 ${SUBJECT_META_TAG_MAX_CHARACTERS} 个字符，并通过 coverage 报告省略、异常和文本截断；not_observed 和 unknown 都不等于改编，不从其他字段推断作品来源。`,
         retrievedAt,
       },
     ];
@@ -800,6 +950,7 @@ export class PersonActivityService {
         truncated:
           relationRowsDroppedAtLimit > 0 || subjectDetailIdsDroppedAtLimit > 0 || outputTruncated,
         retrievedAt,
+        origin: originCoverage,
       },
       exclusions: exclusionValues,
       sourceOperations,
@@ -810,6 +961,7 @@ export class PersonActivityService {
         '主役、配角和职位分类只对可识别的官方关系标签做保守映射，未知标签保留原文并单独计数。',
         '关系或作品详情达到上限时，结果是官方关系返回顺序上的确定性等距样本，不代表完整最近活动；coverage 会分别报告观察、选取、详情请求和省略的 ID 数量。',
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
+        `只有官方 subject.meta_tags 完整响应中精确观察到“原创”才标记明确原创；person-activity 每个条目最多保留 ${SUBJECT_META_TAGS_MAX_COUNT} 项、每项 ${SUBJECT_META_TAG_MAX_CHARACTERS} 个字符，coverage 会报告省略、异常和文本截断；未观察到该标签不等于改编，meta_tags 缺失或字段异常保持来源未知。`,
       ],
       warnings,
     };

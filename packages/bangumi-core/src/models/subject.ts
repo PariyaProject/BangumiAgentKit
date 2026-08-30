@@ -1,5 +1,20 @@
 export type SubjectType = 'book' | 'anime' | 'music' | 'game' | 'real' | 'other';
 
+export type DomainSubjectMetaTagsState = 'complete' | 'partial' | 'unknown';
+
+export interface DomainSubjectMetaTagsCoverage {
+  state: DomainSubjectMetaTagsState;
+  observed: number;
+  valid: number;
+  returned: number;
+  omitted: number;
+  malformed: number;
+  textTruncated: number;
+  truncated: boolean;
+  maxItems?: number;
+  maxCharacters?: number;
+}
+
 export interface DomainSubject {
   id: number;
   type: SubjectType;
@@ -10,6 +25,10 @@ export interface DomainSubject {
   locked: boolean;
   date?: string;
   platform?: string;
+  /** Official v0 subject.meta_tags projection, when the source returned the field. */
+  metaTags?: string[];
+  /** Validation and bounded-projection evidence for metaTags when requested. */
+  metaTagsCoverage?: DomainSubjectMetaTagsCoverage;
   images?: {
     large?: string;
     common?: string;

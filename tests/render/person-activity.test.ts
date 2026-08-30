@@ -40,6 +40,12 @@ const result: PersonActivityResult = {
     characterName: `角色 ${index + 1}`,
     rawRole: index % 2 === 0 ? '主角' : '配角',
     roleFamily: index % 2 === 0 ? ('main' as const) : ('support' as const),
+    origin:
+      index % 3 === 0
+        ? { state: 'explicit_original' as const, metaTags: ['原创', '奇幻'] }
+        : index % 3 === 1
+          ? { state: 'not_observed' as const, metaTags: ['漫画'] }
+          : { state: 'unknown' as const },
   })),
   summary: {
     creditRows: 22,
@@ -58,6 +64,11 @@ const result: PersonActivityResult = {
       uniqueSubjects: 3,
       uniqueCharacters: 3,
     })),
+    origin: {
+      explicitOriginalSubjects: 8,
+      notObservedSubjects: 7,
+      unknownSubjects: 7,
+    },
   },
   coverage: {
     relationRowsObserved: 24,
@@ -90,6 +101,26 @@ const result: PersonActivityResult = {
     detailConcurrency: 4,
     truncated: true,
     retrievedAt: '2026-08-15T00:00:00.000Z',
+    origin: {
+      subjectsObserved: 22,
+      explicitOriginalSubjects: 8,
+      notObservedSubjects: 7,
+      unknownSubjects: 7,
+      subjectsWithMetaTags: 15,
+      subjectsPartial: 0,
+      subjectsUnknown: 7,
+      tagsObserved: 30,
+      tagsValid: 30,
+      tagsReturned: 30,
+      tagsOmitted: 0,
+      malformedTagValues: 0,
+      textTruncatedTags: 0,
+      truncatedSubjects: 0,
+      truncated: false,
+      maxTagsPerSubject: 32,
+      maxTagCharacters: 96,
+      responseLimitBytes: 1048576,
+    },
   },
   exclusions: [
     { reason: 'missing_date', count: 1, sampleSubjectIds: [90] },
@@ -120,6 +151,13 @@ describe('Person activity renderer', () => {
     expect(html).toContain('另有 10 条窗口内关系因展示上限未显示');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
+    expect(html).toContain('作品来源观察（官方 v0 subject.meta_tags）');
+    expect(html).toContain('未观察到“原创”标签不等于“改编”');
+    expect(html).toContain('官方 meta_tags：原创、奇幻');
+    expect(html).toContain('来源操作（官方 v0 请求）');
+    expect(html).toContain('GET /v0/subjects/{subject_id} · 成功 · 尝试 22 · 成功 22 · 失败 0');
+    expect(html).toContain('来源与检索：Bangumi v0 · 声优关系 · 可判断为 TV 的动画');
+    expect(html).toContain('2026-08-15T00:00:00.000Z');
 
     const comparisonResult: PersonActivityResult = {
       ...result,
@@ -131,6 +169,7 @@ describe('Person activity renderer', () => {
           summary: result.summary,
           state: 'partial',
           coverage: result.coverage,
+          exclusions: [],
         },
         previous: {
           window: {
@@ -142,6 +181,7 @@ describe('Person activity renderer', () => {
           summary: result.summary,
           state: 'complete',
           coverage: result.coverage,
+          exclusions: [],
         },
         delta: { state: 'partial', creditRows: 0, uniqueSubjects: 0, uniqueCharacters: 0 },
         peak: {
@@ -177,6 +217,7 @@ describe('Person activity renderer', () => {
           summary: result.summary,
           state: 'unavailable',
           coverage: { ...result.coverage, rowsEligible: 0 },
+          exclusions: [],
         },
         previous: {
           window: {
@@ -188,6 +229,7 @@ describe('Person activity renderer', () => {
           summary: result.summary,
           state: 'unavailable',
           coverage: { ...result.coverage, rowsEligible: 0 },
+          exclusions: [],
         },
         delta: { state: 'unavailable' },
         peak: { metric: 'uniqueSubjects', state: 'unavailable', months: [] },
@@ -227,5 +269,83 @@ describe('Person activity renderer', () => {
     } finally {
       await service.close();
     }
+  });
+
+  it('renders complete, partial, failed, and zero-request source operations at supported widths', () => {
+    const operationResult: PersonActivityResult = {
+      ...result,
+      sourceOperations: [
+        { operation: 'GET /zero', attempted: 0, succeeded: 0, failed: 0 },
+        { operation: 'GET /partial', attempted: 2, succeeded: 1, failed: 1 },
+        { operation: 'GET /failed', attempted: 1, succeeded: 0, failed: 1 },
+        { operation: 'GET /complete', attempted: 1, succeeded: 1, failed: 0 },
+      ],
+    };
+
+    for (const width of [640, 960]) {
+      const html = renderHtmlTemplate(
+        buildPersonActivityViewModel(operationResult, { maxRows: 1 }),
+        'bangumi-dark',
+        {},
+        width,
+      );
+      expect(html).toContain('GET /zero · 未请求 · 尝试 0 · 成功 0 · 失败 0');
+      expect(html).toContain('GET /partial · 部分成功 · 尝试 2 · 成功 1 · 失败 1');
+      expect(html).toContain('GET /failed · 失败 · 尝试 1 · 成功 0 · 失败 1');
+      expect(html).toContain('GET /complete · 成功 · 尝试 1 · 成功 1 · 失败 0');
+    }
+  });
+
+  it('keeps large meta_tags projections bounded and reports omission evidence', () => {
+    const hugeTags = Array.from({ length: 5000 }, (_, index) => `tag-${index}`);
+    const hugeResult: PersonActivityResult = {
+      ...result,
+      rows: [
+        {
+          ...result.rows[0]!,
+          origin: {
+            state: 'not_observed',
+            metaTags: hugeTags,
+            metaTagsCoverage: {
+              ...result.coverage.origin,
+              state: 'partial',
+              observed: 5000,
+              valid: 5000,
+              returned: 32,
+              omitted: 4968,
+              malformed: 0,
+              textTruncated: 0,
+              truncated: true,
+            },
+          },
+        },
+      ],
+      coverage: {
+        ...result.coverage,
+        origin: {
+          ...result.coverage.origin,
+          subjectsObserved: 1,
+          subjectsWithMetaTags: 1,
+          subjectsPartial: 1,
+          subjectsUnknown: 0,
+          tagsObserved: 5000,
+          tagsValid: 5000,
+          tagsReturned: 32,
+          tagsOmitted: 4968,
+          truncatedSubjects: 1,
+          truncated: true,
+        },
+      },
+    };
+    const html = renderHtmlTemplate(
+      buildPersonActivityViewModel(hugeResult, { maxRows: 1 }),
+      'bangumi-dark',
+      {},
+      640,
+    );
+
+    expect(html).toContain('另有 4968 项省略');
+    expect(html).not.toContain('tag-4999');
+    expect(Buffer.byteLength(html, 'utf8')).toBeLessThan(100_000);
   });
 });

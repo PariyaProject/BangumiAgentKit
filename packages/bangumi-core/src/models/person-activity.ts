@@ -1,11 +1,43 @@
 import type { DomainPerson } from './person.js';
-import type { SubjectType } from './subject.js';
+import type { DomainSubjectMetaTagsCoverage, SubjectType } from './subject.js';
 
 export type PersonActivityKind = 'voice' | 'staff' | 'all';
 export type PersonActivityMedia = 'anime' | 'tv' | 'all';
 export type PersonActivityState = 'complete' | 'partial' | 'unavailable' | 'not_computable';
 export type PersonActivityRelationKind = 'voice' | 'staff';
 export type PersonActivityRoleFamily = 'main' | 'support' | 'staff' | 'unknown';
+export type PersonActivityOriginState = 'explicit_original' | 'not_observed' | 'unknown';
+
+export interface PersonActivityOriginObservation {
+  state: PersonActivityOriginState;
+  /** Raw official subject.meta_tags, retained when the source returned the field. */
+  metaTags?: string[];
+  metaTagsCoverage?: DomainSubjectMetaTagsCoverage;
+}
+
+export interface PersonActivityOriginSummary {
+  explicitOriginalSubjects: number;
+  notObservedSubjects: number;
+  unknownSubjects: number;
+}
+
+export interface PersonActivityOriginCoverage extends PersonActivityOriginSummary {
+  subjectsObserved: number;
+  subjectsWithMetaTags: number;
+  subjectsPartial: number;
+  subjectsUnknown: number;
+  tagsObserved: number;
+  tagsValid: number;
+  tagsReturned: number;
+  tagsOmitted: number;
+  malformedTagValues: number;
+  textTruncatedTags: number;
+  truncatedSubjects: number;
+  truncated: boolean;
+  maxTagsPerSubject: number;
+  maxTagCharacters: number;
+  responseLimitBytes: number;
+}
 
 export interface PersonActivityWindow {
   months: number;
@@ -28,6 +60,7 @@ export interface PersonActivityRow {
   characterName?: string;
   rawRole?: string;
   roleFamily: PersonActivityRoleFamily;
+  origin: PersonActivityOriginObservation;
 }
 
 export type PersonActivityExclusionReason =
@@ -68,6 +101,7 @@ export interface PersonActivityWindowSummary {
   byRole: PersonActivityWindowDistribution[];
   byMedia: PersonActivityWindowDistribution[];
   byMonth: PersonActivityMonthBucket[];
+  origin: PersonActivityOriginSummary;
 }
 
 export interface PersonActivityComparisonDelta {
@@ -82,6 +116,7 @@ export interface PersonActivityComparisonPeriod {
   summary: PersonActivityWindowSummary;
   state: PersonActivityState;
   coverage: PersonActivityCoverage;
+  exclusions: PersonActivityExclusion[];
 }
 
 export interface PersonActivityPeakMonth {
@@ -147,6 +182,7 @@ export interface PersonActivityCoverage {
   detailConcurrency: number;
   truncated: boolean;
   retrievedAt: string;
+  origin: PersonActivityOriginCoverage;
 }
 
 export interface PersonActivityResult {
