@@ -853,6 +853,47 @@ export interface RevisionTimelineViewModel {
   }>;
 }
 
+export interface SubjectLatestRevisionViewModel {
+  template: 'subject-latest-revision';
+  version: 1;
+  state: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionState;
+  subjectId: number;
+  selection: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['selection'];
+  list: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['list'];
+  revision?: {
+    id: number;
+    type: number;
+    summary?: string;
+    createdAt?: string;
+    creator?: {
+      username?: string;
+      nickname?: string;
+    };
+  };
+  detail: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['detail'];
+  source: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['evidence'];
+  presentation: {
+    text: {
+      maxGraphemes: number;
+      availableGraphemes: number;
+      renderedGraphemes: number;
+      omittedGraphemes: number;
+      truncated: boolean;
+    };
+    fields: {
+      available: number;
+      rendered: number;
+      omitted: number;
+      truncated: number;
+    };
+    fieldValues: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionPayloadField[];
+  };
+  limitations: string[];
+  warnings: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['warnings'];
+  error?: import('@bangumi-agent-kit/bangumi-core').SubjectLatestRevisionResult['error'];
+}
+
 export interface EpisodeGuideViewModel {
   template: 'episode-guide';
   version: 1;
@@ -1149,6 +1190,7 @@ export type RenderViewModel =
   | CollectionSeriesViewModel
   | CalendarViewModel
   | RevisionTimelineViewModel
+  | SubjectLatestRevisionViewModel
   | EpisodeGuideViewModel
   | EpisodeIntegrityViewModel
   | PersonProfileViewModel

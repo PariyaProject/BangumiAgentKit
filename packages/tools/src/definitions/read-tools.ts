@@ -2018,6 +2018,24 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     },
   });
 
+  const getLatestSubjectRevision = defineTool({
+    name: 'bangumi.get_latest_subject_revision',
+    description:
+      '获取指定条目的有界官方最新修订证据：只读取 limit=1、offset=0 返回的第一条记录及最多一条详情。结果明确保留 summary/created_at/data、列表与详情覆盖、partial/unavailable/not_found 状态；不宣称源端排序，也不把 data 当作精确 before/after 字段差异。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const activeService = new RevisionService(deps?.publicHttpClient || publicHttpClient);
+      return await activeService.getLatestSubjectRevision(input.subjectId);
+    },
+  });
+
   const getIndex = defineTool({
     name: 'bangumi.get_index',
     description: '获取 Bangumi 目录（列表/榜单）详情及其包含的条目列表。',
@@ -2072,6 +2090,7 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getSubjectStats,
     getCalendarIntelligence,
     getRevisionIntelligence,
+    getLatestSubjectRevision,
     getSubjectOverviewTool,
     getSubjectComparisonTool,
     getSubjectOverlapTool,

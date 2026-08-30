@@ -14,6 +14,7 @@ import type {
   CollectionDashboardResult,
   CollectionSeriesResult,
   RevisionIntelligenceResult,
+  SubjectLatestRevisionResult,
   EpisodeGuideResult,
   EpisodeIntegrityResult,
   PersonActivityProfile,
@@ -41,6 +42,7 @@ import type {
   CollectionSeriesViewModel,
   CalendarViewModel,
   RevisionTimelineViewModel,
+  SubjectLatestRevisionViewModel,
   EpisodeGuideViewModel,
   EpisodeIntegrityViewModel,
   SearchItemViewModel,
@@ -1887,6 +1889,155 @@ export function buildRevisionTimelineViewModel(
     },
     limitations: result.limitations,
     warnings: result.warnings,
+  };
+}
+
+const SUBJECT_LATEST_REVISION_PRESENTATION_MAX_GRAPHEMES = 4_800;
+const SUBJECT_LATEST_REVISION_PRESENTATION_MAX_FIELDS = 16;
+const SUBJECT_LATEST_REVISION_PRESENTATION_MAX_KEY_GRAPHEMES = 96;
+const SUBJECT_LATEST_REVISION_PRESENTATION_MAX_VALUE_GRAPHEMES = 320;
+
+function clipSubjectLatestRevisionText(
+  value: string,
+  maximum: number,
+): { text: string; rendered: number; truncated: boolean } {
+  const units = subjectIdentityGraphemes(value);
+  if (units.length <= maximum) {
+    return { text: value, rendered: units.length, truncated: false };
+  }
+  if (maximum <= 0) return { text: '', rendered: 0, truncated: true };
+  if (maximum === 1) return { text: '…', rendered: 1, truncated: true };
+  return {
+    text: `${units.slice(0, maximum - 1).join('')}…`,
+    rendered: maximum,
+    truncated: true,
+  };
+}
+
+function subjectLatestRevisionValueText(
+  value: SubjectLatestRevisionResult['detail']['payload']['fields'][number]['value'],
+): string {
+  if (value === null) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return String(value);
+}
+
+export function buildSubjectLatestRevisionViewModel(
+  result: SubjectLatestRevisionResult,
+): SubjectLatestRevisionViewModel {
+  const sourceFields = result.detail.payload.fields;
+  let availableGraphemes = 0;
+  let renderedGraphemes = 0;
+  let rendererTruncated = 0;
+  const presentationFields: SubjectLatestRevisionViewModel['presentation']['fieldValues'] = [];
+
+  sourceFields.forEach((field, index) => {
+    const valueText = subjectLatestRevisionValueText(field.value);
+    const available =
+      subjectIdentityGraphemes(field.key).length + subjectIdentityGraphemes(valueText).length;
+    availableGraphemes += available;
+    if (index >= SUBJECT_LATEST_REVISION_PRESENTATION_MAX_FIELDS) return;
+
+    const remaining = Math.max(
+      0,
+      SUBJECT_LATEST_REVISION_PRESENTATION_MAX_GRAPHEMES - renderedGraphemes,
+    );
+    const keyTake = clipSubjectLatestRevisionText(
+      field.key,
+      Math.min(SUBJECT_LATEST_REVISION_PRESENTATION_MAX_KEY_GRAPHEMES, remaining),
+    );
+    const valueTake = clipSubjectLatestRevisionText(
+      valueText,
+      Math.min(
+        SUBJECT_LATEST_REVISION_PRESENTATION_MAX_VALUE_GRAPHEMES,
+        Math.max(0, remaining - keyTake.rendered),
+      ),
+    );
+    const fieldTruncated = field.truncated || keyTake.truncated || valueTake.truncated;
+    if (!keyTake.text && !valueTake.text) {
+      rendererTruncated += 1;
+      return;
+    }
+    renderedGraphemes += keyTake.rendered + valueTake.rendered;
+    if (fieldTruncated) rendererTruncated += 1;
+    presentationFields.push({
+      ...field,
+      key: keyTake.text || '…',
+      value:
+        field.value === null || typeof field.value === 'number' || typeof field.value === 'boolean'
+          ? field.value
+          : valueTake.text,
+      truncated: fieldTruncated,
+    });
+  });
+
+  const omittedFields = Math.max(
+    0,
+    result.detail.payload.observedFields - presentationFields.length,
+  );
+  const sourceTruncatedFields = result.detail.payload.truncatedFields;
+  const presentationTruncatedFields = sourceTruncatedFields + rendererTruncated;
+  const textOmitted = Math.max(0, availableGraphemes - renderedGraphemes);
+  const revision = result.revision
+    ? {
+        ...result.revision,
+        ...(result.revision.summary
+          ? { summary: clipSubjectLatestRevisionText(result.revision.summary, 320).text }
+          : {}),
+        ...(result.revision.createdAt
+          ? { createdAt: clipSubjectLatestRevisionText(result.revision.createdAt, 96).text }
+          : {}),
+        ...(result.revision.creator
+          ? {
+              creator: {
+                ...(result.revision.creator.username
+                  ? {
+                      username: clipSubjectLatestRevisionText(result.revision.creator.username, 96)
+                        .text,
+                    }
+                  : {}),
+                ...(result.revision.creator.nickname
+                  ? {
+                      nickname: clipSubjectLatestRevisionText(result.revision.creator.nickname, 96)
+                        .text,
+                    }
+                  : {}),
+              },
+            }
+          : {}),
+      }
+    : undefined;
+
+  return {
+    template: 'subject-latest-revision',
+    version: 1,
+    state: result.state,
+    subjectId: result.subjectId,
+    selection: result.selection,
+    list: result.list,
+    revision,
+    detail: result.detail,
+    source: result.source,
+    evidence: result.evidence,
+    presentation: {
+      text: {
+        maxGraphemes: SUBJECT_LATEST_REVISION_PRESENTATION_MAX_GRAPHEMES,
+        availableGraphemes: availableGraphemes,
+        renderedGraphemes,
+        omittedGraphemes: textOmitted,
+        truncated: textOmitted > 0,
+      },
+      fields: {
+        available: result.detail.payload.observedFields,
+        rendered: presentationFields.length,
+        omitted: omittedFields,
+        truncated: presentationTruncatedFields,
+      },
+      fieldValues: presentationFields,
+    },
+    limitations: result.limitations,
+    warnings: result.warnings,
+    error: result.error,
   };
 }
 

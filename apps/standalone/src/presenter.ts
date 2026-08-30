@@ -1568,6 +1568,128 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
   return boundHumanLines(lines);
 }
 
+function presentSubjectLatestRevision(value: Record<string, unknown>): string | undefined {
+  const subjectId = value.subjectId;
+  const selection = comparisonRecord(value.selection);
+  const list = comparisonRecord(value.list);
+  const detail = comparisonRecord(value.detail);
+  const source = comparisonRecord(value.source);
+  const payload = comparisonRecord(detail?.payload);
+  if (
+    typeof subjectId !== 'number' ||
+    !selection ||
+    !list ||
+    !detail ||
+    !payload ||
+    !Array.isArray(source?.operations)
+  ) {
+    return undefined;
+  }
+
+  const lines = [
+    `条目最新修订证据 · 条目 ${humanField(subjectId, 32)} · 状态: ${comparisonStateLabel(value.state)}`,
+    '口径：选择官方 offset=0、limit=1 返回的第一条源顺序记录；源未保证排序，结果不等同精确 before/after 差异。',
+    `选择：${humanField(selection.strategy || 'offset-zero-source-order', 80)} · limit ${humanField(selection.limit ?? 1, 16)} · offset ${humanField(selection.offset ?? 0, 16)} · 修订 ID ${humanField(selection.revisionId ?? '未知', 32)}`,
+  ];
+
+  const revision = comparisonRecord(value.revision);
+  if (revision) {
+    const creator = comparisonRecord(revision.creator);
+    lines.push(
+      `修订：${humanField(revision.summary || '摘要未知', 320)} · ID ${humanField(revision.id ?? '?', 32)} · 类型 ${humanField(revision.type ?? '?', 24)} · 创建 ${humanField(revision.createdAt || '未知', 64)} · 修订者 ${humanField(creator?.nickname || creator?.username || '未知', 96)}`,
+    );
+  } else {
+    lines.push(
+      value.state === 'unavailable'
+        ? '官方修订列表不可用，未生成修订证据。'
+        : '官方修订列表没有可选择的记录；空结果不证明不存在历史。',
+    );
+  }
+
+  lines.push(
+    `列表覆盖：观察 ${humanField(list.observed ?? '?', 24)} · 返回 ${humanField(list.returned ?? '?', 24)} · 总数 ${list.totalKind === 'exact' ? humanField(list.total ?? '?', 24) : '未知'} · ${comparisonStateLabel(list.state)}${list.truncated === true ? ' · 有界/部分' : ''}`,
+    `详情：${comparisonStateLabel(detail.state)} · data ${comparisonStateLabel(payload.state)} · 官方观察字段 ${humanField(payload.observedFields ?? '?', 24)} · 返回 ${humanField(payload.returnedFields ?? '?', 24)} · 源省略 ${humanField(payload.omittedFields ?? '?', 24)} · 源裁剪 ${humanField(payload.truncatedFields ?? '?', 24)}`,
+  );
+
+  const presentation = comparisonRecord(value.presentation);
+  const presentationFields = Array.isArray(presentation?.fieldValues)
+    ? presentation.fieldValues
+    : Array.isArray(payload.fields)
+      ? payload.fields
+      : [];
+  if (presentationFields.length > 0) {
+    lines.push('官方详情 data（证据字段，不是精确差异）：');
+    for (const rawField of presentationFields.slice(0, 16)) {
+      const field = comparisonRecord(rawField);
+      if (!field) continue;
+      lines.push(
+        `- ${humanField(field.key || '未知键', 96)}: ${humanField(field.value === null ? 'null' : field.value, 320)}${field.truncated === true ? ' …' : ''}`,
+      );
+    }
+  } else {
+    lines.push('data 未提供可安全展示的对象字段；不会猜测变更内容。');
+  }
+
+  if (presentation) {
+    const text = comparisonRecord(presentation.text);
+    const fields = comparisonRecord(presentation.fields);
+    if (text || fields) {
+      lines.push(
+        `展示覆盖：字段 ${humanField(fields?.rendered ?? '?', 24)}/${humanField(fields?.available ?? '?', 24)} · 展示省略 ${humanField(fields?.omitted ?? '?', 24)} · 文本 ${humanField(text?.renderedGraphemes ?? '?', 24)}/${humanField(text?.availableGraphemes ?? '?', 24)} · 上限 ${humanField(text?.maxGraphemes ?? '?', 24)}`,
+      );
+    }
+  }
+
+  const operations = source.operations
+    .slice(0, 4)
+    .map((operation) => {
+      const details = comparisonRecord(operation);
+      return details ? humanField(details.operation || '未知操作', 160) : '';
+    })
+    .filter(Boolean);
+  lines.push(`来源：${operations.join(' · ') || '未记录'}`);
+
+  const evidence = Array.isArray(value.evidence) ? value.evidence : [];
+  if (evidence.length > 0) {
+    lines.push(
+      `证据：${humanField(
+        evidence
+          .slice(0, 4)
+          .map((item) => {
+            const details = comparisonRecord(item);
+            return details
+              ? `${details.source || 'unknown'}/${details.operation || 'unknown'}`
+              : '';
+          })
+          .filter(Boolean)
+          .join(' · '),
+        280,
+      )}`,
+    );
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 4)) {
+      const warning = comparisonRecord(rawWarning);
+      if (warning) {
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 80)} · ${humanField(warning.message || '')}`,
+        );
+      }
+    }
+    if (warnings.length > 4) lines.push(`- 另有 ${warnings.length - 4} 条告警未展开。`);
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 4) lines.push(`- 另有 ${limitations.length - 4} 条限制未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentSubjectIdentity(value: Record<string, unknown>): string | undefined {
   const subjectId = value.subjectId;
   if (typeof subjectId !== 'number') return undefined;
@@ -2687,6 +2809,8 @@ export function formatHuman(value: unknown): string {
     if (calendar) return calendar;
     const subjectStatsHistory = presentSubjectStatsHistory(safe as Record<string, unknown>);
     if (subjectStatsHistory) return subjectStatsHistory;
+    const subjectLatestRevision = presentSubjectLatestRevision(safe as Record<string, unknown>);
+    if (subjectLatestRevision) return subjectLatestRevision;
     const subjectIdentity = presentSubjectIdentity(safe as Record<string, unknown>);
     if (subjectIdentity) return subjectIdentity;
     const subjectStats = presentSubjectStats(safe as Record<string, unknown>);

@@ -34,6 +34,7 @@ import {
   buildSearchListViewModel,
   buildPersonProfileViewModel,
   buildRevisionTimelineViewModel,
+  buildSubjectLatestRevisionViewModel,
   buildDiscoveryResultsViewModel,
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
@@ -338,6 +339,27 @@ export function createRenderPresentationTools(
         { limit: input.limit, offset: input.offset },
       );
       return await executeRenderAndSave(buildRevisionTimelineViewModel(revisionResult));
+    },
+  });
+
+  const renderLatestSubjectRevision = defineTool({
+    name: 'bangumi.render_latest_subject_revision',
+    description:
+      '生成指定条目的有界官方最新修订证据图片卡片 Artifact。只读取 official v0 limit=1、offset=0 的第一条修订及最多一条详情；卡片明确显示 summary/created_at/data 的源证据、覆盖和限制，不把 data 当作精确 before/after 差异。',
+    input: z.object({
+      subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+    }),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      const publicClient = deps?.publicHttpClient;
+      if (!publicClient) {
+        throw new BangumiError('INTERNAL_ERROR', 'HttpClient unavailable', false);
+      }
+      const revisionService = new RevisionService(publicClient);
+      const result = await revisionService.getLatestSubjectRevision(input.subjectId);
+      return await executeRenderAndSave(buildSubjectLatestRevisionViewModel(result));
     },
   });
 
@@ -1313,6 +1335,7 @@ export function createRenderPresentationTools(
     renderSeriesWatchOrder,
     renderPersonProfile,
     renderRevisionTimeline,
+    renderLatestSubjectRevision,
     renderEpisodeGuide,
     renderEpisodeIntegrity,
     renderSubjectOverview,
