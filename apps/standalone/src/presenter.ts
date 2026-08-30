@@ -1568,6 +1568,138 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
   return boundHumanLines(lines);
 }
 
+function presentSubjectIdentity(value: Record<string, unknown>): string | undefined {
+  const subjectId = value.subjectId;
+  if (typeof subjectId !== 'number') return undefined;
+  const source = comparisonRecord(value.source);
+  if (
+    !Object.prototype.hasOwnProperty.call(value, 'data') &&
+    typeof source?.responseLimitBytes !== 'number'
+  ) {
+    return undefined;
+  }
+  const data = comparisonRecord(value.data);
+  const coverage = comparisonRecord(value.coverage);
+  const subjectName = data?.name || `条目 ${subjectId}`;
+  const lines = [
+    `条目身份与元数据 · 条目 ${humanField(subjectId, 32)} · 状态: ${comparisonStateLabel(value.state)}`,
+  ];
+
+  if (data) {
+    lines.push(
+      `名称: ${humanField(subjectName, 180)} · 中文名 ${humanField(data.nameCn || '未知', 180)} · 媒介 ${humanField(data.typeLabel || data.type || '未知', 48)} · 平台 ${humanField(data.platform || '未知', 96)}`,
+    );
+    lines.push(
+      `日期 ${humanField(data.date || '未知', 48)} · locked ${humanField(data.locked ?? '未知', 24)} · nsfw ${humanField(data.nsfw ?? '未知', 24)} · 书籍 series ${humanField(data.series ?? '未知', 24)} · volumes ${humanField(data.volumes ?? '未知', 32)} · eps ${humanField(data.eps ?? '未知', 32)} · totalEpisodes ${humanField(data.totalEpisodes ?? '未知', 32)}`,
+    );
+    if (Array.isArray(data.metaTags)) {
+      lines.push(`元标签: ${humanField(data.metaTags.join(' · ') || '空', 220)}`);
+    }
+    if (Array.isArray(data.tags)) {
+      lines.push(`标签: ${humanField(data.tags.join(' · ') || '空', 220)}`);
+    }
+    if (data.images && typeof data.images === 'object' && !Array.isArray(data.images)) {
+      lines.push(
+        `图片链接: ${humanField(Object.keys(data.images).length, 32)} 个（仅链接，未下载）`,
+      );
+    }
+  } else {
+    lines.push('未生成身份数据；不会用猜测值填充缺失字段。');
+  }
+
+  const infobox = comparisonRecord(data?.infobox);
+  const aliases = comparisonRecord(infobox?.aliases);
+  lines.push(
+    `别名: ${comparisonStateLabel(aliases?.state)} · ${humanField(Array.isArray(aliases?.values) ? aliases.values.join(' · ') || '无可展示值' : '未识别到别名行', 220)}`,
+  );
+  const aliasKeys = Array.isArray(aliases?.sourceKeys) ? aliases.sourceKeys : [];
+  if (aliasKeys.length > 0) lines.push(`别名原始键: ${humanField(aliasKeys.join(' · '), 180)}`);
+
+  const infoboxCoverage =
+    comparisonRecord(infobox?.coverage) || comparisonRecord(coverage?.infobox);
+  if (infoboxCoverage) {
+    lines.push(
+      `Infobox: ${comparisonStateLabel(infobox?.state)} · 行 ${humanField(infoboxCoverage.returnedRows ?? '?', 24)}/${humanField(infoboxCoverage.observedRows ?? '?', 24)} · 异常 ${humanField(infoboxCoverage.malformedRows ?? '?', 24)} · 省略 ${humanField(infoboxCoverage.omittedRows ?? '?', 24)} · 嵌套值 ${humanField(infoboxCoverage.nestedValuesReturned ?? '?', 24)}/${humanField(infoboxCoverage.nestedValuesObserved ?? '?', 24)}`,
+    );
+  }
+  const infoboxRows = Array.isArray(infobox?.rows) ? infobox.rows : [];
+  if (infoboxRows.length > 0) {
+    lines.push('Infobox 行：');
+    for (const rawRow of infoboxRows.slice(0, 12)) {
+      const row = comparisonRecord(rawRow);
+      if (!row) continue;
+      const rawValue = row.value;
+      const renderedValue = Array.isArray(rawValue)
+        ? rawValue
+            .map((item) => {
+              const nested = comparisonRecord(item);
+              return nested ? `${nested.k ? `${nested.k}: ` : ''}${nested.v || ''}` : '';
+            })
+            .filter(Boolean)
+            .join(' · ')
+        : rawValue;
+      lines.push(
+        `- ${humanField(row.key || '未知键', 96)}: ${humanField(renderedValue || '空', 220)}`,
+      );
+    }
+    if (infoboxRows.length > 12) {
+      lines.push(`- 另有 ${humanField(infoboxRows.length - 12, 32)} 行未展开。`);
+    }
+  }
+
+  if (coverage) {
+    const fields = comparisonRecord(coverage.fields);
+    lines.push(
+      `覆盖: 官方请求 ${humanField(coverage.sourceRequestsSucceeded ?? '?', 24)}/${humanField(coverage.sourceRequestsAttempted ?? '?', 24)} 成功 · 响应上限 ${humanField(coverage.responseLimitBytes ?? '?', 32)} bytes · 获取于 ${humanField(value.retrievedAt || '未知', 64)}`,
+    );
+    if (fields) {
+      lines.push(
+        `字段: 返回 ${humanField(Array.isArray(fields.returned) ? fields.returned.length : '?', 24)} · 缺失 ${humanField(Array.isArray(fields.missing) ? fields.missing.join(', ') || '无' : '?', 180)} · 异常 ${humanField(Array.isArray(fields.malformed) ? fields.malformed.join(', ') || '无' : '?', 180)}`,
+      );
+    }
+  }
+
+  const evidence = Array.isArray(value.evidence) ? value.evidence : [];
+  if (evidence.length > 0) {
+    lines.push(
+      `证据: ${humanField(
+        evidence
+          .slice(0, 8)
+          .map((item) => {
+            const detail = comparisonRecord(item);
+            return detail
+              ? `${detail.source || 'unknown'}/${detail.operation || 'unknown'}${detail.fieldPath ? `/${detail.fieldPath}` : ''}`
+              : '';
+          })
+          .filter(Boolean)
+          .join(' · '),
+        240,
+      )}`,
+    );
+  }
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 4)) {
+      const warning = comparisonRecord(rawWarning);
+      if (warning)
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 80)} · ${humanField(warning.message || '')}`,
+        );
+    }
+    if (warnings.length > 4)
+      lines.push(`- 另有 ${humanField(warnings.length - 4, 32)} 条告警未展开。`);
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 4)
+      lines.push(`- 另有 ${humanField(limitations.length - 4, 32)} 条限制未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentSubjectStatsHistory(value: Record<string, unknown>): string | undefined {
   const subjectId = value.subjectId;
   const collection = comparisonRecord(value.collection);
@@ -2555,6 +2687,8 @@ export function formatHuman(value: unknown): string {
     if (calendar) return calendar;
     const subjectStatsHistory = presentSubjectStatsHistory(safe as Record<string, unknown>);
     if (subjectStatsHistory) return subjectStatsHistory;
+    const subjectIdentity = presentSubjectIdentity(safe as Record<string, unknown>);
+    if (subjectIdentity) return subjectIdentity;
     const subjectStats = presentSubjectStats(safe as Record<string, unknown>);
     if (subjectStats) return subjectStats;
     const subjectCohortComparison = presentSubjectCohortComparison(safe as Record<string, unknown>);

@@ -94,6 +94,7 @@ export type ProviderErrorCode =
   | 'timeout'
   | 'network_error'
   | 'schema_drift'
+  | 'response_too_large'
   | 'upstream_unavailable'
   | 'upstream_error';
 
@@ -131,6 +132,11 @@ export type WarningCode =
   | 'UPSTREAM_TIMEOUT'
   | 'UPSTREAM_RATE_LIMITED'
   | 'UPSTREAM_ERROR'
+  | 'RESPONSE_TOO_LARGE'
+  | 'INFOBOX_MALFORMED'
+  | 'INFOBOX_TRUNCATED'
+  | 'IDENTITY_LIST_TRUNCATED'
+  | 'ALIAS_UNKNOWN'
   | 'DISCOVERY_AMBIGUOUS_CONCEPT'
   | 'DISCOVERY_UNKNOWN_CONCEPT'
   | 'DISCOVERY_BUDGET_EXCEEDED'

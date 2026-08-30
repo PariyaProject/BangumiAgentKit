@@ -544,7 +544,7 @@ describe('PR-6R-C standalone runtime', () => {
           id: 'official-v0',
           state: 'READY',
           sourceClass: 'official_v0',
-          capabilities: ['subject', 'subject_stats'],
+          capabilities: ['subject', 'subject_stats', 'subject_identity'],
         },
         {
           id: 'official-legacy',

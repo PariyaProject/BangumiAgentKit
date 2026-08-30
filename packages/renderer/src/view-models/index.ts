@@ -1057,6 +1057,70 @@ export interface SubjectStatsViewModel {
   retrievedAt?: string;
 }
 
+export interface SubjectIdentityViewModel {
+  template: 'subject-identity';
+  version: 1;
+  subjectId: number;
+  state: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityState;
+  subject?: {
+    id: number;
+    type: number;
+    typeLabel: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityData['typeLabel'];
+    name: string;
+    nameCn?: string;
+    date?: string;
+    platform?: string;
+    locked?: boolean;
+    nsfw?: boolean;
+    series?: boolean;
+    volumes?: number;
+    eps?: number;
+    totalEpisodes?: number;
+    metaTags?: string[];
+    tags?: string[];
+    imageLinksAvailable: boolean;
+  };
+  infobox: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityInfoboxData;
+  coverage: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityResult['coverage'];
+  source: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityResult['source'];
+  evidence: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityEvidence[];
+  presentation: {
+    state: 'complete' | 'partial';
+    text: {
+      maxGraphemes: number;
+      availableGraphemes: number;
+      renderedGraphemes: number;
+      omittedGraphemes: number;
+      truncated: boolean;
+    };
+    direct: { available: number; rendered: number; omitted: number; truncated: number };
+    infobox: {
+      available: number;
+      rendered: number;
+      omitted: number;
+      truncated: number;
+      valuesAvailable: number;
+      valuesRendered: number;
+      valuesOmitted: number;
+    };
+    aliases: {
+      available: number;
+      rendered: number;
+      omitted: number;
+      truncated: number;
+      sourceKeysAvailable: number;
+      sourceKeysRendered: number;
+      sourceKeysOmitted: number;
+    };
+    metaTags: { available: number; rendered: number; omitted: number; truncated: number };
+    tags: { available: number; rendered: number; omitted: number; truncated: number };
+  };
+  warnings: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityResult['warnings'];
+  limitations: string[];
+  retrievedAt?: string;
+  error?: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityResult['error'];
+}
+
 export interface SubjectStatsHistoryViewModel {
   template: 'subject-stats-history';
   version: 1;
@@ -1095,4 +1159,5 @@ export type RenderViewModel =
   | SubjectCohortComparisonViewModel
   | SubjectOverlapViewModel
   | SubjectStatsViewModel
+  | SubjectIdentityViewModel
   | SubjectStatsHistoryViewModel;

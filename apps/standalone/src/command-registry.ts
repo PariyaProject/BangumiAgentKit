@@ -38,6 +38,7 @@ Bangumi:
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
+  subject-identity <subjectId>
   stats <subjectId>
   stats-history <subjectId> [--record-current] [--max-observations 1..120]
                [--retention-days 1..3650]
@@ -88,7 +89,7 @@ Auth:
   auth remove <accountId-or-index>
 
 Renderer:
-  render subject|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
+  render subject|subject-identity|stats|stats-history|overview|compare|compare-cohorts|aggregate-cohort|overlap|watch-order|cast|person|activity|collaboration|episode-guide|episode-integrity|calendar|revision|search|collection|collection-backlog|collection-schedule|collection-dashboard|collection-series <args> [--output <path>] [--force]
 
 Developer playground:
   tool list
@@ -814,6 +815,13 @@ export class StandaloneCommandRegistry {
         }),
       };
     }
+    if (command === 'subject-identity' || command === 'identity') {
+      return {
+        value: await runTool(ctx, 'bangumi.get_subject_identity', {
+          subjectId: parsePositiveInteger(args[1], 'subject id'),
+        }),
+      };
+    }
     if (command === 'stats') {
       return {
         value: await runTool(ctx, 'bangumi.get_subject_stats_intelligence', {
@@ -1242,6 +1250,9 @@ export class StandaloneCommandRegistry {
     let input: Record<string, unknown> = {};
     if (kind === 'subject') {
       name = 'bangumi.render_subject_card';
+      input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
+    } else if (kind === 'subject-identity' || kind === 'identity') {
+      name = 'bangumi.render_subject_identity';
       input = { subjectId: parsePositiveInteger(args[1], 'subject id') };
     } else if (kind === 'stats' || kind === 'subject-stats') {
       name = 'bangumi.render_subject_stats_intelligence';

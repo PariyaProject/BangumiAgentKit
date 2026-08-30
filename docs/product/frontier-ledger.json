@@ -1328,11 +1328,29 @@
       "kind": "scenario",
       "user_question": "某条目的别名、中文名和平台名称有哪些？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.get_subject_identity and inspect alias provenance plus infobox coverage before making identity claims.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a one-request official-v0 identity and metadata view with preserved names, platform, content counts, bounded infobox rows, explicit unknown aliases, and derived alias provenance; canonical identity, franchise, history, community, and image-byte claims remain outside the contract.",
+      "evidence": {
+        "capabilities": ["bangumi.get_subject_identity", "bangumi.render_subject_identity"],
+        "tests": [
+          "tests/provider/subject-identity.test.ts",
+          "tests/semantic/subject-identity.test.ts",
+          "tests/render/subject-identity.test.ts",
+          "tests/standalone/subject-identity-command.test.ts"
+        ],
+        "implementation": [
+          "packages/provider-core/src/providers.ts",
+          "packages/tools/src/subject-identity.ts",
+          "packages/renderer/src/templates/SubjectIdentityCard.tsx",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "source_contract": "One positive known subjectId and one official GET /v0/subjects/{subject_id} request with a 1 MiB response limit; preserve source identity/content fields and image URLs as links, cap infobox output at 64 rows/8 nested values/1000 scalar characters, apply a deterministic 3600-grapheme aggregate renderer budget plus bounded presentation fields, report source and presentation observed/returned/malformed/omitted coverage, and treat recognized aliases as derived extraction rather than canonical identity.",
+        "closure_reason": "Focused C11 implementation is covered end to end by provider, semantic, renderer, Standalone, and generated-catalog evidence."
+      }
     },
     {
       "id": "C12",

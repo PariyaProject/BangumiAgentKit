@@ -36,6 +36,7 @@ import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectOverlap } from '../subject-overlap.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
+import { getSubjectIdentity } from '../subject-identity.js';
 import {
   getSubjectStatsHistory,
   SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
@@ -159,6 +160,24 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
       const activeService = new SubjectService(activeClient);
       return await activeService.getSubjectById(input.subjectId);
     },
+  });
+
+  const getSubjectIdentityTool = defineTool({
+    name: 'bangumi.get_subject_identity',
+    description:
+      '读取一个已知 Bangumi 条目的证据型身份与内容元数据：官方名称、中文名、平台、日期、媒介、书籍 series 标记、eps/totalEpisodes、有限 metaTags/tags，以及带原始键和值的有界 infobox。只执行一次官方 v0 条目详情读取，保留字段/行覆盖和别名派生证据；缺失别名是 unknown，不等于没有别名，不推断 canonical identity、franchise 归属或完整历史，不读取图片字节、关系或社区网页。',
+    input: z
+      .object({
+        subjectId: z.number().int().positive().describe('已知的 Bangumi 条目 ID'),
+      })
+      .strict(),
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) =>
+      await getSubjectIdentity(input.subjectId, {
+        providerRegistry: deps?.providerRegistry,
+      }),
   });
 
   const getSubjectOverviewTool = defineTool({
@@ -2072,5 +2091,6 @@ export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvid
     getCharacterCollection,
     listPersonCollections,
     getPersonCollection,
+    getSubjectIdentityTool,
   ] as const;
 }

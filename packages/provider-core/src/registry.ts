@@ -17,11 +17,13 @@ import type {
   CalendarProvider,
   ProviderRequestContext,
   ProviderSubjectData,
+  ProviderSubjectIdentityData,
   SubjectDiscoveryBrowseRequest,
   SubjectDiscoveryPage,
   SubjectDiscoverySearchRequest,
   SubjectDiscoveryProvider,
   SubjectProvider,
+  SubjectIdentityProvider,
   SubjectStatsData,
 } from './providers.js';
 
@@ -48,7 +50,8 @@ export interface ProviderDiagnostic {
 
 export interface ProviderRegistryOptions {
   v0?: SubjectProvider &
-    Partial<Pick<SubjectDiscoveryProvider, 'searchSubjects' | 'browseSubjects'>>;
+    Partial<Pick<SubjectDiscoveryProvider, 'searchSubjects' | 'browseSubjects'>> &
+    Partial<Pick<SubjectIdentityProvider, 'getSubjectIdentity'>>;
   legacyCalendar?: CalendarProvider;
   policy?: SourcePolicy;
   now?: () => number;
@@ -78,7 +81,8 @@ function statusFor(
 export class ProviderRegistry {
   private readonly policy: SourcePolicy;
   private readonly v0?: SubjectProvider &
-    Partial<Pick<SubjectDiscoveryProvider, 'searchSubjects' | 'browseSubjects'>>;
+    Partial<Pick<SubjectDiscoveryProvider, 'searchSubjects' | 'browseSubjects'>> &
+    Partial<Pick<SubjectIdentityProvider, 'getSubjectIdentity'>>;
   private readonly legacyCalendar?: CalendarProvider;
   private readonly now: () => number;
   private readonly diagnosticLog: ProviderDiagnostic[] = [];
@@ -134,6 +138,31 @@ export class ProviderRegistry {
     );
   }
 
+  async getSubjectIdentity(
+    subjectId: number,
+    context: ProviderRequestContext = {},
+  ): Promise<CapabilityResult<ProviderSubjectIdentityData>> {
+    const source: SourceDescriptor = {
+      class: 'official_v0',
+      provider: 'bangumi',
+      operation: 'getSubjectIdentity',
+    };
+    if (
+      sourceAvailability('official_v0', this.policy) !== 'enabled' ||
+      !this.v0?.getSubjectIdentity
+    ) {
+      return this.recordUnavailable(
+        'official-v0',
+        source,
+        'getSubjectIdentity',
+        sourceUnavailableResult(source, this.policy),
+      );
+    }
+    return this.invoke('official-v0', source, 'getSubjectIdentity', () =>
+      this.v0!.getSubjectIdentity!(subjectId, context),
+    );
+  }
+
   async searchSubjects(
     request: SubjectDiscoverySearchRequest,
     context: ProviderRequestContext = {},
@@ -144,10 +173,7 @@ export class ProviderRegistry {
       operation: 'searchSubjects',
       experimental: true,
     };
-    if (
-      sourceAvailability('official_v0', this.policy) !== 'enabled' ||
-      !this.v0?.searchSubjects
-    ) {
+    if (sourceAvailability('official_v0', this.policy) !== 'enabled' || !this.v0?.searchSubjects) {
       return this.recordUnavailable(
         'official-v0',
         source,
@@ -169,10 +195,7 @@ export class ProviderRegistry {
       provider: 'bangumi',
       operation: 'browseSubjects',
     };
-    if (
-      sourceAvailability('official_v0', this.policy) !== 'enabled' ||
-      !this.v0?.browseSubjects
-    ) {
+    if (sourceAvailability('official_v0', this.policy) !== 'enabled' || !this.v0?.browseSubjects) {
       return this.recordUnavailable(
         'official-v0',
         source,
@@ -207,14 +230,10 @@ export class ProviderRegistry {
   }
 
   getStatus(): ProviderStatus[] {
+    const v0Capabilities = ['subject', 'subject_stats'];
+    if (this.v0?.getSubjectIdentity) v0Capabilities.push('subject_identity');
     return [
-      statusFor(
-        'official-v0',
-        'official_v0',
-        ['subject', 'subject_stats'],
-        this.policy,
-        Boolean(this.v0),
-      ),
+      statusFor('official-v0', 'official_v0', v0Capabilities, this.policy, Boolean(this.v0)),
       statusFor(
         'official-legacy',
         'official_legacy',
