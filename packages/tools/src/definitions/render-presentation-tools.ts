@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '../define-tool.js';
 import { BangumiError } from '@bangumi-agent-kit/bangumi-transport';
-import { DiscoveryEngine } from '@bangumi-agent-kit/discovery';
+import { compareSubjectCohorts, DiscoveryEngine } from '@bangumi-agent-kit/discovery';
 import {
   SubjectService,
   SeriesService,
@@ -38,6 +38,7 @@ import {
   buildSeriesRelationsViewModel,
   buildSubjectOverviewViewModel,
   buildSubjectComparisonViewModel,
+  buildSubjectCohortComparisonViewModel,
   buildSubjectOverlapViewModel,
   buildSubjectStatsViewModel,
   buildSubjectStatsHistoryViewModel,
@@ -51,7 +52,7 @@ import {
   buildEpisodeGuideViewModel,
   buildEpisodeIntegrityViewModel,
 } from '@bangumi-agent-kit/renderer';
-import { discoveryQueryInput } from './discovery-tools.js';
+import { discoveryQueryInput, subjectCohortComparisonInput } from './discovery-tools.js';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectOverlap } from '../subject-overlap.js';
@@ -516,6 +517,28 @@ export function createRenderPresentationTools(
         authScope: 'public',
       });
       return await executeRenderAndSave(buildDiscoveryResultsViewModel(result, query));
+    },
+  });
+
+  const renderSubjectCohorts = defineTool({
+    name: 'bangumi.render_subject_cohort_comparison',
+    description:
+      '生成两个由现有 discovery 条件定义的 Bangumi 条目 cohort 比较图片卡片。卡片展示官方 v0 返回样本覆盖、平均评分、平均热度（收藏总数）、平均报告话数、B−A 差值、缺失/冲突、检索证据和有界限制；不生成推荐、质量、因果或历史趋势结论，渲染器不读取网络资产。',
+    input: subjectCohortComparisonInput,
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      if (!deps?.providerRegistry) {
+        throw new BangumiError('INTERNAL_ERROR', 'ProviderRegistry unavailable', false);
+      }
+      const result = await compareSubjectCohorts(
+        input.cohorts,
+        { maxSubjects: input.maxSubjects },
+        deps.providerRegistry,
+        { authScope: 'public' },
+      );
+      return await executeRenderAndSave(buildSubjectCohortComparisonViewModel(result));
     },
   });
 
@@ -1248,6 +1271,7 @@ export function createRenderPresentationTools(
     renderEpisodeIntegrity,
     renderSubjectOverview,
     renderSubjectComparison,
+    renderSubjectCohorts,
     renderSubjectOverlap,
     renderSubjectStats,
     renderSubjectStatsHistory,

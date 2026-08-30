@@ -4,5 +4,6 @@ export * from './capabilities.js';
 export * from './compiler.js';
 export * from './concept-resolver.js';
 export * from './engine.js';
+export * from './cohort.js';
 
 export const MODULE_NAME = 'discovery';

@@ -146,6 +146,227 @@
     }
   },
   {
+    "name": "bangumi.compare_subject_cohorts",
+    "description": "比较两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）和平均报告话数、B−A 差值、每项有效/缺失/冲突计数、两侧查询覆盖与检索证据；结果是有界返回样本，不生成推荐、质量、因果或历史趋势结论。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cohorts": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "query": {
+                "type": "object",
+                "properties": {
+                  "keyword": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "media": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["anime", "book", "music", "game", "real"]
+                      },
+                      {
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["anime", "book", "music", "game", "real"]
+                        }
+                      }
+                    ]
+                  },
+                  "categories": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["tv", "ova", "movie", "web"]
+                      },
+                      {
+                        "minItems": 1,
+                        "maxItems": 4,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["tv", "ova", "movie", "web"]
+                        }
+                      }
+                    ]
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 1900,
+                    "maximum": 2200
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "season": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-(winter|spring|summer|autumn)$"
+                  },
+                  "from": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "to": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "tags": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "metaTags": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "excludeMetaTags": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "concepts": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "rating": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "ratingCount": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "rank": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "collectionCount": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "nsfw": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["include", "exclude", "only"]
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "sort": {
+                    "type": "string",
+                    "enum": ["relevance", "heat", "rank", "score", "date"]
+                  },
+                  "order": {
+                    "type": "string",
+                    "enum": ["asc", "desc"]
+                  },
+                  "resultMode": {
+                    "type": "string",
+                    "enum": ["top", "all"]
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "explain": {
+                    "type": "string",
+                    "enum": ["none", "compact", "full"]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": ["query"],
+            "additionalProperties": false
+          },
+          "description": "两个 cohort 定义；差值按输入顺序计算为 B − A"
+        },
+        "maxSubjects": {
+          "description": "每个 cohort 最多保留的返回条目数，默认 40；不代表完整数据库枚举",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      },
+      "required": ["cohorts"],
+      "additionalProperties": false
+    }
+  },
+  {
     "name": "bangumi.describe_operation",
     "description": "获取指定 Operation ID 的详细元数据、Path 结构、认证与权限要求。",
     "auth": "none",
@@ -2713,6 +2934,227 @@
         }
       },
       "required": ["subjectId"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "bangumi.render_subject_cohort_comparison",
+    "description": "生成两个由现有 discovery 条件定义的 Bangumi 条目 cohort 比较图片卡片。卡片展示官方 v0 返回样本覆盖、平均评分、平均热度（收藏总数）、平均报告话数、B−A 差值、缺失/冲突、检索证据和有界限制；不生成推荐、质量、因果或历史趋势结论，渲染器不读取网络资产。",
+    "auth": "none",
+    "risk": "read",
+    "scopes": [],
+    "policyMode": "static",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cohorts": {
+          "minItems": 2,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "query": {
+                "type": "object",
+                "properties": {
+                  "keyword": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "media": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["anime", "book", "music", "game", "real"]
+                      },
+                      {
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["anime", "book", "music", "game", "real"]
+                        }
+                      }
+                    ]
+                  },
+                  "categories": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["tv", "ova", "movie", "web"]
+                      },
+                      {
+                        "minItems": 1,
+                        "maxItems": 4,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["tv", "ova", "movie", "web"]
+                        }
+                      }
+                    ]
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 1900,
+                    "maximum": 2200
+                  },
+                  "month": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "season": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-(winter|spring|summer|autumn)$"
+                  },
+                  "from": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "to": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "tags": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "metaTags": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "excludeMetaTags": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "concepts": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "rating": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "ratingCount": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "rank": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "collectionCount": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "nsfw": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": ["include", "exclude", "only"]
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "sort": {
+                    "type": "string",
+                    "enum": ["relevance", "heat", "rank", "score", "date"]
+                  },
+                  "order": {
+                    "type": "string",
+                    "enum": ["asc", "desc"]
+                  },
+                  "resultMode": {
+                    "type": "string",
+                    "enum": ["top", "all"]
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "explain": {
+                    "type": "string",
+                    "enum": ["none", "compact", "full"]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": ["query"],
+            "additionalProperties": false
+          },
+          "description": "两个 cohort 定义；差值按输入顺序计算为 B − A"
+        },
+        "maxSubjects": {
+          "description": "每个 cohort 最多保留的返回条目数，默认 40；不代表完整数据库枚举",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      },
+      "required": ["cohorts"],
       "additionalProperties": false
     }
   },

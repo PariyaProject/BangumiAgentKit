@@ -1006,6 +1006,24 @@ export interface SubjectComparisonViewModel {
   limitations: string[];
 }
 
+export interface SubjectCohortComparisonViewModel {
+  template: 'subject-cohort-comparison';
+  version: 1;
+  state: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['state'];
+  cohorts: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['cohorts'];
+  metrics: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['metrics'];
+  formulaVersion: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['formulaVersion'];
+  coverage: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['coverage'] & {
+    renderedSubjectsPerCohort: number;
+    omittedSubjectsPerCohort: [number, number];
+  };
+  source: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['source'];
+  evidence: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['evidence'];
+  warnings: import('@bangumi-agent-kit/discovery').SubjectCohortComparisonResult['warnings'];
+  limitations: string[];
+  retrievedAt?: string;
+}
+
 export interface SubjectOverlapViewModel {
   template: 'subject-overlap';
   version: 1;
@@ -1074,6 +1092,7 @@ export type RenderViewModel =
   | PersonCollaborationViewModel
   | SubjectOverviewViewModel
   | SubjectComparisonViewModel
+  | SubjectCohortComparisonViewModel
   | SubjectOverlapViewModel
   | SubjectStatsViewModel
   | SubjectStatsHistoryViewModel;

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { DiscoveryEngine, ConceptResolver } from '@bangumi-agent-kit/discovery';
+import {
+  compareSubjectCohorts,
+  DiscoveryEngine,
+  ConceptResolver,
+  SUBJECT_COHORT_MAX_SUBJECTS,
+} from '@bangumi-agent-kit/discovery';
 import { defineTool } from '../define-tool.js';
 
 const range = z
@@ -61,6 +66,29 @@ export const discoveryQueryInput = z
   })
   .strict();
 
+export const subjectCohortComparisonInput = z
+  .object({
+    cohorts: z
+      .array(
+        z
+          .object({
+            label: z.string().trim().min(1).max(80).optional(),
+            query: discoveryQueryInput,
+          })
+          .strict(),
+      )
+      .length(2)
+      .describe('两个 cohort 定义；差值按输入顺序计算为 B − A'),
+    maxSubjects: z
+      .number()
+      .int()
+      .min(1)
+      .max(SUBJECT_COHORT_MAX_SUBJECTS)
+      .optional()
+      .describe('每个 cohort 最多保留的返回条目数，默认 40；不代表完整数据库枚举'),
+  })
+  .strict();
+
 export function createDiscoveryTools() {
   const querySubjects = defineTool({
     name: 'bangumi.query_subjects',
@@ -78,6 +106,27 @@ export function createDiscoveryTools() {
     },
   });
 
+  const compareSubjectCohortsTool = defineTool({
+    name: 'bangumi.compare_subject_cohorts',
+    description:
+      '比较两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）和平均报告话数、B−A 差值、每项有效/缺失/冲突计数、两侧查询覆盖与检索证据；结果是有界返回样本，不生成推荐、质量、因果或历史趋势结论。',
+    input: subjectCohortComparisonInput,
+    auth: 'none',
+    scopes: [],
+    risk: 'read',
+    execute: async (input, _context, deps) => {
+      if (!deps?.providerRegistry) {
+        throw new Error('ProviderRegistry is required to run compare_subject_cohorts tool');
+      }
+      return compareSubjectCohorts(
+        input.cohorts,
+        { maxSubjects: input.maxSubjects },
+        deps.providerRegistry,
+        { authScope: 'public' },
+      );
+    },
+  });
+
   const resolveConcept = defineTool({
     name: 'bangumi.resolve_subject_concept',
     description:
@@ -89,7 +138,8 @@ export function createDiscoveryTools() {
     execute: async (input) => new ConceptResolver().resolve(input.concept),
   });
 
-  return [querySubjects, resolveConcept] as const;
+  return [querySubjects, compareSubjectCohortsTool, resolveConcept] as const;
 }
 
 export type DiscoveryQueryToolInput = z.infer<typeof discoveryQueryInput>;
+export type SubjectCohortComparisonToolInput = z.infer<typeof subjectCohortComparisonInput>;

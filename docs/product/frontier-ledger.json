@@ -551,11 +551,34 @@
       "kind": "scenario",
       "user_question": "两个季度的原创动画热度和评分哪个更高？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.compare_subject_cohorts with two season-filtered discovery queries and interpret heat as collection total over the returned sample.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered a bounded official-v0 comparison of two discovery-defined cohorts, with average score, collection-total heat, explicit B−A deltas, query/detail coverage, conflict handling, and non-claims about complete seasonal populations or trend quality.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.compare_subject_cohorts",
+          "bangumi.render_subject_cohort_comparison"
+        ],
+        "implementation": [
+          "packages/discovery/src/cohort.ts",
+          "packages/tools/src/definitions/discovery-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "tests": [
+          "tests/discovery/cohort.test.ts",
+          "tests/discovery/cohort-tool.test.ts",
+          "tests/discovery/render-cohort-tool.test.ts",
+          "tests/render/subject-cohort-comparison.test.ts",
+          "tests/standalone/subject-cohort-command.test.ts"
+        ],
+        "source_contract": "Official Bangumi v0 discovery and subject detail fields; derived formula subject-cohort-comparison-v1 with bounded sample semantics."
+      }
     },
     {
       "id": "C05",
@@ -950,11 +973,34 @@
       "kind": "scenario",
       "user_question": "某季度动画的平均集数和平均评分是多少？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "DELIVERED",
       "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "next_action": "Use bangumi.compare_subject_cohorts with a season-filtered query and read that cohort's average score and reported-episode metrics.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["C04"],
+      "closure_reason": "Delivered a bounded official-v0 cohort aggregation that reports average score and average subject.eps for a season-filtered returned sample, with missing/detail failure states and an explicit distinction between reported episodes and aired/progress counts.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.compare_subject_cohorts",
+          "bangumi.render_subject_cohort_comparison"
+        ],
+        "implementation": [
+          "packages/discovery/src/cohort.ts",
+          "packages/tools/src/definitions/discovery-tools.ts",
+          "packages/tools/src/definitions/render-presentation-tools.ts",
+          "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "tests": [
+          "tests/discovery/cohort.test.ts",
+          "tests/discovery/cohort-tool.test.ts",
+          "tests/discovery/render-cohort-tool.test.ts",
+          "tests/render/subject-cohort-comparison.test.ts",
+          "tests/standalone/subject-cohort-command.test.ts"
+        ],
+        "source_contract": "Official Bangumi v0 subject.eps and rating.score fields; derived formula subject-cohort-comparison-v1 with bounded sample semantics."
+      }
     },
     {
       "id": "A05",

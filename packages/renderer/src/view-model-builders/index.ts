@@ -27,6 +27,7 @@ import type {
   SubjectStatsIntelligenceResult,
   SubjectStatsHistoryResult,
 } from '@bangumi-agent-kit/bangumi-core';
+import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 import type {
   SubjectCardViewModel,
   SearchListViewModel,
@@ -55,6 +56,7 @@ import type {
   SeriesRelationPathViewModel,
   SubjectOverviewViewModel,
   SubjectComparisonViewModel,
+  SubjectCohortComparisonViewModel,
   SubjectOverlapViewModel,
   SubjectStatsViewModel,
   SubjectStatsHistoryViewModel,
@@ -644,6 +646,40 @@ export function buildSubjectComparisonViewModel(
     evidence: result.evidence,
     warnings: result.warnings,
     limitations: result.limitations,
+  };
+}
+
+export function buildSubjectCohortComparisonViewModel(
+  result: SubjectCohortComparisonResult,
+  options: { maxSubjectsPerCohort?: number } = {},
+): SubjectCohortComparisonViewModel {
+  const maxSubjectsPerCohort = Number.isFinite(options.maxSubjectsPerCohort)
+    ? Math.min(12, Math.max(1, Math.trunc(options.maxSubjectsPerCohort as number)))
+    : 8;
+  const cohorts = result.cohorts.map((cohort) => ({
+    ...cohort,
+    subjects: cohort.subjects.slice(0, maxSubjectsPerCohort),
+  })) as SubjectCohortComparisonResult['cohorts'];
+  return {
+    template: 'subject-cohort-comparison',
+    version: 1,
+    state: result.state,
+    cohorts,
+    metrics: result.metrics,
+    formulaVersion: result.formulaVersion,
+    coverage: {
+      ...result.coverage,
+      renderedSubjectsPerCohort: maxSubjectsPerCohort,
+      omittedSubjectsPerCohort: [
+        Math.max(0, result.cohorts[0].subjects.length - cohorts[0].subjects.length),
+        Math.max(0, result.cohorts[1].subjects.length - cohorts[1].subjects.length),
+      ],
+    },
+    source: result.source,
+    evidence: result.evidence,
+    warnings: result.warnings,
+    limitations: result.limitations,
+    ...(result.retrievedAt ? { retrievedAt: result.retrievedAt } : {}),
   };
 }
 

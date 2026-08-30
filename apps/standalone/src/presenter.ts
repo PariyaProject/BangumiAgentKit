@@ -1123,6 +1123,97 @@ function presentSubjectComparison(value: Record<string, unknown>): string | unde
   return boundHumanLines(lines);
 }
 
+function presentSubjectCohortComparison(value: Record<string, unknown>): string | undefined {
+  const cohorts = value.cohorts;
+  const metrics = value.metrics;
+  if (!Array.isArray(cohorts) || cohorts.length !== 2 || !Array.isArray(metrics)) return undefined;
+
+  const lines = [
+    `条目群体比较 · 状态: ${comparisonStateLabel(value.state)} · B−A · 不生成推荐或质量结论`,
+  ];
+  for (const [index, rawCohort] of cohorts.entries()) {
+    const cohort = comparisonRecord(rawCohort);
+    if (!cohort) continue;
+    const coverage = comparisonRecord(cohort.coverage);
+    const query = comparisonRecord(coverage?.query);
+    const queryCoverage = comparisonRecord(query?.coverage);
+    lines.push(
+      `${index === 0 ? 'A' : 'B'} · ${humanField(cohort.label || '未命名组', 120)} · ${humanField(cohort.querySummary || '查询条件未记录', 240)}`,
+    );
+    lines.push(
+      `  查询状态 ${comparisonStateLabel(query?.state)} · 观察 ${humanField(queryCoverage?.scanned ?? '?', 32)} · 匹配 ${humanField(queryCoverage?.matched ?? '?', 32)} · 返回 ${humanField(queryCoverage?.returned ?? '?', 32)} · 总数 ${humanField(queryCoverage?.totalKind ?? 'unknown', 32)} · ${queryCoverage?.budgetExceeded ? '达到预算' : '预算内'}`,
+    );
+    lines.push(
+      `  详情 ${humanField(coverage?.detailHydrationsSucceeded ?? '?', 32)}/${humanField(coverage?.detailHydrationsAttempted ?? '?', 32)} 成功 · ${queryCoverage?.state === 'complete' ? '查询覆盖完整' : '查询覆盖有界/部分'}`,
+    );
+    const subjects = Array.isArray(cohort.subjects) ? cohort.subjects : [];
+    if (subjects.length === 0) {
+      lines.push('  样本：没有可展示的返回条目；空结果不证明不存在匹配项。');
+    } else {
+      for (const [subjectIndex, rawSubject] of subjects.slice(0, 8).entries()) {
+        const subject = comparisonRecord(rawSubject);
+        if (!subject) continue;
+        lines.push(
+          `  ${subjectIndex + 1}. ${humanField(subject.displayName || subject.name || `条目 ${subject.id || '?'}`, 180)} #${humanField(subject.id ?? '?', 32)} · 评分 ${humanField(subject.score ?? '未知', 24)} · 热度 ${humanField(subject.collectionTotal ?? '未知', 32)} · 报告话数 ${humanField(subject.episodesReported ?? '未知', 32)}`,
+        );
+      }
+      if (subjects.length > 8) lines.push(`  另有 ${subjects.length - 8} 条样本未展开。`);
+    }
+  }
+
+  lines.push('聚合指标：');
+  for (const rawMetric of metrics.slice(0, 8)) {
+    const metric = comparisonRecord(rawMetric);
+    if (!metric) continue;
+    const averages = Array.isArray(metric.averages) ? metric.averages : [];
+    const valid = Array.isArray(metric.validCounts) ? metric.validCounts : [];
+    const missing = Array.isArray(metric.missingCounts) ? metric.missingCounts : [];
+    const conflicts = Array.isArray(metric.conflictCounts) ? metric.conflictCounts : [];
+    const delta = metric.delta === undefined ? '不可计算' : humanField(metric.delta, 32);
+    lines.push(
+      `- ${humanField(metric.label || metric.key || '指标', 100)} · A ${humanField(averages[0] ?? '未知', 32)} (${humanField(valid[0] ?? '?', 24)} 有效/${humanField(missing[0] ?? '?', 24)} 缺失/${humanField(conflicts[0] ?? '?', 24)} 冲突) · B ${humanField(averages[1] ?? '未知', 32)} (${humanField(valid[1] ?? '?', 24)} 有效/${humanField(missing[1] ?? '?', 24)} 缺失/${humanField(conflicts[1] ?? '?', 24)} 冲突) · B−A ${delta} · ${comparisonStateLabel(metric.state)}`,
+    );
+  }
+
+  const coverage = comparisonRecord(value.coverage);
+  if (coverage) {
+    lines.push(
+      `资源：每侧最多 ${humanField(coverage.maxSubjectsPerCohort ?? '?', 32)} 条 · 返回 ${humanField(coverage.totalSubjectsReturned ?? '?', 32)} 条 · 详情 ${humanField(coverage.detailHydrationsSucceeded ?? '?', 32)}/${humanField(coverage.detailHydrationsAttempted ?? '?', 32)} 成功${coverage.truncated ? ' · 至少一侧有界/部分' : ''}`,
+    );
+  }
+  const source = comparisonRecord(value.source);
+  const official = comparisonRecord(source?.official);
+  if (official) {
+    const operations = Array.isArray(official.operations)
+      ? official.operations.join(' · ')
+      : '未记录';
+    lines.push(
+      `来源：${humanField(operations, 240)} · 检索 ${humanField(value.retrievedAt || official.retrievedAt || '未知', 64)}`,
+    );
+  }
+  lines.push(`公式：${humanField(value.formulaVersion || '未记录', 80)}`);
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  if (warnings.length > 0) {
+    lines.push('告警：');
+    for (const rawWarning of warnings.slice(0, 3)) {
+      const warning = comparisonRecord(rawWarning);
+      if (warning)
+        lines.push(
+          `- ${humanField(warning.code || 'WARNING', 64)} · ${humanField(warning.message || '')}`,
+        );
+    }
+    if (warnings.length > 3) lines.push(`- 另有 ${warnings.length - 3} 条告警未展开。`);
+  }
+  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  if (limitations.length > 0) {
+    lines.push('限制：');
+    for (const limitation of limitations.slice(0, 3)) lines.push(`- ${humanField(limitation)}`);
+    if (limitations.length > 3) lines.push(`- 另有 ${limitations.length - 3} 条限制未展开。`);
+  }
+  return boundHumanLines(lines);
+}
+
 function presentSubjectOverlap(value: Record<string, unknown>): string | undefined {
   const subjectIds = value.subjectIds;
   const subjects = value.subjects;
@@ -2426,6 +2517,8 @@ export function formatHuman(value: unknown): string {
     if (subjectStatsHistory) return subjectStatsHistory;
     const subjectStats = presentSubjectStats(safe as Record<string, unknown>);
     if (subjectStats) return subjectStats;
+    const subjectCohortComparison = presentSubjectCohortComparison(safe as Record<string, unknown>);
+    if (subjectCohortComparison) return subjectCohortComparison;
     const subjectOverlap = presentSubjectOverlap(safe as Record<string, unknown>);
     if (subjectOverlap) return subjectOverlap;
     const subjectComparison = presentSubjectComparison(safe as Record<string, unknown>);
