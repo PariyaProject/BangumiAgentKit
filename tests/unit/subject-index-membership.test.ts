@@ -232,6 +232,87 @@ describe('SubjectIndexMembershipService', () => {
     expect(result.indexes[0]?.warnings[0]?.message).toContain('changing_total');
   });
 
+  it('does not expose a stale exact total after an upward total change', async () => {
+    const { client } = clientFor([
+      { body: { total: 4, data: [{ id: 41529 }, { id: 1 }] } },
+      { body: { total: 5, data: [{ id: 2 }, { id: 3 }] } },
+    ]);
+    const service = new SubjectIndexMembershipService(client);
+
+    const result = await service.getSubjectIndexMembership(41529, [408], {
+      pageSize: 2,
+      maxPages: 3,
+      maxRows: 6,
+    });
+
+    expect(result.indexes[0]).toMatchObject({
+      state: 'partial',
+      membership: 'matched',
+      coverage: { totalKind: 'unknown', integrity: 'inconsistent' },
+    });
+    expect(result.indexes[0]?.coverage).not.toHaveProperty('total');
+  });
+
+  it('does not expose a stale exact total after a downward total change', async () => {
+    const { client } = clientFor([
+      { body: { total: 5, data: [{ id: 41529 }, { id: 1 }] } },
+      { body: { total: 4, data: [{ id: 2 }, { id: 3 }] } },
+    ]);
+    const service = new SubjectIndexMembershipService(client);
+
+    const result = await service.getSubjectIndexMembership(41529, [409], {
+      pageSize: 2,
+      maxPages: 3,
+      maxRows: 6,
+    });
+
+    expect(result.indexes[0]).toMatchObject({
+      state: 'partial',
+      membership: 'matched',
+      coverage: { totalKind: 'unknown', integrity: 'inconsistent' },
+    });
+    expect(result.indexes[0]?.coverage).not.toHaveProperty('total');
+  });
+
+  it('does not expose a valid total after a later invalid total', async () => {
+    const { client } = clientFor([
+      { body: { total: 4, data: [{ id: 41529 }, { id: 1 }] } },
+      { body: { total: '4', data: [{ id: 2 }, { id: 3 }] } },
+    ]);
+    const service = new SubjectIndexMembershipService(client);
+
+    const result = await service.getSubjectIndexMembership(41529, [410], {
+      pageSize: 2,
+      maxPages: 3,
+      maxRows: 6,
+    });
+
+    expect(result.indexes[0]).toMatchObject({
+      state: 'partial',
+      membership: 'matched',
+      coverage: { totalKind: 'unknown', integrity: 'inconsistent' },
+    });
+    expect(result.indexes[0]?.coverage).not.toHaveProperty('total');
+  });
+
+  it('does not expose a declared total when rows extend beyond it', async () => {
+    const { client } = clientFor([{ body: { total: 1, data: [{ id: 41529 }, { id: 1 }] } }]);
+    const service = new SubjectIndexMembershipService(client);
+
+    const result = await service.getSubjectIndexMembership(41529, [411], {
+      pageSize: 2,
+      maxPages: 1,
+      maxRows: 2,
+    });
+
+    expect(result.indexes[0]).toMatchObject({
+      state: 'partial',
+      membership: 'matched',
+      coverage: { totalKind: 'unknown', integrity: 'inconsistent' },
+    });
+    expect(result.indexes[0]?.coverage).not.toHaveProperty('total');
+  });
+
   it('keeps a late not-found failure partial and retains prior positive evidence', async () => {
     const { client } = clientFor([
       { body: { total: 4, data: [{ id: 41529 }, { id: 1 }] } },

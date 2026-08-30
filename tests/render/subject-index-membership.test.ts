@@ -106,4 +106,22 @@ describe('subject index membership renderer', () => {
     expect(html).toContain('已观察到精确匹配');
     expect(html).toContain('只扫描调用方提供的 indexIds');
   });
+
+  it('renders an unknown total after inconsistent pagination metadata', () => {
+    const inconsistentResult = structuredClone(result);
+    const index = inconsistentResult.indexes[0]!;
+    delete index.coverage.total;
+    index.coverage.totalKind = 'unknown';
+    index.state = 'partial';
+    index.membership = 'unknown';
+
+    const html = renderHtmlTemplate(
+      buildSubjectIndexMembershipViewModel(inconsistentResult),
+      'bangumi-dark',
+      {},
+      960,
+    );
+
+    expect(html).toContain('原始总数 未知');
+  });
 });

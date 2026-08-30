@@ -307,6 +307,7 @@ export class SubjectIndexMembershipService {
     let upstreamExhausted = false;
     let truncated = false;
     const integrityIssues: string[] = [];
+    let totalIntegrityInvalid = false;
     let completionReason: SubjectIndexMembershipCoverage['completionReason'] = 'page_cap';
     const seenSubjectIds = new Set<number>();
     const matches: SubjectIndexMembershipMatch[] = [];
@@ -314,8 +315,9 @@ export class SubjectIndexMembershipService {
     let error: SubjectIndexMembershipIndexResult['error'];
     const warnings: SubjectIndexMembershipIndexResult['warnings'] = [];
 
-    const markIntegrityIssue = (reason: string): void => {
+    const markIntegrityIssue = (reason: string, affectsTotal = false): void => {
       if (!integrityIssues.includes(reason)) integrityIssues.push(reason);
+      if (affectsTotal) totalIntegrityInvalid = true;
     };
 
     while (pagesAttempted < options.maxPages && rowsObserved < options.maxRows) {
@@ -344,10 +346,10 @@ export class SubjectIndexMembershipService {
         rowsReturned += rows.length;
         const responseTotal = parseNonNegativeInteger(response.total);
         if (response.total !== undefined && responseTotal === undefined) {
-          markIntegrityIssue('invalid_total');
+          markIntegrityIssue('invalid_total', true);
         } else if (responseTotal !== undefined) {
           if (total !== undefined && responseTotal !== total) {
-            markIntegrityIssue('changing_total');
+            markIntegrityIssue('changing_total', true);
           } else if (total === undefined) {
             total = responseTotal;
           }
@@ -379,12 +381,12 @@ export class SubjectIndexMembershipService {
         const responseOverReturned = data.length > rows.length;
         const responseEndOffset = offset + data.length;
         if (total !== undefined && (offset > total || responseEndOffset > total)) {
-          markIntegrityIssue('contradictory_total');
+          markIntegrityIssue('contradictory_total', true);
         }
         if (data.length === 0 && total !== undefined && offset < total) {
-          markIntegrityIssue('empty_page_before_total');
+          markIntegrityIssue('empty_page_before_total', true);
         } else if (data.length < requestLimit && total !== undefined && responseEndOffset < total) {
-          markIntegrityIssue('short_page_before_total');
+          markIntegrityIssue('short_page_before_total', true);
         }
         if (integrityIssues.length > 0) {
           truncated = true;
@@ -454,7 +456,7 @@ export class SubjectIndexMembershipService {
           ]
         : [];
     const totalCoverage =
-      total === undefined
+      total === undefined || totalIntegrityInvalid
         ? { totalKind: 'unknown' as const }
         : { total, totalKind: 'exact' as const };
     const coverage: SubjectIndexMembershipCoverage = {
