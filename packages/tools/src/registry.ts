@@ -29,8 +29,14 @@ import {
   ProviderRegistry,
 } from '@bangumi-agent-kit/provider-core';
 import { CalendarClient, GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
+import {
+  COMPACT_MCP_TOOL_NAMES,
+  normalizeToolMode,
+  type ToolMode,
+  type ToolProfile,
+} from './profiles.js';
 
-export type ToolMode = 'curated' | 'full';
+export type { ToolMode } from './profiles.js';
 
 export interface RuntimeDependencies {
   storage: Storage;
@@ -61,6 +67,13 @@ export interface CreateRuntimeDependenciesConfig {
   refreshSkewSeconds?: number;
   renderService?: RenderService;
   artifactStore?: ArtifactStore;
+}
+
+export interface ToolRegistryOptions {
+  /** Select the registered tool surface. Defaults to the backwards-compatible full surface. */
+  mode?: ToolMode;
+  /** Alias for callers that refer to the model-facing surface as a profile. */
+  profile?: ToolProfile;
 }
 
 export function createRuntimeDependenciesWithStorage(
@@ -164,10 +177,17 @@ export function createRuntimeDependencies(
 export class ToolRegistry {
   private toolsMap: Map<string, ToolDefinition> = new Map();
   private deps: RuntimeDependencies;
+  private readonly mode: ToolProfile;
 
   constructor(
     optionsOrDeps: RuntimeDependencies | (CreateRuntimeDependenciesConfig & { storage: Storage }),
+    options: ToolRegistryOptions = {},
   ) {
+    if (options.mode && options.profile && normalizeToolMode(options.mode) !== options.profile) {
+      throw new Error('ToolRegistry mode and profile must select the same tool surface.');
+    }
+    this.mode = normalizeToolMode(options.profile || options.mode);
+
     if (optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
       this.deps = optionsOrDeps as RuntimeDependencies;
     } else if (optionsOrDeps && optionsOrDeps.storage) {
@@ -183,52 +203,55 @@ export class ToolRegistry {
 
   static async create(
     optionsOrDeps?: RuntimeDependencies | CreateRuntimeDependenciesConfig,
+    options: ToolRegistryOptions = {},
   ): Promise<ToolRegistry> {
     if (optionsOrDeps && 'storage' in optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
-      return new ToolRegistry(optionsOrDeps as RuntimeDependencies);
+      return new ToolRegistry(optionsOrDeps as RuntimeDependencies, options);
     }
     if (optionsOrDeps && optionsOrDeps.storage) {
       return new ToolRegistry(
         optionsOrDeps as CreateRuntimeDependenciesConfig & { storage: Storage },
+        options,
       );
     }
     const deps = await createRuntimeDependencies(optionsOrDeps);
-    return new ToolRegistry(deps);
+    return new ToolRegistry(deps, options);
   }
 
   private registerCoreTools(): void {
+    const register = (tools: readonly ToolDefinition[]): void => {
+      for (const tool of tools) {
+        if (
+          this.mode === 'full' ||
+          (COMPACT_MCP_TOOL_NAMES as readonly string[]).includes(tool.name)
+        ) {
+          this.registerTool(tool);
+        }
+      }
+    };
+
     const discoveryTools = createDiscoveryTools();
-    for (const tool of discoveryTools) {
-      this.registerTool(tool);
-    }
+    register(discoveryTools);
 
     const readTools = createReadTools(this.deps.clientProvider);
-    for (const tool of readTools) {
-      this.registerTool(tool);
-    }
+    register(readTools);
+
+    if (this.mode === 'compact') return;
 
     const rawTools = createRawOperationTools(this.deps.clientProvider);
-    for (const tool of rawTools) {
-      this.registerTool(tool);
-    }
+    register(rawTools);
 
     const writeTools = createWriteTools(this.deps.clientProvider, this.deps.storage);
-    for (const tool of writeTools) {
-      this.registerTool(tool);
-    }
+    register(writeTools);
 
     const authTools = createAuthTools(this.deps.tokenBroker, this.deps.oauthService);
-    for (const tool of authTools) {
-      this.registerTool(tool);
-    }
+    register(authTools);
 
     const renderTools = createRenderPresentationTools(
       this.deps.renderService,
       this.deps.artifactStore,
     );
-    for (const tool of renderTools) {
-      this.registerTool(tool);
-    }
+    register(renderTools);
   }
 
   public registerTool(tool: ToolDefinition): void {
@@ -240,7 +263,15 @@ export class ToolRegistry {
   }
 
   public getTools(): ToolDefinition[] {
-    return Array.from(this.toolsMap.values());
+    if (this.mode === 'full') return Array.from(this.toolsMap.values());
+    return COMPACT_MCP_TOOL_NAMES.flatMap((name) => {
+      const tool = this.toolsMap.get(name);
+      return tool ? [tool] : [];
+    });
+  }
+
+  public getMode(): ToolProfile {
+    return this.mode;
   }
 
   public async executeTool(name: string, input: unknown, context: ToolContext): Promise<unknown> {

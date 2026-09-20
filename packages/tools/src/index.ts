@@ -1,5 +1,6 @@
 export * from './define-tool.js';
 export * from './registry.js';
+export * from './profiles.js';
 export * from './definitions/discovery-tools.js';
 export * from './policy.js';
 export * from './confirmation.js';

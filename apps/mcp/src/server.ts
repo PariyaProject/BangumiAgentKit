@@ -8,6 +8,8 @@ import {
   RuntimeDependencies,
   createRuntimeDependencies,
   createRuntimeDependenciesWithStorage,
+  type ToolMode,
+  type ToolProfile,
 } from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
@@ -128,6 +130,10 @@ export interface McpServerOptions {
   databaseUrl?: string;
   httpClient?: HttpClient;
   registry?: ToolRegistry;
+  /** Select the model-facing tool surface when the server creates a registry. */
+  toolMode?: ToolMode;
+  /** Human-readable alias for selecting the compact/full profile. */
+  profile?: ToolProfile;
   identityProvider?: McpExecutionIdentityProvider;
   confirmationGrantProvider?: McpConfirmationGrantProvider;
 }
@@ -138,6 +144,10 @@ export class BangumiMcpServer {
   private dependencies: RuntimeDependencies;
   private identityProvider: McpExecutionIdentityProvider;
   private confirmationGrantProvider: McpConfirmationGrantProvider;
+
+  private static registryOptions(options: McpServerOptions) {
+    return { mode: options.toolMode, profile: options.profile } as const;
+  }
 
   constructor(options: McpServerOptions | HttpClient = {}) {
     let opts: McpServerOptions = {};
@@ -158,13 +168,13 @@ export class BangumiMcpServer {
             })());
     } else if (opts.dependencies) {
       this.dependencies = opts.dependencies;
-      this.registry = new ToolRegistry(this.dependencies);
+      this.registry = new ToolRegistry(this.dependencies, BangumiMcpServer.registryOptions(opts));
     } else if (opts.storage) {
       this.dependencies = createRuntimeDependenciesWithStorage(opts.storage, {
         databaseUrl: opts.databaseUrl,
         publicHttpClient: opts.httpClient,
       });
-      this.registry = new ToolRegistry(this.dependencies);
+      this.registry = new ToolRegistry(this.dependencies, BangumiMcpServer.registryOptions(opts));
     } else {
       throw new Error('Use BangumiMcpServer.create() for runtime initialization.');
     }
