@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { MemoryStorage } from '../../packages/db/src/index.js';
 import { HttpClient } from '../../packages/bangumi-transport/src/index.js';
 import {
@@ -22,6 +23,17 @@ describe('Bangumi Compact MCP profile', () => {
     expect(registry.getTool('bangumi.call_operation')).toBeUndefined();
     expect(registry.getTool('bangumi.auth_start')).toBeUndefined();
     expect(registry.getTool('bangumi.render_subject_card')).toBeUndefined();
+    expect(() =>
+      registry.registerTool({
+        name: 'example.unsafe',
+        description: 'test',
+        input: z.object({}),
+        auth: 'none',
+        scopes: [],
+        risk: 'read',
+        execute: async () => null,
+      }),
+    ).toThrow('not allowed by the bangumi-compact-v1 profile');
     expect(COMPACT_MCP_PROFILE.id).toBe('bangumi-compact-v1');
     expect(COMPACT_MCP_PROFILE.toolNames).toEqual(COMPACT_MCP_TOOL_NAMES);
   });

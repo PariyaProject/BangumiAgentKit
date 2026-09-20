@@ -255,6 +255,12 @@ export class ToolRegistry {
   }
 
   public registerTool(tool: ToolDefinition): void {
+    if (
+      this.mode === 'compact' &&
+      !(COMPACT_MCP_TOOL_NAMES as readonly string[]).includes(tool.name)
+    ) {
+      throw new Error(`Tool "${tool.name}" is not allowed by the bangumi-compact-v1 profile.`);
+    }
     this.toolsMap.set(tool.name, tool);
   }
 
