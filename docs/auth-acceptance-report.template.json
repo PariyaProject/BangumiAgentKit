@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "report_status": "NOT_STARTED",
+  "policy": {
+    "secrets_stored": false,
+    "allowed_evidence": [
+      "tool result state and sanitized error code",
+      "browser step completed boolean",
+      "account count and redacted account labels",
+      "scope names without credentials",
+      "timestamp and command"
+    ],
+    "forbidden_fields": [
+      "access_token",
+      "refresh_token",
+      "authorization_code",
+      "client_secret",
+      "password",
+      "cookie"
+    ]
+  },
+  "flow": [
+    {"id": "auth_start", "status": "UNVERIFIED", "evidence": []},
+    {"id": "browser_authorization", "status": "UNVERIFIED", "evidence": []},
+    {"id": "oauth_callback", "status": "UNVERIFIED", "evidence": []},
+    {"id": "auth_status", "status": "UNVERIFIED", "evidence": []},
+    {"id": "list_accounts", "status": "UNVERIFIED", "evidence": []},
+    {"id": "switch_account", "status": "UNVERIFIED", "evidence": []},
+    {"id": "private_read", "status": "UNVERIFIED", "evidence": []},
+    {"id": "write_confirmation", "status": "UNVERIFIED", "evidence": []},
+    {"id": "destructive_safety", "status": "UNVERIFIED", "evidence": []}
+  ],
+  "notes": [
+    "复制为本地运行报告后填写；不要把任何凭据或授权码写入仓库、日志或聊天。",
+    "只有真实浏览器授权、回调和 auth_status 都有证据时，才可将认证门标为通过。",
+    "写入与 destructive 工具需要单独的测试账号、确认和回滚证据。"
+  ]
+}
