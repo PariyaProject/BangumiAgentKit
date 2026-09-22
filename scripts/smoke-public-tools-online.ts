@@ -53,6 +53,14 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.render_episode_guide', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
   { name: 'bangumi.render_episode_integrity', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
   { name: 'bangumi.render_subject_card', input: { subjectId: SUBJECT_ID, includeCollection: false } },
+  { name: 'bangumi.render_character_credit_integrity', input: { characterId: 17325, maxSubjects: 1, maxPersons: 1 } },
+  { name: 'bangumi.render_latest_subject_revision', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.render_person_profile', input: { personId: 3474, maxSubjects: 2, maxCharacters: 2, maxCredits: 2 } },
+  { name: 'bangumi.render_query_subjects', input: { media: 'anime', year: 2012, resultMode: 'top', limit: 1 } },
+  { name: 'bangumi.render_revision_timeline', input: { entityType: 'subject', entityId: SUBJECT_ID, limit: 1, offset: 0 } },
+  { name: 'bangumi.render_series_watch_order', input: { subjectId: SUBJECT_ID, depth: 0, maxNodes: 1 } },
+  { name: 'bangumi.render_subject_identity', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.render_subject_stats_intelligence', input: { subjectId: SUBJECT_ID } },
 ];
 
 function summarize(value: unknown): Record<string, unknown> {
