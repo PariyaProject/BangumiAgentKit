@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T17:06:35.113Z",
+  "observedAt": "2026-09-22T17:25:07.140Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 53,
-  "httpRequests": 137,
+  "probeCount": 56,
+  "httpRequests": 141,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -119,6 +119,41 @@
           "5",
           "6"
         ]
+      }
+    },
+    {
+      "tool": "bangumi.get_index",
+      "input": {
+        "indexId": 1,
+        "subjectLimit": 1,
+        "subjectOffset": 0
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "index",
+          "subjects",
+          "pagination"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_index_membership",
+      "input": {
+        "subjectId": 41529,
+        "indexIds": [
+          1
+        ],
+        "pageSize": 1,
+        "maxPages": 1,
+        "maxRows": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "warningsCount": 0
       }
     },
     {
@@ -644,6 +679,25 @@
       "tool": "bangumi.render_subject_identity",
       "input": {
         "subjectId": 41529
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_index_membership",
+      "input": {
+        "subjectId": 41529,
+        "indexIds": [
+          1
+        ],
+        "pageSize": 1,
+        "maxPages": 1,
+        "maxRows": 1
       },
       "httpRequests": 1,
       "result": {

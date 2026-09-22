@@ -15,7 +15,8 @@ const context = {
 
 describe('direct execute coverage for bounded read tools', () => {
   it('executes episodes, cast, revision intelligence, and latest revision through the tool seam', async () => {
-    const fetchFn = vi.fn(async (url: string) => {
+    const fetchFn = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
       if (url.includes('/v0/revisions/subjects/11')) {
         return new Response(
           JSON.stringify({

@@ -20,6 +20,11 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_subject_staff', input: { subjectId: SUBJECT_ID, limit: 2 } },
   { name: 'bangumi.get_episodes', input: { subjectId: SUBJECT_ID, limit: 2, offset: 0 } },
   { name: 'bangumi.get_subject_relations', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.get_index', input: { indexId: 1, subjectLimit: 1, subjectOffset: 0 } },
+  {
+    name: 'bangumi.get_subject_index_membership',
+    input: { subjectId: SUBJECT_ID, indexIds: [1], pageSize: 1, maxPages: 1, maxRows: 1 },
+  },
   {
     name: 'bangumi.get_revision_intelligence',
     input: { entityType: 'subject', entityId: SUBJECT_ID, limit: 1, offset: 0 },
@@ -60,6 +65,10 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.render_revision_timeline', input: { entityType: 'subject', entityId: SUBJECT_ID, limit: 1, offset: 0 } },
   { name: 'bangumi.render_series_watch_order', input: { subjectId: SUBJECT_ID, depth: 0, maxNodes: 1 } },
   { name: 'bangumi.render_subject_identity', input: { subjectId: SUBJECT_ID } },
+  {
+    name: 'bangumi.render_subject_index_membership',
+    input: { subjectId: SUBJECT_ID, indexIds: [1], pageSize: 1, maxPages: 1, maxRows: 1 },
+  },
   { name: 'bangumi.render_subject_stats_intelligence', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.render_person_activity', input: { personId: 3474, windowMonths: 3, maxRelations: 1, maxSubjectDetails: 1, maxRows: 1 } },
   { name: 'bangumi.render_person_collaboration', input: { personId: 3474, maxRelations: 1, maxSubjects: 1, maxCollaborators: 1, maxSharedSubjects: 1 } },
@@ -172,10 +181,19 @@ async function main(): Promise<void> {
   const output = join(process.cwd(), 'docs', 'live-probes', `public-tools-${date}.json`);
   await mkdir(join(process.cwd(), 'docs', 'live-probes'), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
-  process.stdout.write(`${JSON.stringify({ ...report, output }, null, 2)}\n`);
+  // Renderer dependencies can retain worker handles after the registry closes.
+  // Flush the summary first, then terminate this one-shot probe deliberately so
+  // completed runs cannot linger and distort later operational audits.
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(`${JSON.stringify({ ...report, output }, null, 2)}\n`, (error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+  process.exit(0);
 }
 
 main().catch((error: unknown) => {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exitCode = 1;
+  process.exit(1);
 });
