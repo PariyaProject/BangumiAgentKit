@@ -8,6 +8,19 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
 OUTPUT = ROOT / 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'
 LIVE_PROBE_DIR = ROOT / 'docs/live-probes'
+NON_PUBLIC_API_TOOLS = {
+    'bangumi.auth_disconnect',
+    'bangumi.auth_list_accounts',
+    'bangumi.auth_remove_account',
+    'bangumi.auth_start',
+    'bangumi.auth_status',
+    'bangumi.auth_switch_account',
+    'bangumi.describe_operation',
+    'bangumi.get_subject_stats_history',
+    'bangumi.list_operations',
+    'bangumi.render_subject_stats_history',
+    'bangumi.resolve_subject_concept',
+}
 
 
 def test_source() -> str:
@@ -65,7 +78,7 @@ def status(tool: dict, direct: set[str], live_public: set[str]) -> tuple[str, st
     schema = '✅'
     source = '✅'
     execute = '✅' if name in direct else '⬜'
-    live = '◐' if name in live_public else '⬜'
+    live = '—' if name in NON_PUBLIC_API_TOOLS else ('◐' if name in live_public else '⬜')
     auth = '—' if tool.get('auth') == 'none' else '⬜'
     # Existing QQ tests validate the compact profile as a surface, not each
     # individual tool's real call. Keep this column conservative.
@@ -100,7 +113,7 @@ def main() -> None:
         f'- [ ] 需要账号的工具完成真实 OAuth/账号验收：{auth_count} 项目前不能用本地 mock 代替。',
         '- [ ] QQ/TIM 逐工具端到端验收：当前只有 compact profile 的整体消息链证据，不把它误写成 96 个工具逐一通过。',
         '',
-        '状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用。',
+        '状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用（OAuth 生命周期、本地状态/历史或 operation metadata 不发公开 Bangumi HTTP 请求）。',
         '',
         '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 账号认证 | QQ/TIM | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',

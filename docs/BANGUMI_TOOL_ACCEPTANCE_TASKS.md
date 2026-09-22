@@ -11,20 +11,20 @@
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [ ] QQ/TIM 逐工具端到端验收：当前只有 compact profile 的整体消息链证据，不把它误写成 96 个工具逐一通过。
 
-状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用。
+状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用（OAuth 生命周期、本地状态/历史或 operation metadata 不发公开 Bangumi HTTP 请求）。
 
 | 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 账号认证 | QQ/TIM | 下一步 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `bangumi.aggregate_subject_cohort` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.auth_disconnect` | `required` | `destructive` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.auth_list_accounts` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
-| `bangumi.auth_remove_account` | `required` | `destructive` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.auth_start` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
-| `bangumi.auth_status` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
-| `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.auth_disconnect` | `required` | `destructive` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| `bangumi.auth_list_accounts` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
+| `bangumi.auth_remove_account` | `required` | `destructive` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| `bangumi.auth_start` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
+| `bangumi.auth_status` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
+| `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_calendar_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_character` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
@@ -63,12 +63,12 @@
 | `bangumi.get_subject_relations` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_subject_staff` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_subject_stats` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_stats_history` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.get_subject_stats_history` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_subject_stats_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_user` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.list_character_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.list_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.list_operations` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.list_operations` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.list_person_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.list_revisions` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.manage_character_collection` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
@@ -103,9 +103,9 @@
 | `bangumi.render_subject_index_membership` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_subject_overlap` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_subject_overview` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_stats_history` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.render_subject_stats_history` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_subject_stats_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.resolve_subject_concept` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.resolve_subject_concept` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.search_characters` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.search_persons` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.search_subjects` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
