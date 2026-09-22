@@ -61,6 +61,13 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.render_series_watch_order', input: { subjectId: SUBJECT_ID, depth: 0, maxNodes: 1 } },
   { name: 'bangumi.render_subject_identity', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.render_subject_stats_intelligence', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.render_person_activity', input: { personId: 3474, windowMonths: 3, maxRelations: 1, maxSubjectDetails: 1, maxRows: 1 } },
+  { name: 'bangumi.render_person_collaboration', input: { personId: 3474, maxRelations: 1, maxSubjects: 1, maxCollaborators: 1, maxSharedSubjects: 1 } },
+  { name: 'bangumi.render_subject_cohort_aggregation', input: { cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } }, maxSubjects: 1 } },
+  { name: 'bangumi.render_subject_cohort_comparison', input: { cohorts: [{ query: { media: 'anime', year: 2012, resultMode: 'all' } }], maxSubjects: 1 } },
+  { name: 'bangumi.render_subject_comparison', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxRelations: 1 } },
+  { name: 'bangumi.render_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
+  { name: 'bangumi.render_subject_overview', input: { subjectId: SUBJECT_ID, maxCast: 1, maxStaff: 1, maxRelations: 1 } },
 ];
 
 function summarize(value: unknown): Record<string, unknown> {

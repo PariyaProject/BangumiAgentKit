@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T17:02:50.140Z",
+  "observedAt": "2026-09-22T17:06:35.113Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 46,
-  "httpRequests": 98,
+  "probeCount": 53,
+  "httpRequests": 137,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -659,6 +659,137 @@
         "subjectId": 41529
       },
       "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_person_activity",
+      "input": {
+        "personId": 3474,
+        "windowMonths": 3,
+        "maxRelations": 1,
+        "maxSubjectDetails": 1,
+        "maxRows": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_person_collaboration",
+      "input": {
+        "personId": 3474,
+        "maxRelations": 1,
+        "maxSubjects": 1,
+        "maxCollaborators": 1,
+        "maxSharedSubjects": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2012,
+            "resultMode": "all"
+          }
+        },
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "input": {
+        "cohorts": [
+          {
+            "query": {
+              "media": "anime",
+              "year": 2012,
+              "resultMode": "all"
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_comparison",
+      "input": {
+        "subjectIds": [
+          41529,
+          46729
+        ],
+        "maxCast": 1,
+        "maxStaff": 1,
+        "maxRelations": 1
+      },
+      "httpRequests": 10,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_overlap",
+      "input": {
+        "subjectIds": [
+          41529,
+          46729
+        ],
+        "maxCast": 1,
+        "maxStaff": 1,
+        "maxPairs": 1,
+        "maxPeople": 1
+      },
+      "httpRequests": 6,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_overview",
+      "input": {
+        "subjectId": 41529,
+        "maxCast": 1,
+        "maxStaff": 1,
+        "maxRelations": 1
+      },
+      "httpRequests": 5,
       "result": {
         "state": "value",
         "keys": [
