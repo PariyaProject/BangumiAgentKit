@@ -45,7 +45,6 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_person_collaboration', input: { personId: 3474, maxRelations: 1, maxSubjects: 1, maxCollaborators: 1, maxSharedSubjects: 1 } },
   { name: 'bangumi.aggregate_subject_cohort', input: { cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } }, maxSubjects: 1 } },
   { name: 'bangumi.compare_subject_cohorts', input: { cohorts: [{ query: { media: 'anime', year: 2012, resultMode: 'all' } }], maxSubjects: 1 } },
-  { name: 'bangumi.describe_operation', input: { operationId: 'getSubjectById' } },
   { name: 'bangumi.get_character_credit_integrity', input: { characterId: 17325, maxSubjects: 1, maxPersons: 1 } },
   { name: 'bangumi.get_episode_guide', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
   { name: 'bangumi.get_episode_integrity', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },

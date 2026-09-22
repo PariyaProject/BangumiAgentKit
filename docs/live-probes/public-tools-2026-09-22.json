@@ -1,9 +1,9 @@
 {
-  "observedAt": "2026-09-22T17:25:07.140Z",
+  "observedAt": "2026-09-22T17:30:56.214Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 56,
+  "probeCount": 55,
   "httpRequests": 141,
   "limits": [
     "one known public subject",
@@ -388,27 +388,6 @@
       "result": {
         "state": "partial",
         "warningsCount": 10
-      }
-    },
-    {
-      "tool": "bangumi.describe_operation",
-      "input": {
-        "operationId": "getSubjectById"
-      },
-      "httpRequests": 0,
-      "result": {
-        "state": "value",
-        "keys": [
-          "operationId",
-          "tag",
-          "method",
-          "path",
-          "pathParameters",
-          "auth",
-          "scopes",
-          "risk",
-          "summary"
-        ]
       }
     },
     {
