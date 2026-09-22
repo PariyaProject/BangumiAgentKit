@@ -1,0 +1,24 @@
+{
+  "observed_at": "2026-09-22T16:26:18.813119Z",
+  "tool": "bangumi.query_subjects",
+  "mode": "read_only_public_api_smoke",
+  "input": {
+    "media": "anime",
+    "sort": "heat",
+    "limit": 3,
+    "explain": "compact"
+  },
+  "result": {
+    "state": "ok",
+    "itemCount": 3,
+    "scanned": 20,
+    "returned": 3
+  },
+  "command": "pnpm smoke:discovery:online",
+  "limits": [
+    "single bounded smoke invocation",
+    "no OAuth account",
+    "no writes",
+    "not exhaustive coverage"
+  ]
+}
