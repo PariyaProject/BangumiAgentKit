@@ -7,6 +7,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
 OUTPUT = ROOT / 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'
+LIVE_PROBE_DIR = ROOT / 'docs/live-probes'
 
 
 def test_source() -> str:
@@ -29,32 +30,61 @@ def direct_execute_names(source: str) -> set[str]:
     return names
 
 
-def status(tool: dict, direct: set[str]) -> tuple[str, str, str, str, str, str]:
+def live_public_names() -> set[str]:
+    """Return tools with a structured public read result in a saved probe report."""
+    names = set()
+    if not LIVE_PROBE_DIR.exists():
+        return names
+    for path in LIVE_PROBE_DIR.glob('*.json'):
+        try:
+            report = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        report_items = report.get('results', [])
+        if not report_items and isinstance(report.get('tool'), str):
+            report_items = [report]
+        for item in report_items:
+            if not isinstance(item, dict) or not isinstance(item.get('tool'), str):
+                continue
+            result = item.get('result')
+            if not isinstance(result, dict):
+                continue
+            state = result.get('state')
+            if state in {'error', 'unavailable'}:
+                continue
+            has_structured_value = any(
+                key in result for key in ('itemsCount', 'episodesCount', 'castCount', 'total')
+            )
+            if state in {'ok', 'complete', 'partial', 'value'} or has_structured_value:
+                names.add(item['tool'])
+    return names
+
+
+def status(tool: dict, direct: set[str], live_public: set[str]) -> tuple[str, str, str, str, str, str]:
     name = tool['name']
     schema = '✅'
     source = '✅'
     execute = '✅' if name in direct else '⬜'
-    # Only query_subjects has a durable, named live public-API evidence record
-    # in the repository. Other public tools remain intentionally unclaimed.
-    live_public = '◐' if name == 'bangumi.query_subjects' else '⬜'
+    live = '◐' if name in live_public else '⬜'
     auth = '—' if tool.get('auth') == 'none' else '⬜'
     # Existing QQ tests validate the compact profile as a surface, not each
     # individual tool's real call. Keep this column conservative.
     qq = '⬜'
-    return schema, source, execute, live_public, auth, qq
+    return schema, source, execute, live, auth, qq
 
 
 def main() -> None:
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
     source = test_source()
     direct = direct_execute_names(source)
+    live_public_names_set = live_public_names()
     names = {item['name'] for item in catalog}
     missing_source = sorted(name for name in names if name not in source)
     if missing_source:
         raise SystemExit('Missing test source references: ' + ', '.join(missing_source))
 
     direct_count = sum(item['name'] in direct for item in catalog)
-    live_count = sum(item['name'] == 'bangumi.query_subjects' for item in catalog)
+    live_count = sum(item['name'] in live_public_names_set for item in catalog)
     auth_count = sum(item.get('auth') != 'none' for item in catalog)
     lines = [
         '# BangumiAgentKit 逐项验收任务清单',
@@ -76,7 +106,7 @@ def main() -> None:
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ]
     for item in catalog:
-        schema, source_ref, execute, live, auth, qq = status(item, direct)
+        schema, source_ref, execute, live, auth, qq = status(item, direct, live_public_names_set)
         next_step = []
         if execute == '⬜':
             next_step.append('补直接夹具')

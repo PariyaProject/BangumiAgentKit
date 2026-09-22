@@ -1,0 +1,141 @@
+{
+  "observedAt": "2026-09-22T16:33:07.479Z",
+  "mode": "read_only_public_api_smoke",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/逐工具只读探针",
+  "probeCount": 10,
+  "httpRequests": 26,
+  "limits": [
+    "one known public subject",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_subject",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "error",
+        "code": "NETWORK_ERROR"
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_stats",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "unavailable",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_identity",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "unavailable",
+        "subjectId": 41529,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_overview",
+      "input": {
+        "subjectId": 41529,
+        "maxCast": 2,
+        "maxStaff": 2,
+        "maxRelations": 2
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "unavailable",
+        "subjectId": 41529,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_cast",
+      "input": {
+        "subjectId": 41529,
+        "limit": 2
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "error",
+        "code": "NETWORK_ERROR"
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_staff",
+      "input": {
+        "subjectId": 41529,
+        "limit": 2
+      },
+      "httpRequests": 5,
+      "result": {
+        "state": "error",
+        "code": "NETWORK_ERROR"
+      }
+    },
+    {
+      "tool": "bangumi.get_episodes",
+      "input": {
+        "subjectId": 41529,
+        "limit": 2,
+        "offset": 0
+      },
+      "httpRequests": 0,
+      "result": {
+        "total": 12,
+        "itemsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_relations",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "error",
+        "code": "NETWORK_ERROR"
+      }
+    },
+    {
+      "tool": "bangumi.get_revision_intelligence",
+      "input": {
+        "entityType": "subject",
+        "entityId": 41529,
+        "limit": 1,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "unavailable",
+        "itemsCount": 0,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_latest_subject_revision",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "unavailable",
+        "subjectId": 41529,
+        "warningsCount": 4
+      }
+    }
+  ]
+}

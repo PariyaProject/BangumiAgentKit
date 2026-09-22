@@ -38,6 +38,7 @@
     "smoke:claude-host": "ts-node -P tsconfig.base.json scripts/smoke-claude-host.ts",
     "smoke:runtime:sqlite": "ts-node -P tsconfig.base.json scripts/smoke-runtime-sqlite.ts",
     "smoke:discovery:online": "ts-node -P tsconfig.base.json scripts/smoke-discovery-online.ts",
+    "smoke:public:online": "ts-node -P tsconfig.base.json scripts/smoke-public-tools-online.ts --live",
     "renderer:install": "npx playwright install chromium",
     "start:api": "pnpm --filter @bangumi-agent-kit/app-api start",
     "start:mcp": "pnpm --filter @bangumi-agent-kit/app-mcp start",
