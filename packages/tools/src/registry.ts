@@ -233,7 +233,7 @@ export class ToolRegistry {
     const discoveryTools = createDiscoveryTools();
     register(discoveryTools);
 
-    const readTools = createReadTools(this.deps.clientProvider);
+    const readTools = createReadTools(this.deps.clientProvider, this.deps.publicHttpClient);
     register(readTools);
 
     if (this.mode === 'compact') return;

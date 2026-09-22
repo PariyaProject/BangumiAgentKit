@@ -64,13 +64,16 @@ import {
   SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
 } from '../subject-stats-history.js';
 
-export function createReadTools(clientProviderOrHttpClient?: BangumiClientProvider | HttpClient) {
+export function createReadTools(
+  clientProviderOrHttpClient?: BangumiClientProvider | HttpClient,
+  publicHttpClientOverride?: HttpClient,
+) {
   let publicHttpClient: HttpClient;
   let clientProvider: BangumiClientProvider | undefined;
 
   if (clientProviderOrHttpClient && 'requireAuthenticatedClient' in clientProviderOrHttpClient) {
     clientProvider = clientProviderOrHttpClient;
-    publicHttpClient = new HttpClient();
+    publicHttpClient = publicHttpClientOverride || new HttpClient();
   } else {
     publicHttpClient = (clientProviderOrHttpClient as HttpClient) || new HttpClient();
   }

@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T16:33:07.479Z",
+  "observedAt": "2026-09-22T16:45:24.775Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
-  "userAgent": "BangumiAgentKit/逐工具只读探针",
+  "userAgent": "BangumiAgentKit/live-public-probe",
   "probeCount": 10,
-  "httpRequests": 26,
+  "httpRequests": 15,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -18,10 +18,9 @@
       "input": {
         "subjectId": 41529
       },
-      "httpRequests": 3,
+      "httpRequests": 1,
       "result": {
-        "state": "error",
-        "code": "NETWORK_ERROR"
+        "id": 41529
       }
     },
     {
@@ -29,10 +28,9 @@
       "input": {
         "subjectId": 41529
       },
-      "httpRequests": 3,
+      "httpRequests": 1,
       "result": {
-        "state": "unavailable",
-        "warningsCount": 1
+        "state": "ok"
       }
     },
     {
@@ -40,11 +38,11 @@
       "input": {
         "subjectId": 41529
       },
-      "httpRequests": 3,
+      "httpRequests": 1,
       "result": {
-        "state": "unavailable",
+        "state": "complete",
         "subjectId": 41529,
-        "warningsCount": 1
+        "warningsCount": 0
       }
     },
     {
@@ -55,11 +53,11 @@
         "maxStaff": 2,
         "maxRelations": 2
       },
-      "httpRequests": 3,
+      "httpRequests": 5,
       "result": {
-        "state": "unavailable",
+        "state": "partial",
         "subjectId": 41529,
-        "warningsCount": 1
+        "warningsCount": 3
       }
     },
     {
@@ -68,10 +66,12 @@
         "subjectId": 41529,
         "limit": 2
       },
-      "httpRequests": 3,
+      "httpRequests": 1,
       "result": {
-        "state": "error",
-        "code": "NETWORK_ERROR"
+        "subjectId": 41529,
+        "observed": 9,
+        "returned": 2,
+        "castCount": 2
       }
     },
     {
@@ -80,10 +80,13 @@
         "subjectId": 41529,
         "limit": 2
       },
-      "httpRequests": 5,
+      "httpRequests": 2,
       "result": {
-        "state": "error",
-        "code": "NETWORK_ERROR"
+        "state": "partial",
+        "subjectId": 41529,
+        "castCount": 2,
+        "productionStaffCount": 2,
+        "warningsCount": 1
       }
     },
     {
@@ -104,10 +107,18 @@
       "input": {
         "subjectId": 41529
       },
-      "httpRequests": 3,
+      "httpRequests": 1,
       "result": {
-        "state": "error",
-        "code": "NETWORK_ERROR"
+        "state": "value",
+        "keys": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
       }
     },
     {
@@ -120,8 +131,8 @@
       },
       "httpRequests": 1,
       "result": {
-        "state": "unavailable",
-        "itemsCount": 0,
+        "state": "partial",
+        "itemsCount": 1,
         "warningsCount": 1
       }
     },
@@ -130,11 +141,11 @@
       "input": {
         "subjectId": 41529
       },
-      "httpRequests": 1,
+      "httpRequests": 2,
       "result": {
-        "state": "unavailable",
+        "state": "partial",
         "subjectId": 41529,
-        "warningsCount": 4
+        "warningsCount": 3
       }
     }
   ]

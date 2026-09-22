@@ -53,7 +53,7 @@ def live_public_names() -> set[str]:
             if state in {'error', 'unavailable'}:
                 continue
             has_structured_value = any(
-                key in result for key in ('itemsCount', 'episodesCount', 'castCount', 'total')
+                key in result for key in ('id', 'itemsCount', 'episodesCount', 'castCount', 'total', 'observed', 'returned')
             )
             if state in {'ok', 'complete', 'partial', 'value'} or has_structured_value:
                 names.add(item['tool'])

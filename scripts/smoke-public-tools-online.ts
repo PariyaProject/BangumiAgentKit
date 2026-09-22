@@ -6,7 +6,7 @@ import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-age
 
 const SUBJECT_ID = 41529;
 const LIVE_FLAG = '--live';
-const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/逐工具只读探针';
+const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/live-public-probe';
 
 const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_subject', input: { subjectId: SUBJECT_ID } },
@@ -32,7 +32,13 @@ function summarize(value: unknown): Record<string, unknown> {
     const record = value as Record<string, unknown>;
     if (record.ok === false && record.error && typeof record.error === 'object') {
       const error = record.error as Record<string, unknown>;
-      return { state: 'error', code: error.code ?? 'UNKNOWN_ERROR' };
+      return {
+        state: 'error',
+        code: error.code ?? 'UNKNOWN_ERROR',
+        ...(typeof error.upstreamStatus === 'number' ? { upstreamStatus: error.upstreamStatus } : {}),
+        ...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {}),
+        ...(typeof error.message === 'string' ? { message: error.message.slice(0, 160) } : {}),
+      };
     }
     const summary: Record<string, unknown> = {};
     for (const key of ['state', 'subjectId', 'id', 'total', 'observed', 'returned']) {

@@ -97,6 +97,41 @@ describe('Phase 4: MCP Server & Tools Integration Test', () => {
     expect(result).not.toHaveProperty('data');
   });
 
+  it('routes public read tools through the injected runtime HTTP client', async () => {
+    const injectedFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 41529,
+          type: 2,
+          name: 'Injected Subject',
+          name_cn: '注入传输条目',
+          summary: '',
+          nsfw: false,
+          locked: false,
+          images: {},
+          eps: 12,
+          total_episodes: 12,
+          rating: { score: 8.1, rank: 10, total: 20, count: { '8': 10 } },
+          collection: { wish: 1, collect: 2, doing: 0, on_hold: 0, dropped: 0 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const registry = new ToolRegistry({
+      storage: new MemoryStorage(),
+      publicHttpClient: new HttpClient({ fetchFn: injectedFetch }),
+    });
+
+    const result = (await registry.executeTool(
+      'bangumi.get_subject',
+      { subjectId: 41529 },
+      { principalId: 'user_1', botInstanceId: 'bot_1', conversationId: 'conv_1' },
+    )) as Record<string, unknown>;
+
+    expect(result).toMatchObject({ id: 41529, nameCn: '注入传输条目' });
+    expect(injectedFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('executes bangumi.get_calendar tool successfully', async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(
