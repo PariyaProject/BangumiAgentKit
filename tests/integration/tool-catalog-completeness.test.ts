@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { z } from 'zod';
 import catalog from '../../docs/tool-catalog.json';
 import {
   CharacterService,
@@ -58,6 +59,12 @@ function readTestSources(root: string): string {
   return source;
 }
 
+function jsonSchemaOf(tool: { input: z.ZodType }): Record<string, unknown> {
+  const schema = z.toJSONSchema(tool.input) as Record<string, unknown>;
+  delete schema.$schema;
+  return schema;
+}
+
 describe('complete Bangumi tool surface', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -82,6 +89,8 @@ describe('complete Bangumi tool surface', () => {
         scopes: entry.scopes,
         description: entry.description,
       });
+      expect(typeof tool!.execute, entry.name).toBe('function');
+      expect(jsonSchemaOf(tool!), entry.name).toEqual(entry.inputSchema);
     }
     expect([...COMPACT_MCP_TOOL_NAMES]).toEqual([
       'bangumi.search_subjects',
