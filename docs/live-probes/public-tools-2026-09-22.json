@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T16:45:24.775Z",
+  "observedAt": "2026-09-22T16:49:29.512Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 10,
-  "httpRequests": 15,
+  "probeCount": 23,
+  "httpRequests": 38,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -96,7 +96,7 @@
         "limit": 2,
         "offset": 0
       },
-      "httpRequests": 0,
+      "httpRequests": 1,
       "result": {
         "total": 12,
         "itemsCount": 2
@@ -146,6 +146,175 @@
         "state": "partial",
         "subjectId": 41529,
         "warningsCount": 3
+      }
+    },
+    {
+      "tool": "bangumi.get_calendar",
+      "input": {},
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_calendar_intelligence",
+      "input": {
+        "weekday": 1,
+        "maxPerDay": 1,
+        "maxTotal": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.search_characters",
+      "input": {
+        "query": "チト",
+        "limit": 2,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 165
+      }
+    },
+    {
+      "tool": "bangumi.get_character",
+      "input": {
+        "characterId": 17325
+      },
+      "httpRequests": 3,
+      "result": {
+        "id": 17325
+      }
+    },
+    {
+      "tool": "bangumi.search_persons",
+      "input": {
+        "query": "水瀬いのり",
+        "limit": 2,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 20
+      }
+    },
+    {
+      "tool": "bangumi.get_person",
+      "input": {
+        "personId": 3474
+      },
+      "httpRequests": 3,
+      "result": {
+        "id": 3474
+      }
+    },
+    {
+      "tool": "bangumi.get_person_profile",
+      "input": {
+        "personId": 3474,
+        "includeCredits": false,
+        "maxSubjects": 2,
+        "maxCharacters": 2
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_episode",
+      "input": {
+        "episodeId": 199013
+      },
+      "httpRequests": 1,
+      "result": {
+        "subjectId": 41529,
+        "id": 199013
+      }
+    },
+    {
+      "tool": "bangumi.list_revisions",
+      "input": {
+        "entityType": "subject",
+        "entityId": 41529,
+        "limit": 1,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 21,
+        "itemsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_stats_intelligence",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_series_watch_order",
+      "input": {
+        "subjectId": 41529,
+        "depth": 0,
+        "maxNodes": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_person_activity",
+      "input": {
+        "personId": 3474,
+        "windowMonths": 3,
+        "maxRelations": 1,
+        "maxSubjectDetails": 1,
+        "maxRows": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_person_collaboration",
+      "input": {
+        "personId": 3474,
+        "maxRelations": 1,
+        "maxSubjects": 1,
+        "maxCollaborators": 1,
+        "maxSharedSubjects": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
       }
     }
   ]

@@ -25,6 +25,19 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
     input: { entityType: 'subject', entityId: SUBJECT_ID, limit: 1, offset: 0 },
   },
   { name: 'bangumi.get_latest_subject_revision', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.get_calendar', input: {} },
+  { name: 'bangumi.get_calendar_intelligence', input: { weekday: 1, maxPerDay: 1, maxTotal: 1 } },
+  { name: 'bangumi.search_characters', input: { query: 'チト', limit: 2, offset: 0 } },
+  { name: 'bangumi.get_character', input: { characterId: 17325 } },
+  { name: 'bangumi.search_persons', input: { query: '水瀬いのり', limit: 2, offset: 0 } },
+  { name: 'bangumi.get_person', input: { personId: 3474 } },
+  { name: 'bangumi.get_person_profile', input: { personId: 3474, includeCredits: false, maxSubjects: 2, maxCharacters: 2 } },
+  { name: 'bangumi.get_episode', input: { episodeId: 199013 } },
+  { name: 'bangumi.list_revisions', input: { entityType: 'subject', entityId: SUBJECT_ID, limit: 1, offset: 0 } },
+  { name: 'bangumi.get_subject_stats_intelligence', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.get_series_watch_order', input: { subjectId: SUBJECT_ID, depth: 0, maxNodes: 1 } },
+  { name: 'bangumi.get_person_activity', input: { personId: 3474, windowMonths: 3, maxRelations: 1, maxSubjectDetails: 1, maxRows: 1 } },
+  { name: 'bangumi.get_person_collaboration', input: { personId: 3474, maxRelations: 1, maxSubjects: 1, maxCollaborators: 1, maxSharedSubjects: 1 } },
 ];
 
 function summarize(value: unknown): Record<string, unknown> {
