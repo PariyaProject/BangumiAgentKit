@@ -199,4 +199,70 @@ describe('direct execute coverage for bounded read tools', () => {
     );
     expect(history).toMatchObject({ state: 'unavailable', subjectId: 1 });
   });
+
+  it('executes complex read tools directly and preserves bounded upstream failure states', async () => {
+    const client = new HttpClient({
+      fetchFn: vi.fn(async () =>
+        new Response(JSON.stringify({ error: 'fixture unavailable' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    });
+    const tools = new Map(createReadTools(client).map((tool) => [tool.name, tool]));
+    const run = async (tool: any, input: Record<string, unknown>, name: string) => {
+      let result: any;
+      try {
+        result = await tool.execute(input, context, {});
+      } catch (error) {
+        result = error;
+      }
+      if (result instanceof Error) {
+        expect(result, name).toMatchObject({ code: expect.any(String) });
+      } else if (result.ok === false) {
+        expect(result, name).toMatchObject({
+          ok: false,
+          error: { code: expect.any(String), retryable: expect.any(Boolean) },
+        });
+      } else {
+        expect(result, name).toMatchObject({ state: expect.any(String) });
+        expect(result, name).toEqual(expect.objectContaining({ warnings: expect.any(Array) }));
+      }
+    };
+    await run(
+      tools.get('bangumi.get_character_credit_integrity')!,
+      { characterId: 1, maxSubjects: 1, maxPersons: 1 },
+      'bangumi.get_character_credit_integrity',
+    );
+    await run(
+      tools.get('bangumi.get_subject_comparison')!,
+      { subjectIds: [1, 2], maxCast: 1, maxStaff: 1, maxRelations: 1 },
+      'bangumi.get_subject_comparison',
+    );
+    await run(
+      tools.get('bangumi.get_subject_overlap')!,
+      { subjectIds: [1, 2], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 },
+      'bangumi.get_subject_overlap',
+    );
+    await run(
+      tools.get('bangumi.get_series_watch_order')!,
+      { subjectId: 1, depth: 0, maxNodes: 1 },
+      'bangumi.get_series_watch_order',
+    );
+    await run(
+      tools.get('bangumi.get_person_activity')!,
+      { personId: 1, windowMonths: 3, maxRelations: 1, maxSubjectDetails: 1, maxRows: 1 },
+      'bangumi.get_person_activity',
+    );
+    await run(
+      tools.get('bangumi.get_person_collaboration')!,
+      { personId: 1, maxRelations: 1, maxSubjects: 1, maxCollaborators: 1, maxSharedSubjects: 1 },
+      'bangumi.get_person_collaboration',
+    );
+    await run(
+      tools.get('bangumi.get_subject_index_membership')!,
+      { subjectId: 1, indexIds: [1], pageSize: 1, maxPages: 1, maxRows: 1 },
+      'bangumi.get_subject_index_membership',
+    );
+  });
 });
