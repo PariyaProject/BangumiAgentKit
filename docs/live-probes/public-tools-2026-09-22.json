@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T16:49:29.512Z",
+  "observedAt": "2026-09-22T16:55:32.701Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 23,
-  "httpRequests": 38,
+  "probeCount": 33,
+  "httpRequests": 77,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -315,6 +315,164 @@
       "result": {
         "state": "partial",
         "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "input": {
+        "cohort": {
+          "query": {
+            "media": "anime",
+            "year": 2012,
+            "resultMode": "all"
+          }
+        },
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "partial",
+        "warningsCount": 10
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "input": {
+        "cohorts": [
+          {
+            "query": {
+              "media": "anime",
+              "year": 2012,
+              "resultMode": "all"
+            }
+          }
+        ],
+        "maxSubjects": 1
+      },
+      "httpRequests": 7,
+      "result": {
+        "state": "partial",
+        "warningsCount": 10
+      }
+    },
+    {
+      "tool": "bangumi.describe_operation",
+      "input": {
+        "operationId": "getSubjectById"
+      },
+      "httpRequests": 0,
+      "result": {
+        "state": "value",
+        "keys": [
+          "operationId",
+          "tag",
+          "method",
+          "path",
+          "pathParameters",
+          "auth",
+          "scopes",
+          "risk",
+          "summary"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_character_credit_integrity",
+      "input": {
+        "characterId": 17325,
+        "maxSubjects": 1,
+        "maxPersons": 1
+      },
+      "httpRequests": 3,
+      "result": {
+        "state": "partial",
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_episode_guide",
+      "input": {
+        "subjectId": 41529,
+        "maxEpisodes": 1,
+        "includeDescriptions": false
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "itemsCount": 1,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_episode_integrity",
+      "input": {
+        "subjectId": 41529,
+        "maxEpisodes": 1,
+        "includeDescriptions": false
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "itemsCount": 1,
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_revision",
+      "input": {
+        "entityType": "subject",
+        "revisionId": 1567985
+      },
+      "httpRequests": 1,
+      "result": {
+        "id": 1567985
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_comparison",
+      "input": {
+        "subjectIds": [
+          41529,
+          46729
+        ],
+        "maxCast": 1,
+        "maxStaff": 1,
+        "maxRelations": 1
+      },
+      "httpRequests": 10,
+      "result": {
+        "state": "partial",
+        "warningsCount": 4
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_overlap",
+      "input": {
+        "subjectIds": [
+          41529,
+          46729
+        ],
+        "maxCast": 1,
+        "maxStaff": 1,
+        "maxPairs": 1,
+        "maxPeople": 1
+      },
+      "httpRequests": 6,
+      "result": {
+        "state": "partial",
+        "warningsCount": 5
+      }
+    },
+    {
+      "tool": "bangumi.get_user",
+      "input": {
+        "username": "xiaonvsheng"
+      },
+      "httpRequests": 1,
+      "result": {
+        "id": 489240
       }
     }
   ]

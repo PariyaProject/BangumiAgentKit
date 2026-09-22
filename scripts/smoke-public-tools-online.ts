@@ -38,6 +38,16 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_series_watch_order', input: { subjectId: SUBJECT_ID, depth: 0, maxNodes: 1 } },
   { name: 'bangumi.get_person_activity', input: { personId: 3474, windowMonths: 3, maxRelations: 1, maxSubjectDetails: 1, maxRows: 1 } },
   { name: 'bangumi.get_person_collaboration', input: { personId: 3474, maxRelations: 1, maxSubjects: 1, maxCollaborators: 1, maxSharedSubjects: 1 } },
+  { name: 'bangumi.aggregate_subject_cohort', input: { cohort: { query: { media: 'anime', year: 2012, resultMode: 'all' } }, maxSubjects: 1 } },
+  { name: 'bangumi.compare_subject_cohorts', input: { cohorts: [{ query: { media: 'anime', year: 2012, resultMode: 'all' } }], maxSubjects: 1 } },
+  { name: 'bangumi.describe_operation', input: { operationId: 'getSubjectById' } },
+  { name: 'bangumi.get_character_credit_integrity', input: { characterId: 17325, maxSubjects: 1, maxPersons: 1 } },
+  { name: 'bangumi.get_episode_guide', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
+  { name: 'bangumi.get_episode_integrity', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
+  { name: 'bangumi.get_revision', input: { entityType: 'subject', revisionId: 1567985 } },
+  { name: 'bangumi.get_subject_comparison', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxRelations: 1 } },
+  { name: 'bangumi.get_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
+  { name: 'bangumi.get_user', input: { username: 'xiaonvsheng' } },
 ];
 
 function summarize(value: unknown): Record<string, unknown> {
