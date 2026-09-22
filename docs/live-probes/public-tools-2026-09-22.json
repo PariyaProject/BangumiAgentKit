@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T16:55:32.701Z",
+  "observedAt": "2026-09-22T16:58:46.887Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 33,
-  "httpRequests": 77,
+  "probeCount": 38,
+  "httpRequests": 84,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -473,6 +473,80 @@
       "httpRequests": 1,
       "result": {
         "id": 489240
+      }
+    },
+    {
+      "tool": "bangumi.render_calendar",
+      "input": {
+        "weekday": 1,
+        "maxPerDay": 1,
+        "maxTotal": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_search",
+      "input": {
+        "query": "少女終末旅行",
+        "subjectType": 2,
+        "limit": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_episode_guide",
+      "input": {
+        "subjectId": 41529,
+        "maxEpisodes": 1,
+        "includeDescriptions": false
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_episode_integrity",
+      "input": {
+        "subjectId": 41529,
+        "maxEpisodes": 1,
+        "includeDescriptions": false
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_card",
+      "input": {
+        "subjectId": 41529,
+        "includeCollection": false
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
       }
     }
   ]

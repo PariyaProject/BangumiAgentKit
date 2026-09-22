@@ -7,7 +7,7 @@
 - [x] 工具目录与注册表/Schema 精确一致：96/96。
 - [x] 每个工具有测试源码引用：96/96。
 - [ ] 每个工具都有直接 `execute` 夹具：96/96；仍有 0 项待补。
-- [ ] 每个工具都有真实公开 API 证据：当前明确记录 34/96。
+- [ ] 每个工具都有真实公开 API 证据：当前明确记录 39/96。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [ ] QQ/TIM 逐工具端到端验收：当前只有 compact profile 的整体消息链证据，不把它误写成 96 个工具逐一通过。
 
@@ -75,7 +75,7 @@
 | `bangumi.manage_index` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.manage_person_collection` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.query_subjects` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.render_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_cast_card` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.render_character_credit_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_collection_backlog` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
@@ -85,17 +85,17 @@
 | `bangumi.render_collection_progress` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.render_collection_schedule` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.render_collection_series_groups` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_episode_guide` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
-| `bangumi.render_episode_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.render_episode_guide` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
+| `bangumi.render_episode_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_latest_subject_revision` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_person_activity` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_person_collaboration` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_person_profile` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_query_subjects` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_revision_timeline` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
-| `bangumi.render_search` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
+| `bangumi.render_search` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_series_watch_order` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
-| `bangumi.render_subject_card` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| `bangumi.render_subject_card` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.render_subject_cohort_aggregation` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_subject_cohort_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |
 | `bangumi.render_subject_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ⬜ | — | ⬜ | 补公开 API；评估是否进入 QQ |

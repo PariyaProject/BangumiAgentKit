@@ -48,6 +48,11 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_subject_comparison', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxRelations: 1 } },
   { name: 'bangumi.get_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
   { name: 'bangumi.get_user', input: { username: 'xiaonvsheng' } },
+  { name: 'bangumi.render_calendar', input: { weekday: 1, maxPerDay: 1, maxTotal: 1 } },
+  { name: 'bangumi.render_search', input: { query: '少女終末旅行', subjectType: 2, limit: 1 } },
+  { name: 'bangumi.render_episode_guide', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
+  { name: 'bangumi.render_episode_integrity', input: { subjectId: SUBJECT_ID, maxEpisodes: 1, includeDescriptions: false } },
+  { name: 'bangumi.render_subject_card', input: { subjectId: SUBJECT_ID, includeCollection: false } },
 ];
 
 function summarize(value: unknown): Record<string, unknown> {
