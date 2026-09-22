@@ -7,7 +7,7 @@
 - [x] 工具目录与注册表/Schema 精确一致：96/96。
 - [x] 每个工具有测试源码引用：96/96。
 - [ ] 每个工具都有直接 `execute` 夹具：96/96；仍有 0 项待补。
-- [ ] 每个工具都有真实公开 API 证据：当前明确记录 56/96。
+- [ ] 每个工具都有真实公开 API 证据：当前明确记录 59/96。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [ ] QQ/TIM 逐工具端到端验收：当前只有 compact profile 的整体消息链证据，不把它误写成 96 个工具逐一通过。
 
@@ -22,7 +22,7 @@
 | `bangumi.auth_start` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.auth_status` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.get_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
@@ -76,7 +76,7 @@
 | `bangumi.manage_person_collection` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.query_subjects` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_cast_card` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| `bangumi.render_cast_card` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.render_character_credit_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.render_collection_backlog` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.render_collection_dashboard` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
@@ -108,7 +108,7 @@
 | `bangumi.resolve_subject_concept` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
 | `bangumi.search_characters` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.search_persons` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.search_subjects` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| `bangumi.search_subjects` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.update_collection` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 | `bangumi.update_episode_progress` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
 

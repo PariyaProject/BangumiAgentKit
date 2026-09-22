@@ -1,10 +1,10 @@
 {
-  "observedAt": "2026-09-22T17:30:56.214Z",
+  "observedAt": "2026-09-22T17:54:41.922Z",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
   "userAgent": "BangumiAgentKit/live-public-probe",
-  "probeCount": 55,
-  "httpRequests": 141,
+  "probeCount": 58,
+  "httpRequests": 145,
   "limits": [
     "one known public subject",
     "sequential probes with 1.2s spacing",
@@ -490,6 +490,32 @@
       }
     },
     {
+      "tool": "bangumi.search_subjects",
+      "input": {
+        "query": "少女終末旅行",
+        "type": "anime",
+        "limit": 1,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 539
+      }
+    },
+    {
+      "tool": "bangumi.call_operation",
+      "input": {
+        "operationId": "getSubjectById",
+        "pathParams": {
+          "subject_id": 41529
+        }
+      },
+      "httpRequests": 1,
+      "result": {
+        "id": 41529
+      }
+    },
+    {
       "tool": "bangumi.render_calendar",
       "input": {
         "weekday": 1,
@@ -512,6 +538,19 @@
         "limit": 1
       },
       "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_cast_card",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 2,
       "result": {
         "state": "value",
         "keys": [
