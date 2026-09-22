@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import catalog from '../../docs/tool-catalog.json';
 import {
   CharacterService,
   CollectionDashboardService,
+  EpisodeService,
   IndexReadService,
+  PersonService,
   RevisionService,
   SubjectService,
   UserService,
@@ -40,6 +44,20 @@ function createArtifactStore() {
   };
 }
 
+function readTestSources(root: string): string {
+  let source = '';
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue;
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      source += readTestSources(path);
+    } else if (/\.(?:ts|tsx|js|mjs)$/u.test(entry.name)) {
+      source += `\n${readFileSync(path, 'utf8')}`;
+    }
+  }
+  return source;
+}
+
 describe('complete Bangumi tool surface', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -73,6 +91,14 @@ describe('complete Bangumi tool surface', () => {
     ]);
   });
 
+  it('keeps a direct test-source reference for every catalog tool', () => {
+    const source = readTestSources(join(process.cwd(), 'tests'));
+    const missing = catalog
+      .map((tool) => tool.name)
+      .filter((name) => !source.includes(`'${name}'`) && !source.includes(`"${name}"`));
+    expect(missing).toEqual([]);
+  });
+
   it('executes the previously uncovered read and account-removal entry points', async () => {
     const publicClient = new HttpClient({ fetchFn: vi.fn() });
     vi.spyOn(SubjectService.prototype, 'getSubjectRelations').mockResolvedValue([
@@ -84,6 +110,28 @@ describe('complete Bangumi tool surface', () => {
         relation: '续集',
       },
     ] as any);
+    vi.spyOn(EpisodeService.prototype, 'getEpisodeById').mockResolvedValue({
+      id: 4,
+      name: '第 1 话',
+      nameCn: '第 1 话',
+      ep: 1,
+    } as any);
+    vi.spyOn(CharacterService.prototype, 'getCharacterById').mockResolvedValue({
+      id: 2,
+      name: '角色',
+      nameCn: '角色',
+      summary: '简介',
+    } as any);
+    vi.spyOn(CharacterService.prototype, 'getCharacterRelatedSubjects').mockResolvedValue([]);
+    vi.spyOn(CharacterService.prototype, 'getCharacterRelatedPersons').mockResolvedValue([]);
+    vi.spyOn(PersonService.prototype, 'getPersonById').mockResolvedValue({
+      id: 3,
+      name: '人物',
+      nameCn: '人物',
+      career: ['声优'],
+    } as any);
+    vi.spyOn(PersonService.prototype, 'getPersonRelatedSubjects').mockResolvedValue([]);
+    vi.spyOn(PersonService.prototype, 'getPersonRelatedCharacters').mockResolvedValue([]);
     vi.spyOn(IndexReadService.prototype, 'getIndexById').mockResolvedValue({
       id: 3,
       title: '目录',
@@ -110,11 +158,22 @@ describe('complete Bangumi tool surface', () => {
       username: 'alice',
       nickname: 'Alice',
     });
+    vi.spyOn(UserService.prototype, 'getUserSubjectCollection').mockResolvedValue({
+      found: true,
+      collection: { status: 'wish', statusLabel: '想看', rating: 8, epStatus: 0 },
+    } as any);
     vi.spyOn(RevisionService.prototype, 'listRevisions').mockResolvedValue({
       total: 1,
       limit: 10,
       offset: 0,
       items: [{ id: 9, type: 1, summary: '更新', createdAt: '2026-01-01' }],
+    } as any);
+    vi.spyOn(RevisionService.prototype, 'getRevision').mockResolvedValue({
+      id: 9,
+      type: 1,
+      summary: '更新',
+      createdAt: '2026-01-01',
+      data: { fixture: true },
     } as any);
 
     const reads = toolMap(createReadTools(publicClient));
@@ -123,6 +182,21 @@ describe('complete Bangumi tool surface', () => {
         publicHttpClient: publicClient,
       }),
     ).resolves.toMatchObject([{ id: 2, relation: '续集' }]);
+    await expect(
+      (reads.get('bangumi.get_episode')!.execute as any)({ episodeId: 4 }, context, {
+        publicHttpClient: publicClient,
+      }),
+    ).resolves.toMatchObject({ id: 4, ep: 1 });
+    await expect(
+      (reads.get('bangumi.get_character')!.execute as any)({ characterId: 2 }, context, {
+        publicHttpClient: publicClient,
+      }),
+    ).resolves.toMatchObject({ id: 2, relatedSubjects: [], relatedPersons: [] });
+    await expect(
+      (reads.get('bangumi.get_person')!.execute as any)({ personId: 3 }, context, {
+        publicHttpClient: publicClient,
+      }),
+    ).resolves.toMatchObject({ id: 3, relatedSubjects: [], relatedCharacters: [] });
     await expect(
       (reads.get('bangumi.get_index')!.execute as any)({ indexId: 3 }, context, {
         publicHttpClient: publicClient,
@@ -133,6 +207,15 @@ describe('complete Bangumi tool surface', () => {
         publicHttpClient: publicClient,
       }),
     ).resolves.toMatchObject({ username: 'alice' });
+    await expect(
+      (reads.get('bangumi.get_collection')!.execute as any)(
+        { subjectId: 1, username: 'alice' },
+        context,
+        {
+          publicHttpClient: publicClient,
+        },
+      ),
+    ).resolves.toMatchObject({ found: true, collection: { status: 'wish' } });
     await expect(
       (reads.get('bangumi.get_my_profile')!.execute as any)({}, context, {
         executionSession: { client: publicClient as any },
@@ -145,16 +228,23 @@ describe('complete Bangumi tool surface', () => {
         { publicHttpClient: publicClient },
       ),
     ).resolves.toMatchObject({ total: 1, items: [{ id: 9 }] });
+    await expect(
+      (reads.get('bangumi.get_revision')!.execute as any)(
+        { entityType: 'subject', revisionId: 9 },
+        context,
+        { publicHttpClient: publicClient },
+      ),
+    ).resolves.toMatchObject({ id: 9, summary: '更新' });
 
     const removeAccount = vi.fn(async () => undefined);
     const auth = toolMap(
-      createAuthTools(
-        { removeAccount } as any,
-        { createAuthorizationUrl: vi.fn() } as any,
-      ),
+      createAuthTools({ removeAccount } as any, { createAuthorizationUrl: vi.fn() } as any),
     );
     await expect(
-      (auth.get('bangumi.auth_remove_account')!.execute as any)({ accountId: 'account-1' }, context),
+      (auth.get('bangumi.auth_remove_account')!.execute as any)(
+        { accountId: 'account-1' },
+        context,
+      ),
     ).resolves.toEqual({ success: true, message: 'Bangumi 账号 account-1 已解绑' });
     expect(removeAccount).toHaveBeenCalledWith(context.principalId, 'account-1');
   });
@@ -213,7 +303,12 @@ describe('complete Bangumi tool surface', () => {
         },
       },
       coverage: {},
-      source: { class: 'composite', operations: [], authScope: 'account', attemptedAt: '2026-01-01' },
+      source: {
+        class: 'composite',
+        operations: [],
+        authScope: 'account',
+        attemptedAt: '2026-01-01',
+      },
       evidence: [],
       warnings: [],
       limitations: [],
@@ -242,18 +337,14 @@ describe('complete Bangumi tool surface', () => {
     };
 
     await expect(
-      (renderTools.get('bangumi.render_cast_card')!.execute as any)(
-        { subjectId: 1 },
-        context,
-        { clientProvider } as any,
-      ),
+      (renderTools.get('bangumi.render_cast_card')!.execute as any)({ subjectId: 1 }, context, {
+        clientProvider,
+      } as any),
     ).resolves.toMatchObject({ artifact: { id: 'public-artifact' } });
     await expect(
-      (renderTools.get('bangumi.render_search')!.execute as any)(
-        { query: 'Fixture' },
-        context,
-        { clientProvider } as any,
-      ),
+      (renderTools.get('bangumi.render_search')!.execute as any)({ query: 'Fixture' }, context, {
+        clientProvider,
+      } as any),
     ).resolves.toMatchObject({ artifact: { id: 'public-artifact' } });
     await expect(
       (renderTools.get('bangumi.render_collection_progress')!.execute as any)(
@@ -271,9 +362,7 @@ describe('complete Bangumi tool surface', () => {
     ).resolves.toMatchObject({ artifact: { id: 'private-principal-a' } });
 
     expect(renderCard).toHaveBeenCalledWith(expect.objectContaining({ template: 'cast-card' }));
-    expect(renderCard).toHaveBeenCalledWith(
-      expect.objectContaining({ template: 'search-list' }),
-    );
+    expect(renderCard).toHaveBeenCalledWith(expect.objectContaining({ template: 'search-list' }));
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'collection-progress' }),
       { cache: false },
