@@ -42,6 +42,7 @@
     "smoke:discovery:online": "ts-node -P tsconfig.base.json scripts/smoke-discovery-online.ts",
     "smoke:public:online": "ts-node -P tsconfig.base.json scripts/smoke-public-tools-online.ts --live",
     "auth:check": "python3 scripts/validate-auth-acceptance.py",
+    "acceptance:check": "python3 scripts/check-tool-acceptance-table.py",
     "renderer:install": "npx playwright install chromium",
     "start:api": "pnpm --filter @bangumi-agent-kit/app-api start",
     "start:mcp": "pnpm --filter @bangumi-agent-kit/app-mcp start",
