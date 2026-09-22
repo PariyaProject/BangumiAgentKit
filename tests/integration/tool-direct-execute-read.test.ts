@@ -264,5 +264,10 @@ describe('direct execute coverage for bounded read tools', () => {
       { subjectId: 1, indexIds: [1], pageSize: 1, maxPages: 1, maxRows: 1 },
       'bangumi.get_subject_index_membership',
     );
+    await run(
+      tools.get('bangumi.get_subject_overview')!,
+      { subjectId: 1, maxCast: 1, maxStaff: 1, maxRelations: 1 },
+      'bangumi.get_subject_overview',
+    );
   });
 });

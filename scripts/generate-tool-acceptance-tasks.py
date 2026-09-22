@@ -19,7 +19,7 @@ def test_source() -> str:
 
 def direct_execute_names(source: str) -> set[str]:
     names = set(re.findall(
-        r"(?:reads|auth|renderTools|tools|registry|toolMap|writeTools|readTools)\.get\('([^']+)'\)",
+        r"(?:reads|auth|authTools|renderTools|tools|registry|toolMap|writeTools|readTools)\.get\('([^']+)'\)",
         source,
     ))
     names.update(re.findall(
