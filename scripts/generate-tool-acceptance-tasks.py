@@ -112,6 +112,7 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
         'bangumi-full-renderer-qa-v1',
         'bangumi-full-operation-qa-v1',
         'bangumi-full-auth-start-qa-v1',
+        'bangumi-full-auth-switch-qa-v1',
     }
     for path in LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'):
         try:

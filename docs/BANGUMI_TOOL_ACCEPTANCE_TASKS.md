@@ -10,7 +10,7 @@
 - [ ] 每个工具都有真实公开 API 证据：当前明确记录 59/96。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [ ] 无账号门禁拒绝路径已验证：15/15 项；门禁通过不代表真实账号功能通过。
-- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 73/96。
+- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 74/96。
 - [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
 - [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/96。
 
@@ -25,7 +25,7 @@
 | `bangumi.auth_remove_account` | `required` | `destructive` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.auth_start` | `none` | `read` | ✅ | ✅ | ✅ | — | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.auth_status` | `none` | `read` | ✅ | ✅ | ✅ | — | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ✅ | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |

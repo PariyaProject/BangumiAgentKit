@@ -36,12 +36,19 @@ const FULL_AUTH_DENIAL_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   )
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const FULL_AUTH_SWITCH_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter(
+    (name) => name.startsWith('pariya-agent-full-auth-switch-qa-e2e-') && name.endsWith('.json'),
+  )
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
 const EVIDENCE = [
   COMPACT_EVIDENCE,
   ...FULL_PUBLIC_QA_EVIDENCE,
   ...FULL_RENDERER_QA_EVIDENCE,
   ...FULL_OPERATION_QA_EVIDENCE,
   ...FULL_AUTH_START_QA_EVIDENCE,
+  ...FULL_AUTH_SWITCH_QA_EVIDENCE,
 ];
 const CURRENT_CATALOG_SHA256 = createHash('sha256').update(CATALOG_TEXT).digest('hex');
 const catalogCache = new Map<string, unknown[]>([[CURRENT_CATALOG_SHA256, catalog]]);
@@ -169,6 +176,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.search_persons',
         'bangumi.search_subjects',
         'bangumi.auth_start',
+        'bangumi.auth_switch_account',
         'bangumi.call_operation',
         'bangumi.render_calendar',
         'bangumi.render_cast_card',
@@ -483,6 +491,42 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       expect(rows.get(scenario.id)?.[7]).toBe('✅');
       expect(rows.get(scenario.id)?.[8]).toBe('⬜');
       expect(rows.get(scenario.id)?.[9]).toBe('⬜');
+    }
+  });
+
+  it('accepts local auth-switch evidence only for the fixed synthetic account binding', () => {
+    expect(FULL_AUTH_SWITCH_QA_EVIDENCE.map((report: any) => report.scenarios[0].id)).toEqual([
+      'bangumi.auth_switch_account',
+    ]);
+    for (const report of FULL_AUTH_SWITCH_QA_EVIDENCE) {
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-auth-switch-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scopeNote).toContain('synthetic MemoryStorage');
+      expect(report.scopeNote).toContain('no Bangumi API');
+      expect(report.scenarios[0]).toMatchObject({
+        id: 'bangumi.auth_switch_account',
+        passed: true,
+        toolCalls: [{ name: 'bangumi.auth_switch_account', state: 'DONE' }],
+        assertions: {
+          syntheticLocalStateMutation: true,
+          activeBindingVerified: true,
+          externalApiCalled: false,
+          realAccountUsed: false,
+        },
+      });
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, 'bangumi.auth_switch_account')).toBe(true);
+      expect(report.scenarios[0]).not.toHaveProperty('prompt');
+      expect(report.scenarios[0]).not.toHaveProperty('arguments');
+      expect(rowsByTool().get('bangumi.auth_switch_account')?.[9]).toBe('✅');
     }
   });
   it('continues to mark the public QA probe as Agent/MCP only', () => {
