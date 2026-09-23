@@ -24,11 +24,18 @@ const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   )
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const FULL_AUTH_START_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter(
+    (name) => name.startsWith('pariya-agent-full-auth-start-qa-e2e-') && name.endsWith('.json'),
+  )
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
 const EVIDENCE = [
   COMPACT_EVIDENCE,
   ...FULL_PUBLIC_QA_EVIDENCE,
   ...FULL_RENDERER_QA_EVIDENCE,
   ...FULL_OPERATION_QA_EVIDENCE,
+  ...FULL_AUTH_START_QA_EVIDENCE,
 ];
 const CURRENT_CATALOG_SHA256 = createHash('sha256').update(CATALOG_TEXT).digest('hex');
 const catalogCache = new Map<string, unknown[]>([[CURRENT_CATALOG_SHA256, catalog]]);
@@ -155,6 +162,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.search_characters',
         'bangumi.search_persons',
         'bangumi.search_subjects',
+        'bangumi.auth_start',
         'bangumi.call_operation',
         'bangumi.render_calendar',
         'bangumi.render_cast_card',
@@ -381,6 +389,37 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       });
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
       expect(toolContractMatchesCurrent(report, 'bangumi.call_operation')).toBe(true);
+      expect(report.scenarios[0]).not.toHaveProperty('prompt');
+      expect(report.scenarios[0]).not.toHaveProperty('arguments');
+    }
+  });
+
+  it('accepts only synthetic OAuth-start evidence with state redacted before the model', () => {
+    expect(FULL_AUTH_START_QA_EVIDENCE.map((report: any) => report.scenarios[0].id)).toEqual([
+      'bangumi.auth_start',
+    ]);
+    for (const report of FULL_AUTH_START_QA_EVIDENCE) {
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-auth-start-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scopeNote).toContain('test_client_id');
+      expect(report.scopeNote).toContain('redacted');
+      expect(report.scopeNote).toContain('No real account authorization');
+      expect(report.scenarios).toHaveLength(1);
+      expect(report.scenarios[0]).toMatchObject({
+        id: 'bangumi.auth_start',
+        passed: true,
+        toolCalls: [{ name: 'bangumi.auth_start', state: 'DONE' }],
+      });
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, 'bangumi.auth_start')).toBe(true);
       expect(report.scenarios[0]).not.toHaveProperty('prompt');
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
     }
