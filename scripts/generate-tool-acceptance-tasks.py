@@ -23,13 +23,16 @@ NON_PUBLIC_API_TOOLS = {
     'bangumi.render_subject_stats_history',
     'bangumi.resolve_subject_concept',
 }
-PUBLIC_API_E2E_PROFILES = {
-    'bangumi-full-public-qa-v1',
-    'bangumi-full-renderer-qa-v1',
-    'bangumi-full-operation-qa-v1',
+PUBLIC_API_FAILURE_STATES = {
+    'auth_required',
+    'error',
+    'not_computable',
+    'not_found',
+    'permission_denied',
+    'unavailable',
+    'unsupported',
+    'upstream_error',
 }
-
-
 def test_source() -> str:
     chunks = []
     for path in (ROOT / 'tests').rglob('*'):
@@ -50,9 +53,75 @@ def direct_execute_names(source: str) -> set[str]:
     return names
 
 
-def model_mcp_e2e_names(
-    catalog: list[dict], *, profiles: set[str] | None = None,
-) -> set[str]:
+def public_api_smoke_names(catalog: list[dict]) -> set[str]:
+    """Trust only current, hash-bound direct ToolRegistry calls with live HTTP results."""
+    catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
+    probe_source_sha256 = hashlib.sha256(
+        (ROOT / 'scripts/smoke-public-tools-online.ts').read_bytes()
+    ).hexdigest()
+    current_names = {item['name'] for item in catalog}
+    public_candidates = {
+        item['name'] for item in catalog
+        if item.get('auth') != 'required' and item['name'] not in NON_PUBLIC_API_TOOLS
+    }
+    names: set[str] = set()
+    for path in LIVE_PROBE_DIR.glob('public-tools-*.json'):
+        try:
+            report = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        if (
+            not isinstance(report, dict)
+            or report.get('schemaVersion') != 1
+            or report.get('evidenceKind') != 'bangumi_public_api_tool_registry_smoke'
+            or report.get('mode') != 'read_only_public_api_smoke'
+            or report.get('sourceProgram') != 'scripts/smoke-public-tools-online.ts'
+            or report.get('catalogSha256') != catalog_sha256
+            or report.get('probeScriptSha256') != probe_source_sha256
+        ):
+            continue
+        selected = report.get('selectedTools')
+        results = report.get('results')
+        if (
+            not isinstance(selected, list)
+            or not all(isinstance(name, str) for name in selected)
+            or len(set(selected)) != len(selected)
+            or set(selected) != public_candidates
+            or type(report.get('probeCount')) is not int
+            or report['probeCount'] != len(public_candidates)
+            or not isinstance(results, list)
+            or len(results) != len(public_candidates)
+        ):
+            continue
+        result_by_name = {
+            item.get('tool'): item for item in results
+            if isinstance(item, dict) and isinstance(item.get('tool'), str)
+        }
+        if set(result_by_name) != set(selected):
+            continue
+        for name in selected:
+            result = result_by_name[name]
+            summary = result.get('result')
+            request_count = result.get('httpRequests')
+            recorded_input = result.get('input')
+            if (
+                name not in current_names
+                or name not in public_candidates
+                or not isinstance(summary, dict)
+                or not summary
+                or summary.get('state') in PUBLIC_API_FAILURE_STATES
+                or 'error' in summary
+                or type(request_count) is not int
+                or request_count < 1
+                or not isinstance(recorded_input, dict)
+                or 'username' in recorded_input
+            ):
+                continue
+            names.add(name)
+    return names
+
+
+def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
     """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
     names: set[str] = set()
     current_catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
@@ -102,8 +171,6 @@ def model_mcp_e2e_names(
             continue
         if not isinstance(report, dict):
             continue
-        if profiles is not None and report.get('profile') not in profiles:
-            continue
         evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
         if (report.get('schemaVersion') != 1
                 or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
@@ -126,21 +193,6 @@ def model_mcp_e2e_names(
             calls = scenario.get('toolCalls')
             if not isinstance(calls, list) or not calls:
                 continue
-            if profiles is not None:
-                assertions = scenario.get('assertions')
-                if (
-                    len(calls) != 1
-                    or not isinstance(calls[0], dict)
-                    or scenario.get('id') != calls[0].get('name')
-                    or not isinstance(assertions, dict)
-                    or any(assertions.get(key) is not True for key in (
-                        'cliSucceeded',
-                        'exactTargetToolCompleted',
-                        'jsonStreamComplete',
-                        'boundedToolBudget',
-                    ))
-                ):
-                    continue
             if any(not isinstance(call, dict)
                    or call.get('state') != 'DONE'
                    or call.get('name') not in current_by_name
@@ -235,7 +287,7 @@ def main() -> None:
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
     source = test_source()
     direct = direct_execute_names(source)
-    public_api_evidence = model_mcp_e2e_names(catalog, profiles=PUBLIC_API_E2E_PROFILES)
+    public_api_evidence = public_api_smoke_names(catalog)
     public_candidates = {
         item['name'] for item in catalog
         if item.get('auth') != 'required' and item['name'] not in NON_PUBLIC_API_TOOLS
@@ -279,7 +331,7 @@ def main() -> None:
         f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
         f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
         '',
-        '状态说明：`✅` 已有当前证据；`◐` 表示有当前或逐工具 Schema 完全匹配的目录哈希绑定公开 QA 调用，工具成功完成，但报告没有字段级期望值/完整性断言，因此不代表完整数据覆盖；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
+        '状态说明：`✅` 已有当前证据；`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、至少一个真实 HTTP 请求和无错误结果摘要；摘要不保存数据正文，也没有字段级期望值/完整性断言，因此不代表完整数据覆盖或稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
         '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',

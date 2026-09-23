@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
@@ -28,6 +29,13 @@ const probes: Probe[] = [
     input: { subjectId: SUBJECT_ID, maxCast: 2, maxStaff: 2, maxRelations: 2 },
   },
   { name: 'bangumi.get_subject_cast', input: { subjectId: SUBJECT_ID, limit: 2 } },
+  {
+    name: 'bangumi.query_subjects',
+    input: {
+      media: 'anime', year: 2026, month: 7, resultMode: 'top', limit: 1,
+      sort: 'date', order: 'asc', explain: 'none',
+    },
+  },
   { name: 'bangumi.get_subject_staff', input: { subjectId: SUBJECT_ID, limit: 2 } },
   { name: 'bangumi.get_episodes', input: { subjectId: SUBJECT_ID, limit: 2, offset: 0 } },
   { name: 'bangumi.get_subject_relations', input: { subjectId: SUBJECT_ID } },
@@ -236,8 +244,17 @@ async function main(): Promise<void> {
   }
 
   const report = {
+    schemaVersion: 1,
+    evidenceKind: 'bangumi_public_api_tool_registry_smoke',
     observedAt: startedAt,
     mode: 'read_only_public_api_smoke',
+    catalogSha256: createHash('sha256')
+      .update(await readFile(join(process.cwd(), 'docs', 'tool-catalog.json')))
+      .digest('hex'),
+    probeScriptSha256: createHash('sha256')
+      .update(await readFile(join(process.cwd(), 'scripts', 'smoke-public-tools-online.ts')))
+      .digest('hex'),
+    sourceProgram: 'scripts/smoke-public-tools-online.ts',
     subjectId: SUBJECT_ID,
     userAgent: USER_AGENT,
     probeCount: selectedProbes.length,
