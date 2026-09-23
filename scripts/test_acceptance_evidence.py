@@ -18,6 +18,13 @@ if SPEC is None or SPEC.loader is None:
 GENERATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GENERATOR)
 
+TABLE_CHECKER_SCRIPT = Path(__file__).with_name('check-tool-acceptance-table.py')
+TABLE_SPEC = importlib.util.spec_from_file_location('tool_acceptance_table_checker', TABLE_CHECKER_SCRIPT)
+if TABLE_SPEC is None or TABLE_SPEC.loader is None:
+    raise RuntimeError('Could not load acceptance table checker')
+TABLE_CHECKER = importlib.util.module_from_spec(TABLE_SPEC)
+TABLE_SPEC.loader.exec_module(TABLE_CHECKER)
+
 
 class PublicApiEvidenceTests(unittest.TestCase):
     def setUp(self):
@@ -142,6 +149,68 @@ class DirectExecuteSourceTests(unittest.TestCase):
             GENERATOR.direct_execute_names(source),
             {'bangumi.get_subject', 'bangumi.get_subject_cast'},
         )
+
+    def test_records_fixture_source_paths_per_tool(self):
+        source = """tools.get('bangumi.get_subject')!.execute(input, context);
+await run(
+  tools.get('bangumi.get_subject_cast')!,
+  input,
+  'bangumi.get_subject_cast',
+);
+"""
+        self.assertEqual(
+            GENERATOR.direct_execute_source_refs([('tests/direct.ts', source)]),
+            {
+                'bangumi.get_subject': {'tests/direct.ts:1'},
+                'bangumi.get_subject_cast': {'tests/direct.ts:3'},
+            },
+        )
+
+
+class AcceptanceTableSourceReferenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='acceptance-table-reference-test-')
+        self.root = Path(self.temp_dir.name)
+        test_file = self.root / 'tests/direct-fixture.ts'
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text('line one\nline two\n', encoding='utf-8')
+        self.original_root = TABLE_CHECKER.ROOT
+        TABLE_CHECKER.ROOT = self.root
+
+    def tearDown(self):
+        TABLE_CHECKER.ROOT = self.original_root
+        self.temp_dir.cleanup()
+
+    def test_accepts_existing_test_file_and_line_reference(self):
+        self.assertIsNone(
+            TABLE_CHECKER.source_reference_error(
+                'bangumi.get_subject', '`tests/direct-fixture.ts:2`'
+            )
+        )
+
+    def test_rejects_missing_test_file_reference(self):
+        error = TABLE_CHECKER.source_reference_error(
+            'bangumi.get_subject', '`tests/missing.ts:2`'
+        )
+        self.assertIn('does not exist', error)
+
+    def test_rejects_out_of_range_line_reference(self):
+        error = TABLE_CHECKER.source_reference_error(
+            'bangumi.get_subject', '`tests/direct-fixture.ts:8`'
+        )
+        self.assertIn('line 8 is out of range', error)
+
+    def test_catalog_cell_points_to_the_expected_schema_entry(self):
+        self.assertIsNone(
+            TABLE_CHECKER.catalog_schema_reference_error(
+                'bangumi.get_subject', '`docs/tool-catalog.json#/3`', 3
+            )
+        )
+        error = TABLE_CHECKER.catalog_schema_reference_error(
+            'bangumi.get_subject', '`docs/tool-catalog.json#/2`', 3
+        )
+        self.assertIn('expected', error)
+        self.assertIn('docs/tool-catalog.json#/3', error)
 
 
 class AuthAcceptanceEvidenceTests(unittest.TestCase):

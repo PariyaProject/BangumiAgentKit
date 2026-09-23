@@ -49,11 +49,16 @@ def test_source() -> str:
     return '\n'.join(chunks)
 
 
-def direct_execute_names(source: str) -> set[str]:
-    names: set[str] = set()
+def direct_execute_occurrences(source: str) -> dict[str, set[int]]:
+    occurrences: dict[str, set[int]] = {}
+
+    def record(name: str, position: int) -> None:
+        line = source.count('\n', 0, position) + 1
+        occurrences.setdefault(name, set()).add(line)
+
     accessor = re.compile(
         r"(?:reads|auth|authTools|renderTools|tools|registry|toolMap|writeTools|readTools)"
-        r"\.get\(['\"](bangumi\.[a-z_]+)['\"]\)"
+        r"\.get\(['\"](?P<name>bangumi\.[a-z_]+)['\"]\)"
     )
     for match in accessor.finditer(source):
         suffix = source[match.end():]
@@ -63,12 +68,33 @@ def direct_execute_names(source: str) -> set[str]:
             r"(?:await\s+)?(?:run|expectControlled)\s*\(\s*$", prefix
         ) is not None
         if called_execute or passed_to_fixture_wrapper:
-            names.add(match.group(1))
-    names.update(re.findall(
-        r"(?:executeTool|execute)\(\s*['\"](bangumi\.[a-z_]+)['\"]",
-        source,
-    ))
-    return names
+            record(match.group('name'), match.start('name'))
+    explicit = re.compile(
+        r"(?:executeTool|execute)\(\s*['\"](?P<name>bangumi\.[a-z_]+)['\"]"
+    )
+    for match in explicit.finditer(source):
+        record(match.group('name'), match.start('name'))
+    return occurrences
+
+
+def direct_execute_names(source: str) -> set[str]:
+    return set(direct_execute_occurrences(source))
+
+
+def direct_execute_source_refs(sources: list[tuple[str, str]]) -> dict[str, set[str]]:
+    refs: dict[str, set[str]] = {}
+    for path, source in sources:
+        for name, lines in direct_execute_occurrences(source).items():
+            refs.setdefault(name, set()).update(f'{path}:{line}' for line in lines)
+    return refs
+
+
+def direct_execute_sources() -> dict[str, set[str]]:
+    sources = []
+    for path in (ROOT / 'tests').rglob('*'):
+        if path.suffix in {'.ts', '.tsx', '.js', '.mjs'} and path.is_file():
+            sources.append((path.relative_to(ROOT).as_posix(), path.read_text(encoding='utf-8', errors='ignore')))
+    return direct_execute_source_refs(sources)
 
 
 def public_api_smoke_names(catalog: list[dict]) -> set[str]:
@@ -269,15 +295,16 @@ def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
 
 def status(
     tool: dict,
-    direct: set[str],
+    catalog_index: int,
+    direct_source_refs: dict[str, set[str]],
     public_api_evidence: set[str],
     auth_gate_denial: set[str],
     model_mcp_e2e: set[str],
 ) -> tuple[str, ...]:
     name = tool['name']
-    schema = '✅'
-    source = '✅'
-    execute = '✅' if name in direct else '⬜'
+    schema = f'`docs/tool-catalog.json#/{catalog_index}`'
+    source = '<br>'.join(f'`{path}`' for path in sorted(direct_source_refs.get(name, set()))) or '⬜'
+    execute = '✅' if name in direct_source_refs else '⬜'
     # Required-account operations are not anonymous public-API candidates;
     # their remote behavior belongs to the separate account-auth acceptance column.
     live = (
@@ -308,7 +335,8 @@ def main() -> None:
     args = parser.parse_args()
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
     source = test_source()
-    direct = direct_execute_names(source)
+    direct_source_refs = direct_execute_sources()
+    direct = set(direct_source_refs)
     public_api_evidence = public_api_smoke_names(catalog)
     public_candidates = {
         item['name'] for item in catalog
@@ -353,15 +381,16 @@ def main() -> None:
         f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
         f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
         '',
-        '状态说明：`✅` 已有当前证据；`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。报告不保存数据正文，也不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
+        '状态说明：`目录/Schema` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号，证明隔离夹具被执行，不代表真实账号、公开 API 或 QQ/TIM 验收。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。报告不保存数据正文，也不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
-        '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
+        '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
         '未认证只读门禁列只记录缺少账号时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。写入/破坏性工具不进入该探针。',
     ]
-    for item in catalog:
+    for catalog_index, item in enumerate(catalog):
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
-            item, direct, public_api_evidence, auth_gate_denial_set, model_mcp_e2e,
+            item, catalog_index, direct_source_refs, public_api_evidence,
+            auth_gate_denial_set, model_mcp_e2e,
         )
         next_step = []
         if execute == '⬜':
