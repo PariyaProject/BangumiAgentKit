@@ -97,7 +97,7 @@ def direct_execute_sources() -> dict[str, set[str]]:
     return direct_execute_source_refs(sources)
 
 
-def public_api_smoke_names(catalog: list[dict]) -> set[str]:
+def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust only current, hash-bound direct ToolRegistry calls with live HTTP results."""
     catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
     probe_source_sha256 = hashlib.sha256(
@@ -108,7 +108,7 @@ def public_api_smoke_names(catalog: list[dict]) -> set[str]:
         item['name'] for item in catalog
         if item.get('auth') != 'required' and item['name'] not in NON_PUBLIC_API_TOOLS
     }
-    names: set[str] = set()
+    sources: dict[str, set[str]] = {}
     for path in LIVE_PROBE_DIR.glob('public-tools-*.json'):
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
@@ -165,13 +165,17 @@ def public_api_smoke_names(catalog: list[dict]) -> set[str]:
                 or 'username' in recorded_input
             ):
                 continue
-            names.add(name)
-    return names
+            sources.setdefault(name, set()).add(path.relative_to(ROOT).as_posix())
+    return sources
 
 
-def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
+def public_api_smoke_names(catalog: list[dict]) -> set[str]:
+    return set(public_api_smoke_sources(catalog))
+
+
+def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
-    names: set[str] = set()
+    sources: dict[str, set[str]] = {}
     current_catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
     current_by_name = {item['name']: item for item in catalog}
     catalog_cache: dict[str, dict[str, dict] | None] = {
@@ -247,13 +251,18 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
                    or evidence_by_name.get(call.get('name')) != current_by_name.get(call.get('name'))
                    for call in calls):
                 continue
-            names.update(call['name'] for call in calls)
-    return names
+            for call in calls:
+                sources.setdefault(call['name'], set()).add(path.relative_to(ROOT).as_posix())
+    return sources
 
 
-def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
+def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
+    return set(model_mcp_e2e_sources(catalog))
+
+
+def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust isolated no-account reports only when they prove an expected auth gate."""
-    names: set[str] = set()
+    sources: dict[str, set[str]] = {}
     catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
     current_by_name = {item['name']: item for item in catalog}
     for path in LIVE_PROBE_DIR.glob('pariya-agent-full-auth-denial-qa-e2e-*.json'):
@@ -289,36 +298,50 @@ def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
                 or assertions.get('operationExecuted') is not False
                 or assertions.get('accountDataReturned') is not False):
             continue
-        names.add(name)
-    return names
+        sources.setdefault(name, set()).add(path.relative_to(ROOT).as_posix())
+    return sources
+
+
+def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
+    return set(auth_gate_denial_sources(catalog))
 
 
 def status(
     tool: dict,
     catalog_index: int,
     direct_source_refs: dict[str, set[str]],
-    public_api_evidence: set[str],
-    auth_gate_denial: set[str],
-    model_mcp_e2e: set[str],
+    public_api_sources: dict[str, set[str]],
+    auth_gate_denial_sources: dict[str, set[str]],
+    model_mcp_e2e_sources: dict[str, set[str]],
 ) -> tuple[str, ...]:
+    def with_sources(mark: str, sources: set[str]) -> str:
+        if not sources:
+            return mark
+        return mark + '<br>' + '<br>'.join(f'`{path}`' for path in sorted(sources))
+
     name = tool['name']
     schema = f'`docs/tool-catalog.json#/{catalog_index}`'
     source = '<br>'.join(f'`{path}`' for path in sorted(direct_source_refs.get(name, set()))) or '⬜'
     execute = '✅' if name in direct_source_refs else '⬜'
     # Required-account operations are not anonymous public-API candidates;
     # their remote behavior belongs to the separate account-auth acceptance column.
-    live = (
-        '—' if tool.get('auth') == 'required' or name in NON_PUBLIC_API_TOOLS
-        else '◐' if name in public_api_evidence
-        else '⬜'
-    )
-    auth_gate = (
-        '—' if tool.get('auth') != 'required' or tool.get('risk') != 'read'
-        else '✅' if name in auth_gate_denial
-        else '⬜'
-    )
+    if tool.get('auth') == 'required' or name in NON_PUBLIC_API_TOOLS:
+        live = '—'
+    elif name in public_api_sources:
+        live = with_sources('◐', public_api_sources[name])
+    else:
+        live = '⬜'
+    if tool.get('auth') != 'required' or tool.get('risk') != 'read':
+        auth_gate = '—'
+    elif name in auth_gate_denial_sources:
+        auth_gate = with_sources('✅', auth_gate_denial_sources[name])
+    else:
+        auth_gate = '⬜'
     auth = '—' if tool.get('auth') == 'none' else '⬜'
-    agent_mcp = '✅' if name in model_mcp_e2e else '⬜'
+    agent_mcp = (
+        with_sources('✅', model_mcp_e2e_sources[name])
+        if name in model_mcp_e2e_sources else '⬜'
+    )
     # The 96 per-tool QQ bridge and TIM client stages have separate evidence
     # requirements; Agent/MCP runs never satisfy them.
     qq_pipeline = '⬜'
@@ -337,15 +360,21 @@ def main() -> None:
     source = test_source()
     direct_source_refs = direct_execute_sources()
     direct = set(direct_source_refs)
-    public_api_evidence = public_api_smoke_names(catalog)
+    public_api_sources = public_api_smoke_sources(catalog)
     public_candidates = {
         item['name'] for item in catalog
         if item.get('auth') != 'required' and item['name'] not in NON_PUBLIC_API_TOOLS
     }
-    public_api_evidence &= public_candidates
-    auth_gate_denial_set = auth_gate_denial_names(catalog)
+    public_api_sources = {
+        name: refs for name, refs in public_api_sources.items()
+        if name in public_candidates
+    }
+    public_api_evidence = set(public_api_sources)
+    auth_gate_denial_sources_by_name = auth_gate_denial_sources(catalog)
+    auth_gate_denial_set = set(auth_gate_denial_sources_by_name)
     names = {item['name'] for item in catalog}
-    model_mcp_e2e = model_mcp_e2e_names(catalog)
+    model_mcp_sources_by_name = model_mcp_e2e_sources(catalog)
+    model_mcp_e2e = set(model_mcp_sources_by_name)
     missing_source = sorted(name for name in names if name not in source)
     if missing_source:
         raise SystemExit('Missing test source references: ' + ', '.join(missing_source))
@@ -381,7 +410,7 @@ def main() -> None:
         f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
         f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
         '',
-        '状态说明：`目录/Schema` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号，证明隔离夹具被执行，不代表真实账号、公开 API 或 QQ/TIM 验收。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。报告不保存数据正文，也不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
+        '状态说明：`注册/Schema目录引用` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号。真实公开 API、未认证门禁和 Agent/MCP 通过项也列出具体 JSON 报告文件。直接夹具和 Agent/MCP 证据不代表真实账号、QQ/TIM 验收。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。报告不保存数据正文，也不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
         '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
@@ -389,8 +418,8 @@ def main() -> None:
     ]
     for catalog_index, item in enumerate(catalog):
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
-            item, catalog_index, direct_source_refs, public_api_evidence,
-            auth_gate_denial_set, model_mcp_e2e,
+            item, catalog_index, direct_source_refs, public_api_sources,
+            auth_gate_denial_sources_by_name, model_mcp_sources_by_name,
         )
         next_step = []
         if execute == '⬜':

@@ -14,6 +14,7 @@ CATALOG = ROOT / 'docs/tool-catalog.json'
 TABLE = ROOT / 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
 SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`')
+LIVE_EVIDENCE_REFERENCE = re.compile(r'`(?P<path>docs/live-probes/[^`|]+\.json)`')
 VALID_LIVE = {'◐', '—', '⬜'}
 VALID_MARK = {'✅', '⬜', '—'}
 
@@ -45,6 +46,73 @@ def catalog_schema_reference_error(name: str, cell: str, expected_index: int) ->
     expected = f'`docs/tool-catalog.json#/{expected_index}`'
     if cell != expected:
         return f'{name}: expected {expected} for its registration/schema entry'
+    return None
+
+
+def status_mark(cell: str) -> str:
+    return cell.split('<br>', 1)[0]
+
+
+def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
+    mark = status_mark(cell)
+    expected_mark = {'public': '◐', 'auth_denial': '✅', 'agent_mcp': '✅'}[kind]
+    parts = cell.split('<br>')
+    references = list(LIVE_EVIDENCE_REFERENCE.finditer(cell))
+    if mark != expected_mark:
+        if len(parts) > 1:
+            return f'{name}: incomplete evidence status must not include a report reference'
+        return None
+    if len(references) != len(parts) - 1 or not references:
+        return f'{name}: {kind} evidence status requires report paths'
+
+    live_root = (ROOT / 'docs/live-probes').resolve()
+    for reference in references:
+        relative_path = reference.group('path')
+        path = (ROOT / relative_path).resolve()
+        try:
+            path.relative_to(live_root)
+        except ValueError:
+            return f'{name}: live evidence path escapes docs/live-probes/'
+        if not path.is_file():
+            return f'{name}: live evidence report {relative_path} does not exist'
+        try:
+            report = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            return f'{name}: live evidence report {relative_path} is invalid JSON'
+
+        if kind == 'public':
+            matches = (
+                isinstance(report, dict)
+                and name in report.get('selectedTools', [])
+                and any(isinstance(result, dict) and result.get('tool') == name
+                        for result in report.get('results', []))
+            )
+        elif kind == 'auth_denial':
+            matches = (
+                isinstance(report, dict)
+                and report.get('profile') == 'bangumi-full-auth-denial-qa-v1'
+                and any(isinstance(scenario, dict)
+                        and scenario.get('id') == name
+                        and scenario.get('passed') is True
+                        and scenario.get('toolCalls') == [{'name': name, 'state': 'DONE'}]
+                        for scenario in report.get('scenarios', []))
+            )
+        else:
+            matches = (
+                isinstance(report, dict)
+                and any(
+                    isinstance(scenario, dict)
+                    and scenario.get('passed') is True
+                    and isinstance(scenario.get('toolCalls'), list)
+                    and any(isinstance(call, dict)
+                            and call.get('name') == name
+                            and call.get('state') == 'DONE'
+                            for call in scenario['toolCalls'])
+                    for scenario in report.get('scenarios', [])
+                )
+            )
+        if not matches:
+            return f'{name}: live evidence report {relative_path} does not contain evidence for {name}'
     return None
 
 
@@ -82,26 +150,34 @@ def main() -> int:
                 raise SystemExit(reference_error)
         elif fields[4] != '⬜':
             raise SystemExit(f'{name}: pending direct execute must not claim source references')
-        if fields[6] not in VALID_LIVE:
+        if status_mark(fields[6]) not in VALID_LIVE:
             raise SystemExit(f'{name}: invalid public API status {fields[6]!r}')
-        if any(fields[index] not in VALID_MARK for index in (7, 8, 9, 10, 11)):
+        if status_mark(fields[7]) not in VALID_MARK:
+            raise SystemExit(f'{name}: invalid unauthenticated gate status')
+        if status_mark(fields[8]) not in VALID_MARK:
+            raise SystemExit(f'{name}: invalid account-auth status')
+        if any(status_mark(fields[index]) not in VALID_MARK for index in (9, 10, 11)):
             raise SystemExit(f'{name}: invalid auth gate, account auth, Agent/MCP, QQ pipeline, or TIM status')
+        for index, kind in ((6, 'public'), (7, 'auth_denial'), (9, 'agent_mcp')):
+            reference_error = evidence_reference_error(name, fields[index], kind)
+            if reference_error:
+                raise SystemExit(reference_error)
 
     print(json.dumps({
         'catalog': len(expected),
         'rows': len(rows),
         'direct_execute': sum(fields[5] == '✅' for fields in rows.values()),
-        'public_evidence': sum(fields[6] == '◐' for fields in rows.values()),
-        'public_not_applicable': sum(fields[6] == '—' for fields in rows.values()),
-        'public_pending': sum(fields[6] == '⬜' for fields in rows.values()),
-        'auth_gate_denial': sum(fields[7] == '✅' for fields in rows.values()),
-        'auth_gate_pending': sum(fields[7] == '⬜' for fields in rows.values()),
-        'auth_pending': sum(fields[8] == '⬜' for fields in rows.values()),
-        'agent_mcp_e2e': sum(fields[9] == '✅' for fields in rows.values()),
-        'qq_pipeline_e2e': sum(fields[10] == '✅' for fields in rows.values()),
-        'tim_client_e2e': sum(fields[11] == '✅' for fields in rows.values()),
-        'qq_pipeline_pending': sum(fields[10] == '⬜' for fields in rows.values()),
-        'tim_client_pending': sum(fields[11] == '⬜' for fields in rows.values()),
+        'public_evidence': sum(status_mark(fields[6]) == '◐' for fields in rows.values()),
+        'public_not_applicable': sum(status_mark(fields[6]) == '—' for fields in rows.values()),
+        'public_pending': sum(status_mark(fields[6]) == '⬜' for fields in rows.values()),
+        'auth_gate_denial': sum(status_mark(fields[7]) == '✅' for fields in rows.values()),
+        'auth_gate_pending': sum(status_mark(fields[7]) == '⬜' for fields in rows.values()),
+        'auth_pending': sum(status_mark(fields[8]) == '⬜' for fields in rows.values()),
+        'agent_mcp_e2e': sum(status_mark(fields[9]) == '✅' for fields in rows.values()),
+        'qq_pipeline_e2e': sum(status_mark(fields[10]) == '✅' for fields in rows.values()),
+        'tim_client_e2e': sum(status_mark(fields[11]) == '✅' for fields in rows.values()),
+        'qq_pipeline_pending': sum(status_mark(fields[10]) == '⬜' for fields in rows.values()),
+        'tim_client_pending': sum(status_mark(fields[11]) == '⬜' for fields in rows.values()),
     }, ensure_ascii=False))
     return 0
 

@@ -91,6 +91,34 @@ class PublicApiEvidenceTests(unittest.TestCase):
             GENERATOR.public_api_smoke_names(self.catalog),
             {'bangumi.get_subject'},
         )
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog),
+            {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
+        )
+
+    def test_model_mcp_evidence_keeps_the_per_tool_report_path(self):
+        catalog_hash = hashlib.sha256(self.catalog_path.read_bytes()).hexdigest()
+        report_path = self.root / 'docs/live-probes/pariya-agent-public-e2e-fixture.json'
+        report_path.write_text(json.dumps({
+            'schemaVersion': 1,
+            'evidenceKind': 'antigravity_cli_mcp_tool_use',
+            'catalogSha256': catalog_hash,
+            'profile': 'bangumi-full-public-qa-v1',
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'resultCount': 1,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'scenarios': [{
+                'id': 'get-subject',
+                'passed': True,
+                'toolCalls': [{'name': 'bangumi.get_subject', 'state': 'DONE'}],
+            }],
+        }), encoding='utf-8')
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog),
+            {'bangumi.get_subject': {'docs/live-probes/pariya-agent-public-e2e-fixture.json'}},
+        )
 
     def test_rejects_stale_catalog_hash(self):
         self.write_report(catalogSha256='0' * 64)
@@ -174,6 +202,26 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         test_file = self.root / 'tests/direct-fixture.ts'
         test_file.parent.mkdir(parents=True)
         test_file.write_text('line one\nline two\n', encoding='utf-8')
+        probe_dir = self.root / 'docs/live-probes'
+        probe_dir.mkdir(parents=True)
+        (probe_dir / 'public-tools-fixture.json').write_text(json.dumps({
+            'selectedTools': ['bangumi.get_subject'],
+            'results': [{'tool': 'bangumi.get_subject'}],
+        }), encoding='utf-8')
+        (probe_dir / 'agent-mcp-fixture.json').write_text(json.dumps({
+            'scenarios': [{
+                'passed': True,
+                'toolCalls': [{'name': 'bangumi.get_subject', 'state': 'DONE'}],
+            }],
+        }), encoding='utf-8')
+        (probe_dir / 'auth-denial-fixture.json').write_text(json.dumps({
+            'profile': 'bangumi-full-auth-denial-qa-v1',
+            'scenarios': [{
+                'id': 'bangumi.get_subject',
+                'passed': True,
+                'toolCalls': [{'name': 'bangumi.get_subject', 'state': 'DONE'}],
+            }],
+        }), encoding='utf-8')
         self.original_root = TABLE_CHECKER.ROOT
         TABLE_CHECKER.ROOT = self.root
 
@@ -211,6 +259,31 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         )
         self.assertIn('expected', error)
         self.assertIn('docs/tool-catalog.json#/3', error)
+
+    def test_accepts_public_report_reference_for_the_same_tool(self):
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', '◐<br>`docs/live-probes/public-tools-fixture.json`', 'public'
+        ))
+
+    def test_rejects_public_report_reference_without_the_tool(self):
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_episode', '◐<br>`docs/live-probes/public-tools-fixture.json`', 'public'
+        )
+        self.assertIn('does not contain evidence for bangumi.get_episode', error)
+
+    def test_accepts_agent_mcp_report_reference_for_the_same_tool(self):
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', '✅<br>`docs/live-probes/agent-mcp-fixture.json`', 'agent_mcp'
+        ))
+
+    def test_accepts_auth_denial_report_reference_for_the_same_tool(self):
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject', '✅<br>`docs/live-probes/auth-denial-fixture.json`', 'auth_denial'
+        ))
+
+    def test_rejects_success_status_without_a_report_path(self):
+        error = TABLE_CHECKER.evidence_reference_error('bangumi.get_subject', '◐', 'public')
+        self.assertIn('requires report paths', error)
 
 
 class AuthAcceptanceEvidenceTests(unittest.TestCase):
