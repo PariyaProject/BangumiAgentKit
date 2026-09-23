@@ -440,6 +440,20 @@ export class DiscoveryEngine {
       : Math.min(50, Math.max(query.limit, 20));
     const requestKeys = new Set<string>();
     const canStopTopQuery = canStopTop(query, plan);
+    const canReadDateTailForAscendingTop =
+      query.resultMode === 'top' &&
+      plan.operation === 'browseSubjects' &&
+      query.sort === 'date' &&
+      query.order === 'asc' &&
+      plan.postFilters.length === 0 &&
+      plan.derivedFilters.length === 1 &&
+      plan.derivedFilters[0]?.field === 'order' &&
+      plan.hydrationRequirements.every((requirement) => requirement.reason === 'date_sort') &&
+      query.budget.maxPages >= 2 &&
+      query.budget.maxCandidates >= pageSize;
+    let reverseDateTailProbeAttempted = false;
+    let reverseDateTailScanStarted = false;
+    let reverseDatePageSize = pageSize;
 
     while (pagesScanned < query.budget.maxPages && scanned < query.budget.maxCandidates) {
       const step = plan.steps[0];
@@ -457,8 +471,8 @@ export class DiscoveryEngine {
         : await this.provider.browseSubjects(request as SubjectDiscoveryBrowseRequest, context);
       pagesScanned += 1;
       warnings.push(...(result.warnings ?? []));
-      evidence.push(...allEvidence(result));
       if (result.state !== 'ok' || !result.data) {
+        evidence.push(...allEvidence(result));
         lastState = result.state;
         if ([...candidatesById.values()].some((item) => item.evaluation === 'match')) lastState = 'partial';
         break;
@@ -466,9 +480,40 @@ export class DiscoveryEngine {
       const page = result.data;
       totalKind = page.totalKind ?? 'unknown';
       if (page.items.length === 0) {
+        if (reverseDateTailScanStarted && offset > 0) {
+          // A changing upstream total can invalidate the count-derived tail offset.
+          // Fall back to forward scanning instead of claiming an empty result.
+          reverseDateTailScanStarted = false;
+          offset = 0;
+          requestKeys.delete(JSON.stringify({ ...step.request, offset: 0 }));
+          continue;
+        }
+        evidence.push(...allEvidence(result));
         upstreamExhausted = true;
         break;
       }
+      if (
+        canReadDateTailForAscendingTop &&
+        !reverseDateTailProbeAttempted &&
+        !reverseDateTailScanStarted &&
+        offset === 0 &&
+        page.totalKind === 'exact' &&
+        page.total !== undefined &&
+        page.total > pageSize
+      ) {
+        // /v0/subjects sorts dates newest-first. For an ascending top-N, the
+        // oldest candidates are on the final page. Keep only count metadata
+        // from this probe; its candidates are not part of the selected result.
+        evidence.push(...Object.entries(result.evidence ?? {})
+          .filter(([field]) => !field.startsWith('items['))
+          .flatMap(([, refs]) => refs));
+        reverseDateTailProbeAttempted = true;
+        reverseDateTailScanStarted = true;
+        reverseDatePageSize = Math.max(1, page.limit || pageSize);
+        offset = Math.max(0, page.total - reverseDatePageSize);
+        continue;
+      }
+      evidence.push(...allEvidence(result));
       for (const candidate of page.items) {
         scanned += 1;
         if (scanned > query.budget.maxCandidates) {
@@ -524,6 +569,15 @@ export class DiscoveryEngine {
       const matchedCount = [...candidatesById.values()]
         .filter((item) => item.evaluation === 'match').length;
       if (canStopTopQuery && matchedCount >= query.limit && hydrationsUnresolved === 0) break;
+      if (reverseDateTailScanStarted) {
+        if (matchedCount >= query.limit && hydrationsUnresolved === 0) break;
+        if (offset === 0) {
+          upstreamExhausted = true;
+          break;
+        }
+        offset = Math.max(0, offset - reverseDatePageSize);
+        continue;
+      }
       const total = page.total;
       if (page.totalKind === 'exact' && total !== undefined && offset + page.items.length >= total) {
         upstreamExhausted = true;
