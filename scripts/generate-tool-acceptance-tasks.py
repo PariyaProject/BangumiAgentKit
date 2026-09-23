@@ -78,7 +78,8 @@ def model_mcp_e2e_names(catalog_names: set[str]) -> set[str]:
     """Trust only a passed, catalog-pinned report of actual CLI MCP tool events."""
     names: set[str] = set()
     catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
-    for path in LIVE_PROBE_DIR.glob('pariya-agent-compact-e2e-*.json'):
+    valid_profiles = {'bangumi-compact-v1', 'bangumi-full-public-qa-v1'}
+    for path in LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'):
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
@@ -88,7 +89,9 @@ def model_mcp_e2e_names(catalog_names: set[str]) -> set[str]:
         if (report.get('schemaVersion') != 1
                 or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
                 or report.get('catalogSha256') != catalog_sha256
-                or report.get('profile') != 'bangumi-compact-v1'):
+                or report.get('profile') not in valid_profiles
+                or report.get('qqPipelineTested') is not False
+                or report.get('timClientTested') is not False):
             continue
         scenarios = report.get('scenarios')
         if not isinstance(scenarios, list):
@@ -116,7 +119,7 @@ def status(tool: dict, direct: set[str], live_public: set[str], model_mcp_e2e: s
     auth = '—' if tool.get('auth') == 'none' else '⬜'
     agent_mcp = '✅' if name in model_mcp_e2e else '⬜'
     # The 96 per-tool QQ bridge and TIM client stages have separate evidence
-    # requirements; compact-profile or WebChat runs do not satisfy them.
+    # requirements; Agent/MCP runs never satisfy them.
     qq_pipeline = '⬜'
     tim_client = '⬜'
     return schema, source, execute, live, auth, agent_mcp, qq_pipeline, tim_client
