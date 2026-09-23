@@ -14,7 +14,53 @@ const FULL_PUBLIC_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter((name) => name.startsWith('pariya-agent-full-public-qa-e2e-') && name.endsWith('.json'))
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
-const EVIDENCE = [COMPACT_EVIDENCE, ...FULL_PUBLIC_QA_EVIDENCE];
+const FULL_RENDERER_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter((name) => name.startsWith('pariya-agent-full-renderer-qa-e2e-') && name.endsWith('.json'))
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const EVIDENCE = [COMPACT_EVIDENCE, ...FULL_PUBLIC_QA_EVIDENCE, ...FULL_RENDERER_QA_EVIDENCE];
+const CURRENT_CATALOG_SHA256 = createHash('sha256').update(CATALOG_TEXT).digest('hex');
+const catalogCache = new Map<string, unknown[]>([[CURRENT_CATALOG_SHA256, catalog]]);
+
+function catalogForHash(sha256: string): unknown[] | undefined {
+  const cached = catalogCache.get(sha256);
+  if (cached) return cached;
+  if (!/^[a-f0-9]{64}$/u.test(sha256)) return undefined;
+  try {
+    const content = readFileSync(
+      join(ROOT, 'docs/live-probes/catalog-snapshots', `${sha256}.json`),
+    );
+    if (createHash('sha256').update(content).digest('hex') !== sha256) return undefined;
+    const snapshot = JSON.parse(content.toString('utf8')) as unknown[];
+    catalogCache.set(sha256, snapshot);
+    return snapshot;
+  } catch {
+    return undefined;
+  }
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function toolContractMatchesCurrent(report: any, name: string): boolean {
+  const evidenceCatalog = catalogForHash(report.catalogSha256);
+  const evidenceTool = evidenceCatalog?.find((item) =>
+    Boolean(item && typeof item === 'object' && (item as { name?: unknown }).name === name),
+  );
+  const currentTool = catalog.find((item) => item.name === name);
+  return Boolean(
+    evidenceTool && currentTool && stableJson(evidenceTool) === stableJson(currentTool),
+  );
+}
 
 function rowsByTool(): Map<string, string[]> {
   const rows = new Map<string, string[]>();
@@ -37,7 +83,11 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
     const evidenceNames = EVIDENCE.flatMap((report) =>
       report.scenarios.flatMap(
         (scenario: { toolCalls: Array<{ name: string }>; passed: boolean }) =>
-          scenario.passed ? scenario.toolCalls.map((call: { name: string }) => call.name) : [],
+          scenario.passed
+            ? scenario.toolCalls
+                .filter((call: { name: string }) => toolContractMatchesCurrent(report, call.name))
+                .map((call: { name: string }) => call.name)
+            : [],
       ),
     );
 
@@ -94,6 +144,29 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.search_characters',
         'bangumi.search_persons',
         'bangumi.search_subjects',
+        'bangumi.render_calendar',
+        'bangumi.render_cast_card',
+        'bangumi.render_character_credit_integrity',
+        'bangumi.render_episode_guide',
+        'bangumi.render_episode_integrity',
+        'bangumi.render_latest_subject_revision',
+        'bangumi.render_person_activity',
+        'bangumi.render_person_collaboration',
+        'bangumi.render_person_profile',
+        'bangumi.render_query_subjects',
+        'bangumi.render_revision_timeline',
+        'bangumi.render_search',
+        'bangumi.render_series_watch_order',
+        'bangumi.render_subject_card',
+        'bangumi.render_subject_cohort_aggregation',
+        'bangumi.render_subject_cohort_comparison',
+        'bangumi.render_subject_comparison',
+        'bangumi.render_subject_identity',
+        'bangumi.render_subject_index_membership',
+        'bangumi.render_subject_overlap',
+        'bangumi.render_subject_overview',
+        'bangumi.render_subject_stats_history',
+        'bangumi.render_subject_stats_intelligence',
       ].sort(),
     );
 
@@ -110,7 +183,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       schemaVersion: 1,
       evidenceKind: 'antigravity_cli_mcp_tool_use',
       upstreamRevision: '724b286a1bc72a4dc7d84c988ffee792359fdf02',
-      catalogSha256: createHash('sha256').update(CATALOG_TEXT).digest('hex'),
+      catalogSha256: COMPACT_EVIDENCE.catalogSha256,
       profile: 'bangumi-compact-v1',
       qqPipelineTested: false,
       timClientTested: false,
@@ -133,6 +206,12 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         }),
       ]),
     );
+    expect(catalogForHash(COMPACT_EVIDENCE.catalogSha256)).toBeDefined();
+    for (const scenario of COMPACT_EVIDENCE.scenarios) {
+      for (const call of scenario.toolCalls) {
+        expect(toolContractMatchesCurrent(COMPACT_EVIDENCE, call.name)).toBe(true);
+      }
+    }
 
     expect(FULL_PUBLIC_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
       [
@@ -186,8 +265,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       expect(report).toMatchObject({
         schemaVersion: 1,
         evidenceKind: 'antigravity_cli_mcp_tool_use',
-        upstreamRevision: '724b286a1bc72a4dc7d84c988ffee792359fdf02',
-        catalogSha256: createHash('sha256').update(CATALOG_TEXT).digest('hex'),
+        catalogSha256: report.catalogSha256,
         profile: 'bangumi-full-public-qa-v1',
         processExitCode: 0,
         resultCount: 1,
@@ -202,6 +280,68 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       });
       expect(report.scenarios[0]).not.toHaveProperty('prompt');
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, report.scenarios[0].id)).toBe(true);
+    }
+  });
+
+  it('accepts only renderer evidence containing a verified temporary PNG artifact', () => {
+    expect(FULL_RENDERER_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
+      [
+        'bangumi.render_calendar',
+        'bangumi.render_cast_card',
+        'bangumi.render_character_credit_integrity',
+        'bangumi.render_episode_guide',
+        'bangumi.render_episode_integrity',
+        'bangumi.render_latest_subject_revision',
+        'bangumi.render_person_activity',
+        'bangumi.render_person_collaboration',
+        'bangumi.render_person_profile',
+        'bangumi.render_query_subjects',
+        'bangumi.render_revision_timeline',
+        'bangumi.render_search',
+        'bangumi.render_series_watch_order',
+        'bangumi.render_subject_card',
+        'bangumi.render_subject_cohort_aggregation',
+        'bangumi.render_subject_cohort_comparison',
+        'bangumi.render_subject_comparison',
+        'bangumi.render_subject_identity',
+        'bangumi.render_subject_index_membership',
+        'bangumi.render_subject_overlap',
+        'bangumi.render_subject_overview',
+        'bangumi.render_subject_stats_history',
+        'bangumi.render_subject_stats_intelligence',
+      ].sort(),
+    );
+    for (const report of FULL_RENDERER_QA_EVIDENCE) {
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-renderer-qa-v1',
+        processExitCode: 0,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      const scenario = report.scenarios[0];
+      expect(scenario).toMatchObject({
+        passed: true,
+        id: scenario.toolCalls[0].name,
+        toolCalls: [{ name: scenario.id, state: 'DONE' }],
+        assertions: {
+          exactTargetToolCompleted: true,
+          rendererArtifactVerified: true,
+          artifactRefReturned: true,
+          toolReportedError: false,
+          artifactMimeType: 'image/png',
+        },
+      });
+      expect(scenario.assertions.artifactWidth).toBeGreaterThan(0);
+      expect(scenario.assertions.artifactHeight).toBeGreaterThan(0);
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
+      expect(scenario).not.toHaveProperty('prompt');
+      expect(scenario).not.toHaveProperty('arguments');
     }
   });
   it('continues to mark the public QA probe as Agent/MCP only', () => {

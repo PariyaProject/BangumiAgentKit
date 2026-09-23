@@ -184,9 +184,8 @@
                   "enum": ["asc", "desc"]
                 },
                 "resultMode": {
-                  "default": "all",
                   "type": "string",
-                  "const": "all"
+                  "enum": ["top", "all"]
                 },
                 "limit": {
                   "type": "integer",
@@ -198,7 +197,6 @@
                   "enum": ["none", "compact", "full"]
                 }
               },
-              "required": ["resultMode"],
               "additionalProperties": false
             }
           },
@@ -552,9 +550,8 @@
                     "enum": ["asc", "desc"]
                   },
                   "resultMode": {
-                    "default": "all",
                     "type": "string",
-                    "const": "all"
+                    "enum": ["top", "all"]
                   },
                   "limit": {
                     "type": "integer",
@@ -566,7 +563,6 @@
                     "enum": ["none", "compact", "full"]
                   }
                 },
-                "required": ["resultMode"],
                 "additionalProperties": false
               }
             },
@@ -3647,9 +3643,8 @@
                   "enum": ["asc", "desc"]
                 },
                 "resultMode": {
-                  "default": "all",
                   "type": "string",
-                  "const": "all"
+                  "enum": ["top", "all"]
                 },
                 "limit": {
                   "type": "integer",
@@ -3661,7 +3656,6 @@
                   "enum": ["none", "compact", "full"]
                 }
               },
-              "required": ["resultMode"],
               "additionalProperties": false
             }
           },
@@ -3869,9 +3863,8 @@
                     "enum": ["asc", "desc"]
                   },
                   "resultMode": {
-                    "default": "all",
                     "type": "string",
-                    "const": "all"
+                    "enum": ["top", "all"]
                   },
                   "limit": {
                     "type": "integer",
@@ -3883,7 +3876,6 @@
                     "enum": ["none", "compact", "full"]
                   }
                 },
-                "required": ["resultMode"],
                 "additionalProperties": false
               }
             },

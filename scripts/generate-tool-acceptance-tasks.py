@@ -74,11 +74,43 @@ def live_public_names() -> set[str]:
     return names
 
 
-def model_mcp_e2e_names(catalog_names: set[str]) -> set[str]:
-    """Trust only a passed, catalog-pinned report of actual CLI MCP tool events."""
+def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
+    """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
     names: set[str] = set()
-    catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
-    valid_profiles = {'bangumi-compact-v1', 'bangumi-full-public-qa-v1'}
+    current_catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
+    current_by_name = {item['name']: item for item in catalog}
+    catalog_cache: dict[str, dict[str, dict] | None] = {
+        current_catalog_sha256: current_by_name,
+    }
+
+    def catalog_for_hash(catalog_sha256: object) -> dict[str, dict] | None:
+        if not isinstance(catalog_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', catalog_sha256):
+            return None
+        if catalog_sha256 in catalog_cache:
+            return catalog_cache[catalog_sha256]
+        snapshot_path = LIVE_PROBE_DIR / 'catalog-snapshots' / f'{catalog_sha256}.json'
+        try:
+            snapshot_bytes = snapshot_path.read_bytes()
+            snapshot = json.loads(snapshot_bytes)
+        except (OSError, ValueError):
+            catalog_cache[catalog_sha256] = None
+            return None
+        if hashlib.sha256(snapshot_bytes).hexdigest() != catalog_sha256 or not isinstance(snapshot, list):
+            catalog_cache[catalog_sha256] = None
+            return None
+        snapshot_by_name = {
+            item['name']: item
+            for item in snapshot
+            if isinstance(item, dict) and isinstance(item.get('name'), str)
+        }
+        catalog_cache[catalog_sha256] = snapshot_by_name
+        return snapshot_by_name
+
+    valid_profiles = {
+        'bangumi-compact-v1',
+        'bangumi-full-public-qa-v1',
+        'bangumi-full-renderer-qa-v1',
+    }
     for path in LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'):
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
@@ -86,9 +118,10 @@ def model_mcp_e2e_names(catalog_names: set[str]) -> set[str]:
             continue
         if not isinstance(report, dict):
             continue
+        evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
         if (report.get('schemaVersion') != 1
                 or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
-                or report.get('catalogSha256') != catalog_sha256
+                or evidence_by_name is None
                 or report.get('profile') not in valid_profiles
                 or report.get('qqPipelineTested') is not False
                 or report.get('timClientTested') is not False):
@@ -104,7 +137,9 @@ def model_mcp_e2e_names(catalog_names: set[str]) -> set[str]:
                 continue
             if any(not isinstance(call, dict)
                    or call.get('state') != 'DONE'
-                   or call.get('name') not in catalog_names for call in calls):
+                   or call.get('name') not in current_by_name
+                   or evidence_by_name.get(call.get('name')) != current_by_name.get(call.get('name'))
+                   for call in calls):
                 continue
             names.update(call['name'] for call in calls)
     return names
@@ -131,7 +166,7 @@ def main() -> None:
     direct = direct_execute_names(source)
     live_public_names_set = live_public_names()
     names = {item['name'] for item in catalog}
-    model_mcp_e2e = model_mcp_e2e_names(names)
+    model_mcp_e2e = model_mcp_e2e_names(catalog)
     missing_source = sorted(name for name in names if name not in source)
     if missing_source:
         raise SystemExit('Missing test source references: ' + ', '.join(missing_source))

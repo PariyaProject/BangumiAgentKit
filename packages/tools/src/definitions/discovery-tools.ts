@@ -66,10 +66,20 @@ export const discoveryQueryInput = z
   })
   .strict();
 
+// Cohort aggregation must use the bounded all-results path; the cohort
+// service rejects "top" because its metrics are intended to describe the
+// bounded returned sample. Encode that execution contract in MCP Schema so
+// clients cannot submit an input that the tool will turn into INTERNAL_ERROR.
+const cohortDiscoveryQueryInput = discoveryQueryInput
+  .extend({
+    resultMode: z.literal('all').default('all'),
+  })
+  .strict();
+
 const subjectCohortDefinitionInput = z
   .object({
     label: z.string().trim().min(1).max(80).optional(),
-    query: discoveryQueryInput,
+    query: cohortDiscoveryQueryInput,
   })
   .strict();
 
