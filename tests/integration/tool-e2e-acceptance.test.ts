@@ -45,11 +45,15 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
     expect([...rows.keys()].sort()).toEqual(catalogNames);
     expect(new Set(evidenceNames).size).toBe(evidenceNames.length);
     expect(evidenceNames.sort()).toEqual([
+      'bangumi.describe_operation',
       'bangumi.get_calendar',
+      'bangumi.get_calendar_intelligence',
       'bangumi.get_subject',
       'bangumi.get_subject_cast',
+      'bangumi.list_operations',
       'bangumi.query_subjects',
       'bangumi.resolve_subject_concept',
+      'bangumi.search_persons',
       'bangumi.search_subjects',
     ]);
 
@@ -91,8 +95,12 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
     );
 
     expect(FULL_PUBLIC_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual([
+      'bangumi.describe_operation',
       'bangumi.get_calendar',
+      'bangumi.get_calendar_intelligence',
+      'bangumi.list_operations',
       'bangumi.resolve_subject_concept',
+      'bangumi.search_persons',
     ]);
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
       expect(report).toMatchObject({

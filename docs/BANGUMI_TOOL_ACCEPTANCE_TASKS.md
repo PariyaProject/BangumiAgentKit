@@ -9,7 +9,7 @@
 - [ ] 每个工具都有直接 `execute` 夹具：96/96；仍有 0 项待补。
 - [ ] 每个工具都有真实公开 API 证据：当前明确记录 59/96。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
-- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 6/96。
+- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 10/96。
 - [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
 - [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/96。
 
@@ -26,9 +26,9 @@
 | `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_calendar_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_calendar_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_character` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_character_collection` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_character_credit_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
@@ -70,7 +70,7 @@
 | `bangumi.get_user` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_character_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.list_operations` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_operations` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_person_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.list_revisions` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.manage_character_collection` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
@@ -109,7 +109,7 @@
 | `bangumi.render_subject_stats_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.resolve_subject_concept` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.search_characters` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.search_persons` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.search_persons` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.search_subjects` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ✅ | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.update_collection` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.update_episode_progress` | `required` | `write` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
