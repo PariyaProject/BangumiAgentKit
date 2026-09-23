@@ -42,6 +42,24 @@ const FULL_AUTH_SWITCH_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   )
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const FULL_AUTH_MUTATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter(
+    (name) => name.startsWith('pariya-agent-full-auth-mutation-qa-e2e-') && name.endsWith('.json'),
+  )
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const FULL_AUTH_FEATURE_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter(
+    (name) => name.startsWith('pariya-agent-full-auth-feature-qa-e2e-') && name.endsWith('.json'),
+  )
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const FULL_AUTH_WRITE_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter(
+    (name) => name.startsWith('pariya-agent-full-auth-write-qa-e2e-') && name.endsWith('.json'),
+  )
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
 const EVIDENCE = [
   COMPACT_EVIDENCE,
   ...FULL_PUBLIC_QA_EVIDENCE,
@@ -49,6 +67,9 @@ const EVIDENCE = [
   ...FULL_OPERATION_QA_EVIDENCE,
   ...FULL_AUTH_START_QA_EVIDENCE,
   ...FULL_AUTH_SWITCH_QA_EVIDENCE,
+  ...FULL_AUTH_MUTATION_QA_EVIDENCE,
+  ...FULL_AUTH_FEATURE_QA_EVIDENCE,
+  ...FULL_AUTH_WRITE_QA_EVIDENCE,
 ];
 const CURRENT_CATALOG_SHA256 = createHash('sha256').update(CATALOG_TEXT).digest('hex');
 const catalogCache = new Map<string, unknown[]>([[CURRENT_CATALOG_SHA256, catalog]]);
@@ -128,7 +149,9 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
     expect(evidenceNames.sort()).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
+        'bangumi.auth_disconnect',
         'bangumi.auth_list_accounts',
+        'bangumi.auth_remove_account',
         'bangumi.auth_status',
         'bangumi.compare_subject_cohorts',
         'bangumi.describe_operation',
@@ -138,7 +161,14 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.get_character_collection',
         'bangumi.get_character_credit_integrity',
         'bangumi.get_collection',
+        'bangumi.get_collection_backlog',
+        'bangumi.get_collection_dashboard',
+        'bangumi.get_collection_entity_consistency',
+        'bangumi.get_collection_intelligence',
+        'bangumi.get_collection_schedule',
+        'bangumi.get_collection_series_groups',
         'bangumi.get_episode',
+        'bangumi.get_episode_collections',
         'bangumi.get_episode_guide',
         'bangumi.get_episode_integrity',
         'bangumi.get_episodes',
@@ -149,6 +179,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
+        'bangumi.get_my_profile',
         'bangumi.get_revision',
         'bangumi.get_revision_intelligence',
         'bangumi.get_series_watch_order',
@@ -170,6 +201,9 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.list_operations',
         'bangumi.list_person_collections',
         'bangumi.list_revisions',
+        'bangumi.manage_character_collection',
+        'bangumi.manage_index',
+        'bangumi.manage_person_collection',
         'bangumi.query_subjects',
         'bangumi.resolve_subject_concept',
         'bangumi.search_characters',
@@ -179,6 +213,13 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.auth_switch_account',
         'bangumi.call_operation',
         'bangumi.render_calendar',
+        'bangumi.render_collection_backlog',
+        'bangumi.render_collection_dashboard',
+        'bangumi.render_collection_entity_consistency',
+        'bangumi.render_collection_intelligence',
+        'bangumi.render_collection_progress',
+        'bangumi.render_collection_schedule',
+        'bangumi.render_collection_series_groups',
         'bangumi.render_cast_card',
         'bangumi.render_character_credit_integrity',
         'bangumi.render_episode_guide',
@@ -201,6 +242,8 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
+        'bangumi.update_collection',
+        'bangumi.update_episode_progress',
       ].sort(),
     );
 
@@ -490,7 +533,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       expect(scenario).not.toHaveProperty('arguments');
       expect(rows.get(scenario.id)?.[7]).toBe('✅');
       expect(rows.get(scenario.id)?.[8]).toBe('⬜');
-      expect(rows.get(scenario.id)?.[9]).toBe('⬜');
+      expect(rows.get(scenario.id)?.[9]).toBe('✅');
     }
   });
 
@@ -529,6 +572,162 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       expect(rowsByTool().get('bangumi.auth_switch_account')?.[9]).toBe('✅');
     }
   });
+
+  it('accepts auth-mutation evidence only for the two fixed synthetic destructive tools', () => {
+    expect(FULL_AUTH_MUTATION_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual([
+      'bangumi.auth_disconnect',
+      'bangumi.auth_remove_account',
+    ]);
+    for (const report of FULL_AUTH_MUTATION_QA_EVIDENCE) {
+      const scenario = report.scenarios[0];
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-auth-mutation-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scopeNote).toContain('synthetic in-memory accounts');
+      expect(report.scopeNote).toContain('No real account, token, or Bangumi API');
+      expect(scenario).toMatchObject({
+        id: scenario.toolCalls[0].name,
+        passed: true,
+        toolCalls: [{ name: scenario.id, state: 'DONE' }],
+        assertions: {
+          confirmationRequiredObserved: true,
+          syntheticConfirmationApplied: true,
+          syntheticStateVerified: true,
+          externalApiCalled: false,
+          realAccountUsed: false,
+        },
+      });
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
+      expect(scenario).not.toHaveProperty('prompt');
+      expect(scenario).not.toHaveProperty('arguments');
+      expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
+      expect(rowsByTool().get(scenario.id)?.[9]).toBe('✅');
+    }
+  });
+
+  it('accepts synthetic authenticated-read and render evidence without implying real account auth', () => {
+    const expectedTools = [
+      'bangumi.get_collection_backlog',
+      'bangumi.get_collection_dashboard',
+      'bangumi.get_collection_entity_consistency',
+      'bangumi.get_collection_intelligence',
+      'bangumi.get_collection_schedule',
+      'bangumi.get_collection_series_groups',
+      'bangumi.get_episode_collections',
+      'bangumi.get_my_profile',
+      'bangumi.render_collection_backlog',
+      'bangumi.render_collection_dashboard',
+      'bangumi.render_collection_entity_consistency',
+      'bangumi.render_collection_intelligence',
+      'bangumi.render_collection_progress',
+      'bangumi.render_collection_schedule',
+      'bangumi.render_collection_series_groups',
+    ].sort();
+    expect(FULL_AUTH_FEATURE_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
+      expectedTools,
+    );
+    for (const report of FULL_AUTH_FEATURE_QA_EVIDENCE) {
+      const scenario = report.scenarios[0];
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-auth-feature-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scopeNote).toContain('synthetic MemoryStorage account');
+      expect(report.scopeNote).toContain('local HTTP fixture');
+      expect(report.scopeNote).toContain('No real account or OAuth');
+      expect(scenario).toMatchObject({
+        id: scenario.toolCalls[0].name,
+        passed: true,
+        toolCalls: [{ name: scenario.id, state: 'DONE' }],
+        assertions: {
+          syntheticAccountUsed: true,
+          syntheticTokenValidated: true,
+          syntheticFixtureOnly: true,
+          externalApiCalled: false,
+          realAccountUsed: false,
+        },
+      });
+      if (scenario.id.startsWith('bangumi.render_')) {
+        expect(scenario.assertions).toMatchObject({
+          rendererArtifactVerified: true,
+          artifactRefReturned: true,
+          artifactMimeType: 'image/png',
+          artifactVerified: true,
+        });
+        expect(scenario.assertions.artifactWidth).toBeGreaterThan(0);
+        expect(scenario.assertions.artifactHeight).toBeGreaterThan(0);
+      }
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
+      expect(scenario).not.toHaveProperty('prompt');
+      expect(scenario).not.toHaveProperty('arguments');
+      expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
+      expect(rowsByTool().get(scenario.id)?.[9]).toBe('✅');
+    }
+  });
+
+  it('accepts the five fixed synthetic write paths without counting real authorization', () => {
+    const expectedTools = [
+      'bangumi.manage_character_collection',
+      'bangumi.manage_index',
+      'bangumi.manage_person_collection',
+      'bangumi.update_collection',
+      'bangumi.update_episode_progress',
+    ].sort();
+    expect(FULL_AUTH_WRITE_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
+      expectedTools,
+    );
+    for (const report of FULL_AUTH_WRITE_QA_EVIDENCE) {
+      const scenario = report.scenarios[0];
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-auth-write-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scopeNote).toContain('local HTTP fixture');
+      expect(report.scopeNote).toContain('no external API');
+      expect(report.scopeNote).toContain('not real account or write approval');
+      expect(scenario).toMatchObject({
+        id: scenario.toolCalls[0].name,
+        passed: true,
+        toolCalls: [{ name: scenario.id, state: 'DONE' }],
+        assertions: {
+          syntheticAccountUsed: true,
+          syntheticTokenValidated: true,
+          syntheticWriteVerified: true,
+          syntheticFixtureOnly: true,
+          externalApiCalled: false,
+          realAccountUsed: false,
+        },
+      });
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
+      expect(scenario).not.toHaveProperty('prompt');
+      expect(scenario).not.toHaveProperty('arguments');
+      expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
+      expect(rowsByTool().get(scenario.id)?.[9]).toBe('✅');
+    }
+  });
+
   it('continues to mark the public QA probe as Agent/MCP only', () => {
     const rows = rowsByTool();
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
