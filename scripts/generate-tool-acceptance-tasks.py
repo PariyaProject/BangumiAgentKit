@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate the per-tool Bangumi acceptance checklist from the catalog and tests."""
-from pathlib import Path
+import argparse
 import hashlib
 import json
 import re
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
@@ -21,6 +22,11 @@ NON_PUBLIC_API_TOOLS = {
     'bangumi.list_operations',
     'bangumi.render_subject_stats_history',
     'bangumi.resolve_subject_concept',
+}
+PUBLIC_API_E2E_PROFILES = {
+    'bangumi-full-public-qa-v1',
+    'bangumi-full-renderer-qa-v1',
+    'bangumi-full-operation-qa-v1',
 }
 
 
@@ -44,37 +50,9 @@ def direct_execute_names(source: str) -> set[str]:
     return names
 
 
-def live_public_names() -> set[str]:
-    """Return tools with a structured public read result in a saved probe report."""
-    names = set()
-    if not LIVE_PROBE_DIR.exists():
-        return names
-    for path in LIVE_PROBE_DIR.glob('*.json'):
-        try:
-            report = json.loads(path.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            continue
-        report_items = report.get('results', [])
-        if not report_items and isinstance(report.get('tool'), str):
-            report_items = [report]
-        for item in report_items:
-            if not isinstance(item, dict) or not isinstance(item.get('tool'), str):
-                continue
-            result = item.get('result')
-            if not isinstance(result, dict):
-                continue
-            state = result.get('state')
-            if state in {'error', 'unavailable'}:
-                continue
-            has_structured_value = any(
-                key in result for key in ('id', 'itemsCount', 'episodesCount', 'castCount', 'total', 'observed', 'returned')
-            )
-            if state in {'ok', 'complete', 'partial', 'value'} or has_structured_value:
-                names.add(item['tool'])
-    return names
-
-
-def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
+def model_mcp_e2e_names(
+    catalog: list[dict], *, profiles: set[str] | None = None,
+) -> set[str]:
     """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
     names: set[str] = set()
     current_catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
@@ -124,6 +102,8 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
             continue
         if not isinstance(report, dict):
             continue
+        if profiles is not None and report.get('profile') not in profiles:
+            continue
         evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
         if (report.get('schemaVersion') != 1
                 or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
@@ -146,6 +126,21 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
             calls = scenario.get('toolCalls')
             if not isinstance(calls, list) or not calls:
                 continue
+            if profiles is not None:
+                assertions = scenario.get('assertions')
+                if (
+                    len(calls) != 1
+                    or not isinstance(calls[0], dict)
+                    or scenario.get('id') != calls[0].get('name')
+                    or not isinstance(assertions, dict)
+                    or any(assertions.get(key) is not True for key in (
+                        'cliSucceeded',
+                        'exactTargetToolCompleted',
+                        'jsonStreamComplete',
+                        'boundedToolBudget',
+                    ))
+                ):
+                    continue
             if any(not isinstance(call, dict)
                    or call.get('state') != 'DONE'
                    or call.get('name') not in current_by_name
@@ -201,7 +196,7 @@ def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
 def status(
     tool: dict,
     direct: set[str],
-    live_public: set[str],
+    public_api_evidence: set[str],
     auth_gate_denial: set[str],
     model_mcp_e2e: set[str],
 ) -> tuple[str, ...]:
@@ -213,7 +208,7 @@ def status(
     # their remote behavior belongs to the separate account-auth acceptance column.
     live = (
         '—' if tool.get('auth') == 'required' or name in NON_PUBLIC_API_TOOLS
-        else '◐' if name in live_public
+        else '◐' if name in public_api_evidence
         else '⬜'
     )
     auth_gate = (
@@ -231,10 +226,21 @@ def status(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        '--check', action='store_true',
+        help='fail if the checked-in acceptance table differs from current evidence',
+    )
+    args = parser.parse_args()
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
     source = test_source()
     direct = direct_execute_names(source)
-    live_public_names_set = live_public_names()
+    public_api_evidence = model_mcp_e2e_names(catalog, profiles=PUBLIC_API_E2E_PROFILES)
+    public_candidates = {
+        item['name'] for item in catalog
+        if item.get('auth') != 'required' and item['name'] not in NON_PUBLIC_API_TOOLS
+    }
+    public_api_evidence &= public_candidates
     auth_gate_denial_set = auth_gate_denial_names(catalog)
     names = {item['name'] for item in catalog}
     model_mcp_e2e = model_mcp_e2e_names(catalog)
@@ -243,7 +249,7 @@ def main() -> None:
         raise SystemExit('Missing test source references: ' + ', '.join(missing_source))
 
     direct_count = sum(item['name'] in direct for item in catalog)
-    live_count = sum(item['name'] in live_public_names_set for item in catalog)
+    live_count = sum(item['name'] in public_api_evidence for item in catalog)
     auth_count = sum(item.get('auth') != 'none' for item in catalog)
     model_mcp_count = sum(item['name'] in model_mcp_e2e for item in catalog)
     public_not_applicable_count = sum(
@@ -273,7 +279,7 @@ def main() -> None:
         f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
         f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
         '',
-        '状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
+        '状态说明：`✅` 已有当前证据；`◐` 表示有当前或逐工具 Schema 完全匹配的目录哈希绑定公开 QA 调用，工具成功完成，但报告没有字段级期望值/完整性断言，因此不代表完整数据覆盖；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
         '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
@@ -281,7 +287,7 @@ def main() -> None:
     ]
     for item in catalog:
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
-            item, direct, live_public_names_set, auth_gate_denial_set, model_mcp_e2e,
+            item, direct, public_api_evidence, auth_gate_denial_set, model_mcp_e2e,
         )
         next_step = []
         if execute == '⬜':
@@ -327,13 +333,24 @@ def main() -> None:
         '',
         '这份清单完成前，不再把“完整工具覆盖”简称为“所有工具都真实测试过”。',
     ])
-    OUTPUT.write_text('\n'.join(lines) + '\n', encoding='utf-8')
-    print(json.dumps({'catalog': len(catalog), 'direct_execute': direct_count,
-                      'live_public': live_count, 'auth_required_or_optional': auth_count,
-                      'auth_gate_denial': len(auth_gate_denial_set),
-                      'auth_gate_pending': sum(item.get('auth') == 'required' and item.get('risk') == 'read' and item['name'] not in auth_gate_denial_set for item in catalog),
-                      'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': 0, 'tim_client_e2e': 0,
-                      'output': str(OUTPUT)}, ensure_ascii=False))
+    generated = '\n'.join(lines) + '\n'
+    summary = {'catalog': len(catalog), 'direct_execute': direct_count,
+               'live_public': live_count, 'auth_required_or_optional': auth_count,
+               'auth_gate_denial': len(auth_gate_denial_set),
+               'auth_gate_pending': sum(item.get('auth') == 'required' and item.get('risk') == 'read' and item['name'] not in auth_gate_denial_set for item in catalog),
+               'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': 0, 'tim_client_e2e': 0,
+               'output': str(OUTPUT)}
+    if args.check:
+        try:
+            current = OUTPUT.read_text(encoding='utf-8')
+        except OSError as error:
+            raise SystemExit(f'acceptance table unavailable: {error}') from error
+        if current != generated:
+            raise SystemExit('acceptance table is stale; run python3 scripts/generate-tool-acceptance-tasks.py')
+        print(json.dumps({**summary, 'check': 'current'}, ensure_ascii=False))
+        return
+    OUTPUT.write_text(generated, encoding='utf-8')
+    print(json.dumps(summary, ensure_ascii=False))
 
 
 if __name__ == '__main__':
