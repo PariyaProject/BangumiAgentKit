@@ -130,6 +130,20 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
 
+class DirectExecuteSourceTests(unittest.TestCase):
+    def test_requires_tool_execute_or_known_fixture_wrapper(self):
+        source = """
+        tools.get('bangumi.get_subject')!.execute(input, context);
+        await run(tools.get('bangumi.get_subject_cast')!, input, 'bangumi.get_subject_cast');
+        tools.get('bangumi.get_person');
+        registerTool('bangumi.get_episode');
+        """
+        self.assertEqual(
+            GENERATOR.direct_execute_names(source),
+            {'bangumi.get_subject', 'bangumi.get_subject_cast'},
+        )
+
+
 class AuthAcceptanceEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='auth-acceptance-evidence-test-')

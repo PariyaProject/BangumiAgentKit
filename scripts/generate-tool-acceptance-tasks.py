@@ -50,12 +50,22 @@ def test_source() -> str:
 
 
 def direct_execute_names(source: str) -> set[str]:
-    names = set(re.findall(
-        r"(?:reads|auth|authTools|renderTools|tools|registry|toolMap|writeTools|readTools)\.get\('([^']+)'\)",
-        source,
-    ))
+    names: set[str] = set()
+    accessor = re.compile(
+        r"(?:reads|auth|authTools|renderTools|tools|registry|toolMap|writeTools|readTools)"
+        r"\.get\(['\"](bangumi\.[a-z_]+)['\"]\)"
+    )
+    for match in accessor.finditer(source):
+        suffix = source[match.end():]
+        prefix = source[max(0, match.start() - 100):match.start()]
+        called_execute = re.match(r"\s*!?\s*\.execute\b", suffix) is not None
+        passed_to_fixture_wrapper = re.search(
+            r"(?:await\s+)?(?:run|expectControlled)\s*\(\s*$", prefix
+        ) is not None
+        if called_execute or passed_to_fixture_wrapper:
+            names.add(match.group(1))
     names.update(re.findall(
-        r"(?:executeTool|execute|registerTool)\(\s*['\"](bangumi\.[a-z_]+)['\"]",
+        r"(?:executeTool|execute)\(\s*['\"](bangumi\.[a-z_]+)['\"]",
         source,
     ))
     return names
