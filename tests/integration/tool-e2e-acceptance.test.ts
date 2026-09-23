@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import catalog from '../../docs/tool-catalog.json';
 
@@ -10,13 +10,11 @@ const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 
 const COMPACT_EVIDENCE = JSON.parse(
   readFileSync(join(ROOT, 'docs/live-probes/pariya-agent-compact-e2e-2026-09-23.json'), 'utf8'),
 );
-const FULL_PUBLIC_QA_EVIDENCE = JSON.parse(
-  readFileSync(
-    join(ROOT, 'docs/live-probes/pariya-agent-full-public-qa-e2e-2026-09-23.json'),
-    'utf8',
-  ),
-);
-const EVIDENCE = [COMPACT_EVIDENCE, FULL_PUBLIC_QA_EVIDENCE];
+const FULL_PUBLIC_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter((name) => name.startsWith('pariya-agent-full-public-qa-e2e-') && name.endsWith('.json'))
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const EVIDENCE = [COMPACT_EVIDENCE, ...FULL_PUBLIC_QA_EVIDENCE];
 
 function rowsByTool(): Map<string, string[]> {
   const rows = new Map<string, string[]>();
@@ -51,6 +49,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       'bangumi.get_subject',
       'bangumi.get_subject_cast',
       'bangumi.query_subjects',
+      'bangumi.resolve_subject_concept',
       'bangumi.search_subjects',
     ]);
 
@@ -91,32 +90,39 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       ]),
     );
 
-    expect(FULL_PUBLIC_QA_EVIDENCE).toMatchObject({
-      schemaVersion: 1,
-      evidenceKind: 'antigravity_cli_mcp_tool_use',
-      upstreamRevision: '724b286a1bc72a4dc7d84c988ffee792359fdf02',
-      catalogSha256: createHash('sha256').update(CATALOG_TEXT).digest('hex'),
-      profile: 'bangumi-full-public-qa-v1',
-      processExitCode: 0,
-      resultCount: 1,
-      resultStatus: 'SUCCESS',
-      qqPipelineTested: false,
-      timClientTested: false,
-      scenarios: [
-        {
-          id: 'bangumi.get_calendar',
-          passed: true,
-          toolCalls: [{ name: 'bangumi.get_calendar', state: 'DONE' }],
-        },
-      ],
-    });
-    expect(FULL_PUBLIC_QA_EVIDENCE.scenarios[0]).not.toHaveProperty('prompt');
-    expect(FULL_PUBLIC_QA_EVIDENCE.scenarios[0]).not.toHaveProperty('arguments');
+    expect(FULL_PUBLIC_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual([
+      'bangumi.get_calendar',
+      'bangumi.resolve_subject_concept',
+    ]);
+    for (const report of FULL_PUBLIC_QA_EVIDENCE) {
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        upstreamRevision: '724b286a1bc72a4dc7d84c988ffee792359fdf02',
+        catalogSha256: createHash('sha256').update(CATALOG_TEXT).digest('hex'),
+        profile: 'bangumi-full-public-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scenarios).toHaveLength(1);
+      expect(report.scenarios[0]).toMatchObject({
+        passed: true,
+        toolCalls: [{ name: report.scenarios[0].id, state: 'DONE' }],
+      });
+      expect(report.scenarios[0]).not.toHaveProperty('prompt');
+      expect(report.scenarios[0]).not.toHaveProperty('arguments');
+    }
   });
   it('continues to mark the public QA probe as Agent/MCP only', () => {
     const rows = rowsByTool();
-    expect(rows.get('bangumi.get_calendar')?.[8]).toBe('✅');
-    expect(rows.get('bangumi.get_calendar')?.[9]).toBe('⬜');
-    expect(rows.get('bangumi.get_calendar')?.[10]).toBe('⬜');
+    for (const report of FULL_PUBLIC_QA_EVIDENCE) {
+      const name = report.scenarios[0].id;
+      expect(rows.get(name)?.[8]).toBe('✅');
+      expect(rows.get(name)?.[9]).toBe('⬜');
+      expect(rows.get(name)?.[10]).toBe('⬜');
+    }
   });
 });
