@@ -1,0 +1,113 @@
+{
+  "observedAt": "2026-09-23T10:26:30.408Z",
+  "mode": "read_only_public_api_smoke",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 6,
+  "httpRequests": 6,
+  "selectedTools": [
+    "bangumi.get_character_collection",
+    "bangumi.get_collection",
+    "bangumi.get_person_collection",
+    "bangumi.list_character_collections",
+    "bangumi.list_collections",
+    "bangumi.list_person_collections"
+  ],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_character_collection",
+      "input": {
+        "characterId": 87968,
+        "username": "chii"
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "found",
+          "source",
+          "retrievedAt"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_collection",
+      "input": {
+        "subjectId": 41529,
+        "username": "chii"
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "found"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_person_collection",
+      "input": {
+        "personId": 13684,
+        "username": "chii"
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "found",
+          "source",
+          "retrievedAt"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.list_character_collections",
+      "input": {
+        "username": "chii",
+        "maxItems": 3
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 0,
+        "observed": 0,
+        "returned": 0,
+        "itemsCount": 0
+      }
+    },
+    {
+      "tool": "bangumi.list_collections",
+      "input": {
+        "username": "chii",
+        "subjectType": "anime",
+        "limit": 3,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 155,
+        "itemsCount": 3
+      }
+    },
+    {
+      "tool": "bangumi.list_person_collections",
+      "input": {
+        "username": "chii",
+        "maxItems": 3
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 0,
+        "observed": 0,
+        "returned": 0,
+        "itemsCount": 0
+      }
+    }
+  ]
+}

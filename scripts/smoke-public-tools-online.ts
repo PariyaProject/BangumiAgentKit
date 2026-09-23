@@ -53,6 +53,12 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
   { name: 'bangumi.get_user', input: { username: 'xiaonvsheng' } },
   { name: 'bangumi.search_subjects', input: { query: '少女終末旅行', type: 'anime', limit: 1, offset: 0 } },
+  { name: 'bangumi.get_character_collection', input: { characterId: 87968, username: 'chii' } },
+  { name: 'bangumi.get_collection', input: { subjectId: SUBJECT_ID, username: 'chii' } },
+  { name: 'bangumi.get_person_collection', input: { personId: 13684, username: 'chii' } },
+  { name: 'bangumi.list_character_collections', input: { username: 'chii', maxItems: 3 } },
+  { name: 'bangumi.list_collections', input: { username: 'chii', subjectType: 'anime', limit: 3, offset: 0 } },
+  { name: 'bangumi.list_person_collections', input: { username: 'chii', maxItems: 3 } },
   { name: 'bangumi.call_operation', input: { operationId: 'getSubjectById', pathParams: { subject_id: SUBJECT_ID } } },
   { name: 'bangumi.render_calendar', input: { weekday: 1, maxPerDay: 1, maxTotal: 1 } },
   { name: 'bangumi.render_search', input: { query: '少女終末旅行', subjectType: 2, limit: 1 } },
@@ -80,6 +86,30 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.render_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
   { name: 'bangumi.render_subject_overview', input: { subjectId: SUBJECT_ID, maxCast: 1, maxStaff: 1, maxRelations: 1 } },
 ];
+
+function selectProbes(args: string[]) {
+  const requested: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === LIVE_FLAG) continue;
+    const toolName = args[index + 1];
+    if (args[index] !== '--tool' || typeof toolName !== 'string' || toolName.length === 0) {
+      throw new Error('Only --live and repeated --tool <exact-tool-name> options are supported.');
+    }
+    requested.push(toolName);
+    index += 1;
+  }
+  if (requested.length === 0) return probes;
+  if (new Set(requested).size !== requested.length) {
+    throw new Error('A tool may be selected only once per probe run.');
+  }
+  const known = new Set(probes.map((probe) => probe.name));
+  const unknown = requested.filter((name) => !known.has(name));
+  if (unknown.length > 0) {
+    throw new Error(`Unknown or unsafe public probe tool: ${unknown.join(', ')}`);
+  }
+  const selected = new Set(requested);
+  return probes.filter((probe) => selected.has(probe.name));
+}
 
 function summarize(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object') {
@@ -112,6 +142,7 @@ async function main(): Promise<void> {
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing live requests without ${LIVE_FLAG}.`);
   }
+  const selectedProbes = selectProbes(process.argv.slice(2));
 
   let requestCount = 0;
   const publicHttpClient = new HttpClient({
@@ -131,7 +162,7 @@ async function main(): Promise<void> {
   const results: Array<Record<string, unknown>> = [];
 
   try {
-    for (const [index, probe] of probes.entries()) {
+    for (const [index, probe] of selectedProbes.entries()) {
       const before = requestCount;
       let result: unknown;
       try {
@@ -163,7 +194,7 @@ async function main(): Promise<void> {
         httpRequests: requestCount - before,
         result: summarize(result),
       });
-      if (index < probes.length - 1) await new Promise((resolve) => setTimeout(resolve, 1200));
+      if (index < selectedProbes.length - 1) await new Promise((resolve) => setTimeout(resolve, 1200));
     }
   } finally {
     await registry.close();
@@ -174,13 +205,15 @@ async function main(): Promise<void> {
     mode: 'read_only_public_api_smoke',
     subjectId: SUBJECT_ID,
     userAgent: USER_AGENT,
-    probeCount: probes.length,
+    probeCount: selectedProbes.length,
     httpRequests: requestCount,
-    limits: ['one known public subject', 'sequential probes with 1.2s spacing', 'no OAuth', 'no writes', 'summaries only'],
+    selectedTools: selectedProbes.map((probe) => probe.name),
+    limits: ['selected named public/read tools only', 'sequential probes with 1.2s spacing', 'no OAuth', 'no writes', 'summaries only'],
     results,
   };
   const date = startedAt.slice(0, 10);
-  const output = join(process.cwd(), 'docs', 'live-probes', `public-tools-${date}.json`);
+  const time = startedAt.slice(11, 23).replaceAll(':', '').replaceAll('.', '');
+  const output = join(process.cwd(), 'docs', 'live-probes', `public-tools-${date}-${time}-${process.pid}.json`);
   await mkdir(join(process.cwd(), 'docs', 'live-probes'), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   // Renderer dependencies can retain worker handles after the registry closes.
