@@ -55,7 +55,11 @@ def main() -> int:
         if not isinstance(flow, list):
             errors.append('flow must be a list')
         else:
-            ids = {item.get('id') for item in flow if isinstance(item, dict)}
+            flow_by_id = {
+                item.get('id'): item for item in flow
+                if isinstance(item, dict) and isinstance(item.get('id'), str)
+            }
+            ids = set(flow_by_id)
             missing = REQUIRED_FLOW - ids
             if missing:
                 errors.append(f'missing flow steps: {", ".join(sorted(missing))}')
@@ -67,6 +71,18 @@ def main() -> int:
                     errors.append(f'flow[{index}].status is invalid')
                 if not isinstance(item.get('evidence'), list):
                     errors.append(f'flow[{index}].evidence must be a list')
+                elif item.get('status') == 'PASS' and not item['evidence']:
+                    errors.append(f'flow[{index}] marked PASS must include evidence')
+            if report.get('report_status') == 'PASS':
+                incomplete = sorted(
+                    flow_id for flow_id in REQUIRED_FLOW
+                    if flow_by_id.get(flow_id, {}).get('status') != 'PASS'
+                )
+                if incomplete:
+                    errors.append(
+                        'report_status PASS requires all flow steps to pass: '
+                        + ', '.join(incomplete)
+                    )
         for path, key, value in walk(report):
             normalized = str(key).lower()
             if normalized in FORBIDDEN:

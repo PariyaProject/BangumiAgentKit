@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
@@ -7,8 +8,54 @@ import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-age
 const SUBJECT_ID = 41529;
 const LIVE_FLAG = '--live';
 const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/live-public-probe';
+const USERNAME_SCOPED_PROBES = new Set([
+  'bangumi.get_user',
+  'bangumi.get_character_collection',
+  'bangumi.get_collection',
+  'bangumi.get_person_collection',
+  'bangumi.list_character_collections',
+  'bangumi.list_collections',
+  'bangumi.list_person_collections',
+]);
 
-const probes: Array<{ name: string; input: Record<string, unknown> }> = [
+type Probe = { name: string; input: Record<string, unknown> };
+
+const IDENTITY_ASSERTIONS: Record<string, { inputPath: string; resultKey: string }> = {
+  'bangumi.get_subject': { inputPath: 'subjectId', resultKey: 'id' },
+  'bangumi.get_subject_identity': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_overview': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_cast': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_staff': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_index_membership': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_latest_subject_revision': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_character': { inputPath: 'characterId', resultKey: 'id' },
+  'bangumi.get_person': { inputPath: 'personId', resultKey: 'id' },
+  'bangumi.get_episode': { inputPath: 'episodeId', resultKey: 'id' },
+  'bangumi.get_subject_stats_intelligence': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_series_watch_order': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_episode_guide': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_episode_integrity': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_revision': { inputPath: 'revisionId', resultKey: 'id' },
+  'bangumi.call_operation': { inputPath: 'pathParams.subject_id', resultKey: 'id' },
+};
+
+const MINIMUM_COUNTS: Record<string, { resultKey: string; minimum: number }> = {
+  'bangumi.search_subjects': { resultKey: 'total', minimum: 1 },
+  'bangumi.search_characters': { resultKey: 'total', minimum: 1 },
+  'bangumi.search_persons': { resultKey: 'total', minimum: 1 },
+  'bangumi.query_subjects': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.get_episodes': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.get_revision_intelligence': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.list_revisions': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.list_collections': { resultKey: 'itemsCount', minimum: 1 },
+};
+
+const FAILED_RESULT_STATES = new Set([
+  'auth_required', 'error', 'not_computable', 'not_found', 'permission_denied',
+  'unavailable', 'unsupported', 'upstream_error',
+]);
+
+const probes: Probe[] = [
   { name: 'bangumi.get_subject', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.get_subject_stats', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.get_subject_identity', input: { subjectId: SUBJECT_ID } },
@@ -17,6 +64,13 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
     input: { subjectId: SUBJECT_ID, maxCast: 2, maxStaff: 2, maxRelations: 2 },
   },
   { name: 'bangumi.get_subject_cast', input: { subjectId: SUBJECT_ID, limit: 2 } },
+  {
+    name: 'bangumi.query_subjects',
+    input: {
+      media: 'anime', year: 2026, month: 7, resultMode: 'top', limit: 1,
+      sort: 'date', order: 'asc', explain: 'none',
+    },
+  },
   { name: 'bangumi.get_subject_staff', input: { subjectId: SUBJECT_ID, limit: 2 } },
   { name: 'bangumi.get_episodes', input: { subjectId: SUBJECT_ID, limit: 2, offset: 0 } },
   { name: 'bangumi.get_subject_relations', input: { subjectId: SUBJECT_ID } },
@@ -51,8 +105,14 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_revision', input: { entityType: 'subject', revisionId: 1567985 } },
   { name: 'bangumi.get_subject_comparison', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxRelations: 1 } },
   { name: 'bangumi.get_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
-  { name: 'bangumi.get_user', input: { username: 'xiaonvsheng' } },
+  { name: 'bangumi.get_user', input: {} },
   { name: 'bangumi.search_subjects', input: { query: '少女終末旅行', type: 'anime', limit: 1, offset: 0 } },
+  { name: 'bangumi.get_character_collection', input: { characterId: 87968 } },
+  { name: 'bangumi.get_collection', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.get_person_collection', input: { personId: 13684 } },
+  { name: 'bangumi.list_character_collections', input: { maxItems: 3 } },
+  { name: 'bangumi.list_collections', input: { subjectType: 'anime', limit: 3, offset: 0 } },
+  { name: 'bangumi.list_person_collections', input: { maxItems: 3 } },
   { name: 'bangumi.call_operation', input: { operationId: 'getSubjectById', pathParams: { subject_id: SUBJECT_ID } } },
   { name: 'bangumi.render_calendar', input: { weekday: 1, maxPerDay: 1, maxTotal: 1 } },
   { name: 'bangumi.render_search', input: { query: '少女終末旅行', subjectType: 2, limit: 1 } },
@@ -81,6 +141,50 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.render_subject_overview', input: { subjectId: SUBJECT_ID, maxCast: 1, maxStaff: 1, maxRelations: 1 } },
 ];
 
+function selectProbes(args: string[]) {
+  const requested: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === LIVE_FLAG) continue;
+    const toolName = args[index + 1];
+    if (args[index] !== '--tool' || typeof toolName !== 'string' || toolName.length === 0) {
+      throw new Error('Only --live and repeated --tool <exact-tool-name> options are supported.');
+    }
+    requested.push(toolName);
+    index += 1;
+  }
+  if (requested.length === 0) return probes;
+  if (new Set(requested).size !== requested.length) {
+    throw new Error('A tool may be selected only once per probe run.');
+  }
+  const known = new Set(probes.map((probe) => probe.name));
+  const unknown = requested.filter((name) => !known.has(name));
+  if (unknown.length > 0) {
+    throw new Error(`Unknown or unsafe public probe tool: ${unknown.join(', ')}`);
+  }
+  const selected = new Set(requested);
+  return probes.filter((probe) => selected.has(probe.name));
+}
+
+function withPublicProbeUsername(probe: Probe): Probe {
+  if (!USERNAME_SCOPED_PROBES.has(probe.name)) return probe;
+  const username = process.env.BANGUMI_PUBLIC_PROBE_USERNAME?.trim();
+  if (!username) {
+    throw new Error(
+      `${probe.name} requires BANGUMI_PUBLIC_PROBE_USERNAME; the supplied username is omitted from saved reports.`,
+    );
+  }
+  return { ...probe, input: { ...probe.input, username } };
+}
+
+function reportInput(probe: Probe): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(probe.input).filter(([key]) => key !== 'username'));
+}
+
+function redactPublicUsername(value: string): string {
+  const username = process.env.BANGUMI_PUBLIC_PROBE_USERNAME?.trim();
+  return username ? value.replaceAll(username, '[redacted username]') : value;
+}
+
 function summarize(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
@@ -91,7 +195,9 @@ function summarize(value: unknown): Record<string, unknown> {
         code: error.code ?? 'UNKNOWN_ERROR',
         ...(typeof error.upstreamStatus === 'number' ? { upstreamStatus: error.upstreamStatus } : {}),
         ...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {}),
-        ...(typeof error.message === 'string' ? { message: error.message.slice(0, 160) } : {}),
+        ...(typeof error.message === 'string'
+          ? { message: redactPublicUsername(error.message).slice(0, 160) }
+          : {}),
       };
     }
     const summary: Record<string, unknown> = {};
@@ -108,10 +214,65 @@ function summarize(value: unknown): Record<string, unknown> {
   return { state: 'value', type: typeof value };
 }
 
+function getPath(value: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((current, key) => {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, value);
+}
+
+function validateProbeSummary(
+  probe: Probe,
+  summary: Record<string, unknown>,
+  httpRequests: number,
+): Record<string, boolean> {
+  const state = summary.state;
+  const noErrorResult = typeof state !== 'string' || !FAILED_RESULT_STATES.has(state);
+  const nonEmptySummary = Object.keys(summary).length > 0
+    && (state !== 'value' || (Array.isArray(summary.keys) && summary.keys.length > 0));
+  const countEntries = Object.entries(summary).filter(([key]) =>
+    key === 'total' || key === 'observed' || key === 'returned' || key.endsWith('Count'));
+  const nonNegativeCounts = countEntries.every(([, value]) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0);
+  const total = summary.total;
+  const returned = summary.returned;
+  const itemsCount = summary.itemsCount;
+  const countConsistency = !(
+    typeof total === 'number' && typeof itemsCount === 'number' && itemsCount > total
+  ) && !(
+    typeof returned === 'number' && typeof total === 'number' && returned > total
+  ) && !(
+    typeof returned === 'number' && typeof summary.observed === 'number'
+    && returned > summary.observed
+  );
+  const identity = IDENTITY_ASSERTIONS[probe.name];
+  const identityMatchesRequest = identity === undefined || (
+    typeof getPath(probe.input, identity.inputPath) === 'number'
+    && getPath(probe.input, identity.inputPath) === summary[identity.resultKey]
+  );
+  const minimum = MINIMUM_COUNTS[probe.name];
+  const minimumCountObserved = minimum === undefined || (
+    typeof summary[minimum.resultKey] === 'number'
+    && (summary[minimum.resultKey] as number) >= minimum.minimum
+  );
+  return {
+    httpRequestObserved: httpRequests > 0,
+    nonEmptySummary,
+    noErrorResult,
+    nonNegativeCounts,
+    countConsistency,
+    ...(identity ? { identityMatchesRequest } : {}),
+    ...(minimum ? { minimumCountObserved } : {}),
+    passed: httpRequests > 0 && nonEmptySummary && noErrorResult && nonNegativeCounts
+      && countConsistency && identityMatchesRequest && minimumCountObserved,
+  };
+}
+
 async function main(): Promise<void> {
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing live requests without ${LIVE_FLAG}.`);
   }
+  const selectedProbes = selectProbes(process.argv.slice(2)).map(withPublicProbeUsername);
 
   let requestCount = 0;
   const publicHttpClient = new HttpClient({
@@ -131,7 +292,7 @@ async function main(): Promise<void> {
   const results: Array<Record<string, unknown>> = [];
 
   try {
-    for (const [index, probe] of probes.entries()) {
+    for (const [index, probe] of selectedProbes.entries()) {
       const before = requestCount;
       let result: unknown;
       try {
@@ -153,34 +314,51 @@ async function main(): Promise<void> {
             code: typeof detail.code === 'string' ? detail.code : error instanceof Error ? error.name : 'UNKNOWN_ERROR',
             ...(typeof detail.upstreamStatus === 'number' ? { upstreamStatus: detail.upstreamStatus } : {}),
             ...(typeof detail.retryable === 'boolean' ? { retryable: detail.retryable } : {}),
-            ...(typeof detail.message === 'string' ? { message: detail.message.slice(0, 160) } : {}),
+            ...(typeof detail.message === 'string'
+              ? { message: redactPublicUsername(detail.message).slice(0, 160) }
+              : {}),
           },
         };
       }
+      const summary = summarize(result);
+      const httpRequests = requestCount - before;
       results.push({
         tool: probe.name,
-        input: probe.input,
-        httpRequests: requestCount - before,
-        result: summarize(result),
+        input: reportInput(probe),
+        httpRequests,
+        result: summary,
+        assertions: validateProbeSummary(probe, summary, httpRequests),
       });
-      if (index < probes.length - 1) await new Promise((resolve) => setTimeout(resolve, 1200));
+      if (index < selectedProbes.length - 1) await new Promise((resolve) => setTimeout(resolve, 1200));
     }
   } finally {
     await registry.close();
   }
 
   const report = {
+    schemaVersion: 1,
+    evidenceKind: 'bangumi_public_api_tool_registry_smoke',
     observedAt: startedAt,
     mode: 'read_only_public_api_smoke',
+    catalogSha256: createHash('sha256')
+      .update(await readFile(join(process.cwd(), 'docs', 'tool-catalog.json')))
+      .digest('hex'),
+    probeScriptSha256: createHash('sha256')
+      .update(await readFile(join(process.cwd(), 'scripts', 'smoke-public-tools-online.ts')))
+      .digest('hex'),
+    sourceProgram: 'scripts/smoke-public-tools-online.ts',
     subjectId: SUBJECT_ID,
     userAgent: USER_AGENT,
-    probeCount: probes.length,
+    probeCount: selectedProbes.length,
     httpRequests: requestCount,
-    limits: ['one known public subject', 'sequential probes with 1.2s spacing', 'no OAuth', 'no writes', 'summaries only'],
+    selectedTools: selectedProbes.map((probe) => probe.name),
+    limits: ['selected named public/read tools only', 'sequential probes with 1.2s spacing', 'no OAuth', 'no writes', 'summaries only'],
+    redactions: ['username values are omitted from recorded inputs'],
     results,
   };
   const date = startedAt.slice(0, 10);
-  const output = join(process.cwd(), 'docs', 'live-probes', `public-tools-${date}.json`);
+  const time = startedAt.slice(11, 23).replaceAll(':', '').replaceAll('.', '');
+  const output = join(process.cwd(), 'docs', 'live-probes', `public-tools-${date}-${time}-${process.pid}.json`);
   await mkdir(join(process.cwd(), 'docs', 'live-probes'), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   // Renderer dependencies can retain worker handles after the registry closes.

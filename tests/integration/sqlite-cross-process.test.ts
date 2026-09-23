@@ -337,11 +337,15 @@ describe('SQLite independent-process concurrency', () => {
     await SQLiteStorage.create({ dbPath }).then((storage) => storage.close());
 
     const previousLease = process.env.BANGUMI_SQLITE_LOCK_LEASE_MS;
-    process.env.BANGUMI_SQLITE_LOCK_LEASE_MS = '60';
+    const leaseMs = 1_000;
+    const subjectHoldMs = 2_500;
+    const hostHoldMs = 120;
+    // Keep the lease above CI timer jitter while still requiring several renewals.
+    process.env.BANGUMI_SQLITE_LOCK_LEASE_MS = String(leaseMs);
     try {
       const subjectResults = await runWorkers('stats-lock', dbPath, [
-        { subjectId: 123, holdMs: 240 },
-        { subjectId: 123, holdMs: 240 },
+        { subjectId: 123, holdMs: subjectHoldMs },
+        { subjectId: 123, holdMs: subjectHoldMs },
       ]);
       expect(
         subjectResults.every((result) => result.ok),
@@ -350,11 +354,11 @@ describe('SQLite independent-process concurrency', () => {
       const subjectElapsed = subjectResults
         .map((result) => Number(result.value?.elapsedMs || 0))
         .sort((a, b) => a - b);
-      expect(subjectElapsed[1]).toBeGreaterThanOrEqual(180);
+      expect(subjectElapsed[1]).toBeGreaterThanOrEqual(subjectHoldMs * 1.5);
 
       const hostResults = await runWorkers('stats-host-lock', dbPath, [
-        { holdMs: 120 },
-        { holdMs: 120 },
+        { holdMs: hostHoldMs },
+        { holdMs: hostHoldMs },
       ]);
       expect(
         hostResults.every((result) => result.ok),
@@ -363,7 +367,7 @@ describe('SQLite independent-process concurrency', () => {
       const hostElapsed = hostResults
         .map((result) => Number(result.value?.elapsedMs || 0))
         .sort((a, b) => a - b);
-      expect(hostElapsed[1]).toBeGreaterThanOrEqual(90);
+      expect(hostElapsed[1]).toBeGreaterThanOrEqual(hostHoldMs * 1.5);
     } finally {
       if (previousLease === undefined) delete process.env.BANGUMI_SQLITE_LOCK_LEASE_MS;
       else process.env.BANGUMI_SQLITE_LOCK_LEASE_MS = previousLease;

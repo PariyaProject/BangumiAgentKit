@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-09-23",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "efadb2f8c47fc5bb512e6f7c2c53878029330931",
+  "catalogSha256": "50437c55c6d7e8984834ee73ff27508ceb77c7e0bea6daf0b23a77db51561a56",
+  "profile": "bangumi-full-auth-feature-qa-v1",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "scenarios": [
+    {
+      "id": "bangumi.render_collection_schedule",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.render_collection_schedule",
+          "state": "DONE"
+        }
+      ],
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "rendererArtifactVerified": true,
+        "artifactRefReturned": true,
+        "toolReportedError": false,
+        "artifactMimeType": "image/png",
+        "artifactWidth": 1920,
+        "artifactHeight": 816,
+        "syntheticAccountUsed": true,
+        "syntheticTokenValidated": true,
+        "syntheticFixtureOnly": true,
+        "externalApiCalled": false,
+        "realAccountUsed": false,
+        "artifactVerified": true
+      }
+    }
+  ],
+  "scopeNote": "One auth-required tool was run with a synthetic MemoryStorage account and a local HTTP fixture that accepts only the fixed placeholder token. The wrapper returned no fixture data, verified token use, and confirmed there was no external API request. Renderer targets also returned a temporary PNG artifact. No real account or OAuth was used; this is synthetic Agent/MCP integration evidence only."
+}

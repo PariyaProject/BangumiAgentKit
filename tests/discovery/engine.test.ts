@@ -196,6 +196,57 @@ class ExactBrowseProvider implements SubjectDiscoveryProvider {
   }
 }
 
+class ReverseDateBrowseProvider implements SubjectDiscoveryProvider {
+  readonly browseOffsets: number[] = [];
+  private invalidateTailOnce: boolean;
+  private readonly subjects: SubjectDiscoveryCandidate[] = Array.from({ length: 31 }, (_, index) => {
+    const day = index + 1;
+    return {
+      id: day,
+      type: 2,
+      name: `July subject ${day}`,
+      platform: 'TV',
+      date: `2026-07-${String(day).padStart(2, '0')}`,
+      tags: [],
+      metaTags: [],
+    };
+  }).sort((left, right) => (right.date ?? '').localeCompare(left.date ?? ''));
+
+  constructor(invalidateTailOnce = false) {
+    this.invalidateTailOnce = invalidateTailOnce;
+  }
+
+  async getSubject(): Promise<CapabilityResult<ProviderSubjectData>> {
+    return { state: 'not_found' };
+  }
+
+  async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+    return { state: 'not_found' };
+  }
+
+  async searchSubjects(_request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return { state: 'ok', data: { items: [], total: 0, totalKind: 'estimated', limit: 20, offset: 0 }, evidence: {} };
+  }
+
+  async browseSubjects(request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    this.browseOffsets.push(request.offset);
+    if (this.invalidateTailOnce && request.offset > 0) {
+      this.invalidateTailOnce = false;
+      return {
+        state: 'ok',
+        data: { items: [], total: this.subjects.length, totalKind: 'exact', limit: request.limit, offset: request.offset },
+        evidence: {},
+      };
+    }
+    const items = this.subjects.slice(request.offset, request.offset + request.limit);
+    return {
+      state: 'ok',
+      data: { items, total: this.subjects.length, totalKind: 'exact', limit: request.limit, offset: request.offset },
+      evidence: {},
+    };
+  }
+}
+
 class MultiCategoryProvider implements SubjectDiscoveryProvider {
   readonly searchCalls = 0;
   private readonly subjects: SubjectDiscoveryCandidate[] = [
@@ -542,6 +593,48 @@ describe('bounded discovery engine', () => {
     expect(result.items.map((item) => item.id)).toEqual([4, 3, 2, 1]);
     expect(result.coverage.state).toBe('complete');
     expect(result.coverage.totalKind).toBe('exact');
+  });
+
+  it('returns the earliest date results without scanning the full descending browse result', async () => {
+    const provider = new ReverseDateBrowseProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      year: 2026,
+      month: 7,
+      sort: 'date',
+      order: 'asc',
+      limit: 3,
+    });
+
+    expect(result.items.map((item) => [item.id, item.date])).toEqual([
+      [1, '2026-07-01'],
+      [2, '2026-07-02'],
+      [3, '2026-07-03'],
+    ]);
+    expect(result.coverage.scanned).toBe(20);
+    expect(result.coverage.hydrationsAttempted).toBe(0);
+    expect(result.coverage.upstreamExhausted).toBe(false);
+    expect(provider.browseOffsets).toEqual([0, 11]);
+  });
+
+  it('falls back to forward paging when an exact browse total invalidates the date tail', async () => {
+    const provider = new ReverseDateBrowseProvider(true);
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      year: 2026,
+      month: 7,
+      sort: 'date',
+      order: 'asc',
+      limit: 3,
+    });
+
+    expect(result.items.map((item) => [item.id, item.date])).toEqual([
+      [1, '2026-07-01'],
+      [2, '2026-07-02'],
+      [3, '2026-07-03'],
+    ]);
+    expect(result.coverage.upstreamExhausted).toBe(true);
+    expect(provider.browseOffsets).toEqual([0, 11, 0, 20]);
   });
 
   it('does not silently collapse a multi-category query to the first browse category', async () => {
