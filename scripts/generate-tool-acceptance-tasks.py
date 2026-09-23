@@ -110,6 +110,7 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
         'bangumi-compact-v1',
         'bangumi-full-public-qa-v1',
         'bangumi-full-renderer-qa-v1',
+        'bangumi-full-operation-qa-v1',
     }
     for path in LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'):
         try:
