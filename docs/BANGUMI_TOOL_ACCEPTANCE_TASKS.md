@@ -9,7 +9,7 @@
 - [ ] 每个工具都有直接 `execute` 夹具：96/96；仍有 0 项待补。
 - [ ] 每个工具都有真实公开 API 证据：当前明确记录 59/96。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
-- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 23/96。
+- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 31/96。
 - [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
 - [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/96。
 
@@ -17,7 +17,7 @@
 
 | 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bangumi.aggregate_subject_cohort` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.aggregate_subject_cohort` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.auth_disconnect` | `required` | `destructive` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.auth_list_accounts` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.auth_remove_account` | `required` | `destructive` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
@@ -25,7 +25,7 @@
 | `bangumi.auth_status` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_calendar_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
@@ -41,15 +41,15 @@
 | `bangumi.get_collection_series_groups` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_episode` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_episode_collections` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_episode_guide` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_episode_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episode_guide` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episode_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_episodes` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_index` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_latest_subject_revision` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_my_profile` | `required` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_person_activity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_person_collaboration` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_activity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_collaboration` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person_collection` | `optional` | `read` | ✅ | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 准备账号验收；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_person_profile` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_revision` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
@@ -57,10 +57,10 @@
 | `bangumi.get_series_watch_order` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_cast` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_subject_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_identity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_index_membership` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_subject_overlap` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_overlap` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_overview` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_relations` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ✅ | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_staff` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | ⬜ | ⬜ | 补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
