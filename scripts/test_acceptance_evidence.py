@@ -5,6 +5,8 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -126,6 +128,58 @@ class PublicApiEvidenceTests(unittest.TestCase):
             'assertions': {'passed': True},
         }])
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
+
+
+class AuthAcceptanceEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='auth-acceptance-evidence-test-')
+        self.report_path = Path(self.temp_dir.name) / 'auth-report.json'
+        template_path = Path(__file__).parents[1] / 'docs/auth-acceptance-report.template.json'
+        self.report = json.loads(template_path.read_text(encoding='utf-8'))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_rejects_passing_report_with_unverified_steps(self):
+        self.report['report_status'] = 'PASS'
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name('validate-auth-acceptance.py')),
+             '--report', str(self.report_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn('report_status PASS requires all flow steps to pass', completed.stdout)
+
+    def test_rejects_passed_step_without_evidence(self):
+        self.report['flow'][0]['status'] = 'PASS'
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name('validate-auth-acceptance.py')),
+             '--report', str(self.report_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn('marked PASS must include evidence', completed.stdout)
+
+    def test_accepts_complete_pass_report_with_evidence(self):
+        self.report['report_status'] = 'PASS'
+        for step in self.report['flow']:
+            step['status'] = 'PASS'
+            step['evidence'] = ['sanitized result and timestamp']
+        self.report_path.write_text(json.dumps(self.report), encoding='utf-8')
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name('validate-auth-acceptance.py')),
+             '--report', str(self.report_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
 
 if __name__ == '__main__':
