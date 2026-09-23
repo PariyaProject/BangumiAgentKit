@@ -147,19 +147,72 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
     return names
 
 
-def status(tool: dict, direct: set[str], live_public: set[str], model_mcp_e2e: set[str]) -> tuple[str, ...]:
+def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
+    """Trust isolated no-account reports only when they prove an expected auth gate."""
+    names: set[str] = set()
+    catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
+    current_by_name = {item['name']: item for item in catalog}
+    for path in LIVE_PROBE_DIR.glob('pariya-agent-full-auth-denial-qa-e2e-*.json'):
+        try:
+            report = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            continue
+        if (not isinstance(report, dict)
+                or report.get('schemaVersion') != 1
+                or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
+                or report.get('catalogSha256') != catalog_sha256
+                or report.get('profile') != 'bangumi-full-auth-denial-qa-v1'
+                or report.get('processExitCode') != 0
+                or report.get('resultStatus') != 'SUCCESS'
+                or report.get('qqPipelineTested') is not False
+                or report.get('timClientTested') is not False):
+            continue
+        scenarios = report.get('scenarios')
+        if not isinstance(scenarios, list) or len(scenarios) != 1:
+            continue
+        scenario = scenarios[0]
+        if not isinstance(scenario, dict):
+            continue
+        name = scenario.get('id')
+        tool = current_by_name.get(name)
+        calls = scenario.get('toolCalls')
+        assertions = scenario.get('assertions')
+        if (not tool or tool.get('risk') != 'read' or tool.get('auth') != 'required'
+                or scenario.get('passed') is not True
+                or calls != [{'name': name, 'state': 'DONE'}]
+                or not isinstance(assertions, dict)
+                or assertions.get('authRequiredGateObserved') is not True
+                or assertions.get('operationExecuted') is not False
+                or assertions.get('accountDataReturned') is not False):
+            continue
+        names.add(name)
+    return names
+
+
+def status(
+    tool: dict,
+    direct: set[str],
+    live_public: set[str],
+    auth_gate_denial: set[str],
+    model_mcp_e2e: set[str],
+) -> tuple[str, ...]:
     name = tool['name']
     schema = '✅'
     source = '✅'
     execute = '✅' if name in direct else '⬜'
     live = '—' if name in NON_PUBLIC_API_TOOLS else ('◐' if name in live_public else '⬜')
+    auth_gate = (
+        '—' if tool.get('auth') != 'required' or tool.get('risk') != 'read'
+        else '✅' if name in auth_gate_denial
+        else '⬜'
+    )
     auth = '—' if tool.get('auth') == 'none' else '⬜'
     agent_mcp = '✅' if name in model_mcp_e2e else '⬜'
     # The 96 per-tool QQ bridge and TIM client stages have separate evidence
     # requirements; Agent/MCP runs never satisfy them.
     qq_pipeline = '⬜'
     tim_client = '⬜'
-    return schema, source, execute, live, auth, agent_mcp, qq_pipeline, tim_client
+    return schema, source, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client
 
 
 def main() -> None:
@@ -167,6 +220,7 @@ def main() -> None:
     source = test_source()
     direct = direct_execute_names(source)
     live_public_names_set = live_public_names()
+    auth_gate_denial_set = auth_gate_denial_names(catalog)
     names = {item['name'] for item in catalog}
     model_mcp_e2e = model_mcp_e2e_names(catalog)
     missing_source = sorted(name for name in names if name not in source)
@@ -189,18 +243,20 @@ def main() -> None:
         f'- [ ] 每个工具都有直接 `execute` 夹具：{direct_count}/{len(catalog)}；仍有 {len(catalog) - direct_count} 项待补。',
         f'- [ ] 每个工具都有真实公开 API 证据：当前明确记录 {live_count}/{len(catalog)}。',
         f'- [ ] 需要账号的工具完成真实 OAuth/账号验收：{auth_count} 项目前不能用本地 mock 代替。',
+        f'- [ ] 无账号门禁拒绝路径已验证：{len(auth_gate_denial_set)}/{sum(item.get("auth") == "required" and item.get("risk") == "read" for item in catalog)} 项；门禁通过不代表真实账号功能通过。',
         f'- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：当前 {model_mcp_count}/{len(catalog)}。',
         f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
         f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
         '',
         '状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用（OAuth 生命周期、本地状态/历史或 operation metadata 不发公开 Bangumi HTTP 请求）。',
         '',
-        '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
-        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+        '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
+        '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+        '未认证只读门禁列只记录缺少账号时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。写入/破坏性工具不进入该探针。',
     ]
     for item in catalog:
-        schema, source_ref, execute, live, auth, agent_mcp, qq_pipeline, tim_client = status(
-            item, direct, live_public_names_set, model_mcp_e2e,
+        schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
+            item, direct, live_public_names_set, auth_gate_denial_set, model_mcp_e2e,
         )
         next_step = []
         if execute == '⬜':
@@ -209,6 +265,8 @@ def main() -> None:
             next_step.append('补公开 API')
         if auth == '⬜':
             next_step.append('准备账号验收')
+        if auth_gate == '⬜':
+            next_step.append('补未认证门禁拒绝测试')
         if agent_mcp == '⬜':
             next_step.append('补 Agent/MCP 实际调用证据')
         if qq_pipeline == '⬜':
@@ -217,7 +275,7 @@ def main() -> None:
             next_step.append('补 TIM 客户端 E2E')
         lines.append(
             f"| `{item['name']}` | `{item.get('auth')}` | `{item.get('risk')}` "
-            f"| {schema} | {source_ref} | {execute} | {live} | {auth} "
+            f"| {schema} | {source_ref} | {execute} | {live} | {auth_gate} | {auth} "
             f"| {agent_mcp} | {qq_pipeline} | {tim_client} | {'；'.join(next_step)} |"
         )
 
@@ -244,6 +302,8 @@ def main() -> None:
     OUTPUT.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     print(json.dumps({'catalog': len(catalog), 'direct_execute': direct_count,
                       'live_public': live_count, 'auth_required_or_optional': auth_count,
+                      'auth_gate_denial': len(auth_gate_denial_set),
+                      'auth_gate_pending': sum(item.get('auth') == 'required' and item.get('risk') == 'read' and item['name'] not in auth_gate_denial_set for item in catalog),
                       'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': 0, 'tim_client_e2e': 0,
                       'output': str(OUTPUT)}, ensure_ascii=False))
 

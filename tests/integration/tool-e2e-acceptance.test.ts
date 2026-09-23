@@ -30,6 +30,12 @@ const FULL_AUTH_START_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   )
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const FULL_AUTH_DENIAL_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter(
+    (name) => name.startsWith('pariya-agent-full-auth-denial-qa-e2e-') && name.endsWith('.json'),
+  )
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
 const EVIDENCE = [
   COMPACT_EVIDENCE,
   ...FULL_PUBLIC_QA_EVIDENCE,
@@ -191,10 +197,10 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
     );
 
     for (const [name, fields] of rows) {
-      expect(fields, name).toHaveLength(12);
-      expect(fields[8], `${name} model/MCP`).toBe(evidenceNames.includes(name) ? '✅' : '⬜');
-      expect(fields[9], `${name} QQ pipeline`).toBe('⬜');
-      expect(fields[10], `${name} TIM client`).toBe('⬜');
+      expect(fields, name).toHaveLength(13);
+      expect(fields[9], `${name} model/MCP`).toBe(evidenceNames.includes(name) ? '✅' : '⬜');
+      expect(fields[10], `${name} QQ pipeline`).toBe('⬜');
+      expect(fields[11], `${name} TIM client`).toBe('⬜');
     }
   });
 
@@ -424,13 +430,68 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
     }
   });
+
+  it('records auth-required denial separately from authenticated feature execution', () => {
+    const expectedTools = [
+      'bangumi.get_collection_backlog',
+      'bangumi.get_collection_dashboard',
+      'bangumi.get_collection_entity_consistency',
+      'bangumi.get_collection_intelligence',
+      'bangumi.get_collection_schedule',
+      'bangumi.get_collection_series_groups',
+      'bangumi.get_episode_collections',
+      'bangumi.get_my_profile',
+      'bangumi.render_collection_backlog',
+      'bangumi.render_collection_dashboard',
+      'bangumi.render_collection_entity_consistency',
+      'bangumi.render_collection_intelligence',
+      'bangumi.render_collection_progress',
+      'bangumi.render_collection_schedule',
+      'bangumi.render_collection_series_groups',
+    ].sort();
+    expect(FULL_AUTH_DENIAL_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
+      expectedTools,
+    );
+    const rows = rowsByTool();
+    for (const report of FULL_AUTH_DENIAL_QA_EVIDENCE) {
+      expect(report).toMatchObject({
+        schemaVersion: 1,
+        evidenceKind: 'antigravity_cli_mcp_tool_use',
+        profile: 'bangumi-full-auth-denial-qa-v1',
+        processExitCode: 0,
+        resultCount: 1,
+        resultStatus: 'SUCCESS',
+        qqPipelineTested: false,
+        timClientTested: false,
+      });
+      expect(report.scopeNote).toContain('AUTH_REQUIRED');
+      const scenario = report.scenarios[0];
+      expect(scenario).toMatchObject({
+        id: scenario.toolCalls[0].name,
+        passed: true,
+        toolCalls: [{ name: scenario.id, state: 'DONE' }],
+        assertions: {
+          authRequiredGateObserved: true,
+          operationExecuted: false,
+          accountDataReturned: false,
+        },
+      });
+      expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
+      expect(scenario).not.toHaveProperty('prompt');
+      expect(scenario).not.toHaveProperty('arguments');
+      expect(rows.get(scenario.id)?.[7]).toBe('✅');
+      expect(rows.get(scenario.id)?.[8]).toBe('⬜');
+      expect(rows.get(scenario.id)?.[9]).toBe('⬜');
+    }
+  });
   it('continues to mark the public QA probe as Agent/MCP only', () => {
     const rows = rowsByTool();
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
       const name = report.scenarios[0].id;
-      expect(rows.get(name)?.[8]).toBe('✅');
-      expect(rows.get(name)?.[9]).toBe('⬜');
+      expect(rows.get(name)?.[9]).toBe('✅');
       expect(rows.get(name)?.[10]).toBe('⬜');
+      expect(rows.get(name)?.[11]).toBe('⬜');
     }
   });
 });
