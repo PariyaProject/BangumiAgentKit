@@ -91,6 +91,23 @@ function graphemes(value: string): string[] {
   return Array.from(value);
 }
 
+function boundedCodePointPrefix(
+  value: string,
+  maximum: number,
+): {
+  value: string;
+  truncated: boolean;
+} {
+  const prefix: string[] = [];
+  let count = 0;
+  for (const character of value) {
+    if (count >= maximum) return { value: prefix.join(''), truncated: true };
+    prefix.push(character);
+    count += 1;
+  }
+  return { value: prefix.join(''), truncated: false };
+}
+
 function normalizeHumanText(value: unknown): string {
   const normalized = Array.from(String(value ?? ''), (character) => {
     const codePoint = character.codePointAt(0) || 0;
@@ -107,7 +124,19 @@ function limitGraphemes(value: string, maximum: number): string {
 }
 
 function humanField(value: unknown, maximum = HUMAN_MAX_FIELD_GRAPHEMES): string {
-  return limitGraphemes(normalizeHumanText(value), maximum);
+  const limit = Number.isFinite(maximum) ? Math.max(0, Math.trunc(maximum)) : 0;
+  if (limit === 0) return '';
+  const codePointLimit = Math.min(HUMAN_MAX_GRAPHEMES * 16, Math.max(256, limit * 16));
+  const prefix = boundedCodePointPrefix(String(value ?? ''), codePointLimit);
+  const normalized = normalizeHumanText(prefix.value);
+  if (!prefix.truncated) return limitGraphemes(normalized, limit);
+
+  // The prefix may end inside a combining or ZWJ grapheme. Drop its final
+  // segment before adding the truncation marker so output never splits one.
+  const parts = graphemes(normalized);
+  if (parts.length > 0) parts.pop();
+  if (limit === 1) return '…';
+  return `${parts.slice(0, limit - 1).join('')}…`;
 }
 
 function measureHumanText(lines: string[]): { graphemeCount: number; byteCount: number } {
