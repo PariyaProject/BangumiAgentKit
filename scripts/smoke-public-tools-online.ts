@@ -7,8 +7,19 @@ import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-age
 const SUBJECT_ID = 41529;
 const LIVE_FLAG = '--live';
 const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/live-public-probe';
+const USERNAME_SCOPED_PROBES = new Set([
+  'bangumi.get_user',
+  'bangumi.get_character_collection',
+  'bangumi.get_collection',
+  'bangumi.get_person_collection',
+  'bangumi.list_character_collections',
+  'bangumi.list_collections',
+  'bangumi.list_person_collections',
+]);
 
-const probes: Array<{ name: string; input: Record<string, unknown> }> = [
+type Probe = { name: string; input: Record<string, unknown> };
+
+const probes: Probe[] = [
   { name: 'bangumi.get_subject', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.get_subject_stats', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.get_subject_identity', input: { subjectId: SUBJECT_ID } },
@@ -51,14 +62,14 @@ const probes: Array<{ name: string; input: Record<string, unknown> }> = [
   { name: 'bangumi.get_revision', input: { entityType: 'subject', revisionId: 1567985 } },
   { name: 'bangumi.get_subject_comparison', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxRelations: 1 } },
   { name: 'bangumi.get_subject_overlap', input: { subjectIds: [SUBJECT_ID, 46729], maxCast: 1, maxStaff: 1, maxPairs: 1, maxPeople: 1 } },
-  { name: 'bangumi.get_user', input: { username: 'xiaonvsheng' } },
+  { name: 'bangumi.get_user', input: {} },
   { name: 'bangumi.search_subjects', input: { query: '少女終末旅行', type: 'anime', limit: 1, offset: 0 } },
-  { name: 'bangumi.get_character_collection', input: { characterId: 87968, username: 'chii' } },
-  { name: 'bangumi.get_collection', input: { subjectId: SUBJECT_ID, username: 'chii' } },
-  { name: 'bangumi.get_person_collection', input: { personId: 13684, username: 'chii' } },
-  { name: 'bangumi.list_character_collections', input: { username: 'chii', maxItems: 3 } },
-  { name: 'bangumi.list_collections', input: { username: 'chii', subjectType: 'anime', limit: 3, offset: 0 } },
-  { name: 'bangumi.list_person_collections', input: { username: 'chii', maxItems: 3 } },
+  { name: 'bangumi.get_character_collection', input: { characterId: 87968 } },
+  { name: 'bangumi.get_collection', input: { subjectId: SUBJECT_ID } },
+  { name: 'bangumi.get_person_collection', input: { personId: 13684 } },
+  { name: 'bangumi.list_character_collections', input: { maxItems: 3 } },
+  { name: 'bangumi.list_collections', input: { subjectType: 'anime', limit: 3, offset: 0 } },
+  { name: 'bangumi.list_person_collections', input: { maxItems: 3 } },
   { name: 'bangumi.call_operation', input: { operationId: 'getSubjectById', pathParams: { subject_id: SUBJECT_ID } } },
   { name: 'bangumi.render_calendar', input: { weekday: 1, maxPerDay: 1, maxTotal: 1 } },
   { name: 'bangumi.render_search', input: { query: '少女終末旅行', subjectType: 2, limit: 1 } },
@@ -111,6 +122,26 @@ function selectProbes(args: string[]) {
   return probes.filter((probe) => selected.has(probe.name));
 }
 
+function withPublicProbeUsername(probe: Probe): Probe {
+  if (!USERNAME_SCOPED_PROBES.has(probe.name)) return probe;
+  const username = process.env.BANGUMI_PUBLIC_PROBE_USERNAME?.trim();
+  if (!username) {
+    throw new Error(
+      `${probe.name} requires BANGUMI_PUBLIC_PROBE_USERNAME; the supplied username is omitted from saved reports.`,
+    );
+  }
+  return { ...probe, input: { ...probe.input, username } };
+}
+
+function reportInput(probe: Probe): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(probe.input).filter(([key]) => key !== 'username'));
+}
+
+function redactPublicUsername(value: string): string {
+  const username = process.env.BANGUMI_PUBLIC_PROBE_USERNAME?.trim();
+  return username ? value.replaceAll(username, '[redacted username]') : value;
+}
+
 function summarize(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
@@ -121,7 +152,9 @@ function summarize(value: unknown): Record<string, unknown> {
         code: error.code ?? 'UNKNOWN_ERROR',
         ...(typeof error.upstreamStatus === 'number' ? { upstreamStatus: error.upstreamStatus } : {}),
         ...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {}),
-        ...(typeof error.message === 'string' ? { message: error.message.slice(0, 160) } : {}),
+        ...(typeof error.message === 'string'
+          ? { message: redactPublicUsername(error.message).slice(0, 160) }
+          : {}),
       };
     }
     const summary: Record<string, unknown> = {};
@@ -142,7 +175,7 @@ async function main(): Promise<void> {
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing live requests without ${LIVE_FLAG}.`);
   }
-  const selectedProbes = selectProbes(process.argv.slice(2));
+  const selectedProbes = selectProbes(process.argv.slice(2)).map(withPublicProbeUsername);
 
   let requestCount = 0;
   const publicHttpClient = new HttpClient({
@@ -184,13 +217,15 @@ async function main(): Promise<void> {
             code: typeof detail.code === 'string' ? detail.code : error instanceof Error ? error.name : 'UNKNOWN_ERROR',
             ...(typeof detail.upstreamStatus === 'number' ? { upstreamStatus: detail.upstreamStatus } : {}),
             ...(typeof detail.retryable === 'boolean' ? { retryable: detail.retryable } : {}),
-            ...(typeof detail.message === 'string' ? { message: detail.message.slice(0, 160) } : {}),
+            ...(typeof detail.message === 'string'
+              ? { message: redactPublicUsername(detail.message).slice(0, 160) }
+              : {}),
           },
         };
       }
       results.push({
         tool: probe.name,
-        input: probe.input,
+        input: reportInput(probe),
         httpRequests: requestCount - before,
         result: summarize(result),
       });
@@ -209,6 +244,7 @@ async function main(): Promise<void> {
     httpRequests: requestCount,
     selectedTools: selectedProbes.map((probe) => probe.name),
     limits: ['selected named public/read tools only', 'sequential probes with 1.2s spacing', 'no OAuth', 'no writes', 'summaries only'],
+    redactions: ['username values are omitted from recorded inputs'],
     results,
   };
   const date = startedAt.slice(0, 10);

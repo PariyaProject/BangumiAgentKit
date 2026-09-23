@@ -481,9 +481,7 @@
     },
     {
       "tool": "bangumi.get_user",
-      "input": {
-        "username": "xiaonvsheng"
-      },
+      "input": {},
       "httpRequests": 1,
       "result": {
         "id": 489240
@@ -869,5 +867,8 @@
         ]
       }
     }
+  ],
+  "redactions": [
+    "username values omitted from recorded inputs"
   ]
 }

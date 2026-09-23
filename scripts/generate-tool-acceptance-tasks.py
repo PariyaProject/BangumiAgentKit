@@ -129,11 +129,16 @@ def model_mcp_e2e_names(catalog: list[dict]) -> set[str]:
                 or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
                 or evidence_by_name is None
                 or report.get('profile') not in valid_profiles
+                or type(report.get('processExitCode')) is not int
+                or report.get('processExitCode') != 0
+                or report.get('resultStatus') != 'SUCCESS'
+                or type(report.get('resultCount')) is not int
+                or report.get('resultCount') < 1
                 or report.get('qqPipelineTested') is not False
                 or report.get('timClientTested') is not False):
             continue
         scenarios = report.get('scenarios')
-        if not isinstance(scenarios, list):
+        if not isinstance(scenarios, list) or len(scenarios) != report.get('resultCount'):
             continue
         for scenario in scenarios:
             if not isinstance(scenario, dict) or scenario.get('passed') is not True:

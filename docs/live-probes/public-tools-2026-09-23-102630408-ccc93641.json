@@ -24,53 +24,39 @@
     {
       "tool": "bangumi.get_character_collection",
       "input": {
-        "characterId": 87968,
-        "username": "chii"
+        "characterId": 87968
       },
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "found",
-          "source",
-          "retrievedAt"
-        ]
+        "keys": ["found", "source", "retrievedAt"]
       }
     },
     {
       "tool": "bangumi.get_collection",
       "input": {
-        "subjectId": 41529,
-        "username": "chii"
+        "subjectId": 41529
       },
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "found"
-        ]
+        "keys": ["found"]
       }
     },
     {
       "tool": "bangumi.get_person_collection",
       "input": {
-        "personId": 13684,
-        "username": "chii"
+        "personId": 13684
       },
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "found",
-          "source",
-          "retrievedAt"
-        ]
+        "keys": ["found", "source", "retrievedAt"]
       }
     },
     {
       "tool": "bangumi.list_character_collections",
       "input": {
-        "username": "chii",
         "maxItems": 3
       },
       "httpRequests": 1,
@@ -84,7 +70,6 @@
     {
       "tool": "bangumi.list_collections",
       "input": {
-        "username": "chii",
         "subjectType": "anime",
         "limit": 3,
         "offset": 0
@@ -98,7 +83,6 @@
     {
       "tool": "bangumi.list_person_collections",
       "input": {
-        "username": "chii",
         "maxItems": 3
       },
       "httpRequests": 1,
@@ -109,5 +93,6 @@
         "itemsCount": 0
       }
     }
-  ]
+  ],
+  "redactions": ["username values omitted from recorded inputs"]
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import catalog from '../../docs/tool-catalog.json';
 
 const ROOT = process.cwd();
@@ -129,10 +131,66 @@ function rowsByTool(): Map<string, string[]> {
 }
 
 describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
+  it('does not count Agent/MCP reports from failed or incomplete CLI runs', () => {
+    const liveDir = mkdtempSync(join(tmpdir(), 'bangumi-e2e-evidence-'));
+    try {
+      const python = String.raw`
+import hashlib, importlib.util, json, pathlib, sys
+module_path = pathlib.Path(sys.argv[1])
+live_dir = pathlib.Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location('acceptance_generator', module_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.LIVE_PROBE_DIR = live_dir
+catalog = json.loads(module.CATALOG.read_text(encoding='utf-8'))
+catalog_hash = hashlib.sha256(module.CATALOG.read_bytes()).hexdigest()
+cases = [
+    ('valid', 0, 'SUCCESS', 1, True),
+    ('nonzero-exit', 1, 'SUCCESS', 1, True),
+    ('bool-exit', False, 'SUCCESS', 1, True),
+    ('failed-result', 0, 'FAILURE', 1, True),
+    ('missing-exit', None, 'SUCCESS', 1, False),
+    ('missing-result-count', 0, 'SUCCESS', None, True),
+    ('mismatched-result-count', 0, 'SUCCESS', 2, True),
+]
+for index, (label, exit_code, result_status, result_count, include_exit) in enumerate(cases):
+    tool_name = catalog[index]['name']
+    report = {
+        'schemaVersion': 1,
+        'evidenceKind': 'antigravity_cli_mcp_tool_use',
+        'catalogSha256': catalog_hash,
+        'profile': 'bangumi-compact-v1',
+        'resultStatus': result_status,
+        'resultCount': result_count,
+        'qqPipelineTested': False,
+        'timClientTested': False,
+        'scenarios': [{'passed': True, 'toolCalls': [{'name': tool_name, 'state': 'DONE'}]}],
+    }
+    if include_exit:
+        report['processExitCode'] = exit_code
+    if result_count is None:
+        report.pop('resultCount')
+    (live_dir / f'pariya-agent-{label}-e2e-{index}.json').write_text(json.dumps(report), encoding='utf-8')
+print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
+`;
+      const result = spawnSync(
+        'python3',
+        ['-c', python, join(ROOT, 'scripts/generate-tool-acceptance-tasks.py'), liveDir],
+        { encoding: 'utf8' },
+      );
+      expect(result.status, result.stderr).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual([catalog[0]?.name]);
+    } finally {
+      rmSync(liveDir, { recursive: true, force: true });
+    }
+  });
+
   it('records observed model-to-MCP calls without implying QQ or TIM acceptance', () => {
     const rows = rowsByTool();
     const catalogNames = catalog.map((item) => item.name).sort();
-    const evidenceNames = EVIDENCE.flatMap((report) =>
+    const evidenceNames = EVIDENCE.filter(
+      (report) => report.processExitCode === 0 && report.resultStatus === 'SUCCESS',
+    ).flatMap((report) =>
       report.scenarios.flatMap(
         (scenario: { toolCalls: Array<{ name: string }>; passed: boolean }) =>
           scenario.passed
@@ -317,6 +375,8 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.get_revision',
         'bangumi.get_revision_intelligence',
         'bangumi.get_series_watch_order',
+        'bangumi.get_subject',
+        'bangumi.get_subject_cast',
         'bangumi.get_subject_comparison',
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
@@ -336,6 +396,8 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
         'bangumi.resolve_subject_concept',
         'bangumi.search_characters',
         'bangumi.search_persons',
+        'bangumi.search_subjects',
+        'bangumi.query_subjects',
       ].sort(),
     );
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
@@ -500,9 +562,9 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       'bangumi.render_collection_schedule',
       'bangumi.render_collection_series_groups',
     ].sort();
-    expect(FULL_AUTH_DENIAL_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
-      expectedTools,
-    );
+    expect(
+      FULL_AUTH_DENIAL_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
+    ).toEqual(expectedTools);
     const rows = rowsByTool();
     for (const report of FULL_AUTH_DENIAL_QA_EVIDENCE) {
       expect(report).toMatchObject({
@@ -574,10 +636,9 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
   });
 
   it('accepts auth-mutation evidence only for the two fixed synthetic destructive tools', () => {
-    expect(FULL_AUTH_MUTATION_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual([
-      'bangumi.auth_disconnect',
-      'bangumi.auth_remove_account',
-    ]);
+    expect(
+      FULL_AUTH_MUTATION_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
+    ).toEqual(['bangumi.auth_disconnect', 'bangumi.auth_remove_account']);
     for (const report of FULL_AUTH_MUTATION_QA_EVIDENCE) {
       const scenario = report.scenarios[0];
       expect(report).toMatchObject({
@@ -631,9 +692,9 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       'bangumi.render_collection_schedule',
       'bangumi.render_collection_series_groups',
     ].sort();
-    expect(FULL_AUTH_FEATURE_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
-      expectedTools,
-    );
+    expect(
+      FULL_AUTH_FEATURE_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
+    ).toEqual(expectedTools);
     for (const report of FULL_AUTH_FEATURE_QA_EVIDENCE) {
       const scenario = report.scenarios[0];
       expect(report).toMatchObject({
