@@ -33,6 +33,14 @@ PUBLIC_API_FAILURE_STATES = {
     'unsupported',
     'upstream_error',
 }
+PUBLIC_API_REQUIRED_ASSERTIONS = {
+    'httpRequestObserved',
+    'nonEmptySummary',
+    'noErrorResult',
+    'nonNegativeCounts',
+    'countConsistency',
+    'passed',
+}
 def test_source() -> str:
     chunks = []
     for path in (ROOT / 'tests').rglob('*'):
@@ -102,6 +110,7 @@ def public_api_smoke_names(catalog: list[dict]) -> set[str]:
         for name in selected:
             result = result_by_name[name]
             summary = result.get('result')
+            assertions = result.get('assertions')
             request_count = result.get('httpRequests')
             recorded_input = result.get('input')
             if (
@@ -111,6 +120,9 @@ def public_api_smoke_names(catalog: list[dict]) -> set[str]:
                 or not summary
                 or summary.get('state') in PUBLIC_API_FAILURE_STATES
                 or 'error' in summary
+                or not isinstance(assertions, dict)
+                or not PUBLIC_API_REQUIRED_ASSERTIONS.issubset(assertions)
+                or not all(value is True for value in assertions.values())
                 or type(request_count) is not int
                 or request_count < 1
                 or not isinstance(recorded_input, dict)
@@ -331,7 +343,7 @@ def main() -> None:
         f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
         f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
         '',
-        '状态说明：`✅` 已有当前证据；`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、至少一个真实 HTTP 请求和无错误结果摘要；摘要不保存数据正文，也没有字段级期望值/完整性断言，因此不代表完整数据覆盖或稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
+        '状态说明：`✅` 已有当前证据；`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。报告不保存数据正文，也不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
         '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',

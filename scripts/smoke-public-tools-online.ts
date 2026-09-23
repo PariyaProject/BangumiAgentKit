@@ -20,6 +20,41 @@ const USERNAME_SCOPED_PROBES = new Set([
 
 type Probe = { name: string; input: Record<string, unknown> };
 
+const IDENTITY_ASSERTIONS: Record<string, { inputPath: string; resultKey: string }> = {
+  'bangumi.get_subject': { inputPath: 'subjectId', resultKey: 'id' },
+  'bangumi.get_subject_identity': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_overview': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_cast': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_staff': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_subject_index_membership': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_latest_subject_revision': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_character': { inputPath: 'characterId', resultKey: 'id' },
+  'bangumi.get_person': { inputPath: 'personId', resultKey: 'id' },
+  'bangumi.get_episode': { inputPath: 'episodeId', resultKey: 'id' },
+  'bangumi.get_subject_stats_intelligence': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_series_watch_order': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_episode_guide': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_episode_integrity': { inputPath: 'subjectId', resultKey: 'subjectId' },
+  'bangumi.get_revision': { inputPath: 'revisionId', resultKey: 'id' },
+  'bangumi.call_operation': { inputPath: 'pathParams.subject_id', resultKey: 'id' },
+};
+
+const MINIMUM_COUNTS: Record<string, { resultKey: string; minimum: number }> = {
+  'bangumi.search_subjects': { resultKey: 'total', minimum: 1 },
+  'bangumi.search_characters': { resultKey: 'total', minimum: 1 },
+  'bangumi.search_persons': { resultKey: 'total', minimum: 1 },
+  'bangumi.query_subjects': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.get_episodes': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.get_revision_intelligence': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.list_revisions': { resultKey: 'itemsCount', minimum: 1 },
+  'bangumi.list_collections': { resultKey: 'itemsCount', minimum: 1 },
+};
+
+const FAILED_RESULT_STATES = new Set([
+  'auth_required', 'error', 'not_computable', 'not_found', 'permission_denied',
+  'unavailable', 'unsupported', 'upstream_error',
+]);
+
 const probes: Probe[] = [
   { name: 'bangumi.get_subject', input: { subjectId: SUBJECT_ID } },
   { name: 'bangumi.get_subject_stats', input: { subjectId: SUBJECT_ID } },
@@ -179,6 +214,60 @@ function summarize(value: unknown): Record<string, unknown> {
   return { state: 'value', type: typeof value };
 }
 
+function getPath(value: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((current, key) => {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, value);
+}
+
+function validateProbeSummary(
+  probe: Probe,
+  summary: Record<string, unknown>,
+  httpRequests: number,
+): Record<string, boolean> {
+  const state = summary.state;
+  const noErrorResult = typeof state !== 'string' || !FAILED_RESULT_STATES.has(state);
+  const nonEmptySummary = Object.keys(summary).length > 0
+    && (state !== 'value' || (Array.isArray(summary.keys) && summary.keys.length > 0));
+  const countEntries = Object.entries(summary).filter(([key]) =>
+    key === 'total' || key === 'observed' || key === 'returned' || key.endsWith('Count'));
+  const nonNegativeCounts = countEntries.every(([, value]) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0);
+  const total = summary.total;
+  const returned = summary.returned;
+  const itemsCount = summary.itemsCount;
+  const countConsistency = !(
+    typeof total === 'number' && typeof itemsCount === 'number' && itemsCount > total
+  ) && !(
+    typeof returned === 'number' && typeof total === 'number' && returned > total
+  ) && !(
+    typeof returned === 'number' && typeof summary.observed === 'number'
+    && returned > summary.observed
+  );
+  const identity = IDENTITY_ASSERTIONS[probe.name];
+  const identityMatchesRequest = identity === undefined || (
+    typeof getPath(probe.input, identity.inputPath) === 'number'
+    && getPath(probe.input, identity.inputPath) === summary[identity.resultKey]
+  );
+  const minimum = MINIMUM_COUNTS[probe.name];
+  const minimumCountObserved = minimum === undefined || (
+    typeof summary[minimum.resultKey] === 'number'
+    && (summary[minimum.resultKey] as number) >= minimum.minimum
+  );
+  return {
+    httpRequestObserved: httpRequests > 0,
+    nonEmptySummary,
+    noErrorResult,
+    nonNegativeCounts,
+    countConsistency,
+    ...(identity ? { identityMatchesRequest } : {}),
+    ...(minimum ? { minimumCountObserved } : {}),
+    passed: httpRequests > 0 && nonEmptySummary && noErrorResult && nonNegativeCounts
+      && countConsistency && identityMatchesRequest && minimumCountObserved,
+  };
+}
+
 async function main(): Promise<void> {
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing live requests without ${LIVE_FLAG}.`);
@@ -231,11 +320,14 @@ async function main(): Promise<void> {
           },
         };
       }
+      const summary = summarize(result);
+      const httpRequests = requestCount - before;
       results.push({
         tool: probe.name,
         input: reportInput(probe),
-        httpRequests: requestCount - before,
-        result: summarize(result),
+        httpRequests,
+        result: summary,
+        assertions: validateProbeSummary(probe, summary, httpRequests),
       });
       if (index < selectedProbes.length - 1) await new Promise((resolve) => setTimeout(resolve, 1200));
     }
