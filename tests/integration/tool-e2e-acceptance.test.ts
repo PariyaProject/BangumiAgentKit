@@ -53,6 +53,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       'bangumi.list_operations',
       'bangumi.query_subjects',
       'bangumi.resolve_subject_concept',
+      'bangumi.search_characters',
       'bangumi.search_persons',
       'bangumi.search_subjects',
     ]);
@@ -100,6 +101,7 @@ describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
       'bangumi.get_calendar_intelligence',
       'bangumi.list_operations',
       'bangumi.resolve_subject_concept',
+      'bangumi.search_characters',
       'bangumi.search_persons',
     ]);
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
