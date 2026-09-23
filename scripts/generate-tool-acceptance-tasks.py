@@ -97,6 +97,14 @@ def direct_execute_sources() -> dict[str, set[str]]:
     return direct_execute_source_refs(sources)
 
 
+def report_source_ref(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        # Test harnesses may deliberately point LIVE_PROBE_DIR at a temporary directory.
+        return path.name
+
+
 def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust only current, hash-bound direct ToolRegistry calls with live HTTP results."""
     catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
@@ -165,7 +173,7 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or 'username' in recorded_input
             ):
                 continue
-            sources.setdefault(name, set()).add(path.relative_to(ROOT).as_posix())
+            sources.setdefault(name, set()).add(report_source_ref(path))
     return sources
 
 
@@ -252,7 +260,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                    for call in calls):
                 continue
             for call in calls:
-                sources.setdefault(call['name'], set()).add(path.relative_to(ROOT).as_posix())
+                sources.setdefault(call['name'], set()).add(report_source_ref(path))
     return sources
 
 
@@ -298,7 +306,7 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 or assertions.get('operationExecuted') is not False
                 or assertions.get('accountDataReturned') is not False):
             continue
-        sources.setdefault(name, set()).add(path.relative_to(ROOT).as_posix())
+        sources.setdefault(name, set()).add(report_source_ref(path))
     return sources
 
 

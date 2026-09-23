@@ -130,6 +130,10 @@ function rowsByTool(): Map<string, string[]> {
   return rows;
 }
 
+function statusMark(cell: string | undefined): string | undefined {
+  return cell?.split('<br>', 1)[0];
+}
+
 describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
   it('does not count Agent/MCP reports from failed or incomplete CLI runs', () => {
     const liveDir = mkdtempSync(join(tmpdir(), 'bangumi-e2e-evidence-'));
@@ -307,7 +311,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
 
     for (const [name, fields] of rows) {
       expect(fields, name).toHaveLength(13);
-      expect(fields[9], `${name} model/MCP`).toBe(evidenceNames.includes(name) ? '✅' : '⬜');
+      expect(statusMark(fields[9]), `${name} model/MCP`).toBe(evidenceNames.includes(name) ? '✅' : '⬜');
       expect(fields[10], `${name} QQ pipeline`).toBe('⬜');
       expect(fields[11], `${name} TIM client`).toBe('⬜');
     }
@@ -593,9 +597,9 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
-      expect(rows.get(scenario.id)?.[7]).toBe('✅');
+      expect(statusMark(rows.get(scenario.id)?.[7])).toBe('✅');
       expect(rows.get(scenario.id)?.[8]).toBe('⬜');
-      expect(rows.get(scenario.id)?.[9]).toBe('✅');
+      expect(statusMark(rows.get(scenario.id)?.[9])).toBe('✅');
     }
   });
 
@@ -631,7 +635,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(toolContractMatchesCurrent(report, 'bangumi.auth_switch_account')).toBe(true);
       expect(report.scenarios[0]).not.toHaveProperty('prompt');
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
-      expect(rowsByTool().get('bangumi.auth_switch_account')?.[9]).toBe('✅');
+      expect(statusMark(rowsByTool().get('bangumi.auth_switch_account')?.[9])).toBe('✅');
     }
   });
 
@@ -670,7 +674,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
       expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
-      expect(rowsByTool().get(scenario.id)?.[9]).toBe('✅');
+      expect(statusMark(rowsByTool().get(scenario.id)?.[9])).toBe('✅');
     }
   });
 
@@ -737,7 +741,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
       expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
-      expect(rowsByTool().get(scenario.id)?.[9]).toBe('✅');
+      expect(statusMark(rowsByTool().get(scenario.id)?.[9])).toBe('✅');
     }
   });
 
@@ -785,7 +789,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
       expect(rowsByTool().get(scenario.id)?.[8]).toBe('⬜');
-      expect(rowsByTool().get(scenario.id)?.[9]).toBe('✅');
+      expect(statusMark(rowsByTool().get(scenario.id)?.[9])).toBe('✅');
     }
   });
 
@@ -793,7 +797,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     const rows = rowsByTool();
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
       const name = report.scenarios[0].id;
-      expect(rows.get(name)?.[9]).toBe('✅');
+      expect(statusMark(rows.get(name)?.[9])).toBe('✅');
       expect(rows.get(name)?.[10]).toBe('⬜');
       expect(rows.get(name)?.[11]).toBe('⬜');
     }
