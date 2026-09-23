@@ -26,7 +26,7 @@ def main() -> int:
         if not match:
             continue
         fields = [part.strip() for part in line.strip('|').split('|')]
-        if len(fields) != 10:
+        if len(fields) != 12:
             raise SystemExit(f'bad acceptance row shape: {line}')
         name = match.group(1)
         if name in rows:
@@ -43,8 +43,8 @@ def main() -> int:
             raise SystemExit(f'{name}: directory/schema/source/direct execute coverage is incomplete')
         if fields[6] not in VALID_LIVE:
             raise SystemExit(f'{name}: invalid public API status {fields[6]!r}')
-        if fields[7] not in VALID_MARK or fields[8] not in VALID_MARK:
-            raise SystemExit(f'{name}: invalid auth or QQ/TIM status')
+        if any(fields[index] not in VALID_MARK for index in (7, 8, 9, 10)):
+            raise SystemExit(f'{name}: invalid auth, Agent/MCP, QQ pipeline, or TIM status')
 
     print(json.dumps({
         'catalog': len(expected),
@@ -54,7 +54,11 @@ def main() -> int:
         'public_not_applicable': sum(fields[6] == '—' for fields in rows.values()),
         'public_pending': sum(fields[6] == '⬜' for fields in rows.values()),
         'auth_pending': sum(fields[7] == '⬜' for fields in rows.values()),
-        'qq_pending': sum(fields[8] == '⬜' for fields in rows.values()),
+        'agent_mcp_e2e': sum(fields[8] == '✅' for fields in rows.values()),
+        'qq_pipeline_e2e': sum(fields[9] == '✅' for fields in rows.values()),
+        'tim_client_e2e': sum(fields[10] == '✅' for fields in rows.values()),
+        'qq_pipeline_pending': sum(fields[9] == '⬜' for fields in rows.values()),
+        'tim_client_pending': sum(fields[10] == '⬜' for fields in rows.values()),
     }, ensure_ascii=False))
     return 0
 
