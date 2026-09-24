@@ -35,6 +35,7 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog = [
             {'name': 'bangumi.get_subject', 'auth': 'none'},
+            {'name': 'bangumi.get_episode', 'auth': 'none'},
             {'name': 'bangumi.auth_status', 'auth': 'none'},
         ]
         self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
@@ -94,6 +95,27 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.assertEqual(
             GENERATOR.public_api_smoke_sources(self.catalog),
             {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
+        )
+
+    def test_combines_successful_partial_reports_per_tool(self):
+        self.write_report()
+        second_report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        second_report['selectedTools'] = ['bangumi.get_episode']
+        second_report['results'] = [{
+            **second_report['results'][0],
+            'tool': 'bangumi.get_episode',
+            'input': {'episodeId': 456},
+            'result': {'id': 456},
+        }]
+        second_path = self.report_path.with_name('public-tools-episode-fixture.json')
+        second_path.write_text(json.dumps(second_report), encoding='utf-8')
+
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog),
+            {
+                'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'},
+                'bangumi.get_episode': {'docs/live-probes/public-tools-episode-fixture.json'},
+            },
         )
 
     def test_model_mcp_evidence_keeps_the_per_tool_report_path(self):

@@ -136,13 +136,14 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         results = report.get('results')
         if (
             not isinstance(selected, list)
+            or not selected
             or not all(isinstance(name, str) for name in selected)
             or len(set(selected)) != len(selected)
-            or set(selected) != public_candidates
+            or not set(selected).issubset(public_candidates)
             or type(report.get('probeCount')) is not int
-            or report['probeCount'] != len(public_candidates)
+            or report['probeCount'] != len(selected)
             or not isinstance(results, list)
-            or len(results) != len(public_candidates)
+            or len(results) != len(selected)
         ):
             continue
         result_by_name = {
