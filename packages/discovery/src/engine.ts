@@ -448,7 +448,11 @@ export class DiscoveryEngine {
       plan.postFilters.length === 0 &&
       plan.derivedFilters.length === 1 &&
       plan.derivedFilters[0]?.field === 'order' &&
-      plan.hydrationRequirements.every((requirement) => requirement.reason === 'date_sort') &&
+      // Browse categories are pushed upstream; hydration only validates rows
+      // selected from the bounded tail page and does not change the query window.
+      plan.hydrationRequirements.every((requirement) =>
+        requirement.reason === 'date_sort' || requirement.reason === 'category_filter',
+      ) &&
       query.budget.maxPages >= 2 &&
       query.budget.maxCandidates >= pageSize;
     let reverseDateTailProbeAttempted = false;

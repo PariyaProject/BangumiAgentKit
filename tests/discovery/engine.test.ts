@@ -617,6 +617,30 @@ describe('bounded discovery engine', () => {
     expect(provider.browseOffsets).toEqual([0, 11]);
   });
 
+  it('reads the date tail for ascending top results with a pushed-down TV category', async () => {
+    const provider = new ReverseDateBrowseProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      year: 2026,
+      month: 7,
+      categories: 'tv',
+      sort: 'date',
+      order: 'asc',
+      limit: 3,
+    });
+
+    expect(result.plan.operation).toBe('browseSubjects');
+    expect(result.items.map((item) => [item.id, item.date])).toEqual([
+      [1, '2026-07-01'],
+      [2, '2026-07-02'],
+      [3, '2026-07-03'],
+    ]);
+    expect(result.coverage.scanned).toBe(20);
+    expect(result.coverage.hydrationsAttempted).toBe(0);
+    expect(result.coverage.upstreamExhausted).toBe(false);
+    expect(provider.browseOffsets).toEqual([0, 11]);
+  });
+
   it('falls back to forward paging when an exact browse total invalidates the date tail', async () => {
     const provider = new ReverseDateBrowseProvider(true);
     const result = await new DiscoveryEngine(provider).query({
