@@ -1,0 +1,4 @@
+# Optional dependencies used only by test_nonebot_adapter.py.
+# The generic bridge itself remains Python standard-library-only.
+nonebot2==2.5.0
+nonebot-adapter-onebot==2.4.6
