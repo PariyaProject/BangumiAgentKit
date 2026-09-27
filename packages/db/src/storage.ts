@@ -21,6 +21,7 @@ export interface FindOrCreatePrincipalInput {
 
 export interface ClaimPendingActionInput {
   confirmationId: string;
+  actionType: string;
   principalId: string;
   botInstanceId: string;
   conversationId: string;

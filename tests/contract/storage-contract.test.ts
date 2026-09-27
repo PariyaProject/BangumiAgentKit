@@ -146,6 +146,7 @@ function testStorageContract(name: string, createStorage: () => Promise<Storage 
 
       const claimed = await storage.claimPendingAction({
         confirmationId: action.id,
+        actionType: action.actionType,
         principalId: principal.id,
         botInstanceId: 'b-1',
         conversationId: 'c-1',

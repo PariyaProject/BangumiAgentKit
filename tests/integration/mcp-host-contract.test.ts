@@ -141,6 +141,7 @@ describe('MCP host confirmation contract', () => {
     });
     const registry = new ToolRegistry(dependencies);
     let executionCount = 0;
+    let alternateExecutionCount = 0;
     const grantState: { value?: string } = {};
     registry.registerTool(
       defineTool({
@@ -152,6 +153,20 @@ describe('MCP host confirmation contract', () => {
         risk: 'destructive',
         execute: async () => {
           executionCount += 1;
+          return { success: true };
+        },
+      }),
+    );
+    registry.registerTool(
+      defineTool({
+        name: 'test.other_destructive_write',
+        description: 'Different write with the same payload shape',
+        input: z.object({ value: z.string() }),
+        auth: 'none',
+        scopes: [],
+        risk: 'destructive',
+        execute: async () => {
+          alternateExecutionCount += 1;
           return { success: true };
         },
       }),
@@ -178,6 +193,14 @@ describe('MCP host confirmation contract', () => {
     expect(confirmationId).toMatch(/^cfm_/);
     expect(firstError.error.confirmationId).toBe(confirmationId);
     grantState.value = confirmationId;
+
+    const crossOperation = await client.callTool({
+      name: 'test.other_destructive_write',
+      arguments: { value: 'same-payload', _confirmationId: confirmationId },
+    });
+    expect(parseMcpError(crossOperation).error.code).toBe('CONFIRMATION_INVALID');
+    expect(executionCount).toBe(0);
+    expect(alternateExecutionCount).toBe(0);
 
     const noGrantApp = new BangumiMcpServer({
       dependencies,

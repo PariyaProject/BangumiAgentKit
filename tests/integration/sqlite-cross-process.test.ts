@@ -275,6 +275,7 @@ describe('SQLite independent-process concurrency', () => {
 
     const payload = {
       confirmationId: 'pending-cross-process',
+      actionType: 'test',
       principalId: principal.id,
       botInstanceId: 'bot-pending',
       conversationId: 'conversation-pending',

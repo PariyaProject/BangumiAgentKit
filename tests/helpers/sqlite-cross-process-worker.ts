@@ -57,6 +57,7 @@ async function main(): Promise<void> {
     case 'pending':
       value = await storage.claimPendingAction({
         confirmationId: String(payload.confirmationId),
+        actionType: String(payload.actionType),
         principalId: String(payload.principalId),
         botInstanceId: String(payload.botInstanceId),
         conversationId: String(payload.conversationId),

@@ -167,6 +167,7 @@ describe('PR-6A: SQLite Concurrency & Lock Tests', () => {
 
     const input = {
       confirmationId: action.id,
+      actionType: action.actionType,
       principalId: action.principalId,
       botInstanceId: action.botInstanceId,
       conversationId: action.conversationKey,
