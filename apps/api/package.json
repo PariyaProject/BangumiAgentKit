@@ -28,6 +28,6 @@
     "@bangumi-agent-kit/config": "workspace:*",
     "@bangumi-agent-kit/db": "workspace:*",
     "@bangumi-agent-kit/tools": "workspace:*",
-    "fastify": "^4.28.1"
+    "fastify": "^5.12.5"
   }
 }
