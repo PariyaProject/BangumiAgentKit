@@ -29,7 +29,7 @@
     "test:discovery": "vitest run tests/discovery tests/standalone/discovery-command.test.ts",
     "test:integration": "vitest run tests/integration",
     "test:integration:sqlite": "BANGUMI_DB_DRIVER=sqlite vitest run tests/integration",
-    "test:integration:postgres": "BANGUMI_DB_DRIVER=postgres vitest run tests/integration",
+    "test:integration:postgres": "BANGUMI_DB_DRIVER=postgres vitest run tests/integration --exclude tests/integration/oauth-callback-shared-sqlite.test.ts",
     "test:render": "vitest run tests/render",
     "test:standalone": "pnpm build && vitest run tests/standalone",
     "setup:local": "ts-node -P tsconfig.base.json scripts/setup-local.ts",
