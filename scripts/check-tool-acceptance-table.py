@@ -12,6 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
 TABLE = ROOT / 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'
+sys.path.insert(0, str(ROOT / 'scripts'))
+from client_evidence import tool_client_e2e_sources
 TOOL_ROW = re.compile(r'^\| `(bangumi\.[a-z0-9_]+)` \|')
 SOURCE_REFERENCE = re.compile(r'`(?P<path>tests/[^`|:]+):(?P<line>[1-9][0-9]*)`')
 LIVE_EVIDENCE_REFERENCE = re.compile(r'`(?P<path>docs/live-probes/[^`|]+\.json)`')
@@ -55,7 +57,10 @@ def status_mark(cell: str) -> str:
 
 def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
     mark = status_mark(cell)
-    expected_mark = {'public': '◐', 'auth_denial': '✅', 'agent_mcp': '✅'}[kind]
+    expected_mark = {
+        'public': '◐', 'auth_denial': '✅', 'agent_mcp': '✅',
+        'qq_pipeline': '✅', 'tim_client': '✅',
+    }[kind]
     parts = cell.split('<br>')
     references = list(LIVE_EVIDENCE_REFERENCE.finditer(cell))
     if mark != expected_mark:
@@ -97,7 +102,7 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                         and scenario.get('toolCalls') == [{'name': name, 'state': 'DONE'}]
                         for scenario in report.get('scenarios', []))
             )
-        else:
+        elif kind == 'agent_mcp':
             matches = (
                 isinstance(report, dict)
                 and any(
@@ -111,6 +116,17 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                     for scenario in report.get('scenarios', [])
                 )
             )
+        else:
+            try:
+                catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
+                qq_sources, tim_sources = tool_client_e2e_sources(
+                    catalog, catalog_path=CATALOG,
+                    report_dir=ROOT / 'docs/live-probes', root=ROOT,
+                )
+                sources = qq_sources if kind == 'qq_pipeline' else tim_sources
+                matches = name in sources and relative_path in sources[name]
+            except (OSError, ValueError, TypeError):
+                matches = False
         if not matches:
             return f'{name}: live evidence report {relative_path} does not contain evidence for {name}'
     return None
@@ -158,7 +174,10 @@ def main() -> int:
             raise SystemExit(f'{name}: invalid account-auth status')
         if any(status_mark(fields[index]) not in VALID_MARK for index in (9, 10, 11)):
             raise SystemExit(f'{name}: invalid auth gate, account auth, Agent/MCP, QQ pipeline, or TIM status')
-        for index, kind in ((6, 'public'), (7, 'auth_denial'), (9, 'agent_mcp')):
+        for index, kind in (
+            (6, 'public'), (7, 'auth_denial'), (9, 'agent_mcp'),
+            (10, 'qq_pipeline'), (11, 'tim_client'),
+        ):
             reference_error = evidence_reference_error(name, fields[index], kind)
             if reference_error:
                 raise SystemExit(reference_error)

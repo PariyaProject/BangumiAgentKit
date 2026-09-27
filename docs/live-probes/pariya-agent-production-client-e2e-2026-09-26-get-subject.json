@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "pariya_agent_tool_client_e2e",
+  "catalogSha256": "50437c55c6d7e8984834ee73ff27508ceb77c7e0bea6daf0b23a77db51561a56",
+  "profile": "public-render",
+  "tool": "bangumi.get_subject",
+  "scenario": "private_subject_detail_text_only",
+  "gateway": {
+    "image": "pariya-agent/agy-bangumi-poc:m1",
+    "upstreamRevision": "3122225882cf5875fcf9b9a43bd42034f6f15324",
+    "status": "OK",
+    "toolErrors": 0,
+    "toolCalls": [
+      {
+        "server": "bangumi",
+        "name": "bangumi.get_subject",
+        "state": "DONE"
+      }
+    ],
+    "artifactReturned": false,
+    "artifactReadbackVerified": false
+  },
+  "qqPipeline": {
+    "eventId": "e2c201f976e01d0d",
+    "receivedAt": "2026-09-26T10:54:48.151Z",
+    "modelFinishedAt": "2026-09-26T10:55:08.626Z",
+    "sentAt": "2026-09-26T10:55:08.792Z",
+    "phases": [
+      "candidate",
+      "received",
+      "submitted",
+      "result",
+      "rendering",
+      "sending",
+      "sent"
+    ],
+    "resultCode": "OK",
+    "sendFailed": false,
+    "uncertain": false,
+    "incomplete": false,
+    "duplicate": false,
+    "orderingViolations": 0,
+    "nativeTextSegmentsObservedInTim": true
+  },
+  "timClient": {
+    "observed": true,
+    "inputObserved": true,
+    "inputMethod": "paste",
+    "textDisplayed": true,
+    "displayedImage": false,
+    "evidenceSource": "computer_use_observed",
+    "scope": "private_dm",
+    "recipientIsBot": true,
+    "onlyAuthorizedConversation": true
+  },
+  "privacy": {
+    "messageBodyStored": false,
+    "replyBodyStored": false,
+    "qqIdStored": false,
+    "screenshotStored": false
+  }
+}

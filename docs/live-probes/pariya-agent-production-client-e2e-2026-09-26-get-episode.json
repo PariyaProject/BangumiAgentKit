@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "pariya_agent_tool_client_e2e",
+  "catalogSha256": "50437c55c6d7e8984834ee73ff27508ceb77c7e0bea6daf0b23a77db51561a56",
+  "profile": "public-render",
+  "tool": "bangumi.get_episode",
+  "scenario": "private_single_episode_record_text_only",
+  "gateway": {
+    "image": "pariya-agent/agy-bangumi-poc:m1",
+    "upstreamRevision": "3122225882cf5875fcf9b9a43bd42034f6f15324",
+    "status": "OK",
+    "toolErrors": 0,
+    "artifactReturned": false,
+    "artifactReadbackVerified": false,
+    "toolCalls": [
+      {
+        "server": "bangumi",
+        "name": "bangumi.get_episode",
+        "state": "DONE"
+      }
+    ]
+  },
+  "qqPipeline": {
+    "eventId": "e865be0b4072b2df",
+    "receivedAt": "2026-09-26T13:56:18.711Z",
+    "modelFinishedAt": "2026-09-26T13:56:36.304Z",
+    "sentAt": "2026-09-26T13:56:38.263Z",
+    "phases": [
+      "candidate",
+      "received",
+      "submitted",
+      "result",
+      "rendering",
+      "sending",
+      "sent"
+    ],
+    "resultCode": "OK",
+    "sendFailed": false,
+    "uncertain": false,
+    "incomplete": false,
+    "duplicate": false,
+    "orderingViolations": 0,
+    "nativeTextSegmentsObservedInTim": true,
+    "nativeImageSegmentObservedInTim": true
+  },
+  "timClient": {
+    "observed": true,
+    "inputObserved": true,
+    "inputMethod": "typeText",
+    "textDisplayed": true,
+    "displayedImage": true,
+    "imageOrigin": "astrbot_presentation",
+    "evidenceSource": "computer_use_observed",
+    "scope": "private_dm",
+    "recipientIsBot": true,
+    "onlyAuthorizedConversation": true,
+    "messageFormat": "single_text_plus_astrbot_image",
+    "markdownSyntaxVisible": false
+  },
+  "privacy": {
+    "messageBodyStored": false,
+    "replyBodyStored": false,
+    "qqIdStored": false,
+    "screenshotStored": false
+  }
+}

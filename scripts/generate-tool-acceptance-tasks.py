@@ -5,6 +5,10 @@ import hashlib
 import json
 import re
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from client_evidence import tool_client_e2e_sources
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / 'docs/tool-catalog.json'
@@ -315,6 +319,15 @@ def auth_gate_denial_names(catalog: list[dict]) -> set[str]:
     return set(auth_gate_denial_sources(catalog))
 
 
+def live_client_e2e_sources(catalog: list[dict]) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    return tool_client_e2e_sources(
+        catalog,
+        catalog_path=CATALOG,
+        report_dir=LIVE_PROBE_DIR,
+        root=ROOT,
+    )
+
+
 def status(
     tool: dict,
     catalog_index: int,
@@ -322,6 +335,8 @@ def status(
     public_api_sources: dict[str, set[str]],
     auth_gate_denial_sources: dict[str, set[str]],
     model_mcp_e2e_sources: dict[str, set[str]],
+    qq_pipeline_sources: dict[str, set[str]],
+    tim_client_sources: dict[str, set[str]],
 ) -> tuple[str, ...]:
     def with_sources(mark: str, sources: set[str]) -> str:
         if not sources:
@@ -351,10 +366,8 @@ def status(
         with_sources('✅', model_mcp_e2e_sources[name])
         if name in model_mcp_e2e_sources else '⬜'
     )
-    # The 96 per-tool QQ bridge and TIM client stages have separate evidence
-    # requirements; Agent/MCP runs never satisfy them.
-    qq_pipeline = '⬜'
-    tim_client = '⬜'
+    qq_pipeline = with_sources('✅', qq_pipeline_sources[name]) if name in qq_pipeline_sources else '⬜'
+    tim_client = with_sources('✅', tim_client_sources[name]) if name in tim_client_sources else '⬜'
     return schema, source, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client
 
 
@@ -384,6 +397,9 @@ def main() -> None:
     names = {item['name'] for item in catalog}
     model_mcp_sources_by_name = model_mcp_e2e_sources(catalog)
     model_mcp_e2e = set(model_mcp_sources_by_name)
+    qq_pipeline_sources_by_name, tim_client_sources_by_name = live_client_e2e_sources(catalog)
+    qq_pipeline_e2e = set(qq_pipeline_sources_by_name)
+    tim_client_e2e = set(tim_client_sources_by_name)
     missing_source = sorted(name for name in names if name not in source)
     if missing_source:
         raise SystemExit('Missing test source references: ' + ', '.join(missing_source))
@@ -416,10 +432,10 @@ def main() -> None:
         f'- [ ] 需要账号的工具完成真实 OAuth/账号验收：{auth_count} 项目前不能用本地 mock 代替。',
         f'- [{"x" if auth_gate_count == auth_gate_total else " "}] 未认证只读门禁拒绝路径已验证：{auth_gate_count}/{auth_gate_total} 项；门禁通过不代表真实账号功能通过。',
         f'- [{"x" if model_mcp_count == len(catalog) else " "}] 每个工具都有实际 Agent→MCP 模型调用证据：{model_mcp_count}/{len(catalog)}。',
-        f'- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/{len(catalog)}。',
-        f'- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/{len(catalog)}。',
+        f'- [{"x" if len(qq_pipeline_e2e) == len(catalog) else " "}] 每个工具都有 QQ 消息管线端到端证据：当前 {len(qq_pipeline_e2e)}/{len(catalog)}。',
+        f'- [{"x" if len(tim_client_e2e) == len(catalog) else " "}] 每个工具都有 TIM 客户端端到端证据：当前 {len(tim_client_e2e)}/{len(catalog)}。',
         '',
-        '状态说明：`注册/Schema目录引用` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号。真实公开 API、未认证门禁和 Agent/MCP 通过项也列出具体 JSON 报告文件。直接夹具和 Agent/MCP 证据不代表真实账号、QQ/TIM 验收。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。报告不保存数据正文，也不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
+        '状态说明：`注册/Schema目录引用` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号。公开 API、未认证门禁、Agent/MCP 与真实客户端通过项均列出具体 JSON 报告文件。离线 OneBot fixture、WebChat 或 Agent/MCP 本身不满足真实 QQ/TIM 列。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。客户端报告仅保留目标工具名、脱敏投递阶段与客户端观察布尔值，不保存消息正文/QQ 号/截图；它不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
         '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
@@ -429,6 +445,7 @@ def main() -> None:
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
             item, catalog_index, direct_source_refs, public_api_sources,
             auth_gate_denial_sources_by_name, model_mcp_sources_by_name,
+            qq_pipeline_sources_by_name, tim_client_sources_by_name,
         )
         next_step = []
         if execute == '⬜':
@@ -453,6 +470,18 @@ def main() -> None:
 
     lines.extend([
         '',
+        '## 真实生产 QQ/TIM 逐工具客户端证据',
+        '',
+        '下列勾选只来自当前锁定生产 profile 的真实工具调用、OneBot 收发阶段和真实 TIM 客户端画面三者关联的脱敏报告；离线 fixture 不会进入此列。账号必需、写入和破坏性工具仍需真实 OAuth/账号与专门授权，安全公开 profile 报告不能替代它们。',
+        '',
+    ])
+    for name in sorted(qq_pipeline_e2e | tim_client_e2e):
+        qq_refs = '<br>'.join(f'`{path}`' for path in sorted(qq_pipeline_sources_by_name.get(name, set())))
+        tim_refs = '<br>'.join(f'`{path}`' for path in sorted(tim_client_sources_by_name.get(name, set()))) or '未观察到 TIM 客户端'
+        lines.append(f'- [x] `{name}`：QQ 管线 {qq_refs}；TIM 客户端 {tim_refs}。')
+    lines.extend([
+        f'- [ ] 仍待逐工具实测：QQ 管线 {len(catalog) - len(qq_pipeline_e2e)}/{len(catalog)}；TIM 客户端 {len(catalog) - len(tim_client_e2e)}/{len(catalog)}。',
+        '',
         '## 认证验收任务',
         '',
         '- [ ] 用真实 Bangumi OAuth 完成 `auth_start` → 回调 → `auth_status`。',
@@ -470,7 +499,7 @@ def main() -> None:
         '- [ ] 后续只在语音桥、模型 CLI、AstrBot 或 OneBot 媒体处理改动后重跑；本次单次成功不代表各种口音、近音词、时长和编码都已覆盖。',
         '- [ ] QQ 登录掉线率仍需长期观察；语音验收不代表掉线稳定性问题已解决。',
         '',
-        '说明：这项真人语音验收与上方 96 个工具逐项的 QQ 管线/TIM 客户端列相互独立；它不把 96 个工具的 QQ/TIM 覆盖数从 0/96 改成已完成。',
+        '说明：真人语音验收只证明一条真实 `record` 输入链路并获得准确回复；它与上方 96 个工具逐项的 QQ 管线/TIM 客户端列相互独立。本表中 `render_subject_overview` 的 1/96 客户端证据来自单作品信息卡文字+图片交互，不来自真人语音样本。',
         '',
         '这份清单完成前，不再把“完整工具覆盖”简称为“所有工具都真实测试过”。',
     ])
@@ -479,7 +508,8 @@ def main() -> None:
                'live_public': live_count, 'auth_required_or_optional': auth_count,
                'auth_gate_denial': len(auth_gate_denial_set),
                'auth_gate_pending': sum(item.get('auth') == 'required' and item.get('risk') == 'read' and item['name'] not in auth_gate_denial_set for item in catalog),
-               'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': 0, 'tim_client_e2e': 0,
+               'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': len(qq_pipeline_e2e),
+               'tim_client_e2e': len(tim_client_e2e),
                'output': str(OUTPUT)}
     if args.check:
         try:

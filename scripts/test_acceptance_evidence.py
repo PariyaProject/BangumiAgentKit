@@ -187,6 +187,269 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
 
+class PerToolClientEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='tool-client-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.live_probe_dir = self.root / 'docs/live-probes'
+        self.live_probe_dir.mkdir(parents=True)
+        self.catalog = [
+            {'name': 'bangumi.render_subject_overview', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.render_calendar', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.get_subject', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.get_subject_cast', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.get_subject_index_membership', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.get_index', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.render_subject_card', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.get_my_collection', 'auth': 'required', 'risk': 'read'},
+            {'name': 'bangumi.update_collection', 'auth': 'required', 'risk': 'write'},
+        ]
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.write_text(json.dumps(self.catalog), encoding='utf-8')
+        self.original_root = GENERATOR.ROOT
+        self.original_catalog = GENERATOR.CATALOG
+        self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
+        GENERATOR.ROOT = self.root
+        GENERATOR.CATALOG = self.catalog_path
+        GENERATOR.LIVE_PROBE_DIR = self.live_probe_dir
+        self.report_path = self.live_probe_dir / 'pariya-agent-production-client-e2e-2026-09-26.json'
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        GENERATOR.CATALOG = self.original_catalog
+        GENERATOR.LIVE_PROBE_DIR = self.original_probe_dir
+        self.temp_dir.cleanup()
+
+    def write_report(self, **overrides):
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'pariya_agent_tool_client_e2e',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'profile': 'public-render',
+            'tool': 'bangumi.render_subject_overview',
+            'gateway': {
+                'image': 'pariya-agent/agy-bangumi-poc:m1',
+                'status': 'OK',
+                'toolErrors': 1,
+                'toolCalls': [
+                    {'server': 'bangumi', 'name': 'bangumi.render_subject_overview', 'state': 'ERROR'},
+                    {'server': 'bangumi', 'name': 'bangumi.render_subject_overview', 'state': 'DONE'},
+                ],
+                'artifactReturned': True,
+            },
+            'qqPipeline': {
+                'eventId': 'dc5f170283995af1',
+                'phases': ['candidate', 'received', 'submitted', 'result', 'rendering', 'sending', 'sent'],
+                'resultCode': 'OK',
+                'sendFailed': False,
+                'uncertain': False,
+                'incomplete': False,
+                'duplicate': False,
+                'orderingViolations': 0,
+            },
+            'timClient': {
+                'observed': True,
+                'inputObserved': True,
+                'textDisplayed': True,
+                'displayedImage': True,
+                'imageOrigin': 'bangumi_artifact',
+                'evidenceSource': 'computer_use_observed',
+                'scope': 'private_dm',
+                'recipientIsBot': True,
+                'onlyAuthorizedConversation': True,
+            },
+            'privacy': {
+                'messageBodyStored': False,
+                'replyBodyStored': False,
+                'qqIdStored': False,
+                'screenshotStored': False,
+            },
+        }
+        report.update(overrides)
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_counts_hash_bound_tool_specific_onebot_and_tim_observation(self):
+        self.write_report()
+        qq_sources, tim_sources = GENERATOR.live_client_e2e_sources(self.catalog)
+        reference = {'docs/live-probes/pariya-agent-production-client-e2e-2026-09-26.json'}
+        self.assertEqual(qq_sources, {'bangumi.render_subject_overview': reference})
+        self.assertEqual(tim_sources, {'bangumi.render_subject_overview': reference})
+
+    def test_text_only_tool_can_pass_tim_client_without_image(self):
+        self.write_report(
+            tool='bangumi.get_subject',
+            gateway={
+                'image': 'pariya-agent/agy-bangumi-poc:m1', 'status': 'OK', 'toolErrors': 0,
+                'toolCalls': [{'server':'bangumi','name':'bangumi.get_subject','state':'DONE'}],
+                'artifactReturned': False,
+            },
+            timClient={
+                'observed': True, 'inputObserved': True, 'textDisplayed': True,
+                'displayedImage': False, 'evidenceSource':'computer_use_observed',
+                'scope':'private_dm', 'recipientIsBot':True, 'onlyAuthorizedConversation':True,
+            },
+        )
+        qq_sources, tim_sources = GENERATOR.live_client_e2e_sources(self.catalog)
+        self.assertIn('bangumi.get_subject', qq_sources)
+        self.assertIn('bangumi.get_subject', tim_sources)
+
+    def test_non_renderer_tim_card_may_be_composed_by_astrbot_presentation(self):
+        self.write_report(
+            tool='bangumi.get_subject_cast',
+            gateway={
+                'image':'pariya-agent/agy-bangumi-poc:m1','status':'OK','toolErrors':0,
+                'toolCalls':[{'server':'bangumi','name':'bangumi.get_subject_cast','state':'DONE'}],
+                'artifactReturned':False,
+            },
+            timClient={
+                'observed':True,'inputObserved':True,'textDisplayed':True,'displayedImage':True,
+                'imageOrigin':'astrbot_presentation','evidenceSource':'computer_use_observed',
+                'scope':'private_dm','recipientIsBot':True,'onlyAuthorizedConversation':True,
+            },
+        )
+        qq_sources,tim_sources=GENERATOR.live_client_e2e_sources(self.catalog)
+        self.assertIn('bangumi.get_subject_cast',qq_sources)
+        self.assertIn('bangumi.get_subject_cast',tim_sources)
+
+    def test_safe_multi_tool_read_workflow_counts_each_exact_reported_target(self):
+        tool_calls = [
+            {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+            {'server': 'bangumi', 'name': 'bangumi.get_index', 'state': 'DONE'},
+            {'server': 'bangumi', 'name': 'bangumi.get_index', 'state': 'DONE'},
+            {'server': 'bangumi', 'name': 'bangumi.get_index', 'state': 'DONE'},
+        ]
+        gateway = {
+            'image': 'pariya-agent/agy-bangumi-poc:m1', 'status': 'OK', 'toolErrors': 0,
+            'toolCalls': tool_calls, 'artifactReturned': False,
+        }
+        tim_client = {
+            'observed': True, 'inputObserved': True, 'textDisplayed': True,
+            'displayedImage': False, 'evidenceSource': 'computer_use_observed',
+            'scope': 'private_dm', 'recipientIsBot': True, 'onlyAuthorizedConversation': True,
+        }
+        self.write_report(
+            tool='bangumi.get_subject_index_membership', gateway=gateway, timClient=tim_client,
+        )
+        second = json.loads(self.report_path.read_text(encoding='utf-8'))
+        second['tool'] = 'bangumi.get_index'
+        second_path = self.report_path.with_name(
+            'pariya-agent-production-client-e2e-2026-09-26-index-detail.json'
+        )
+        second_path.write_text(json.dumps(second), encoding='utf-8')
+
+        qq_sources, tim_sources = GENERATOR.live_client_e2e_sources(self.catalog)
+        self.assertIn('bangumi.get_subject_index_membership', qq_sources)
+        self.assertIn('bangumi.get_index', qq_sources)
+        self.assertIn('bangumi.get_subject_index_membership', tim_sources)
+        self.assertIn('bangumi.get_index', tim_sources)
+
+    def test_rejects_multi_tool_workflows_with_unsafe_failed_or_unbounded_calls(self):
+        cases = [
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+                {'server': 'bangumi', 'name': 'bangumi.update_collection', 'state': 'DONE'},
+            ],
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+                {'server': 'bangumi', 'name': 'bangumi.get_my_collection', 'state': 'DONE'},
+            ],
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+                {'server': 'bangumi', 'name': 'bangumi.not_in_catalog', 'state': 'DONE'},
+            ],
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_index', 'state': 'DONE'},
+            ],
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+                {'server': 'other', 'name': 'bangumi.get_index', 'state': 'DONE'},
+            ],
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+                {'server': 'bangumi', 'name': 'bangumi.get_index', 'state': 'ERROR'},
+            ],
+            [
+                {'server': 'bangumi', 'name': 'bangumi.get_subject_index_membership', 'state': 'DONE'},
+                *([{'server': 'bangumi', 'name': 'bangumi.get_index', 'state': 'DONE'}] * 9),
+            ],
+        ]
+        for tool_calls in cases:
+            with self.subTest(tool_calls=tool_calls):
+                self.write_report(
+                    tool='bangumi.get_subject_index_membership',
+                    gateway={
+                        'image': 'pariya-agent/agy-bangumi-poc:m1', 'status': 'OK',
+                        'toolErrors': sum(call['state'] == 'ERROR' for call in tool_calls),
+                        'toolCalls': tool_calls, 'artifactReturned': False,
+                    },
+                )
+                self.assertEqual(GENERATOR.live_client_e2e_sources(self.catalog), ({}, {}))
+
+    def test_multi_tool_renderer_evidence_requires_and_counts_native_artifact(self):
+        self.write_report(
+            tool='bangumi.get_subject',
+            gateway={
+                'image': 'pariya-agent/agy-bangumi-poc:m1', 'status': 'OK', 'toolErrors': 0,
+                'toolCalls': [
+                    {'server': 'bangumi', 'name': 'bangumi.get_subject', 'state': 'DONE'},
+                    {'server': 'bangumi', 'name': 'bangumi.render_subject_card', 'state': 'DONE'},
+                ],
+                'artifactReturned': True,
+            },
+            timClient={
+                'observed': True, 'inputObserved': True, 'textDisplayed': True, 'displayedImage': True,
+                'imageOrigin': 'bangumi_artifact', 'evidenceSource': 'computer_use_observed',
+                'scope': 'private_dm', 'recipientIsBot': True, 'onlyAuthorizedConversation': True,
+            },
+        )
+        second = json.loads(self.report_path.read_text(encoding='utf-8'))
+        second['tool'] = 'bangumi.render_subject_card'
+        second_path = self.report_path.with_name(
+            'pariya-agent-production-client-e2e-2026-09-26-render-card.json'
+        )
+        second_path.write_text(json.dumps(second), encoding='utf-8')
+
+        qq_sources, tim_sources = GENERATOR.live_client_e2e_sources(self.catalog)
+        self.assertIn('bangumi.get_subject', qq_sources)
+        self.assertIn('bangumi.render_subject_card', qq_sources)
+        self.assertIn('bangumi.get_subject', tim_sources)
+        self.assertIn('bangumi.render_subject_card', tim_sources)
+
+    def test_qq_pipeline_without_visible_tim_client_counts_only_qq_stage(self):
+        self.write_report(timClient={'observed': False})
+        qq_sources, tim_sources = GENERATOR.live_client_e2e_sources(self.catalog)
+        self.assertIn('bangumi.render_subject_overview', qq_sources)
+        self.assertNotIn('bangumi.render_subject_overview', tim_sources)
+
+    def test_rejects_stale_catalog_and_private_or_write_tools(self):
+        self.write_report(catalogSha256='0' * 64)
+        self.assertEqual(GENERATOR.live_client_e2e_sources(self.catalog), ({}, {}))
+        self.write_report(tool='bangumi.update_collection')
+        self.assertEqual(GENERATOR.live_client_e2e_sources(self.catalog), ({}, {}))
+
+    def test_rejects_uncertain_send_and_wrong_tool_retry(self):
+        self.write_report(qqPipeline={
+            'eventId': 'dc5f170283995af1',
+            'phases': ['candidate', 'received', 'submitted', 'result', 'rendering', 'sending', 'send_failed'],
+            'resultCode': 'OK', 'sendFailed': True, 'uncertain': True, 'incomplete': True,
+            'duplicate': False, 'orderingViolations': 0,
+        })
+        self.assertEqual(GENERATOR.live_client_e2e_sources(self.catalog), ({}, {}))
+
+    def test_rejects_reports_that_retain_private_message_content(self):
+        self.write_report(privacy={'messageBodyStored': True, 'replyBodyStored': False,
+                                   'qqIdStored': False, 'screenshotStored': False})
+        self.assertEqual(GENERATOR.live_client_e2e_sources(self.catalog), ({}, {}))
+        self.write_report(gateway={
+            'image': 'pariya-agent/agy-bangumi-poc:m1', 'status': 'OK', 'toolErrors': 1,
+            'toolCalls': [
+                {'server': 'bangumi', 'name': 'bangumi.render_calendar', 'state': 'ERROR'},
+                {'server': 'bangumi', 'name': 'bangumi.render_subject_overview', 'state': 'DONE'},
+            ],
+            'artifactReturned': True,
+        })
+        self.assertEqual(GENERATOR.live_client_e2e_sources(self.catalog), ({}, {}))
+
 class DirectExecuteSourceTests(unittest.TestCase):
     def test_requires_tool_execute_or_known_fixture_wrapper(self):
         source = """
@@ -226,6 +489,12 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         test_file.write_text('line one\nline two\n', encoding='utf-8')
         probe_dir = self.root / 'docs/live-probes'
         probe_dir.mkdir(parents=True)
+        catalog = [
+            {'name': 'bangumi.get_subject', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.render_subject_overview', 'auth': 'none', 'risk': 'read'},
+        ]
+        catalog_path = self.root / 'docs/tool-catalog.json'
+        catalog_path.write_text(json.dumps(catalog), encoding='utf-8')
         (probe_dir / 'public-tools-fixture.json').write_text(json.dumps({
             'selectedTools': ['bangumi.get_subject'],
             'results': [{'tool': 'bangumi.get_subject'}],
@@ -244,11 +513,47 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
                 'toolCalls': [{'name': 'bangumi.get_subject', 'state': 'DONE'}],
             }],
         }), encoding='utf-8')
+        self.client_report_name = 'pariya-agent-production-client-e2e-2026-09-26.json'
+        self.client_report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'pariya_agent_tool_client_e2e',
+            'catalogSha256': hashlib.sha256(catalog_path.read_bytes()).hexdigest(),
+            'profile': 'public-render',
+            'tool': 'bangumi.render_subject_overview',
+            'gateway': {
+                'image': 'pariya-agent/agy-bangumi-poc:m1', 'status': 'OK', 'toolErrors': 1,
+                'toolCalls': [
+                    {'server': 'bangumi', 'name': 'bangumi.render_subject_overview', 'state': 'ERROR'},
+                    {'server': 'bangumi', 'name': 'bangumi.render_subject_overview', 'state': 'DONE'},
+                ],
+                'artifactReturned': True,
+            },
+            'qqPipeline': {
+                'eventId': 'dc5f170283995af1',
+                'phases': ['candidate', 'received', 'submitted', 'result', 'rendering', 'sending', 'sent'],
+                'resultCode': 'OK', 'sendFailed': False, 'uncertain': False,
+                'incomplete': False, 'duplicate': False, 'orderingViolations': 0,
+            },
+            'timClient': {
+                'observed': True, 'inputObserved': True, 'textDisplayed': True,
+                'displayedImage': True, 'imageOrigin': 'bangumi_artifact',
+                'evidenceSource': 'computer_use_observed', 'scope': 'private_dm',
+                'recipientIsBot': True, 'onlyAuthorizedConversation': True,
+            },
+            'privacy': {
+                'messageBodyStored': False, 'replyBodyStored': False,
+                'qqIdStored': False, 'screenshotStored': False,
+            },
+        }
+        (probe_dir / self.client_report_name).write_text(json.dumps(self.client_report), encoding='utf-8')
         self.original_root = TABLE_CHECKER.ROOT
+        self.original_catalog = TABLE_CHECKER.CATALOG
         TABLE_CHECKER.ROOT = self.root
+        TABLE_CHECKER.CATALOG = catalog_path
 
     def tearDown(self):
         TABLE_CHECKER.ROOT = self.original_root
+        TABLE_CHECKER.CATALOG = self.original_catalog
         self.temp_dir.cleanup()
 
     def test_accepts_existing_test_file_and_line_reference(self):
@@ -302,6 +607,37 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
             'bangumi.get_subject', '✅<br>`docs/live-probes/auth-denial-fixture.json`', 'auth_denial'
         ))
+
+    def test_accepts_live_qq_pipeline_report_reference_for_the_same_tool(self):
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.render_subject_overview',
+            f'✅<br>`docs/live-probes/{self.client_report_name}`', 'qq_pipeline',
+        ))
+
+    def test_accepts_live_tim_client_report_reference_for_the_same_tool(self):
+        self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
+            'bangumi.render_subject_overview',
+            f'✅<br>`docs/live-probes/{self.client_report_name}`', 'tim_client',
+        ))
+
+    def test_rejects_tim_client_report_for_a_different_tool(self):
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.get_subject',
+            f'✅<br>`docs/live-probes/{self.client_report_name}`', 'tim_client',
+        )
+        self.assertIn('does not contain evidence for bangumi.get_subject', error)
+
+    def test_rejects_client_report_without_catalog_binding(self):
+        report = dict(self.client_report)
+        report['catalogSha256'] = '0' * 64
+        (self.root / 'docs/live-probes' / self.client_report_name).write_text(
+            json.dumps(report), encoding='utf-8',
+        )
+        error = TABLE_CHECKER.evidence_reference_error(
+            'bangumi.render_subject_overview',
+            f'✅<br>`docs/live-probes/{self.client_report_name}`', 'tim_client',
+        )
+        self.assertIn('does not contain evidence', error)
 
     def test_rejects_success_status_without_a_report_path(self):
         error = TABLE_CHECKER.evidence_reference_error('bangumi.get_subject', '◐', 'public')
