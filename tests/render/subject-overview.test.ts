@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
@@ -8,6 +8,7 @@ import {
   type CapabilityResult,
   type SubjectStatsData,
 } from '@bangumi-agent-kit/provider-core';
+import { createRenderPresentationTools } from '@bangumi-agent-kit/tools';
 import {
   buildSubjectOverviewViewModel,
   extractImageUrls,
@@ -328,7 +329,7 @@ describe('Subject Overview renderer', () => {
     expect(html).toContain('少女终末旅行');
     expect(html).toContain('评分与收藏统计');
     expect(html).toContain('完整');
-    expect(html).toContain('限制：');
+    expect(html).toContain('有界样本');
     expect(html).not.toContain('example.test');
     expect(
       renderHtmlTemplate(buildSubjectOverviewViewModel(partial), 'bangumi-light', {}, 960),
@@ -414,11 +415,19 @@ describe('Subject Overview renderer', () => {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
       for (const width of [640, 960]) {
-        const rendered = await renderService.renderCard(vm, { width });
+        const deviceScaleFactor = width === 640 ? 1 : 2;
+        const rendered = await renderService.renderCard(vm, {
+          width,
+          deviceScaleFactor,
+        });
         expect(rendered.template, `${name} template`).toBe('subject-overview');
-        expect(rendered.width, `${name} width`).toBe(width * 2);
+        expect(rendered.width, `${name} width`).toBe(width * deviceScaleFactor);
         expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC), `${name} PNG`).toBe(true);
         expect(rendered.buffer.length, `${name} bytes`).toBeGreaterThan(1000);
+        expect(rendered.height, `${name} height`).toBeLessThanOrEqual(8192);
+        if (width === 640) {
+          expect(rendered.buffer.length, `${name} mobile payload`).toBeLessThan(1_000_000);
+        }
         if (visualQaDir) {
           await writeFile(
             path.join(visualQaDir, `subject-overview-${name}-${width}.png`),
@@ -428,4 +437,45 @@ describe('Subject Overview renderer', () => {
       }
     }
   }, 20_000);
+
+  it('uses the mobile-sized canvas for the public subject overview artifact', async () => {
+    const renderCard = vi.fn(async () => ({
+      buffer: VALID_PNG_BUFFER,
+      mimeType: 'image/png' as const,
+      width: 640,
+      height: 1200,
+      template: 'subject-overview' as const,
+      templateVersion: 1,
+      cacheKey: 'subject-overview-mobile',
+      warnings: [],
+    }));
+    const artifactStore = {
+      saveArtifact: vi.fn(async () => ({
+        id: 'mobile-overview-artifact',
+        mimeType: 'image/png' as const,
+        width: 640,
+        height: 1200,
+      })),
+    };
+    const tools = createRenderPresentationTools(
+      { renderCard } as unknown as RenderService,
+      artifactStore as never,
+    );
+    const overview = tools.find((tool) => tool.name === 'bangumi.render_subject_overview');
+    expect(overview).toBeDefined();
+
+    await overview!.execute({ subjectId: 123 } as never, {} as never, {
+      publicHttpClient: buildSemanticClient('complete', 'valid'),
+      providerRegistry: buildStatsProvider(),
+    });
+
+    expect(renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({ template: 'subject-overview' }),
+      { width: 640, deviceScaleFactor: 1 },
+    );
+    expect(artifactStore.saveArtifact).toHaveBeenCalledWith(VALID_PNG_BUFFER, 'image/png', {
+      width: 640,
+      height: 1200,
+    });
+  });
 });

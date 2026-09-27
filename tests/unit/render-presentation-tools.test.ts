@@ -69,4 +69,31 @@ describe('private render artifact scope', () => {
       artifactStore.saveArtifactForPrincipal.mock.calls.map(([principal]) => principal),
     ).toEqual(['alice', 'bob']);
   });
+
+  it('passes a requested layout through while keeping private render caching disabled', async () => {
+    const renderService = {
+      renderCard: vi.fn(async () => renderResult),
+    } as unknown as Pick<RenderService, 'renderCard'>;
+    const artifactStore = createArtifactStore();
+    const layout = { width: 640, deviceScaleFactor: 2 } as const;
+
+    await renderAndSaveArtifact(
+      { template: 'subject-overview' },
+      renderService,
+      artifactStore,
+      undefined,
+      layout,
+    );
+    expect(renderService.renderCard).toHaveBeenLastCalledWith(
+      { template: 'subject-overview' },
+      layout,
+    );
+
+    const privateViewModel = { template: 'collection-entity-consistency' };
+    await renderAndSaveArtifact(privateViewModel, renderService, artifactStore, 'alice', layout);
+    expect(renderService.renderCard).toHaveBeenLastCalledWith(privateViewModel, {
+      ...layout,
+      cache: false,
+    });
+  });
 });
