@@ -134,6 +134,17 @@ function statusMark(cell: string | undefined): string | undefined {
   return cell?.split('<br>', 1)[0];
 }
 
+function expectClientEvidenceCell(cell: string | undefined, label: string): void {
+  const mark = statusMark(cell);
+  expect(['✅', '⬜'], label).toContain(mark);
+  if (mark === '✅') {
+    expect(cell, label).toContain('pariya-agent-production-client-e2e-');
+  } else {
+    expect(cell, label).toBe('⬜');
+  }
+  expect(cell, label).not.toContain('pariya-agent-full-public-qa-e2e-');
+}
+
 describe('per-tool model/MCP and QQ/TIM acceptance evidence', () => {
   it('does not count Agent/MCP reports from failed or incomplete CLI runs', () => {
     const liveDir = mkdtempSync(join(tmpdir(), 'bangumi-e2e-evidence-'));
@@ -312,8 +323,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     for (const [name, fields] of rows) {
       expect(fields, name).toHaveLength(13);
       expect(statusMark(fields[9]), `${name} model/MCP`).toBe(evidenceNames.includes(name) ? '✅' : '⬜');
-      expect(fields[10], `${name} QQ pipeline`).toBe('⬜');
-      expect(fields[11], `${name} TIM client`).toBe('⬜');
+      expectClientEvidenceCell(fields[10], `${name} QQ pipeline`);
+      expectClientEvidenceCell(fields[11], `${name} TIM client`);
     }
   });
 
@@ -798,8 +809,10 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     for (const report of FULL_PUBLIC_QA_EVIDENCE) {
       const name = report.scenarios[0].id;
       expect(statusMark(rows.get(name)?.[9])).toBe('✅');
-      expect(rows.get(name)?.[10]).toBe('⬜');
-      expect(rows.get(name)?.[11]).toBe('⬜');
+      expect(report.qqPipelineTested).toBe(false);
+      expect(report.timClientTested).toBe(false);
+      expectClientEvidenceCell(rows.get(name)?.[10], `${name} QQ pipeline`);
+      expectClientEvidenceCell(rows.get(name)?.[11], `${name} TIM client`);
     }
   });
 });
