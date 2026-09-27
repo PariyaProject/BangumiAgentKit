@@ -300,6 +300,13 @@ export class BangumiMcpServer {
           code: publicErr.code,
           message: publicErr.message,
         };
+        if (publicErr.code === 'CONFIRMATION_REQUIRED') {
+          const confirmationText = publicErr.nextAction || publicErr.message;
+          const confirmationId = confirmationText.match(/\bcfm_[A-Za-z0-9_-]+\b/u)?.[0];
+          if (confirmationId && CONFIRMATION_ID_REGEX.test(confirmationId)) {
+            errorBody.confirmationId = confirmationId;
+          }
+        }
         if (typeof publicErr.retryable === 'boolean') {
           errorBody.retryable = publicErr.retryable;
         }

@@ -40,7 +40,7 @@ function parseMcpError(response: unknown) {
   const text = (responseRecord.content as Array<{ type: string; text: string }>)[0]!.text;
   return JSON.parse(text) as {
     ok: boolean;
-    error: { code: string; nextAction?: string };
+    error: { code: string; nextAction?: string; confirmationId?: string };
   };
 }
 
@@ -127,6 +127,7 @@ describe('MCP host confirmation contract', () => {
 
     expect(response.isError).toBe(true);
     expect(parseMcpError(response).error.code).toBe('CONFIRMATION_INVALID');
+    expect(parseMcpError(response).error.confirmationId).toBeUndefined();
     expect(executeSpy).not.toHaveBeenCalled();
     await client.close();
   });
@@ -175,6 +176,7 @@ describe('MCP host confirmation contract', () => {
     expect(first.isError).toBe(true);
     expect(firstError.error.code).toBe('CONFIRMATION_REQUIRED');
     expect(confirmationId).toMatch(/^cfm_/);
+    expect(firstError.error.confirmationId).toBe(confirmationId);
     grantState.value = confirmationId;
 
     const noGrantApp = new BangumiMcpServer({
