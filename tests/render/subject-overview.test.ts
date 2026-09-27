@@ -400,7 +400,7 @@ describe('Subject Overview renderer', () => {
     }
   });
 
-  it('renders semantic complete, partial, unavailable, and not-found states at 640px and 960px', async () => {
+  it('renders semantic complete, partial, unavailable, and not-found states at 720px and 960px', async () => {
     const variants = {
       complete: await semanticFixture('complete'),
       completeFailedImage: await semanticFixture('complete', 'failed'),
@@ -414,8 +414,8 @@ describe('Subject Overview renderer', () => {
     for (const [name, result] of Object.entries(variants)) {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
-      for (const width of [640, 960]) {
-        const deviceScaleFactor = width === 640 ? 1 : 2;
+      for (const width of [720, 960]) {
+        const deviceScaleFactor = width === 720 ? 1 : 2;
         const rendered = await renderService.renderCard(vm, {
           width,
           deviceScaleFactor,
@@ -425,7 +425,7 @@ describe('Subject Overview renderer', () => {
         expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC), `${name} PNG`).toBe(true);
         expect(rendered.buffer.length, `${name} bytes`).toBeGreaterThan(1000);
         expect(rendered.height, `${name} height`).toBeLessThanOrEqual(8192);
-        if (width === 640) {
+        if (width === 720) {
           expect(rendered.buffer.length, `${name} mobile payload`).toBeLessThan(1_000_000);
         }
         if (visualQaDir) {
@@ -442,7 +442,7 @@ describe('Subject Overview renderer', () => {
     const renderCard = vi.fn(async () => ({
       buffer: VALID_PNG_BUFFER,
       mimeType: 'image/png' as const,
-      width: 640,
+      width: 720,
       height: 1200,
       template: 'subject-overview' as const,
       templateVersion: 1,
@@ -453,7 +453,7 @@ describe('Subject Overview renderer', () => {
       saveArtifact: vi.fn(async () => ({
         id: 'mobile-overview-artifact',
         mimeType: 'image/png' as const,
-        width: 640,
+        width: 720,
         height: 1200,
       })),
     };
@@ -471,10 +471,10 @@ describe('Subject Overview renderer', () => {
 
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'subject-overview' }),
-      { width: 640, deviceScaleFactor: 1 },
+      { width: 720, deviceScaleFactor: 1 },
     );
     expect(artifactStore.saveArtifact).toHaveBeenCalledWith(VALID_PNG_BUFFER, 'image/png', {
-      width: 640,
+      width: 720,
       height: 1200,
     });
   });

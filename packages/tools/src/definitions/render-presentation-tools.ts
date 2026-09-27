@@ -863,7 +863,7 @@ export function createRenderPresentationTools(
         { client, providerRegistry: deps?.providerRegistry },
       );
       return await executeRenderAndSave(buildSubjectOverviewViewModel(result), undefined, {
-        width: 640,
+        width: 720,
         deviceScaleFactor: 1,
       });
     },
