@@ -162,12 +162,7 @@ export class TokenBroker implements BangumiClientProvider {
     const bindings = await this.storage.listBindings(principalId);
     const target = bindings.find((b) => b.bangumiAccountId === bangumiAccountId);
     if (!target) {
-      throw new BangumiError(
-        'NOT_FOUND',
-        `账号 ${bangumiAccountId} 未绑定至当前用户`,
-        false,
-        404,
-      );
+      throw new BangumiError('NOT_FOUND', `账号 ${bangumiAccountId} 未绑定至当前用户`, false, 404);
     }
     await this.storage.removeBinding(principalId, bangumiAccountId);
     return { success: true };
@@ -306,12 +301,17 @@ export class TokenBroker implements BangumiClientProvider {
         );
       }
 
-      if (!this.config.clientId || !this.config.clientSecret || !this.config.redirectUri) {
+      if (
+        !this.config.clientId?.trim() ||
+        !this.config.clientSecret?.trim() ||
+        !this.config.redirectUri?.trim()
+      ) {
         throw new BangumiError(
-          'AUTH_EXPIRED',
-          '服务未配置 OAuth Client ID / Secret，无法进行 Token 自动刷新',
+          'OAUTH_NOT_CONFIGURED',
+          'OAuth Client ID, Client Secret, and Redirect URI are required to refresh this Bangumi token.',
           false,
-          500,
+          503,
+          '请联系管理员完成 Bangumi OAuth 设置。',
         );
       }
 

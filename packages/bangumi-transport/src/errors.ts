@@ -17,6 +17,7 @@ export type BangumiErrorCode =
   | 'WRITE_RESULT_UNKNOWN'
   | 'STORAGE_ERROR'
   | 'OAUTH_EXCHANGE_FAILED'
+  | 'OAUTH_NOT_CONFIGURED'
   | 'KEY_VERSION_UNAVAILABLE'
   | 'RENDERER_UNAVAILABLE'
   | 'INTERNAL_ERROR';
@@ -68,6 +69,7 @@ export const BANGUMI_ERROR_CODES = new Set<BangumiErrorCode>([
   'WRITE_RESULT_UNKNOWN',
   'STORAGE_ERROR',
   'OAUTH_EXCHANGE_FAILED',
+  'OAUTH_NOT_CONFIGURED',
   'KEY_VERSION_UNAVAILABLE',
   'INTERNAL_ERROR',
 ]);
@@ -134,6 +136,9 @@ const PUBLIC_ERROR_POLICY: Partial<
   },
   OAUTH_EXCHANGE_FAILED: {
     message: 'OAuth 授权码兑换失败，请重新进行授权。',
+  },
+  OAUTH_NOT_CONFIGURED: {
+    message: 'Bangumi 账号授权暂未配置，请联系管理员完成 OAuth 设置。',
   },
 };
 

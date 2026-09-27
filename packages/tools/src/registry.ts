@@ -93,21 +93,6 @@ export function createRuntimeDependenciesWithStorage(
   const clientSecret = config.clientSecret || process.env.BANGUMI_OAUTH_CLIENT_SECRET;
   const redirectUri = config.redirectUri || process.env.BANGUMI_OAUTH_REDIRECT_URI;
 
-  if (isProd) {
-    if (!clientId)
-      throw new Error(
-        'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_ID is required in production environment.',
-      );
-    if (!clientSecret)
-      throw new Error(
-        'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_SECRET is required in production environment.',
-      );
-    if (!redirectUri)
-      throw new Error(
-        'CONFIG_ERROR: BANGUMI_OAUTH_REDIRECT_URI is required in production environment.',
-      );
-  }
-
   const publicHttpClient = config.publicHttpClient || new HttpClient();
   const providerRegistry = new ProviderRegistry({
     v0: new OfficialV0Provider(new GeneratedBangumiOpenApiClient(publicHttpClient)),
@@ -117,9 +102,9 @@ export function createRuntimeDependenciesWithStorage(
   const oauthService = new OAuthService(
     storage,
     {
-      clientId: clientId || 'test_client_id',
-      clientSecret: clientSecret || 'test_client_secret',
-      redirectUri: redirectUri || 'http://localhost:3000/oauth/bangumi/callback',
+      clientId: clientId || (isProd ? '' : 'test_client_id'),
+      clientSecret: clientSecret || (isProd ? '' : 'test_client_secret'),
+      redirectUri: redirectUri || (isProd ? '' : 'http://localhost:3000/oauth/bangumi/callback'),
       tokenEncryption,
       tokenUrl: config.tokenUrl,
       authorizeUrl: config.authorizeUrl || process.env.BANGUMI_OAUTH_AUTHORIZE_URL,

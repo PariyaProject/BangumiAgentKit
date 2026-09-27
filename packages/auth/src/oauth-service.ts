@@ -5,7 +5,7 @@ import {
   TokenEncryptionConfig,
   resolveTokenEncryptionConfig,
 } from './token-crypto.js';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiOAuthClient } from './oauth-client.js';
 
 export interface OAuthConfig {
@@ -52,6 +52,7 @@ export class OAuthService {
     conversationId?: string,
     requestedCapabilities: string[] = ['write:collection'],
   ): Promise<{ url: string; state: string; expiresAt: Date }> {
+    this.assertOAuthConfigured();
     const { state, session } = await this.stateStore.generateState({
       principalId,
       botInstanceId,
@@ -75,6 +76,7 @@ export class OAuthService {
   }
 
   async handleCallback(code: string, state: string): Promise<AuthorizedAccount> {
+    this.assertOAuthConfigured();
     // 1. Consume state safely & atomically
     const session = await this.stateStore.consumeState(state);
 
@@ -142,5 +144,21 @@ export class OAuthService {
       nickname: accountRecord.nickname,
       principalId: session.principalId,
     };
+  }
+
+  private assertOAuthConfigured(): void {
+    if (
+      !this.config.clientId.trim() ||
+      !this.config.clientSecret.trim() ||
+      !this.config.redirectUri.trim()
+    ) {
+      throw new BangumiError(
+        'OAUTH_NOT_CONFIGURED',
+        'Bangumi OAuth client ID, client secret, and redirect URI must be configured before authorization.',
+        false,
+        503,
+        '请联系管理员完成 Bangumi OAuth 设置。',
+      );
+    }
   }
 }
