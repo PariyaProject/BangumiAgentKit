@@ -46,8 +46,32 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
   });
 
   it('binds an unbound MCP principal through the loopback callback and survives new storage connections', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgm-oauth-callback-'));
-    const dbPath = path.join(tempDir, 'shared.sqlite');
+    const runnerQaRootValue = process.env.PARIYA_RUNNER_QA_ROOT;
+    const runnerQaRoot = runnerQaRootValue ? path.resolve(runnerQaRootValue) : undefined;
+    const runnerDbPathValue = process.env.PARIYA_RUNNER_BANGUMI_SQLITE_PATH;
+    if (Boolean(runnerQaRoot) !== Boolean(runnerDbPathValue)) {
+      throw new Error('Pariya Runner OAuth probe requires both QA root and SQLite path');
+    }
+    const expectedRunnerDbPath = runnerQaRoot
+      ? path.join(runnerQaRoot, 'bangumi-agent-kit', 'state', 'bangumi-agent-kit.sqlite')
+      : undefined;
+    const dbPath = runnerDbPathValue
+      ? path.resolve(runnerDbPathValue)
+      : path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bgm-oauth-callback-')), 'shared.sqlite');
+    if (expectedRunnerDbPath && dbPath !== expectedRunnerDbPath) {
+      throw new Error('Pariya Runner OAuth probe path escaped its disposable QA root');
+    }
+    const tempDir = runnerQaRoot || path.dirname(dbPath);
+    const ownsTempDir = !runnerQaRoot;
+    const tokenEncryptionKey =
+      process.env.PARIYA_RUNNER_TOKEN_ENCRYPTION_KEY || TOKEN_ENCRYPTION_KEY;
+    const principalProvider = process.env.PARIYA_MCP_IDENTITY_PROVIDER || 'qq';
+    const botInstanceId =
+      process.env.PARIYA_MCP_BOT_INSTANCE_ID || 'pariya-qq:synthetic-bot';
+    const externalUserId =
+      process.env.PARIYA_MCP_EXTERNAL_USER_ID || 'synthetic-qq-user';
+    const conversationId =
+      process.env.PARIYA_MCP_CONVERSATION_ID || 'pariya-qq:private:synthetic-qq-user';
     let tokenRequests = 0;
     let profileRequests = 0;
     let tokenForm: URLSearchParams | undefined;
@@ -113,7 +137,7 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
       vi.stubEnv('BANGUMI_OAUTH_CLIENT_SECRET', CLIENT_SECRET);
       vi.stubEnv('BANGUMI_OAUTH_TOKEN_URL', `${mockBaseUrl}/oauth/access_token`);
       vi.stubEnv('BANGUMI_OAUTH_AUTHORIZE_URL', `${mockBaseUrl}/oauth/authorize`);
-      vi.stubEnv('BANGUMI_TOKEN_ENCRYPTION_KEY', TOKEN_ENCRYPTION_KEY);
+      vi.stubEnv('BANGUMI_TOKEN_ENCRYPTION_KEY', tokenEncryptionKey);
       vi.stubEnv('BANGUMI_ARTIFACT_DIR', path.join(tempDir, 'artifacts'));
 
       callbackStorage = await SQLiteStorage.create({ dbPath });
@@ -123,7 +147,7 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
         redirectUri: callbackUrl,
         tokenUrl: `${mockBaseUrl}/oauth/access_token`,
         authorizeUrl: `${mockBaseUrl}/oauth/authorize`,
-        secretKey: TOKEN_ENCRYPTION_KEY,
+        secretKey: tokenEncryptionKey,
         publicHttpClient,
       });
       callback = new StandaloneOAuthController({
@@ -139,9 +163,9 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
       // shared with the separately running loopback callback service.
       mcpStorage = await SQLiteStorage.create({ dbPath });
       const principal = await mcpStorage.findOrCreatePrincipal({
-        provider: 'qq',
-        botInstanceId: 'pariya-qq:synthetic-bot',
-        externalUserId: 'synthetic-qq-user',
+        provider: principalProvider,
+        botInstanceId,
+        externalUserId,
       });
       const mcpDependencies = createRuntimeDependenciesWithStorage(mcpStorage, {
         clientId: CLIENT_ID,
@@ -149,14 +173,14 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
         redirectUri: callbackUrl,
         tokenUrl: `${mockBaseUrl}/oauth/access_token`,
         authorizeUrl: `${mockBaseUrl}/oauth/authorize`,
-        secretKey: TOKEN_ENCRYPTION_KEY,
+        secretKey: tokenEncryptionKey,
         publicHttpClient,
       });
       mcp = new BangumiMcpServer({ dependencies: mcpDependencies, profile: 'full' });
       const context = {
         principalId: principal.id,
-        botInstanceId: 'pariya-qq:synthetic-bot',
-        conversationId: 'pariya-qq:private:synthetic-qq-user',
+        botInstanceId,
+        conversationId,
       };
 
       const before = (await mcp.getRegistry().executeTool('bangumi.auth_status', {}, context)) as {
@@ -216,7 +240,7 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
         redirectUri: callbackUrl,
         tokenUrl: `${mockBaseUrl}/oauth/access_token`,
         authorizeUrl: `${mockBaseUrl}/oauth/authorize`,
-        secretKey: TOKEN_ENCRYPTION_KEY,
+        secretKey: tokenEncryptionKey,
         publicHttpClient,
       });
       verifier = new BangumiMcpServer({ dependencies: verifyDependencies, profile: 'full' });
@@ -245,7 +269,7 @@ describe('OAuth callback across MCP SQLite and local callback server', () => {
       await callbackStorage?.close();
       await mcpStorage?.close();
       await close(mockProvider);
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      if (ownsTempDir) fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 });
