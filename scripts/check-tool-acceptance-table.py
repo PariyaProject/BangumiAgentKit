@@ -100,6 +100,13 @@ def evidence_reference_error(name: str, cell: str, kind: str) -> str | None:
                         and scenario.get('id') == name
                         and scenario.get('passed') is True
                         and scenario.get('toolCalls') == [{'name': name, 'state': 'DONE'}]
+                        and isinstance(scenario.get('assertions'), dict)
+                        and scenario['assertions'].get('authRequiredGateObserved') is True
+                        and scenario['assertions'].get('operationExecuted') is False
+                        and scenario['assertions'].get('accountDataReturned') is False
+                        and scenario['assertions'].get('networkAccessBlocked') is True
+                        and scenario['assertions'].get('networkRequestAttempts') == 0
+                        and scenario['assertions'].get('externalApiCalled') is False
                         for scenario in report.get('scenarios', []))
             )
         elif kind == 'agent_mcp':

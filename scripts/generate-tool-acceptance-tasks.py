@@ -303,13 +303,17 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
         tool = current_by_name.get(name)
         calls = scenario.get('toolCalls')
         assertions = scenario.get('assertions')
-        if (not tool or tool.get('risk') != 'read' or tool.get('auth') != 'required'
+        if (not tool or tool.get('risk') not in {'read', 'write', 'destructive'}
+                or tool.get('auth') != 'required'
                 or scenario.get('passed') is not True
                 or calls != [{'name': name, 'state': 'DONE'}]
                 or not isinstance(assertions, dict)
                 or assertions.get('authRequiredGateObserved') is not True
                 or assertions.get('operationExecuted') is not False
-                or assertions.get('accountDataReturned') is not False):
+                or assertions.get('accountDataReturned') is not False
+                or assertions.get('networkAccessBlocked') is not True
+                or assertions.get('networkRequestAttempts') != 0
+                or assertions.get('externalApiCalled') is not False):
             continue
         sources.setdefault(name, set()).add(report_source_ref(path))
     return sources
@@ -355,7 +359,7 @@ def status(
         live = with_sources('◐', public_api_sources[name])
     else:
         live = '⬜'
-    if tool.get('auth') != 'required' or tool.get('risk') != 'read':
+    if tool.get('auth') != 'required':
         auth_gate = '—'
     elif name in auth_gate_denial_sources:
         auth_gate = with_sources('✅', auth_gate_denial_sources[name])
@@ -415,7 +419,7 @@ def main() -> None:
     public_candidate_count = len(catalog) - public_not_applicable_count
     public_pending_count = public_candidate_count - live_count
     auth_gate_total = sum(
-        item.get('auth') == 'required' and item.get('risk') == 'read'
+        item.get('auth') == 'required'
         for item in catalog
     )
     auth_gate_count = sum(item['name'] in auth_gate_denial_set for item in catalog)
@@ -430,16 +434,16 @@ def main() -> None:
         f'- [{"x" if public_pending_count == 0 else " "}] 匿名可用的公开 API 工具有逐项实测：{live_count}/{public_candidate_count}；待补 {public_pending_count}。',
         f'- [{"x" if public_not_applicable_count + public_candidate_count == len(catalog) else " "}] 匿名公开 API 不适用项已单独分类：{public_not_applicable_count}/{len(catalog)}；这些工具由账号验收或本地状态验收覆盖。',
         f'- [ ] 需要账号的工具完成真实 OAuth/账号验收：{auth_count} 项目前不能用本地 mock 代替。',
-        f'- [{"x" if auth_gate_count == auth_gate_total else " "}] 未认证只读门禁拒绝路径已验证：{auth_gate_count}/{auth_gate_total} 项；门禁通过不代表真实账号功能通过。',
+        f'- [{"x" if auth_gate_count == auth_gate_total else " "}] 无账号认证门禁拒绝路径已验证：{auth_gate_count}/{auth_gate_total} 项；门禁通过不代表真实账号功能通过。',
         f'- [{"x" if model_mcp_count == len(catalog) else " "}] 每个工具都有实际 Agent→MCP 模型调用证据：{model_mcp_count}/{len(catalog)}。',
         f'- [{"x" if len(qq_pipeline_e2e) == len(catalog) else " "}] 每个工具都有 QQ 消息管线端到端证据：当前 {len(qq_pipeline_e2e)}/{len(catalog)}。',
         f'- [{"x" if len(tim_client_e2e) == len(catalog) else " "}] 每个工具都有 TIM 客户端端到端证据：当前 {len(tim_client_e2e)}/{len(catalog)}。',
         '',
         '状态说明：`注册/Schema目录引用` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号。公开 API、未认证门禁、Agent/MCP 与真实客户端通过项均列出具体 JSON 报告文件。离线 OneBot fixture、WebChat 或 Agent/MCP 本身不满足真实 QQ/TIM 列。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。客户端报告仅保留目标工具名、脱敏投递阶段与客户端观察布尔值，不保存消息正文/QQ 号/截图；它不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。',
         '',
-        '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 未认证只读门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
+        '| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 无账号认证门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-        '未认证只读门禁列只记录缺少账号时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。写入/破坏性工具不进入该探针。',
+        '无账号认证门禁列覆盖所有 auth=required 的读取、写入与破坏性工具，只记录缺少账号且零网络请求时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。',
     ]
     for catalog_index, item in enumerate(catalog):
         schema, source_ref, execute, live, auth_gate, auth, agent_mcp, qq_pipeline, tim_client = status(
@@ -507,7 +511,7 @@ def main() -> None:
     summary = {'catalog': len(catalog), 'direct_execute': direct_count,
                'live_public': live_count, 'auth_required_or_optional': auth_count,
                'auth_gate_denial': len(auth_gate_denial_set),
-               'auth_gate_pending': sum(item.get('auth') == 'required' and item.get('risk') == 'read' and item['name'] not in auth_gate_denial_set for item in catalog),
+               'auth_gate_pending': sum(item.get('auth') == 'required' and item['name'] not in auth_gate_denial_set for item in catalog),
                'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': len(qq_pipeline_e2e),
                'tim_client_e2e': len(tim_client_e2e),
                'output': str(OUTPUT)}

@@ -37,7 +37,8 @@ const FULL_AUTH_DENIAL_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
     (name) => name.startsWith('pariya-agent-full-auth-denial-qa-e2e-') && name.endsWith('.json'),
   )
   .sort()
-  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')))
+  .filter((report: any) => report.scenarios?.[0]?.assertions?.networkAccessBlocked === true);
 const FULL_AUTH_SWITCH_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-auth-switch-qa-e2e-') && name.endsWith('.json'),
@@ -560,23 +561,11 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
   });
 
   it('records auth-required denial separately from authenticated feature execution', () => {
-    const expectedTools = [
-      'bangumi.get_collection_backlog',
-      'bangumi.get_collection_dashboard',
-      'bangumi.get_collection_entity_consistency',
-      'bangumi.get_collection_intelligence',
-      'bangumi.get_collection_schedule',
-      'bangumi.get_collection_series_groups',
-      'bangumi.get_episode_collections',
-      'bangumi.get_my_profile',
-      'bangumi.render_collection_backlog',
-      'bangumi.render_collection_dashboard',
-      'bangumi.render_collection_entity_consistency',
-      'bangumi.render_collection_intelligence',
-      'bangumi.render_collection_progress',
-      'bangumi.render_collection_schedule',
-      'bangumi.render_collection_series_groups',
-    ].sort();
+    const expectedTools = catalog
+      .filter((tool) => tool.auth === 'required')
+      .map((tool) => tool.name)
+      .sort();
+    expect(expectedTools).toHaveLength(22);
     expect(
       FULL_AUTH_DENIAL_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
     ).toEqual(expectedTools);
@@ -602,8 +591,14 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
           authRequiredGateObserved: true,
           operationExecuted: false,
           accountDataReturned: false,
+          networkAccessBlocked: true,
+          networkRequestAttempts: 0,
+          externalApiCalled: false,
         },
       });
+      const catalogTool = catalog.find((tool) => tool.name === scenario.id);
+      expect(catalogTool?.auth).toBe('required');
+      expect(['read', 'write', 'destructive']).toContain(catalogTool?.risk);
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');

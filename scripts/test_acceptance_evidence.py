@@ -491,6 +491,7 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         probe_dir.mkdir(parents=True)
         catalog = [
             {'name': 'bangumi.get_subject', 'auth': 'none', 'risk': 'read'},
+            {'name': 'bangumi.get_my_profile', 'auth': 'required', 'risk': 'read'},
             {'name': 'bangumi.render_subject_overview', 'auth': 'none', 'risk': 'read'},
         ]
         catalog_path = self.root / 'docs/tool-catalog.json'
@@ -508,9 +509,17 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
         (probe_dir / 'auth-denial-fixture.json').write_text(json.dumps({
             'profile': 'bangumi-full-auth-denial-qa-v1',
             'scenarios': [{
-                'id': 'bangumi.get_subject',
+                'id': 'bangumi.get_my_profile',
                 'passed': True,
-                'toolCalls': [{'name': 'bangumi.get_subject', 'state': 'DONE'}],
+                'toolCalls': [{'name': 'bangumi.get_my_profile', 'state': 'DONE'}],
+                'assertions': {
+                    'authRequiredGateObserved': True,
+                    'operationExecuted': False,
+                    'accountDataReturned': False,
+                    'networkAccessBlocked': True,
+                    'networkRequestAttempts': 0,
+                    'externalApiCalled': False,
+                },
             }],
         }), encoding='utf-8')
         self.client_report_name = 'pariya-agent-production-client-e2e-2026-09-26.json'
@@ -605,7 +614,9 @@ class AcceptanceTableSourceReferenceTests(unittest.TestCase):
 
     def test_accepts_auth_denial_report_reference_for_the_same_tool(self):
         self.assertIsNone(TABLE_CHECKER.evidence_reference_error(
-            'bangumi.get_subject', '✅<br>`docs/live-probes/auth-denial-fixture.json`', 'auth_denial'
+            'bangumi.get_my_profile',
+            '✅<br>`docs/live-probes/auth-denial-fixture.json`',
+            'auth_denial',
         ))
 
     def test_accepts_live_qq_pipeline_report_reference_for_the_same_tool(self):
