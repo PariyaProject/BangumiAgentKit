@@ -169,7 +169,11 @@ async function main(): Promise<void> {
           previewPath = (await artifactStore.resolveFilePath(id)) ?? undefined;
           const metadata = await artifactStore.getArtifact(id);
           const fileBytes = previewPath ? (await stat(previewPath)).size : undefined;
-          const viewModel = buildSubjectOverviewViewModel(maximumCapsResult);
+          const maxStaff = scenarios[1].input.maxStaff;
+          const viewModel = buildSubjectOverviewViewModel(maximumCapsResult, {
+            maxStaffGroups: maxStaff,
+            maxStaffMembersPerGroup: maxStaff,
+          });
           renderSummary = {
             state: previewPath ? 'rendered' : 'artifact_file_missing',
             mimeType: rendered.artifact?.mimeType,
@@ -179,7 +183,12 @@ async function main(): Promise<void> {
             rendererWarningCodes,
             staffGroupsAvailable: maximumCapsResult.staff.groups.length,
             staffGroupsRendered: viewModel.staff.groups.length,
+            staffRowsAvailable: maximumCapsResult.staff.items.length,
             staffNamesVisible: viewModel.staff.groups.reduce(
+              (count, group) => count + group.members.length,
+              0,
+            ),
+            staffRowsRendered: viewModel.staff.groups.reduce(
               (count, group) => count + group.members.length,
               0,
             ),
@@ -229,8 +238,13 @@ async function main(): Promise<void> {
     results,
     render: renderSummary,
   };
-  const date = observedAt.slice(0, 10);
-  const output = join(process.cwd(), 'docs', 'live-probes', `subject-overview-caps-${date}.json`);
+  const timestamp = observedAt.replace(/[-:]/gu, '').replace(/\.\d{3}(?=Z$)/u, '');
+  const output = join(
+    process.cwd(),
+    'docs',
+    'live-probes',
+    `subject-overview-caps-${timestamp}.json`,
+  );
   await mkdir(join(process.cwd(), 'docs', 'live-probes'), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   const stdoutReport = previewPath ? { ...report, output, previewPath } : { ...report, output };

@@ -4094,7 +4094,7 @@
           "maximum": 20
         },
         "maxStaff": {
-          "description": "制作人员读取上限，默认 24",
+          "description": "制作人员读取上限，默认 100",
           "type": "integer",
           "minimum": 1,
           "maximum": 100

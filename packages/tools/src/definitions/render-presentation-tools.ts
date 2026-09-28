@@ -836,7 +836,7 @@ export function createRenderPresentationTools(
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 8'),
-      maxStaff: z.number().int().min(1).max(100).optional().describe('制作人员读取上限，默认 24'),
+      maxStaff: z.number().int().min(1).max(100).optional().describe('制作人员读取上限，默认 100'),
       maxRelations: z
         .number()
         .int()
@@ -857,15 +857,20 @@ export function createRenderPresentationTools(
         input.subjectId,
         {
           maxCast: input.maxCast ?? 8,
-          maxStaff: input.maxStaff ?? 24,
+          maxStaff: input.maxStaff ?? 100,
           maxRelations: input.maxRelations ?? 12,
         },
         { client, providerRegistry: deps?.providerRegistry },
       );
-      return await executeRenderAndSave(buildSubjectOverviewViewModel(result), undefined, {
-        width: 720,
-        deviceScaleFactor: 1,
-      });
+      const maxStaff = input.maxStaff ?? 100;
+      return await executeRenderAndSave(
+        buildSubjectOverviewViewModel(result, {
+          maxStaffGroups: maxStaff,
+          maxStaffMembersPerGroup: maxStaff,
+        }),
+        undefined,
+        { width: 720, deviceScaleFactor: 1 },
+      );
     },
   });
 

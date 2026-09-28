@@ -342,6 +342,64 @@ describe('Subject Overview renderer', () => {
     ).toContain('未找到');
   });
 
+  it('renders every returned staff member when the requested cap allows it', async () => {
+    const complete = await semanticFixture('complete');
+    const templateMember = complete.staff.items[0];
+    expect(templateMember).toBeDefined();
+    if (!templateMember) throw new Error('semantic fixture must include a staff member');
+
+    const staffItems = Array.from({ length: 87 }, (_, index) => ({
+      ...templateMember,
+      id: 20_000 + index,
+      name: `制作职员${String(index + 1).padStart(2, '0')}`,
+      relation: `制作组${(index % 12) + 1}`,
+    }));
+    const staffGroups = Array.from({ length: 12 }, (_, groupIndex) => {
+      const members = staffItems.filter((_, index) => index % 12 === groupIndex);
+      return {
+        relation: `制作组${groupIndex + 1}`,
+        count: members.length,
+        memberIds: members.map((member) => member.id),
+      };
+    });
+    const result: SubjectOverviewResult = {
+      ...complete,
+      staff: {
+        ...complete.staff,
+        items: staffItems,
+        groups: staffGroups,
+        coverage: { ...complete.staff.coverage, observed: 87, returned: 87, truncated: false },
+      },
+    };
+    const viewModel = buildSubjectOverviewViewModel(result, {
+      maxStaffGroups: 100,
+      maxStaffMembersPerGroup: 100,
+    });
+
+    expect(viewModel.staff.groups).toHaveLength(12);
+    expect(viewModel.staff.groups.flatMap((group) => group.members)).toHaveLength(87);
+    expect(viewModel.staff.hiddenCount).toBeUndefined();
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 720);
+    expect(html).toContain('制作职员01');
+    expect(html).toContain('制作职员87');
+    expect(html).not.toContain('另有 63 条已返回职员关系未展示');
+
+    const rendered = await renderService.renderCard(viewModel, {
+      width: 720,
+      deviceScaleFactor: 1,
+    });
+    expect(rendered.height).toBeLessThanOrEqual(8192);
+    expect(rendered.buffer.length).toBeLessThan(1_000_000);
+    const visualQaDir = process.env.SUBJECT_OVERVIEW_VISUAL_QA_DIR;
+    if (visualQaDir) {
+      await mkdir(visualQaDir, { recursive: true });
+      await writeFile(
+        path.join(visualQaDir, 'subject-overview-full-staff-720.png'),
+        rendered.buffer,
+      );
+    }
+  });
+
   it('extracts only bounded subject-overview assets and resolves cover/character images', async () => {
     const result = await semanticFixture('complete');
     const vm = buildSubjectOverviewViewModel(result);
@@ -439,16 +497,18 @@ describe('Subject Overview renderer', () => {
   }, 20_000);
 
   it('uses the mobile-sized canvas for the public subject overview artifact', async () => {
-    const renderCard = vi.fn(async () => ({
-      buffer: VALID_PNG_BUFFER,
-      mimeType: 'image/png' as const,
-      width: 720,
-      height: 1200,
-      template: 'subject-overview' as const,
-      templateVersion: 1,
-      cacheKey: 'subject-overview-mobile',
-      warnings: [],
-    }));
+    const renderCard = vi.fn(
+      async (_viewModel: ReturnType<typeof buildSubjectOverviewViewModel>) => ({
+        buffer: VALID_PNG_BUFFER,
+        mimeType: 'image/png' as const,
+        width: 720,
+        height: 1200,
+        template: 'subject-overview' as const,
+        templateVersion: 1,
+        cacheKey: 'subject-overview-mobile',
+        warnings: [],
+      }),
+    );
     const artifactStore = {
       saveArtifact: vi.fn(async () => ({
         id: 'mobile-overview-artifact',
@@ -469,6 +529,12 @@ describe('Subject Overview renderer', () => {
       providerRegistry: buildStatsProvider(),
     });
 
+    const renderCall = renderCard.mock.calls[0];
+    expect(renderCall).toBeDefined();
+    if (!renderCall) throw new Error('overview renderer must receive a view model');
+    const renderedViewModel = renderCall[0];
+    expect(renderedViewModel.staff.groups.flatMap((group) => group.members)).toHaveLength(10);
+    expect(renderedViewModel.staff.hiddenCount).toBeUndefined();
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'subject-overview' }),
       { width: 720, deviceScaleFactor: 1 },
