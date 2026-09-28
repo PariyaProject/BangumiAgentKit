@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "evidenceKind": "bangumi_public_tools_live_probe",
-  "observedAt": "2026-09-28T16:58:05.850Z",
-  "sourceRevision": "bf35e28a2446d5b3dbc0a86279105e07528ced16",
+  "observedAt": "2026-09-28T18:17:50.835Z",
+  "sourceRevision": "714550d7b42d9fb2a7325c0bb2cea2bdb829190e",
   "catalogSha256": "b4b81095717a3ce0f154bd6daa0258cf3c4797cdd1064334febcb4b01f6f8a67",
   "probeScriptSha256": "4bc2c004996a16234e56e45429a6b3243570a35d39fd4d518b567573ff97edb4",
   "mode": "read_only_public_api_smoke",
@@ -82,15 +82,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "0",
-          "1",
-          "2",
-          "3",
-          "4",
-          "5",
-          "6"
-        ]
+        "keys": ["0", "1", "2", "3", "4", "5", "6"]
       }
     },
     {
@@ -98,11 +90,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "index",
-          "subjects",
-          "pagination"
-        ]
+        "keys": ["index", "subjects", "pagination"]
       }
     },
     {
@@ -137,15 +125,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "0",
-          "1",
-          "2",
-          "3",
-          "4",
-          "5",
-          "6"
-        ]
+        "keys": ["0", "1", "2", "3", "4", "5", "6"]
       }
     },
     {
@@ -335,9 +315,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -345,9 +323,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -355,9 +331,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -365,9 +339,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -375,9 +347,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -385,9 +355,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -395,9 +363,7 @@
       "httpRequests": 3,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -405,9 +371,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -415,9 +379,7 @@
       "httpRequests": 3,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -425,9 +387,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -435,9 +395,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -445,9 +403,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -455,9 +411,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -465,9 +419,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -475,9 +427,7 @@
       "httpRequests": 1,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -485,9 +435,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -495,9 +443,7 @@
       "httpRequests": 2,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -505,9 +451,7 @@
       "httpRequests": 7,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -515,9 +459,7 @@
       "httpRequests": 7,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -525,9 +467,7 @@
       "httpRequests": 10,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -535,9 +475,7 @@
       "httpRequests": 6,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     },
     {
@@ -545,9 +483,7 @@
       "httpRequests": 5,
       "result": {
         "state": "value",
-        "keys": [
-          "artifact"
-        ]
+        "keys": ["artifact"]
       }
     }
   ]
