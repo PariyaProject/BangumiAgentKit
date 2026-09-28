@@ -1,0 +1,554 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_tools_live_probe",
+  "observedAt": "2026-09-28T16:58:05.850Z",
+  "sourceRevision": "bf35e28a2446d5b3dbc0a86279105e07528ced16",
+  "catalogSha256": "b4b81095717a3ce0f154bd6daa0258cf3c4797cdd1064334febcb4b01f6f8a67",
+  "probeScriptSha256": "4bc2c004996a16234e56e45429a6b3243570a35d39fd4d518b567573ff97edb4",
+  "mode": "read_only_public_api_smoke",
+  "probeCount": 58,
+  "httpRequests": 145,
+  "limits": [
+    "one known public subject",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_subject",
+      "httpRequests": 1,
+      "result": {
+        "id": 41529
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_stats",
+      "httpRequests": 1,
+      "result": {
+        "state": "ok"
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_identity",
+      "httpRequests": 1,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "warningsCount": 0
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_overview",
+      "httpRequests": 5,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "warningsCount": 3
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_cast",
+      "httpRequests": 1,
+      "result": {
+        "subjectId": 41529,
+        "observed": 9,
+        "returned": 2,
+        "castCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_staff",
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "castCount": 2,
+        "productionStaffCount": 2,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_episodes",
+      "httpRequests": 1,
+      "result": {
+        "total": 12,
+        "itemsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_relations",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_index",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "index",
+          "subjects",
+          "pagination"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_index_membership",
+      "httpRequests": 1,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "warningsCount": 0
+      }
+    },
+    {
+      "tool": "bangumi.get_revision_intelligence",
+      "httpRequests": 1,
+      "result": {
+        "state": "partial",
+        "itemsCount": 1,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_latest_subject_revision",
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "warningsCount": 3
+      }
+    },
+    {
+      "tool": "bangumi.get_calendar",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.get_calendar_intelligence",
+      "httpRequests": 1,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.search_characters",
+      "httpRequests": 1,
+      "result": {
+        "total": 165
+      }
+    },
+    {
+      "tool": "bangumi.get_character",
+      "httpRequests": 3,
+      "result": {
+        "id": 17325
+      }
+    },
+    {
+      "tool": "bangumi.search_persons",
+      "httpRequests": 1,
+      "result": {
+        "total": 20
+      }
+    },
+    {
+      "tool": "bangumi.get_person",
+      "httpRequests": 3,
+      "result": {
+        "id": 3474
+      }
+    },
+    {
+      "tool": "bangumi.get_person_profile",
+      "httpRequests": 3,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_episode",
+      "httpRequests": 1,
+      "result": {
+        "subjectId": 41529,
+        "id": 199013
+      }
+    },
+    {
+      "tool": "bangumi.list_revisions",
+      "httpRequests": 1,
+      "result": {
+        "total": 21,
+        "itemsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_stats_intelligence",
+      "httpRequests": 1,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_series_watch_order",
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_person_activity",
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_person_collaboration",
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.aggregate_subject_cohort",
+      "httpRequests": 7,
+      "result": {
+        "state": "partial",
+        "warningsCount": 10
+      }
+    },
+    {
+      "tool": "bangumi.compare_subject_cohorts",
+      "httpRequests": 7,
+      "result": {
+        "state": "partial",
+        "warningsCount": 10
+      }
+    },
+    {
+      "tool": "bangumi.get_character_credit_integrity",
+      "httpRequests": 3,
+      "result": {
+        "state": "partial",
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_episode_guide",
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "itemsCount": 1,
+        "warningsCount": 1
+      }
+    },
+    {
+      "tool": "bangumi.get_episode_integrity",
+      "httpRequests": 2,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "itemsCount": 1,
+        "warningsCount": 2
+      }
+    },
+    {
+      "tool": "bangumi.get_revision",
+      "httpRequests": 1,
+      "result": {
+        "id": 1567985
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_comparison",
+      "httpRequests": 10,
+      "result": {
+        "state": "partial",
+        "warningsCount": 4
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_overlap",
+      "httpRequests": 6,
+      "result": {
+        "state": "partial",
+        "warningsCount": 5
+      }
+    },
+    {
+      "tool": "bangumi.get_user",
+      "httpRequests": 1,
+      "result": {
+        "id": 489240
+      }
+    },
+    {
+      "tool": "bangumi.search_subjects",
+      "httpRequests": 1,
+      "result": {
+        "total": 540
+      }
+    },
+    {
+      "tool": "bangumi.call_operation",
+      "httpRequests": 1,
+      "result": {
+        "id": 41529
+      }
+    },
+    {
+      "tool": "bangumi.render_calendar",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_search",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_cast_card",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_episode_guide",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_episode_integrity",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_card",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_character_credit_integrity",
+      "httpRequests": 3,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_latest_subject_revision",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_person_profile",
+      "httpRequests": 3,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_revision_timeline",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_series_watch_order",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_identity",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_index_membership",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_stats_intelligence",
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_person_activity",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_person_collaboration",
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_aggregation",
+      "httpRequests": 7,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_cohort_comparison",
+      "httpRequests": 7,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_comparison",
+      "httpRequests": 10,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_overlap",
+      "httpRequests": 6,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_overview",
+      "httpRequests": 5,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      }
+    }
+  ]
+}
