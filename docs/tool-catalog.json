@@ -1845,7 +1845,7 @@
           "description": "制作人员最多返回条数，默认 24",
           "type": "integer",
           "minimum": 1,
-          "maximum": 80
+          "maximum": 100
         },
         "maxRelations": {
           "description": "关联条目最多返回条数，默认 12",
@@ -4097,7 +4097,7 @@
           "description": "制作人员读取上限，默认 24",
           "type": "integer",
           "minimum": 1,
-          "maximum": 80
+          "maximum": 100
         },
         "maxRelations": {
           "description": "关联条目读取上限，默认 12",

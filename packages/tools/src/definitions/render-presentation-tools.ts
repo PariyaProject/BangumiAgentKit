@@ -836,7 +836,7 @@ export function createRenderPresentationTools(
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 8'),
-      maxStaff: z.number().int().min(1).max(80).optional().describe('制作人员读取上限，默认 24'),
+      maxStaff: z.number().int().min(1).max(100).optional().describe('制作人员读取上限，默认 24'),
       maxRelations: z
         .number()
         .int()

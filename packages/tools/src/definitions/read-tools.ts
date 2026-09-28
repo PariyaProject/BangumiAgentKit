@@ -217,7 +217,7 @@ export function createReadTools(
         .number()
         .int()
         .min(1)
-        .max(80)
+        .max(100)
         .optional()
         .describe('制作人员最多返回条数，默认 24'),
       maxRelations: z

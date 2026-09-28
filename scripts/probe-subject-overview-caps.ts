@@ -16,7 +16,7 @@ const scenarios = [
   },
   {
     name: 'maximum_supported_caps',
-    input: { subjectId: SUBJECT_ID, maxCast: 20, maxStaff: 80, maxRelations: 32 },
+    input: { subjectId: SUBJECT_ID, maxCast: 20, maxStaff: 100, maxRelations: 32 },
   },
 ] as const;
 
