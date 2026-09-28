@@ -89,6 +89,54 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     expect(authed.client).toBeDefined();
   });
 
+  it('optional auth falls back to the public client when identity or binding is absent', async () => {
+    const storage = new MemoryStorage();
+    const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
+    const publicClient = vi.spyOn(broker, 'getPublicClient');
+
+    const anonymousClient = await broker.getOptionalAuthenticatedClient();
+    const unboundClient = await broker.getOptionalAuthenticatedClient('user_unbound');
+
+    expect(anonymousClient).toBeDefined();
+    expect(unboundClient).toBeDefined();
+    expect(publicClient).toHaveBeenCalledTimes(2);
+  });
+
+  it('optional auth preserves expired-credential errors instead of silently downgrading', async () => {
+    const storage = new MemoryStorage();
+    const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
+    const publicClient = vi.spyOn(broker, 'getPublicClient');
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'qq-official',
+      botInstanceId: 'bot_1',
+      externalUserId: 'qq_user_expired',
+    });
+    const account = await storage.upsertBangumiAccount({
+      id: 'acc_expired',
+      bangumiUserId: 5678,
+      username: 'expired_user',
+      nickname: 'Expired User',
+    });
+    await storage.replaceActiveBinding(principal.id, account.id);
+    await storage.upsertCredential({
+      id: 'cred_expired',
+      bangumiAccountId: account.id,
+      encryptedAccessToken: encryptToken('expired_access_token', SECRET_KEY),
+      expiresAt: new Date(Date.now() - 60_000),
+      requestedCapabilities: [],
+      reportedScopes: null,
+      scopeEvidence: 'unknown',
+      keyVersion: 'v1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(broker.getOptionalAuthenticatedClient(principal.id)).rejects.toMatchObject({
+      code: 'AUTH_EXPIRED',
+    });
+    expect(publicClient).not.toHaveBeenCalled();
+  });
+
   it('TokenBroker disconnect deactivates binding and removes credentials', async () => {
     const storage = new MemoryStorage();
     const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
