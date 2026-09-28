@@ -89,9 +89,10 @@ export function createRuntimeDependenciesWithStorage(
     tokenActiveKeyVersion: config.tokenActiveKeyVersion,
   });
 
-  const clientId = config.clientId || process.env.BANGUMI_OAUTH_CLIENT_ID;
-  const clientSecret = config.clientSecret || process.env.BANGUMI_OAUTH_CLIENT_SECRET;
-  const redirectUri = config.redirectUri || process.env.BANGUMI_OAUTH_REDIRECT_URI;
+  const clientId = config.clientId?.trim() || process.env.BANGUMI_OAUTH_CLIENT_ID?.trim();
+  const clientSecret =
+    config.clientSecret?.trim() || process.env.BANGUMI_OAUTH_CLIENT_SECRET?.trim();
+  const redirectUri = config.redirectUri?.trim() || process.env.BANGUMI_OAUTH_REDIRECT_URI?.trim();
 
   if (isProd) {
     if (!clientId)
@@ -117,8 +118,8 @@ export function createRuntimeDependenciesWithStorage(
   const oauthService = new OAuthService(
     storage,
     {
-      clientId: clientId || 'test_client_id',
-      clientSecret: clientSecret || 'test_client_secret',
+      clientId,
+      clientSecret,
       redirectUri: redirectUri || 'http://localhost:3000/oauth/bangumi/callback',
       tokenEncryption,
       tokenUrl: config.tokenUrl,

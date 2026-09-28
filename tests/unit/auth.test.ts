@@ -8,6 +8,7 @@ import {
   OAuthService,
 } from '@bangumi-agent-kit/auth';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 
 describe('Phase 5: DB, OAuth & Token Security Tests', () => {
   const SECRET_KEY = 'super-secret-key-for-aes-encryption-test';
@@ -135,6 +136,69 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
       code: 'AUTH_EXPIRED',
     });
     expect(publicClient).not.toHaveBeenCalled();
+  });
+
+  it('does not create OAuth state or return a placeholder authorize URL without app credentials', async () => {
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_ID', '');
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_SECRET', '');
+    try {
+      const storage = new MemoryStorage();
+      const createOAuthSession = vi.spyOn(storage, 'createOAuthSession');
+      const dependencies = createRuntimeDependenciesWithStorage(storage, {
+        secretKey: SECRET_KEY,
+        redirectUri: 'http://127.0.0.1:3000/oauth/bangumi/callback',
+      });
+      const registry = new ToolRegistry(dependencies);
+      const context = {
+        principalId: 'principal-no-oauth-app',
+        botInstanceId: 'fixture-bot',
+        conversationId: 'fixture-conversation',
+      };
+
+      await expect(registry.executeTool('bangumi.auth_status', {}, context)).resolves.toEqual({
+        bound: false,
+        accountCount: 0,
+      });
+      await expect(registry.executeTool('bangumi.auth_start', {}, context)).rejects.toMatchObject({
+        code: 'OAUTH_NOT_CONFIGURED',
+      });
+      expect(createOAuthSession).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('does not consume a pending OAuth state or exchange a code when app credentials are missing', async () => {
+    const storage = new MemoryStorage();
+    const stateStore = new OAuthStateStore(storage);
+    const { state } = await stateStore.generateState({ principalId: 'principal-no-oauth-app' });
+    const consumeOAuthSession = vi.spyOn(storage, 'consumeOAuthSession');
+    const exchangeAuthorizationCode = vi.fn(async () => ({ access_token: 'should-not-be-used' }));
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ id: 1, username: 'should-not-be-used' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const oauthService = new OAuthService(
+      storage,
+      {
+        clientId: '',
+        clientSecret: '',
+        redirectUri: 'http://127.0.0.1:3000/oauth/bangumi/callback',
+        secretKey: SECRET_KEY,
+      },
+      new HttpClient({ fetchFn }),
+      { exchangeAuthorizationCode } as any,
+    );
+
+    await expect(oauthService.handleCallback('fixture-code', state)).rejects.toMatchObject({
+      code: 'OAUTH_NOT_CONFIGURED',
+    });
+    expect(consumeOAuthSession).not.toHaveBeenCalled();
+    expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   it('TokenBroker disconnect deactivates binding and removes credentials', async () => {
