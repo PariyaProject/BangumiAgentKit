@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "evidenceKind": "bangumi_public_tools_live_probe",
-  "observedAt": "2026-09-28T18:17:50.835Z",
-  "sourceRevision": "714550d7b42d9fb2a7325c0bb2cea2bdb829190e",
-  "catalogSha256": "b4b81095717a3ce0f154bd6daa0258cf3c4797cdd1064334febcb4b01f6f8a67",
+  "observedAt": "2026-09-28T18:42:12.296Z",
+  "sourceRevision": "b6d2369daad780b6b4b26c767fdb443ff46905d9",
+  "catalogSha256": "5aa7c8b1501bb10adfd1e8f556654c4b5549f27a495fce836cf87389091207b7",
   "probeScriptSha256": "4bc2c004996a16234e56e45429a6b3243570a35d39fd4d518b567573ff97edb4",
   "mode": "read_only_public_api_smoke",
   "probeCount": 58,
