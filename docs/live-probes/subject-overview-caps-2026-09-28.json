@@ -1,20 +1,22 @@
 {
   "schemaVersion": 1,
   "evidenceKind": "bangumi_subject_overview_live_caps_probe",
-  "observedAt": "2026-09-28T18:41:19.853Z",
-  "sourceRevision": "b6d2369daad780b6b4b26c767fdb443ff46905d9",
+  "observedAt": "2026-09-28T19:01:17.526Z",
+  "sourceRevision": "735add47ba0bd0068fd9ca3f73b98b033ba9f9df",
   "catalogSha256": "5aa7c8b1501bb10adfd1e8f556654c4b5549f27a495fce836cf87389091207b7",
-  "probeScriptSha256": "29fcfd3601c62bdd77aa978897035cf5af762abf3e217d02490d05b8d955bee4",
+  "probeScriptSha256": "6db900ca9502a836893a8fbf74436a30e862610f5a0d6e0de23b8b32182a6f14",
   "mode": "read_only_public_api_smoke",
   "subjectId": 41529,
-  "probeCount": 2,
-  "httpRequests": 10,
+  "probeCount": 3,
+  "apiScenarioCount": 2,
+  "httpRequests": 15,
   "limits": [
-    "two bounded cap scenarios",
+    "two bounded API cap scenarios plus one render tool invocation",
     "sequential requests",
     "no OAuth",
     "no writes",
-    "warning codes only"
+    "warning codes only",
+    "httpRequests counts Bangumi HttpClient calls, not renderer asset resolution"
   ],
   "results": [
     {
@@ -137,5 +139,18 @@
         "warnings": []
       }
     }
-  ]
+  ],
+  "render": {
+    "state": "rendered",
+    "mimeType": "image/png",
+    "width": 720,
+    "height": 1428,
+    "bytes": 332070,
+    "rendererWarningCodes": [],
+    "staffGroupsAvailable": 33,
+    "staffGroupsRendered": 6,
+    "staffNamesVisible": 24,
+    "staffRowsOmittedFromImage": 63,
+    "artifactMetadataFound": true
+  }
 }
