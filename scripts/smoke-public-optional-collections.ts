@@ -29,6 +29,12 @@ type ProbeResult = {
   authorizationHeaderPresent: boolean;
   resultStateAccepted: boolean;
   statusAccepted: boolean;
+  result: {
+    state: string;
+    outcome: string;
+    observed?: number;
+    returned?: number;
+  };
   state: string;
   observed?: number;
   returned?: number;
@@ -69,6 +75,7 @@ function summarize(
   | 'authorizationHeaderPresent'
   | 'resultStateAccepted'
   | 'statusAccepted'
+  | 'result'
 > {
   if (!value || typeof value !== 'object') return { state: 'invalid_result' };
   const record = value as Record<string, unknown>;
@@ -222,6 +229,12 @@ async function main(): Promise<void> {
       authorizationHeaderPresent,
       resultStateAccepted,
       statusAccepted,
+      result: {
+        state: resultStateAccepted ? 'ok' : 'error',
+        outcome: summary.state,
+        ...(typeof summary.observed === 'number' ? { observed: summary.observed } : {}),
+        ...(typeof summary.returned === 'number' ? { returned: summary.returned } : {}),
+      },
       ...summary,
       ...(usedListItemAsTarget ? { usedListItemAsTarget: true } : {}),
     });
