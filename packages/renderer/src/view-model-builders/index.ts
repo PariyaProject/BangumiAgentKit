@@ -671,7 +671,7 @@ export function buildSubjectOverviewViewModel(
   } = {},
 ): SubjectOverviewViewModel {
   const subject = result.subject;
-  const maxCast = options.maxCast ?? 6;
+  const maxCast = options.maxCast ?? 20;
   const maxStaffGroups = options.maxStaffGroups ?? 6;
   const maxStaffMembersPerGroup = options.maxStaffMembersPerGroup ?? 4;
   const maxRelations = options.maxRelations ?? 8;

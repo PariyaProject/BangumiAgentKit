@@ -835,7 +835,7 @@ export function createRenderPresentationTools(
       '生成适合手机阅读的指定条目证据型概览图片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目和各区段覆盖；不宣称完整关系或历史趋势。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 8'),
+      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 20'),
       maxStaff: z.number().int().min(1).max(100).optional().describe('制作人员读取上限，默认 100'),
       maxRelations: z
         .number()
@@ -856,7 +856,7 @@ export function createRenderPresentationTools(
       const result = await getSubjectOverview(
         input.subjectId,
         {
-          maxCast: input.maxCast ?? 8,
+          maxCast: input.maxCast ?? 20,
           maxStaff: input.maxStaff ?? 100,
           maxRelations: input.maxRelations ?? 12,
         },
@@ -865,6 +865,7 @@ export function createRenderPresentationTools(
       const maxStaff = input.maxStaff ?? 100;
       return await executeRenderAndSave(
         buildSubjectOverviewViewModel(result, {
+          maxCast: input.maxCast ?? 20,
           maxStaffGroups: maxStaff,
           maxStaffMembersPerGroup: maxStaff,
         }),

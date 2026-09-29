@@ -212,7 +212,13 @@ export function createReadTools(
       '一次获取指定条目的证据型智能概览：基本信息、官方评分/收藏统计、角色与声优、制作人员和关联条目。各区段独立保留 complete/partial/unavailable/not_computable 状态、覆盖、来源和限制；不宣称完整角色表、职员表、系列图或历史趋势。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优最多返回条数，默认 8'),
+      maxCast: z
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .optional()
+        .describe('角色/声优最多返回条数，默认 20'),
       maxStaff: z
         .number()
         .int()
@@ -237,7 +243,7 @@ export function createReadTools(
       return await getSubjectOverview(
         input.subjectId,
         {
-          maxCast: input.maxCast ?? 8,
+          maxCast: input.maxCast ?? 20,
           maxStaff: input.maxStaff ?? 24,
           maxRelations: input.maxRelations ?? 12,
         },

@@ -1836,7 +1836,7 @@
           "description": "Bangumi 条目 ID"
         },
         "maxCast": {
-          "description": "角色/声优最多返回条数，默认 8",
+          "description": "角色/声优最多返回条数，默认 20",
           "type": "integer",
           "minimum": 1,
           "maximum": 20
@@ -4088,7 +4088,7 @@
           "description": "Bangumi 条目 ID"
         },
         "maxCast": {
-          "description": "角色/声优读取上限，默认 8",
+          "description": "角色/声优读取上限，默认 20",
           "type": "integer",
           "minimum": 1,
           "maximum": 20

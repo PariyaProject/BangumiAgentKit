@@ -25,7 +25,7 @@ import { getSubjectOverview } from '../../packages/tools/src/subject-overview.js
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const VALID_PNG_BUFFER = Buffer.from(DEFAULT_PLACEHOLDER_DATA_URL.split(',')[1]!, 'base64');
-const LIMITS = { maxCast: 8, maxStaff: 24, maxRelations: 12 };
+const LIMITS = { maxCast: 20, maxStaff: 24, maxRelations: 12 };
 
 type FixtureState = 'complete' | 'partial' | 'unavailable' | 'not_found';
 type ImageMode = 'valid' | 'failed' | 'ssrf';
@@ -73,8 +73,8 @@ function subjectPayload(imageMode: ImageMode) {
   };
 }
 
-function charactersPayload(imageMode: ImageMode) {
-  return Array.from({ length: 8 }, (_, index) => ({
+function charactersPayload(imageMode: ImageMode, count = 9) {
+  return Array.from({ length: count }, (_, index) => ({
     id: index + 1,
     name: `非常に長い角色名称 ${index + 1} チトとユーリの旅路`,
     type: index % 2 === 0 ? 1 : 2,
@@ -115,7 +115,11 @@ function relationsPayload(imageMode: ImageMode) {
   }));
 }
 
-function buildSemanticClient(state: FixtureState, imageMode: ImageMode): HttpClient {
+function buildSemanticClient(
+  state: FixtureState,
+  imageMode: ImageMode,
+  characterCount = 9,
+): HttpClient {
   return new HttpClient({
     fetchFn: async (input) => {
       const url = String(input);
@@ -131,7 +135,9 @@ function buildSemanticClient(state: FixtureState, imageMode: ImageMode): HttpCli
       if (url.endsWith('/v0/subjects/123/characters')) {
         if (state === 'partial')
           return new Response(JSON.stringify({ error: 'characters unavailable' }), { status: 503 });
-        return new Response(JSON.stringify(charactersPayload(imageMode)), { status: 200 });
+        return new Response(JSON.stringify(charactersPayload(imageMode, characterCount)), {
+          status: 200,
+        });
       }
       if (url.endsWith('/v0/subjects/123/persons')) {
         return new Response(JSON.stringify(personsPayload(imageMode)), { status: 200 });
@@ -320,7 +326,8 @@ describe('Subject Overview renderer', () => {
 
     const vm = buildSubjectOverviewViewModel(complete);
     expect(vm.template).toBe('subject-overview');
-    expect(vm.cast.items).toHaveLength(6);
+    expect(vm.cast.items).toHaveLength(9);
+    expect(vm.cast.state).toBe('complete');
     expect(vm.staff.groups).toHaveLength(2);
     expect(vm.relations.items).toHaveLength(8);
     expect(vm.staff.hiddenCount).toBeGreaterThan(0);
@@ -405,7 +412,7 @@ describe('Subject Overview renderer', () => {
     const vm = buildSubjectOverviewViewModel(result);
     const urls = extractImageUrls(vm);
 
-    expect(urls).toHaveLength(7);
+    expect(urls).toHaveLength(10);
     expect(urls).toContain('https://example.test/cover-0.png');
     expect(urls).toContain('https://example.test/character-0.png');
     expect(urls.some((url) => url.includes('/staff-'))).toBe(false);
@@ -415,12 +422,12 @@ describe('Subject Overview renderer', () => {
       ...vm,
       cast: { ...vm.cast, items: [...vm.cast.items, ...vm.cast.items] },
     };
-    expect(extractImageUrls(oversized)).toHaveLength(7);
+    expect(extractImageUrls(oversized)).toHaveLength(10);
 
     const isolated = createDeterministicRenderService();
     try {
       await isolated.service.renderCard(oversized, { width: 640 });
-      expect(isolated.requests).toHaveLength(7);
+      expect(isolated.requests).toHaveLength(10);
     } finally {
       await isolated.service.close();
     }
@@ -496,6 +503,22 @@ describe('Subject Overview renderer', () => {
     }
   }, 20_000);
 
+  it('keeps all nine returned roles through the mobile renderer without hidden truncation', async () => {
+    const overview = await semanticFixture('complete');
+    const viewModel = buildSubjectOverviewViewModel(overview);
+    const rendered = await renderService.renderCard(viewModel, {
+      width: 720,
+      deviceScaleFactor: 1,
+    });
+
+    expect(viewModel.cast.items).toHaveLength(9);
+    expect(viewModel.cast.hiddenCount).toBeUndefined();
+    expect(rendered.warnings).not.toContainEqual(
+      expect.objectContaining({ code: 'RENDERER_CAST_OUTPUT_TRUNCATED' }),
+    );
+    expect(rendered.height).toBeLessThanOrEqual(8192);
+  });
+
   it('uses the mobile-sized canvas for the public subject overview artifact', async () => {
     const renderCard = vi.fn(
       async (_viewModel: ReturnType<typeof buildSubjectOverviewViewModel>) => ({
@@ -525,7 +548,7 @@ describe('Subject Overview renderer', () => {
     expect(overview).toBeDefined();
 
     await overview!.execute({ subjectId: 123 } as never, {} as never, {
-      publicHttpClient: buildSemanticClient('complete', 'valid'),
+      publicHttpClient: buildSemanticClient('complete', 'valid', 9),
       providerRegistry: buildStatsProvider(),
     });
 
@@ -533,6 +556,8 @@ describe('Subject Overview renderer', () => {
     expect(renderCall).toBeDefined();
     if (!renderCall) throw new Error('overview renderer must receive a view model');
     const renderedViewModel = renderCall[0];
+    expect(renderedViewModel.cast.items).toHaveLength(9);
+    expect(renderedViewModel.cast.state).toBe('complete');
     expect(renderedViewModel.staff.groups.flatMap((group) => group.members)).toHaveLength(10);
     expect(renderedViewModel.staff.hiddenCount).toBeUndefined();
     expect(renderCard).toHaveBeenCalledWith(
