@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_subject_overview_live_caps_probe",
+  "observedAt": "2026-09-28T18:29:53.134Z",
+  "sourceRevision": "109365ac65cb7782b6c4cee73e75ba9c989d744e",
+  "catalogSha256": "b4b81095717a3ce0f154bd6daa0258cf3c4797cdd1064334febcb4b01f6f8a67",
+  "probeScriptSha256": "feaf3c6c45525a11efb2b9242ae1bcc2685de91e2dd67924c5aa20d265dcc29e",
+  "mode": "read_only_public_api_smoke",
+  "subjectId": 41529,
+  "probeCount": 2,
+  "httpRequests": 10,
+  "limits": [
+    "two bounded cap scenarios",
+    "sequential requests",
+    "no OAuth",
+    "no writes",
+    "warning codes only"
+  ],
+  "results": [
+    {
+      "scenario": "smoke_caps",
+      "httpRequests": 5,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "limits": {
+          "maxCast": 2,
+          "maxStaff": 2,
+          "maxRelations": 2
+        },
+        "coverage": {
+          "sourceRequestsAttempted": 5,
+          "sourceRequestsSucceeded": 5,
+          "sectionsComplete": 1,
+          "sectionsPartial": 3,
+          "sectionsUnavailable": 0,
+          "sectionsNotComputable": 0,
+          "truncatedSections": ["cast", "staff", "relations"]
+        },
+        "sections": {
+          "stats": {
+            "state": "complete",
+            "observed": 1,
+            "returned": 1,
+            "truncated": false
+          },
+          "cast": {
+            "state": "partial",
+            "observed": 9,
+            "returned": 2,
+            "truncated": true,
+            "itemCount": 2
+          },
+          "staff": {
+            "state": "partial",
+            "observed": 87,
+            "returned": 2,
+            "truncated": true,
+            "itemCount": 2
+          },
+          "relations": {
+            "state": "partial",
+            "observed": 7,
+            "returned": 2,
+            "truncated": true,
+            "itemCount": 2
+          }
+        },
+        "warnings": [
+          {
+            "code": "CAST_OUTPUT_TRUNCATED",
+            "section": "cast",
+            "state": "partial"
+          },
+          {
+            "code": "STAFF_OUTPUT_TRUNCATED",
+            "section": "staff",
+            "state": "partial"
+          },
+          {
+            "code": "RELATIONS_OUTPUT_TRUNCATED",
+            "section": "relations",
+            "state": "partial"
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "maximum_supported_caps",
+      "httpRequests": 5,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "limits": {
+          "maxCast": 20,
+          "maxStaff": 80,
+          "maxRelations": 32
+        },
+        "coverage": {
+          "sourceRequestsAttempted": 5,
+          "sourceRequestsSucceeded": 5,
+          "sectionsComplete": 3,
+          "sectionsPartial": 1,
+          "sectionsUnavailable": 0,
+          "sectionsNotComputable": 0,
+          "truncatedSections": ["staff"]
+        },
+        "sections": {
+          "stats": {
+            "state": "complete",
+            "observed": 1,
+            "returned": 1,
+            "truncated": false
+          },
+          "cast": {
+            "state": "complete",
+            "observed": 9,
+            "returned": 9,
+            "truncated": false,
+            "itemCount": 9
+          },
+          "staff": {
+            "state": "partial",
+            "observed": 87,
+            "returned": 80,
+            "truncated": true,
+            "itemCount": 80
+          },
+          "relations": {
+            "state": "complete",
+            "observed": 7,
+            "returned": 7,
+            "truncated": false,
+            "itemCount": 7
+          }
+        },
+        "warnings": [
+          {
+            "code": "STAFF_OUTPUT_TRUNCATED",
+            "section": "staff",
+            "state": "partial"
+          }
+        ]
+      }
+    }
+  ]
+}

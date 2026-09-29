@@ -46,6 +46,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import {
   RenderService,
+  type RenderOptions,
   LocalArtifactStore,
   ArtifactStore,
   isPrincipalScopedArtifactStore,
@@ -146,12 +147,15 @@ export async function renderAndSaveArtifact(
   renderService: Pick<RenderService, 'renderCard'>,
   artifactStore: ArtifactStore,
   privatePrincipalId?: string,
+  renderOptions: RenderOptions = {},
 ) {
   try {
     const privatePrincipal = getPrivateArtifactPrincipal(viewModel.template, privatePrincipalId);
     const renderResult = privatePrincipal
-      ? await renderService.renderCard(viewModel, { cache: false })
-      : await renderService.renderCard(viewModel);
+      ? await renderService.renderCard(viewModel, { ...renderOptions, cache: false })
+      : Object.keys(renderOptions).length > 0
+        ? await renderService.renderCard(viewModel, renderOptions)
+        : await renderService.renderCard(viewModel);
     const artifactRef = privatePrincipal
       ? isPrincipalScopedArtifactStore(artifactStore)
         ? await artifactStore.saveArtifactForPrincipal(
@@ -199,8 +203,18 @@ export function createRenderPresentationTools(
   const artifactStore = artifactStoreOverride || getArtifactStore();
   const renderService = renderServiceOverride || getRenderService();
 
-  async function executeRenderAndSave(viewModel: any, privatePrincipalId?: string) {
-    return renderAndSaveArtifact(viewModel, renderService, artifactStore, privatePrincipalId);
+  async function executeRenderAndSave(
+    viewModel: any,
+    privatePrincipalId?: string,
+    renderOptions: RenderOptions = {},
+  ) {
+    return renderAndSaveArtifact(
+      viewModel,
+      renderService,
+      artifactStore,
+      privatePrincipalId,
+      renderOptions,
+    );
   }
 
   const renderSubjectCard = defineTool({
@@ -818,11 +832,11 @@ export function createRenderPresentationTools(
   const renderSubjectOverview = defineTool({
     name: 'bangumi.render_subject_overview',
     description:
-      '生成指定条目的证据型智能概览图片卡片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目以及各区段覆盖和限制；不宣称完整关系或历史趋势。',
+      '生成适合手机阅读的指定条目证据型概览图片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目和各区段覆盖；不宣称完整关系或历史趋势。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
-      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 8'),
-      maxStaff: z.number().int().min(1).max(80).optional().describe('制作人员读取上限，默认 24'),
+      maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 20'),
+      maxStaff: z.number().int().min(1).max(100).optional().describe('制作人员读取上限，默认 100'),
       maxRelations: z
         .number()
         .int()
@@ -842,13 +856,22 @@ export function createRenderPresentationTools(
       const result = await getSubjectOverview(
         input.subjectId,
         {
-          maxCast: input.maxCast ?? 8,
-          maxStaff: input.maxStaff ?? 24,
+          maxCast: input.maxCast ?? 20,
+          maxStaff: input.maxStaff ?? 100,
           maxRelations: input.maxRelations ?? 12,
         },
         { client, providerRegistry: deps?.providerRegistry },
       );
-      return await executeRenderAndSave(buildSubjectOverviewViewModel(result));
+      const maxStaff = input.maxStaff ?? 100;
+      return await executeRenderAndSave(
+        buildSubjectOverviewViewModel(result, {
+          maxCast: input.maxCast ?? 20,
+          maxStaffGroups: maxStaff,
+          maxStaffMembersPerGroup: maxStaff,
+        }),
+        undefined,
+        { width: 720, deviceScaleFactor: 1 },
+      );
     },
   });
 

@@ -38,11 +38,17 @@ def main() -> int:
     if missing or extra:
         raise SystemExit(f'acceptance table mismatch: missing={missing}, extra={extra}')
 
+    by_name = {item['name']: item for item in catalog}
     for name, fields in rows.items():
         if fields[3:6] != ['✅', '✅', '✅']:
             raise SystemExit(f'{name}: directory/schema/source/direct execute coverage is incomplete')
         if fields[6] not in VALID_LIVE:
             raise SystemExit(f'{name}: invalid public API status {fields[6]!r}')
+        if by_name[name].get('auth') == 'required' and fields[6] != '—':
+            raise SystemExit(
+                f'{name}: account-required tools have no anonymous public execution surface; '
+                'keep account acceptance in the separate auth column'
+            )
         if fields[7] not in VALID_MARK or fields[8] not in VALID_MARK:
             raise SystemExit(f'{name}: invalid auth or QQ/TIM status')
 

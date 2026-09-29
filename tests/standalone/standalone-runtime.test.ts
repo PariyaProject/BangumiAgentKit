@@ -577,6 +577,8 @@ describe('PR-6R-C standalone runtime', () => {
   });
 
   it('AUTH-OUT-01/AUTH-OUT-02: JSON auth login keeps OAuth metadata and no secrets', async () => {
+    process.env.BANGUMI_OAUTH_CLIENT_ID = 'standalone-fixture-client';
+    process.env.BANGUMI_OAUTH_CLIENT_SECRET = 'standalone-fixture-secret';
     const stdout = new PassThrough();
     const stderr = new PassThrough();
     const stdoutChunks: Buffer[] = [];
@@ -592,6 +594,9 @@ describe('PR-6R-C standalone runtime', () => {
       unknown
     >;
     expect(output.authorizationUrl).toMatch(/^https:\/\//u);
+    expect(new URL(output.authorizationUrl as string).searchParams.get('client_id')).toBe(
+      'standalone-fixture-client',
+    );
     expect(output.authorizationComplete).toBeUndefined();
     expect(JSON.stringify(output)).not.toMatch(/accessToken|refreshToken|clientSecret|password/iu);
 

@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_subject_overview_live_caps_probe",
+  "observedAt": "2026-09-29T05:00:28.022Z",
+  "sourceRevision": "e766ea8ae67a05aec1520f937eecaf926f5553ad",
+  "catalogSha256": "95bbcb1530e480a317c6106d8b4712230752911898ec2bd07eb41899ece292fd",
+  "probeScriptSha256": "c65d50b5a76120df183ea0fb3a3713b4f23d30265e41ca8acc92a2e58ccadf58",
+  "mode": "read_only_public_api_smoke",
+  "subjectId": 41529,
+  "probeCount": 3,
+  "apiScenarioCount": 2,
+  "httpRequests": 15,
+  "limits": [
+    "two bounded API cap scenarios plus one render tool invocation",
+    "sequential requests",
+    "no OAuth",
+    "no writes",
+    "warning codes only",
+    "httpRequests counts Bangumi HttpClient calls, not renderer asset resolution"
+  ],
+  "results": [
+    {
+      "scenario": "smoke_caps",
+      "httpRequests": 5,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "limits": {
+          "maxCast": 2,
+          "maxStaff": 2,
+          "maxRelations": 2
+        },
+        "coverage": {
+          "sourceRequestsAttempted": 5,
+          "sourceRequestsSucceeded": 5,
+          "sectionsComplete": 1,
+          "sectionsPartial": 3,
+          "sectionsUnavailable": 0,
+          "sectionsNotComputable": 0,
+          "truncatedSections": [
+            "cast",
+            "staff",
+            "relations"
+          ]
+        },
+        "sections": {
+          "stats": {
+            "state": "complete",
+            "observed": 1,
+            "returned": 1,
+            "truncated": false
+          },
+          "cast": {
+            "state": "partial",
+            "observed": 9,
+            "returned": 2,
+            "truncated": true,
+            "itemCount": 2
+          },
+          "staff": {
+            "state": "partial",
+            "observed": 87,
+            "returned": 2,
+            "truncated": true,
+            "itemCount": 2
+          },
+          "relations": {
+            "state": "partial",
+            "observed": 7,
+            "returned": 2,
+            "truncated": true,
+            "itemCount": 2
+          }
+        },
+        "warnings": [
+          {
+            "code": "CAST_OUTPUT_TRUNCATED",
+            "section": "cast",
+            "state": "partial"
+          },
+          {
+            "code": "STAFF_OUTPUT_TRUNCATED",
+            "section": "staff",
+            "state": "partial"
+          },
+          {
+            "code": "RELATIONS_OUTPUT_TRUNCATED",
+            "section": "relations",
+            "state": "partial"
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "maximum_supported_caps",
+      "httpRequests": 5,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "limits": {
+          "maxCast": 20,
+          "maxStaff": 100,
+          "maxRelations": 32
+        },
+        "coverage": {
+          "sourceRequestsAttempted": 5,
+          "sourceRequestsSucceeded": 5,
+          "sectionsComplete": 4,
+          "sectionsPartial": 0,
+          "sectionsUnavailable": 0,
+          "sectionsNotComputable": 0,
+          "truncatedSections": []
+        },
+        "sections": {
+          "stats": {
+            "state": "complete",
+            "observed": 1,
+            "returned": 1,
+            "truncated": false
+          },
+          "cast": {
+            "state": "complete",
+            "observed": 9,
+            "returned": 9,
+            "truncated": false,
+            "itemCount": 9
+          },
+          "staff": {
+            "state": "complete",
+            "observed": 87,
+            "returned": 87,
+            "truncated": false,
+            "itemCount": 87
+          },
+          "relations": {
+            "state": "complete",
+            "observed": 7,
+            "returned": 7,
+            "truncated": false,
+            "itemCount": 7
+          }
+        },
+        "warnings": []
+      }
+    }
+  ],
+  "render": {
+    "state": "rendered",
+    "mimeType": "image/png",
+    "width": 720,
+    "height": 2623,
+    "bytes": 483559,
+    "rendererWarningCodes": [],
+    "staffGroupsAvailable": 33,
+    "staffGroupsRendered": 33,
+    "staffRowsAvailable": 87,
+    "staffNamesVisible": 87,
+    "staffRowsRendered": 87,
+    "staffRowsOmittedFromImage": 0,
+    "artifactMetadataFound": true
+  }
+}

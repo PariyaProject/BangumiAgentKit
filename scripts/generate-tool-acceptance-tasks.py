@@ -73,12 +73,20 @@ def live_public_names() -> set[str]:
     return names
 
 
+def public_api_status(tool: dict, live_public: set[str]) -> str:
+    """Classify only the tool's unauthenticated/public execution surface here."""
+    name = tool['name']
+    if name in NON_PUBLIC_API_TOOLS or tool.get('auth') == 'required':
+        return '—'
+    return '◐' if name in live_public else '⬜'
+
+
 def status(tool: dict, direct: set[str], live_public: set[str]) -> tuple[str, str, str, str, str, str]:
     name = tool['name']
     schema = '✅'
     source = '✅'
     execute = '✅' if name in direct else '⬜'
-    live = '—' if name in NON_PUBLIC_API_TOOLS else ('◐' if name in live_public else '⬜')
+    live = public_api_status(tool, live_public)
     auth = '—' if tool.get('auth') == 'none' else '⬜'
     # Existing QQ tests validate the compact profile as a surface, not each
     # individual tool's real call. Keep this column conservative.
@@ -97,7 +105,10 @@ def main() -> None:
         raise SystemExit('Missing test source references: ' + ', '.join(missing_source))
 
     direct_count = sum(item['name'] in direct for item in catalog)
-    live_count = sum(item['name'] in live_public_names_set for item in catalog)
+    public_statuses = [public_api_status(item, live_public_names_set) for item in catalog]
+    live_count = sum(value == '◐' for value in public_statuses)
+    not_applicable_count = sum(value == '—' for value in public_statuses)
+    pending_public_count = sum(value == '⬜' for value in public_statuses)
     auth_count = sum(item.get('auth') != 'none' for item in catalog)
     lines = [
         '# BangumiAgentKit 逐项验收任务清单',
@@ -109,11 +120,11 @@ def main() -> None:
         f'- [x] 工具目录与注册表/Schema 精确一致：{len(catalog)}/{len(catalog)}。',
         f'- [x] 每个工具有测试源码引用：{len(catalog)}/{len(catalog)}。',
         f'- [ ] 每个工具都有直接 `execute` 夹具：{direct_count}/{len(catalog)}；仍有 {len(catalog) - direct_count} 项待补。',
-        f'- [ ] 每个工具都有真实公开 API 证据：当前明确记录 {live_count}/{len(catalog)}。',
+        f'- [ ] 适用工具的真实公开 API 证据：{live_count}/{len(catalog) - not_applicable_count} 有限/间接证据；{not_applicable_count} 项无匿名公开执行面；{pending_public_count} 项待补。',
         f'- [ ] 需要账号的工具完成真实 OAuth/账号验收：{auth_count} 项目前不能用本地 mock 代替。',
         '- [ ] QQ/TIM 逐工具端到端验收：当前只有 compact profile 的整体消息链证据，不把它误写成 96 个工具逐一通过。',
         '',
-        '状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；`—` 不适用（OAuth 生命周期、本地状态/历史或 operation metadata 不发公开 Bangumi HTTP 请求）。',
+        '状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；公开 API 列的 `—` 表示该工具没有匿名公开执行面（包括 OAuth 生命周期、本地状态/历史、operation metadata，以及契约明确要求已绑定账号的工具）。这只代表公开匿名 API 列不适用；账号认证列仍单独验收，不能把 `—` 当作账号功能通过。',
         '',
         '| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 账号认证 | QQ/TIM | 下一步 |',
         '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',

@@ -666,12 +666,14 @@ export function buildSubjectOverviewViewModel(
     sourceLabel?: string;
     maxCast?: number;
     maxStaffGroups?: number;
+    maxStaffMembersPerGroup?: number;
     maxRelations?: number;
   } = {},
 ): SubjectOverviewViewModel {
   const subject = result.subject;
-  const maxCast = options.maxCast ?? 6;
+  const maxCast = options.maxCast ?? 20;
   const maxStaffGroups = options.maxStaffGroups ?? 6;
+  const maxStaffMembersPerGroup = options.maxStaffMembersPerGroup ?? 4;
   const maxRelations = options.maxRelations ?? 8;
   const castItems = result.cast.items.slice(0, maxCast).map((item) => ({
     character: {
@@ -690,7 +692,7 @@ export function buildSubjectOverviewViewModel(
   const staffGroups = result.staff.groups.slice(0, maxStaffGroups).map((group) => ({
     relation: group.relation || '职位未知',
     count: group.count,
-    members: group.memberIds.slice(0, 4).flatMap((id) => {
+    members: group.memberIds.slice(0, maxStaffMembersPerGroup).flatMap((id) => {
       const member = staffById.get(id);
       return member
         ? [{ id: member.id, name: member.name, image: imageFromRecord(member.images) }]

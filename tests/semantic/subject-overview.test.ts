@@ -217,6 +217,31 @@ describe('Subject Intelligence Overview semantic contract', () => {
     expect(requests).toHaveLength(4);
   });
 
+  it('defaults to a cast limit that keeps a common nine-character work complete', async () => {
+    const nineCharacters = Array.from({ length: 9 }, (_, index) => ({
+      ...charactersPayload[0]!,
+      id: index + 1,
+      name: `角色 ${index + 1}`,
+      actors: [{ id: index + 101, name: `声优 ${index + 1}`, career: ['seiyu'], images: {} }],
+    }));
+    const { client } = buildClient({ characters: nineCharacters });
+    const result = await getTool(client).execute({ subjectId: 123 }, context, {
+      providerRegistry: buildProviderRegistry(),
+    });
+    const overview = result as {
+      cast: { state: string; coverage: { observed: number; returned: number; truncated: boolean } };
+      warnings: Array<{ code: string }>;
+    };
+
+    expect(overview.cast).toMatchObject({
+      state: 'complete',
+      coverage: { observed: 9, returned: 9, truncated: false },
+    });
+    expect(overview.warnings).not.toContainEqual(
+      expect.objectContaining({ code: 'CAST_OUTPUT_TRUNCATED' }),
+    );
+  });
+
   it('bounds nested actor references and exposes truthful nested coverage', async () => {
     const oversizedActors = Array.from({ length: 1000 }, (_, index) => ({
       id: index + 1000,

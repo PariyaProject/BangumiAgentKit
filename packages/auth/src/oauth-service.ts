@@ -5,12 +5,12 @@ import {
   TokenEncryptionConfig,
   resolveTokenEncryptionConfig,
 } from './token-crypto.js';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { BangumiError, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { BangumiOAuthClient } from './oauth-client.js';
 
 export interface OAuthConfig {
-  clientId: string;
-  clientSecret: string;
+  clientId?: string;
+  clientSecret?: string;
   redirectUri: string;
   tokenEncryption?: TokenEncryptionConfig;
   secretKey?: string;
@@ -52,6 +52,7 @@ export class OAuthService {
     conversationId?: string,
     requestedCapabilities: string[] = ['write:collection'],
   ): Promise<{ url: string; state: string; expiresAt: Date }> {
+    const oauthConfig = this.requireOAuthConfig();
     const { state, session } = await this.stateStore.generateState({
       principalId,
       botInstanceId,
@@ -61,9 +62,9 @@ export class OAuthService {
     const authUrl = this.config.authorizeUrl || 'https://bgm.tv/oauth/authorize';
 
     const params = new URLSearchParams({
-      client_id: this.config.clientId,
+      client_id: oauthConfig.clientId,
       response_type: 'code',
-      redirect_uri: this.config.redirectUri,
+      redirect_uri: oauthConfig.redirectUri,
       state,
     });
 
@@ -75,15 +76,17 @@ export class OAuthService {
   }
 
   async handleCallback(code: string, state: string): Promise<AuthorizedAccount> {
+    const oauthConfig = this.requireOAuthConfig();
+
     // 1. Consume state safely & atomically
     const session = await this.stateStore.consumeState(state);
 
     // 2. Exchange code for access_token
     const tokenData = await this.oauthClient.exchangeAuthorizationCode(
       code,
-      this.config.clientId,
-      this.config.clientSecret,
-      this.config.redirectUri,
+      oauthConfig.clientId,
+      oauthConfig.clientSecret,
+      oauthConfig.redirectUri,
       this.config.tokenUrl,
     );
 
@@ -142,5 +145,21 @@ export class OAuthService {
       nickname: accountRecord.nickname,
       principalId: session.principalId,
     };
+  }
+
+  private requireOAuthConfig(): { clientId: string; clientSecret: string; redirectUri: string } {
+    const clientId = this.config.clientId?.trim();
+    const clientSecret = this.config.clientSecret?.trim();
+    const redirectUri = this.config.redirectUri.trim();
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new BangumiError(
+        'OAUTH_NOT_CONFIGURED',
+        'Bangumi OAuth client credentials or callback URL are not configured.',
+        false,
+        undefined,
+        '请由服务管理员配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。',
+      );
+    }
+    return { clientId, clientSecret, redirectUri };
   }
 }
