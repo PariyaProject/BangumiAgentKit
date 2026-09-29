@@ -1840,7 +1840,7 @@
           "description": "Bangumi 条目 ID"
         },
         "maxCast": {
-          "description": "角色/声优最多返回条数，默认 20",
+          "description": "角色/声优最多返回条数，默认 8",
           "type": "integer",
           "minimum": 1,
           "maximum": 20
@@ -1849,7 +1849,7 @@
           "description": "制作人员最多返回条数，默认 24",
           "type": "integer",
           "minimum": 1,
-          "maximum": 100
+          "maximum": 80
         },
         "maxRelations": {
           "description": "关联条目最多返回条数，默认 12",
@@ -4081,7 +4081,7 @@
   },
   {
     "name": "bangumi.render_subject_overview",
-    "description": "生成适合手机阅读的指定条目证据型概览图片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目和各区段覆盖；不宣称完整关系或历史趋势。",
+    "description": "生成指定条目的证据型智能概览图片卡片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目以及各区段覆盖和限制；不宣称完整关系或历史趋势。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -4096,16 +4096,16 @@
           "description": "Bangumi 条目 ID"
         },
         "maxCast": {
-          "description": "角色/声优读取上限，默认 20",
+          "description": "角色/声优读取上限，默认 8",
           "type": "integer",
           "minimum": 1,
           "maximum": 20
         },
         "maxStaff": {
-          "description": "制作人员读取上限，默认 100",
+          "description": "制作人员读取上限，默认 24",
           "type": "integer",
           "minimum": 1,
-          "maximum": 100
+          "maximum": 80
         },
         "maxRelations": {
           "description": "关联条目读取上限，默认 12",

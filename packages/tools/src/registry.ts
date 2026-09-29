@@ -80,7 +80,6 @@ export function createRuntimeDependenciesWithStorage(
   storage: Storage,
   config: CreateRuntimeDependenciesConfig = {},
 ): RuntimeDependencies {
-  const isProd = process.env.NODE_ENV === 'production';
   const tokenEncryption = resolveTokenEncryptionConfig({
     tokenEncryption: config.tokenEncryption,
     secretKey: config.secretKey,
@@ -89,9 +88,10 @@ export function createRuntimeDependenciesWithStorage(
     tokenActiveKeyVersion: config.tokenActiveKeyVersion,
   });
 
-  const clientId = config.clientId || process.env.BANGUMI_OAUTH_CLIENT_ID;
-  const clientSecret = config.clientSecret || process.env.BANGUMI_OAUTH_CLIENT_SECRET;
-  const redirectUri = config.redirectUri || process.env.BANGUMI_OAUTH_REDIRECT_URI;
+  const clientId = config.clientId?.trim() || process.env.BANGUMI_OAUTH_CLIENT_ID?.trim();
+  const clientSecret =
+    config.clientSecret?.trim() || process.env.BANGUMI_OAUTH_CLIENT_SECRET?.trim();
+  const redirectUri = config.redirectUri?.trim() || process.env.BANGUMI_OAUTH_REDIRECT_URI?.trim();
 
   const publicHttpClient = config.publicHttpClient || new HttpClient();
   const providerRegistry = new ProviderRegistry({
@@ -102,9 +102,9 @@ export function createRuntimeDependenciesWithStorage(
   const oauthService = new OAuthService(
     storage,
     {
-      clientId: clientId || (isProd ? '' : 'test_client_id'),
-      clientSecret: clientSecret || (isProd ? '' : 'test_client_secret'),
-      redirectUri: redirectUri || (isProd ? '' : 'http://localhost:3000/oauth/bangumi/callback'),
+      clientId,
+      clientSecret,
+      redirectUri: redirectUri || 'http://localhost:3000/oauth/bangumi/callback',
       tokenEncryption,
       tokenUrl: config.tokenUrl,
       authorizeUrl: config.authorizeUrl || process.env.BANGUMI_OAUTH_AUTHORIZE_URL,

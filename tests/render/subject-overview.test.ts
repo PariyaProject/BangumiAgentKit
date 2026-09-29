@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
@@ -8,6 +8,7 @@ import {
   type CapabilityResult,
   type SubjectStatsData,
 } from '@bangumi-agent-kit/provider-core';
+import { createRenderPresentationTools } from '@bangumi-agent-kit/tools';
 import {
   buildSubjectOverviewViewModel,
   extractImageUrls,
@@ -24,7 +25,7 @@ import { getSubjectOverview } from '../../packages/tools/src/subject-overview.js
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const VALID_PNG_BUFFER = Buffer.from(DEFAULT_PLACEHOLDER_DATA_URL.split(',')[1]!, 'base64');
-const LIMITS = { maxCast: 8, maxStaff: 24, maxRelations: 12 };
+const LIMITS = { maxCast: 20, maxStaff: 24, maxRelations: 12 };
 
 type FixtureState = 'complete' | 'partial' | 'unavailable' | 'not_found';
 type ImageMode = 'valid' | 'failed' | 'ssrf';
@@ -72,8 +73,8 @@ function subjectPayload(imageMode: ImageMode) {
   };
 }
 
-function charactersPayload(imageMode: ImageMode) {
-  return Array.from({ length: 8 }, (_, index) => ({
+function charactersPayload(imageMode: ImageMode, count = 9) {
+  return Array.from({ length: count }, (_, index) => ({
     id: index + 1,
     name: `非常に長い角色名称 ${index + 1} チトとユーリの旅路`,
     type: index % 2 === 0 ? 1 : 2,
@@ -114,7 +115,11 @@ function relationsPayload(imageMode: ImageMode) {
   }));
 }
 
-function buildSemanticClient(state: FixtureState, imageMode: ImageMode): HttpClient {
+function buildSemanticClient(
+  state: FixtureState,
+  imageMode: ImageMode,
+  characterCount = 9,
+): HttpClient {
   return new HttpClient({
     fetchFn: async (input) => {
       const url = String(input);
@@ -130,7 +135,9 @@ function buildSemanticClient(state: FixtureState, imageMode: ImageMode): HttpCli
       if (url.endsWith('/v0/subjects/123/characters')) {
         if (state === 'partial')
           return new Response(JSON.stringify({ error: 'characters unavailable' }), { status: 503 });
-        return new Response(JSON.stringify(charactersPayload(imageMode)), { status: 200 });
+        return new Response(JSON.stringify(charactersPayload(imageMode, characterCount)), {
+          status: 200,
+        });
       }
       if (url.endsWith('/v0/subjects/123/persons')) {
         return new Response(JSON.stringify(personsPayload(imageMode)), { status: 200 });
@@ -319,7 +326,8 @@ describe('Subject Overview renderer', () => {
 
     const vm = buildSubjectOverviewViewModel(complete);
     expect(vm.template).toBe('subject-overview');
-    expect(vm.cast.items).toHaveLength(6);
+    expect(vm.cast.items).toHaveLength(9);
+    expect(vm.cast.state).toBe('complete');
     expect(vm.staff.groups).toHaveLength(2);
     expect(vm.relations.items).toHaveLength(8);
     expect(vm.staff.hiddenCount).toBeGreaterThan(0);
@@ -328,7 +336,7 @@ describe('Subject Overview renderer', () => {
     expect(html).toContain('少女终末旅行');
     expect(html).toContain('评分与收藏统计');
     expect(html).toContain('完整');
-    expect(html).toContain('限制：');
+    expect(html).toContain('有界样本');
     expect(html).not.toContain('example.test');
     expect(
       renderHtmlTemplate(buildSubjectOverviewViewModel(partial), 'bangumi-light', {}, 960),
@@ -341,12 +349,70 @@ describe('Subject Overview renderer', () => {
     ).toContain('未找到');
   });
 
+  it('renders every returned staff member when the requested cap allows it', async () => {
+    const complete = await semanticFixture('complete');
+    const templateMember = complete.staff.items[0];
+    expect(templateMember).toBeDefined();
+    if (!templateMember) throw new Error('semantic fixture must include a staff member');
+
+    const staffItems = Array.from({ length: 87 }, (_, index) => ({
+      ...templateMember,
+      id: 20_000 + index,
+      name: `制作职员${String(index + 1).padStart(2, '0')}`,
+      relation: `制作组${(index % 12) + 1}`,
+    }));
+    const staffGroups = Array.from({ length: 12 }, (_, groupIndex) => {
+      const members = staffItems.filter((_, index) => index % 12 === groupIndex);
+      return {
+        relation: `制作组${groupIndex + 1}`,
+        count: members.length,
+        memberIds: members.map((member) => member.id),
+      };
+    });
+    const result: SubjectOverviewResult = {
+      ...complete,
+      staff: {
+        ...complete.staff,
+        items: staffItems,
+        groups: staffGroups,
+        coverage: { ...complete.staff.coverage, observed: 87, returned: 87, truncated: false },
+      },
+    };
+    const viewModel = buildSubjectOverviewViewModel(result, {
+      maxStaffGroups: 100,
+      maxStaffMembersPerGroup: 100,
+    });
+
+    expect(viewModel.staff.groups).toHaveLength(12);
+    expect(viewModel.staff.groups.flatMap((group) => group.members)).toHaveLength(87);
+    expect(viewModel.staff.hiddenCount).toBeUndefined();
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 720);
+    expect(html).toContain('制作职员01');
+    expect(html).toContain('制作职员87');
+    expect(html).not.toContain('另有 63 条已返回职员关系未展示');
+
+    const rendered = await renderService.renderCard(viewModel, {
+      width: 720,
+      deviceScaleFactor: 1,
+    });
+    expect(rendered.height).toBeLessThanOrEqual(8192);
+    expect(rendered.buffer.length).toBeLessThan(1_000_000);
+    const visualQaDir = process.env.SUBJECT_OVERVIEW_VISUAL_QA_DIR;
+    if (visualQaDir) {
+      await mkdir(visualQaDir, { recursive: true });
+      await writeFile(
+        path.join(visualQaDir, 'subject-overview-full-staff-720.png'),
+        rendered.buffer,
+      );
+    }
+  });
+
   it('extracts only bounded subject-overview assets and resolves cover/character images', async () => {
     const result = await semanticFixture('complete');
     const vm = buildSubjectOverviewViewModel(result);
     const urls = extractImageUrls(vm);
 
-    expect(urls).toHaveLength(7);
+    expect(urls).toHaveLength(10);
     expect(urls).toContain('https://example.test/cover-0.png');
     expect(urls).toContain('https://example.test/character-0.png');
     expect(urls.some((url) => url.includes('/staff-'))).toBe(false);
@@ -356,12 +422,12 @@ describe('Subject Overview renderer', () => {
       ...vm,
       cast: { ...vm.cast, items: [...vm.cast.items, ...vm.cast.items] },
     };
-    expect(extractImageUrls(oversized)).toHaveLength(7);
+    expect(extractImageUrls(oversized)).toHaveLength(10);
 
     const isolated = createDeterministicRenderService();
     try {
       await isolated.service.renderCard(oversized, { width: 640 });
-      expect(isolated.requests).toHaveLength(7);
+      expect(isolated.requests).toHaveLength(10);
     } finally {
       await isolated.service.close();
     }
@@ -399,7 +465,7 @@ describe('Subject Overview renderer', () => {
     }
   });
 
-  it('renders semantic complete, partial, unavailable, and not-found states at 640px and 960px', async () => {
+  it('renders semantic complete, partial, unavailable, and not-found states at 720px and 960px', async () => {
     const variants = {
       complete: await semanticFixture('complete'),
       completeFailedImage: await semanticFixture('complete', 'failed'),
@@ -413,12 +479,20 @@ describe('Subject Overview renderer', () => {
     for (const [name, result] of Object.entries(variants)) {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
-      for (const width of [640, 960]) {
-        const rendered = await renderService.renderCard(vm, { width });
+      for (const width of [720, 960]) {
+        const deviceScaleFactor = width === 720 ? 1 : 2;
+        const rendered = await renderService.renderCard(vm, {
+          width,
+          deviceScaleFactor,
+        });
         expect(rendered.template, `${name} template`).toBe('subject-overview');
-        expect(rendered.width, `${name} width`).toBe(width * 2);
+        expect(rendered.width, `${name} width`).toBe(width * deviceScaleFactor);
         expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC), `${name} PNG`).toBe(true);
         expect(rendered.buffer.length, `${name} bytes`).toBeGreaterThan(1000);
+        expect(rendered.height, `${name} height`).toBeLessThanOrEqual(8192);
+        if (width === 720) {
+          expect(rendered.buffer.length, `${name} mobile payload`).toBeLessThan(1_000_000);
+        }
         if (visualQaDir) {
           await writeFile(
             path.join(visualQaDir, `subject-overview-${name}-${width}.png`),
@@ -428,4 +502,71 @@ describe('Subject Overview renderer', () => {
       }
     }
   }, 20_000);
+
+  it('keeps all nine returned roles through the mobile renderer without hidden truncation', async () => {
+    const overview = await semanticFixture('complete');
+    const viewModel = buildSubjectOverviewViewModel(overview);
+    const rendered = await renderService.renderCard(viewModel, {
+      width: 720,
+      deviceScaleFactor: 1,
+    });
+
+    expect(viewModel.cast.items).toHaveLength(9);
+    expect(viewModel.cast.hiddenCount).toBeUndefined();
+    expect(rendered.warnings).not.toContainEqual(
+      expect.objectContaining({ code: 'RENDERER_CAST_OUTPUT_TRUNCATED' }),
+    );
+    expect(rendered.height).toBeLessThanOrEqual(8192);
+  });
+
+  it('uses the mobile-sized canvas for the public subject overview artifact', async () => {
+    const renderCard = vi.fn(
+      async (_viewModel: ReturnType<typeof buildSubjectOverviewViewModel>) => ({
+        buffer: VALID_PNG_BUFFER,
+        mimeType: 'image/png' as const,
+        width: 720,
+        height: 1200,
+        template: 'subject-overview' as const,
+        templateVersion: 1,
+        cacheKey: 'subject-overview-mobile',
+        warnings: [],
+      }),
+    );
+    const artifactStore = {
+      saveArtifact: vi.fn(async () => ({
+        id: 'mobile-overview-artifact',
+        mimeType: 'image/png' as const,
+        width: 720,
+        height: 1200,
+      })),
+    };
+    const tools = createRenderPresentationTools(
+      { renderCard } as unknown as RenderService,
+      artifactStore as never,
+    );
+    const overview = tools.find((tool) => tool.name === 'bangumi.render_subject_overview');
+    expect(overview).toBeDefined();
+
+    await overview!.execute({ subjectId: 123 } as never, {} as never, {
+      publicHttpClient: buildSemanticClient('complete', 'valid', 9),
+      providerRegistry: buildStatsProvider(),
+    });
+
+    const renderCall = renderCard.mock.calls[0];
+    expect(renderCall).toBeDefined();
+    if (!renderCall) throw new Error('overview renderer must receive a view model');
+    const renderedViewModel = renderCall[0];
+    expect(renderedViewModel.cast.items).toHaveLength(9);
+    expect(renderedViewModel.cast.state).toBe('complete');
+    expect(renderedViewModel.staff.groups.flatMap((group) => group.members)).toHaveLength(10);
+    expect(renderedViewModel.staff.hiddenCount).toBeUndefined();
+    expect(renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({ template: 'subject-overview' }),
+      { width: 720, deviceScaleFactor: 1 },
+    );
+    expect(artifactStore.saveArtifact).toHaveBeenCalledWith(VALID_PNG_BUFFER, 'image/png', {
+      width: 720,
+      height: 1200,
+    });
+  });
 });

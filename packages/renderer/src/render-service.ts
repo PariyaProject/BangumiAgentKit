@@ -33,7 +33,7 @@ const DISCOVERY_MAX_RENDERED_ITEMS = 12;
 const SERIES_MAX_RENDERED_STEPS = 17;
 const SERIES_MAX_RENDERED_RELATED = 24;
 const SERIES_MAX_RENDERED_EDGES = 64;
-const SUBJECT_OVERVIEW_MAX_RENDERED_CAST = 6;
+const SUBJECT_OVERVIEW_MAX_RENDERED_CAST = 20;
 const PRIVATE_COLLECTION_RENDER_TEMPLATES = new Set<RenderViewModel['template']>([
   'collection-progress',
   'collection-intelligence',

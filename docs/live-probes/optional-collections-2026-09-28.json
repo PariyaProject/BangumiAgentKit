@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_optional_auth_public_collection_api_smoke",
+  "observedAt": "2026-09-28T16:50:41.687Z",
+  "completedAt": "2026-09-28T16:50:51.233Z",
+  "sourceRevision": "859708efc7ae224b0b9378c3bf073fa45ac4d73d",
+  "catalogSha256": "b4b81095717a3ce0f154bd6daa0258cf3c4797cdd1064334febcb4b01f6f8a67",
+  "probeScriptSha256": "3ec6838508405221c6e51c62be9a1490d28dbb924a1aac4eda9ccf74abb7f40d",
+  "mode": "read_only_public_api_smoke",
+  "passed": true,
+  "selectedTools": [
+    "bangumi.list_collections",
+    "bangumi.list_character_collections",
+    "bangumi.list_person_collections",
+    "bangumi.get_collection",
+    "bangumi.get_character_collection",
+    "bangumi.get_person_collection"
+  ],
+  "accountUsed": false,
+  "oauthUsed": false,
+  "writesPerformed": false,
+  "externalRequests": 6,
+  "limits": [
+    "six optional-auth collection tools only",
+    "one HTTP request per tool, sequential with 1.5 second spacing",
+    "one public username; no OAuth, account credential, or write",
+    "raw API response bodies and user identifiers omitted from this report"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.list_collections",
+      "route": "GET /v0/users/{username}/collections",
+      "requests": 1,
+      "statusCodes": [
+        200
+      ],
+      "routeMatched": true,
+      "authorizationHeaderPresent": false,
+      "resultStateAccepted": true,
+      "statusAccepted": true,
+      "result": {
+        "state": "ok",
+        "outcome": "ok",
+        "returned": 1
+      },
+      "state": "ok",
+      "returned": 1
+    },
+    {
+      "tool": "bangumi.list_character_collections",
+      "route": "GET /v0/users/{username}/collections/-/characters",
+      "requests": 1,
+      "statusCodes": [
+        200
+      ],
+      "routeMatched": true,
+      "authorizationHeaderPresent": false,
+      "resultStateAccepted": true,
+      "statusAccepted": true,
+      "result": {
+        "state": "ok",
+        "outcome": "ok",
+        "observed": 27,
+        "returned": 1
+      },
+      "state": "ok",
+      "observed": 27,
+      "returned": 1,
+      "truncated": true,
+      "publicAuthScope": "public"
+    },
+    {
+      "tool": "bangumi.list_person_collections",
+      "route": "GET /v0/users/{username}/collections/-/persons",
+      "requests": 1,
+      "statusCodes": [
+        200
+      ],
+      "routeMatched": true,
+      "authorizationHeaderPresent": false,
+      "resultStateAccepted": true,
+      "statusAccepted": true,
+      "result": {
+        "state": "ok",
+        "outcome": "ok",
+        "observed": 30,
+        "returned": 0
+      },
+      "state": "ok",
+      "observed": 30,
+      "returned": 0,
+      "truncated": true,
+      "publicAuthScope": "public"
+    },
+    {
+      "tool": "bangumi.get_collection",
+      "route": "GET /v0/users/{username}/collections/{subject_id}",
+      "requests": 1,
+      "statusCodes": [
+        200
+      ],
+      "routeMatched": true,
+      "authorizationHeaderPresent": false,
+      "resultStateAccepted": true,
+      "statusAccepted": true,
+      "result": {
+        "state": "ok",
+        "outcome": "found"
+      },
+      "state": "found",
+      "usedListItemAsTarget": true
+    },
+    {
+      "tool": "bangumi.get_character_collection",
+      "route": "GET /v0/users/{username}/collections/-/characters/{character_id}",
+      "requests": 1,
+      "statusCodes": [
+        200
+      ],
+      "routeMatched": true,
+      "authorizationHeaderPresent": false,
+      "resultStateAccepted": true,
+      "statusAccepted": true,
+      "result": {
+        "state": "ok",
+        "outcome": "found"
+      },
+      "state": "found",
+      "publicAuthScope": "public",
+      "usedListItemAsTarget": true
+    },
+    {
+      "tool": "bangumi.get_person_collection",
+      "route": "GET /v0/users/{username}/collections/-/persons/{person_id}",
+      "requests": 1,
+      "statusCodes": [
+        404
+      ],
+      "routeMatched": true,
+      "authorizationHeaderPresent": false,
+      "resultStateAccepted": true,
+      "statusAccepted": true,
+      "result": {
+        "state": "ok",
+        "outcome": "not_found"
+      },
+      "state": "not_found",
+      "publicAuthScope": "public"
+    }
+  ]
+}

@@ -88,7 +88,24 @@ describe('Safe Error Policy & Control-Flow Regression Tests', () => {
     expect(publicErr.retryable).toBe(false);
   });
 
-  it('7. PendingAction remains unknown with sanitized message when ToolRegistry catches WRITE_RESULT_UNKNOWN', async () => {
+  it('7. OAUTH_NOT_CONFIGURED -> clear setup guidance without exposing configuration values', () => {
+    const err = new BangumiError(
+      'OAUTH_NOT_CONFIGURED',
+      'missing client_secret=private-value',
+      false,
+      undefined,
+      '配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。',
+    );
+    const publicErr = toPublicError(err);
+
+    expect(publicErr.code).toBe('OAUTH_NOT_CONFIGURED');
+    expect(publicErr.message).toBe('Bangumi 账号授权暂不可用，服务尚未配置 OAuth 应用。');
+    expect(publicErr.message).not.toContain('private-value');
+    expect(publicErr.nextAction).toBe('配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。');
+    expect(publicErr.retryable).toBe(false);
+  });
+
+  it('8. PendingAction remains unknown with sanitized message when ToolRegistry catches WRITE_RESULT_UNKNOWN', async () => {
     const storage = new MemoryStorage();
     const client = new HttpClient();
     const principal = await storage.findOrCreatePrincipal({

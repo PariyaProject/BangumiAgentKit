@@ -16,8 +16,8 @@ export type BangumiErrorCode =
   | 'RAW_WRITE_OPERATION_DISABLED'
   | 'WRITE_RESULT_UNKNOWN'
   | 'STORAGE_ERROR'
-  | 'OAUTH_EXCHANGE_FAILED'
   | 'OAUTH_NOT_CONFIGURED'
+  | 'OAUTH_EXCHANGE_FAILED'
   | 'KEY_VERSION_UNAVAILABLE'
   | 'RENDERER_UNAVAILABLE'
   | 'INTERNAL_ERROR';
@@ -68,8 +68,8 @@ export const BANGUMI_ERROR_CODES = new Set<BangumiErrorCode>([
   'RAW_WRITE_OPERATION_DISABLED',
   'WRITE_RESULT_UNKNOWN',
   'STORAGE_ERROR',
-  'OAUTH_EXCHANGE_FAILED',
   'OAUTH_NOT_CONFIGURED',
+  'OAUTH_EXCHANGE_FAILED',
   'KEY_VERSION_UNAVAILABLE',
   'INTERNAL_ERROR',
 ]);
@@ -134,11 +134,12 @@ const PUBLIC_ERROR_POLICY: Partial<
   KEY_VERSION_UNAVAILABLE: {
     message: '密钥版本不可用，请重新绑定或更新凭据。',
   },
+  OAUTH_NOT_CONFIGURED: {
+    message: 'Bangumi 账号授权暂不可用，服务尚未配置 OAuth 应用。',
+    preserveNextAction: true,
+  },
   OAUTH_EXCHANGE_FAILED: {
     message: 'OAuth 授权码兑换失败，请重新进行授权。',
-  },
-  OAUTH_NOT_CONFIGURED: {
-    message: 'Bangumi 账号授权暂未配置，请联系管理员完成 OAuth 设置。',
   },
 };
 

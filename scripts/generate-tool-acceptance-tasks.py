@@ -278,15 +278,42 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
     sources: dict[str, set[str]] = {}
     catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
     current_by_name = {item['name']: item for item in catalog}
+    catalog_cache: dict[str, dict[str, dict] | None] = {catalog_sha256: current_by_name}
+
+    def catalog_for_hash(value: object) -> dict[str, dict] | None:
+        if not isinstance(value, str) or not re.fullmatch(r'[0-9a-f]{64}', value):
+            return None
+        if value in catalog_cache:
+            return catalog_cache[value]
+        snapshot_path = LIVE_PROBE_DIR / 'catalog-snapshots' / f'{value}.json'
+        try:
+            snapshot_bytes = snapshot_path.read_bytes()
+            snapshot = json.loads(snapshot_bytes)
+        except (OSError, ValueError):
+            catalog_cache[value] = None
+            return None
+        if hashlib.sha256(snapshot_bytes).hexdigest() != value or not isinstance(snapshot, list):
+            catalog_cache[value] = None
+            return None
+        snapshot_by_name = {
+            item['name']: item
+            for item in snapshot
+            if isinstance(item, dict) and isinstance(item.get('name'), str)
+        }
+        catalog_cache[value] = snapshot_by_name
+        return snapshot_by_name
+
     for path in LIVE_PROBE_DIR.glob('pariya-agent-full-auth-denial-qa-e2e-*.json'):
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             continue
-        if (not isinstance(report, dict)
-                or report.get('schemaVersion') != 1
+        if not isinstance(report, dict):
+            continue
+        evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
+        if (report.get('schemaVersion') != 1
                 or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
-                or report.get('catalogSha256') != catalog_sha256
+                or evidence_by_name is None
                 or report.get('profile') != 'bangumi-full-auth-denial-qa-v1'
                 or report.get('processExitCode') != 0
                 or report.get('resultStatus') != 'SUCCESS'
@@ -301,9 +328,11 @@ def auth_gate_denial_sources(catalog: list[dict]) -> dict[str, set[str]]:
             continue
         name = scenario.get('id')
         tool = current_by_name.get(name)
+        evidence_tool = evidence_by_name.get(name) if evidence_by_name is not None else None
         calls = scenario.get('toolCalls')
         assertions = scenario.get('assertions')
-        if (not tool or tool.get('risk') not in {'read', 'write', 'destructive'}
+        if (not tool or evidence_tool != tool
+                or tool.get('risk') not in {'read', 'write', 'destructive'}
                 or tool.get('auth') != 'required'
                 or scenario.get('passed') is not True
                 or calls != [{'name': name, 'state': 'DONE'}]

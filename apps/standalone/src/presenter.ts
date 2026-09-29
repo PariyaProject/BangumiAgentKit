@@ -82,13 +82,23 @@ type GraphemeSegmenter = new (
   options?: { granularity: 'grapheme' },
 ) => { segment(value: string): Iterable<{ segment: string }> };
 
-function graphemes(value: string): string[] {
+const graphemeSegmenter = (() => {
   const segmenterConstructor = (Intl as unknown as { Segmenter?: GraphemeSegmenter }).Segmenter;
-  if (segmenterConstructor) {
-    const segmenter = new segmenterConstructor('zh-CN', { granularity: 'grapheme' });
-    return Array.from(segmenter.segment(value), (item) => item.segment);
+  return segmenterConstructor
+    ? new segmenterConstructor('zh-CN', { granularity: 'grapheme' })
+    : undefined;
+})();
+
+function* graphemeSegments(value: string): Generator<string> {
+  if (graphemeSegmenter) {
+    for (const item of graphemeSegmenter.segment(value)) yield item.segment;
+    return;
   }
-  return Array.from(value);
+  yield* value;
+}
+
+function graphemes(value: string): string[] {
+  return Array.from(graphemeSegments(value));
 }
 
 function boundedCodePointPrefix(
@@ -117,10 +127,18 @@ function normalizeHumanText(value: unknown): string {
 }
 
 function limitGraphemes(value: string, maximum: number): string {
-  const parts = graphemes(value);
-  if (parts.length <= maximum) return value;
-  if (maximum <= 1) return '…'.slice(0, maximum);
-  return `${parts.slice(0, maximum - 1).join('')}…`;
+  const limit = Math.max(0, Math.floor(maximum));
+  if (limit === 0) return '';
+
+  const parts: string[] = [];
+  for (const part of graphemeSegments(value)) {
+    if (parts.length === limit) {
+      if (limit <= 1) return '…'.slice(0, limit);
+      return `${parts.slice(0, limit - 1).join('')}…`;
+    }
+    parts.push(part);
+  }
+  return value;
 }
 
 function humanField(value: unknown, maximum = HUMAN_MAX_FIELD_GRAPHEMES): string {

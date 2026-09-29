@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
-import { createRuntimeDependenciesWithStorage } from '@bangumi-agent-kit/tools';
 import {
   encryptToken,
   decryptToken,
@@ -9,6 +8,7 @@ import {
   OAuthService,
 } from '@bangumi-agent-kit/auth';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
+import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 
 describe('Phase 5: DB, OAuth & Token Security Tests', () => {
   const SECRET_KEY = 'super-secret-key-for-aes-encryption-test';
@@ -90,6 +90,117 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     expect(authed.client).toBeDefined();
   });
 
+  it('optional auth falls back to the public client when identity or binding is absent', async () => {
+    const storage = new MemoryStorage();
+    const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
+    const publicClient = vi.spyOn(broker, 'getPublicClient');
+
+    const anonymousClient = await broker.getOptionalAuthenticatedClient();
+    const unboundClient = await broker.getOptionalAuthenticatedClient('user_unbound');
+
+    expect(anonymousClient).toBeDefined();
+    expect(unboundClient).toBeDefined();
+    expect(publicClient).toHaveBeenCalledTimes(2);
+  });
+
+  it('optional auth preserves expired-credential errors instead of silently downgrading', async () => {
+    const storage = new MemoryStorage();
+    const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
+    const publicClient = vi.spyOn(broker, 'getPublicClient');
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'qq-official',
+      botInstanceId: 'bot_1',
+      externalUserId: 'qq_user_expired',
+    });
+    const account = await storage.upsertBangumiAccount({
+      id: 'acc_expired',
+      bangumiUserId: 5678,
+      username: 'expired_user',
+      nickname: 'Expired User',
+    });
+    await storage.replaceActiveBinding(principal.id, account.id);
+    await storage.upsertCredential({
+      id: 'cred_expired',
+      bangumiAccountId: account.id,
+      encryptedAccessToken: encryptToken('expired_access_token', SECRET_KEY),
+      expiresAt: new Date(Date.now() - 60_000),
+      requestedCapabilities: [],
+      reportedScopes: null,
+      scopeEvidence: 'unknown',
+      keyVersion: 'v1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(broker.getOptionalAuthenticatedClient(principal.id)).rejects.toMatchObject({
+      code: 'AUTH_EXPIRED',
+    });
+    expect(publicClient).not.toHaveBeenCalled();
+  });
+
+  it('does not create OAuth state or return a placeholder authorize URL without app credentials', async () => {
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_ID', '');
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_SECRET', '');
+    try {
+      const storage = new MemoryStorage();
+      const createOAuthSession = vi.spyOn(storage, 'createOAuthSession');
+      const dependencies = createRuntimeDependenciesWithStorage(storage, {
+        secretKey: SECRET_KEY,
+        redirectUri: 'http://127.0.0.1:3000/oauth/bangumi/callback',
+      });
+      const registry = new ToolRegistry(dependencies);
+      const context = {
+        principalId: 'principal-no-oauth-app',
+        botInstanceId: 'fixture-bot',
+        conversationId: 'fixture-conversation',
+      };
+
+      await expect(registry.executeTool('bangumi.auth_status', {}, context)).resolves.toEqual({
+        bound: false,
+        accountCount: 0,
+      });
+      await expect(registry.executeTool('bangumi.auth_start', {}, context)).rejects.toMatchObject({
+        code: 'OAUTH_NOT_CONFIGURED',
+      });
+      expect(createOAuthSession).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('does not consume a pending OAuth state or exchange a code when app credentials are missing', async () => {
+    const storage = new MemoryStorage();
+    const stateStore = new OAuthStateStore(storage);
+    const { state } = await stateStore.generateState({ principalId: 'principal-no-oauth-app' });
+    const consumeOAuthSession = vi.spyOn(storage, 'consumeOAuthSession');
+    const exchangeAuthorizationCode = vi.fn(async () => ({ access_token: 'should-not-be-used' }));
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ id: 1, username: 'should-not-be-used' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const oauthService = new OAuthService(
+      storage,
+      {
+        clientId: '',
+        clientSecret: '',
+        redirectUri: 'http://127.0.0.1:3000/oauth/bangumi/callback',
+        secretKey: SECRET_KEY,
+      },
+      new HttpClient({ fetchFn }),
+      { exchangeAuthorizationCode } as any,
+    );
+
+    await expect(oauthService.handleCallback('fixture-code', state)).rejects.toMatchObject({
+      code: 'OAUTH_NOT_CONFIGURED',
+    });
+    expect(consumeOAuthSession).not.toHaveBeenCalled();
+    expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   it('TokenBroker disconnect deactivates binding and removes credentials', async () => {
     const storage = new MemoryStorage();
     const broker = new TokenBroker(storage, { secretKey: SECRET_KEY });
@@ -134,7 +245,8 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
       expect(startError).toMatchObject({ code: 'OAUTH_NOT_CONFIGURED' });
       expect(toPublicError(startError)).toMatchObject({
         code: 'OAUTH_NOT_CONFIGURED',
-        message: 'Bangumi 账号授权暂未配置，请联系管理员完成 OAuth 设置。',
+        message: 'Bangumi 账号授权暂不可用，服务尚未配置 OAuth 应用。',
+        nextAction: '请由服务管理员配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。',
       });
       await expect(dependencies.oauthService.handleCallback('code', 'state')).rejects.toMatchObject(
         {

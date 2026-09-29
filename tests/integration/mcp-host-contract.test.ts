@@ -40,13 +40,55 @@ function parseMcpError(response: unknown) {
   const text = (responseRecord.content as Array<{ type: string; text: string }>)[0]!.text;
   return JSON.parse(text) as {
     ok: boolean;
-    error: { code: string; nextAction?: string; confirmationId?: string };
+    error: { code: string; message?: string; nextAction?: string; confirmationId?: string };
   };
 }
 
 describe('MCP host confirmation contract', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('allows unbound status but fails OAuth start safely when the app is not configured', async () => {
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_ID', '');
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_SECRET', '');
+    const storage = new MemoryStorage();
+    const createOAuthSession = vi.spyOn(storage, 'createOAuthSession');
+    const app = new BangumiMcpServer({
+      storage,
+      identityProvider: trustedIdentity,
+    });
+    const client = await connectClient(app, 'no-oauth-app');
+
+    try {
+      const status = await client.callTool({
+        name: 'bangumi.auth_status',
+        arguments: {},
+      });
+      const statusText = (status.content as Array<{ text: string }>)[0]!.text;
+      expect(JSON.parse(statusText)).toEqual({ bound: false, accountCount: 0 });
+
+      const start = await client.callTool({
+        name: 'bangumi.auth_start',
+        arguments: {},
+      });
+      const error = parseMcpError(start);
+      expect(start.isError).toBe(true);
+      expect(error).toMatchObject({
+        ok: false,
+        error: {
+          code: 'OAUTH_NOT_CONFIGURED',
+          message: 'Bangumi 账号授权暂不可用，服务尚未配置 OAuth 应用。',
+          nextAction: '请由服务管理员配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。',
+        },
+      });
+      expect(JSON.stringify(start)).not.toContain('test_client_id');
+      expect(createOAuthSession).not.toHaveBeenCalled();
+    } finally {
+      await client.close();
+      await app.close();
+    }
   });
 
   it('advertises _confirmationId only on write tools', async () => {
