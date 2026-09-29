@@ -33,6 +33,9 @@ paths have independent smoke tests. No v0.1.0 tag or release has been created.
 
 This is the shortest path for local testing. PostgreSQL, Docker, NoneBot2,
 Claude, and an LLM API key are not required.
+Workspace development requires Node.js `^20.19.0 || >=22.12.0` for
+[Vite 7](https://vite.dev/guide/). The compiled API package requires Node.js
+`>=20.0.0` for [Fastify 5](https://fastify.dev/docs/latest/Guides/Migration-Guide-V5/).
 
 ```bash
 git clone <repository-url>
