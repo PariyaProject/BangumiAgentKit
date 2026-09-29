@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
+import { selectPublicProbeNames } from './public-probe-selection.js';
 
 const SUBJECT_ID = 41529;
 const LIVE_FLAG = '--live';
@@ -142,26 +143,7 @@ const probes: Probe[] = [
 ];
 
 function selectProbes(args: string[]) {
-  const requested: string[] = [];
-  for (let index = 0; index < args.length; index += 1) {
-    if (args[index] === LIVE_FLAG) continue;
-    const toolName = args[index + 1];
-    if (args[index] !== '--tool' || typeof toolName !== 'string' || toolName.length === 0) {
-      throw new Error('Only --live and repeated --tool <exact-tool-name> options are supported.');
-    }
-    requested.push(toolName);
-    index += 1;
-  }
-  if (requested.length === 0) return probes;
-  if (new Set(requested).size !== requested.length) {
-    throw new Error('A tool may be selected only once per probe run.');
-  }
-  const known = new Set(probes.map((probe) => probe.name));
-  const unknown = requested.filter((name) => !known.has(name));
-  if (unknown.length > 0) {
-    throw new Error(`Unknown or unsafe public probe tool: ${unknown.join(', ')}`);
-  }
-  const selected = new Set(requested);
+  const selected = new Set(selectPublicProbeNames(args, probes.map((probe) => probe.name)));
   return probes.filter((probe) => selected.has(probe.name));
 }
 
