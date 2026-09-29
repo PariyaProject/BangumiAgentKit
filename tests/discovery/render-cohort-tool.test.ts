@@ -1,6 +1,52 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ProviderRegistry } from '@bangumi-agent-kit/provider-core';
-import { createRenderPresentationTools } from '@bangumi-agent-kit/tools';
+import { createDiscoveryTools, createRenderPresentationTools } from '@bangumi-agent-kit/tools';
+
+it('restricts every cohort tool to all-results queries before execution', () => {
+  const noopRender = { renderCard: vi.fn() } as never;
+  const noopArtifacts = { saveArtifact: vi.fn() } as never;
+  const tools = [
+    ...createDiscoveryTools(),
+    ...createRenderPresentationTools(noopRender, noopArtifacts),
+  ];
+  const cases = [
+    [
+      'bangumi.compare_subject_cohorts',
+      { cohorts: [{ query: { media: 'anime', resultMode: 'top' } }] },
+      { cohorts: [{ query: { media: 'anime' } }] },
+    ],
+    [
+      'bangumi.aggregate_subject_cohort',
+      { cohort: { query: { media: 'anime', resultMode: 'top' } } },
+      { cohort: { query: { media: 'anime' } } },
+    ],
+    [
+      'bangumi.render_subject_cohort_comparison',
+      { cohorts: [{ query: { media: 'anime', resultMode: 'top' } }] },
+      { cohorts: [{ query: { media: 'anime' } }] },
+    ],
+    [
+      'bangumi.render_subject_cohort_aggregation',
+      { cohort: { query: { media: 'anime', resultMode: 'top' } } },
+      { cohort: { query: { media: 'anime' } } },
+    ],
+  ] as const;
+
+  for (const [name, invalidInput, defaultInput] of cases) {
+    const tool = tools.find((candidate) => candidate.name === name)!;
+    expect(tool.input.safeParse(invalidInput).success, name).toBe(false);
+    const parsed = tool.input.safeParse(defaultInput);
+    expect(parsed.success, name).toBe(true);
+    if (parsed.success) {
+      const data = parsed.data as {
+        cohort?: { query: { resultMode: string } };
+        cohorts?: Array<{ query: { resultMode: string } }>;
+      };
+      const query = data.cohort?.query ?? data.cohorts?.[0]?.query;
+      expect(query?.resultMode, name).toBe('all');
+    }
+  }
+});
 
 describe('bangumi.render_subject_cohort_comparison', () => {
   it('renders the semantic cohort result through the zero-network card seam', async () => {

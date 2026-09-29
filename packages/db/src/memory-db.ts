@@ -264,6 +264,10 @@ export class MemoryStorage implements Storage {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match current conversation');
     }
 
+    if (action.actionType !== input.actionType) {
+      throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match the original operation');
+    }
+
     if (now > action.expiresAt) {
       action.status = 'expired';
       throw new Error('CONFIRMATION_EXPIRED: Confirmation has expired');

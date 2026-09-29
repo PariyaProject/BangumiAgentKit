@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-09-23",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "efadb2f8c47fc5bb512e6f7c2c53878029330931",
+  "catalogSha256": "50437c55c6d7e8984834ee73ff27508ceb77c7e0bea6daf0b23a77db51561a56",
+  "profile": "bangumi-full-auth-mutation-qa-v1",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "scenarios": [
+    {
+      "id": "bangumi.auth_disconnect",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.auth_disconnect",
+          "state": "DONE"
+        }
+      ],
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "confirmationRequiredObserved": true,
+        "syntheticConfirmationApplied": true,
+        "syntheticStateVerified": true,
+        "externalApiCalled": false,
+        "realAccountUsed": false
+      }
+    }
+  ],
+  "scopeNote": "One destructive auth tool was exercised only against synthetic in-memory accounts and placeholder credentials; QA observed CONFIRMATION_REQUIRED, applied a one-time synthetic confirmation internally, verified removal/disconnection, and destroyed the container state. No real account, token, or Bangumi API was used. This is synthetic MCP evidence, not real OAuth or user-approved destructive behavior."
+}

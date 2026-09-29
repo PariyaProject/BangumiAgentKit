@@ -65,6 +65,18 @@ describe('PendingAction State Machine & Canonical Hashing Tests', () => {
       }),
     ).rejects.toThrow();
 
+    // Identical parameters must not let one operation consume another's grant.
+    await expect(
+      PolicyManager.assertAndClaimWritePolicy({
+        storage,
+        context: { ...context, confirmationId },
+        actionType: 'delete_collection',
+        summary: 'Delete collection',
+        policy,
+        payload,
+      }),
+    ).rejects.toMatchObject({ code: 'CONFIRMATION_INVALID' });
+
     // 3. Claiming with valid confirmationId & payload succeeds
     const { confirmationId: claimedConfId, pendingActionId } =
       await PolicyManager.assertAndClaimWritePolicy({

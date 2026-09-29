@@ -295,6 +295,18 @@ in-memory asyncio locks do not.
 
 ## Verification without a real Claude account
 
+The generic bridge tests use only the Python standard library. The OneBot
+message-adapter test uses the optional NoneBot2 and OneBot packages; install
+the pinned test dependencies into the Python environment that runs `pnpm`:
+
+```bash
+python3 -m venv /tmp/bangumi-nonebot-tests
+source /tmp/bangumi-nonebot-tests/bin/activate
+python -m pip install -r examples/nonebot2-claude-code/requirements-test.txt
+```
+
+Then run the checks:
+
 ```bash
 pnpm test:host
 pnpm smoke:host

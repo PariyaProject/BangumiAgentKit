@@ -54,6 +54,7 @@ export class PolicyManager {
         storage,
         context,
         context.confirmationId,
+        actionType,
         payload,
       );
       return {

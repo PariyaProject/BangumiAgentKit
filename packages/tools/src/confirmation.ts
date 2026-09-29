@@ -77,12 +77,14 @@ export async function claimPendingAction(
   storage: Storage,
   context: ToolContext,
   confirmationId: string,
+  actionType: string,
   payload: unknown,
 ): Promise<PendingActionRecord> {
   const payloadHash = computeCanonicalPayloadHash(payload);
   try {
     return await storage.claimPendingAction({
       confirmationId,
+      actionType,
       principalId: context.principalId,
       botInstanceId: context.botInstanceId,
       conversationId: context.conversationId,

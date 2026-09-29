@@ -47,12 +47,9 @@ export class BangumiOAuthClient {
       );
     }
 
+    let data: unknown;
     try {
-      const data = (await res.json()) as OAuthTokenResponse;
-      if (!data.access_token) {
-        throw new Error('Missing access_token in response');
-      }
-      return data;
+      data = await res.json();
     } catch {
       throw new BangumiError(
         'OAUTH_EXCHANGE_FAILED',
@@ -62,6 +59,16 @@ export class BangumiOAuthClient {
         '重新尝试绑定授权',
       );
     }
+    if (!hasAccessToken(data)) {
+      throw new BangumiError(
+        'OAUTH_EXCHANGE_FAILED',
+        'OAuth token exchange returned a payload without access_token',
+        false,
+        500,
+        '重新尝试绑定授权',
+      );
+    }
+    return data;
   }
 
   async refreshToken(
@@ -98,12 +105,9 @@ export class BangumiOAuthClient {
       );
     }
 
+    let data: unknown;
     try {
-      const data = (await res.json()) as OAuthTokenResponse;
-      if (!data.access_token) {
-        throw new Error('Missing access_token in refresh response');
-      }
-      return data;
+      data = await res.json();
     } catch {
       throw new BangumiError(
         'AUTH_EXPIRED',
@@ -113,5 +117,21 @@ export class BangumiOAuthClient {
         '调用 bangumi.auth_start',
       );
     }
+    if (!hasAccessToken(data)) {
+      throw new BangumiError(
+        'AUTH_EXPIRED',
+        'OAuth token refresh returned a payload without access_token',
+        false,
+        401,
+        '调用 bangumi.auth_start',
+      );
+    }
+    return data;
   }
+}
+
+function hasAccessToken(value: unknown): value is OAuthTokenResponse {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const accessToken = (value as Partial<OAuthTokenResponse>).access_token;
+  return typeof accessToken === 'string' && accessToken.trim().length > 0;
 }

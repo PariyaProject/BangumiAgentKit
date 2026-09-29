@@ -124,12 +124,14 @@ function generateClient() {
   }
 `);
 
+  const generatedOperationIds = new Set<string>();
   for (const [apiPath, pathItem] of Object.entries(spec.paths as Record<string, any>)) {
     for (const m of ['get', 'post', 'put', 'patch', 'delete']) {
       const op = pathItem[m];
       if (op && op.operationId) {
         const method = m.toUpperCase();
         const opId = op.operationId;
+        generatedOperationIds.add(opId);
         const summary = op.summary || opId;
         const supportsSignal = SIGNALABLE_OPERATIONS.has(opId);
         const supportsResponseLimit = RESPONSE_LIMITABLE_OPERATIONS.has(opId);
@@ -273,6 +275,22 @@ function generateClient() {
         code.push(`  }\n`);
       }
     }
+  }
+
+  // The legacy daily calendar endpoint is registered as an operation but is
+  // intentionally absent from the upstream v0 OpenAPI document. Keep it on
+  // the generated client too so `bangumi.call_operation(getCalendar)` can use
+  // the same injected transport and auth policy as other registered reads.
+  if (!generatedOperationIds.has('getCalendar')) {
+    code.push(`  /** Legacy calendar operation (GET /calendar). */`);
+    code.push(`  async getCalendar(): Promise<import('../calendar-client.js').CalendarItem[]> {`);
+    code.push(
+      `    return this.transport.request<import('../calendar-client.js').CalendarItem[]>({`,
+    );
+    code.push(`      method: 'GET',`);
+    code.push(`      path: '/calendar',`);
+    code.push(`    });`);
+    code.push(`  }\n`);
   }
 
   code.push(`}\n`);

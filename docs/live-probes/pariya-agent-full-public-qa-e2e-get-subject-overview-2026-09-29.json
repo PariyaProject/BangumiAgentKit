@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-09-29",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "1056e0c16e8365cd8c71737ff9f2d1536e289fa5",
+  "catalogSha256": "bd345ea3f4d2d3e85b1ba5229877ab3589d56b1d9e17987773fca93c2da45312",
+  "profile": "bangumi-full-public-qa-v1",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 117,
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [],
+  "scenarios": [
+    {
+      "id": "bangumi.get_subject_overview",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.get_subject_overview",
+          "state": "DONE"
+        }
+      ],
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true
+      }
+    }
+  ],
+  "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+}

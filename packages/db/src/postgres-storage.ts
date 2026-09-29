@@ -544,6 +544,7 @@ export class PostgresStorage implements Storage {
           eq(schema.pendingActions.principalId, input.principalId),
           eq(schema.pendingActions.botInstanceId, input.botInstanceId),
           eq(schema.pendingActions.conversationKey, input.conversationId),
+          eq(schema.pendingActions.actionType, input.actionType),
           eq(schema.pendingActions.payloadHash, input.payloadHash),
           gt(schema.pendingActions.expiresAt, now),
         ),
@@ -593,6 +594,9 @@ export class PostgresStorage implements Storage {
     }
     if (existing.conversationKey !== input.conversationId) {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match current conversation');
+    }
+    if (existing.actionType !== input.actionType) {
+      throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match the original operation');
     }
     if (now > existing.expiresAt) {
       await this.db

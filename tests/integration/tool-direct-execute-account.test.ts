@@ -44,7 +44,20 @@ async function expectControlled(tool: any, input: Record<string, unknown>, name:
 describe('direct execute coverage for auth, collection, and write tools', () => {
   it('executes account lifecycle tools through explicit auth fixtures', async () => {
     const tokenBroker = {
-      switchAccount: vi.fn(async (_principalId: string, accountId: string) => ({ accountId })),
+      getAuthStatus: vi.fn(async (_principalId: string) => ({ bound: false, accountCount: 1 })),
+      listAccounts: vi.fn(async (_principalId: string) => [
+        {
+          accountId: 'account-fixture',
+          username: 'fixture-user',
+          nickname: 'Fixture',
+          active: true,
+        },
+      ]),
+      switchAccount: vi.fn(async (_principalId: string, accountId: string) => ({
+        success: true,
+        activeAccountId: accountId,
+      })),
+      removeAccount: vi.fn(async (_principalId: string, _accountId: string) => ({ success: true })),
       disconnect: vi.fn(async () => undefined),
     };
     const oauthService = {
@@ -59,18 +72,61 @@ describe('direct execute coverage for auth, collection, and write tools', () => 
         tool,
       ]),
     );
+    expect([...authTools.keys()]).toEqual([
+      'bangumi.auth_status',
+      'bangumi.auth_start',
+      'bangumi.auth_list_accounts',
+      'bangumi.auth_switch_account',
+      'bangumi.auth_remove_account',
+      'bangumi.auth_disconnect',
+    ]);
 
-    const authStart = await (authTools.get('bangumi.auth_start')!.execute as any)(
-      { capabilities: ['read:collection'] },
+    const status = await (authTools.get('bangumi.auth_status')!.execute as any)({}, context);
+    expect(status).toEqual({ bound: false, accountCount: 1 });
+    expect(tokenBroker.getAuthStatus).toHaveBeenCalledWith(context.principalId);
+
+    const authStart = await (authTools.get('bangumi.auth_start')!.execute as any)({}, context);
+    expect(authStart).toEqual({
+      authorizationUrl: 'https://example.test/bangumi/authorize',
+      expiresAt: '2026-09-23T00:00:00.000Z',
+    });
+    expect(oauthService.createAuthorizationUrl).toHaveBeenCalledWith(
+      context.principalId,
+      context.botInstanceId,
+      context.conversationId,
+      ['write:collection'],
+    );
+
+    const accounts = await (authTools.get('bangumi.auth_list_accounts')!.execute as any)(
+      {},
       context,
     );
-    expect(authStart).toMatchObject({ authorizationUrl: 'https://example.test/bangumi/authorize' });
+    expect(accounts).toEqual([
+      {
+        accountId: 'account-fixture',
+        username: 'fixture-user',
+        nickname: 'Fixture',
+        active: true,
+      },
+    ]);
+    expect(tokenBroker.listAccounts).toHaveBeenCalledWith(context.principalId);
 
     const switched = await (authTools.get('bangumi.auth_switch_account')!.execute as any)(
       { accountId: 'account-fixture' },
       context,
     );
-    expect(switched).toEqual({ accountId: 'account-fixture' });
+    expect(switched).toEqual({ success: true, activeAccountId: 'account-fixture' });
+    expect(tokenBroker.switchAccount).toHaveBeenCalledWith(context.principalId, 'account-fixture');
+
+    const removed = await (authTools.get('bangumi.auth_remove_account')!.execute as any)(
+      { accountId: 'account-fixture' },
+      context,
+    );
+    expect(removed).toEqual({
+      success: true,
+      message: 'Bangumi 账号 account-fixture 已解绑',
+    });
+    expect(tokenBroker.removeAccount).toHaveBeenCalledWith(context.principalId, 'account-fixture');
 
     const disconnected = await (authTools.get('bangumi.auth_disconnect')!.execute as any)(
       {},

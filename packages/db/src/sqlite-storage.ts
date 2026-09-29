@@ -602,6 +602,7 @@ export class SQLiteStorage implements Storage {
         AND principal_id = ?
         AND bot_instance_id = ?
         AND conversation_key = ?
+        AND action_type = ?
         AND payload_hash = ?
         AND expires_at > ?
     `);
@@ -613,6 +614,7 @@ export class SQLiteStorage implements Storage {
       input.principalId,
       input.botInstanceId,
       input.conversationId,
+      input.actionType,
       input.payloadHash,
       nowMs,
     );
@@ -660,6 +662,9 @@ export class SQLiteStorage implements Storage {
     }
     if (existing.conversation_key !== input.conversationId) {
       throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match current conversation');
+    }
+    if (existing.action_type !== input.actionType) {
+      throw new Error('CONFIRMATION_INVALID: Confirmation ID does not match the original operation');
     }
     if (nowMs > existing.expires_at) {
       const expStmt = this.sqliteDb.prepare(

@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-import { z } from 'zod';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
@@ -17,6 +16,7 @@ import { StdioMcpExecutionIdentityProvider } from './identity.js';
 import type { McpExecutionIdentityProvider } from './identity.js';
 import { StdioMcpConfirmationGrantProvider } from './confirmation.js';
 import type { McpConfirmationGrantProvider } from './confirmation.js';
+import { toMcpTool } from './catalog.js';
 
 export { StdioMcpExecutionIdentityProvider } from './identity.js';
 export type { McpExecutionIdentityProvider } from './identity.js';
@@ -36,33 +36,7 @@ const RESERVED_IDENTITY_ARGUMENTS = new Set([
   '_requestId',
 ]);
 
-const CONFIRMATION_ID_PATTERN = '^cfm_[A-Za-z0-9_-]+$';
 const CONFIRMATION_ID_REGEX = /^cfm_[A-Za-z0-9_-]+$/;
-
-function addMcpConfirmationSchema(
-  tool: ReturnType<ToolRegistry['getTools']>[number],
-  schema: Record<string, unknown>,
-): Record<string, unknown> {
-  if (tool.risk === 'read') return schema;
-
-  const properties =
-    schema.properties && typeof schema.properties === 'object'
-      ? (schema.properties as Record<string, unknown>)
-      : {};
-
-  return {
-    ...schema,
-    properties: {
-      ...properties,
-      _confirmationId: {
-        type: 'string',
-        pattern: CONFIRMATION_ID_PATTERN,
-        description:
-          'Only use the confirmation ID returned by a previous CONFIRMATION_REQUIRED response for the exact same operation and payload.',
-      },
-    },
-  };
-}
 
 function extractConfirmationId(
   rawArgs: Record<string, unknown>,
@@ -238,20 +212,7 @@ export class BangumiMcpServer {
     // List Tools Handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = this.registry.getTools();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mcpTools = tools.map((tool: any) => {
-        const derivedJsonSchema = z.toJSONSchema(tool.input) as Record<string, unknown>;
-        delete derivedJsonSchema.$schema;
-        if (!derivedJsonSchema.type) {
-          derivedJsonSchema.type = 'object';
-        }
-
-        return {
-          name: tool.name,
-          description: tool.description,
-          inputSchema: addMcpConfirmationSchema(tool, derivedJsonSchema),
-        };
-      });
+      const mcpTools = tools.map(toMcpTool);
 
       return { tools: mcpTools };
     });
@@ -300,6 +261,13 @@ export class BangumiMcpServer {
           code: publicErr.code,
           message: publicErr.message,
         };
+        if (publicErr.code === 'CONFIRMATION_REQUIRED') {
+          const confirmationText = publicErr.nextAction || publicErr.message;
+          const confirmationId = confirmationText.match(/\bcfm_[A-Za-z0-9_-]+\b/u)?.[0];
+          if (confirmationId && CONFIRMATION_ID_REGEX.test(confirmationId)) {
+            errorBody.confirmationId = confirmationId;
+          }
+        }
         if (typeof publicErr.retryable === 'boolean') {
           errorBody.retryable = publicErr.retryable;
         }

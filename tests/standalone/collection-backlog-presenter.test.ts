@@ -332,4 +332,20 @@ describe('Standalone collection backlog presenter', () => {
     ).toBe(false);
     expect(output).not.toContain('\uFFFD');
   });
+
+  it('keeps the backlog row when one field is an enormous single grapheme', () => {
+    const result = backlogResult();
+    const data = result.data as { items: Array<Record<string, unknown>> };
+    const item = data.items[0]!;
+    const pathological = `e${'\u0301'.repeat(100_000)}`;
+    data.items = [item];
+    item.nameCn = pathological;
+    item.name = pathological;
+
+    const output = formatHuman(result);
+
+    expect(output).toContain('1. … · 在看');
+    expect(output).not.toContain(pathological);
+    expect(Buffer.byteLength(output, 'utf8')).toBeLessThanOrEqual(24_000);
+  });
 });

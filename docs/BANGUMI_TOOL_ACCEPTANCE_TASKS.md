@@ -1,116 +1,125 @@
 # BangumiAgentKit 逐项验收任务清单
 
-> 生成自 `docs/tool-catalog.json` 与 `tests/`。这张表故意区分“结构覆盖”和“真实执行”：目录/Schema/源码引用全勾选，不代表 96 个工具都已经逐个调用过。
+> 生成自 `docs/tool-catalog.json`、`tests/` 与带目录哈希的 `docs/live-probes/` 证据。每一列对应独立验收面；WebChat、MCP 调用、QQ 管线和 TIM 客户端不互相替代。
 
 ## 总览
 
-- [x] 工具目录与注册表/Schema 精确一致：96/96。
-- [x] 每个工具有测试源码引用：96/96。
-- [ ] 每个工具都有直接 `execute` 夹具：96/96；仍有 0 项待补。
-- [ ] 适用工具的真实公开 API 证据：65/65 有限/间接证据；31 项无匿名公开执行面；0 项待补。
+- [x] 每个工具都有直接 `execute` 夹具：96/96。
+- [ ] 匿名可用的公开 API 工具有逐项实测：58/65；待补 7。
+- [x] 匿名公开 API 不适用项已单独分类：31/96；这些工具由账号验收或本地状态验收覆盖。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
-- [ ] QQ/TIM 逐工具端到端验收：当前只有 compact profile 的整体消息链证据，不把它误写成 96 个工具逐一通过。
+- [x] 无账号认证门禁拒绝路径已验证：22/22 项；门禁通过不代表真实账号功能通过。
+- [x] 每个工具都有实际 Agent→MCP 模型调用证据：96/96。
+- [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
+- [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/96。
 
-状态说明：`✅` 已有当前证据；`◐` 有有限/间接证据；`⬜` 尚未完成；公开 API 列的 `—` 表示该工具没有匿名公开执行面（包括 OAuth 生命周期、本地状态/历史、operation metadata，以及契约明确要求已绑定账号的工具）。这只代表公开匿名 API 列不适用；账号认证列仍单独验收，不能把 `—` 当作账号功能通过。
+状态说明：`注册/Schema目录引用` 列指向 `docs/tool-catalog.json` 中该工具由运行时 `ToolRegistry` 生成的精确条目；直接 execute 测试引用列列出调用 `.execute`/`ToolRegistry.executeTool` 或已知执行夹具的文件和行号。公开 API、未认证门禁、Agent/MCP 与真实客户端通过项均列出具体 JSON 报告文件。离线 OneBot fixture、WebChat 或 Agent/MCP 本身不满足真实 QQ/TIM 列。`◐` 表示有目录/探针源码哈希绑定的只读 ToolRegistry 实测、真实 HTTP 请求、无错误摘要和通过的形状断言；可比对的稳定 ID/计数也会校验。客户端报告仅保留目标工具名、脱敏投递阶段与客户端观察布尔值，不保存消息正文/QQ 号/截图；它不证明完整字段覆盖或长期稳定性；`⬜` 尚未完成；`—` 不适用匿名公开 API（账号必需的私有/写入功能由账号验收列单独跟踪；OAuth 生命周期、本地状态/历史和 operation metadata 没有公开 API 路径）。
 
-| 工具 | Auth | Risk | 目录/Schema | 测试源引用 | 直接 execute 夹具 | 真实公开 API | 账号认证 | QQ/TIM | 下一步 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bangumi.aggregate_subject_cohort` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.auth_disconnect` | `required` | `destructive` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.auth_list_accounts` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.auth_remove_account` | `required` | `destructive` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.auth_start` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.auth_status` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.auth_switch_account` | `none` | `write` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.call_operation` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.compare_subject_cohorts` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.describe_operation` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_calendar_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_character` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_character_collection` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_character_credit_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_collection` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_collection_backlog` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_collection_dashboard` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_collection_entity_consistency` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_collection_intelligence` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_collection_schedule` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_collection_series_groups` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_episode` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_episode_collections` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_episode_guide` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_episode_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_episodes` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_index` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_latest_subject_revision` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_my_profile` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_person` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_person_activity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_person_collaboration` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_person_collection` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.get_person_profile` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_revision` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_revision_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_series_watch_order` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_cast` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_identity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_index_membership` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_overlap` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_overview` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_relations` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_staff` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_stats` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_stats_history` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_subject_stats_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.get_user` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.list_character_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.list_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.list_operations` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.list_person_collections` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.list_revisions` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.manage_character_collection` | `required` | `write` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.manage_index` | `required` | `write` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.manage_person_collection` | `required` | `write` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.query_subjects` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_calendar` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_cast_card` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_character_credit_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_collection_backlog` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_collection_dashboard` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_collection_entity_consistency` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_collection_intelligence` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_collection_progress` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_collection_schedule` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_collection_series_groups` | `required` | `read` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_episode_guide` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_episode_integrity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_latest_subject_revision` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_person_activity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_person_collaboration` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_person_profile` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_query_subjects` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_revision_timeline` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_search` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_series_watch_order` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_card` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.render_subject_cohort_aggregation` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_cohort_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_comparison` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_identity` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_index_membership` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_overlap` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_overview` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_stats_history` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.render_subject_stats_intelligence` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.resolve_subject_concept` | `none` | `read` | ✅ | ✅ | ✅ | — | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.search_characters` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.search_persons` | `none` | `read` | ✅ | ✅ | ✅ | ◐ | — | ⬜ | 评估是否进入 QQ |
-| `bangumi.search_subjects` | `optional` | `read` | ✅ | ✅ | ✅ | ◐ | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.update_collection` | `required` | `write` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
-| `bangumi.update_episode_progress` | `required` | `write` | ✅ | ✅ | ✅ | — | ⬜ | ⬜ | 准备账号验收；评估是否进入 QQ |
+| 工具 | Auth | Risk | 注册/Schema目录引用 | 直接 execute 测试引用 | 直接 execute 夹具 | 真实公开 API | 无账号认证门禁 | 账号认证 | Agent/MCP E2E | QQ 管线 E2E | TIM 客户端 | 下一步 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+无账号认证门禁列覆盖所有 auth=required 的读取、写入与破坏性工具，只记录缺少账号且零网络请求时的安全拒绝；真实 OAuth 与账号授权仍由“账号认证”列单独跟踪。
+| `bangumi.aggregate_subject_cohort` | `none` | `read` | `docs/tool-catalog.json#/0` | `tests/integration/tool-direct-execute-discovery.test.ts:92` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-aggregate-subject-cohort-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_disconnect` | `required` | `destructive` | `docs/tool-catalog.json#/1` | `tests/integration/tool-direct-execute-account.test.ts:131` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-auth_disconnect-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-mutation-qa-e2e-auth_disconnect-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_list_accounts` | `none` | `read` | `docs/tool-catalog.json#/2` | `tests/integration/tool-direct-execute-account.test.ts:100`<br>`tests/unit/multi-account.test.ts:150` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-auth-list-accounts-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_remove_account` | `required` | `destructive` | `docs/tool-catalog.json#/3` | `tests/integration/tool-catalog-completeness.test.ts:253`<br>`tests/integration/tool-direct-execute-account.test.ts:121` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-auth_remove_account-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-mutation-qa-e2e-auth_remove_account-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_start` | `none` | `read` | `docs/tool-catalog.json#/4` | `tests/integration/oauth-callback-shared-sqlite.test.ts:192`<br>`tests/integration/tool-direct-execute-account.test.ts:88`<br>`tests/unit/auth.test.ts:162` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-start-qa-e2e-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_status` | `none` | `read` | `docs/tool-catalog.json#/5` | `tests/integration/oauth-callback-shared-sqlite.test.ts:186`<br>`tests/integration/oauth-callback-shared-sqlite.test.ts:249`<br>`tests/integration/tool-direct-execute-account.test.ts:84`<br>`tests/unit/auth.test.ts:158`<br>`tests/unit/sqlite-distribution-matrix.test.ts:107` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-auth-status-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.auth_switch_account` | `none` | `write` | `docs/tool-catalog.json#/6` | `tests/integration/tool-direct-execute-account.test.ts:114` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-switch-qa-e2e-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.call_operation` | `optional` | `read` | `docs/tool-catalog.json#/7` | `tests/unit/audit-account.test.ts:78` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-operation-qa-e2e-get-calendar-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.compare_subject_cohorts` | `none` | `read` | `docs/tool-catalog.json#/8` | `tests/integration/tool-direct-execute-discovery.test.ts:85` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compare-subject-cohorts-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.describe_operation` | `none` | `read` | `docs/tool-catalog.json#/9` | `tests/integration/mcp-tools.test.ts:254` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-describe-operation-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_calendar` | `none` | `read` | `docs/tool-catalog.json#/10` | `tests/integration/mcp-tools.test.ts:156` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_calendar_intelligence` | `none` | `read` | `docs/tool-catalog.json#/11` | `tests/integration/mcp-tools.test.ts:194`<br>`tests/integration/mcp-tools.test.ts:227`<br>`tests/semantic/semantic-tools.test.ts:1027` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-calendar-intelligence-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_character` | `none` | `read` | `docs/tool-catalog.json#/12` | `tests/integration/tool-catalog-completeness.test.ts:200` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-character-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_character_collection` | `optional` | `read` | `docs/tool-catalog.json#/13` | `tests/integration/tool-direct-execute-account.test.ts:153` | ✅ | ⬜ | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-character-collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_character_credit_integrity` | `none` | `read` | `docs/tool-catalog.json#/14` | `tests/integration/tool-direct-execute-read.test.ts:234` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-character-credit-integrity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection` | `optional` | `read` | `docs/tool-catalog.json#/15` | `tests/integration/tool-catalog-completeness.test.ts:220` | ✅ | ⬜ | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection_backlog` | `required` | `read` | `docs/tool-catalog.json#/16` | `tests/integration/tool-direct-execute-account.test.ts:171` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_collection_backlog-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_collection_backlog-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection_dashboard` | `required` | `read` | `docs/tool-catalog.json#/17` | `tests/integration/tool-direct-execute-account.test.ts:177` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_collection_dashboard-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_collection_dashboard-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection_entity_consistency` | `required` | `read` | `docs/tool-catalog.json#/18` | `tests/integration/tool-direct-execute-account.test.ts:183` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_collection_entity_consistency-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_collection_entity_consistency-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection_intelligence` | `required` | `read` | `docs/tool-catalog.json#/19` | `tests/integration/tool-direct-execute-account.test.ts:189` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_collection_intelligence-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_collection_intelligence-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection_schedule` | `required` | `read` | `docs/tool-catalog.json#/20` | `tests/integration/tool-direct-execute-account.test.ts:195` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_collection_schedule-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_collection_schedule-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_collection_series_groups` | `required` | `read` | `docs/tool-catalog.json#/21` | `tests/integration/tool-direct-execute-account.test.ts:201` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_collection_series_groups-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_collection_series_groups-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episode` | `none` | `read` | `docs/tool-catalog.json#/22` | `tests/integration/tool-catalog-completeness.test.ts:195` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-episode-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episode_collections` | `required` | `read` | `docs/tool-catalog.json#/23` | `tests/semantic/collection-read-parity.test.ts:272` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_episode_collections-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_episode_collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episode_guide` | `none` | `read` | `docs/tool-catalog.json#/24` | `tests/semantic/episode-guide.test.ts:121` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-episode-guide-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episode_integrity` | `none` | `read` | `docs/tool-catalog.json#/25` | `tests/semantic/episode-integrity.test.ts:127` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-episode-integrity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_episodes` | `none` | `read` | `docs/tool-catalog.json#/26` | `tests/integration/tool-direct-execute-read.test.ts:67` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-episodes-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_index` | `none` | `read` | `docs/tool-catalog.json#/27` | `tests/integration/tool-catalog-completeness.test.ts:210` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-index-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_latest_subject_revision` | `none` | `read` | `docs/tool-catalog.json#/28` | `tests/integration/tool-direct-execute-read.test.ts:93` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-latest-subject-revision-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_my_profile` | `required` | `read` | `docs/tool-catalog.json#/29` | `tests/integration/tool-catalog-completeness.test.ts:229` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-get_my_profile-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-get_my_profile-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person` | `none` | `read` | `docs/tool-catalog.json#/30` | `tests/integration/tool-catalog-completeness.test.ts:205` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_activity` | `none` | `read` | `docs/tool-catalog.json#/31` | `tests/integration/tool-direct-execute-read.test.ts:254` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-activity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_collaboration` | `none` | `read` | `docs/tool-catalog.json#/32` | `tests/integration/tool-direct-execute-read.test.ts:259` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-collaboration-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_collection` | `optional` | `read` | `docs/tool-catalog.json#/33` | `tests/integration/tool-direct-execute-account.test.ts:165` | ✅ | ⬜ | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_person_profile` | `none` | `read` | `docs/tool-catalog.json#/34` | `tests/semantic/semantic-tools.test.ts:1007`<br>`tests/semantic/semantic-tools.test.ts:1013`<br>`tests/semantic/semantic-tools.test.ts:1053`<br>`tests/semantic/semantic-tools.test.ts:988` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-profile-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_revision` | `none` | `read` | `docs/tool-catalog.json#/35` | `tests/integration/tool-catalog-completeness.test.ts:241` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-revision-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_revision_intelligence` | `none` | `read` | `docs/tool-catalog.json#/36` | `tests/integration/tool-direct-execute-read.test.ts:86` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-revision-intelligence-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_series_watch_order` | `none` | `read` | `docs/tool-catalog.json#/37` | `tests/integration/tool-direct-execute-read.test.ts:249` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-series-watch-order-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject` | `none` | `read` | `docs/tool-catalog.json#/38` | `tests/integration/mcp-tools.test.ts:126`<br>`tests/integration/mcp-tools.test.ts:88` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compact-refresh-get-subject-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_cast` | `none` | `read` | `docs/tool-catalog.json#/39` | `tests/integration/tool-direct-execute-read.test.ts:79` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compact-refresh-get-subject-cast-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_comparison` | `none` | `read` | `docs/tool-catalog.json#/40` | `tests/integration/tool-direct-execute-read.test.ts:239` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-comparison-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_identity` | `none` | `read` | `docs/tool-catalog.json#/41` | `tests/integration/tool-direct-execute-read.test.ts:189` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-identity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_index_membership` | `none` | `read` | `docs/tool-catalog.json#/42` | `tests/integration/tool-direct-execute-read.test.ts:264` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-index-membership-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_overlap` | `none` | `read` | `docs/tool-catalog.json#/43` | `tests/integration/tool-direct-execute-read.test.ts:244` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overlap-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_overview` | `none` | `read` | `docs/tool-catalog.json#/44` | `tests/integration/tool-direct-execute-read.test.ts:269` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-09-29.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_relations` | `none` | `read` | `docs/tool-catalog.json#/45` | `tests/integration/tool-catalog-completeness.test.ts:190` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-relations-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_staff` | `none` | `read` | `docs/tool-catalog.json#/46` | `tests/semantic/semantic-tools.test.ts:1017`<br>`tests/semantic/semantic-tools.test.ts:1023`<br>`tests/semantic/semantic-tools.test.ts:1080`<br>`tests/semantic/semantic-tools.test.ts:997` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_stats` | `none` | `read` | `docs/tool-catalog.json#/47` | `tests/integration/tool-direct-execute-read.test.ts:175` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-stats-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_stats_history` | `none` | `read` | `docs/tool-catalog.json#/48` | `tests/integration/tool-direct-execute-read.test.ts:196` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-stats-history-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_stats_intelligence` | `none` | `read` | `docs/tool-catalog.json#/49` | `tests/integration/tool-direct-execute-read.test.ts:182` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-stats-intelligence-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_user` | `none` | `read` | `docs/tool-catalog.json#/50` | `tests/integration/tool-catalog-completeness.test.ts:215` | ✅ | ⬜ | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-user-2026-09-23.json` | ⬜ | ⬜ | 补公开 API；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_character_collections` | `optional` | `read` | `docs/tool-catalog.json#/51` | `tests/semantic/collection-read-parity.test.ts:269` | ✅ | ⬜ | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-character-collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_collections` | `optional` | `read` | `docs/tool-catalog.json#/52` | `tests/semantic/semantic-tools.test.ts:1340` | ✅ | ⬜ | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_operations` | `none` | `read` | `docs/tool-catalog.json#/53` | `tests/integration/mcp-tools.test.ts:245` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-operations-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_person_collections` | `optional` | `read` | `docs/tool-catalog.json#/54` | `tests/integration/tool-direct-execute-account.test.ts:159` | ✅ | ⬜ | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-person-collections-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.list_revisions` | `none` | `read` | `docs/tool-catalog.json#/55` | `tests/integration/tool-catalog-completeness.test.ts:234` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-list-revisions-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.manage_character_collection` | `required` | `write` | `docs/tool-catalog.json#/56` | `tests/unit/auth-before-confirmation.test.ts:19`<br>`tests/unit/error-policy-regression.test.ts:168`<br>`tests/unit/writes.test.ts:234`<br>`tests/unit/writes.test.ts:257`<br>`tests/unit/writes.test.ts:321` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-manage_character_collection-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-write-qa-e2e-manage_character_collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.manage_index` | `required` | `write` | `docs/tool-catalog.json#/57` | `tests/integration/tool-direct-execute-account.test.ts:209` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-manage_index-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-write-qa-e2e-manage_index-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.manage_person_collection` | `required` | `write` | `docs/tool-catalog.json#/58` | `tests/integration/tool-direct-execute-account.test.ts:215` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-manage_person_collection-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-write-qa-e2e-manage_person_collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.query_subjects` | `none` | `read` | `docs/tool-catalog.json#/59` | `tests/integration/tool-direct-execute-discovery.test.ts:78` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compact-refresh-query-subjects-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_calendar` | `none` | `read` | `docs/tool-catalog.json#/60` | `tests/integration/tool-direct-execute-render.test.ts:110` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-calendar-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_cast_card` | `optional` | `read` | `docs/tool-catalog.json#/61` | `tests/integration/tool-catalog-completeness.test.ts:349` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-cast-card-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_character_credit_integrity` | `none` | `read` | `docs/tool-catalog.json#/62` | `tests/integration/tool-direct-execute-render.test.ts:112` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-character-credit-integrity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_backlog` | `required` | `read` | `docs/tool-catalog.json#/63` | `tests/integration/tool-direct-execute-render.test.ts:116` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_backlog-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_backlog-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_dashboard` | `required` | `read` | `docs/tool-catalog.json#/64` | `tests/integration/tool-catalog-completeness.test.ts:366` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_dashboard-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_dashboard-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_entity_consistency` | `required` | `read` | `docs/tool-catalog.json#/65` | `tests/integration/tool-direct-execute-render.test.ts:117` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_entity_consistency-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_entity_consistency-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_intelligence` | `required` | `read` | `docs/tool-catalog.json#/66` | `tests/integration/tool-direct-execute-render.test.ts:118` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_intelligence-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_intelligence-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_progress` | `required` | `read` | `docs/tool-catalog.json#/67` | `tests/integration/tool-catalog-completeness.test.ts:359` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_progress-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_progress-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_schedule` | `required` | `read` | `docs/tool-catalog.json#/68` | `tests/integration/tool-direct-execute-render.test.ts:119` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_schedule-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_schedule-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_collection_series_groups` | `required` | `read` | `docs/tool-catalog.json#/69` | `tests/integration/tool-direct-execute-render.test.ts:120` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-render_collection_series_groups-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-feature-qa-e2e-render_collection_series_groups-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_episode_guide` | `none` | `read` | `docs/tool-catalog.json#/70` | `tests/integration/tool-direct-execute-render.test.ts:121` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-episode-guide-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_episode_integrity` | `none` | `read` | `docs/tool-catalog.json#/71` | `tests/integration/tool-direct-execute-render.test.ts:122` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-episode-integrity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_latest_subject_revision` | `none` | `read` | `docs/tool-catalog.json#/72` | `tests/integration/tool-direct-execute-render.test.ts:123` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-latest-subject-revision-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_person_activity` | `none` | `read` | `docs/tool-catalog.json#/73` | `tests/integration/tool-direct-execute-render.test.ts:124` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-person-activity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_person_collaboration` | `none` | `read` | `docs/tool-catalog.json#/74` | `tests/integration/tool-direct-execute-render.test.ts:125` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-person-collaboration-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_person_profile` | `none` | `read` | `docs/tool-catalog.json#/75` | `tests/integration/tool-direct-execute-render.test.ts:126` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-person-profile-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_query_subjects` | `none` | `read` | `docs/tool-catalog.json#/76` | `tests/integration/tool-direct-execute-render.test.ts:127` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-query-subjects-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_revision_timeline` | `none` | `read` | `docs/tool-catalog.json#/77` | `tests/integration/tool-direct-execute-render.test.ts:128` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-revision-timeline-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_search` | `none` | `read` | `docs/tool-catalog.json#/78` | `tests/integration/tool-catalog-completeness.test.ts:354` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-search-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_series_watch_order` | `none` | `read` | `docs/tool-catalog.json#/79` | `tests/integration/tool-direct-execute-render.test.ts:129` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-series-watch-order-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_card` | `optional` | `read` | `docs/tool-catalog.json#/80` | `tests/integration/tool-direct-execute-render.test.ts:130` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-card-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_cohort_aggregation` | `none` | `read` | `docs/tool-catalog.json#/81` | `tests/integration/tool-direct-execute-render.test.ts:131` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-cohort-aggregation-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_cohort_comparison` | `none` | `read` | `docs/tool-catalog.json#/82` | `tests/integration/tool-direct-execute-render.test.ts:132` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-cohort-comparison-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_comparison` | `none` | `read` | `docs/tool-catalog.json#/83` | `tests/integration/tool-direct-execute-render.test.ts:133` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-comparison-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_identity` | `none` | `read` | `docs/tool-catalog.json#/84` | `tests/integration/tool-direct-execute-render.test.ts:134` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-identity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_index_membership` | `none` | `read` | `docs/tool-catalog.json#/85` | `tests/integration/tool-direct-execute-render.test.ts:135` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-index-membership-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_overlap` | `none` | `read` | `docs/tool-catalog.json#/86` | `tests/integration/tool-direct-execute-render.test.ts:136` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overlap-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_overview` | `none` | `read` | `docs/tool-catalog.json#/87` | `tests/integration/tool-direct-execute-render.test.ts:137` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-09-29.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_stats_history` | `none` | `read` | `docs/tool-catalog.json#/88` | `tests/integration/tool-direct-execute-render.test.ts:138` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-stats-history-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.render_subject_stats_intelligence` | `none` | `read` | `docs/tool-catalog.json#/89` | `tests/integration/tool-direct-execute-render.test.ts:139` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-stats-intelligence-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.resolve_subject_concept` | `none` | `read` | `docs/tool-catalog.json#/90` | `tests/integration/tool-direct-execute-discovery.test.ts:99` | ✅ | — | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-resolve-subject-concept-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.search_characters` | `optional` | `read` | `docs/tool-catalog.json#/91` | `tests/semantic/semantic-tools.test.ts:448`<br>`tests/semantic/semantic-tools.test.ts:451` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-search-characters-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.search_persons` | `none` | `read` | `docs/tool-catalog.json#/92` | `tests/semantic/semantic-tools.test.ts:509` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-search-persons-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.search_subjects` | `optional` | `read` | `docs/tool-catalog.json#/93` | `tests/integration/mcp-tools.test.ts:51`<br>`tests/standalone/discovery-command.test.ts:324` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-054654867-4607.json` | — | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compact-refresh-search-subjects-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.update_collection` | `required` | `write` | `docs/tool-catalog.json#/94` | `tests/unit/audit-account.test.ts:63`<br>`tests/unit/writes.test.ts:31`<br>`tests/unit/writes.test.ts:94` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-update_collection-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-write-qa-e2e-update_collection-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.update_episode_progress` | `required` | `write` | `docs/tool-catalog.json#/95` | `tests/semantic/semantic-tools.test.ts:1315`<br>`tests/unit/writes.test.ts:155`<br>`tests/unit/writes.test.ts:181` | ✅ | — | ✅<br>`docs/live-probes/pariya-agent-full-auth-denial-qa-e2e-update_episode_progress-2026-09-27.json` | ⬜ | ✅<br>`docs/live-probes/pariya-agent-full-auth-write-qa-e2e-update_episode_progress-2026-09-23.json` | ⬜ | ⬜ | 准备账号验收；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+
+## 真实生产 QQ/TIM 逐工具客户端证据
+
+下列勾选只来自当前锁定生产 profile 的真实工具调用、OneBot 收发阶段和真实 TIM 客户端画面三者关联的脱敏报告；离线 fixture 不会进入此列。账号必需、写入和破坏性工具仍需真实 OAuth/账号与专门授权，安全公开 profile 报告不能替代它们。
+
+- [ ] 仍待逐工具实测：QQ 管线 96/96；TIM 客户端 96/96。
 
 ## 认证验收任务
 
@@ -120,12 +129,15 @@
 - [ ] 用真实账号验证所有 `auth: required` 的读工具、写工具和私有 render 工具。
 - [ ] 对写入/破坏性工具只使用测试账号和明确二次确认，不把 mock 成功当作线上成功。
 
-## QQ/TIM 语音输入任务
+## QQ/TIM 真人语音输入验收（2026-09-23）
 
-- [ ] 确认机器人账号已在 NapCat 登录并处于 `QQ_READY`。
-- [ ] 在机器人**私聊**中按住 TIM 麦克风发送一条 5–10 秒普通中文语音；不要发送 WAV 文件卡片，也不要发送音乐。
-- [ ] 语音内容建议固定为：`这是 Pariya 语音输入验收，请回复我听到的最后四个字：语音验收通过。`
-- [ ] 检查 OneBot 入站段是 `record`，不是 `file`；检查 `pariya.read_media` 收到 `audio/wav`。
-- [ ] 检查模型回答是否正确理解语音内容，并记录一次成功即可证明传输/识别路径；不同编码、长语音和长期稳定性另列观察。
+- [x] 验收时机器人已登录，NapCat、AstrBot、Runner 和 OneBot 处于 READY。
+- [x] 用户在机器人私聊使用 TIM 麦克风发送真人语音；脱敏投递审计记录到 1 条入站 `record`，不保留语音或聊天正文。
+- [x] AstrBot 将 `record` 解析为 WAV，媒体桥把本轮受限文件路径交给 Antigravity 内置 `view_file`；固定合成探针已验证这条读取路径。
+- [x] 用户确认真实 TIM 回复与语音口令完全一致：`7294`。真人结果仅保存 `user_attested` 标记，不保存口令对应的原始聊天内容。
+- [ ] 后续只在语音桥、模型 CLI、AstrBot 或 OneBot 媒体处理改动后重跑；本次单次成功不代表各种口音、近音词、时长和编码都已覆盖。
+- [ ] QQ 登录掉线率仍需长期观察；语音验收不代表掉线稳定性问题已解决。
+
+说明：真人语音验收只证明一条真实 `record` 输入链路并获得准确回复；它与上方 96 个工具逐项的 QQ 管线/TIM 客户端列相互独立。本表中 `render_subject_overview` 的 1/96 客户端证据来自单作品信息卡文字+图片交互，不来自真人语音样本。
 
 这份清单完成前，不再把“完整工具覆盖”简称为“所有工具都真实测试过”。

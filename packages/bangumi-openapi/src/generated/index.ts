@@ -713,4 +713,12 @@ export class GeneratedBangumiOpenApiClient {
       path: `/v0/indices/${encodeURIComponent(String(index_id))}/collect`,
     });
   }
+
+  /** Legacy calendar operation (GET /calendar). */
+  async getCalendar(): Promise<import('../calendar-client.js').CalendarItem[]> {
+    return this.transport.request<import('../calendar-client.js').CalendarItem[]>({
+      method: 'GET',
+      path: '/calendar',
+    });
+  }
 }

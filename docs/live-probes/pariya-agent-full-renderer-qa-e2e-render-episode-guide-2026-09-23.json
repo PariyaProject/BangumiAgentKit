@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-09-23",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "724b286a1bc72a4dc7d84c988ffee792359fdf02",
+  "catalogSha256": "183a693480c4b6198e2d963c7c88cf9fe1ea4d61db648b1a322a6e871a568f86",
+  "profile": "bangumi-full-renderer-qa-v1",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "scenarios": [
+    {
+      "id": "bangumi.render_episode_guide",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.render_episode_guide",
+          "state": "DONE"
+        }
+      ],
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "rendererArtifactVerified": true,
+        "artifactRefReturned": true,
+        "toolReportedError": false,
+        "artifactMimeType": "image/png",
+        "artifactWidth": 1920,
+        "artifactHeight": 1164
+      }
+    }
+  ],
+  "scopeNote": "One isolated unauthenticated public read renderer was exposed to the model; account-required renderers and all non-render/write tools were excluded. The artifact store was temporary. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+}

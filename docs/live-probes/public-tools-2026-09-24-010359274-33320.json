@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-09-24T01:03:59.274Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "50437c55c6d7e8984834ee73ff27508ceb77c7e0bea6daf0b23a77db51561a56",
+  "probeScriptSha256": "83f6fd167df88353111ff499989cbc3d3b27289aefbc3d59063969b362cfaae3",
+  "sourceProgram": "scripts/smoke-public-tools-online.ts",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 7,
+  "httpRequests": 7,
+  "selectedTools": [
+    "bangumi.get_user",
+    "bangumi.get_character_collection",
+    "bangumi.get_collection",
+    "bangumi.get_person_collection",
+    "bangumi.list_character_collections",
+    "bangumi.list_collections",
+    "bangumi.list_person_collections"
+  ],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "redactions": [
+    "username values are omitted from recorded inputs"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_user",
+      "input": {},
+      "httpRequests": 1,
+      "result": {
+        "id": 6335
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_character_collection",
+      "input": {
+        "characterId": 87968
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "found",
+          "source",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_collection",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "found"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_person_collection",
+      "input": {
+        "personId": 13684
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "found",
+          "source",
+          "retrievedAt"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.list_character_collections",
+      "input": {
+        "maxItems": 3
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 0,
+        "observed": 0,
+        "returned": 0,
+        "itemsCount": 0
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.list_collections",
+      "input": {
+        "subjectType": "anime",
+        "limit": 3,
+        "offset": 0
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 155,
+        "itemsCount": 3
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "minimumCountObserved": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.list_person_collections",
+      "input": {
+        "maxItems": 3
+      },
+      "httpRequests": 1,
+      "result": {
+        "total": 0,
+        "observed": 0,
+        "returned": 0,
+        "itemsCount": 0
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

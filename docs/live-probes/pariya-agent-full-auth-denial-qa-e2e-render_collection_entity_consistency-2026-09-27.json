@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-09-27",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "3122225882cf5875fcf9b9a43bd42034f6f15324",
+  "catalogSha256": "50437c55c6d7e8984834ee73ff27508ceb77c7e0bea6daf0b23a77db51561a56",
+  "profile": "bangumi-full-auth-denial-qa-v1",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "scenarios": [
+    {
+      "id": "bangumi.render_collection_entity_consistency",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.render_collection_entity_consistency",
+          "state": "DONE"
+        }
+      ],
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "authRequiredGateObserved": true,
+        "operationExecuted": false,
+        "accountDataReturned": false,
+        "networkAccessBlocked": true,
+        "networkRequestAttempts": 0,
+        "externalApiCalled": false
+      }
+    }
+  ],
+  "scopeNote": "One auth-required read, write, or destructive tool was exposed with exact bounded arguments and empty MemoryStorage. Its HTTP client rejects every fetch; the upstream ToolRegistry returned AUTH_REQUIRED with zero network attempts, and only a data-free denial marker reached the model. This is no-account auth-gate evidence only, not authenticated feature, QQ, or TIM evidence."
+}

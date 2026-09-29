@@ -80,7 +80,6 @@ export function createRuntimeDependenciesWithStorage(
   storage: Storage,
   config: CreateRuntimeDependenciesConfig = {},
 ): RuntimeDependencies {
-  const isProd = process.env.NODE_ENV === 'production';
   const tokenEncryption = resolveTokenEncryptionConfig({
     tokenEncryption: config.tokenEncryption,
     secretKey: config.secretKey,
@@ -93,21 +92,6 @@ export function createRuntimeDependenciesWithStorage(
   const clientSecret =
     config.clientSecret?.trim() || process.env.BANGUMI_OAUTH_CLIENT_SECRET?.trim();
   const redirectUri = config.redirectUri?.trim() || process.env.BANGUMI_OAUTH_REDIRECT_URI?.trim();
-
-  if (isProd) {
-    if (!clientId)
-      throw new Error(
-        'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_ID is required in production environment.',
-      );
-    if (!clientSecret)
-      throw new Error(
-        'CONFIG_ERROR: BANGUMI_OAUTH_CLIENT_SECRET is required in production environment.',
-      );
-    if (!redirectUri)
-      throw new Error(
-        'CONFIG_ERROR: BANGUMI_OAUTH_REDIRECT_URI is required in production environment.',
-      );
-  }
 
   const publicHttpClient = config.publicHttpClient || new HttpClient();
   const providerRegistry = new ProviderRegistry({

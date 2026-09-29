@@ -7,7 +7,7 @@ import {
   TokenBroker,
   OAuthService,
 } from '@bangumi-agent-kit/auth';
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 
 describe('Phase 5: DB, OAuth & Token Security Tests', () => {
@@ -214,6 +214,93 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
 
     await broker.disconnect(principal.id);
     await expect(broker.requireAccount(principal.id)).rejects.toThrow('AUTH_REQUIRED');
+  });
+
+  it('production public and unbound paths start without OAuth credentials', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_ID', '');
+    vi.stubEnv('BANGUMI_OAUTH_CLIENT_SECRET', '');
+    vi.stubEnv('BANGUMI_OAUTH_REDIRECT_URI', '');
+    try {
+      const storage = new MemoryStorage();
+      const dependencies = createRuntimeDependenciesWithStorage(storage, {
+        secretKey: SECRET_KEY,
+        publicHttpClient: new HttpClient(),
+        artifactStore: {} as any,
+        renderService: {} as any,
+      });
+      const principal = await storage.findOrCreatePrincipal({
+        provider: 'qq',
+        botInstanceId: 'pariya-test-bot',
+        externalUserId: 'unbound-user',
+      });
+
+      expect(await dependencies.tokenBroker.getAuthStatus(principal.id)).toEqual({
+        bound: false,
+        accountCount: 0,
+      });
+      const startError = await dependencies.oauthService
+        .createAuthorizationUrl(principal.id)
+        .catch((error: unknown) => error);
+      expect(startError).toMatchObject({ code: 'OAUTH_NOT_CONFIGURED' });
+      expect(toPublicError(startError)).toMatchObject({
+        code: 'OAUTH_NOT_CONFIGURED',
+        message: 'Bangumi 账号授权暂不可用，服务尚未配置 OAuth 应用。',
+        nextAction: '请由服务管理员配置 Bangumi OAuth 客户端 ID、密钥和回调地址后重试。',
+      });
+      await expect(dependencies.oauthService.handleCallback('code', 'state')).rejects.toMatchObject(
+        {
+          code: 'OAUTH_NOT_CONFIGURED',
+        },
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('expired bound credentials fail locally when OAuth refresh is not configured', async () => {
+    const storage = new MemoryStorage();
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'qq',
+      botInstanceId: 'pariya-test-bot',
+      externalUserId: 'bound-user',
+    });
+    const account = await storage.upsertBangumiAccount({
+      id: 'acc_bound_no_oauth',
+      bangumiUserId: 1234,
+      username: 'bound-user',
+      nickname: 'Bound User',
+    });
+    await storage.replaceActiveBinding(principal.id, account.id);
+    await storage.upsertCredential({
+      id: 'crd_bound_no_oauth',
+      bangumiAccountId: account.id,
+      encryptedAccessToken: encryptToken('expired-access-token', SECRET_KEY),
+      encryptedRefreshToken: encryptToken('refresh-token', SECRET_KEY),
+      expiresAt: new Date(Date.now() - 60_000),
+      requestedCapabilities: [],
+      reportedScopes: null,
+      scopeEvidence: 'unknown',
+      keyVersion: 'v1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    try {
+      const broker = new TokenBroker(storage, {
+        secretKey: SECRET_KEY,
+        clientId: ' ',
+        clientSecret: '\t',
+        redirectUri: '  ',
+      });
+      await expect(broker.requireAuthenticatedClient(principal.id)).rejects.toMatchObject({
+        code: 'OAUTH_NOT_CONFIGURED',
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('OAuthService handles callback flow and links Bangumi account', async () => {

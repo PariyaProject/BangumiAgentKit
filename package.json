@@ -4,9 +4,6 @@
   "private": true,
   "license": "Apache-2.0",
   "description": "Bangumi Agent Kit monorepo workspace",
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
-  },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
     "overrides": {
@@ -33,7 +30,7 @@
     "test:discovery": "vitest run tests/discovery tests/standalone/discovery-command.test.ts",
     "test:integration": "vitest run tests/integration",
     "test:integration:sqlite": "BANGUMI_DB_DRIVER=sqlite vitest run tests/integration",
-    "test:integration:postgres": "BANGUMI_DB_DRIVER=postgres vitest run tests/integration",
+    "test:integration:postgres": "BANGUMI_DB_DRIVER=postgres vitest run tests/integration --exclude tests/integration/oauth-callback-shared-sqlite.test.ts",
     "test:render": "vitest run tests/render",
     "test:standalone": "pnpm build && vitest run tests/standalone",
     "setup:local": "ts-node -P tsconfig.base.json scripts/setup-local.ts",
@@ -47,7 +44,7 @@
     "smoke:discovery:online": "ts-node -P tsconfig.base.json scripts/smoke-discovery-online.ts",
     "smoke:public:online": "ts-node -P tsconfig.base.json scripts/smoke-public-tools-online.ts --live",
     "auth:check": "python3 scripts/validate-auth-acceptance.py",
-    "acceptance:check": "python3 scripts/check-tool-acceptance-table.py",
+    "acceptance:check": "python3 scripts/test_acceptance_evidence.py && python3 scripts/generate-tool-acceptance-tasks.py --check && python3 scripts/check-tool-acceptance-table.py",
     "renderer:install": "npx playwright install chromium",
     "start:api": "pnpm --filter @bangumi-agent-kit/app-api start",
     "start:mcp": "pnpm --filter @bangumi-agent-kit/app-mcp start",
@@ -93,5 +90,8 @@
     "vitest": "^4.1.11",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   }
 }

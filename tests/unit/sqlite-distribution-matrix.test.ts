@@ -457,6 +457,7 @@ describe('PR-6R-A SQLite Distribution & Concurrency Matrix', () => {
 
     const claimInput = {
       confirmationId: action.id,
+      actionType: action.actionType,
       principalId: p.id,
       botInstanceId: 'b1',
       conversationId: 'c17',

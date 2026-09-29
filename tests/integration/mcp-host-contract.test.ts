@@ -40,7 +40,7 @@ function parseMcpError(response: unknown) {
   const text = (responseRecord.content as Array<{ type: string; text: string }>)[0]!.text;
   return JSON.parse(text) as {
     ok: boolean;
-    error: { code: string; message?: string; nextAction?: string };
+    error: { code: string; message?: string; nextAction?: string; confirmationId?: string };
   };
 }
 
@@ -169,6 +169,7 @@ describe('MCP host confirmation contract', () => {
 
     expect(response.isError).toBe(true);
     expect(parseMcpError(response).error.code).toBe('CONFIRMATION_INVALID');
+    expect(parseMcpError(response).error.confirmationId).toBeUndefined();
     expect(executeSpy).not.toHaveBeenCalled();
     await client.close();
   });
@@ -182,6 +183,7 @@ describe('MCP host confirmation contract', () => {
     });
     const registry = new ToolRegistry(dependencies);
     let executionCount = 0;
+    let alternateExecutionCount = 0;
     const grantState: { value?: string } = {};
     registry.registerTool(
       defineTool({
@@ -193,6 +195,20 @@ describe('MCP host confirmation contract', () => {
         risk: 'destructive',
         execute: async () => {
           executionCount += 1;
+          return { success: true };
+        },
+      }),
+    );
+    registry.registerTool(
+      defineTool({
+        name: 'test.other_destructive_write',
+        description: 'Different write with the same payload shape',
+        input: z.object({ value: z.string() }),
+        auth: 'none',
+        scopes: [],
+        risk: 'destructive',
+        execute: async () => {
+          alternateExecutionCount += 1;
           return { success: true };
         },
       }),
@@ -217,7 +233,16 @@ describe('MCP host confirmation contract', () => {
     expect(first.isError).toBe(true);
     expect(firstError.error.code).toBe('CONFIRMATION_REQUIRED');
     expect(confirmationId).toMatch(/^cfm_/);
+    expect(firstError.error.confirmationId).toBe(confirmationId);
     grantState.value = confirmationId;
+
+    const crossOperation = await client.callTool({
+      name: 'test.other_destructive_write',
+      arguments: { value: 'same-payload', _confirmationId: confirmationId },
+    });
+    expect(parseMcpError(crossOperation).error.code).toBe('CONFIRMATION_INVALID');
+    expect(executionCount).toBe(0);
+    expect(alternateExecutionCount).toBe(0);
 
     const noGrantApp = new BangumiMcpServer({
       dependencies,
