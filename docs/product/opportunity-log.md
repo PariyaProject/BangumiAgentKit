@@ -39,6 +39,8 @@ Sol #2's full review evidence is
 
 ## OP-008 Subject Intelligence Overview
 
+Renderer follow-up — 2026-10-03 (Harness Epoch PR #65): the MCP 360 CSS-pixel target exposed horizontal clipping in person-credit and search-result cards. Compact person credits now stack and wrap; search results use one column on phone widths. A Chromium layout audit runs against each successful renderer fixture at 320, 360, and 520 CSS px; it found and fixed a third overflow in the statistics-history breakpoint. Focused tests verify 720px PNG output. This is fixture-level presentation evidence only; current-source Agent/MCP and QQ/TIM acceptance remain separate.
+
 Status:
 MERGED_BY_HUMAN_AUTHORIZATION / HISTORICAL_REVIEW_PARKED
 
@@ -327,6 +329,8 @@ boundaries.
 ---
 
 ## OP-012 Subject Statistics Intelligence
+
+Renderer follow-up — 2026-10-03 (Harness Epoch PR #65): a shared real-browser layout audit now checks successful fixtures across the Renderer suite at 320, 360, and 520 CSS px. It found three overflow cases across compact cards and the breakpoint grid, all fixed with responsive layout; focused tests verify 720px PNG output. Statistics formulas and source semantics are unchanged, and current-source Agent/MCP plus QQ/TIM evidence remain outstanding.
 
 Status:
 SELECTED_IN_HARNESS_V3_EPOCH / SUBJECT-STATS-INTELLIGENCE-V1

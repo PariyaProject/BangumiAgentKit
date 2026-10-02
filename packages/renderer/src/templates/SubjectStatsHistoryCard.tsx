@@ -205,7 +205,7 @@ export const SubjectStatsHistoryCard: React.FC<SubjectStatsHistoryCardProps> = (
                   padding: theme.spacing.sm,
                   display: 'grid',
                   gridTemplateColumns:
-                    width !== undefined && width < 480
+                    width !== undefined && width < 640
                       ? 'minmax(0, 1fr)'
                       : 'minmax(180px, 1.2fr) repeat(4, minmax(70px, 1fr))',
                   gap: theme.spacing.xs,

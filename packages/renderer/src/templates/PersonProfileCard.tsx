@@ -120,16 +120,23 @@ function CreditList({
   items,
   hiddenCount,
   unobservedCount,
+  compact,
   theme,
 }: {
   title: string;
   items: PersonProfileViewModel['subjectCredits'];
   hiddenCount?: number;
   unobservedCount?: number;
+  compact: boolean;
   theme: ThemeTokens;
 }) {
   return (
-    <div style={{ flex: 1, minWidth: '360px' }}>
+    <div
+      style={{
+        flex: compact ? '1 1 100%' : 1,
+        minWidth: compact ? 0 : '360px',
+      }}
+    >
       <div
         style={{
           color: theme.text,
@@ -165,14 +172,30 @@ function CreditList({
                 padding: `${theme.spacing.sm} ${theme.spacing.md}`,
               }}
             >
-              <div style={{ color: theme.text, fontSize: '13px', fontWeight: 600 }}>
+              <div
+                style={{
+                  color: theme.text,
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  overflowWrap: 'anywhere',
+                }}
+              >
                 {item.nameCn || item.name}
               </div>
               {item.nameCn && item.nameCn !== item.name && (
-                <div style={{ color: theme.textMuted, fontSize: '11px' }}>{item.name}</div>
+                <div style={{ color: theme.textMuted, fontSize: '11px', overflowWrap: 'anywhere' }}>
+                  {item.name}
+                </div>
               )}
               {(item.role || item.subjectNameCn || item.subjectName || item.eps) && (
-                <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '2px' }}>
+                <div
+                  style={{
+                    color: theme.textMuted,
+                    fontSize: '11px',
+                    marginTop: '2px',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
                   {[item.role, item.subjectNameCn || item.subjectName, item.eps]
                     .filter(Boolean)
                     .join(' · ')}
@@ -233,6 +256,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           ? '不可计算'
           : '部分';
   const stateColor = viewModel.state === 'complete' ? theme.textMuted : theme.warning;
+  const compactLayout = (width ?? 960) < 520;
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -364,6 +388,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           items={viewModel.subjectCredits}
           hiddenCount={viewModel.hiddenSubjectCredits}
           unobservedCount={viewModel.unobservedSubjectCredits}
+          compact={compactLayout}
           theme={theme}
         />
         <CreditList
@@ -371,6 +396,7 @@ export const PersonProfileCard: React.FC<PersonProfileCardProps> = ({
           items={viewModel.characterCredits}
           hiddenCount={viewModel.hiddenCharacterCredits}
           unobservedCount={viewModel.unobservedCharacterCredits}
+          compact={compactLayout}
           theme={theme}
         />
       </div>
