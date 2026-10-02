@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-02T05:24:43Z",
+  "updated_at": "2026-10-03T07:08:07+09:00",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -73,9 +73,24 @@
       "kind": "scenario",
       "user_question": "今年七月番中的后宫动画有哪些？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/g01-july-2026-live-probe-2026-10-03.md",
+        "packages/discovery/src/compiler.ts",
+        "packages/provider-core/src/providers.ts",
+        "packages/renderer/src/templates/DiscoveryResultsCard.tsx",
+        "tests/render/discovery-results.test.ts",
+        "apps/mcp/src/server.ts",
+        "packages/tools/src/definitions/discovery-tools.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "packages/discovery/src/query.ts",
+        "packages/discovery/src/engine.ts",
+        "packages/discovery/src/concept-resolver.ts",
+        "tests/discovery/golden.test.ts",
+        "tests/discovery/golden-e2e.test.ts"
+      ],
+      "next_action": "2026-10-03 当前 master 的 ToolRegistry 实测返回 15 条 2026 年 7 月动画，均匹配精确“后宫”标签和日期；实际 MCP render_query_subjects 生成的 720px 图片已目视检查，展示 12 条并注明另有 3 条。此 Epoch 将 DiscoveryResultsCard 中的实验来源、估算总数和分页/候选上限说明本地化。由于官方搜索仍属实验接口且总数为估算，G01 保持 PARTIAL；自然语言 Agent 与 QQ/TIM 客户端展示须分别验收，准备好完整客户端批次后再做一次登录预检。",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

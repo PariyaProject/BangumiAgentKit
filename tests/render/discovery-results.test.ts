@@ -7,6 +7,7 @@ import {
   renderHtmlTemplate,
   RenderService,
 } from '@bangumi-agent-kit/renderer';
+import { closeMobileLayoutBrowser, measureRenderRootLayout } from './helpers/mobile-layout.js';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const ONE_PIXEL_PNG = Buffer.from(
@@ -91,6 +92,7 @@ describe('discovery-results renderer', () => {
 
   afterAll(async () => {
     await renderService.close();
+    await closeMobileLayoutBrowser();
   });
 
   it('builds a bounded, evidence-aware view model without fabricating missing fields', () => {
@@ -125,6 +127,104 @@ describe('discovery-results renderer', () => {
     expect(viewModel.plan.derivedFilters[0]).toContain('降序');
     expect(viewModel.source.operations).toEqual(expect.arrayContaining(['searchSubjects']));
     expect(viewModel.coverage.budgetExceeded).toBe(true);
+  });
+
+  it('explains experimental search and bounded coverage in Chinese at mobile chat size', async () => {
+    const result = makeResult('ok', 15);
+    result.items = result.items.map((item, index) => ({
+      ...item,
+      date: `2026-07-${String((index % 28) + 1).padStart(2, '0')}`,
+    }));
+    result.plan.limitations = [
+      'Enumeration is bounded by maxPages and maxCandidates.',
+      'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+      'all requests a complete attempt; budget exhaustion is reported as partial.',
+      '未识别的来源说明仍保留。',
+    ];
+    result.coverage.requested = 100;
+    result.coverage.scanned = 15;
+    result.coverage.matched = 15;
+    result.coverage.pagesScanned = 1;
+    result.coverage.totalKind = 'estimated';
+    result.warnings = [
+      {
+        code: 'EXPERIMENTAL_SOURCE',
+        message: 'Official v0 subject search is marked experimental upstream.',
+      },
+      { code: 'FUTURE_DISCOVERY_NOTICE', message: '未知来源提示仍保留。' },
+    ];
+    result.evidence[0]!.source.experimental = true;
+
+    const viewModel = buildDiscoveryResultsViewModel(result, {
+      media: 'anime',
+      year: 2026,
+      month: 7,
+      concepts: ['后宫'],
+      resultMode: 'all',
+      limit: 100,
+    });
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(html).toContain('官方作品搜索接口仍处于实验阶段。');
+    expect(html).toContain('检索受最大页数与候选条目数限制');
+    expect(html).toContain('官方搜索总数为估算值，不能据此认定 Bangumi 全库已完整覆盖');
+    expect(html).toContain('“尽量完整”会在预算内继续检索；预算耗尽时仍标记为部分覆盖');
+    expect(html).toContain('未知来源提示仍保留。');
+    expect(html).toContain('另有 1 条限制');
+    expect(html).not.toContain('Official v0 subject search is marked experimental upstream.');
+    expect(html).not.toContain('Enumeration is bounded by maxPages and maxCandidates.');
+    expect(html).not.toContain(
+      'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+    );
+    expect(html).not.toContain(
+      'all requests a complete attempt; budget exhaustion is reported as partial.',
+    );
+    expect(viewModel.warnings[0]?.message).toBe(
+      'Official v0 subject search is marked experimental upstream.',
+    );
+    expect(viewModel.plan.limitations).toEqual(result.plan.limitations);
+
+    const forwardCompatibilityResult = makeResult('ok', 1);
+    forwardCompatibilityResult.plan.limitations = ['未识别的来源说明仍保留。'];
+    const unfamiliarExperimentalMessage =
+      'Experimental search may omit newly indexed subjects from this bounded result.';
+    forwardCompatibilityResult.warnings = [
+      { code: 'FUTURE_DISCOVERY_NOTICE', message: '未知来源提示仍保留。' },
+      { code: 'EXPERIMENTAL_SOURCE', message: unfamiliarExperimentalMessage },
+    ];
+    const forwardCompatibilityViewModel = buildDiscoveryResultsViewModel(
+      forwardCompatibilityResult,
+      {},
+    );
+    const forwardCompatibilityHtml = renderHtmlTemplate(
+      forwardCompatibilityViewModel,
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(forwardCompatibilityHtml).toContain('未识别的来源说明仍保留。');
+    expect(forwardCompatibilityHtml).toContain('未知来源提示仍保留。');
+    expect(forwardCompatibilityHtml).toContain(
+      `官方搜索来源提示：${unfamiliarExperimentalMessage}`,
+    );
+    expect(forwardCompatibilityHtml).not.toContain('官方作品搜索接口仍处于实验阶段。');
+
+    for (const width of [320, 360, 520]) {
+      const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      const layout = await measureRenderRootLayout(mobileHtml, width);
+      expect(layout.clientWidth, `[G01] root width at ${width}px`).toBe(width);
+      expect(layout.scrollWidth, `[G01] scroll width at ${width}px`).toBe(width);
+      expect(layout.overflowing, `[G01] overflowing elements at ${width}px`).toEqual([]);
+    }
+
+    const image = await renderService.renderCard(viewModel, {
+      width: 360,
+      deviceScaleFactor: 2,
+    });
+    expect(image.width).toBe(720);
+    expect(image.height).toBeLessThan(8192);
+    expect(image.buffer.subarray(0, 8).equals(PNG_MAGIC)).toBe(true);
+    expect(html).toContain('另有 3 条本次已返回的结构化条目未在卡片中展开');
   });
 
   it('separates card-hidden rows from observed candidates omitted by the engine', () => {

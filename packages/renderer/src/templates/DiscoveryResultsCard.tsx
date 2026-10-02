@@ -55,6 +55,7 @@ function qualityLabel(quality: string): string {
 
 function warningLabel(code: string): string {
   const labels: Record<string, string> = {
+    EXPERIMENTAL_SOURCE: '官方搜索来源提示',
     DISCOVERY_AMBIGUOUS_CONCEPT: '概念存在歧义',
     DISCOVERY_UNKNOWN_CONCEPT: '概念未解析',
     DISCOVERY_BUDGET_EXCEEDED: '执行预算达到',
@@ -65,6 +66,27 @@ function warningLabel(code: string): string {
     UPSTREAM_ERROR: '来源返回错误',
   };
   return labels[code] || '发现告警';
+}
+
+function warningText(code: string, message: string): string {
+  if (
+    code === 'EXPERIMENTAL_SOURCE' &&
+    message === 'Official v0 subject search is marked experimental upstream.'
+  ) {
+    return '官方作品搜索接口仍处于实验阶段。';
+  }
+  return `${warningLabel(code)}：${message}`;
+}
+
+function limitationLabel(message: string): string {
+  const labels: Record<string, string> = {
+    'Enumeration is bounded by maxPages and maxCandidates.': '检索受最大页数与候选条目数限制',
+    'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.':
+      '官方搜索总数为估算值，不能据此认定 Bangumi 全库已完整覆盖',
+    'all requests a complete attempt; budget exhaustion is reported as partial.':
+      '“尽量完整”会在预算内继续检索；预算耗尽时仍标记为部分覆盖',
+  };
+  return labels[message] || message;
 }
 
 function coverageReasonLabel(reason: string): string {
@@ -367,15 +389,13 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
       {visibleWarnings.length > 0 ? (
         <div style={{ color: theme.warning, fontSize: '12px', lineHeight: 1.55 }}>
           警告：
-          {visibleWarnings
-            .map((warning) => `${warningLabel(warning.code)}：${warning.message}`)
-            .join('；')}
+          {visibleWarnings.map((warning) => warningText(warning.code, warning.message)).join('；')}
           {hiddenWarnings > 0 ? `；另有 ${hiddenWarnings} 条警告` : ''}
         </div>
       ) : null}
       {visibleLimitations.length > 0 ? (
         <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
-          限制：{visibleLimitations.join('；')}
+          限制：{visibleLimitations.map(limitationLabel).join('；')}
           {hiddenLimitations > 0 ? `；另有 ${hiddenLimitations} 条限制` : ''}
         </div>
       ) : null}
