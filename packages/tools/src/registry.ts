@@ -34,6 +34,7 @@ import {
   normalizeToolMode,
   type ToolMode,
   type ToolProfile,
+  type RenderTarget,
 } from './profiles.js';
 
 export type { ToolMode } from './profiles.js';
@@ -74,6 +75,8 @@ export interface ToolRegistryOptions {
   mode?: ToolMode;
   /** Alias for callers that refer to the model-facing surface as a profile. */
   profile?: ToolProfile;
+  /** Internal renderer target. Direct registry and Standalone calls default to full resolution. */
+  renderTarget?: RenderTarget;
 }
 
 export function createRuntimeDependenciesWithStorage(
@@ -163,6 +166,7 @@ export class ToolRegistry {
   private toolsMap: Map<string, ToolDefinition> = new Map();
   private deps: RuntimeDependencies;
   private readonly mode: ToolProfile;
+  private readonly renderTarget: RenderTarget;
 
   constructor(
     optionsOrDeps: RuntimeDependencies | (CreateRuntimeDependenciesConfig & { storage: Storage }),
@@ -172,6 +176,7 @@ export class ToolRegistry {
       throw new Error('ToolRegistry mode and profile must select the same tool surface.');
     }
     this.mode = normalizeToolMode(options.profile || options.mode);
+    this.renderTarget = options.renderTarget ?? 'full';
 
     if (optionsOrDeps && 'tokenBroker' in optionsOrDeps) {
       this.deps = optionsOrDeps as RuntimeDependencies;
@@ -235,6 +240,7 @@ export class ToolRegistry {
     const renderTools = createRenderPresentationTools(
       this.deps.renderService,
       this.deps.artifactStore,
+      this.renderTarget,
     );
     register(renderTools);
   }

@@ -479,7 +479,7 @@ describe('Subject Overview renderer', () => {
     for (const [name, result] of Object.entries(variants)) {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
-      for (const width of [720, 960]) {
+      for (const width of [360, 720, 960]) {
         const deviceScaleFactor = width === 720 ? 1 : 2;
         const rendered = await renderService.renderCard(vm, {
           width,
@@ -490,7 +490,7 @@ describe('Subject Overview renderer', () => {
         expect(rendered.buffer.subarray(0, 8).equals(PNG_MAGIC), `${name} PNG`).toBe(true);
         expect(rendered.buffer.length, `${name} bytes`).toBeGreaterThan(1000);
         expect(rendered.height, `${name} height`).toBeLessThanOrEqual(8192);
-        if (width === 720) {
+        if (width === 360 || width === 720) {
           expect(rendered.buffer.length, `${name} mobile payload`).toBeLessThan(1_000_000);
         }
         if (visualQaDir) {
@@ -519,7 +519,7 @@ describe('Subject Overview renderer', () => {
     expect(rendered.height).toBeLessThanOrEqual(8192);
   });
 
-  it('uses the mobile-sized canvas for the public subject overview artifact', async () => {
+  it('uses the full-sized canvas for the public subject overview artifact by default', async () => {
     const renderCard = vi.fn(
       async (_viewModel: ReturnType<typeof buildSubjectOverviewViewModel>) => ({
         buffer: VALID_PNG_BUFFER,
@@ -568,5 +568,54 @@ describe('Subject Overview renderer', () => {
       width: 720,
       height: 1200,
     });
+  });
+
+  it('routes chat-target overview cards through the 360px viewport at 2x density', async () => {
+    const renderCard = vi.fn(
+      async (
+        _viewModel: ReturnType<typeof buildSubjectOverviewViewModel>,
+        options?: { width?: number; deviceScaleFactor?: number },
+      ) => ({
+        buffer: VALID_PNG_BUFFER,
+        mimeType: 'image/png' as const,
+        width: (options?.width ?? 960) * (options?.deviceScaleFactor ?? 2),
+        height: 1200,
+        template: 'subject-overview' as const,
+        templateVersion: 1,
+        cacheKey: 'subject-overview-chat',
+        warnings: [],
+      }),
+    );
+    const artifactStore = {
+      saveArtifact: vi.fn(
+        async (
+          _buffer: Buffer,
+          _mimeType: 'image/png',
+          size: { width?: number; height?: number },
+        ) => ({
+          id: 'chat-overview-artifact',
+          mimeType: 'image/png' as const,
+          ...size,
+        }),
+      ),
+    };
+    const tools = createRenderPresentationTools(
+      { renderCard } as unknown as RenderService,
+      artifactStore as never,
+      'chat',
+    );
+    const overview = tools.find((tool) => tool.name === 'bangumi.render_subject_overview');
+    expect(overview).toBeDefined();
+
+    const rendered = await overview!.execute({ subjectId: 123 } as never, {} as never, {
+      publicHttpClient: buildSemanticClient('complete', 'valid', 9),
+      providerRegistry: buildStatsProvider(),
+    });
+
+    expect(rendered).toMatchObject({ artifact: { width: 720, height: 1200 } });
+    expect(renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({ template: 'subject-overview' }),
+      { width: 360, deviceScaleFactor: 2 },
+    );
   });
 });

@@ -1071,14 +1071,20 @@ describe('subject-comparison renderer', () => {
         expect(html).not.toContain('-1.3%');
       }
 
-      const rendered = await renderService.renderCard(viewModel, {
-        width: 640,
-        deviceScaleFactor: 1,
-      });
-      captureVisualQa('comparison-' + matrixCase.name + '.png', rendered.buffer);
-      expect(rendered.template).toBe('subject-comparison');
-      expect(rendered.templateVersion).toBe(2);
-      expect(rendered.buffer.length).toBeGreaterThan(1000);
+      for (const width of [360, 640]) {
+        const deviceScaleFactor = width === 360 ? 2 : 1;
+        const rendered = await renderService.renderCard(viewModel, {
+          width,
+          deviceScaleFactor,
+        });
+        captureVisualQa(`comparison-${matrixCase.name}-${width}.png`, rendered.buffer);
+        expect(rendered.template).toBe('subject-comparison');
+        expect(rendered.templateVersion).toBe(2);
+        expect(rendered.width).toBe(width * deviceScaleFactor);
+        expect(rendered.height).toBeLessThanOrEqual(8192);
+        expect(rendered.buffer.length).toBeGreaterThan(1000);
+        expect(rendered.buffer.length).toBeLessThan(5_000_000);
+      }
     }
   }, 30_000);
 });

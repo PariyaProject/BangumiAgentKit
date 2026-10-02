@@ -10,6 +10,9 @@ export type ToolMode = 'compact' | 'curated' | 'full';
 
 export type ToolProfile = 'compact' | 'full';
 
+/** Internal image target for reusable renderer tools. */
+export type RenderTarget = 'chat' | 'full';
+
 export const COMPACT_MCP_PROFILE_ID = 'bangumi-compact-v1' as const;
 
 export const COMPACT_MCP_TOOL_NAMES = [

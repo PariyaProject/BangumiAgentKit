@@ -317,10 +317,10 @@ export class RenderService {
       options.cache !== false &&
       !PRIVATE_COLLECTION_RENDER_TEMPLATES.has(normalizedViewModel.template);
 
-    if (width < 640 || width > 1200) {
+    if (width < 320 || width > 1200) {
       throw new RendererError(
         'RENDER_VALIDATION_ERROR',
-        `Width ${width} out of allowed bounds (640 - 1200).`,
+        `Width ${width} out of allowed bounds (320 - 1200).`,
       );
     }
     if (dpr < 1 || dpr > 2) {

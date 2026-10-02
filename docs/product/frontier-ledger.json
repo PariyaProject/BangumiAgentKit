@@ -176,10 +176,15 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/stats-cards-readable-2026-10-02.md",
+        "apps/mcp/src/server.ts",
+        "packages/renderer/src/render-service.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
         "packages/renderer/src/templates/SubjectStatsCard.tsx",
+        "tests/integration/mcp-render-target.test.ts",
+        "tests/render/subject-overview.test.ts",
         "tests/render/subject-stats.test.ts"
       ],
-      "next_action": "The renderer now presents complete and partial rating/collection distributions, completion state, and explicit unknown buckets in a one-image card. Remaining: verify a natural-language query against current official source data through Agent/MCP, then real QQ/TIM display; fixture evidence does not prove either path.",
+      "next_action": "The MCP chat target now renders at 360 CSS px/2x (720px PNG), with full-resolution behavior preserved for direct/Standalone use. Complete, partial, missing, and unavailable 360px statistics and overview fixtures render within bounds. Remaining: verify a natural-language query against current official source data through Agent/MCP, then real QQ/TIM display; fixture evidence does not prove either path.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },
@@ -258,10 +263,14 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/stats-cards-readable-2026-10-02.md",
+        "apps/mcp/src/server.ts",
+        "packages/renderer/src/render-service.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
         "packages/renderer/src/templates/SubjectComparisonCard.tsx",
+        "tests/integration/mcp-render-target.test.ts",
         "tests/render/subject-comparison.test.ts"
       ],
-      "next_action": "The narrow comparison card now shows two subjects' statistics distributions, deltas, coverage and conflicts. Remaining: verify a real two-subject Agent/MCP query against current official data and then real QQ/TIM display; fixture render evidence does not prove either path.",
+      "next_action": "The MCP chat target now renders comparison cards at 360 CSS px/2x (720px PNG); complete, partial, conflict, unavailable, and not-computable fixtures retain their caveats and stay below the 5 MiB/8,192px limits. Remaining: verify a real two-subject Agent/MCP query against current official data and then real QQ/TIM display; fixture render evidence does not prove either path.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },
@@ -1739,8 +1748,15 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Subject Intelligence Overview?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "apps/mcp/src/server.ts",
+        "packages/tools/src/registry.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/integration/mcp-render-target.test.ts",
+        "tests/render/subject-overview.test.ts"
+      ],
+      "next_action": "A bounded 360 CSS-pixel/2x chat target now improves inline mobile readability while direct and Standalone defaults retain full resolution. The dense overview fixture matrix is visually checked. Reconcile remaining user value after current-source Agent/MCP and real QQ/TIM acceptance; do not equate fixture rendering with those paths.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
@@ -1786,12 +1802,16 @@
       "source_refs": [
         "docs/product/opportunity-log.md",
         "docs/research/stats-cards-readable-2026-10-02.md",
+        "apps/mcp/src/server.ts",
+        "packages/renderer/src/render-service.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
         "packages/renderer/src/templates/SubjectStatsCard.tsx",
         "packages/renderer/src/templates/SubjectComparisonCard.tsx",
+        "tests/integration/mcp-render-target.test.ts",
         "tests/render/subject-stats.test.ts",
         "tests/render/subject-comparison.test.ts"
       ],
-      "next_action": "This Epoch improves the renderer surfaces for current-snapshot subject statistics and comparisons. Remaining: confirm exact values, partial/missing/conflict semantics through current official Agent/MCP journeys, retain full structured evidence, and verify current-source image output in a real client. Historical statistics and account-specific data stay separate.",
+      "next_action": "The MCP chat target now presents statistics and comparison cards at 360 CSS px/2x while preserving current-snapshot data and caveats; complete, partial, missing, conflict, unavailable, and not-computable fixtures were raster-tested. Remaining: confirm exact values and states through current official Agent/MCP journeys and verify current-source image output in a real client. Historical statistics and account-specific data stay separate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

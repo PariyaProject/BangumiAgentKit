@@ -562,21 +562,24 @@ describe('subject-stats renderer', () => {
     ];
     for (const [label, fixture] of states) {
       const viewModel = buildSubjectStatsViewModel(fixture);
-      for (const width of [480, 640, 960]) {
+      for (const width of [360, 480, 640, 960]) {
         const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
         expect(html, `${label} HTML at ${width}`).toContain('Bangumi 条目统计 · 当前快照');
         expect(html, `${label} HTML at ${width}`).not.toContain('bangumi.rating.population_sd.v1');
         expect(html, `${label} HTML at ${width}`).not.toContain('UPSTREAM_UNAVAILABLE');
         expect(html, `${label} HTML at ${width}`).not.toContain('NaN');
         expect(html, `${label} HTML at ${width}`).not.toContain('Infinity');
-        if (width < 640) continue;
         const rendered = await renderService.renderCard(viewModel, {
           width,
-          deviceScaleFactor: 1,
+          deviceScaleFactor: width === 640 ? 1 : 2,
           cache: false,
         });
+        expect(rendered.width, `${label} raster width at ${width}`).toBe(
+          width * (width === 640 ? 1 : 2),
+        );
         expect(rendered.buffer.length, `${label} PNG at ${width}`).toBeGreaterThan(1000);
         if (width === 640) captureVisualQa('single-' + label + '.png', rendered.buffer);
+        if (width === 360) captureVisualQa('single-mobile-' + label + '.png', rendered.buffer);
       }
     }
   }, 60_000);
