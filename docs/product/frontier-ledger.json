@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-08-30",
+  "updated_at": "2026-10-02T05:24:43Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -172,11 +172,16 @@
       "kind": "scenario",
       "user_question": "少女终末旅行评分分布和完成率。",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/stats-cards-readable-2026-10-02.md",
+        "packages/renderer/src/templates/SubjectStatsCard.tsx",
+        "tests/render/subject-stats.test.ts"
+      ],
+      "next_action": "The renderer now presents complete and partial rating/collection distributions, completion state, and explicit unknown buckets in a one-image card. Remaining: verify a natural-language query against current official source data through Agent/MCP, then real QQ/TIM display; fixture evidence does not prove either path.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-012"]
     },
     {
       "id": "G09",
@@ -249,11 +254,16 @@
       "kind": "scenario",
       "user_question": "《葬送的芙莉莲》和《药屋少女的呢喃》在评分、集数、完成率上有什么差异？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/stats-cards-readable-2026-10-02.md",
+        "packages/renderer/src/templates/SubjectComparisonCard.tsx",
+        "tests/render/subject-comparison.test.ts"
+      ],
+      "next_action": "The narrow comparison card now shows two subjects' statistics distributions, deltas, coverage and conflicts. Remaining: verify a real two-subject Agent/MCP query against current official data and then real QQ/TIM display; fixture render evidence does not prove either path.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-012"]
     },
     {
       "id": "G16",
@@ -1773,8 +1783,15 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Subject Statistics Intelligence?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "docs/research/stats-cards-readable-2026-10-02.md",
+        "packages/renderer/src/templates/SubjectStatsCard.tsx",
+        "packages/renderer/src/templates/SubjectComparisonCard.tsx",
+        "tests/render/subject-stats.test.ts",
+        "tests/render/subject-comparison.test.ts"
+      ],
+      "next_action": "This Epoch improves the renderer surfaces for current-snapshot subject statistics and comparisons. Remaining: confirm exact values, partial/missing/conflict semantics through current official Agent/MCP journeys, retain full structured evidence, and verify current-source image output in a real client. Historical statistics and account-specific data stay separate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
