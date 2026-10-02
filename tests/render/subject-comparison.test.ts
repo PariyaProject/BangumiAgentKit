@@ -713,6 +713,59 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('当前请求未取得条目身份');
   });
 
+  it('shows a not-found comparison without guessed subject metrics or raw state codes', () => {
+    const notFound = structuredClone(result);
+    notFound.state = 'not_found';
+    notFound.coverage = {
+      ...notFound.coverage,
+      returnedSubjects: 0,
+      subjectsComplete: 0,
+      subjectsPartial: 0,
+      subjectsUnavailable: 0,
+      subjectsNotFound: 2,
+      metricsComplete: 0,
+      metricsUnknown: 6,
+    };
+    const markSubjectNotFound = (
+      subject: (typeof notFound.subjects)[number],
+    ): (typeof notFound.subjects)[number] => ({
+      ...subject,
+      state: 'not_found',
+      subject: undefined,
+      stats: { state: 'unavailable' },
+      sections: {
+        stats: 'unavailable',
+        cast: 'unavailable',
+        staff: 'unavailable',
+        relations: 'unavailable',
+      },
+      warnings: [],
+      limitations: ['官方条目源没有找到该条目。'],
+    });
+    notFound.subjects = [
+      markSubjectNotFound(notFound.subjects[0]),
+      markSubjectNotFound(notFound.subjects[1]),
+    ];
+    notFound.metrics = notFound.metrics.map((metric) => ({
+      ...metric,
+      values: [null, null],
+      delta: null,
+      state: 'unknown' as const,
+    }));
+
+    const html = renderHtmlTemplate(
+      buildSubjectComparisonViewModel(notFound),
+      'bangumi-dark',
+      {},
+      480,
+    );
+    expect(html).toContain('未找到');
+    expect(html).toContain('本次条目 0/2');
+    expect(html).toContain('官方条目源没有找到该条目');
+    expect(html).not.toContain('not_found');
+    expect(html).not.toContain('8.6');
+  });
+
   it('renders readable statistics distributions without implementation diagnostics', () => {
     const withStatistics = structuredClone(result);
     withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';

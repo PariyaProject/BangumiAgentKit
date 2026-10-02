@@ -117,6 +117,13 @@ function uniqueStatsConflicts(
 }
 
 function dataNotes(viewModel: SubjectStatsViewModel): string[] {
+  if (viewModel.state === 'not_found') {
+    return ['统计字段保留为未知，不把“未找到”误当作零。'];
+  }
+  if (viewModel.state === 'unavailable') {
+    return ['统计字段保留为未知，不把“暂时不可用”误当作零。'];
+  }
+
   const repeatedConflictWarning = Boolean(uniqueStatsConflicts(viewModel).length);
   const notes = [
     '均值和离散度由本次评分分布计算；完成率按当前收藏状态计算。这是一份当前快照，不代表历史趋势或推荐。',

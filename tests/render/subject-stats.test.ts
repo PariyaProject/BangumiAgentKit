@@ -257,6 +257,11 @@ describe('subject-stats renderer', () => {
         { code: 'UPSTREAM_UNAVAILABLE', state: 'unavailable', message: '官方统计源不可用。' },
       ],
     };
+    const notFound: SubjectStatsIntelligenceResult = {
+      ...unavailable,
+      state: 'not_found',
+      warnings: [],
+    };
     const unavailableHtml = renderHtmlTemplate(
       buildSubjectStatsViewModel(unavailable),
       'bangumi-dark',
@@ -265,9 +270,23 @@ describe('subject-stats renderer', () => {
     );
     expect(unavailableHtml).toContain('官方统计源暂时不可用');
     expect(unavailableHtml).toContain('不可用');
+    expect(unavailableHtml).toContain('不把“暂时不可用”误当作零');
     expect(unavailableHtml).not.toContain('UPSTREAM_UNAVAILABLE');
     expect(unavailableHtml).not.toContain('8.6');
     expect(unavailableHtml).not.toContain('NaN');
+
+    const notFoundHtml = renderHtmlTemplate(
+      buildSubjectStatsViewModel(notFound),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(notFoundHtml).toContain('未找到');
+    expect(notFoundHtml).toContain('官方统计源没有找到该条目');
+    expect(notFoundHtml).toContain('不把“未找到”误当作零');
+    expect(notFoundHtml).not.toContain('官方统计源暂时不可用');
+    expect(notFoundHtml).not.toContain('8.6');
+    expect(notFoundHtml).not.toContain('not_found');
   });
 
   it('renders complete, sparse, partial, conflict, unavailable, and not-computable states at both widths', async () => {
@@ -438,6 +457,10 @@ describe('subject-stats renderer', () => {
       { code: 'ZERO_POPULATION', state: 'not_computable', message: '评分与收藏样本量为零。' },
     ];
 
+    const notFoundState = structuredClone(unavailable);
+    notFoundState.state = 'not_found';
+    notFoundState.warnings = [];
+
     const partialHtml = renderHtmlTemplate(
       buildSubjectStatsViewModel(partial),
       'bangumi-dark',
@@ -454,6 +477,7 @@ describe('subject-stats renderer', () => {
       ['partial', partial],
       ['conflict', conflict],
       ['unavailable', unavailable],
+      ['not-found', notFoundState],
       ['not-computable', notComputable],
     ];
     for (const [label, fixture] of states) {
