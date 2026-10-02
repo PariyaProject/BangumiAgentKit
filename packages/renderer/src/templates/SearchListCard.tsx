@@ -9,17 +9,19 @@ export interface SearchListCardProps {
   viewModel: SearchListViewModel;
   theme: ThemeTokens;
   resolvedImages?: Record<string, string>;
+  width?: number;
 }
 
 export const SearchListCard: React.FC<SearchListCardProps> = ({
   viewModel,
   theme,
   resolvedImages = {},
+  width,
 }) => {
   const { query, total, items, hasMore } = viewModel;
 
   return (
-    <CardFrame theme={theme}>
+    <CardFrame theme={theme} width={width}>
       <TitleBlock
         title={`搜索结果: "${query}"`}
         subtitle={`共找到 ${total} 条匹配条目`}
@@ -29,7 +31,8 @@ export const SearchListCard: React.FC<SearchListCardProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateColumns:
+            width !== undefined && width < 520 ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
           gap: theme.spacing.md,
           marginTop: theme.spacing.sm,
         }}
@@ -44,6 +47,7 @@ export const SearchListCard: React.FC<SearchListCardProps> = ({
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius.md,
                 padding: theme.spacing.sm,
+                minWidth: 0,
                 display: 'flex',
                 gap: theme.spacing.sm,
                 alignItems: 'center',
@@ -84,6 +88,7 @@ export const SearchListCard: React.FC<SearchListCardProps> = ({
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '2px',
+                  minWidth: 0,
                   overflow: 'hidden',
                 }}
               >

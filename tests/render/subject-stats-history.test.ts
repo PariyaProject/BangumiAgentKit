@@ -358,6 +358,14 @@ describe('subject-stats-history renderer', () => {
       expect(html).not.toContain('Infinity');
     }
 
+    const breakpointHtml = renderHtmlTemplate(
+      buildSubjectStatsHistoryViewModel(longCjk),
+      'bangumi-dark',
+      {},
+      520,
+    );
+    expect(breakpointHtml).toContain('grid-template-columns:minmax(0, 1fr)');
+
     const rendered = await renderService.renderCard(buildSubjectStatsHistoryViewModel(longCjk), {
       width: 640,
       deviceScaleFactor: 1,

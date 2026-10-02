@@ -89,6 +89,7 @@ describe('direct execute coverage for render tools', () => {
       createRenderPresentationTools(
         dependencies.renderService as never,
         dependencies.artifactStore as never,
+        'chat',
       ).map((tool) => [tool.name, tool]),
     );
     const run = async (tool: any, input: Record<string, unknown>, name: string) => {
@@ -137,5 +138,13 @@ describe('direct execute coverage for render tools', () => {
     await run(tools.get('bangumi.render_subject_overview')!, { subjectId: 1, maxCast: 1, maxStaff: 1, maxRelations: 1 }, 'bangumi.render_subject_overview');
     await run(tools.get('bangumi.render_subject_stats_history')!, { subjectId: 1 }, 'bangumi.render_subject_stats_history');
     await run(tools.get('bangumi.render_subject_stats_intelligence')!, { subjectId: 1 }, 'bangumi.render_subject_stats_intelligence');
+
+    const renderCalls = dependencies.renderService.renderCard.mock.calls as unknown as Array<
+      [unknown, { width?: number; deviceScaleFactor?: number }]
+    >;
+    expect(renderCalls.length).toBeGreaterThan(0);
+    for (const [, options] of renderCalls) {
+      expect(options).toMatchObject({ width: 360, deviceScaleFactor: 2 });
+    }
   });
 });

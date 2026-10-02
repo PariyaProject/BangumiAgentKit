@@ -99,8 +99,8 @@ registerTemplate<SubjectCardViewModel>({
 registerTemplate<SearchListViewModel>({
   id: 'search-list',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <SearchListCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <SearchListCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 

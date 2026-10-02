@@ -80,4 +80,24 @@ describe('Phase 7: Renderer & SSRF Protection Tests', () => {
     expect(res1.cacheKey).toBe(res2.cacheKey);
     expect(res1.buffer.equals(res2.buffer)).toBe(true);
   });
+
+  it('renders a phone-width viewport at 2x pixel density within the bounded width range', async () => {
+    const subjectVm: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: { id: 226998, name: '少女終末旅行', nameCn: '少女终末旅行', type: 'anime' },
+      source: { label: 'Bangumi Agent Kit test' },
+    };
+
+    const result = await renderService.renderCard(subjectVm, {
+      width: 360,
+      deviceScaleFactor: 2,
+    });
+
+    expect(result.width).toBe(720);
+    expect(result.height).toBeGreaterThan(0);
+    await expect(
+      renderService.renderCard(subjectVm, { width: 319, deviceScaleFactor: 2 }),
+    ).rejects.toMatchObject({ code: 'RENDER_VALIDATION_ERROR' });
+  });
 });

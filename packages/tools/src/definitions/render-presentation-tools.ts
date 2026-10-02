@@ -85,6 +85,7 @@ import {
   subjectCohortAggregationInput,
   subjectCohortComparisonInput,
 } from './discovery-tools.js';
+import type { RenderTarget } from '../profiles.js';
 import { getSubjectOverview } from '../subject-overview.js';
 import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectOverlap } from '../subject-overlap.js';
@@ -199,22 +200,22 @@ export async function renderAndSaveArtifact(
 export function createRenderPresentationTools(
   renderServiceOverride?: RenderService,
   artifactStoreOverride?: ArtifactStore,
+  renderTarget: RenderTarget = 'full',
 ) {
   const artifactStore = artifactStoreOverride || getArtifactStore();
   const renderService = renderServiceOverride || getRenderService();
+  const targetDefaults: RenderOptions =
+    renderTarget === 'chat' ? { width: 360, deviceScaleFactor: 2 } : {};
 
   async function executeRenderAndSave(
     viewModel: any,
     privatePrincipalId?: string,
     renderOptions: RenderOptions = {},
   ) {
-    return renderAndSaveArtifact(
-      viewModel,
-      renderService,
-      artifactStore,
-      privatePrincipalId,
-      renderOptions,
-    );
+    return renderAndSaveArtifact(viewModel, renderService, artifactStore, privatePrincipalId, {
+      ...targetDefaults,
+      ...renderOptions,
+    });
   }
 
   const renderSubjectCard = defineTool({
@@ -870,7 +871,7 @@ export function createRenderPresentationTools(
           maxStaffMembersPerGroup: maxStaff,
         }),
         undefined,
-        { width: 720, deviceScaleFactor: 1 },
+        renderTarget === 'chat' ? {} : { width: 720, deviceScaleFactor: 1 },
       );
     },
   });

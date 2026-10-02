@@ -16,6 +16,7 @@ import type {
   RevisionIntelligenceResult,
   PersonActivityProfile,
 } from '@bangumi-agent-kit/bangumi-core';
+import { measureRenderRootLayout } from './helpers/mobile-layout.js';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -91,6 +92,13 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     const result = await renderService.renderCard(vm);
     assertValidPng(result.buffer);
     expect(result.template).toBe('search-list');
+
+    const mobileResult = await renderService.renderCard(vm, {
+      width: 360,
+      deviceScaleFactor: 2,
+    });
+    assertValidPng(mobileResult.buffer);
+    expect(mobileResult.width).toBe(720);
   });
 
   it('R03: Cast Card returns valid PNG', async () => {
@@ -595,5 +603,18 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(result.template).toBe('person-profile');
     expect(result.width).toBe(640);
     expect(result.height).toBeGreaterThan(300);
+
+    const mobileHtml = renderHtmlTemplate(vm, 'bangumi-dark', {}, 360);
+    const mobileLayout = await measureRenderRootLayout(mobileHtml, 360);
+    expect(mobileLayout).toMatchObject({ clientWidth: 360, scrollWidth: 360 });
+
+    const mobileResult = await renderService.renderCard(vm, {
+      width: 360,
+      deviceScaleFactor: 2,
+    });
+    assertValidPng(mobileResult.buffer);
+    expect(mobileResult.width).toBe(720);
+    expect(mobileResult.height).toBeLessThanOrEqual(8192);
+    expect(mobileResult.buffer.length).toBeLessThan(5_000_000);
   });
 });

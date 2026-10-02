@@ -9,6 +9,7 @@ import {
   createRuntimeDependenciesWithStorage,
   type ToolMode,
   type ToolProfile,
+  type RenderTarget,
 } from '@bangumi-agent-kit/tools';
 import { HttpClient, BangumiError, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { Storage } from '@bangumi-agent-kit/db';
@@ -108,6 +109,8 @@ export interface McpServerOptions {
   toolMode?: ToolMode;
   /** Human-readable alias for selecting the compact/full profile. */
   profile?: ToolProfile;
+  /** Render images for inline chat reading (default) or preserve full-resolution output. */
+  renderTarget?: RenderTarget;
   identityProvider?: McpExecutionIdentityProvider;
   confirmationGrantProvider?: McpConfirmationGrantProvider;
 }
@@ -120,7 +123,11 @@ export class BangumiMcpServer {
   private confirmationGrantProvider: McpConfirmationGrantProvider;
 
   private static registryOptions(options: McpServerOptions) {
-    return { mode: options.toolMode, profile: options.profile } as const;
+    return {
+      mode: options.toolMode,
+      profile: options.profile,
+      renderTarget: options.renderTarget ?? 'chat',
+    } as const;
   }
 
   constructor(options: McpServerOptions | HttpClient = {}) {
