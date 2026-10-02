@@ -158,6 +158,8 @@ describe('subject-stats renderer', () => {
       expect(html).toContain('评分分布');
       expect(html).toContain('40.0%');
       expect(html).toContain('完成率');
+      expect(html).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+      expect(html).toContain('样本验证，并非官方 API 契约');
       expect(html).toContain('评分离散度');
       expect(html).toContain('Bangumi 条目统计 · 当前快照');
       expect(html).not.toContain('bangumi.rating.population_sd.v1');
@@ -186,6 +188,8 @@ describe('subject-stats renderer', () => {
     conflict.rating.conflicts = [
       {
         state: 'conflict',
+        scope: 'rating',
+        fieldPaths: ['rating.histogramMean'],
         reason: 'derived histogram mean differs materially from upstream score',
         candidates: [
           { source: { class: 'derived-s7', provider: 'bangumi-agent-kit' }, value: 8.6 },
@@ -222,11 +226,20 @@ describe('subject-stats renderer', () => {
     ];
     conflict.warnings = [
       { code: 'RATING_MEAN_CONFLICT', state: 'conflict', message: '两个评分来源存在差异。' },
+      {
+        code: 'MISSING_FIELD',
+        state: 'partial',
+        message:
+          'bangumi.rating.percentages.v1: Rating histogram contains missing buckets; percentages are suppressed.',
+      },
     ];
     const conflictViewModel = buildSubjectStatsViewModel(conflict);
     expect(conflictViewModel.conflicts).toEqual(conflict.conflicts);
     const conflictHtml = renderHtmlTemplate(conflictViewModel, 'bangumi-dark', {}, 640);
     expect(conflictHtml).toContain('统计来源给出的结果不一致');
+    expect(conflictHtml).toContain('评分分布均值');
+    expect(conflictHtml).toContain('收藏人数');
+    expect(conflictHtml).toContain('收藏状态分布');
     expect(conflictHtml).toContain('按分布推算：8.60');
     expect(conflictHtml).toContain('官方条目数据：6.00');
     expect(conflictHtml).toContain('官方条目数据：10.00');
@@ -236,6 +249,8 @@ describe('subject-stats renderer', () => {
     expect(conflictHtml.match(/官方条目数据：10\.00/g)).toHaveLength(1);
     expect(conflictHtml).not.toContain('derived-s7');
     expect(conflictHtml).not.toContain('RATING_MEAN_CONFLICT');
+    expect(conflictHtml).not.toContain('MISSING_FIELD');
+    expect(conflictHtml).not.toContain('bangumi.rating.percentages.v1');
     expect(conflictHtml).not.toContain('两个评分来源存在差异。');
 
     const unavailable: SubjectStatsIntelligenceResult = {
@@ -359,9 +374,10 @@ describe('subject-stats renderer', () => {
     };
     partial.warnings = [
       {
-        code: 'FORMULA_SUPPRESSED',
+        code: 'MISSING_FIELD',
         state: 'partial',
-        message: 'Missing rating and collection buckets; derived metrics are suppressed.',
+        message:
+          'bangumi.rating.percentages.v1: Rating histogram contains missing or invalid buckets; rating percentages are suppressed.',
       },
     ];
 
@@ -371,6 +387,8 @@ describe('subject-stats renderer', () => {
     conflict.rating.conflicts = [
       {
         state: 'conflict',
+        scope: 'rating',
+        fieldPaths: ['rating.histogramMean'],
         reason: 'derived histogram mean differs materially from upstream score',
         candidates: [
           {
@@ -469,7 +487,9 @@ describe('subject-stats renderer', () => {
     );
     expect(partialHtml).toContain('已收到 9/10 档');
     expect(partialHtml).toContain('未知 · 未知');
-    expect(partialHtml).not.toContain('FORMULA_SUPPRESSED');
+    expect(partialHtml).toContain('部分统计字段未返回，相关指标保持未知。');
+    expect(partialHtml).not.toContain('MISSING_FIELD');
+    expect(partialHtml).not.toContain('bangumi.rating.percentages.v1');
 
     const states: Array<[string, SubjectStatsIntelligenceResult]> = [
       ['complete', result],

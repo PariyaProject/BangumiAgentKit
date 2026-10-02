@@ -73,9 +73,24 @@ const collectionLabels: Record<string, string> = {
 
 const WARNING_LABELS: Record<string, string> = {
   FORMULA_SUPPRESSED: '部分评分或收藏数据未返回，相关统计无法完整计算。',
+  MISSING_FIELD: '部分统计字段未返回，相关指标保持未知。',
   RATING_MEAN_CONFLICT: '官方评分与评分分布推算结果不一致。',
   UPSTREAM_UNAVAILABLE: '官方统计源暂时不可用。',
   ZERO_POPULATION: '当前没有可用于计算的评分或收藏样本。',
+};
+
+const CONFLICT_FIELD_LABELS: Record<string, string> = {
+  score: '官方评分',
+  'rating.score': '官方评分',
+  histogramMean: '评分分布均值',
+  'rating.histogramMean': '评分分布均值',
+  'rating.standardDeviation': '评分离散度',
+  standardDeviation: '评分离散度',
+  'rating.population': '评分样本数',
+  'rating.distribution': '评分分布',
+  'collection.total': '收藏人数',
+  'collection.completionRate': '完成率',
+  'collection.distribution': '收藏状态分布',
 };
 
 function formatRetrievedAt(value: string | undefined): string {
@@ -116,6 +131,25 @@ function uniqueStatsConflicts(
   });
 }
 
+function statsConflictLabel(
+  conflict: NonNullable<SubjectStatsViewModel['rating']['conflicts']>[number],
+): string {
+  const labels = (conflict.fieldPaths || []).map((fieldPath) => {
+    if (CONFLICT_FIELD_LABELS[fieldPath]) return CONFLICT_FIELD_LABELS[fieldPath];
+    if (/^rating\.count\./u.test(fieldPath) || /ratingHistogram/u.test(fieldPath)) {
+      return '评分分布';
+    }
+    if (/^collection\./u.test(fieldPath)) return '收藏状态分布';
+    return undefined;
+  });
+  const uniqueLabels = [...new Set(labels.filter((label): label is string => Boolean(label)))];
+  if (uniqueLabels.length > 0) return uniqueLabels.slice(0, 3).join('、');
+  if (conflict.scope === 'rating') return '评分统计';
+  if (conflict.scope === 'collection') return '收藏统计';
+  if (conflict.scope === 'headline') return '条目统计';
+  return '相关统计';
+}
+
 function dataNotes(viewModel: SubjectStatsViewModel): string[] {
   if (viewModel.state === 'not_found') {
     return ['统计字段保留为未知，不把“未找到”误当作零。'];
@@ -125,11 +159,15 @@ function dataNotes(viewModel: SubjectStatsViewModel): string[] {
   }
 
   const repeatedConflictWarning = Boolean(uniqueStatsConflicts(viewModel).length);
+  const completionFormulaNote =
+    viewModel.collection.formulas.completion.evidenceStatus === 'empirically_verified'
+      ? '完成率＝看过人数 ÷ 五类收藏状态总人数；样本验证，并非官方 API 契约。'
+      : '完成率按当前返回的五类收藏状态计算。';
   const notes = [
-    '均值和离散度由本次评分分布计算；完成率按当前收藏状态计算。这是一份当前快照，不代表历史趋势或推荐。',
+    `均值和离散度由本次评分分布计算。${completionFormulaNote} 这是一份当前快照，不代表历史趋势或推荐。`,
     ...viewModel.warnings
       .filter((warning) => !(repeatedConflictWarning && warning.code === 'RATING_MEAN_CONFLICT'))
-      .map((warning) => WARNING_LABELS[warning.code] || warning.message),
+      .map((warning) => WARNING_LABELS[warning.code] || '部分统计信息未能完整取得。'),
     ...viewModel.limitations,
   ];
   return notes
@@ -362,6 +400,9 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                 wordBreak: 'break-word',
               }}
             >
+              <div style={{ color: theme.text, fontWeight: 600, marginBottom: '3px' }}>
+                {statsConflictLabel(conflict)}
+              </div>
               {conflict.candidates.map((candidate, candidateIndex) => (
                 <div
                   key={

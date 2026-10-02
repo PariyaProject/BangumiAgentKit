@@ -6,15 +6,19 @@ Base: `425071ef14913a26ae4c039a1647f8796ff3487c`
 
 ## Result
 
-The single-subject card now leads with official score, score count, distribution mean, dispersion, collection count, completion rate, and snapshot date. It keeps the full distributions, displays missing buckets as `未知` without drawing a zero bar, humanizes warnings, and shows one concise method/snapshot note. Formula IDs, evidence paths, source operation names, and warning codes remain in structured output and are absent from the image.
+The single-subject card leads with official score, score count, distribution mean, dispersion, collection count, completion rate, and snapshot date. Missing buckets remain `未知` without a zero bar. Warning codes and unrecognized warning messages are converted to safe Chinese labels; formula IDs, evidence paths, source operation names, and codes remain only in structured output. The card explains that completion rate is seen divided by the five collection states and that this formula is sample-verified rather than an official API contract.
 
-The two-subject comparison uses a stacked metric layout below 760 px: each metric has its label, B−A delta, and full-width A/B values. Both subjects’ statistics distributions use compact bar grids. The card hides internal source labels, formula/version IDs, field paths, API routes, and warning codes. Coverage and limitations remain in natural Chinese. Missing counts stay `未知` with no bar.
+The two-subject comparison uses a stacked metric layout below 760 px: each metric has its label, B−A delta, and full-width A/B values. It now includes the actual completion-rate delta from each subject’s statistics, explains the formula denominator, and marks the formula as sample-verified rather than an official API contract. Production-shaped warnings with raw `partial` states or formula IDs are mapped to safe Chinese. Both subjects’ distributions use compact bar grids; field paths, API routes, formula/version IDs, and warning codes stay out of the images.
 
-The statistics renderer ViewModel previously dropped top-level conflicts. It now carries them with rating and collection conflicts, and the card de-duplicates repeated copies before display. Non-scalar conflict values are summarized in Chinese rather than serialized as JSON with internal field names; complete values remain in structured output. No tool, MCP, authentication, or public schema changed; the catalog remains 96 tools.
+The statistics renderer ViewModel now carries top-level conflicts with rating and collection conflicts. Both cards label the affected metric and deduplicate repeated root/nested copies before display, so duplicate rating candidates cannot displace a distinct collection conflict. Non-scalar values are summarized in Chinese rather than serialized with internal field names; complete conflict detail remains in structured output. No tool, MCP, authentication, or public schema changed; the catalog remains 96 tools.
+
+## Independent review and corrective response
+
+The first independent Sol review returned three P1 findings: production-shaped warnings could leak formula IDs/raw states; conflict candidates lacked field context and repeated conflicts could crowd out distinct ones; and the comparison fixture lacked a truthful completion-rate delta and formula caveat. The current correction adds real-shaped warning and duplicate-conflict fixtures, field labels and pre-cap deduplication, plus a completion delta computed from the nested statistics. Partial/conflict examples do not fabricate a completion delta. The corrective Candidate still requires exact-head CI and its follow-up review; this report does not claim a final review pass.
 
 ## Visual review
 
-Two render test files generated 12 deterministic PNGs at the renderer’s minimum supported width (640 px). Static HTML assertions also exercise 480 px and 960 px. I visually checked complete, sparse, partial, conflict, unavailable, not-found, and not-computable states. The not-found card keeps statistics unknown and does not show a stale unavailable warning. Chinese labels remain inside the card; missing values are explicit; conflict candidates use human source labels. The comparison card is taller because it also contains episode, subject, and shared-cast data, while its narrow-width metric rows avoid four-column wrapping.
+Two render test files generated 12 deterministic PNGs at the renderer’s minimum supported width (640 px); static HTML assertions also cover 480 px and 960 px. Visual review covers complete, sparse, partial, conflict, unavailable, not-found, and not-computable states. The not-found card keeps values unknown without a stale outage warning. Production-shaped missing-field warnings do not expose formula IDs, field/state machine tokens do not appear in user-facing warning text, duplicated rating conflicts appear once, collection conflicts keep their own label, and completion deltas match the rendered values. Missing values stay explicit and Chinese labels remain inside the cards. The comparison card is taller because it also contains episode, subject, and shared-cast data.
 
 Recreate screenshots with:
 
@@ -27,17 +31,17 @@ The PNGs remain local under ignored `.artifacts/`; these hashes bind the reviewe
 
 | Image                           |     Size |   Bytes | SHA-256                                                            |
 | ------------------------------- | -------: | ------: | ------------------------------------------------------------------ |
-| `comparison-complete.png`       | 640×2203 | 255,021 | `c9152f75d18f3a83071fa63de12518185a991fba6af3d10cb299f41a3320ba2d` |
-| `comparison-conflict.png`       | 640×2242 | 264,317 | `fc4df14f04aafb47688cc9c21970818299616c8d388cbdec43cb518e9fb63dc0` |
-| `comparison-not-computable.png` | 640×2210 | 255,353 | `8694b0ebeb3a57a6b69d29b2bc50b1d31694f1261706a569218a7049baffd127` |
-| `comparison-partial.png`        | 640×2208 | 256,765 | `7c205ceee4c32ca83d387668627b565050f121e3345f3426b431ade2db9c99de` |
-| `comparison-unavailable.png`    | 640×2108 | 249,121 | `342a434f41d1b0d1cd49a269dfc51da4dc89d8dfc05f3b31f740bf505ae57818` |
-| `single-complete.png`           |  640×998 |  76,470 | `2fc82f00733df846706971fc7f2a45a0242d23e444d6979056776473ae0016cf` |
-| `single-conflict.png`           | 640×1104 |  90,224 | `7ab37afe262194199a468ab3ecacd40297f3a310e2da01a728434c737e302c2f` |
-| `single-not-computable.png`     | 640×1038 |  76,647 | `389ea2204afb55d785d62bcc9e85fc90736717e964167cee25627ef909de4f5e` |
+| `comparison-complete.png`       | 640×2302 | 269,530 | `7640e2b620ee8b58c17abfe21ea8f12a04bcec4c00c2e67701af9f831319a80f` |
+| `comparison-conflict.png`       | 640×2341 | 282,139 | `bad122b57a54adaf6b3ad0ea543b7e11492a3dc839bf5cd4733d4ac21d53ee27` |
+| `comparison-not-computable.png` | 640×2309 | 269,992 | `da394b1b561ae4478102a55595a745fdfc3a72fc2f2bae48e6a5235ee3b95fa1` |
+| `comparison-partial.png`        | 640×2328 | 275,578 | `7e3495f59de08433ef8bec127fd28a66e6c64bf5385ed0527bbc190780fc7060` |
+| `comparison-unavailable.png`    | 640×2207 | 263,735 | `24a2e2f0a56e1e7ed8e2dd4cd5484a6f021acd0e86f858b269512622708085f2` |
+| `single-complete.png`           |  640×998 |  80,736 | `988d946d788b749f44aacfb8f456459855f625d7c102d15ba7fad7e0ff64d3cf` |
+| `single-conflict.png`           | 640×1146 |  98,516 | `d2e34fe1add86a907ea62baefea18f8a86af584250f52ebb34bb308633ffebf0` |
+| `single-not-computable.png`     | 640×1038 |  80,884 | `67b3815afb2379da6fe8c3ce54617d305e32354a2704c92bf912a8caf888d18b` |
 | `single-not-found.png`          |  640×389 |  29,653 | `03d2cf138d4fd9681eb4fc3d6c5bac330839bd97d6f239cae5a7a86e656bf97b` |
-| `single-partial.png`            | 640×1024 |  82,083 | `2482744e227e51221c65eb261eec1fce44ba42d20e7ba1021c7c7b61b3f695c4` |
-| `single-sparse.png`             |  640×998 |  73,484 | `c2f4387d14a5e5ef6e80265d8c6646cc56e0fb84cd2bcc8bb5a78b32d158a29c` |
+| `single-partial.png`            | 640×1024 |  85,360 | `b2b5c8d450d1e588f784dd4f357f9ceea9fd649c109d6d6670f2c25d7c3a3368` |
+| `single-sparse.png`             |  640×998 |  77,736 | `da505a345cc02ef6ff1a015b5ff949117c86290cc158cf25a8a8d4c12388eb57` |
 | `single-unavailable.png`        |  640×389 |  30,470 | `d7ee9360bb1557b2d6158d60eb2e21edc995b722c61fc0004d8ca805677604a4` |
 
 ## Verification

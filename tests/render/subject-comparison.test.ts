@@ -189,6 +189,14 @@ const result: SubjectComparisonResult = {
       deltaPrecision: 0,
       state: 'unknown',
     },
+    {
+      key: 'collectionCompletionRate',
+      label: '收藏完成率',
+      values: [0.4, 0.5],
+      delta: 0.1,
+      deltaPrecision: 3,
+      state: 'complete',
+    },
   ],
   formulaVersion: 'subject-comparison-v2',
   overlapFormulaVersion: 'subject-comparison-overlap-v1',
@@ -513,6 +521,36 @@ function comparisonSecondStatistics(): SubjectStatsIntelligenceResult {
   return statistics;
 }
 
+function updateCompletionRateMetric(
+  result: SubjectComparisonResult,
+  left: SubjectStatsIntelligenceResult,
+  right: SubjectStatsIntelligenceResult,
+): void {
+  result.metrics = result.metrics.map((item) => {
+    if (item.key !== 'collectionCompletionRate') return item;
+    const values: [number | null, number | null] = [
+      left.collection.completionRate ?? null,
+      right.collection.completionRate ?? null,
+    ];
+    const state =
+      left.collection.completionState === 'conflict' ||
+      right.collection.completionState === 'conflict'
+        ? 'conflict'
+        : left.collection.completionState === 'complete' &&
+            right.collection.completionState === 'complete' &&
+            values[0] !== null &&
+            values[1] !== null
+          ? 'complete'
+          : 'unknown';
+    return {
+      ...item,
+      values,
+      delta: state === 'complete' ? values[1]! - values[0]! : null,
+      state,
+    };
+  });
+}
+
 function statisticsStateMatrix(): Array<{
   name: string;
   statistics: SubjectStatsIntelligenceResult;
@@ -536,6 +574,14 @@ function statisticsStateMatrix(): Array<{
   partial.coverage.formulasComplete = 3;
   partial.coverage.formulasPartial = 2;
   partial.coverage.formulasConflict = 0;
+  partial.warnings = [
+    {
+      code: 'MISSING_FIELD',
+      state: 'partial',
+      message:
+        'bangumi.rating.percentages.v1: Rating histogram contains missing or invalid buckets; rating percentages are suppressed.',
+    },
+  ];
 
   const zero = structuredClone(complete);
   zero.state = 'not_computable';
@@ -579,20 +625,34 @@ function statisticsStateMatrix(): Array<{
   unavailable.evidence = [];
 
   const conflict = structuredClone(renderStatistics);
-  conflict.conflicts = [
-    {
-      state: 'conflict',
-      scope: 'collection',
-      fieldPaths: ['collection.total'],
-      reason: 'collection total differs between accepted sources',
-      candidates: [
-        {
-          source: { class: 'official-v0', provider: 'bangumi' },
-          value: { privateFieldName: 39 },
-        },
-      ],
-    },
-  ];
+  const ratingConflict = {
+    state: 'conflict' as const,
+    scope: 'rating' as const,
+    fieldPaths: ['rating.histogramMean'],
+    reason: 'derived histogram mean differs materially from upstream score',
+    candidates: [
+      { source: { class: 'derived-s7' as const, provider: 'bangumi-agent-kit' }, value: 8.6 },
+      { source: { class: 'official-v0' as const, provider: 'bangumi' }, value: 7.4 },
+    ],
+  };
+  const collectionConflict = {
+    state: 'conflict' as const,
+    scope: 'collection' as const,
+    fieldPaths: ['collection.total'],
+    reason: 'collection total differs between accepted sources',
+    candidates: [
+      {
+        source: { class: 'official-v0' as const, provider: 'bangumi' },
+        value: { privateFieldName: 39 },
+      },
+    ],
+  };
+  conflict.rating.state = 'conflict';
+  conflict.rating.conflicts = [structuredClone(ratingConflict)];
+  conflict.collection.state = 'conflict';
+  conflict.collection.completionState = 'conflict';
+  conflict.collection.conflicts = [structuredClone(collectionConflict)];
+  conflict.conflicts = [structuredClone(ratingConflict), structuredClone(collectionConflict)];
 
   return [
     { name: 'complete', statistics: complete, marker: '评分分布 · 10/10 档已收到' },
@@ -600,7 +660,7 @@ function statisticsStateMatrix(): Array<{
     {
       name: 'conflict',
       statistics: conflict,
-      marker: '统计来源存在差异：分布推算 8.6；官方条目数据 7.4',
+      marker: '统计来源存在差异：评分分布均值',
     },
     { name: 'not-computable', statistics: zero, marker: '不可计算' },
     { name: 'unavailable', statistics: unavailable, marker: '不可用' },
@@ -623,7 +683,7 @@ describe('subject-comparison renderer', () => {
 
     expect(viewModel.template).toBe('subject-comparison');
     expect(viewModel.coverage.renderedMetrics).toBe(4);
-    expect(viewModel.coverage.omittedMetrics).toBe(2);
+    expect(viewModel.coverage.omittedMetrics).toBe(3);
     expect(extractImageUrls(viewModel)).toEqual([]);
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
@@ -649,7 +709,7 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('共同声优：非常长的中文姓名');
     expect(html).toContain('共同制作人员 · 不可用');
     expect(html).not.toContain('subject-comparison-overlap-v1');
-    expect(html).toContain('渲染器省略比较字段：2 条。');
+    expect(html).toContain('渲染器省略比较字段：3 条。');
     expect(html).toContain('比较仅依据本次已取得的条目与关联资料');
     expect(html).not.toContain('官方 v0');
     expect(html).not.toContain('formula');
@@ -770,28 +830,69 @@ describe('subject-comparison renderer', () => {
     const withStatistics = structuredClone(result);
     withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';
     const statisticsWithStructuredConflict = structuredClone(renderStatistics);
+    const ratingConflict = {
+      state: 'conflict' as const,
+      scope: 'rating' as const,
+      fieldPaths: ['rating.histogramMean'],
+      reason: 'derived histogram mean differs materially from upstream score',
+      candidates: [
+        { source: { class: 'derived-s7' as const, provider: 'bangumi-agent-kit' }, value: 8.6 },
+        { source: { class: 'official-v0' as const, provider: 'bangumi' }, value: 7.4 },
+      ],
+    };
+    const collectionConflict = {
+      state: 'conflict' as const,
+      scope: 'collection' as const,
+      fieldPaths: ['collection.total'],
+      reason: 'collection total differs between accepted sources',
+      candidates: [
+        { source: { class: 'official-v0' as const, provider: 'bangumi' }, value: 39 },
+        {
+          source: { class: 'derived-s7' as const, provider: 'bangumi-agent-kit' },
+          value: { privateFieldName: 41 },
+        },
+      ],
+    };
     statisticsWithStructuredConflict.conflicts = [
+      structuredClone(ratingConflict),
+      structuredClone(collectionConflict),
+    ];
+    statisticsWithStructuredConflict.rating.conflicts = [structuredClone(ratingConflict)];
+    statisticsWithStructuredConflict.collection.state = 'conflict';
+    statisticsWithStructuredConflict.collection.completionState = 'conflict';
+    statisticsWithStructuredConflict.collection.conflicts = [structuredClone(collectionConflict)];
+    statisticsWithStructuredConflict.warnings = [
       {
-        state: 'conflict',
-        scope: 'collection',
-        fieldPaths: ['collection.total'],
-        reason: 'collection total differs between accepted sources',
-        candidates: [
-          {
-            source: { class: 'official-v0', provider: 'bangumi' },
-            value: { privateFieldName: 39 },
-          },
-        ],
+        code: 'MISSING_FIELD',
+        state: 'partial',
+        message:
+          'bangumi.rating.percentages.v1: Rating histogram contains missing or invalid buckets; rating percentages are suppressed.',
       },
     ];
     withStatistics.subjects[0] = {
       ...withStatistics.subjects[0],
       statistics: statisticsWithStructuredConflict,
     };
+    const rightStatistics = comparisonSecondStatistics();
     withStatistics.subjects[1] = {
       ...withStatistics.subjects[1],
-      statistics: comparisonSecondStatistics(),
+      statistics: rightStatistics,
     };
+    updateCompletionRateMetric(withStatistics, statisticsWithStructuredConflict, rightStatistics);
+    withStatistics.subjects[0].warnings = [
+      {
+        code: 'SUBJECT_STATE_DEGRADED',
+        state: 'partial',
+        message: '条目 123 的概览状态为 partial；缺失区段不代表空值。',
+      },
+    ];
+    withStatistics.warnings = [
+      {
+        code: 'SUBJECT_STATE_DEGRADED',
+        state: 'partial',
+        message: '条目 123 的概览状态为 partial；比较保留可获取事实。',
+      },
+    ];
     const html = renderHtmlTemplate(
       buildSubjectComparisonViewModel(withStatistics),
       'bangumi-dark',
@@ -803,13 +904,27 @@ describe('subject-comparison renderer', () => {
     expect(html).toContain('评分人数 100');
     expect(html).toContain('分布均值 8.6');
     expect(html).toContain('完成率 51.3%');
+    expect(html).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+    expect(html).toContain('样本验证，并非官方 API 契约');
+    expect(html).toContain('收藏完成率');
+    expect(html).toContain('冲突，不计算');
+    expect(html).not.toContain('+10%');
+    expect(html).toContain('部分条目资料不完整，缺失区段不会被当作空值。');
+    expect(html).not.toContain('partial');
     expect(html).toContain('B · 第二个条目 · 完整');
     expect(html).toContain('A ·');
     expect(html).toContain('评分分布 · 10/10 档已收到');
     expect(html).toContain('8分');
     expect(html).toContain('40.0%');
-    expect(html).toContain('分布推算 8.6；官方条目数据 7.4');
+    expect(html).toContain('评分分布均值：分布推算 8.6；官方条目数据 7.4');
+    expect(html).toContain('收藏人数：官方条目数据 39；分布推算 复杂数据；完整内容见详细结果');
+    expect(html.match(/评分分布均值：/g)).toHaveLength(1);
+    expect(html.match(/收藏人数：/g)).toHaveLength(1);
     expect(html).toContain('复杂数据；完整内容见详细结果');
+    expect(html).toContain('部分统计字段未返回，相关指标保持未知。');
+    expect(html).not.toContain('MISSING_FIELD');
+    expect(html).not.toContain('bangumi.rating.percentages.v1');
+    expect(html).not.toContain('SUBJECT_STATE_DEGRADED');
     expect(html).not.toContain('subject-comparison-statistics-v1');
     expect(html).not.toContain('bangumi.rating.percentages.v1');
     expect(html).not.toContain('getSubjectById:rating.score');
@@ -834,10 +949,12 @@ describe('subject-comparison renderer', () => {
         ...withStatistics.subjects[0],
         statistics: matrixCase.statistics,
       };
+      const rightStatistics = comparisonSecondStatistics();
       withStatistics.subjects[1] = {
         ...withStatistics.subjects[1],
-        statistics: comparisonSecondStatistics(),
+        statistics: rightStatistics,
       };
+      updateCompletionRateMetric(withStatistics, matrixCase.statistics, rightStatistics);
       const viewModel = buildSubjectComparisonViewModel(withStatistics);
       expect(viewModel.version).toBe(2);
       expect(extractImageUrls(viewModel)).toEqual([]);
@@ -846,7 +963,24 @@ describe('subject-comparison renderer', () => {
       expect(html).toContain('一个用于验证窄宽度换行');
       expect(html).toContain('差值 B−A');
       expect(html).toContain(matrixCase.marker);
+      expect(html).not.toContain('MISSING_FIELD');
+      expect(html).not.toContain('bangumi.rating.percentages.v1');
       expect(html).not.toContain('privateFieldName');
+      if (matrixCase.name === 'partial') {
+        expect(html).toContain('部分统计字段未返回，相关指标保持未知。');
+        expect(html).toContain('收藏完成率');
+        expect(html).toContain('不可计算');
+      }
+      if (matrixCase.name === 'complete') {
+        expect(html).toContain('收藏完成率');
+        expect(html).toContain('-1.3%');
+        expect(html).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+        expect(html).toContain('样本验证，并非官方 API 契约');
+      }
+      if (matrixCase.name === 'conflict') {
+        expect(html).toContain('冲突，不计算');
+        expect(html).not.toContain('-1.3%');
+      }
 
       const rendered = await renderService.renderCard(viewModel, {
         width: 640,

@@ -27,6 +27,31 @@ const SECTION_LABELS: Record<string, string> = {
   not_computable: '不可计算',
 };
 
+const SAFE_WARNING_LABELS: Record<string, string> = {
+  MISSING_FIELD: '部分统计字段未返回，相关指标保持未知。',
+  FORMULA_SUPPRESSED: '部分统计数据未返回，相关指标保持未知。',
+  RATING_MEAN_CONFLICT: '评分来源存在差异，保留各来源结果。',
+  UPSTREAM_UNAVAILABLE: '统计源暂时不可用，未生成猜测值。',
+  ZERO_POPULATION: '当前没有可用于计算的评分或收藏样本。',
+  SUBJECT_STATE_DEGRADED: '部分条目资料不完整，缺失区段不会被当作空值。',
+  COMPARISON_VALUES_UNKNOWN: '部分比较字段缺少两侧可比数据，差值保持未知。',
+  COMPARISON_VALUES_CONFLICT: '部分比较字段存在来源差异，未生成差值。',
+};
+
+const STATISTICS_CONFLICT_FIELD_LABELS: Record<string, string> = {
+  score: '官方评分',
+  'rating.score': '官方评分',
+  histogramMean: '评分分布均值',
+  'rating.histogramMean': '评分分布均值',
+  'rating.standardDeviation': '评分离散度',
+  standardDeviation: '评分离散度',
+  'rating.population': '评分样本数',
+  'rating.distribution': '评分分布',
+  'collection.total': '收藏人数',
+  'collection.completionRate': '完成率',
+  'collection.distribution': '收藏状态分布',
+};
+
 const DATA_SECTION_LABELS: Record<string, string> = {
   stats: '统计',
   cast: '角色',
@@ -36,6 +61,10 @@ const DATA_SECTION_LABELS: Record<string, string> = {
 
 function dataSectionLabel(section: string): string {
   return DATA_SECTION_LABELS[section] || '其他资料';
+}
+
+function safeWarningLabel(warning: { code: string }): string {
+  return SAFE_WARNING_LABELS[warning.code] || '部分资料未能完整取得，已仅展示可确认内容。';
 }
 
 function humanizeLimitation(value: string): string {
@@ -273,7 +302,51 @@ function statisticsConflictLabel(conflict: ComparisonStatisticsConflict): string
     .slice(0, 3)
     .map((candidate) => statisticsSourceLabel(candidate.source) + ' ' + valueLabel(candidate.value))
     .join('；');
-  return candidates || '多个统计来源的数据不一致。';
+  const labels = (conflict.fieldPaths || []).map((fieldPath) => {
+    if (STATISTICS_CONFLICT_FIELD_LABELS[fieldPath]) {
+      return STATISTICS_CONFLICT_FIELD_LABELS[fieldPath];
+    }
+    if (/^rating\.count\./u.test(fieldPath) || /ratingHistogram/u.test(fieldPath)) {
+      return '评分分布';
+    }
+    if (/^collection\./u.test(fieldPath)) return '收藏状态分布';
+    return undefined;
+  });
+  const uniqueLabels = [...new Set(labels.filter((label): label is string => Boolean(label)))];
+  const fieldLabel =
+    uniqueLabels.slice(0, 3).join('、') ||
+    (conflict.scope === 'rating'
+      ? '评分统计'
+      : conflict.scope === 'collection'
+        ? '收藏统计'
+        : conflict.scope === 'headline'
+          ? '条目统计'
+          : '相关统计');
+  return `${fieldLabel}：${candidates || '多个统计来源的数据不一致。'}`;
+}
+
+function uniqueStatisticsConflicts(stats: ComparisonStatistics): ComparisonStatisticsConflict[] {
+  const conflicts = [
+    ...(stats.rating.conflicts || []),
+    ...(stats.collection.conflicts || []),
+    ...(stats.conflicts || []),
+  ];
+  const seen = new Set<string>();
+  return conflicts.filter((conflict) => {
+    const identity = JSON.stringify([
+      conflict.scope || 'unknown',
+      [...(conflict.fieldPaths || [])].sort(),
+      conflict.reason,
+      conflict.candidates.map((candidate) => [
+        candidate.source.class,
+        candidate.source.provider,
+        candidate.value,
+      ]),
+    ]);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
 }
 
 function statisticsCountLabel(value: number | undefined): string {
@@ -293,6 +366,12 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
   const right = viewModel.subjects[1];
   const columns = [left, right];
   const compact = width !== undefined && width < 760;
+  const completionFormulaEvidenceStatus = columns.map(
+    (subject) => subject.statistics?.collection.formulas?.completion?.evidenceStatus,
+  );
+  const completionFormulaNote = completionFormulaEvidenceStatus.includes('empirically_verified')
+    ? '完成率＝看过人数 ÷ 五类收藏状态总人数；该公式经样本验证，并非官方 API 契约。'
+    : '完成率＝看过人数 ÷ 五类收藏状态总人数；仅按本次已返回数据计算。';
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -383,10 +462,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
             </div>
             {subject.warnings.length > 0 ? (
               <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-                {subject.warnings
-                  .slice(0, 2)
-                  .map((warning) => warning.message)
-                  .join('；')}
+                {subject.warnings.slice(0, 2).map(safeWarningLabel).join('；')}
                 {subject.warnings.length > 2 ? `；另有 ${subject.warnings.length - 2} 条告警` : ''}
               </div>
             ) : null}
@@ -532,6 +608,9 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
           <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.5 }}>
             以下是本次官方快照。分布均值和完成率按已返回数据计算，不代表历史趋势或推荐。
           </div>
+          <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.45 }}>
+            {completionFormulaNote}
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {columns.map((subject, index) => {
               const stats = subject.statistics;
@@ -553,12 +632,8 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                 1,
                 ...stats.collection.distribution.map((item) => item.count ?? 0),
               );
-              const conflicts = [
-                ...(stats.rating.conflicts || []),
-                ...(stats.collection.conflicts || []),
-                ...(stats.conflicts || []),
-              ];
-              const warnings = stats.warnings.map((warning) => warning.message);
+              const conflicts = uniqueStatisticsConflicts(stats);
+              const warnings = stats.warnings.map(safeWarningLabel);
               return (
                 <div
                   key={subject.subjectId}
@@ -876,10 +951,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
             overflowWrap: 'anywhere',
           }}
         >
-          {viewModel.warnings
-            .slice(0, 3)
-            .map((warning) => warning.message)
-            .join('；')}
+          {viewModel.warnings.slice(0, 3).map(safeWarningLabel).join('；')}
           {viewModel.warnings.length > 3 ? `；另有 ${viewModel.warnings.length - 3} 条告警` : ''}
         </div>
       ) : null}
