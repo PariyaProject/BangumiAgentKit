@@ -1211,6 +1211,7 @@ export interface SubjectStatsViewModel {
   collection: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['collection'];
   coverage: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['coverage'];
   source: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['source'];
+  conflicts?: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['conflicts'];
   evidence: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['evidence'];
   warnings: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['warnings'];
   limitations: string[];

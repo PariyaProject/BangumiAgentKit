@@ -899,6 +899,7 @@ export function buildSubjectStatsViewModel(
     collection: result.collection,
     coverage: result.coverage,
     source: result.source,
+    conflicts: result.conflicts,
     evidence: result.evidence,
     warnings: result.warnings,
     limitations: result.limitations,
