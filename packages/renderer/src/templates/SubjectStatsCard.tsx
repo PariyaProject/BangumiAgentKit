@@ -26,6 +26,19 @@ function stateLabel(state: SubjectStatsViewModel['state'] | string): string {
   );
 }
 
+function metricStateLabel(state: string): string {
+  return (
+    {
+      complete: '可计算',
+      partial: '数据不全',
+      conflict: '来源不一致',
+      unavailable: '不可用',
+      not_computable: '无法计算',
+      unknown: '未知',
+    }[state] || '未知'
+  );
+}
+
 function formatNumber(value: number | undefined, digits = 0): string {
   return value === undefined || !Number.isFinite(value)
     ? '未知'
@@ -39,11 +52,7 @@ function formatConflictValue(value: unknown): string {
   if (typeof value === 'number') return formatNumber(value, 2);
   if (value === null || value === undefined) return '未知';
   if (typeof value === 'string' || typeof value === 'boolean') return String(value);
-  try {
-    return JSON.stringify(value).slice(0, 120);
-  } catch {
-    return '未知';
-  }
+  return '复杂数据；完整内容见详细结果';
 }
 
 function formatPercent(value: number | undefined): string {
@@ -54,10 +63,6 @@ function formatRatioPercent(value: number | undefined): string {
   return value === undefined || !Number.isFinite(value) ? '未知' : `${(value * 100).toFixed(1)}%`;
 }
 
-function sourceLabel(source: 'official-v0' | 'derived-s7'): string {
-  return source === 'official-v0' ? 'official-v0' : 'derived-s7';
-}
-
 const collectionLabels: Record<string, string> = {
   wish: '想看',
   collect: '看过',
@@ -66,7 +71,67 @@ const collectionLabels: Record<string, string> = {
   dropped: '抛弃',
 };
 
-const DIAGNOSTIC_RENDER_CAP = 8;
+const WARNING_LABELS: Record<string, string> = {
+  FORMULA_SUPPRESSED: '部分评分或收藏数据未返回，相关统计无法完整计算。',
+  RATING_MEAN_CONFLICT: '官方评分与评分分布推算结果不一致。',
+  UPSTREAM_UNAVAILABLE: '官方统计源暂时不可用。',
+  ZERO_POPULATION: '当前没有可用于计算的评分或收藏样本。',
+};
+
+function formatRetrievedAt(value: string | undefined): string {
+  if (!value) return '未记录';
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : value;
+}
+
+function conflictSourceLabel(source: { class: string; provider: string }): string {
+  if (source.class === 'official-v0' || source.provider === 'bangumi') return '官方条目数据';
+  if (source.class === 'derived-s7' || source.provider === 'bangumi-agent-kit') return '按分布推算';
+  return '其他数据来源';
+}
+
+function uniqueStatsConflicts(
+  viewModel: SubjectStatsViewModel,
+): NonNullable<SubjectStatsViewModel['rating']['conflicts']> {
+  const conflicts = [
+    ...(viewModel.rating.conflicts || []),
+    ...(viewModel.collection.conflicts || []),
+    ...(viewModel.conflicts || []),
+  ];
+  const seen = new Set<string>();
+  return conflicts.filter((conflict) => {
+    const key = JSON.stringify([
+      conflict.scope,
+      conflict.fieldPaths,
+      conflict.reason,
+      conflict.candidates.map((candidate) => [
+        candidate.source.class,
+        candidate.source.provider,
+        candidate.value,
+      ]),
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function dataNotes(viewModel: SubjectStatsViewModel): string[] {
+  const repeatedConflictWarning = Boolean(uniqueStatsConflicts(viewModel).length);
+  const notes = [
+    '均值和离散度由本次评分分布计算；完成率按当前收藏状态计算。这是一份当前快照，不代表历史趋势或推荐。',
+    ...viewModel.warnings
+      .filter((warning) => !(repeatedConflictWarning && warning.code === 'RATING_MEAN_CONFLICT'))
+      .map((warning) => WARNING_LABELS[warning.code] || warning.message),
+    ...viewModel.limitations,
+  ];
+  return notes
+    .map((note) => note.trim())
+    .filter(
+      (note, index, all) =>
+        note && all.indexOf(note) === index && (!note.includes('历史趋势') || index === 0),
+    );
+}
 
 export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, theme, width }) => {
   const raw = viewModel.raw;
@@ -75,31 +140,22 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
     1,
     ...viewModel.collection.distribution.map((item) => item.count ?? 0),
   );
-  const formulaLines = [
-    viewModel.rating.formulas.percentages,
-    viewModel.rating.formulas.histogramMean,
-    viewModel.rating.formulas.populationStandardDeviation,
-    viewModel.collection.formulas.percentages,
-    viewModel.collection.formulas.completion,
-  ];
-  const renderedConflicts = viewModel.rating.conflicts?.slice(0, DIAGNOSTIC_RENDER_CAP) || [];
-  const renderedWarnings = viewModel.warnings.slice(0, DIAGNOSTIC_RENDER_CAP);
-  const renderedLimitations = viewModel.limitations.slice(0, DIAGNOSTIC_RENDER_CAP);
-  const officialOperations = viewModel.source.official.operations.join(' + ') || '未记录';
-  const derivedOperations = viewModel.source.derived.operations.join(' + ') || '未记录';
+  const renderedConflicts = uniqueStatsConflicts(viewModel);
+  const notes = dataNotes(viewModel);
+  const displayedNotes = notes.slice(0, 3);
+  const omittedNotes = notes.length - displayedNotes.length;
 
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
-        title="条目统计智能"
-        subtitle={`条目 ${viewModel.subjectId} · official v0 + derived-s7 · ${stateLabel(viewModel.state)}`}
+        title="条目统计"
+        subtitle={'条目 ' + viewModel.subjectId + ' · ' + stateLabel(viewModel.state)}
         theme={theme}
       />
 
-      <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
-        评分样本 {formatNumber(viewModel.coverage.ratingPopulation)} · 收藏总数{' '}
-        {formatNumber(viewModel.coverage.collectionPopulation)} · 获取于{' '}
-        {viewModel.retrievedAt || viewModel.source.official.retrievedAt || '未知'}
+      <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.5 }}>
+        Bangumi 官方数据 · 更新于{' '}
+        {formatRetrievedAt(viewModel.retrievedAt || viewModel.source.official.retrievedAt)}
       </div>
 
       {viewModel.state === 'unavailable' || viewModel.state === 'not_found' ? (
@@ -107,10 +163,10 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
           style={{
             color: theme.warning,
             backgroundColor: theme.surfaceAlt,
-            border: `1px solid ${theme.border}`,
+            border: '1px solid ' + theme.border,
             borderRadius: theme.radius.md,
             padding: theme.spacing.md,
-            fontSize: '12px',
+            fontSize: '13px',
             lineHeight: 1.5,
           }}
         >
@@ -125,33 +181,33 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: width && width >= 900 ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
+              gridTemplateColumns: width && width >= 900 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
               gap: theme.spacing.sm,
             }}
           >
             {[
               ['官方评分', formatNumber(raw.score, 1)],
               ['评分人数', formatNumber(raw.ratingTotal)],
-              ['直方图均值', formatNumber(viewModel.rating.mean, 2)],
-              ['总体标准差', formatNumber(viewModel.rating.standardDeviation, 2)],
-              ['收藏总数', formatNumber(viewModel.collection.total)],
+              ['分布均值', formatNumber(viewModel.rating.mean, 2)],
+              ['评分离散度', formatNumber(viewModel.rating.standardDeviation, 2)],
+              ['收藏人数', formatNumber(viewModel.collection.total)],
               ['完成率', formatRatioPercent(viewModel.collection.completionRate)],
             ].map(([label, value]) => (
               <div
                 key={label}
                 style={{
                   backgroundColor: theme.surfaceAlt,
-                  border: `1px solid ${theme.border}`,
+                  border: '1px solid ' + theme.border,
                   borderRadius: theme.radius.sm,
                   padding: theme.spacing.sm,
                   minWidth: 0,
                 }}
               >
-                <div style={{ color: theme.textMuted, fontSize: '10px' }}>{label}</div>
+                <div style={{ color: theme.textMuted, fontSize: '11px' }}>{label}</div>
                 <div
                   style={{
                     color: theme.text,
-                    fontSize: '17px',
+                    fontSize: '20px',
                     fontWeight: 700,
                     overflowWrap: 'anywhere',
                   }}
@@ -170,74 +226,17 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
             }}
           >
             <section>
-              <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>评分分布</div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-                直方图均值与总体标准差是派生指标；不自动生成“更好”或推荐结论。
-              </div>
+              <div style={{ color: theme.accent, fontWeight: 700, fontSize: '15px' }}>评分分布</div>
               <div
-                style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}
               >
                 {viewModel.rating.distribution.map((item) => (
                   <div
                     key={item.score}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
-                    <span style={{ width: '22px', color: theme.textMuted, fontSize: '10px' }}>
+                    <span style={{ width: '24px', color: theme.textMuted, fontSize: '12px' }}>
                       {item.score}
-                    </span>
-                    <div
-                      style={{
-                        flex: 1,
-                        height: '8px',
-                        backgroundColor: theme.surfaceAlt,
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${Math.min(100, ((item.count ?? 0) / ratingMax) * 100)}%`,
-                          height: '100%',
-                          backgroundColor: item.score >= 8 ? theme.accent : theme.border,
-                        }}
-                      />
-                    </div>
-                    <span
-                      style={{
-                        width: '82px',
-                        textAlign: 'right',
-                        color: theme.text,
-                        fontSize: '10px',
-                      }}
-                    >
-                      {formatNumber(item.count)} · {formatPercent(item.percentage)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', marginTop: '5px' }}>
-                区段状态：{stateLabel(viewModel.rating.state)} · 样本{' '}
-                {formatNumber(viewModel.rating.population)}
-              </div>
-            </section>
-
-            <section>
-              <div style={{ color: theme.accent, fontWeight: 700, fontSize: '14px' }}>
-                收藏状态分布
-              </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-                完成率 = 看过 /（想看 + 看过 + 在看 + 搁置 + 抛弃）；该公式保留验证状态。
-              </div>
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}
-              >
-                {viewModel.collection.distribution.map((item) => (
-                  <div
-                    key={item.status}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <span style={{ width: '34px', color: theme.textMuted, fontSize: '10px' }}>
-                      {collectionLabels[item.status] || item.status}
                     </span>
                     <div
                       style={{
@@ -248,20 +247,22 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                         overflow: 'hidden',
                       }}
                     >
-                      <div
-                        style={{
-                          width: `${Math.min(100, ((item.count ?? 0) / collectionMax) * 100)}%`,
-                          height: '100%',
-                          backgroundColor: theme.accent,
-                        }}
-                      />
+                      {item.count !== undefined ? (
+                        <div
+                          style={{
+                            width: Math.min(100, (item.count / ratingMax) * 100) + '%',
+                            height: '100%',
+                            backgroundColor: item.score >= 8 ? theme.accent : theme.border,
+                          }}
+                        />
+                      ) : null}
                     </div>
                     <span
                       style={{
-                        width: '82px',
+                        width: '92px',
                         textAlign: 'right',
                         color: theme.text,
-                        fontSize: '10px',
+                        fontSize: '11px',
                       }}
                     >
                       {formatNumber(item.count)} · {formatPercent(item.percentage)}
@@ -269,9 +270,62 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
                   </div>
                 ))}
               </div>
-              <div style={{ color: theme.textMuted, fontSize: '10px', marginTop: '5px' }}>
-                区段状态：{stateLabel(viewModel.collection.state)} · 完成率：
-                {stateLabel(viewModel.collection.completionState)}
+              <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '7px' }}>
+                已收到 {viewModel.coverage.ratingBucketsObserved}/
+                {viewModel.coverage.ratingBucketsExpected} 档 · {stateLabel(viewModel.rating.state)}
+              </div>
+            </section>
+
+            <section>
+              <div style={{ color: theme.accent, fontWeight: 700, fontSize: '15px' }}>收藏状态</div>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}
+              >
+                {viewModel.collection.distribution.map((item) => (
+                  <div
+                    key={item.status}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <span style={{ width: '38px', color: theme.textMuted, fontSize: '12px' }}>
+                      {collectionLabels[item.status] || '其他'}
+                    </span>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: '12px',
+                        backgroundColor: theme.surfaceAlt,
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {item.count !== undefined ? (
+                        <div
+                          style={{
+                            width: Math.min(100, (item.count / collectionMax) * 100) + '%',
+                            height: '100%',
+                            backgroundColor: theme.accent,
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    <span
+                      style={{
+                        width: '92px',
+                        textAlign: 'right',
+                        color: theme.text,
+                        fontSize: '11px',
+                      }}
+                    >
+                      {formatNumber(item.count)} · {formatPercent(item.percentage)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '7px' }}>
+                已收到 {viewModel.coverage.collectionBucketsObserved}/
+                {viewModel.coverage.collectionBucketsExpected} 类 ·{' '}
+                {stateLabel(viewModel.collection.state)}
+                {' · 完成率 ' + metricStateLabel(viewModel.collection.completionState)}
               </div>
             </section>
           </div>
@@ -282,40 +336,39 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
         <section
           style={{
             backgroundColor: theme.surfaceAlt,
-            border: `1px solid ${theme.warning}`,
+            border: '1px solid ' + theme.warning,
             borderRadius: theme.radius.sm,
             padding: theme.spacing.sm,
           }}
         >
-          <div style={{ color: theme.warning, fontWeight: 700, fontSize: '12px' }}>
-            评分来源冲突
+          <div style={{ color: theme.warning, fontWeight: 700, fontSize: '13px' }}>
+            统计来源给出的结果不一致
           </div>
-          {renderedConflicts.map((conflict, conflictIndex) => (
+          {renderedConflicts.slice(0, 4).map((conflict, conflictIndex) => (
             <div
-              key={`${conflict.reason}-${conflictIndex}`}
+              key={conflict.reason + '-' + conflictIndex}
               style={{
                 color: theme.textMuted,
-                fontSize: '10px',
+                fontSize: '12px',
                 lineHeight: 1.5,
                 overflowWrap: 'anywhere',
                 wordBreak: 'break-word',
               }}
             >
-              <div>{conflict.reason}：</div>
               {conflict.candidates.map((candidate, candidateIndex) => (
                 <div
-                  key={`${candidate.source.class}-${candidate.source.provider}-${candidateIndex}`}
+                  key={
+                    candidate.source.class + '-' + candidate.source.provider + '-' + candidateIndex
+                  }
                 >
-                  候选 {candidate.source.class}/{candidate.source.provider} ={' '}
-                  {formatConflictValue(candidate.value)}
+                  {conflictSourceLabel(candidate.source)}：{formatConflictValue(candidate.value)}
                 </div>
               ))}
             </div>
           ))}
-          {viewModel.rating.conflicts &&
-          viewModel.rating.conflicts.length > renderedConflicts.length ? (
-            <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
-              另有 {viewModel.rating.conflicts.length - renderedConflicts.length} 条评分冲突未展开。
+          {renderedConflicts.length > 4 ? (
+            <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.45 }}>
+              另有 {renderedConflicts.length - 4} 条评分差异保留在详细结果中。
             </div>
           ) : null}
         </section>
@@ -324,101 +377,34 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
       <section
         style={{
           backgroundColor: theme.surfaceAlt,
-          border: `1px solid ${theme.border}`,
+          border: '1px solid ' + theme.border,
           borderRadius: theme.radius.sm,
           padding: theme.spacing.sm,
         }}
       >
-        <div style={{ color: theme.accent, fontWeight: 700, fontSize: '12px' }}>来源与公式</div>
-        <div
-          style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5, marginTop: '4px' }}
-        >
-          official-v0：{officialOperations} · derived-s7：{derivedOperations}
-        </div>
-        <div
-          style={{
-            color: theme.textMuted,
-            fontSize: '10px',
-            lineHeight: 1.5,
-            overflowWrap: 'anywhere',
-            wordBreak: 'break-word',
-          }}
-        >
-          公式：
-          {formulaLines.map((formula) => (
-            <div key={formula.id}>
-              {formula.id} v{formula.version} · {formula.description} · inputs:{' '}
-              {formula.inputs.join(', ')}
-            </div>
-          ))}
-        </div>
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.5 }}>
-          覆盖：来源请求 {viewModel.coverage.sourceRequestsSucceeded}/
-          {viewModel.coverage.sourceRequestsAttempted} 成功 · 评分桶{' '}
-          {viewModel.coverage.ratingBucketsObserved}/{viewModel.coverage.ratingBucketsExpected} ·
-          收藏桶 {viewModel.coverage.collectionBucketsObserved}/
-          {viewModel.coverage.collectionBucketsExpected} · 公式完整{' '}
-          {viewModel.coverage.formulasComplete}/{viewModel.coverage.formulasAttempted} · 冲突{' '}
-          {viewModel.coverage.formulasConflict} · 部分 {viewModel.coverage.formulasPartial} ·
-          不可计算 {viewModel.coverage.formulasNotComputable}
-        </div>
+        <div style={{ color: theme.accent, fontWeight: 700, fontSize: '13px' }}>数据说明</div>
+        {displayedNotes.map((note, index) => (
+          <div
+            key={note + '-' + index}
+            style={{
+              color: theme.textMuted,
+              fontSize: '11px',
+              lineHeight: 1.5,
+              marginTop: '4px',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            {note}
+          </div>
+        ))}
+        {omittedNotes > 0 ? (
+          <div style={{ color: theme.textMuted, fontSize: '11px', marginTop: '4px' }}>
+            另有 {omittedNotes} 条说明保留在详细结果中。
+          </div>
+        ) : null}
       </section>
 
-      {renderedWarnings.length > 0 ? (
-        <section>
-          <div style={{ color: theme.warning, fontWeight: 700, fontSize: '12px' }}>告警</div>
-          {renderedWarnings.map((warning, index) => (
-            <div
-              key={`${warning.code}-${index}`}
-              style={{
-                color: theme.textMuted,
-                fontSize: '10px',
-                lineHeight: 1.45,
-                overflowWrap: 'anywhere',
-                wordBreak: 'break-word',
-              }}
-            >
-              {warning.code} · {warning.message}
-            </div>
-          ))}
-          {viewModel.warnings.length > renderedWarnings.length ? (
-            <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
-              另有 {viewModel.warnings.length - renderedWarnings.length} 条告警未展开。
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      <section>
-        <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
-          状态：{stateLabel(viewModel.state)} · 证据通道：
-          {viewModel.evidence
-            .map((item) => sourceLabel(item.source))
-            .filter((item, index, values) => values.indexOf(item) === index)
-            .join(' + ') || '未记录'}
-        </div>
-        <div
-          style={{
-            color: theme.textMuted,
-            fontSize: '10px',
-            lineHeight: 1.45,
-            overflowWrap: 'anywhere',
-            wordBreak: 'break-word',
-          }}
-        >
-          限制：
-          {renderedLimitations.map((limitation, index) => (
-            <div key={`${limitation}-${index}`}>{limitation}</div>
-          ))}
-          {viewModel.limitations.length > renderedLimitations.length ? (
-            <div>
-              另有 {viewModel.limitations.length - renderedLimitations.length} 条限制未展开。
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      <Footer label="Bangumi Stats Intelligence · zero-network card" theme={theme} />
+      <Footer label="Bangumi 条目统计 · 当前快照" theme={theme} />
     </CardFrame>
   );
 };

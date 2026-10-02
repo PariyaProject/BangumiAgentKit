@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { SubjectStatsIntelligenceResult } from '@bangumi-agent-kit/bangumi-core';
 import {
@@ -6,6 +8,13 @@ import {
   RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+
+function captureVisualQa(name: string, buffer: Buffer): void {
+  const directory = process.env.BANGUMI_STATS_RENDER_QA_DIR;
+  if (!directory) return;
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(path.join(directory, name), buffer);
+}
 
 const result: SubjectStatsIntelligenceResult = {
   subjectId: 123,
@@ -142,15 +151,21 @@ describe('subject-stats renderer', () => {
     expect(viewModel.template).toBe('subject-stats');
     expect(extractImageUrls(viewModel)).toEqual([]);
 
-    const narrowHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
+    const narrowHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 480);
     const wideHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 960);
     for (const html of [narrowHtml, wideHtml]) {
-      expect(html).toContain('条目统计智能');
+      expect(html).toContain('条目统计');
       expect(html).toContain('评分分布');
       expect(html).toContain('40.0%');
       expect(html).toContain('完成率');
-      expect(html).toContain('bangumi.rating.population_sd.v1 v1');
-      expect(html).toContain('zero-network card');
+      expect(html).toContain('评分离散度');
+      expect(html).toContain('Bangumi 条目统计 · 当前快照');
+      expect(html).not.toContain('bangumi.rating.population_sd.v1');
+      expect(html).not.toContain('getSubjectStats');
+      expect(html).not.toContain('derived-s7');
+      expect(html).not.toContain('rating.count');
+      expect(html).not.toContain('RATING_MEAN_CONFLICT');
+      expect(html).not.toContain('当前快照不是历史趋势。');
       expect(html).not.toContain('https://');
       expect(html).not.toContain('NaN');
       expect(html).not.toContain('Infinity');
@@ -178,18 +193,50 @@ describe('subject-stats renderer', () => {
         ],
       },
     ];
+    conflict.collection.conflicts = [
+      {
+        state: 'conflict',
+        scope: 'collection',
+        fieldPaths: ['collection.total'],
+        reason: 'collection total differs between accepted sources',
+        candidates: [
+          { source: { class: 'official-v0', provider: 'bangumi' }, value: 10 },
+          { source: { class: 'derived-s7', provider: 'bangumi-agent-kit' }, value: 11 },
+        ],
+      },
+    ];
+    conflict.conflicts = [
+      structuredClone(conflict.collection.conflicts[0]!),
+      {
+        state: 'conflict',
+        scope: 'collection',
+        fieldPaths: ['collection.distribution'],
+        reason: 'collection distribution differs between accepted sources',
+        candidates: [
+          {
+            source: { class: 'official-v0', provider: 'bangumi' },
+            value: { internalCollectionBucket: 3 },
+          },
+        ],
+      },
+    ];
     conflict.warnings = [
       { code: 'RATING_MEAN_CONFLICT', state: 'conflict', message: '两个评分来源存在差异。' },
     ];
-    const conflictHtml = renderHtmlTemplate(
-      buildSubjectStatsViewModel(conflict),
-      'bangumi-dark',
-      {},
-      640,
-    );
-    expect(conflictHtml).toContain('评分来源冲突');
-    expect(conflictHtml).toContain('derived-s7/bangumi-agent-kit = 8.60');
-    expect(conflictHtml).toContain('official-v0/bangumi = 6.00');
+    const conflictViewModel = buildSubjectStatsViewModel(conflict);
+    expect(conflictViewModel.conflicts).toEqual(conflict.conflicts);
+    const conflictHtml = renderHtmlTemplate(conflictViewModel, 'bangumi-dark', {}, 640);
+    expect(conflictHtml).toContain('统计来源给出的结果不一致');
+    expect(conflictHtml).toContain('按分布推算：8.60');
+    expect(conflictHtml).toContain('官方条目数据：6.00');
+    expect(conflictHtml).toContain('官方条目数据：10.00');
+    expect(conflictHtml).toContain('按分布推算：11.00');
+    expect(conflictHtml).toContain('复杂数据；完整内容见详细结果');
+    expect(conflictHtml).not.toContain('internalCollectionBucket');
+    expect(conflictHtml.match(/官方条目数据：10\.00/g)).toHaveLength(1);
+    expect(conflictHtml).not.toContain('derived-s7');
+    expect(conflictHtml).not.toContain('RATING_MEAN_CONFLICT');
+    expect(conflictHtml).not.toContain('两个评分来源存在差异。');
 
     const unavailable: SubjectStatsIntelligenceResult = {
       ...result,
@@ -218,6 +265,7 @@ describe('subject-stats renderer', () => {
     );
     expect(unavailableHtml).toContain('官方统计源暂时不可用');
     expect(unavailableHtml).toContain('不可用');
+    expect(unavailableHtml).not.toContain('UPSTREAM_UNAVAILABLE');
     expect(unavailableHtml).not.toContain('8.6');
     expect(unavailableHtml).not.toContain('NaN');
   });
@@ -323,6 +371,20 @@ describe('subject-stats renderer', () => {
         ],
       },
     ];
+    conflict.conflicts = [
+      {
+        state: 'conflict',
+        scope: 'collection',
+        fieldPaths: ['collection.distribution'],
+        reason: 'collection distribution differs between accepted sources',
+        candidates: [
+          {
+            source: { class: 'official-v0', provider: 'bangumi' },
+            value: { internalCollectionBucket: 3 },
+          },
+        ],
+      },
+    ];
     conflict.warnings = [
       { code: 'RATING_MEAN_CONFLICT', state: 'conflict', message: '两个评分来源存在差异。' },
     ];
@@ -376,6 +438,16 @@ describe('subject-stats renderer', () => {
       { code: 'ZERO_POPULATION', state: 'not_computable', message: '评分与收藏样本量为零。' },
     ];
 
+    const partialHtml = renderHtmlTemplate(
+      buildSubjectStatsViewModel(partial),
+      'bangumi-dark',
+      {},
+      480,
+    );
+    expect(partialHtml).toContain('已收到 9/10 档');
+    expect(partialHtml).toContain('未知 · 未知');
+    expect(partialHtml).not.toContain('FORMULA_SUPPRESSED');
+
     const states: Array<[string, SubjectStatsIntelligenceResult]> = [
       ['complete', result],
       ['sparse', sparse],
@@ -386,17 +458,21 @@ describe('subject-stats renderer', () => {
     ];
     for (const [label, fixture] of states) {
       const viewModel = buildSubjectStatsViewModel(fixture);
-      for (const width of [640, 960]) {
+      for (const width of [480, 640, 960]) {
         const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
-        expect(html, `${label} HTML at ${width}`).toContain('zero-network card');
+        expect(html, `${label} HTML at ${width}`).toContain('Bangumi 条目统计 · 当前快照');
+        expect(html, `${label} HTML at ${width}`).not.toContain('bangumi.rating.population_sd.v1');
+        expect(html, `${label} HTML at ${width}`).not.toContain('UPSTREAM_UNAVAILABLE');
         expect(html, `${label} HTML at ${width}`).not.toContain('NaN');
         expect(html, `${label} HTML at ${width}`).not.toContain('Infinity');
+        if (width < 640) continue;
         const rendered = await renderService.renderCard(viewModel, {
           width,
           deviceScaleFactor: 1,
           cache: false,
         });
         expect(rendered.buffer.length, `${label} PNG at ${width}`).toBeGreaterThan(1000);
+        if (width === 640) captureVisualQa('single-' + label + '.png', rendered.buffer);
       }
     }
   }, 60_000);

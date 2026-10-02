@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type {
   SubjectComparisonResult,
@@ -10,6 +12,13 @@ import {
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
 import { getTemplate } from '../../packages/renderer/src/templates/TemplateRegistry.js';
+
+function captureVisualQa(name: string, buffer: Buffer): void {
+  const directory = process.env.BANGUMI_STATS_RENDER_QA_DIR;
+  if (!directory) return;
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(path.join(directory, name), buffer);
+}
 
 const result: SubjectComparisonResult = {
   subjectIds: [123, 456],
@@ -438,6 +447,72 @@ const renderStatistics: SubjectStatsIntelligenceResult = {
   retrievedAt: '2026-08-15T00:00:00.000Z',
 };
 
+function comparisonSecondStatistics(): SubjectStatsIntelligenceResult {
+  const statistics = structuredClone(renderStatistics);
+  const ratingCounts = [0, 0, 0, 0, 0, 10, 30, 40, 20, 0];
+  statistics.subjectId = 456;
+  statistics.state = 'complete';
+  statistics.raw = {
+    ...statistics.raw!,
+    score: 7.7,
+    ratingTotal: 100,
+    ratingHistogram: {
+      1: ratingCounts[0] ?? 0,
+      2: ratingCounts[1] ?? 0,
+      3: ratingCounts[2] ?? 0,
+      4: ratingCounts[3] ?? 0,
+      5: ratingCounts[4] ?? 0,
+      6: ratingCounts[5] ?? 0,
+      7: ratingCounts[6] ?? 0,
+      8: ratingCounts[7] ?? 0,
+      9: ratingCounts[8] ?? 0,
+      10: ratingCounts[9] ?? 0,
+    },
+    collection: { wish: 4, collect: 10, doing: 2, onHold: 1, dropped: 3 },
+  };
+  statistics.rating = {
+    ...statistics.rating,
+    state: 'complete',
+    population: 100,
+    mean: 7.7,
+    standardDeviation: 0.9,
+    distribution: ratingCounts.map((count, index) => ({
+      score: index + 1,
+      count,
+      percentage: count,
+    })),
+    conflicts: undefined,
+  };
+  statistics.collection = {
+    ...statistics.collection,
+    state: 'complete',
+    total: 20,
+    completionRate: 0.5,
+    completionState: 'complete',
+    distribution: [
+      { status: 'wish', count: 4, percentage: 20 },
+      { status: 'collect', count: 10, percentage: 50 },
+      { status: 'doing', count: 2, percentage: 10 },
+      { status: 'on_hold', count: 1, percentage: 5 },
+      { status: 'dropped', count: 3, percentage: 15 },
+    ],
+  };
+  statistics.coverage = {
+    ...statistics.coverage,
+    ratingBucketsObserved: 10,
+    collectionBucketsObserved: 5,
+    ratingPopulation: 100,
+    collectionPopulation: 20,
+    formulasComplete: 5,
+    formulasPartial: 0,
+    formulasNotComputable: 0,
+    formulasConflict: 0,
+  };
+  statistics.warnings = [];
+  statistics.limitations = ['统计数据仅代表本次快照。'];
+  return statistics;
+}
+
 function statisticsStateMatrix(): Array<{
   name: string;
   statistics: SubjectStatsIntelligenceResult;
@@ -503,10 +578,30 @@ function statisticsStateMatrix(): Array<{
   unavailable.collection.distribution = [];
   unavailable.evidence = [];
 
+  const conflict = structuredClone(renderStatistics);
+  conflict.conflicts = [
+    {
+      state: 'conflict',
+      scope: 'collection',
+      fieldPaths: ['collection.total'],
+      reason: 'collection total differs between accepted sources',
+      candidates: [
+        {
+          source: { class: 'official-v0', provider: 'bangumi' },
+          value: { privateFieldName: 39 },
+        },
+      ],
+    },
+  ];
+
   return [
-    { name: 'complete', statistics: complete, marker: '统计覆盖：评分桶 10/10' },
-    { name: 'partial', statistics: partial, marker: '统计覆盖：评分桶 10/10 · 收藏桶 4/5' },
-    { name: 'conflict', statistics: renderStatistics, marker: '统计冲突：rating · histogramMean' },
+    { name: 'complete', statistics: complete, marker: '评分分布 · 10/10 档已收到' },
+    { name: 'partial', statistics: partial, marker: '收藏状态 · 4/5 类已收到' },
+    {
+      name: 'conflict',
+      statistics: conflict,
+      marker: '统计来源存在差异：分布推算 8.6；官方条目数据 7.4',
+    },
     { name: 'not-computable', statistics: zero, marker: '不可计算' },
     { name: 'unavailable', statistics: unavailable, marker: '不可用' },
   ];
@@ -532,25 +627,32 @@ describe('subject-comparison renderer', () => {
     expect(extractImageUrls(viewModel)).toEqual([]);
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
-    expect(html).toContain('SUBJECT COMPARISON');
+    expect(html).toContain('BANGUMI · 条目比较');
     expect(html).toContain('不生成推荐或胜负结论');
     expect(html).toContain('一个用于验证窄宽度换行');
     expect(html).toContain('差值 B−A');
+    expect(html).toContain('A ·');
+    expect(html).toContain('B ·');
     expect(html).toContain('未知');
     expect(html).toContain('冲突，不计算');
-    expect(html).toContain('统计 7.5 / 详情 7.4');
-    expect(html).toContain('候选 official_v0/bangumi=7.5；derived/fixture-derived=7.6');
-    expect(html).toContain('条目身份已读取');
+    expect(html).toContain('条目详情 7.4 / 官方条目数据 7.5；分布推算 7.6');
+    expect(html).toContain('官方条目数据 7.5；分布推算 7.6');
+    expect(html).not.toContain('统计值 7.5');
+    expect(html).toContain('本次条目 2/2');
     expect(html).toContain('区段上限：角色 4');
-    expect(html).toContain('截断 cast');
-    expect(html).toContain('official-v0');
-    expect(html).toContain('derived-s7');
+    expect(html).toContain('达到展示上限：角色');
+    expect(html).not.toContain('official-v0');
+    expect(html).not.toContain('derived-s7');
+    expect(html).not.toContain('/v0/subjects/');
+    expect(html).not.toContain('COMPARISON_VALUES_UNKNOWN');
     expect(html).toContain('共同声优');
     expect(html).toContain('共同声优：非常长的中文姓名');
     expect(html).toContain('共同制作人员 · 不可用');
-    expect(html).toContain('subject-comparison-overlap-v1');
+    expect(html).not.toContain('subject-comparison-overlap-v1');
     expect(html).toContain('渲染器省略比较字段：2 条。');
-    expect(html).toContain('限制：');
+    expect(html).toContain('比较仅依据本次已取得的条目与关联资料');
+    expect(html).not.toContain('官方 v0');
+    expect(html).not.toContain('formula');
     expect(html).not.toContain('https://');
 
     const rendered = await renderService.renderCard(viewModel, {
@@ -606,15 +708,37 @@ describe('subject-comparison renderer', () => {
       480,
     );
     expect(html).toContain('来源不可用');
-    expect(html).toContain('UPSTREAM_UNAVAILABLE');
-    expect(html).toContain('条目身份已读取 0/2');
+    expect(html).not.toContain('UPSTREAM_UNAVAILABLE');
+    expect(html).toContain('本次条目 0/2');
     expect(html).toContain('当前请求未取得条目身份');
   });
 
-  it('renders nested statistics distributions and the composition formula without images', () => {
+  it('renders readable statistics distributions without implementation diagnostics', () => {
     const withStatistics = structuredClone(result);
     withStatistics.statisticsFormulaVersion = 'subject-comparison-statistics-v1';
-    withStatistics.subjects[0] = { ...withStatistics.subjects[0], statistics: renderStatistics };
+    const statisticsWithStructuredConflict = structuredClone(renderStatistics);
+    statisticsWithStructuredConflict.conflicts = [
+      {
+        state: 'conflict',
+        scope: 'collection',
+        fieldPaths: ['collection.total'],
+        reason: 'collection total differs between accepted sources',
+        candidates: [
+          {
+            source: { class: 'official-v0', provider: 'bangumi' },
+            value: { privateFieldName: 39 },
+          },
+        ],
+      },
+    ];
+    withStatistics.subjects[0] = {
+      ...withStatistics.subjects[0],
+      statistics: statisticsWithStructuredConflict,
+    };
+    withStatistics.subjects[1] = {
+      ...withStatistics.subjects[1],
+      statistics: comparisonSecondStatistics(),
+    };
     const html = renderHtmlTemplate(
       buildSubjectComparisonViewModel(withStatistics),
       'bangumi-dark',
@@ -622,17 +746,22 @@ describe('subject-comparison renderer', () => {
       640,
     );
 
-    expect(html).toContain('评分与收藏统计智能');
-    expect(html).toContain('评分样本 100');
-    expect(html).toContain('直方图均值 8.6');
+    expect(html).toContain('评分与收藏分布');
+    expect(html).toContain('评分人数 100');
+    expect(html).toContain('分布均值 8.6');
     expect(html).toContain('完成率 51.3%');
-    expect(html).toContain('8 分 · 40 · 40%');
-    expect(html).toContain('统计组合公式：subject-comparison-statistics-v1');
-    expect(html).toContain('统计覆盖：评分桶 10/10 · 收藏桶 5/5');
-    expect(html).toContain('bangumi.rating.percentages.v1@v1');
-    expect(html).toContain('统计冲突：rating · histogramMean,rating.score');
-    expect(html).toContain('候选 derived-s7/derived=8.6；official-v0/bangumi=7.4');
-    expect(html).toContain('统计证据：getSubjectById:rating.score');
+    expect(html).toContain('B · 第二个条目 · 完整');
+    expect(html).toContain('A ·');
+    expect(html).toContain('评分分布 · 10/10 档已收到');
+    expect(html).toContain('8分');
+    expect(html).toContain('40.0%');
+    expect(html).toContain('分布推算 8.6；官方条目数据 7.4');
+    expect(html).toContain('复杂数据；完整内容见详细结果');
+    expect(html).not.toContain('subject-comparison-statistics-v1');
+    expect(html).not.toContain('bangumi.rating.percentages.v1');
+    expect(html).not.toContain('getSubjectById:rating.score');
+    expect(html).not.toContain('rating.score');
+    expect(html).not.toContain('privateFieldName');
     expect(extractImageUrls(buildSubjectComparisonViewModel(withStatistics))).toEqual([]);
   });
 
@@ -652,6 +781,10 @@ describe('subject-comparison renderer', () => {
         ...withStatistics.subjects[0],
         statistics: matrixCase.statistics,
       };
+      withStatistics.subjects[1] = {
+        ...withStatistics.subjects[1],
+        statistics: comparisonSecondStatistics(),
+      };
       const viewModel = buildSubjectComparisonViewModel(withStatistics);
       expect(viewModel.version).toBe(2);
       expect(extractImageUrls(viewModel)).toEqual([]);
@@ -660,11 +793,13 @@ describe('subject-comparison renderer', () => {
       expect(html).toContain('一个用于验证窄宽度换行');
       expect(html).toContain('差值 B−A');
       expect(html).toContain(matrixCase.marker);
+      expect(html).not.toContain('privateFieldName');
 
       const rendered = await renderService.renderCard(viewModel, {
         width: 640,
         deviceScaleFactor: 1,
       });
+      captureVisualQa('comparison-' + matrixCase.name + '.png', rendered.buffer);
       expect(rendered.template).toBe('subject-comparison');
       expect(rendered.templateVersion).toBe(2);
       expect(rendered.buffer.length).toBeGreaterThan(1000);
