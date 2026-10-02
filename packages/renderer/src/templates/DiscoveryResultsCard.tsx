@@ -55,6 +55,7 @@ function qualityLabel(quality: string): string {
 
 function warningLabel(code: string): string {
   const labels: Record<string, string> = {
+    EXPERIMENTAL_SOURCE: '官方搜索来源提示',
     DISCOVERY_AMBIGUOUS_CONCEPT: '概念存在歧义',
     DISCOVERY_UNKNOWN_CONCEPT: '概念未解析',
     DISCOVERY_BUDGET_EXCEEDED: '执行预算达到',
@@ -68,7 +69,12 @@ function warningLabel(code: string): string {
 }
 
 function warningText(code: string, message: string): string {
-  if (code === 'EXPERIMENTAL_SOURCE') return '官方作品搜索接口仍处于实验阶段。';
+  if (
+    code === 'EXPERIMENTAL_SOURCE' &&
+    message === 'Official v0 subject search is marked experimental upstream.'
+  ) {
+    return '官方作品搜索接口仍处于实验阶段。';
+  }
   return `${warningLabel(code)}：${message}`;
 }
 

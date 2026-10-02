@@ -7,6 +7,7 @@ import {
   renderHtmlTemplate,
   RenderService,
 } from '@bangumi-agent-kit/renderer';
+import { closeMobileLayoutBrowser, measureRenderRootLayout } from './helpers/mobile-layout.js';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const ONE_PIXEL_PNG = Buffer.from(
@@ -91,6 +92,7 @@ describe('discovery-results renderer', () => {
 
   afterAll(async () => {
     await renderService.close();
+    await closeMobileLayoutBrowser();
   });
 
   it('builds a bounded, evidence-aware view model without fabricating missing fields', () => {
@@ -184,8 +186,11 @@ describe('discovery-results renderer', () => {
 
     const forwardCompatibilityResult = makeResult('ok', 1);
     forwardCompatibilityResult.plan.limitations = ['未识别的来源说明仍保留。'];
+    const unfamiliarExperimentalMessage =
+      'Experimental search may omit newly indexed subjects from this bounded result.';
     forwardCompatibilityResult.warnings = [
       { code: 'FUTURE_DISCOVERY_NOTICE', message: '未知来源提示仍保留。' },
+      { code: 'EXPERIMENTAL_SOURCE', message: unfamiliarExperimentalMessage },
     ];
     const forwardCompatibilityViewModel = buildDiscoveryResultsViewModel(
       forwardCompatibilityResult,
@@ -199,6 +204,18 @@ describe('discovery-results renderer', () => {
     );
     expect(forwardCompatibilityHtml).toContain('未识别的来源说明仍保留。');
     expect(forwardCompatibilityHtml).toContain('未知来源提示仍保留。');
+    expect(forwardCompatibilityHtml).toContain(
+      `官方搜索来源提示：${unfamiliarExperimentalMessage}`,
+    );
+    expect(forwardCompatibilityHtml).not.toContain('官方作品搜索接口仍处于实验阶段。');
+
+    for (const width of [320, 360, 520]) {
+      const mobileHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      const layout = await measureRenderRootLayout(mobileHtml, width);
+      expect(layout.clientWidth, `[G01] root width at ${width}px`).toBe(width);
+      expect(layout.scrollWidth, `[G01] scroll width at ${width}px`).toBe(width);
+      expect(layout.overflowing, `[G01] overflowing elements at ${width}px`).toEqual([]);
+    }
 
     const image = await renderService.renderCard(viewModel, {
       width: 360,
