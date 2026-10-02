@@ -933,6 +933,95 @@ describe('subject-comparison renderer', () => {
     expect(extractImageUrls(buildSubjectComparisonViewModel(withStatistics))).toEqual([]);
   });
 
+  it('deduplicates statistic warning labels before the comparison display cap', async () => {
+    const withStatistics = structuredClone(result);
+    const statistics = structuredClone(renderStatistics);
+    statistics.state = 'partial';
+    statistics.warnings = [
+      {
+        code: 'MISSING_FIELD',
+        state: 'partial',
+        message: 'formula-a: missing rating bucket',
+      },
+      {
+        code: 'MISSING_FIELD',
+        state: 'partial',
+        message: 'formula-b: missing collection bucket',
+      },
+      {
+        code: 'MISSING_FIELD',
+        state: 'partial',
+        message: 'formula-c: missing completion input',
+      },
+      {
+        code: 'RATING_TOTAL_MISMATCH',
+        state: 'partial',
+        message: 'Official rating total 95 differs from histogram population 100.',
+      },
+    ];
+    withStatistics.subjects[0] = {
+      ...withStatistics.subjects[0],
+      statistics,
+    };
+    const rightStatistics = comparisonSecondStatistics();
+    withStatistics.subjects[1] = {
+      ...withStatistics.subjects[1],
+      statistics: rightStatistics,
+    };
+    updateCompletionRateMetric(withStatistics, statistics, rightStatistics);
+
+    const viewModel = buildSubjectComparisonViewModel(withStatistics);
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
+
+    expect(html.match(/部分统计字段未返回，相关指标保持未知。/g)).toHaveLength(1);
+    expect(html).toContain('官方评分人数与评分分布样本数不一致');
+    expect(html).not.toContain('另有 2 条数据提示');
+    expect(html).not.toContain('MISSING_FIELD');
+    expect(html).not.toContain('RATING_TOTAL_MISMATCH');
+
+    const rendered = await renderService.renderCard(viewModel, {
+      width: 640,
+      deviceScaleFactor: 1,
+    });
+    captureVisualQa('comparison-warning-semantics.png', rendered.buffer);
+  });
+
+  it('does not render an empirical formula note as a missing-data warning', () => {
+    const withStatistics = structuredClone(result);
+    const statistics = structuredClone(renderStatistics);
+    statistics.state = 'complete';
+    statistics.rating.state = 'complete';
+    statistics.rating.conflicts = undefined;
+    statistics.warnings = [
+      {
+        code: 'FORMULA_EMPIRICALLY_VERIFIED',
+        state: 'complete',
+        message: 'Completion formula is sample-verified, not an official API contract.',
+      },
+    ];
+    withStatistics.subjects[0] = {
+      ...withStatistics.subjects[0],
+      statistics,
+    };
+    const rightStatistics = comparisonSecondStatistics();
+    withStatistics.subjects[1] = {
+      ...withStatistics.subjects[1],
+      statistics: rightStatistics,
+    };
+    updateCompletionRateMetric(withStatistics, statistics, rightStatistics);
+
+    const html = renderHtmlTemplate(
+      buildSubjectComparisonViewModel(withStatistics),
+      'bangumi-dark',
+      {},
+      640,
+    );
+
+    expect(html).toContain('样本验证，并非官方 API 契约');
+    expect(html).not.toContain('部分资料未能完整取得，已仅展示可确认内容。');
+    expect(html).not.toContain('部分统计字段未返回，相关指标保持未知。');
+  });
+
   it('keeps current and legacy comparison ViewModels renderable with a bounded statistics PNG matrix', async () => {
     expect(getTemplate('subject-comparison').version).toBe(2);
     const current = buildSubjectComparisonViewModel(result);

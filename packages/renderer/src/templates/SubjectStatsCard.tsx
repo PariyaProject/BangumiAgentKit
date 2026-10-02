@@ -4,6 +4,7 @@ import type { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
 import { Footer } from '../components/Footer.js';
 import { TitleBlock } from '../components/TitleBlock.js';
+import { safeStatisticsWarningLabels } from './statisticsWarningLabels.js';
 
 export interface SubjectStatsCardProps {
   viewModel: SubjectStatsViewModel;
@@ -69,14 +70,6 @@ const collectionLabels: Record<string, string> = {
   doing: '在看',
   on_hold: '搁置',
   dropped: '抛弃',
-};
-
-const WARNING_LABELS: Record<string, string> = {
-  FORMULA_SUPPRESSED: '部分评分或收藏数据未返回，相关统计无法完整计算。',
-  MISSING_FIELD: '部分统计字段未返回，相关指标保持未知。',
-  RATING_MEAN_CONFLICT: '官方评分与评分分布推算结果不一致。',
-  UPSTREAM_UNAVAILABLE: '官方统计源暂时不可用。',
-  ZERO_POPULATION: '当前没有可用于计算的评分或收藏样本。',
 };
 
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
@@ -163,11 +156,18 @@ function dataNotes(viewModel: SubjectStatsViewModel): string[] {
     viewModel.collection.formulas.completion.evidenceStatus === 'empirically_verified'
       ? '完成率＝看过人数 ÷ 五类收藏状态总人数；样本验证，并非官方 API 契约。'
       : '完成率按当前返回的五类收藏状态计算。';
+  const visibleWarnings = safeStatisticsWarningLabels(
+    viewModel.warnings.filter(
+      (warning) => !(repeatedConflictWarning && warning.code === 'RATING_MEAN_CONFLICT'),
+    ),
+    {
+      completionMethodologyAlreadyShown:
+        viewModel.collection.formulas.completion.evidenceStatus === 'empirically_verified',
+    },
+  );
   const notes = [
     `均值和离散度由本次评分分布计算。${completionFormulaNote} 这是一份当前快照，不代表历史趋势或推荐。`,
-    ...viewModel.warnings
-      .filter((warning) => !(repeatedConflictWarning && warning.code === 'RATING_MEAN_CONFLICT'))
-      .map((warning) => WARNING_LABELS[warning.code] || '部分统计信息未能完整取得。'),
+    ...visibleWarnings,
     ...viewModel.limitations,
   ];
   return notes

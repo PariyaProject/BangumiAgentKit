@@ -4,6 +4,7 @@ import { Footer } from '../components/Footer.js';
 import { MetaRow } from '../components/MetaRow.js';
 import { ThemeTokens } from '../themes/index.js';
 import { SubjectComparisonViewModel } from '../view-models/index.js';
+import { formatSafeStatisticsWarnings } from './statisticsWarningLabels.js';
 
 export interface SubjectComparisonCardProps {
   viewModel: SubjectComparisonViewModel;
@@ -25,17 +26,6 @@ const SECTION_LABELS: Record<string, string> = {
   partial: '部分',
   unavailable: '不可用',
   not_computable: '不可计算',
-};
-
-const SAFE_WARNING_LABELS: Record<string, string> = {
-  MISSING_FIELD: '部分统计字段未返回，相关指标保持未知。',
-  FORMULA_SUPPRESSED: '部分统计数据未返回，相关指标保持未知。',
-  RATING_MEAN_CONFLICT: '评分来源存在差异，保留各来源结果。',
-  UPSTREAM_UNAVAILABLE: '统计源暂时不可用，未生成猜测值。',
-  ZERO_POPULATION: '当前没有可用于计算的评分或收藏样本。',
-  SUBJECT_STATE_DEGRADED: '部分条目资料不完整，缺失区段不会被当作空值。',
-  COMPARISON_VALUES_UNKNOWN: '部分比较字段缺少两侧可比数据，差值保持未知。',
-  COMPARISON_VALUES_CONFLICT: '部分比较字段存在来源差异，未生成差值。',
 };
 
 const STATISTICS_CONFLICT_FIELD_LABELS: Record<string, string> = {
@@ -61,10 +51,6 @@ const DATA_SECTION_LABELS: Record<string, string> = {
 
 function dataSectionLabel(section: string): string {
   return DATA_SECTION_LABELS[section] || '其他资料';
-}
-
-function safeWarningLabel(warning: { code: string }): string {
-  return SAFE_WARNING_LABELS[warning.code] || '部分资料未能完整取得，已仅展示可确认内容。';
 }
 
 function humanizeLimitation(value: string): string {
@@ -369,9 +355,17 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
   const completionFormulaEvidenceStatus = columns.map(
     (subject) => subject.statistics?.collection.formulas?.completion?.evidenceStatus,
   );
+  const completionMethodologyAlreadyShown =
+    completionFormulaEvidenceStatus.includes('empirically_verified');
   const completionFormulaNote = completionFormulaEvidenceStatus.includes('empirically_verified')
     ? '完成率＝看过人数 ÷ 五类收藏状态总人数；该公式经样本验证，并非官方 API 契约。'
     : '完成率＝看过人数 ÷ 五类收藏状态总人数；仅按本次已返回数据计算。';
+  const viewWarningText = formatSafeStatisticsWarnings(viewModel.warnings, 3, {
+    completionMethodologyAlreadyShown,
+  });
+  const subjectWarningSummaries = columns.map((subject) =>
+    formatSafeStatisticsWarnings(subject.warnings, 2, { completionMethodologyAlreadyShown }),
+  );
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -460,10 +454,9 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
               区段上限：角色 {subject.coverage.limits.maxCast} · 职员{' '}
               {subject.coverage.limits.maxStaff} · 关联 {subject.coverage.limits.maxRelations}
             </div>
-            {subject.warnings.length > 0 ? (
+            {subjectWarningSummaries[index] ? (
               <div style={{ color: theme.warning, fontSize: '11px', lineHeight: 1.5 }}>
-                {subject.warnings.slice(0, 2).map(safeWarningLabel).join('；')}
-                {subject.warnings.length > 2 ? `；另有 ${subject.warnings.length - 2} 条告警` : ''}
+                {subjectWarningSummaries[index]}
               </div>
             ) : null}
             {subject.limitations.filter(
@@ -633,7 +626,12 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                 ...stats.collection.distribution.map((item) => item.count ?? 0),
               );
               const conflicts = uniqueStatisticsConflicts(stats);
-              const warnings = stats.warnings.map(safeWarningLabel);
+              const warnings = formatSafeStatisticsWarnings(
+                stats.warnings,
+                2,
+                { completionMethodologyAlreadyShown },
+                '数据提示',
+              );
               return (
                 <div
                   key={subject.subjectId}
@@ -798,7 +796,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                       {conflicts.length > 2 ? '；另有 ' + (conflicts.length - 2) + ' 条' : ''}
                     </div>
                   ) : null}
-                  {warnings.length > 0 ? (
+                  {warnings ? (
                     <div
                       style={{
                         color: theme.warning,
@@ -808,8 +806,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
                         overflowWrap: 'anywhere',
                       }}
                     >
-                      {warnings.slice(0, 2).join('；')}
-                      {warnings.length > 2 ? '；另有 ' + (warnings.length - 2) + ' 条数据提示' : ''}
+                      {warnings}
                     </div>
                   ) : null}
                 </div>
@@ -942,7 +939,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
           渲染器省略比较字段：{viewModel.coverage.omittedMetrics} 条。
         </div>
       ) : null}
-      {viewModel.warnings.length > 0 ? (
+      {viewWarningText ? (
         <div
           style={{
             color: theme.warning,
@@ -951,8 +948,7 @@ export const SubjectComparisonCard: React.FC<SubjectComparisonCardProps> = ({
             overflowWrap: 'anywhere',
           }}
         >
-          {viewModel.warnings.slice(0, 3).map(safeWarningLabel).join('；')}
-          {viewModel.warnings.length > 3 ? `；另有 ${viewModel.warnings.length - 3} 条告警` : ''}
+          {viewWarningText}
         </div>
       ) : null}
       {viewModel.limitations.length > 0 ? (

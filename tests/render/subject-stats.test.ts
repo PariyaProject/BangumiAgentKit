@@ -181,6 +181,66 @@ describe('subject-stats renderer', () => {
     expect(rendered.buffer.length).toBeGreaterThan(1000);
   });
 
+  it('keeps informational formula and rating-total warnings semantically distinct', async () => {
+    const empirical = structuredClone(result);
+    empirical.warnings = [
+      {
+        code: 'FORMULA_EMPIRICALLY_VERIFIED',
+        state: 'complete',
+        message: 'Completion formula is sample-verified, not an official API contract.',
+      },
+    ];
+    const empiricalHtml = renderHtmlTemplate(
+      buildSubjectStatsViewModel(empirical),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(empiricalHtml).toContain('样本验证，并非官方 API 契约');
+    expect(empiricalHtml).not.toContain('部分统计信息未能完整取得');
+    expect(empiricalHtml).not.toContain('部分统计字段未返回');
+
+    const unknownCode = structuredClone(result);
+    unknownCode.warnings = [
+      {
+        code: 'FUTURE_WARNING',
+        state: 'partial',
+        message: 'internal/formula/path must not appear in the card',
+      },
+    ];
+    const unknownCodeHtml = renderHtmlTemplate(
+      buildSubjectStatsViewModel(unknownCode),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(unknownCodeHtml).toContain('存在一项来源提示，卡片只展示可确认内容。');
+    expect(unknownCodeHtml).not.toContain('FUTURE_WARNING');
+    expect(unknownCodeHtml).not.toContain('internal/formula/path');
+    expect(unknownCodeHtml).not.toContain('部分统计信息未能完整取得');
+
+    const mismatch = structuredClone(result);
+    mismatch.state = 'partial';
+    mismatch.raw!.ratingTotal = 95;
+    mismatch.warnings = [
+      {
+        code: 'RATING_TOTAL_MISMATCH',
+        state: 'partial',
+        message: 'Official rating total 95 differs from histogram population 100.',
+      },
+    ];
+    const mismatchViewModel = buildSubjectStatsViewModel(mismatch);
+    const mismatchHtml = renderHtmlTemplate(mismatchViewModel, 'bangumi-dark', {}, 640);
+    expect(mismatchHtml).toContain('官方评分人数与评分分布样本数不一致');
+    expect(mismatchHtml).not.toContain('部分统计信息未能完整取得');
+
+    const rendered = await renderService.renderCard(mismatchViewModel, {
+      width: 640,
+      deviceScaleFactor: 1,
+    });
+    captureVisualQa('single-warning-semantics.png', rendered.buffer);
+  });
+
   it('keeps conflict and unavailable states visible without inventing metrics', () => {
     const conflict = structuredClone(result);
     conflict.state = 'conflict';
