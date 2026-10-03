@@ -59,6 +59,10 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
       actors: Array<{ id: number; name: string }>;
     }>;
     const actorLinks = castRows.flatMap((row) => row.actors);
+    const castRoleLabelCounts: Record<string, number> = {};
+    for (const row of castRows) {
+      castRoleLabelCounts[row.relation] = (castRoleLabelCounts[row.relation] ?? 0) + 1;
+    }
     const castIdentityLinksValid =
       castRows.every(
         (row) =>
@@ -70,6 +74,9 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
       actorLinks.length > 0 &&
       actorLinks.every((actor) => Number.isInteger(actor.id) && actor.id > 0 && actor.name);
     expect(castIdentityLinksValid).toBe(true);
+    expect(Object.values(castRoleLabelCounts).reduce((total, count) => total + count, 0)).toBe(
+      castRows.length,
+    );
 
     expect(staff.subjectId).toBe(SUBJECT_ID);
     expect(['complete', 'partial']).toContain(staff.state);
@@ -187,10 +194,13 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
       subjectId: SUBJECT_ID,
       tools: {
         get_subject_cast: {
+          input: { subjectId: SUBJECT_ID, limit: 100 },
           status: cast.status,
           rows: (cast.cast as unknown[]).length,
           actorLinks: actorLinks.length,
           identityLinksValid: castIdentityLinksValid,
+          roleLabelCounts: castRoleLabelCounts,
+          roleLabels: Object.keys(castRoleLabelCounts).sort(),
           observed: cast.observed,
           returned: cast.returned,
           truncated: cast.truncated,

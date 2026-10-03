@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "g06_public_cast_agent_renderer_acceptance",
+  "observedAt": "2026-10-03T17:55:38.367Z",
+  "sourceRevision": "e606ac2431a930384d85c78715e5abfcde9ce3dd",
+  "catalogSha256": "118afc18439cb13dc9faec92e3cb560d54bbed058e4facb6369bec19ec224b60",
+  "scenarioId": "G06",
+  "subjectId": 218707,
+  "agentMcp": {
+    "observedAt": "2026-10-03T17:50:58.884Z",
+    "sourceProfile": "standard-full",
+    "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+    "selectedTool": "bangumi.get_subject_cast",
+    "callCount": 1,
+    "toolCalls": [
+      {
+        "name": "bangumi.get_subject_cast",
+        "state": "DONE"
+      }
+    ],
+    "cliExitCode": 0,
+    "resultStatus": "SUCCESS",
+    "jsonStream": {
+      "lineClassCounts": {
+        "valid": 65,
+        "blank": 0,
+        "non_json_text": 0,
+        "malformed_json": 0,
+        "non_object_json": 0
+      },
+      "invalidLineCount": 0
+    },
+    "configuredSubjectId": 218707,
+    "promptRequestedLimit": 5,
+    "actualArgumentsPersisted": false,
+    "toolResultRowsPersisted": false,
+    "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+  },
+  "rendererMcp": {
+    "observedAt": "2026-10-03T17:55:38.367Z",
+    "sourceProfile": "standard-full",
+    "selectedTool": "bangumi.render_cast_card",
+    "callCount": 1,
+    "toolCalls": [
+      {
+        "name": "bangumi.render_cast_card",
+        "state": "DONE"
+      }
+    ],
+    "cliExitCode": 0,
+    "resultStatus": "SUCCESS",
+    "jsonStream": {
+      "lineClassCounts": {
+        "valid": 47,
+        "blank": 0,
+        "non_json_text": 0,
+        "malformed_json": 0,
+        "non_object_json": 0
+      },
+      "invalidLineCount": 0
+    },
+    "configuredSubjectId": 218707,
+    "actualArgumentsPersisted": false,
+    "rendererImageRevision": "e606ac2431a930384d85c78715e5abfcde9ce3dd",
+    "artifact": {
+      "readbackVerified": true,
+      "mimeType": "image/png",
+      "width": 720,
+      "height": 1956,
+      "bytes": 203055,
+      "sha256": "24b712e76eb722fbd0f1224eba2a01cba5fcf3a15da6617a2b01e7eb57a36b2e",
+      "visualInspection": "seven rows readable without clipping",
+      "imageCommitted": false
+    }
+  },
+  "toolRegistry": {
+    "observedAt": "2026-10-03T18:10:58.000Z",
+    "command": "BANGUMI_SUBJECT_CREDIT_LIVE=1 SUBJECT_CREDIT_ACCEPTANCE_DIR=<temporary> pnpm vitest run tests/integration/live-subject-credit.acceptance.test.ts",
+    "source": "official-v0 through ToolRegistry on the exact e606 candidate source",
+    "getSubjectCast": {
+      "status": "ok",
+      "rows": 7,
+      "actorLinks": 7,
+      "identityLinksValid": true,
+      "observed": 7,
+      "returned": 7,
+      "truncated": false,
+      "input": {
+        "subjectId": 218707,
+        "limit": 100
+      },
+      "roleLabelCounts": {
+        "主角": 2,
+        "配角": 5
+      },
+      "roleLabels": ["主角", "配角"]
+    },
+    "castCardArtifact": {
+      "width": 720,
+      "height": 1960,
+      "bytes": 202361,
+      "sha256": "f78f393fa36984588e3ad22eba40aec231dd59303d1c2c48b13d8bac4ba41021",
+      "visualInspection": "seven rows readable without clipping",
+      "imageCommitted": false
+    },
+    "additionalToolsExercised": ["bangumi.get_subject_staff", "bangumi.get_subject_overview"],
+    "additionalToolResultsUsedForG06": false
+  },
+  "assertions": {
+    "currentCandidateSourceBound": true,
+    "catalogHashMatches": true,
+    "getSubjectCastAgentMcpCompleted": true,
+    "renderCastCardAgentMcpCompleted": true,
+    "currentToolRegistryRowsAndActorLinksValid": true,
+    "noAuthenticationAccountOrWrites": true,
+    "noQQorTIMClientTest": true
+  },
+  "limits": [
+    "One current official-v0 sample; observed 7/7 is not proof of exhaustive source coverage.",
+    "The Agent/MCP public profile called one forced tool and did not validate a natural-language G06 answer.",
+    "The sanitized Agent/MCP report does not persist actual argument payloads or cast result rows; subjectId and limit are the configured prompt inputs.",
+    "QQ/TIM and authenticated account acceptance are not covered."
+  ]
+}
