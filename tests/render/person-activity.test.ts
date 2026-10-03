@@ -406,6 +406,8 @@ describe('Person activity renderer', () => {
     expect(partialHtml).toContain('观察到的去重作品');
     expect(partialHtml).toContain('观察到的关系行');
     expect(partialHtml).toContain('观察到的去重角色');
+    expect(partialHtml).toContain('观察到的 3 行 · 观察到的 3 部');
+    expect(partialHtml).toContain('观察到的 11 行 · 观察到的 11 部');
     expect(partialHtml).toContain('不代表整个时间窗的总数');
 
     const completeHtml = renderHtmlTemplate(
@@ -430,6 +432,8 @@ describe('Person activity renderer', () => {
       640,
     );
     expect(completeHtml).toContain('>去重作品</div>');
+    expect(completeHtml).toContain('11 行 · 11 部');
+    expect(completeHtml).not.toContain('观察到的 11 行');
     expect(completeHtml).not.toContain('观察到的去重作品');
 
     const partialEmptyHtml = renderHtmlTemplate(
@@ -447,6 +451,9 @@ describe('Person activity renderer', () => {
       640,
     );
     expect(partialEmptyHtml).toContain('观察到的去重作品');
+    expect(partialEmptyHtml).toContain('当前窗口的月度计数不可用（部分覆盖）');
+    expect(partialEmptyHtml).toContain('当前窗口的角色/职位计数不可用（部分覆盖）');
+    expect(partialEmptyHtml).not.toContain('观察到的 11 行 · 观察到的 11 部');
     expect(partialEmptyHtml).toContain('>不可用</div>');
   });
 });

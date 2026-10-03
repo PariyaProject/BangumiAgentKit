@@ -130,6 +130,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
     (viewModel.state === 'partial' && viewModel.coverage.rowsEligible > 0);
   const primaryCount = (value: number): number | string =>
     primaryCountsAvailable ? value : '不可用';
+  const distributionCount = (value: number, unit: string): string =>
+    `${viewModel.state === 'partial' ? '观察到的 ' : ''}${value} ${unit}`;
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
@@ -418,7 +420,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
                 >
                   <span style={{ color: theme.textMuted, fontSize: '12px' }}>{item.month}</span>
                   <span style={{ color: theme.text, fontSize: '12px' }}>
-                    {item.creditRows} 行 · {item.uniqueSubjects} 部
+                    {distributionCount(item.creditRows, '行')} ·{' '}
+                    {distributionCount(item.uniqueSubjects, '部')}
                   </span>
                 </div>
               ))
@@ -434,7 +437,11 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
             角色/职位分布
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {viewModel.summary.byRole.length === 0 ? (
+            {!primaryCountsAvailable ? (
+              <span style={{ color: theme.textMuted, fontSize: '12px' }}>
+                当前窗口的角色/职位计数不可用（{stateLabel(viewModel.state)}）。
+              </span>
+            ) : viewModel.summary.byRole.length === 0 ? (
               <span style={{ color: theme.textMuted, fontSize: '12px' }}>暂无可计算关系</span>
             ) : (
               viewModel.summary.byRole.map((item) => (
@@ -448,7 +455,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
                 >
                   <span style={{ color: theme.textMuted, fontSize: '12px' }}>{item.label}</span>
                   <span style={{ color: theme.text, fontSize: '12px' }}>
-                    {item.creditRows} 行 · {item.uniqueSubjects} 部
+                    {distributionCount(item.creditRows, '行')} ·{' '}
+                    {distributionCount(item.uniqueSubjects, '部')}
                   </span>
                 </div>
               ))
