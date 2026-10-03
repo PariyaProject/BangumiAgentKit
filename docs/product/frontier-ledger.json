@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-03T17:10:16+09:00",
+  "updated_at": "2026-10-03T17:28:23+09:00",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -192,7 +192,7 @@
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/CastCard.tsx"
       ],
-      "next_action": "Run #69 public ToolRegistry sample on 2026-10-03 returned 7/7 cast rows with complete coverage; the 360 CSS-pixel CastCard pairs the current source character/actor rows and 320/360/520 CSS-pixel fixtures show no overflow. Keep PARTIAL pending exact candidate-SHA natural-language Agent/MCP and Renderer/MCP verification; public sample scope is not long-term or QQ/TIM evidence.",
+      "next_action": "Exact candidate 84fefb172b9ac9c5d7d885dad495de6009293b22 returned 7/7 cast rows with complete coverage; its isolated Agent/MCP overview probe passed once. The Renderer/MCP tool generated and host-read a PNG, but the combined probe lost its report after ENOSPC while copying the artifact. Keep PARTIAL until a clean strict Renderer/MCP report and final answer-quality checks are captured; QQ/TIM remains separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -209,7 +209,7 @@
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Run #69 public ToolRegistry sample on 2026-10-03 returned 100 staff rows across 22 raw source-role labels with state=partial; the overview card keeps a bounded staff sample and states truncation. Keep PARTIAL pending exact candidate-SHA Agent/MCP validation and role-specific checks; do not infer roles absent from this source sample or claim complete staff coverage.",
+      "next_action": "Exact candidate 84fefb172b9ac9c5d7d885dad495de6009293b22 public source returned 100 staff rows across 22 raw source-role labels with state=partial; its isolated Agent/MCP overview call passed once. Renderer PNG generation/readback succeeded, but the probe report was lost after ENOSPC while copying. Keep PARTIAL until the clean Renderer/MCP report and staff-role answer checks pass; do not claim complete staff coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -401,7 +401,7 @@
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Run #69 public ToolRegistry sample on 2026-10-03 returned source staff labels including music-production/song credits but no 原作/导演/脚本 labels; current evidence is therefore partial and supports no inferred missing credits. Keep PARTIAL pending exact candidate-SHA natural-language Agent/MCP verification that unavailable roles are stated honestly.",
+      "next_action": "The current public sample includes music-production/song-credit labels but no 原作/导演/脚本 labels. Exact candidate Agent/MCP selected get_subject_overview once; the isolated Renderer/MCP image was recovered and shows partial coverage, but its combined probe exited after ENOSPC and did not save strict diagnostics. Keep PARTIAL until the Renderer report is clean and the answer explicitly avoids inferring absent roles.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -1773,7 +1773,7 @@
         "packages/renderer/src/templates/CastCard.tsx",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Run #69 mobile renderer candidate has direct public official-v0 staff evidence (100 rows, 22 raw role groups, partial) and a responsive overview with bounded staff groups. The dated report records role availability and evidence limits. Still required: exact candidate-SHA Agent/MCP/Renderer checks and later independent QQ/TIM acceptance.",
+      "next_action": "Run #69 candidate shows 100 official-v0 staff rows across 22 raw role groups with partial coverage. The Agent/MCP overview call passed at exact candidate SHA; a 360 CSS-pixel overview image was generated/read back, but the consolidated Renderer probe failed while saving a second local copy (ENOSPC). Keep partial pending a clean Renderer report and role-specific answer review; real QQ/TIM remains independent.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
@@ -1842,7 +1842,7 @@
         "packages/renderer/src/templates/CastCard.tsx",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Run #69 candidate adds responsive SubjectCard/CastCard layouts, localized subject media labels, and a 360 CSS-pixel live overview while preserving section states and caps; Chromium confirms no overflow at 320/360/520 for SubjectCard/CastCard. Still required: exact candidate-SHA Agent/MCP/Renderer journey and separate QQ/TIM acceptance.",
+      "next_action": "Run #69 candidate adds responsive SubjectCard/CastCard layouts and localized subject media labels; Chromium confirms no horizontal or in-element text overflow at 320/360/520 CSS px. The exact candidate Agent/MCP overview call passed. A Renderer/MCP PNG was generated, host-read, and visually inspected, but its combined probe did not save a strict report after ENOSPC; rerun that evidence before Candidate readiness. QQ/TIM acceptance remains separate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

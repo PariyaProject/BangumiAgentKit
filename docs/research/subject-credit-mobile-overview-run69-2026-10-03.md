@@ -3,6 +3,7 @@
 - Date: 2026-10-03 (JST)
 - Candidate branch: `codex/epoch-subject-credit-mobile-overview`
 - Base BangumiAgentKit revision: `3aea963a45c52a40f26c55f6daa42148c5274b13`
+- First candidate revision: `84fefb172b9ac9c5d7d885dad495de6009293b22`
 
 This is interim evidence from the selected Harness Epoch. The ToolRegistry
 implementation is unchanged from the base revision; the mobile renderer and
@@ -71,11 +72,33 @@ PNG bytes and public image assets are intentionally not committed:
 - The opt-in current-source public acceptance test passed 1/1 and generated
   the three PNGs above. No model or QQ/TIM client was involved.
 
-## Remaining acceptance
+## Exact candidate-SHA probes
 
-Before Candidate readiness, pin this work at its committed SHA and run one
-isolated natural-language Antigravity/MCP overview probe plus one isolated
-Renderer/MCP probe. Verify exact tool selection, subject identity, source
-relation labels, honest partial coverage, PNG ArtifactRef readback, and the
-rendered image. Keep the resulting sanitized reports and images local; do not
-count this as OAuth, QQ, TIM, or full-catalog client evidence.
+After commit `84fefb172b9ac9c5d7d885dad495de6009293b22`, the same three
+read-only ToolRegistry calls were repeated and passed 1/1. The exact-source
+Antigravity/MCP overview probe also passed: `get_subject_overview` was the only
+Bangumi tool exposed and was called once; the CLI exited 0, the JSON stream had
+126 valid lines and no invalid lines, and the sanitized report is retained
+locally in PariyaAgent at
+`.runtime/research/agent-standard-full-tool-get_subject_overview-subject-218707.json`.
+
+The isolated Renderer/MCP container ran at the same candidate revision and
+produced a 720×3440 PNG (519545 bytes; SHA-256
+`2511447cf7e65feda9bdc142ff72143fb1f2ad945ac1c3518b385115ff8f5d0b`). The
+probe's renderer path reached `renderer_artifact_metadata`, read the PNG back
+from the host ArtifactRef store, then exited with `ENOSPC` while attempting to
+write an additional local copy. The command therefore returned failure and did
+not persist its consolidated strict JSON report. The PNG was recovered from
+that run's own temporary artifact directory, visually inspected, and retained
+locally in PariyaAgent at
+`.runtime/research/run69-subject-credit-overview-84fefb1.png`. It clearly shows
+identity, date/type/score, cast, staff, relations, and partial-coverage labels;
+the probe's QA arguments capped each section at one returned row. A separate
+current-source live Renderer fixture has 7 cast rows, 6 bounded staff groups,
+and 9 relations in a 720×5024 PNG.
+
+Renderer artifact generation, host readback, and visual review are proven, but
+the combined Renderer/MCP probe is not marked PASS because its strict report
+was lost on the storage error. Re-run the isolated probe when Docker and local
+storage can record the complete result. No OAuth/account, QQ, TIM, NapCat, or
+persistent deployment was used.
