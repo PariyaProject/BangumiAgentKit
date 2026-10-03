@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-10-03",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "d1a5a03095818c090ca7f2f9ff255753e5381f7e",
+  "catalogSha256": "3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831",
+  "profile": "bangumi-full-renderer-qa-v1",
+  "sourceProfile": "standard-full",
+  "discoveryScenario": "G02",
+  "discoveryScenarioArgumentsVerified": true,
+  "rendererImageRevision": "d1a5a03095818c090ca7f2f9ff255753e5381f7e",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 121,
+  "jsonStreamDiagnostics": {
+    "lineClassCounts": {
+      "valid": 41,
+      "blank": 0,
+      "non_json_text": 0,
+      "malformed_json": 0,
+      "non_object_json": 0
+    },
+    "invalidLineCount": 0
+  },
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [
+    {
+      "name": "bangumi.render_query_subjects",
+      "arguments": {
+        "available": true,
+        "expectedFieldNames": [
+          "concepts",
+          "explain",
+          "from",
+          "limit",
+          "media",
+          "order",
+          "resultMode",
+          "sort",
+          "to"
+        ],
+        "matchedFieldNames": [
+          "concepts",
+          "explain",
+          "from",
+          "limit",
+          "media",
+          "order",
+          "resultMode",
+          "sort",
+          "to"
+        ],
+        "unexpectedFieldNames": [],
+        "passed": true
+      },
+      "outputShape": {
+        "type": "str",
+        "bytes": 184,
+        "keys": [
+          "artifact"
+        ]
+      }
+    }
+  ],
+  "bangumiToolEvents": [
+    {
+      "name": "bangumi.render_query_subjects",
+      "state": "ACTIVE"
+    },
+    {
+      "name": "bangumi.render_query_subjects",
+      "state": "DONE"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "bangumi.render_query_subjects",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.render_query_subjects",
+          "state": "DONE"
+        }
+      ],
+      "targetToolOutcome": "TARGET_TOOL_COMPLETED",
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "jsonStreamLineClassCounts": {
+          "valid": 41,
+          "blank": 0,
+          "non_json_text": 0,
+          "malformed_json": 0,
+          "non_object_json": 0
+        },
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "queryArgumentsMatchScenario": true,
+        "rendererArtifactVerified": true,
+        "chatViewportVerified": true,
+        "renderTarget": "chat",
+        "artifactRefReturned": true,
+        "artifactReadbackVerified": true,
+        "artifactBytes": 879861,
+        "artifactCopyWritten": true,
+        "toolReportedError": false,
+        "artifactMimeType": "image/png",
+        "artifactWidth": 720,
+        "artifactHeight": 4826
+      }
+    }
+  ],
+  "scopeNote": "One isolated unauthenticated public read renderer was exposed to the model; account-required renderers and all non-render/write tools were excluded. The artifact store was temporary. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+}

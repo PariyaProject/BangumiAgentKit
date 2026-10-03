@@ -63,6 +63,22 @@ const FULL_AUTH_WRITE_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   )
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const RUN66_DISCOVERY_DIRECT_EVIDENCE = JSON.parse(
+  readFileSync(
+    join(ROOT, 'docs/live-probes/discovery-scenarios-run66-d1a5a03-2026-10-03.json'),
+    'utf8',
+  ),
+);
+const RUN66_DISCOVERY_SCENARIO_DIR = join(ROOT, 'docs/live-probes/scenario-runs/run66-d1a5a03');
+const RUN66_DISCOVERY_AGENT_EVIDENCE = readdirSync(RUN66_DISCOVERY_SCENARIO_DIR)
+  .filter((name) => name.startsWith('agent-query-subjects-') && name.endsWith('.json'))
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(RUN66_DISCOVERY_SCENARIO_DIR, name), 'utf8')));
+const RUN66_DISCOVERY_RENDER_EVIDENCE = readdirSync(RUN66_DISCOVERY_SCENARIO_DIR)
+  .filter((name) => name.startsWith('render-query-subjects-') && name.endsWith('.json'))
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(RUN66_DISCOVERY_SCENARIO_DIR, name), 'utf8')));
+
 const EVIDENCE = [
   COMPACT_EVIDENCE,
   ...FULL_PUBLIC_QA_EVIDENCE,
@@ -323,7 +339,9 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
 
     for (const [name, fields] of rows) {
       expect(fields, name).toHaveLength(13);
-      expect(statusMark(fields[9]), `${name} model/MCP`).toBe(evidenceNames.includes(name) ? '✅' : '⬜');
+      expect(statusMark(fields[9]), `${name} model/MCP`).toBe(
+        evidenceNames.includes(name) ? '✅' : '⬜',
+      );
       expectClientEvidenceCell(fields[10], `${name} QQ pipeline`);
       expectClientEvidenceCell(fields[11], `${name} TIM client`);
     }
@@ -360,7 +378,17 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(catalogForHash(COMPACT_EVIDENCE.catalogSha256)).toBeDefined();
     for (const scenario of COMPACT_EVIDENCE.scenarios) {
       for (const call of scenario.toolCalls) {
-        expect(toolContractMatchesCurrent(COMPACT_EVIDENCE, call.name)).toBe(true);
+        if (toolContractMatchesCurrent(COMPACT_EVIDENCE, call.name)) continue;
+
+        // The historical Compact query report predates the deliberate discovery
+        // schema change in this Epoch; it remains history, while the current full
+        // profile report supplies fresh evidence for that exact tool contract.
+        expect(call.name).toBe('bangumi.query_subjects');
+        const currentReport = FULL_PUBLIC_QA_EVIDENCE.find(
+          (report: any) => report.scenarios?.[0]?.id === call.name,
+        );
+        expect(currentReport).toBeDefined();
+        expect(toolContractMatchesCurrent(currentReport, call.name)).toBe(true);
       }
     }
 
@@ -808,6 +836,73 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(report.timClientTested).toBe(false);
       expectClientEvidenceCell(rows.get(name)?.[10], `${name} QQ pipeline`);
       expectClientEvidenceCell(rows.get(name)?.[11], `${name} TIM client`);
+    }
+  });
+
+  it('retains exact-source direct, Agent/MCP, and chat-card evidence for G02/G03/G14', () => {
+    const expectedScenarios = ['G02', 'G03', 'G14'];
+    const expectedRevision = 'd1a5a03095818c090ca7f2f9ff255753e5381f7e';
+    const expectedCatalog = '3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831';
+
+    expect(RUN66_DISCOVERY_DIRECT_EVIDENCE).toMatchObject({
+      evidenceKind: 'bangumi_public_discovery_scenarios_tool_registry',
+      mode: 'read_only_public_api_scenario_smoke',
+      sourceRevision: expectedRevision,
+      catalogSha256: expectedCatalog,
+      qqPipelineTested: false,
+      timClientTested: false,
+      scenarioCount: 3,
+    });
+    const directByScenario = new Map<string, any>(
+      RUN66_DISCOVERY_DIRECT_EVIDENCE.results.map((result: any) => [result.scenario, result]),
+    );
+    expect([...directByScenario.keys()].sort()).toEqual(expectedScenarios);
+    for (const scenario of expectedScenarios) {
+      expect(directByScenario.get(scenario).assertions.passed).toBe(true);
+      expect(
+        directByScenario.get(scenario).result.items.every((item: any) => !('name' in item)),
+      ).toBe(true);
+    }
+    expect(
+      directByScenario
+        .get('G02')
+        .result.items.map((item: any) => item.collectionTotal)
+        .every(
+          (value: number, index: number, values: number[]) =>
+            index === 0 || values[index - 1]! >= value,
+        ),
+    ).toBe(true);
+    expect(directByScenario.get('G02').result.coverage.state).toBe('unknown');
+    expect(directByScenario.get('G14').result.warningCodes).toEqual(['EXPERIMENTAL_SOURCE']);
+
+    for (const reports of [RUN66_DISCOVERY_AGENT_EVIDENCE, RUN66_DISCOVERY_RENDER_EVIDENCE]) {
+      expect(reports.map((report: any) => report.discoveryScenario).sort()).toEqual(
+        expectedScenarios,
+      );
+      for (const report of reports) {
+        expect(report.upstreamRevision).toBe(expectedRevision);
+        expect(report.catalogSha256).toBe(expectedCatalog);
+        expect(report.processExitCode).toBe(0);
+        expect(report.resultStatus).toBe('SUCCESS');
+        expect(report.qqPipelineTested).toBe(false);
+        expect(report.timClientTested).toBe(false);
+        expect(report.scenarios).toHaveLength(1);
+        expect(report.scenarios[0].passed).toBe(true);
+        expect(report.scenarios[0].assertions.queryArgumentsMatchScenario).toBe(true);
+        expect(report.scenarios[0].toolCalls).toEqual([
+          { name: report.scenarios[0].id, state: 'DONE' },
+        ]);
+      }
+    }
+    for (const report of RUN66_DISCOVERY_RENDER_EVIDENCE) {
+      expect(report.scenarios[0].assertions).toMatchObject({
+        rendererArtifactVerified: true,
+        artifactReadbackVerified: true,
+        artifactMimeType: 'image/png',
+        artifactWidth: 720,
+        chatViewportVerified: true,
+        renderTarget: 'chat',
+      });
     }
   });
 });
