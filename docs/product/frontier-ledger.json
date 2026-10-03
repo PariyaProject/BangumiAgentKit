@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-03T17:59:26+09:00",
+  "updated_at": "2026-10-03T14:41:52Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -140,11 +140,50 @@
       "kind": "scenario",
       "user_question": "水濑祈过去12个月参与了多少部TV动画配音？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run72-frontier-delta-2026-10-03.md",
+        "packages/bangumi-core/src/services/person-activity-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "packages/renderer/src/templates/PersonActivityCard.tsx",
+        "apps/standalone/src/presenter.ts",
+        "tests/semantic/person-activity.test.ts",
+        "tests/render/person-activity.test.ts",
+        "tests/standalone/person-activity-presenter.test.ts"
+      ],
+      "next_action": "Keep PARTIAL: bangumi.get_person_activity uses current official-v0 person relations and subject first_air_date with a 12-calendar-month window, conservative TV classification, stable-ID deduplication, and explicit relation/detail coverage. A bounded public observation on 2026-10-03 returned 2 eligible rows after selecting 120/324 observed relations and hydrating 48/120 selected subject IDs; this is an observed partial count, not the full-window total. The Renderer and Standalone now label partial summary values as observations. Do not claim a rolling 365-day interval or complete TV-voice total; natural-language Agent and QQ/TIM client acceptance remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": ["OP-001"],
+      "evidence": {
+        "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
+        "tests": [
+          "tests/semantic/person-activity.test.ts",
+          "tests/render/person-activity.test.ts",
+          "tests/standalone/person-activity-presenter.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/services/person-activity-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/renderer/src/templates/PersonActivityCard.tsx",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "source_contract": "Official v0 current person relations and bounded subject details; person activity assigns current subject first_air_date values to calendar months and conservatively classifies TV. The selected observation used maxRelations=120, maxSubjectDetails=48, maxRows=60 and returned partial coverage. In partial state, summary counts are only observations from selected relations and successfully hydrated, classifiable details; the result is neither an exact rolling-365-day count nor a complete historical total.",
+        "formula_version": "person-activity-window-v1",
+        "live_observation": {
+          "retrieved_at": "2026-10-03T14:17:13.764Z",
+          "state": "partial",
+          "window": "2025-11-01 through 2026-10-03; 12 calendar months ending on the as-of date",
+          "relation_rows_observed": 324,
+          "relation_rows_selected": 120,
+          "relation_rows_omitted": 204,
+          "subject_ids_selected": 120,
+          "subject_details_succeeded": 48,
+          "subject_details_not_requested": 72,
+          "eligible_and_returned_rows": 2,
+          "warning_codes": ["RELATION_LIMIT_REACHED", "SUBJECT_DETAIL_COVERAGE", "MEDIA_UNKNOWN"]
+        }
+      }
     },
     {
       "id": "G05",
@@ -1693,10 +1732,13 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Voice Actor Workload?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Use the bounded person activity comparison for release-date observations; retain a separate research need for actual workload, historical snapshots, and labor-time semantics.",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "docs/research/run72-frontier-delta-2026-10-03.md"
+      ],
+      "next_action": "Use bangumi.get_person_activity for bounded current release-date observations. In partial state, its summary counts are now explicitly presented as observations over selected relations and successfully hydrated details, not as full-window totals. Keep PARTIAL; actual workload, labor time, and historical person snapshots remain unsupported, and the current G04 count does not answer an exact rolling-365-day or complete-catalog question.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": ["G05", "S07"],
+      "related_ids": ["G04", "G05", "S07"],
       "closure_reason": "Reconciled the opportunity with a usable bounded release-activity comparison and monthly peak view while retaining PARTIAL status because official v0 lacks labor-time evidence and historical person snapshots.",
       "evidence": {
         "capabilities": ["bangumi.get_person_activity", "bangumi.render_person_activity"],
@@ -1704,6 +1746,7 @@
           "tests/unit/person-activity.test.ts",
           "tests/semantic/person-activity.test.ts",
           "tests/render/person-activity.test.ts",
+          "tests/standalone/person-activity-presenter.test.ts",
           "tests/standalone/discovery-command.test.ts"
         ],
         "implementation": [
@@ -1714,9 +1757,10 @@
           "packages/renderer/src/view-models/index.ts",
           "packages/renderer/src/view-model-builders/index.ts",
           "packages/renderer/src/templates/PersonActivityCard.tsx",
-          "apps/standalone/src/command-registry.ts"
+          "apps/standalone/src/command-registry.ts",
+          "apps/standalone/src/presenter.ts"
         ],
-        "source_contract": "The comparison is opt-in and derives two equal calendar windows from current official-v0 person relations and current subject first_air_date. It exposes per-period coverage states, with no numeric delta when a period is unavailable or not-computable and no complete peak claim under partial coverage. It is not a historical snapshot or workload measurement.",
+        "source_contract": "The comparison is opt-in and derives two equal calendar windows from current official-v0 person relations and current subject first_air_date. It exposes per-period coverage states, with no numeric delta when a period is unavailable or not-computable and no complete peak claim under partial coverage. In partial state, all displayed period summary counts are observations from selected relations and successfully hydrated/classifiable details, not full-window totals. It is not a historical snapshot or workload measurement.",
         "formula_version": "person-activity-comparison-v1"
       }
     },

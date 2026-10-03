@@ -438,6 +438,15 @@ values, so it remains a release-date observation, not a workload, labor-time,
 or historical-snapshot measurement. Actual workload and historical person
 snapshots remain deferred pending a compatible source and retention contract.
 
+2026-10-03 bounded public-v0 observation confirmed that a 12-calendar-month
+voice/TV query can return `partial` with relation sampling, a subject-detail
+cap, and unknown media classification. Its two eligible rows were only the
+observed portion of the selected data, not the full-window total. Renderer and
+Standalone now label partial summary counts as observations; Standalone also
+prints the summary and suppresses unsupported zero counts. OP-001 remains
+PARTIAL because the source has no historical person snapshot or labor-time
+evidence, and a complete full-window workload claim is still unsupported.
+
 ---
 
 ## OP-002 Franchise Watch Order

@@ -90,6 +90,75 @@ describe('bangumi.get_person_activity', () => {
     );
   });
 
+  it('frames partial summary counts as observed and retains a partial empty state', async () => {
+    const now = new Date();
+    const currentMonthDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+    const execute = async (includeDate: boolean) => {
+      const fetchFn = async (input: string | URL | Request, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/v0/persons/20')) {
+          return json({ id: 20, name: 'Person', career: ['seiyu'] });
+        }
+        if (url.endsWith('/v0/persons/20/characters')) {
+          return json([
+            { id: 1, name: 'Character 1', subject_id: 10, subject_type: 2, staff: '配角' },
+            { id: 2, name: 'Character 2', subject_id: 11, subject_type: 2, staff: '配角' },
+            { id: 3, name: 'Character 3', subject_id: 12, subject_type: 2, staff: '配角' },
+          ]);
+        }
+        const subjectMatch = url.match(/\/v0\/subjects\/(\d+)$/u);
+        if (subjectMatch) {
+          return json({
+            id: Number(subjectMatch[1]),
+            type: 2,
+            name: `Subject ${subjectMatch[1]}`,
+            platform: 'TV',
+            ...(includeDate ? { date: currentMonthDate } : {}),
+          });
+        }
+        return json({ error: 'not found' }, 404);
+      };
+      const tool = getTool(new HttpClient({ fetchFn }));
+      return (await tool.execute(
+        {
+          personId: 20,
+          kind: 'voice',
+          media: 'tv',
+          windowMonths: 36,
+          maxRelations: 2,
+          maxSubjectDetails: 1,
+        },
+        { principalId: 'p', botInstanceId: 'b', conversationId: 'c' },
+      )) as Record<string, any>;
+    };
+
+    const partial = await execute(true);
+    const tool = getTool(new HttpClient({ fetchFn: async () => json({}) }));
+    expect(tool.description).toContain('state=partial');
+    expect(partial).toMatchObject({
+      state: 'partial',
+      summary: { uniqueSubjects: 1 },
+      coverage: {
+        relationRowsObserved: 3,
+        relationRowsSelected: 2,
+        relationRowsDroppedAtLimit: 1,
+        subjectDetailsSucceeded: 1,
+        subjectDetailIdsDroppedAtLimit: 1,
+        rowsEligible: 1,
+      },
+    });
+    expect(partial.limitations.join(' ')).toContain(
+      'summary 的作品、关系行和角色计数仅表示本次选取关系',
+    );
+
+    const partialEmpty = await execute(false);
+    expect(partialEmpty).toMatchObject({
+      state: 'partial',
+      summary: { uniqueSubjects: 0 },
+      coverage: { rowsEligible: 0 },
+    });
+  });
+
   it('rejects authority values outside the published bounds', () => {
     const tool = getTool(new HttpClient({ fetchFn: async () => json({}) }));
     expect(() => tool.input.parse({ personId: 20, maxRelations: 121 })).toThrow();

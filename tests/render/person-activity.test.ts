@@ -206,6 +206,7 @@ describe('Person activity renderer', () => {
     const comparisonViewModel = buildPersonActivityViewModel(comparisonResult, { maxRows: 12 });
     const comparisonHtml = renderHtmlTemplate(comparisonViewModel, 'bangumi-dark', {}, 640);
     expect(comparisonHtml).toContain('前后窗口对比');
+    expect(comparisonHtml).toContain('观察到的 22 部作品 · 观察到的 22 行 · 观察到的 22 个角色');
     expect(comparisonHtml).toContain('部分覆盖下观察到的发布月份峰值');
     expect(comparisonHtml).toContain('不代表历史快照、实际工作量或劳动时长');
 
@@ -393,5 +394,66 @@ describe('Person activity renderer', () => {
     expect(html).toContain('另有 4968 项省略');
     expect(html).not.toContain('tag-4999');
     expect(Buffer.byteLength(html, 'utf8')).toBeLessThan(100_000);
+  });
+
+  it('labels partial summary metrics as observations and hides unsupported zero totals', () => {
+    const partialHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(result, { maxRows: 2 }),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(partialHtml).toContain('观察到的去重作品');
+    expect(partialHtml).toContain('观察到的关系行');
+    expect(partialHtml).toContain('观察到的去重角色');
+    expect(partialHtml).toContain('观察到的 3 行 · 观察到的 3 部');
+    expect(partialHtml).toContain('观察到的 11 行 · 观察到的 11 部');
+    expect(partialHtml).toContain('不代表整个时间窗的总数');
+
+    const completeHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(
+        {
+          ...result,
+          state: 'complete',
+          warnings: [],
+          coverage: {
+            ...result.coverage,
+            relationRowsDroppedAtLimit: 0,
+            sampled: false,
+            truncated: false,
+            missingDateRows: 0,
+            mediaUnknownRows: 0,
+          },
+        },
+        { maxRows: 2 },
+      ),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(completeHtml).toContain('>去重作品</div>');
+    expect(completeHtml).toContain('11 行 · 11 部');
+    expect(completeHtml).not.toContain('观察到的 11 行');
+    expect(completeHtml).not.toContain('观察到的去重作品');
+
+    const partialEmptyHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(
+        {
+          ...result,
+          state: 'partial',
+          summary: { ...result.summary, creditRows: 0, uniqueSubjects: 0, uniqueCharacters: 0 },
+          coverage: { ...result.coverage, rowsEligible: 0 },
+        },
+        { maxRows: 2 },
+      ),
+      'bangumi-dark',
+      {},
+      640,
+    );
+    expect(partialEmptyHtml).toContain('观察到的去重作品');
+    expect(partialEmptyHtml).toContain('当前窗口的月度计数不可用（部分覆盖）');
+    expect(partialEmptyHtml).toContain('当前窗口的角色/职位计数不可用（部分覆盖）');
+    expect(partialEmptyHtml).not.toContain('观察到的 11 行 · 观察到的 11 部');
+    expect(partialEmptyHtml).toContain('>不可用</div>');
   });
 });
