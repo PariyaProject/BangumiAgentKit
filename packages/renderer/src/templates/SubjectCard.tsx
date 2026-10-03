@@ -33,7 +33,7 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
 
   return (
     <CardFrame theme={theme} width={width}>
-      {compact && <TitleBlock title={displayTitle} subtitle={originalTitle} theme={theme} />}
+      <TitleBlock title={displayTitle} subtitle={originalTitle} theme={theme} />
       <div
         style={{
           display: 'flex',
@@ -61,7 +61,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
             minWidth: 0,
           }}
         >
-          {!compact && <TitleBlock title={displayTitle} subtitle={originalTitle} theme={theme} />}
           <MetaRow
             items={[
               `类型: ${subjectTypeLabel(subject.type)}`,
