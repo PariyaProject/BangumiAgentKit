@@ -43,6 +43,16 @@ interface CandidateWithDetail {
   evaluation: 'pending' | 'match' | 'non_match' | 'unresolved';
 }
 
+function uniqueWarnings(warnings: CapabilityWarning[]): CapabilityWarning[] {
+  const seen = new Set<string>();
+  return warnings.filter((warning) => {
+    const key = JSON.stringify(warning) ?? String(warning);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function mediaForType(type: number): MediaType {
   switch (type) {
     case 1:
@@ -728,7 +738,7 @@ export class DiscoveryEngine {
         steps: plan.steps,
       },
       coverage,
-      warnings,
+      warnings: uniqueWarnings(warnings),
       evidence: [...new Set(evidence)],
       ...(query.explain === 'none' ? {} : { explanation: this.explain(query, plan, coverage) }),
       ...(query.concepts.length === 0 ? {} : { conceptResolution }),

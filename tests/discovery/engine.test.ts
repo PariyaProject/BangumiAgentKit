@@ -375,6 +375,20 @@ class ScoreTieProvider implements SubjectDiscoveryProvider {
   }
 }
 
+class RepeatedWarningScoreTieProvider extends ScoreTieProvider {
+  override async searchSubjects(
+    request: SubjectDiscoverySearchRequest,
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const result = await super.searchSubjects(request);
+    return {
+      ...result,
+      warnings: [
+        { code: 'EXPERIMENTAL_SOURCE', message: 'The same source notice appears on each page.' },
+      ],
+    };
+  }
+}
+
 class MetaExclusionProvider implements SubjectDiscoveryProvider {
   private readonly subjects: SubjectDiscoveryCandidate[] = [
     { id: 201, type: 2, name: 'Original', platform: 'TV', tags: [], metaTags: ['原创'] },
@@ -738,6 +752,19 @@ describe('bounded discovery engine', () => {
     expect(result.items.map((item) => item.id)).toEqual([21, 2]);
     expect(provider.searchOffsets).toEqual([0, 2]);
     expect(result.explanation?.tieBreak).toEqual({ field: 'ratingCount', order: 'desc' });
+  });
+
+  it('deduplicates identical provider warnings across scanned pages', async () => {
+    const result = await new DiscoveryEngine(new RepeatedWarningScoreTieProvider()).query({
+      media: 'anime',
+      sort: 'score',
+      tieBreak: { field: 'ratingCount' },
+      limit: 2,
+    });
+
+    expect(result.warnings).toEqual([
+      { code: 'EXPERIMENTAL_SOURCE', message: 'The same source notice appears on each page.' },
+    ]);
   });
 
   it('marks score-tie top-N partial when the page budget cannot prove the tie boundary', async () => {

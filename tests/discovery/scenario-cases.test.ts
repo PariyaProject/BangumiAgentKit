@@ -14,8 +14,8 @@ describe('fixed discovery acceptance scenarios', () => {
 
   it('validates G02 exact concept, media, and half-open 2024 date scope', () => {
     const checks = validateDiscoveryScenarioItems('G02', [
-      { id: 20, media: 'anime', date: '2024-01-01', conceptMatched: true },
-      { id: 21, media: 'anime', date: '2024-12-31', conceptMatched: true },
+      { id: 20, media: 'anime', date: '2024-01-01', collectionTotal: 42_000, conceptMatched: true },
+      { id: 21, media: 'anime', date: '2024-12-31', collectionTotal: 31_000, conceptMatched: true },
     ]);
 
     expect(Object.values(checks).every(Boolean)).toBe(true);
@@ -31,6 +31,38 @@ describe('fixed discovery acceptance scenarios', () => {
     expect(summarized[0]?.conceptMatched).toBe(true);
     expect(JSON.stringify(summarized)).not.toContain('异世界');
     expect(JSON.stringify(summarized)).not.toContain('public title');
+  });
+
+  it('validates the observed current collection-count ordering for G02 without retaining titles', () => {
+    const summaries = summarizeDiscoveryScenarioItems('G02', [
+      {
+        id: 60,
+        name: 'first public title',
+        media: 'anime',
+        date: '2024-01-02',
+        collectionTotal: 42_000,
+        tags: ['异世界'],
+      },
+      {
+        id: 61,
+        name: 'second public title',
+        media: 'anime',
+        date: '2024-03-04',
+        collectionTotal: 31_000,
+        tags: ['异世界'],
+      },
+    ]);
+
+    expect(validateDiscoveryScenarioItems('G02', summaries).heatOrderDescending).toBe(true);
+    expect(
+      validateDiscoveryScenarioItems('G02', [...summaries].reverse()).heatOrderDescending,
+    ).toBe(false);
+    expect(JSON.stringify(summaries)).not.toContain('public title');
+
+    const missingCount = summarizeDiscoveryScenarioItems('G02', [
+      { id: 62, media: 'anime', date: '2024-04-05', tags: ['异世界'] },
+    ]);
+    expect(validateDiscoveryScenarioItems('G02', missingCount).heatOrderDescending).toBe(false);
   });
 
   it('validates G03 thresholds and G14 score/rating-count ordering', () => {

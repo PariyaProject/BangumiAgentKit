@@ -58,6 +58,7 @@ export interface DiscoveryScenarioItem {
   date?: string;
   score?: number;
   ratingCount?: number;
+  collectionTotal?: number;
   conceptMatched?: boolean;
 }
 
@@ -88,6 +89,11 @@ export function summarizeDiscoveryScenarioItems(
           : {}),
         ...(typeof source.ratingCount === 'number' && Number.isFinite(source.ratingCount)
           ? { ratingCount: source.ratingCount }
+          : {}),
+        ...(scenario === 'G02' &&
+        typeof source.collectionTotal === 'number' &&
+        Number.isFinite(source.collectionTotal)
+          ? { collectionTotal: source.collectionTotal }
           : {}),
         conceptMatched:
           Array.isArray(source[conceptField]) &&
@@ -123,6 +129,22 @@ export function validateDiscoveryScenarioItems(
 
   if (scenario === 'G02') {
     checks.heatSortRequested = selected.query.sort === 'heat' && selected.query.order === 'desc';
+    checks.heatOrderDescending =
+      items.length > 0 &&
+      items.every(
+        (item) =>
+          typeof item.collectionTotal === 'number' &&
+          Number.isFinite(item.collectionTotal) &&
+          item.collectionTotal >= 0,
+      ) &&
+      items.slice(1).every((item, index) => {
+        const previous = items[index];
+        return (
+          previous?.collectionTotal !== undefined &&
+          item.collectionTotal !== undefined &&
+          previous.collectionTotal >= item.collectionTotal
+        );
+      });
     return checks;
   }
 
