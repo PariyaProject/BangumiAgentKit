@@ -226,14 +226,44 @@
       "status": "PARTIAL",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
-        "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
+        "docs/research/run75-frontier-delta-after-pr76-2026-10-03.md",
+        "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
+        "tests/render/subject-cast-g06.test.ts",
         "tests/integration/live-subject-credit.acceptance.test.ts",
-        "tests/render/subject-credit-mobile-layout.test.ts",
+        "packages/bangumi-core/src/services/character-service.ts",
+        "packages/bangumi-core/src/workflows/subject-cast.ts",
         "packages/renderer/src/templates/CastCard.tsx"
       ],
-      "next_action": "Run #69 live ToolRegistry assertions at product code 84fefb1 returned 7/7 cast rows with 7 valid actor links; the Agent/MCP tool call passed once. Its old run did not validate answer prose, and the strict Renderer/MCP report is still missing after ENOSPC. Keep PARTIAL until answer-level validation and a clean Renderer report pass; QQ/TIM remains separate.",
+      "next_action": "Keep PARTIAL. The exact e606ac2 current-source ToolRegistry sample used subjectId=218707, limit=100 and returned 7 characters with 7 valid actor links (observed=returned=7, truncated=false); raw labels were 2 主角 and 5 配角. The service-emittable G06 regression separately asserts service-level observed/returned counts, schema drift and truncation, keeps an unknown actorless role visible, and excludes an invalid actor from rendered rows. CastCard receives only returned rows and does not surface discarded-row coverage/truncation; the 360/720 viewport assertions check HTML content, not clipping/layout. One isolated standard-full Agent/MCP call completed get_subject_cast and one render_cast_card Artifact call completed with readback on exact source e606ac2. The Agent/MCP sanitizer confirms tool completion under the configured prompt (subject 218707, requested limit 5) but does not retain actual arguments or result rows; the direct ToolRegistry evidence is separate. Neither validates natural-language answer prose. A single sample does not prove exhaustive source coverage or a universal main/support taxonomy. QQ/TIM remains separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_subject_cast",
+          "bangumi.render_cast_card"
+        ],
+        "tests": [
+          "tests/render/subject-cast-g06.test.ts",
+          "tests/integration/live-subject-credit.acceptance.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/services/character-service.ts",
+          "packages/bangumi-core/src/workflows/subject-cast.ts",
+          "packages/renderer/src/view-model-builders/index.ts",
+          "packages/renderer/src/templates/CastCard.tsx"
+        ],
+        "live_probe": "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
+        "source_contract": "Official v0 subject-character relations through the exact e606ac2431a930384d85c78715e5abfcde9ce3dd source. One ToolRegistry call with subjectId=218707 and limit=100 observed and returned 7 rows, all with valid actor IDs, raw labels 2 主角/5 配角, and no truncation. A separate forced public Agent/MCP get_subject_cast call completed for configured subject 218707 with prompt limit=5; its sanitizer retains neither actual arguments nor result rows. The renderer Artifact call returned/read back from the same exact source. The sample does not prove endpoint-wide completeness or a universal role taxonomy.",
+        "observed_at": "2026-10-03T18:10:58Z",
+        "catalog_sha256": "118afc18439cb13dc9faec92e3cb560d54bbed058e4facb6369bec19ec224b60",
+        "render_artifact": {
+          "tool": "bangumi.render_cast_card",
+          "width": 720,
+          "height": 1956,
+          "artifact_readback_verified": true,
+          "visual_inspection": "seven rows readable without clipping"
+        }
+      }
     },
     {
       "id": "G07",
