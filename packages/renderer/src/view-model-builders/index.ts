@@ -38,6 +38,7 @@ import type {
   SubjectCardViewModel,
   SearchListViewModel,
   CastCardViewModel,
+  CastCardSourceCoverageViewModel,
   CollectionProgressViewModel,
   CollectionIntelligenceViewModel,
   CollectionBacklogViewModel,
@@ -1953,6 +1954,7 @@ export function buildCastCardViewModel(
   subject: { id: number; name: string; nameCn?: string },
   castItems: DomainRelatedCharacter[],
   maxItems = 20,
+  coverage?: CastCardSourceCoverageViewModel,
 ): CastCardViewModel {
   const capped = castItems.slice(0, maxItems);
   const hiddenCount = Math.max(0, castItems.length - maxItems);
@@ -1984,6 +1986,7 @@ export function buildCastCardViewModel(
     },
     items,
     hiddenCount: hiddenCount > 0 ? hiddenCount : undefined,
+    ...(coverage === undefined ? {} : { coverage }),
   };
 }
 

@@ -248,6 +248,14 @@ export interface CastItemViewModel {
   }>;
 }
 
+export interface CastCardSourceCoverageViewModel {
+  observed: number;
+  returned: number;
+  truncated: boolean;
+  schemaDriftRows: number;
+  invalidActorIdRows: number;
+}
+
 export interface CastCardViewModel {
   template: 'cast-card';
   version: 1;
@@ -258,6 +266,7 @@ export interface CastCardViewModel {
   };
   items: CastItemViewModel[];
   hiddenCount?: number;
+  coverage?: CastCardSourceCoverageViewModel;
 }
 
 export interface CollectionProgressViewModel {

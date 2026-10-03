@@ -25,6 +25,42 @@ export const CastCard: React.FC<CastCardProps> = ({
     <CardFrame theme={theme} width={width}>
       <TitleBlock title="角色与声优" subtitle={subject.nameCn || subject.name} theme={theme} />
 
+      {viewModel.coverage ? (
+        <div
+          role="note"
+          aria-label="角色来源覆盖"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3px',
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.sm,
+            color: theme.textMuted,
+            fontSize: '11px',
+            lineHeight: 1.5,
+            overflowWrap: 'anywhere',
+          }}
+        >
+          <div>
+            本次来源响应：观测 {viewModel.coverage.observed} 条，可用 {viewModel.coverage.returned}{' '}
+            条；本卡显示 {items.length} 条。
+          </div>
+          {viewModel.coverage.truncated ? (
+            <div>本次读取结果不完整；以上计数只描述当前观察到的来源响应。</div>
+          ) : null}
+          {viewModel.coverage.schemaDriftRows > 0 ? (
+            <div>字段异常记录：{viewModel.coverage.schemaDriftRows} 条未纳入。</div>
+          ) : null}
+          {viewModel.coverage.invalidActorIdRows > 0 ? (
+            <div>
+              无效演员 ID：{viewModel.coverage.invalidActorIdRows} 个（与字段异常记录可能重叠）。
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
         {items.map((item, idx) => {
           const charImg = item.character.image

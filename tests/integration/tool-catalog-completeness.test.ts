@@ -268,13 +268,22 @@ describe('complete Bangumi tool surface', () => {
       images: { common: 'https://example.invalid/cover.jpg' },
       totalEpisodes: 12,
     } as any);
-    vi.spyOn(CharacterService.prototype, 'getSubjectCharacters').mockResolvedValue([
-      {
-        character: { id: 2, name: '角色', type: 1, images: {} },
-        relation: '主角',
-        actors: [{ id: 3, name: '声优', type: 1 }],
+    vi.spyOn(CharacterService.prototype, 'getSubjectCharactersWithCoverage').mockResolvedValue({
+      items: [
+        {
+          character: { id: 2, name: '角色', type: 1, images: {} },
+          relation: '主角',
+          actors: [{ id: 3, name: '声优', type: 1 }],
+        },
+      ],
+      coverage: {
+        observed: 2,
+        returned: 1,
+        truncated: true,
+        schemaDriftRows: 1,
+        invalidActorIdRows: 1,
       },
-    ] as any);
+    } as any);
     vi.spyOn(UserService.prototype, 'getUserSubjectCollection').mockResolvedValue({
       found: true,
       collection: {
@@ -370,7 +379,18 @@ describe('complete Bangumi tool surface', () => {
       ),
     ).resolves.toMatchObject({ artifact: { id: 'private-principal-a' } });
 
-    expect(renderCard).toHaveBeenCalledWith(expect.objectContaining({ template: 'cast-card' }));
+    expect(renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: 'cast-card',
+        coverage: {
+          observed: 2,
+          returned: 1,
+          truncated: true,
+          schemaDriftRows: 1,
+          invalidActorIdRows: 1,
+        },
+      }),
+    );
     expect(renderCard).toHaveBeenCalledWith(expect.objectContaining({ template: 'search-list' }));
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'collection-progress' }),

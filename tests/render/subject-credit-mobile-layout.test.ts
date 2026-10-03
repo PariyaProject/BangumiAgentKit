@@ -105,7 +105,8 @@ describe('subject card responsive title hierarchy', () => {
       subject: {
         id: 900001,
         name: 'この世界をめぐる壮大な冒険のアニメーション作品と仲間たちの物語の長い正式タイトル',
-        nameCn: '这是一个较长的中文作品标题，用来核对标准宽度下封面是否会挤压标题，并观察中日文副标题的层级',
+        nameCn:
+          '这是一个较长的中文作品标题，用来核对标准宽度下封面是否会挤压标题，并观察中日文副标题的层级',
         type: 'anime',
       },
       source: { label: 'Bangumi Agent Kit' },
@@ -165,9 +166,16 @@ describe('subject card responsive title hierarchy', () => {
         },
       ],
       hiddenCount: 4,
+      coverage: {
+        observed: 6,
+        returned: 6,
+        truncated: false,
+        schemaDriftRows: 0,
+        invalidActorIdRows: 0,
+      },
     };
 
-    for (const width of [320, 360, 520]) {
+    for (const width of [320, 360, 520, 720]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
       const layout = await measureRenderRootLayout(html, width);
       const title = layout.titleBlocks[0];
@@ -179,7 +187,31 @@ describe('subject card responsive title hierarchy', () => {
       expect(layout.overflowing, `cast-card overflow at ${width}px`).toEqual([]);
       expect(layout.contentOverflowing, `cast-card clipped text at ${width}px`).toEqual([]);
       expect(html).toContain('暂无 CV/演员');
+      expect(html).toContain('本次来源响应：观测 6 条，可用 6 条；本卡显示 2 条。');
       expect(html).toContain('另有 4 位关联角色未全部展示');
+      expect(html).not.toContain('覆盖完整');
+    }
+
+    const incompleteViewModel: CastCardViewModel = {
+      ...viewModel,
+      coverage: {
+        observed: 9,
+        returned: 6,
+        truncated: true,
+        schemaDriftRows: 3,
+        invalidActorIdRows: 12,
+      },
+    };
+    for (const width of [320, 360, 520, 720]) {
+      const html = renderHtmlTemplate(incompleteViewModel, 'bangumi-dark', {}, width);
+      const layout = await measureRenderRootLayout(html, width);
+
+      expect(layout.scrollWidth, `incomplete cast width at ${width}px`).toBe(width);
+      expect(layout.overflowing, `incomplete cast overflow at ${width}px`).toEqual([]);
+      expect(layout.contentOverflowing, `incomplete cast clipped text at ${width}px`).toEqual([]);
+      expect(html).toContain('本次读取结果不完整');
+      expect(html).toContain('字段异常记录：3 条未纳入。');
+      expect(html).toContain('无效演员 ID：12 个（与字段异常记录可能重叠）。');
     }
 
     const rendered = await renderService.renderCard(viewModel, {

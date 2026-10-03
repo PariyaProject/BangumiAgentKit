@@ -78,11 +78,19 @@ describe('G06 Girls’ Last Tour cast and voice-actor scenario', () => {
       { id: G06_SUBJECT_ID, name: 'Shuumatsu no Tabitabi', nameCn: '少女终末旅行' },
       result.cast,
       100,
+      {
+        observed: result.observed,
+        returned: result.returned,
+        truncated: result.truncated,
+        schemaDriftRows: result.schemaDriftRows,
+        invalidActorIdRows: result.invalidActorIdRows,
+      },
     );
     for (const width of [360, 720]) {
       const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
       expect(html).toContain('少女终末旅行');
       expect(html).toContain('角色与声优');
+      expect(html).toContain('本次来源响应：观测 7 条，可用 7 条；本卡显示 7 条。');
       expect(html).toContain('主角');
       expect(html).toContain('配角');
       for (const row of sourceCast) {
@@ -90,6 +98,7 @@ describe('G06 Girls’ Last Tour cast and voice-actor scenario', () => {
         expect(html).toContain(row.actors[0]!.name);
       }
       expect(html).not.toContain('完整名单');
+      expect(html).not.toContain('覆盖完整');
     }
 
     const actorlessUnknownRole = {
@@ -135,18 +144,71 @@ describe('G06 Girls’ Last Tour cast and voice-actor scenario', () => {
       relation: actorlessUnknownRole.relation,
       actors: [],
     });
-    const degradedHtml = renderHtmlTemplate(
-      buildCastCardViewModel(
-        { id: G06_SUBJECT_ID, name: 'Shuumatsu no Tabitabi', nameCn: '少女终末旅行' },
-        degraded.cast,
-        100,
-      ),
-      'bangumi-dark',
-      {},
-      360,
+    const degradedViewModel = buildCastCardViewModel(
+      { id: G06_SUBJECT_ID, name: 'Shuumatsu no Tabitabi', nameCn: '少女终末旅行' },
+      degraded.cast,
+      100,
+      {
+        observed: degraded.observed,
+        returned: degraded.returned,
+        truncated: degraded.truncated,
+        schemaDriftRows: degraded.schemaDriftRows,
+        invalidActorIdRows: degraded.invalidActorIdRows,
+      },
     );
-    expect(degradedHtml).toContain('未映射职位');
-    expect(degradedHtml).toContain('暂无 CV/演员');
-    expect(degradedHtml).not.toContain('Invalid actor');
+    for (const width of [360, 720]) {
+      const html = renderHtmlTemplate(degradedViewModel, 'bangumi-dark', {}, width);
+      expect(html).toContain('本次来源响应：观测 9 条，可用 8 条；本卡显示 8 条。');
+      expect(html).toContain('本次读取结果不完整');
+      expect(html).toContain('字段异常记录：1 条未纳入。');
+      expect(html).toContain('无效演员 ID：1 个（与字段异常记录可能重叠）。');
+      expect(html).toContain('未映射职位');
+      expect(html).toContain('暂无 CV/演员');
+      expect(html).not.toContain('Invalid actor');
+    }
+  });
+
+  it('separates a source limit from the card display cap', async () => {
+    const cappedFetchFn = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith(`/v0/subjects/${G06_SUBJECT_ID}/characters`)) {
+        return new Response(JSON.stringify(sourceCast), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('unexpected capped-fixture request', { status: 404 });
+    });
+    const capped = await getSubjectCast(
+      new CharacterService(new HttpClient({ fetchFn: cappedFetchFn as typeof fetch })),
+      G06_SUBJECT_ID,
+      { limit: 3 },
+    );
+    expect(capped).toMatchObject({
+      observed: 7,
+      returned: 3,
+      truncated: true,
+      schemaDriftRows: 0,
+      invalidActorIdRows: 0,
+    });
+
+    const viewModel = buildCastCardViewModel(
+      { id: G06_SUBJECT_ID, name: 'Shuumatsu no Tabitabi', nameCn: '少女终末旅行' },
+      capped.cast,
+      2,
+      {
+        observed: capped.observed,
+        returned: capped.returned,
+        truncated: capped.truncated,
+        schemaDriftRows: capped.schemaDriftRows,
+        invalidActorIdRows: capped.invalidActorIdRows,
+      },
+    );
+    for (const width of [360, 720]) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      expect(html).toContain('本次来源响应：观测 7 条，可用 3 条；本卡显示 2 条。');
+      expect(html).toContain('本次读取结果不完整');
+      expect(html).toContain('另有 1 位关联角色未全部展示');
+    }
   });
 });
