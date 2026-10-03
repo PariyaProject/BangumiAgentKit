@@ -335,8 +335,13 @@ describe('Subject Overview renderer', () => {
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
     expect(html).toContain('少女终末旅行');
     expect(html).toContain('评分与收藏统计');
-    expect(html).toContain('完整');
+    expect(html.match(/本次范围内完整/gu)).toHaveLength(5);
     expect(html).toContain('有界样本');
+    expect(html).toContain('职位按本次 Bangumi 返回的原始标签分组');
+    expect(html).toContain('未观察到某标签只表示本次有界结果未返回');
+    expect(html).toContain('不代表职位不存在');
+    expect(html).toContain('导演');
+    expect(html).toContain('作画监督');
     expect(html).toContain('类型: 动画');
     expect(html).toContain(' · 动画');
     expect(html).toContain(' · 书籍');
@@ -486,6 +491,15 @@ describe('Subject Overview renderer', () => {
       assertTruthfulFixture(result);
       const vm = buildSubjectOverviewViewModel(result);
       for (const width of [360, 720, 960]) {
+        if (name === 'complete') {
+          const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, width);
+          expect(html.match(/本次范围内完整/gu), `complete labels at ${width}px`).toHaveLength(5);
+          expect(html, `raw staff note at ${width}px`).toContain(
+            '未观察到某标签只表示本次有界结果未返回，不代表职位不存在',
+          );
+          expect(html, `raw role labels at ${width}px`).toContain('导演');
+          expect(html, `raw role labels at ${width}px`).toContain('作画监督');
+        }
         const deviceScaleFactor = width === 720 ? 1 : 2;
         const rendered = await renderService.renderCard(vm, {
           width,
@@ -552,6 +566,9 @@ describe('Subject Overview renderer', () => {
     );
     const overview = tools.find((tool) => tool.name === 'bangumi.render_subject_overview');
     expect(overview).toBeDefined();
+    expect(overview?.description).toContain('本次有界读取范围内完成');
+    expect(overview?.description).toContain('原始职位标签');
+    expect(overview?.description).toContain('不代表该职位不存在');
 
     await overview!.execute({ subjectId: 123 } as never, {} as never, {
       publicHttpClient: buildSemanticClient('complete', 'valid', 9),

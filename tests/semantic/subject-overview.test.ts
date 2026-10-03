@@ -180,6 +180,16 @@ function buildProviderRegistry(state: CapabilityState = 'ok') {
 }
 
 describe('Subject Intelligence Overview semantic contract', () => {
+  it('documents bounded raw staff-role semantics for the Agent', () => {
+    const { client } = buildClient();
+    const description = getTool(client).description;
+
+    expect(description).toContain('原始职位标签分组');
+    expect(description).toContain('不映射为“主创”等统一职位分类');
+    expect(description).toContain('未观察到某标签只表示本次有界结果未返回');
+    expect(description).toContain('不代表该职位不存在');
+  });
+
   it('composes bounded official-v0 sections with evidence and stable coverage', async () => {
     const { client, requests } = buildClient();
     const result = await getTool(client).execute({ subjectId: 123 }, context, {

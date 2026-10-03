@@ -837,7 +837,7 @@ export function createRenderPresentationTools(
   const renderSubjectOverview = defineTool({
     name: 'bangumi.render_subject_overview',
     description:
-      '生成适合手机阅读的指定条目证据型概览图片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目和各区段覆盖；不宣称完整关系或历史趋势。',
+      '生成适合手机阅读的指定条目证据型概览图片 Artifact。卡片组合基本信息、官方统计、角色/声优、制作人员、关联条目和各区段覆盖；complete 仅表示本次有界读取范围内完成，不宣称完整关系或历史趋势。制作人员保留本次官方返回的原始职位标签；未观察到某标签不代表该职位不存在，也不推断“主创”等统一分类。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       maxCast: z.number().int().min(1).max(20).optional().describe('角色/声优读取上限，默认 20'),
