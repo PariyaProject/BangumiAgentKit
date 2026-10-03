@@ -9,22 +9,21 @@ export interface CastCardProps {
   viewModel: CastCardViewModel;
   theme: ThemeTokens;
   resolvedImages?: Record<string, string>;
+  width?: number;
 }
 
 export const CastCard: React.FC<CastCardProps> = ({
   viewModel,
   theme,
   resolvedImages = {},
+  width,
 }) => {
   const { subject, items, hiddenCount } = viewModel;
+  const compact = width !== undefined && width < 640;
 
   return (
-    <CardFrame theme={theme}>
-      <TitleBlock
-        title={`角色与演职员表 — ${subject.nameCn || subject.name}`}
-        subtitle={`Subject ID: ${subject.id}`}
-        theme={theme}
-      />
+    <CardFrame theme={theme} width={width}>
+      <TitleBlock title="角色与声优" subtitle={subject.nameCn || subject.name} theme={theme} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
         {items.map((item, idx) => {
@@ -37,16 +36,26 @@ export const CastCard: React.FC<CastCardProps> = ({
               key={idx}
               style={{
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: compact ? 'column' : 'row',
+                alignItems: compact ? 'stretch' : 'center',
                 justifyContent: 'space-between',
                 backgroundColor: theme.surfaceAlt,
                 border: `1px solid ${theme.border}`,
                 borderRadius: theme.radius.md,
                 padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                gap: theme.spacing.sm,
+                minWidth: 0,
               }}
             >
               {/* Character info */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.sm,
+                  minWidth: 0,
+                }}
+              >
                 {charImg ? (
                   <img
                     src={charImg}
@@ -78,18 +87,37 @@ export const CastCard: React.FC<CastCardProps> = ({
                     {Array.from(item.character.name)[0] || '?'}
                   </div>
                 )}
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: theme.text }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: theme.text,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
                     {item.character.name}
                   </div>
-                  <div style={{ fontSize: '12px', color: theme.textMuted }}>
+                  <div
+                    style={{ fontSize: '12px', color: theme.textMuted, overflowWrap: 'anywhere' }}
+                  >
                     {item.relation}
                   </div>
                 </div>
               </div>
 
               {/* CV / Actor list */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.sm }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.sm,
+                  flexWrap: 'wrap',
+                  minWidth: 0,
+                  width: compact ? '100%' : undefined,
+                  paddingLeft: compact ? '48px' : undefined,
+                }}
+              >
                 {item.actors.length > 0 ? (
                   item.actors.map((actor) => {
                     const actorImg = actor.image
@@ -98,7 +126,13 @@ export const CastCard: React.FC<CastCardProps> = ({
                     return (
                       <div
                         key={actor.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          minWidth: 0,
+                          maxWidth: '100%',
+                        }}
                       >
                         {actorImg && (
                           <img
@@ -112,7 +146,14 @@ export const CastCard: React.FC<CastCardProps> = ({
                             }}
                           />
                         )}
-                        <span style={{ fontSize: '13px', color: theme.accent }}>
+                        <span
+                          style={{
+                            fontSize: '13px',
+                            color: theme.accent,
+                            minWidth: 0,
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
                           {actor.name}
                         </span>
                       </div>

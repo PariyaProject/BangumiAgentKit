@@ -337,6 +337,12 @@ describe('Subject Overview renderer', () => {
     expect(html).toContain('评分与收藏统计');
     expect(html).toContain('完整');
     expect(html).toContain('有界样本');
+    expect(html).toContain('类型: 动画');
+    expect(html).toContain(' · 动画');
+    expect(html).toContain(' · 书籍');
+    expect(html).not.toContain('类型: anime');
+    expect(html).not.toContain(' · anime');
+    expect(html).not.toContain(' · book');
     expect(html).not.toContain('example.test');
     expect(
       renderHtmlTemplate(buildSubjectOverviewViewModel(partial), 'bangumi-light', {}, 960),
