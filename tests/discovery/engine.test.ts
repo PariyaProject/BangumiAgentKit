@@ -343,6 +343,38 @@ class NativeOrderProvider implements SubjectDiscoveryProvider {
   }
 }
 
+class ScoreTieProvider implements SubjectDiscoveryProvider {
+  readonly searchOffsets: number[] = [];
+  private readonly subjects: SubjectDiscoveryCandidate[] = [
+    { id: 1, type: 2, name: 'Tie 1', platform: 'TV', date: '2026-01-01', score: 9, rank: 1, ratingCount: 100, tags: [], metaTags: [] },
+    { id: 2, type: 2, name: 'Tie 2', platform: 'TV', date: '2026-01-02', score: 9, rank: 2, ratingCount: 200, tags: [], metaTags: [] },
+    { id: 21, type: 2, name: 'Tie 21', platform: 'TV', date: '2026-01-03', score: 9, rank: 3, ratingCount: 900, tags: [], metaTags: [] },
+    { id: 3, type: 2, name: 'Lower score', platform: 'TV', date: '2026-01-04', score: 8, rank: 4, ratingCount: 1000, tags: [], metaTags: [] },
+  ];
+
+  async getSubject(): Promise<CapabilityResult<ProviderSubjectData>> {
+    return { state: 'not_found' };
+  }
+
+  async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+    return { state: 'not_found' };
+  }
+
+  async searchSubjects(request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    this.searchOffsets.push(request.offset);
+    const items = this.subjects.slice(request.offset, request.offset + 2);
+    return {
+      state: 'ok',
+      data: { items, total: this.subjects.length, totalKind: 'estimated', limit: 2, offset: request.offset },
+      evidence: {},
+    };
+  }
+
+  async browseSubjects(_request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return { state: 'ok', data: { items: [], total: 0, totalKind: 'exact', limit: 2, offset: 0 }, evidence: {} };
+  }
+}
+
 class MetaExclusionProvider implements SubjectDiscoveryProvider {
   private readonly subjects: SubjectDiscoveryCandidate[] = [
     { id: 201, type: 2, name: 'Original', platform: 'TV', tags: [], metaTags: ['原创'] },
@@ -691,6 +723,37 @@ describe('bounded discovery engine', () => {
 
     const date = await new DiscoveryEngine(new NativeOrderProvider()).query({ media: 'anime', sort: 'date', limit: 2 });
     expect(date.items.map((item) => item.id)).toEqual([4, 3]);
+  });
+
+  it('scans across score ties before applying the rating-count top-N order', async () => {
+    const provider = new ScoreTieProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      sort: 'score',
+      tieBreak: { field: 'ratingCount' },
+      limit: 2,
+      explain: 'full',
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([21, 2]);
+    expect(provider.searchOffsets).toEqual([0, 2]);
+    expect(result.explanation?.tieBreak).toEqual({ field: 'ratingCount', order: 'desc' });
+  });
+
+  it('marks score-tie top-N partial when the page budget cannot prove the tie boundary', async () => {
+    const provider = new ScoreTieProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      sort: 'score',
+      tieBreak: { field: 'ratingCount' },
+      limit: 2,
+      budget: { maxPages: 1 },
+    });
+
+    expect(result.items.map((item) => item.id)).toEqual([2, 1]);
+    expect(result.state).toBe('partial');
+    expect(result.coverage.budgetExceeded).toBe(true);
+    expect(provider.searchOffsets).toEqual([0]);
   });
 
   it('exhausts before claiming a globally correct reverse-rank top-N', async () => {

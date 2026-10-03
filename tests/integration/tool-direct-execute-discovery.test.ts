@@ -82,6 +82,17 @@ describe('direct execute coverage for discovery tools', () => {
     );
     expect(queryResult).toMatchObject({ state: 'ok', items: [{ id: 1, nameCn: '测试动画' }] });
 
+    const tieBreakResult = await (tools.get('bangumi.query_subjects')!.execute as any)(
+      { media: 'anime', sort: 'score', tieBreak: { field: 'ratingCount' }, limit: 1, explain: 'full' },
+      context,
+      { providerRegistry },
+    );
+    expect(tieBreakResult.plan).toMatchObject({
+      sort: 'score',
+      tieBreak: { field: 'ratingCount', order: 'desc' },
+    });
+    expect(tieBreakResult.explanation?.tieBreak).toEqual({ field: 'ratingCount', order: 'desc' });
+
     const comparisonResult = await (tools.get('bangumi.compare_subject_cohorts')!.execute as any)(
       { cohorts: [{ label: 'July', query: { media: 'anime', resultMode: 'all' } }], maxSubjects: 1 },
       context,

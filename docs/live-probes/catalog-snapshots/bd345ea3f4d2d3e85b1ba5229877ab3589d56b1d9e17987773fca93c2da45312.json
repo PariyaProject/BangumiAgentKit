@@ -2332,7 +2332,7 @@
   },
   {
     "name": "bangumi.query_subjects",
-    "description": "按受控条件发现 Bangumi 条目。支持媒体类型、日期、标签/精确概念、评分/排名/收藏人数范围、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；heat 表示当前收藏人数，不是讨论热度或历史趋势。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject。",
+    "description": "按受控条件发现 Bangumi 条目。支持媒体类型、季/月日期、标签、概念、评分/排名/收藏人数范围与 explain；它是有界、可解释的 discovery，不替代已知 ID 的 bangumi.get_subject。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -2515,22 +2515,6 @@
         "explain": {
           "type": "string",
           "enum": ["none", "compact", "full"]
-        },
-        "tieBreak": {
-          "description": "同主排序值时的次级顺序；当前仅支持 sort=score 时按评分人数排序，默认从高到低。",
-          "type": "object",
-          "properties": {
-            "field": {
-              "type": "string",
-              "const": "ratingCount"
-            },
-            "order": {
-              "type": "string",
-              "enum": ["asc", "desc"]
-            }
-          },
-          "required": ["field"],
-          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -3347,22 +3331,6 @@
         "explain": {
           "type": "string",
           "enum": ["none", "compact", "full"]
-        },
-        "tieBreak": {
-          "description": "同主排序值时的次级顺序；当前仅支持 sort=score 时按评分人数排序，默认从高到低。",
-          "type": "object",
-          "properties": {
-            "field": {
-              "type": "string",
-              "const": "ratingCount"
-            },
-            "order": {
-              "type": "string",
-              "enum": ["asc", "desc"]
-            }
-          },
-          "required": ["field"],
-          "additionalProperties": false
         }
       },
       "additionalProperties": false

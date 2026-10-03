@@ -1354,6 +1354,7 @@ interface DiscoveryQueryInputLike {
   nsfw?: string | boolean;
   sort?: string;
   order?: string;
+  tieBreak?: { field: 'ratingCount'; order?: string };
   resultMode?: string;
   limit?: number;
   explain?: string;
@@ -1450,7 +1451,7 @@ const DISCOVERY_FIELD_LABELS: Record<string, string> = {
   nsfw: 'NSFW',
   order: '顺序',
   'sort:relevance': '排序·匹配度',
-  'sort:heat': '排序·热度',
+  'sort:heat': '排序·收藏人数（当前）',
   'sort:rank': '排序·排名',
   'sort:score': '排序·评分',
   'sort:date': '排序·日期',
@@ -1469,7 +1470,7 @@ const DISCOVERY_OPERATOR_LABELS: Record<string, string> = {
 
 const DISCOVERY_SORT_LABELS: Record<string, string> = {
   relevance: '匹配度',
-  heat: '热度',
+  heat: '收藏人数（当前）',
   rank: '排名',
   score: '评分',
   date: '日期',
@@ -1589,6 +1590,11 @@ function queryFacets(input: DiscoveryQueryInputLike): string[] {
         input.order ? ` / ${DISCOVERY_ORDER_LABELS[input.order] || input.order}` : ''
       }`,
     );
+  }
+  if (input.tieBreak) {
+    const fieldLabel = input.tieBreak.field === 'ratingCount' ? '评分人数' : input.tieBreak.field;
+    const orderLabel = input.tieBreak.order ?? 'desc';
+    facets.push(`同分排序：${fieldLabel} / ${DISCOVERY_ORDER_LABELS[orderLabel] || orderLabel}`);
   }
   if (input.resultMode) facets.push(`模式：${input.resultMode === 'all' ? '尽量完整' : 'Top'}`);
   if (input.limit !== undefined) facets.push(`上限：${input.limit}`);

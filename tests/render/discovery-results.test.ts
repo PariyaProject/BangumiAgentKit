@@ -129,6 +129,33 @@ describe('discovery-results renderer', () => {
     expect(viewModel.coverage.budgetExceeded).toBe(true);
   });
 
+  it('labels collection heat precisely and shows the score tie-break boundary in Chinese', () => {
+    const heatResult = makeResult('ok', 1);
+    heatResult.plan.pushdown = [{ field: 'sort:heat', operator: 'eq', value: ['heat'] }];
+    const heatViewModel = buildDiscoveryResultsViewModel(heatResult, {
+      media: 'anime',
+      sort: 'heat',
+    });
+
+    expect(heatViewModel.query.facets).toContain('排序：收藏人数（当前）');
+    expect(heatViewModel.plan.pushdown[0]).toContain('收藏人数（当前）');
+    expect(heatViewModel.plan.pushdown[0]).not.toContain('热度');
+
+    const tieResult = makeResult('ok', 1);
+    tieResult.plan.limitations = [
+      'A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.',
+    ];
+    const tieViewModel = buildDiscoveryResultsViewModel(tieResult, {
+      media: 'anime',
+      sort: 'score',
+      tieBreak: { field: 'ratingCount', order: 'desc' },
+    });
+    const html = renderHtmlTemplate(tieViewModel, 'bangumi-dark', {}, 360);
+
+    expect(tieViewModel.query.facets).toContain('同分排序：评分人数 / 降序');
+    expect(html).toContain('评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖');
+  });
+
   it('explains experimental search and bounded coverage in Chinese at mobile chat size', async () => {
     const result = makeResult('ok', 15);
     result.items = result.items.map((item, index) => ({

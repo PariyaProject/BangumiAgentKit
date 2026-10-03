@@ -49,6 +49,24 @@ describe('discovery capability compiler', () => {
     });
   });
 
+  it('carries the explicit score tie-break into the executable plan', () => {
+    const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
+      media: 'anime',
+      sort: 'score',
+      tieBreak: { field: 'ratingCount', order: 'asc' },
+    }));
+
+    expect(plan).toMatchObject({
+      sort: 'score',
+      order: 'desc',
+      tieBreak: { field: 'ratingCount', order: 'asc' },
+    });
+    expect(plan.hydrationRequirements).toContainEqual(expect.objectContaining({
+      reason: 'tie_break_sort',
+      fields: ['ratingCount'],
+    }));
+  });
+
   it('selects browse when the upstream browse contract is the cheapest exact path', () => {
     const plan = compileDiscoveryPlan(
       normalizeDiscoveryQuery({ media: 'anime', year: 2026, month: 7, sort: 'date' }),

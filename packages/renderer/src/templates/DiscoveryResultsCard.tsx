@@ -85,6 +85,10 @@ function limitationLabel(message: string): string {
       '官方搜索总数为估算值，不能据此认定 Bangumi 全库已完整覆盖',
     'all requests a complete attempt; budget exhaustion is reported as partial.':
       '“尽量完整”会在预算内继续检索；预算耗尽时仍标记为部分覆盖',
+    'heat means upstream 收藏人数 and is not a recent-trend metric.':
+      '排序热度使用官方当前收藏人数，不代表近期讨论趋势或历史热度',
+    'A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.':
+      '评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖',
   };
   return labels[message] || message;
 }
