@@ -9,7 +9,7 @@ import type {
 import { RenderService, renderHtmlTemplate } from '@bangumi-agent-kit/renderer';
 import { closeMobileLayoutBrowser, measureRenderRootLayout } from './helpers/mobile-layout.js';
 
-describe('subject card mobile title hierarchy', () => {
+describe('subject card responsive title hierarchy', () => {
   let renderService: RenderService;
 
   beforeAll(() => {
@@ -96,6 +96,48 @@ describe('subject card mobile title hierarchy', () => {
 
     expect(layout.titleBlocks[0]?.title).toBe('少女終末旅行');
     expect(layout.titleBlocks[0]?.subtitle).toBe('');
+  });
+
+  it('gives long mixed-script titles the full card width on wide layouts', async () => {
+    const viewModel: SubjectCardViewModel = {
+      template: 'subject-card',
+      version: 1,
+      subject: {
+        id: 900001,
+        name: 'この世界をめぐる壮大な冒険のアニメーション作品と仲間たちの物語の長い正式タイトル',
+        nameCn: '这是一个较长的中文作品标题，用来核对标准宽度下封面是否会挤压标题，并观察中日文副标题的层级',
+        type: 'anime',
+      },
+      source: { label: 'Bangumi Agent Kit' },
+    };
+
+    for (const width of [640, 720, 900]) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      const layout = await measureRenderRootLayout(html, width);
+      const title = layout.titleBlocks[0];
+
+      expect(layout.clientWidth, `root client width at ${width}px`).toBe(width);
+      expect(layout.scrollWidth, `root scroll width at ${width}px`).toBe(width);
+      expect(layout.overflowing, `overflow at ${width}px`).toEqual([]);
+      expect(layout.contentOverflowing, `clipped text at ${width}px`).toEqual([]);
+      expect(layout.titleBlocks, `one title block at ${width}px`).toHaveLength(1);
+      expect(title?.blockWidth, `full-width title block at ${width}px`).toBeGreaterThanOrEqual(
+        width * 0.8,
+      );
+      expect(title?.title).toBe(viewModel.subject.nameCn);
+      expect(title?.subtitle).toBe(viewModel.subject.name);
+    }
+
+    const rendered = await renderService.renderCard(viewModel, {
+      width: 720,
+      deviceScaleFactor: 1,
+    });
+    expect(rendered.width).toBe(720);
+    expect(rendered.height).toBeLessThanOrEqual(8192);
+    expect(rendered.buffer.subarray(0, 8)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+    await saveVisual('subject-card-720.png', rendered);
   });
 
   it('keeps cast and multiple actor names inside narrow chat cards', async () => {
