@@ -8,37 +8,63 @@ import { MetaRow } from '../components/MetaRow.js';
 import { ScoreBadge } from '../components/ScoreBadge.js';
 import { TagList } from '../components/TagList.js';
 import { Footer } from '../components/Footer.js';
+import { subjectTypeLabel } from '../subject-type-label.js';
 
 export interface SubjectCardProps {
   viewModel: SubjectCardViewModel;
   theme: ThemeTokens;
   resolvedImages?: Record<string, string>;
+  width?: number;
 }
 
 export const SubjectCard: React.FC<SubjectCardProps> = ({
   viewModel,
   theme,
   resolvedImages = {},
+  width,
 }) => {
   const { subject, collection, source } = viewModel;
   const coverSrc = subject.image ? resolvedImages[subject.image] || subject.image : undefined;
+  const displayTitle = subject.nameCn || subject.name;
+  const originalTitle = subject.name.trim() !== displayTitle.trim() ? subject.name : undefined;
+  const compact = width !== undefined && width < 640;
+  const coverWidth = compact && width < 420 ? 120 : 160;
+  const coverHeight = Math.round((coverWidth * 220) / 160);
 
   return (
-    <CardFrame theme={theme}>
-      <div style={{ display: 'flex', gap: theme.spacing.lg }}>
-        <CoverImage src={coverSrc} alt={subject.nameCn || subject.name} theme={theme} />
+    <CardFrame theme={theme} width={width}>
+      {compact && <TitleBlock title={displayTitle} subtitle={originalTitle} theme={theme} />}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: compact ? 'column' : 'row',
+          alignItems: compact ? 'stretch' : 'flex-start',
+          gap: compact ? theme.spacing.md : theme.spacing.lg,
+          minWidth: 0,
+        }}
+      >
+        <div style={compact ? { display: 'flex', justifyContent: 'center' } : undefined}>
+          <CoverImage
+            src={coverSrc}
+            alt={displayTitle}
+            theme={theme}
+            width={coverWidth}
+            height={coverHeight}
+          />
+        </div>
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             gap: theme.spacing.sm,
             flex: 1,
+            minWidth: 0,
           }}
         >
-          <TitleBlock title={subject.nameCn || subject.name} subtitle={subject.name} theme={theme} />
+          {!compact && <TitleBlock title={displayTitle} subtitle={originalTitle} theme={theme} />}
           <MetaRow
             items={[
-              `类型: ${subject.type}`,
+              `类型: ${subjectTypeLabel(subject.type)}`,
               subject.date ? `首播/发售: ${subject.date}` : undefined,
             ]}
             theme={theme}

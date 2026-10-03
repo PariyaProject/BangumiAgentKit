@@ -11,6 +11,7 @@ import { MetaRow } from '../components/MetaRow.js';
 import { PersonAvatar } from '../components/PersonAvatar.js';
 import { ScoreBadge } from '../components/ScoreBadge.js';
 import { TitleBlock } from '../components/TitleBlock.js';
+import { subjectTypeLabel } from '../subject-type-label.js';
 
 export interface SubjectOverviewCardProps {
   viewModel: SubjectOverviewViewModel;
@@ -293,7 +294,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
           </div>
           <MetaRow
             items={[
-              `类型: ${subject.type}`,
+              `类型: ${subjectTypeLabel(subject.type)}`,
               subject.platform ? `平台: ${subject.platform}` : undefined,
               subject.date ? `首播/发售: ${subject.date}` : undefined,
               subject.totalEpisodes || subject.eps
@@ -437,7 +438,7 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
                       overflowWrap: 'anywhere',
                     }}
                   >
-                    {item.relation} · {item.type}
+                    {item.relation} · {subjectTypeLabel(item.type)}
                   </span>
                 </div>
               ))}

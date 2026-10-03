@@ -91,8 +91,8 @@ function normalizeSubjectComparisonViewModel(
 registerTemplate<SubjectCardViewModel>({
   id: 'subject-card',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <SubjectCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <SubjectCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 
@@ -120,8 +120,8 @@ registerTemplate<DiscoveryResultsViewModel>({
 registerTemplate<CastCardViewModel>({
   id: 'cast-card',
   version: 1,
-  render: (vm, theme, resolvedImages) => (
-    <CastCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} />
+  render: (vm, theme, resolvedImages, width) => (
+    <CastCard viewModel={vm} theme={theme} resolvedImages={resolvedImages} width={width} />
   ),
 });
 

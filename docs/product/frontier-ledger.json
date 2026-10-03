@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-03T07:08:07+09:00",
+  "updated_at": "2026-10-03T17:10:16+09:00",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -184,9 +184,15 @@
       "kind": "scenario",
       "user_question": "少女终末旅行完整主要角色/CV。",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
+        "tests/integration/live-subject-credit.acceptance.test.ts",
+        "tests/render/subject-credit-mobile-layout.test.ts",
+        "packages/renderer/src/templates/CastCard.tsx"
+      ],
+      "next_action": "Run #69 public ToolRegistry sample on 2026-10-03 returned 7/7 cast rows with complete coverage; the 360 CSS-pixel CastCard pairs the current source character/actor rows and 320/360/520 CSS-pixel fixtures show no overflow. Keep PARTIAL pending exact candidate-SHA natural-language Agent/MCP and Renderer/MCP verification; public sample scope is not long-term or QQ/TIM evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -195,9 +201,15 @@
       "kind": "scenario",
       "user_question": "少女终末旅行主要制作人员。",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
+        "tests/integration/live-subject-credit.acceptance.test.ts",
+        "tests/render/subject-credit-mobile-layout.test.ts",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
+      ],
+      "next_action": "Run #69 public ToolRegistry sample on 2026-10-03 returned 100 staff rows across 22 raw source-role labels with state=partial; the overview card keeps a bounded staff sample and states truncation. Keep PARTIAL pending exact candidate-SHA Agent/MCP validation and role-specific checks; do not infer roles absent from this source sample or claim complete staff coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -381,9 +393,15 @@
       "kind": "scenario",
       "user_question": "这部作品的原作、导演、脚本和音乐分别是谁？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
+        "tests/integration/live-subject-credit.acceptance.test.ts",
+        "tests/render/subject-credit-mobile-layout.test.ts",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
+      ],
+      "next_action": "Run #69 public ToolRegistry sample on 2026-10-03 returned source staff labels including music-production/song credits but no 原作/导演/脚本 labels; current evidence is therefore partial and supports no inferred missing credits. Keep PARTIAL pending exact candidate-SHA natural-language Agent/MCP verification that unavailable roles are stated honestly.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -1747,8 +1765,15 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Subject Staff Intelligence?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "source_refs": [
+        "docs/product/opportunity-log.md",
+        "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
+        "tests/integration/live-subject-credit.acceptance.test.ts",
+        "tests/render/subject-credit-mobile-layout.test.ts",
+        "packages/renderer/src/templates/CastCard.tsx",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
+      ],
+      "next_action": "Run #69 mobile renderer candidate has direct public official-v0 staff evidence (100 rows, 22 raw role groups, partial) and a responsive overview with bounded staff groups. The dated report records role availability and evidence limits. Still required: exact candidate-SHA Agent/MCP/Renderer checks and later independent QQ/TIM acceptance.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
@@ -1809,9 +1834,15 @@
         "tests/render/subject-overview.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "tests/render/render-cards.test.ts"
+        "tests/render/render-cards.test.ts",
+        "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
+        "tests/integration/live-subject-credit.acceptance.test.ts",
+        "tests/render/subject-credit-mobile-layout.test.ts",
+        "packages/renderer/src/templates/SubjectCard.tsx",
+        "packages/renderer/src/templates/CastCard.tsx",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "The bounded 360 CSS-pixel/2x chat target retains full-resolution direct and Standalone defaults. The renderer suite now runs real Chromium layout checks at 320, 360, and 520 px across successful fixtures; it caught and fixed PersonProfile credit, SearchList grid, and SubjectStatsHistory breakpoint overflow, with focused 720px PNG checks for profile and search cards. Remaining: reconcile source/Agent/MCP and real QQ/TIM evidence; fixture layout evidence does not prove those paths.",
+      "next_action": "Run #69 candidate adds responsive SubjectCard/CastCard layouts, localized subject media labels, and a 360 CSS-pixel live overview while preserving section states and caps; Chromium confirms no overflow at 320/360/520 for SubjectCard/CastCard. Still required: exact candidate-SHA Agent/MCP/Renderer journey and separate QQ/TIM acceptance.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
