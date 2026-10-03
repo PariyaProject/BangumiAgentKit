@@ -113,7 +113,8 @@ function comparisonPeriodSummary(
   if (period.uniqueSubjects === undefined) {
     return `作品数、关系行和角色数不可用（${comparisonStateLabel(period.state)}）`;
   }
-  return `${period.uniqueSubjects} 部作品 · ${period.creditRows} 行 · ${period.uniqueCharacters} 个角色`;
+  const observed = period.state === 'partial' ? '观察到的 ' : '';
+  return `${observed}${period.uniqueSubjects} 部作品 · ${observed}${period.creditRows} 行 · ${observed}${period.uniqueCharacters} 个角色`;
 }
 
 export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
@@ -162,10 +163,22 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         }}
       >
         {[
-          ['去重作品', primaryCount(viewModel.summary.uniqueSubjects)],
-          ['关系行', primaryCount(viewModel.summary.creditRows)],
-          ['去重角色', primaryCount(viewModel.summary.uniqueCharacters)],
-          ['落入窗口', primaryCount(viewModel.coverage.rowsEligible)],
+          [
+            viewModel.state === 'partial' ? '观察到的去重作品' : '去重作品',
+            primaryCount(viewModel.summary.uniqueSubjects),
+          ],
+          [
+            viewModel.state === 'partial' ? '观察到的关系行' : '关系行',
+            primaryCount(viewModel.summary.creditRows),
+          ],
+          [
+            viewModel.state === 'partial' ? '观察到的去重角色' : '去重角色',
+            primaryCount(viewModel.summary.uniqueCharacters),
+          ],
+          [
+            viewModel.state === 'partial' ? '观察到的窗口内关系' : '落入窗口',
+            primaryCount(viewModel.coverage.rowsEligible),
+          ],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -183,6 +196,12 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           </div>
         ))}
       </div>
+
+      {viewModel.state === 'partial' && (
+        <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.5 }}>
+          这些数字只汇总本次选取的关系和成功读取作品详情中的观察，不代表整个时间窗的总数。
+        </div>
+      )}
 
       <div
         style={{
@@ -440,7 +459,7 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
 
       <div>
         <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
-          窗口内作品（按首播日期）
+          {viewModel.state === 'partial' ? '本次观察到的窗口内作品' : '窗口内作品'}（按首播日期）
         </div>
         {viewModel.rows.length === 0 ? (
           <div

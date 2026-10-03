@@ -2960,6 +2960,17 @@ function personActivityPeriodMetric(
   return observable ? personActivityMetric(comparisonRecord(period?.summary), key) : '不可用';
 }
 
+function personActivityPeriodSummaryMetric(
+  period: Record<string, unknown> | undefined,
+  label: string,
+  key: string,
+  unit: string,
+): string {
+  const value = personActivityPeriodMetric(period, key);
+  const scope = period?.state === 'partial' ? '观察到的' : '';
+  return `${scope}${label} ${value}${value === '不可用' ? '' : ` ${unit}`}`;
+}
+
 function personActivityOperationLines(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -3081,9 +3092,27 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
   const staffRole = value.staffRole
     ? ` · 职位筛选: ${humanField(staffRoleLabels[String(value.staffRole)] || value.staffRole, 48)}`
     : '';
+  const rowsEligible = coverage.rowsEligible;
+  const summaryCountsObservable =
+    value.state === 'complete' ||
+    (value.state === 'partial' &&
+      typeof rowsEligible === 'number' &&
+      Number.isFinite(rowsEligible) &&
+      rowsEligible > 0);
+  const summaryScope = value.state === 'partial' ? '观察到的' : '';
+  const summaryMetric = (label: string, key: string, unit: string): string => {
+    const summaryValue = summaryCountsObservable
+      ? personActivityMetric(summary, key)
+      : '不可用';
+    return `${summaryScope}${label} ${summaryValue}${summaryValue === '不可用' ? '' : ` ${unit}`}`;
+  };
   const lines = [
     `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}${staffRole}`,
     `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
+    `窗口摘要：${summaryMetric('去重作品', 'uniqueSubjects', '部')} · ${summaryMetric('关系行', 'creditRows', '行')} · ${summaryMetric('去重角色', 'uniqueCharacters', '个')}`,
+    ...(value.state === 'partial'
+      ? ['说明：部分覆盖下的汇总只统计本次选取关系和成功读取详情中的可计数观察，不代表整个时间窗的总数。']
+      : []),
     `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · 详情 ${humanField(coverage.subjectDetailsSucceeded ?? '?', 32)}/${humanField(coverage.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(coverage.rowsReturned ?? '?', 32)}/${humanField(coverage.rowsEligible ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
     `上限: 关系 ${humanField(coverage.maxRelations ?? '?', 32)} · 详情 ${humanField(coverage.maxSubjectDetails ?? '?', 32)} · 行 ${humanField(coverage.maxRows ?? '?', 32)} · 并发 ${humanField(coverage.detailConcurrency ?? '?', 32)} · 响应 ${humanField(coverage.responseLimitBytes ?? '?', 32)} bytes · 采样 ${coverage.sampled ? '是' : '否'}`,
   ];
@@ -3127,7 +3156,7 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
       const periodWindow = comparisonRecord(period.window);
       const periodCoverage = comparisonRecord(period.coverage);
       lines.push(
-        `${label}: ${humanField(periodWindow?.start || '未知', 32)} 至 ${humanField(periodWindow?.end || '未知', 32)} · 状态 ${comparisonStateLabel(period.state)} · 作品 ${personActivityPeriodMetric(period, 'uniqueSubjects')} · 关系 ${personActivityPeriodMetric(period, 'creditRows')} · 角色 ${personActivityPeriodMetric(period, 'uniqueCharacters')}`,
+        `${label}: ${humanField(periodWindow?.start || '未知', 32)} 至 ${humanField(periodWindow?.end || '未知', 32)} · 状态 ${comparisonStateLabel(period.state)} · ${personActivityPeriodSummaryMetric(period, '作品', 'uniqueSubjects', '部')} · ${personActivityPeriodSummaryMetric(period, '关系', 'creditRows', '行')} · ${personActivityPeriodSummaryMetric(period, '角色', 'uniqueCharacters', '个')}`,
       );
       lines.push(
         `  覆盖: 关系 ${humanField(periodCoverage?.relationRowsSelected ?? '?', 32)}/${humanField(periodCoverage?.relationRowsObserved ?? '?', 32)} · 详情 ${humanField(periodCoverage?.subjectDetailsSucceeded ?? '?', 32)}/${humanField(periodCoverage?.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(periodCoverage?.rowsReturned ?? '?', 32)}/${humanField(periodCoverage?.rowsEligible ?? '?', 32)} · 详情省略 ${humanField(periodCoverage?.subjectDetailIdsDroppedAtLimit ?? '?', 32)} · 截断 ${periodCoverage?.truncated ? '是' : '否'} · 采样 ${periodCoverage?.sampled ? '是' : '否'}`,
@@ -3145,14 +3174,18 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     }
 
     const delta = comparisonRecord(comparison.delta);
+    const deltaLabel = delta?.state === 'partial' ? '观察差值' : '差值';
+    const deltaScope = delta?.state === 'partial' ? '部分覆盖下的观察；' : '';
     lines.push(
-      `差值（最近 − 之前）：状态 ${comparisonStateLabel(delta?.state)} · 作品 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'uniqueSubjects') : '不可用'} · 关系 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'creditRows') : '不可用'} · 角色 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'uniqueCharacters') : '不可用'}（不可用窗口不按零计算）`,
+      `${deltaLabel}（最近 − 之前）：状态 ${comparisonStateLabel(delta?.state)} · 作品 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'uniqueSubjects') : '不可用'} · 关系 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'creditRows') : '不可用'} · 角色 ${delta?.state === 'complete' || delta?.state === 'partial' ? personActivitySignedMetric(delta, 'uniqueCharacters') : '不可用'}（${deltaScope}不可用窗口不按零计算）`,
     );
     const peak = comparisonRecord(comparison.peak);
     const peakMonths = Array.isArray(peak?.months) ? peak.months : [];
     if (peakMonths.length > 0) {
+      const peakLabel =
+        peak?.state === 'partial' ? '部分覆盖下观察到的发布月份峰值' : '发布月份峰值';
       lines.push(
-        `发布月份峰值（按去重作品）：${peakMonths
+        `${peakLabel}（按去重作品）：${peakMonths
           .slice(0, 8)
           .map((rawMonth) => {
             const month = comparisonRecord(rawMonth);
@@ -3181,7 +3214,13 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     lines.push('说明：前后窗口是当前官方关系按作品首播日期的观察，不是历史快照或实际工作量。');
   }
 
-  lines.push('窗口内作品：');
+  lines.push(
+    value.state === 'partial'
+      ? '本次观察到的窗口内作品：'
+      : value.state === 'complete'
+        ? '窗口内作品：'
+        : `窗口内作品不可用（${comparisonStateLabel(value.state)}）。`,
+  );
   for (const [index, rawRow] of rows.slice(0, 12).entries()) {
     const row = comparisonRecord(rawRow);
     if (!row) continue;

@@ -1,6 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { formatHuman } from '../../apps/standalone/src/presenter.js';
 
+function summaryActivity(state: string, rowsEligible: number, count: number): Record<string, unknown> {
+  return {
+    personId: 20,
+    state,
+    person: { id: 20, name: 'Person', nameCn: '人物' },
+    kind: 'voice',
+    media: 'tv',
+    window: { start: '2025-11-01', end: '2026-10-03' },
+    rows: [],
+    summary: { creditRows: count, uniqueSubjects: count, uniqueCharacters: count },
+    coverage: {
+      relationRowsObserved: rowsEligible,
+      relationRowsSelected: rowsEligible,
+      subjectIdsObserved: rowsEligible,
+      subjectIdsSelected: rowsEligible,
+      subjectDetailsSucceeded: rowsEligible,
+      subjectDetailRequests: rowsEligible,
+      rowsReturned: rowsEligible,
+      rowsEligible,
+      truncated: false,
+      sampled: false,
+    },
+    sourceOperations: [],
+    evidence: [],
+    warnings: [],
+    limitations: [],
+  };
+}
+
 describe('Standalone person activity presenter', () => {
   it('exposes origin groups, source coverage, and the positive-only limitation', () => {
     const output = formatHuman({
@@ -33,6 +62,9 @@ describe('Standalone person activity presenter', () => {
         },
       ],
       summary: {
+        creditRows: 2,
+        uniqueSubjects: 2,
+        uniqueCharacters: 2,
         origin: { explicitOriginalSubjects: 1, notObservedSubjects: 1, unknownSubjects: 0 },
       },
       coverage: {
@@ -110,6 +142,11 @@ describe('Standalone person activity presenter', () => {
     });
 
     expect(output).toContain('人物 activity · 状态: 部分');
+    expect(output).toContain(
+      '窗口摘要：观察到的去重作品 2 部 · 观察到的关系行 2 行 · 观察到的去重角色 2 个',
+    );
+    expect(output).toContain('不代表整个时间窗的总数');
+    expect(output).toContain('本次观察到的窗口内作品：');
     expect(output).toContain('职位筛选: 导演');
     expect(output).toContain('职位筛选覆盖: 排除 1 · 未知 0');
     expect(output).toContain('原始职位/角色：監督');
@@ -124,6 +161,27 @@ describe('Standalone person activity presenter', () => {
     expect(output).toContain('标签覆盖：观察 3 · 合法 3 · 返回 3 · 省略 0');
     expect(output).toContain('person-activity-origin-v1');
     expect(output).not.toContain('[object Object]');
+  });
+
+  it('shows complete summary counts and hides partial-empty or unavailable zeros', () => {
+    const completeOutput = formatHuman(summaryActivity('complete', 3, 3));
+    expect(completeOutput).toContain(
+      '窗口摘要：去重作品 3 部 · 关系行 3 行 · 去重角色 3 个',
+    );
+    expect(completeOutput).toContain('窗口内作品：');
+
+    const partialEmptyOutput = formatHuman(summaryActivity('partial', 0, 0));
+    expect(partialEmptyOutput).toContain(
+      '窗口摘要：观察到的去重作品 不可用 · 观察到的关系行 不可用 · 观察到的去重角色 不可用',
+    );
+    expect(partialEmptyOutput).not.toContain('观察到的去重作品 0 部');
+    expect(partialEmptyOutput).toContain('不代表整个时间窗的总数');
+
+    const unavailableOutput = formatHuman(summaryActivity('unavailable', 0, 0));
+    expect(unavailableOutput).toContain(
+      '窗口摘要：去重作品 不可用 · 关系行 不可用 · 去重角色 不可用',
+    );
+    expect(unavailableOutput).not.toContain('去重作品 0 部');
   });
 
   it('prints bounded window comparisons, operations, exclusions, and unavailable states', () => {
@@ -225,13 +283,14 @@ describe('Standalone person activity presenter', () => {
 
     expect(comparisonOutput).toContain('前后窗口对比');
     expect(comparisonOutput).toContain('最近窗口');
+    expect(comparisonOutput).toContain('观察到的作品 7 部 · 观察到的关系 7 行 · 观察到的角色 5 个');
     expect(comparisonOutput).toContain('作品 7');
     expect(comparisonOutput).toContain('上限: 关系 12');
     expect(comparisonOutput).toContain('未计入：作品详情预算上限 2');
     expect(comparisonOutput).toContain(
-      '差值（最近 − 之前）：状态 部分 · 作品 +4 · 关系 +4 · 角色 +2',
+      '观察差值（最近 − 之前）：状态 部分 · 作品 +4 · 关系 +4 · 角色 +2',
     );
-    expect(comparisonOutput).toContain('发布月份峰值');
+    expect(comparisonOutput).toContain('部分覆盖下观察到的发布月份峰值');
     expect(comparisonOutput).toContain('最近窗口来源操作');
 
     const unavailableOutput = formatHuman({
