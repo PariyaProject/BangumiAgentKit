@@ -1205,6 +1205,15 @@ export interface SubjectStatsViewModel {
   template: 'subject-stats';
   version: 1;
   subjectId: number;
+  subjectIdentity: {
+    state: 'available' | 'not_found' | 'unavailable' | 'id_mismatch';
+    source: 'official-v0';
+    name?: string;
+    nameCn?: string;
+    nameTruncated: boolean;
+    nameCnTruncated: boolean;
+    retrievedAt?: string;
+  };
   state: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceState;
   raw?: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['raw'];
   rating: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['rating'];
@@ -1215,6 +1224,17 @@ export interface SubjectStatsViewModel {
   evidence: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['evidence'];
   warnings: import('@bangumi-agent-kit/bangumi-core').SubjectStatsIntelligenceResult['warnings'];
   limitations: string[];
+  retrievedAt?: string;
+}
+
+export interface SubjectStatsIdentitySource {
+  requestedSubjectId: number;
+  state: import('@bangumi-agent-kit/bangumi-core').SubjectIdentityState;
+  subject?: {
+    id: number;
+    name: string;
+    nameCn?: string;
+  };
   retrievedAt?: string;
 }
 

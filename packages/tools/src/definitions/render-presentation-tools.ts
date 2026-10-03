@@ -990,10 +990,35 @@ export function createRenderPresentationTools(
     scopes: [],
     risk: 'read',
     execute: async (input, _context, deps) => {
-      const result = await getSubjectStatsIntelligence(input.subjectId, {
-        providerRegistry: deps?.providerRegistry,
-      });
-      return await executeRenderAndSave(buildSubjectStatsViewModel(result));
+      const [result, identity] = await Promise.all([
+        getSubjectStatsIntelligence(input.subjectId, {
+          providerRegistry: deps?.providerRegistry,
+        }),
+        getSubjectIdentity(input.subjectId, {
+          providerRegistry: deps?.providerRegistry,
+        }).catch(() => undefined),
+      ]);
+      return await executeRenderAndSave(
+        buildSubjectStatsViewModel(
+          result,
+          identity
+            ? {
+                requestedSubjectId: identity.subjectId,
+                state: identity.state,
+                subject: identity.data
+                  ? {
+                      id: identity.data.id,
+                      name: identity.data.name,
+                      ...(identity.data.nameCn === undefined
+                        ? {}
+                        : { nameCn: identity.data.nameCn }),
+                    }
+                  : undefined,
+                retrievedAt: identity.retrievedAt,
+              }
+            : { requestedSubjectId: input.subjectId, state: 'unavailable' },
+        ),
+      );
     },
   });
 

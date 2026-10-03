@@ -16,19 +16,27 @@ const subjectFixture = {
   summary: 'A fixture used to verify MCP renderer target behavior.',
   images: { common: '', large: '', medium: '', small: '' },
   tags: [],
-  rating: { score: 8.6, rank: 100, total: 10, count: {} },
+  rating: {
+    score: 8.6,
+    rank: 100,
+    total: 10,
+    count: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 4, 9: 6, 10: 0 },
+  },
+  collection: { wish: 2, collect: 4, doing: 2, on_hold: 1, dropped: 1 },
   total_episodes: 12,
 };
 
-function createDependencies() {
+function createDependencies(
+  fetchFn = vi.fn(
+    async () =>
+      new Response(JSON.stringify(subjectFixture), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+  ),
+) {
   const httpClient = new HttpClient({
-    fetchFn: vi.fn(
-      async () =>
-        new Response(JSON.stringify(subjectFixture), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-    ),
+    fetchFn,
   });
   const renderService = {
     renderCard: vi.fn(
@@ -64,11 +72,20 @@ function createDependencies() {
     renderService: renderService as never,
     artifactStore: artifactStore as never,
   });
-  return { dependencies, renderService, artifactStore };
+  return { dependencies, renderService, artifactStore, fetchFn };
 }
 
-async function callMcpRender(options: { renderTarget?: 'chat' | 'full' } = {}) {
-  const { dependencies, renderService, artifactStore } = createDependencies();
+async function callMcpRender(
+  options: {
+    renderTarget?: 'chat' | 'full';
+    toolName?: string;
+    arguments?: Record<string, unknown>;
+    fetchFn?: ReturnType<typeof vi.fn>;
+  } = {},
+) {
+  const { dependencies, renderService, artifactStore, fetchFn } = createDependencies(
+    options.fetchFn as never,
+  );
   const app = new BangumiMcpServer({ dependencies, ...options });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await app.getMcpServer().connect(serverTransport);
@@ -76,13 +93,14 @@ async function callMcpRender(options: { renderTarget?: 'chat' | 'full' } = {}) {
   await client.connect(clientTransport);
   try {
     const response = await client.callTool({
-      name: 'bangumi.render_subject_card',
-      arguments: { subjectId: subjectFixture.id },
+      name: options.toolName ?? 'bangumi.render_subject_card',
+      arguments: options.arguments ?? { subjectId: subjectFixture.id },
     });
     return {
       response,
       renderService,
       artifactStore,
+      fetchFn,
     };
   } finally {
     await client.close();
@@ -118,6 +136,60 @@ describe('MCP renderer target', () => {
     );
   });
 
+  it('identifies a statistics card from official subject metadata while keeping the chat target', async () => {
+    const { response, renderService, fetchFn } = await callMcpRender({
+      toolName: 'bangumi.render_subject_stats_intelligence',
+    });
+
+    expect(response.isError).toBeUndefined();
+    const [viewModel, renderOptions] = renderService.renderCard.mock.calls[0] as unknown as [
+      { template: string; subjectId: number; subjectIdentity: Record<string, unknown> },
+      { width: number; deviceScaleFactor: number },
+    ];
+    expect(viewModel).toMatchObject({
+      template: 'subject-stats',
+      subjectId: subjectFixture.id,
+      subjectIdentity: {
+        state: 'available',
+        source: 'official-v0',
+        name: subjectFixture.name,
+        nameCn: subjectFixture.name_cn,
+      },
+    });
+    expect(renderOptions).toEqual({ width: 360, deviceScaleFactor: 2 });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps successful stats when the separate official identity request is not found', async () => {
+    const fetchFn = vi.fn(async () => {
+      if (fetchFn.mock.calls.length === 1) {
+        return new Response(JSON.stringify(subjectFixture), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ error: 'identity unavailable' }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const { response, renderService } = await callMcpRender({
+      toolName: 'bangumi.render_subject_stats_intelligence',
+      fetchFn,
+    });
+
+    expect(response.isError).toBeUndefined();
+    const [viewModel] = renderService.renderCard.mock.calls[0] as unknown as [
+      { state: string; subjectIdentity: Record<string, unknown> },
+    ];
+    expect(viewModel.state).toBe('complete');
+    expect(viewModel.subjectIdentity).toMatchObject({
+      state: 'not_found',
+      source: 'official-v0',
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps direct ToolRegistry rendering on its historical full-resolution target', async () => {
     const { dependencies, renderService, artifactStore } = createDependencies();
     const registry = new ToolRegistry(dependencies);
@@ -134,6 +206,34 @@ describe('MCP renderer target', () => {
     expect(result).toMatchObject({ artifact: { width: 1920, height: 480 } });
     expect(renderService.renderCard).toHaveBeenCalledWith(
       expect.objectContaining({ template: 'subject-card' }),
+    );
+    await dependencies.storage.close();
+    expect(artifactStore.saveArtifact).toHaveBeenCalledOnce();
+  });
+
+  it('keeps identity-enriched statistics on the direct full-resolution target', async () => {
+    const { dependencies, renderService, artifactStore } = createDependencies();
+    const registry = new ToolRegistry(dependencies);
+    const result = await registry.executeTool(
+      'bangumi.render_subject_stats_intelligence',
+      { subjectId: subjectFixture.id },
+      {
+        principalId: 'anonymous',
+        botInstanceId: 'render-target-test',
+        conversationId: 'render-target-test',
+      },
+    );
+
+    expect(result).toMatchObject({ artifact: { width: 1920, height: 480 } });
+    expect(renderService.renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template: 'subject-stats',
+        subjectIdentity: expect.objectContaining({
+          state: 'available',
+          name: subjectFixture.name,
+          nameCn: subjectFixture.name_cn,
+        }),
+      }),
     );
     await dependencies.storage.close();
     expect(artifactStore.saveArtifact).toHaveBeenCalledOnce();
