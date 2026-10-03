@@ -91,5 +91,62 @@ describe('G06 Girls’ Last Tour cast and voice-actor scenario', () => {
       }
       expect(html).not.toContain('完整名单');
     }
+
+    const actorlessUnknownRole = {
+      id: 257188,
+      type: 1,
+      name: 'Unmapped role',
+      summary: '',
+      relation: '未映射职位',
+      actors: [],
+    };
+    const invalidActorId = {
+      id: 257189,
+      type: 1,
+      name: 'Malformed actor relation',
+      summary: '',
+      relation: '配角',
+      actors: [{ id: 0, name: 'Invalid actor', type: 1, career: ['seiyu'] }],
+    };
+    const degradedFetchFn = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.endsWith(`/v0/subjects/${G06_SUBJECT_ID}/characters`)) {
+        return new Response(JSON.stringify([...sourceCast, actorlessUnknownRole, invalidActorId]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('unexpected degraded-fixture request', { status: 404 });
+    });
+    const degraded = await getSubjectCast(
+      new CharacterService(new HttpClient({ fetchFn: degradedFetchFn as typeof fetch })),
+      G06_SUBJECT_ID,
+      { limit: 100 },
+    );
+    expect(degraded).toMatchObject({
+      observed: 9,
+      returned: 8,
+      truncated: true,
+      schemaDriftRows: 1,
+      invalidActorIdRows: 1,
+    });
+    expect(degraded.cast.at(-1)).toMatchObject({
+      character: { id: actorlessUnknownRole.id, name: actorlessUnknownRole.name },
+      relation: actorlessUnknownRole.relation,
+      actors: [],
+    });
+    const degradedHtml = renderHtmlTemplate(
+      buildCastCardViewModel(
+        { id: G06_SUBJECT_ID, name: 'Shuumatsu no Tabitabi', nameCn: '少女终末旅行' },
+        degraded.cast,
+        100,
+      ),
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(degradedHtml).toContain('未映射职位');
+    expect(degradedHtml).toContain('暂无 CV/演员');
+    expect(degradedHtml).not.toContain('Invalid actor');
   });
 });
