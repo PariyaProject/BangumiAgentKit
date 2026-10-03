@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-03T15:41:42.037Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "118afc18439cb13dc9faec92e3cb560d54bbed058e4facb6369bec19ec224b60",
+  "probeScriptSha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+  "sourceProgram": "scripts/smoke-public-tools-online.ts",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 1,
+  "httpRequests": 2,
+  "selectedTools": [
+    "bangumi.get_person_activity"
+  ],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "redactions": [
+    "username values are omitted from recorded inputs"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_person_activity",
+      "input": {
+        "personId": 3474,
+        "windowMonths": 3,
+        "maxRelations": 1,
+        "maxSubjectDetails": 1,
+        "maxRows": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "warningsCount": 1
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}
