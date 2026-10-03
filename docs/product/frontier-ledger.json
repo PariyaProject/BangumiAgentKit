@@ -232,9 +232,13 @@
         "tests/integration/live-subject-credit.acceptance.test.ts",
         "packages/bangumi-core/src/services/character-service.ts",
         "packages/bangumi-core/src/workflows/subject-cast.ts",
-        "packages/renderer/src/templates/CastCard.tsx"
+        "packages/renderer/src/templates/CastCard.tsx",
+        "packages/renderer/src/view-model-builders/index.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/render/subject-credit-mobile-layout.test.ts",
+        "tests/integration/tool-catalog-completeness.test.ts"
       ],
-      "next_action": "Keep PARTIAL. The exact e606ac2 current-source ToolRegistry sample used subjectId=218707, limit=100 and returned 7 characters with 7 valid actor links (observed=returned=7, truncated=false); raw labels were 2 主角 and 5 配角. The service-emittable G06 regression separately asserts service-level observed/returned counts, schema drift and truncation, keeps an unknown actorless role visible, and excludes an invalid actor from rendered rows. CastCard receives only returned rows and does not surface discarded-row coverage/truncation; the 360/720 viewport assertions check HTML content, not clipping/layout. One isolated standard-full Agent/MCP call completed get_subject_cast and one render_cast_card Artifact call completed with readback on exact source e606ac2. The Agent/MCP sanitizer confirms tool completion under the configured prompt (subject 218707, requested limit 5) but does not retain actual arguments or result rows; the direct ToolRegistry evidence is separate. Neither validates natural-language answer prose. A single sample does not prove exhaustive source coverage or a universal main/support taxonomy. QQ/TIM remains separate.",
+      "next_action": "The G06 CastCard now carries official-v0 response coverage through CharacterService, ViewModel, and Renderer: observed rows, parsed/returned rows, truncation, schema-drift rows, invalid actor IDs, and the separate card display cap are disclosed. Service-emittable fixtures cover a clean 7/7 response, a 7-observed/3-returned bounded source result with a 2-row card cap, and a malformed actor row; narrow and desktop card layouts cover the note. Keep PARTIAL: one response does not prove an exhaustive source cast or universal main/support taxonomy; natural-language Agent answers and QQ/TIM client display remain separate acceptance gates.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -244,7 +248,9 @@
         ],
         "tests": [
           "tests/render/subject-cast-g06.test.ts",
-          "tests/integration/live-subject-credit.acceptance.test.ts"
+          "tests/integration/live-subject-credit.acceptance.test.ts",
+          "tests/render/subject-credit-mobile-layout.test.ts",
+          "tests/integration/tool-catalog-completeness.test.ts"
         ],
         "implementation": [
           "packages/bangumi-core/src/services/character-service.ts",
@@ -262,6 +268,18 @@
           "height": 1956,
           "artifact_readback_verified": true,
           "visual_inspection": "seven rows readable without clipping"
+        },
+        "renderer_coverage_disclosure": {
+          "source_path": "CharacterService.getSubjectCharactersWithCoverage -> buildCastCardViewModel -> CastCard via bangumi.render_cast_card; one existing subject-character request, no added fan-out.",
+          "fields": ["observed", "returned", "truncated", "schemaDriftRows", "invalidActorIdRows"],
+          "presentation": "The card distinguishes response rows observed, parsed rows available, visible rows, and rows hidden by the existing display cap. Invalid actor IDs are noted as potentially overlapping schema-drift rows; no complete-source label is emitted.",
+          "tests": {
+            "scenario": "tests/render/subject-cast-g06.test.ts",
+            "layout": "tests/render/subject-credit-mobile-layout.test.ts",
+            "tool_path": "tests/integration/tool-catalog-completeness.test.ts",
+            "focused_result": "3 files / 10 tests passed on Run #78 implementation working tree before frontier-ledger update."
+          },
+          "status_boundary": "G06 remains PARTIAL; current-source natural-language Agent result and QQ/TIM remain separate, and one official-v0 response does not establish complete cast coverage."
         }
       }
     },

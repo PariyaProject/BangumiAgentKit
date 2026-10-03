@@ -287,11 +287,13 @@ export function createRenderPresentationTools(
       const characterService = new CharacterService(client);
 
       const subjectData = await subjectService.getSubjectById(input.subjectId);
-      const castItems = await characterService.getSubjectCharacters(input.subjectId);
+      const castResult = await characterService.getSubjectCharactersWithCoverage(input.subjectId);
 
       const viewModel = buildCastCardViewModel(
         { id: subjectData.id, name: subjectData.name, nameCn: subjectData.nameCn },
-        castItems as any,
+        castResult.items,
+        20,
+        castResult.coverage,
       );
       return await executeRenderAndSave(viewModel);
     },
