@@ -27,7 +27,7 @@ const SERIES_MAX_RENDERED_RELATED = 24;
 const SERIES_MAX_RENDERED_EDGES = 64;
 
 function stateLabel(state: SeriesRelationsViewModel['state']): string {
-  if (state === 'complete') return '覆盖完整';
+  if (state === 'complete') return '本次范围内完整';
   if (state === 'partial') return '部分覆盖';
   return '当前不可计算';
 }
