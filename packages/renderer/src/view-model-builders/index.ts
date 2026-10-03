@@ -68,6 +68,7 @@ import type {
   SubjectCohortComparisonViewModel,
   SubjectOverlapViewModel,
   SubjectStatsViewModel,
+  SubjectStatsIdentitySource,
   SubjectIdentityViewModel,
   SubjectStatsHistoryViewModel,
   SubjectIndexMembershipViewModel,
@@ -888,11 +889,14 @@ export function buildSubjectOverlapViewModel(
 
 export function buildSubjectStatsViewModel(
   result: SubjectStatsIntelligenceResult,
+  identity?: SubjectStatsIdentitySource,
 ): SubjectStatsViewModel {
+  const subjectIdentity = buildSubjectStatsIdentityViewModel(result.subjectId, identity);
   return {
     template: 'subject-stats',
     version: 1,
     subjectId: result.subjectId,
+    subjectIdentity,
     state: result.state,
     raw: result.raw,
     rating: result.rating,
@@ -904,6 +908,51 @@ export function buildSubjectStatsViewModel(
     warnings: result.warnings,
     limitations: result.limitations,
     retrievedAt: result.retrievedAt,
+  };
+}
+
+function buildSubjectStatsIdentityViewModel(
+  subjectId: number,
+  identity?: SubjectStatsIdentitySource,
+): SubjectStatsViewModel['subjectIdentity'] {
+  const unavailable = (
+    state: SubjectStatsViewModel['subjectIdentity']['state'],
+  ): SubjectStatsViewModel['subjectIdentity'] => ({
+    state,
+    source: 'official-v0',
+    nameTruncated: false,
+    nameCnTruncated: false,
+    ...(identity?.retrievedAt ? { retrievedAt: identity.retrievedAt } : {}),
+  });
+
+  if (!identity) return unavailable('unavailable');
+  if (identity.requestedSubjectId !== subjectId) return unavailable('id_mismatch');
+  if (identity.state === 'not_found') return unavailable('not_found');
+  if (identity.state !== 'complete' && identity.state !== 'partial') {
+    return unavailable('unavailable');
+  }
+  if (!identity.subject) return unavailable('unavailable');
+  if (identity.subject.id !== subjectId) return unavailable('id_mismatch');
+
+  const name = typeof identity.subject.name === 'string' ? identity.subject.name.trim() : '';
+  if (!name) return unavailable('unavailable');
+  const nameCn = typeof identity.subject.nameCn === 'string' ? identity.subject.nameCn.trim() : '';
+  const nameDisplay = clipSubjectIdentityText(
+    name,
+    SUBJECT_IDENTITY_PRESENTATION_MAX_FIELD_GRAPHEMES,
+  );
+  const nameCnDisplay = nameCn
+    ? clipSubjectIdentityText(nameCn, SUBJECT_IDENTITY_PRESENTATION_MAX_FIELD_GRAPHEMES)
+    : undefined;
+
+  return {
+    state: 'available',
+    source: 'official-v0',
+    name: nameDisplay.text,
+    ...(nameCnDisplay?.text ? { nameCn: nameCnDisplay.text } : {}),
+    nameTruncated: nameDisplay.truncated,
+    nameCnTruncated: nameCnDisplay?.truncated ?? false,
+    ...(identity.retrievedAt ? { retrievedAt: identity.retrievedAt } : {}),
   };
 }
 

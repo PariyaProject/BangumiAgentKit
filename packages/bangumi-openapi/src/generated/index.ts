@@ -127,7 +127,7 @@ export class GeneratedBangumiOpenApiClient {
   /** 获取条目 (GET /v0/subjects/{subject_id}) */
   async getSubjectById(
     subject_id: OperationPath<'getSubjectById'>['subject_id'],
-    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<OperationResponse<'getSubjectById'>> {
     return this.transport.request<OperationResponse<'getSubjectById'>>({
       method: 'GET',

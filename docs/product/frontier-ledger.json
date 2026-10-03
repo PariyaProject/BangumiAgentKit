@@ -225,15 +225,18 @@
         "apps/mcp/src/server.ts",
         "packages/renderer/src/render-service.ts",
         "packages/tools/src/definitions/render-presentation-tools.ts",
+        "packages/renderer/src/view-model-builders/index.ts",
+        "packages/renderer/src/view-models/index.ts",
         "packages/renderer/src/templates/SubjectStatsCard.tsx",
         "tests/integration/mcp-render-target.test.ts",
         "tests/render/subject-overview.test.ts",
         "tests/render/subject-stats.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "tests/render/render-cards.test.ts"
+        "tests/render/render-cards.test.ts",
+        "docs/research/run69-subject-stats-identity-agent-mcp.md"
       ],
-      "next_action": "Statistics and overview fixtures retain bounded 360 CSS px/2x output, and full-resolution direct/Standalone behavior remains. The real-browser 320/360/520 renderer fixture audit caught/fixed person-credit, search-grid, and stats-history-breakpoint overflow. Remaining: current-source natural-language Agent/MCP verification and real QQ/TIM display; fixture evidence does not prove either.",
+      "next_action": "The stats card identifies official-v0 title/nameCn and stable ID while keeping statistics available when identity is missing or mismatched. Fixtures cover degradation, mixed-script title bounds, 320/360/520 CSS px, 360px/2x MCP, direct full-resolution PNG output, and retained formula/snapshot caveats. Exact-source natural-language Agent/MCP acceptance passed for Candidate 9798f2d; repeat it against each changed Candidate before review. QQ/TIM client image display remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },
@@ -1891,6 +1894,8 @@
         "apps/mcp/src/server.ts",
         "packages/renderer/src/render-service.ts",
         "packages/tools/src/definitions/render-presentation-tools.ts",
+        "packages/renderer/src/view-model-builders/index.ts",
+        "packages/renderer/src/view-models/index.ts",
         "packages/renderer/src/templates/SubjectStatsCard.tsx",
         "packages/renderer/src/templates/SubjectComparisonCard.tsx",
         "tests/integration/mcp-render-target.test.ts",
@@ -1898,9 +1903,10 @@
         "tests/render/subject-comparison.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "tests/render/render-cards.test.ts"
+        "tests/render/render-cards.test.ts",
+        "docs/research/run69-subject-stats-identity-agent-mcp.md"
       ],
-      "next_action": "The MCP chat target presents statistics and comparison cards at 360 CSS px/2x with their caveats and full-resolution direct/Standalone defaults preserved. The renderer suite checks successful fixtures in real Chromium at 320, 360, and 520 px, and caught/fixed three cross-template overflow cases; focused profile/search tests verify 720px PNG output. Remaining: current official Agent/MCP values and real QQ/TIM image display; do not infer these from fixtures.",
+      "next_action": "The stats card includes official-v0 title/nameCn and stable ID, keeps stats evidence when identity lookup fails, and explains the formula/snapshot caveats. Fixtures cover 320/360/520 CSS px, 360px/2x MCP, and direct full-resolution PNG output; shared evidence remains 96/96 Agent/MCP. Exact-source natural-language stats acceptance passed on Candidate 9798f2d and must be repeated for every changed Candidate before review. Real QQ/TIM image display and the separate account paths remain unverified.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

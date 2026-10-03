@@ -6,6 +6,7 @@ const SPEC_PATH = path.join(__dirname, '..', 'openapi', 'upstream', 'v0.yaml');
 const GENERATED_DIR = path.join(__dirname, '..', 'packages', 'bangumi-openapi', 'src', 'generated');
 const CLIENT_OUTPUT_PATH = path.join(GENERATED_DIR, 'index.ts');
 const SIGNALABLE_OPERATIONS = new Set([
+  'getSubjectById',
   'getUserCollectionsByUsername',
   'getUserSubjectEpisodeCollection',
   'getUserCharacterCollections',

@@ -230,6 +230,7 @@ function mapWarnings(
 
 export interface SubjectIdentityDependencies {
   providerRegistry?: ProviderRegistry;
+  signal?: AbortSignal;
 }
 
 export async function getSubjectIdentity(
@@ -250,6 +251,7 @@ export async function getSubjectIdentity(
   try {
     sourceResult = await dependencies.providerRegistry.getSubjectIdentity(subjectId, {
       authScope: 'public',
+      signal: dependencies.signal,
     });
   } catch {
     result.coverage.sourceRequestsAttempted = 1;

@@ -8,6 +8,7 @@ import {
   RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+import { closeMobileLayoutBrowser, measureRenderRootLayout } from './helpers/mobile-layout.js';
 
 function captureVisualQa(name: string, buffer: Buffer): void {
   const directory = process.env.BANGUMI_STATS_RENDER_QA_DIR;
@@ -134,6 +135,21 @@ const result: SubjectStatsIntelligenceResult = {
   retrievedAt: '2026-08-15T00:00:00.000Z',
 };
 
+const subjectIdentity = {
+  requestedSubjectId: 123,
+  state: 'complete' as const,
+  subject: {
+    id: 123,
+    name: "Girls' Last Tour",
+    nameCn: '少女终末旅行',
+  },
+  retrievedAt: '2026-08-15T00:00:00.000Z',
+};
+
+function buildStatsViewModel(stats: SubjectStatsIntelligenceResult = result) {
+  return buildSubjectStatsViewModel(stats, subjectIdentity);
+}
+
 describe('subject-stats renderer', () => {
   let renderService: RenderService;
 
@@ -143,18 +159,28 @@ describe('subject-stats renderer', () => {
 
   afterAll(async () => {
     await renderService.close();
+    await closeMobileLayoutBrowser();
   });
 
   it('renders bounded complete statistics without image or network assets', async () => {
-    const viewModel = buildSubjectStatsViewModel(result);
+    const viewModel = buildStatsViewModel();
 
     expect(viewModel.template).toBe('subject-stats');
+    expect(viewModel.subjectIdentity).toMatchObject({
+      state: 'available',
+      source: 'official-v0',
+      name: "Girls' Last Tour",
+      nameCn: '少女终末旅行',
+    });
     expect(extractImageUrls(viewModel)).toEqual([]);
 
     const narrowHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 480);
     const wideHtml = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 960);
     for (const html of [narrowHtml, wideHtml]) {
-      expect(html).toContain('条目统计');
+      expect(html).toContain('少女终末旅行');
+      expect(html).toContain('Girls&#x27; Last Tour');
+      expect(html).toContain('Bangumi ID 123');
+      expect(html).toContain('官方 v0 条目名称');
       expect(html).toContain('评分分布');
       expect(html).toContain('40.0%');
       expect(html).toContain('完成率');
@@ -181,6 +207,86 @@ describe('subject-stats renderer', () => {
     expect(rendered.buffer.length).toBeGreaterThan(1000);
   });
 
+  it('keeps statistics independent when the official subject identity is missing or mismatched', () => {
+    const missing = buildSubjectStatsViewModel(result, {
+      requestedSubjectId: 123,
+      state: 'unavailable',
+    });
+    expect(missing.state).toBe('complete');
+    expect(missing.subjectIdentity.state).toBe('unavailable');
+    const missingHtml = renderHtmlTemplate(missing, 'bangumi-dark', {}, 360);
+    expect(missingHtml).toContain('作品名称暂不可用');
+    expect(missingHtml).toContain('Bangumi ID 123');
+    expect(missingHtml).toContain('官方作品名称本次不可用');
+    expect(missingHtml).toContain('评分分布');
+    expect(missingHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+    expect(missingHtml).toContain('样本验证，并非官方 API 契约');
+    expect(missingHtml).toContain('当前快照，不代表历史趋势或推荐');
+    expect(missingHtml).not.toContain("Girls' Last Tour");
+
+    const mismatch = buildSubjectStatsViewModel(result, {
+      requestedSubjectId: 123,
+      state: 'complete',
+      subject: { id: 999, name: 'Wrong subject', nameCn: '错误作品' },
+    });
+    expect(mismatch.state).toBe('complete');
+    expect(mismatch.subjectIdentity.state).toBe('id_mismatch');
+    const mismatchHtml = renderHtmlTemplate(mismatch, 'bangumi-dark', {}, 360);
+    expect(mismatchHtml).toContain('官方返回的条目 ID 与请求 ID 不一致');
+    expect(mismatchHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+    expect(mismatchHtml).toContain('样本验证，并非官方 API 契约');
+    expect(mismatchHtml).toContain('当前快照，不代表历史趋势或推荐');
+    expect(mismatchHtml).not.toContain('Wrong subject');
+    expect(mismatchHtml).not.toContain('错误作品');
+
+    const partialIdentity = buildSubjectStatsViewModel(result, {
+      ...subjectIdentity,
+      state: 'partial',
+    });
+    expect(partialIdentity.subjectIdentity.state).toBe('available');
+    expect(renderHtmlTemplate(partialIdentity, 'bangumi-dark', {}, 360)).toContain('少女终末旅行');
+  });
+
+  it('wraps long mixed-script identity at 320, 360, and 520 CSS pixels', async () => {
+    const longIdentity = {
+      requestedSubjectId: 123,
+      state: 'complete' as const,
+      subject: {
+        id: 123,
+        name: `Girls' Last Tour / ${'Romanized title '.repeat(20)}`,
+        nameCn: `少女终末旅行${'长标题'.repeat(120)}`,
+      },
+      retrievedAt: '2026-08-15T00:00:00.000Z',
+    };
+    const viewModel = buildSubjectStatsViewModel(result, longIdentity);
+    expect(viewModel.subjectIdentity.nameCnTruncated).toBe(true);
+    expect(viewModel.subjectIdentity.nameCn).toMatch(/…$/u);
+    expect(extractImageUrls(viewModel)).toEqual([]);
+
+    for (const width of [320, 360, 520]) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      const layout = await measureRenderRootLayout(html, width);
+      expect(layout, `layout at ${width}px`).toMatchObject({
+        clientWidth: width,
+        scrollWidth: width,
+        overflowing: [],
+        contentOverflowing: [],
+      });
+      expect(layout.titleBlocks[0]?.title).toContain('少女终末旅行');
+      expect(html).toContain('样本验证，并非官方 API 契约');
+      expect(html).toContain('当前快照，不代表历史趋势或推荐');
+      const rendered = await renderService.renderCard(viewModel, {
+        width,
+        deviceScaleFactor: 2,
+        cache: false,
+      });
+      expect(rendered.width).toBe(width * 2);
+      expect(rendered.height).toBeLessThanOrEqual(8192);
+      expect(rendered.buffer.length).toBeLessThan(5_000_000);
+      captureVisualQa(`single-identity-${width}.png`, rendered.buffer);
+    }
+  }, 60_000);
+
   it('keeps informational formula and rating-total warnings semantically distinct', async () => {
     const empirical = structuredClone(result);
     empirical.warnings = [
@@ -191,7 +297,7 @@ describe('subject-stats renderer', () => {
       },
     ];
     const empiricalHtml = renderHtmlTemplate(
-      buildSubjectStatsViewModel(empirical),
+      buildStatsViewModel(empirical),
       'bangumi-dark',
       {},
       640,
@@ -209,7 +315,7 @@ describe('subject-stats renderer', () => {
       },
     ];
     const unknownCodeHtml = renderHtmlTemplate(
-      buildSubjectStatsViewModel(unknownCode),
+      buildStatsViewModel(unknownCode),
       'bangumi-dark',
       {},
       640,
@@ -229,7 +335,7 @@ describe('subject-stats renderer', () => {
         message: 'Official rating total 95 differs from histogram population 100.',
       },
     ];
-    const mismatchViewModel = buildSubjectStatsViewModel(mismatch);
+    const mismatchViewModel = buildStatsViewModel(mismatch);
     const mismatchHtml = renderHtmlTemplate(mismatchViewModel, 'bangumi-dark', {}, 640);
     expect(mismatchHtml).toContain('官方评分人数与评分分布样本数不一致');
     expect(mismatchHtml).not.toContain('部分统计信息未能完整取得');
@@ -293,7 +399,7 @@ describe('subject-stats renderer', () => {
           'bangumi.rating.percentages.v1: Rating histogram contains missing buckets; percentages are suppressed.',
       },
     ];
-    const conflictViewModel = buildSubjectStatsViewModel(conflict);
+    const conflictViewModel = buildStatsViewModel(conflict);
     expect(conflictViewModel.conflicts).toEqual(conflict.conflicts);
     const conflictHtml = renderHtmlTemplate(conflictViewModel, 'bangumi-dark', {}, 640);
     expect(conflictHtml).toContain('统计来源给出的结果不一致');
@@ -338,7 +444,7 @@ describe('subject-stats renderer', () => {
       warnings: [],
     };
     const unavailableHtml = renderHtmlTemplate(
-      buildSubjectStatsViewModel(unavailable),
+      buildStatsViewModel(unavailable),
       'bangumi-dark',
       {},
       640,
@@ -350,12 +456,7 @@ describe('subject-stats renderer', () => {
     expect(unavailableHtml).not.toContain('8.6');
     expect(unavailableHtml).not.toContain('NaN');
 
-    const notFoundHtml = renderHtmlTemplate(
-      buildSubjectStatsViewModel(notFound),
-      'bangumi-dark',
-      {},
-      640,
-    );
+    const notFoundHtml = renderHtmlTemplate(buildStatsViewModel(notFound), 'bangumi-dark', {}, 640);
     expect(notFoundHtml).toContain('未找到');
     expect(notFoundHtml).toContain('官方统计源没有找到该条目');
     expect(notFoundHtml).toContain('不把“未找到”误当作零');
@@ -539,12 +640,7 @@ describe('subject-stats renderer', () => {
     notFoundState.state = 'not_found';
     notFoundState.warnings = [];
 
-    const partialHtml = renderHtmlTemplate(
-      buildSubjectStatsViewModel(partial),
-      'bangumi-dark',
-      {},
-      480,
-    );
+    const partialHtml = renderHtmlTemplate(buildStatsViewModel(partial), 'bangumi-dark', {}, 480);
     expect(partialHtml).toContain('已收到 9/10 档');
     expect(partialHtml).toContain('未知 · 未知');
     expect(partialHtml).toContain('部分统计字段未返回，相关指标保持未知。');
@@ -561,7 +657,7 @@ describe('subject-stats renderer', () => {
       ['not-computable', notComputable],
     ];
     for (const [label, fixture] of states) {
-      const viewModel = buildSubjectStatsViewModel(fixture);
+      const viewModel = buildStatsViewModel(fixture);
       for (const width of [360, 480, 640, 960]) {
         const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
         expect(html, `${label} HTML at ${width}`).toContain('Bangumi 条目统计 · 当前快照');

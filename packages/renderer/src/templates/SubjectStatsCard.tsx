@@ -144,11 +144,29 @@ function statsConflictLabel(
 }
 
 function dataNotes(viewModel: SubjectStatsViewModel): string[] {
+  const identityNote = (() => {
+    switch (viewModel.subjectIdentity.state) {
+      case 'not_found':
+        return '官方条目身份源未找到该条目；统计仍保留各自的来源状态。';
+      case 'id_mismatch':
+        return '官方返回的条目 ID 与请求 ID 不一致；名称已隐藏，统计状态保持独立。';
+      case 'unavailable':
+        return '官方作品名称本次不可用；统计仍保留各自的来源状态和请求 ID。';
+      case 'available':
+        return viewModel.subjectIdentity.nameTruncated || viewModel.subjectIdentity.nameCnTruncated
+          ? '作品标题超过显示上限，已在安全范围内截断。'
+          : undefined;
+    }
+  })();
+
   if (viewModel.state === 'not_found') {
-    return ['统计字段保留为未知，不把“未找到”误当作零。'];
+    return [...(identityNote ? [identityNote] : []), '统计字段保留为未知，不把“未找到”误当作零。'];
   }
   if (viewModel.state === 'unavailable') {
-    return ['统计字段保留为未知，不把“暂时不可用”误当作零。'];
+    return [
+      ...(identityNote ? [identityNote] : []),
+      '统计字段保留为未知，不把“暂时不可用”误当作零。',
+    ];
   }
 
   const repeatedConflictWarning = Boolean(uniqueStatsConflicts(viewModel).length);
@@ -166,16 +184,19 @@ function dataNotes(viewModel: SubjectStatsViewModel): string[] {
     },
   );
   const notes = [
+    ...(identityNote ? [identityNote] : []),
     `均值和离散度由本次评分分布计算。${completionFormulaNote} 这是一份当前快照，不代表历史趋势或推荐。`,
     ...visibleWarnings,
     ...viewModel.limitations,
   ];
-  return notes
-    .map((note) => note.trim())
-    .filter(
-      (note, index, all) =>
-        note && all.indexOf(note) === index && (!note.includes('历史趋势') || index === 0),
-    );
+  const normalizedNotes = notes.map((note) => note.trim());
+  const firstHistoricalNote = normalizedNotes.find((note) => note.includes('历史趋势'));
+  return normalizedNotes.filter(
+    (note, index, all) =>
+      note &&
+      all.indexOf(note) === index &&
+      (!note.includes('历史趋势') || note === firstHistoricalNote),
+  );
 }
 
 export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, theme, width }) => {
@@ -193,8 +214,32 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
   return (
     <CardFrame theme={theme} width={width}>
       <TitleBlock
-        title="条目统计"
-        subtitle={'条目 ' + viewModel.subjectId + ' · ' + stateLabel(viewModel.state)}
+        title={
+          viewModel.subjectIdentity.state === 'available'
+            ? viewModel.subjectIdentity.nameCn ||
+              viewModel.subjectIdentity.name ||
+              '作品名称暂不可用'
+            : '作品名称暂不可用'
+        }
+        subtitle={[
+          viewModel.subjectIdentity.state === 'available' &&
+          viewModel.subjectIdentity.nameCn &&
+          viewModel.subjectIdentity.name &&
+          viewModel.subjectIdentity.nameCn !== viewModel.subjectIdentity.name
+            ? viewModel.subjectIdentity.name
+            : undefined,
+          'Bangumi ID ' + viewModel.subjectId,
+          viewModel.subjectIdentity.state === 'available'
+            ? '官方 v0 条目名称'
+            : viewModel.subjectIdentity.state === 'id_mismatch'
+              ? '身份与请求不一致'
+              : viewModel.subjectIdentity.state === 'not_found'
+                ? '身份源未找到'
+                : '身份源不可用',
+          '统计' + stateLabel(viewModel.state),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         theme={theme}
       />
 

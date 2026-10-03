@@ -23,6 +23,7 @@ import { warning } from './contracts.js';
 
 export interface ProviderRequestContext {
   authScope?: AuthScope;
+  signal?: AbortSignal;
 }
 
 export interface RatingHistogram {
@@ -280,7 +281,7 @@ export interface CalendarProvider {
 export interface OfficialV0Api {
   getSubjectById(
     subjectId: number,
-    requestOptions?: Pick<HttpRequestOptions, 'maxResponseBytes'>,
+    requestOptions?: Pick<HttpRequestOptions, 'signal' | 'maxResponseBytes'>,
   ): Promise<Subject>;
   searchSubjects?: (
     query: OperationQuery<'searchSubjects'> | undefined,
@@ -1255,6 +1256,7 @@ export class OfficialV0Provider implements SubjectDiscoveryProvider {
     try {
       const raw = await this.api.getSubjectById(subjectId, {
         maxResponseBytes: SUBJECT_IDENTITY_MAX_RESPONSE_BYTES,
+        signal: context.signal,
       });
       const retrievedAt = new Date().toISOString();
       const parsed = parseSubjectIdentity(raw);
