@@ -189,12 +189,14 @@ function dataNotes(viewModel: SubjectStatsViewModel): string[] {
     ...visibleWarnings,
     ...viewModel.limitations,
   ];
-  return notes
-    .map((note) => note.trim())
-    .filter(
-      (note, index, all) =>
-        note && all.indexOf(note) === index && (!note.includes('历史趋势') || index === 0),
-    );
+  const normalizedNotes = notes.map((note) => note.trim());
+  const firstHistoricalNote = normalizedNotes.find((note) => note.includes('历史趋势'));
+  return normalizedNotes.filter(
+    (note, index, all) =>
+      note &&
+      all.indexOf(note) === index &&
+      (!note.includes('历史趋势') || note === firstHistoricalNote),
+  );
 }
 
 export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, theme, width }) => {

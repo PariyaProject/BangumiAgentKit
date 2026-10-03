@@ -219,6 +219,9 @@ describe('subject-stats renderer', () => {
     expect(missingHtml).toContain('Bangumi ID 123');
     expect(missingHtml).toContain('官方作品名称本次不可用');
     expect(missingHtml).toContain('评分分布');
+    expect(missingHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+    expect(missingHtml).toContain('样本验证，并非官方 API 契约');
+    expect(missingHtml).toContain('当前快照，不代表历史趋势或推荐');
     expect(missingHtml).not.toContain("Girls' Last Tour");
 
     const mismatch = buildSubjectStatsViewModel(result, {
@@ -230,6 +233,9 @@ describe('subject-stats renderer', () => {
     expect(mismatch.subjectIdentity.state).toBe('id_mismatch');
     const mismatchHtml = renderHtmlTemplate(mismatch, 'bangumi-dark', {}, 360);
     expect(mismatchHtml).toContain('官方返回的条目 ID 与请求 ID 不一致');
+    expect(mismatchHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
+    expect(mismatchHtml).toContain('样本验证，并非官方 API 契约');
+    expect(mismatchHtml).toContain('当前快照，不代表历史趋势或推荐');
     expect(mismatchHtml).not.toContain('Wrong subject');
     expect(mismatchHtml).not.toContain('错误作品');
 
@@ -267,6 +273,8 @@ describe('subject-stats renderer', () => {
         contentOverflowing: [],
       });
       expect(layout.titleBlocks[0]?.title).toContain('少女终末旅行');
+      expect(html).toContain('样本验证，并非官方 API 契约');
+      expect(html).toContain('当前快照，不代表历史趋势或推荐');
       const rendered = await renderService.renderCard(viewModel, {
         width,
         deviceScaleFactor: 2,

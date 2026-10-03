@@ -91,6 +91,8 @@ import { getSubjectComparison } from '../subject-comparison.js';
 import { getSubjectOverlap } from '../subject-overlap.js';
 import { getSubjectStatsIntelligence } from '../subject-stats-intelligence.js';
 import { getSubjectIdentity } from '../subject-identity.js';
+
+const SUBJECT_STATS_IDENTITY_TIMEOUT_MS = 2_500;
 import {
   getSubjectStatsHistory,
   SUBJECT_STATS_HISTORY_SUBJECT_ID_MAX,
@@ -990,13 +992,28 @@ export function createRenderPresentationTools(
     scopes: [],
     risk: 'read',
     execute: async (input, _context, deps) => {
+      const statsRead = getSubjectStatsIntelligence(input.subjectId, {
+        providerRegistry: deps?.providerRegistry,
+      });
+      const identityController = new AbortController();
+      let identityTimeout: ReturnType<typeof setTimeout> | undefined;
+      const identityDeadline = new Promise<undefined>((resolve) => {
+        identityTimeout = setTimeout(() => {
+          identityController.abort();
+          resolve(undefined);
+        }, SUBJECT_STATS_IDENTITY_TIMEOUT_MS);
+      });
+      const identityRead = getSubjectIdentity(input.subjectId, {
+        providerRegistry: deps?.providerRegistry,
+        signal: identityController.signal,
+      })
+        .catch(() => undefined)
+        .finally(() => {
+          if (identityTimeout !== undefined) clearTimeout(identityTimeout);
+        });
       const [result, identity] = await Promise.all([
-        getSubjectStatsIntelligence(input.subjectId, {
-          providerRegistry: deps?.providerRegistry,
-        }),
-        getSubjectIdentity(input.subjectId, {
-          providerRegistry: deps?.providerRegistry,
-        }).catch(() => undefined),
+        statsRead,
+        Promise.race([identityRead, identityDeadline]),
       ]);
       return await executeRenderAndSave(
         buildSubjectStatsViewModel(

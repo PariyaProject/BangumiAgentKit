@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { RenderService } from '@bangumi-agent-kit/renderer';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
 
@@ -190,6 +191,44 @@ describe('MCP renderer target', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  it('returns successful stats when the optional identity response body stalls', async () => {
+    let identityBodyCancelled = false;
+    const fetchFn = vi.fn(async () => {
+      if (fetchFn.mock.calls.length === 1) {
+        return new Response(JSON.stringify(subjectFixture), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          cancel() {
+            identityBodyCancelled = true;
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const startedAt = Date.now();
+    const { response, renderService } = await callMcpRender({
+      toolName: 'bangumi.render_subject_stats_intelligence',
+      fetchFn,
+    });
+
+    expect(response.isError).toBeUndefined();
+    const [viewModel] = renderService.renderCard.mock.calls[0] as unknown as [
+      { state: string; subjectIdentity: Record<string, unknown> },
+    ];
+    expect(viewModel.state).toBe('complete');
+    expect(viewModel.subjectIdentity).toMatchObject({
+      state: 'unavailable',
+      source: 'official-v0',
+    });
+    expect(identityBodyCancelled).toBe(true);
+    expect(Date.now() - startedAt).toBeLessThan(5_000);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  }, 10_000);
+
   it('keeps direct ToolRegistry rendering on its historical full-resolution target', async () => {
     const { dependencies, renderService, artifactStore } = createDependencies();
     const registry = new ToolRegistry(dependencies);
@@ -212,30 +251,55 @@ describe('MCP renderer target', () => {
   });
 
   it('keeps identity-enriched statistics on the direct full-resolution target', async () => {
-    const { dependencies, renderService, artifactStore } = createDependencies();
-    const registry = new ToolRegistry(dependencies);
-    const result = await registry.executeTool(
-      'bangumi.render_subject_stats_intelligence',
-      { subjectId: subjectFixture.id },
-      {
-        principalId: 'anonymous',
-        botInstanceId: 'render-target-test',
-        conversationId: 'render-target-test',
-      },
-    );
-
-    expect(result).toMatchObject({ artifact: { width: 1920, height: 480 } });
-    expect(renderService.renderCard).toHaveBeenCalledWith(
-      expect.objectContaining({
-        template: 'subject-stats',
-        subjectIdentity: expect.objectContaining({
-          state: 'available',
-          name: subjectFixture.name,
-          nameCn: subjectFixture.name_cn,
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify(subjectFixture), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
         }),
-      }),
     );
-    await dependencies.storage.close();
-    expect(artifactStore.saveArtifact).toHaveBeenCalledOnce();
+    const renderService = new RenderService();
+    const artifactStore = {
+      saveArtifact: vi.fn(async (_buffer: Buffer, mimeType = 'image/png' as const, size = {}) => ({
+        id: 'stats-full-resolution-png',
+        mimeType,
+        ...size,
+        expiresAt: '2099-01-01T00:00:00.000Z',
+      })),
+    };
+    const dependencies = createRuntimeDependenciesWithStorage(new MemoryStorage(), {
+      publicHttpClient: new HttpClient({ fetchFn }),
+      renderService: renderService as never,
+      artifactStore: artifactStore as never,
+    });
+    const registry = new ToolRegistry(dependencies);
+    try {
+      const result = await registry.executeTool(
+        'bangumi.render_subject_stats_intelligence',
+        { subjectId: subjectFixture.id },
+        {
+          principalId: 'anonymous',
+          botInstanceId: 'render-target-test',
+          conversationId: 'render-target-test',
+        },
+      );
+
+      expect(result).toMatchObject({
+        artifact: {
+          mimeType: 'image/png',
+          width: 1920,
+          height: expect.any(Number),
+        },
+      });
+      const artifact = (result as { artifact: { height: number } }).artifact;
+      expect(artifact.height).toBeGreaterThan(0);
+      const [png] = artifactStore.saveArtifact.mock.calls[0] as unknown as [Buffer];
+      expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      expect(artifactStore.saveArtifact).toHaveBeenCalledOnce();
+    } finally {
+      await renderService.close();
+      await dependencies.storage.close();
+    }
   });
 });

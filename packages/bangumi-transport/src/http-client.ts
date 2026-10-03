@@ -147,7 +147,7 @@ export class HttpClient {
       if (!response.ok) {
         let errorMsg = `HTTP ${response.status} ${response.statusText}`;
         try {
-          const bodyText = await readResponseText(response, maxResponseBytes);
+          const bodyText = await readResponseText(response, maxResponseBytes, options.signal);
           if (bodyText) {
             try {
               const json = JSON.parse(bodyText);
@@ -198,7 +198,7 @@ export class HttpClient {
 
       let dataText = '';
       try {
-        dataText = await readResponseText(response, maxResponseBytes);
+        dataText = await readResponseText(response, maxResponseBytes, options.signal);
         if (!dataText) {
           return {} as T;
         }
@@ -252,10 +252,28 @@ function assertResponseContentLength(response: Response, maxResponseBytes: numbe
   }
 }
 
-async function readResponseText(response: Response, maxResponseBytes: number): Promise<string> {
+async function readResponseText(
+  response: Response,
+  maxResponseBytes: number,
+  signal?: AbortSignal,
+): Promise<string> {
   assertResponseContentLength(response, maxResponseBytes);
   if (!Number.isFinite(maxResponseBytes) || !response.body) {
-    const text = await response.text();
+    if (signal?.aborted) throw responseBodyCancelledError(response.status);
+    let onAbort: (() => void) | undefined;
+    const textPromise = response.text();
+    const abortPromise = signal
+      ? new Promise<never>((_resolve, reject) => {
+          onAbort = () => reject(responseBodyCancelledError(response.status));
+          signal.addEventListener('abort', onAbort, { once: true });
+        })
+      : undefined;
+    let text: string;
+    try {
+      text = abortPromise ? await Promise.race([textPromise, abortPromise]) : await textPromise;
+    } finally {
+      if (onAbort) signal?.removeEventListener('abort', onAbort);
+    }
     if (
       Number.isFinite(maxResponseBytes) &&
       new TextEncoder().encode(text).byteLength > maxResponseBytes
@@ -271,11 +289,21 @@ async function readResponseText(response: Response, maxResponseBytes: number): P
   }
 
   const reader = response.body.getReader();
+  const cancelReader = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  if (signal?.aborted) {
+    cancelReader();
+    throw responseBodyCancelledError(response.status);
+  }
+  signal?.addEventListener('abort', cancelReader, { once: true });
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
   try {
     while (true) {
+      if (signal?.aborted) throw responseBodyCancelledError(response.status);
       const { done, value } = await reader.read();
+      if (signal?.aborted) throw responseBodyCancelledError(response.status);
       if (done) break;
       if (!value) continue;
       totalBytes += value.byteLength;
@@ -291,6 +319,7 @@ async function readResponseText(response: Response, maxResponseBytes: number): P
       chunks.push(value);
     }
   } finally {
+    signal?.removeEventListener('abort', cancelReader);
     reader.releaseLock();
   }
 
@@ -301,4 +330,8 @@ async function readResponseText(response: Response, maxResponseBytes: number): P
     offset += chunk.byteLength;
   }
   return new TextDecoder().decode(bytes);
+}
+
+function responseBodyCancelledError(status: number): BangumiError {
+  return new BangumiError('NETWORK_ERROR', 'Response body read was cancelled.', false, status);
 }

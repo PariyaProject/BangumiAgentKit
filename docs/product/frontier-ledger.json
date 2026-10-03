@@ -233,9 +233,10 @@
         "tests/render/subject-stats.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "tests/render/render-cards.test.ts"
+        "tests/render/render-cards.test.ts",
+        "docs/research/run69-subject-stats-identity-agent-mcp.md"
       ],
-      "next_action": "The stats card now identifies official-v0 title/nameCn and stable ID while keeping statistics results independent from missing or mismatched identity. New fixtures cover identity degradation, mixed-script title bounds, real-browser 320/360/520 CSS px, 360px/2x MCP, and direct full-resolution rendering; QQ/TIM remain unverified. Remaining: exact current-source natural-language Agent/MCP verification and real client image display; fixtures do not prove either.",
+      "next_action": "The stats card identifies official-v0 title/nameCn and stable ID while keeping statistics available when identity is missing or mismatched. Fixtures cover degradation, mixed-script title bounds, 320/360/520 CSS px, 360px/2x MCP, direct full-resolution PNG output, and retained formula/snapshot caveats. Exact-source natural-language Agent/MCP acceptance passed for Candidate 9798f2d; repeat it against each changed Candidate before review. QQ/TIM client image display remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },
@@ -1902,9 +1903,10 @@
         "tests/render/subject-comparison.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "tests/render/render-cards.test.ts"
+        "tests/render/render-cards.test.ts",
+        "docs/research/run69-subject-stats-identity-agent-mcp.md"
       ],
-      "next_action": "The stats card now includes the official-v0 title/nameCn and stable ID, keeps stats evidence and states when identity lookup fails, and explains the existing formula/snapshot caveats. New fixtures cover 320/360/520 CSS px in real Chromium, 360px/2x MCP, and full-resolution direct rendering; shared 96-tool evidence remains 96/96 Agent/MCP. Remaining: exact current-source natural-language stats journey and real QQ/TIM image display; fixtures do not prove either.",
+      "next_action": "The stats card includes official-v0 title/nameCn and stable ID, keeps stats evidence when identity lookup fails, and explains the formula/snapshot caveats. Fixtures cover 320/360/520 CSS px, 360px/2x MCP, and direct full-resolution PNG output; shared evidence remains 96/96 Agent/MCP. Exact-source natural-language stats acceptance passed on Candidate 9798f2d and must be repeated for every changed Candidate before review. Real QQ/TIM image display and the separate account paths remain unverified.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
