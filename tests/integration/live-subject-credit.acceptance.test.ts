@@ -53,6 +53,23 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
     expect(cast.status).toBe('ok');
     expect(Array.isArray(cast.cast)).toBe(true);
     expect((cast.cast as unknown[]).length).toBeGreaterThan(0);
+    const castRows = cast.cast as Array<{
+      character: { id: number; name: string };
+      relation: string;
+      actors: Array<{ id: number; name: string }>;
+    }>;
+    const actorLinks = castRows.flatMap((row) => row.actors);
+    const castIdentityLinksValid =
+      castRows.every(
+        (row) =>
+          Number.isInteger(row.character?.id) &&
+          row.character.id > 0 &&
+          Boolean(row.character.name) &&
+          Boolean(row.relation.trim()),
+      ) &&
+      actorLinks.length > 0 &&
+      actorLinks.every((actor) => Number.isInteger(actor.id) && actor.id > 0 && actor.name);
+    expect(castIdentityLinksValid).toBe(true);
 
     expect(staff.subjectId).toBe(SUBJECT_ID);
     expect(['complete', 'partial']).toContain(staff.state);
@@ -66,22 +83,34 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
     const groups = staff.groups as Array<{ relation: string; count: number; memberIds: number[] }>;
     const observedStaffIds = new Set(staffRows.map((member) => member.id));
     expect(groups.length).toBeGreaterThan(0);
-    expect(groups.every((group) => group.count === group.memberIds.length)).toBe(true);
-    expect(groups.every((group) => group.memberIds.every((id) => observedStaffIds.has(id)))).toBe(
-      true,
+    const roleMemberLinksValid = groups.every(
+      (group) =>
+        Boolean(group.relation.trim()) &&
+        group.count === group.memberIds.length &&
+        group.memberIds.every((id) => observedStaffIds.has(id)),
     );
+    expect(roleMemberLinksValid).toBe(true);
 
     const overviewResult = overview as {
       subjectId: number;
       state: string;
       subject?: { id: number; name: string; nameCn?: string };
-      cast: { state: string; items: unknown[]; coverage: { returned: number; truncated: boolean } };
-      staff: {
+      cast: {
         state: string;
-        groups: Array<{ relation: string; members: unknown[] }>;
+        items: Array<{
+          character: { id: number; name: string };
+          relation: string;
+          actors: Array<{ id: number; name: string }>;
+        }>;
         coverage: { returned: number; truncated: boolean };
       };
-      relations: { state: string; items: unknown[] };
+      staff: {
+        state: string;
+        items: Array<{ id: number; name: string; relation: string; rawRelation?: string }>;
+        groups: Array<{ relation: string; count: number; memberIds: number[] }>;
+        coverage: { returned: number; truncated: boolean };
+      };
+      relations: { state: string; items: Array<{ id: number; relation: string }> };
       warnings: unknown[];
       limitations: unknown[];
     };
@@ -92,9 +121,38 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
     expect(overviewResult.cast.items.length).toBeLessThanOrEqual(
       overviewResult.cast.coverage.returned,
     );
+    expect(overviewResult.cast.items.length).toBeGreaterThan(0);
     expect(
-      overviewResult.staff.groups.flatMap((group) => group.members).length,
-    ).toBeLessThanOrEqual(overviewResult.staff.coverage.returned);
+      overviewResult.cast.items.every(
+        (item) =>
+          Number.isInteger(item.character?.id) &&
+          item.character.id > 0 &&
+          Boolean(item.character.name) &&
+          Boolean(item.relation.trim()),
+      ),
+    ).toBe(true);
+    expect(overviewResult.cast.items.flatMap((item) => item.actors).length).toBeGreaterThan(0);
+    expect(overviewResult.staff.items.length).toBeLessThanOrEqual(
+      overviewResult.staff.coverage.returned,
+    );
+    expect(overviewResult.staff.groups.every((group) => Boolean(group.relation.trim()))).toBe(true);
+    const overviewStaffIds = new Set(overviewResult.staff.items.map((member) => member.id));
+    expect(
+      overviewResult.staff.groups.every((group) => group.count === group.memberIds.length),
+    ).toBe(true);
+    expect(
+      overviewResult.staff.groups
+        .flatMap((group) => group.memberIds)
+        .every((memberId) => Number.isInteger(memberId) && overviewStaffIds.has(memberId)),
+    ).toBe(true);
+    expect(
+      overviewResult.staff.items.every(
+        (member) => Number.isInteger(member.id) && member.id > 0 && Boolean(member.name),
+      ),
+    ).toBe(true);
+    expect(overviewResult.relations.items.every((item) => Boolean(item.relation.trim()))).toBe(
+      true,
+    );
 
     const viewModel = buildSubjectOverviewViewModel(overviewResult as never);
     const renderOptions = {
@@ -131,6 +189,8 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
         get_subject_cast: {
           status: cast.status,
           rows: (cast.cast as unknown[]).length,
+          actorLinks: actorLinks.length,
+          identityLinksValid: castIdentityLinksValid,
           observed: cast.observed,
           returned: cast.returned,
           truncated: cast.truncated,
@@ -140,6 +200,7 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
           rows: staffRows.length,
           rawRoleGroupCount: groups.length,
           roleLabels: groups.map((group) => group.relation),
+          roleMemberLinksValid,
           observed: staff.observed,
           returned: staff.returned,
           truncated: staff.truncated,
@@ -148,9 +209,11 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
           state: overviewResult.state,
           castState: overviewResult.cast.state,
           castRows: overviewResult.cast.items.length,
+          castActorLinks: overviewResult.cast.items.flatMap((item) => item.actors).length,
           castTruncated: overviewResult.cast.coverage.truncated,
           staffState: overviewResult.staff.state,
           staffGroups: overviewResult.staff.groups.length,
+          staffMembers: overviewResult.staff.items.length,
           staffTruncated: overviewResult.staff.coverage.truncated,
           relationsState: overviewResult.relations.state,
           relationRows: overviewResult.relations.items.length,

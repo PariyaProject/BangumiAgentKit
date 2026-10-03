@@ -49,14 +49,31 @@ cover/avatar images, an actorless row, and a bounded hidden-role count. The sepa
 sample, cast, relations, and section coverage fit one PNG without clipping.
 The full-size/default renderer remains covered by the existing suite.
 
+## Post-commit public relation/link recheck
+
+On the unchanged product source at `99757aaa48e7c47d32620b58be607a3e6ae3b733`,
+the opt-in ToolRegistry test was strengthened to validate character IDs,
+character/actor links, exact non-empty source relation labels, staff group
+member-ID joins to returned staff rows, relation labels, and bounded section
+counts. The live run passed 1/1: cast returned 7 characters with 7 actor links;
+staff returned 100 rows across 22 raw role labels and every group member ID
+resolved within the staff result; the integrated overview returned 24 staff
+rows in 6 partial groups and 9 complete relation rows. The staff sample included
+music-production/song credits but did not include 原作, 导演, or 脚本 labels.
+No names or answer prose are persisted by the test.
+
+This stricter live test run was executed from the 99757aa worktree before its
+test-only assertions were committed; the renderer/tool implementation remains
+the exact 84fefb1 product commit.
+
 Current public artifacts were generated locally and visually inspected. Their
 PNG bytes and public image assets are intentionally not committed:
 
 ```text
-/tmp/run69-subject-credit-live/
+/tmp/run69-subject-credit-candidate-final-v3/
   subject-card-360.png      720 × 1558, 294158 bytes
   cast-card-360.png         720 × 1960, 202361 bytes
-  subject-overview-360.png  720 × 5024, 729860 bytes
+  subject-overview-360.png  720 × 5024, 729617 bytes
 ```
 
 ## Validation
@@ -102,3 +119,11 @@ the combined Renderer/MCP probe is not marked PASS because its strict report
 was lost on the storage error. Re-run the isolated probe when Docker and local
 storage can record the complete result. No OAuth/account, QQ, TIM, NapCat, or
 persistent deployment was used.
+
+PariyaAgent PR #1 now has an offline-tested stricter subject-overview answer
+validator. It checks the exact query ID and caps, returned actor/staff identity
+links, a returned character and voice actor, a source staff role and member,
+honest partial-coverage language, no unsupported completeness claim, and no raw
+Markdown. Its renderer probe cap has also been raised to the overview's full
+bounded limits. That newer validator/cap profile has not yet run against a live
+Antigravity container because the local Docker CLI is timing out.

@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-03T17:28:23+09:00",
+  "updated_at": "2026-10-03T17:59:26+09:00",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -192,7 +192,7 @@
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/CastCard.tsx"
       ],
-      "next_action": "Exact candidate 84fefb172b9ac9c5d7d885dad495de6009293b22 returned 7/7 cast rows with complete coverage; its isolated Agent/MCP overview probe passed once. The Renderer/MCP tool generated and host-read a PNG, but the combined probe lost its report after ENOSPC while copying the artifact. Keep PARTIAL until a clean strict Renderer/MCP report and final answer-quality checks are captured; QQ/TIM remains separate.",
+      "next_action": "Run #69 live ToolRegistry assertions at product code 84fefb1 returned 7/7 cast rows with 7 valid actor links; the Agent/MCP tool call passed once. Its old run did not validate answer prose, and the strict Renderer/MCP report is still missing after ENOSPC. Keep PARTIAL until answer-level validation and a clean Renderer report pass; QQ/TIM remains separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -209,7 +209,7 @@
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Exact candidate 84fefb172b9ac9c5d7d885dad495de6009293b22 public source returned 100 staff rows across 22 raw source-role labels with state=partial; its isolated Agent/MCP overview call passed once. Renderer PNG generation/readback succeeded, but the probe report was lost after ENOSPC while copying. Keep PARTIAL until the clean Renderer/MCP report and staff-role answer checks pass; do not claim complete staff coverage.",
+      "next_action": "Run #69 public ToolRegistry returned 100 staff rows across 22 exact relation labels; all group memberIds joined to returned staff identities. The bounded overview has 24 staff rows in 6 partial groups. Agent/MCP called get_subject_overview once, but answer-level role/person checks were added afterward and remain unrun. Renderer artifact readback succeeded, but its strict report was lost after ENOSPC.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -401,7 +401,7 @@
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "The current public sample includes music-production/song-credit labels but no 原作/导演/脚本 labels. Exact candidate Agent/MCP selected get_subject_overview once; the isolated Renderer/MCP image was recovered and shows partial coverage, but its combined probe exited after ENOSPC and did not save strict diagnostics. Keep PARTIAL until the Renderer report is clean and the answer explicitly avoids inferring absent roles.",
+      "next_action": "The live source-role labels included music-production/song credits but no 原作/导演/脚本 labels. The earlier exact-source Agent/MCP call did not run the new answer validator; a clean Renderer report is also pending after ENOSPC. Keep PARTIAL until answer-level checks confirm absent roles are not invented and strict Renderer evidence is recorded.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -1773,7 +1773,7 @@
         "packages/renderer/src/templates/CastCard.tsx",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Run #69 candidate shows 100 official-v0 staff rows across 22 raw role groups with partial coverage. The Agent/MCP overview call passed at exact candidate SHA; a 360 CSS-pixel overview image was generated/read back, but the consolidated Renderer probe failed while saving a second local copy (ENOSPC). Keep partial pending a clean Renderer report and role-specific answer review; real QQ/TIM remains independent.",
+      "next_action": "Run #69 live exact-relation checks confirm 100 official-v0 staff rows across 22 source roles, with all bounded member IDs resolving to returned staff items. Agent/MCP target call passed once, but answer-level role/person validation is pending. Renderer PNG readback and visual review succeeded; the consolidated strict probe report failed to persist after ENOSPC.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
@@ -1842,7 +1842,7 @@
         "packages/renderer/src/templates/CastCard.tsx",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx"
       ],
-      "next_action": "Run #69 candidate adds responsive SubjectCard/CastCard layouts and localized subject media labels; Chromium confirms no horizontal or in-element text overflow at 320/360/520 CSS px. The exact candidate Agent/MCP overview call passed. A Renderer/MCP PNG was generated, host-read, and visually inspected, but its combined probe did not save a strict report after ENOSPC; rerun that evidence before Candidate readiness. QQ/TIM acceptance remains separate.",
+      "next_action": "The product code at 84fefb1 passed responsive renderer and live public data checks; exact-source Agent/MCP selected get_subject_overview once. A Renderer/MCP PNG was generated and host-read, but the probe did not save its strict report after ENOSPC. A rerun using the new answer validator/full bounded renderer caps awaits a responsive Docker CLI. QQ/TIM remains separate.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },
