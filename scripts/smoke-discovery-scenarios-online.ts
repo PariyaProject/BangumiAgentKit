@@ -15,13 +15,6 @@ import {
 
 const LIVE_FLAG = '--live';
 const USER_AGENT = process.env.BANGUMI_USER_AGENT ?? 'BangumiAgentKit/discovery-scenario-probe';
-const FAILED_STATES = new Set([
-  'error',
-  'unavailable',
-  'unsupported',
-  'auth_required',
-  'permission_denied',
-]);
 const COVERAGE_FIELDS = [
   'state',
   'requested',
@@ -116,7 +109,7 @@ function validateResult(
     coverage.returned === result.itemCount &&
     typeof coverage.scanned === 'number' &&
     coverage.scanned >= result.itemCount;
-  const stateSuccessful = !FAILED_STATES.has(result.state);
+  const stateSuccessful = result.state === 'ok' || result.state === 'partial';
   const checks = {
     httpRequestObserved: httpRequests > 0,
     stateSuccessful,
