@@ -8,7 +8,13 @@ const G09_DERIVATIVE_ID = 227245;
 
 const rootRelations = [
   { id: 128202, type: 1, name: 'Source book', name_cn: '原作书籍', relation: '书籍' },
-  { id: G09_DERIVATIVE_ID, type: 2, name: 'Shuumatsu spin-off', name_cn: '少女周末授课', relation: '衍生' },
+  {
+    id: G09_DERIVATIVE_ID,
+    type: 2,
+    name: 'Shuumatsu spin-off',
+    name_cn: '少女周末授课',
+    relation: '衍生',
+  },
   { id: 228591, type: 3, name: 'Opening theme', name_cn: '片头曲', relation: '片头曲' },
   { id: 228592, type: 3, name: 'Ending theme', name_cn: '片尾曲', relation: '片尾曲' },
   { id: 228753, type: 6, name: 'Live action', name_cn: '真人衍生', relation: '衍生' },
@@ -142,6 +148,24 @@ describe('G09 Girls’ Last Tour bounded watch-order scenario', () => {
       expect(html).toContain('推荐是有限深度的确定性推导');
       expect(html).toContain('不是 Bangumi 发布的唯一官方观看顺序');
       expect(html).toContain('非动画媒介');
+      expect(html.match(/本次范围内完整/gu)).toHaveLength(2);
+      expect(html).not.toContain('覆盖完整');
+      expect(html).toContain('观察关系行 10');
+      expect(html).toContain('唯一条目 9');
+    }
+
+    const partialViewModel = { ...viewModel, state: 'partial' as const };
+    const unavailableViewModel = { ...viewModel, state: 'not_computable' as const };
+    for (const [stateViewModel, expectedLabel] of [
+      [partialViewModel, '部分覆盖'],
+      [unavailableViewModel, '当前不可计算'],
+    ] as const) {
+      for (const width of [360, 720]) {
+        const html = renderHtmlTemplate(stateViewModel, 'bangumi-dark', {}, width);
+        expect(html.match(new RegExp(expectedLabel, 'gu'))).toHaveLength(2);
+        expect(html).not.toContain('本次范围内完整');
+        expect(html).not.toContain('覆盖完整');
+      }
     }
   });
 });

@@ -343,7 +343,7 @@
         "packages/tools/src/definitions/read-tools.ts",
         "packages/renderer/src/templates/SeriesRelationsCard.tsx"
       ],
-      "next_action": "Keep PARTIAL. Current official-v0 search resolved the exact G09 anime root (subject 218707); a bounded depth=2/maxNodes=8 read returned the root and one direct animated derivative (relation label 衍生), observed 9 unique related records across 10 relation rows, and excluded 8 non-anime records. A service-emittable Renderer regression preserves that relation and the explicit noncanonical-order caveat. This is a bounded current relation recommendation, not an exhaustive series graph or a unique official order. The generic tool-level Agent/MCP matrix is 96/96, but natural-language G09 answer validation and QQ/TIM client display remain separate.",
+      "next_action": "Keep PARTIAL. The SeriesRelationsCard now labels state=complete as 本次范围内完整: the label describes only a completed traversal within selected depth, node and media bounds, not exhaustive franchise coverage. Partial and not-computable labels remain unchanged; the service-emittable G09 regression asserts all three states at 360/720 CSS px while retaining the bounded deterministic recommendation and noncanonical-order caveat. The source sample remains depth=2/maxNodes=8 with one direct animated derivative, 9 unique related records across 10 relation rows, and 8 excluded non-anime records. G09 remains PARTIAL because the bounded read is not an exhaustive graph or unique official order; natural-language answer validation and QQ/TIM display remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -361,7 +361,14 @@
         ],
         "live_probe": "docs/live-probes/g09-series-watch-order-2026-10-03-165502090-96642.json",
         "source_contract": "Official v0 exact-title search and subject relation/detail reads. The 2026-10-03 sample at root 218707 used depth 2 and maxNodes 8: 2 relation requests observed 10 relation rows and 9 unique related IDs; one direct anime derivative was included after the root, while eight non-anime records were excluded. The result is complete only within those declared bounds; official v0 does not publish a unique canonical order and the sample does not establish an exhaustive franchise graph.",
-        "formula_version": "series-watch-order-v2"
+        "formula_version": "series-watch-order-v2",
+        "renderer_status_label": {
+          "previous_label": "覆盖完整",
+          "current_label": "本次范围内完整",
+          "scope": "State=complete means traversal completed within the selected depth/node/media bounds; it does not assert an exhaustive franchise graph or an official canonical order.",
+          "review_advisory": "PR76-P2-COVERAGE-STATUS-LABEL-001",
+          "test": "tests/render/series-watch-order-g09.test.ts"
+        }
       }
     },
     {
