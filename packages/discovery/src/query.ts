@@ -5,6 +5,7 @@ import {
   type DateRange,
   type DiscoveryBudgetInput,
   type DiscoveryQuery,
+  type DiscoveryTieBreak,
   type ExecutionBudget,
   type NumericRange,
   type NormalizedDiscoveryQuery,
@@ -187,6 +188,17 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   if (!DISCOVERY_SORTS.includes(sort)) issues.push(`sort must be one of: ${DISCOVERY_SORTS.join(', ')}`);
   const order = input.order ?? (sort === 'rank' ? 'asc' : 'desc');
   if (order !== 'asc' && order !== 'desc') issues.push('order must be asc or desc');
+  let tieBreak: DiscoveryTieBreak | undefined;
+  if (input.tieBreak !== undefined) {
+    if (sort !== 'score') issues.push('tieBreak is currently supported only with sort=score');
+    if (input.tieBreak.field !== 'ratingCount') issues.push('tieBreak.field must be ratingCount');
+    const tieBreakOrder = input.tieBreak.order ?? 'desc';
+    if (tieBreakOrder !== 'asc' && tieBreakOrder !== 'desc') {
+      issues.push('tieBreak.order must be asc or desc');
+    } else if (input.tieBreak.field === 'ratingCount') {
+      tieBreak = { field: 'ratingCount', order: tieBreakOrder };
+    }
+  }
   const resultMode = input.resultMode ?? 'top';
   if (resultMode !== 'top' && resultMode !== 'all') issues.push('resultMode must be top or all');
   const explain = input.explain ?? 'none';
@@ -216,6 +228,7 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
     nsfw,
     sort: sort as NormalizedDiscoveryQuery['sort'],
     order: order as NormalizedDiscoveryQuery['order'],
+    ...(tieBreak === undefined ? {} : { tieBreak }),
     resultMode: resultMode as NormalizedDiscoveryQuery['resultMode'],
     limit,
     explain: explain as NormalizedDiscoveryQuery['explain'],
@@ -236,6 +249,10 @@ export function isNormalizedDiscoveryQuery(value: DiscoveryQuery | NormalizedDis
     typeof candidate.resultMode === 'string' &&
     typeof candidate.limit === 'number' &&
     typeof candidate.budget === 'object' &&
-    candidate.budget !== null
+    candidate.budget !== null &&
+    (candidate.tieBreak === undefined || (
+      candidate.tieBreak.field === 'ratingCount' &&
+      (candidate.tieBreak.order === 'asc' || candidate.tieBreak.order === 'desc')
+    ))
   );
 }

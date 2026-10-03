@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-10-03",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "d1a5a03095818c090ca7f2f9ff255753e5381f7e",
+  "catalogSha256": "3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831",
+  "profile": "bangumi-full-public-qa-v1",
+  "sourceProfile": "standard-full",
+  "discoveryScenario": "G03",
+  "discoveryScenarioArgumentsVerified": true,
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 117,
+  "jsonStreamDiagnostics": {
+    "lineClassCounts": {
+      "valid": 24,
+      "blank": 0,
+      "non_json_text": 0,
+      "malformed_json": 0,
+      "non_object_json": 0
+    },
+    "invalidLineCount": 0
+  },
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [
+    {
+      "name": "bangumi.query_subjects",
+      "arguments": {
+        "available": true,
+        "expectedFieldNames": [
+          "concepts",
+          "explain",
+          "from",
+          "limit",
+          "media",
+          "order",
+          "rating",
+          "ratingCount",
+          "resultMode",
+          "sort",
+          "to"
+        ],
+        "matchedFieldNames": [
+          "concepts",
+          "explain",
+          "from",
+          "limit",
+          "media",
+          "order",
+          "rating",
+          "ratingCount",
+          "resultMode",
+          "sort",
+          "to"
+        ],
+        "unexpectedFieldNames": [],
+        "passed": true
+      },
+      "outputShape": {
+        "type": "str",
+        "bytes": 1237,
+        "keys": [
+          "coverage",
+          "evidenceSummary",
+          "explanation",
+          "items",
+          "plan",
+          "projection",
+          "state",
+          "warnings"
+        ]
+      },
+      "result": {
+        "found": true,
+        "returned": 2,
+        "ids": [
+          509986,
+          604826
+        ],
+        "dates": [
+          "2025-04-08",
+          "2026-01-22"
+        ],
+        "coverage": {
+          "state": "complete",
+          "requested": 10,
+          "scanned": 2,
+          "matched": 2,
+          "returned": 2,
+          "pagesRequested": 1,
+          "pagesScanned": 1,
+          "upstreamExhausted": true,
+          "budgetExceeded": false,
+          "totalKind": "estimated",
+          "hydrationsAttempted": 0,
+          "hydrationsSucceeded": 0,
+          "hydrationsFailed": 0,
+          "hydrationsUnresolved": 0,
+          "hydrationBudgetExceeded": false
+        }
+      }
+    }
+  ],
+  "bangumiToolEvents": [
+    {
+      "name": "bangumi.query_subjects",
+      "state": "ACTIVE"
+    },
+    {
+      "name": "bangumi.query_subjects",
+      "state": "DONE"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "bangumi.query_subjects",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.query_subjects",
+          "state": "DONE"
+        }
+      ],
+      "targetToolOutcome": "TARGET_TOOL_COMPLETED",
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "jsonStreamLineClassCounts": {
+          "valid": 24,
+          "blank": 0,
+          "non_json_text": 0,
+          "malformed_json": 0,
+          "non_object_json": 0
+        },
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "queryArgumentsMatchScenario": true
+      }
+    }
+  ],
+  "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+}

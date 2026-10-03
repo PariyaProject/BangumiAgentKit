@@ -25,6 +25,16 @@ export type DiscoveryResultMode = 'top' | 'all';
 export type DiscoveryExplainMode = 'none' | 'compact' | 'full';
 export type NsfwFilter = 'include' | 'exclude' | 'only';
 
+export interface DiscoveryTieBreakInput {
+  field: 'ratingCount';
+  order?: DiscoveryOrder;
+}
+
+export interface DiscoveryTieBreak {
+  field: 'ratingCount';
+  order: DiscoveryOrder;
+}
+
 export interface NumericRangeInput {
   min?: number;
   max?: number;
@@ -59,6 +69,7 @@ export interface DiscoveryQuery {
   nsfw?: NsfwFilter | boolean;
   sort?: DiscoverySort;
   order?: DiscoveryOrder;
+  tieBreak?: DiscoveryTieBreakInput;
   resultMode?: DiscoveryResultMode;
   limit?: number;
   explain?: DiscoveryExplainMode;
@@ -95,6 +106,7 @@ export interface NormalizedDiscoveryQuery {
   nsfw: NsfwFilter;
   sort: DiscoverySort;
   order: DiscoveryOrder;
+  tieBreak?: DiscoveryTieBreak;
   resultMode: DiscoveryResultMode;
   limit: number;
   explain: DiscoveryExplainMode;
@@ -166,7 +178,8 @@ export type DiscoveryHydrationReason =
   | 'nsfw_filter'
   | 'date_sort'
   | 'score_sort'
-  | 'rank_sort';
+  | 'rank_sort'
+  | 'tie_break_sort';
 
 export interface DiscoveryHydrationRequirement {
   reason: DiscoveryHydrationReason;
@@ -177,6 +190,9 @@ export interface DiscoveryHydrationRequirement {
 export interface DiscoveryPlan {
   source: 'official_v0';
   operation: 'searchSubjects' | 'browseSubjects';
+  sort?: DiscoverySort;
+  order?: DiscoveryOrder;
+  tieBreak?: DiscoveryTieBreak;
   totalKind: SubjectDiscoveryTotalKind;
   pushdown: PlanFilter[];
   postFilters: PlanFilter[];
@@ -252,6 +268,7 @@ export interface DiscoveryExplanation {
   coverage: DiscoveryCoverage;
   limitations: string[];
   heat?: HeatEvidence;
+  tieBreak?: DiscoveryTieBreak;
 }
 
 export interface DiscoveryResult {

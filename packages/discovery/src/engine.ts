@@ -43,6 +43,16 @@ interface CandidateWithDetail {
   evaluation: 'pending' | 'match' | 'non_match' | 'unresolved';
 }
 
+function uniqueWarnings(warnings: CapabilityWarning[]): CapabilityWarning[] {
+  const seen = new Set<string>();
+  return warnings.filter((warning) => {
+    const key = JSON.stringify(warning) ?? String(warning);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function mediaForType(type: number): MediaType {
   switch (type) {
     case 1:
@@ -274,7 +284,19 @@ function sortItems(items: CandidateWithDetail[], query: NormalizedDiscoveryQuery
       if (leftValue === undefined) return 1;
       if (rightValue === undefined) return -1;
       const comparison = leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
-      return (query.order === 'asc' ? comparison : -comparison) || left.order - right.order;
+      if (comparison !== 0) return (query.order === 'asc' ? comparison : -comparison) || left.order - right.order;
+      if (query.sort === 'score' && query.tieBreak) {
+        const leftTieBreakValue = numberFor(left.candidate, left.detail, query.tieBreak.field);
+        const rightTieBreakValue = numberFor(right.candidate, right.detail, query.tieBreak.field);
+        if (leftTieBreakValue === undefined && rightTieBreakValue === undefined) return left.order - right.order;
+        if (leftTieBreakValue === undefined) return 1;
+        if (rightTieBreakValue === undefined) return -1;
+        const tieBreakComparison = leftTieBreakValue < rightTieBreakValue ? -1 : leftTieBreakValue > rightTieBreakValue ? 1 : 0;
+        if (tieBreakComparison !== 0) {
+          return (query.tieBreak.order === 'asc' ? tieBreakComparison : -tieBreakComparison) || left.order - right.order;
+        }
+      }
+      return left.order - right.order;
     });
   } else if (query.order === 'asc') {
     ordered.reverse();
@@ -433,6 +455,9 @@ export class DiscoveryEngine {
     let hydrationSourceChanged = false;
     let totalKind: SubjectDiscoveryTotalKind = 'unknown';
     let orderCounter = 0;
+    let previousObservedScore: number | undefined;
+    let lowestObservedScore: number | undefined;
+    let scoreOrderCanProveBoundary = true;
     let lastState: DiscoveryResult['state'] = 'ok';
     let offset = 0;
     const pageSize = plan.steps[0]?.kind === 'search' || plan.steps[0]?.kind === 'browse'
@@ -518,6 +543,7 @@ export class DiscoveryEngine {
         continue;
       }
       evidence.push(...allEvidence(result));
+      const pageCandidates: CandidateWithDetail[] = [];
       for (const candidate of page.items) {
         scanned += 1;
         if (scanned > query.budget.maxCandidates) {
@@ -526,12 +552,14 @@ export class DiscoveryEngine {
         }
         if (seenIds.has(candidate.id)) continue;
         seenIds.add(candidate.id);
-        candidatesById.set(candidate.id, {
+        const candidateWithDetail: CandidateWithDetail = {
           candidate,
           pageEvidence: result.evidence,
           order: orderCounter++,
           evaluation: 'pending',
-        });
+        };
+        candidatesById.set(candidate.id, candidateWithDetail);
+        pageCandidates.push(candidateWithDetail);
       }
       const candidates = [...candidatesById.values()];
       const hydrationCandidates = candidates.filter((item) =>
@@ -566,13 +594,43 @@ export class DiscoveryEngine {
           hydrationsUnresolved += 1;
         }
       }
+      if (query.tieBreak) {
+        for (const item of pageCandidates) {
+          const score = numberFor(item.candidate, item.detail, 'score');
+          if (score === undefined) {
+            scoreOrderCanProveBoundary = false;
+            continue;
+          }
+          if (previousObservedScore !== undefined && score > previousObservedScore) {
+            scoreOrderCanProveBoundary = false;
+          }
+          previousObservedScore = score;
+          lowestObservedScore = lowestObservedScore === undefined
+            ? score
+            : Math.min(lowestObservedScore, score);
+        }
+      }
       if (hydrationBudgetExceeded) {
         budgetExceeded = true;
         break;
       }
       const matchedCount = [...candidatesById.values()]
         .filter((item) => item.evaluation === 'match').length;
-      if (canStopTopQuery && matchedCount >= query.limit && hydrationsUnresolved === 0) break;
+      if (canStopTopQuery && matchedCount >= query.limit && hydrationsUnresolved === 0) {
+        if (!query.tieBreak) break;
+        const rankedMatches = sortItems(
+          [...candidatesById.values()].filter((item) => item.evaluation === 'match'),
+          query,
+        );
+        const cutoff = rankedMatches[query.limit - 1];
+        const cutoffScore = cutoff && numberFor(cutoff.candidate, cutoff.detail, 'score');
+        if (
+          scoreOrderCanProveBoundary &&
+          cutoffScore !== undefined &&
+          lowestObservedScore !== undefined &&
+          lowestObservedScore < cutoffScore
+        ) break;
+      }
       if (reverseDateTailScanStarted) {
         if (matchedCount >= query.limit && hydrationsUnresolved === 0) break;
         if (offset === 0) {
@@ -680,7 +738,7 @@ export class DiscoveryEngine {
         steps: plan.steps,
       },
       coverage,
-      warnings,
+      warnings: uniqueWarnings(warnings),
       evidence: [...new Set(evidence)],
       ...(query.explain === 'none' ? {} : { explanation: this.explain(query, plan, coverage) }),
       ...(query.concepts.length === 0 ? {} : { conceptResolution }),
@@ -728,6 +786,7 @@ export class DiscoveryEngine {
       ...(query.sort === 'heat'
         ? { heat: { key: 'heat' as const, source: 'official_v0' as const, operation: 'searchSubjects' as const, meaning: '收藏人数' as const } }
         : {}),
+      ...(query.tieBreak === undefined ? {} : { tieBreak: query.tieBreak }),
     };
   }
 

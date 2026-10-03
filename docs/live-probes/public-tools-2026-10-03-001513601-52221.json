@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-03T00:15:13.601Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831",
+  "probeScriptSha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+  "sourceProgram": "scripts/smoke-public-tools-online.ts",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 2,
+  "httpRequests": 3,
+  "selectedTools": ["bangumi.query_subjects", "bangumi.render_query_subjects"],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "redactions": ["username values are omitted from recorded inputs"],
+  "results": [
+    {
+      "tool": "bangumi.query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2026,
+        "month": 7,
+        "resultMode": "top",
+        "limit": 1,
+        "sort": "date",
+        "order": "asc",
+        "explain": "none"
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "ok",
+        "itemsCount": 1,
+        "warningsCount": 0
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "minimumCountObserved": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2012,
+        "resultMode": "top",
+        "limit": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": ["artifact"]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

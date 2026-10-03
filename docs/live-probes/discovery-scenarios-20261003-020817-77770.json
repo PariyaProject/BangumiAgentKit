@@ -1,0 +1,390 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_discovery_scenarios_tool_registry",
+  "observedAt": "2026-10-03T02:08:17.068Z",
+  "sourceRevision": "6f007c084c9df9893b49ae594efe57509a73b132",
+  "catalogSha256": "3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831",
+  "probeScriptSha256": "f9c08751f711e35445067a4083bf2132fe52c6a97d9e13f49d9e32db1aafd48f",
+  "sourceProgram": "scripts/smoke-discovery-scenarios-online.ts",
+  "mode": "read_only_public_api_scenario_smoke",
+  "userAgent": "BangumiAgentKit/discovery-scenario-probe",
+  "httpRequests": 4,
+  "scenarioCount": 3,
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "redactions": [
+    "tool answer prose and work titles omitted; only public IDs, filter fields, coverage and bounded numeric fields retained"
+  ],
+  "results": [
+    {
+      "scenario": "G02",
+      "tool": "bangumi.query_subjects",
+      "query": {
+        "media": "anime",
+        "from": "2024-01-01",
+        "to": "2025-01-01",
+        "concepts": [
+          "异世界"
+        ],
+        "sort": "heat",
+        "order": "desc",
+        "resultMode": "top",
+        "limit": 10,
+        "explain": "full"
+      },
+      "querySha256": "e612fae7904452cdd9df93cab756031d352a1a77e17f5daea81bd6d6beb75cd0",
+      "httpRequests": 1,
+      "result": {
+        "state": "ok",
+        "itemCount": 10,
+        "items": [
+          {
+            "id": 395378,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-01-04",
+            "score": 7.8,
+            "ratingCount": 18133,
+            "conceptMatched": true
+          },
+          {
+            "id": 342667,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-04-10",
+            "score": 7.7,
+            "ratingCount": 13969,
+            "conceptMatched": true
+          },
+          {
+            "id": 444557,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-04-07",
+            "score": 7.6,
+            "ratingCount": 15211,
+            "conceptMatched": true
+          },
+          {
+            "id": 425998,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-10-02",
+            "score": 7.1,
+            "ratingCount": 9301,
+            "conceptMatched": true
+          },
+          {
+            "id": 390353,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-01-06",
+            "score": 6.5,
+            "ratingCount": 10590,
+            "conceptMatched": true
+          },
+          {
+            "id": 357962,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-01-04",
+            "score": 6.1,
+            "ratingCount": 5860,
+            "conceptMatched": true
+          },
+          {
+            "id": 372010,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-04-01",
+            "score": 7.3,
+            "ratingCount": 4357,
+            "conceptMatched": true
+          },
+          {
+            "id": 444403,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-04-04",
+            "score": 7.1,
+            "ratingCount": 6491,
+            "conceptMatched": true
+          },
+          {
+            "id": 479477,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-07-07",
+            "score": 6.2,
+            "ratingCount": 6174,
+            "conceptMatched": true
+          },
+          {
+            "id": 407573,
+            "media": "anime",
+            "category": "tv",
+            "date": "2024-04-05",
+            "score": 5.7,
+            "ratingCount": 4393,
+            "conceptMatched": true
+          }
+        ],
+        "warningCodes": [
+          "EXPERIMENTAL_SOURCE"
+        ],
+        "coverage": {
+          "state": "unknown",
+          "requested": 10,
+          "scanned": 20,
+          "matched": 20,
+          "returned": 10,
+          "pagesRequested": 1,
+          "pagesScanned": 1,
+          "upstreamExhausted": false,
+          "budgetExceeded": false,
+          "totalKind": "estimated",
+          "hydrationsAttempted": 0,
+          "hydrationsSucceeded": 0,
+          "hydrationsFailed": 0,
+          "hydrationsUnresolved": 0,
+          "hydrationBudgetExceeded": false
+        },
+        "planSource": "official_v0"
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "stateSuccessful": true,
+        "officialSource": true,
+        "coverageReported": true,
+        "coverageConsistent": true,
+        "estimatedSearchTotal": true,
+        "nonEmpty": true,
+        "uniqueIds": true,
+        "mediaType": true,
+        "dateWindow": true,
+        "exactConceptMatch": true,
+        "heatSortRequested": true,
+        "passed": true
+      }
+    },
+    {
+      "scenario": "G03",
+      "tool": "bangumi.query_subjects",
+      "query": {
+        "media": "anime",
+        "from": "2021-10-03",
+        "to": "2026-10-03",
+        "concepts": [
+          "原创"
+        ],
+        "rating": {
+          "min": 8
+        },
+        "ratingCount": {
+          "min": 5001
+        },
+        "sort": "score",
+        "order": "desc",
+        "resultMode": "top",
+        "limit": 10,
+        "explain": "full"
+      },
+      "querySha256": "74989ed0131f57e8c7ee1b2803877957979b040dfe70a6b3053267c018459935",
+      "httpRequests": 1,
+      "result": {
+        "state": "ok",
+        "itemCount": 2,
+        "items": [
+          {
+            "id": 509986,
+            "media": "anime",
+            "category": "tv",
+            "date": "2025-04-08",
+            "score": 8.2,
+            "ratingCount": 16236,
+            "conceptMatched": true
+          },
+          {
+            "id": 604826,
+            "media": "anime",
+            "category": "web",
+            "date": "2026-01-22",
+            "score": 8.1,
+            "ratingCount": 22598,
+            "conceptMatched": true
+          }
+        ],
+        "warningCodes": [
+          "EXPERIMENTAL_SOURCE"
+        ],
+        "coverage": {
+          "state": "complete",
+          "requested": 10,
+          "scanned": 2,
+          "matched": 2,
+          "returned": 2,
+          "pagesRequested": 1,
+          "pagesScanned": 1,
+          "upstreamExhausted": true,
+          "budgetExceeded": false,
+          "totalKind": "estimated",
+          "hydrationsAttempted": 0,
+          "hydrationsSucceeded": 0,
+          "hydrationsFailed": 0,
+          "hydrationsUnresolved": 0,
+          "hydrationBudgetExceeded": false
+        },
+        "planSource": "official_v0"
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "stateSuccessful": true,
+        "officialSource": true,
+        "coverageReported": true,
+        "coverageConsistent": true,
+        "estimatedSearchTotal": true,
+        "nonEmpty": true,
+        "uniqueIds": true,
+        "mediaType": true,
+        "dateWindow": true,
+        "exactConceptMatch": true,
+        "scoreAndRatingAvailable": true,
+        "ratingThresholds": true,
+        "scoreDescending": true,
+        "passed": true
+      }
+    },
+    {
+      "scenario": "G14",
+      "tool": "bangumi.query_subjects",
+      "query": {
+        "media": "anime",
+        "season": "2026-spring",
+        "categories": "tv",
+        "concepts": [
+          "原创"
+        ],
+        "sort": "score",
+        "order": "desc",
+        "tieBreak": {
+          "field": "ratingCount",
+          "order": "desc"
+        },
+        "resultMode": "top",
+        "limit": 10,
+        "explain": "full"
+      },
+      "querySha256": "e69292be05b594acbe4a477930e37960f01384380580bbce25e2ffa9950b7096",
+      "httpRequests": 2,
+      "result": {
+        "state": "ok",
+        "itemCount": 7,
+        "items": [
+          {
+            "id": 501796,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-04-05",
+            "score": 6.4,
+            "ratingCount": 680,
+            "conceptMatched": true
+          },
+          {
+            "id": 621449,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-04-15",
+            "score": 6.4,
+            "ratingCount": 79,
+            "conceptMatched": true
+          },
+          {
+            "id": 639428,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-04-02",
+            "score": 5.5,
+            "ratingCount": 2,
+            "conceptMatched": true
+          },
+          {
+            "id": 622634,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-04-05",
+            "score": 4.6,
+            "ratingCount": 39,
+            "conceptMatched": true
+          },
+          {
+            "id": 600675,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-04-05",
+            "score": 3.2,
+            "ratingCount": 661,
+            "conceptMatched": true
+          },
+          {
+            "id": 282118,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-04-02",
+            "score": 3.1,
+            "ratingCount": 145,
+            "conceptMatched": true
+          },
+          {
+            "id": 709289,
+            "media": "anime",
+            "category": "tv",
+            "date": "2026-06-24",
+            "score": 0,
+            "ratingCount": 0,
+            "conceptMatched": true
+          }
+        ],
+        "warningCodes": [
+          "EXPERIMENTAL_SOURCE",
+          "EXPERIMENTAL_SOURCE"
+        ],
+        "coverage": {
+          "state": "complete",
+          "requested": 10,
+          "scanned": 31,
+          "matched": 7,
+          "returned": 7,
+          "pagesRequested": 2,
+          "pagesScanned": 2,
+          "upstreamExhausted": true,
+          "budgetExceeded": false,
+          "totalKind": "estimated",
+          "hydrationsAttempted": 0,
+          "hydrationsSucceeded": 0,
+          "hydrationsFailed": 0,
+          "hydrationsUnresolved": 0,
+          "hydrationBudgetExceeded": false
+        },
+        "planSource": "official_v0"
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "stateSuccessful": true,
+        "officialSource": true,
+        "coverageReported": true,
+        "coverageConsistent": true,
+        "estimatedSearchTotal": true,
+        "nonEmpty": true,
+        "uniqueIds": true,
+        "mediaType": true,
+        "dateWindow": true,
+        "exactConceptMatch": true,
+        "scoreAndRatingAvailable": true,
+        "ratingCountTieBreakRequested": true,
+        "tvCategory": true,
+        "scoreThenRatingOrder": true,
+        "passed": true
+      }
+    }
+  ]
+}

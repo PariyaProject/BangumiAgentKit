@@ -110,8 +110,10 @@ def report_source_ref(path: Path) -> str:
 
 
 def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
-    """Trust only current, hash-bound direct ToolRegistry calls with live HTTP results."""
-    catalog_sha256 = hashlib.sha256(CATALOG.read_bytes()).hexdigest()
+    """Trust hash-bound public probes per tool, not per unrelated catalog entry."""
+    catalog_bytes = CATALOG.read_bytes()
+    catalog_sha256 = hashlib.sha256(catalog_bytes).hexdigest()
+    current_by_name = {item['name']: item for item in catalog}
     probe_source_sha256 = hashlib.sha256(
         (ROOT / 'scripts/smoke-public-tools-online.ts').read_bytes()
     ).hexdigest()
@@ -132,9 +134,27 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             or report.get('evidenceKind') != 'bangumi_public_api_tool_registry_smoke'
             or report.get('mode') != 'read_only_public_api_smoke'
             or report.get('sourceProgram') != 'scripts/smoke-public-tools-online.ts'
-            or report.get('catalogSha256') != catalog_sha256
             or report.get('probeScriptSha256') != probe_source_sha256
         ):
+            continue
+        evidence_catalog_sha256 = report.get('catalogSha256')
+        if evidence_catalog_sha256 == catalog_sha256:
+            evidence_by_name = current_by_name
+        elif isinstance(evidence_catalog_sha256, str) and re.fullmatch(r'[0-9a-f]{64}', evidence_catalog_sha256):
+            snapshot_path = LIVE_PROBE_DIR / 'catalog-snapshots' / f'{evidence_catalog_sha256}.json'
+            try:
+                snapshot_bytes = snapshot_path.read_bytes()
+                snapshot = json.loads(snapshot_bytes)
+            except (OSError, ValueError):
+                continue
+            if hashlib.sha256(snapshot_bytes).hexdigest() != evidence_catalog_sha256 or not isinstance(snapshot, list):
+                continue
+            evidence_by_name = {
+                item['name']: item
+                for item in snapshot
+                if isinstance(item, dict) and isinstance(item.get('name'), str)
+            }
+        else:
             continue
         selected = report.get('selectedTools')
         results = report.get('results')
@@ -143,7 +163,6 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             or not selected
             or not all(isinstance(name, str) for name in selected)
             or len(set(selected)) != len(selected)
-            or not set(selected).issubset(public_candidates)
             or type(report.get('probeCount')) is not int
             or report['probeCount'] != len(selected)
             or not isinstance(results, list)
@@ -157,15 +176,24 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         if set(result_by_name) != set(selected):
             continue
         for name in selected:
+            evidence_tool = evidence_by_name.get(name)
+            current_tool = current_by_name.get(name)
+            if (
+                name not in current_names
+                or name not in public_candidates
+                or evidence_tool is None
+                or current_tool is None
+                or json.dumps(evidence_tool, sort_keys=True, separators=(',', ':'))
+                != json.dumps(current_tool, sort_keys=True, separators=(',', ':'))
+            ):
+                continue
             result = result_by_name[name]
             summary = result.get('result')
             assertions = result.get('assertions')
             request_count = result.get('httpRequests')
             recorded_input = result.get('input')
             if (
-                name not in current_names
-                or name not in public_candidates
-                or not isinstance(summary, dict)
+                not isinstance(summary, dict)
                 or not summary
                 or summary.get('state') in PUBLIC_API_FAILURE_STATES
                 or 'error' in summary

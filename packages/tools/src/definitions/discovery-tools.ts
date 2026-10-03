@@ -14,7 +14,7 @@ const range = z
   })
   .strict();
 
-export const discoveryQueryInput = z
+const discoveryQueryInputBase = z
   .object({
     keyword: z.string().max(200).optional(),
     media: z
@@ -66,11 +66,38 @@ export const discoveryQueryInput = z
   })
   .strict();
 
+function rejectTieBreakWithoutScore(
+  input: { sort?: string; tieBreak?: unknown },
+  context: z.RefinementCtx,
+): void {
+  if (input.tieBreak !== undefined && input.sort !== 'score') {
+    context.addIssue({
+      code: 'custom',
+      path: ['tieBreak'],
+      message: 'tieBreak is currently supported only with sort=score',
+    });
+  }
+}
+
+export const discoveryQueryInput = discoveryQueryInputBase
+  .extend({
+    tieBreak: z
+      .object({
+        field: z.literal('ratingCount'),
+        order: z.enum(['asc', 'desc']).optional(),
+      })
+      .strict()
+      .optional()
+      .describe('同主排序值时的次级顺序；当前仅支持 sort=score 时按评分人数排序，默认从高到低。'),
+  })
+  .strict()
+  .superRefine(rejectTieBreakWithoutScore);
+
 // Cohort aggregation must use the bounded all-results path; the cohort
 // service rejects "top" because its metrics are intended to describe the
 // bounded returned sample. Encode that execution contract in MCP Schema so
 // clients cannot submit an input that the tool will turn into INTERNAL_ERROR.
-const cohortDiscoveryQueryInput = discoveryQueryInput
+const cohortDiscoveryQueryInput = discoveryQueryInputBase
   .extend({
     resultMode: z.literal('all').default('all'),
   })
@@ -113,7 +140,7 @@ export function createDiscoveryTools() {
   const querySubjects = defineTool({
     name: 'bangumi.query_subjects',
     description:
-      '按受控条件发现 Bangumi 条目。支持媒体类型、季/月日期、标签、概念、评分/排名/收藏人数范围与 explain；它是有界、可解释的 discovery，不替代已知 ID 的 bangumi.get_subject。',
+      '按受控条件发现 Bangumi 条目。支持媒体类型、日期、标签/精确概念、评分/排名/收藏人数范围、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；heat 表示当前收藏人数，不是讨论热度或历史趋势。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject。',
     input: discoveryQueryInput,
     auth: 'none',
     scopes: [],

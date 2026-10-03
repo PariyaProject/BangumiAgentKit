@@ -215,6 +215,7 @@ export function compileDiscoveryPlan(
   }
   if (query.sort === 'score') requireHydration('score_sort', ['score']);
   if (query.sort === 'rank') requireHydration('rank_sort', ['rank']);
+  if (query.tieBreak) requireHydration('tie_break_sort', ['ratingCount']);
   if (operation === 'browseSubjects' && query.sort === 'date') requireHydration('date_sort', ['date']);
   if (query.order !== nativeOrder(operation, query.sort)) {
     derivedFilters.push(planFilter('order', operation, 'eq', query.order));
@@ -235,10 +236,16 @@ export function compileDiscoveryPlan(
       ? ['Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.']
       : []),
     ...(query.sort === 'heat' ? ['heat means upstream 收藏人数 and is not a recent-trend metric.'] : []),
+    ...(query.tieBreak
+      ? ['A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.']
+      : []),
   ];
   return {
     source: 'official_v0',
     operation,
+    sort: query.sort,
+    order: query.order,
+    ...(query.tieBreak === undefined ? {} : { tieBreak: query.tieBreak }),
     totalKind: operation === 'browseSubjects' ? 'exact' : 'estimated',
     pushdown,
     postFilters,

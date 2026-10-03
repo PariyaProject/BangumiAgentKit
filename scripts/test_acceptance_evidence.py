@@ -118,6 +118,72 @@ class PublicApiEvidenceTests(unittest.TestCase):
             },
         )
 
+    def test_retains_unchanged_tool_evidence_from_catalog_snapshot(self):
+        previous_catalog = [
+            {
+                'name': 'bangumi.get_subject',
+                'auth': 'none',
+                'risk': 'read',
+                'inputSchema': {'properties': {'subjectId': {'type': 'integer'}}},
+            },
+            {
+                'name': 'bangumi.get_episode',
+                'auth': 'none',
+                'risk': 'read',
+                'inputSchema': {'properties': {'episodeId': {'type': 'integer'}}},
+            },
+            {'name': 'bangumi.auth_status', 'auth': 'none'},
+        ]
+        previous_bytes = json.dumps(previous_catalog).encode('utf-8')
+        previous_hash = hashlib.sha256(previous_bytes).hexdigest()
+        snapshots = GENERATOR.LIVE_PROBE_DIR / 'catalog-snapshots'
+        snapshots.mkdir()
+        (snapshots / f'{previous_hash}.json').write_bytes(previous_bytes)
+
+        current_catalog = json.loads(previous_bytes)
+        current_catalog[1]['inputSchema']['properties']['cursor'] = {'type': 'string'}
+        self.catalog_path.write_text(json.dumps(current_catalog), encoding='utf-8')
+        self.write_report(
+            catalogSha256=previous_hash,
+            selectedTools=['bangumi.get_subject', 'bangumi.get_episode'],
+            probeCount=2,
+            results=[
+                {
+                    'tool': 'bangumi.get_subject',
+                    'input': {'subjectId': 123},
+                    'httpRequests': 1,
+                    'result': {'id': 123},
+                    'assertions': {
+                        'httpRequestObserved': True,
+                        'nonEmptySummary': True,
+                        'noErrorResult': True,
+                        'nonNegativeCounts': True,
+                        'countConsistency': True,
+                        'passed': True,
+                    },
+                },
+                {
+                    'tool': 'bangumi.get_episode',
+                    'input': {'episodeId': 456},
+                    'httpRequests': 1,
+                    'result': {'id': 456},
+                    'assertions': {
+                        'httpRequestObserved': True,
+                        'nonEmptySummary': True,
+                        'noErrorResult': True,
+                        'nonNegativeCounts': True,
+                        'countConsistency': True,
+                        'passed': True,
+                    },
+                },
+            ],
+        )
+
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(current_catalog),
+            {'bangumi.get_subject': {'docs/live-probes/public-tools-fixture.json'}},
+        )
+
     def test_model_mcp_evidence_keeps_the_per_tool_report_path(self):
         catalog_hash = hashlib.sha256(self.catalog_path.read_bytes()).hexdigest()
         report_path = self.root / 'docs/live-probes/pariya-agent-public-e2e-fixture.json'

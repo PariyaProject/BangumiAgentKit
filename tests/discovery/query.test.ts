@@ -52,6 +52,17 @@ describe('discovery query normalization', () => {
     expect(normalizeDiscoveryQuery({ sort: 'relevance' }).order).toBe('desc');
   });
 
+  it('normalizes rating-count score tie-breaks and rejects them for other primary sorts', () => {
+    expect(normalizeDiscoveryQuery({
+      sort: 'score',
+      tieBreak: { field: 'ratingCount' },
+    }).tieBreak).toEqual({ field: 'ratingCount', order: 'desc' });
+    expect(() => normalizeDiscoveryQuery({
+      sort: 'heat',
+      tieBreak: { field: 'ratingCount' },
+    })).toThrow(DiscoveryValidationError);
+  });
+
   it('rejects model-controlled workload values above the server authority ceiling', () => {
     expect(() => normalizeDiscoveryQuery({ limit: 101 })).toThrow(DiscoveryValidationError);
     expect(() => normalizeDiscoveryQuery({ budget: { maxPages: 11 } })).toThrow(DiscoveryValidationError);
