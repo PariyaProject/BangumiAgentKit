@@ -284,11 +284,37 @@
       "kind": "scenario",
       "user_question": "少女终末旅行系列观看顺序。",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run75-frontier-delta-2026-10-03.md",
+        "docs/live-probes/g09-series-watch-order-2026-10-03-165502090-96642.json",
+        "scripts/smoke-series-watch-order-g09-online.ts",
+        "tests/render/series-watch-order-g09.test.ts",
+        "packages/bangumi-core/src/services/series-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "packages/renderer/src/templates/SeriesRelationsCard.tsx"
+      ],
+      "next_action": "Keep PARTIAL. Current official-v0 search resolved the exact G09 anime root (subject 218707); a bounded depth=2/maxNodes=8 read returned the root and one direct animated derivative (relation label 衍生), observed 9 unique related records across 10 relation rows, and excluded 8 non-anime records. A service-emittable Renderer regression preserves that relation and the explicit noncanonical-order caveat. This is a bounded current relation recommendation, not an exhaustive series graph or a unique official order. The generic tool-level Agent/MCP matrix is 96/96, but natural-language G09 answer validation and QQ/TIM client display remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_series_watch_order",
+          "bangumi.render_series_watch_order"
+        ],
+        "tests": [
+          "tests/render/series-watch-order-g09.test.ts"
+        ],
+        "implementation": [
+          "packages/bangumi-core/src/services/series-service.ts",
+          "packages/tools/src/definitions/read-tools.ts",
+          "packages/renderer/src/templates/SeriesRelationsCard.tsx"
+        ],
+        "live_probe": "docs/live-probes/g09-series-watch-order-2026-10-03-165502090-96642.json",
+        "source_contract": "Official v0 exact-title search and subject relation/detail reads. The 2026-10-03 sample at root 218707 used depth 2 and maxNodes 8: 2 relation requests observed 10 relation rows and 9 unique related IDs; one direct anime derivative was included after the root, while eight non-anime records were excluded. The result is complete only within those declared bounds; official v0 does not publish a unique canonical order and the sample does not establish an exhaustive franchise graph.",
+        "formula_version": "series-watch-order-v2"
+      }
     },
     {
       "id": "G10",

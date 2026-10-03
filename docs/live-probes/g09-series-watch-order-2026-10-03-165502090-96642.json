@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_series_watch_order_scenario_smoke",
+  "observedAt": "2026-10-03T16:55:02.090Z",
+  "retrievedAt": "2026-10-03T16:55:02.449Z",
+  "mode": "read_only_public_api_smoke",
+  "sourceRevision": "1cb1590007cbdfb99c545154e3e1f15d9dc66418",
+  "catalogSha256": "118afc18439cb13dc9faec92e3cb560d54bbed058e4facb6369bec19ec224b60",
+  "probeScriptSha256": "bd5c82fc9bedb225dcd5a594bf2647c2740b2814b733109526a3190b99ebc2da",
+  "sourceProgram": "scripts/smoke-series-watch-order-g09-online.ts",
+  "scenarioId": "G09",
+  "httpRequests": 5,
+  "selectedTool": "bangumi.get_series_watch_order",
+  "input": {
+    "subjectId": 218707,
+    "depth": 2,
+    "maxNodes": 8,
+    "media": "anime"
+  },
+  "result": {
+    "state": "complete",
+    "root": {
+      "id": 218707,
+      "type": "anime"
+    },
+    "watchOrder": [
+      {
+        "id": 218707,
+        "type": "anime",
+        "position": 1,
+        "placement": "root",
+        "relationLabels": [],
+        "relationKinds": []
+      },
+      {
+        "id": 227245,
+        "type": "anime",
+        "position": 2,
+        "placement": "after_root",
+        "relationLabels": [
+          "衍生"
+        ],
+        "relationKinds": [
+          "side_story"
+        ]
+      }
+    ],
+    "related": [
+      {
+        "id": 227245,
+        "type": "anime",
+        "depth": 0,
+        "includedInWatchOrder": true,
+        "relationLabels": [
+          "衍生"
+        ],
+        "relationKinds": [
+          "side_story"
+        ]
+      }
+    ],
+    "coverage": {
+      "depth": 2,
+      "maxNodes": 8,
+      "relationRequests": 2,
+      "relationRowsObserved": 10,
+      "uniqueRelatedObserved": 9,
+      "uniqueRelatedReturned": 1,
+      "animeNodesObserved": 1,
+      "animeNodesSelected": 1,
+      "nonAnimeRowsObserved": 8,
+      "nonAnimeRowsReturned": 0,
+      "detailsAttempted": 1,
+      "detailsFetched": 1,
+      "detailsFailed": 0,
+      "relationFailures": 0,
+      "truncated": false,
+      "truncationReasons": []
+    },
+    "excludedByReason": [
+      {
+        "reason": "media_type_not_anime",
+        "count": 8
+      }
+    ],
+    "sourceOperations": [
+      {
+        "operation": "getSubjectById",
+        "status": "succeeded",
+        "subjectId": 218707
+      },
+      {
+        "operation": "getRelatedSubjectsBySubjectId",
+        "status": "succeeded",
+        "subjectId": 218707,
+        "depth": 0
+      },
+      {
+        "operation": "getRelatedSubjectsBySubjectId",
+        "status": "succeeded",
+        "subjectId": 227245,
+        "depth": 1
+      },
+      {
+        "operation": "getSubjectById",
+        "status": "succeeded",
+        "subjectId": 227245,
+        "depth": 0
+      }
+    ],
+    "limitations": [
+      "Bangumi 的关系接口没有发布统一的官方观看顺序；本结果是有限深度、有限节点的确定性推荐。",
+      "只有起点直接关系或连续同向的前传/续集路径可以进入步骤；反向、未知和混合方向证据不会覆盖起点语义。",
+      "日期、关系标签和源覆盖可能不完整；本结果不等同于唯一正确或官方 canonical 顺序。"
+    ],
+    "warningCount": 0
+  },
+  "assertions": {
+    "exactScenarioRootResolved": true,
+    "animeRootObserved": true,
+    "rootIsFirstStep": true,
+    "directDerivativeIncluded": true,
+    "nonAnimeRelationsExplicitlyExcluded": true,
+    "boundedCoverageRecorded": true,
+    "noncanonicalOrderLimitationPresent": true,
+    "passed": true
+  },
+  "limits": [
+    "one exact public-v0 search plus bounded relation/detail reads",
+    "depth 2 and maxNodes 8",
+    "no OAuth, account access, or writes",
+    "subject names and raw response bodies are omitted from the report"
+  ]
+}
