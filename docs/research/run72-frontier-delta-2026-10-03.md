@@ -70,6 +70,13 @@ did not explicitly tell an Agent that summary counts in `partial` state are
 observed counts, not full-window totals. This Epoch clarifies that guidance and
 preserves the existing machine-readable state and coverage contract.
 
+The generated tool catalog now carries the updated description. Its catalog
+revision makes three older profile reports stale for current-source acceptance:
+`bangumi.get_person_activity`, `bangumi.query_subjects`, and
+`bangumi.render_query_subjects`. The generated acceptance table now reports
+93/96 Agent/MCP and 62/65 public API evidence; those prior reports are not
+counted as current. This Epoch does not claim actual Agent/MCP reacceptance.
+
 ### 4. Renderer and Standalone information quality
 
 At the audited base, `PersonActivityCard` visibly showed `部分覆盖` and detailed
@@ -156,5 +163,6 @@ no names or titles are retained in this report.
 - `pnpm typecheck` passed for packages and tests; `pnpm lint` passed.
 - `pnpm harness frontier:check` returned `FRONTIER_LEDGER_VALID`, 121 records, 99 actionable, ledger hash `aa1eb63480a90ae3f0de015acaba9afe7f640a8676958b0a001953c6790c49e9`.
 - `pnpm harness guard:legacy-paths --base origin/master --product-epoch` returned `LEGACY_RUNTIME_PATH_GUARD_PASS`; `git diff --check` passed.
+- Catalog/acceptance sync: `pnpm openapi:catalog` reported 96 tools; its text output also reflowed unchanged catalog arrays, so only the matching `get_person_activity` description line was retained. `pnpm vitest run tests/integration/tool-catalog-completeness.test.ts` passed 4/4 and `pnpm acceptance:check` passed 37 validator tests. The generated matrix reports 96 direct execute, 62/65 public evidence, 93/96 Agent/MCP, auth denial 22/22, and QQ/TIM 0/96. Three prior public/Agent reports are stale against the changed catalog revision and remain follow-up work.
 - RenderService generated a 720 CSS-pixel partial-state card at 1x and a 360 CSS-pixel partial-state card at 2x. Both PNGs were visually inspected; the count labels and partial-coverage explanation fit without clipping.
 - A non-mandatory full-repository `pnpm format:check` run reported formatting warnings in 111 files and made no edits. `pnpm lint` passed.
