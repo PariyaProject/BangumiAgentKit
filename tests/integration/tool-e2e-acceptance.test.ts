@@ -12,6 +12,12 @@ const TABLE = readFileSync(join(ROOT, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 
 const COMPACT_EVIDENCE = JSON.parse(
   readFileSync(join(ROOT, 'docs/live-probes/pariya-agent-compact-e2e-2026-09-23.json'), 'utf8'),
 );
+const RUN86_PERSON_ACTIVITY_COMPARISON_EVIDENCE = JSON.parse(
+  readFileSync(
+    join(ROOT, 'docs/live-probes/person-activity-comparison-run86-c4acc24.json'),
+    'utf8',
+  ),
+);
 const FULL_PUBLIC_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter((name) => name.startsWith('pariya-agent-full-public-qa-e2e-') && name.endsWith('.json'))
   .sort()
@@ -224,6 +230,129 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     } finally {
       rmSync(liveDir, { recursive: true, force: true });
     }
+  });
+
+  it('validates the exact-candidate bounded person-activity comparison evidence', () => {
+    const report = RUN86_PERSON_ACTIVITY_COMPARISON_EVIDENCE;
+    expect(report).toMatchObject({
+      evidenceKind: 'antigravity_cli_mcp_tool_use',
+      upstreamRevision: 'c4acc246551d31ddfc91b54d1031d4454365a7fc',
+      candidateSha: 'c4acc246551d31ddfc91b54d1031d4454365a7fc',
+      catalogSha256: '26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e',
+      sourceProfile: 'standard-full',
+      cliVersion: '1.2.14',
+      processExitCode: 0,
+      resultCount: 1,
+      resultStatus: 'SUCCESS',
+      personActivityArgumentsVerified: true,
+      probeArgumentsVerified: true,
+      personActivityResultVerified: true,
+      qqPipelineTested: false,
+      timClientTested: false,
+    });
+    expect(report.probeArguments).toEqual({
+      personId: 13684,
+      kind: 'voice',
+      media: 'tv',
+      windowMonths: 6,
+      maxRelations: 48,
+      maxSubjectDetails: 12,
+      maxRows: 20,
+      comparePreviousWindow: true,
+    });
+
+    expect(report.toolResultSummaries).toHaveLength(1);
+    const tool = report.toolResultSummaries[0];
+    expect(tool.name).toBe('bangumi.get_person_activity');
+    expect(tool.arguments).toMatchObject({
+      available: true,
+      matchedFieldNames: [
+        'comparePreviousWindow',
+        'kind',
+        'maxRelations',
+        'maxRows',
+        'maxSubjectDetails',
+        'media',
+        'personId',
+        'windowMonths',
+      ],
+      unexpectedFieldNames: [],
+      passed: true,
+    });
+    expect(tool.outputShape.bytes).toBeLessThanOrEqual(3600);
+    expect(
+      report.bangumiToolEvents.filter((event: { state: string }) => event.state === 'DONE'),
+    ).toEqual([{ name: 'bangumi.get_person_activity', state: 'DONE' }]);
+    expect(report.scenarios).toHaveLength(1);
+    expect(report.scenarios[0]).toMatchObject({
+      id: 'bangumi.get_person_activity',
+      passed: true,
+      targetToolOutcome: 'TARGET_TOOL_COMPLETED',
+      toolCalls: [{ name: 'bangumi.get_person_activity', state: 'DONE' }],
+      assertions: {
+        cliSucceeded: true,
+        exactTargetToolCompleted: true,
+        boundedToolBudget: true,
+        personActivityArgumentsVerified: true,
+        personActivityResultVerified: true,
+      },
+    });
+
+    const comparison = tool.result.comparison;
+    expect(comparison).toMatchObject({ state: 'partial', windowMonths: 6 });
+    expect(comparison.recent).toMatchObject({
+      state: 'partial',
+      windowMonths: 6,
+      windowStart: '2026-05-01',
+      windowEnd: '2026-10-04',
+      countsOmittedDueToCoverage: true,
+      summary: {},
+      coverage: { rowsEligible: 0, maxRelations: 48, maxSubjectDetails: 12, maxRows: 20 },
+    });
+    expect(comparison.recent.summary).not.toHaveProperty('uniqueSubjects');
+    expect(comparison.previous).toMatchObject({
+      state: 'partial',
+      windowMonths: 6,
+      windowStart: '2025-11-01',
+      windowEnd: '2026-04-30',
+      summary: { uniqueSubjects: 1 },
+      coverage: { rowsEligible: 1, rowsReturned: 1 },
+    });
+    expect(comparison.delta).toMatchObject({
+      state: 'partial',
+      valuesOmittedDueToCoverage: true,
+    });
+    expect(comparison.delta).not.toHaveProperty('uniqueSubjects');
+    expect(comparison.peak).toMatchObject({ state: 'partial', metric: 'uniqueSubjects' });
+    expect(comparison.peak.months).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ period: 'previous', month: '2026-04', uniqueSubjects: 1 }),
+      ]),
+    );
+    expect(comparison.answerSummaryChecks).toMatchObject({
+      present: true,
+      bothWindows: true,
+      recentOmissionExplicit: true,
+      previousObservedCountPresent: true,
+      deltaOmissionExplicit: true,
+      peakMonthsPresent: true,
+      scopeLimitsPresent: true,
+      passed: true,
+    });
+    expect(report.personActivityAnswerCheck).toMatchObject({
+      resultReadbackAvailable: true,
+      personMentioned: true,
+      bothWindowBoundariesMentioned: true,
+      recentCountMentioned: true,
+      previousCountMentioned: true,
+      deltaStateAndValueMentioned: true,
+      peakStateAndMonthMentioned: true,
+      coverageDisclosurePresent: true,
+      unsupportedCompleteCareerClaim: false,
+      unsupportedWorkloadOrTrendClaim: false,
+      markdownFormattingDetected: false,
+      passed: true,
+    });
   });
 
   it('records observed model-to-MCP calls without implying QQ or TIM acceptance', () => {

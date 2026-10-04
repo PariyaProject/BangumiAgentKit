@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-04T04:08:48Z",
+  "updated_at": "2026-10-04T09:41:22Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -249,8 +249,12 @@
       "user_question": "水濑祈最近半年工作量和之前半年相比如何？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Use bangumi.get_person_activity with comparePreviousWindow=true for a bounded release-date comparison; do not interpret the result as workload, labor time, or historical change.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
+        "docs/research/run86-current-person-activity-comparison-2026-10-04.md"
+      ],
+      "next_action": "Keep PARTIAL: the exact-candidate Agent/MCP call demonstrates a bounded release-date comparison only. Actual workload, labor time, complete career totals, and historical change remain unsupported.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "closure_reason": "Delivered a bounded recent-versus-previous calendar-window comparison over current official-v0 person relations and subject first_air_date, with explicit deltas and partial coverage; actual workload and historical snapshots remain unsupported.",
@@ -273,7 +277,69 @@
           "apps/standalone/src/command-registry.ts"
         ],
         "source_contract": "Official v0 person relation endpoints plus bounded current GET /v0/subjects/{subject_id} details are read once per period with the existing relation/detail/output caps and sequential detail concurrency. Each period uses calendar months ending at its as-of date; the previous period ends the day before the recent period starts. Delta is recent minus previous only when both periods expose observed counts, and peak is the maximum observed unique-subject count by month with ties preserved; unavailable, not-computable, and partial coverage states remain explicit and never become zero or a complete workload claim.",
-        "formula_version": "person-activity-comparison-v1"
+        "formula_version": "person-activity-comparison-v1",
+        "agent_mcp_comparison_run86": {
+          "report": "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
+          "research_note": "docs/research/run86-current-person-activity-comparison-2026-10-04.md",
+          "candidate_sha": "c4acc246551d31ddfc91b54d1031d4454365a7fc",
+          "base_sha": "e45f7384b707ffbad137513b4f5189cd70c3f5d7",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "arguments": {
+            "personId": 13684,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 6,
+            "maxRelations": 48,
+            "maxSubjectDetails": 12,
+            "maxRows": 20,
+            "comparePreviousWindow": true
+          },
+          "process_exit_code": 0,
+          "result_status": "SUCCESS",
+          "exact_target_tool_calls": [
+            {
+              "name": "bangumi.get_person_activity",
+              "state": "DONE"
+            }
+          ],
+          "result_readback_verified": true,
+          "text_output_bytes": 3218,
+          "answer_checks_passed": true,
+          "comparison": {
+            "recent": {
+              "state": "partial",
+              "window_start": "2026-05-01",
+              "window_end": "2026-10-04",
+              "counts_omitted_due_to_coverage": true,
+              "rows_eligible": 0
+            },
+            "previous": {
+              "state": "partial",
+              "window_start": "2025-11-01",
+              "window_end": "2026-04-30",
+              "observed_unique_subjects": 1
+            },
+            "delta": {
+              "state": "partial",
+              "values_omitted_due_to_coverage": true
+            },
+            "peak": {
+              "state": "partial",
+              "period": "previous",
+              "observed_months": ["2026-04"]
+            }
+          },
+          "qq_pipeline_tested": false,
+          "tim_client_tested": false,
+          "limitations": [
+            "partial relation/detail coverage",
+            "release-date observations only",
+            "no labor-time or actual-workload evidence",
+            "no historical person snapshots",
+            "no complete career total"
+          ]
+        }
       }
     },
     {
@@ -1318,8 +1384,12 @@
       "user_question": "某声优的工作量峰值出现在什么月份？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Use bangumi.get_person_activity with comparePreviousWindow=true and read the observed release-month peak; do not call it a workload peak when dates or relation coverage are partial.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
+        "docs/research/run86-current-person-activity-comparison-2026-10-04.md"
+      ],
+      "next_action": "Keep PARTIAL: the exact-candidate Agent/MCP call exposes an observed release-month peak under partial coverage; it does not establish a workload peak or complete monthly coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "closure_reason": "Delivered deterministic observed release-month peak reporting by unique official-v0 subjects across two bounded windows, retaining ties and non-computable coverage; the source does not establish workload intensity.",
@@ -1336,7 +1406,69 @@
           "packages/bangumi-core/src/services/person-activity-service.ts",
           "packages/renderer/src/templates/PersonActivityCard.tsx"
         ],
-        "formula_version": "person-activity-comparison-v1"
+        "formula_version": "person-activity-comparison-v1",
+        "agent_mcp_comparison_run86": {
+          "report": "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
+          "research_note": "docs/research/run86-current-person-activity-comparison-2026-10-04.md",
+          "candidate_sha": "c4acc246551d31ddfc91b54d1031d4454365a7fc",
+          "base_sha": "e45f7384b707ffbad137513b4f5189cd70c3f5d7",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "arguments": {
+            "personId": 13684,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 6,
+            "maxRelations": 48,
+            "maxSubjectDetails": 12,
+            "maxRows": 20,
+            "comparePreviousWindow": true
+          },
+          "process_exit_code": 0,
+          "result_status": "SUCCESS",
+          "exact_target_tool_calls": [
+            {
+              "name": "bangumi.get_person_activity",
+              "state": "DONE"
+            }
+          ],
+          "result_readback_verified": true,
+          "text_output_bytes": 3218,
+          "answer_checks_passed": true,
+          "comparison": {
+            "recent": {
+              "state": "partial",
+              "window_start": "2026-05-01",
+              "window_end": "2026-10-04",
+              "counts_omitted_due_to_coverage": true,
+              "rows_eligible": 0
+            },
+            "previous": {
+              "state": "partial",
+              "window_start": "2025-11-01",
+              "window_end": "2026-04-30",
+              "observed_unique_subjects": 1
+            },
+            "delta": {
+              "state": "partial",
+              "values_omitted_due_to_coverage": true
+            },
+            "peak": {
+              "state": "partial",
+              "period": "previous",
+              "observed_months": ["2026-04"]
+            }
+          },
+          "qq_pipeline_tested": false,
+          "tim_client_tested": false,
+          "limitations": [
+            "partial relation/detail coverage",
+            "release-date observations only",
+            "no labor-time or actual-workload evidence",
+            "no historical person snapshots",
+            "no complete career total"
+          ]
+        }
       }
     },
     {
@@ -2046,9 +2178,11 @@
         "docs/product/opportunity-log.md",
         "docs/research/run72-frontier-delta-2026-10-03.md",
         "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md",
-        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+        "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
+        "docs/research/run86-current-person-activity-comparison-2026-10-04.md"
       ],
-      "next_action": "Keep PARTIAL: the MCP server now emits a bounded 3600-byte answer-relevant text view for oversized person-activity results while preserving the complete structured result and explicit coverage. Exact-candidate Agent/MCP result readback remains pending; actual workload, labor time, historical person snapshots, rolling-365-day totals, and QQ/TIM visibility remain unsupported.",
+      "next_action": "Keep PARTIAL: exact-candidate Agent/MCP readback now passes for the bounded two-window comparison, but official-v0 release-date observations do not establish workload, labor time, historical snapshots, or full-career totals; QQ/TIM remains untested.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["G04", "G05", "S07"],
       "closure_reason": "Reconciled the opportunity with a usable bounded release-activity comparison and monthly peak view while retaining PARTIAL status because official v0 lacks labor-time evidence and historical person snapshots.",
@@ -2108,6 +2242,68 @@
           "tests": ["tests/integration/mcp-result-presenter.test.ts"],
           "full_structured_content_preserved": true,
           "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
+        },
+        "agent_mcp_comparison_run86": {
+          "report": "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
+          "research_note": "docs/research/run86-current-person-activity-comparison-2026-10-04.md",
+          "candidate_sha": "c4acc246551d31ddfc91b54d1031d4454365a7fc",
+          "base_sha": "e45f7384b707ffbad137513b4f5189cd70c3f5d7",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "arguments": {
+            "personId": 13684,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 6,
+            "maxRelations": 48,
+            "maxSubjectDetails": 12,
+            "maxRows": 20,
+            "comparePreviousWindow": true
+          },
+          "process_exit_code": 0,
+          "result_status": "SUCCESS",
+          "exact_target_tool_calls": [
+            {
+              "name": "bangumi.get_person_activity",
+              "state": "DONE"
+            }
+          ],
+          "result_readback_verified": true,
+          "text_output_bytes": 3218,
+          "answer_checks_passed": true,
+          "comparison": {
+            "recent": {
+              "state": "partial",
+              "window_start": "2026-05-01",
+              "window_end": "2026-10-04",
+              "counts_omitted_due_to_coverage": true,
+              "rows_eligible": 0
+            },
+            "previous": {
+              "state": "partial",
+              "window_start": "2025-11-01",
+              "window_end": "2026-04-30",
+              "observed_unique_subjects": 1
+            },
+            "delta": {
+              "state": "partial",
+              "values_omitted_due_to_coverage": true
+            },
+            "peak": {
+              "state": "partial",
+              "period": "previous",
+              "observed_months": ["2026-04"]
+            }
+          },
+          "qq_pipeline_tested": false,
+          "tim_client_tested": false,
+          "limitations": [
+            "partial relation/detail coverage",
+            "release-date observations only",
+            "no labor-time or actual-workload evidence",
+            "no historical person snapshots",
+            "no complete career total"
+          ]
         }
       }
     },
