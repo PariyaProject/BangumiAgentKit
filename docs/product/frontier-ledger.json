@@ -151,9 +151,10 @@
         "tests/semantic/person-activity.test.ts",
         "tests/render/person-activity.test.ts",
         "tests/standalone/person-activity-presenter.test.ts",
-        "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md"
+        "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md",
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
       ],
-      "next_action": "Keep PARTIAL: bangumi.get_person_activity uses current official-v0 person relations and subject first_air_date with a 12-calendar-month window, conservative TV classification, stable-ID deduplication, and explicit relation/detail coverage. The Renderer and Standalone label partial summary values as observations; PersonActivityCard now uses concise coverage, a 12-row image cap, and distinct counts for eligible relations summarized without returned row details versus returned details hidden by the image cap. Do not claim a rolling 365-day interval or complete TV-voice total; natural-language Agent and QQ/TIM client acceptance remain separate.",
+      "next_action": "Keep PARTIAL: the MCP server now emits a bounded 3600-byte answer-relevant text view for oversized person-activity results while preserving the complete structured result and explicit coverage. Exact-candidate Agent/MCP result readback remains pending; actual workload, labor time, historical person snapshots, rolling-365-day totals, and QQ/TIM visibility remain unsupported.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
@@ -209,6 +210,15 @@
             "frontier_and_guard": "pnpm harness frontier:check and pnpm harness guard:legacy-paths --product-epoch — PASS; 121 records / 99 actionable after evidence update"
           },
           "remaining_boundary": "Synthetic render and local tests do not establish a new live Agent/MCP result or QQ/TIM client display; keep this record PARTIAL."
+        },
+        "mcp_bounded_result_view_run82": {
+          "audit_report": "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+          "text_limit_utf8_bytes": 3600,
+          "tools": ["bangumi.get_person_activity", "bangumi.get_subject_overview"],
+          "implementation": ["apps/mcp/src/result-presenter.ts", "apps/mcp/src/server.ts"],
+          "tests": ["tests/integration/mcp-result-presenter.test.ts"],
+          "full_structured_content_preserved": true,
+          "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
         }
       }
     },
@@ -274,10 +284,7 @@
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
-        "capabilities": [
-          "bangumi.get_subject_cast",
-          "bangumi.render_cast_card"
-        ],
+        "capabilities": ["bangumi.get_subject_cast", "bangumi.render_cast_card"],
         "tests": [
           "tests/render/subject-cast-g06.test.ts",
           "tests/integration/live-subject-credit.acceptance.test.ts",
@@ -345,9 +352,10 @@
         "packages/tools/src/definitions/render-presentation-tools.ts",
         "tests/render/subject-overview.test.ts",
         "tests/semantic/subject-overview.test.ts",
-        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
       ],
-      "next_action": "Run #69 public ToolRegistry returned 100 staff rows across 22 exact relation labels; the bounded overview returned 24 rows in 6 partial groups. The current public ToolRegistry and Renderer acceptance passed on this Epoch, and SubjectOverviewCard now scopes complete state as 本次范围内完整 while explaining raw labels and unknown roles. Keep PARTIAL pending exact-source answer-level Agent/MCP validation and QQ/TIM display.",
+      "next_action": "Keep PARTIAL: the MCP server now emits a bounded answer-relevant text view for oversized subject-overview results while preserving full structured coverage and raw role labels. Exact-candidate Agent/MCP answer validation and QQ/TIM display remain pending; an unobserved label is not proof of an absent credit.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -359,7 +367,16 @@
           "tool_contract_test": "tests/semantic/subject-overview.test.ts",
           "status_boundary": "PARTIAL pending exact-source answer-level Agent/MCP and QQ/TIM acceptance."
         },
-        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "mcp_bounded_result_view_run82": {
+          "audit_report": "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+          "text_limit_utf8_bytes": 3600,
+          "tools": ["bangumi.get_person_activity", "bangumi.get_subject_overview"],
+          "implementation": ["apps/mcp/src/result-presenter.ts", "apps/mcp/src/server.ts"],
+          "tests": ["tests/integration/mcp-result-presenter.test.ts"],
+          "full_structured_content_preserved": true,
+          "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
+        }
       }
     },
     {
@@ -423,13 +440,8 @@
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
-        "capabilities": [
-          "bangumi.get_series_watch_order",
-          "bangumi.render_series_watch_order"
-        ],
-        "tests": [
-          "tests/render/series-watch-order-g09.test.ts"
-        ],
+        "capabilities": ["bangumi.get_series_watch_order", "bangumi.render_series_watch_order"],
+        "tests": ["tests/render/series-watch-order-g09.test.ts"],
         "implementation": [
           "packages/bangumi-core/src/services/series-service.ts",
           "packages/tools/src/definitions/read-tools.ts",
@@ -610,9 +622,10 @@
         "packages/tools/src/definitions/render-presentation-tools.ts",
         "tests/render/subject-overview.test.ts",
         "tests/semantic/subject-overview.test.ts",
-        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
       ],
-      "next_action": "The current public ToolRegistry sample included music-production/song credits but no 原作/导演/脚本 labels; the 100-row staff response and 24-row/6-group overview are documented in the current public probe. SubjectOverviewCard now explains that labels are raw and an unobserved role is not proof of absence; tool descriptions carry the same restriction. Keep PARTIAL until the stricter exact-source Agent/MCP answer validator runs on the current catalog and QQ/TIM acceptance is complete.",
+      "next_action": "Keep PARTIAL: the MCP server now emits a bounded answer-relevant text view for oversized subject-overview results while preserving full structured coverage and raw role labels. Exact-candidate Agent/MCP answer validation and QQ/TIM display remain pending; an unobserved label is not proof of an absent credit.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -623,7 +636,16 @@
           "tool_contract_test": "tests/semantic/subject-overview.test.ts",
           "status_boundary": "PARTIAL pending exact-source natural-language Agent/MCP and QQ/TIM acceptance."
         },
-        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "mcp_bounded_result_view_run82": {
+          "audit_report": "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+          "text_limit_utf8_bytes": 3600,
+          "tools": ["bangumi.get_person_activity", "bangumi.get_subject_overview"],
+          "implementation": ["apps/mcp/src/result-presenter.ts", "apps/mcp/src/server.ts"],
+          "tests": ["tests/integration/mcp-result-presenter.test.ts"],
+          "full_structured_content_preserved": true,
+          "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
+        }
       }
     },
     {
@@ -1914,9 +1936,10 @@
       "source_refs": [
         "docs/product/opportunity-log.md",
         "docs/research/run72-frontier-delta-2026-10-03.md",
-        "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md"
+        "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md",
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
       ],
-      "next_action": "Use bangumi.get_person_activity for bounded current release-date observations. The mobile Renderer presents summary-first coverage and expands at most 12 returned rows while the structured result retains full diagnostics. Keep PARTIAL; actual workload, labor time, historical person snapshots, and client visibility remain unsupported, and the current G04 count does not answer an exact rolling-365-day or complete-catalog question.",
+      "next_action": "Keep PARTIAL: the MCP server now emits a bounded 3600-byte answer-relevant text view for oversized person-activity results while preserving the complete structured result and explicit coverage. Exact-candidate Agent/MCP result readback remains pending; actual workload, labor time, historical person snapshots, rolling-365-day totals, and QQ/TIM visibility remain unsupported.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["G04", "G05", "S07"],
       "closure_reason": "Reconciled the opportunity with a usable bounded release-activity comparison and monthly peak view while retaining PARTIAL status because official v0 lacks labor-time evidence and historical person snapshots.",
@@ -1967,6 +1990,15 @@
             "frontier_and_guard": "pnpm harness frontier:check and pnpm harness guard:legacy-paths --product-epoch — PASS; 121 records / 99 actionable after evidence update"
           },
           "remaining_boundary": "Synthetic render and local tests do not establish a new live Agent/MCP result or QQ/TIM client display; keep this record PARTIAL."
+        },
+        "mcp_bounded_result_view_run82": {
+          "audit_report": "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+          "text_limit_utf8_bytes": 3600,
+          "tools": ["bangumi.get_person_activity", "bangumi.get_subject_overview"],
+          "implementation": ["apps/mcp/src/result-presenter.ts", "apps/mcp/src/server.ts"],
+          "tests": ["tests/integration/mcp-result-presenter.test.ts"],
+          "full_structured_content_preserved": true,
+          "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
         }
       }
     },

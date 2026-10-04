@@ -18,6 +18,7 @@ import type { McpExecutionIdentityProvider } from './identity.js';
 import { StdioMcpConfirmationGrantProvider } from './confirmation.js';
 import type { McpConfirmationGrantProvider } from './confirmation.js';
 import { toMcpTool } from './catalog.js';
+import { presentMcpToolResult } from './result-presenter.js';
 
 export { StdioMcpExecutionIdentityProvider } from './identity.js';
 export type { McpExecutionIdentityProvider } from './identity.js';
@@ -251,13 +252,17 @@ export class BangumiMcpServer {
         }
 
         const result = await this.registry.executeTool(name, toolArgs, context);
+        const presentation = presentMcpToolResult(name, result);
         return {
           content: [
             {
               type: 'text',
-              text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+              text: presentation.text,
             },
           ],
+          ...(presentation.structuredContent
+            ? { structuredContent: presentation.structuredContent }
+            : {}),
         };
       } catch (err: unknown) {
         if (!(err instanceof BangumiError)) {
