@@ -702,6 +702,10 @@ describe('MCP tool result presentation', () => {
     const answerSummary = parsed.comparison.answerSummary as string;
 
     expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(parsed.mcpTextProjection.summaryOmittedFromText).toBe(true);
+    expect(parsed.person).toMatchObject({ id: 13684, nameCn: '水濑祈' });
+    expect(parsed.kind).toBe('voice');
+    expect(parsed.media).toBe('tv');
     expect(parsed.rows).toBeUndefined();
     expect(answerSummary).toContain('最近窗口2026-05-01至2026-10-04');
     expect(answerSummary).toContain('作品数未提供');

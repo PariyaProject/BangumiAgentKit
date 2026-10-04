@@ -594,6 +594,9 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
     : JSON.stringify({
         state: result.state,
         personId: result.personId,
+        ...(result.person ? { person: projectPersonIdentity(result.person) } : {}),
+        kind: result.kind,
+        media: result.media,
         window: projectActivityWindow(result.window),
         ...(result.comparison ? { comparison: projectComparison(result, 0) } : {}),
         mcpTextProjection: {
