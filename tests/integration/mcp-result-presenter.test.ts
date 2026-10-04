@@ -386,7 +386,7 @@ describe('MCP tool result presentation', () => {
     expect(parsed.person.nameCn).toBe('水濑祈');
     expect(parsed.window.start).toBe('2025-10-04');
     expect(parsed.summary.uniqueSubjects).toBe(20);
-    expect(parsed.coverage.relationRows.omittedAtLimit).toBe(40);
+    expect(parsed.coverage.relationRowsDroppedAtLimit).toBe(40);
     expect(parsed.rows.length).toBeGreaterThan(0);
     expect(parsed.rows[0].origin.metaTags).toEqual(['漫画']);
     expect(parsed.mcpTextProjection.rowsOmittedFromText).toBeGreaterThan(0);
