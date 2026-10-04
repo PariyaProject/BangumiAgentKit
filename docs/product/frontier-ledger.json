@@ -352,6 +352,11 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run75-frontier-delta-after-pr76-2026-10-03.md",
         "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
+        "apps/mcp/src/result-presenter.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "scripts/acceptance/subject-cast-answer-check.mjs",
+        "docs/research/run89-g06-cast-mcp-bounded-answer-2026-10-04.md",
+        "tests/unit/subject-cast-answer-check.test.ts",
         "tests/render/subject-cast-g06.test.ts",
         "tests/integration/live-subject-credit.acceptance.test.ts",
         "packages/bangumi-core/src/services/character-service.ts",
@@ -367,24 +372,43 @@
         "tests/semantic/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "The CastCard carries same-response official-v0 coverage through CharacterService and the Renderer; observed, returned, truncated, schema-drift, invalid-actor, and card-cap boundaries remain explicit. The consolidated SubjectOverviewCard now labels complete sections 本次范围内完整 as well. Keep PARTIAL: neither bounded card view proves exhaustive cast coverage or a universal role taxonomy; natural-language Agent and QQ/TIM acceptance remain separate.",
+      "next_action": "A bounded get_subject_cast MCP text projection now preserves returned character/actor identities, raw relation labels, source coverage and omission counts within 3600 UTF-8 bytes while leaving structuredContent unchanged; its 100-row adversarial fixture was 398109 bytes before compaction. Keep PARTIAL until one exact current-candidate public Agent call verifies only returned character/actor pairs with a bounded-coverage answer; omitted or unobserved rows do not prove absence. The existing CastCard/SubjectOverview evidence still does not prove exhaustive source coverage or a universal main/support taxonomy, and QQ/TIM remains separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
         "capabilities": ["bangumi.get_subject_cast", "bangumi.render_cast_card"],
         "tests": [
+          "tests/integration/mcp-result-presenter.test.ts",
+          "tests/unit/subject-cast-answer-check.test.ts",
           "tests/render/subject-cast-g06.test.ts",
           "tests/integration/live-subject-credit.acceptance.test.ts",
           "tests/render/subject-credit-mobile-layout.test.ts",
           "tests/integration/tool-catalog-completeness.test.ts"
         ],
         "implementation": [
+          "apps/mcp/src/result-presenter.ts",
+          "scripts/acceptance/subject-cast-answer-check.mjs",
           "packages/bangumi-core/src/services/character-service.ts",
           "packages/bangumi-core/src/workflows/subject-cast.ts",
           "packages/renderer/src/view-model-builders/index.ts",
           "packages/renderer/src/templates/CastCard.tsx"
         ],
         "live_probe": "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
+        "mcp_text_projection": {
+          "tool": "bangumi.get_subject_cast",
+          "limit_utf8_bytes": 3600,
+          "full_structured_content_preserved": true,
+          "red_fixture_bytes_before_compaction": 398109,
+          "coverage_fields_preserved": [
+            "observed",
+            "returned",
+            "truncated",
+            "schemaDriftRows",
+            "invalidActorIdRows"
+          ],
+          "answer_check_method": "row-separated-exact-character-actor-pairs-v1",
+          "answer_report_pending": true
+        },
         "source_contract": "Official v0 subject-character relations through the exact e606ac2431a930384d85c78715e5abfcde9ce3dd source. One ToolRegistry call with subjectId=218707 and limit=100 observed and returned 7 rows, all with valid actor IDs, raw labels 2 主角/5 配角, and no truncation. A separate forced public Agent/MCP get_subject_cast call completed for configured subject 218707 with prompt limit=5; its sanitizer retains neither actual arguments nor result rows. The renderer Artifact call returned/read back from the same exact source. The sample does not prove endpoint-wide completeness or a universal role taxonomy.",
         "observed_at": "2026-10-03T18:10:58Z",
         "catalog_sha256": "118afc18439cb13dc9faec92e3cb560d54bbed058e4facb6369bec19ec224b60",

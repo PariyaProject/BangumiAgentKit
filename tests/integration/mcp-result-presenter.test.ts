@@ -525,6 +525,36 @@ function makeSubjectStaffResult() {
   };
 }
 
+function makeSubjectCastResult() {
+  return {
+    status: 'ok',
+    subjectId: 218707,
+    cast: Array.from({ length: 100 }, (_, index) => ({
+      character: {
+        id: 80000 + index,
+        name: `角色${index}-${'終'.repeat(120)}`,
+        type: 1,
+        summary: `角色简介${'長'.repeat(240)}`,
+        images: {
+          large: `https://images.example.test/characters/${index}/${'image'.repeat(40)}.jpg`,
+        },
+      },
+      relation: index % 3 === 0 ? '主角' : index % 3 === 1 ? '配角' : '其他',
+      actors: Array.from({ length: 2 }, (_, actorIndex) => ({
+        id: 70000 + index * 2 + actorIndex,
+        name: `声优${index}-${actorIndex}-${'声'.repeat(140)}`,
+        career: [`声优${'career'.repeat(40)}`, `演员${'career'.repeat(40)}`],
+        image: `https://images.example.test/actors/${index}/${actorIndex}/${'image'.repeat(40)}.jpg`,
+      })),
+    })),
+    observed: 115,
+    returned: 100,
+    truncated: true,
+    schemaDriftRows: 2,
+    invalidActorIdRows: 1,
+  };
+}
+
 async function callMcpToolWithResult(name: string, toolResult: Record<string, unknown>) {
   const registry = {
     getTools: () => [],
@@ -642,6 +672,78 @@ describe('MCP tool result presentation', () => {
     expect(parsed.mcpTextProjection.textViewScope).toContain(
       'partial or truncated coverage is not a complete source list',
     );
+  });
+
+  it('bounds high-volume subject-cast text while preserving character/actor links and full structure', async () => {
+    const original = makeSubjectCastResult();
+    const response = await callMcpToolWithResult(
+      'bangumi.get_subject_cast',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+    const includedCast = parsed.cast as Array<{
+      character: { id: number; name: string; displayNameTextTruncated?: boolean };
+      relation: string;
+      actors: Array<{ id: number; name: string; displayNameTextTruncated?: boolean }>;
+      actorCount: number;
+      actorsOmittedFromText: number;
+    }>;
+
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(response.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({ status: 'ok', subjectId: 218707 });
+    expect(parsed.coverage).toEqual({
+      observed: 115,
+      returned: 100,
+      truncated: true,
+      schemaDriftRows: 2,
+      invalidActorIdRows: 1,
+    });
+
+    const firstSourceRow = original.cast[0]!;
+    const firstIncludedRow = includedCast.find(
+      (item) => item.character.id === firstSourceRow.character.id,
+    );
+    expect(firstIncludedRow).toMatchObject({
+      character: {
+        id: firstSourceRow.character.id,
+        name: expect.any(String),
+        displayNameTextTruncated: true,
+      },
+      relation: '主角',
+      actorCount: 2,
+      actorsOmittedFromText: 1,
+      actors: [
+        {
+          id: firstSourceRow.actors[0]!.id,
+          name: expect.any(String),
+          displayNameTextTruncated: true,
+        },
+      ],
+    });
+    expect(includedCast.length).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection).toMatchObject({
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      castRowsReturned: 100,
+      castRowsIncluded: includedCast.length,
+      castRowsOmittedFromText: 100 - includedCast.length,
+      actorRowsReturned: 200,
+      actorRowsIncluded: includedCast.reduce(
+        (total: number, item: { actors: unknown[] }) => total + item.actors.length,
+        0,
+      ),
+      actorRowsOmittedFromText: expect.any(Number),
+    });
+    expect(parsed.mcpTextProjection.castRowsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.actorRowsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.textViewScope).toContain(
+      'partial or truncated coverage is not a complete source list',
+    );
+    expect(JSON.stringify(parsed)).not.toContain('角色简介');
+    expect(JSON.stringify(parsed)).not.toContain('career');
+    expect(JSON.stringify(parsed)).not.toContain('images.example.test');
   });
 
   it('returns bounded person-activity text and the unchanged full structured result through MCP', async () => {
