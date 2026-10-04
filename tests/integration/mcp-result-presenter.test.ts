@@ -351,6 +351,9 @@ describe('MCP tool result presentation', () => {
       MCP_TOOL_TEXT_MAX_UTF8_BYTES,
     );
     expect(personText.person.displayNameTextTruncated).toBe(true);
+    expect(personText.mcpTextProjection.textViewScope).toContain(
+      'partial or truncated coverage is not a complete source list',
+    );
     expect(personPresentation.structuredContent).toEqual(personResult);
 
     const overviewResult = makeSubjectOverviewResult();
@@ -366,6 +369,9 @@ describe('MCP tool result presentation', () => {
       MCP_TOOL_TEXT_MAX_UTF8_BYTES,
     );
     expect(overviewText.subject.displayNameTextTruncated).toBe(true);
+    expect(overviewText.mcpTextProjection.textViewScope).toContain(
+      'partial or truncated coverage is not a complete source list',
+    );
     expect(overviewText.mcpTextProjection.staffGroupsOmittedFromText).toBeGreaterThan(0);
     expect(overviewPresentation.structuredContent).toEqual(overviewResult);
   });
@@ -407,13 +413,19 @@ describe('MCP tool result presentation', () => {
     expect(typeof text).toBe('string');
     expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
     expect(parsed.state).toBe('partial');
+    expect(parsed.mcpTextProjection.textViewScope).toContain(
+      'partial or truncated coverage is not a complete source list',
+    );
     expect(parsed.subject.nameCn).toBe('少女终末旅行');
     expect(parsed.cast.items.length).toBeGreaterThan(0);
     expect(parsed.cast.items[0].relation).toBe('主角');
     expect(parsed.staff.groups[0].relation).toBe('原作');
     expect(parsed.staff.groups[1].relation).toBe('导演');
-    expect(parsed.staff.groups[0].members.length).toBeGreaterThan(0);
-    expect(parsed.staff.groups[0].members[0].relation).toBe('原作');
+    expect(parsed.staff.items.length).toBeGreaterThan(0);
+    expect(parsed.staff.items[0].relation).toBe('原作');
+    expect(parsed.staff.groups[0].count).toBe(parsed.staff.groups[0].memberIds.length);
+    expect(parsed.staff.groups[0].sourceCount).toBe(8);
+    expect(parsed.staff.groups[0].memberIds).toContain(parsed.staff.items[0].id);
     expect(parsed.relations.items.length).toBeGreaterThan(0);
     expect(parsed.relations.items[0].relation).toBe('续集');
     expect(parsed.staff.coverage.returned).toBe(80);

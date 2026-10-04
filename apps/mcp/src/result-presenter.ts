@@ -24,6 +24,8 @@ const MAX_WARNINGS = 2;
 const MAX_LIMITATIONS = 2;
 const MESSAGE_TEXT_LIMIT = 80;
 const DISPLAY_TEXT_LIMIT = 120;
+const TEXT_VIEW_SCOPE_NOTE =
+  'Only included rows are shown; partial or truncated coverage is not a complete source list, and omission is not evidence of absence.';
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
@@ -307,6 +309,7 @@ function createPersonActivityProjection(
       version: 'mcp-text-projection-v1',
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
       structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
       fullRowsReturned: result.rows.length,
       rowsIncluded: rows.length,
       rowsOmittedFromText: result.rows.length - rows.length,
@@ -394,6 +397,7 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
       version: 'mcp-text-projection-v1',
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
       structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
       rowsOmittedFromText: result.rows.length,
       evidenceRecordsOmittedFromText: result.evidence.length,
       sourceOperationRecordsOmittedFromText: result.sourceOperations.length,
@@ -417,6 +421,7 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
           version: 'mcp-text-projection-v1',
           maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
           structuredContentHasFullResult: true,
+          textViewScope: TEXT_VIEW_SCOPE_NOTE,
           warningRecordsOmittedFromText: result.warnings.length,
           limitationRecordsOmittedFromText: result.limitations.length,
           summaryOmittedFromText: true,
@@ -552,9 +557,10 @@ function projectStaffGroup(
     });
   return {
     relation: group.relation,
-    count: group.count,
-    members,
-    membersIncluded: members.length,
+    count: members.length,
+    sourceCount: group.count,
+    memberIds: members.map((member) => member.id),
+    items: members,
     membersOmittedFromText: Math.max(0, group.memberIds.length - members.length),
   };
 }
@@ -581,17 +587,19 @@ function createSubjectOverviewProjection(
   warningLimit: number,
   limitationLimit: number,
 ) {
-  const groups = result.staff.groups
+  const groupViews = result.staff.groups
     .slice(0, staffGroupLimit)
     .map((group) => projectStaffGroup(result, group, staffMemberLimitPerGroup));
-  const includedStaffRows = new Set(
-    groups.flatMap((group) =>
-      group.members.map((member) => `${member.id}\u0000${member.relation}`),
-    ),
+  const groups = groupViews.map(
+    ({ relation, count, sourceCount, memberIds, membersOmittedFromText }) => ({
+      relation,
+      count,
+      sourceCount,
+      memberIds,
+      membersOmittedFromText,
+    }),
   );
-  const includedStaffMemberCount = result.staff.items.filter((member) =>
-    includedStaffRows.has(`${member.id}\u0000${member.rawRelation || member.relation}`),
-  ).length;
+  const staffItems = groupViews.flatMap((group) => group.items);
   const messages = projectMessages(
     result.warnings,
     result.limitations,
@@ -624,6 +632,7 @@ function createSubjectOverviewProjection(
     staff: {
       ...projectOverviewSectionCoverage(result.staff),
       groups,
+      items: staffItems,
     },
     relations: {
       ...projectOverviewSectionCoverage(result.relations),
@@ -635,6 +644,7 @@ function createSubjectOverviewProjection(
       version: 'mcp-text-projection-v1',
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
       structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
       castItemsReturned: result.cast.items.length,
       castItemsIncluded: castItems.length,
       castItemsOmittedFromText: result.cast.items.length - castItems.length,
@@ -642,11 +652,8 @@ function createSubjectOverviewProjection(
       staffGroupsIncluded: groups.length,
       staffGroupsOmittedFromText: result.staff.groups.length - groups.length,
       staffMembersReturned: result.staff.items.length,
-      staffMembersIncluded: includedStaffMemberCount,
-      staffMembersOmittedFromText: Math.max(
-        0,
-        result.staff.items.length - includedStaffMemberCount,
-      ),
+      staffMembersIncluded: staffItems.length,
+      staffMembersOmittedFromText: Math.max(0, result.staff.items.length - staffItems.length),
       relationItemsReturned: result.relations.items.length,
       relationItemsIncluded: relationItems.length,
       relationItemsOmittedFromText: result.relations.items.length - relationItems.length,
@@ -733,6 +740,7 @@ function minimalSubjectOverviewProjection(result: SubjectOverviewResult): string
       version: 'mcp-text-projection-v1',
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
       structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
       castItemsOmittedFromText: result.cast.items.length,
       staffMembersOmittedFromText: result.staff.items.length,
       relationItemsOmittedFromText: result.relations.items.length,
@@ -752,6 +760,7 @@ function minimalSubjectOverviewProjection(result: SubjectOverviewResult): string
           version: 'mcp-text-projection-v1',
           maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
           structuredContentHasFullResult: true,
+          textViewScope: TEXT_VIEW_SCOPE_NOTE,
           warningRecordsOmittedFromText: result.warnings.length,
           limitationRecordsOmittedFromText: result.limitations.length,
           summaryOmittedFromText: true,
