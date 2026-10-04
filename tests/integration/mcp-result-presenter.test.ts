@@ -429,6 +429,102 @@ function makeSubjectOverviewResult(): SubjectOverviewResult {
   };
 }
 
+function makeSubjectStaffResult() {
+  const rawRelations = [
+    '原画',
+    '主题歌作曲',
+    '动画制作',
+    '音响监督',
+    '监督',
+    '脚本',
+    '角色设计',
+    '总作画监督',
+    '美术监督',
+    '摄影监督',
+    '剪辑',
+    '音响效果',
+    '音乐制作',
+    '道具设计',
+    '色彩设计',
+    '制作',
+    '插画',
+    '设定',
+    '企画',
+    '编集',
+    '背景美术',
+    '动画制片人',
+  ];
+  const productionStaff = Array.from({ length: 100 }, (_, index) => {
+    const rawRelation =
+      index === 0 ? ` ${rawRelations[0]} ` : rawRelations[index % rawRelations.length]!;
+    return {
+      id: 90000 + index,
+      name: `制作人员${index}-${'声'.repeat(120)}`,
+      type: 1,
+      career: ['producer'],
+      relation: rawRelation.trim() || '未知',
+      rawRelation,
+      eps: '',
+    };
+  });
+  const groups = rawRelations
+    .map((relation) => {
+      const memberIds = productionStaff
+        .filter((member) => member.relation === relation)
+        .map((member) => member.id);
+      return { relation, count: memberIds.length, memberIds };
+    })
+    .sort((left, right) => right.count - left.count || left.relation.localeCompare(right.relation));
+  const cast = Array.from({ length: 7 }, (_, index) => ({
+    character: {
+      id: 80000 + index,
+      name: `角色${index}-${'終'.repeat(80)}`,
+      type: 1,
+      summary: 'A character summary remains available in structuredContent.',
+    },
+    relation: index === 0 ? '主角' : '配角',
+    actors: Array.from({ length: 2 }, (_, actorIndex) => ({
+      id: 70000 + index * 2 + actorIndex,
+      name: `声优${index}-${actorIndex}-${'声'.repeat(60)}`,
+      career: ['seiyu'],
+    })),
+  }));
+
+  return {
+    state: 'partial',
+    subjectId: 218707,
+    productionStaff,
+    cast,
+    groups,
+    coverage: {
+      state: 'partial',
+      retrievedAt: '2026-10-04T00:00:00.000Z',
+      productionStaff: { observed: 115, returned: 100, truncated: true },
+      cast: { observed: 7, returned: 7, truncated: false },
+      limit: 200,
+    },
+    evidence: [
+      { source: 'official-v0', operation: 'GET /v0/subjects/{subject_id}/persons' },
+      { source: 'official-v0', operation: 'GET /v0/subjects/{subject_id}/characters' },
+      { source: 'derived-s7', formulaVersion: 'subject-staff-grouping-v1' },
+    ],
+    warnings: [
+      {
+        code: 'OUTPUT_TRUNCATED',
+        state: 'partial',
+        message: '制作人员或角色声优关系达到显示上限。',
+      },
+    ],
+    capabilityStates: {
+      productionStaff: 'partial',
+      cast: 'complete',
+      recent_activity: 'not_computable',
+      workload_trend: 'not_computable',
+      historical_growth: 'not_computable',
+    },
+  };
+}
+
 async function callMcpToolWithResult(name: string, toolResult: Record<string, unknown>) {
   const registry = {
     getTools: () => [],
@@ -497,6 +593,55 @@ describe('MCP tool result presentation', () => {
     );
     expect(overviewText.mcpTextProjection.staffGroupsOmittedFromText).toBeGreaterThan(0);
     expect(overviewPresentation.structuredContent).toEqual(overviewResult);
+  });
+
+  it('bounds high-volume subject-staff text while preserving raw roles and full structured content', async () => {
+    const original = makeSubjectStaffResult();
+    const response = await callMcpToolWithResult(
+      'bangumi.get_subject_staff',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+    const includedGroups = parsed.productionStaff.groups as Array<{
+      relation: string;
+      members: Array<{ id: number; name: string; rawRelation?: string; nameTruncated?: boolean }>;
+    }>;
+
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(response.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({ state: 'partial', subjectId: 218707 });
+    expect(parsed.coverage).toMatchObject({
+      productionStaff: { observed: 115, returned: 100, truncated: true },
+      cast: { observed: 7, returned: 7, truncated: false },
+      limit: 200,
+    });
+    expect(includedGroups.map((group) => group.relation).sort()).toEqual(
+      original.groups.map((group) => group.relation).sort(),
+    );
+    const originalRow = original.productionStaff[0]!;
+    const includedRow = includedGroups
+      .flatMap((group) => group.members)
+      .find((member) => member.id === originalRow.id);
+    expect(includedRow).toMatchObject({
+      id: originalRow.id,
+      name: expect.any(String),
+      rawRelation: originalRow.rawRelation,
+      nameTruncated: true,
+    });
+    expect(parsed.mcpTextProjection).toMatchObject({
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      staffGroupsOmittedFromText: 0,
+      staffGroupMembershipsOmittedFromText: expect.any(Number),
+      castItemsOmittedFromText: expect.any(Number),
+    });
+    expect(includedGroups).toHaveLength(22);
+    expect(parsed.mcpTextProjection.staffGroupMembershipsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.castItemsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.textViewScope).toContain(
+      'partial or truncated coverage is not a complete source list',
+    );
   });
 
   it('returns bounded person-activity text and the unchanged full structured result through MCP', async () => {

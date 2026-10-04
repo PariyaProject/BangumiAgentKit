@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-10-04",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py (temporary sanitized wrapper)",
+  "upstreamRevision": "c13fcff7a4c0073299581afb1814555439812aae",
+  "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+  "profile": "bangumi-full-public-qa-v1",
+  "sourceProfile": "standard-full",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 58880,
+  "jsonStreamDiagnostics": {
+    "lineClassCounts": {
+      "valid": 16,
+      "blank": 0,
+      "non_json_text": 0,
+      "malformed_json": 0,
+      "non_object_json": 0
+    },
+    "invalidLineCount": 0
+  },
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [
+    {
+      "name": "bangumi.get_subject_staff",
+      "arguments": {
+        "available": true,
+        "expectedFieldNames": ["limit", "subjectId"],
+        "matchedFieldNames": ["limit", "subjectId"],
+        "unexpectedFieldNames": [],
+        "passed": true
+      },
+      "outputShape": {
+        "type": "str",
+        "bytes": 3529,
+        "keys": [
+          "capabilityStates",
+          "cast",
+          "coverage",
+          "mcpTextProjection",
+          "productionStaff",
+          "state",
+          "subjectId"
+        ]
+      },
+      "result": {
+        "found": true,
+        "subjectId": 218707,
+        "state": "complete",
+        "textUtf8Bytes": 3529,
+        "staffGroupsVisible": 30,
+        "staffMembersVisible": 30,
+        "castItemsVisible": 0,
+        "castActorsVisible": 0,
+        "roleLabels": [
+          "原画",
+          "补间动画",
+          "第二原画",
+          "作画监督",
+          "演出",
+          "制作进行",
+          "企画",
+          "分镜",
+          "製作",
+          "主题歌作曲",
+          "制片人",
+          "美术设计",
+          "OP・ED 分镜",
+          "主题歌作词",
+          "主题歌演出",
+          "主题歌编曲",
+          "插入歌演出",
+          "道具设计",
+          "CG 导演",
+          "人物设定",
+          "作画监督助理",
+          "制作管理",
+          "制作统括",
+          "剪辑",
+          "动画制作",
+          "动画制片人",
+          "动画检查",
+          "协力",
+          "原作",
+          "导演"
+        ],
+        "coverage": {
+          "state": "complete",
+          "productionStaff": {
+            "observed": 157,
+            "returned": 157,
+            "truncated": false
+          },
+          "cast": {
+            "observed": 7,
+            "returned": 7,
+            "truncated": false
+          },
+          "limit": 200
+        },
+        "omitted": {
+          "staffGroupsOmittedFromText": 15,
+          "staffGroupMembershipsOmittedFromText": 127,
+          "castItemsOmittedFromText": 7,
+          "castActorsOmittedFromText": 7
+        },
+        "structuredContentHasFullResult": true,
+        "scopeDisclosurePresent": true
+      }
+    }
+  ],
+  "subjectStaffArgumentsVerified": true,
+  "subjectStaffResultVerified": true,
+  "subjectStaffAnswerCheck": {
+    "resultReadbackAvailable": true,
+    "visibleRoleLabelCount": 30,
+    "roleLabelsMatchedCount": 4,
+    "memberNamesMatchedCount": 4,
+    "roleNamePairsMatchedCount": 4,
+    "associationCheckMethod": "bounded-positive-statement-v2",
+    "associationCheckerSha256": "62197d25f3ab969cd1b9cd2b3de2735367e079552cb949d1716ea65b8177cad4",
+    "roleLabelsMentioned": true,
+    "memberNamesMentioned": true,
+    "boundedCoverageDisclosurePresent": true,
+    "omissionNotAbsencePresent": true,
+    "unsupportedCompletenessClaim": false,
+    "markdownFormattingDetected": false,
+    "passed": true
+  },
+  "candidateSha": "c13fcff7a4c0073299581afb1814555439812aae",
+  "bangumiToolEvents": [
+    {
+      "name": "bangumi.get_subject_staff",
+      "state": "ACTIVE"
+    },
+    {
+      "name": "bangumi.get_subject_staff",
+      "state": "DONE"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "bangumi.get_subject_staff",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.get_subject_staff",
+          "state": "DONE"
+        }
+      ],
+      "targetToolOutcome": "TARGET_TOOL_COMPLETED",
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "jsonStreamLineClassCounts": {
+          "valid": 16,
+          "blank": 0,
+          "non_json_text": 0,
+          "malformed_json": 0,
+          "non_object_json": 0
+        },
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "subjectStaffArgumentsVerified": true,
+        "subjectStaffResultVerified": true,
+        "subjectStaffAnswerCheck": {
+          "resultReadbackAvailable": true,
+          "visibleRoleLabelCount": 30,
+          "roleLabelsMatchedCount": 4,
+          "memberNamesMatchedCount": 4,
+          "roleNamePairsMatchedCount": 4,
+          "associationCheckMethod": "bounded-positive-statement-v2",
+          "associationCheckerSha256": "62197d25f3ab969cd1b9cd2b3de2735367e079552cb949d1716ea65b8177cad4",
+          "roleLabelsMentioned": true,
+          "memberNamesMentioned": true,
+          "boundedCoverageDisclosurePresent": true,
+          "omissionNotAbsencePresent": true,
+          "unsupportedCompletenessClaim": false,
+          "markdownFormattingDetected": false,
+          "passed": true
+        },
+        "candidateSha": "c13fcff7a4c0073299581afb1814555439812aae"
+      }
+    }
+  ],
+  "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence.",
+  "subjectId": 218707,
+  "cliVersion": "1.2.14",
+  "agentImage": "pariya-agent/bangumi-poc:qa-run89-c13fcff",
+  "cliImage": "pariya-agent/agy-bangumi-poc:qa-run89-c13fcff-cli-1.2.14",
+  "promptPersisted": false,
+  "answerProsePersisted": false,
+  "personNamesPersisted": false
+}

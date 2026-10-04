@@ -18,6 +18,15 @@ const RUN86_PERSON_ACTIVITY_COMPARISON_EVIDENCE = JSON.parse(
     'utf8',
   ),
 );
+const RUN89_SUBJECT_STAFF_EVIDENCE = JSON.parse(
+  readFileSync(
+    join(
+      ROOT,
+      'docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json',
+    ),
+    'utf8',
+  ),
+);
 const FULL_PUBLIC_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter((name) => name.startsWith('pariya-agent-full-public-qa-e2e-') && name.endsWith('.json'))
   .sort()
@@ -85,17 +94,6 @@ const RUN66_DISCOVERY_RENDER_EVIDENCE = readdirSync(RUN66_DISCOVERY_SCENARIO_DIR
   .sort()
   .map((name) => JSON.parse(readFileSync(join(RUN66_DISCOVERY_SCENARIO_DIR, name), 'utf8')));
 
-const EVIDENCE = [
-  COMPACT_EVIDENCE,
-  ...FULL_PUBLIC_QA_EVIDENCE,
-  ...FULL_RENDERER_QA_EVIDENCE,
-  ...FULL_OPERATION_QA_EVIDENCE,
-  ...FULL_AUTH_START_QA_EVIDENCE,
-  ...FULL_AUTH_SWITCH_QA_EVIDENCE,
-  ...FULL_AUTH_MUTATION_QA_EVIDENCE,
-  ...FULL_AUTH_FEATURE_QA_EVIDENCE,
-  ...FULL_AUTH_WRITE_QA_EVIDENCE,
-];
 const CURRENT_CATALOG_SHA256 = createHash('sha256').update(CATALOG_TEXT).digest('hex');
 const catalogCache = new Map<string, unknown[]>([[CURRENT_CATALOG_SHA256, catalog]]);
 
@@ -139,14 +137,42 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
   );
 }
 
-const CURRENT_FULL_PUBLIC_QA_EVIDENCE = FULL_PUBLIC_QA_EVIDENCE.filter((report: any) => {
-  const name = report.scenarios?.[0]?.id;
-  return typeof name === 'string' && toolContractMatchesCurrent(report, name);
-});
+// Preserve prior reports as history, but count only the newest current-contract
+// report for each tool in the current-source acceptance matrix.
+const CURRENT_FULL_PUBLIC_QA_EVIDENCE = (() => {
+  const current = FULL_PUBLIC_QA_EVIDENCE.filter((report: any) => {
+    const name = report.scenarios?.[0]?.id;
+    return typeof name === 'string' && toolContractMatchesCurrent(report, name);
+  }).sort(
+    (left: any, right: any) =>
+      Number(Boolean(right.candidateSha)) - Number(Boolean(left.candidateSha)) ||
+      String(right.createdOn ?? '').localeCompare(String(left.createdOn ?? '')) ||
+      String(right.upstreamRevision ?? '').localeCompare(String(left.upstreamRevision ?? '')),
+  );
+  const seenTools = new Set<string>();
+  return current.filter((report: any) => {
+    const name = report.scenarios?.[0]?.id;
+    if (typeof name !== 'string' || seenTools.has(name)) return false;
+    seenTools.add(name);
+    return true;
+  });
+})();
 const CURRENT_FULL_RENDERER_QA_EVIDENCE = FULL_RENDERER_QA_EVIDENCE.filter((report: any) => {
   const name = report.scenarios?.[0]?.id;
   return typeof name === 'string' && toolContractMatchesCurrent(report, name);
 });
+
+const EVIDENCE = [
+  COMPACT_EVIDENCE,
+  ...CURRENT_FULL_PUBLIC_QA_EVIDENCE,
+  ...FULL_RENDERER_QA_EVIDENCE,
+  ...FULL_OPERATION_QA_EVIDENCE,
+  ...FULL_AUTH_START_QA_EVIDENCE,
+  ...FULL_AUTH_SWITCH_QA_EVIDENCE,
+  ...FULL_AUTH_MUTATION_QA_EVIDENCE,
+  ...FULL_AUTH_FEATURE_QA_EVIDENCE,
+  ...FULL_AUTH_WRITE_QA_EVIDENCE,
+];
 
 function rowsByTool(): Map<string, string[]> {
   const rows = new Map<string, string[]>();
@@ -618,6 +644,92 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
       expect(toolContractMatchesCurrent(report, report.scenarios[0].id)).toBe(true);
     }
+  });
+
+  it('accepts the exact-candidate bounded subject-staff Agent/MCP answer', () => {
+    const report = RUN89_SUBJECT_STAFF_EVIDENCE;
+    expect(report).toMatchObject({
+      evidenceKind: 'antigravity_cli_mcp_tool_use',
+      upstreamRevision: 'c13fcff7a4c0073299581afb1814555439812aae',
+      candidateSha: 'c13fcff7a4c0073299581afb1814555439812aae',
+      catalogSha256: '26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e',
+      sourceProfile: 'standard-full',
+      profile: 'bangumi-full-public-qa-v1',
+      cliVersion: '1.2.14',
+      subjectId: 218707,
+      processExitCode: 0,
+      resultCount: 1,
+      resultStatus: 'SUCCESS',
+      subjectStaffArgumentsVerified: true,
+      subjectStaffResultVerified: true,
+      promptPersisted: false,
+      answerProsePersisted: false,
+      personNamesPersisted: false,
+      qqPipelineTested: false,
+      timClientTested: false,
+    });
+    expect(report.toolResultSummaries).toHaveLength(1);
+    expect(report.toolResultSummaries[0]).toMatchObject({
+      name: 'bangumi.get_subject_staff',
+      arguments: {
+        expectedFieldNames: ['limit', 'subjectId'],
+        matchedFieldNames: ['limit', 'subjectId'],
+        unexpectedFieldNames: [],
+        passed: true,
+      },
+      result: {
+        found: true,
+        subjectId: 218707,
+        state: 'complete',
+        textUtf8Bytes: 3529,
+        structuredContentHasFullResult: true,
+        scopeDisclosurePresent: true,
+        coverage: {
+          state: 'complete',
+          productionStaff: { observed: 157, returned: 157, truncated: false },
+          cast: { observed: 7, returned: 7, truncated: false },
+          limit: 200,
+        },
+        omitted: {
+          staffGroupsOmittedFromText: 15,
+          staffGroupMembershipsOmittedFromText: 127,
+          castItemsOmittedFromText: 7,
+        },
+      },
+    });
+    expect(report.toolResultSummaries[0].result.textUtf8Bytes).toBeLessThanOrEqual(3600);
+    expect(report.toolResultSummaries[0].result.roleLabels).toContain('导演');
+    expect(report.toolResultSummaries[0].result.roleLabels).toContain('原作');
+    expect(report.subjectStaffAnswerCheck).toMatchObject({
+      resultReadbackAvailable: true,
+      roleLabelsMentioned: true,
+      memberNamesMentioned: true,
+      associationCheckMethod: 'bounded-positive-statement-v2',
+      associationCheckerSha256: createHash('sha256')
+        .update(readFileSync(join(ROOT, 'scripts/acceptance/subject-staff-answer-check.mjs')))
+        .digest('hex'),
+      boundedCoverageDisclosurePresent: true,
+      omissionNotAbsencePresent: true,
+      unsupportedCompletenessClaim: false,
+      markdownFormattingDetected: false,
+      passed: true,
+    });
+    expect(report.subjectStaffAnswerCheck.roleNamePairsMatchedCount).toBeGreaterThanOrEqual(2);
+    expect(report.scenarios).toHaveLength(1);
+    expect(report.scenarios[0]).toMatchObject({
+      id: 'bangumi.get_subject_staff',
+      passed: true,
+      toolCalls: [{ name: 'bangumi.get_subject_staff', state: 'DONE' }],
+    });
+    expect(report).not.toHaveProperty('prompt');
+    expect(report).not.toHaveProperty('answer');
+    expect(report).not.toHaveProperty('finalAnswer');
+    expect(report.scenarios[0]).not.toHaveProperty('prompt');
+    expect(report.scenarios[0]).not.toHaveProperty('arguments');
+    expect(report.toolResultSummaries[0].result).not.toHaveProperty('members');
+    expect(report.toolResultSummaries[0].result).not.toHaveProperty('personNames');
+    expect(catalogForHash(report.catalogSha256)).toBeDefined();
+    expect(toolContractMatchesCurrent(report, 'bangumi.get_subject_staff')).toBe(true);
   });
 
   it('accepts only renderer evidence containing a verified temporary PNG artifact', () => {

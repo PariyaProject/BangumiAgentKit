@@ -1,7 +1,10 @@
 import type {
   PersonActivityResult,
   PersonActivityWindowSummary,
+  SubjectCastItem,
   SubjectOverviewResult,
+  SubjectStaffGroup,
+  SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
 
 export const MCP_TOOL_TEXT_MAX_UTF8_BYTES = 3600;
@@ -12,8 +15,26 @@ export interface McpToolResultPresentation {
 }
 
 type JsonObject = Record<string, unknown>;
+type SubjectStaffToolResult = JsonObject & {
+  state: string;
+  subjectId: number;
+  productionStaff: SubjectStaffMember[];
+  cast: SubjectCastItem[];
+  groups: SubjectStaffGroup[];
+  coverage: {
+    state: string;
+    retrievedAt: string;
+    productionStaff: { observed: number; returned: number; truncated: boolean };
+    cast: { observed: number; returned: number; truncated: boolean };
+    limit: number;
+  };
+  evidence: unknown[];
+  warnings: Array<{ code: string; state: string; message: string }>;
+  capabilityStates: Record<string, string>;
+};
 
 const PERSON_ACTIVITY_TOOL = 'bangumi.get_person_activity';
+const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
@@ -42,6 +63,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
     const text = compactPersonActivity(result);
     return {
       text,
+      structuredContent: result,
+    };
+  }
+
+  if (toolName === SUBJECT_STAFF_TOOL && isSubjectStaffResult(result)) {
+    return {
+      text: compactSubjectStaff(result),
       structuredContent: result,
     };
   }
@@ -97,6 +125,21 @@ function isSubjectOverviewResult(value: JsonObject): value is JsonObject & Subje
     Array.isArray(value.relations.items) &&
     Array.isArray(value.warnings) &&
     Array.isArray(value.limitations)
+  );
+}
+
+function isSubjectStaffResult(value: JsonObject): value is SubjectStaffToolResult {
+  return (
+    typeof value.subjectId === 'number' &&
+    Array.isArray(value.productionStaff) &&
+    Array.isArray(value.cast) &&
+    Array.isArray(value.groups) &&
+    isJsonObject(value.coverage) &&
+    isJsonObject(value.coverage.productionStaff) &&
+    isJsonObject(value.coverage.cast) &&
+    Array.isArray(value.evidence) &&
+    Array.isArray(value.warnings) &&
+    isJsonObject(value.capabilityStates)
   );
 }
 
@@ -1014,4 +1057,154 @@ function minimalSubjectOverviewProjection(result: SubjectOverviewResult): string
           summaryOmittedFromText: true,
         },
       });
+}
+
+function projectSubjectStaffGroup(
+  result: SubjectStaffToolResult,
+  group: SubjectStaffGroup,
+  memberLimit: number,
+  textLimit: number,
+) {
+  const relation = clippedDisplayText(group.relation, textLimit);
+  const findMember = (id: number) =>
+    result.productionStaff.find(
+      (member) => member.id === id && member.relation === group.relation,
+    ) ?? result.productionStaff.find((member) => member.id === id);
+  const members = group.memberIds
+    .slice(0, memberLimit)
+    .map(findMember)
+    .filter((member): member is SubjectStaffMember => member !== undefined)
+    .map((member) => {
+      const name = clippedDisplayText(member.name, textLimit);
+      const rawRelationSource = member.rawRelation ?? member.relation;
+      const rawRelation = clippedDisplayText(rawRelationSource, textLimit);
+      return {
+        id: member.id,
+        name: name.text,
+        ...(rawRelationSource !== group.relation ? { rawRelation: rawRelation.text } : {}),
+        ...(name.clipped ? { nameTruncated: true } : {}),
+        ...(rawRelationSource !== group.relation && rawRelation.clipped
+          ? { rawRelationTextTruncated: true }
+          : {}),
+      };
+    });
+  return {
+    relation: relation.text,
+    count: group.count,
+    members,
+    ...(relation.clipped ? { relationTextTruncated: true } : {}),
+  };
+}
+
+function projectSubjectStaffCastItem(item: SubjectCastItem, actorLimit: number, textLimit: number) {
+  const characterName = clippedDisplayText(item.character.name, textLimit);
+  const relation = clippedDisplayText(item.relation, textLimit);
+  const actors = item.actors.slice(0, actorLimit).map((actor) => {
+    const name = clippedDisplayText(actor.name, textLimit);
+    return {
+      id: actor.id,
+      name: name.text,
+      ...(name.clipped ? { displayNameTextTruncated: true } : {}),
+    };
+  });
+  return {
+    character: {
+      id: item.character.id,
+      name: characterName.text,
+      type: item.character.type,
+      ...(characterName.clipped ? { displayNameTextTruncated: true } : {}),
+    },
+    relation: relation.text,
+    ...(relation.clipped ? { relationTextTruncated: true } : {}),
+    actors,
+    actorCount: item.actors.length,
+    actorsOmittedFromText: Math.max(0, item.actors.length - actors.length),
+  };
+}
+
+function createSubjectStaffProjection(
+  result: SubjectStaffToolResult,
+  groupLimit: number,
+  membersPerGroup: number,
+  castLimit: number,
+  actorsPerCharacter: number,
+  textLimit: number,
+) {
+  const groups = result.groups
+    .slice(0, groupLimit)
+    .map((group) => projectSubjectStaffGroup(result, group, membersPerGroup, textLimit));
+  const castItems = result.cast
+    .slice(0, castLimit)
+    .map((item) => projectSubjectStaffCastItem(item, actorsPerCharacter, textLimit));
+  const groupMembershipsReturned = result.groups.reduce(
+    (total, group) => total + group.memberIds.length,
+    0,
+  );
+  const groupMembershipsIncluded = groups.reduce((total, group) => total + group.members.length, 0);
+  const castActorsReturned = result.cast.reduce((total, item) => total + item.actors.length, 0);
+  const castActorsIncluded = castItems.reduce((total, item) => total + item.actors.length, 0);
+
+  return {
+    state: result.state,
+    subjectId: result.subjectId,
+    productionStaff: { groups },
+    cast: { items: castItems },
+    coverage: {
+      state: result.coverage.state,
+      retrievedAt: result.coverage.retrievedAt,
+      productionStaff: { ...result.coverage.productionStaff },
+      cast: { ...result.coverage.cast },
+      limit: result.coverage.limit,
+    },
+    capabilityStates: { ...result.capabilityStates },
+    mcpTextProjection: {
+      version: 'mcp-text-projection-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
+      staffGroupsOmittedFromText: result.groups.length - groups.length,
+      staffGroupMembershipsOmittedFromText: Math.max(
+        0,
+        groupMembershipsReturned - groupMembershipsIncluded,
+      ),
+      castItemsOmittedFromText: result.cast.length - castItems.length,
+      castActorsOmittedFromText: Math.max(0, castActorsReturned - castActorsIncluded),
+      staffMemberDetailsOmittedFromText: true,
+      castCharacterDetailsOmittedFromText: true,
+      evidenceRecordsOmittedFromText: result.evidence.length,
+      warningRecordsOmittedFromText: result.warnings.length,
+    },
+  };
+}
+
+function compactSubjectStaff(result: SubjectStaffToolResult): string {
+  let groupLimit = result.groups.length;
+  let membersPerGroup = Math.min(2, result.productionStaff.length);
+  let castLimit = Math.min(MAX_SECTION_ITEMS, result.cast.length);
+  let actorsPerCharacter = MAX_ACTORS_PER_CHARACTER;
+  let textLimit = DISPLAY_TEXT_LIMIT;
+
+  while (true) {
+    const projection = createSubjectStaffProjection(
+      result,
+      groupLimit,
+      membersPerGroup,
+      castLimit,
+      actorsPerCharacter,
+      textLimit,
+    );
+    const text = JSON.stringify(projection);
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (actorsPerCharacter > 1) actorsPerCharacter -= 1;
+    else if (castLimit > 2) castLimit -= 1;
+    else if (membersPerGroup > 1) membersPerGroup -= 1;
+    else if (textLimit > 8) textLimit = Math.max(8, textLimit - 8);
+    else if (castLimit > 0) castLimit -= 1;
+    else if (groupLimit > 1) groupLimit -= 1;
+    else if (membersPerGroup > 0) membersPerGroup -= 1;
+    else if (textLimit > 0) textLimit -= 1;
+    else if (groupLimit > 0) groupLimit -= 1;
+    else throw new Error('Unable to produce bounded MCP subject staff text projection');
+  }
 }
