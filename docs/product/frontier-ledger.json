@@ -152,9 +152,11 @@
         "tests/render/person-activity.test.ts",
         "tests/standalone/person-activity-presenter.test.ts",
         "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md",
-        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+        "docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-activity-2026-10-04.json",
+        "tests/integration/tool-e2e-acceptance.test.ts"
       ],
-      "next_action": "Keep PARTIAL: the MCP server now emits a bounded 3600-byte answer-relevant text view for oversized person-activity results while preserving the complete structured result and explicit coverage. Exact-candidate Agent/MCP result readback remains pending; actual workload, labor time, historical person snapshots, rolling-365-day totals, and QQ/TIM visibility remain unsupported.",
+      "next_action": "Keep PARTIAL: exact-source CLI 1.2.14 Agent/MCP result readback and answer checks now pass for get_person_activity (3451 UTF-8 bytes). The observed result is partial with 115 relations observed, 1 selected, 114 dropped, and 0 eligible/returned rows; it does not establish actual workload, labor time, historical snapshots, rolling-365-day totals, or QQ/TIM visibility.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
@@ -219,6 +221,25 @@
           "tests": ["tests/integration/mcp-result-presenter.test.ts"],
           "full_structured_content_preserved": true,
           "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
+        },
+        "agent_mcp_coverage_run86": {
+          "report": "docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-activity-2026-10-04.json",
+          "source_revision": "5101d1bf10920b8bb3f6e1a556cff453193e9e50",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "exact_target_call_completed": true,
+          "result_readback_verified": true,
+          "answer_check_passed": true,
+          "text_utf8_bytes": 3451,
+          "result_state": "partial",
+          "coverage": {
+            "relation_rows_observed": 115,
+            "relation_rows_selected": 1,
+            "relation_rows_dropped_at_limit": 114,
+            "rows_eligible": 0,
+            "rows_returned": 0
+          },
+          "remaining_boundary": "The configured one-row selection yields no eligible rows; this does not establish workload, labor time, historical snapshots, rolling-365-day totals, or QQ/TIM visibility."
         }
       }
     },
@@ -353,9 +374,12 @@
         "tests/render/subject-overview.test.ts",
         "tests/semantic/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
-        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+        "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-10-04.json",
+        "docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-10-04.json",
+        "tests/integration/tool-e2e-acceptance.test.ts"
       ],
-      "next_action": "Keep PARTIAL: the MCP server now emits a bounded answer-relevant text view for oversized subject-overview results while preserving full structured coverage and raw role labels. Exact-candidate Agent/MCP answer validation and QQ/TIM display remain pending; an unobserved label is not proof of an absent credit.",
+      "next_action": "Keep PARTIAL: current-catalog CLI 1.2.14 Agent/MCP readback for get_subject_overview and renderer artifact/answer checks for render_subject_overview now pass. The current result sections are partial and truncated (7/1 cast, 157/1 staff, 9/1 relations); a bounded sample does not prove a complete role list or source absence, and QQ/TIM display remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -376,6 +400,47 @@
           "tests": ["tests/integration/mcp-result-presenter.test.ts"],
           "full_structured_content_preserved": true,
           "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
+        },
+        "agent_mcp_coverage_run86": {
+          "read_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-10-04.json",
+          "renderer_report": "docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-10-04.json",
+          "read_source_revision": "5101d1bf10920b8bb3f6e1a556cff453193e9e50",
+          "renderer_source_revision": "db7d2d0d92c81f1876333debf74bfeea5aed5e19",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "read_result": {
+            "exact_target_call_completed": true,
+            "result_readback_verified": true,
+            "answer_check_passed": true,
+            "text_utf8_bytes": 3455,
+            "state": "partial",
+            "cast": {
+              "observed": 7,
+              "returned": 1,
+              "truncated": true
+            },
+            "staff": {
+              "observed": 157,
+              "returned": 1,
+              "truncated": true
+            },
+            "relations": {
+              "observed": 9,
+              "returned": 1,
+              "truncated": true
+            }
+          },
+          "renderer_result": {
+            "exact_target_call_completed": true,
+            "artifact_readback_verified": true,
+            "artifact_mime_type": "image/png",
+            "artifact_width": 720,
+            "artifact_height": 5366,
+            "answer_check_passed": true,
+            "coverage_disclosure_present": true,
+            "partial_coverage_phrase_present": true,
+            "unsupported_completeness_claim": false
+          }
         }
       }
     },
@@ -623,9 +688,12 @@
         "tests/render/subject-overview.test.ts",
         "tests/semantic/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
-        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md"
+        "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
+        "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-10-04.json",
+        "docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-10-04.json",
+        "tests/integration/tool-e2e-acceptance.test.ts"
       ],
-      "next_action": "Keep PARTIAL: the MCP server now emits a bounded answer-relevant text view for oversized subject-overview results while preserving full structured coverage and raw role labels. Exact-candidate Agent/MCP answer validation and QQ/TIM display remain pending; an unobserved label is not proof of an absent credit.",
+      "next_action": "Keep PARTIAL: current-catalog CLI 1.2.14 Agent/MCP readback for get_subject_overview and renderer artifact/answer checks for render_subject_overview now pass. The current result sections are partial and truncated (7/1 cast, 157/1 staff, 9/1 relations); a bounded sample does not prove a complete role list or source absence, and QQ/TIM display remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -645,6 +713,47 @@
           "tests": ["tests/integration/mcp-result-presenter.test.ts"],
           "full_structured_content_preserved": true,
           "remaining_boundary": "Exact-candidate Agent/MCP canaries are pending; related frontier records remain PARTIAL."
+        },
+        "agent_mcp_coverage_run86": {
+          "read_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-10-04.json",
+          "renderer_report": "docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-10-04.json",
+          "read_source_revision": "5101d1bf10920b8bb3f6e1a556cff453193e9e50",
+          "renderer_source_revision": "db7d2d0d92c81f1876333debf74bfeea5aed5e19",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "read_result": {
+            "exact_target_call_completed": true,
+            "result_readback_verified": true,
+            "answer_check_passed": true,
+            "text_utf8_bytes": 3455,
+            "state": "partial",
+            "cast": {
+              "observed": 7,
+              "returned": 1,
+              "truncated": true
+            },
+            "staff": {
+              "observed": 157,
+              "returned": 1,
+              "truncated": true
+            },
+            "relations": {
+              "observed": 9,
+              "returned": 1,
+              "truncated": true
+            }
+          },
+          "renderer_result": {
+            "exact_target_call_completed": true,
+            "artifact_readback_verified": true,
+            "artifact_mime_type": "image/png",
+            "artifact_width": 720,
+            "artifact_height": 5366,
+            "answer_check_passed": true,
+            "coverage_disclosure_present": true,
+            "partial_coverage_phrase_present": true,
+            "unsupported_completeness_claim": false
+          }
         }
       }
     },
