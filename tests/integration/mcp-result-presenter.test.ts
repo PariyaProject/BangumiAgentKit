@@ -648,6 +648,71 @@ describe('MCP tool result presentation', () => {
     expect(response.structuredContent).toEqual(original);
   });
 
+  it('summarizes observed windows and omitted values for a partial comparison answer', async () => {
+    const original = makePersonActivityResult();
+    original.coverage = {
+      ...original.coverage,
+      retrievedAt: 'retrieval-time-'.repeat(1000),
+    };
+    original.comparison = makePersonActivityComparison(original);
+    original.comparison.windowMonths = 6;
+    original.comparison.recent.window = {
+      ...original.comparison.recent.window,
+      months: 6,
+      start: '2026-05-01',
+      end: '2026-10-04',
+    };
+    original.comparison.recent.coverage = {
+      ...original.comparison.recent.coverage,
+      rowsEligible: 0,
+      rowsReturned: 0,
+    };
+    original.comparison.previous.state = 'partial';
+    original.comparison.previous.window = {
+      ...original.comparison.previous.window,
+      months: 6,
+      start: '2025-11-01',
+      end: '2026-04-30',
+    };
+    original.comparison.previous.coverage = {
+      ...original.comparison.previous.coverage,
+      rowsEligible: 1,
+      rowsReturned: 1,
+    };
+    original.comparison.previous.summary = {
+      ...original.comparison.previous.summary,
+      uniqueSubjects: 1,
+    };
+    original.comparison.delta = { state: 'partial' };
+    original.comparison.peak.months = [
+      {
+        period: 'previous',
+        month: '2026-04',
+        creditRows: 1,
+        uniqueSubjects: 1,
+        uniqueCharacters: 1,
+      },
+    ];
+    const response = await callMcpToolWithResult(
+      'bangumi.get_person_activity',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+    const answerSummary = parsed.comparison.answerSummary as string;
+
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(parsed.rows).toBeUndefined();
+    expect(answerSummary).toContain('最近窗口2026-05-01至2026-10-04');
+    expect(answerSummary).toContain('作品数未提供');
+    expect(answerSummary).toContain('前一窗口2025-11-01至2026-04-30');
+    expect(answerSummary).toContain('本次观察1部');
+    expect(answerSummary).toContain('差值（partial）覆盖不足，未提供数值');
+    expect(answerSummary).toContain('2026-04（前一窗口，观察1部）');
+    expect(answerSummary).toContain('不代表真实工作量、完整履历或历史趋势');
+    expect(response.structuredContent).toEqual(original);
+  });
+
   it('keeps comparison states in the minimum text fallback without turning unavailable counts into zero', async () => {
     const original = makePersonActivityResult();
     original.state = 'unavailable';
@@ -695,6 +760,8 @@ describe('MCP tool result presentation', () => {
       state: 'unavailable',
       months: [],
     });
+    expect(parsed.comparison.answerSummary).toContain('差值（unavailable）未提供数值（不等于零）');
+    expect(parsed.comparison.answerSummary).not.toContain('差值（unavailable）0部');
     expect(response.structuredContent).toEqual(original);
   });
 

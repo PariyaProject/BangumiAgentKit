@@ -375,6 +375,38 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
   };
   const deltaValuesOmittedDueToCoverage =
     comparison.delta.state === 'partial' && Object.keys(deltaValues).length === 0;
+  const formatPeriodSummary = (label: string, period: typeof comparison.recent): string => {
+    const window = `${period.window.start}至${period.window.end}`;
+    const count = canExposeComparisonCounts(period)
+      ? `本次观察${period.summary.uniqueSubjects}部`
+      : `作品数未提供（rowsEligible=${period.coverage.rowsEligible}，不等于零）`;
+    return `${label}窗口${window}（${period.state}）：${count}`;
+  };
+  const deltaUniqueSubjectsAvailable =
+    (comparison.delta.state === 'complete' || comparison.delta.state === 'partial') &&
+    comparison.delta.uniqueSubjects !== undefined;
+  const deltaSummary = deltaUniqueSubjectsAvailable
+    ? `差值（${comparison.delta.state}）${comparison.delta.uniqueSubjects}部，部分值仅代表本次观察`
+    : comparison.delta.state === 'partial'
+      ? '差值（partial）覆盖不足，未提供数值（不等于零）'
+      : `差值（${comparison.delta.state}）未提供数值（不等于零）`;
+  const answerPeakMonths = comparison.peak.months
+    .slice(0, 3)
+    .map(
+      (month) =>
+        `${month.month}（${month.period === 'recent' ? '最近窗口' : '前一窗口'}，观察${month.uniqueSubjects}部）`,
+    );
+  const omittedPeakMonths = Math.max(0, comparison.peak.months.length - answerPeakMonths.length);
+  const peakSummary = answerPeakMonths.length
+    ? `观察峰值（${comparison.peak.state}）${answerPeakMonths.join('、')}${omittedPeakMonths ? `等${omittedPeakMonths}个月` : ''}`
+    : `峰值（${comparison.peak.state}）没有可报告月份`;
+  const answerSummary = [
+    formatPeriodSummary('最近', comparison.recent),
+    formatPeriodSummary('前一', comparison.previous),
+    deltaSummary,
+    peakSummary,
+    '以上是有界发布日期观察，不代表真实工作量、完整履历或历史趋势。',
+  ].join('；');
   return {
     state: comparison.state,
     windowMonths: comparison.windowMonths,
@@ -397,6 +429,7 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
     },
     sourceOperationsOmittedFromText:
       comparison.sourceOperations.recent.length + comparison.sourceOperations.previous.length,
+    answerSummary,
     comparisonListItemsOmittedFromText:
       comparison.recent.summary.byRole.length -
       (canExposeComparisonCounts(comparison.recent)
