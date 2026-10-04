@@ -274,6 +274,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
+        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -287,6 +288,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
+        'bangumi.get_subject_overview',
         'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
@@ -336,6 +338,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
+        'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
         'bangumi.update_collection',
@@ -343,14 +346,16 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ].sort(),
     );
 
-    const staleCatalogBoundTools = [
+    const newlyVerifiedPublicTools = [
       'bangumi.get_person_activity',
       'bangumi.get_subject_overview',
       'bangumi.render_subject_overview',
     ];
-    expect(staleCatalogBoundTools.filter((name) => evidenceNames.includes(name))).toEqual([]);
-    for (const name of staleCatalogBoundTools) {
-      expect(statusMark(rows.get(name)?.[9]), `${name} stale model/MCP report`).toBe('⬜');
+    expect(newlyVerifiedPublicTools.filter((name) => evidenceNames.includes(name))).toEqual(
+      newlyVerifiedPublicTools,
+    );
+    for (const name of newlyVerifiedPublicTools) {
+      expect(statusMark(rows.get(name)?.[9]), `${name} current model/MCP evidence`).toBe('✅');
     }
 
     for (const [name, fields] of rows) {
@@ -430,6 +435,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
+        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -442,6 +448,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
+        'bangumi.get_subject_overview',
         'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
@@ -509,6 +516,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
+        'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
       ].sort(),
@@ -538,6 +546,17 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       });
       expect(scenario.assertions.artifactWidth).toBeGreaterThan(0);
       expect(scenario.assertions.artifactHeight).toBeGreaterThan(0);
+      if (scenario.id === 'bangumi.render_subject_overview') {
+        expect(report.catalogSha256).toBe(CURRENT_CATALOG_SHA256);
+        expect(scenario.assertions.subjectOverviewRenderAnswerCheck).toMatchObject({
+          coverageDisclosurePresent: true,
+          staffCoverageMentioned: true,
+          partialCoveragePhrasePresent: true,
+          unsupportedCompletenessClaim: false,
+          markdownFormattingDetected: false,
+          passed: true,
+        });
+      }
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
