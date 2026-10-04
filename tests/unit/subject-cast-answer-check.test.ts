@@ -105,6 +105,47 @@ describe('subject-cast answer checks', () => {
     });
   });
 
+  it('distinguishes no actor returned from a claim that no actor exists', () => {
+    const check = validateSubjectCastAnswer(`其他｜角色丙｜本次未返回演员\n${boundedDisclosure}`, [
+      {
+        character: { id: 3, name: '角色丙' },
+        relation: '其他',
+        actors: [],
+        actorCount: 0,
+        actorsOmittedFromText: 0,
+      },
+    ]);
+
+    expect(check).toMatchObject({
+      castRowsMatchedCount: 1,
+      characterActorPairsMatchedCount: 0,
+      unsupportedAbsenceClaim: false,
+      passed: true,
+    });
+  });
+
+  it('requires an exact omission count when actor rows are hidden from text', () => {
+    const rowWithOmission = {
+      character: { id: 1, name: '角色甲' },
+      relation: '主角',
+      actors: [{ id: 11, name: '声优甲' }],
+      actorCount: 2,
+      actorsOmittedFromText: 1,
+    };
+    const correct = validateSubjectCastAnswer(
+      `主角｜角色甲｜声优甲；另有1位演员未显示\n${boundedDisclosure}`,
+      [rowWithOmission],
+    );
+    const incomplete = validateSubjectCastAnswer(`主角｜角色甲｜声优甲\n${boundedDisclosure}`, [
+      rowWithOmission,
+    ]);
+
+    expect(correct.passed).toBe(true);
+    expect(correct.characterActorPairsMatchedCount).toBe(1);
+    expect(incomplete.mismatchedCastRowsCount).toBe(1);
+    expect(incomplete.passed).toBe(false);
+  });
+
   it('rejects unsupported completeness and role-absence claims', () => {
     const complete = validateSubjectCastAnswer(
       `主角｜角色甲｜声优甲、声优乙\n配角｜角色乙｜声优丙\n${boundedDisclosure}这就是完整名单。`,
