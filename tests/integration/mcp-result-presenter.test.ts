@@ -600,6 +600,54 @@ describe('MCP tool result presentation', () => {
     expect(response.structuredContent).toEqual(original);
   });
 
+  it('marks partial comparison delta values omitted when a minimum window has no eligible rows', async () => {
+    const original = makePersonActivityResult();
+    original.coverage = {
+      ...original.coverage,
+      retrievedAt: 'retrieval-time-'.repeat(1000),
+    };
+    original.comparison = makePersonActivityComparison(original);
+    original.comparison.recent.coverage = {
+      ...original.comparison.recent.coverage,
+      rowsEligible: 0,
+      rowsReturned: 0,
+    };
+    original.comparison.delta = { state: 'partial' };
+    original.comparison.peak.months = [
+      {
+        period: 'previous',
+        month: '2025-11',
+        creditRows: 1,
+        uniqueSubjects: 1,
+        uniqueCharacters: 1,
+      },
+    ];
+    const response = await callMcpToolWithResult(
+      'bangumi.get_person_activity',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(typeof text).toBe('string');
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(parsed.rows).toBeUndefined();
+    expect(parsed.comparison.recent.state).toBe('partial');
+    expect(parsed.comparison.recent.coverage.rowsEligible).toBe(0);
+    expect(parsed.comparison.recent.summary.countsOmittedDueToCoverage).toBe(true);
+    expect(parsed.comparison.recent.summary.uniqueSubjects).toBeUndefined();
+    expect(parsed.comparison.delta).toMatchObject({
+      state: 'partial',
+      valuesOmittedDueToCoverage: true,
+    });
+    expect(parsed.comparison.delta.uniqueSubjects).toBeUndefined();
+    expect(parsed.comparison.peak).toMatchObject({
+      state: 'partial',
+      months: [{ period: 'previous' }],
+    });
+    expect(response.structuredContent).toEqual(original);
+  });
+
   it('keeps comparison states in the minimum text fallback without turning unavailable counts into zero', async () => {
     const original = makePersonActivityResult();
     original.state = 'unavailable';

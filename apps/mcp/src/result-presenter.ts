@@ -362,6 +362,19 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
     : [];
   const deltaCountsAvailable =
     comparison.delta.state === 'complete' || comparison.delta.state === 'partial';
+  const deltaValues = {
+    ...(comparison.delta.creditRows !== undefined
+      ? { creditRows: comparison.delta.creditRows }
+      : {}),
+    ...(comparison.delta.uniqueSubjects !== undefined
+      ? { uniqueSubjects: comparison.delta.uniqueSubjects }
+      : {}),
+    ...(comparison.delta.uniqueCharacters !== undefined
+      ? { uniqueCharacters: comparison.delta.uniqueCharacters }
+      : {}),
+  };
+  const deltaValuesOmittedDueToCoverage =
+    comparison.delta.state === 'partial' && Object.keys(deltaValues).length === 0;
   return {
     state: comparison.state,
     windowMonths: comparison.windowMonths,
@@ -371,15 +384,8 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
       state: comparison.delta.state,
       ...(deltaCountsAvailable
         ? {
-            ...(comparison.delta.creditRows !== undefined
-              ? { creditRows: comparison.delta.creditRows }
-              : {}),
-            ...(comparison.delta.uniqueSubjects !== undefined
-              ? { uniqueSubjects: comparison.delta.uniqueSubjects }
-              : {}),
-            ...(comparison.delta.uniqueCharacters !== undefined
-              ? { uniqueCharacters: comparison.delta.uniqueCharacters }
-              : {}),
+            ...deltaValues,
+            ...(deltaValuesOmittedDueToCoverage ? { valuesOmittedDueToCoverage: true } : {}),
           }
         : { valuesOmittedDueToState: true }),
     },
