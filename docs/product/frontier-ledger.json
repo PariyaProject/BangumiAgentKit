@@ -358,7 +358,6 @@
         "tests/render/render-cards.test.ts",
         "docs/research/run69-subject-stats-identity-agent-mcp.md",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx",
-        "tests/render/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
       "next_action": "The stats card identifies official-v0 title/nameCn and stable ID while keeping statistics available when identity is missing or mismatched. Fixtures cover degradation, mixed-script title bounds, 320/360/520 CSS px, 360px/2x MCP, direct full-resolution PNG output, and retained formula/snapshot caveats. The consolidated SubjectOverviewCard also qualifies complete section state as 本次范围内完整; its current public artifact was inspected. Exact-source stats Agent/MCP evidence remains tied to its recorded Candidate; QQ/TIM client image display remains unverified, so keep PARTIAL.",
@@ -393,7 +392,7 @@
         "tests/render/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "Keep PARTIAL. SeriesRelationsCard and the relations section of SubjectOverviewCard now label complete state 本次范围内完整; each phrase describes only the selected traversal/retrieval bounds, not exhaustive franchise coverage. The G09 regression preserves partial/unavailable labels, bounded relation evidence, exclusions, and the noncanonical-order caveat. The source sample remains depth=2/maxNodes=8 with one direct animated derivative, 9 unique related records across 10 relation rows, and 8 excluded non-anime records. No exhaustive graph or unique official order is established; natural-language answer validation and QQ/TIM display remain separate.",
+      "next_action": "Keep PARTIAL. SeriesRelationsCard and the relations section of SubjectOverviewCard now label complete state 本次范围内完整; each phrase describes only the selected traversal/retrieval bounds, not exhaustive franchise coverage. The G09 regression preserves partial/not-computable labels, bounded relation evidence, exclusions, and the noncanonical-order caveat. The source sample remains depth=2/maxNodes=8 with one direct animated derivative, 9 unique related records across 10 relation rows, and 8 excluded non-anime records. No exhaustive graph or unique official order is established; natural-language answer validation and QQ/TIM display remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
