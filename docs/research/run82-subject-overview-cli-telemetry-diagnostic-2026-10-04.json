@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "diagnosticKind": "antigravity_cli_mcp_output_visibility",
+  "createdOn": "2026-10-04",
+  "sourceRevision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+  "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "sourceProgramSha256": "e05fc534e7511a577de554d646b22c896ef771257ed29c27e32e646d4c81bf67",
+  "command": "--tool bangumi.get_subject_overview --profile public --source-profile standard-full --subject-id 218707 --run (PARIYA_QA_DEBUG=1)",
+  "processExitCode": 1,
+  "cliResultStatus": "SUCCESS",
+  "targetTool": {
+    "name": "bangumi.get_subject_overview",
+    "state": "DONE",
+    "outputBytes": 0,
+    "resultReadbackAvailable": false
+  },
+  "scenarioPassed": false,
+  "failureReason": "ANSWER_OR_TOOL_RESULT_UNAVAILABLE",
+  "auxiliaryCliToolEvents": [
+    {
+      "toolName": "view_file",
+      "callCount": 2,
+      "activeEventCount": 2,
+      "doneEventCount": 2,
+      "doneOutputBytes": [
+        21,
+        21
+      ]
+    }
+  ],
+  "auxiliaryEventScopeIndependentlyVerified": false,
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "countsTowardAgentMcpAcceptance": false,
+  "privacyNote": "No prompt, answer, file path, raw arguments, file content, credential, or image bytes are stored. The view_file target and returned bytes were omitted, so their scope is not independently established.",
+  "runtimeChecks": [
+    {
+      "cliVersion": "1.2.8",
+      "runtimeImage": "pariya-agent/agy-bangumi-poc:qa-artifact-render",
+      "sourceRevision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+      "targetToolOutputBytes": 0,
+      "targetToolCallDone": true,
+      "scenarioPassed": false,
+      "auxiliaryViewFileCalls": 2,
+      "auxiliaryViewFileDoneOutputBytes": [
+        21,
+        21
+      ]
+    },
+    {
+      "cliVersion": "1.2.14",
+      "runtimeImage": "pariya-agent/agy-bangumi-poc:run82-cli-1.2.14-qa",
+      "runtimeImageId": "sha256:9531d023e160c787998c4fff0718d69ab3e870761265cfbb4846c27480b80d2c",
+      "sourceRevision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+      "targetToolOutputBytes": 0,
+      "targetToolCallDone": true,
+      "scenarioPassed": false,
+      "auxiliaryViewFileCalls": 2,
+      "auxiliaryViewFileDoneOutputBytes": [
+        21,
+        21
+      ]
+    }
+  ],
+  "diagnosticConclusion": "The same output-readback failure reproduced with two QA-only CLI versions on the exact same source revision; an unchanged retry is not justified.",
+  "repeatPolicy": "Do not retry this call until the CLI stream or MCP output-size path changes."
+}

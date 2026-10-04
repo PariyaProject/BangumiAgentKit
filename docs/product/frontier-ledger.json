@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-03T14:41:52Z",
+  "updated_at": "2026-10-04T02:52:31Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -182,6 +182,11 @@
           "subject_details_not_requested": 72,
           "eligible_and_returned_rows": 2,
           "warning_codes": ["RELATION_LIMIT_REACHED", "SUBJECT_DETAIL_COVERAGE", "MEDIA_UNKNOWN"]
+        },
+        "agent_mcp_run82": {
+          "report": "docs/live-probes/pariya-agent-full-public-qa-e2e-run82-get-person-activity-2026-10-04.json",
+          "result": "One exact current-catalog public tool call and constrained answer passed; Antigravity omitted tool_info.output, so the native result/count was not independently read back.",
+          "boundary": "Keep PARTIAL; this does not establish a complete 12-calendar-month count, full relation coverage, or QQ/TIM presentation."
         }
       }
     },
@@ -332,7 +337,15 @@
           "tool_contract_test": "tests/semantic/subject-overview.test.ts",
           "status_boundary": "PARTIAL pending exact-source answer-level Agent/MCP and QQ/TIM acceptance."
         },
-        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "agent_mcp_run82": {
+          "subject_overview_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-run82-get-subject-overview-218707-2026-10-04.json",
+          "subject_overview_outcome": "Exact current-catalog call and bounded arguments completed, but sanitized CLI event omitted tool_info.output; scenario failed closed and does not verify returned identity or raw labels.",
+          "renderer_report": "docs/live-probes/pariya-agent-full-renderer-qa-e2e-run82-render-subject-overview-218707-2026-10-04.json",
+          "renderer_outcome": "Exact current-catalog render call passed with ArtifactRef/readback and visual inspection; answer checks cover image and bounded/partial disclosure, not full staff-answer correctness.",
+          "cli_telemetry_diagnostic": "docs/research/run82-subject-overview-cli-telemetry-diagnostic-2026-10-04.json",
+          "boundary": "Keep PARTIAL pending readable exact-source subject result, full answer-level role validation, and QQ/TIM acceptance; the missing output reproduced on CLI 1.2.8 and 1.2.14."
+        }
       }
     },
     {
@@ -596,7 +609,15 @@
           "tool_contract_test": "tests/semantic/subject-overview.test.ts",
           "status_boundary": "PARTIAL pending exact-source natural-language Agent/MCP and QQ/TIM acceptance."
         },
-        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "agent_mcp_run82": {
+          "subject_overview_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-run82-get-subject-overview-218707-2026-10-04.json",
+          "subject_overview_outcome": "Exact current-catalog call and bounded arguments completed, but sanitized CLI event omitted tool_info.output; scenario failed closed and does not verify returned identity or raw labels.",
+          "renderer_report": "docs/live-probes/pariya-agent-full-renderer-qa-e2e-run82-render-subject-overview-218707-2026-10-04.json",
+          "renderer_outcome": "Exact current-catalog render call passed with ArtifactRef/readback and visual inspection; answer checks cover image and bounded/partial disclosure, not full staff-answer correctness.",
+          "cli_telemetry_diagnostic": "docs/research/run82-subject-overview-cli-telemetry-diagnostic-2026-10-04.json",
+          "boundary": "Keep PARTIAL pending readable exact-source subject result, full answer-level role validation, and QQ/TIM acceptance; the missing output reproduced on CLI 1.2.8 and 1.2.14."
+        }
       }
     },
     {

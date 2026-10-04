@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-10-04",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+  "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+  "profile": "bangumi-full-public-qa-v1",
+  "sourceProfile": "standard-full",
+  "subjectId": 218707,
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 117,
+  "jsonStreamDiagnostics": {
+    "lineClassCounts": {
+      "valid": 31,
+      "blank": 0,
+      "non_json_text": 0,
+      "malformed_json": 0,
+      "non_object_json": 0
+    },
+    "invalidLineCount": 0
+  },
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [
+    {
+      "name": "bangumi.get_subject_overview",
+      "arguments": {
+        "available": true,
+        "expectedFieldNames": [
+          "maxCast",
+          "maxRelations",
+          "maxStaff",
+          "subjectId"
+        ],
+        "matchedFieldNames": [
+          "maxCast",
+          "maxRelations",
+          "maxStaff",
+          "subjectId"
+        ],
+        "unexpectedFieldNames": [],
+        "passed": true
+      },
+      "outputShape": {
+        "type": "NoneType"
+      },
+      "result": {
+        "found": false
+      }
+    }
+  ],
+  "subjectOverviewResultVerified": false,
+  "subjectOverviewArgumentsVerified": true,
+  "subjectOverviewAnswerCheck": {
+    "passed": false,
+    "reason": "ANSWER_OR_TOOL_RESULT_UNAVAILABLE"
+  },
+  "bangumiToolEvents": [
+    {
+      "name": "bangumi.get_subject_overview",
+      "state": "ACTIVE"
+    },
+    {
+      "name": "bangumi.get_subject_overview",
+      "state": "DONE"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "bangumi.get_subject_overview",
+      "passed": false,
+      "toolCalls": [
+        {
+          "name": "bangumi.get_subject_overview",
+          "state": "DONE"
+        }
+      ],
+      "targetToolOutcome": "TARGET_TOOL_COMPLETED",
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "jsonStreamLineClassCounts": {
+          "valid": 31,
+          "blank": 0,
+          "non_json_text": 0,
+          "malformed_json": 0,
+          "non_object_json": 0
+        },
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "subjectOverviewResultVerified": false,
+        "subjectOverviewArgumentsVerified": true,
+        "subjectOverviewAnswerCheck": {
+          "passed": false,
+          "reason": "ANSWER_OR_TOOL_RESULT_UNAVAILABLE"
+        }
+      }
+    }
+  ],
+  "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+}
