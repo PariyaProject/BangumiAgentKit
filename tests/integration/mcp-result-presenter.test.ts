@@ -717,6 +717,95 @@ describe('MCP tool result presentation', () => {
     expect(response.structuredContent).toEqual(original);
   });
 
+  it('keeps the final partial-comparison fallback within the byte cap for long multibyte names', async () => {
+    const original = makePersonActivityResult();
+    original.person!.name = '声'.repeat(120);
+    original.person!.nameCn = '名'.repeat(120);
+    original.comparison = makePersonActivityComparison(original, { highVolume: true });
+    original.comparison.windowMonths = 6;
+    original.comparison.recent.state = 'partial';
+    original.comparison.recent.window = {
+      ...original.comparison.recent.window,
+      months: 6,
+      start: '2026-05-01',
+      end: '2026-10-04',
+    };
+    original.comparison.recent.coverage = {
+      ...original.comparison.recent.coverage,
+      rowsEligible: 0,
+      rowsReturned: 0,
+    };
+    original.comparison.previous.state = 'partial';
+    original.comparison.previous.window = {
+      ...original.comparison.previous.window,
+      months: 6,
+      start: '2025-11-01',
+      end: '2026-04-30',
+    };
+    original.comparison.previous.coverage = {
+      ...original.comparison.previous.coverage,
+      rowsEligible: 1,
+      rowsReturned: 1,
+    };
+    original.comparison.previous.summary = {
+      ...original.comparison.previous.summary,
+      uniqueSubjects: 1,
+    };
+    original.comparison.delta = { state: 'partial' };
+    original.comparison.peak.months = [
+      {
+        period: 'previous',
+        month: '2026-04',
+        creditRows: 1,
+        uniqueSubjects: 1,
+        uniqueCharacters: 1,
+      },
+    ];
+
+    const response = await callMcpToolWithResult(
+      'bangumi.get_person_activity',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(parsed.mcpTextProjection.summaryOmittedFromText).toBe(true);
+    expect(parsed.person).toMatchObject({
+      id: 13684,
+      name: '声'.repeat(120),
+      nameCn: '名'.repeat(120),
+    });
+    expect(parsed.kind).toBe('voice');
+    expect(parsed.media).toBe('tv');
+    expect(parsed.comparison.recent).toMatchObject({
+      state: 'partial',
+      window: { start: '2026-05-01', end: '2026-10-04' },
+      coverage: { rowsEligible: 0, detailsOmittedFromText: true },
+      summary: { countsOmittedDueToCoverage: true },
+    });
+    expect(parsed.comparison.recent.summary.uniqueSubjects).toBeUndefined();
+    expect(parsed.comparison.previous).toMatchObject({
+      state: 'partial',
+      window: { start: '2025-11-01', end: '2026-04-30' },
+      coverage: { rowsEligible: 1, detailsOmittedFromText: true },
+      summary: { uniqueSubjects: 1, originOmittedFromText: true },
+    });
+    expect(parsed.comparison.delta).toMatchObject({
+      state: 'partial',
+      valuesOmittedDueToCoverage: true,
+    });
+    expect(parsed.comparison.delta.uniqueSubjects).toBeUndefined();
+    expect(parsed.comparison.peak.months).toEqual([
+      expect.objectContaining({ period: 'previous', month: '2026-04', uniqueSubjects: 1 }),
+    ]);
+    expect(parsed.comparison.answerSummary).toContain('不代表真实工作量、完整履历或历史趋势');
+    expect(parsed.mcpTextProjection.textViewScope).toContain(
+      'partial or truncated coverage is not a complete source list',
+    );
+    expect(response.structuredContent).toEqual(original);
+  });
+
   it('keeps comparison states in the minimum text fallback without turning unavailable counts into zero', async () => {
     const original = makePersonActivityResult();
     original.state = 'unavailable';

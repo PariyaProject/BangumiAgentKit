@@ -109,11 +109,15 @@ function clippedMessage(value: string): { text: string; clipped: boolean } {
   };
 }
 
-function clippedDisplayText(value: string): { text: string; clipped: boolean } {
+function clippedDisplayText(
+  value: string,
+  maxCharacters = DISPLAY_TEXT_LIMIT,
+): { text: string; clipped: boolean } {
   const characters = Array.from(value);
-  if (characters.length <= DISPLAY_TEXT_LIMIT) return { text: value, clipped: false };
+  const limit = Math.max(0, maxCharacters);
+  if (characters.length <= limit) return { text: value, clipped: false };
   return {
-    text: characters.slice(0, DISPLAY_TEXT_LIMIT - 1).join('') + '…',
+    text: limit === 0 ? '' : characters.slice(0, limit - 1).join('') + '…',
     clipped: true,
   };
 }
@@ -221,9 +225,12 @@ function projectPersonRow(row: PersonActivityResult['rows'][number]) {
   };
 }
 
-function projectPersonIdentity(person: NonNullable<PersonActivityResult['person']>) {
-  const name = clippedDisplayText(person.name);
-  const nameCn = person.nameCn ? clippedDisplayText(person.nameCn) : undefined;
+function projectPersonIdentity(
+  person: NonNullable<PersonActivityResult['person']>,
+  maxCharacters = DISPLAY_TEXT_LIMIT,
+) {
+  const name = clippedDisplayText(person.name, maxCharacters);
+  const nameCn = person.nameCn ? clippedDisplayText(person.nameCn, maxCharacters) : undefined;
   return {
     id: person.id,
     name: name.text,
@@ -232,9 +239,12 @@ function projectPersonIdentity(person: NonNullable<PersonActivityResult['person'
   };
 }
 
-function projectActivityWindow(window: PersonActivityResult['window']) {
-  const start = clippedDisplayText(window.start);
-  const end = clippedDisplayText(window.end);
+function projectActivityWindow(
+  window: PersonActivityResult['window'],
+  maxCharacters = DISPLAY_TEXT_LIMIT,
+) {
+  const start = clippedDisplayText(window.start, maxCharacters);
+  const end = clippedDisplayText(window.end, maxCharacters);
   return {
     months: window.months,
     start: start.text,
@@ -280,7 +290,13 @@ function projectComparisonCoverage(coverage: PersonActivityResult['coverage']) {
   };
 }
 
-function projectComparison(result: PersonActivityResult, detailLimit: number) {
+function projectComparison(
+  result: PersonActivityResult,
+  detailLimit: number,
+  textLimit = DISPLAY_TEXT_LIMIT,
+  includeAnswerSummary = true,
+  includeSummaryOrigin = true,
+) {
   if (!result.comparison) return undefined;
   const comparison = result.comparison;
   const projectPeriod = (period: typeof comparison.recent) => {
@@ -319,14 +335,16 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
     }));
     return {
       state: period.state,
-      window: projectActivityWindow(period.window),
+      window: projectActivityWindow(period.window, textLimit),
       summary: {
         ...(countsAvailable
           ? {
               creditRows: period.summary.creditRows,
               uniqueSubjects: period.summary.uniqueSubjects,
               uniqueCharacters: period.summary.uniqueCharacters,
-              origin: { ...period.summary.origin },
+              ...(includeSummaryOrigin
+                ? { origin: { ...period.summary.origin } }
+                : { originOmittedFromText: true }),
             }
           : { countsOmittedDueToCoverage: true }),
         byRole,
@@ -349,7 +367,7 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
   const peakMonthLimit = Math.max(1, detailLimit);
   const peakMonths = peakCountsAvailable
     ? comparison.peak.months.slice(0, peakMonthLimit).map((month) => {
-        const label = clippedDisplayText(month.month);
+        const label = clippedDisplayText(month.month, textLimit);
         return {
           period: month.period,
           month: label.text,
@@ -429,7 +447,7 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
     },
     sourceOperationsOmittedFromText:
       comparison.sourceOperations.recent.length + comparison.sourceOperations.previous.length,
-    answerSummary,
+    ...(includeAnswerSummary ? { answerSummary } : { answerSummaryOmittedFromText: true }),
     comparisonListItemsOmittedFromText:
       comparison.recent.summary.byRole.length -
       (canExposeComparisonCounts(comparison.recent)
@@ -455,6 +473,29 @@ function projectComparison(result: PersonActivityResult, detailLimit: number) {
       Math.min(detailLimit, comparison.previous.exclusions.length) +
       comparison.peak.months.length -
       peakMonths.length,
+  };
+}
+
+function projectMinimalComparison(
+  result: PersonActivityResult,
+  textLimit = DISPLAY_TEXT_LIMIT,
+  includeAnswerSummary = true,
+) {
+  const comparison = projectComparison(result, 0, textLimit, includeAnswerSummary, false);
+  if (!comparison) return undefined;
+
+  const { coverage: recentCoverage, ...recent } = comparison.recent;
+  const { coverage: previousCoverage, ...previous } = comparison.previous;
+  return {
+    ...comparison,
+    recent: {
+      ...recent,
+      coverage: { rowsEligible: recentCoverage.rowsEligible, detailsOmittedFromText: true },
+    },
+    previous: {
+      ...previous,
+      coverage: { rowsEligible: previousCoverage.rowsEligible, detailsOmittedFromText: true },
+    },
   };
 }
 
@@ -589,26 +630,51 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
     },
   };
   const text = JSON.stringify(projection);
-  return utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES
-    ? text
-    : JSON.stringify({
-        state: result.state,
-        personId: result.personId,
-        ...(result.person ? { person: projectPersonIdentity(result.person) } : {}),
-        kind: result.kind,
-        media: result.media,
-        window: projectActivityWindow(result.window),
-        ...(result.comparison ? { comparison: projectComparison(result, 0) } : {}),
-        mcpTextProjection: {
-          version: 'mcp-text-projection-v1',
-          maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
-          structuredContentHasFullResult: true,
-          textViewScope: TEXT_VIEW_SCOPE_NOTE,
-          warningRecordsOmittedFromText: result.warnings.length,
-          limitationRecordsOmittedFromText: result.limitations.length,
-          summaryOmittedFromText: true,
-        },
-      });
+  if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+  let minimalText = JSON.stringify(
+    createMinimalPersonActivityProjection(result, DISPLAY_TEXT_LIMIT, true),
+  );
+  if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
+
+  minimalText = JSON.stringify(
+    createMinimalPersonActivityProjection(result, DISPLAY_TEXT_LIMIT, false),
+  );
+  if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
+
+  for (let textLimit = DISPLAY_TEXT_LIMIT - 1; textLimit >= 0; textLimit -= 1) {
+    minimalText = JSON.stringify(createMinimalPersonActivityProjection(result, textLimit, false));
+    if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
+  }
+
+  throw new Error('Unable to produce bounded MCP person activity text projection');
+}
+
+function createMinimalPersonActivityProjection(
+  result: PersonActivityResult,
+  textLimit: number,
+  includeAnswerSummary: boolean,
+) {
+  return {
+    state: result.state,
+    personId: result.personId,
+    ...(result.person ? { person: projectPersonIdentity(result.person, textLimit) } : {}),
+    kind: result.kind,
+    media: result.media,
+    window: projectActivityWindow(result.window, textLimit),
+    ...(result.comparison
+      ? { comparison: projectMinimalComparison(result, textLimit, includeAnswerSummary) }
+      : {}),
+    mcpTextProjection: {
+      version: 'mcp-text-projection-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
+      warningRecordsOmittedFromText: result.warnings.length,
+      limitationRecordsOmittedFromText: result.limitations.length,
+      summaryOmittedFromText: true,
+    },
+  };
 }
 
 function projectOverviewCoverage(coverage: SubjectOverviewResult['coverage']) {
