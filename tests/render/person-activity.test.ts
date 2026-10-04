@@ -151,16 +151,24 @@ describe('Person activity renderer', () => {
     expect(viewModel.hiddenRows).toBe(10);
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('2026-03-01');
-    expect(html).toContain('另有 10 条窗口内关系因展示上限未显示');
+    expect(html).toContain('逐行明细返回 22 条，图卡展开 12 条；另有 10 条已返回明细未展开。');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
-    expect(html).toContain('作品来源观察（官方 v0 subject.meta_tags）');
+    expect(html).toContain('作品来源观察');
     expect(html).toContain('未观察到“原创”标签不等于“改编”');
-    expect(html).toContain('官方 meta_tags：原创、奇幻');
-    expect(html).toContain('来源操作（官方 v0 请求）');
-    expect(html).toContain('GET /v0/subjects/{subject_id} · 成功 · 尝试 22 · 成功 22 · 失败 0');
-    expect(html).toContain('来源与检索：Bangumi v0 · 声优关系 · 可判断为 TV 的动画');
-    expect(html).toContain('2026-08-15T00:00:00.000Z');
+    expect(html).toContain('官方标签：原创、奇幻');
+    expect(html).toContain('来源观察：未观察到原创标签 · 官方标签：漫画');
+    expect(html).toContain('来源覆盖：明确原创 8 部 · 未观察到原创标签 7 部 · 来源未知 7 部');
+    expect(html).toContain(
+      '数据来源：Bangumi v0 · 声优关系 · 可判断为 TV 的动画 · 获取于 2026-08-15',
+    );
+    expect(html).not.toContain('subject.meta_tags');
+    expect(html).not.toContain('2026-08-15T00:00:00.000Z');
+    expect(html).not.toContain('来源操作（官方 v0 请求）');
+    expect(html).not.toContain('GET /v0/subjects/{subject_id}');
+    expect(html).not.toContain('响应上限 1048576 bytes');
+    expect(html).not.toContain('详情并发');
+    expect(html).not.toContain('示例 ID');
 
     const comparisonResult: PersonActivityResult = {
       ...result,
@@ -314,11 +322,11 @@ describe('Person activity renderer', () => {
 
     expect(html).toContain('36 个日历月');
     expect(html).toContain('职位筛选：导演');
-    expect(html).toContain('职位筛选排除 2 · 职位未知 1');
-    expect(html).toContain('响应上限 1048576 bytes');
+    expect(html).toContain('职位筛选：排除 2 条 · 职位未知 1 条');
+    expect(html).not.toContain('响应上限 1048576 bytes');
   });
 
-  it('renders complete, partial, failed, and zero-request source operations at supported widths', () => {
+  it('keeps source operations in the structured result without printing transport details', () => {
     const operationResult: PersonActivityResult = {
       ...result,
       sourceOperations: [
@@ -328,18 +336,83 @@ describe('Person activity renderer', () => {
         { operation: 'GET /complete', attempted: 1, succeeded: 1, failed: 0 },
       ],
     };
+    const viewModel = buildPersonActivityViewModel(operationResult, { maxRows: 1 });
+    expect(viewModel.sourceOperations).toEqual(operationResult.sourceOperations);
 
     for (const width of [640, 960]) {
-      const html = renderHtmlTemplate(
-        buildPersonActivityViewModel(operationResult, { maxRows: 1 }),
-        'bangumi-dark',
-        {},
-        width,
-      );
-      expect(html).toContain('GET /zero · 未请求 · 尝试 0 · 成功 0 · 失败 0');
-      expect(html).toContain('GET /partial · 部分成功 · 尝试 2 · 成功 1 · 失败 1');
-      expect(html).toContain('GET /failed · 失败 · 尝试 1 · 成功 0 · 失败 1');
-      expect(html).toContain('GET /complete · 成功 · 尝试 1 · 成功 1 · 失败 0');
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      expect(html).not.toContain('来源操作（官方 v0 请求）');
+      expect(html).not.toContain('GET /zero');
+      expect(html).not.toContain('GET /partial');
+      expect(html).not.toContain('GET /failed');
+      expect(html).not.toContain('GET /complete');
+    }
+  });
+
+  it('caps mobile rows and distinguishes missing row details from card-hidden details', async () => {
+    const boundedResult: PersonActivityResult = {
+      ...result,
+      summary: {
+        ...result.summary,
+        creditRows: 25,
+        byRole: [
+          { key: 'main', label: '主役', creditRows: 13, uniqueSubjects: 11, uniqueCharacters: 11 },
+          {
+            key: 'support',
+            label: '配角',
+            creditRows: 12,
+            uniqueSubjects: 11,
+            uniqueCharacters: 11,
+          },
+        ],
+        byMonth: result.summary.byMonth.map((item, index) => {
+          const uniqueSubjects = index < 2 ? 4 : index === 5 ? 5 : 3;
+          return {
+            ...item,
+            creditRows: index === result.summary.byMonth.length - 1 ? 5 : 4,
+            uniqueSubjects,
+            uniqueCharacters: uniqueSubjects,
+          };
+        }),
+      },
+      coverage: {
+        ...result.coverage,
+        relationRowsObserved: 28,
+        relationRowsSelected: 26,
+        subjectDetailsSucceeded: 22,
+        maxRows: 22,
+        rowsEligible: 25,
+        rowsReturned: 22,
+        outputTruncated: true,
+        truncated: true,
+      },
+    };
+    const viewModel = buildPersonActivityViewModel(boundedResult, { maxRows: 24 });
+    expect(viewModel.rows).toHaveLength(22);
+    expect(viewModel.summary.creditRows).toBe(25);
+    expect(viewModel.summary.byMonth.reduce((total, item) => total + item.creditRows, 0)).toBe(25);
+
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+    expect(html).toContain(
+      '本次汇总计入 25 条关系，逐行明细返回 22 条；另有 3 条关系未提供逐行明细。',
+    );
+    expect(html).toContain('逐行明细返回 22 条，图卡展开 12 条；另有 10 条已返回明细未展开。');
+    expect(html).toContain('Long Subject Name 12');
+    expect(html).not.toContain('Long Subject Name 13');
+
+    const service = new RenderService();
+    try {
+      const rendered = await service.renderCard(viewModel, { width: 360, deviceScaleFactor: 2 });
+      expect(rendered.template).toBe('person-activity');
+      expect(rendered.width).toBe(720);
+      expect(rendered.height).toBeLessThanOrEqual(8192);
+      expect(
+        rendered.buffer
+          .subarray(0, 8)
+          .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+      ).toBe(true);
+    } finally {
+      await service.close();
     }
   });
 
@@ -455,5 +528,70 @@ describe('Person activity renderer', () => {
     expect(partialEmptyHtml).toContain('当前窗口的角色/职位计数不可用（部分覆盖）');
     expect(partialEmptyHtml).not.toContain('观察到的 11 行 · 观察到的 11 部');
     expect(partialEmptyHtml).toContain('>不可用</div>');
+
+    const notComputableResult: PersonActivityResult = {
+      ...result,
+      state: 'not_computable',
+      rows: [],
+      summary: {
+        ...result.summary,
+        creditRows: 0,
+        uniqueSubjects: 0,
+        uniqueCharacters: 0,
+        byRole: [],
+        byMonth: [],
+        origin: { explicitOriginalSubjects: 0, notObservedSubjects: 0, unknownSubjects: 0 },
+      },
+      coverage: {
+        ...result.coverage,
+        rowsEligible: 0,
+        rowsReturned: 0,
+        missingDateRows: 1,
+        sampled: false,
+        truncated: false,
+        origin: {
+          ...result.coverage.origin,
+          subjectsObserved: 1,
+          explicitOriginalSubjects: 0,
+          notObservedSubjects: 0,
+          unknownSubjects: 1,
+        },
+      },
+      exclusions: [{ reason: 'missing_date', count: 1, sampleSubjectIds: [1] }],
+      warnings: [
+        {
+          code: 'NOT_COMPUTABLE',
+          state: 'not_computable',
+          message: '本次关系没有可用作品日期，无法计算窗口内活动。',
+        },
+      ],
+    };
+    const notComputableHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(notComputableResult, { maxRows: 2 }),
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(notComputableHtml).toContain('状态：当前不可计算');
+    expect(notComputableHtml).toContain('当前窗口的月度计数不可用（当前不可计算）');
+    expect(notComputableHtml).toContain('当前窗口的角色/职位计数不可用（当前不可计算）');
+    expect(notComputableHtml).toContain('>不可用</div>');
+    expect(notComputableHtml).not.toContain('>0</div>');
+
+    const unavailableResult: PersonActivityResult = {
+      ...notComputableResult,
+      state: 'unavailable',
+      warnings: [{ code: 'SOURCE_UNAVAILABLE', state: 'unavailable', message: '来源暂时不可用。' }],
+    };
+    const unavailableHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(unavailableResult, { maxRows: 2 }),
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(unavailableHtml).toContain('状态：来源不可用');
+    expect(unavailableHtml).toContain('当前窗口的月度计数不可用（来源不可用）');
+    expect(unavailableHtml).toContain('>不可用</div>');
+    expect(unavailableHtml).not.toContain('>0</div>');
   });
 });

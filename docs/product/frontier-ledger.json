@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-03T14:41:52Z",
+  "updated_at": "2026-10-04T04:08:48Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -150,9 +150,10 @@
         "apps/standalone/src/presenter.ts",
         "tests/semantic/person-activity.test.ts",
         "tests/render/person-activity.test.ts",
-        "tests/standalone/person-activity-presenter.test.ts"
+        "tests/standalone/person-activity-presenter.test.ts",
+        "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md"
       ],
-      "next_action": "Keep PARTIAL: bangumi.get_person_activity uses current official-v0 person relations and subject first_air_date with a 12-calendar-month window, conservative TV classification, stable-ID deduplication, and explicit relation/detail coverage. A bounded public observation on 2026-10-03 returned 2 eligible rows after selecting 120/324 observed relations and hydrating 48/120 selected subject IDs; this is an observed partial count, not the full-window total. The Renderer and Standalone now label partial summary values as observations. Do not claim a rolling 365-day interval or complete TV-voice total; natural-language Agent and QQ/TIM client acceptance remain separate.",
+      "next_action": "Keep PARTIAL: bangumi.get_person_activity uses current official-v0 person relations and subject first_air_date with a 12-calendar-month window, conservative TV classification, stable-ID deduplication, and explicit relation/detail coverage. The Renderer and Standalone label partial summary values as observations; PersonActivityCard now uses concise coverage, a 12-row image cap, and distinct counts for eligible relations summarized without returned row details versus returned details hidden by the image cap. Do not claim a rolling 365-day interval or complete TV-voice total; natural-language Agent and QQ/TIM client acceptance remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
@@ -182,6 +183,32 @@
           "subject_details_not_requested": 72,
           "eligible_and_returned_rows": 2,
           "warning_codes": ["RELATION_LIMIT_REACHED", "SUBJECT_DETAIL_COVERAGE", "MEDIA_UNKNOWN"]
+        },
+        "person_activity_card_mobile_readability_run82": {
+          "base_revision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+          "scope": "Renderer image presentation only; formulas, source contract, tool schema, coverage calculations, and structured result are unchanged.",
+          "row_display_limit": 12,
+          "structured_result_preserved": true,
+          "visual_review": {
+            "fixture": "synthetic 22-row partial result",
+            "css_width": 360,
+            "device_scale_factor": 2,
+            "image_dimensions": "720x5680",
+            "png_bytes": 828598,
+            "visually_reviewed": true,
+            "artifact_disposition": "temporary local preview, not committed"
+          },
+          "validation": {
+            "build": "pnpm build — PASS",
+            "typecheck": "pnpm typecheck — PASS",
+            "lint": "pnpm lint — PASS",
+            "unit_renderer": "pnpm test — PASS, 74 files / 473 tests",
+            "person_activity_semantic_standalone": "pnpm vitest run tests/semantic/person-activity.test.ts tests/standalone/person-activity-presenter.test.ts — PASS, 2 files / 7 tests",
+            "focused_renderer": "pnpm vitest run tests/render/person-activity.test.ts — PASS, 6 tests",
+            "acceptance_matrix": "pnpm acceptance:check — PASS; catalog/direct 96/96, public 65/65, Agent/MCP 93/96, QQ/TIM 0/96 each, real auth 33 pending",
+            "frontier_and_guard": "pnpm harness frontier:check and pnpm harness guard:legacy-paths --product-epoch — PASS; 121 records / 99 actionable after evidence update"
+          },
+          "remaining_boundary": "Synthetic render and local tests do not establish a new live Agent/MCP result or QQ/TIM client display; keep this record PARTIAL."
         }
       }
     },
@@ -1886,9 +1913,10 @@
       "status": "PARTIAL",
       "source_refs": [
         "docs/product/opportunity-log.md",
-        "docs/research/run72-frontier-delta-2026-10-03.md"
+        "docs/research/run72-frontier-delta-2026-10-03.md",
+        "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md"
       ],
-      "next_action": "Use bangumi.get_person_activity for bounded current release-date observations. In partial state, its summary counts are now explicitly presented as observations over selected relations and successfully hydrated details, not as full-window totals. Keep PARTIAL; actual workload, labor time, and historical person snapshots remain unsupported, and the current G04 count does not answer an exact rolling-365-day or complete-catalog question.",
+      "next_action": "Use bangumi.get_person_activity for bounded current release-date observations. The mobile Renderer presents summary-first coverage and expands at most 12 returned rows while the structured result retains full diagnostics. Keep PARTIAL; actual workload, labor time, historical person snapshots, and client visibility remain unsupported, and the current G04 count does not answer an exact rolling-365-day or complete-catalog question.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": ["G04", "G05", "S07"],
       "closure_reason": "Reconciled the opportunity with a usable bounded release-activity comparison and monthly peak view while retaining PARTIAL status because official v0 lacks labor-time evidence and historical person snapshots.",
@@ -1913,7 +1941,33 @@
           "apps/standalone/src/presenter.ts"
         ],
         "source_contract": "The comparison is opt-in and derives two equal calendar windows from current official-v0 person relations and current subject first_air_date. It exposes per-period coverage states, with no numeric delta when a period is unavailable or not-computable and no complete peak claim under partial coverage. In partial state, all displayed period summary counts are observations from selected relations and successfully hydrated/classifiable details, not full-window totals. It is not a historical snapshot or workload measurement.",
-        "formula_version": "person-activity-comparison-v1"
+        "formula_version": "person-activity-comparison-v1",
+        "person_activity_card_mobile_readability_run82": {
+          "base_revision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+          "scope": "Renderer image presentation only; formulas, source contract, tool schema, coverage calculations, and structured result are unchanged.",
+          "row_display_limit": 12,
+          "structured_result_preserved": true,
+          "visual_review": {
+            "fixture": "synthetic 22-row partial result",
+            "css_width": 360,
+            "device_scale_factor": 2,
+            "image_dimensions": "720x5680",
+            "png_bytes": 828598,
+            "visually_reviewed": true,
+            "artifact_disposition": "temporary local preview, not committed"
+          },
+          "validation": {
+            "build": "pnpm build — PASS",
+            "typecheck": "pnpm typecheck — PASS",
+            "lint": "pnpm lint — PASS",
+            "unit_renderer": "pnpm test — PASS, 74 files / 473 tests",
+            "person_activity_semantic_standalone": "pnpm vitest run tests/semantic/person-activity.test.ts tests/standalone/person-activity-presenter.test.ts — PASS, 2 files / 7 tests",
+            "focused_renderer": "pnpm vitest run tests/render/person-activity.test.ts — PASS, 6 tests",
+            "acceptance_matrix": "pnpm acceptance:check — PASS; catalog/direct 96/96, public 65/65, Agent/MCP 93/96, QQ/TIM 0/96 each, real auth 33 pending",
+            "frontier_and_guard": "pnpm harness frontier:check and pnpm harness guard:legacy-paths --product-epoch — PASS; 121 records / 99 actionable after evidence update"
+          },
+          "remaining_boundary": "Synthetic render and local tests do not establish a new live Agent/MCP result or QQ/TIM client display; keep this record PARTIAL."
+        }
       }
     },
     {
