@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-10-04",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/scripts/probe-bangumi-tool.py",
+  "upstreamRevision": "496f66b2578c0148842aeb648ad341c5d8b91ec6",
+  "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+  "profile": "bangumi-full-public-qa-v1",
+  "sourceProfile": "standard-full",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 117,
+  "jsonStreamDiagnostics": {
+    "lineClassCounts": {
+      "valid": 46,
+      "blank": 0,
+      "non_json_text": 0,
+      "malformed_json": 0,
+      "non_object_json": 0
+    },
+    "invalidLineCount": 0
+  },
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [
+    {
+      "name": "bangumi.get_person_activity",
+      "arguments": {
+        "available": true,
+        "expectedFieldNames": [
+          "kind",
+          "maxRelations",
+          "maxRows",
+          "maxSubjectDetails",
+          "media",
+          "personId",
+          "windowMonths"
+        ],
+        "matchedFieldNames": [
+          "kind",
+          "maxRelations",
+          "maxRows",
+          "maxSubjectDetails",
+          "media",
+          "personId",
+          "windowMonths"
+        ],
+        "unexpectedFieldNames": [],
+        "passed": true
+      },
+      "outputShape": {
+        "type": "NoneType"
+      },
+      "result": {
+        "found": false
+      }
+    }
+  ],
+  "personActivityArgumentsVerified": true,
+  "personActivityResultVerified": false,
+  "personActivityAnswerCheck": {
+    "resultReadbackAvailable": false,
+    "personMentioned": true,
+    "windowMentioned": true,
+    "countMentioned": true,
+    "countWithinConfiguredBound": true,
+    "coverageDisclosurePresent": true,
+    "unsupportedCompleteCareerClaim": false,
+    "unsupportedWorkloadOrTrendClaim": false,
+    "markdownFormattingDetected": false,
+    "passed": true
+  },
+  "bangumiToolEvents": [
+    {
+      "name": "bangumi.get_person_activity",
+      "state": "ACTIVE"
+    },
+    {
+      "name": "bangumi.get_person_activity",
+      "state": "DONE"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "bangumi.get_person_activity",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.get_person_activity",
+          "state": "DONE"
+        }
+      ],
+      "targetToolOutcome": "TARGET_TOOL_COMPLETED",
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "jsonStreamLineClassCounts": {
+          "valid": 46,
+          "blank": 0,
+          "non_json_text": 0,
+          "malformed_json": 0,
+          "non_object_json": 0
+        },
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "personActivityArgumentsVerified": true,
+        "personActivityResultVerified": false,
+        "personActivityAnswerCheck": {
+          "resultReadbackAvailable": false,
+          "personMentioned": true,
+          "windowMentioned": true,
+          "countMentioned": true,
+          "countWithinConfiguredBound": true,
+          "coverageDisclosurePresent": true,
+          "unsupportedCompleteCareerClaim": false,
+          "unsupportedWorkloadOrTrendClaim": false,
+          "markdownFormattingDetected": false,
+          "passed": true
+        }
+      }
+    }
+  ],
+  "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence."
+}

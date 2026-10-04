@@ -274,6 +274,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
+        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -336,6 +337,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
+        'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
         'bangumi.update_collection',
@@ -343,15 +345,18 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       ].sort(),
     );
 
-    const staleCatalogBoundTools = [
+    const regeneratedCatalogBoundTools = [
       'bangumi.get_person_activity',
       'bangumi.get_subject_overview',
       'bangumi.render_subject_overview',
     ];
-    expect(staleCatalogBoundTools.filter((name) => evidenceNames.includes(name))).toEqual([]);
-    for (const name of staleCatalogBoundTools) {
-      expect(statusMark(rows.get(name)?.[9]), `${name} stale model/MCP report`).toBe('⬜');
-    }
+    expect(regeneratedCatalogBoundTools.filter((name) => evidenceNames.includes(name))).toEqual([
+      'bangumi.get_person_activity',
+      'bangumi.render_subject_overview',
+    ]);
+    expect(statusMark(rows.get('bangumi.get_person_activity')?.[9])).toBe('✅');
+    expect(statusMark(rows.get('bangumi.render_subject_overview')?.[9])).toBe('✅');
+    expect(statusMark(rows.get('bangumi.get_subject_overview')?.[9])).toBe('⬜');
 
     for (const [name, fields] of rows) {
       expect(fields, name).toHaveLength(13);
@@ -430,6 +435,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
+        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -442,6 +448,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
+        'bangumi.get_subject_overview',
         'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
@@ -473,14 +480,26 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         timClientTested: false,
       });
       expect(report.scenarios).toHaveLength(1);
-      expect(report.scenarios[0]).toMatchObject({
-        passed: true,
-        toolCalls: [{ name: report.scenarios[0].id, state: 'DONE' }],
-      });
+      expect(report.scenarios[0].toolCalls).toEqual([
+        { name: report.scenarios[0].id, state: 'DONE' },
+      ]);
       expect(report.scenarios[0]).not.toHaveProperty('prompt');
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
       expect(toolContractMatchesCurrent(report, report.scenarios[0].id)).toBe(true);
+      if (report.scenarios[0].passed) {
+        expect(statusMark(rowsByTool().get(report.scenarios[0].id)?.[9])).toBe('✅');
+      } else {
+        expect(report.scenarios[0].id).toBe('bangumi.get_subject_overview');
+        expect(report.scenarios[0].assertions).toMatchObject({
+          subjectOverviewResultVerified: false,
+          subjectOverviewAnswerCheck: {
+            passed: false,
+            reason: 'ANSWER_OR_TOOL_RESULT_UNAVAILABLE',
+          },
+        });
+        expect(statusMark(rowsByTool().get(report.scenarios[0].id)?.[9])).toBe('⬜');
+      }
     }
   });
 
@@ -509,6 +528,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
+        'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
       ].sort(),
@@ -848,7 +868,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     const rows = rowsByTool();
     for (const report of CURRENT_FULL_PUBLIC_QA_EVIDENCE) {
       const name = report.scenarios[0].id;
-      expect(statusMark(rows.get(name)?.[9])).toBe('✅');
+      expect(statusMark(rows.get(name)?.[9])).toBe(report.scenarios[0].passed ? '✅' : '⬜');
       expect(report.qqPipelineTested).toBe(false);
       expect(report.timClientTested).toBe(false);
       expectClientEvidenceCell(rows.get(name)?.[10], `${name} QQ pipeline`);
