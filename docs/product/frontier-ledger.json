@@ -448,7 +448,7 @@
         "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
         "tests/integration/mcp-result-presenter.test.ts"
       ],
-      "next_action": "Keep PARTIAL: exact-candidate Agent/MCP evidence for get_subject_staff (CLI 1.2.14, subject 218707, limit 200) returned 157/157 staff and 7/7 cast rows; the 3,529-byte text view showed 30/45 groups and 30/157 member identities while omitting 15 groups, 127 memberships, and all 7 cast items. The answer tied two returned names to raw labels and said omissions do not prove absence. Existing overview/renderer evidence remains separate; QQ/TIM display is unverified.",
+      "next_action": "Keep PARTIAL: exact-candidate Agent/MCP evidence for get_subject_staff (CLI 1.2.14, subject 218707, limit 200) returned 157/157 staff and 7/7 cast rows; the 3,529-byte text view showed 30/45 groups and 30/157 member identities while omitting 15 groups, 127 memberships, and all 7 cast items. The corrected checker verified four explicit raw-role/name associations and rejects swapped, unrelated, or negated mappings; omissions do not prove absence. Existing overview/renderer evidence remains separate; QQ/TIM display is unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -549,11 +549,13 @@
             "cast_items_omitted": 7
           },
           "answer_check": {
-            "role_name_pairs_matched": 2,
+            "role_name_pairs_matched": 4,
             "bounded_coverage_disclosure": true,
             "omission_not_absence_disclosure": true,
             "unsupported_completeness_claim": false,
-            "markdown_formatting_detected": false
+            "markdown_formatting_detected": false,
+            "association_check_method": "explicit-positive-local-role-name-v1",
+            "association_checker_sha256": "d056290c954f751d856f4e1d1046c8999a3111f6a300b8104b5db5228cd1f608"
           },
           "report_privacy": {
             "prompt_persisted": false,
@@ -821,7 +823,7 @@
         "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
         "tests/integration/mcp-result-presenter.test.ts"
       ],
-      "next_action": "Keep PARTIAL: the exact-candidate get_subject_staff answer demonstrated two returned raw-role/name pairs under the 3,600-byte MCP text cap. The source response returned 157 staff rows and 7 cast rows, but the text omitted 15 groups, 127 memberships, and all cast items; this cannot establish the full credit list or absence of an unshown role. QQ/TIM remains unverified.",
+      "next_action": "Keep PARTIAL: the exact-candidate get_subject_staff answer demonstrated four explicit returned raw-role/name pairs under the 3,600-byte MCP text cap. The source response returned 157 staff rows and 7 cast rows, but the text omitted 15 groups, 127 memberships, and all cast items; this cannot establish the full credit list or absence of an unshown role. QQ/TIM remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -921,11 +923,13 @@
             "cast_items_omitted": 7
           },
           "answer_check": {
-            "role_name_pairs_matched": 2,
+            "role_name_pairs_matched": 4,
             "bounded_coverage_disclosure": true,
             "omission_not_absence_disclosure": true,
             "unsupported_completeness_claim": false,
-            "markdown_formatting_detected": false
+            "markdown_formatting_detected": false,
+            "association_check_method": "explicit-positive-local-role-name-v1",
+            "association_checker_sha256": "d056290c954f751d856f4e1d1046c8999a3111f6a300b8104b5db5228cd1f608"
           },
           "report_privacy": {
             "prompt_persisted": false,
@@ -2485,7 +2489,7 @@
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/integration/tool-e2e-acceptance.test.ts"
       ],
-      "next_action": "Keep PARTIAL: exact-candidate public Agent/MCP answer checks passed for two raw-role/name pairs, with 3,529/3,600 UTF-8 text bytes. The projection omits 15 role groups, 127 staff memberships, and all 7 cast items even though the bounded source response returned 157/157 staff and 7/7 cast rows. No complete-credit or role-absence claim; QQ/TIM remains untested.",
+      "next_action": "Keep PARTIAL: exact-candidate public Agent/MCP answer checks passed for four explicit raw-role/name pairs with a source-hash-bound checker and 3,529/3,600 UTF-8 text bytes. The projection omits 15 role groups, 127 staff memberships, and all 7 cast items even though the bounded source response returned 157/157 staff and 7/7 cast rows. No complete-credit or role-absence claim; QQ/TIM remains untested.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": [],
       "evidence": {
@@ -2527,11 +2531,13 @@
             "cast_items_omitted": 7
           },
           "answer_check": {
-            "role_name_pairs_matched": 2,
+            "role_name_pairs_matched": 4,
             "bounded_coverage_disclosure": true,
             "omission_not_absence_disclosure": true,
             "unsupported_completeness_claim": false,
-            "markdown_formatting_detected": false
+            "markdown_formatting_detected": false,
+            "association_check_method": "explicit-positive-local-role-name-v1",
+            "association_checker_sha256": "d056290c954f751d856f4e1d1046c8999a3111f6a300b8104b5db5228cd1f608"
           },
           "report_privacy": {
             "prompt_persisted": false,

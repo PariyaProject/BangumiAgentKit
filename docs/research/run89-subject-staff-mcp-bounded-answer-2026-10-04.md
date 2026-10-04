@@ -16,10 +16,18 @@ JSON text result was 3,529 UTF-8 bytes. Its source coverage reported 157 of 157
 production-staff rows and 7 of 7 cast rows returned without source truncation.
 The bounded text projection exposed 30 role groups and 30 member identities;
 it marked 15 groups, 127 staff-group memberships, and all 7 cast items as
-omitted from text. The answer checker found two returned role/name pairs,
-bounded-coverage wording, and an explicit statement that omitted or unobserved
-roles do not prove absence. It found no unsupported completeness claim or
-Markdown formatting.
+omitted from text. The corrected answer checker verified four explicit
+returned role/name associations, bounded-coverage wording, and an explicit
+statement that omitted or unobserved roles do not prove absence. It found no
+unsupported completeness claim or Markdown formatting.
+
+The first review found that the original checker counted role and name strings
+independently, allowing swapped or unrelated mentions to pass. The sanitized
+report now binds the explicit local-association checker by SHA-256. Its focused
+regressions reject swapped, unrelated, negated, and partial-substring pairs;
+they also cover literal raw labels with regex metacharacters. Only a count and
+checker hash are stored. The replacement public call
+used the exact c13 source and 96-tool catalog binding.
 
 The report keeps only public raw role labels, counts, tool/schema metadata, and
 boolean answer checks. It contains no prompt, answer prose, or person names.
@@ -38,8 +46,9 @@ The deterministic presenter regression separately verifies that the complete
    does not turn the omitted text groups into a complete displayed list.
 3. **Agent UX and orchestration.** The isolated Agent used exactly one
    `get_subject_staff` call with the requested subject and limit. Its response
-   tied two returned people to their raw role labels and stated the omission
-   limit without another Bangumi tool call.
+   tied four returned people to their raw role labels and stated the omission
+   limit without another Bangumi tool call. The checker requires an explicit
+   positive local association and returns no answer text or person names.
 4. **Renderer and Standalone quality.** This change does not alter either
    surface. Prior overview-card and Standalone evidence remains separate; this
    report does not claim current QQ or TIM rendering.

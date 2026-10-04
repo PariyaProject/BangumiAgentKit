@@ -704,13 +704,17 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       resultReadbackAvailable: true,
       roleLabelsMentioned: true,
       memberNamesMentioned: true,
-      roleNamePairsMatchedCount: 2,
+      associationCheckMethod: 'explicit-positive-local-role-name-v1',
+      associationCheckerSha256: createHash('sha256')
+        .update(readFileSync(join(ROOT, 'scripts/acceptance/subject-staff-answer-check.mjs')))
+        .digest('hex'),
       boundedCoverageDisclosurePresent: true,
       omissionNotAbsencePresent: true,
       unsupportedCompletenessClaim: false,
       markdownFormattingDetected: false,
       passed: true,
     });
+    expect(report.subjectStaffAnswerCheck.roleNamePairsMatchedCount).toBeGreaterThanOrEqual(2);
     expect(report.scenarios).toHaveLength(1);
     expect(report.scenarios[0]).toMatchObject({
       id: 'bangumi.get_subject_staff',
