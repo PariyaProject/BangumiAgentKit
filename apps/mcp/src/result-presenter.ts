@@ -2,6 +2,7 @@ import type {
   PersonActivityResult,
   PersonActivityWindowSummary,
   SubjectCastItem,
+  SubjectCastResult,
   SubjectOverviewResult,
   SubjectStaffGroup,
   SubjectStaffMember,
@@ -35,6 +36,7 @@ type SubjectStaffToolResult = JsonObject & {
 
 const PERSON_ACTIVITY_TOOL = 'bangumi.get_person_activity';
 const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
+const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
@@ -70,6 +72,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
   if (toolName === SUBJECT_STAFF_TOOL && isSubjectStaffResult(result)) {
     return {
       text: compactSubjectStaff(result),
+      structuredContent: result,
+    };
+  }
+
+  if (toolName === SUBJECT_CAST_TOOL && isSubjectCastResult(result)) {
+    return {
+      text: compactSubjectCast(result),
       structuredContent: result,
     };
   }
@@ -140,6 +149,33 @@ function isSubjectStaffResult(value: JsonObject): value is SubjectStaffToolResul
     Array.isArray(value.evidence) &&
     Array.isArray(value.warnings) &&
     isJsonObject(value.capabilityStates)
+  );
+}
+
+function isSubjectCastResult(value: JsonObject): value is JsonObject & SubjectCastResult {
+  return (
+    value.status === 'ok' &&
+    typeof value.subjectId === 'number' &&
+    typeof value.observed === 'number' &&
+    typeof value.returned === 'number' &&
+    typeof value.truncated === 'boolean' &&
+    typeof value.schemaDriftRows === 'number' &&
+    typeof value.invalidActorIdRows === 'number' &&
+    Array.isArray(value.cast) &&
+    value.cast.every(
+      (item) =>
+        isJsonObject(item) &&
+        isJsonObject(item.character) &&
+        typeof item.character.id === 'number' &&
+        typeof item.character.name === 'string' &&
+        typeof item.character.type === 'number' &&
+        typeof item.relation === 'string' &&
+        Array.isArray(item.actors) &&
+        item.actors.every(
+          (actor) =>
+            isJsonObject(actor) && typeof actor.id === 'number' && typeof actor.name === 'string',
+        ),
+    )
   );
 }
 
@@ -1206,5 +1242,79 @@ function compactSubjectStaff(result: SubjectStaffToolResult): string {
     else if (textLimit > 0) textLimit -= 1;
     else if (groupLimit > 0) groupLimit -= 1;
     else throw new Error('Unable to produce bounded MCP subject staff text projection');
+  }
+}
+
+function createSubjectCastProjection(
+  result: SubjectCastResult,
+  castLimit: number,
+  actorsPerCharacter: number,
+  textLimit: number,
+) {
+  const cast = result.cast
+    .slice(0, castLimit)
+    .map((item) => projectSubjectStaffCastItem(item, actorsPerCharacter, textLimit));
+  const actorRowsReturned = result.cast.reduce((total, item) => total + item.actors.length, 0);
+  const actorRowsIncluded = cast.reduce((total, item) => total + item.actors.length, 0);
+
+  return {
+    status: result.status,
+    subjectId: result.subjectId,
+    coverage: {
+      observed: result.observed,
+      returned: result.returned,
+      truncated: result.truncated,
+      schemaDriftRows: result.schemaDriftRows,
+      invalidActorIdRows: result.invalidActorIdRows,
+    },
+    cast,
+    mcpTextProjection: {
+      version: 'mcp-text-projection-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      textViewScope: TEXT_VIEW_SCOPE_NOTE,
+      castRowsReturned: result.cast.length,
+      castRowsIncluded: cast.length,
+      castRowsOmittedFromText: result.cast.length - cast.length,
+      actorRowsReturned,
+      actorRowsIncluded,
+      actorRowsOmittedFromText: Math.max(0, actorRowsReturned - actorRowsIncluded),
+      characterNamesTruncated: cast.filter(
+        (item) => item.character.displayNameTextTruncated === true,
+      ).length,
+      relationLabelsTruncated: cast.filter((item) => item.relationTextTruncated === true).length,
+      actorNamesTruncated: cast.reduce(
+        (total, item) =>
+          total + item.actors.filter((actor) => actor.displayNameTextTruncated === true).length,
+        0,
+      ),
+      characterSummariesAndImagesOmittedFromText: true,
+      actorCareersAndImagesOmittedFromText: true,
+    },
+  };
+}
+
+function compactSubjectCast(result: SubjectCastResult): string {
+  let castLimit = Math.min(MAX_SECTION_ITEMS, result.cast.length);
+  let actorsPerCharacter = MAX_ACTORS_PER_CHARACTER;
+  let textLimit = DISPLAY_TEXT_LIMIT;
+
+  while (true) {
+    const projection = createSubjectCastProjection(
+      result,
+      castLimit,
+      actorsPerCharacter,
+      textLimit,
+    );
+    const text = JSON.stringify(projection);
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (actorsPerCharacter > 1) actorsPerCharacter -= 1;
+    else if (castLimit > 1) castLimit -= 1;
+    else if (textLimit > 8) textLimit = Math.max(8, textLimit - 8);
+    else if (castLimit > 0) castLimit -= 1;
+    else if (actorsPerCharacter > 0) actorsPerCharacter -= 1;
+    else if (textLimit > 0) textLimit -= 1;
+    else throw new Error('Unable to produce bounded MCP subject cast text projection');
   }
 }
