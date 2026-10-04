@@ -22,6 +22,7 @@ const MAX_STAFF_GROUPS = 6;
 const MAX_ACTORS_PER_CHARACTER = 2;
 const MAX_WARNINGS = 2;
 const MAX_LIMITATIONS = 2;
+const MAX_COMPARISON_DETAILS = 4;
 const MESSAGE_TEXT_LIMIT = 80;
 const DISPLAY_TEXT_LIMIT = 120;
 const TEXT_VIEW_SCOPE_NOTE =
@@ -231,43 +232,190 @@ function projectPersonIdentity(person: NonNullable<PersonActivityResult['person'
   };
 }
 
-function projectComparison(result: PersonActivityResult) {
+function projectActivityWindow(window: PersonActivityResult['window']) {
+  const start = clippedDisplayText(window.start);
+  const end = clippedDisplayText(window.end);
+  return {
+    months: window.months,
+    start: start.text,
+    end: end.text,
+    asOfSemantics: window.asOfSemantics,
+    ...(start.clipped || end.clipped ? { rangeTextTruncated: true } : {}),
+  };
+}
+
+function canExposeComparisonCounts(
+  period: NonNullable<PersonActivityResult['comparison']>['recent'],
+): boolean {
+  return (
+    period.state === 'complete' || (period.state === 'partial' && period.coverage.rowsEligible > 0)
+  );
+}
+
+function projectComparisonCoverage(coverage: PersonActivityResult['coverage']) {
+  const projected = {
+    relationRowsObserved: coverage.relationRowsObserved,
+    relationRowsSelected: coverage.relationRowsSelected,
+    relationRowsDroppedAtLimit: coverage.relationRowsDroppedAtLimit,
+    relationSelectionStrategy: coverage.relationSelectionStrategy,
+    sampled: coverage.sampled,
+    subjectDetailRequests: coverage.subjectDetailRequests,
+    subjectDetailsSucceeded: coverage.subjectDetailsSucceeded,
+    subjectDetailsFailed: coverage.subjectDetailsFailed,
+    rowsEligible: coverage.rowsEligible,
+    rowsReturned: coverage.rowsReturned,
+    outputTruncated: coverage.outputTruncated,
+    uniqueSubjects: coverage.uniqueSubjects,
+    uniqueCharacters: coverage.uniqueCharacters,
+    maxRelations: coverage.maxRelations,
+    maxSubjectDetails: coverage.maxSubjectDetails,
+    maxRows: coverage.maxRows,
+    truncated: coverage.truncated,
+  };
+  return {
+    ...projected,
+    coverageDetailFieldsOmittedFromText:
+      Math.max(0, Object.keys(coverage).length - Object.keys(projected).length) +
+      Object.keys(coverage.origin).length,
+  };
+}
+
+function projectComparison(result: PersonActivityResult, detailLimit: number) {
   if (!result.comparison) return undefined;
   const comparison = result.comparison;
-  const projectPeriod = (period: typeof comparison.recent) => ({
-    state: period.state,
-    window: {
-      months: period.window.months,
-      start: period.window.start,
-      end: period.window.end,
-      asOfSemantics: period.window.asOfSemantics,
-    },
-    summary: {
-      creditRows: period.summary.creditRows,
-      uniqueSubjects: period.summary.uniqueSubjects,
-      uniqueCharacters: period.summary.uniqueCharacters,
-      byRole: period.summary.byRole.slice(0, 6),
-      byMedia: period.summary.byMedia.slice(0, 6),
-      byMonthBucketsOmittedFromText: period.summary.byMonth.length,
-      origin: { ...period.summary.origin },
-    },
-    coverage: projectPersonCoverage(period.coverage),
-    exclusions: period.exclusions.map(({ reason, count }) => ({ reason, count })),
-  });
+  const projectPeriod = (period: typeof comparison.recent) => {
+    const countsAvailable = canExposeComparisonCounts(period);
+    const byRole = countsAvailable
+      ? period.summary.byRole.slice(0, detailLimit).map((item) => {
+          const key = clippedDisplayText(item.key);
+          const label = clippedDisplayText(item.label);
+          return {
+            key: key.text,
+            label: label.text,
+            creditRows: item.creditRows,
+            uniqueSubjects: item.uniqueSubjects,
+            uniqueCharacters: item.uniqueCharacters,
+            ...(key.clipped || label.clipped ? { labelTextTruncated: true } : {}),
+          };
+        })
+      : [];
+    const byMedia = countsAvailable
+      ? period.summary.byMedia.slice(0, detailLimit).map((item) => {
+          const key = clippedDisplayText(item.key);
+          const label = clippedDisplayText(item.label);
+          return {
+            key: key.text,
+            label: label.text,
+            creditRows: item.creditRows,
+            uniqueSubjects: item.uniqueSubjects,
+            uniqueCharacters: item.uniqueCharacters,
+            ...(key.clipped || label.clipped ? { labelTextTruncated: true } : {}),
+          };
+        })
+      : [];
+    const exclusions = period.exclusions.slice(0, detailLimit).map(({ reason, count }) => ({
+      reason,
+      count,
+    }));
+    return {
+      state: period.state,
+      window: projectActivityWindow(period.window),
+      summary: {
+        ...(countsAvailable
+          ? {
+              creditRows: period.summary.creditRows,
+              uniqueSubjects: period.summary.uniqueSubjects,
+              uniqueCharacters: period.summary.uniqueCharacters,
+              origin: { ...period.summary.origin },
+            }
+          : { countsOmittedDueToCoverage: true }),
+        byRole,
+        byRoleOmittedFromText: period.summary.byRole.length - byRole.length,
+        byMedia,
+        byMediaOmittedFromText: period.summary.byMedia.length - byMedia.length,
+        byMonthBucketsOmittedFromText: period.summary.byMonth.length,
+      },
+      coverage: projectComparisonCoverage(period.coverage),
+      exclusions,
+      exclusionsOmittedFromText: period.exclusions.length - exclusions.length,
+      exclusionSampleIdsOmittedFromText: period.exclusions.reduce(
+        (total, exclusion) => total + exclusion.sampleSubjectIds.length,
+        0,
+      ),
+    };
+  };
+  const peakCountsAvailable =
+    comparison.peak.state === 'complete' || comparison.peak.state === 'partial';
+  const peakMonthLimit = Math.max(1, detailLimit);
+  const peakMonths = peakCountsAvailable
+    ? comparison.peak.months.slice(0, peakMonthLimit).map((month) => {
+        const label = clippedDisplayText(month.month);
+        return {
+          period: month.period,
+          month: label.text,
+          creditRows: month.creditRows,
+          uniqueSubjects: month.uniqueSubjects,
+          uniqueCharacters: month.uniqueCharacters,
+          ...(label.clipped ? { monthTextTruncated: true } : {}),
+        };
+      })
+    : [];
+  const deltaCountsAvailable =
+    comparison.delta.state === 'complete' || comparison.delta.state === 'partial';
   return {
     state: comparison.state,
     windowMonths: comparison.windowMonths,
     recent: projectPeriod(comparison.recent),
     previous: projectPeriod(comparison.previous),
-    delta: { ...comparison.delta },
+    delta: {
+      state: comparison.delta.state,
+      ...(deltaCountsAvailable
+        ? {
+            ...(comparison.delta.creditRows !== undefined
+              ? { creditRows: comparison.delta.creditRows }
+              : {}),
+            ...(comparison.delta.uniqueSubjects !== undefined
+              ? { uniqueSubjects: comparison.delta.uniqueSubjects }
+              : {}),
+            ...(comparison.delta.uniqueCharacters !== undefined
+              ? { uniqueCharacters: comparison.delta.uniqueCharacters }
+              : {}),
+          }
+        : { valuesOmittedDueToState: true }),
+    },
     peak: {
       metric: comparison.peak.metric,
       state: comparison.peak.state,
-      months: comparison.peak.months.slice(0, MAX_MONTH_BUCKETS),
-      monthsOmittedFromText: Math.max(0, comparison.peak.months.length - MAX_MONTH_BUCKETS),
+      months: peakMonths,
+      monthsOmittedFromText: comparison.peak.months.length - peakMonths.length,
     },
     sourceOperationsOmittedFromText:
       comparison.sourceOperations.recent.length + comparison.sourceOperations.previous.length,
+    comparisonListItemsOmittedFromText:
+      comparison.recent.summary.byRole.length -
+      (canExposeComparisonCounts(comparison.recent)
+        ? Math.min(detailLimit, comparison.recent.summary.byRole.length)
+        : 0) +
+      comparison.recent.summary.byMedia.length -
+      (canExposeComparisonCounts(comparison.recent)
+        ? Math.min(detailLimit, comparison.recent.summary.byMedia.length)
+        : 0) +
+      comparison.recent.summary.byMonth.length +
+      comparison.recent.exclusions.length -
+      Math.min(detailLimit, comparison.recent.exclusions.length) +
+      comparison.previous.summary.byRole.length -
+      (canExposeComparisonCounts(comparison.previous)
+        ? Math.min(detailLimit, comparison.previous.summary.byRole.length)
+        : 0) +
+      comparison.previous.summary.byMedia.length -
+      (canExposeComparisonCounts(comparison.previous)
+        ? Math.min(detailLimit, comparison.previous.summary.byMedia.length)
+        : 0) +
+      comparison.previous.summary.byMonth.length +
+      comparison.previous.exclusions.length -
+      Math.min(detailLimit, comparison.previous.exclusions.length) +
+      comparison.peak.months.length -
+      peakMonths.length,
   };
 }
 
@@ -277,6 +425,7 @@ function createPersonActivityProjection(
   monthLimit: number,
   warningLimit: number,
   limitationLimit: number,
+  comparisonDetailLimit: number,
 ) {
   const rows = result.rows.slice(0, rowLimit).map(projectPersonRow);
   const messages = projectMessages(
@@ -285,7 +434,7 @@ function createPersonActivityProjection(
     warningLimit,
     limitationLimit,
   );
-  const comparison = projectComparison(result);
+  const comparison = projectComparison(result, comparisonDetailLimit);
   return {
     personId: result.personId,
     ...(result.person ? { person: projectPersonIdentity(result.person) } : {}),
@@ -293,12 +442,7 @@ function createPersonActivityProjection(
     kind: result.kind,
     media: result.media,
     ...(result.staffRole ? { staffRole: result.staffRole } : {}),
-    window: {
-      months: result.window.months,
-      start: result.window.start,
-      end: result.window.end,
-      asOfSemantics: result.window.asOfSemantics,
-    },
+    window: projectActivityWindow(result.window),
     summary: projectWindowSummary(result.summary, monthLimit),
     ...(comparison ? { comparison } : {}),
     coverage: projectPersonCoverage(result.coverage),
@@ -342,6 +486,7 @@ function compactPersonActivity(result: PersonActivityResult): string {
   let monthLimit = Math.min(MAX_MONTH_BUCKETS, result.summary.byMonth.length);
   let warningLimit = Math.min(MAX_WARNINGS, result.warnings.length);
   let limitationLimit = Math.min(MAX_LIMITATIONS, result.limitations.length);
+  let comparisonDetailLimit = MAX_COMPARISON_DETAILS;
 
   while (true) {
     const projection = createPersonActivityProjection(
@@ -350,12 +495,14 @@ function compactPersonActivity(result: PersonActivityResult): string {
       monthLimit,
       warningLimit,
       limitationLimit,
+      comparisonDetailLimit,
     );
     const text = JSON.stringify(projection);
     if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
 
     if (limitationLimit > 1) limitationLimit -= 1;
     else if (warningLimit > 1) warningLimit -= 1;
+    else if (result.comparison && comparisonDetailLimit > 0) comparisonDetailLimit -= 1;
     else if (monthLimit > 3) monthLimit -= 1;
     else if (rowLimit > 1) rowLimit -= 1;
     else if (monthLimit > 0) monthLimit -= 1;
@@ -373,12 +520,8 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
     state: result.state,
     kind: result.kind,
     media: result.media,
-    window: {
-      months: result.window.months,
-      start: result.window.start,
-      end: result.window.end,
-      asOfSemantics: result.window.asOfSemantics,
-    },
+    window: projectActivityWindow(result.window),
+    ...(result.comparison ? { comparison: projectComparison(result, 0) } : {}),
     summary: {
       creditRows: result.summary.creditRows,
       uniqueSubjects: result.summary.uniqueSubjects,
@@ -412,11 +555,8 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
     : JSON.stringify({
         state: result.state,
         personId: result.personId,
-        window: {
-          months: result.window.months,
-          start: result.window.start,
-          end: result.window.end,
-        },
+        window: projectActivityWindow(result.window),
+        ...(result.comparison ? { comparison: projectComparison(result, 0) } : {}),
         mcpTextProjection: {
           version: 'mcp-text-projection-v1',
           maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
