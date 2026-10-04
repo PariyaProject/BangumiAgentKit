@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "antigravity_cli_mcp_tool_use",
+  "createdOn": "2026-10-04",
+  "sourceRepository": "PariyaAgent",
+  "sourceProgram": "PariyaAgent/.runtime/research/run86-person-activity-comparison-probe.py",
+  "probeScenario": "person_activity_comparison_six_calendar_months_v4",
+  "upstreamRevision": "c4acc246551d31ddfc91b54d1031d4454365a7fc",
+  "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+  "profile": "bangumi-full-public-qa-v1",
+  "sourceProfile": "standard-full",
+  "model": "gemini-3.8-flash-low",
+  "processExitCode": 0,
+  "processFailureClass": "NONE",
+  "processStderrPresent": true,
+  "processStderrBytes": 117,
+  "jsonStreamDiagnostics": {
+    "lineClassCounts": {
+      "valid": 49,
+      "blank": 0,
+      "non_json_text": 0,
+      "malformed_json": 0,
+      "non_object_json": 0
+    },
+    "invalidLineCount": 0
+  },
+  "resultCount": 1,
+  "resultStatus": "SUCCESS",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "workspaceRoutingToolsExposed": [],
+  "toolResultSummaries": [
+    {
+      "name": "bangumi.get_person_activity",
+      "arguments": {
+        "available": true,
+        "expectedFieldNames": [
+          "comparePreviousWindow",
+          "kind",
+          "maxRelations",
+          "maxRows",
+          "maxSubjectDetails",
+          "media",
+          "personId",
+          "windowMonths"
+        ],
+        "matchedFieldNames": [
+          "comparePreviousWindow",
+          "kind",
+          "maxRelations",
+          "maxRows",
+          "maxSubjectDetails",
+          "media",
+          "personId",
+          "windowMonths"
+        ],
+        "unexpectedFieldNames": [],
+        "passed": true
+      },
+      "outputShape": {
+        "type": "str",
+        "bytes": 3218,
+        "keys": [
+          "comparison",
+          "kind",
+          "mcpTextProjection",
+          "media",
+          "person",
+          "personId",
+          "state",
+          "window"
+        ]
+      },
+      "result": {
+        "found": true,
+        "personId": 13684,
+        "state": "partial",
+        "kind": "voice",
+        "media": "tv",
+        "windowMonths": 6,
+        "windowStart": "2026-05-01",
+        "windowEnd": "2026-10-04",
+        "windowSemantics": "calendar_months_ending_on_as_of_date",
+        "creditRows": null,
+        "uniqueSubjects": null,
+        "uniqueCharacters": null,
+        "coverage": {
+          "relationRowsObserved": 115,
+          "relationRowsSelected": 48,
+          "relationRowsDroppedAtLimit": 67,
+          "subjectDetailRequests": 12,
+          "subjectDetailsSucceeded": 12,
+          "rowsEligible": 0,
+          "rowsReturned": 0,
+          "uniqueSubjects": 0,
+          "maxRelations": 48,
+          "maxSubjectDetails": 12,
+          "maxRows": 20
+        },
+        "warningCodes": [],
+        "comparison": {
+          "state": "partial",
+          "windowMonths": 6,
+          "recent": {
+            "state": "partial",
+            "windowMonths": 6,
+            "windowStart": "2026-05-01",
+            "windowEnd": "2026-10-04",
+            "summary": {},
+            "coverage": {
+              "relationRowsObserved": 115,
+              "relationRowsSelected": 48,
+              "relationRowsDroppedAtLimit": 67,
+              "subjectDetailRequests": 12,
+              "subjectDetailsSucceeded": 12,
+              "rowsEligible": 0,
+              "rowsReturned": 0,
+              "uniqueSubjects": 0,
+              "maxRelations": 48,
+              "maxSubjectDetails": 12,
+              "maxRows": 20
+            },
+            "countsOmittedDueToCoverage": true
+          },
+          "previous": {
+            "state": "partial",
+            "windowMonths": 6,
+            "windowStart": "2025-11-01",
+            "windowEnd": "2026-04-30",
+            "summary": {
+              "creditRows": 1,
+              "uniqueSubjects": 1,
+              "uniqueCharacters": 1
+            },
+            "coverage": {
+              "relationRowsObserved": 115,
+              "relationRowsSelected": 48,
+              "relationRowsDroppedAtLimit": 67,
+              "subjectDetailRequests": 12,
+              "subjectDetailsSucceeded": 12,
+              "rowsEligible": 1,
+              "rowsReturned": 1,
+              "uniqueSubjects": 1,
+              "maxRelations": 48,
+              "maxSubjectDetails": 12,
+              "maxRows": 20
+            },
+            "countsOmittedDueToCoverage": false
+          },
+          "delta": {
+            "state": "partial",
+            "valuesOmittedDueToCoverage": true
+          },
+          "peak": {
+            "state": "partial",
+            "metric": "uniqueSubjects",
+            "months": [
+              {
+                "period": "previous",
+                "month": "2026-04",
+                "creditRows": 1,
+                "uniqueSubjects": 1,
+                "uniqueCharacters": 1
+              }
+            ]
+          },
+          "peakMonthsOmittedFromText": 0,
+          "comparisonListItemsOmittedFromText": 20,
+          "answerSummaryChecks": {
+            "present": true,
+            "bothWindows": true,
+            "recentOmissionExplicit": true,
+            "previousObservedCountPresent": true,
+            "deltaOmissionExplicit": true,
+            "peakMonthsPresent": true,
+            "scopeLimitsPresent": true,
+            "passed": true
+          }
+        }
+      }
+    }
+  ],
+  "personActivityArgumentsVerified": true,
+  "personActivityResultVerified": true,
+  "personActivityAnswerCheck": {
+    "resultReadbackAvailable": true,
+    "personMentioned": true,
+    "windowLengthIdentifiedByBoundaries": true,
+    "bothWindowBoundariesMentioned": true,
+    "recentCountMentioned": true,
+    "previousCountMentioned": true,
+    "deltaStateAndValueMentioned": true,
+    "peakStateAndMonthMentioned": true,
+    "coverageDisclosurePresent": true,
+    "unsupportedCompleteCareerClaim": false,
+    "unsupportedWorkloadOrTrendClaim": false,
+    "markdownFormattingDetected": false,
+    "passed": true
+  },
+  "bangumiToolEvents": [
+    {
+      "name": "bangumi.get_person_activity",
+      "state": "ACTIVE"
+    },
+    {
+      "name": "bangumi.get_person_activity",
+      "state": "DONE"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "bangumi.get_person_activity",
+      "passed": true,
+      "toolCalls": [
+        {
+          "name": "bangumi.get_person_activity",
+          "state": "DONE"
+        }
+      ],
+      "targetToolOutcome": "TARGET_TOOL_COMPLETED",
+      "assertions": {
+        "cliSucceeded": true,
+        "jsonStreamComplete": true,
+        "jsonStreamLineClassCounts": {
+          "valid": 49,
+          "blank": 0,
+          "non_json_text": 0,
+          "malformed_json": 0,
+          "non_object_json": 0
+        },
+        "exactTargetToolCompleted": true,
+        "boundedToolBudget": true,
+        "personActivityArgumentsVerified": true,
+        "personActivityResultVerified": true,
+        "personActivityAnswerCheck": {
+          "resultReadbackAvailable": true,
+          "personMentioned": true,
+          "windowLengthIdentifiedByBoundaries": true,
+          "bothWindowBoundariesMentioned": true,
+          "recentCountMentioned": true,
+          "previousCountMentioned": true,
+          "deltaStateAndValueMentioned": true,
+          "peakStateAndMonthMentioned": true,
+          "coverageDisclosurePresent": true,
+          "unsupportedCompleteCareerClaim": false,
+          "unsupportedWorkloadOrTrendClaim": false,
+          "markdownFormattingDetected": false,
+          "passed": true
+        }
+      }
+    }
+  ],
+  "scopeNote": "One isolated public read tool was exposed to the model; auth-required, write, destructive, dynamic-operation and renderer tools were excluded. This is Agent-to-MCP evidence only, not QQ/TIM evidence.",
+  "candidateSha": "c4acc246551d31ddfc91b54d1031d4454365a7fc",
+  "cliVersion": "1.2.14",
+  "agentImage": "pariya-agent/bangumi-poc:run86-c4acc24",
+  "cliImage": "pariya-agent/agy-bangumi-poc:qa-run86-c4acc24-cli-1.2.14",
+  "probeArguments": {
+    "personId": 13684,
+    "kind": "voice",
+    "media": "tv",
+    "windowMonths": 6,
+    "maxRelations": 48,
+    "maxSubjectDetails": 12,
+    "maxRows": 20,
+    "comparePreviousWindow": true
+  },
+  "probeArgumentsVerified": true
+}
