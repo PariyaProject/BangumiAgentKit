@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-04T03:33:21Z",
+  "updated_at": "2026-10-04T04:08:48Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -153,7 +153,7 @@
         "tests/standalone/person-activity-presenter.test.ts",
         "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md"
       ],
-      "next_action": "Keep PARTIAL: bangumi.get_person_activity uses current official-v0 person relations and subject first_air_date with a 12-calendar-month window, conservative TV classification, stable-ID deduplication, and explicit relation/detail coverage. The Renderer and Standalone label partial summary values as observations; PersonActivityCard now uses concise coverage, a 12-row image cap, and distinct counts for service omissions and image-hidden returned rows while retaining the structured result. Do not claim a rolling 365-day interval or complete TV-voice total; natural-language Agent and QQ/TIM client acceptance remain separate.",
+      "next_action": "Keep PARTIAL: bangumi.get_person_activity uses current official-v0 person relations and subject first_air_date with a 12-calendar-month window, conservative TV classification, stable-ID deduplication, and explicit relation/detail coverage. The Renderer and Standalone label partial summary values as observations; PersonActivityCard now uses concise coverage, a 12-row image cap, and distinct counts for eligible relations summarized without returned row details versus returned details hidden by the image cap. Do not claim a rolling 365-day interval or complete TV-voice total; natural-language Agent and QQ/TIM client acceptance remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
@@ -194,7 +194,7 @@
             "css_width": 360,
             "device_scale_factor": 2,
             "image_dimensions": "720x5680",
-            "png_bytes": 826982,
+            "png_bytes": 828598,
             "visually_reviewed": true,
             "artifact_disposition": "temporary local preview, not committed"
           },
@@ -1952,7 +1952,7 @@
             "css_width": 360,
             "device_scale_factor": 2,
             "image_dimensions": "720x5680",
-            "png_bytes": 826982,
+            "png_bytes": 828598,
             "visually_reviewed": true,
             "artifact_disposition": "temporary local preview, not committed"
           },

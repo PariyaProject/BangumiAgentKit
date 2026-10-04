@@ -222,8 +222,9 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         ) : null}
         {eligibleRowsNotReturned > 0 ? (
           <div style={{ marginTop: theme.spacing.xs }}>
-            本次可计入 {viewModel.coverage.rowsEligible} 条，结构化结果返回{' '}
-            {viewModel.coverage.rowsReturned} 条；其余关系未纳入结果。
+            本次汇总计入 {viewModel.coverage.rowsEligible} 条关系，逐行明细返回{' '}
+            {viewModel.coverage.rowsReturned} 条；另有 {eligibleRowsNotReturned}{' '}
+            条关系未提供逐行明细。
           </div>
         ) : null}
       </div>
@@ -249,8 +250,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
           {viewModel.coverage.origin.unknownSubjects} 部
         </div>
         <div style={{ marginTop: theme.spacing.xs }}>
-          来源覆盖：明确原创 {viewModel.summary.origin.explicitOriginalSubjects} 部 · 未观察到标签{' '}
-          {viewModel.summary.origin.notObservedSubjects} 部 · 来源未知{' '}
+          来源覆盖：明确原创 {viewModel.summary.origin.explicitOriginalSubjects} 部 ·
+          未观察到原创标签 {viewModel.summary.origin.notObservedSubjects} 部 · 来源未知{' '}
           {viewModel.summary.origin.unknownSubjects} 部
         </div>
         <div style={{ color: theme.text, marginTop: theme.spacing.xs }}>
@@ -471,8 +472,8 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
             })}
             {returnedRowsNotShown > 0 && (
               <div style={{ color: theme.warning, fontSize: '11px', textAlign: 'center' }}>
-                本次返回 {viewModel.coverage.rowsReturned} 条关系，图卡展开 {visibleRows.length}{' '}
-                条；另有 {returnedRowsNotShown} 条已返回关系未展开。
+                逐行明细返回 {viewModel.coverage.rowsReturned} 条，图卡展开 {visibleRows.length}{' '}
+                条；另有 {returnedRowsNotShown} 条已返回明细未展开。
               </div>
             )}
           </div>

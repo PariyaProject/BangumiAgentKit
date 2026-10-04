@@ -151,13 +151,14 @@ describe('Person activity renderer', () => {
     expect(viewModel.hiddenRows).toBe(10);
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('2026-03-01');
-    expect(html).toContain('本次返回 22 条关系，图卡展开 12 条；另有 10 条已返回关系未展开。');
+    expect(html).toContain('逐行明细返回 22 条，图卡展开 12 条；另有 10 条已返回明细未展开。');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
     expect(html).toContain('作品来源观察');
     expect(html).toContain('未观察到“原创”标签不等于“改编”');
     expect(html).toContain('官方标签：原创、奇幻');
-    expect(html).toContain('本次返回 22 条关系，图卡展开 12 条；另有 10 条已返回关系未展开。');
+    expect(html).toContain('来源观察：未观察到原创标签 · 官方标签：漫画');
+    expect(html).toContain('来源覆盖：明确原创 8 部 · 未观察到原创标签 7 部 · 来源未知 7 部');
     expect(html).toContain(
       '数据来源：Bangumi v0 · 声优关系 · 可判断为 TV 的动画 · 获取于 2026-08-15',
     );
@@ -348,11 +349,38 @@ describe('Person activity renderer', () => {
     }
   });
 
-  it('caps mobile rows and distinguishes card-hidden rows from service omissions', async () => {
+  it('caps mobile rows and distinguishes missing row details from card-hidden details', async () => {
     const boundedResult: PersonActivityResult = {
       ...result,
+      summary: {
+        ...result.summary,
+        creditRows: 25,
+        byRole: [
+          { key: 'main', label: '主役', creditRows: 13, uniqueSubjects: 11, uniqueCharacters: 11 },
+          {
+            key: 'support',
+            label: '配角',
+            creditRows: 12,
+            uniqueSubjects: 11,
+            uniqueCharacters: 11,
+          },
+        ],
+        byMonth: result.summary.byMonth.map((item, index) => {
+          const uniqueSubjects = index < 2 ? 4 : index === 5 ? 5 : 3;
+          return {
+            ...item,
+            creditRows: index === result.summary.byMonth.length - 1 ? 5 : 4,
+            uniqueSubjects,
+            uniqueCharacters: uniqueSubjects,
+          };
+        }),
+      },
       coverage: {
         ...result.coverage,
+        relationRowsObserved: 28,
+        relationRowsSelected: 26,
+        subjectDetailsSucceeded: 22,
+        maxRows: 22,
         rowsEligible: 25,
         rowsReturned: 22,
         outputTruncated: true,
@@ -361,10 +389,14 @@ describe('Person activity renderer', () => {
     };
     const viewModel = buildPersonActivityViewModel(boundedResult, { maxRows: 24 });
     expect(viewModel.rows).toHaveLength(22);
+    expect(viewModel.summary.creditRows).toBe(25);
+    expect(viewModel.summary.byMonth.reduce((total, item) => total + item.creditRows, 0)).toBe(25);
 
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
-    expect(html).toContain('本次可计入 25 条，结构化结果返回 22 条；其余关系未纳入结果。');
-    expect(html).toContain('本次返回 22 条关系，图卡展开 12 条；另有 10 条已返回关系未展开。');
+    expect(html).toContain(
+      '本次汇总计入 25 条关系，逐行明细返回 22 条；另有 3 条关系未提供逐行明细。',
+    );
+    expect(html).toContain('逐行明细返回 22 条，图卡展开 12 条；另有 10 条已返回明细未展开。');
     expect(html).toContain('Long Subject Name 12');
     expect(html).not.toContain('Long Subject Name 13');
 
