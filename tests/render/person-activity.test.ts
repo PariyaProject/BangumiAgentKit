@@ -496,5 +496,70 @@ describe('Person activity renderer', () => {
     expect(partialEmptyHtml).toContain('当前窗口的角色/职位计数不可用（部分覆盖）');
     expect(partialEmptyHtml).not.toContain('观察到的 11 行 · 观察到的 11 部');
     expect(partialEmptyHtml).toContain('>不可用</div>');
+
+    const notComputableResult: PersonActivityResult = {
+      ...result,
+      state: 'not_computable',
+      rows: [],
+      summary: {
+        ...result.summary,
+        creditRows: 0,
+        uniqueSubjects: 0,
+        uniqueCharacters: 0,
+        byRole: [],
+        byMonth: [],
+        origin: { explicitOriginalSubjects: 0, notObservedSubjects: 0, unknownSubjects: 0 },
+      },
+      coverage: {
+        ...result.coverage,
+        rowsEligible: 0,
+        rowsReturned: 0,
+        missingDateRows: 1,
+        sampled: false,
+        truncated: false,
+        origin: {
+          ...result.coverage.origin,
+          subjectsObserved: 1,
+          explicitOriginalSubjects: 0,
+          notObservedSubjects: 0,
+          unknownSubjects: 1,
+        },
+      },
+      exclusions: [{ reason: 'missing_date', count: 1, sampleSubjectIds: [1] }],
+      warnings: [
+        {
+          code: 'NOT_COMPUTABLE',
+          state: 'not_computable',
+          message: '本次关系没有可用作品日期，无法计算窗口内活动。',
+        },
+      ],
+    };
+    const notComputableHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(notComputableResult, { maxRows: 2 }),
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(notComputableHtml).toContain('状态：当前不可计算');
+    expect(notComputableHtml).toContain('当前窗口的月度计数不可用（当前不可计算）');
+    expect(notComputableHtml).toContain('当前窗口的角色/职位计数不可用（当前不可计算）');
+    expect(notComputableHtml).toContain('>不可用</div>');
+    expect(notComputableHtml).not.toContain('>0</div>');
+
+    const unavailableResult: PersonActivityResult = {
+      ...notComputableResult,
+      state: 'unavailable',
+      warnings: [{ code: 'SOURCE_UNAVAILABLE', state: 'unavailable', message: '来源暂时不可用。' }],
+    };
+    const unavailableHtml = renderHtmlTemplate(
+      buildPersonActivityViewModel(unavailableResult, { maxRows: 2 }),
+      'bangumi-dark',
+      {},
+      360,
+    );
+    expect(unavailableHtml).toContain('状态：来源不可用');
+    expect(unavailableHtml).toContain('当前窗口的月度计数不可用（来源不可用）');
+    expect(unavailableHtml).toContain('>不可用</div>');
+    expect(unavailableHtml).not.toContain('>0</div>');
   });
 });
