@@ -151,16 +151,23 @@ describe('Person activity renderer', () => {
     expect(viewModel.hiddenRows).toBe(10);
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('2026-03-01');
-    expect(html).toContain('另有 10 条窗口内关系因展示上限未显示');
+    expect(html).toContain('本次返回 22 条关系，图卡展开 12 条；另有 10 条已返回关系未展开。');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
-    expect(html).toContain('作品来源观察（官方 v0 subject.meta_tags）');
+    expect(html).toContain('作品来源观察');
     expect(html).toContain('未观察到“原创”标签不等于“改编”');
-    expect(html).toContain('官方 meta_tags：原创、奇幻');
-    expect(html).toContain('来源操作（官方 v0 请求）');
-    expect(html).toContain('GET /v0/subjects/{subject_id} · 成功 · 尝试 22 · 成功 22 · 失败 0');
-    expect(html).toContain('来源与检索：Bangumi v0 · 声优关系 · 可判断为 TV 的动画');
-    expect(html).toContain('2026-08-15T00:00:00.000Z');
+    expect(html).toContain('官方标签：原创、奇幻');
+    expect(html).toContain('本次返回 22 条关系，图卡展开 12 条；另有 10 条已返回关系未展开。');
+    expect(html).toContain(
+      '数据来源：Bangumi v0 · 声优关系 · 可判断为 TV 的动画 · 获取于 2026-08-15',
+    );
+    expect(html).not.toContain('subject.meta_tags');
+    expect(html).not.toContain('2026-08-15T00:00:00.000Z');
+    expect(html).not.toContain('来源操作（官方 v0 请求）');
+    expect(html).not.toContain('GET /v0/subjects/{subject_id}');
+    expect(html).not.toContain('响应上限 1048576 bytes');
+    expect(html).not.toContain('详情并发');
+    expect(html).not.toContain('示例 ID');
 
     const comparisonResult: PersonActivityResult = {
       ...result,
@@ -314,11 +321,11 @@ describe('Person activity renderer', () => {
 
     expect(html).toContain('36 个日历月');
     expect(html).toContain('职位筛选：导演');
-    expect(html).toContain('职位筛选排除 2 · 职位未知 1');
-    expect(html).toContain('响应上限 1048576 bytes');
+    expect(html).toContain('职位筛选：排除 2 条 · 职位未知 1 条');
+    expect(html).not.toContain('响应上限 1048576 bytes');
   });
 
-  it('renders complete, partial, failed, and zero-request source operations at supported widths', () => {
+  it('keeps source operations in the structured result without printing transport details', () => {
     const operationResult: PersonActivityResult = {
       ...result,
       sourceOperations: [
@@ -328,18 +335,52 @@ describe('Person activity renderer', () => {
         { operation: 'GET /complete', attempted: 1, succeeded: 1, failed: 0 },
       ],
     };
+    const viewModel = buildPersonActivityViewModel(operationResult, { maxRows: 1 });
+    expect(viewModel.sourceOperations).toEqual(operationResult.sourceOperations);
 
     for (const width of [640, 960]) {
-      const html = renderHtmlTemplate(
-        buildPersonActivityViewModel(operationResult, { maxRows: 1 }),
-        'bangumi-dark',
-        {},
-        width,
-      );
-      expect(html).toContain('GET /zero · 未请求 · 尝试 0 · 成功 0 · 失败 0');
-      expect(html).toContain('GET /partial · 部分成功 · 尝试 2 · 成功 1 · 失败 1');
-      expect(html).toContain('GET /failed · 失败 · 尝试 1 · 成功 0 · 失败 1');
-      expect(html).toContain('GET /complete · 成功 · 尝试 1 · 成功 1 · 失败 0');
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      expect(html).not.toContain('来源操作（官方 v0 请求）');
+      expect(html).not.toContain('GET /zero');
+      expect(html).not.toContain('GET /partial');
+      expect(html).not.toContain('GET /failed');
+      expect(html).not.toContain('GET /complete');
+    }
+  });
+
+  it('caps mobile rows and distinguishes card-hidden rows from service omissions', async () => {
+    const boundedResult: PersonActivityResult = {
+      ...result,
+      coverage: {
+        ...result.coverage,
+        rowsEligible: 25,
+        rowsReturned: 22,
+        outputTruncated: true,
+        truncated: true,
+      },
+    };
+    const viewModel = buildPersonActivityViewModel(boundedResult, { maxRows: 24 });
+    expect(viewModel.rows).toHaveLength(22);
+
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+    expect(html).toContain('本次可计入 25 条，结构化结果返回 22 条；其余关系未纳入结果。');
+    expect(html).toContain('本次返回 22 条关系，图卡展开 12 条；另有 10 条已返回关系未展开。');
+    expect(html).toContain('Long Subject Name 12');
+    expect(html).not.toContain('Long Subject Name 13');
+
+    const service = new RenderService();
+    try {
+      const rendered = await service.renderCard(viewModel, { width: 360, deviceScaleFactor: 2 });
+      expect(rendered.template).toBe('person-activity');
+      expect(rendered.width).toBe(720);
+      expect(rendered.height).toBeLessThanOrEqual(8192);
+      expect(
+        rendered.buffer
+          .subarray(0, 8)
+          .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+      ).toBe(true);
+    } finally {
+      await service.close();
     }
   });
 
