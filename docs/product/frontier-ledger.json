@@ -443,9 +443,12 @@
         "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
         "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-10-04.json",
         "docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-10-04.json",
-        "tests/integration/tool-e2e-acceptance.test.ts"
+        "tests/integration/tool-e2e-acceptance.test.ts",
+        "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json",
+        "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
+        "tests/integration/mcp-result-presenter.test.ts"
       ],
-      "next_action": "Keep PARTIAL: current-catalog CLI 1.2.14 Agent/MCP readback for get_subject_overview and renderer artifact/answer checks for render_subject_overview now pass. The current result sections are partial and truncated (7/1 cast, 157/1 staff, 9/1 relations); a bounded sample does not prove a complete role list or source absence, and QQ/TIM display remains unverified.",
+      "next_action": "Keep PARTIAL: exact-candidate Agent/MCP evidence for get_subject_staff (CLI 1.2.14, subject 218707, limit 200) returned 157/157 staff and 7/7 cast rows; the 3,529-byte text view showed 30/45 groups and 30/157 member identities while omitting 15 groups, 127 memberships, and all 7 cast items. The answer tied two returned names to raw labels and said omissions do not prove absence. Existing overview/renderer evidence remains separate; QQ/TIM display is unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -507,6 +510,62 @@
             "partial_coverage_phrase_present": true,
             "unsupported_completeness_claim": false
           }
+        },
+        "subject_staff_agent_mcp_run89": {
+          "read_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json",
+          "research_note": "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
+          "candidate_sha": "c13fcff7a4c0073299581afb1814555439812aae",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "target_tool": "bangumi.get_subject_staff",
+          "requested_subject_id": 218707,
+          "requested_limit": 200,
+          "exact_arguments_verified": true,
+          "exact_target_call_completed": true,
+          "other_bangumi_tool_completed": false,
+          "result_readback_verified": true,
+          "text_utf8_bytes": 3529,
+          "text_limit_utf8_bytes": 3600,
+          "result_state": "complete",
+          "source_coverage": {
+            "production_staff": {
+              "observed": 157,
+              "returned": 157,
+              "truncated": false
+            },
+            "cast": {
+              "observed": 7,
+              "returned": 7,
+              "truncated": false
+            }
+          },
+          "text_projection": {
+            "visible_staff_groups": 30,
+            "omitted_staff_groups": 15,
+            "visible_staff_members": 30,
+            "omitted_staff_group_memberships": 127,
+            "cast_items_returned": 7,
+            "cast_items_visible": 0,
+            "cast_items_omitted": 7
+          },
+          "answer_check": {
+            "role_name_pairs_matched": 2,
+            "bounded_coverage_disclosure": true,
+            "omission_not_absence_disclosure": true,
+            "unsupported_completeness_claim": false,
+            "markdown_formatting_detected": false
+          },
+          "report_privacy": {
+            "prompt_persisted": false,
+            "answer_prose_persisted": false,
+            "person_names_persisted": false
+          },
+          "implementation": [
+            "apps/mcp/src/result-presenter.ts",
+            "tests/integration/mcp-result-presenter.test.ts"
+          ],
+          "integration_report_assertion": "tests/integration/tool-e2e-acceptance.test.ts",
+          "status_boundary": "PARTIAL; source response coverage does not prove all possible credits, text omits rows, and QQ/TIM remain untested."
         }
       }
     },
@@ -757,9 +816,12 @@
         "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
         "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-overview-2026-10-04.json",
         "docs/live-probes/pariya-agent-full-renderer-qa-e2e-render-subject-overview-2026-10-04.json",
-        "tests/integration/tool-e2e-acceptance.test.ts"
+        "tests/integration/tool-e2e-acceptance.test.ts",
+        "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json",
+        "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
+        "tests/integration/mcp-result-presenter.test.ts"
       ],
-      "next_action": "Keep PARTIAL: current-catalog CLI 1.2.14 Agent/MCP readback for get_subject_overview and renderer artifact/answer checks for render_subject_overview now pass. The current result sections are partial and truncated (7/1 cast, 157/1 staff, 9/1 relations); a bounded sample does not prove a complete role list or source absence, and QQ/TIM display remains unverified.",
+      "next_action": "Keep PARTIAL: the exact-candidate get_subject_staff answer demonstrated two returned raw-role/name pairs under the 3,600-byte MCP text cap. The source response returned 157 staff rows and 7 cast rows, but the text omitted 15 groups, 127 memberships, and all cast items; this cannot establish the full credit list or absence of an unshown role. QQ/TIM remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -820,6 +882,62 @@
             "partial_coverage_phrase_present": true,
             "unsupported_completeness_claim": false
           }
+        },
+        "subject_staff_agent_mcp_run89": {
+          "read_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json",
+          "research_note": "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
+          "candidate_sha": "c13fcff7a4c0073299581afb1814555439812aae",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "target_tool": "bangumi.get_subject_staff",
+          "requested_subject_id": 218707,
+          "requested_limit": 200,
+          "exact_arguments_verified": true,
+          "exact_target_call_completed": true,
+          "other_bangumi_tool_completed": false,
+          "result_readback_verified": true,
+          "text_utf8_bytes": 3529,
+          "text_limit_utf8_bytes": 3600,
+          "result_state": "complete",
+          "source_coverage": {
+            "production_staff": {
+              "observed": 157,
+              "returned": 157,
+              "truncated": false
+            },
+            "cast": {
+              "observed": 7,
+              "returned": 7,
+              "truncated": false
+            }
+          },
+          "text_projection": {
+            "visible_staff_groups": 30,
+            "omitted_staff_groups": 15,
+            "visible_staff_members": 30,
+            "omitted_staff_group_memberships": 127,
+            "cast_items_returned": 7,
+            "cast_items_visible": 0,
+            "cast_items_omitted": 7
+          },
+          "answer_check": {
+            "role_name_pairs_matched": 2,
+            "bounded_coverage_disclosure": true,
+            "omission_not_absence_disclosure": true,
+            "unsupported_completeness_claim": false,
+            "markdown_formatting_detected": false
+          },
+          "report_privacy": {
+            "prompt_persisted": false,
+            "answer_prose_persisted": false,
+            "person_names_persisted": false
+          },
+          "implementation": [
+            "apps/mcp/src/result-presenter.ts",
+            "tests/integration/mcp-result-presenter.test.ts"
+          ],
+          "integration_report_assertion": "tests/integration/tool-e2e-acceptance.test.ts",
+          "status_boundary": "PARTIAL; source response coverage does not prove all possible credits, text omits rows, and QQ/TIM remain untested."
         }
       }
     },
@@ -2361,11 +2479,73 @@
         "tests/integration/live-subject-credit.acceptance.test.ts",
         "tests/render/subject-credit-mobile-layout.test.ts",
         "packages/renderer/src/templates/CastCard.tsx",
-        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx",
+        "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json",
+        "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "tests/integration/tool-e2e-acceptance.test.ts"
       ],
-      "next_action": "Run #69 live exact-relation checks confirm 100 official-v0 staff rows across 22 source roles, with all bounded member IDs resolving to returned staff items. Agent/MCP target call passed once, but answer-level role/person validation is pending. Renderer PNG readback and visual review succeeded; the consolidated strict probe report failed to persist after ENOSPC.",
+      "next_action": "Keep PARTIAL: exact-candidate public Agent/MCP answer checks passed for two raw-role/name pairs, with 3,529/3,600 UTF-8 text bytes. The projection omits 15 role groups, 127 staff memberships, and all 7 cast items even though the bounded source response returned 157/157 staff and 7/7 cast rows. No complete-credit or role-absence claim; QQ/TIM remains untested.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "subject_staff_agent_mcp_run89": {
+          "read_report": "docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-staff-2026-10-04.json",
+          "research_note": "docs/research/run89-subject-staff-mcp-bounded-answer-2026-10-04.md",
+          "candidate_sha": "c13fcff7a4c0073299581afb1814555439812aae",
+          "catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+          "cli_version": "1.2.14",
+          "target_tool": "bangumi.get_subject_staff",
+          "requested_subject_id": 218707,
+          "requested_limit": 200,
+          "exact_arguments_verified": true,
+          "exact_target_call_completed": true,
+          "other_bangumi_tool_completed": false,
+          "result_readback_verified": true,
+          "text_utf8_bytes": 3529,
+          "text_limit_utf8_bytes": 3600,
+          "result_state": "complete",
+          "source_coverage": {
+            "production_staff": {
+              "observed": 157,
+              "returned": 157,
+              "truncated": false
+            },
+            "cast": {
+              "observed": 7,
+              "returned": 7,
+              "truncated": false
+            }
+          },
+          "text_projection": {
+            "visible_staff_groups": 30,
+            "omitted_staff_groups": 15,
+            "visible_staff_members": 30,
+            "omitted_staff_group_memberships": 127,
+            "cast_items_returned": 7,
+            "cast_items_visible": 0,
+            "cast_items_omitted": 7
+          },
+          "answer_check": {
+            "role_name_pairs_matched": 2,
+            "bounded_coverage_disclosure": true,
+            "omission_not_absence_disclosure": true,
+            "unsupported_completeness_claim": false,
+            "markdown_formatting_detected": false
+          },
+          "report_privacy": {
+            "prompt_persisted": false,
+            "answer_prose_persisted": false,
+            "person_names_persisted": false
+          },
+          "implementation": [
+            "apps/mcp/src/result-presenter.ts",
+            "tests/integration/mcp-result-presenter.test.ts"
+          ],
+          "integration_report_assertion": "tests/integration/tool-e2e-acceptance.test.ts",
+          "status_boundary": "PARTIAL; source response coverage does not prove all possible credits, text omits rows, and QQ/TIM remain untested."
+        }
+      }
     },
     {
       "id": "OP-006",
