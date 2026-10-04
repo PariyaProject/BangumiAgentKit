@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "g06_current_candidate_subject_cast_agent_canary",
+  "createdOn": "2026-10-05",
+  "candidate": {
+    "sha": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
+    "baseSha": "937488cd88623a3aa201a4838bdfe4a4791a557e",
+    "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+    "agentImageRevision": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
+    "cliVersion": "1.2.14"
+  },
+  "call": {
+    "tool": "bangumi.get_subject_cast",
+    "completedBangumiToolCalls": 1,
+    "onlyAllowedToolCompleted": true,
+    "subjectId": 218707,
+    "limit": 100
+  },
+  "textProjection": {
+    "readBackInAgentEventStream": true,
+    "utf8Bytes": 1373,
+    "maxUtf8Bytes": 3600,
+    "castRowsReturned": 7,
+    "castRowsIncluded": 4,
+    "castRowsOmittedFromText": 3,
+    "actorRowsReturned": 7,
+    "actorRowsIncluded": 4,
+    "actorRowsOmittedFromText": 3,
+    "coverage": {
+      "observed": 7,
+      "returned": 7,
+      "truncated": false,
+      "schemaDriftRows": 0,
+      "invalidActorIdRows": 0
+    }
+  },
+  "answerCheckMethod": "row-separated-exact-character-actor-pairs-v1",
+  "answerCheck": {
+    "visibleCastRowsCount": 4,
+    "castRowsMatchedCount": 4,
+    "missingCastRowsCount": 0,
+    "mismatchedCastRowsCount": 0,
+    "duplicateAnswerRowsCount": 0,
+    "unmatchedAnswerRowsCount": 0,
+    "unstructuredAnswerLinesCount": 0,
+    "characterActorPairsMatchedCount": 4,
+    "rawRelationLabelsMatchedCount": 4,
+    "boundedCoverageDisclosurePresent": true,
+    "omissionNotAbsencePresent": true,
+    "unsupportedCompletenessClaim": false,
+    "unsupportedAbsenceClaim": false,
+    "markdownFormattingDetected": false,
+    "passed": true
+  },
+  "structuredContentEvidence": {
+    "separateFieldExposedInAgentEventStream": false,
+    "preservationRegressionPassed": true,
+    "preservationRegression": "tests/integration/mcp-result-presenter.test.ts verifies response.structuredContent equals the full 100-row synthetic source result.",
+    "liveFullObjectSubsetReadback": "NOT_EXPOSED_BY_ANTIGRAVITY_EVENT_STREAM"
+  },
+  "frontierStatus": "PARTIAL"
+}

@@ -356,7 +356,9 @@
         "tests/integration/mcp-result-presenter.test.ts",
         "scripts/acceptance/subject-cast-answer-check.mjs",
         "docs/research/run89-g06-cast-mcp-bounded-answer-2026-10-04.md",
+        "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
         "tests/unit/subject-cast-answer-check.test.ts",
+        "tests/unit/subject-cast-canary-report.test.ts",
         "tests/render/subject-cast-g06.test.ts",
         "tests/integration/live-subject-credit.acceptance.test.ts",
         "packages/bangumi-core/src/services/character-service.ts",
@@ -372,7 +374,7 @@
         "tests/semantic/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "A bounded get_subject_cast MCP text projection now preserves returned character/actor identities, raw relation labels, source coverage and omission counts within 3600 UTF-8 bytes while leaving structuredContent unchanged; its 100-row adversarial fixture was 398109 bytes before compaction. Keep PARTIAL until one exact current-candidate public Agent call verifies only returned character/actor pairs with a bounded-coverage answer; omitted or unobserved rows do not prove absence. The existing CastCard/SubjectOverview evidence still does not prove exhaustive source coverage or a universal main/support taxonomy, and QQ/TIM remains separate.",
+      "next_action": "The bounded get_subject_cast MCP text projection preserves returned character/actor identities, raw relation labels, source coverage and omission counts within 3600 UTF-8 bytes; the 100-row adversarial fixture was 398109 bytes before compaction and its full structuredContent remains equality-wise unchanged. One exact Candidate A public Agent call used subjectId=218707/limit=100, completed only get_subject_cast, returned 7 rows with 4 visible and 3 omitted from 1373-byte text, and passed the exact visible row-pair and scope-disclosure checks. The Antigravity event stream does not expose a separate structuredContent field, so do not claim live full-object readback; the integration equality assertion covers preservation. Keep PARTIAL because one response does not establish exhaustive cast coverage or a universal main/support taxonomy; QQ/TIM remains separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -380,6 +382,7 @@
         "tests": [
           "tests/integration/mcp-result-presenter.test.ts",
           "tests/unit/subject-cast-answer-check.test.ts",
+          "tests/unit/subject-cast-canary-report.test.ts",
           "tests/render/subject-cast-g06.test.ts",
           "tests/integration/live-subject-credit.acceptance.test.ts",
           "tests/render/subject-credit-mobile-layout.test.ts",
@@ -394,6 +397,7 @@
           "packages/renderer/src/templates/CastCard.tsx"
         ],
         "live_probe": "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
+        "current_agent_canary_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
         "mcp_text_projection": {
           "tool": "bangumi.get_subject_cast",
           "limit_utf8_bytes": 3600,
@@ -407,7 +411,26 @@
             "invalidActorIdRows"
           ],
           "answer_check_method": "row-separated-exact-character-actor-pairs-v1",
-          "answer_report_pending": true
+          "answer_report_pending": false,
+          "current_candidate_answer_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
+          "current_candidate_answer_report_sha": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
+          "current_candidate_catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e"
+        },
+        "current_candidate_agent_canary": {
+          "tool": "bangumi.get_subject_cast",
+          "completed_tool_calls": 1,
+          "subject_id": 218707,
+          "limit": 100,
+          "text_utf8_bytes": 1373,
+          "text_limit_utf8_bytes": 3600,
+          "rows_returned": 7,
+          "rows_included": 4,
+          "rows_omitted_from_text": 3,
+          "answer_rows_matched": 4,
+          "answer_check_passed": true,
+          "separate_structured_content_field_in_agent_stream": false,
+          "structured_content_equality_regression_passed": true,
+          "status": "BOUNDED_ANSWER_PASS_FULL_COVERAGE_UNPROVEN"
         },
         "source_contract": "Official v0 subject-character relations through the exact e606ac2431a930384d85c78715e5abfcde9ce3dd source. One ToolRegistry call with subjectId=218707 and limit=100 observed and returned 7 rows, all with valid actor IDs, raw labels 2 主角/5 配角, and no truncation. A separate forced public Agent/MCP get_subject_cast call completed for configured subject 218707 with prompt limit=5; its sanitizer retains neither actual arguments nor result rows. The renderer Artifact call returned/read back from the same exact source. The sample does not prove endpoint-wide completeness or a universal role taxonomy.",
         "observed_at": "2026-10-03T18:10:58Z",
