@@ -23,11 +23,14 @@ unsupported completeness claim or Markdown formatting.
 
 The first review found that the original checker counted role and name strings
 independently, allowing swapped or unrelated mentions to pass. The sanitized
-report now binds the explicit local-association checker by SHA-256. Its focused
-regressions reject swapped, unrelated, negated, and partial-substring pairs;
-they also cover literal raw labels with regex metacharacters. Only a count and
-checker hash are stored. The replacement public call
-used the exact c13 source and 96-tool catalog binding.
+report binds the bounded-positive-statement checker by SHA-256. It recognizes
+only direct role-first and name-first declarations, and rejects disavowal in the
+local clause, a disavowing parenthetical, or a sentence-level correction. Its
+focused regressions reject swapped, unrelated, negated, partial-substring, and
+all four reproduced false-positive forms; they also cover literal raw labels
+with regex metacharacters. Only counts, flags, and the checker hash are stored.
+The replacement public call used the exact c13 source and 96-tool catalog
+binding.
 
 The report keeps only public raw role labels, counts, tool/schema metadata, and
 boolean answer checks. It contains no prompt, answer prose, or person names.
@@ -42,13 +45,17 @@ The deterministic presenter regression separately verifies that the complete
    relation labels; it adds no new source or role taxonomy.
 2. **Capability maturity and user journey.** G07 and G17 can now receive an
    answer from a single Agent-facing staff tool. Only rows visible in the
-   bounded text can support the answer. Source-level retrieval completeness
-   does not turn the omitted text groups into a complete displayed list.
+   bounded text can support the answer. The checker requires a positive local
+   role/name statement and rejects negation before or after that relation,
+   parenthetical disavowal, and sentence-level correction. Source-level
+   retrieval completeness does not turn omitted text groups into a complete
+   displayed list.
 3. **Agent UX and orchestration.** The isolated Agent used exactly one
    `get_subject_staff` call with the requested subject and limit. Its response
    tied four returned people to their raw role labels and stated the omission
-   limit without another Bangumi tool call. The checker requires an explicit
-   positive local association and returns no answer text or person names.
+   limit without another Bangumi tool call. The bounded-statement checker
+   returns no answer text or person names and has exact regressions for all
+   four reproduced disavowal forms.
 4. **Renderer and Standalone quality.** This change does not alter either
    surface. Prior overview-card and Standalone evidence remains separate; this
    report does not claim current QQ or TIM rendering.

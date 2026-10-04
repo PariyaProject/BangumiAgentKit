@@ -704,7 +704,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       resultReadbackAvailable: true,
       roleLabelsMentioned: true,
       memberNamesMentioned: true,
-      associationCheckMethod: 'explicit-positive-local-role-name-v1',
+      associationCheckMethod: 'bounded-positive-statement-v2',
       associationCheckerSha256: createHash('sha256')
         .update(readFileSync(join(ROOT, 'scripts/acceptance/subject-staff-answer-check.mjs')))
         .digest('hex'),

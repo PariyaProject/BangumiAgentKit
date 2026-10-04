@@ -63,4 +63,25 @@ describe('subject-staff answer association checks', () => {
       countExplicitSubjectStaffPairs('有限结果：不由人员甲担任导演，人员乙并非原作。', pairs),
     ).toBe(0);
   });
+
+  it('rejects role/name mappings disavowed before the relation', () => {
+    expect(countExplicitSubjectStaffPairs('不是 导演为人员甲，也不是 原作为人员乙。', pairs)).toBe(
+      0,
+    );
+  });
+
+  it('rejects role/name mappings marked erroneous in parentheticals', () => {
+    expect(
+      countExplicitSubjectStaffPairs('导演：人员甲（错误），原作：人员乙（错误）。', pairs),
+    ).toBe(0);
+    expect(
+      countExplicitSubjectStaffPairs('人员甲担任导演（错误），人员乙是原作（错误）。', pairs),
+    ).toBe(0);
+  });
+
+  it('rejects mappings corrected at the sentence level', () => {
+    expect(
+      countExplicitSubjectStaffPairs('导演为人员甲、原作为人员乙，这两项说法都不正确。', pairs),
+    ).toBe(0);
+  });
 });
