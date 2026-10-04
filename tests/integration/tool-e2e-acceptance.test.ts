@@ -133,6 +133,15 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
   );
 }
 
+const CURRENT_FULL_PUBLIC_QA_EVIDENCE = FULL_PUBLIC_QA_EVIDENCE.filter((report: any) => {
+  const name = report.scenarios?.[0]?.id;
+  return typeof name === 'string' && toolContractMatchesCurrent(report, name);
+});
+const CURRENT_FULL_RENDERER_QA_EVIDENCE = FULL_RENDERER_QA_EVIDENCE.filter((report: any) => {
+  const name = report.scenarios?.[0]?.id;
+  return typeof name === 'string' && toolContractMatchesCurrent(report, name);
+});
+
 function rowsByTool(): Map<string, string[]> {
   const rows = new Map<string, string[]>();
   for (const line of TABLE.split(/\r?\n/u)) {
@@ -265,7 +274,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
-        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -279,7 +287,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
-        'bangumi.get_subject_overview',
         'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
@@ -329,13 +336,22 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
-        'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
         'bangumi.update_collection',
         'bangumi.update_episode_progress',
       ].sort(),
     );
+
+    const staleCatalogBoundTools = [
+      'bangumi.get_person_activity',
+      'bangumi.get_subject_overview',
+      'bangumi.render_subject_overview',
+    ];
+    expect(staleCatalogBoundTools.filter((name) => evidenceNames.includes(name))).toEqual([]);
+    for (const name of staleCatalogBoundTools) {
+      expect(statusMark(rows.get(name)?.[9]), `${name} stale model/MCP report`).toBe('⬜');
+    }
 
     for (const [name, fields] of rows) {
       expect(fields, name).toHaveLength(13);
@@ -384,7 +400,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         // schema change in this Epoch; it remains history, while the current full
         // profile report supplies fresh evidence for that exact tool contract.
         expect(call.name).toBe('bangumi.query_subjects');
-        const currentReport = FULL_PUBLIC_QA_EVIDENCE.find(
+        const currentReport = CURRENT_FULL_PUBLIC_QA_EVIDENCE.find(
           (report: any) => report.scenarios?.[0]?.id === call.name,
         );
         expect(currentReport).toBeDefined();
@@ -392,7 +408,9 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       }
     }
 
-    expect(FULL_PUBLIC_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
+    expect(
+      CURRENT_FULL_PUBLIC_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
+    ).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
         'bangumi.auth_list_accounts',
@@ -412,7 +430,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
-        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -425,7 +442,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
-        'bangumi.get_subject_overview',
         'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
@@ -444,7 +460,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.query_subjects',
       ].sort(),
     );
-    for (const report of FULL_PUBLIC_QA_EVIDENCE) {
+    for (const report of CURRENT_FULL_PUBLIC_QA_EVIDENCE) {
       expect(report).toMatchObject({
         schemaVersion: 1,
         evidenceKind: 'antigravity_cli_mcp_tool_use',
@@ -469,7 +485,9 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
   });
 
   it('accepts only renderer evidence containing a verified temporary PNG artifact', () => {
-    expect(FULL_RENDERER_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort()).toEqual(
+    expect(
+      CURRENT_FULL_RENDERER_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
+    ).toEqual(
       [
         'bangumi.render_calendar',
         'bangumi.render_cast_card',
@@ -491,12 +509,11 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
-        'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
         'bangumi.render_subject_stats_intelligence',
       ].sort(),
     );
-    for (const report of FULL_RENDERER_QA_EVIDENCE) {
+    for (const report of CURRENT_FULL_RENDERER_QA_EVIDENCE) {
       expect(report).toMatchObject({
         schemaVersion: 1,
         evidenceKind: 'antigravity_cli_mcp_tool_use',
@@ -829,7 +846,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
 
   it('continues to mark the public QA probe as Agent/MCP only', () => {
     const rows = rowsByTool();
-    for (const report of FULL_PUBLIC_QA_EVIDENCE) {
+    for (const report of CURRENT_FULL_PUBLIC_QA_EVIDENCE) {
       const name = report.scenarios[0].id;
       expect(statusMark(rows.get(name)?.[9])).toBe('✅');
       expect(report.qqPipelineTested).toBe(false);

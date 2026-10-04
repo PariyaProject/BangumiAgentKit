@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-03T21:00:10.638Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+  "probeScriptSha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+  "sourceProgram": "scripts/smoke-public-tools-online.ts",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 3,
+  "httpRequests": 12,
+  "selectedTools": [
+    "bangumi.get_subject_overview",
+    "bangumi.get_person_activity",
+    "bangumi.render_subject_overview"
+  ],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "redactions": [
+    "username values are omitted from recorded inputs"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_subject_overview",
+      "input": {
+        "subjectId": 41529,
+        "maxCast": 2,
+        "maxStaff": 2,
+        "maxRelations": 2
+      },
+      "httpRequests": 5,
+      "result": {
+        "state": "partial",
+        "subjectId": 41529,
+        "warningsCount": 3
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "identityMatchesRequest": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_person_activity",
+      "input": {
+        "personId": 3474,
+        "windowMonths": 3,
+        "maxRelations": 1,
+        "maxSubjectDetails": 1,
+        "maxRows": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "warningsCount": 1
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_subject_overview",
+      "input": {
+        "subjectId": 41529,
+        "maxCast": 1,
+        "maxStaff": 1,
+        "maxRelations": 1
+      },
+      "httpRequests": 5,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}

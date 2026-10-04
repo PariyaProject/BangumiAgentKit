@@ -155,10 +155,10 @@ describe('G09 Girls’ Last Tour bounded watch-order scenario', () => {
     }
 
     const partialViewModel = { ...viewModel, state: 'partial' as const };
-    const unavailableViewModel = { ...viewModel, state: 'not_computable' as const };
+    const notComputableViewModel = { ...viewModel, state: 'not_computable' as const };
     for (const [stateViewModel, expectedLabel] of [
       [partialViewModel, '部分覆盖'],
-      [unavailableViewModel, '当前不可计算'],
+      [notComputableViewModel, '当前不可计算'],
     ] as const) {
       for (const width of [360, 720]) {
         const html = renderHtmlTemplate(stateViewModel, 'bangumi-dark', {}, width);

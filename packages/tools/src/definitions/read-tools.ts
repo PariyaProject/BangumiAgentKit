@@ -209,7 +209,7 @@ export function createReadTools(
   const getSubjectOverviewTool = defineTool({
     name: 'bangumi.get_subject_overview',
     description:
-      '一次获取指定条目的证据型智能概览：基本信息、官方评分/收藏统计、角色与声优、制作人员和关联条目。各区段独立保留 complete/partial/unavailable/not_computable 状态、覆盖、来源和限制；不宣称完整角色表、职员表、系列图或历史趋势。',
+      '一次获取指定条目的证据型智能概览：基本信息、官方评分/收藏统计、角色与声优、制作人员和关联条目。各区段独立保留 complete/partial/unavailable/not_computable 状态、覆盖、来源和限制；不宣称完整角色表、职员表、系列图或历史趋势。制作人员按本次官方返回的原始职位标签分组，不映射为“主创”等统一职位分类；未观察到某标签只表示本次有界结果未返回，不代表该职位不存在。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       maxCast: z

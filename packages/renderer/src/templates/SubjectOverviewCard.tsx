@@ -25,7 +25,7 @@ function stateLabel(
 ): string {
   switch (state) {
     case 'complete':
-      return '完整';
+      return '本次范围内完整';
     case 'partial':
       return '部分覆盖';
     case 'not_computable':
@@ -378,6 +378,17 @@ export const SubjectOverviewCard: React.FC<SubjectOverviewCardProps> = ({
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.md }}>
         <Panel title="制作人员" state={viewModel.staff.state} theme={theme}>
+          <div
+            style={{
+              color: theme.textMuted,
+              fontSize: '12px',
+              lineHeight: 1.45,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            职位按本次 Bangumi
+            返回的原始标签分组；未观察到某标签只表示本次有界结果未返回，不代表职位不存在，也不推断“主创”等分类。
+          </div>
           {viewModel.staff.groups.length === 0 ? (
             <div style={{ color: theme.textMuted, fontSize: '14px' }}>未返回制作人员关系。</div>
           ) : (

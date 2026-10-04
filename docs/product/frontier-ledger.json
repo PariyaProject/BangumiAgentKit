@@ -236,9 +236,14 @@
         "packages/renderer/src/view-model-builders/index.ts",
         "packages/tools/src/definitions/render-presentation-tools.ts",
         "tests/render/subject-credit-mobile-layout.test.ts",
-        "tests/integration/tool-catalog-completeness.test.ts"
+        "tests/integration/tool-catalog-completeness.test.ts",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx",
+        "packages/tools/src/definitions/read-tools.ts",
+        "tests/render/subject-overview.test.ts",
+        "tests/semantic/subject-overview.test.ts",
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "The G06 CastCard now carries official-v0 response coverage through CharacterService, ViewModel, and Renderer: observed rows, parsed/returned rows, truncation, schema-drift rows, invalid actor IDs, and the separate card display cap are disclosed. Service-emittable fixtures cover a clean 7/7 response, a 7-observed/3-returned bounded source result with a 2-row card cap, and a malformed actor row; narrow and desktop card layouts cover the note. Keep PARTIAL: one response does not prove an exhaustive source cast or universal main/support taxonomy; natural-language Agent answers and QQ/TIM client display remain separate acceptance gates.",
+      "next_action": "The CastCard carries same-response official-v0 coverage through CharacterService and the Renderer; observed, returned, truncated, schema-drift, invalid-actor, and card-cap boundaries remain explicit. The consolidated SubjectOverviewCard now labels complete sections 本次范围内完整 as well. Keep PARTIAL: neither bounded card view proves exhaustive cast coverage or a universal role taxonomy; natural-language Agent and QQ/TIM acceptance remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -280,6 +285,20 @@
             "focused_result": "3 files / 10 tests passed on Run #78 implementation working tree before frontier-ledger update."
           },
           "status_boundary": "G06 remains PARTIAL; current-source natural-language Agent result and QQ/TIM remain separate, and one official-v0 response does not establish complete cast coverage."
+        },
+        "subject_overview_status_and_staff_contract": {
+          "previous_complete_label": "完整",
+          "current_complete_label": "本次范围内完整",
+          "scope": "A complete SubjectOverview result means completion within this selected bounded retrieval, not exhaustive coverage. Staff groups preserve raw Bangumi relation labels; labels absent from this bounded result are not proof that a credit does not exist, and no main/core or canonical role taxonomy is inferred.",
+          "renderer_test": "tests/render/subject-overview.test.ts",
+          "tool_contract_test": "tests/semantic/subject-overview.test.ts",
+          "frontier_status": "PARTIAL; exact-source natural-language Agent/MCP and QQ/TIM acceptance remain separate."
+        },
+        "subject_overview_live_public_probe": {
+          "report": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+          "result": "PASS 1 file / 1 opt-in test; official v0 through public ToolRegistry; 7 cast/actor links; 100 staff rows / 22 raw roles; overview partial with 24 staff rows in 6 groups and 9 relations; 720x5228 renderer Artifact visually inspected.",
+          "user_clients_tested": false,
+          "oauth_or_account_data_used": false
         }
       }
     },
@@ -294,11 +313,27 @@
         "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
         "tests/integration/live-subject-credit.acceptance.test.ts",
         "tests/render/subject-credit-mobile-layout.test.ts",
-        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx",
+        "packages/tools/src/definitions/read-tools.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/render/subject-overview.test.ts",
+        "tests/semantic/subject-overview.test.ts",
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "Run #69 public ToolRegistry returned 100 staff rows across 22 exact relation labels; all group memberIds joined to returned staff identities. The bounded overview has 24 staff rows in 6 partial groups. Agent/MCP called get_subject_overview once, but answer-level role/person checks were added afterward and remain unrun. Renderer artifact readback succeeded, but its strict report was lost after ENOSPC.",
+      "next_action": "Run #69 public ToolRegistry returned 100 staff rows across 22 exact relation labels; the bounded overview returned 24 rows in 6 partial groups. The current public ToolRegistry and Renderer acceptance passed on this Epoch, and SubjectOverviewCard now scopes complete state as 本次范围内完整 while explaining raw labels and unknown roles. Keep PARTIAL pending exact-source answer-level Agent/MCP validation and QQ/TIM display.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "subject_overview_status_and_staff_contract": {
+          "previous_complete_label": "完整",
+          "current_complete_label": "本次范围内完整",
+          "staff_semantics": "Staff groups use exact raw Bangumi relation labels; an unobserved label is not proof of an absent credit and no main/core or canonical-role taxonomy is inferred.",
+          "renderer_test": "tests/render/subject-overview.test.ts",
+          "tool_contract_test": "tests/semantic/subject-overview.test.ts",
+          "status_boundary": "PARTIAL pending exact-source answer-level Agent/MCP and QQ/TIM acceptance."
+        },
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+      }
     },
     {
       "id": "G08",
@@ -321,11 +356,22 @@
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
         "tests/render/render-cards.test.ts",
-        "docs/research/run69-subject-stats-identity-agent-mcp.md"
+        "docs/research/run69-subject-stats-identity-agent-mcp.md",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx",
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "The stats card identifies official-v0 title/nameCn and stable ID while keeping statistics available when identity is missing or mismatched. Fixtures cover degradation, mixed-script title bounds, 320/360/520 CSS px, 360px/2x MCP, direct full-resolution PNG output, and retained formula/snapshot caveats. Exact-source natural-language Agent/MCP acceptance passed for Candidate 9798f2d; repeat it against each changed Candidate before review. QQ/TIM client image display remains unverified.",
+      "next_action": "The stats card identifies official-v0 title/nameCn and stable ID while keeping statistics available when identity is missing or mismatched. Fixtures cover degradation, mixed-script title bounds, 320/360/520 CSS px, 360px/2x MCP, direct full-resolution PNG output, and retained formula/snapshot caveats. The consolidated SubjectOverviewCard also qualifies complete section state as 本次范围内完整; its current public artifact was inspected. Exact-source stats Agent/MCP evidence remains tied to its recorded Candidate; QQ/TIM client image display remains unverified, so keep PARTIAL.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": ["OP-012"]
+      "related_ids": ["OP-012"],
+      "evidence": {
+        "subject_overview_status_label": {
+          "previous_complete_label": "完整",
+          "current_complete_label": "本次范围内完整",
+          "test": "tests/render/subject-overview.test.ts",
+          "status_boundary": "The dedicated stats formula and coverage are unchanged; G08 remains PARTIAL pending current-source Agent/MCP and QQ/TIM image acceptance."
+        },
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+      }
     },
     {
       "id": "G09",
@@ -341,9 +387,12 @@
         "tests/render/series-watch-order-g09.test.ts",
         "packages/bangumi-core/src/services/series-service.ts",
         "packages/tools/src/definitions/read-tools.ts",
-        "packages/renderer/src/templates/SeriesRelationsCard.tsx"
+        "packages/renderer/src/templates/SeriesRelationsCard.tsx",
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx",
+        "tests/render/subject-overview.test.ts",
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "Keep PARTIAL. The SeriesRelationsCard now labels state=complete as 本次范围内完整: the label describes only a completed traversal within selected depth, node and media bounds, not exhaustive franchise coverage. Partial and not-computable labels remain unchanged; the service-emittable G09 regression asserts all three states at 360/720 CSS px while retaining the bounded deterministic recommendation and noncanonical-order caveat. The source sample remains depth=2/maxNodes=8 with one direct animated derivative, 9 unique related records across 10 relation rows, and 8 excluded non-anime records. G09 remains PARTIAL because the bounded read is not an exhaustive graph or unique official order; natural-language answer validation and QQ/TIM display remain separate.",
+      "next_action": "Keep PARTIAL. SeriesRelationsCard and the relations section of SubjectOverviewCard now label complete state 本次范围内完整; each phrase describes only the selected traversal/retrieval bounds, not exhaustive franchise coverage. The G09 regression preserves partial/not-computable labels, bounded relation evidence, exclusions, and the noncanonical-order caveat. The source sample remains depth=2/maxNodes=8 with one direct animated derivative, 9 unique related records across 10 relation rows, and 8 excluded non-anime records. No exhaustive graph or unique official order is established; natural-language answer validation and QQ/TIM display remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -368,7 +417,14 @@
           "scope": "State=complete means traversal completed within the selected depth/node/media bounds; it does not assert an exhaustive franchise graph or an official canonical order.",
           "review_advisory": "PR76-P2-COVERAGE-STATUS-LABEL-001",
           "test": "tests/render/series-watch-order-g09.test.ts"
-        }
+        },
+        "subject_overview_status_label": {
+          "previous_complete_label": "完整",
+          "current_complete_label": "本次范围内完整",
+          "test": "tests/render/subject-overview.test.ts",
+          "status_boundary": "The bounded SubjectOverview relations section is not an exhaustive graph or official order."
+        },
+        "live_subject_overview_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       }
     },
     {
@@ -522,11 +578,26 @@
         "docs/research/subject-credit-mobile-overview-run69-2026-10-03.md",
         "tests/integration/live-subject-credit.acceptance.test.ts",
         "tests/render/subject-credit-mobile-layout.test.ts",
-        "packages/renderer/src/templates/SubjectOverviewCard.tsx"
+        "packages/renderer/src/templates/SubjectOverviewCard.tsx",
+        "packages/tools/src/definitions/read-tools.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "tests/render/subject-overview.test.ts",
+        "tests/semantic/subject-overview.test.ts",
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
       ],
-      "next_action": "The live source-role labels included music-production/song credits but no 原作/导演/脚本 labels. The earlier exact-source Agent/MCP call did not run the new answer validator; a clean Renderer report is also pending after ENOSPC. Keep PARTIAL until answer-level checks confirm absent roles are not invented and strict Renderer evidence is recorded.",
+      "next_action": "The current public ToolRegistry sample included music-production/song credits but no 原作/导演/脚本 labels; the 100-row staff response and 24-row/6-group overview are documented in the current public probe. SubjectOverviewCard now explains that labels are raw and an unobserved role is not proof of absence; tool descriptions carry the same restriction. Keep PARTIAL until the stricter exact-source Agent/MCP answer validator runs on the current catalog and QQ/TIM acceptance is complete.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "subject_overview_staff_contract": {
+          "unobserved_role_semantics": "Not observed in this bounded result; not proof the credit does not exist.",
+          "role_taxonomy": "Preserve raw Bangumi labels; do not infer main/core or canonical role classes.",
+          "renderer_test": "tests/render/subject-overview.test.ts",
+          "tool_contract_test": "tests/semantic/subject-overview.test.ts",
+          "status_boundary": "PARTIAL pending exact-source natural-language Agent/MCP and QQ/TIM acceptance."
+        },
+        "live_public_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+      }
     },
     {
       "id": "G18",

@@ -172,6 +172,20 @@ export function inspectFrontierLedger(
         status: record?.status,
       });
     }
+    if (Array.isArray(record?.source_refs)) {
+      const seenReferences = new Set();
+      for (const reference of record.source_refs) {
+        if (seenReferences.has(reference)) {
+          issue(
+            issues,
+            'FRONTIER_REFERENCE_DUPLICATE',
+            `${label}.source_refs contains a duplicate reference`,
+            { id: record?.id, reference },
+          );
+        }
+        seenReferences.add(reference);
+      }
+    }
     validateReferences(issues, record?.source_refs, `${label}.source_refs`, pathExists);
     if (!Array.isArray(record?.related_ids)) {
       issue(issues, 'FRONTIER_RELATIONS_INVALID', `${label}.related_ids must be an array`);

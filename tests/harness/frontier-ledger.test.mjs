@@ -82,6 +82,20 @@ test('DELIVERED requires real capability and test references', () => {
   assert.ok(result.issues.some(({ code }) => code === 'FRONTIER_DELIVERED_CAPABILITY_UNKNOWN'));
 });
 
+test('a frontier record cannot repeat the same source reference', () => {
+  const reference = 'docs/product/opportunity-log.md';
+  const result = inspectFrontierLedger(ledger([record({ source_refs: [reference, reference] })]));
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.issues.some(
+      ({ code, details }) =>
+        code === 'FRONTIER_REFERENCE_DUPLICATE' &&
+        details.id === 'OP-004' &&
+        details.reference === reference,
+    ),
+  );
+});
+
 test('a nonexistent Charter boundary, including the Harness automation rule, cannot close product work', () => {
   const value = ledger([
     record({

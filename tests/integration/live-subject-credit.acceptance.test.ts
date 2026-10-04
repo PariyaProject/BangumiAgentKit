@@ -48,6 +48,9 @@ describe.skipIf(!RUN_LIVE)('current public subject-credit acceptance', () => {
       { subjectId: SUBJECT_ID, maxCast: 20, maxStaff: 24, maxRelations: 12 },
       context,
     )) as Record<string, unknown>;
+    const overviewToolDescription = registry.getTool('bangumi.get_subject_overview')?.description;
+    expect(overviewToolDescription).toContain('原始职位标签分组');
+    expect(overviewToolDescription).toContain('不代表该职位不存在');
 
     expect(cast.subjectId).toBe(SUBJECT_ID);
     expect(cast.status).toBe('ok');
