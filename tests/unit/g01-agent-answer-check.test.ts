@@ -9,18 +9,19 @@ import {
 const result = {
   state: 'ok',
   items: [
-    { id: 1001, displayName: '作品甲', media: 'anime', date: '2026-07-01' },
-    { id: 1002, displayName: '作品乙', media: 'anime', date: '2026-07-18' },
+    { id: 1001, displayName: '作品甲', date: '2026-07-01' },
+    { id: 1002, displayName: '作品乙', date: '2026-07-18' },
   ],
+  plan: { quality: 'exact', operation: 'searchSubjects' },
   coverage: { state: 'complete', returned: 2, totalKind: 'estimated', upstreamExhausted: true },
   warnings: [{ code: 'EXPERIMENTAL_SOURCE' }],
-  conceptResolution: [
-    {
-      input: '后宫',
-      state: 'exact',
-      candidates: [{ source: 'tag', value: '后宫', canonical: '后宫' }],
-    },
-  ],
+  explanation: {
+    mode: 'full',
+    summary: 'searchSubjects via official_v0',
+    coverageScope: 'Bounded official source result set.',
+    detailsOmitted: true,
+  },
+  projection: { itemsIncluded: 2, omittedItems: 0, itemsComplete: true, omittedWarnings: 0 },
 };
 
 const answer = [
@@ -34,7 +35,7 @@ function verify(text = answer, args: unknown = G01_QUERY_ARGUMENTS, source: unkn
 }
 
 describe('G01 Agent answer acceptance', () => {
-  it('matches every returned anime by exact title, date, ID, and order', () => {
+  it('matches every projected anime by exact title, date, ID, and order', () => {
     expect(verify()).toMatchObject({
       queryArgumentsMatch: true,
       resultReadbackAvailable: true,
@@ -45,6 +46,8 @@ describe('G01 Agent answer acceptance', () => {
       unmatchedRows: 0,
       duplicateAnswerRows: 0,
       rowOrderPreserved: true,
+      sourceOperationVerified: true,
+      projectionCountMatchesVisibleRows: true,
       exactTagScopeDisclosurePresent: true,
       monthScopeDisclosurePresent: true,
       animeScopeDisclosurePresent: true,
@@ -99,17 +102,55 @@ describe('G01 Agent answer acceptance', () => {
     ).toBe(true);
   });
 
-  it('reads the result from a nested MCP text projection without retaining its rows', () => {
+  it('reads the actual compact MCP text projection without requiring stripped fields', () => {
+    const compactResult = {
+      ...result,
+      items: result.items.map(({ id, displayName, date }) => ({ id, displayName, date })),
+      plan: { quality: 'exact', operation: 'searchSubjects' },
+      projection: { itemsIncluded: 2, omittedItems: 0, itemsComplete: true, omittedWarnings: 0 },
+    };
     const toolOutput = JSON.stringify({
-      content: [{ type: 'text', text: JSON.stringify(result) }],
+      content: [{ type: 'text', text: JSON.stringify(compactResult) }],
     });
     expect(
       verifyG01AgentAnswer(answer, { Arguments: JSON.stringify(G01_QUERY_ARGUMENTS) }, toolOutput),
     ).toMatchObject({
       resultReadbackAvailable: true,
-      conceptResolutionVerified: true,
+      sourceOperationVerified: true,
       rowsMatched: 2,
+      textOmittedItems: 0,
       passed: true,
+    });
+  });
+
+  it('requires the exact omitted-item count and omission-not-absence wording', () => {
+    const partialResult = {
+      ...result,
+      state: 'partial',
+      items: [result.items[0]!],
+      coverage: { ...result.coverage, state: 'partial', returned: 1 },
+      projection: { itemsIncluded: 1, omittedItems: 1, itemsComplete: false, omittedWarnings: 0 },
+    };
+    const partialAnswer = [
+      '范围：2026年7月动画按精确“后宫”标签查询；本次查询返回1部，属于当前有界结果。工具文本另有1部未展开，未显示不代表不存在。官方搜索为实验接口，总数是估算值，不能据此确认全站完整名单。',
+      '作品甲｜首播日期：2026-07-01｜Bangumi ID：1001',
+    ].join('\n');
+    const wrongCount = partialAnswer.replace('另有1部未展开', '另有2部未展开');
+    const noAbsenceCaveat = partialAnswer.replace('，未显示不代表不存在', '');
+
+    expect(verify(partialAnswer, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      textOmittedItems: 1,
+      omissionCountDisclosurePresent: true,
+      omissionNotAbsenceDisclosurePresent: true,
+      passed: true,
+    });
+    expect(verify(wrongCount, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      omissionCountDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(noAbsenceCaveat, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      omissionNotAbsenceDisclosurePresent: false,
+      passed: false,
     });
   });
 
@@ -140,13 +181,10 @@ describe('G01 Agent answer acceptance', () => {
     expect(verify(markdown)).toMatchObject({ markdownFormattingDetected: true, passed: false });
   });
 
-  it('fails closed for an unavailable or non-exact concept resolution', () => {
-    const unknownConcept = {
-      ...result,
-      conceptResolution: [{ input: '后宫', state: 'ambiguous', candidates: [] }],
-    };
-    expect(verify(answer, G01_QUERY_ARGUMENTS, unknownConcept)).toMatchObject({
-      conceptResolutionVerified: false,
+  it('fails closed when the source operation or answer is invalid', () => {
+    const wrongOperation = { ...result, plan: { operation: 'browseSubjects' } };
+    expect(verify(answer, G01_QUERY_ARGUMENTS, wrongOperation)).toMatchObject({
+      sourceOperationVerified: false,
       passed: false,
     });
     expect(

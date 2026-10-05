@@ -7,9 +7,12 @@ export type G01AgentAnswerCheck = {
   invalidSourceRowsCount: number;
   duplicateSourceRowsCount: number;
   sourceReturnedMatchesVisibleRows: boolean;
+  textOmittedItems: number;
+  projectionItemsIncluded: number | null;
+  projectionCountMatchesVisibleRows: boolean;
   totalKind: string | null;
   experimentalSourceWarningPresent: boolean;
-  conceptResolutionVerified: boolean;
+  sourceOperationVerified: boolean;
   answerRowsParsed: number;
   rowsMatched: number;
   missingRows: number;
@@ -26,6 +29,8 @@ export type G01AgentAnswerCheck = {
   experimentalSourceDisclosurePresent: boolean;
   estimatedTotalDisclosurePresent: boolean;
   nonExhaustiveDisclosurePresent: boolean;
+  omissionCountDisclosurePresent: boolean;
+  omissionNotAbsenceDisclosurePresent: boolean;
   unsupportedCompletenessClaim: boolean;
   unsupportedAbsenceClaim: boolean;
   markdownFormattingDetected: boolean;

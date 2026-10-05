@@ -37,11 +37,20 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
   const coverage = result?.coverage ?? result?.explanation?.coverage ?? {};
   const returnedRows = Number.isInteger(coverage.returned) ? coverage.returned : null;
   const sourceReturnedMatchesVisibleRows = returnedRows === rawItems.length;
+  const projection = result?.projection ?? {};
+  const textOmittedItems = Number.isInteger(projection.omittedItems)
+    ? Math.max(0, projection.omittedItems)
+    : 0;
+  const projectionItemsIncluded = Number.isInteger(projection.itemsIncluded)
+    ? projection.itemsIncluded
+    : null;
+  const projectionCountMatchesVisibleRows =
+    projectionItemsIncluded === null || projectionItemsIncluded === rawItems.length;
   const totalKind =
     coverage.totalKind ?? result?.explanation?.totalKind ?? result?.plan?.totalKind ?? null;
   const experimentalSourceWarningPresent = hasWarningCode(result, 'EXPERIMENTAL_SOURCE');
   const resultState = typeof result?.state === 'string' ? result.state : null;
-  const conceptResolutionVerified = hasExactConceptResolution(result);
+  const sourceOperationVerified = result?.plan?.operation === 'searchSubjects';
   const answerText = typeof answer === 'string' ? answer : '';
 
   const parsedAnswer = parseAnswer(answerText);
@@ -91,6 +100,10 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     /(?:不代表|不能(?:据此)?(?:证明|确认)|无法(?:据此)?(?:证明|确认)|不足以(?:证明|确认)|不等于).{0,12}(?:全站|完整|全部|全量)|(?:全站|完整|全部|全量).{0,12}(?:不代表|不能(?:据此)?(?:证明|确认)|无法(?:据此)?(?:证明|确认)|不足以(?:证明|确认)|不等于)/u.test(
       scopeText,
     );
+  const omissionCountDisclosurePresent =
+    textOmittedItems === 0 || hasOmissionCountDisclosure(scopeText, textOmittedItems);
+  const omissionNotAbsenceDisclosurePresent =
+    textOmittedItems === 0 || hasOmissionNotAbsenceDisclosure(scopeText);
   const unsupportedCompletenessClaim = hasUnqualifiedClaim(scopeText, COMPLETENESS_CLAIM);
   const unsupportedAbsenceClaim = hasUnqualifiedClaim(scopeText, ABSENCE_CLAIM);
   const markdownFormattingDetected =
@@ -103,7 +116,8 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     answerText.trim().length > 0 &&
     queryArgumentsMatch &&
     resultReadbackAvailable &&
-    conceptResolutionVerified &&
+    sourceOperationVerified &&
+    projectionCountMatchesVisibleRows &&
     (resultState === 'ok' || resultState === 'partial') &&
     rawItems.length > 0 &&
     invalidSourceRowsCount === 0 &&
@@ -129,6 +143,8 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     experimentalSourceDisclosurePresent &&
     estimatedTotalDisclosurePresent &&
     nonExhaustiveDisclosurePresent &&
+    omissionCountDisclosurePresent &&
+    omissionNotAbsenceDisclosurePresent &&
     !unsupportedCompletenessClaim &&
     !unsupportedAbsenceClaim &&
     !markdownFormattingDetected;
@@ -142,9 +158,12 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     invalidSourceRowsCount,
     duplicateSourceRowsCount,
     sourceReturnedMatchesVisibleRows,
+    textOmittedItems,
+    projectionItemsIncluded,
+    projectionCountMatchesVisibleRows,
     totalKind,
     experimentalSourceWarningPresent,
-    conceptResolutionVerified,
+    sourceOperationVerified,
     answerRowsParsed: parsedAnswer.rows.length,
     rowsMatched: matchedRows,
     missingRows,
@@ -161,6 +180,8 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     experimentalSourceDisclosurePresent,
     estimatedTotalDisclosurePresent,
     nonExhaustiveDisclosurePresent,
+    omissionCountDisclosurePresent,
+    omissionNotAbsenceDisclosurePresent,
     unsupportedCompletenessClaim,
     unsupportedAbsenceClaim,
     markdownFormattingDetected,
@@ -223,24 +244,6 @@ function findDiscoveryResult(value) {
   return null;
 }
 
-function hasExactConceptResolution(result) {
-  return (
-    Array.isArray(result?.conceptResolution) &&
-    result.conceptResolution.some(
-      (resolution) =>
-        resolution?.input === '后宫' &&
-        resolution?.state === 'exact' &&
-        Array.isArray(resolution.candidates) &&
-        resolution.candidates.some(
-          (candidate) =>
-            candidate?.source === 'tag' &&
-            candidate?.value === '后宫' &&
-            candidate?.canonical === '后宫',
-        ),
-    )
-  );
-}
-
 function normalizeSourceRow(item) {
   const title = [item?.displayName, item?.nameCn, item?.name_cn, item?.name].find(
     (value) => typeof value === 'string' && value.trim(),
@@ -258,7 +261,7 @@ function normalizeSourceRow(item) {
       typeof title === 'string' &&
       typeof date === 'string' &&
       /^2026-07-\d{2}$/u.test(date.trim()) &&
-      item?.media === 'anime',
+      (item?.media === undefined || item.media === 'anime'),
   };
 }
 
@@ -306,6 +309,21 @@ function hasCountDisclosure(scopeText, count) {
     'u',
   );
   return countPattern.test(scopeText);
+}
+
+function hasOmissionCountDisclosure(scopeText, omittedItems) {
+  const number = String(omittedItems);
+  const pattern = new RegExp(
+    `(?:另有|其余|省略|未展示|未显示|未展开|文本(?:中)?省略).{0,12}${number}\\s*(?:部|条|项|个)`,
+    'u',
+  );
+  return pattern.test(scopeText);
+}
+
+function hasOmissionNotAbsenceDisclosure(scopeText) {
+  return /(?:未显示|未展开|省略|未展示).{0,12}(?:不代表|不能说明|并不意味着).{0,12}(?:不存在|没有)|(?:不代表|不能说明|并不意味着).{0,12}(?:未显示|未展开|省略|未展示).{0,12}(?:不存在|没有)/u.test(
+    scopeText,
+  );
 }
 
 function hasWarningCode(value, expectedCode) {
