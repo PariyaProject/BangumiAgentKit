@@ -3,10 +3,13 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type {
   PersonActivityResult,
+  SeriesWatchOrderResult,
   SubjectComparisonResult,
   SubjectOverviewResult,
   SubjectStatsIntelligenceResult,
 } from '@bangumi-agent-kit/bangumi-core';
+import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { SeriesService } from '@bangumi-agent-kit/bangumi-core';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import type { ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
@@ -14,6 +17,183 @@ import {
   MCP_TOOL_TEXT_MAX_UTF8_BYTES,
   presentMcpToolResult,
 } from '../../apps/mcp/src/result-presenter.js';
+
+async function makeG09SeriesWatchOrderResult(): Promise<SeriesWatchOrderResult> {
+  const rootId = 218707;
+  const derivativeId = 227245;
+  const relations = [
+    { id: 128202, type: 1, name: 'Source book', name_cn: '原作书籍', relation: '书籍' },
+    {
+      id: derivativeId,
+      type: 2,
+      name: 'Shuumatsu spin-off',
+      name_cn: '少女周末授课',
+      relation: '衍生',
+    },
+    { id: 228591, type: 3, name: 'Opening theme', name_cn: '片头曲', relation: '片头曲' },
+    { id: 228592, type: 3, name: 'Ending theme', name_cn: '片尾曲', relation: '片尾曲' },
+    { id: 228753, type: 6, name: 'Live action', name_cn: '真人衍生', relation: '衍生' },
+    { id: 229037, type: 3, name: 'Soundtrack', name_cn: '原声集', relation: '原声集' },
+    { id: 239966, type: 1, name: 'Source book 2', name_cn: '相关书籍', relation: '书籍' },
+    { id: 244123, type: 3, name: 'Other music', name_cn: '其他音乐', relation: '其他' },
+    { id: 246006, type: 3, name: 'Soundtrack 2', name_cn: '原声集', relation: '原声集' },
+  ];
+  const fetchFn = async (input: string | URL) => {
+    const url = String(input);
+    if (url.endsWith(`/v0/subjects/${rootId}`)) {
+      return new Response(
+        JSON.stringify({
+          id: rootId,
+          type: 2,
+          name: 'Shuumatsu no Tabitabi',
+          name_cn: '少女終末旅行',
+          date: '2017-10-06',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    if (url.endsWith(`/v0/subjects/${rootId}/subjects`)) {
+      return new Response(JSON.stringify(relations), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    if (url.endsWith(`/v0/subjects/${derivativeId}/subjects`)) {
+      return new Response(
+        JSON.stringify([
+          {
+            id: rootId,
+            type: 2,
+            name: 'Shuumatsu no Tabitabi',
+            name_cn: '少女終末旅行',
+            relation: '主线故事',
+          },
+        ]),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    if (url.endsWith(`/v0/subjects/${derivativeId}`)) {
+      return new Response(
+        JSON.stringify({
+          id: derivativeId,
+          type: 2,
+          name: 'Shuumatsu no Jugyou',
+          name_cn: '少女周末授课',
+          date: '2017-10-06',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+    return new Response('unexpected fixture request', { status: 404 });
+  };
+  return await new SeriesService(
+    new HttpClient({ fetchFn: fetchFn as typeof fetch }),
+  ).getSeriesWatchOrder(rootId, { depth: 2, maxNodes: 8, media: 'anime' });
+}
+
+function makeHighCardinalitySeriesResult(source: SeriesWatchOrderResult): SeriesWatchOrderResult {
+  const root = source.watchOrder[0]!;
+  const template = source.watchOrder[1]!;
+  const relatedTemplate = source.related[0]!;
+  const sampleTemplate = source.excluded.samples[0]!;
+  const pathTemplate = source.edges[0]!;
+  const makePath = (index: number) => ({
+    ...pathTemplate,
+    fromId: source.subjectId,
+    toId: 300000 + index,
+    relation: `衍生-${index}-${'关系'.repeat(80)}`,
+    pathIds: [source.subjectId, 300000 + index],
+    pathKinds: ['side_story'] as SeriesWatchOrderResult['edges'][number]['pathKinds'],
+  });
+  const watchOrder = [
+    root,
+    ...Array.from({ length: 16 }, (_, index) => ({
+      ...template,
+      id: 300000 + index,
+      name: `Related title ${index}-${'日'.repeat(240)}`,
+      nameCn: `关联作品${index}-${'名'.repeat(240)}`,
+      date: '2020-01-01',
+      position: index + 2,
+      isRoot: false,
+      placement: 'after_root' as const,
+      placementReason: `Bounded path reason ${index}-${'前传'.repeat(80)}`,
+      derivedDepth: 1,
+      relationLabels: [`衍生-${index}-${'标签'.repeat(80)}`, `外传-${index}`],
+      relationKinds: [
+        'side_story',
+        'recap',
+      ] as SeriesWatchOrderResult['watchOrder'][number]['relationKinds'],
+      relationPaths: [makePath(index)],
+    })),
+  ];
+  const related = Array.from({ length: 24 }, (_, index) => ({
+    ...relatedTemplate,
+    id: 320000 + index,
+    name: `Related record ${index}-${'作'.repeat(200)}`,
+    nameCn: `关联条目${index}-${'品'.repeat(200)}`,
+    depth: index % 3,
+    includedInWatchOrder: index < 16,
+    ...(index < 16 ? {} : { exclusionReason: 'node_cap' as const }),
+    relationLabels: [`关系-${index}-${'向'.repeat(80)}`],
+    relationPaths: [makePath(index)],
+  }));
+  const edges = Array.from({ length: 64 }, (_, index) => makePath(index));
+  const exclusionSamples = Array.from({ length: 12 }, (_, index) => ({
+    ...sampleTemplate,
+    id: 330000 + index,
+    name: `Excluded ${index}-${'非'.repeat(160)}`,
+    nameCn: `排除项${index}-${'动画'.repeat(120)}`,
+    reason: 'media_type_not_anime' as const,
+    relationLabels: [`非动画关系-${index}`],
+    relationPaths: [makePath(index)],
+  }));
+
+  return {
+    ...source,
+    state: 'partial',
+    watchOrder,
+    related,
+    edges,
+    excluded: {
+      count: exclusionSamples.length,
+      byReason: [{ reason: 'media_type_not_anime', count: exclusionSamples.length }],
+      samples: exclusionSamples,
+    },
+    coverage: {
+      ...source.coverage,
+      media: 'all',
+      maxNodes: 16,
+      relationRequests: 32,
+      relationRowsObserved: 256,
+      uniqueRelatedObserved: 80,
+      uniqueRelatedReturned: related.length,
+      animeNodesObserved: 80,
+      animeNodesSelected: 16,
+      nonAnimeRowsObserved: exclusionSamples.length,
+      nonAnimeRowsReturned: exclusionSamples.length,
+      edgeEvidenceReturned: edges.length,
+      edgeEvidenceTruncated: true,
+      relatedEvidenceTruncated: true,
+      truncated: true,
+      truncationReasons: ['node_cap', 'evidence_cap'],
+    },
+    evidence: {
+      ...source.evidence,
+      sources: Array.from({ length: 24 }, (_, index) => ({
+        operation: `operation-${index}-${'evidence'.repeat(80)}`,
+        path: `/v0/subjects/${source.subjectId}/related/${'path'.repeat(80)}`,
+        status: 'succeeded' as const,
+        subjectId: source.subjectId,
+        depth: index % 3,
+      })),
+    },
+    warnings: Array.from({ length: 4 }, (_, index) => `Warning ${index}: ${'bounded '.repeat(80)}`),
+    limitations: Array.from(
+      { length: 4 },
+      (_, index) => `Limitation ${index}: ${'not exhaustive '.repeat(80)}`,
+    ),
+  };
+}
 
 function makePersonActivityResult(): PersonActivityResult {
   const rows = Array.from({ length: 40 }, (_, index) => ({
@@ -901,6 +1081,132 @@ describe('MCP tool result presentation', () => {
     expect(unrelatedPresentation).toEqual({
       text: JSON.stringify(unrelatedLarge, null, 2),
     });
+  });
+
+  it('bounds the G09 watch-order MCP text while preserving ordered evidence and the full structure', async () => {
+    const original = await makeG09SeriesWatchOrderResult();
+    const fullJsonBytes = Buffer.byteLength(JSON.stringify(original, null, 2), 'utf8');
+    const response = await callMcpToolWithResult(
+      'bangumi.get_series_watch_order',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(fullJsonBytes).toBeGreaterThan(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(response.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({
+      state: 'complete',
+      subjectId: 218707,
+      coverage: {
+        depth: 2,
+        maxNodes: 8,
+        media: 'anime',
+        relationRowsObserved: 10,
+        uniqueRelatedObserved: 9,
+        uniqueRelatedReturned: 1,
+        nonAnimeRowsObserved: 8,
+      },
+      mcpTextProjection: {
+        maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+        fullResultUtf8Bytes: fullJsonBytes,
+        structuredContentHasFullResult: true,
+        watchOrderRowsReturned: 2,
+        watchOrderRowsIncluded: 2,
+        watchOrderRowsOmittedFromText: 0,
+      },
+    });
+    expect(
+      parsed.watchOrder.map((item: { id: number; position: number; relationLabels: string[] }) => [
+        item.id,
+        item.position,
+        item.relationLabels,
+      ]),
+    ).toEqual(original.watchOrder.map((item) => [item.id, item.position, item.relationLabels]));
+    expect(parsed.watchOrder[1].relationPaths).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fromId: 218707,
+          toId: 227245,
+          relation: '衍生',
+          relationKind: 'side_story',
+          pathIds: [218707, 227245],
+        }),
+      ]),
+    );
+    expect(parsed.mcpTextProjection.textViewScope).toContain('not one official order');
+  });
+
+  it('keeps high-cardinality series projections within the byte budget with explicit omissions', async () => {
+    const original = makeHighCardinalitySeriesResult(await makeG09SeriesWatchOrderResult());
+    const presentation = presentMcpToolResult('bangumi.get_series_watch_order', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed).toMatchObject({ state: 'partial', coverage: { media: 'all', truncated: true } });
+    expect(parsed.mcpTextProjection).toMatchObject({
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      watchOrderRowsReturned: 17,
+      watchOrderRowsIncluded: parsed.watchOrder.length,
+    });
+    expect(
+      parsed.mcpTextProjection.watchOrderRowsIncluded +
+        parsed.mcpTextProjection.watchOrderRowsOmittedFromText,
+    ).toBe(17);
+    for (const row of parsed.watchOrder as Array<{
+      id: number;
+      position: number;
+      relationLabels: string[];
+    }>) {
+      const source = original.watchOrder.find((item) => item.id === row.id);
+      expect(source).toBeDefined();
+      expect(row.position).toBe(source!.position);
+      expect(row.relationLabels.length).toBeLessThanOrEqual(source!.relationLabels.length);
+      expect(
+        row.relationLabels.every((label, index) =>
+          source!.relationLabels[index]!.startsWith(label.replace(/…$/u, '')),
+        ),
+      ).toBe(true);
+    }
+    expect(
+      parsed.mcpTextProjection.relatedRowsOmittedFromText +
+        parsed.mcpTextProjection.edgeRowsOmittedFromText +
+        parsed.mcpTextProjection.displayNamesTruncated +
+        parsed.mcpTextProjection.relationLabelsTruncated,
+    ).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.textViewScope).toContain('Omitted rows do not prove absence');
+  });
+
+  it('keeps the final minimum series projection within the byte budget', async () => {
+    const original = makeHighCardinalitySeriesResult(await makeG09SeriesWatchOrderResult());
+    original.root.date = '日'.repeat(20_000);
+    original.watchOrder[0]!.date = '日'.repeat(20_000);
+    original.coverage.truncationReasons = ['截断原因'.repeat(20_000), '边界原因'.repeat(20_000)];
+
+    const presentation = presentMcpToolResult('bangumi.get_series_watch_order', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.mcpTextProjection.minimumProjectionUsed).toBe(true);
+    expect(parsed.watchOrder.every((item: { nameCn?: string }) => item.nameCn === undefined)).toBe(
+      true,
+    );
+    expect(
+      parsed.mcpTextProjection.watchOrderRowsIncluded +
+        parsed.mcpTextProjection.watchOrderRowsOmittedFromText,
+    ).toBe(original.watchOrder.length);
+    expect(parsed.mcpTextProjection.truncationReasonTextTruncated).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.datesOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.nameCnFieldsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.placementReasonsOmittedFromText).toBeGreaterThan(0);
   });
 
   it('keeps the text byte bound for pathological long names while retaining full structure', () => {
