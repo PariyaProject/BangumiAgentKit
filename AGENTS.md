@@ -16,21 +16,22 @@ context, not runtime authority.
 
 ## Standing defaults
 
-- Primary implementation model: GPT-5.6 Luna at `max`; `xhigh` is the only
-  availability fallback.
+- All configured implementation and reviewer roles use GPT-6 Luna at `max`.
 - Generic implementation/research subagents: `0` unless the user explicitly
   authorizes a specific use or an applicable skill requires it.
-- Normal reviewed Epoch: one comprehensive Sol reviewer expected, two launches
-  maximum, sequential only. Sol uses `high` reasoning by default.
-- Autonomous outer run: four Sol launches maximum, partitioned as at most three
-  Product-review launches plus one independent frontier-closure review.
+- Normal reviewed Epoch: one comprehensive Luna Max reviewer expected, six
+  launches by default, sequentially continuing the same reviewer identity.
+- Autonomous outer run: 96 Product-review launches and one independent
+  frontier-closure review by default. Budgets are extendable without resetting
+  consumption; do not stop a valid long-running Goal only because a default
+  allowance was reached.
 - Normal successful Product Epochs automatically integrate after PASS or the
   governed exhausted-budget Luna final-corrective gate.
 - Product runtime state lives in one Outer Run GitHub Issue and one Epoch
   GitHub PR, never in tracked repository runtime files.
 - Autonomous Goal entry runs `pnpm harness discovery:check` before `run:start`;
   unchanged exhaustion is reusable only after exact-hash frontier-closure PASS,
-  creates no Run Issue, and spends no Sol.
+  and creates no Run Issue.
 - Reviewer waits require observed runtime truth; interruptions resume the same
   id, and Goal completion requires `pnpm harness goal:check`.
 - An active `INTEGRATION_BLOCKED` Epoch resumes only through

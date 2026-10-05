@@ -146,7 +146,7 @@ function candidateEvidence(environment, overrides = {}) {
   return file;
 }
 
-function correctiveClosure(findingId = 'sol-2-finding-1') {
+function correctiveClosure(findingId = 'review-2-finding-1') {
   return [
     {
       finding_id: findingId,
@@ -295,7 +295,9 @@ function terminalRunBody(evidence = makeDiscoveryEvidence()) {
 }
 
 test('CLI run:start resumes the one open nonterminal Outer Run without creating another Issue', () => {
-  const run = createRunState({ runId: 'existing-run' });
+  const run = createRunState({ runId: 'existing-run', outerSolMax: 4 });
+  run.outer_sol.product.consumed = 3;
+  run.outer_sol.consumed = 3;
   const environment = createMockEnvironment({
     runBody: renderRunBody(run),
     branch: 'master',
@@ -304,7 +306,13 @@ test('CLI run:start resumes the one open nonterminal Outer Run without creating 
   try {
     const result = environment.execute(['run:start', '--title', 'New invocation']);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(JSON.parse(result.stdout).state, 'RUN_RESUMED');
+    const resumed = JSON.parse(result.stdout);
+    assert.equal(resumed.state, 'RUN_RESUMED');
+    assert.equal(resumed.budget_upgraded, true);
+    assert.equal(resumed.run.outer_sol.product.max, 96);
+    assert.equal(resumed.run.outer_sol.product.consumed, 3);
+    assert.equal(resumed.run.outer_sol.max, 97);
+    assert.equal(resumed.run.outer_sol.consumed, 3);
     assert.equal(
       environment
         .readState()
@@ -313,6 +321,60 @@ test('CLI run:start resumes the one open nonterminal Outer Run without creating 
         ),
       false,
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI run:budget-extend writes an auditable allowance without refunding consumption', () => {
+  const run = createRunState({ runId: 'legacy-budget', outerSolMax: 4 });
+  run.outer_sol.product.consumed = 3;
+  run.outer_sol.consumed = 3;
+  const environment = createMockEnvironment({ runBody: renderRunBody(run) });
+  try {
+    const result = environment.execute([
+      'run:budget-extend',
+      '--run',
+      '1',
+      '--product-add',
+      '2',
+      '--reason',
+      'Continue the tracked long-goal run',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const updated = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(updated.outer_sol.product.max, 5);
+    assert.equal(updated.outer_sol.product.consumed, 3);
+    assert.equal(updated.outer_sol.max, 6);
+    assert.equal(updated.outer_sol.consumed, 3);
+    assert.equal(updated.outer_sol.product.budget_extension_history.at(-1).added, 2);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI review:budget-extend updates only the active Epoch review ledger', () => {
+  const environment = createMockEnvironment();
+  try {
+    const result = environment.execute([
+      'review:budget-extend',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--add',
+      '4',
+      '--reason',
+      'Continue this coherent Epoch autonomously',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const state = environment.readState();
+    const run = parseControlBlock(state.runBody, RUN_MARKER);
+    const epoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(epoch.review.max, 6);
+    assert.equal(epoch.review.consumed, 0);
+    assert.equal(epoch.review.budget_extension_history.at(-1).added, 4);
+    assert.equal(run.active_epoch_pr, 42);
   } finally {
     environment.cleanup();
   }
@@ -336,6 +398,10 @@ test('CLI run:start closes stale terminal Runs and normalizes the new Issue titl
     const state = environment.readState();
     assert.equal(JSON.parse(result.stdout).state, 'RUN_STARTED');
     assert.equal(state.runIssueTitle, '[Harness V3 Run] Autonomous evolution');
+    const createdRun = parseControlBlock(state.runBody, RUN_MARKER);
+    assert.equal(createdRun.outer_sol.product.max, 96);
+    assert.equal(createdRun.outer_sol.closure.max, 1);
+    assert.equal(createdRun.outer_sol.max, 97);
     assert.ok(
       state.calls.some(
         (call) => call.tool === 'gh' && call.args[0] === 'issue' && call.args[1] === 'close',
@@ -1429,6 +1495,7 @@ test('CLI base drift with exhausted review budget returns to Luna final validati
   const run = parseControlBlock(state.runBody, RUN_MARKER);
   epoch.review.max = 1;
   run.outer_sol.product.max = 1;
+  run.outer_sol.max = run.outer_sol.product.max + run.outer_sol.closure.max;
   fs.writeFileSync(
     environment.statePath,
     `${JSON.stringify(
@@ -1490,13 +1557,13 @@ test('CLI base drift with exhausted review budget returns to Luna final validati
   }
 });
 
-test('CLI final corrective gate requires closure evidence then auto-merges without Sol #3', () => {
+test('CLI final corrective gate requires closure evidence then auto-merges without another review', () => {
   const { run, epoch } = controlFixture();
   epoch.state = 'FINAL_CORRECTIVE_REQUIRED';
   epoch.review.consumed = 2;
   epoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
   epoch.findings = [
-    { id: 'sol-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
+    { id: 'review-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
   ];
   epoch.review_history = [
     {
@@ -1563,7 +1630,7 @@ test('CLI resumes blocked final-corrective integration without another review', 
   epoch.review.consumed = 2;
   epoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
   epoch.findings = [
-    { id: 'sol-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
+    { id: 'review-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
   ];
   epoch.review_history = [
     {
@@ -1617,7 +1684,7 @@ test('CLI final corrective base drift returns to Luna sync instead of parking fo
   epoch.review.consumed = 2;
   epoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
   epoch.findings = [
-    { id: 'sol-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
+    { id: 'review-2-finding-1', priority: 'P1', summary: 'Preserve metadata truthfulness' },
   ];
   epoch.review_history = [
     {

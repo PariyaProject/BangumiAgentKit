@@ -9,6 +9,11 @@ export const MAX_OUTER_REVIEWS = 4;
 export const MAX_OUTER_PRODUCT_REVIEWS = 3;
 export const MAX_OUTER_CLOSURE_REVIEWS = 1;
 export const MAX_OUTER_RUNTIME_RECOVERIES = 1;
+export const DEFAULT_EPOCH_REVIEW_SLOTS = 6;
+export const DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS = 96;
+export const DEFAULT_OUTER_REVIEW_SLOTS =
+  DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS + MAX_OUTER_CLOSURE_REVIEWS;
+export const MAX_EXTENDED_REVIEW_BUDGET = Number.MAX_SAFE_INTEGER;
 export const DISCOVERY_POLICY_VERSION = 'harness-v3.2-frontier-closure-v1';
 export const DISCOVERY_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const NO_OPPORTUNITY_STOP = 'STOPPED_TRUSTED_FRONTIER_EXHAUSTED';
@@ -92,15 +97,44 @@ function requireTextList(value, code, field) {
   value.forEach((item, index) => requireText(item, code, `${field}[${index}]`));
 }
 
+function hasValidBudgetExtensionHistory(ledger, hardMax) {
+  const history = ledger?.budget_extension_history;
+  if (!Array.isArray(history) || history.length === 0) return false;
+  let expectedFrom = history[0]?.from_max;
+  if (!Number.isSafeInteger(expectedFrom) || expectedFrom < 0 || expectedFrom > hardMax) {
+    return false;
+  }
+  for (const entry of history) {
+    if (
+      !Number.isSafeInteger(entry?.from_max) ||
+      !Number.isSafeInteger(entry?.to_max) ||
+      entry.from_max !== expectedFrom ||
+      entry.to_max <= entry.from_max ||
+      !Number.isSafeInteger(entry?.added) ||
+      entry.added !== entry.to_max - entry.from_max ||
+      typeof entry?.reason !== 'string' ||
+      !entry.reason.trim() ||
+      typeof entry?.at !== 'string' ||
+      !entry.at.trim()
+    ) {
+      return false;
+    }
+    expectedFrom = entry.to_max;
+  }
+  return expectedFrom === ledger.max;
+}
+
 function assertLedger(ledger, label, hardMax) {
   for (const field of ['max', 'consumed', 'reserved']) {
     if (!Number.isInteger(ledger?.[field]) || ledger[field] < 0) {
       throw new HarnessInvariantError('INVALID_REVIEW_LEDGER', `${label}.${field} is invalid`);
     }
   }
+  const extended = hasValidBudgetExtensionHistory(ledger, hardMax);
+  const effectiveMax = extended ? MAX_EXTENDED_REVIEW_BUDGET : hardMax;
   if (
     !Number.isInteger(ledger.max) ||
-    ledger.max > hardMax ||
+    ledger.max > effectiveMax ||
     ledger.reserved > 1 ||
     ledger.consumed + ledger.reserved > ledger.max
   ) {
@@ -136,6 +170,12 @@ function assertOuterLedger(ledger) {
       'Outer total must equal Product plus frontier-closure review ledgers',
     );
   }
+  if (ledger.product.max + ledger.closure.max !== ledger.max) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_LEDGER',
+      'Outer total maximum must equal Product plus frontier-closure maxima',
+    );
+  }
 }
 
 export function createRunState({
@@ -145,13 +185,52 @@ export function createRunState({
   nextAction = 'SELECT_OR_RESUME_EPOCH',
 }) {
   requireText(runId, 'INVALID_RUN', 'run_id');
+  if (outerSolMax > MAX_OUTER_REVIEWS && outerSolMax !== DEFAULT_OUTER_REVIEW_SLOTS) {
+    throw new HarnessInvariantError(
+      'INVALID_REVIEW_LEDGER',
+      'New Runs use the configured default; extend an active Run through run:budget-extend',
+    );
+  }
+  const closureMax = Math.min(outerSolMax, MAX_OUTER_CLOSURE_REVIEWS);
+  const productMax = outerSolMax - closureMax;
+  const now = new Date().toISOString();
   const outerSol = {
     max: outerSolMax,
     consumed: 0,
     reserved: 0,
-    product: { max: Math.min(outerSolMax, MAX_OUTER_PRODUCT_REVIEWS), consumed: 0, reserved: 0 },
+    ...(outerSolMax > MAX_OUTER_REVIEWS
+      ? {
+          budget_extension_history: [
+            {
+              from_max: MAX_OUTER_REVIEWS,
+              to_max: outerSolMax,
+              added: outerSolMax - MAX_OUTER_REVIEWS,
+              reason: 'GPT-6 Luna Max long-goal default policy',
+              at: now,
+            },
+          ],
+        }
+      : {}),
+    product: {
+      max: productMax,
+      consumed: 0,
+      reserved: 0,
+      ...(productMax > MAX_OUTER_PRODUCT_REVIEWS
+        ? {
+            budget_extension_history: [
+              {
+                from_max: MAX_OUTER_PRODUCT_REVIEWS,
+                to_max: productMax,
+                added: productMax - MAX_OUTER_PRODUCT_REVIEWS,
+                reason: 'GPT-6 Luna Max long-goal default policy',
+                at: now,
+              },
+            ],
+          }
+        : {}),
+    },
     closure: {
-      max: outerSolMax === MAX_OUTER_REVIEWS ? MAX_OUTER_CLOSURE_REVIEWS : 0,
+      max: closureMax,
       consumed: 0,
       reserved: 0,
     },
@@ -185,6 +264,68 @@ export function createRunState({
     discovery_policy_version: DISCOVERY_POLICY_VERSION,
     next_action: nextAction,
   };
+}
+
+export function extendRunProductReviewBudget(run, { additional, reason, at } = {}) {
+  requireText(reason, 'REVIEW_BUDGET_EXTENSION_REASON_REQUIRED', 'reason');
+  if (!Number.isSafeInteger(additional) || additional <= 0) {
+    throw new HarnessInvariantError(
+      'REVIEW_BUDGET_EXTENSION_INVALID',
+      'additional Product review slots must be a positive safe integer',
+    );
+  }
+  const nextRun = cloneState(run);
+  const ledger = nextRun.outer_sol;
+  assertOuterLedger(ledger);
+  if (
+    isTerminalRunState(nextRun.state) &&
+    nextRun.state !== 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE'
+  ) {
+    throw new HarnessInvariantError(
+      'RUN_NOT_RESUMABLE',
+      `Run state ${nextRun.state} cannot receive a budget extension`,
+    );
+  }
+  const extendedProductMax = ledger.product.max + additional;
+  const extendedOuterMax = extendedProductMax + ledger.closure.max;
+  if (
+    !Number.isSafeInteger(extendedProductMax) ||
+    !Number.isSafeInteger(extendedOuterMax) ||
+    extendedProductMax > MAX_EXTENDED_REVIEW_BUDGET ||
+    extendedOuterMax > MAX_EXTENDED_REVIEW_BUDGET
+  ) {
+    throw new HarnessInvariantError(
+      'REVIEW_BUDGET_EXTENSION_INVALID',
+      'The requested allowance exceeds the safe persisted integer range',
+    );
+  }
+  const timestamp = at ?? new Date().toISOString();
+  ledger.product.budget_extension_history ??= [];
+  ledger.budget_extension_history ??= [];
+  ledger.product.budget_extension_history.push({
+    from_max: ledger.product.max,
+    to_max: extendedProductMax,
+    added: additional,
+    reason,
+    at: timestamp,
+  });
+  ledger.budget_extension_history.push({
+    from_max: ledger.max,
+    to_max: extendedOuterMax,
+    added: additional,
+    reason,
+    at: timestamp,
+  });
+  ledger.product.max = extendedProductMax;
+  ledger.max = extendedOuterMax;
+  if (nextRun.state === 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE') {
+    nextRun.state = 'ACTIVE';
+    nextRun.next_action = nextRun.active_epoch_pr
+      ? `RESUME_PR_${nextRun.active_epoch_pr}`
+      : 'DISCOVER_NEXT_EPOCH';
+  }
+  assertOuterLedger(ledger);
+  return nextRun;
 }
 
 export function createEpochState({
@@ -256,6 +397,42 @@ export function createEpochState({
     pr_number: null,
     next_action: 'IMPLEMENT_FIRST_WORK_PACKAGE',
   };
+}
+
+export function extendEpochReviewBudget(epoch, { additional, reason, at } = {}) {
+  requireText(reason, 'REVIEW_BUDGET_EXTENSION_REASON_REQUIRED', 'reason');
+  if (!Number.isSafeInteger(additional) || additional <= 0) {
+    throw new HarnessInvariantError(
+      'REVIEW_BUDGET_EXTENSION_INVALID',
+      'additional Epoch review slots must be a positive safe integer',
+    );
+  }
+  const nextEpoch = cloneState(epoch);
+  if (['MERGED', 'PARKED_FOR_HUMAN'].includes(nextEpoch.state)) {
+    throw new HarnessInvariantError(
+      'EPOCH_NOT_RESUMABLE',
+      `Epoch state ${nextEpoch.state} cannot receive a review-budget extension`,
+    );
+  }
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  const extendedMax = nextEpoch.review.max + additional;
+  if (!Number.isSafeInteger(extendedMax) || extendedMax > MAX_EXTENDED_REVIEW_BUDGET) {
+    throw new HarnessInvariantError(
+      'REVIEW_BUDGET_EXTENSION_INVALID',
+      'The requested allowance exceeds the safe persisted integer range',
+    );
+  }
+  nextEpoch.review.budget_extension_history ??= [];
+  nextEpoch.review.budget_extension_history.push({
+    from_max: nextEpoch.review.max,
+    to_max: extendedMax,
+    added: additional,
+    reason,
+    at: at ?? new Date().toISOString(),
+  });
+  nextEpoch.review.max = extendedMax;
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  return nextEpoch;
 }
 
 export function isLegacyRuntimePath(filePath) {
@@ -709,7 +886,7 @@ function normalizeFindings(findings, reviewNumber) {
     requireText(finding.summary, 'INVALID_REVIEW_FINDINGS', `findings[${index}].summary`);
     return {
       ...finding,
-      id: finding.id || `sol-${reviewNumber}-finding-${index + 1}`,
+      id: finding.id || `review-${reviewNumber}-finding-${index + 1}`,
     };
   });
   if (new Set(normalized.map((finding) => finding.id)).size !== normalized.length) {
@@ -1006,7 +1183,7 @@ export function markReviewStarted(run, epoch, reviewerId, { runtimeRecovery = fa
   ) {
     throw new HarnessInvariantError(
       'SAME_REVIEWER_REQUIRED',
-      'Sol #2 must continue the same reviewer identity',
+      'Later review rounds must continue the same reviewer identity',
       { expected: previousReview.reviewer_id, actual: reviewerId },
     );
   }

@@ -6,6 +6,9 @@ import { execFileSync } from 'node:child_process';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import {
   DISCOVERY_POLICY_VERSION,
+  DEFAULT_EPOCH_REVIEW_SLOTS,
+  DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS,
+  DEFAULT_OUTER_REVIEW_SLOTS,
   EPOCH_MARKER,
   RUN_MARKER,
   HarnessInvariantError,
@@ -26,6 +29,8 @@ import {
   completeMerge,
   createEpochState,
   createRunState,
+  extendEpochReviewBudget,
+  extendRunProductReviewBudget,
   isTerminalRunState,
   markReviewStarted,
   markFrontierReviewStarted,
@@ -358,7 +363,7 @@ function requireValidFrontier() {
 }
 
 function commandHelp() {
-  print(`BangumiAgentKit Harness V3.4
+  print(`BangumiAgentKit Harness V3.5
 
 Usage: pnpm harness <command> [options]
 
@@ -366,7 +371,9 @@ Usage: pnpm harness <command> [options]
   frontier:check
   frontier:status
   discovery:check [--now <ISO timestamp>]
-  run:start --title <title> [--profile AUTONOMOUS_EVOLUTION] [--outer-sol-max 4]
+  run:start --title <title> [--profile AUTONOMOUS_EVOLUTION] [--outer-review-max 97]
+  run:budget-extend --run <issue> --product-add <count> --reason <text>
+  review:budget-extend --run <issue> --pr <number> --add <count> --reason <text>
   epoch:start --run <issue> --spec <json>
   epoch:open-pr --run <issue> --title <title>
   guard:legacy-paths [--base origin/master] [--product-epoch]
@@ -592,7 +599,24 @@ function commandRunStart(options) {
       gh('issue', 'close', String(issue.number), '--reason', 'completed');
     }
     const existing = resumableRuns[0];
-    print({ state: 'RUN_RESUMED', url: existing.url, issue: existing.number, run: existing.run });
+    const productIncrease = Math.max(
+      0,
+      DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS - existing.run.outer_sol.product.max,
+    );
+    const resumedRun = productIncrease
+      ? extendRunProductReviewBudget(existing.run, {
+          additional: productIncrease,
+          reason: 'GPT-6 Luna Max policy upgrade while resuming this active Run',
+        })
+      : existing.run;
+    if (productIncrease) updateIssue(existing.number, resumedRun);
+    print({
+      state: 'RUN_RESUMED',
+      url: existing.url,
+      issue: existing.number,
+      budget_upgraded: productIncrease > 0,
+      run: resumedRun,
+    });
     return;
   }
   const title = required(options, 'title').replace(/^(?:\[Harness V3 Run\]\s*)+/u, '');
@@ -603,12 +627,84 @@ function commandRunStart(options) {
   const state = createRunState({
     runId,
     profile: options.profile ?? 'AUTONOMOUS_EVOLUTION',
-    outerSolMax: Number(options['outer-sol-max'] ?? 4),
+    outerSolMax: Number(
+      options['outer-review-max'] ?? options['outer-sol-max'] ?? DEFAULT_OUTER_REVIEW_SLOTS,
+    ),
   });
   const url = gh('issue', 'create', '--title', `[Harness V3 Run] ${title}`, '--body-file', '-', {
     input: renderRunBody(state),
   });
   print({ state: 'RUN_STARTED', url, run: state });
+}
+
+function commandRunBudgetExtend(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const additional = Number(required(options, 'product-add'));
+  const reason = required(options, 'reason');
+  const runResult = issueState(runNumber);
+  if (
+    runResult.view.state === 'CLOSED' &&
+    runResult.state.state !== 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE'
+  ) {
+    throw new HarnessInvariantError(
+      'RUN_NOT_RESUMABLE',
+      'Only a budget-stopped resumable Run may be reopened by this command',
+    );
+  }
+  const updated = extendRunProductReviewBudget(runResult.state, {
+    additional,
+    reason,
+    at: new Date().toISOString(),
+  });
+  const needsReopen =
+    runResult.view.state === 'CLOSED' &&
+    runResult.state.state === 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE';
+  if (needsReopen) gh('issue', 'reopen', String(runNumber));
+  updateIssue(runNumber, updated);
+  print({
+    state: 'RUN_BUDGET_EXTENDED',
+    issue: runResult.view.number,
+    url: runResult.view.url,
+    product_review_budget: updated.outer_sol.product,
+    total_review_budget: updated.outer_sol,
+  });
+}
+
+function commandEpochReviewBudgetExtend(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const additional = Number(required(options, 'add'));
+  const reason = required(options, 'reason');
+  const runResult = issueState(runNumber);
+  if (String(runResult.state.active_epoch_pr) !== prNumber) {
+    throw new HarnessInvariantError(
+      'ACTIVE_EPOCH_MISMATCH',
+      'Epoch review budget can be extended only for the active Epoch in this Run',
+      { active_epoch_pr: runResult.state.active_epoch_pr, requested_pr: prNumber },
+    );
+  }
+  const epochResult = epochState(prNumber);
+  if (epochResult.view.state !== 'OPEN') {
+    throw new HarnessInvariantError(
+      'EPOCH_NOT_OPEN',
+      'Only an open Epoch PR can receive more review slots',
+    );
+  }
+  const updated = extendEpochReviewBudget(epochResult.state, {
+    additional,
+    reason,
+    at: new Date().toISOString(),
+  });
+  updatePr(prNumber, updated);
+  print({
+    state: 'EPOCH_REVIEW_BUDGET_EXTENDED',
+    issue: runResult.view.number,
+    pr: epochResult.view.number,
+    url: epochResult.view.url,
+    review_budget: updated.review,
+  });
 }
 
 function commandEpochStart(options) {
@@ -671,7 +767,7 @@ function commandEpochStart(options) {
       { branch: currentBranch(), head: currentHead(), remote: baseSha },
     );
   }
-  const epoch = createEpochState({
+  const selectedEpoch = createEpochState({
     epochId: spec.epoch_id,
     baseSha,
     baseBranch,
@@ -681,6 +777,11 @@ function commandEpochStart(options) {
     nonScope: spec.non_scope,
     advancesFrontierIds: frontierIds,
     acceptanceCriteria: spec.acceptance_criteria,
+  });
+  const epoch = extendEpochReviewBudget(selectedEpoch, {
+    additional: DEFAULT_EPOCH_REVIEW_SLOTS - selectedEpoch.review.max,
+    reason: 'GPT-6 Luna Max long-goal default policy',
+    at: new Date().toISOString(),
   });
   const nextRun = structuredClone(runResult.state);
   nextRun.pending_epoch = epoch;
@@ -871,7 +972,7 @@ function commandCandidateCheck(options) {
     epoch.next_action = 'AUTO_MERGE_AFTER_FINAL_CORRECTIVE';
   } else {
     epoch.state = 'REVIEW_READY';
-    epoch.next_action = `RESERVE_SOL_${epoch.review.consumed + 1}`;
+    epoch.next_action = `RESERVE_REVIEWER_${epoch.review.consumed + 1}`;
   }
   if (epochResult.view.isDraft) gh('pr', 'ready', String(prNumber));
   updatePr(prNumber, epoch);
@@ -1278,7 +1379,7 @@ function commandEpochResumeFinalCorrective(options) {
     state: resumed.epoch.state,
     same_pr: Number(prNumber),
     branch: resumed.epoch.branch,
-    sol_launches_remaining: 0,
+    review_launches_remaining: 0,
   });
 }
 
@@ -1658,11 +1759,13 @@ const commands = {
   'frontier:status': commandFrontierStatus,
   'discovery:check': commandDiscoveryCheck,
   'run:start': commandRunStart,
+  'run:budget-extend': commandRunBudgetExtend,
   'epoch:start': commandEpochStart,
   'epoch:open-pr': commandEpochOpenPr,
   'guard:legacy-paths': commandGuard,
   'candidate:check': commandCandidateCheck,
   'review:reserve': commandReviewReserve,
+  'review:budget-extend': commandEpochReviewBudgetExtend,
   'review:started': commandReviewStarted,
   'review:reconcile': commandReviewReconcile,
   'review:runtime': commandReviewRuntime,
