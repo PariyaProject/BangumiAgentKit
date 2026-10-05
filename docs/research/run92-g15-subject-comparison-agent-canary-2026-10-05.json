@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "evidenceKind": "g15_current_candidate_subject_comparison_agent_canary",
+  "evidenceKind": "g15_historical_candidate_a_subject_comparison_agent_canary",
   "createdOn": "2026-10-05",
   "candidate": {
     "sha": "79458fe4801257a284072cb308b1700e6a657522",
@@ -71,6 +71,16 @@
     "rawPromptAnswerAndMcpResultPersisted": false
   },
   "frontierStatus": "PARTIAL",
-  "passed": true,
-  "passBasis": "One bounded current-source Agent/MCP observation; no completeness or client acceptance claim."
+  "capturedCheckerPassed": true,
+  "passed": false,
+  "reviewDisposition": {
+    "status": "SUPERSEDED_BY_REVIEW_FINDINGS",
+    "capturedCheckerMethod": "ordered-two-subject-metric-identity-and-caveat-v1",
+    "findings": ["G15-R2", "G15-R3"],
+    "capturedCheckerPassCreditedAsFinalAnswerAcceptance": false,
+    "rawAnswerOrMcpResultAvailableForReassessment": false,
+    "freshCorrectedCandidateReadRequired": true,
+    "freshCorrectedCandidateReadPerformed": false
+  },
+  "passBasis": "Historical checker-v1 result only; superseded by review findings and not final answer acceptance."
 }

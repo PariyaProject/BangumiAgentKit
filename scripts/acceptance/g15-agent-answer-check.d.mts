@@ -35,6 +35,7 @@ export interface G15AgentAnswerCheck {
   notPersonalWatchProgressDisclosurePresent: boolean;
   boundedOverlapDisclosurePresent: boolean;
   omissionNotAbsenceDisclosurePresent: boolean;
+  scopeLinesMatchAllowlist: boolean;
   unsupportedClaimPresent: boolean;
   markdownFormattingDetected: boolean;
   passed: boolean;

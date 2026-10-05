@@ -1224,6 +1224,109 @@ describe('MCP tool result presentation', () => {
     );
   });
 
+  it('keeps the minimum comparison fallback bounded for partial A/B conflict candidates', () => {
+    const original = makeSubjectComparisonResult();
+    const reason = 'Official candidate values disagree.';
+    const conflictCandidates = (side: 'subject' | 'stats', value: number) => [
+      {
+        source: {
+          class: 'official-v0',
+          provider: side,
+          operation: `GET /v0/subjects/${side === 'subject' ? 400602 : 400602}/stats`,
+        },
+        value,
+      },
+      {
+        source: {
+          class: 'official-v0',
+          provider: side === 'subject' ? 'subject-mirror' : 'stats-mirror',
+          operation: `GET /v0/subjects/${side === 'subject' ? 400602 : 420628}/stats`,
+        },
+        value: value - 0.2,
+      },
+    ];
+    const scoreConflicts = [
+      {
+        side: 'A' as const,
+        reason,
+        subjectValue: 8.6,
+        statsValue: 8.4,
+        candidates: conflictCandidates('subject', 8.6),
+      },
+      {
+        side: 'B' as const,
+        reason,
+        subjectValue: 7.5,
+        statsValue: 7.3,
+        candidates: conflictCandidates('stats', 7.5),
+      },
+    ];
+
+    original.state = 'partial';
+    original.subjects.forEach((subject) => {
+      subject.state = 'partial';
+      subject.stats.state = 'partial';
+      subject.stats.conflicts = {
+        score: {
+          reason,
+          subjectValue: subject.subjectId === 400602 ? 8.6 : 7.5,
+          statsValue: subject.subjectId === 400602 ? 8.4 : 7.3,
+          candidates: conflictCandidates(
+            subject.subjectId === 400602 ? 'subject' : 'stats',
+            subject.subjectId === 400602 ? 8.6 : 7.5,
+          ),
+        },
+      };
+      subject.sections.stats = 'partial';
+      subject.coverage.sectionsComplete -= 1;
+      subject.coverage.sectionsPartial += 1;
+    });
+    original.metrics[0] = {
+      ...original.metrics[0]!,
+      values: [8.6, 7.5],
+      state: 'conflict',
+      delta: null,
+      conflicts: scoreConflicts,
+    };
+    original.coverage.subjectsComplete = 0;
+    original.coverage.subjectsPartial = 2;
+    original.coverage.metricsComplete = 3;
+    original.coverage.metricsConflict = 1;
+
+    const presentation = presentMcpToolResult('bangumi.get_subject_comparison', original);
+    const parsed = JSON.parse(presentation.text);
+    const score = parsed.metrics.find((metric: { key: string }) => metric.key === 'score');
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({ state: 'partial', subjectIds: [400602, 420628] });
+    expect(parsed.subjects.map((subject: { state: string }) => subject.state)).toEqual([
+      'partial',
+      'partial',
+    ]);
+    expect(score).toMatchObject({
+      key: 'score',
+      values: [8.6, 7.5],
+      delta: null,
+      state: 'conflict',
+      conflicts: [
+        { side: 'A', candidateCount: 2, conflictDetailsOmittedFromText: true },
+        { side: 'B', candidateCount: 2, conflictDetailsOmittedFromText: true },
+      ],
+    });
+    expect(parsed.source.official).toMatchObject({
+      class: 'official-v0',
+      attemptedAt: '2026-10-05T00:00:00.000Z',
+    });
+    expect(parsed.mcpTextProjection).toMatchObject({
+      structuredContentHasFullResult: true,
+      conflictDetailsOmittedFromText: 2,
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    });
+  });
+
   it('returns bounded person-activity text and the unchanged full structured result through MCP', async () => {
     const original = makePersonActivityResult();
     const response = await callMcpToolWithResult(

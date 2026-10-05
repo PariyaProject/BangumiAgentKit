@@ -1,10 +1,11 @@
-export const G15_AGENT_ANSWER_CHECK_METHOD = 'ordered-two-subject-metric-identity-and-caveat-v1';
+export const G15_AGENT_ANSWER_CHECK_METHOD = 'ordered-two-subject-metric-identity-and-caveat-v2';
 export const G15_SUBJECT_IDS = Object.freeze([400602, 420628]);
 const EXPECTED_SUBJECT_NAMES = new Map([
   [400602, new Set(['葬送的芙莉莲', '葬送のフリーレン'])],
   [420628, new Set(['药屋少女的呢喃', '薬屋のひとりごと'])],
 ]);
 const TOOL_NAME = 'bangumi.get_subject_comparison';
+const COMPLETION_FORMULA = 'collect / (wish + collect + doing + on_hold + dropped)';
 const REQUIRED_METRIC_KEYS = Object.freeze([
   'score',
   'episodesReported',
@@ -24,6 +25,58 @@ const FORBIDDEN_POSITIVE_CLAIM =
   /(?:整体质量更高|作品质量更高|谁更优秀|更值得看|推荐(?:观看)?|评分上升|热度上升|排名上升|完整比较|完整(?:榜单|名单|统计|演职员表|覆盖|结果|列表)|全量(?:数据|名单|结果|覆盖)|全站(?:完整|数据|列表|覆盖)|(?:覆盖|囊括)全部(?:作品|条目|动画)|所有(?:动画|作品|条目)|全部(?:动画|作品|条目)|没有遗漏|没有共同(?:声优|演员|职员|制作人员)|不存在共同(?:声优|演员|职员|制作人员))/gu;
 const CLAIM_NEGATION =
   /(?:不代表|并非|并不是|不能据此|无法据此|不能|无法|不足以|不是|不等于|不说明|未能|不推断)\s*$/u;
+const REQUIRED_SCOPE_LINES = Object.freeze([
+  '差值方向统一为第二个条目减第一个条目（B-A）。',
+  '完成率按 collect / (wish + collect + doing + on_hold + dropped) 计算；该公式仅为样本验证，并非官方 API 契约。',
+  '完成率是当前收藏状态的观察值，不代表用户个人观看进度。',
+  '数据来自当前 Bangumi 官方 v0 快照，不代表历史趋势。',
+  '演员和职员重合是有界结果；未显示的重合不代表不存在。',
+]);
+const SANITIZED_CHECK_BOOLEAN_KEYS = Object.freeze([
+  'toolNameMatch',
+  'queryArgumentsMatch',
+  'resultReadbackAvailable',
+  'resultSourceContractPassed',
+  'requestedSubjectIdsMatch',
+  'sourceSubjectIdentitiesMatch',
+  'identityOrderPreserved',
+  'requiredMetricsPresent',
+  'metricStatesPreserved',
+  'currentOfficialV0DisclosurePresent',
+  'currentSnapshotDisclosurePresent',
+  'noHistoricalTrendClaimPresent',
+  'deltaDirectionDisclosurePresent',
+  'completionFormulaDisclosurePresent',
+  'completionFormulaEvidenceDisclosurePresent',
+  'notPersonalWatchProgressDisclosurePresent',
+  'boundedOverlapDisclosurePresent',
+  'omissionNotAbsenceDisclosurePresent',
+  'scopeLinesMatchAllowlist',
+  'unsupportedClaimPresent',
+  'markdownFormattingDetected',
+  'passed',
+]);
+const SANITIZED_CHECK_COUNT_KEYS = Object.freeze([
+  'subjectIdentityRowsExpected',
+  'subjectIdentityRowsMatched',
+  'subjectIdentityRowsUnmatched',
+  'malformedMetricRows',
+  'duplicateIdentityRows',
+  'expectedMetricRows',
+  'answerMetricRowsParsed',
+  'metricRowsMatched',
+  'missingMetricRows',
+  'mismatchedMetricRows',
+  'unmatchedMetricRows',
+  'duplicateMetricRows',
+  'unstructuredAnswerLinesCount',
+]);
+const SANITIZED_CHECK_KEYS = new Set([
+  'method',
+  'resultState',
+  ...SANITIZED_CHECK_BOOLEAN_KEYS,
+  ...SANITIZED_CHECK_COUNT_KEYS,
+]);
 
 export function verifyG15AgentAnswer(answer, toolName, queryArguments, toolOutput) {
   const args = unwrapArguments(queryArguments);
@@ -64,11 +117,10 @@ export function verifyG15AgentAnswer(answer, toolName, queryArguments, toolOutpu
     const expected = expectedMetricByKey.get(row.key);
     return expected && row.state === expected.state;
   });
-  const scopeText = parsed.scopeLines.join('\n');
   const sourceContract = result
     ? validateSourceContract(result)
     : { passed: false, stats: null, formula: null };
-  const caveats = validateCaveats(scopeText, result);
+  const caveats = validateCaveats(parsed.scopeLines);
   const unsupportedClaims = hasUnqualifiedClaim(answer, FORBIDDEN_POSITIVE_CLAIM);
   const markdownFormattingDetected =
     answerLines(answer).some((line) => MARKDOWN_LINE.test(line)) ||
@@ -136,6 +188,7 @@ export function verifyG15AgentAnswer(answer, toolName, queryArguments, toolOutpu
     notPersonalWatchProgressDisclosurePresent: caveats.notPersonalWatchProgressDisclosurePresent,
     boundedOverlapDisclosurePresent: caveats.boundedOverlapDisclosurePresent,
     omissionNotAbsenceDisclosurePresent: caveats.omissionNotAbsenceDisclosurePresent,
+    scopeLinesMatchAllowlist: caveats.scopeLinesMatchAllowlist,
     unsupportedClaimPresent: unsupportedClaims,
     markdownFormattingDetected,
     passed,
@@ -143,26 +196,22 @@ export function verifyG15AgentAnswer(answer, toolName, queryArguments, toolOutpu
 }
 
 export function createSanitizedG15CanaryReport(input) {
-  const check = input.answerCheck;
+  const { candidate, check } = validateCanaryReportInput(input);
   const passed =
     input.probeProcessExitCode === 0 &&
     input.resultStatus === 'SUCCESS' &&
     input.completedBangumiToolCalls === 1 &&
     input.otherCompletedToolEvents === 0 &&
     input.textReadbackAvailable === true &&
+    input.textProjectionBytes > 0 &&
     input.textProjectionBytes <= 3600 &&
+    input.preservationRegressionPassed === true &&
     check?.passed === true;
   return {
     schemaVersion: 1,
     evidenceKind: 'g15_current_candidate_subject_comparison_agent_canary',
     createdOn: input.createdOn,
-    candidate: {
-      sha: input.candidate.sha,
-      baseSha: input.candidate.baseSha,
-      catalogSha256: input.candidate.catalogSha256,
-      agentImageRevision: input.candidate.agentImageRevision,
-      cliVersion: input.candidate.cliVersion,
-    },
+    candidate,
     call: {
       tool: TOOL_NAME,
       completedBangumiToolCalls: input.completedBangumiToolCalls,
@@ -198,44 +247,93 @@ export function createSanitizedG15CanaryReport(input) {
   };
 }
 
+function isPlainRecord(value) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isIsoDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validateCanaryReportInput(input) {
+  if (!isPlainRecord(input) || !isPlainRecord(input.candidate)) {
+    throw new TypeError('Invalid sanitized G15 canary report input');
+  }
+  const candidate = input.candidate;
+  const isSha = (value) => typeof value === 'string' && /^[0-9a-f]{40}$/u.test(value);
+  if (
+    !isIsoDate(input.createdOn) ||
+    !isSha(candidate.sha) ||
+    !isSha(candidate.baseSha) ||
+    candidate.agentImageRevision !== candidate.sha ||
+    typeof candidate.catalogSha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(candidate.catalogSha256) ||
+    typeof candidate.cliVersion !== 'string' ||
+    !/^\d+\.\d+\.\d+$/u.test(candidate.cliVersion)
+  ) {
+    throw new TypeError('Invalid sanitized G15 canary Candidate metadata');
+  }
+
+  const nonnegativeCount = (value) =>
+    Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000;
+  if (
+    !nonnegativeCount(input.completedBangumiToolCalls) ||
+    !nonnegativeCount(input.otherCompletedToolEvents) ||
+    !nonnegativeCount(input.textProjectionBytes) ||
+    !Number.isInteger(input.probeProcessExitCode) ||
+    input.probeProcessExitCode < -255 ||
+    input.probeProcessExitCode > 255 ||
+    typeof input.textReadbackAvailable !== 'boolean' ||
+    typeof input.separateStructuredContentExposed !== 'boolean' ||
+    typeof input.preservationRegressionPassed !== 'boolean' ||
+    !['SUCCESS', 'ERROR', 'CANCELLED', 'FAILURE'].includes(input.resultStatus)
+  ) {
+    throw new TypeError('Invalid sanitized G15 canary counters or status');
+  }
+
+  const check = input.answerCheck;
+  if (!isPlainRecord(check)) throw new TypeError('Invalid sanitized G15 answer check');
+  const checkKeys = Object.keys(check);
+  if (
+    checkKeys.some((key) => !SANITIZED_CHECK_KEYS.has(key)) ||
+    [...SANITIZED_CHECK_KEYS].some((key) => !Object.hasOwn(check, key)) ||
+    check.method !== G15_AGENT_ANSWER_CHECK_METHOD ||
+    (check.resultState !== null &&
+      !['complete', 'partial', 'unavailable', 'not_found'].includes(check.resultState))
+  ) {
+    throw new TypeError('Invalid sanitized G15 answer-check fields');
+  }
+  for (const key of SANITIZED_CHECK_BOOLEAN_KEYS) {
+    if (typeof check[key] !== 'boolean')
+      throw new TypeError('Invalid sanitized G15 answer-check flag');
+  }
+  for (const key of SANITIZED_CHECK_COUNT_KEYS) {
+    if (!nonnegativeCount(check[key]))
+      throw new TypeError('Invalid sanitized G15 answer-check count');
+  }
+  return {
+    candidate: {
+      sha: candidate.sha,
+      baseSha: candidate.baseSha,
+      catalogSha256: candidate.catalogSha256,
+      agentImageRevision: candidate.agentImageRevision,
+      cliVersion: candidate.cliVersion,
+    },
+    check,
+  };
+}
+
 function selectSanitizedCheck(check) {
-  const keys = [
-    'toolNameMatch',
-    'queryArgumentsMatch',
-    'resultReadbackAvailable',
-    'resultSourceContractPassed',
-    'requestedSubjectIdsMatch',
-    'sourceSubjectIdentitiesMatch',
-    'subjectIdentityRowsExpected',
-    'subjectIdentityRowsMatched',
-    'subjectIdentityRowsUnmatched',
-    'identityOrderPreserved',
-    'malformedMetricRows',
-    'duplicateIdentityRows',
-    'requiredMetricsPresent',
-    'expectedMetricRows',
-    'answerMetricRowsParsed',
-    'metricRowsMatched',
-    'missingMetricRows',
-    'mismatchedMetricRows',
-    'unmatchedMetricRows',
-    'duplicateMetricRows',
-    'metricStatesPreserved',
-    'unstructuredAnswerLinesCount',
-    'currentOfficialV0DisclosurePresent',
-    'currentSnapshotDisclosurePresent',
-    'noHistoricalTrendClaimPresent',
-    'deltaDirectionDisclosurePresent',
-    'completionFormulaDisclosurePresent',
-    'completionFormulaEvidenceDisclosurePresent',
-    'notPersonalWatchProgressDisclosurePresent',
-    'boundedOverlapDisclosurePresent',
-    'omissionNotAbsenceDisclosurePresent',
-    'unsupportedClaimPresent',
-    'markdownFormattingDetected',
-    'passed',
-  ];
-  return Object.fromEntries(keys.map((key) => [key, check?.[key] ?? null]));
+  return Object.fromEntries(
+    [...SANITIZED_CHECK_BOOLEAN_KEYS, ...SANITIZED_CHECK_COUNT_KEYS].map((key) => [
+      key,
+      check[key],
+    ]),
+  );
 }
 
 function validateSubjectIdentity(result) {
@@ -333,6 +431,9 @@ function matchesMetricValue(actualText, expected, key, isDelta = false) {
   if (actualText === '未知' || actualText === '冲突' || actualText === '不可计算') return false;
   const parsed = parseAnswerNumber(actualText, key, isDelta);
   if (parsed === null) return false;
+  if (key === 'episodesReported' || key === 'totalEpisodesReported') {
+    return Number.isInteger(expected) && Number.isInteger(parsed) && parsed === expected;
+  }
   const precision = key === 'collectionCompletionRate' ? 3 : key === 'score' ? 1 : 0;
   const tolerance =
     key === 'collectionCompletionRate' ? 0.00051 : 0.5 * 10 ** -precision + Number.EPSILON;
@@ -434,45 +535,29 @@ function validateSourceContract(result) {
     coverage.requestedSubjects === 2 &&
     Number.isInteger(coverage?.returnedSubjects) &&
     coverage.returnedSubjects === 2 &&
-    typeof formula?.description === 'string' &&
-    formula.description.includes('collect') &&
-    formula.description.includes('wish') &&
-    formula.description.includes('doing') &&
-    formula.description.includes('on_hold') &&
-    formula.description.includes('dropped') &&
+    formula?.id === 'bangumi.subject.completion.v1' &&
+    formula.version === 1 &&
+    formula.evidenceStatus === 'empirically_verified' &&
+    formula.description === COMPLETION_FORMULA &&
     typeof stats?.collection?.completionState === 'string';
   return { passed, stats, formula };
 }
 
-function validateCaveats(scopeText, result) {
-  const currentOfficialV0DisclosurePresent = /官方\s*v0/iu.test(scopeText);
-  const currentSnapshotDisclosurePresent = /当前.{0,12}(?:快照|观察|查询|读取)/u.test(scopeText);
-  const noHistoricalTrendClaimPresent =
-    /(?:不代表|不能据此|不足以|无法据此|不能说明).{0,12}历史趋势/u.test(scopeText);
-  const deltaDirectionDisclosurePresent =
-    /B\s*[-−]\s*A/u.test(scopeText) && /第二个条目减第一个条目/u.test(scopeText);
-  const completionFormulaDisclosurePresent =
-    /collect\s*\/\s*\(?\s*wish\s*\+\s*collect\s*\+\s*doing\s*\+\s*on_hold\s*\+\s*dropped\s*\)?/iu.test(
-      scopeText,
-    ) ||
-    ['collect', 'wish', 'doing', 'on_hold', 'dropped'].every((part) => scopeText.includes(part));
-  const completionFormulaEvidenceDisclosurePresent =
-    /(?:样本|经验).{0,8}验证/u.test(scopeText) &&
-    /(?:非官方|不是官方|并非官方).{0,12}(?:API|接口).{0,8}(?:契约|约定)/iu.test(scopeText);
-  const notPersonalWatchProgressDisclosurePresent =
-    /(?:不代表|不等于|不能说明|并非|不是).{0,12}(?:用户|个人).{0,8}(?:观看进度|追番进度)/u.test(
-      scopeText,
-    ) || /(?:不代表|不等于|不能说明|并非|不是).{0,12}(?:观看进度|追番进度)/u.test(scopeText);
-  const overlapWasOmitted =
-    Number(result?.mcpTextProjection?.overlapItemsOmittedFromText ?? 0) > 0 ||
-    Number(result?.overlaps?.cast?.itemsOmittedFromText ?? 0) > 0 ||
-    Number(result?.overlaps?.staff?.itemsOmittedFromText ?? 0) > 0;
-  const boundedOverlapDisclosurePresent = /(?:有界|部分覆盖)/u.test(scopeText);
-  const omissionNotAbsenceDisclosurePresent =
-    !overlapWasOmitted ||
-    /(?:未显示|未列出|省略).{0,12}(?:不代表|不能说明|并不意味着).{0,12}(?:不存在|没有)/u.test(
-      scopeText,
-    );
+function validateCaveats(scopeLines) {
+  const lines = Array.isArray(scopeLines) ? scopeLines : [];
+  const scopeLinesMatchAllowlist =
+    lines.length === REQUIRED_SCOPE_LINES.length &&
+    REQUIRED_SCOPE_LINES.every((required, index) => lines[index] === required);
+  const includes = (index) => lines.includes(REQUIRED_SCOPE_LINES[index]);
+  const currentOfficialV0DisclosurePresent = includes(3);
+  const currentSnapshotDisclosurePresent = includes(3);
+  const noHistoricalTrendClaimPresent = includes(3);
+  const deltaDirectionDisclosurePresent = includes(0);
+  const completionFormulaDisclosurePresent = includes(1);
+  const completionFormulaEvidenceDisclosurePresent = includes(1);
+  const notPersonalWatchProgressDisclosurePresent = includes(2);
+  const boundedOverlapDisclosurePresent = includes(4);
+  const omissionNotAbsenceDisclosurePresent = includes(4);
   return {
     currentOfficialV0DisclosurePresent,
     currentSnapshotDisclosurePresent,
@@ -483,16 +568,8 @@ function validateCaveats(scopeText, result) {
     notPersonalWatchProgressDisclosurePresent,
     boundedOverlapDisclosurePresent,
     omissionNotAbsenceDisclosurePresent,
-    passed:
-      currentOfficialV0DisclosurePresent &&
-      currentSnapshotDisclosurePresent &&
-      noHistoricalTrendClaimPresent &&
-      deltaDirectionDisclosurePresent &&
-      completionFormulaDisclosurePresent &&
-      completionFormulaEvidenceDisclosurePresent &&
-      notPersonalWatchProgressDisclosurePresent &&
-      boundedOverlapDisclosurePresent &&
-      omissionNotAbsenceDisclosurePresent,
+    scopeLinesMatchAllowlist,
+    passed: scopeLinesMatchAllowlist,
   };
 }
 

@@ -9,8 +9,8 @@ const report = JSON.parse(
   ),
 );
 
-describe('G15 current-Candidate Agent/MCP canary report', () => {
-  it('binds the single read to the exact Candidate, Base, catalog, and Agent image', () => {
+describe('G15 historical Candidate A Agent/MCP canary report', () => {
+  it('binds the historical read to its exact Candidate, Base, catalog, and Agent image', () => {
     expect(report.candidate).toMatchObject({
       sha: '79458fe4801257a284072cb308b1700e6a657522',
       baseSha: 'b769efcc6394fcb703d0cc1f3c98d251c4767a8c',
@@ -27,7 +27,7 @@ describe('G15 current-Candidate Agent/MCP canary report', () => {
     });
   });
 
-  it('records the bounded readback and exact identity/metric checks without metric values', () => {
+  it('records bounded historical readback counters without claiming final answer acceptance', () => {
     expect(report.textProjection).toMatchObject({
       readBackInAgentEventStream: true,
       utf8Bytes: 3476,
@@ -57,7 +57,20 @@ describe('G15 current-Candidate Agent/MCP canary report', () => {
       passed: true,
     });
     expect(report.frontierStatus).toBe('PARTIAL');
-    expect(report.passed).toBe(true);
+    expect(report.capturedCheckerPassed).toBe(true);
+    expect(report.passed).toBe(false);
+    expect(report.passBasis).toBe(
+      'Historical checker-v1 result only; superseded by review findings and not final answer acceptance.',
+    );
+    expect(report.reviewDisposition).toMatchObject({
+      status: 'SUPERSEDED_BY_REVIEW_FINDINGS',
+      capturedCheckerMethod: 'ordered-two-subject-metric-identity-and-caveat-v1',
+      findings: ['G15-R2', 'G15-R3'],
+      capturedCheckerPassCreditedAsFinalAnswerAcceptance: false,
+      rawAnswerOrMcpResultAvailableForReassessment: false,
+      freshCorrectedCandidateReadRequired: true,
+      freshCorrectedCandidateReadPerformed: false,
+    });
   });
 
   it('states the structuredContent and retention limits and contains no raw canary content', () => {

@@ -1239,11 +1239,22 @@ function projectComparisonSource(
   };
 }
 
-function projectComparisonConflict(conflict: {
-  reason?: string;
-  resolution?: string;
-  candidates?: unknown[];
-}) {
+function projectComparisonConflict(
+  conflict: {
+    reason?: string;
+    resolution?: string;
+    candidates?: unknown[];
+  },
+  includeDetails = true,
+) {
+  const candidateCount = conflict.candidates?.length ?? 0;
+  if (!includeDetails) {
+    return {
+      candidateCount,
+      candidateValuesOmittedFromText: true,
+      conflictDetailsOmittedFromText: true,
+    };
+  }
   const reason = clippedMessage(conflict.reason || '冲突原因未提供');
   const resolution = conflict.resolution ? clippedMessage(conflict.resolution) : undefined;
   return {
@@ -1255,8 +1266,9 @@ function projectComparisonConflict(conflict: {
           ...(resolution.clipped ? { resolutionTextTruncated: true } : {}),
         }
       : {}),
-    candidateCount: conflict.candidates?.length ?? 0,
+    candidateCount,
     candidateValuesOmittedFromText: true,
+    conflictDetailsOmittedFromText: false,
   };
 }
 
@@ -1403,6 +1415,7 @@ function createSubjectComparisonProjection(
   limitationLimit: number,
   evidenceLimit: number,
   operationLimit: number,
+  includeConflictDetails = true,
 ) {
   const warnings = result.warnings.slice(0, warningLimit).map(projectComparisonWarning);
   const limitations = result.limitations
@@ -1442,7 +1455,7 @@ function createSubjectComparisonProjection(
         ? {
             conflicts: metric.conflicts.map((conflict) => ({
               side: conflict.side,
-              ...projectComparisonConflict(conflict),
+              ...projectComparisonConflict(conflict, includeConflictDetails),
             })),
           }
         : {}),
@@ -1495,6 +1508,167 @@ function createSubjectComparisonProjection(
       evidenceRecordsOmittedFromText: result.evidence.length - evidence.length,
       warningRecordsOmittedFromText: result.warnings.length - warnings.length,
       limitationRecordsOmittedFromText: result.limitations.length - limitations.length,
+      conflictDetailsOmittedFromText: includeConflictDetails
+        ? 0
+        : result.metrics.reduce((count, metric) => count + (metric.conflicts?.length ?? 0), 0),
+    },
+  };
+}
+
+function createMinimumSubjectComparisonProjection(result: SubjectComparisonResult) {
+  const metricKeys = new Set([
+    'score',
+    'episodesReported',
+    'totalEpisodesReported',
+    'collectionCompletionRate',
+  ]);
+  const metrics = result.metrics.filter((metric) => metricKeys.has(metric.key));
+  const conflictCount = result.metrics.reduce(
+    (count, metric) => count + (metric.conflicts?.length ?? 0),
+    0,
+  );
+  const sourceSummary = (
+    source:
+      SubjectComparisonResult['source']['official'] | SubjectComparisonResult['source']['derived'],
+  ) => ({
+    class: source.class,
+    operation: clippedDisplayText(source.operations[0] ?? '', 48).text,
+    operationCount: source.operations.length,
+    operationsOmittedFromText: Math.max(0, source.operations.length - 1),
+    attemptedAt: clippedDisplayText(source.attemptedAt, 32).text,
+    ...(source.retrievedAt ? { retrievedAt: clippedDisplayText(source.retrievedAt, 32).text } : {}),
+  });
+  const completionFormula = result.subjects.find((subject) => subject.statistics)?.statistics
+    ?.collection.formulas.completion;
+  const evidenceRecordsOmitted = result.evidence.length;
+  const warningRecordsOmitted = result.warnings.length;
+  const limitationRecordsOmitted = result.limitations.length;
+  const ratingBucketsOmitted = result.subjects.reduce(
+    (total, subject) => total + (subject.statistics?.rating.distribution.length ?? 0),
+    0,
+  );
+  const overlapItemsOmitted =
+    result.overlaps.cast.items.length + result.overlaps.staff.items.length;
+
+  return {
+    state: result.state,
+    subjectIds: [...result.subjectIds],
+    subjects: result.subjects.map((subject) => {
+      const name = subject.subject ? clippedDisplayText(subject.subject.name, 64) : undefined;
+      const nameCn = subject.subject?.nameCn
+        ? clippedDisplayText(subject.subject.nameCn, 64)
+        : undefined;
+      const statConflicts = Object.values(subject.stats.conflicts ?? {}).filter(Boolean).length;
+      return {
+        subjectId: subject.subjectId,
+        state: subject.state,
+        ...(subject.subject
+          ? {
+              subject: {
+                id: subject.subject.id,
+                type: subject.subject.type,
+                name: name!.text,
+                ...(name!.clipped ? { nameTextTruncated: true } : {}),
+                ...(nameCn ? { nameCn: nameCn.text } : {}),
+                ...(nameCn?.clipped ? { nameCnTextTruncated: true } : {}),
+                ...(subject.subject.episodesReported === undefined
+                  ? {}
+                  : { episodesReported: subject.subject.episodesReported }),
+                ...(subject.subject.totalEpisodesReported === undefined
+                  ? {}
+                  : { totalEpisodesReported: subject.subject.totalEpisodesReported }),
+              },
+            }
+          : {}),
+        stats: { state: subject.stats.state, conflictCount: statConflicts },
+        coverage: {
+          truncatedSections: [...subject.coverage.truncatedSections],
+          limits: { ...subject.coverage.limits },
+        },
+        ...(subject.statistics
+          ? {
+              statistics: {
+                state: subject.statistics.state,
+                collection: {
+                  state: subject.statistics.collection.state,
+                  ...(subject.statistics.collection.completionRate === undefined
+                    ? {}
+                    : { completionRate: subject.statistics.collection.completionRate }),
+                  completionState: subject.statistics.collection.completionState,
+                  conflictCount: subject.statistics.collection.conflicts?.length ?? 0,
+                },
+                collectionCoverage: {
+                  expectedBuckets: subject.statistics.coverage.collectionBucketsExpected,
+                  observedBuckets: subject.statistics.coverage.collectionBucketsObserved,
+                },
+              },
+            }
+          : {}),
+        warningRecordsOmittedFromText: subject.warnings.length,
+        limitationRecordsOmittedFromText: subject.limitations.length,
+      };
+    }),
+    metrics: metrics.map((metric) => ({
+      key: metric.key,
+      values: [...metric.values],
+      delta: metric.delta,
+      deltaPrecision: metric.deltaPrecision,
+      state: metric.state,
+      ...(metric.conflicts?.length
+        ? {
+            conflicts: metric.conflicts.map((conflict) => ({
+              side: conflict.side,
+              candidateCount: conflict.candidates?.length ?? 0,
+              candidateValuesOmittedFromText: true,
+              conflictDetailsOmittedFromText: true,
+            })),
+          }
+        : {}),
+    })),
+    ...(completionFormula
+      ? {
+          collectionCompletionFormula: {
+            id: clippedDisplayText(completionFormula.id, 40).text,
+            version: completionFormula.version,
+            evidenceStatus: completionFormula.evidenceStatus,
+            description: clippedDisplayText(completionFormula.description, 96).text,
+          },
+        }
+      : {}),
+    overlaps: {
+      cast: projectComparisonOverlap(result.overlaps.cast),
+      staff: projectComparisonOverlap(result.overlaps.staff),
+    },
+    coverage: {
+      requestedSubjects: result.coverage.requestedSubjects,
+      returnedSubjects: result.coverage.returnedSubjects,
+      subjectsComplete: result.coverage.subjectsComplete,
+      subjectsPartial: result.coverage.subjectsPartial,
+      subjectsUnavailable: result.coverage.subjectsUnavailable,
+      subjectsNotFound: result.coverage.subjectsNotFound,
+      metricsComplete: result.coverage.metricsComplete,
+      metricsUnknown: result.coverage.metricsUnknown,
+      metricsConflict: result.coverage.metricsConflict,
+    },
+    source: {
+      official: sourceSummary(result.source.official),
+      derived: sourceSummary(result.source.derived),
+    },
+    mcpTextProjection: {
+      version: 'subject-comparison-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      textViewScope: 'Minimum bounded text; omitted details remain in full structuredContent.',
+      ratingDistributionBucketsOmittedFromText: ratingBucketsOmitted,
+      metricsOmittedFromText: result.metrics.length - metrics.length,
+      overlapItemsOmittedFromText: overlapItemsOmitted,
+      evidenceRecordsOmittedFromText: evidenceRecordsOmitted,
+      warningRecordsOmittedFromText: warningRecordsOmitted,
+      limitationRecordsOmittedFromText: limitationRecordsOmitted,
+      conflictDetailsOmittedFromText: conflictCount,
+      sourceOperationsOmittedFromText:
+        Math.max(0, result.source.official.operations.length - 1) +
+        Math.max(0, result.source.derived.operations.length - 1),
     },
   };
 }
@@ -1504,6 +1678,7 @@ function compactSubjectComparison(result: SubjectComparisonResult): string {
   let limitationLimit = Math.min(MAX_LIMITATIONS, result.limitations.length);
   let evidenceLimit = Math.min(2, result.evidence.length);
   let operationLimit = 1;
+  let includeConflictDetails = true;
 
   while (true) {
     const projection = createSubjectComparisonProjection(
@@ -1512,6 +1687,7 @@ function compactSubjectComparison(result: SubjectComparisonResult): string {
       limitationLimit,
       evidenceLimit,
       operationLimit,
+      includeConflictDetails,
     );
     const text = JSON.stringify(projection);
     if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
@@ -1520,7 +1696,12 @@ function compactSubjectComparison(result: SubjectComparisonResult): string {
     else if (limitationLimit > 0) limitationLimit -= 1;
     else if (warningLimit > 0) warningLimit -= 1;
     else if (operationLimit > 1) operationLimit -= 1;
-    else return JSON.stringify(createSubjectComparisonProjection(result, 0, 0, 0, 1));
+    else if (includeConflictDetails) includeConflictDetails = false;
+    else {
+      const minimumText = JSON.stringify(createMinimumSubjectComparisonProjection(result));
+      if (utf8Bytes(minimumText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimumText;
+      throw new Error('Minimum subject-comparison MCP text projection exceeded its byte limit');
+    }
   }
 }
 
