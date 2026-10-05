@@ -9,8 +9,8 @@ const report = JSON.parse(
   ),
 );
 
-describe('G01 current-candidate Agent/MCP canary report', () => {
-  it('binds one public query to the exact Candidate and catalog', () => {
+describe('G01 historical Candidate A Agent/MCP canary report', () => {
+  it('binds the historical public query to its exact Candidate and catalog', () => {
     expect(report.candidate).toMatchObject({
       sha: '8d04647e97b4f66143d90824906ed02f34bc1a31',
       baseSha: '87f1fc6c0a36adfb8d62a831947ee4a707a4c724',
@@ -27,7 +27,7 @@ describe('G01 current-candidate Agent/MCP canary report', () => {
     });
   });
 
-  it('verifies every visible row and all required scope disclosures', () => {
+  it('records the historical v2 row counters without crediting final answer acceptance', () => {
     expect(report.textProjection).toMatchObject({
       readBackInAgentEventStream: true,
       utf8Bytes: 3523,
@@ -60,9 +60,9 @@ describe('G01 current-candidate Agent/MCP canary report', () => {
     });
   });
 
-  it('documents the checker revision without claiming a second canary or full-object readback', () => {
+  it('supersedes the v2 result after review findings without claiming a second read', () => {
     expect(report.passBasis).toContain('Historical Candidate A checker-v2');
-    expect(report.passBasis).toContain('not a current v4 reassessment');
+    expect(report.passBasis).toContain('not final G01 answer acceptance');
     expect(report.acceptanceReassessment).toMatchObject({
       initialMethodPassed: false,
       initialFalseCheck: 'separate count phrase matcher',
@@ -77,14 +77,26 @@ describe('G01 current-candidate Agent/MCP canary report', () => {
     });
     expect(report.correctiveChecker).toMatchObject({
       method: 'ordered-source-row-identity-and-bounds-v4',
-      reviewFindingsAddressed: ['R93-01', 'R93-02', 'R93-03'],
+      reviewFindingsAddressed: ['R93-01', 'R93-02', 'R93-03', 'R93-04'],
       validationScope: 'synthetic fixtures and regressions only',
       historicalLiveAnswerReprocessed: false,
       secondPublicCall: false,
     });
-    expect(report.acceptanceReassessment.limitation).toContain('has not been reassessed under v4');
+    expect(report.acceptanceReassessment.limitation).toContain(
+      'raw answer/result were not retained',
+    );
     expect(report.frontierStatus).toBe('PARTIAL');
-    expect(report.passed).toBe(true);
+    expect(report.capturedCheckerPassed).toBe(true);
+    expect(report.passed).toBe(false);
+    expect(report.reviewDisposition).toMatchObject({
+      status: 'SUPERSEDED_BY_REVIEW_FINDINGS',
+      capturedCheckerMethod: 'ordered-source-row-identity-and-bounds-v2',
+      findings: ['R93-01', 'R93-02', 'R93-03', 'R93-04'],
+      capturedCheckerPassCreditedAsFinalAnswerAcceptance: false,
+      rawAnswerOrMcpResultAvailableForReassessment: false,
+      currentV4ReadRequired: true,
+      currentV4ReadPerformed: false,
+    });
   });
 
   it('contains no answer prose or row identities', () => {

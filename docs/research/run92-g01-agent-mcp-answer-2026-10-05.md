@@ -34,3 +34,9 @@ The implementation adds a reusable in-memory answer checker for the actual compa
 ## Review boundary
 
 Do not review after the checker alone: the exact-Candidate Agent answer and its sanitized evidence are part of the same G01 acceptance capability. Do not extend into QQ/TIM, authentication, source authorization, or another discovery scenario; those require different evidence and review context.
+
+## Post-review disposition
+
+The historical Candidate A report records checker-v2 counters only. Sol findings R93-01 through R93-04 later showed that v2 could accept inconsistent counts, omission wording, caveat polarity, and declaration drift. The captured v2 pass is superseded and is not credited as current G01 answer acceptance. Its prompt, answer, and MCP result were not retained, so it cannot be reprocessed under the current checker v4. The product report and regression now mark that distinction explicitly.
+
+Run #95 selects one fresh exact-Candidate query against the current v4 checker and synthetic regressions. This is a new gated read, not a replay of Candidate A. It must use only `bangumi.query_subjects` with `G01_QUERY_ARGUMENTS`, retain only sanitized evidence, and never retry if the answer check fails. G01 remains PARTIAL because official-v0 search is experimental with estimated totals.
