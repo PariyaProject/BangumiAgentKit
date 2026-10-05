@@ -368,6 +368,13 @@ paired or partial reservation before any future launch. When runtime truth
 cannot prove no launch occurred, count one slot as consumed in both ledgers.
 When the reviewer actually starts, convert both reserved slots to consumed.
 
+When runtime truth proves the launch did not occur, reconciliation clears both
+reservations without consuming budget and returns the Epoch to `REVIEW_READY`.
+For older control blocks already in `REVIEW_RESERVATION_RECONCILED` with zero
+review consumption, run `candidate:check` again against the exact current
+branch/PR SHA, Base, and CI before reserving a new launch. A reconciled state
+with consumed review budget cannot use this retry path.
+
 Each reviewer start consumes one slot even if it later fails or terminates.
 Waiting/polling the same reviewer consumes no slot.
 

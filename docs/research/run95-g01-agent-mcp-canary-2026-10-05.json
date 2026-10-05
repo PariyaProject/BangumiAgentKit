@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "g01_current_candidate_agent_mcp_answer_canary",
+  "createdOn": "2026-10-05",
+  "candidate": {
+    "sha": "c0e493fdba15784cf44410318f6dcb017917275c",
+    "baseSha": "4c0e08bd488484f4443aefbea36a4219ef1ad2f4",
+    "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+    "agentImageRevision": "c0e493fdba15784cf44410318f6dcb017917275c",
+    "cliVersion": "1.2.14"
+  },
+  "call": {
+    "tool": "bangumi.query_subjects",
+    "completedBangumiToolCalls": 1,
+    "onlyAllowedToolCompleted": true,
+    "otherCompletedToolEvents": 0,
+    "argumentsMatchExpectedScope": true,
+    "queryScope": {
+      "media": "anime",
+      "year": 2026,
+      "month": 7,
+      "exactConcept": "后宫"
+    }
+  },
+  "textProjection": {
+    "readBackInAgentEventStream": true,
+    "utf8Bytes": 3523,
+    "maxUtf8Bytes": 3600,
+    "returnedRows": 14,
+    "omittedFromText": 0,
+    "totalKind": "estimated",
+    "experimentalSourceWarningPresent": true
+  },
+  "answerCheckMethod": "ordered-source-row-identity-and-bounds-v4",
+  "answerCheck": {
+    "method": "ordered-source-row-identity-and-bounds-v4",
+    "queryArgumentsMatch": true,
+    "resultReadbackAvailable": true,
+    "resultState": "ok",
+    "returnedRows": 14,
+    "invalidSourceRowsCount": 0,
+    "duplicateSourceRowsCount": 0,
+    "sourceReturnedMatchesVisibleRows": true,
+    "textOmittedItems": 0,
+    "projectionItemsIncluded": 14,
+    "projectionCountMatchesVisibleRows": true,
+    "totalKind": "estimated",
+    "experimentalSourceWarningPresent": true,
+    "sourceOperationVerified": true,
+    "answerRowsParsed": 14,
+    "rowsMatched": 14,
+    "missingRows": 0,
+    "mismatchedRows": 0,
+    "unmatchedRows": 0,
+    "duplicateAnswerRows": 0,
+    "unstructuredAnswerLinesCount": 0,
+    "rowOrderPreserved": true,
+    "exactTagScopeDisclosurePresent": true,
+    "monthScopeDisclosurePresent": true,
+    "animeScopeDisclosurePresent": true,
+    "explicitCountPatternMatched": false,
+    "explicitCountStatementsConsistent": true,
+    "answerRowsAccountForVisibleResultCount": true,
+    "boundedCoverageDisclosurePresent": true,
+    "experimentalSourceDisclosurePresent": true,
+    "estimatedTotalDisclosurePresent": true,
+    "nonExhaustiveDisclosurePresent": false,
+    "omissionCountDisclosurePresent": true,
+    "omissionNotAbsenceDisclosurePresent": true,
+    "unsupportedScopeClausesCount": 4,
+    "unsupportedCompletenessClaim": false,
+    "unsupportedAbsenceClaim": false,
+    "markdownFormattingDetected": false,
+    "passed": false
+  },
+  "structuredContentEvidence": {
+    "separateFieldExposedInAgentEventStream": false,
+    "liveFullObjectReadback": "NOT_EXPOSED_BY_ANTIGRAVITY_EVENT_STREAM"
+  },
+  "probe": {
+    "cliProcessExitCode": 0,
+    "resultStatus": "SUCCESS",
+    "isolatedProbePassed": true,
+    "probeReportWriteSuppressed": true,
+    "rawPromptAnswerAndMcpResultPersisted": false
+  },
+  "frontierStatus": "PARTIAL",
+  "passed": false,
+  "runNumber": 95,
+  "execution": {
+    "agentInvocations": 1,
+    "retryCount": 0,
+    "retryPerformed": false
+  },
+  "failureDisposition": {
+    "status": "REJECTED_BY_CHECKER_V4",
+    "failedChecks": ["nonExhaustiveDisclosurePresent", "unsupportedScopeClausesCount"],
+    "rawAnswerOrMcpResultRetained": false,
+    "causeDetermination": "NOT_POSSIBLE_FROM_SANITIZED_COUNTERS",
+    "limitation": "The sanitized flags do not distinguish a missing answer caveat from a checker parsing mismatch."
+  }
+}

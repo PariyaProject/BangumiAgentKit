@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "evidenceKind": "g01_current_candidate_agent_mcp_answer_canary",
+  "evidenceKind": "g01_historical_candidate_a_agent_mcp_answer_canary",
   "createdOn": "2026-10-05",
   "candidate": {
     "sha": "8d04647e97b4f66143d90824906ed02f34bc1a31",
@@ -83,8 +83,8 @@
     "rawPromptAnswerAndMcpResultPersisted": false
   },
   "frontierStatus": "PARTIAL",
-  "passed": true,
-  "passBasis": "Historical Candidate A checker-v2 sanitized-counter result only; it is not a current v4 reassessment or a current G01 completion claim.",
+  "passed": false,
+  "passBasis": "Historical Candidate A checker-v2 counter pass only; review findings later showed false positives, so it is not final G01 answer acceptance.",
   "acceptanceReassessment": {
     "initialMethod": "ordered-source-row-identity-and-bounds-v1",
     "initialMethodPassed": false,
@@ -96,13 +96,31 @@
     "reassessedFromSanitizedCountersOnly": true,
     "rawAnswerReprocessed": false,
     "secondPublicCall": false,
-    "limitation": "This is a v2-only sanitized-counter record. Reviewers found false positives in v2 and v3; the raw answer was not retained and has not been reassessed under v4. No second public call was made."
+    "limitation": "The v2 pass is historical only. Review found false positives in explicit-count consistency, omission wording, caveat polarity, and declaration drift; the raw Candidate A answer/result were not retained for v4 reprocessing. Run #95 performed one separate exact-Candidate v4 read; that checker rejected acceptance on non-exhaustiveness/scope flags. Do not retry the Run #95 query."
   },
   "correctiveChecker": {
     "method": "ordered-source-row-identity-and-bounds-v4",
-    "reviewFindingsAddressed": ["R93-01", "R93-02", "R93-03"],
+    "reviewFindingsAddressed": ["R93-01", "R93-02", "R93-03", "R93-04"],
     "validationScope": "synthetic fixtures and regressions only",
     "historicalLiveAnswerReprocessed": false,
     "secondPublicCall": false
+  },
+  "capturedCheckerPassed": true,
+  "reviewDisposition": {
+    "status": "SUPERSEDED_BY_REVIEW_FINDINGS",
+    "capturedCheckerMethod": "ordered-source-row-identity-and-bounds-v2",
+    "findings": ["R93-01", "R93-02", "R93-03", "R93-04"],
+    "capturedCheckerPassCreditedAsFinalAnswerAcceptance": false,
+    "rawAnswerOrMcpResultAvailableForReassessment": false,
+    "currentV4ReadRequired": true,
+    "currentV4ReadPerformed": true
+  },
+  "followupRead": {
+    "runNumber": 95,
+    "report": "run95-g01-agent-mcp-canary-2026-10-05.json",
+    "performed": true,
+    "passed": false,
+    "retryPerformed": false,
+    "rawAnswerOrMcpResultRetained": false
   }
 }

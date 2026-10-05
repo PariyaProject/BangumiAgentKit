@@ -763,6 +763,10 @@ function commandCandidateCheck(options) {
   const evidence = readJsonFile(required(options, 'evidence'));
   const epochResult = epochState(prNumber);
   const epoch = structuredClone(epochResult.state);
+  const reconciledWithoutLaunch =
+    epoch.state === 'REVIEW_RESERVATION_RECONCILED' &&
+    epoch.review?.consumed === 0 &&
+    epoch.review?.reserved === 0;
   if (
     ![
       'IMPLEMENTING',
@@ -771,7 +775,8 @@ function commandCandidateCheck(options) {
       'PASS_INVALIDATED_BASE_DRIFT',
       'FINAL_CORRECTIVE_REQUIRED',
       'FINAL_CORRECTIVE_READY',
-    ].includes(epoch.state)
+    ].includes(epoch.state) &&
+    !reconciledWithoutLaunch
   ) {
     throw new HarnessInvariantError(
       'INVALID_CANDIDATE_STATE',
