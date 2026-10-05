@@ -2089,6 +2089,18 @@ interface SeriesProjectionOptions {
   includePlacementReason: boolean;
 }
 
+interface MinimumSeriesProjectionOptions {
+  orderLimit: number;
+  nameCharacters: number;
+  labelCharacters: number;
+  metadataTextCharacters: number;
+  truncationReasonLimit: number;
+  sourceLimit: number;
+  warningLimit: number;
+  limitationLimit: number;
+  includeCapabilityState: boolean;
+}
+
 function compactSeriesWatchOrder(result: SeriesWatchOrderResult): string {
   const options: SeriesProjectionOptions = {
     orderLimit: Math.min(17, result.watchOrder.length),
@@ -2129,7 +2141,44 @@ function compactSeriesWatchOrder(result: SeriesWatchOrderResult): string {
     else if (options.nameCharacters > 0) options.nameCharacters -= 1;
     else if (options.orderLimit > 1) options.orderLimit -= 1;
     else if (options.edgeLimit > 0) options.edgeLimit = 0;
-    else return JSON.stringify(createMinimumSeriesWatchOrderProjection(result));
+    else return compactMinimumSeriesWatchOrder(result);
+  }
+}
+
+function compactMinimumSeriesWatchOrder(result: SeriesWatchOrderResult): string {
+  const options: MinimumSeriesProjectionOptions = {
+    orderLimit: Math.min(17, result.watchOrder.length),
+    nameCharacters: 12,
+    labelCharacters: 12,
+    metadataTextCharacters: 48,
+    truncationReasonLimit: 2,
+    sourceLimit: 1,
+    warningLimit: 1,
+    limitationLimit: 1,
+    includeCapabilityState: true,
+  };
+
+  while (true) {
+    const text = JSON.stringify(createMinimumSeriesWatchOrderProjection(result, options));
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (options.orderLimit > 1)
+      options.orderLimit = Math.max(1, Math.floor(options.orderLimit / 2));
+    else if (options.nameCharacters > 0) options.nameCharacters -= 1;
+    else if (options.labelCharacters > 0) options.labelCharacters -= 1;
+    else if (options.metadataTextCharacters > 0) options.metadataTextCharacters -= 1;
+    else if (options.truncationReasonLimit > 0) options.truncationReasonLimit -= 1;
+    else if (options.sourceLimit > 0) options.sourceLimit -= 1;
+    else if (options.warningLimit > 0) options.warningLimit -= 1;
+    else if (options.limitationLimit > 0) options.limitationLimit -= 1;
+    else if (options.includeCapabilityState) options.includeCapabilityState = false;
+    else {
+      const minimalText = JSON.stringify(createBareMinimumSeriesWatchOrderProjection(result));
+      if (utf8Bytes(minimalText) > MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
+        throw new Error('Unable to produce bounded MCP series watch-order text');
+      }
+      return minimalText;
+    }
   }
 }
 
@@ -2145,6 +2194,10 @@ function createSeriesWatchOrderProjection(
     warnings: 0,
     limitations: 0,
     sourceText: 0,
+  };
+  const omitted = {
+    nameCnFields: 0,
+    placementReasons: 0,
   };
   const projectText = (value: string, limit: number, field: keyof typeof clipped): string => {
     const projection = clippedDisplayText(value, limit);
@@ -2168,10 +2221,12 @@ function createSeriesWatchOrderProjection(
   });
   const projectOrderItem = (item: SeriesWatchOrderResult['watchOrder'][number]) => {
     const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    if (!options.includeNameCn && item.nameCn) omitted.nameCnFields += 1;
     const nameCn = options.includeNameCn
       ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
       : undefined;
     const relationLabels = projectLabels(item.relationLabels);
+    if (!options.includePlacementReason && item.placementReason) omitted.placementReasons += 1;
     const placementReason = options.includePlacementReason
       ? projectText(item.placementReason, 56, 'placementReasons')
       : undefined;
@@ -2198,6 +2253,7 @@ function createSeriesWatchOrderProjection(
   };
   const projectNode = (item: SeriesWatchOrderResult['root']) => {
     const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    if (!options.includeNameCn && item.nameCn) omitted.nameCnFields += 1;
     const nameCn = options.includeNameCn
       ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
       : undefined;
@@ -2219,6 +2275,7 @@ function createSeriesWatchOrderProjection(
   };
   const projectRelated = (item: SeriesWatchOrderResult['related'][number]) => {
     const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    if (!options.includeNameCn && item.nameCn) omitted.nameCnFields += 1;
     const nameCn = options.includeNameCn
       ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
       : undefined;
@@ -2243,6 +2300,7 @@ function createSeriesWatchOrderProjection(
   };
   const projectExclusionSample = (item: SeriesWatchOrderResult['excluded']['samples'][number]) => {
     const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    if (!options.includeNameCn && item.nameCn) omitted.nameCnFields += 1;
     const nameCn = options.includeNameCn
       ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
       : undefined;
@@ -2286,11 +2344,26 @@ function createSeriesWatchOrderProjection(
     result.watchOrder.reduce((total, item) => total + item.relationPaths.length, 0) +
     result.related.reduce((total, item) => total + item.relationPaths.length, 0) +
     result.excluded.samples.reduce((total, item) => total + item.relationPaths.length, 0);
+  const root = projectNode(result.root);
+  const relationLabelsOmittedFromText =
+    root.relationLabelsOmittedFromText +
+    watchOrder.reduce((total, item) => total + item.relationLabelsOmittedFromText, 0) +
+    related.reduce((total, item) => total + item.relationLabelsOmittedFromText, 0) +
+    exclusionSamples.reduce((total, item) => total + item.relationLabelsOmittedFromText, 0);
+  const relationKindsOmittedFromText =
+    root.relationKindsOmittedFromText +
+    watchOrder.reduce((total, item) => total + item.relationKindsOmittedFromText, 0) +
+    related.reduce((total, item) => total + item.relationKindsOmittedFromText, 0);
+  const relationPathsOmittedFromText =
+    result.root.relationPaths.length +
+    watchOrder.reduce((total, item) => total + item.relationPathsOmittedFromText, 0) +
+    related.reduce((total, item) => total + item.relationPathsOmittedFromText, 0) +
+    exclusionSamples.reduce((total, item) => total + item.relationPathsOmittedFromText, 0);
 
   return {
     state: result.state,
     subjectId: result.subjectId,
-    root: projectNode(result.root),
+    root,
     capabilityStates: { ...result.capabilityStates },
     watchOrder,
     related,
@@ -2362,6 +2435,7 @@ function createSeriesWatchOrderProjection(
       exclusionSamplesReturned: result.excluded.samples.length,
       exclusionSamplesIncluded: exclusionSamples.length,
       exclusionSamplesOmittedFromText: result.excluded.samples.length - exclusionSamples.length,
+      exclusionReasonRowsOmittedFromText: Math.max(0, result.excluded.byReason.length - 8),
       sourceOperationsReturned: result.evidence.sources.length,
       sourceOperationsIncluded: sources.length,
       sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
@@ -2369,7 +2443,12 @@ function createSeriesWatchOrderProjection(
       limitationRecordsOmittedFromText: result.limitations.length - limitations.length,
       displayNamesTruncated: clipped.displayNames,
       relationLabelsTruncated: clipped.relationLabels + clipped.pathLabels,
+      relationLabelsOmittedFromText,
+      relationKindsOmittedFromText,
+      relationPathsOmittedFromText,
       placementReasonsTruncated: clipped.placementReasons,
+      nameCnFieldsOmittedFromText: omitted.nameCnFields,
+      placementReasonsOmittedFromText: omitted.placementReasons,
       sourceTextTruncated: clipped.sourceText,
       warningTextTruncated: clipped.warnings,
       limitationTextTruncated: clipped.limitations,
@@ -2377,20 +2456,44 @@ function createSeriesWatchOrderProjection(
   };
 }
 
-function createMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderResult) {
+function createMinimumSeriesWatchOrderProjection(
+  result: SeriesWatchOrderResult,
+  options: MinimumSeriesProjectionOptions,
+) {
   let displayNamesTruncated = 0;
   let relationLabelsTruncated = 0;
   let relationLabelsOmittedFromText = 0;
-  const rootName = clippedDisplayText(result.root.nameCn || result.root.name, 24);
+  let nameCnFieldsOmittedFromText = 0;
+  let placementReasonsOmittedFromText = 0;
+  let datesOmittedFromText = 0;
+  let metadataTextTruncated = 0;
+  let truncationReasonTextTruncated = 0;
+  let sourceTextTruncated = 0;
+  let warningTextTruncated = 0;
+  let limitationTextTruncated = 0;
+  const clipMetadata = (value: string) => {
+    const clipped = clippedDisplayText(value, options.metadataTextCharacters);
+    if (clipped.clipped) metadataTextTruncated += 1;
+    return clipped.text;
+  };
+  const rootName = clippedDisplayText(
+    result.root.nameCn || result.root.name,
+    options.nameCharacters,
+  );
   if (rootName.clipped) displayNamesTruncated += 1;
-  const watchOrder = result.watchOrder.slice(0, 17).map((item) => {
-    const name = clippedDisplayText(item.nameCn || item.name, 12);
+  const watchOrder = result.watchOrder.slice(0, options.orderLimit).map((item) => {
+    const name = clippedDisplayText(item.nameCn || item.name, options.nameCharacters);
     if (name.clipped) displayNamesTruncated += 1;
-    const relationLabels = item.relationLabels.slice(0, 1).map((label) => {
-      const clippedLabel = clippedDisplayText(label, 12);
-      if (clippedLabel.clipped) relationLabelsTruncated += 1;
-      return clippedLabel.text;
-    });
+    nameCnFieldsOmittedFromText += item.nameCn ? 1 : 0;
+    placementReasonsOmittedFromText += item.placementReason ? 1 : 0;
+    datesOmittedFromText += item.date ? 1 : 0;
+    const relationLabels = item.relationLabels
+      .slice(0, options.labelCharacters > 0 ? 1 : 0)
+      .map((label) => {
+        const clippedLabel = clippedDisplayText(label, options.labelCharacters);
+        if (clippedLabel.clipped) relationLabelsTruncated += 1;
+        return clippedLabel.text;
+      });
     relationLabelsOmittedFromText += Math.max(
       0,
       item.relationLabels.length - relationLabels.length,
@@ -2407,27 +2510,61 @@ function createMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderResult)
       ),
     };
   });
-  const sources = result.evidence.sources.slice(0, 1).map((source) => ({
-    operation: clippedDisplayText(source.operation, 40).text,
-    path: clippedDisplayText(source.path, 48).text,
+  const rootDateOmittedFromText = result.root.date ? 1 : 0;
+  nameCnFieldsOmittedFromText += result.root.nameCn ? 1 : 0;
+  const sources = result.evidence.sources.slice(0, options.sourceLimit).map((source) => ({
+    operation: clipMetadata(source.operation),
+    path: clipMetadata(source.path),
     status: source.status,
     subjectId: source.subjectId,
   }));
-  const warnings = result.warnings
-    .slice(0, 1)
-    .map((warning) => clippedDisplayText(warning, 80).text);
-  const limitations = result.limitations
-    .slice(0, 1)
-    .map((limitation) => clippedDisplayText(limitation, 96).text);
+  sourceTextTruncated = metadataTextTruncated;
+  const truncationReasons = result.coverage.truncationReasons
+    .slice(0, options.truncationReasonLimit)
+    .map((reason) => {
+      const clipped = clippedDisplayText(reason, options.metadataTextCharacters);
+      if (clipped.clipped) truncationReasonTextTruncated += 1;
+      return clipped.text;
+    });
+  const warnings = result.warnings.slice(0, options.warningLimit).map((warning) => {
+    const clipped = clippedDisplayText(warning, options.metadataTextCharacters);
+    if (clipped.clipped) warningTextTruncated += 1;
+    return clipped.text;
+  });
+  const limitations = result.limitations.slice(0, options.limitationLimit).map((limitation) => {
+    const clipped = clippedDisplayText(limitation, options.metadataTextCharacters);
+    if (clipped.clipped) limitationTextTruncated += 1;
+    return clipped.text;
+  });
+  const capabilityState = options.includeCapabilityState
+    ? clipMetadata(result.capabilityStates.watchOrder)
+    : undefined;
+  const derivation = clipMetadata(result.evidence.derivation);
+  const coverageRetrievedAt = clipMetadata(result.coverage.retrievedAt);
+  const evidenceRetrievedAt = clipMetadata(result.evidence.retrievedAt);
+  const rootType = clipMetadata(result.root.type);
+  relationLabelsOmittedFromText += result.root.relationLabels.length;
+  const relationKindsOmittedFromText =
+    result.root.relationKinds.length +
+    result.watchOrder
+      .slice(0, options.orderLimit)
+      .reduce((total, item) => total + item.relationKinds.length, 0);
+  const relationPathsOmittedFromText =
+    result.root.relationPaths.length +
+    result.watchOrder.reduce((total, item) => total + item.relationPaths.length, 0) +
+    result.related.reduce((total, item) => total + item.relationPaths.length, 0) +
+    result.excluded.samples.reduce((total, item) => total + item.relationPaths.length, 0);
   return {
     state: result.state,
     subjectId: result.subjectId,
     root: {
       id: result.root.id,
-      type: result.root.type,
+      type: rootType,
       name: rootName.text,
     },
-    capabilityStates: { ...result.capabilityStates },
+    ...(capabilityState === undefined
+      ? { capabilityStates: {}, capabilityStateOmittedFromText: true }
+      : { capabilityStates: { watchOrder: capabilityState } }),
     watchOrder,
     coverage: {
       depth: result.coverage.depth,
@@ -2442,12 +2579,16 @@ function createMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderResult)
       edgeEvidenceTruncated: result.coverage.edgeEvidenceTruncated,
       relatedEvidenceTruncated: result.coverage.relatedEvidenceTruncated,
       truncated: result.coverage.truncated,
-      truncationReasons: result.coverage.truncationReasons.slice(0, 2),
-      retrievedAt: result.coverage.retrievedAt,
+      truncationReasons,
+      truncationReasonsOmittedFromText: Math.max(
+        0,
+        result.coverage.truncationReasons.length - truncationReasons.length,
+      ),
+      retrievedAt: coverageRetrievedAt,
     },
     evidence: {
-      derivation: result.evidence.derivation,
-      retrievedAt: result.evidence.retrievedAt,
+      derivation,
+      retrievedAt: evidenceRetrievedAt,
       sources,
       sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
     },
@@ -2461,26 +2602,126 @@ function createMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderResult)
       fullResultUtf8Bytes: utf8Bytes(JSON.stringify(result, null, 2)),
       structuredContentHasFullResult: true,
       textViewScope: SERIES_WATCH_ORDER_SCOPE_NOTE,
+      minimumProjectionUsed: true,
       watchOrderRowsReturned: result.watchOrder.length,
       watchOrderRowsIncluded: watchOrder.length,
-      watchOrderRowsOmittedFromText: Math.max(0, result.watchOrder.length - watchOrder.length),
+      watchOrderRowsOmittedFromText: result.watchOrder.length - watchOrder.length,
       displayNamesTruncated,
       relationLabelsTruncated,
       relationLabelsOmittedFromText,
+      nameCnFieldsOmittedFromText,
+      placementReasonsOmittedFromText,
+      datesOmittedFromText: rootDateOmittedFromText + datesOmittedFromText,
       relatedRowsOmittedFromText: result.related.length,
       edgeRowsOmittedFromText: result.edges.length,
       exclusionSamplesOmittedFromText: result.excluded.samples.length,
+      exclusionReasonRowsOmittedFromText: result.excluded.byReason.length,
       sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
       warningRecordsOmittedFromText: result.warnings.length - warnings.length,
       limitationRecordsOmittedFromText: Math.max(0, result.limitations.length - limitations.length),
-      truncationReasonsOmittedFromText: Math.max(0, result.coverage.truncationReasons.length - 2),
-      sourceTextTruncated:
-        sources.length > 0 &&
-        (sources[0]!.operation.endsWith('…') || sources[0]!.path.endsWith('…'))
-          ? 1
+      truncationReasonsOmittedFromText: Math.max(
+        0,
+        result.coverage.truncationReasons.length - truncationReasons.length,
+      ),
+      sourceTextTruncated,
+      warningTextTruncated,
+      limitationTextTruncated,
+      truncationReasonTextTruncated,
+      metadataTextTruncated,
+      retrievedAtTextOmittedFromText:
+        options.metadataTextCharacters === 0
+          ? Number(Boolean(result.coverage.retrievedAt)) +
+            Number(Boolean(result.evidence.retrievedAt))
           : 0,
-      warningTextTruncated: warnings.length > 0 && warnings[0]!.endsWith('…') ? 1 : 0,
-      limitationTextTruncated: limitations.filter((limitation) => limitation.endsWith('…')).length,
+      relationKindsOmittedFromText,
+      relationPathsOmittedFromText,
+      relationPathRowsReturned: relationPathsOmittedFromText,
+    },
+  };
+}
+
+function createBareMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderResult) {
+  const watchOrder = result.watchOrder.slice(0, 1).map((item) => ({
+    id: item.id,
+    position: item.position,
+    placement: item.placement,
+    name: '',
+    relationLabels: [],
+    relationLabelsOmittedFromText: item.relationLabels.length,
+  }));
+  return {
+    state: result.state,
+    subjectId: result.subjectId,
+    root: { id: result.root.id, type: '', name: '' },
+    capabilityStates: {},
+    capabilityStateOmittedFromText: true,
+    watchOrder,
+    coverage: {
+      depth: result.coverage.depth,
+      maxNodes: result.coverage.maxNodes,
+      media: result.coverage.media,
+      relationRowsObserved: result.coverage.relationRowsObserved,
+      uniqueRelatedObserved: result.coverage.uniqueRelatedObserved,
+      uniqueRelatedReturned: result.coverage.uniqueRelatedReturned,
+      nonAnimeRowsObserved: result.coverage.nonAnimeRowsObserved,
+      nonAnimeRowsReturned: result.coverage.nonAnimeRowsReturned,
+      truncated: result.coverage.truncated,
+      truncationReasons: [],
+      truncationReasonsOmittedFromText: result.coverage.truncationReasons.length,
+      retrievedAt: '',
+    },
+    evidence: {
+      derivation: '',
+      retrievedAt: '',
+      sources: [],
+      sourceOperationsOmittedFromText: result.evidence.sources.length,
+    },
+    warnings: [],
+    warningsOmittedFromText: result.warnings.length,
+    limitations: [SERIES_WATCH_ORDER_SCOPE_NOTE],
+    limitationsOmittedFromText: result.limitations.length,
+    mcpTextProjection: {
+      version: 'series-watch-order-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      fullResultUtf8Bytes: utf8Bytes(JSON.stringify(result, null, 2)),
+      structuredContentHasFullResult: true,
+      textViewScope: SERIES_WATCH_ORDER_SCOPE_NOTE,
+      minimumProjectionUsed: true,
+      watchOrderRowsReturned: result.watchOrder.length,
+      watchOrderRowsIncluded: watchOrder.length,
+      watchOrderRowsOmittedFromText: result.watchOrder.length - watchOrder.length,
+      displayNamesTruncated:
+        Number(Boolean(result.root.name || result.root.nameCn)) +
+        Number(Boolean(result.watchOrder[0]?.name || result.watchOrder[0]?.nameCn)),
+      relationLabelsTruncated: 0,
+      relationLabelsOmittedFromText:
+        result.root.relationLabels.length + (result.watchOrder[0]?.relationLabels.length ?? 0),
+      nameCnFieldsOmittedFromText:
+        (result.root.nameCn ? 1 : 0) + (result.watchOrder[0]?.nameCn ? 1 : 0),
+      placementReasonsOmittedFromText: result.watchOrder[0]?.placementReason ? 1 : 0,
+      datesOmittedFromText: (result.root.date ? 1 : 0) + (result.watchOrder[0]?.date ? 1 : 0),
+      relatedRowsOmittedFromText: result.related.length,
+      edgeRowsOmittedFromText: result.edges.length,
+      exclusionSamplesOmittedFromText: result.excluded.samples.length,
+      exclusionReasonRowsOmittedFromText: result.excluded.byReason.length,
+      sourceOperationsOmittedFromText: result.evidence.sources.length,
+      warningRecordsOmittedFromText: result.warnings.length,
+      limitationRecordsOmittedFromText: result.limitations.length,
+      truncationReasonsOmittedFromText: result.coverage.truncationReasons.length,
+      sourceTextTruncated: 0,
+      warningTextTruncated: 0,
+      limitationTextTruncated: 0,
+      truncationReasonTextTruncated: 0,
+      metadataTextTruncated: 0,
+      retrievedAtTextOmittedFromText:
+        Number(Boolean(result.coverage.retrievedAt)) + Number(Boolean(result.evidence.retrievedAt)),
+      relationKindsOmittedFromText:
+        result.root.relationKinds.length + (result.watchOrder[0]?.relationKinds.length ?? 0),
+      relationPathsOmittedFromText:
+        result.root.relationPaths.length +
+        result.watchOrder.reduce((total, item) => total + item.relationPaths.length, 0) +
+        result.related.reduce((total, item) => total + item.relationPaths.length, 0) +
+        result.excluded.samples.reduce((total, item) => total + item.relationPaths.length, 0),
       relationPathRowsReturned:
         result.root.relationPaths.length +
         result.watchOrder.reduce((total, item) => total + item.relationPaths.length, 0) +

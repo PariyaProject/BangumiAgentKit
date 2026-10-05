@@ -22,6 +22,8 @@ const ABSENCE_CLAIM =
   /(?:(?:没有|不存在|不再有|找不到)(?:其他|更多|其余|任何)?(?:系列|动画|作品|条目)|(?:系列|动画|作品|条目).{0,8}(?:只有|仅有)(?:以上|这些|上述|前述)?(?:\d+|[零〇一二两三四五六七八九十百千万]+)?(?:部|条|项|个)?)/gu;
 const CLAIM_NEGATION =
   /(?:不代表|并非|并不是|不是|不等于|不构成|不能(?:据此)?(?:证明|确认|说明|称为|说)?|无法(?:据此)?(?:证明|确认|说明|称为|说)?|(?:未|没有|尚未)[^。！？\n]{0,24}(?:发布|提供|定义)[^。！？\n]{0,16}|未能证明|不足以(?:证明|确认))\s*$/u;
+const CLAIM_CLAUSE_BOUNDARY =
+  /(?:[，,；;。！？\n]+|但是|然而|不过|可是|但|而且|并且|且|but|however)/giu;
 
 export function verifyG09SeriesWatchOrderAnswer(
   answer,
@@ -88,7 +90,18 @@ export function verifyG09SeriesWatchOrderAnswer(
     'relatedRowsOmittedFromText',
     'edgeRowsOmittedFromText',
     'exclusionSamplesOmittedFromText',
+    'exclusionReasonRowsOmittedFromText',
     'sourceOperationsOmittedFromText',
+    'nameCnFieldsOmittedFromText',
+    'placementReasonsOmittedFromText',
+    'datesOmittedFromText',
+    'relationLabelsOmittedFromText',
+    'relationKindsOmittedFromText',
+    'relationPathsOmittedFromText',
+    'truncationReasonsOmittedFromText',
+    'retrievedAtTextOmittedFromText',
+    'warningRecordsOmittedFromText',
+    'limitationRecordsOmittedFromText',
   ];
   const omittedTextRowsCount = omissionCountFields.reduce((total, field) => {
     const count = result?.mcpTextProjection?.[field];
@@ -98,7 +111,13 @@ export function verifyG09SeriesWatchOrderAnswer(
     omittedTextRowsCount > 0 ||
     result?.coverage?.truncated === true ||
     result?.mcpTextProjection?.displayNamesTruncated > 0 ||
-    result?.mcpTextProjection?.relationLabelsTruncated > 0;
+    result?.mcpTextProjection?.relationLabelsTruncated > 0 ||
+    result?.mcpTextProjection?.placementReasonsTruncated > 0 ||
+    result?.mcpTextProjection?.sourceTextTruncated > 0 ||
+    result?.mcpTextProjection?.warningTextTruncated > 0 ||
+    result?.mcpTextProjection?.limitationTextTruncated > 0 ||
+    result?.mcpTextProjection?.truncationReasonTextTruncated > 0 ||
+    result?.mcpTextProjection?.metadataTextTruncated > 0;
   const omissionNotAbsenceDisclosurePresent =
     !textDetailsTruncated ||
     /(?:未显示|未列出|省略|遗漏).{0,16}(?:不代表|不能说明|并不意味着|不足以说明)/u.test(scopeText);
@@ -261,13 +280,19 @@ function findSeriesWatchOrderResult(value) {
 }
 
 function normalizeSourceRow(item) {
+  const names = [
+    ...new Set(
+      [item?.nameCn, item?.name].filter(
+        (name) => typeof name === 'string' && name.trim().length > 0,
+      ),
+    ),
+  ];
   const valid =
     item &&
     Number.isInteger(item.id) &&
     Number.isInteger(item.position) &&
     typeof item.placement === 'string' &&
-    typeof item.name === 'string' &&
-    typeof item.nameCn === 'string' &&
+    names.length > 0 &&
     Array.isArray(item.relationLabels) &&
     item.relationLabels.every((label) => typeof label === 'string');
   if (!valid) return { valid: false };
@@ -276,7 +301,7 @@ function normalizeSourceRow(item) {
     id: item.id,
     position: item.position,
     relation: item.placement === 'root' ? '起点' : item.relationLabels.join('、'),
-    names: [...new Set([item.nameCn, item.name].filter(Boolean))],
+    names,
   };
 }
 
@@ -315,15 +340,23 @@ function parseAnswer(answer) {
 function hasBoundedCoverageDisclosure(scopeText, coverage) {
   if (!coverage || typeof scopeText !== 'string') return false;
   const bounded = /(?:本次|当前|有限|有界|范围内|样本)/u.test(scopeText);
-  const depth = new RegExp(`(?:深度\\s*${coverage.depth}|depth\\s*${coverage.depth})`, 'iu');
-  const nodes = new RegExp(
-    `(?:最多|上限|maxNodes\\s*)\\s*${coverage.maxNodes}\\s*(?:个)?(?:动画)?节点?`,
-    'iu',
+  const depthValues = exactIntegerDisclosures(
+    scopeText,
+    /(?:深度|depth)\s*[:=]?\s*(\d+)(?![\d.])/giu,
+    coverage.depth,
   );
-  const nodesFallback = new RegExp(`maxNodes\\s*[:=]?\\s*${coverage.maxNodes}`, 'iu');
-  return (
-    bounded && depth.test(scopeText) && (nodes.test(scopeText) || nodesFallback.test(scopeText))
+  const nodeValues = exactIntegerDisclosures(
+    scopeText,
+    /(?:最多|上限|maxNodes)\s*[:=]?\s*(\d+)(?![\d.])/giu,
+    coverage.maxNodes,
   );
+  return bounded && depthValues && nodeValues;
+}
+
+function exactIntegerDisclosures(text, pattern, expected) {
+  if (!Number.isInteger(expected)) return false;
+  const values = [...text.matchAll(pattern)].map((match) => Number(match[1]));
+  return values.length > 0 && values.every((value) => value === expected);
 }
 
 function hasNonCanonicalDisclosure(scopeText) {
@@ -334,17 +367,23 @@ function hasNonCanonicalDisclosure(scopeText) {
 
 function hasNonAnimeDisclosure(scopeText, observedCount) {
   if (!Number.isInteger(observedCount) || observedCount <= 0) return true;
+  const beforeValues = [
+    ...scopeText.matchAll(/(\d+)(?![\d.])\s*条?\s*非动画(?:关系|记录|行)?/gu),
+  ].map((match) => Number(match[1]));
+  const afterValues = [
+    ...scopeText.matchAll(/非动画[^，,。！？；;\n]{0,20}?(\d+)(?![\d.])\s*条?/gu),
+  ].map((match) => Number(match[1]));
+  const disclosedValues = [...beforeValues, ...afterValues];
   return (
     scopeText.includes('非动画') &&
     /(?:排除|剔除|未纳入)/u.test(scopeText) &&
-    new RegExp(`(?:${observedCount}\\s*条?非动画|非动画.{0,12}${observedCount}\\s*条?)`, 'u').test(
-      scopeText,
-    )
+    disclosedValues.length > 0 &&
+    disclosedValues.every((value) => value === observedCount)
   );
 }
 
 function hasUnqualifiedClaim(text, pattern) {
-  for (const sentence of text.split(/(?<=[。！？\n])/u)) {
+  for (const sentence of text.split(CLAIM_CLAUSE_BOUNDARY)) {
     pattern.lastIndex = 0;
     for (const match of sentence.matchAll(pattern)) {
       const prefix = sentence.slice(Math.max(0, match.index - 48), match.index).trimEnd();

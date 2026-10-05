@@ -1182,6 +1182,33 @@ describe('MCP tool result presentation', () => {
     expect(parsed.mcpTextProjection.textViewScope).toContain('Omitted rows do not prove absence');
   });
 
+  it('keeps the final minimum series projection within the byte budget', async () => {
+    const original = makeHighCardinalitySeriesResult(await makeG09SeriesWatchOrderResult());
+    original.root.date = '日'.repeat(20_000);
+    original.watchOrder[0]!.date = '日'.repeat(20_000);
+    original.coverage.truncationReasons = ['截断原因'.repeat(20_000), '边界原因'.repeat(20_000)];
+
+    const presentation = presentMcpToolResult('bangumi.get_series_watch_order', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.mcpTextProjection.minimumProjectionUsed).toBe(true);
+    expect(parsed.watchOrder.every((item: { nameCn?: string }) => item.nameCn === undefined)).toBe(
+      true,
+    );
+    expect(
+      parsed.mcpTextProjection.watchOrderRowsIncluded +
+        parsed.mcpTextProjection.watchOrderRowsOmittedFromText,
+    ).toBe(original.watchOrder.length);
+    expect(parsed.mcpTextProjection.truncationReasonTextTruncated).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.datesOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.nameCnFieldsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.placementReasonsOmittedFromText).toBeGreaterThan(0);
+  });
+
   it('keeps the text byte bound for pathological long names while retaining full structure', () => {
     const personResult = makePersonActivityResult();
     personResult.person!.name = '水'.repeat(5000);

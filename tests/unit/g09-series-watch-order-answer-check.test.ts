@@ -62,8 +62,12 @@ function makeAnswer() {
   ].join('\n');
 }
 
-function check(answer = makeAnswer(), args = queryArguments, calls = toolCalls) {
-  const toolOutput = makeToolOutput();
+function check(
+  answer = makeAnswer(),
+  args = queryArguments,
+  calls = toolCalls,
+  toolOutput = makeToolOutput(),
+) {
   return verifyG09SeriesWatchOrderAnswer(
     answer,
     args,
@@ -163,6 +167,68 @@ describe('G09 series watch-order answer checks', () => {
     expect(check(complete).passed).toBe(false);
     expect(check(makeAnswer(), wrongDepth).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), queryArguments, wrongToolBudget).exactSingleToolCall).toBe(false);
+  });
+
+  it('rejects numeric prefixes that do not exactly match returned coverage', () => {
+    const wrongDepth = makeAnswer().replace('深度 2', '深度 20');
+    const wrongNodeLimit = makeAnswer().replace('最多 8 个动画节点', '最多 80 个动画节点');
+    const wrongExclusionCount = makeAnswer().replace('8 条非动画关系', '18 条非动画关系');
+
+    expect(check(wrongDepth).boundedCoverageDisclosurePresent).toBe(false);
+    expect(check(wrongDepth).passed).toBe(false);
+    expect(check(wrongNodeLimit).boundedCoverageDisclosurePresent).toBe(false);
+    expect(check(wrongNodeLimit).passed).toBe(false);
+    expect(check(wrongExclusionCount).nonAnimeExclusionsDisclosurePresent).toBe(false);
+    expect(check(wrongExclusionCount).passed).toBe(false);
+  });
+
+  it('does not let a publication denial negate a later completeness claim', () => {
+    const unsupported = makeAnswer().replace(
+      '未显示关系不代表不存在。',
+      '未显示关系不代表不存在，但这覆盖所有作品。',
+    );
+    const result = check(unsupported);
+
+    expect(result.unsupportedCompletenessClaim).toBe(true);
+    expect(result.passed).toBe(false);
+  });
+
+  it('matches titles against retained source names when the nameCn field is omitted', () => {
+    const toolOutput = makeToolOutput();
+    const payload = JSON.parse(toolOutput.content[0]!.text);
+    for (const row of payload.watchOrder) {
+      row.name = row.nameCn;
+      delete row.nameCn;
+    }
+    payload.mcpTextProjection.nameCnFieldsOmittedFromText = payload.watchOrder.length;
+    const outputWithOmittedNameCn = {
+      content: [{ type: 'text', text: JSON.stringify(payload) }],
+    };
+    const result = check(makeAnswer(), queryArguments, toolCalls, outputWithOmittedNameCn);
+
+    expect(result.sourceNamesAndLabelsComplete).toBe(true);
+    expect(result.rowsMatched).toBe(2);
+    expect(result.omittedTextRowsCount).toBe(2);
+    expect(result.omissionNotAbsenceDisclosurePresent).toBe(true);
+    expect(result.passed).toBe(true);
+  });
+
+  it('requires the omission caveat when projected name, reason, or date fields are hidden', () => {
+    const toolOutput = makeToolOutput();
+    const payload = JSON.parse(toolOutput.content[0]!.text);
+    payload.mcpTextProjection.nameCnFieldsOmittedFromText = 1;
+    payload.mcpTextProjection.placementReasonsOmittedFromText = 1;
+    payload.mcpTextProjection.datesOmittedFromText = 1;
+    const compactedOutput = { content: [{ type: 'text', text: JSON.stringify(payload) }] };
+    const answerWithoutCaveat = makeAnswer().replace(
+      '未显示关系不代表不存在',
+      '只列出当前返回的关系',
+    );
+    const result = check(answerWithoutCaveat, queryArguments, toolCalls, compactedOutput);
+
+    expect(result.omittedTextRowsCount).toBe(3);
+    expect(result.omissionNotAbsenceDisclosurePresent).toBe(false);
+    expect(result.passed).toBe(false);
   });
 
   it('writes only sanitized counters to its stdin interface', () => {
