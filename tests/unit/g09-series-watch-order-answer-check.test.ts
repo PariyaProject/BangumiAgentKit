@@ -182,12 +182,43 @@ describe('G09 series watch-order answer checks', () => {
     expect(check(wrongExclusionCount).passed).toBe(false);
   });
 
+  it.each([
+    ['before the label', '8 条非动画关系'],
+    ['after the label', '非动画关系 8 条'],
+  ])('accepts an exact non-anime count %s', (_order, disclosure) => {
+    const answer = makeAnswer().replace('8 条非动画关系', disclosure);
+
+    expect(check(answer).nonAnimeExclusionsDisclosurePresent).toBe(true);
+    expect(check(answer).passed).toBe(true);
+  });
+
+  it.each([
+    ['before the label', '18.8 条非动画关系'],
+    ['after the label', '非动画关系 18.8 条'],
+  ])('rejects a fractional non-anime count %s', (_order, disclosure) => {
+    const answer = makeAnswer().replace('8 条非动画关系', disclosure);
+
+    expect(check(answer).nonAnimeExclusionsDisclosurePresent).toBe(false);
+    expect(check(answer).passed).toBe(false);
+  });
+
   it('does not let a publication denial negate a later completeness claim', () => {
     const unsupported = makeAnswer().replace(
       '未显示关系不代表不存在。',
       '未显示关系不代表不存在，但这覆盖所有作品。',
     );
     const result = check(unsupported);
+
+    expect(result.unsupportedCompletenessClaim).toBe(true);
+    expect(result.passed).toBe(false);
+  });
+
+  it.each([':', '：'])('does not carry publication denial across %s', (separator) => {
+    const answer = makeAnswer().replace(
+      '这是有界确定性观看建议；Bangumi 没有发布统一的官方观看顺序，未显示关系不代表不存在。',
+      `Bangumi 没有发布统一的官方观看顺序${separator}这里列出了所有作品。`,
+    );
+    const result = check(answer);
 
     expect(result.unsupportedCompletenessClaim).toBe(true);
     expect(result.passed).toBe(false);

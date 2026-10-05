@@ -23,7 +23,7 @@ const ABSENCE_CLAIM =
 const CLAIM_NEGATION =
   /(?:不代表|并非|并不是|不是|不等于|不构成|不能(?:据此)?(?:证明|确认|说明|称为|说)?|无法(?:据此)?(?:证明|确认|说明|称为|说)?|(?:未|没有|尚未)[^。！？\n]{0,24}(?:发布|提供|定义)[^。！？\n]{0,16}|未能证明|不足以(?:证明|确认))\s*$/u;
 const CLAIM_CLAUSE_BOUNDARY =
-  /(?:[，,；;。！？\n]+|但是|然而|不过|可是|但|而且|并且|且|but|however)/giu;
+  /(?:[，,；;。！？:：\n]+|但是|然而|不过|可是|但|而且|并且|且|but|however)/giu;
 
 export function verifyG09SeriesWatchOrderAnswer(
   answer,
@@ -367,18 +367,20 @@ function hasNonCanonicalDisclosure(scopeText) {
 
 function hasNonAnimeDisclosure(scopeText, observedCount) {
   if (!Number.isInteger(observedCount) || observedCount <= 0) return true;
-  const beforeValues = [
-    ...scopeText.matchAll(/(\d+)(?![\d.])\s*条?\s*非动画(?:关系|记录|行)?/gu),
-  ].map((match) => Number(match[1]));
-  const afterValues = [
-    ...scopeText.matchAll(/非动画[^，,。！？；;\n]{0,20}?(\d+)(?![\d.])\s*条?/gu),
-  ].map((match) => Number(match[1]));
-  const disclosedValues = [...beforeValues, ...afterValues];
+  const beforeCountTokens = [
+    ...scopeText.matchAll(/(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*条?\s*非动画(?:关系|记录|行)?/gu),
+  ].map((match) => match[1]);
+  const afterCountTokens = [
+    ...scopeText.matchAll(
+      /非动画[^，,。！？；;\n]{0,20}?(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*条?/gu,
+    ),
+  ].map((match) => match[1]);
+  const disclosedCountTokens = [...beforeCountTokens, ...afterCountTokens];
   return (
     scopeText.includes('非动画') &&
     /(?:排除|剔除|未纳入)/u.test(scopeText) &&
-    disclosedValues.length > 0 &&
-    disclosedValues.every((value) => value === observedCount)
+    disclosedCountTokens.length > 0 &&
+    disclosedCountTokens.every((token) => /^\d+$/u.test(token) && Number(token) === observedCount)
   );
 }
 
