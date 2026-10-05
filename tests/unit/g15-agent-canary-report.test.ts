@@ -8,6 +8,15 @@ const report = JSON.parse(
     'utf8',
   ),
 );
+const candidateCReport = JSON.parse(
+  readFileSync(
+    join(
+      process.cwd(),
+      'docs/research/run92-g15-subject-comparison-agent-candidate-c-2026-10-05.json',
+    ),
+    'utf8',
+  ),
+);
 
 describe('G15 historical Candidate A Agent/MCP canary report', () => {
   it('binds the historical read to its exact Candidate, Base, catalog, and Agent image', () => {
@@ -93,5 +102,73 @@ describe('G15 historical Candidate A Agent/MCP canary report', () => {
     expect(serialized).not.toContain('7.5');
     expect(serialized).not.toContain('42%');
     expect(serialized).not.toContain('条目｜400602｜名称');
+  });
+});
+
+describe('G15 Candidate C Agent/MCP answer-failure report', () => {
+  it('binds one bounded read to the exact Candidate, Base, catalog, image, and CLI', () => {
+    expect(candidateCReport.candidate).toMatchObject({
+      sha: '463f1303950746bcfd247d7c28ed04dbf68e51a7',
+      baseSha: 'b769efcc6394fcb703d0cc1f3c98d251c4767a8c',
+      catalogSha256: '26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e',
+      agentImageRevision: '463f1303950746bcfd247d7c28ed04dbf68e51a7',
+      cliVersion: '1.2.14',
+    });
+    expect(candidateCReport.call).toMatchObject({
+      tool: 'bangumi.get_subject_comparison',
+      completedBangumiToolCalls: 1,
+      onlyAllowedToolCompleted: true,
+      argumentsMatchExpectedScope: true,
+      subjectIds: [400602, 420628],
+    });
+    expect(candidateCReport.textProjection).toMatchObject({
+      readBackInAgentEventStream: true,
+      utf8Bytes: 3511,
+      maxUtf8Bytes: 3600,
+      sizeWithinBound: true,
+    });
+  });
+
+  it('records the metric mismatch and failed answer acceptance without retaining raw content', () => {
+    expect(candidateCReport.answerCheckMethod).toBe(
+      'ordered-two-subject-metric-identity-and-caveat-v2',
+    );
+    expect(candidateCReport.observedResultState).toBe('partial');
+    expect(candidateCReport.answerCheck).toMatchObject({
+      subjectIdentityRowsExpected: 2,
+      subjectIdentityRowsMatched: 2,
+      expectedMetricRows: 4,
+      metricRowsMatched: 3,
+      mismatchedMetricRows: 1,
+      missingMetricRows: 0,
+      scopeLinesMatchAllowlist: true,
+      unsupportedClaimPresent: false,
+      passed: false,
+    });
+    expect(candidateCReport.probe).toMatchObject({
+      cliProcessExitCode: 0,
+      resultStatus: 'SUCCESS',
+      isolatedProbePassed: false,
+      rawPromptAnswerAndMcpResultPersisted: false,
+    });
+    expect(candidateCReport.frontierStatus).toBe('PARTIAL');
+    expect(candidateCReport.passed).toBe(false);
+    expect(candidateCReport.reviewDisposition).toMatchObject({
+      status: 'AGENT_ANSWER_VALIDATION_FAILED',
+      capturedCheckerMethod: 'ordered-two-subject-metric-identity-and-caveat-v2',
+      failureClass: 'ONE_METRIC_ROW_MISMATCH',
+      expectedMetricRows: 4,
+      metricRowsMatched: 3,
+      mismatchedMetricRows: 1,
+      missingMetricRows: 0,
+      rawAnswerOrMcpResultAvailableForReassessment: false,
+      freshCorrectedCandidateReadPerformed: true,
+      additionalPublicCallPerformed: false,
+      retryPerformed: false,
+    });
+    expect(candidateCReport).not.toHaveProperty('prompt');
+    expect(candidateCReport).not.toHaveProperty('answer');
+    expect(candidateCReport).not.toHaveProperty('rawMcpResult');
+    expect(candidateCReport).not.toHaveProperty('mismatchedMetricKey');
   });
 });
