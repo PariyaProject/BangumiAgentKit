@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "g01_current_candidate_agent_mcp_answer_canary",
+  "createdOn": "2026-10-05",
+  "candidate": {
+    "sha": "8d04647e97b4f66143d90824906ed02f34bc1a31",
+    "baseSha": "87f1fc6c0a36adfb8d62a831947ee4a707a4c724",
+    "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+    "agentImageRevision": "8d04647e97b4f66143d90824906ed02f34bc1a31",
+    "cliVersion": "1.2.14"
+  },
+  "call": {
+    "tool": "bangumi.query_subjects",
+    "completedBangumiToolCalls": 1,
+    "onlyAllowedToolCompleted": true,
+    "otherCompletedToolEvents": 0,
+    "argumentsMatchExpectedScope": true,
+    "queryScope": {
+      "media": "anime",
+      "year": 2026,
+      "month": 7,
+      "exactConcept": "后宫"
+    }
+  },
+  "textProjection": {
+    "readBackInAgentEventStream": true,
+    "utf8Bytes": 3523,
+    "maxUtf8Bytes": 3600,
+    "returnedRows": 14,
+    "omittedFromText": 0,
+    "totalKind": "estimated",
+    "experimentalSourceWarningPresent": true
+  },
+  "answerCheckMethod": "ordered-source-row-identity-and-bounds-v2",
+  "answerCheck": {
+    "queryArgumentsMatch": true,
+    "resultReadbackAvailable": true,
+    "resultState": "ok",
+    "returnedRows": 14,
+    "invalidSourceRowsCount": 0,
+    "duplicateSourceRowsCount": 0,
+    "sourceReturnedMatchesVisibleRows": true,
+    "textOmittedItems": 0,
+    "projectionItemsIncluded": 14,
+    "projectionCountMatchesVisibleRows": true,
+    "totalKind": "estimated",
+    "experimentalSourceWarningPresent": true,
+    "sourceOperationVerified": true,
+    "answerRowsParsed": 14,
+    "rowsMatched": 14,
+    "missingRows": 0,
+    "mismatchedRows": 0,
+    "unmatchedRows": 0,
+    "duplicateAnswerRows": 0,
+    "unstructuredAnswerLinesCount": 0,
+    "rowOrderPreserved": true,
+    "exactTagScopeDisclosurePresent": true,
+    "monthScopeDisclosurePresent": true,
+    "animeScopeDisclosurePresent": true,
+    "boundedCoverageDisclosurePresent": true,
+    "experimentalSourceDisclosurePresent": true,
+    "estimatedTotalDisclosurePresent": true,
+    "nonExhaustiveDisclosurePresent": true,
+    "omissionCountDisclosurePresent": true,
+    "omissionNotAbsenceDisclosurePresent": true,
+    "unsupportedCompletenessClaim": false,
+    "unsupportedAbsenceClaim": false,
+    "markdownFormattingDetected": false,
+    "method": "ordered-source-row-identity-and-bounds-v2",
+    "explicitCountPatternMatched": false,
+    "answerRowsAccountForVisibleResultCount": true,
+    "passed": true
+  },
+  "structuredContentEvidence": {
+    "separateFieldExposedInAgentEventStream": false,
+    "liveFullObjectReadback": "NOT_EXPOSED_BY_ANTIGRAVITY_EVENT_STREAM"
+  },
+  "probe": {
+    "cliProcessExitCode": 0,
+    "resultStatus": "SUCCESS",
+    "isolatedProbePassed": true,
+    "probeReportWriteSuppressed": true,
+    "rawPromptAnswerAndMcpResultPersisted": false
+  },
+  "frontierStatus": "PARTIAL",
+  "passed": true,
+  "passBasis": "Historical Candidate A checker-v2 sanitized-counter result only; it is not a current v4 reassessment or a current G01 completion claim.",
+  "acceptanceReassessment": {
+    "initialMethod": "ordered-source-row-identity-and-bounds-v1",
+    "initialMethodPassed": false,
+    "initialFalseCheck": "separate count phrase matcher",
+    "reassessmentMethod": "ordered-source-row-identity-and-bounds-v2",
+    "reassessment": "Under checker v2, all 14 visible MCP rows were listed and matched by title, date, ID, and order. No text rows were omitted. The captured v2 scope, experimental-source, estimated-total, and non-exhaustiveness flags were true. A separate numeral is not required when every visible row is enumerated.",
+    "explicitCountPatternMatched": false,
+    "answerRowsAccountForVisibleResultCount": true,
+    "reassessedFromSanitizedCountersOnly": true,
+    "rawAnswerReprocessed": false,
+    "secondPublicCall": false,
+    "limitation": "This is a v2-only sanitized-counter record. Reviewers found false positives in v2 and v3; the raw answer was not retained and has not been reassessed under v4. No second public call was made."
+  },
+  "correctiveChecker": {
+    "method": "ordered-source-row-identity-and-bounds-v4",
+    "reviewFindingsAddressed": ["R93-01", "R93-02", "R93-03"],
+    "validationScope": "synthetic fixtures and regressions only",
+    "historicalLiveAnswerReprocessed": false,
+    "secondPublicCall": false
+  }
+}
