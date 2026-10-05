@@ -323,4 +323,40 @@ describe('G15 Agent answer acceptance', () => {
     expect(probe.stdout).not.toContain('8.6');
     expect(probe.stdout).not.toContain(validAnswer);
   });
+
+  it('accepts sanitized report metadata over stdin without a raw answer payload', () => {
+    const probe = spawnSync(
+      process.execPath,
+      [resolve(process.cwd(), 'scripts/acceptance/g15-agent-answer-check-cli.mjs')],
+      {
+        input: JSON.stringify({
+          mode: 'report',
+          createdOn: '2026-10-05',
+          candidate: {
+            sha: 'a'.repeat(40),
+            baseSha: 'b'.repeat(40),
+            catalogSha256: 'c'.repeat(64),
+            agentImageRevision: 'a'.repeat(40),
+            cliVersion: '1.2.14',
+          },
+          completedBangumiToolCalls: 1,
+          otherCompletedToolEvents: 0,
+          textReadbackAvailable: true,
+          textProjectionBytes: 3000,
+          separateStructuredContentExposed: false,
+          preservationRegressionPassed: true,
+          probeProcessExitCode: 0,
+          resultStatus: 'SUCCESS',
+          answerCheck: check(),
+        }),
+        encoding: 'utf8',
+      },
+    );
+    const report = JSON.parse(probe.stdout);
+
+    expect(probe.status).toBe(0);
+    expect(report).toMatchObject({ passed: true, frontierStatus: 'PARTIAL' });
+    expect(probe.stdout).not.toContain('8.6');
+    expect(probe.stdout).not.toContain(validAnswer);
+  });
 });
