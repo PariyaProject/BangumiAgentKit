@@ -1089,8 +1089,10 @@ export function reconcileReviewReservation(
     nextRun.outer_sol.product.consumed += 1;
     nextEpoch.review.consumed += 1;
   }
-  nextEpoch.state = 'REVIEW_RESERVATION_RECONCILED';
-  nextEpoch.next_action = 'REASSESS_REVIEW_BUDGET';
+  nextEpoch.state = launchDefinitelyDidNotOccur ? 'REVIEW_READY' : 'REVIEW_RESERVATION_RECONCILED';
+  nextEpoch.next_action = launchDefinitelyDidNotOccur
+    ? `RESERVE_SOL_${nextEpoch.review.consumed + 1}`
+    : 'REASSESS_REVIEW_BUDGET';
   return { run: nextRun, epoch: nextEpoch };
 }
 

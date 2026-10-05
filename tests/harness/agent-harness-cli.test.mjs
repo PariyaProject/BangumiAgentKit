@@ -1015,6 +1015,126 @@ test('CLI review reservation rejects dirty post-Candidate work before any contro
   }
 });
 
+test('CLI a definitely unstarted reviewer releases the reservation and restores readiness', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_READY';
+  epoch.candidate_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'Related work complete.',
+    why_not_extend_further: 'Next work is independent.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = { completed: true, summary: 'Adversarial pass complete.' };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+  });
+  try {
+    const reserved = environment.execute(['review:reserve', '--run', '1', '--pr', '42']);
+    assert.equal(reserved.status, 0, reserved.stderr);
+
+    const reconciled = environment.execute([
+      'review:reconcile',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--definitely-not-started',
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    let stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    let storedRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.review.consumed, 0);
+    assert.equal(stored.review.reserved, 0);
+    assert.equal(storedRun.outer_sol.product.consumed, 0);
+    assert.equal(storedRun.outer_sol.reserved, 0);
+
+    const retried = environment.execute(['review:reserve', '--run', '1', '--pr', '42']);
+    assert.equal(retried.status, 0, retried.stderr);
+    const started = environment.execute([
+      'review:started',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--reviewer-id',
+      'sol-product',
+    ]);
+    assert.equal(started.status, 0, started.stderr);
+    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    storedRun = parseControlBlock(environment.readState().runBody, RUN_MARKER);
+    assert.equal(stored.state, 'REVIEW_RUNNING');
+    assert.equal(stored.review.consumed, 1);
+    assert.equal(storedRun.outer_sol.product.consumed, 1);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate gate can revalidate a legacy reconciled no-start state', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RESERVATION_RECONCILED';
+  epoch.candidate_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'Related work complete.',
+    why_not_extend_further: 'Next work is independent.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = { completed: true, summary: 'Adversarial pass complete.' };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.review.consumed, 0);
+    assert.equal(stored.candidate_sha, sha('b'));
+  } finally {
+    environment.cleanup();
+  }
+
+  const consumed = controlFixture();
+  consumed.epoch.state = 'REVIEW_RESERVATION_RECONCILED';
+  consumed.epoch.review.consumed = 1;
+  consumed.epoch.candidate_sha = sha('b');
+  consumed.epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  consumed.epoch.scope_closure = {
+    why_not_review_earlier: 'Related work complete.',
+    why_not_extend_further: 'Next work is independent.',
+    related_work_remaining: false,
+  };
+  consumed.epoch.adversarial_preflight = { completed: true, summary: 'Adversarial pass complete.' };
+  const consumedEnvironment = createMockEnvironment({
+    runBody: renderRunBody(consumed.run),
+    prBody: renderEpochBody(consumed.epoch),
+  });
+  try {
+    const result = consumedEnvironment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(consumedEnvironment),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^INVALID_CANDIDATE_STATE:/u);
+  } finally {
+    consumedEnvironment.cleanup();
+  }
+});
+
 test('CLI Product runtime observation is explicit and same-id resume spends no budget', () => {
   const { run, epoch } = controlFixture();
   epoch.state = 'REVIEW_RUNNING';
