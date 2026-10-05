@@ -24,7 +24,8 @@ export type G01AgentAnswerCheck = {
   exactTagScopeDisclosurePresent: boolean;
   monthScopeDisclosurePresent: boolean;
   animeScopeDisclosurePresent: boolean;
-  countDisclosurePresent: boolean;
+  explicitCountPatternMatched: boolean;
+  answerRowsAccountForVisibleResultCount: boolean;
   boundedCoverageDisclosurePresent: boolean;
   experimentalSourceDisclosurePresent: boolean;
   estimatedTotalDisclosurePresent: boolean;

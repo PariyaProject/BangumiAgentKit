@@ -51,7 +51,8 @@ describe('G01 Agent answer acceptance', () => {
       exactTagScopeDisclosurePresent: true,
       monthScopeDisclosurePresent: true,
       animeScopeDisclosurePresent: true,
-      countDisclosurePresent: true,
+      explicitCountPatternMatched: true,
+      answerRowsAccountForVisibleResultCount: true,
       boundedCoverageDisclosurePresent: true,
       experimentalSourceDisclosurePresent: true,
       estimatedTotalDisclosurePresent: true,
@@ -100,6 +101,16 @@ describe('G01 Agent answer acceptance', () => {
     expect(
       verify(answer, { Arguments: JSON.stringify(G01_QUERY_ARGUMENTS) }).queryArgumentsMatch,
     ).toBe(true);
+  });
+
+  it('accepts a complete exact row list without a separate numeric total', () => {
+    const noExplicitTotal = answer.replace('本次返回2部', '本次查询结果如下');
+    expect(verify(noExplicitTotal)).toMatchObject({
+      explicitCountPatternMatched: false,
+      answerRowsAccountForVisibleResultCount: true,
+      rowsMatched: 2,
+      passed: true,
+    });
   });
 
   it('reads the actual compact MCP text projection without requiring stripped fields', () => {

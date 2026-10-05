@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const G01_AGENT_ANSWER_CHECK_METHOD = 'ordered-source-row-identity-and-bounds-v1';
+export const G01_AGENT_ANSWER_CHECK_METHOD = 'ordered-source-row-identity-and-bounds-v2';
 export const G01_QUERY_ARGUMENTS = Object.freeze({
   media: 'anime',
   year: 2026,
@@ -86,7 +86,14 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
   const exactTagScopeDisclosurePresent = /后宫.{0,8}标签|标签.{0,8}后宫/u.test(scopeText);
   const monthScopeDisclosurePresent = /2026\s*年\s*7\s*月|2026-07/u.test(scopeText);
   const animeScopeDisclosurePresent = /动画|番剧/u.test(scopeText);
-  const countDisclosurePresent = hasCountDisclosure(scopeText, rows.length);
+  const explicitCountPatternMatched = hasCountDisclosure(scopeText, rows.length);
+  const answerRowsAccountForVisibleResultCount =
+    parsedAnswer.rows.length === rows.length &&
+    matchedRows === rows.length &&
+    missingRows === 0 &&
+    mismatchedRows === 0 &&
+    unmatchedRows === 0 &&
+    duplicateAnswerRows === 0;
   const boundedCoverageDisclosurePresent =
     /(?:本次|当前查询|当前检索|这次搜索).{0,24}(?:返回|检索|查询|观察).{0,32}(?:范围|结果|样本|覆盖|有界|有限)|(?:本次|当前查询|当前检索).{0,32}(?:有限|有界|样本)/u.test(
       scopeText,
@@ -138,7 +145,7 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     exactTagScopeDisclosurePresent &&
     monthScopeDisclosurePresent &&
     animeScopeDisclosurePresent &&
-    countDisclosurePresent &&
+    answerRowsAccountForVisibleResultCount &&
     boundedCoverageDisclosurePresent &&
     experimentalSourceDisclosurePresent &&
     estimatedTotalDisclosurePresent &&
@@ -175,7 +182,8 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
     exactTagScopeDisclosurePresent,
     monthScopeDisclosurePresent,
     animeScopeDisclosurePresent,
-    countDisclosurePresent,
+    explicitCountPatternMatched,
+    answerRowsAccountForVisibleResultCount,
     boundedCoverageDisclosurePresent,
     experimentalSourceDisclosurePresent,
     estimatedTotalDisclosurePresent,
