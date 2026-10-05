@@ -90,7 +90,7 @@
         "tests/discovery/golden.test.ts",
         "tests/discovery/golden-e2e.test.ts"
       ],
-      "next_action": "2026-10-03 当前 master 的 ToolRegistry 实测返回 15 条 2026 年 7 月动画，均匹配精确“后宫”标签和日期；实际 MCP render_query_subjects 生成的 720px 图片已目视检查，展示 12 条并注明另有 3 条。此 Epoch 将 DiscoveryResultsCard 中的实验来源、估算总数和分页/候选上限说明本地化。由于官方搜索仍属实验接口且总数为估算，G01 保持 PARTIAL；自然语言 Agent 与 QQ/TIM 客户端展示须分别验收，准备好完整客户端批次后再做一次登录预检。",
+      "next_action": "Run #92 / PR #93 adds scripts/acceptance/g01-agent-answer-check.mjs and tests/unit/g01-agent-answer-check.test.ts. The checker pins anime, year=2026, month=7, concepts=[后宫], verifies exact tag resolution and experimental-source plus estimated-total evidence, and matches every answer title/date/Bangumi ID to the visible MCP result in source order. After exact Candidate A CI and gate, make one isolated current-source Agent/MCP bangumi.query_subjects call and persist only sanitized counters. Keep PARTIAL: experimental official-v0 search and estimated totals do not prove exhaustive coverage; QQ/TIM is separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
