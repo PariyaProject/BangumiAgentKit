@@ -802,9 +802,11 @@
         "scripts/acceptance/g15-agent-answer-check.mjs",
         "scripts/acceptance/g15-agent-answer-check.d.mts",
         "scripts/acceptance/g15-agent-answer-check-cli.mjs",
-        "tests/unit/g15-agent-answer-check.test.ts"
+        "tests/unit/g15-agent-answer-check.test.ts",
+        "docs/research/run92-g15-subject-comparison-agent-canary-2026-10-05.json",
+        "tests/unit/g15-agent-canary-report.test.ts"
       ],
-      "next_action": "Run #92 / G15 adds the bounded subject-comparison MCP text projection (`apps/mcp/src/result-presenter.ts`) and synthetic byte-bound, metric-state, and full structuredContent equality regressions. A strict checker validates exact identities, score/reported-episode/completion metrics and B−A values, plus formula, snapshot, personal-progress, and bounded-overlap caveats. Remaining: one exact-Candidate current-source Agent/MCP answer canary and real QQ/TIM display. Keep PARTIAL; do not infer global source completeness or personal watch progress.",
+      "next_action": "Run #92 / Candidate 79458fe4801257a284072cb308b1700e6a657522 passed exact-SHA CI 7/7 and Harness Candidate A. One exact-source public Agent/MCP call completed only bangumi.get_subject_comparison for subject IDs [400602,420628]; its sanitized report records a 3,476-byte MCP text readback, 2/2 identity rows and 4/4 metric rows matched, all required caveats present, and no separate structuredContent event field. The returned result was partial; the MCP equality regression covers full structuredContent preservation. Keep G15 PARTIAL because one current snapshot does not establish exhaustive coverage or history; do not repeat the public call. Real QQ/TIM display remains a separate stage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },
