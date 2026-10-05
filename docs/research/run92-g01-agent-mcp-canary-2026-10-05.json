@@ -96,7 +96,7 @@
     "reassessedFromSanitizedCountersOnly": true,
     "rawAnswerReprocessed": false,
     "secondPublicCall": false,
-    "limitation": "The v2 pass is historical only. Review found false positives in explicit-count consistency, omission wording, caveat polarity, and declaration drift; raw answer/result were not retained for v4 reassessment. A fresh gated v4 read is planned as a separate Candidate; do not repeat Candidate A."
+    "limitation": "The v2 pass is historical only. Review found false positives in explicit-count consistency, omission wording, caveat polarity, and declaration drift; the raw Candidate A answer/result were not retained for v4 reprocessing. Run #95 performed one separate exact-Candidate v4 read; that checker rejected acceptance on non-exhaustiveness/scope flags. Do not retry the Run #95 query."
   },
   "correctiveChecker": {
     "method": "ordered-source-row-identity-and-bounds-v4",
@@ -113,6 +113,14 @@
     "capturedCheckerPassCreditedAsFinalAnswerAcceptance": false,
     "rawAnswerOrMcpResultAvailableForReassessment": false,
     "currentV4ReadRequired": true,
-    "currentV4ReadPerformed": false
+    "currentV4ReadPerformed": true
+  },
+  "followupRead": {
+    "runNumber": 95,
+    "report": "run95-g01-agent-mcp-canary-2026-10-05.json",
+    "performed": true,
+    "passed": false,
+    "retryPerformed": false,
+    "rawAnswerOrMcpResultRetained": false
   }
 }

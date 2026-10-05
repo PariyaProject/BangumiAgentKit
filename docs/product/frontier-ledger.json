@@ -93,9 +93,10 @@
         "docs/research/run95-g01-agent-mcp-acceptance-2026-10-05.md",
         "scripts/acceptance/g01-agent-answer-check.mjs",
         "tests/unit/g01-agent-answer-check.test.ts",
-        "tests/unit/g01-agent-canary-report.test.ts"
+        "tests/unit/g01-agent-canary-report.test.ts",
+        "docs/research/run95-g01-agent-mcp-canary-2026-10-05.json"
       ],
-      "next_action": "Run #92 / PR #93's Candidate A canary used checker v2 and is now explicitly historical. Review findings R93-01 through R93-04 identified false positives in count consistency, omission wording, caveat polarity, scope clauses, and declaration drift; the captured v2 pass is not credited as current G01 acceptance. Current master contains checker v4 and synthetic regressions, but the raw Candidate A answer/result was not retained and cannot be reassessed. Run #95 selects exactly one fresh bangumi.query_subjects Agent/MCP read with exact July-2026 anime/后宫-tag arguments after Candidate/CI/Harness gates, then records sanitized counters only. Do not retry if v4 rejects the answer. Keep G01 PARTIAL because official-v0 search is experimental with estimated totals; QQ/TIM and authentication remain separate.",
+      "next_action": "Run #95 / PR #96 performed one exact-Candidate current-source Agent/MCP query with checker v4 after exact-SHA CI and Harness gates. The tool call succeeded with one bangumi.query_subjects call, 14 visible rows in 3,523 UTF-8 bytes, zero text omissions, experimental-source warning, and estimated total. All 14 answer rows matched visible source rows and order, with no missing/mismatched/duplicate rows. Checker v4 rejected acceptance because nonExhaustiveDisclosurePresent=false and unsupportedScopeClausesCount=4. The sanitized report retains counters only; raw answer/result were not retained, so a missing caveat cannot be distinguished from a checker parsing mismatch. Do not retry this query in Run #95. Keep G01 PARTIAL because the answer was rejected and totals are estimated; continue another independent actionable frontier after this Epoch integrates. QQ/TIM and authentication remain separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
