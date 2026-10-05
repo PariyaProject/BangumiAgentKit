@@ -107,9 +107,38 @@ describe('G01 Agent answer acceptance', () => {
     const noExplicitTotal = answer.replace('本次返回2部', '本次查询结果如下');
     expect(verify(noExplicitTotal)).toMatchObject({
       explicitCountPatternMatched: false,
+      explicitCountStatementsConsistent: true,
       answerRowsAccountForVisibleResultCount: true,
       rowsMatched: 2,
       passed: true,
+    });
+  });
+
+  it('rejects incorrect, prefix-sharing, and conflicting explicit result counts', () => {
+    const wrongCount = answer.replace('本次返回2部', '本次返回999部');
+    const prefixSharingCount = answer.replace('本次返回2部', '本次返回20部');
+    const negatedCount = answer.replace('本次返回2部', '本次不是返回2部；本次返回2部');
+    const conflictingCounts = answer.replace('本次返回2部', '本次返回2部，本次查询共计3部');
+
+    expect(verify(wrongCount)).toMatchObject({
+      explicitCountPatternMatched: false,
+      explicitCountStatementsConsistent: false,
+      passed: false,
+    });
+    expect(verify(prefixSharingCount)).toMatchObject({
+      explicitCountPatternMatched: false,
+      explicitCountStatementsConsistent: false,
+      passed: false,
+    });
+    expect(verify(negatedCount)).toMatchObject({
+      explicitCountPatternMatched: false,
+      explicitCountStatementsConsistent: false,
+      passed: false,
+    });
+    expect(verify(conflictingCounts)).toMatchObject({
+      explicitCountPatternMatched: false,
+      explicitCountStatementsConsistent: false,
+      passed: false,
     });
   });
 
@@ -147,6 +176,16 @@ describe('G01 Agent answer acceptance', () => {
       '作品甲｜首播日期：2026-07-01｜Bangumi ID：1001',
     ].join('\n');
     const wrongCount = partialAnswer.replace('另有1部未展开', '另有2部未展开');
+    const suffixCount11 = partialAnswer.replace('另有1部未展开', '另有11部未展开');
+    const suffixCount21 = partialAnswer.replace('另有1部未展开', '另有21部未展开');
+    const conflictingOmissionCounts = partialAnswer.replace(
+      '另有1部未展开',
+      '另有1部未展开，此外还省略2部',
+    );
+    const negatedOmission = partialAnswer.replace(
+      '另有1部未展开',
+      '并非另有1部未展开；另有1部未展开',
+    );
     const noAbsenceCaveat = partialAnswer.replace('，未显示不代表不存在', '');
 
     expect(verify(partialAnswer, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
@@ -156,6 +195,22 @@ describe('G01 Agent answer acceptance', () => {
       passed: true,
     });
     expect(verify(wrongCount, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      omissionCountDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(suffixCount11, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      omissionCountDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(suffixCount21, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      omissionCountDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(conflictingOmissionCounts, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
+      omissionCountDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(negatedOmission, G01_QUERY_ARGUMENTS, partialResult)).toMatchObject({
       omissionCountDisclosurePresent: false,
       passed: false,
     });
@@ -181,8 +236,92 @@ describe('G01 Agent answer acceptance', () => {
   it('rejects unqualified completeness and absence claims', () => {
     const complete = answer.replace('不能据此确认全站完整名单', '这是全站完整名单');
     const absent = answer.replace('本次返回2部', '本次返回2部，没有其他后宫动画');
+    const allHaremWorks = answer.replace(
+      '不能据此确认全站完整名单',
+      '不能据此确认全站完整名单；这是所有后宫作品',
+    );
+    const onlyTheseTwo = answer.replace(
+      '不能据此确认全站完整名单',
+      '不能据此确认全站完整名单；后宫动画只有以上两部',
+    );
+    const noSuchHaremAnime = answer.replace(
+      '不能据此确认全站完整名单',
+      '不能据此确认全站完整名单；不存在任何后宫动画',
+    );
     expect(verify(complete)).toMatchObject({ unsupportedCompletenessClaim: true, passed: false });
     expect(verify(absent)).toMatchObject({ unsupportedAbsenceClaim: true, passed: false });
+    expect(verify(allHaremWorks)).toMatchObject({
+      unsupportedCompletenessClaim: true,
+      passed: false,
+    });
+    expect(verify(onlyTheseTwo)).toMatchObject({ unsupportedAbsenceClaim: true, passed: false });
+    expect(verify(noSuchHaremAnime)).toMatchObject({
+      unsupportedAbsenceClaim: true,
+      passed: false,
+    });
+  });
+
+  it('requires affirmative source, estimate, bounded-coverage, and query-scope statements', () => {
+    const deniedExperimentalSource = answer.replace('官方搜索为实验接口', '官方搜索不是实验接口');
+    const deniedEstimate = answer.replace('总数是估算值', '总数不是估算值');
+    const deniedBoundedCoverage = answer.replace('本次检索仅代表有界返回', '本次检索不是有界返回');
+    const deniedExactTag = answer.replace(
+      '按 Bangumi 的精确“后宫”标签查询',
+      '没有按 Bangumi 的精确“后宫”标签查询',
+    );
+    const contradictoryExperimentalSource = answer.replace(
+      '官方搜索为实验接口',
+      '官方搜索不是实验接口；官方搜索为实验接口',
+    );
+
+    expect(verify(deniedExperimentalSource)).toMatchObject({
+      experimentalSourceDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(deniedEstimate)).toMatchObject({
+      estimatedTotalDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(deniedBoundedCoverage)).toMatchObject({
+      boundedCoverageDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(deniedExactTag)).toMatchObject({
+      exactTagScopeDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(contradictoryExperimentalSource)).toMatchObject({
+      experimentalSourceDisclosurePresent: false,
+      passed: false,
+    });
+  });
+
+  it('rejects unsupported prose hidden inside scope-prefixed lines', () => {
+    const unsupportedScopeProse = answer.replace(
+      '本次检索仅代表有界返回',
+      '这份结果已经足够说明所有用户都能找到答案',
+    );
+    const hiddenCompletenessClaim = answer.replace(
+      '本次检索仅代表有界返回',
+      '本次检索仅代表有界返回，所有后宫动画都在此处',
+    );
+    const unsupportedCombinedScope = answer.replace(
+      '2026年7月动画，按 Bangumi 的精确“后宫”标签查询',
+      '2026年7月动画按 Bangumi 的精确“后宫”标签查询但结果排名第一',
+    );
+
+    expect(verify(unsupportedScopeProse)).toMatchObject({
+      unsupportedScopeClausesCount: 1,
+      passed: false,
+    });
+    expect(verify(hiddenCompletenessClaim)).toMatchObject({
+      unsupportedCompletenessClaim: true,
+      passed: false,
+    });
+    expect(verify(unsupportedCombinedScope)).toMatchObject({
+      unsupportedScopeClausesCount: 1,
+      passed: false,
+    });
   });
 
   it('rejects unsupported prose and Markdown answer rows', () => {
@@ -206,6 +345,11 @@ describe('G01 Agent answer acceptance', () => {
   it('accepts a qualified non-exhaustiveness caveat without masking it as a positive claim', () => {
     expect(verify().unsupportedCompletenessClaim).toBe(false);
     expect(verify().nonExhaustiveDisclosurePresent).toBe(true);
+    const reversedCaveat = answer.replace('不能据此确认全站完整名单', '不能据此确认全站不完整名单');
+    expect(verify(reversedCaveat)).toMatchObject({
+      nonExhaustiveDisclosurePresent: false,
+      passed: false,
+    });
   });
 
   it('exposes the same sanitized checker through its stdin CLI for live probes', () => {

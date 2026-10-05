@@ -88,9 +88,13 @@
         "packages/discovery/src/engine.ts",
         "packages/discovery/src/concept-resolver.ts",
         "tests/discovery/golden.test.ts",
-        "tests/discovery/golden-e2e.test.ts"
+        "tests/discovery/golden-e2e.test.ts",
+        "docs/research/run92-g01-agent-mcp-canary-2026-10-05.json",
+        "scripts/acceptance/g01-agent-answer-check.mjs",
+        "tests/unit/g01-agent-answer-check.test.ts",
+        "tests/unit/g01-agent-canary-report.test.ts"
       ],
-      "next_action": "Run #92 / PR #93 exact-Candidate A evidence is recorded in docs/research/run92-g01-agent-mcp-canary-2026-10-05.json: one bangumi.query_subjects call, 14 visible rows, 3,523-byte MCP text projection, exact anime/July-2026/后宫 arguments, 14/14 title/date/ID/order matches, and scope/source caveats passed under ordered-source-row-identity-and-bounds-v2. The first checker version required a separate numeric count phrase; the v2 re-evaluation uses sanitized counters because listing all visible rows accounts for their count. No second public call was made. The CLI did not expose a separate structuredContent field. Keep PARTIAL because official-v0 search is experimental with estimated totals; QQ/TIM is separate. If a future projection omits rows, require the exact omitted count and omission-not-absence wording.",
+      "next_action": "Run #92 / PR #93 recorded one Candidate A bangumi.query_subjects call in docs/research/run92-g01-agent-mcp-canary-2026-10-05.json: 14 visible rows, a 3,523-byte MCP text projection, exact anime/July-2026/后宫 arguments, and 14/14 title/date/ID/order matches. That historical sanitized check used ordered-source-row-identity-and-bounds-v2. Sol review R93-01 through R93-03 found false positives in explicit-count consistency, omission-number matching, affirmative disclosures, and scope-prefixed prose. Corrective checker v3 and synthetic regressions address these findings. The raw answer was not retained and has not been reassessed under v3; no second public call was made. The CLI did not expose a separate structuredContent field. Keep PARTIAL because official-v0 search is experimental with estimated totals; QQ/TIM is separate. Require exact omitted counts and omission-not-absence wording when rows are omitted.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

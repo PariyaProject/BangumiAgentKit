@@ -61,6 +61,8 @@ describe('G01 current-candidate Agent/MCP canary report', () => {
   });
 
   it('documents the checker revision without claiming a second canary or full-object readback', () => {
+    expect(report.passBasis).toContain('Historical Candidate A checker-v2');
+    expect(report.passBasis).toContain('not a v3 reassessment');
     expect(report.acceptanceReassessment).toMatchObject({
       initialMethodPassed: false,
       initialFalseCheck: 'separate count phrase matcher',
@@ -73,6 +75,14 @@ describe('G01 current-candidate Agent/MCP canary report', () => {
       separateFieldExposedInAgentEventStream: false,
       liveFullObjectReadback: 'NOT_EXPOSED_BY_ANTIGRAVITY_EVENT_STREAM',
     });
+    expect(report.correctiveChecker).toMatchObject({
+      method: 'ordered-source-row-identity-and-bounds-v3',
+      reviewFindingsAddressed: ['R93-01', 'R93-02', 'R93-03'],
+      validationScope: 'synthetic fixtures and regressions only',
+      historicalLiveAnswerReprocessed: false,
+      secondPublicCall: false,
+    });
+    expect(report.acceptanceReassessment.limitation).toContain('has not been reassessed under v3');
     expect(report.frontierStatus).toBe('PARTIAL');
     expect(report.passed).toBe(true);
   });

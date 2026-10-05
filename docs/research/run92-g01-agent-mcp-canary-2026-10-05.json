@@ -84,16 +84,25 @@
   },
   "frontierStatus": "PARTIAL",
   "passed": true,
+  "passBasis": "Historical Candidate A checker-v2 sanitized-counter result only; it is not a v3 reassessment or a current G01 completion claim.",
   "acceptanceReassessment": {
     "initialMethod": "ordered-source-row-identity-and-bounds-v1",
     "initialMethodPassed": false,
     "initialFalseCheck": "separate count phrase matcher",
     "reassessmentMethod": "ordered-source-row-identity-and-bounds-v2",
-    "reassessment": "All 14 visible MCP rows were listed and matched by title, date, ID, and order. No text rows were omitted. Exact scope, experimental-source, estimated-total, and non-exhaustiveness checks all passed. A separate numeral is not required when every visible row is enumerated.",
+    "reassessment": "Under checker v2, all 14 visible MCP rows were listed and matched by title, date, ID, and order. No text rows were omitted. The captured v2 scope, experimental-source, estimated-total, and non-exhaustiveness flags were true. A separate numeral is not required when every visible row is enumerated.",
     "explicitCountPatternMatched": false,
     "answerRowsAccountForVisibleResultCount": true,
     "reassessedFromSanitizedCountersOnly": true,
     "rawAnswerReprocessed": false,
+    "secondPublicCall": false,
+    "limitation": "This is a v2-only sanitized-counter record. Reviewer R93-01 through R93-03 found v2 false positives; the raw answer was not retained and has not been reassessed under v3. No second public call was made."
+  },
+  "correctiveChecker": {
+    "method": "ordered-source-row-identity-and-bounds-v3",
+    "reviewFindingsAddressed": ["R93-01", "R93-02", "R93-03"],
+    "validationScope": "synthetic fixtures and regressions only",
+    "historicalLiveAnswerReprocessed": false,
     "secondPublicCall": false
   }
 }
