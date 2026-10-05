@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-04T09:41:22Z",
+  "updated_at": "2026-10-05T08:25:10Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -681,9 +681,14 @@
         "packages/renderer/src/templates/SeriesRelationsCard.tsx",
         "packages/renderer/src/templates/SubjectOverviewCard.tsx",
         "tests/render/subject-overview.test.ts",
-        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "docs/research/run95-g09-series-watch-order-mcp-projection-2026-10-05.md",
+        "apps/mcp/src/result-presenter.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "scripts/acceptance/g09-series-watch-order-answer-check.mjs",
+        "tests/unit/g09-series-watch-order-answer-check.test.ts"
       ],
-      "next_action": "Keep PARTIAL. SeriesRelationsCard and the relations section of SubjectOverviewCard now label complete state 本次范围内完整; each phrase describes only the selected traversal/retrieval bounds, not exhaustive franchise coverage. The G09 regression preserves partial/not-computable labels, bounded relation evidence, exclusions, and the noncanonical-order caveat. The source sample remains depth=2/maxNodes=8 with one direct animated derivative, 9 unique related records across 10 relation rows, and 8 excluded non-anime records. No exhaustive graph or unique official order is established; natural-language answer validation and QQ/TIM display remain separate.",
+      "next_action": "Use the exact-current-source G09 Agent/MCP outcome recorded in the Run #95 control plane before claiming answer acceptance; do not retry the one-shot canary. Keep PARTIAL because the bounded relation graph is not exhaustive, Bangumi publishes no unique official order, and QQ/TIM display remains unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -710,7 +715,44 @@
           "test": "tests/render/subject-overview.test.ts",
           "status_boundary": "The bounded SubjectOverview relations section is not an exhaustive graph or official order."
         },
-        "live_subject_overview_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "live_subject_overview_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "mcp_text_projection_run95": {
+          "implementation": "apps/mcp/src/result-presenter.ts",
+          "tests": [
+            "tests/integration/mcp-result-presenter.test.ts",
+            "tests/unit/g09-series-watch-order-answer-check.test.ts"
+          ],
+          "report": "docs/research/run95-g09-series-watch-order-mcp-projection-2026-10-05.md",
+          "text_limit_utf8_bytes": 3600,
+          "offline_g09_fixture": {
+            "source_fixture": "same bounded root/derivative relations used by tests/render/series-watch-order-g09.test.ts",
+            "network_requests": 0,
+            "prechange_full_json_utf8_bytes": 12582,
+            "prechange_mcp_text_utf8_bytes": 12582,
+            "prechange_structured_content_returned": false,
+            "current_projection_within_text_limit": true,
+            "full_structured_content_preserved": true,
+            "watch_order_ids_positions_and_raw_relation_labels_preserved": true,
+            "omission_and_truncation_counts_present": true
+          },
+          "answer_checker": {
+            "script": "scripts/acceptance/g09-series-watch-order-answer-check.mjs",
+            "method": "ordered-series-watch-order-rows-and-bounds-v1",
+            "checks": [
+              "exact arguments and one target tool call",
+              "requested root and ordered IDs/positions",
+              "raw relation labels and source titles",
+              "MCP text budget and structured-content contract",
+              "depth/node/media scope",
+              "non-anime exclusions",
+              "omission caveat when relation detail is hidden",
+              "bounded recommendation and no canonical-order claim"
+            ],
+            "raw_answer_or_result_persisted": false,
+            "current_source_canary": "Run #95 control-plane evidence; inspect before claiming pass"
+          },
+          "status_boundary": "G09 remains PARTIAL. This offline fixture and presenter do not prove the current natural-language Agent answer, exhaustive franchise coverage, a unique official order, or QQ/TIM display."
+        }
       }
     },
     {

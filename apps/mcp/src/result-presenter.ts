@@ -6,6 +6,7 @@ import type {
   SubjectComparisonResult,
   SubjectOverviewResult,
   SubjectStatsIntelligenceResult,
+  SeriesWatchOrderResult,
   SubjectStaffGroup,
   SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -41,6 +42,7 @@ const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
 const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const SUBJECT_COMPARISON_TOOL = 'bangumi.get_subject_comparison';
+const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
@@ -97,6 +99,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
   if (toolName === SUBJECT_COMPARISON_TOOL && isSubjectComparisonResult(result)) {
     return {
       text: compactSubjectComparison(result),
+      structuredContent: result,
+    };
+  }
+
+  if (toolName === SERIES_WATCH_ORDER_TOOL && isSeriesWatchOrderResult(result)) {
+    return {
+      text: compactSeriesWatchOrder(result),
       structuredContent: result,
     };
   }
@@ -194,6 +203,138 @@ function isSubjectComparisonResult(
     ) &&
     Array.isArray(value.limitations) &&
     value.limitations.every((limitation) => typeof limitation === 'string')
+  );
+}
+
+const SERIES_WATCH_ORDER_COVERAGE_COUNT_FIELDS = [
+  'depth',
+  'maxNodes',
+  'animeNodeLimit',
+  'nonAnimeEvidenceLimit',
+  'relatedLimit',
+  'relationRequests',
+  'relationRowsObserved',
+  'uniqueRelatedObserved',
+  'uniqueRelatedReturned',
+  'animeNodesObserved',
+  'animeNodesSelected',
+  'nonAnimeRowsObserved',
+  'nonAnimeRowsReturned',
+  'detailsAttempted',
+  'detailsFetched',
+  'detailsFailed',
+  'relationFailures',
+  'edgeEvidenceLimit',
+  'edgeEvidenceReturned',
+];
+const SERIES_WATCH_ORDER_COVERAGE_BOOLEAN_FIELDS = [
+  'edgeEvidenceTruncated',
+  'relatedEvidenceTruncated',
+  'truncated',
+];
+
+function isSeriesWatchOrderResult(value: JsonObject): value is JsonObject & SeriesWatchOrderResult {
+  return (
+    ['complete', 'partial', 'not_computable'].includes(String(value.state)) &&
+    Number.isInteger(value.subjectId) &&
+    isSeriesWatchOrderNode(value.root) &&
+    Array.isArray(value.watchOrder) &&
+    value.watchOrder.every(
+      (item) =>
+        isSeriesWatchOrderNode(item) &&
+        Number.isInteger(item.position) &&
+        ['root', 'before_root', 'after_root'].includes(String(item.placement)) &&
+        typeof item.isRoot === 'boolean' &&
+        typeof item.placementReason === 'string',
+    ) &&
+    Array.isArray(value.related) &&
+    value.related.every(
+      (item) =>
+        isSeriesWatchOrderNode(item) &&
+        Number.isInteger(item.depth) &&
+        typeof item.includedInWatchOrder === 'boolean' &&
+        (item.exclusionReason === undefined || typeof item.exclusionReason === 'string'),
+    ) &&
+    Array.isArray(value.edges) &&
+    value.edges.every(isSeriesWatchOrderPath) &&
+    isJsonObject(value.excluded) &&
+    Number.isInteger(value.excluded.count) &&
+    Array.isArray(value.excluded.byReason) &&
+    value.excluded.byReason.every(
+      (item) =>
+        isJsonObject(item) && typeof item.reason === 'string' && Number.isInteger(item.count),
+    ) &&
+    Array.isArray(value.excluded.samples) &&
+    value.excluded.samples.every(
+      (item) => isSeriesWatchOrderNode(item) && typeof item.reason === 'string',
+    ) &&
+    isSeriesWatchOrderCoverage(value.coverage) &&
+    isJsonObject(value.capabilityStates) &&
+    typeof value.capabilityStates.watchOrder === 'string' &&
+    isJsonObject(value.evidence) &&
+    Array.isArray(value.evidence.sources) &&
+    value.evidence.sources.every(
+      (source) =>
+        isJsonObject(source) &&
+        typeof source.operation === 'string' &&
+        typeof source.path === 'string' &&
+        ['succeeded', 'failed'].includes(String(source.status)) &&
+        Number.isInteger(source.subjectId) &&
+        (source.depth === undefined || Number.isInteger(source.depth)),
+    ) &&
+    typeof value.evidence.derivation === 'string' &&
+    typeof value.evidence.retrievedAt === 'string' &&
+    Array.isArray(value.warnings) &&
+    value.warnings.every((warning) => typeof warning === 'string') &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((limitation) => typeof limitation === 'string')
+  );
+}
+
+function isSeriesWatchOrderNode(value: unknown): value is JsonObject {
+  return (
+    isJsonObject(value) &&
+    Number.isInteger(value.id) &&
+    typeof value.type === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.nameCn === 'string' &&
+    (value.date === undefined || typeof value.date === 'string') &&
+    Array.isArray(value.relationLabels) &&
+    value.relationLabels.every((label) => typeof label === 'string') &&
+    Array.isArray(value.relationKinds) &&
+    value.relationKinds.every((kind) => typeof kind === 'string') &&
+    Array.isArray(value.relationPaths) &&
+    value.relationPaths.every(isSeriesWatchOrderPath)
+  );
+}
+
+function isSeriesWatchOrderCoverage(value: unknown): value is JsonObject {
+  return (
+    isJsonObject(value) &&
+    ['anime', 'all'].includes(String(value.media)) &&
+    SERIES_WATCH_ORDER_COVERAGE_COUNT_FIELDS.every((field) => Number.isInteger(value[field])) &&
+    SERIES_WATCH_ORDER_COVERAGE_BOOLEAN_FIELDS.every(
+      (field) => typeof value[field] === 'boolean',
+    ) &&
+    Array.isArray(value.truncationReasons) &&
+    value.truncationReasons.every((reason) => typeof reason === 'string') &&
+    typeof value.retrievedAt === 'string'
+  );
+}
+
+function isSeriesWatchOrderPath(value: unknown): value is JsonObject {
+  return (
+    isJsonObject(value) &&
+    Number.isInteger(value.fromId) &&
+    Number.isInteger(value.toId) &&
+    Number.isInteger(value.depth) &&
+    typeof value.relation === 'string' &&
+    typeof value.relationKind === 'string' &&
+    Array.isArray(value.pathIds) &&
+    value.pathIds.every((id) => Number.isInteger(id)) &&
+    Array.isArray(value.pathKinds) &&
+    value.pathKinds.every((kind) => typeof kind === 'string') &&
+    typeof value.direct === 'boolean'
   );
 }
 
@@ -1927,4 +2068,424 @@ function compactSubjectCast(result: SubjectCastResult): string {
     else if (textLimit > 0) textLimit -= 1;
     else throw new Error('Unable to produce bounded MCP subject cast text projection');
   }
+}
+
+const SERIES_WATCH_ORDER_SCOPE_NOTE =
+  'Bounded deterministic recommendation; not one official order. Omitted rows do not prove absence.';
+
+interface SeriesProjectionOptions {
+  orderLimit: number;
+  relatedLimit: number;
+  edgeLimit: number;
+  exclusionSampleLimit: number;
+  sourceLimit: number;
+  warningLimit: number;
+  limitationLimit: number;
+  labelLimit: number;
+  kindLimit: number;
+  nameCharacters: number;
+  labelCharacters: number;
+  includeNameCn: boolean;
+  includePlacementReason: boolean;
+}
+
+function compactSeriesWatchOrder(result: SeriesWatchOrderResult): string {
+  const options: SeriesProjectionOptions = {
+    orderLimit: Math.min(17, result.watchOrder.length),
+    relatedLimit: Math.min(6, result.related.length),
+    edgeLimit: Math.min(8, result.edges.length),
+    exclusionSampleLimit: Math.min(2, result.excluded.samples.length),
+    sourceLimit: Math.min(2, result.evidence.sources.length),
+    warningLimit: Math.min(2, result.warnings.length),
+    limitationLimit: Math.min(2, result.limitations.length),
+    labelLimit: 3,
+    kindLimit: 3,
+    nameCharacters: 72,
+    labelCharacters: 48,
+    includeNameCn: true,
+    includePlacementReason: true,
+  };
+
+  while (true) {
+    const projection = createSeriesWatchOrderProjection(result, options);
+    const text = JSON.stringify(projection);
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (options.relatedLimit > 0) options.relatedLimit = Math.floor(options.relatedLimit / 2);
+    else if (options.exclusionSampleLimit > 0) options.exclusionSampleLimit -= 1;
+    else if (options.sourceLimit > 0) options.sourceLimit -= 1;
+    else if (options.warningLimit > 1) options.warningLimit -= 1;
+    else if (options.limitationLimit > 1) options.limitationLimit -= 1;
+    else if (options.edgeLimit > 1) options.edgeLimit = Math.floor(options.edgeLimit / 2);
+    else if (options.includePlacementReason) options.includePlacementReason = false;
+    else if (options.includeNameCn) options.includeNameCn = false;
+    else if (options.nameCharacters > 12)
+      options.nameCharacters = Math.floor(options.nameCharacters / 2);
+    else if (options.labelCharacters > 12)
+      options.labelCharacters = Math.floor(options.labelCharacters / 2);
+    else if (options.labelLimit > 1) options.labelLimit -= 1;
+    else if (options.kindLimit > 1) options.kindLimit -= 1;
+    else if (options.orderLimit > Math.min(4, result.watchOrder.length)) options.orderLimit -= 1;
+    else if (options.nameCharacters > 0) options.nameCharacters -= 1;
+    else if (options.orderLimit > 1) options.orderLimit -= 1;
+    else if (options.edgeLimit > 0) options.edgeLimit = 0;
+    else return JSON.stringify(createMinimumSeriesWatchOrderProjection(result));
+  }
+}
+
+function createSeriesWatchOrderProjection(
+  result: SeriesWatchOrderResult,
+  options: SeriesProjectionOptions,
+) {
+  const clipped = {
+    displayNames: 0,
+    relationLabels: 0,
+    pathLabels: 0,
+    placementReasons: 0,
+    warnings: 0,
+    limitations: 0,
+    sourceText: 0,
+  };
+  const projectText = (value: string, limit: number, field: keyof typeof clipped): string => {
+    const projection = clippedDisplayText(value, limit);
+    if (projection.clipped) clipped[field] += 1;
+    return projection.text;
+  };
+  const projectLabels = (labels: string[]) =>
+    labels
+      .slice(0, options.labelLimit)
+      .map((label) => projectText(label, options.labelCharacters, 'relationLabels'));
+  const projectPath = (path: SeriesWatchOrderResult['edges'][number]) => ({
+    fromId: path.fromId,
+    toId: path.toId,
+    depth: path.depth,
+    relation: projectText(path.relation, options.labelCharacters, 'pathLabels'),
+    relationKind: path.relationKind,
+    pathIds: path.pathIds.slice(0, 3),
+    pathIdsOmittedFromText: Math.max(0, path.pathIds.length - 3),
+    pathKinds: path.pathKinds.slice(0, 3),
+    direct: path.direct,
+  });
+  const projectOrderItem = (item: SeriesWatchOrderResult['watchOrder'][number]) => {
+    const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    const nameCn = options.includeNameCn
+      ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
+      : undefined;
+    const relationLabels = projectLabels(item.relationLabels);
+    const placementReason = options.includePlacementReason
+      ? projectText(item.placementReason, 56, 'placementReasons')
+      : undefined;
+    return {
+      id: item.id,
+      type: item.type,
+      name,
+      ...(nameCn ? { nameCn } : {}),
+      ...(item.date ? { date: item.date } : {}),
+      position: item.position,
+      placement: item.placement,
+      ...(placementReason ? { placementReason } : {}),
+      ...(item.derivedDepth === undefined ? {} : { derivedDepth: item.derivedDepth }),
+      relationLabels,
+      relationLabelsOmittedFromText: Math.max(
+        0,
+        item.relationLabels.length - relationLabels.length,
+      ),
+      relationKinds: item.relationKinds.slice(0, options.kindLimit),
+      relationKindsOmittedFromText: Math.max(0, item.relationKinds.length - options.kindLimit),
+      relationPaths: item.relationPaths.slice(0, 1).map(projectPath),
+      relationPathsOmittedFromText: Math.max(0, item.relationPaths.length - 1),
+    };
+  };
+  const projectNode = (item: SeriesWatchOrderResult['root']) => {
+    const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    const nameCn = options.includeNameCn
+      ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
+      : undefined;
+    const relationLabels = projectLabels(item.relationLabels);
+    return {
+      id: item.id,
+      type: item.type,
+      name,
+      ...(nameCn ? { nameCn } : {}),
+      ...(item.date ? { date: item.date } : {}),
+      relationLabels,
+      relationLabelsOmittedFromText: Math.max(
+        0,
+        item.relationLabels.length - relationLabels.length,
+      ),
+      relationKinds: item.relationKinds.slice(0, options.kindLimit),
+      relationKindsOmittedFromText: Math.max(0, item.relationKinds.length - options.kindLimit),
+    };
+  };
+  const projectRelated = (item: SeriesWatchOrderResult['related'][number]) => {
+    const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    const nameCn = options.includeNameCn
+      ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
+      : undefined;
+    const relationLabels = projectLabels(item.relationLabels);
+    return {
+      id: item.id,
+      type: item.type,
+      name,
+      ...(nameCn ? { nameCn } : {}),
+      depth: item.depth,
+      includedInWatchOrder: item.includedInWatchOrder,
+      ...(item.exclusionReason ? { exclusionReason: item.exclusionReason } : {}),
+      relationLabels,
+      relationLabelsOmittedFromText: Math.max(
+        0,
+        item.relationLabels.length - relationLabels.length,
+      ),
+      relationKinds: item.relationKinds.slice(0, options.kindLimit),
+      relationKindsOmittedFromText: Math.max(0, item.relationKinds.length - options.kindLimit),
+      relationPathsOmittedFromText: item.relationPaths.length,
+    };
+  };
+  const projectExclusionSample = (item: SeriesWatchOrderResult['excluded']['samples'][number]) => {
+    const name = projectText(item.name, options.nameCharacters, 'displayNames');
+    const nameCn = options.includeNameCn
+      ? projectText(item.nameCn, options.nameCharacters, 'displayNames')
+      : undefined;
+    const relationLabels = projectLabels(item.relationLabels);
+    return {
+      id: item.id,
+      type: item.type,
+      name,
+      ...(nameCn ? { nameCn } : {}),
+      relationLabels,
+      relationLabelsOmittedFromText: Math.max(
+        0,
+        item.relationLabels.length - relationLabels.length,
+      ),
+      reason: item.reason,
+      relationPathsOmittedFromText: item.relationPaths.length,
+    };
+  };
+
+  const watchOrder = result.watchOrder.slice(0, options.orderLimit).map(projectOrderItem);
+  const related = result.related.slice(0, options.relatedLimit).map(projectRelated);
+  const edges = result.edges.slice(0, options.edgeLimit).map(projectPath);
+  const exclusionSamples = result.excluded.samples
+    .slice(0, options.exclusionSampleLimit)
+    .map(projectExclusionSample);
+  const sources = result.evidence.sources.slice(0, options.sourceLimit).map((source) => ({
+    operation: projectText(source.operation, 56, 'sourceText'),
+    path: projectText(source.path, 72, 'sourceText'),
+    status: source.status,
+    subjectId: source.subjectId,
+    ...(source.depth === undefined ? {} : { depth: source.depth }),
+  }));
+  const warnings = result.warnings
+    .slice(0, options.warningLimit)
+    .map((warning) => projectText(warning, 120, 'warnings'));
+  const limitations = result.limitations
+    .slice(0, options.limitationLimit)
+    .map((limitation) => projectText(limitation, 160, 'limitations'));
+  const pathRowsReturned =
+    result.root.relationPaths.length +
+    result.watchOrder.reduce((total, item) => total + item.relationPaths.length, 0) +
+    result.related.reduce((total, item) => total + item.relationPaths.length, 0) +
+    result.excluded.samples.reduce((total, item) => total + item.relationPaths.length, 0);
+
+  return {
+    state: result.state,
+    subjectId: result.subjectId,
+    root: projectNode(result.root),
+    capabilityStates: { ...result.capabilityStates },
+    watchOrder,
+    related,
+    edges,
+    excluded: {
+      count: result.excluded.count,
+      byReason: result.excluded.byReason.slice(0, 8).map((item) => ({
+        reason: item.reason,
+        count: item.count,
+      })),
+      byReasonOmittedFromText: Math.max(0, result.excluded.byReason.length - 8),
+      samples: exclusionSamples,
+      samplesOmittedFromText: result.excluded.samples.length - exclusionSamples.length,
+    },
+    coverage: {
+      depth: result.coverage.depth,
+      maxNodes: result.coverage.maxNodes,
+      media: result.coverage.media,
+      animeNodeLimit: result.coverage.animeNodeLimit,
+      nonAnimeEvidenceLimit: result.coverage.nonAnimeEvidenceLimit,
+      relatedLimit: result.coverage.relatedLimit,
+      relationRequests: result.coverage.relationRequests,
+      relationRowsObserved: result.coverage.relationRowsObserved,
+      uniqueRelatedObserved: result.coverage.uniqueRelatedObserved,
+      uniqueRelatedReturned: result.coverage.uniqueRelatedReturned,
+      animeNodesObserved: result.coverage.animeNodesObserved,
+      animeNodesSelected: result.coverage.animeNodesSelected,
+      nonAnimeRowsObserved: result.coverage.nonAnimeRowsObserved,
+      nonAnimeRowsReturned: result.coverage.nonAnimeRowsReturned,
+      detailsAttempted: result.coverage.detailsAttempted,
+      detailsFetched: result.coverage.detailsFetched,
+      detailsFailed: result.coverage.detailsFailed,
+      relationFailures: result.coverage.relationFailures,
+      edgeEvidenceLimit: result.coverage.edgeEvidenceLimit,
+      edgeEvidenceReturned: result.coverage.edgeEvidenceReturned,
+      edgeEvidenceTruncated: result.coverage.edgeEvidenceTruncated,
+      relatedEvidenceTruncated: result.coverage.relatedEvidenceTruncated,
+      truncated: result.coverage.truncated,
+      truncationReasons: result.coverage.truncationReasons.slice(0, 4),
+      truncationReasonsOmittedFromText: Math.max(0, result.coverage.truncationReasons.length - 4),
+      retrievedAt: result.coverage.retrievedAt,
+    },
+    evidence: {
+      derivation: result.evidence.derivation,
+      retrievedAt: result.evidence.retrievedAt,
+      sources,
+      sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
+    },
+    warnings,
+    warningsOmittedFromText: result.warnings.length - warnings.length,
+    limitations,
+    limitationsOmittedFromText: result.limitations.length - limitations.length,
+    mcpTextProjection: {
+      version: 'series-watch-order-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      fullResultUtf8Bytes: utf8Bytes(JSON.stringify(result, null, 2)),
+      structuredContentHasFullResult: true,
+      textViewScope: SERIES_WATCH_ORDER_SCOPE_NOTE,
+      watchOrderRowsReturned: result.watchOrder.length,
+      watchOrderRowsIncluded: watchOrder.length,
+      watchOrderRowsOmittedFromText: result.watchOrder.length - watchOrder.length,
+      relatedRowsReturned: result.related.length,
+      relatedRowsIncluded: related.length,
+      relatedRowsOmittedFromText: result.related.length - related.length,
+      edgeRowsReturned: result.edges.length,
+      edgeRowsIncluded: edges.length,
+      edgeRowsOmittedFromText: result.edges.length - edges.length,
+      relationPathRowsReturned: pathRowsReturned,
+      exclusionSamplesReturned: result.excluded.samples.length,
+      exclusionSamplesIncluded: exclusionSamples.length,
+      exclusionSamplesOmittedFromText: result.excluded.samples.length - exclusionSamples.length,
+      sourceOperationsReturned: result.evidence.sources.length,
+      sourceOperationsIncluded: sources.length,
+      sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
+      warningRecordsOmittedFromText: result.warnings.length - warnings.length,
+      limitationRecordsOmittedFromText: result.limitations.length - limitations.length,
+      displayNamesTruncated: clipped.displayNames,
+      relationLabelsTruncated: clipped.relationLabels + clipped.pathLabels,
+      placementReasonsTruncated: clipped.placementReasons,
+      sourceTextTruncated: clipped.sourceText,
+      warningTextTruncated: clipped.warnings,
+      limitationTextTruncated: clipped.limitations,
+    },
+  };
+}
+
+function createMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderResult) {
+  let displayNamesTruncated = 0;
+  let relationLabelsTruncated = 0;
+  let relationLabelsOmittedFromText = 0;
+  const rootName = clippedDisplayText(result.root.nameCn || result.root.name, 24);
+  if (rootName.clipped) displayNamesTruncated += 1;
+  const watchOrder = result.watchOrder.slice(0, 17).map((item) => {
+    const name = clippedDisplayText(item.nameCn || item.name, 12);
+    if (name.clipped) displayNamesTruncated += 1;
+    const relationLabels = item.relationLabels.slice(0, 1).map((label) => {
+      const clippedLabel = clippedDisplayText(label, 12);
+      if (clippedLabel.clipped) relationLabelsTruncated += 1;
+      return clippedLabel.text;
+    });
+    relationLabelsOmittedFromText += Math.max(
+      0,
+      item.relationLabels.length - relationLabels.length,
+    );
+    return {
+      id: item.id,
+      position: item.position,
+      placement: item.placement,
+      name: name.text,
+      relationLabels,
+      relationLabelsOmittedFromText: Math.max(
+        0,
+        item.relationLabels.length - relationLabels.length,
+      ),
+    };
+  });
+  const sources = result.evidence.sources.slice(0, 1).map((source) => ({
+    operation: clippedDisplayText(source.operation, 40).text,
+    path: clippedDisplayText(source.path, 48).text,
+    status: source.status,
+    subjectId: source.subjectId,
+  }));
+  const warnings = result.warnings
+    .slice(0, 1)
+    .map((warning) => clippedDisplayText(warning, 80).text);
+  const limitations = result.limitations
+    .slice(0, 1)
+    .map((limitation) => clippedDisplayText(limitation, 96).text);
+  return {
+    state: result.state,
+    subjectId: result.subjectId,
+    root: {
+      id: result.root.id,
+      type: result.root.type,
+      name: rootName.text,
+    },
+    capabilityStates: { ...result.capabilityStates },
+    watchOrder,
+    coverage: {
+      depth: result.coverage.depth,
+      maxNodes: result.coverage.maxNodes,
+      media: result.coverage.media,
+      relationRequests: result.coverage.relationRequests,
+      relationRowsObserved: result.coverage.relationRowsObserved,
+      uniqueRelatedObserved: result.coverage.uniqueRelatedObserved,
+      uniqueRelatedReturned: result.coverage.uniqueRelatedReturned,
+      nonAnimeRowsObserved: result.coverage.nonAnimeRowsObserved,
+      nonAnimeRowsReturned: result.coverage.nonAnimeRowsReturned,
+      edgeEvidenceTruncated: result.coverage.edgeEvidenceTruncated,
+      relatedEvidenceTruncated: result.coverage.relatedEvidenceTruncated,
+      truncated: result.coverage.truncated,
+      truncationReasons: result.coverage.truncationReasons.slice(0, 2),
+      retrievedAt: result.coverage.retrievedAt,
+    },
+    evidence: {
+      derivation: result.evidence.derivation,
+      retrievedAt: result.evidence.retrievedAt,
+      sources,
+      sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
+    },
+    warnings,
+    warningsOmittedFromText: result.warnings.length - warnings.length,
+    limitations: [...limitations, SERIES_WATCH_ORDER_SCOPE_NOTE],
+    limitationsOmittedFromText: Math.max(0, result.limitations.length - limitations.length),
+    mcpTextProjection: {
+      version: 'series-watch-order-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      fullResultUtf8Bytes: utf8Bytes(JSON.stringify(result, null, 2)),
+      structuredContentHasFullResult: true,
+      textViewScope: SERIES_WATCH_ORDER_SCOPE_NOTE,
+      watchOrderRowsReturned: result.watchOrder.length,
+      watchOrderRowsIncluded: watchOrder.length,
+      watchOrderRowsOmittedFromText: Math.max(0, result.watchOrder.length - watchOrder.length),
+      displayNamesTruncated,
+      relationLabelsTruncated,
+      relationLabelsOmittedFromText,
+      relatedRowsOmittedFromText: result.related.length,
+      edgeRowsOmittedFromText: result.edges.length,
+      exclusionSamplesOmittedFromText: result.excluded.samples.length,
+      sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
+      warningRecordsOmittedFromText: result.warnings.length - warnings.length,
+      limitationRecordsOmittedFromText: Math.max(0, result.limitations.length - limitations.length),
+      truncationReasonsOmittedFromText: Math.max(0, result.coverage.truncationReasons.length - 2),
+      sourceTextTruncated:
+        sources.length > 0 &&
+        (sources[0]!.operation.endsWith('…') || sources[0]!.path.endsWith('…'))
+          ? 1
+          : 0,
+      warningTextTruncated: warnings.length > 0 && warnings[0]!.endsWith('…') ? 1 : 0,
+      limitationTextTruncated: limitations.filter((limitation) => limitation.endsWith('…')).length,
+      relationPathRowsReturned:
+        result.root.relationPaths.length +
+        result.watchOrder.reduce((total, item) => total + item.relationPaths.length, 0) +
+        result.related.reduce((total, item) => total + item.relationPaths.length, 0) +
+        result.excluded.samples.reduce((total, item) => total + item.relationPaths.length, 0),
+    },
+  };
 }
