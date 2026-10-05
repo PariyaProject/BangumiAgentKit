@@ -3,7 +3,9 @@ import type {
   PersonActivityWindowSummary,
   SubjectCastItem,
   SubjectCastResult,
+  SubjectComparisonResult,
   SubjectOverviewResult,
+  SubjectStatsIntelligenceResult,
   SubjectStaffGroup,
   SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -38,6 +40,7 @@ const PERSON_ACTIVITY_TOOL = 'bangumi.get_person_activity';
 const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
 const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
+const SUBJECT_COMPARISON_TOOL = 'bangumi.get_subject_comparison';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
@@ -91,6 +94,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
     };
   }
 
+  if (toolName === SUBJECT_COMPARISON_TOOL && isSubjectComparisonResult(result)) {
+    return {
+      text: compactSubjectComparison(result),
+      structuredContent: result,
+    };
+  }
+
   return { text: fullText };
 }
 
@@ -135,6 +145,123 @@ function isSubjectOverviewResult(value: JsonObject): value is JsonObject & Subje
     Array.isArray(value.warnings) &&
     Array.isArray(value.limitations)
   );
+}
+
+function isSubjectComparisonResult(
+  value: JsonObject,
+): value is JsonObject & SubjectComparisonResult {
+  return (
+    Array.isArray(value.subjectIds) &&
+    value.subjectIds.length === 2 &&
+    value.subjectIds.every((subjectId) => Number.isInteger(subjectId) && Number(subjectId) > 0) &&
+    Array.isArray(value.subjects) &&
+    value.subjects.length === 2 &&
+    value.subjects.every(isSubjectComparisonSubject) &&
+    Array.isArray(value.metrics) &&
+    value.metrics.every(
+      (metric) =>
+        isJsonObject(metric) &&
+        typeof metric.key === 'string' &&
+        typeof metric.label === 'string' &&
+        Array.isArray(metric.values) &&
+        metric.values.length === 2 &&
+        (metric.delta === null || typeof metric.delta === 'number') &&
+        Number.isInteger(metric.deltaPrecision) &&
+        typeof metric.state === 'string' &&
+        (metric.conflicts === undefined ||
+          (Array.isArray(metric.conflicts) && metric.conflicts.every(isJsonObject))),
+    ) &&
+    isJsonObject(value.coverage) &&
+    isJsonObject(value.coverage.limits) &&
+    isJsonObject(value.source) &&
+    isComparisonSourceSummary(value.source.official) &&
+    isComparisonSourceSummary(value.source.derived) &&
+    isJsonObject(value.overlaps) &&
+    isComparisonOverlap(value.overlaps.cast) &&
+    isComparisonOverlap(value.overlaps.staff) &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every(
+      (item) =>
+        isJsonObject(item) && typeof item.source === 'string' && typeof item.operation === 'string',
+    ) &&
+    Array.isArray(value.warnings) &&
+    value.warnings.every(
+      (warning) =>
+        isJsonObject(warning) &&
+        typeof warning.code === 'string' &&
+        typeof warning.state === 'string' &&
+        typeof warning.message === 'string',
+    ) &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((limitation) => typeof limitation === 'string')
+  );
+}
+
+function isComparisonSourceSummary(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    typeof value.class === 'string' &&
+    Array.isArray(value.operations) &&
+    value.operations.every((operation) => typeof operation === 'string') &&
+    typeof value.attemptedAt === 'string'
+  );
+}
+
+function isComparisonOverlap(value: unknown): boolean {
+  return (
+    isJsonObject(value) &&
+    Array.isArray(value.items) &&
+    isJsonObject(value.coverage) &&
+    isJsonObject(value.coverage.left) &&
+    isJsonObject(value.coverage.right) &&
+    typeof value.coverage.truncated === 'boolean'
+  );
+}
+
+function isSubjectComparisonSubject(value: unknown): boolean {
+  if (
+    !isJsonObject(value) ||
+    !Number.isInteger(value.subjectId) ||
+    !isJsonObject(value.stats) ||
+    !isJsonObject(value.sections) ||
+    !isJsonObject(value.coverage) ||
+    !isJsonObject(value.coverage.limits) ||
+    !Array.isArray(value.coverage.truncatedSections) ||
+    !isJsonObject(value.source) ||
+    !isComparisonSourceSummary(value.source.official) ||
+    !isComparisonSourceSummary(value.source.derived) ||
+    !Array.isArray(value.warnings) ||
+    !Array.isArray(value.limitations)
+  ) {
+    return false;
+  }
+  if (value.subject !== undefined) {
+    if (
+      !isJsonObject(value.subject) ||
+      !Number.isInteger(value.subject.id) ||
+      typeof value.subject.name !== 'string' ||
+      typeof value.subject.type !== 'string'
+    ) {
+      return false;
+    }
+  }
+  if (value.statistics !== undefined) {
+    const statistics = value.statistics;
+    if (
+      !isJsonObject(statistics) ||
+      !isJsonObject(statistics.rating) ||
+      !Array.isArray(statistics.rating.distribution) ||
+      !isJsonObject(statistics.collection) ||
+      typeof statistics.collection.completionState !== 'string' ||
+      !Array.isArray(statistics.collection.distribution) ||
+      !isJsonObject(statistics.collection.formulas) ||
+      !isJsonObject(statistics.collection.formulas.completion) ||
+      typeof statistics.collection.formulas.completion.description !== 'string'
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function isSubjectStaffResult(value: JsonObject): value is SubjectStaffToolResult {
@@ -1093,6 +1220,308 @@ function minimalSubjectOverviewProjection(result: SubjectOverviewResult): string
           summaryOmittedFromText: true,
         },
       });
+}
+
+function projectComparisonSource(
+  source:
+    SubjectComparisonResult['source']['official'] | SubjectComparisonResult['source']['derived'],
+  operationLimit: number,
+) {
+  const operations = source.operations
+    .slice(0, operationLimit)
+    .map((operation) => clippedDisplayText(operation, MESSAGE_TEXT_LIMIT));
+  return {
+    class: source.class,
+    operations: operations.map((operation) => operation.text),
+    operationsOmittedFromText: Math.max(0, source.operations.length - operations.length),
+    attemptedAt: source.attemptedAt,
+    ...(source.retrievedAt ? { retrievedAt: source.retrievedAt } : {}),
+  };
+}
+
+function projectComparisonConflict(conflict: {
+  reason?: string;
+  resolution?: string;
+  candidates?: unknown[];
+}) {
+  const reason = clippedMessage(conflict.reason || '冲突原因未提供');
+  const resolution = conflict.resolution ? clippedMessage(conflict.resolution) : undefined;
+  return {
+    reason: reason.text,
+    ...(reason.clipped ? { reasonTextTruncated: true } : {}),
+    ...(resolution
+      ? {
+          resolution: resolution.text,
+          ...(resolution.clipped ? { resolutionTextTruncated: true } : {}),
+        }
+      : {}),
+    candidateCount: conflict.candidates?.length ?? 0,
+    candidateValuesOmittedFromText: true,
+  };
+}
+
+function projectComparisonFormula(
+  formula: SubjectStatsIntelligenceResult['collection']['formulas']['completion'],
+) {
+  const description = clippedDisplayText(formula.description, MESSAGE_TEXT_LIMIT * 2);
+  return {
+    id: formula.id,
+    version: formula.version,
+    evidenceStatus: formula.evidenceStatus,
+    description: description.text,
+    ...(description.clipped ? { descriptionTextTruncated: true } : {}),
+  };
+}
+
+function projectComparisonWarning(warning: {
+  code: string;
+  state: string;
+  message: string;
+  subjectId?: number;
+}) {
+  const message = clippedMessage(warning.message);
+  return {
+    code: warning.code,
+    state: warning.state,
+    ...(warning.subjectId === undefined ? {} : { subjectId: warning.subjectId }),
+    message: message.text,
+    ...(message.clipped ? { messageTextTruncated: true } : {}),
+  };
+}
+
+function projectComparisonSubject(
+  subject: SubjectComparisonResult['subjects'][number],
+  warningLimit: number,
+  limitationLimit: number,
+) {
+  const name = subject.subject
+    ? clippedDisplayText(subject.subject.name, DISPLAY_TEXT_LIMIT / 5)
+    : undefined;
+  const nameCn = subject.subject?.nameCn
+    ? clippedDisplayText(subject.subject.nameCn, DISPLAY_TEXT_LIMIT / 5)
+    : undefined;
+  const conflicts = Object.entries(subject.stats.conflicts || {}).flatMap(([metric, conflict]) =>
+    conflict ? [{ metric, ...projectComparisonConflict(conflict) }] : [],
+  );
+  const warnings = subject.warnings.slice(0, warningLimit).map(projectComparisonWarning);
+  const limitations = subject.limitations
+    .slice(0, limitationLimit)
+    .map((limitation) => clippedMessage(limitation));
+
+  return {
+    subjectId: subject.subjectId,
+    state: subject.state,
+    ...(subject.subject
+      ? {
+          subject: {
+            id: subject.subject.id,
+            type: subject.subject.type,
+            name: name!.text,
+            ...(name!.clipped ? { nameTextTruncated: true } : {}),
+            ...(nameCn ? { nameCn: nameCn.text } : {}),
+            ...(nameCn?.clipped ? { nameCnTextTruncated: true } : {}),
+            ...(subject.subject.date ? { date: subject.subject.date } : {}),
+            ...(subject.subject.platform ? { platform: subject.subject.platform } : {}),
+            ...(subject.subject.episodesReported === undefined
+              ? {}
+              : { episodesReported: subject.subject.episodesReported }),
+            ...(subject.subject.totalEpisodesReported === undefined
+              ? {}
+              : { totalEpisodesReported: subject.subject.totalEpisodesReported }),
+          },
+        }
+      : {}),
+    stats: {
+      state: subject.stats.state,
+      conflictCount: conflicts.length,
+    },
+    sections: { ...subject.sections },
+    coverage: {
+      truncatedSections: [...subject.coverage.truncatedSections],
+      limits: {
+        maxCast: subject.coverage.limits.maxCast,
+        maxStaff: subject.coverage.limits.maxStaff,
+        maxRelations: subject.coverage.limits.maxRelations,
+      },
+    },
+    ...(subject.statistics
+      ? {
+          statistics: {
+            state: subject.statistics.state,
+            collection: {
+              state: subject.statistics.collection.state,
+              ...(subject.statistics.collection.completionRate === undefined
+                ? {}
+                : { completionRate: subject.statistics.collection.completionRate }),
+              completionState: subject.statistics.collection.completionState,
+              conflictCount: subject.statistics.collection.conflicts?.length ?? 0,
+            },
+            collectionCoverage: {
+              expectedBuckets: subject.statistics.coverage.collectionBucketsExpected,
+              observedBuckets: subject.statistics.coverage.collectionBucketsObserved,
+            },
+          },
+        }
+      : {}),
+    warnings,
+    warningRecordsOmittedFromText: subject.warnings.length - warnings.length,
+    limitations: limitations.map((limitation) => limitation.text),
+    limitationRecordsOmittedFromText: subject.limitations.length - limitations.length,
+    ...(subject.error
+      ? {
+          error: {
+            code: subject.error.code,
+            message: clippedMessage(subject.error.message).text,
+            ...(subject.error.retryable === undefined
+              ? {}
+              : { retryable: subject.error.retryable }),
+            ...(subject.error.nextAction
+              ? { nextAction: clippedMessage(subject.error.nextAction).text }
+              : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+function projectComparisonOverlap(
+  overlap:
+    SubjectComparisonResult['overlaps']['cast'] | SubjectComparisonResult['overlaps']['staff'],
+) {
+  return {
+    state: overlap.state,
+    sourceReturned: overlap.coverage.returned,
+    sourceOmitted: overlap.coverage.omitted,
+    truncated: overlap.coverage.truncated,
+    itemsOmittedFromText: overlap.items.length,
+  };
+}
+
+function createSubjectComparisonProjection(
+  result: SubjectComparisonResult,
+  warningLimit: number,
+  limitationLimit: number,
+  evidenceLimit: number,
+  operationLimit: number,
+) {
+  const warnings = result.warnings.slice(0, warningLimit).map(projectComparisonWarning);
+  const limitations = result.limitations
+    .slice(0, limitationLimit)
+    .map((limitation) => clippedMessage(limitation).text);
+  const evidence = result.evidence.slice(0, evidenceLimit).map((item) => ({
+    source: item.source,
+    operation: clippedDisplayText(item.operation, MESSAGE_TEXT_LIMIT).text,
+    ...(item.attemptedAt ? { attemptedAt: item.attemptedAt } : {}),
+    ...(item.retrievedAt ? { retrievedAt: item.retrievedAt } : {}),
+    ...(item.formulaVersion ? { formulaVersion: item.formulaVersion } : {}),
+    ...(item.subjectIds ? { subjectIds: [...item.subjectIds] } : {}),
+  }));
+  const projectedMetricKeys = new Set([
+    'score',
+    'episodesReported',
+    'totalEpisodesReported',
+    'collectionCompletionRate',
+  ]);
+  const metrics = result.metrics.filter((metric) => projectedMetricKeys.has(metric.key));
+  const completionFormula = result.subjects.find((subject) => subject.statistics)?.statistics
+    ?.collection.formulas.completion;
+
+  return {
+    state: result.state,
+    subjectIds: [...result.subjectIds],
+    subjects: result.subjects.map((subject) =>
+      projectComparisonSubject(subject, warningLimit, limitationLimit),
+    ),
+    metrics: metrics.map((metric) => ({
+      key: metric.key,
+      values: [...metric.values],
+      delta: metric.delta,
+      deltaPrecision: metric.deltaPrecision,
+      state: metric.state,
+      ...(metric.conflicts
+        ? {
+            conflicts: metric.conflicts.map((conflict) => ({
+              side: conflict.side,
+              ...projectComparisonConflict(conflict),
+            })),
+          }
+        : {}),
+    })),
+    ...(completionFormula
+      ? { collectionCompletionFormula: projectComparisonFormula(completionFormula) }
+      : {}),
+    overlaps: {
+      cast: projectComparisonOverlap(result.overlaps.cast),
+      staff: projectComparisonOverlap(result.overlaps.staff),
+    },
+    coverage: {
+      requestedSubjects: result.coverage.requestedSubjects,
+      returnedSubjects: result.coverage.returnedSubjects,
+      metricsComplete: result.coverage.metricsComplete,
+      metricsUnknown: result.coverage.metricsUnknown,
+      metricsConflict: result.coverage.metricsConflict,
+    },
+    source: {
+      official: projectComparisonSource(result.source.official, operationLimit),
+      derived: projectComparisonSource(result.source.derived, operationLimit),
+    },
+    evidence,
+    warnings,
+    limitations,
+    ...(result.error
+      ? {
+          error: {
+            code: result.error.code,
+            message: clippedMessage(result.error.message).text,
+            ...(result.error.retryable === undefined ? {} : { retryable: result.error.retryable }),
+            ...(result.error.nextAction
+              ? { nextAction: clippedMessage(result.error.nextAction).text }
+              : {}),
+          },
+        }
+      : {}),
+    mcpTextProjection: {
+      version: 'subject-comparison-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      textViewScope: 'Omission is not evidence of absence; full structuredContent returned.',
+      ratingDistributionBucketsOmittedFromText: result.subjects.reduce(
+        (total, subject) => total + (subject.statistics?.rating.distribution.length ?? 0),
+        0,
+      ),
+      metricsOmittedFromText: result.metrics.length - metrics.length,
+      overlapItemsOmittedFromText:
+        result.overlaps.cast.items.length + result.overlaps.staff.items.length,
+      evidenceRecordsOmittedFromText: result.evidence.length - evidence.length,
+      warningRecordsOmittedFromText: result.warnings.length - warnings.length,
+      limitationRecordsOmittedFromText: result.limitations.length - limitations.length,
+    },
+  };
+}
+
+function compactSubjectComparison(result: SubjectComparisonResult): string {
+  let warningLimit = Math.min(MAX_WARNINGS, result.warnings.length);
+  let limitationLimit = Math.min(MAX_LIMITATIONS, result.limitations.length);
+  let evidenceLimit = Math.min(2, result.evidence.length);
+  let operationLimit = 1;
+
+  while (true) {
+    const projection = createSubjectComparisonProjection(
+      result,
+      warningLimit,
+      limitationLimit,
+      evidenceLimit,
+      operationLimit,
+    );
+    const text = JSON.stringify(projection);
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (evidenceLimit > 0) evidenceLimit -= 1;
+    else if (limitationLimit > 0) limitationLimit -= 1;
+    else if (warningLimit > 0) warningLimit -= 1;
+    else if (operationLimit > 1) operationLimit -= 1;
+    else return JSON.stringify(createSubjectComparisonProjection(result, 0, 0, 0, 1));
+  }
 }
 
 function projectSubjectStaffGroup(
