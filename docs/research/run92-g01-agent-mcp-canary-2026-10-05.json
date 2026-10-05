@@ -84,7 +84,7 @@
   },
   "frontierStatus": "PARTIAL",
   "passed": true,
-  "passBasis": "Historical Candidate A checker-v2 sanitized-counter result only; it is not a v3 reassessment or a current G01 completion claim.",
+  "passBasis": "Historical Candidate A checker-v2 sanitized-counter result only; it is not a current v4 reassessment or a current G01 completion claim.",
   "acceptanceReassessment": {
     "initialMethod": "ordered-source-row-identity-and-bounds-v1",
     "initialMethodPassed": false,
@@ -96,10 +96,10 @@
     "reassessedFromSanitizedCountersOnly": true,
     "rawAnswerReprocessed": false,
     "secondPublicCall": false,
-    "limitation": "This is a v2-only sanitized-counter record. Reviewer R93-01 through R93-03 found v2 false positives; the raw answer was not retained and has not been reassessed under v3. No second public call was made."
+    "limitation": "This is a v2-only sanitized-counter record. Reviewers found false positives in v2 and v3; the raw answer was not retained and has not been reassessed under v4. No second public call was made."
   },
   "correctiveChecker": {
-    "method": "ordered-source-row-identity-and-bounds-v3",
+    "method": "ordered-source-row-identity-and-bounds-v4",
     "reviewFindingsAddressed": ["R93-01", "R93-02", "R93-03"],
     "validationScope": "synthetic fixtures and regressions only",
     "historicalLiveAnswerReprocessed": false,

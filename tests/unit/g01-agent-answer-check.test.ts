@@ -36,7 +36,10 @@ function verify(text = answer, args: unknown = G01_QUERY_ARGUMENTS, source: unkn
 
 describe('G01 Agent answer acceptance', () => {
   it('matches every projected anime by exact title, date, ID, and order', () => {
-    expect(verify()).toMatchObject({
+    const check = verify();
+    expect(check.explicitCountStatementsConsistent).toBe(true);
+    expect(check.unsupportedScopeClausesCount).toBe(0);
+    expect(check).toMatchObject({
       queryArgumentsMatch: true,
       resultReadbackAvailable: true,
       returnedRows: 2,
@@ -218,6 +221,53 @@ describe('G01 Agent answer acceptance', () => {
       omissionNotAbsenceDisclosurePresent: false,
       passed: false,
     });
+
+    const twoOmittedResult = {
+      ...partialResult,
+      projection: { ...partialResult.projection, omittedItems: 2 },
+    };
+    const twoOmittedAnswer = partialAnswer.replace('另有1部未展开', '另有2部未展开');
+    for (const phrase of [
+      '工具文本另有2部未展开',
+      '其余2部未展示',
+      '省略2部',
+      '遗漏2部',
+      '未展示2部',
+      '未显示2部',
+      '未展开2部',
+      '文本中省略2部',
+    ]) {
+      const answerWithOmissionForm = twoOmittedAnswer.replace('工具文本另有2部未展开', phrase);
+      expect(verify(answerWithOmissionForm, G01_QUERY_ARGUMENTS, twoOmittedResult)).toMatchObject({
+        explicitCountStatementsConsistent: true,
+        omissionCountDisclosurePresent: true,
+        passed: true,
+      });
+    }
+
+    for (const phrase of [
+      '省略超过2部',
+      '省略不到2部',
+      '省略至少2部',
+      '省略约2部',
+      '省略2部以上',
+      '省略作品丙2部',
+    ]) {
+      const unsupportedOmission = twoOmittedAnswer.replace('工具文本另有2部未展开', phrase);
+      expect(verify(unsupportedOmission, G01_QUERY_ARGUMENTS, twoOmittedResult)).toMatchObject({
+        omissionCountDisclosurePresent: false,
+        passed: false,
+      });
+    }
+
+    const reversedOmissionCaveat = twoOmittedAnswer.replace(
+      '未显示不代表不存在',
+      '未显示不代表并非不存在',
+    );
+    expect(verify(reversedOmissionCaveat, G01_QUERY_ARGUMENTS, twoOmittedResult)).toMatchObject({
+      omissionNotAbsenceDisclosurePresent: false,
+      passed: false,
+    });
   });
 
   it('requires estimated coverage and the experimental-source warning', () => {
@@ -347,6 +397,22 @@ describe('G01 Agent answer acceptance', () => {
     expect(verify().nonExhaustiveDisclosurePresent).toBe(true);
     const reversedCaveat = answer.replace('不能据此确认全站完整名单', '不能据此确认全站不完整名单');
     expect(verify(reversedCaveat)).toMatchObject({
+      nonExhaustiveDisclosurePresent: false,
+      passed: false,
+    });
+    const reversedListCaveat = answer.replace(
+      '不能据此确认全站完整名单',
+      '不能据此确认全站名单并不完整',
+    );
+    const reversedSpecificCaveat = answer.replace(
+      '不能据此确认全站完整名单',
+      '不能据此确认这份名单并非完整',
+    );
+    expect(verify(reversedListCaveat)).toMatchObject({
+      nonExhaustiveDisclosurePresent: false,
+      passed: false,
+    });
+    expect(verify(reversedSpecificCaveat)).toMatchObject({
       nonExhaustiveDisclosurePresent: false,
       passed: false,
     });

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const G01_AGENT_ANSWER_CHECK_METHOD = 'ordered-source-row-identity-and-bounds-v3';
+export const G01_AGENT_ANSWER_CHECK_METHOD = 'ordered-source-row-identity-and-bounds-v4';
 export const G01_QUERY_ARGUMENTS = Object.freeze({
   media: 'anime',
   year: 2026,
@@ -29,20 +29,19 @@ const NUMERIC_CLAIM_NEGATION_PREFIX =
   /(?:并非|并不是|不是|并不|不能|无法|未能|没有|并没有|不|未)(?:[^，,。;；！？!?]{0,14})$/u;
 const NUMERIC_CLAIM_NEGATION_SUFFIX = /^(?:并非|不是|并不|不正确|错误|假)/u;
 const EXPLICIT_RESULT_COUNT =
-  /(?:返回|检索到|匹配到|找到|共计|合计|共(?:有|找到|检索到|返回)?|有)[：:]?\s*(\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)(?![\d.])\s*(部|条|项|个)?/gu;
-const OMISSION_COUNT =
-  /(?:另有|其余|省略|未展示|未显示|未展开|文本(?:中)?省略).{0,12}?(\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)(?![\d.])\s*(部|条|项|个)/gu;
+  /(?:返回|检索到|匹配到|找到|共计|合计|共(?:有|找到|检索到|返回)?|(?:本次|当前|这次)(?:查询|检索|搜索)?有)[：:]?\s*(\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)(?![\d.])\s*(部|条|项|个)?/gu;
+const OMISSION_COUNT_SOURCE = String.raw`(?:(?:工具)?文本(?:中)?|结果)?(?:另有|其余|省略|遗漏|未展示|未显示|未展开|文本(?:中)?省略)\s*(\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)(?![\d.])\s*(部|条|项|个)(?:未展示|未显示|未展开|省略)?`;
+const OMISSION_COUNT = new RegExp(OMISSION_COUNT_SOURCE, 'gu');
+const OMISSION_COUNT_CLAUSE = new RegExp(`^${OMISSION_COUNT_SOURCE}$`, 'u');
 const BOUNDED_COVERAGE =
   /(?:本次|当前查询|当前检索|这次搜索).{0,24}(?:返回|检索|查询|观察).{0,32}(?:范围|结果|样本|覆盖|有界|有限)|(?:本次|当前查询|当前检索).{0,32}(?:有限|有界|样本)|(?:属于|为|是)?当前(?:的)?有界结果/u;
 const EXPERIMENTAL_SOURCE = /实验(?:性)?(?:搜索|接口|来源)/u;
 const ESTIMATED_TOTAL =
   /(?:总数|总量|数量).{0,12}(?:估算|估计)|(?:估算|估计).{0,12}(?:总数|总量|数量)/u;
-const NON_EXHAUSTIVE =
-  /(?:不代表|不能(?:据此)?(?:证明|确认)|无法(?:据此)?(?:证明|确认)|不足以(?:证明|确认)|不等于).{0,12}(?:全站|完整|全部|全量)(?:名单|列表|集合|结果)?|(?:全站|完整|全部|全量)(?:名单|列表|集合|结果)?.{0,12}(?:不代表|不能(?:据此)?(?:证明|确认)|无法(?:据此)?(?:证明|确认)|不足以(?:证明|确认)|不等于)/u;
-const NEGATED_NON_EXHAUSTIVE =
-  /(?:全站|完整|全部|全量)(?:名单|列表|集合|结果)?(?:不|未|并非|不是)(?:完整|全部|全量|齐全)?|(?:不能|无法|不足以|不代表|不等于).{0,12}(?:全站|完整|全部|全量)(?:名单|列表|集合|结果)?(?:不|未|并非|不是)/u;
-const OMISSION_NOT_ABSENCE =
-  /(?:未显示|未展开|省略|未展示).{0,12}(?:不代表|不能说明|并不意味着).{0,12}(?:不存在|没有)|(?:不代表|不能说明|并不意味着).{0,12}(?:未显示|未展开|省略|未展示).{0,12}(?:不存在|没有)/u;
+const NON_EXHAUSTIVE_CLAUSE =
+  /^(?:不代表(?:全站)?(?:完整|全部|全量)(?:名单|列表|集合|结果|覆盖)?|不能(?:据此)?(?:证明|确认)(?:全站)?(?:完整|全部|全量)(?:名单|列表|集合|结果|覆盖)?|无法(?:据此)?(?:证明|确认)(?:全站)?(?:完整|全部|全量)(?:名单|列表|集合|结果|覆盖)?|不足以(?:证明|确认)(?:全站)?(?:完整|全部|全量)(?:名单|列表|集合|结果|覆盖)?|不等于(?:全站)?(?:完整|全部|全量)(?:名单|列表|集合|结果|覆盖)?)$/u;
+const OMISSION_NOT_ABSENCE_CLAUSE =
+  /^(?:(?:未显示|未展开|未展示|省略)(?:的)?(?:结果)?(?:不代表|并不意味着|不能说明|不等于)(?:后续)?(?:不存在|没有)(?:其他|更多|其余)?(?:动画|番剧|作品|条目)?|(?:不代表|并不意味着|不能说明|不等于)(?:未显示|未展开|未展示|省略)(?:的)?(?:结果)?(?:不存在|没有)(?:其他|更多|其余)?(?:动画|番剧|作品|条目)?)$/u;
 
 export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
   const normalizedArguments = unwrapArguments(queryArguments);
@@ -128,7 +127,7 @@ export function verifyG01AgentAnswer(answer, queryArguments, toolOutput) {
   const nonExhaustiveDisclosurePresent = hasNonExhaustiveDisclosure(scopeText);
   const omissionCountDisclosurePresent = hasOmissionCountDisclosure(scopeText, textOmittedItems);
   const omissionNotAbsenceDisclosurePresent =
-    textOmittedItems === 0 || OMISSION_NOT_ABSENCE.test(scopeText);
+    textOmittedItems === 0 || hasOmissionNotAbsenceDisclosure(scopeText);
   const unsupportedCompletenessClaim = hasUnqualifiedClaim(scopeText, COMPLETENESS_CLAIM);
   const unsupportedAbsenceClaim = hasUnqualifiedClaim(scopeText, ABSENCE_CLAIM);
   const unsupportedScopeClausesCount = countUnsupportedScopeClauses(scopeText);
@@ -349,11 +348,20 @@ function analyzeCountDisclosure(scopeText, count) {
 }
 
 function hasOmissionCountDisclosure(scopeText, omittedItems) {
-  OMISSION_COUNT.lastIndex = 0;
-  const statements = [...scopeText.matchAll(OMISSION_COUNT)].map((match) => ({
-    count: parseCount(match[1]),
-    affirmative: isAffirmativeNumericDisclosure(scopeText, match),
-  }));
+  const statements = [];
+  for (const rawClause of scopeClauses(scopeText)) {
+    const clause = rawClause.replace(/^(?:范围|说明)[:：]\s*/u, '').trim();
+    OMISSION_COUNT.lastIndex = 0;
+    const matches = [...clause.matchAll(OMISSION_COUNT)];
+    if (matches.length === 0) continue;
+    if (!OMISSION_COUNT_CLAUSE.test(clause)) return false;
+    statements.push(
+      ...matches.map((match) => ({
+        count: parseCount(match[1]),
+        affirmative: isAffirmativeNumericDisclosure(clause, match),
+      })),
+    );
+  }
   if (omittedItems === 0) return statements.length === 0;
   return (
     Number.isInteger(omittedItems) &&
@@ -400,14 +408,11 @@ function hasUnqualifiedClaim(text, pattern) {
 }
 
 function hasNonExhaustiveDisclosure(text) {
-  let affirmativeMatchFound = false;
-  let negatedMatchFound = false;
-  for (const clause of scopeClauses(text)) {
-    if (!NON_EXHAUSTIVE.test(clause)) continue;
-    if (NEGATED_NON_EXHAUSTIVE.test(clause)) negatedMatchFound = true;
-    else affirmativeMatchFound = true;
-  }
-  return affirmativeMatchFound && !negatedMatchFound;
+  return scopeClauses(text).some((clause) => NON_EXHAUSTIVE_CLAUSE.test(clause));
+}
+
+function hasOmissionNotAbsenceDisclosure(text) {
+  return scopeClauses(text).some((clause) => OMISSION_NOT_ABSENCE_CLAUSE.test(clause));
 }
 
 function hasAffirmativePattern(text, pattern) {
@@ -463,32 +468,26 @@ function isSupportedScopeClause(clause) {
     'iu',
   );
   const resultIntro = /^(?:(?:本次|当前查询)?)(?:查询)?结果如下$/u;
-  const omissionCountClause =
-    /^(?:(?:工具)?文本|结果)?(?:另有|其余|省略|未展示|未显示|未展开|文本(?:中)?省略).{0,12}?(?:\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)\s*(?:部|条|项|个)(?:未展示|未显示|未展开|省略)?$/u;
   const resultCountClause =
-    /^(?:(?:本次|当前|这次)(?:查询|检索|搜索)?\s*)?(?:(?:结果|查询结果|检索结果)\s*)?(?:返回|检索到|匹配到|找到|共计|合计|共(?:有|找到|检索到|返回)?|有)\s*(?:\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)\s*(?:部|条|项|个)?$/u;
+    /^(?:(?:(?:本次|当前|这次)(?:查询|检索|搜索)?\s*)?(?:(?:结果|查询结果|检索结果)\s*)?(?:返回|检索到|匹配到|找到|共计|合计|共(?:有|找到|检索到|返回)?)|(?:本次|当前|这次)(?:查询|检索|搜索)?有)\s*(?:\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)\s*(?:部|条|项|个)?$/u;
   const boundedCoverageClause =
     /^(?:(?:本次|当前查询|当前检索|这次搜索)(?:查询|检索|搜索)?(?:仅)?(?:代表|属于|为|是)?(?:当前)?(?:有界|有限)(?:的)?(?:返回|结果|样本|范围)?|(?:属于|为|是)?当前(?:的)?有界结果)$/u;
   const experimentalSourceClause =
     /^(?:(?:官方(?:的)?|Bangumi(?:官方)?(?:的)?|当前)?(?:搜索|接口|来源)(?:来源)?(?:是|为|属于)?实验(?:性)?(?:搜索|接口|来源)|实验(?:性)?(?:搜索|接口|来源))$/iu;
   const estimatedTotalClause =
     /^(?:(?:总数|总量|数量)(?:是|为|属于)?(?:估算|估计)(?:值|数)?|(?:估算|估计)(?:的)?(?:总数|总量|数量))$/u;
-  const nonExhaustiveClause =
-    /^(?:(?:不代表|不能(?:据此)?(?:证明|确认|说明|推断)?|无法(?:据此)?(?:证明|确认|说明|推断)?|不足以(?:证明|确认|说明)?|不等于).{0,12}(?:全站|完整|全部|全量)(?:名单|列表|集合|结果)?|(?:全站|完整|全部|全量)(?:名单|列表|集合|结果)?.{0,12}(?:不代表|不能(?:据此)?(?:证明|确认|说明|推断)?|无法(?:据此)?(?:证明|确认|说明|推断)?|不足以(?:证明|确认|说明)?|不等于))$/u;
-  const omissionNotAbsenceClause =
-    /^(?:(?:未显示|未展开|省略|未展示).{0,12}(?:不代表|不能说明|并不意味着).{0,12}(?:不存在|没有)|(?:不代表|不能说明|并不意味着).{0,12}(?:未显示|未展开|省略|未展示).{0,12}(?:不存在|没有))$/u;
   const supportedPatterns = [
     dateScope,
     combinedScope,
     exactTagScope,
     resultIntro,
-    omissionCountClause,
+    OMISSION_COUNT_CLAUSE,
     resultCountClause,
     boundedCoverageClause,
     experimentalSourceClause,
     estimatedTotalClause,
-    nonExhaustiveClause,
-    omissionNotAbsenceClause,
+    NON_EXHAUSTIVE_CLAUSE,
+    OMISSION_NOT_ABSENCE_CLAUSE,
   ];
   if (supportedPatterns.some((pattern) => pattern.test(clause))) return true;
   return false;

@@ -25,6 +25,7 @@ export type G01AgentAnswerCheck = {
   monthScopeDisclosurePresent: boolean;
   animeScopeDisclosurePresent: boolean;
   explicitCountPatternMatched: boolean;
+  explicitCountStatementsConsistent: boolean;
   answerRowsAccountForVisibleResultCount: boolean;
   boundedCoverageDisclosurePresent: boolean;
   experimentalSourceDisclosurePresent: boolean;
@@ -32,6 +33,7 @@ export type G01AgentAnswerCheck = {
   nonExhaustiveDisclosurePresent: boolean;
   omissionCountDisclosurePresent: boolean;
   omissionNotAbsenceDisclosurePresent: boolean;
+  unsupportedScopeClausesCount: number;
   unsupportedCompletenessClaim: boolean;
   unsupportedAbsenceClaim: boolean;
   markdownFormattingDetected: boolean;
