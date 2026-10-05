@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "g15_candidate_c_subject_comparison_agent_canary",
+  "createdOn": "2026-10-05",
+  "candidate": {
+    "sha": "463f1303950746bcfd247d7c28ed04dbf68e51a7",
+    "baseSha": "b769efcc6394fcb703d0cc1f3c98d251c4767a8c",
+    "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+    "agentImageRevision": "463f1303950746bcfd247d7c28ed04dbf68e51a7",
+    "cliVersion": "1.2.14"
+  },
+  "call": {
+    "tool": "bangumi.get_subject_comparison",
+    "completedBangumiToolCalls": 1,
+    "onlyAllowedToolCompleted": true,
+    "argumentsMatchExpectedScope": true,
+    "subjectIds": [400602, 420628]
+  },
+  "textProjection": {
+    "readBackInAgentEventStream": true,
+    "utf8Bytes": 3511,
+    "maxUtf8Bytes": 3600,
+    "sizeWithinBound": true
+  },
+  "answerCheckMethod": "ordered-two-subject-metric-identity-and-caveat-v2",
+  "answerCheck": {
+    "toolNameMatch": true,
+    "queryArgumentsMatch": true,
+    "resultReadbackAvailable": true,
+    "resultSourceContractPassed": true,
+    "requestedSubjectIdsMatch": true,
+    "sourceSubjectIdentitiesMatch": true,
+    "identityOrderPreserved": true,
+    "requiredMetricsPresent": true,
+    "metricStatesPreserved": true,
+    "currentOfficialV0DisclosurePresent": true,
+    "currentSnapshotDisclosurePresent": true,
+    "noHistoricalTrendClaimPresent": true,
+    "deltaDirectionDisclosurePresent": true,
+    "completionFormulaDisclosurePresent": true,
+    "completionFormulaEvidenceDisclosurePresent": true,
+    "notPersonalWatchProgressDisclosurePresent": true,
+    "boundedOverlapDisclosurePresent": true,
+    "omissionNotAbsenceDisclosurePresent": true,
+    "scopeLinesMatchAllowlist": true,
+    "unsupportedClaimPresent": false,
+    "markdownFormattingDetected": false,
+    "passed": false,
+    "subjectIdentityRowsExpected": 2,
+    "subjectIdentityRowsMatched": 2,
+    "subjectIdentityRowsUnmatched": 0,
+    "malformedMetricRows": 0,
+    "duplicateIdentityRows": 0,
+    "expectedMetricRows": 4,
+    "answerMetricRowsParsed": 4,
+    "metricRowsMatched": 3,
+    "missingMetricRows": 0,
+    "mismatchedMetricRows": 1,
+    "unmatchedMetricRows": 0,
+    "duplicateMetricRows": 0,
+    "unstructuredAnswerLinesCount": 0
+  },
+  "structuredContentEvidence": {
+    "separateFieldExposedInAgentEventStream": false,
+    "preservationRegressionPassed": true,
+    "liveFullObjectReadback": "NOT_EXPOSED_BY_ANTIGRAVITY_EVENT_STREAM"
+  },
+  "probe": {
+    "cliProcessExitCode": 0,
+    "resultStatus": "SUCCESS",
+    "isolatedProbePassed": false,
+    "rawPromptAnswerAndMcpResultPersisted": false
+  },
+  "frontierStatus": "PARTIAL",
+  "passed": false,
+  "passBasis": "The single bounded current-source call succeeded and returned a partial result, but checker v2 matched 3 of 4 reported metric rows and rejected answer acceptance.",
+  "reviewDisposition": {
+    "status": "AGENT_ANSWER_VALIDATION_FAILED",
+    "capturedCheckerMethod": "ordered-two-subject-metric-identity-and-caveat-v2",
+    "failureClass": "ONE_METRIC_ROW_MISMATCH",
+    "expectedMetricRows": 4,
+    "metricRowsMatched": 3,
+    "mismatchedMetricRows": 1,
+    "missingMetricRows": 0,
+    "rawAnswerOrMcpResultAvailableForReassessment": false,
+    "freshCorrectedCandidateReadPerformed": true,
+    "additionalPublicCallPerformed": false,
+    "retryPerformed": false
+  },
+  "observedResultState": "partial"
+}

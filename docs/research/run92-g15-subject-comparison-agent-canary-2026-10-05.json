@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "g15_historical_candidate_a_subject_comparison_agent_canary",
+  "createdOn": "2026-10-05",
+  "candidate": {
+    "sha": "79458fe4801257a284072cb308b1700e6a657522",
+    "baseSha": "b769efcc6394fcb703d0cc1f3c98d251c4767a8c",
+    "catalogSha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e",
+    "agentImageRevision": "79458fe4801257a284072cb308b1700e6a657522",
+    "cliVersion": "1.2.14"
+  },
+  "call": {
+    "tool": "bangumi.get_subject_comparison",
+    "completedBangumiToolCalls": 1,
+    "onlyAllowedToolCompleted": true,
+    "argumentsMatchExpectedScope": true,
+    "subjectIds": [400602, 420628]
+  },
+  "textProjection": {
+    "readBackInAgentEventStream": true,
+    "utf8Bytes": 3476,
+    "maxUtf8Bytes": 3600,
+    "sizeWithinBound": true
+  },
+  "answerCheckMethod": "ordered-two-subject-metric-identity-and-caveat-v1",
+  "answerCheck": {
+    "toolNameMatch": true,
+    "queryArgumentsMatch": true,
+    "resultReadbackAvailable": true,
+    "resultSourceContractPassed": true,
+    "requestedSubjectIdsMatch": true,
+    "sourceSubjectIdentitiesMatch": true,
+    "subjectIdentityRowsExpected": 2,
+    "subjectIdentityRowsMatched": 2,
+    "subjectIdentityRowsUnmatched": 0,
+    "identityOrderPreserved": true,
+    "malformedMetricRows": 0,
+    "duplicateIdentityRows": 0,
+    "requiredMetricsPresent": true,
+    "expectedMetricRows": 4,
+    "answerMetricRowsParsed": 4,
+    "metricRowsMatched": 4,
+    "missingMetricRows": 0,
+    "mismatchedMetricRows": 0,
+    "unmatchedMetricRows": 0,
+    "duplicateMetricRows": 0,
+    "metricStatesPreserved": true,
+    "unstructuredAnswerLinesCount": 0,
+    "currentOfficialV0DisclosurePresent": true,
+    "currentSnapshotDisclosurePresent": true,
+    "noHistoricalTrendClaimPresent": true,
+    "deltaDirectionDisclosurePresent": true,
+    "completionFormulaDisclosurePresent": true,
+    "completionFormulaEvidenceDisclosurePresent": true,
+    "notPersonalWatchProgressDisclosurePresent": true,
+    "boundedOverlapDisclosurePresent": true,
+    "omissionNotAbsenceDisclosurePresent": true,
+    "unsupportedClaimPresent": false,
+    "markdownFormattingDetected": false,
+    "passed": true
+  },
+  "structuredContentEvidence": {
+    "separateFieldExposedInAgentEventStream": false,
+    "preservationRegressionPassed": true,
+    "liveFullObjectReadback": "NOT_EXPOSED_BY_ANTIGRAVITY_EVENT_STREAM"
+  },
+  "probe": {
+    "cliProcessExitCode": 0,
+    "resultStatus": "SUCCESS",
+    "isolatedProbePassed": true,
+    "rawPromptAnswerAndMcpResultPersisted": false
+  },
+  "frontierStatus": "PARTIAL",
+  "capturedCheckerPassed": true,
+  "passed": false,
+  "reviewDisposition": {
+    "status": "SUPERSEDED_BY_REVIEW_FINDINGS",
+    "capturedCheckerMethod": "ordered-two-subject-metric-identity-and-caveat-v1",
+    "findings": ["G15-R2", "G15-R3"],
+    "capturedCheckerPassCreditedAsFinalAnswerAcceptance": false,
+    "rawAnswerOrMcpResultAvailableForReassessment": false,
+    "freshCorrectedCandidateReadRequired": true,
+    "freshCorrectedCandidateReadPerformed": false
+  },
+  "passBasis": "Historical checker-v1 result only; superseded by review findings and not final answer acceptance."
+}

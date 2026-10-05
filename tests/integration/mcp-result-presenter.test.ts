@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import type { PersonActivityResult, SubjectOverviewResult } from '@bangumi-agent-kit/bangumi-core';
+import type {
+  PersonActivityResult,
+  SubjectComparisonResult,
+  SubjectOverviewResult,
+  SubjectStatsIntelligenceResult,
+} from '@bangumi-agent-kit/bangumi-core';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import type { ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
@@ -180,6 +185,314 @@ function makePersonActivityResult(): PersonActivityResult {
       state: 'partial' as const,
       message: `Warning ${index}: this bounded result retains raw relation and coverage details.`,
     })),
+  };
+}
+
+function makeSubjectComparisonStats(
+  subjectId: number,
+  completionRate: number,
+): SubjectStatsIntelligenceResult {
+  const completionFormula = {
+    id: 'bangumi.subject.completion.v1',
+    version: 1,
+    inputs: [
+      'collection.wish',
+      'collection.collect',
+      'collection.doing',
+      'collection.on_hold',
+      'collection.dropped',
+    ],
+    evidenceStatus: 'empirically_verified' as const,
+    description: 'collect / (wish + collect + doing + on_hold + dropped)',
+  };
+  const derivedSource = {
+    class: 'derived-s7' as const,
+    operations: ['subject-comparison-statistics'],
+    retrievedAt: '2026-10-05T00:00:00.000Z',
+  };
+  return {
+    subjectId,
+    state: 'complete',
+    rating: {
+      state: 'complete',
+      population: 100,
+      mean: 8.2,
+      standardDeviation: 0.8,
+      distribution: Array.from({ length: 10 }, (_, index) => ({
+        score: index + 1,
+        count: index + 1,
+        percentage: (index + 1) / 5,
+      })),
+      formulas: {
+        percentages: {
+          id: 'rating-percentages-v1',
+          version: 1,
+          inputs: [],
+          evidenceStatus: 'derived',
+          description: 'rating bucket count / histogram population × 100',
+        },
+        histogramMean: {
+          id: 'rating-mean-v1',
+          version: 1,
+          inputs: [],
+          evidenceStatus: 'derived',
+          description: 'weighted mean over the rating histogram',
+        },
+        populationStandardDeviation: {
+          id: 'rating-sd-v1',
+          version: 1,
+          inputs: [],
+          evidenceStatus: 'derived',
+          description: 'population standard deviation over the rating histogram',
+        },
+      },
+    },
+    collection: {
+      state: 'complete',
+      total: 100,
+      distribution: [
+        { status: 'wish', count: 10, percentage: 10 },
+        { status: 'collect', count: 40, percentage: 40 },
+        { status: 'doing', count: 20, percentage: 20 },
+        { status: 'on_hold', count: 15, percentage: 15 },
+        { status: 'dropped', count: 15, percentage: 15 },
+      ],
+      completionRate,
+      completionState: 'complete',
+      formulas: {
+        percentages: {
+          id: 'collection-percentages-v1',
+          version: 1,
+          inputs: [],
+          evidenceStatus: 'derived',
+          description: 'collection bucket count / population × 100',
+        },
+        completion: completionFormula,
+      },
+    },
+    coverage: {
+      sourceRequestsAttempted: 2,
+      sourceRequestsSucceeded: 2,
+      ratingBucketsExpected: 10,
+      ratingBucketsObserved: 10,
+      collectionBucketsExpected: 5,
+      collectionBucketsObserved: 5,
+      ratingPopulation: 100,
+      collectionPopulation: 100,
+      formulasAttempted: 4,
+      formulasComplete: 4,
+      formulasPartial: 0,
+      formulasNotComputable: 0,
+      formulasConflict: 0,
+    },
+    source: {
+      official: {
+        class: 'official-v0',
+        operations: ['getSubject', 'getSubjectStats'],
+        retrievedAt: '2026-10-05T00:00:00.000Z',
+      },
+      derived: derivedSource,
+    },
+    evidence: [],
+    warnings: [],
+    limitations: [],
+    retrievedAt: '2026-10-05T00:00:00.000Z',
+  };
+}
+
+function makeSubjectComparisonResult(): SubjectComparisonResult {
+  const makeSubject = (
+    subjectId: number,
+    name: string,
+    nameCn: string,
+    score: number,
+    episodesReported: number,
+    totalEpisodesReported: number,
+    completionRate: number,
+  ): SubjectComparisonResult['subjects'][number] => {
+    const officialSource = {
+      class: 'official-v0' as const,
+      operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/subjects/{subject_id}/stats'],
+      attemptedAt: '2026-10-05T00:00:00.000Z',
+      retrievedAt: '2026-10-05T00:00:00.000Z',
+    };
+    const derivedSource = {
+      class: 'derived-s7' as const,
+      operations: ['subject-comparison-statistics'],
+      attemptedAt: '2026-10-05T00:00:00.000Z',
+      retrievedAt: '2026-10-05T00:00:00.000Z',
+    };
+    return {
+      subjectId,
+      state: 'complete',
+      subject: {
+        id: subjectId,
+        type: 'anime',
+        name,
+        nameCn,
+        date: '2023-01-01',
+        platform: 'TV',
+        episodesReported,
+        totalEpisodesReported,
+      },
+      stats: {
+        state: 'complete',
+        score,
+        rank: 10,
+        ratingTotal: 100,
+        collectionTotal: 100,
+      },
+      sections: { stats: 'complete', cast: 'partial', staff: 'partial', relations: 'complete' },
+      coverage: {
+        sourceRequestsAttempted: 8,
+        sourceRequestsSucceeded: 8,
+        sectionsComplete: 2,
+        sectionsPartial: 2,
+        sectionsUnavailable: 0,
+        sectionsNotComputable: 0,
+        truncatedSections: ['cast', 'staff'],
+        limits: { maxCast: 4, maxStaff: 12, maxRelations: 8 },
+      },
+      source: { official: officialSource, derived: derivedSource },
+      statistics: makeSubjectComparisonStats(subjectId, completionRate),
+      evidence: [],
+      warnings: [],
+      limitations: [],
+    };
+  };
+  const subjects: SubjectComparisonResult['subjects'] = [
+    makeSubject(400602, '葬送のフリーレン', '葬送的芙莉莲', 8.6, 28, 28, 0.42),
+    makeSubject(420628, '薬屋のひとりごと', '药屋少女的呢喃', 7.5, 24, 26, 0.31),
+  ];
+  const metrics: SubjectComparisonResult['metrics'] = [
+    {
+      key: 'score',
+      label: '官方评分',
+      values: [8.6, 7.5],
+      delta: -1.1,
+      deltaPrecision: 1,
+      state: 'complete',
+    },
+    {
+      key: 'episodesReported',
+      label: '条目报告话数',
+      values: [28, 24],
+      delta: -4,
+      deltaPrecision: 0,
+      state: 'complete',
+    },
+    {
+      key: 'totalEpisodesReported',
+      label: '条目报告总话数',
+      values: [28, 26],
+      delta: -2,
+      deltaPrecision: 0,
+      state: 'complete',
+    },
+    {
+      key: 'collectionCompletionRate',
+      label: '观察完成率',
+      values: [0.42, 0.31],
+      delta: -0.11,
+      deltaPrecision: 3,
+      state: 'complete',
+    },
+  ];
+  const overlapCoverage = {
+    state: 'partial' as const,
+    left: {
+      state: 'partial' as const,
+      rowsObserved: 100,
+      rowsReturned: 20,
+      uniqueIdsReturned: 20,
+      missingIdRows: 0,
+      truncated: true,
+    },
+    right: {
+      state: 'partial' as const,
+      rowsObserved: 90,
+      rowsReturned: 20,
+      uniqueIdsReturned: 20,
+      missingIdRows: 0,
+      truncated: true,
+    },
+    candidateIds: 40,
+    matchedIds: 24,
+    returned: 24,
+    omitted: 0,
+    truncated: true,
+  };
+  const overlapItems = Array.from({ length: 24 }, (_, index) => ({
+    personId: 800000 + index,
+    name: `共同人物 ${index}`,
+    career: ['seiyu'],
+    credits: [],
+  }));
+  const source = {
+    official: {
+      class: 'official-v0' as const,
+      operations: ['GET /v0/subjects/{subject_id}', 'GET /v0/subjects/{subject_id}/stats'],
+      attemptedAt: '2026-10-05T00:00:00.000Z',
+      retrievedAt: '2026-10-05T00:00:00.000Z',
+    },
+    derived: {
+      class: 'derived-s7' as const,
+      operations: ['subject-comparison', 'subject-comparison-statistics'],
+      attemptedAt: '2026-10-05T00:00:00.000Z',
+      retrievedAt: '2026-10-05T00:00:00.000Z',
+    },
+  };
+  return {
+    subjectIds: [400602, 420628],
+    state: 'partial',
+    subjects,
+    metrics,
+    formulaVersion: 'subject-comparison-v2',
+    statisticsFormulaVersion: 'subject-comparison-statistics-v1',
+    overlapFormulaVersion: 'subject-comparison-overlap-v1',
+    overlaps: {
+      cast: { state: 'partial', items: overlapItems, coverage: overlapCoverage },
+      staff: { state: 'partial', items: overlapItems, coverage: overlapCoverage },
+    },
+    coverage: {
+      requestedSubjects: 2,
+      returnedSubjects: 2,
+      subjectsComplete: 2,
+      subjectsPartial: 0,
+      subjectsUnavailable: 0,
+      subjectsNotFound: 0,
+      metricsComplete: 4,
+      metricsUnknown: 0,
+      metricsConflict: 0,
+      limits: { maxSubjects: 2, maxCast: 4, maxStaff: 12, maxRelations: 8, maxOverlapItems: 24 },
+    },
+    source,
+    evidence: [
+      {
+        source: 'official-v0',
+        operation: 'GET /v0/subjects/{subject_id}',
+        attemptedAt: '2026-10-05T00:00:00.000Z',
+        retrievedAt: '2026-10-05T00:00:00.000Z',
+        subjectIds: [400602, 420628],
+      },
+      {
+        source: 'derived-s7',
+        operation: 'subject-comparison-statistics',
+        formulaVersion: 'subject-comparison-statistics-v1',
+        description: 'Observation formula is sample-verified, not an official API contract.',
+        subjectIds: [400602, 420628],
+      },
+    ],
+    warnings: [
+      {
+        code: 'PARTIAL_OVERLAP',
+        state: 'partial',
+        message: 'Bounded cast and staff overlap does not establish complete credits.',
+      },
+    ],
+    limitations: [
+      'One current snapshot does not establish historical trends or exhaustive credits.',
+    ],
   };
 }
 
@@ -744,6 +1057,274 @@ describe('MCP tool result presentation', () => {
     expect(JSON.stringify(parsed)).not.toContain('角色简介');
     expect(JSON.stringify(parsed)).not.toContain('career');
     expect(JSON.stringify(parsed)).not.toContain('images.example.test');
+  });
+
+  it('bounds subject-comparison text while retaining identities, requested metrics, states, and full structure', async () => {
+    const original = makeSubjectComparisonResult();
+    original.subjects[0].subject!.name = '日'.repeat(5000);
+    original.subjects[0].subject!.nameCn = '名'.repeat(5000);
+    original.subjects[0].source.official.operations = Array.from(
+      { length: 20 },
+      (_, index) => `official-operation-${index}-${'x'.repeat(500)}`,
+    );
+    original.evidence = Array.from({ length: 30 }, (_, index) => ({
+      source: index % 2 === 0 ? ('official-v0' as const) : ('derived-s7' as const),
+      operation: `operation-${index}-${'o'.repeat(200)}`,
+      description: `Evidence description ${index}: ${'detail '.repeat(100)}`,
+      subjectIds: [400602, 420628],
+    }));
+    original.warnings = Array.from({ length: 12 }, (_, index) => ({
+      code: `WARNING_${index}`,
+      state: 'partial' as const,
+      message: `Warning ${index}: ${'coverage detail '.repeat(100)}`,
+    }));
+    original.limitations = Array.from(
+      { length: 12 },
+      (_, index) => `Limitation ${index}: ${'bounded comparison detail '.repeat(100)}`,
+    );
+
+    const fullJsonBytes = Buffer.byteLength(JSON.stringify(original, null, 2), 'utf8');
+    const response = await callMcpToolWithResult(
+      'bangumi.get_subject_comparison',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(fullJsonBytes).toBeGreaterThan(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(response.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({
+      state: 'partial',
+      subjectIds: [400602, 420628],
+      coverage: { requestedSubjects: 2, returnedSubjects: 2 },
+      source: {
+        official: { class: 'official-v0', attemptedAt: '2026-10-05T00:00:00.000Z' },
+        derived: { class: 'derived-s7', attemptedAt: '2026-10-05T00:00:00.000Z' },
+      },
+    });
+    expect(parsed.subjects[0].subject).toMatchObject({
+      id: 400602,
+      name: expect.any(String),
+      nameTextTruncated: true,
+      nameCnTextTruncated: true,
+      episodesReported: 28,
+      totalEpisodesReported: 28,
+    });
+    expect(parsed.subjects[1].subject).toMatchObject({
+      id: 420628,
+      nameCn: '药屋少女的呢喃',
+      episodesReported: 24,
+      totalEpisodesReported: 26,
+    });
+    expect(parsed.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'score',
+          values: [8.6, 7.5],
+          delta: -1.1,
+          state: 'complete',
+        }),
+        expect.objectContaining({
+          key: 'episodesReported',
+          values: [28, 24],
+          delta: -4,
+          state: 'complete',
+        }),
+        expect.objectContaining({
+          key: 'totalEpisodesReported',
+          values: [28, 26],
+          delta: -2,
+          state: 'complete',
+        }),
+        expect.objectContaining({
+          key: 'collectionCompletionRate',
+          values: [0.42, 0.31],
+          delta: -0.11,
+          deltaPrecision: 3,
+          state: 'complete',
+        }),
+      ]),
+    );
+    expect(parsed.subjects[0].statistics).toMatchObject({
+      state: 'complete',
+      collection: {
+        completionRate: 0.42,
+        completionState: 'complete',
+        conflictCount: 0,
+      },
+    });
+    expect(parsed.collectionCompletionFormula).toMatchObject({
+      evidenceStatus: 'empirically_verified',
+      description: 'collect / (wish + collect + doing + on_hold + dropped)',
+    });
+    expect(parsed.overlaps.cast).toMatchObject({
+      state: 'partial',
+      sourceReturned: 24,
+      sourceOmitted: 0,
+      itemsOmittedFromText: 24,
+    });
+    expect(parsed.mcpTextProjection).toMatchObject({
+      version: 'subject-comparison-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      structuredContentHasFullResult: true,
+      overlapItemsOmittedFromText: 48,
+      evidenceRecordsOmittedFromText: expect.any(Number),
+      warningRecordsOmittedFromText: expect.any(Number),
+    });
+    expect(parsed.mcpTextProjection.textViewScope).toContain('not evidence of absence');
+    expect(parsed.evidence.length).toBeLessThan(original.evidence.length);
+  });
+
+  it('keeps unknown and conflict metrics explicit in the bounded comparison projection', () => {
+    const original = makeSubjectComparisonResult();
+    original.subjects[0].subject!.name = '日'.repeat(5000);
+    original.metrics[0] = {
+      ...original.metrics[0]!,
+      state: 'conflict',
+      delta: null,
+      conflicts: [
+        {
+          side: 'A',
+          reason: 'Official candidate values disagree.',
+          candidates: [{ source: { class: 'official-v0', provider: 'fixture' }, value: 8.6 }],
+        },
+      ],
+    };
+    original.metrics[3] = {
+      ...original.metrics[3]!,
+      values: [null, 0.31],
+      delta: null,
+      state: 'unknown',
+    };
+
+    const presentation = presentMcpToolResult('bangumi.get_subject_comparison', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toEqual(original);
+    expect(parsed.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'score',
+          values: [8.6, 7.5],
+          delta: null,
+          state: 'conflict',
+          conflicts: [expect.objectContaining({ side: 'A', candidateCount: 1 })],
+        }),
+        expect.objectContaining({
+          key: 'collectionCompletionRate',
+          values: [null, 0.31],
+          delta: null,
+          state: 'unknown',
+        }),
+      ]),
+    );
+  });
+
+  it('keeps the minimum comparison fallback bounded for partial A/B conflict candidates', () => {
+    const original = makeSubjectComparisonResult();
+    const reason = 'Official candidate values disagree.';
+    const conflictCandidates = (side: 'subject' | 'stats', value: number) => [
+      {
+        source: {
+          class: 'official-v0',
+          provider: side,
+          operation: `GET /v0/subjects/${side === 'subject' ? 400602 : 400602}/stats`,
+        },
+        value,
+      },
+      {
+        source: {
+          class: 'official-v0',
+          provider: side === 'subject' ? 'subject-mirror' : 'stats-mirror',
+          operation: `GET /v0/subjects/${side === 'subject' ? 400602 : 420628}/stats`,
+        },
+        value: value - 0.2,
+      },
+    ];
+    const scoreConflicts = [
+      {
+        side: 'A' as const,
+        reason,
+        subjectValue: 8.6,
+        statsValue: 8.4,
+        candidates: conflictCandidates('subject', 8.6),
+      },
+      {
+        side: 'B' as const,
+        reason,
+        subjectValue: 7.5,
+        statsValue: 7.3,
+        candidates: conflictCandidates('stats', 7.5),
+      },
+    ];
+
+    original.state = 'partial';
+    original.subjects.forEach((subject) => {
+      subject.state = 'partial';
+      subject.stats.state = 'partial';
+      subject.stats.conflicts = {
+        score: {
+          reason,
+          subjectValue: subject.subjectId === 400602 ? 8.6 : 7.5,
+          statsValue: subject.subjectId === 400602 ? 8.4 : 7.3,
+          candidates: conflictCandidates(
+            subject.subjectId === 400602 ? 'subject' : 'stats',
+            subject.subjectId === 400602 ? 8.6 : 7.5,
+          ),
+        },
+      };
+      subject.sections.stats = 'partial';
+      subject.coverage.sectionsComplete -= 1;
+      subject.coverage.sectionsPartial += 1;
+    });
+    original.metrics[0] = {
+      ...original.metrics[0]!,
+      values: [8.6, 7.5],
+      state: 'conflict',
+      delta: null,
+      conflicts: scoreConflicts,
+    };
+    original.coverage.subjectsComplete = 0;
+    original.coverage.subjectsPartial = 2;
+    original.coverage.metricsComplete = 3;
+    original.coverage.metricsConflict = 1;
+
+    const presentation = presentMcpToolResult('bangumi.get_subject_comparison', original);
+    const parsed = JSON.parse(presentation.text);
+    const score = parsed.metrics.find((metric: { key: string }) => metric.key === 'score');
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({ state: 'partial', subjectIds: [400602, 420628] });
+    expect(parsed.subjects.map((subject: { state: string }) => subject.state)).toEqual([
+      'partial',
+      'partial',
+    ]);
+    expect(score).toMatchObject({
+      key: 'score',
+      values: [8.6, 7.5],
+      delta: null,
+      state: 'conflict',
+      conflicts: [
+        { side: 'A', candidateCount: 2, conflictDetailsOmittedFromText: true },
+        { side: 'B', candidateCount: 2, conflictDetailsOmittedFromText: true },
+      ],
+    });
+    expect(parsed.source.official).toMatchObject({
+      class: 'official-v0',
+      attemptedAt: '2026-10-05T00:00:00.000Z',
+    });
+    expect(parsed.mcpTextProjection).toMatchObject({
+      structuredContentHasFullResult: true,
+      conflictDetailsOmittedFromText: 2,
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    });
   });
 
   it('returns bounded person-activity text and the unchanged full structured result through MCP', async () => {

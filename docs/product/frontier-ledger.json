@@ -795,9 +795,19 @@
         "tests/render/subject-comparison.test.ts",
         "tests/render/mobile-layout-audit.setup.ts",
         "tests/render/helpers/mobile-layout.ts",
-        "tests/render/render-cards.test.ts"
+        "tests/render/render-cards.test.ts",
+        "docs/research/run92-g15-subject-comparison-agent-mcp-2026-10-05.md",
+        "apps/mcp/src/result-presenter.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "scripts/acceptance/g15-agent-answer-check.mjs",
+        "scripts/acceptance/g15-agent-answer-check.d.mts",
+        "scripts/acceptance/g15-agent-answer-check-cli.mjs",
+        "tests/unit/g15-agent-answer-check.test.ts",
+        "docs/research/run92-g15-subject-comparison-agent-canary-2026-10-05.json",
+        "docs/research/run92-g15-subject-comparison-agent-candidate-c-2026-10-05.json",
+        "tests/unit/g15-agent-canary-report.test.ts"
       ],
-      "next_action": "Comparison fixtures retain values/caveats and the output size/height bounds at the selected 360 CSS px/2x target. The real-browser fixture audit checks 320/360/520 px layouts and fixed three confirmed cross-template overflows. Remaining: current-source two-subject Agent/MCP verification and real QQ/TIM display; fixture evidence does not prove either.",
+      "next_action": "Run #92 / PR #94 Candidate A's historical Agent/MCP read used checker v1; review findings G15-R2/G15-R3 demonstrated caveat/formula and fractional-episode false positives. Its sanitized report is superseded and not credited as final answer acceptance; raw answer/result were not retained. Candidate C (463f1303950746bcfd247d7c28ed04dbf68e51a7) passed exact-SHA CI 7/7 and the final-corrective Harness gate, then one fresh read completed only bangumi.get_subject_comparison. The 3,511-byte text was bounded and checker v2 matched 2/2 identities, 3/4 metric rows, with one mismatch and no missing rows; all caveat checks passed, but answer acceptance failed. The sanitized report records no raw answer/result. Do not retry the public call. Candidate D records this failed result and must pass exact-SHA CI plus the final-corrective Candidate gate before integrating the four code corrections. Keep G15 PARTIAL; one current snapshot does not establish exhaustive coverage or correct Agent answer behavior, and QQ/TIM display remains separate.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-012"]
     },
