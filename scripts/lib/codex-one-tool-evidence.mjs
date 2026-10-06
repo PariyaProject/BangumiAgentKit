@@ -20,6 +20,13 @@ export function filterAllowedTools(tools, targetTool) {
   return matches;
 }
 
+export function publicReadOnlyToolAnnotations(tool) {
+  if (tool?.auth !== 'none' || tool?.risk !== 'read') {
+    throw new Error('Read-only MCP annotations require an anonymous read-only catalog tool.');
+  }
+  return { readOnlyHint: true, destructiveHint: false, idempotentHint: true };
+}
+
 export function authorizeToolCall({ name, args, expectedTool, expectedArguments, completedCalls }) {
   if (name !== expectedTool) return { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' };
   if (completedCalls > 0) return { allowed: false, code: 'CALL_LIMIT_REACHED' };

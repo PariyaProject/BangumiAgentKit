@@ -8,6 +8,7 @@ import {
   canonicalJson,
   claimSingleToolCall,
   filterAllowedTools,
+  publicReadOnlyToolAnnotations,
   summarizeSubjectStatsFacts,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
@@ -29,6 +30,22 @@ test('one-tool profile only exposes the exact anonymous read tool', () => {
   assert.deepEqual(filterAllowedTools(tools, target), [tools[0]]);
   assert.throws(() => filterAllowedTools(tools, 'bangumi.update_collection'), /auth=none, risk=read/);
   assert.throws(() => filterAllowedTools([...tools, { ...tools[0] }], target), /exactly one/);
+});
+
+test('only an anonymous read tool receives non-destructive idempotent MCP annotations', () => {
+  assert.deepEqual(publicReadOnlyToolAnnotations({ auth: 'none', risk: 'read' }), {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+  });
+  assert.throws(
+    () => publicReadOnlyToolAnnotations({ auth: 'required', risk: 'read' }),
+    /anonymous read-only/u,
+  );
+  assert.throws(
+    () => publicReadOnlyToolAnnotations({ auth: 'none', risk: 'write' }),
+    /anonymous read-only/u,
+  );
 });
 
 test('fixed query gate allows one exact read and rejects wrong tool, arguments, and repeats', () => {

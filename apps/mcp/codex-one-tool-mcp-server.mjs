@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { authorizeToolCall, canonicalJson, claimSingleToolCall, filterAllowedTools, summarizeToolResult } from '../../scripts/lib/codex-one-tool-evidence.mjs';
+import { authorizeToolCall, canonicalJson, claimSingleToolCall, filterAllowedTools, publicReadOnlyToolAnnotations, summarizeToolResult } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -157,7 +157,10 @@ async function main(argv = process.argv.slice(2)) {
   });
   const registry = new ToolRegistry(dependencies, { profile: 'full', renderTarget: 'chat' });
   const [tool] = filterAllowedTools(registry.getTools(), config.toolName);
-  const mcpTool = toMcpTool(tool);
+  const mcpTool = {
+    ...toMcpTool(tool),
+    annotations: publicReadOnlyToolAnnotations(tool),
+  };
   const descriptionSha256 = createHash('sha256').update(mcpTool.description, 'utf8').digest('hex');
   const inputSchemaSha256 = createHash('sha256').update(canonicalJson(mcpTool.inputSchema), 'utf8').digest('hex');
   const server = new Server(
