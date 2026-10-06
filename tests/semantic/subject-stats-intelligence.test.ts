@@ -113,6 +113,16 @@ describe('Subject statistics intelligence semantic contract', () => {
         state: 'complete',
         population: 100,
         mean: 8.6,
+        scoreBand8To9Share: {
+          state: 'complete',
+          count: 100,
+          population: 100,
+          percentage: 100,
+          formula: expect.objectContaining({
+            id: 'bangumi.rating.score_band_8_9_share.v1',
+            version: 1,
+          }),
+        },
         formulas: expect.objectContaining({
           histogramMean: expect.objectContaining({ id: 'bangumi.rating.histogram_mean.v1' }),
         }),
@@ -129,8 +139,8 @@ describe('Subject statistics intelligence semantic contract', () => {
         distribution: expect.arrayContaining([{ status: 'collect', count: 4, percentage: 40 }]),
       },
       coverage: {
-        formulasAttempted: 5,
-        formulasComplete: 5,
+        formulasAttempted: 6,
+        formulasComplete: 6,
         formulasPartial: 0,
         formulasNotComputable: 0,
         formulasConflict: 0,
@@ -146,7 +156,73 @@ describe('Subject statistics intelligence semantic contract', () => {
         }),
         expect.objectContaining({
           source: 'derived-s7',
+          formula: 'bangumi.rating.score_band_8_9_share.v1',
+        }),
+        expect.objectContaining({
+          source: 'derived-s7',
           formula: 'bangumi.collection.percentages.v1',
+        }),
+      ]),
+    );
+    expect(result.limitations).toContain(
+      '评分标准差只描述当前 1–10 分直方图的离散程度；它不能单独判定分布是否两极化、原因、质量或推荐。8–9 分占比只描述这两档在当前完整直方图中的份额。',
+    );
+  });
+
+  it('computes the 8–9 share against the complete ten-bin population', async () => {
+    const result = await getTool().execute(
+      { subjectId: 123 },
+      { principalId: 'stats-test' },
+      {
+        providerRegistry: registry({
+          state: 'ok',
+          data: {
+            ...stats,
+            ratingHistogram: {
+              1: 10,
+              2: 0,
+              3: 0,
+              4: 0,
+              5: 0,
+              6: 0,
+              7: 0,
+              8: 20,
+              9: 10,
+              10: 60,
+            },
+          },
+          evidence: evidence(),
+        }),
+      },
+    );
+
+    expect(result.rating.scoreBand8To9Share).toMatchObject({
+      state: 'complete',
+      count: 30,
+      population: 100,
+      percentage: 30,
+      formula: {
+        id: 'bangumi.rating.score_band_8_9_share.v1',
+        version: 1,
+        inputs: [
+          'rating.count.1',
+          'rating.count.2',
+          'rating.count.3',
+          'rating.count.4',
+          'rating.count.5',
+          'rating.count.6',
+          'rating.count.7',
+          'rating.count.8',
+          'rating.count.9',
+          'rating.count.10',
+        ],
+      },
+    });
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'derived-s7',
+          formula: 'bangumi.rating.score_band_8_9_share.v1',
         }),
       ]),
     );
@@ -169,6 +245,12 @@ describe('Subject statistics intelligence semantic contract', () => {
       state: 'conflict',
       rating: {
         state: 'conflict',
+        scoreBand8To9Share: {
+          state: 'complete',
+          count: 100,
+          population: 100,
+          percentage: 100,
+        },
         conflicts: [
           {
             state: 'conflict',
@@ -191,7 +273,7 @@ describe('Subject statistics intelligence semantic contract', () => {
           },
         ],
       },
-      coverage: { formulasComplete: 4, formulasConflict: 1 },
+      coverage: { formulasComplete: 5, formulasConflict: 1, formulasAttempted: 6 },
     });
   });
 
@@ -265,9 +347,10 @@ describe('Subject statistics intelligence semantic contract', () => {
 
     expect(result).toMatchObject({
       state: 'conflict',
-      coverage: { formulasAttempted: 5, formulasConflict: 5 },
+      coverage: { formulasAttempted: 6, formulasConflict: 6 },
       rating: {
         state: 'conflict',
+        scoreBand8To9Share: { state: 'conflict', count: 100, population: 100, percentage: 100 },
         conflicts: [expect.objectContaining({ scope: 'rating', fieldPaths: ['rating.count.8'] })],
       },
       collection: {
@@ -340,6 +423,7 @@ describe('Subject statistics intelligence semantic contract', () => {
         'bangumi.rating.percentages.v1',
         'bangumi.rating.histogram_mean.v1',
         'bangumi.rating.population_sd.v1',
+        'bangumi.rating.score_band_8_9_share.v1',
         'bangumi.collection.percentages.v1',
         'bangumi.subject.completion.v1',
       ]),
@@ -403,12 +487,56 @@ describe('Subject statistics intelligence semantic contract', () => {
 
     expect(result).toMatchObject({
       state: 'not_computable',
-      rating: { state: 'not_computable' },
+      rating: {
+        state: 'not_computable',
+        scoreBand8To9Share: {
+          state: 'not_computable',
+          formula: { id: 'bangumi.rating.score_band_8_9_share.v1' },
+        },
+      },
       collection: { state: 'not_computable', total: 0, completionState: 'not_computable' },
-      coverage: { formulasAttempted: 5, formulasNotComputable: 5 },
+      coverage: { formulasAttempted: 6, formulasNotComputable: 6 },
     });
     expect(JSON.stringify(result)).not.toContain('NaN');
     expect(JSON.stringify(result)).not.toContain('Infinity');
+  });
+
+  it('suppresses the 8–9 share when the full histogram denominator is partial', async () => {
+    const ratingHistogramPresence = {
+      1: true,
+      2: true,
+      3: true,
+      4: false,
+      5: true,
+      6: true,
+      7: true,
+      8: true,
+      9: true,
+      10: true,
+    } as const;
+    const result = await getTool().execute(
+      { subjectId: 123 },
+      { principalId: 'stats-test' },
+      {
+        providerRegistry: registry({
+          state: 'partial',
+          data: { ...stats, ratingHistogramPresence },
+          evidence: evidence(),
+        }),
+      },
+    );
+
+    expect(result).toMatchObject({
+      state: 'partial',
+      rating: {
+        scoreBand8To9Share: {
+          state: 'partial',
+          formula: { id: 'bangumi.rating.score_band_8_9_share.v1' },
+        },
+      },
+    });
+    expect(result.rating.scoreBand8To9Share).not.toHaveProperty('count');
+    expect(result.rating.scoreBand8To9Share).not.toHaveProperty('percentage');
   });
 
   it('does not turn malformed provider data into derived numbers', async () => {
@@ -428,6 +556,7 @@ describe('Subject statistics intelligence semantic contract', () => {
       state: 'partial',
       warnings: [expect.objectContaining({ code: 'INVALID_STATS_INPUT' })],
     });
+    expect(result.rating.scoreBand8To9Share?.percentage).toBeUndefined();
     expect(result).not.toHaveProperty('rating.mean');
   });
 

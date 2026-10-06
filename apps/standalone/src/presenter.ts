@@ -1519,12 +1519,19 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
     typeof collection.completionRate === 'number' && Number.isFinite(collection.completionRate)
       ? `${(collection.completionRate * 100).toFixed(1)}%`
       : '未知';
+  const scoreBand8To9Share = comparisonRecord(rating.scoreBand8To9Share);
+  const scoreBandShareText =
+    typeof scoreBand8To9Share?.percentage === 'number' &&
+    Number.isFinite(scoreBand8To9Share.percentage)
+      ? `${(scoreBand8To9Share.percentage as number).toFixed(1)}% · n=${humanField(scoreBand8To9Share.count ?? '?', 32)}/${humanField(scoreBand8To9Share.population ?? '?', 32)}${scoreBand8To9Share.state === 'conflict' ? ' · 来源冲突' : ''}`
+      : `${comparisonStateLabel(scoreBand8To9Share?.state)} · 未提供占比`;
 
   const lines = [
     `条目统计智能 · 条目 ${humanField(subjectId, 32)} · 状态: ${comparisonStateLabel(value.state)}`,
     `官方评分 ${humanField(raw?.score ?? '未知', 32)} · 评分人数 ${humanField(raw?.ratingTotal ?? '未知', 32)} · 直方图均值 ${humanField(rating.mean ?? '未知', 32)} · 总体标准差 ${humanField(rating.standardDeviation ?? '未知', 32)}`,
+    `8–9 分占比 ${scoreBandShareText}`,
     `收藏总数 ${humanField(collection.total ?? '未知', 32)} · 完成率 ${completionRate} · 评分区段 ${comparisonStateLabel(rating.state)} · 收藏区段 ${comparisonStateLabel(collection.state)} · 完成率状态 ${comparisonStateLabel(collection.completionState)}`,
-    '说明：标准差只描述当前官方评分直方图的分散程度，不生成推荐、质量或因果结论。',
+    '说明：8–9 分占比只描述本次完整直方图中的两档份额；标准差只描述分散程度，不能单独判定两极分化，也不生成质量、因果或推荐结论。',
   ];
 
   const ratingDistribution = Array.isArray(rating.distribution) ? rating.distribution : [];
@@ -1570,6 +1577,7 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
 
   const formulaGroups = [
     ['评分百分比', comparisonRecord(rating.formulas)?.percentages],
+    ['8–9 分占比', scoreBand8To9Share?.formula],
     ['直方图均值', comparisonRecord(rating.formulas)?.histogramMean],
     ['总体标准差', comparisonRecord(rating.formulas)?.populationStandardDeviation],
     ['收藏百分比', comparisonRecord(collection.formulas)?.percentages],
@@ -1579,6 +1587,13 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
     const details = comparisonRecord(formula);
     if (!details) continue;
     const inputs = Array.isArray(details.inputs) ? details.inputs.join(', ') : '未知';
+    if (label === '8–9 分占比') {
+      lines.push(
+        `公式 ${label}：${humanField(details.id ?? '未知', 96)} v${humanField(details.version ?? '?', 16)} · inputs ${humanField(inputs, 200)}`,
+        `公式说明 ${label}：${humanField(details.description ?? '未知', 180)}`,
+      );
+      continue;
+    }
     lines.push(
       `公式 ${label}：${humanField(details.id ?? '未知', 96)} v${humanField(details.version ?? '?', 16)} · ${humanField(details.description ?? '未知', 180)} · inputs ${humanField(inputs, 180)}`,
     );
@@ -1609,7 +1624,9 @@ function presentSubjectStats(value: Record<string, unknown>): string | undefined
       lines.push(`- 另有 ${humanField(warnings.length - 4, 32)} 条告警未展开。`);
   }
 
-  const limitations = Array.isArray(value.limitations) ? value.limitations : [];
+  const limitations = Array.isArray(value.limitations)
+    ? value.limitations.filter((item) => !item.includes('8–9 分占比'))
+    : [];
   if (limitations.length > 0) {
     lines.push('限制：');
     for (const limitation of limitations.slice(0, 4)) lines.push(`- ${humanField(limitation)}`);
@@ -3101,9 +3118,7 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
       rowsEligible > 0);
   const summaryScope = value.state === 'partial' ? '观察到的' : '';
   const summaryMetric = (label: string, key: string, unit: string): string => {
-    const summaryValue = summaryCountsObservable
-      ? personActivityMetric(summary, key)
-      : '不可用';
+    const summaryValue = summaryCountsObservable ? personActivityMetric(summary, key) : '不可用';
     return `${summaryScope}${label} ${summaryValue}${summaryValue === '不可用' ? '' : ` ${unit}`}`;
   };
   const lines = [
@@ -3111,7 +3126,9 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
     `窗口摘要：${summaryMetric('去重作品', 'uniqueSubjects', '部')} · ${summaryMetric('关系行', 'creditRows', '行')} · ${summaryMetric('去重角色', 'uniqueCharacters', '个')}`,
     ...(value.state === 'partial'
-      ? ['说明：部分覆盖下的汇总只统计本次选取关系和成功读取详情中的可计数观察，不代表整个时间窗的总数。']
+      ? [
+          '说明：部分覆盖下的汇总只统计本次选取关系和成功读取详情中的可计数观察，不代表整个时间窗的总数。',
+        ]
       : []),
     `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · 详情 ${humanField(coverage.subjectDetailsSucceeded ?? '?', 32)}/${humanField(coverage.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(coverage.rowsReturned ?? '?', 32)}/${humanField(coverage.rowsEligible ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,
     `上限: 关系 ${humanField(coverage.maxRelations ?? '?', 32)} · 详情 ${humanField(coverage.maxSubjectDetails ?? '?', 32)} · 行 ${humanField(coverage.maxRows ?? '?', 32)} · 并发 ${humanField(coverage.detailConcurrency ?? '?', 32)} · 响应 ${humanField(coverage.responseLimitBytes ?? '?', 32)} bytes · 采样 ${coverage.sampled ? '是' : '否'}`,

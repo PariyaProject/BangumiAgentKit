@@ -400,6 +400,17 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(rows.size).toBe(96);
     expect([...rows.keys()].sort()).toEqual(catalogNames);
     expect(new Set(evidenceNames).size).toBe(evidenceNames.length);
+    const observedEvidenceNames = new Set(evidenceNames);
+    const uncoveredNames = catalogNames.filter((name) => !observedEvidenceNames.has(name));
+    // G23 changed these two public stats tool descriptions. Preserve the older
+    // reports as history but keep both current-contract Agent/MCP rows pending.
+    expect(uncoveredNames).toEqual([
+      'bangumi.get_subject_stats_intelligence',
+      'bangumi.render_subject_stats_intelligence',
+    ]);
+    for (const name of uncoveredNames) {
+      expect(statusMark(rows.get(name)?.[9])).toBe('⬜');
+    }
     expect(evidenceNames.sort()).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
@@ -448,7 +459,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
         'bangumi.get_subject_stats_history',
-        'bangumi.get_subject_stats_intelligence',
         'bangumi.get_user',
         'bangumi.list_character_collections',
         'bangumi.list_collections',
@@ -495,7 +505,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_overlap',
         'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
-        'bangumi.render_subject_stats_intelligence',
         'bangumi.update_collection',
         'bangumi.update_episode_progress',
       ].sort(),
@@ -608,7 +617,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
         'bangumi.get_subject_stats_history',
-        'bangumi.get_subject_stats_intelligence',
         'bangumi.get_user',
         'bangumi.list_character_collections',
         'bangumi.list_collections',
@@ -759,7 +767,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_overlap',
         'bangumi.render_subject_overview',
         'bangumi.render_subject_stats_history',
-        'bangumi.render_subject_stats_intelligence',
       ].sort(),
     );
     for (const report of CURRENT_FULL_RENDERER_QA_EVIDENCE) {
@@ -788,7 +795,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(scenario.assertions.artifactWidth).toBeGreaterThan(0);
       expect(scenario.assertions.artifactHeight).toBeGreaterThan(0);
       if (scenario.id === 'bangumi.render_subject_overview') {
-        expect(report.catalogSha256).toBe(CURRENT_CATALOG_SHA256);
+        expect(catalogForHash(report.catalogSha256)).toBeDefined();
+        expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
         expect(scenario.assertions.subjectOverviewRenderAnswerCheck).toMatchObject({
           coverageDisclosurePresent: true,
           staffCoverageMentioned: true,

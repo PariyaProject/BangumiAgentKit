@@ -404,7 +404,7 @@ export function createReadTools(
   const getSubjectStatsIntelligenceTool = defineTool({
     name: 'bangumi.get_subject_stats_intelligence',
     description:
-      '获取指定条目的证据型统计智能：保留官方 v0 评分直方图与收藏桶，并计算有版本公式的评分百分比、直方图均值、总体标准差、收藏分布百分比和完成率。显式保留 source evidence、检索时间、评分均值冲突、零样本 not_computable、partial/unavailable/not_found 状态；不计算历史趋势、社区统计、网站专有图表或推荐结论。',
+      '获取指定条目的证据型统计智能：保留官方 v0 十档评分直方图与收藏桶，并计算有版本公式的评分百分比、8–9 分合计占比、直方图均值、总体标准差、收藏分布百分比和完成率。8–9 分占比是当前完整直方图的描述值；总体标准差不能单独判定两极分化、原因、质量或推荐。显式保留 source evidence、检索时间、评分冲突、零样本 not_computable、partial/unavailable/not_found 状态；不计算历史趋势、社区统计或网站专有图表。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
     }),

@@ -185,9 +185,9 @@ function dataNotes(viewModel: SubjectStatsViewModel): string[] {
   );
   const notes = [
     ...(identityNote ? [identityNote] : []),
-    `均值和离散度由本次评分分布计算。${completionFormulaNote} 这是一份当前快照，不代表历史趋势或推荐。`,
+    `8–9 分占比只描述这两档在完整当前直方图中的份额；标准差只描述离散程度，不能单独判定两极化、质量、原因或推荐。${completionFormulaNote} 这是一份当前快照，不代表历史趋势。`,
     ...visibleWarnings,
-    ...viewModel.limitations,
+    ...viewModel.limitations.filter((note) => !note.includes('8–9 分占比')),
   ];
   const normalizedNotes = notes.map((note) => note.trim());
   const firstHistoricalNote = normalizedNotes.find((note) => note.includes('历史趋势'));
@@ -210,6 +210,13 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
   const notes = dataNotes(viewModel);
   const displayedNotes = notes.slice(0, 3);
   const omittedNotes = notes.length - displayedNotes.length;
+  const scoreBand8To9Share = viewModel.rating.scoreBand8To9Share;
+  const scoreBand8To9ShareValue =
+    scoreBand8To9Share?.percentage !== undefined &&
+    scoreBand8To9Share.count !== undefined &&
+    scoreBand8To9Share.population !== undefined
+      ? `${formatPercent(scoreBand8To9Share.percentage)} (${formatNumber(scoreBand8To9Share.count)}/${formatNumber(scoreBand8To9Share.population)})${scoreBand8To9Share.state === 'conflict' ? ' · 来源冲突' : ''}`
+      : metricStateLabel(scoreBand8To9Share?.state ?? 'unknown');
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -278,6 +285,7 @@ export const SubjectStatsCard: React.FC<SubjectStatsCardProps> = ({ viewModel, t
             {[
               ['官方评分', formatNumber(raw.score, 1)],
               ['评分人数', formatNumber(raw.ratingTotal)],
+              ['8–9 分占比', scoreBand8To9ShareValue],
               ['分布均值', formatNumber(viewModel.rating.mean, 2)],
               ['评分离散度', formatNumber(viewModel.rating.standardDeviation, 2)],
               ['收藏人数', formatNumber(viewModel.collection.total)],
