@@ -75,7 +75,7 @@ export function summarizeSubjectStatsFacts(result) {
     : null;
   const scoreBandCount = binsValid ? histogram['8'] + histogram['9'] : null;
   const scoreBandPercentage = binsValid && histogramPopulation > 0
-    ? scoreBandCount / histogramPopulation
+    ? (scoreBandCount / histogramPopulation) * 100
     : null;
   const share = result.rating.scoreBand8To9Share || {};
   const completionFormula = result.collection.formulas?.completion || {};
