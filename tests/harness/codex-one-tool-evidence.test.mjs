@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   authorizeToolCall,
   canonicalJson,
+  claimSingleToolCall,
   filterAllowedTools,
   summarizeSubjectStatsFacts,
   summarizeToolResult,
@@ -41,6 +45,18 @@ test('fixed query gate allows one exact read and rejects wrong tool, arguments, 
   assert.deepEqual(authorizeToolCall({ ...base, completedCalls: 1, name: target, args: expectedArguments }), {
     allowed: false, code: 'CALL_LIMIT_REACHED',
   });
+});
+
+test('shared call claim permits one process-wide call and denies later claims', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-one-tool-lock-test-'));
+  const lockPath = path.join(root, 'call-claimed');
+  try {
+    assert.equal(claimSingleToolCall(lockPath), true);
+    assert.equal(claimSingleToolCall(lockPath), false);
+    assert.equal(fs.statSync(lockPath).mode & 0o777, 0o600);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('sanitized result metadata never retains title, stats values, or raw artifact bytes', () => {

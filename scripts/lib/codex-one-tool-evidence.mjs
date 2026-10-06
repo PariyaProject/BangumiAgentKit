@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Buffer } from 'node:buffer';
+import fs from 'node:fs';
 
 export function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -26,6 +27,21 @@ export function authorizeToolCall({ name, args, expectedTool, expectedArguments,
     return { allowed: false, code: 'ARGUMENTS_DO_NOT_MATCH_FIXED_QUERY' };
   }
   return { allowed: true, code: 'ALLOWLISTED_FIXED_PUBLIC_QUERY' };
+}
+
+export function claimSingleToolCall(lockPath) {
+  let descriptor;
+  try {
+    descriptor = fs.openSync(lockPath, 'wx', 0o600);
+    fs.closeSync(descriptor);
+    return true;
+  } catch (error) {
+    if (descriptor !== undefined) {
+      try { fs.closeSync(descriptor); } catch {}
+    }
+    if (error?.code === 'EEXIST') return false;
+    throw error;
+  }
 }
 
 function safeSourceOperationSummary(result) {

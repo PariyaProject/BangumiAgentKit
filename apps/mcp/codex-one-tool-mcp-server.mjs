@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { authorizeToolCall, canonicalJson, filterAllowedTools, summarizeToolResult } from '../../scripts/lib/codex-one-tool-evidence.mjs';
+import { authorizeToolCall, canonicalJson, claimSingleToolCall, filterAllowedTools, summarizeToolResult } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -86,15 +86,17 @@ class MemoryArtifactStore {
   }
 }
 
-function writeSanitizedSummary(summaryPath, summary) {
+function writeSanitizedSummary(summaryPath, summary, serverInstanceId) {
   if (!summaryPath) return;
   const absolute = path.resolve(summaryPath);
   const temporaryRoot = path.resolve(os.tmpdir()) + path.sep;
   if (!absolute.startsWith(temporaryRoot)) {
     throw new Error('Summary output must stay inside the operating-system temporary directory.');
   }
+  const snapshot = { ...summary, serverInstanceId };
+  fs.appendFileSync(`${absolute}.events.jsonl`, `${JSON.stringify(snapshot)}\n`, { mode: 0o600 });
   const temporary = `${absolute}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, `${JSON.stringify(summary, null, 2)}\n`, { mode: 0o600 });
+  fs.writeFileSync(temporary, `${JSON.stringify(snapshot, null, 2)}\n`, { mode: 0o600 });
   fs.renameSync(temporary, absolute);
 }
 
@@ -127,6 +129,7 @@ function parseArguments(argv) {
 
 async function main(argv = process.argv.slice(2)) {
   const config = parseArguments(argv);
+  const serverInstanceId = randomUUID();
   for (const key of Object.keys(process.env)) {
     if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) {
       delete process.env[key];
@@ -193,7 +196,7 @@ async function main(argv = process.argv.slice(2)) {
       credentialsStored: false,
     },
   };
-  writeSanitizedSummary(config.summaryPath, summary);
+  writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [mcpTool] }));
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -207,15 +210,24 @@ async function main(argv = process.argv.slice(2)) {
     if (!call.allowed) {
       deniedCalls += 1;
       summary = { ...summary, deniedCallCount: deniedCalls };
-      writeSanitizedSummary(config.summaryPath, summary);
+      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
       return {
         content: [{ type: 'text', text: `Rejected by one-tool QA server: ${call.code}.` }],
         isError: true,
       };
     }
+    if (!claimSingleToolCall(`${path.resolve(config.summaryPath)}.call-claimed`)) {
+      deniedCalls += 1;
+      summary = { ...summary, deniedCallCount: deniedCalls };
+      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
+      return {
+        content: [{ type: 'text', text: 'Rejected by one-tool QA server: CALL_LIMIT_REACHED.' }],
+        isError: true,
+      };
+    }
     allowedCalls += 1;
     summary = { ...summary, allowedCallCount: allowedCalls, argumentMatch: true };
-    writeSanitizedSummary(config.summaryPath, summary);
+    writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
     try {
       const identity = await identityProvider.resolveContext(request);
       const result = await registry.executeTool(config.toolName, config.expectedArguments, {
@@ -229,7 +241,7 @@ async function main(argv = process.argv.slice(2)) {
         serverResultStatus: 'SUCCESS',
         result: resultSummary,
       };
-      writeSanitizedSummary(config.summaryPath, summary);
+      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
       const presentation = presentMcpToolResult(config.toolName, result);
       return {
         content: [{ type: 'text', text: presentation.text }],
@@ -242,7 +254,7 @@ async function main(argv = process.argv.slice(2)) {
         serverResultStatus: 'ERROR',
         errorCode: typeof publicError.code === 'string' ? publicError.code : 'UNKNOWN_ERROR',
       };
-      writeSanitizedSummary(config.summaryPath, summary);
+      writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
       return {
         content: [{ type: 'text', text: JSON.stringify({ code: publicError.code, message: publicError.message }) }],
         isError: true,
