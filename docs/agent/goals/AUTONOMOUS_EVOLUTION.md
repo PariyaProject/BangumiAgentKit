@@ -4,13 +4,13 @@ Read [`../PRODUCT_CHARTER.md`](../PRODUCT_CHARTER.md) and
 [`../HARNESS.md`](../HARNESS.md), then execute this profile.
 
 - Mode: `AUTONOMOUS_EVOLUTION`
-- Primary: GPT-5.6 Luna `max` (`xhigh` availability fallback only)
+- All configured model roles: GPT-6 Luna `max`
 - Generic subagents: `0`
-- Expected Sol per reviewed Epoch: `1`
-- Automatic Sol maximum per Epoch: `2`
-- Outer Product-review maximum: `3`
-- Independent frontier-closure Sol maximum: `1`
-- Total Outer Sol maximum: `4`
+- Expected Luna Max reviews per Epoch: `1`
+- Default Epoch review maximum: `6`, extendable when findings remain actionable
+- Default Outer Product-review maximum: `96`, extendable without losing history
+- Independent frontier-closure review: `1` per run
+- Default total Outer reviewer launches: `97`
 - Shared exceptional reviewer-runtime recovery maximum: `1`
 
 Run `pnpm harness discovery:check` before `run:start` or broad validation.
@@ -23,7 +23,7 @@ Run `pnpm harness discovery:check` before `run:start` or broad validation.
   independent exact-hash frontier-closure review.
 - `UNCHANGED_EXHAUSTION`: report the cheap unchanged stop only when the exact
   master, policy, ledger hash, evidence hash, and closure PASS still match; do
-  not create an Issue, rerun the full suite, or launch Sol.
+  not create an Issue or rerun the full suite.
 
 When work is required, create or resume one Outer Run GitHub Issue. If it names
 an active Epoch PR, resume that exact PR. Otherwise perform the canonical
@@ -34,13 +34,13 @@ stop. Do not equate a completed named feature inventory with an exhausted
 product: inspect capability maturity, complete journeys, Agent UX, Renderer and
 Standalone quality, truthfulness/resource bounds, product-enabling architecture,
 and both pre-authorized read-only source frontiers. Discovery and source
-research launch no Sol.
+research launch no reviewer.
 
 Do not create work merely to avoid stopping. Conversely, do not use
 `STOPPED_TRUSTED_FRONTIER_EXHAUSTED` as an unverified shortcut: it requires a
 complete valid frontier ledger, current-master evidence, concrete scope
-salvage, cross-source consistency, and one Sol High closure `PASS` bound to the
-exact master/ledger/evidence hashes. A governed stop closes the Run Issue; a
+salvage, cross-source consistency, and one independent Luna Max closure `PASS`
+bound to the exact master/ledger/evidence hashes. A governed stop closes the Run Issue; a
 later invocation creates a fresh Run only when no nonterminal Run remains.
 Every rejected candidate must first attempt a bounded partial/positive-only
 variant. `RESEARCH_READY` remains actionable work, not a stopping disposition.
@@ -49,10 +49,11 @@ ledger records only together with durable implementation/test evidence; never
 create a ledger-only status commit.
 
 After a successful PASS, merge and clean up by default, update the Run Issue,
-then continue discovery while budget and safety permit. If Sol #2 returns
-corrective findings, keep the same Epoch active while Luna Max performs the
-governed final corrective, obtains exact-SHA CI, integrates, and then continues
-discovery; never launch Sol #3 or wait for a human on routine engineering
+then continue discovery while safety permits. If review round 2 returns
+corrective findings, keep the same Epoch active, continue the same Luna Max
+reviewer, and extend the Epoch/Run allowances while those findings remain
+actionable. Use the final-corrective path only when another verdict round would
+not add useful evidence. Do not wait for a human on routine engineering
 findings. A genuinely protected human-only direction may be parked while
 independent safe work continues.
 
@@ -64,12 +65,14 @@ authority, Candidate, CI, base-freshness, PR-state, and ancestry gates; it also
 reconciles a merge already accepted by GitHub when only the response was lost.
 
 After Product work and Luna discovery have closed every ledger record, run
-`pnpm harness frontier:check`, persist complete closure evidence, then spend the
-reserved one Sol High frontier review. `DISCOVERY_REQUIRED` returns to Luna but
+`pnpm harness frontier:check`, persist complete closure evidence, then spend the reserved independent Luna Max frontier review.
+`DISCOVERY_REQUIRED` returns to Luna but
 first records `FRONTIER_REVIEW_REJECTED` and runs
 `frontier:resume-discovery`; it never launches a second ordinary closure verdict
 round in the same Run. If the closure slot is unavailable, stop
-`STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`, not exhausted.
+`STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE`, not exhausted. Before stopping for a
+default review allowance, extend the relevant Run or Epoch allowance and
+preserve all consumed counts.
 
 For any Product or frontier reviewer, inspect the real task runtime before
 waiting. Use the Harness runtime command to record `ACTIVE`, `INTERRUPTED`, or

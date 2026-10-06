@@ -5,6 +5,9 @@ import test from 'node:test';
 import { canonicalHash } from '../../scripts/lib/frontier-ledger.mjs';
 import {
   DISCOVERY_POLICY_VERSION,
+  DEFAULT_EPOCH_REVIEW_SLOTS,
+  DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS,
+  DEFAULT_OUTER_REVIEW_SLOTS,
   EPOCH_MARKER,
   MAX_EPOCH_REVIEWS,
   MAX_OUTER_REVIEWS,
@@ -28,6 +31,8 @@ import {
   completeMerge,
   createEpochState,
   createRunState,
+  extendEpochReviewBudget,
+  extendRunProductReviewBudget,
   markReviewStarted,
   markFrontierReviewStarted,
   parseControlBlock,
@@ -257,7 +262,7 @@ test('outer review budget reserves three Product launches and one independent cl
   assert.equal(started.outer_sol.closure.consumed, 1);
 });
 
-test('the third Outer Product review corrective enters Luna final-corrective and preserves closure Sol', () => {
+test('the third Outer Product review corrective enters Luna final-corrective and preserves the closure slot', () => {
   let { run, epoch } = fixture();
   run.outer_sol.consumed = 2;
   run.outer_sol.product.consumed = 2;
@@ -397,7 +402,7 @@ test('trusted stop authority is bound to exact master, ledger, evidence, and clo
   );
 });
 
-test('B. CORRECTIVE PASS: one consolidated Luna corrective creates a new Candidate for Sol #2', () => {
+test('B. CORRECTIVE PASS: one consolidated Luna corrective creates a new Candidate for review two', () => {
   let { run, epoch } = fixture();
   ({ run, epoch } = startReview(run, epoch, 'sol-1'));
   ({ run, epoch } = applyReviewResult(run, epoch, {
@@ -707,7 +712,7 @@ test('review reservation reconciliation closes a partial write conservatively', 
   assert.equal(reconciled.epoch.review.consumed, 1);
 });
 
-test('Sol #2 must continue the same reviewer instead of paying to rebuild context', () => {
+test('the second review must continue the same reviewer instead of paying to rebuild context', () => {
   let { run, epoch } = fixture();
   ({ run, epoch } = startReview(run, epoch, 'sol-1'));
   ({ run, epoch } = applyReviewResult(run, epoch, {
@@ -727,7 +732,7 @@ test('Sol #2 must continue the same reviewer instead of paying to rebuild contex
   assert.equal(continued.epoch.review.consumed, 2);
 });
 
-test('D. REVIEW LIMIT: Sol #2 findings require one autonomous Luna final corrective, never Sol #3', () => {
+test('D. REVIEW LIMIT: second-review findings require one autonomous Luna final corrective', () => {
   let { run, epoch } = fixture();
   ({ run, epoch } = startReview(run, epoch, 'sol-1'));
   ({ run, epoch } = applyReviewResult(run, epoch, {
@@ -750,7 +755,7 @@ test('D. REVIEW LIMIT: Sol #2 findings require one autonomous Luna final correct
   assert.equal(run.active_epoch_pr, 42);
   assert.deepEqual(run.parked_epoch_prs, []);
   assert.equal(epoch.review_history.length, 2);
-  assert.equal(epoch.findings[0].id, 'sol-2-finding-1');
+  assert.equal(epoch.findings[0].id, 'review-2-finding-1');
   assert.throws(
     () => reserveReview(run, epoch),
     (error) => error instanceof HarnessInvariantError && error.code === 'REVIEW_BUDGET_EXHAUSTED',
@@ -778,12 +783,12 @@ test('D. REVIEW LIMIT: Sol #2 findings require one autonomous Luna final correct
 
 test('corrective closure rejects literal fixes without root-cause and regression evidence', () => {
   const { epoch } = fixture();
-  epoch.findings = [{ id: 'sol-2-finding-1', priority: 'P1', summary: 'Still blocking' }];
+  epoch.findings = [{ id: 'review-2-finding-1', priority: 'P1', summary: 'Still blocking' }];
   assert.throws(
     () =>
       assertCorrectiveClosure(epoch, [
         {
-          finding_id: 'sol-2-finding-1',
+          finding_id: 'review-2-finding-1',
           root_cause: 'Fixed the reported line.',
           equivalence_class: '',
           generalized_fix: 'Changed fallback.',
@@ -807,7 +812,7 @@ test('legacy parked review-limit state resumes on the same PR for Luna final cor
 
   const resumed = resumeReviewLimitForFinalCorrective(run, epoch);
   assert.equal(resumed.epoch.state, 'FINAL_CORRECTIVE_REQUIRED');
-  assert.equal(resumed.epoch.findings[0].id, 'sol-2-finding-1');
+  assert.equal(resumed.epoch.findings[0].id, 'review-2-finding-1');
   assert.equal(resumed.run.state, 'EPOCH_ACTIVE');
   assert.equal(resumed.run.active_epoch_pr, 42);
   assert.deepEqual(resumed.run.parked_epoch_prs, []);
@@ -977,6 +982,50 @@ test('hard review ceilings reject caller and control-block overrides', () => {
     () => reconcileReviewReservation(run, epoch, false),
     (error) => error instanceof HarnessInvariantError && error.code === 'INVALID_REVIEW_LEDGER',
   );
+});
+
+test('Luna Max review allowances are auditable and preserve prior consumption', () => {
+  const newRun = createRunState({
+    runId: 'new-policy-run',
+    outerSolMax: DEFAULT_OUTER_REVIEW_SLOTS,
+  });
+  assert.equal(newRun.outer_sol.product.max, DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS);
+  assert.equal(newRun.outer_sol.closure.max, 1);
+  assert.equal(newRun.outer_sol.max, DEFAULT_OUTER_REVIEW_SLOTS);
+
+  const legacyRun = createRunState({ runId: 'legacy-run', outerSolMax: 4 });
+  legacyRun.outer_sol.product.consumed = 3;
+  legacyRun.outer_sol.consumed = 3;
+  legacyRun.state = 'STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE';
+  const resumedRun = extendRunProductReviewBudget(legacyRun, {
+    additional: DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS - legacyRun.outer_sol.product.max,
+    reason: 'Resume long-goal discovery under Luna Max policy',
+    at: '2026-10-06T00:00:00.000Z',
+  });
+  assert.equal(resumedRun.state, 'ACTIVE');
+  assert.equal(resumedRun.outer_sol.product.max, DEFAULT_OUTER_PRODUCT_REVIEW_SLOTS);
+  assert.equal(resumedRun.outer_sol.product.consumed, 3);
+  assert.equal(resumedRun.outer_sol.max, DEFAULT_OUTER_REVIEW_SLOTS);
+  assert.equal(resumedRun.outer_sol.consumed, 3);
+  assert.equal(resumedRun.outer_sol.product.budget_extension_history[0].added, 93);
+  assert.equal(legacyRun.outer_sol.product.max, 3);
+
+  const epoch = createEpochState({
+    epochId: 'legacy-epoch',
+    baseSha: sha('a'),
+    objective: 'Exercise a long-running but auditable review allowance',
+    maxReviews: MAX_EPOCH_REVIEWS,
+  });
+  epoch.review.consumed = 1;
+  const extendedEpoch = extendEpochReviewBudget(epoch, {
+    additional: DEFAULT_EPOCH_REVIEW_SLOTS - epoch.review.max,
+    reason: 'Continue the active Epoch under Luna Max policy',
+    at: '2026-10-06T00:00:00.000Z',
+  });
+  assert.equal(extendedEpoch.review.max, DEFAULT_EPOCH_REVIEW_SLOTS);
+  assert.equal(extendedEpoch.review.consumed, 1);
+  assert.equal(extendedEpoch.review.budget_extension_history[0].added, 4);
+  assert.equal(epoch.review.max, MAX_EPOCH_REVIEWS);
 });
 
 test('terminal and circuit-breaker runs cannot start another Epoch', () => {

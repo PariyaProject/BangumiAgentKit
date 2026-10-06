@@ -1,8 +1,8 @@
-name = "sol_code_reviewer"
+name = "luna_code_reviewer"
 description = "Explicit-only specialized BangumiAgentKit reviewer for correctness, architecture, compatibility, security, evidence semantics, resource bounds, regressions, and test completeness."
 
-model = "gpt-5.6-sol"
-model_reasoning_effort = "high"
+model = "gpt-6-luna"
+model_reasoning_effort = "max"
 sandbox_mode = "read-only"
 
 developer_instructions = """

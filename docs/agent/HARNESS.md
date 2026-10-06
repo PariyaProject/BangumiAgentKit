@@ -1,4 +1,4 @@
-# BangumiAgentKit Harness V3.4
+# BangumiAgentKit Harness V3.5
 
 This is the **only canonical detailed execution-governance policy** for active
 BangumiAgentKit work. Other governance and Goal files may select a mode or link
@@ -66,17 +66,18 @@ authoritative.
 
 ## 2. Standing execution policy
 
-- Primary implementation/research agent: GPT-5.6 Luna at `max` reasoning.
-- Availability fallback: Luna `xhigh`; never lower.
+- All configured implementation, research, and reviewer roles use GPT-6 Luna at
+  `max` reasoning. No Sol model is configured or used.
 - Generic implementation/research subagents: `0` unless explicitly authorized
   for a specific use or required by an applicable skill.
-- Default reviewer: one comprehensive Sol milestone reviewer at `high`.
-- Sol `xhigh` requires explicit exceptional authorization.
-- Reviews are sequential. Specialized reviewers are never automatically paired.
-- Opportunity discovery and source-contract research launch no Sol reviewer.
-- Product review launches may consume at most three of the Outer Run's slots.
-  One separate Sol High slot is reserved for independent frontier-closure
-  review. The normal verdict-bearing Outer ceiling remains four.
+- Default Product reviewer: one comprehensive Luna Max reviewer; reviews remain
+  sequential and continue the same reviewer identity.
+- New Epochs receive six review slots by default. New Outer Runs receive 96
+  Product-review slots and one independent frontier-closure review.
+- Review allowances are auditable and extendable. Reaching a default allowance
+  does not authorize stopping a valid long-running Goal; extend the Run or Epoch
+  budget while work remains actionable.
+- Opportunity discovery and source-contract research launch no reviewer.
 - One Product/frontier-shared runtime-recovery context may replace a reviewer
   that started, returned no verdict, and is confirmed unavailable. It is an
   exceptional execution context, not a normal review round and not a refund.
@@ -91,9 +92,11 @@ reasoning.
 resumes an Outer Run only when the check requires work, resumes its active Epoch
 PR when present, otherwise performs bounded opportunity discovery, selects one
 coherent Epoch, and proceeds until a governed stop. Codex Goals are invoked
-manually; Harness V3.4 creates no scheduler, heartbeat, or automation. This is
-an execution-policy statement only: it is not a Product Charter boundary and
-does not prohibit a future explicit, bounded product scheduling capability.
+manually; Harness V3.5 creates no scheduler, heartbeat, or automation. If the
+app-level Goal state is `blocked`, the repository Harness cannot reactivate the
+Codex thread. Resume that Goal in Codex, then continue the persisted Run here.
+This is an execution-policy statement only: it is not a Product Charter boundary
+and does not prohibit a future explicit, bounded product scheduling capability.
 
 The cheap check returns exactly one state:
 
@@ -104,13 +107,13 @@ The cheap check returns exactly one state:
   policy/source authorization changed, or any ledger record remains
   `UNASSESSED`, `PARTIAL`, `RESEARCH_READY`, or `IMPLEMENTATION_READY`.
 - `FRONTIER_REVIEW_REQUIRED`: Luna has closed every ledger record and the exact
-  closure evidence now requires the one independent Sol High review.
+  closure evidence now requires the one independent Luna Max review.
 - `DISCOVERY_REFRESH_DUE`: seven days elapsed since the latest current-policy
   trusted closure audit.
 - `UNCHANGED_EXHAUSTION`: the same master, policy version, ledger hash, closure
   evidence hash, and closure `PASS` remain unchanged inside the seven-day
   window. Stop the Goal without creating an Issue, running the broad validation
-  suite, or launching Sol.
+  suite, or launching a reviewer.
 
 `discovery:check` reads Git/GitHub state and fetches `origin/master`; it never
 creates or edits an Issue/PR. The policy version is
@@ -156,7 +159,7 @@ Discovery must prefer a substantial independent safe Epoch from any lane. It
 must not create empty, status-only, speculative, or low-value work merely to
 keep a run alive. A protected direction does not block independent safe work,
 and routine correctness/remediation is not human-only merely because an older
-review budget was exhausted. Discovery itself launches no Sol reviewer.
+review budget was exhausted. Discovery itself launches no reviewer.
 
 Before rejecting any candidate, Luna must attempt scope salvage: narrow the
 question, prefer positive-only or partial observations, preserve coverage and
@@ -165,7 +168,7 @@ bounds. The outcome is one of:
 
 - `IMPLEMENTATION_READY`: a bounded valuable Product Epoch exists;
 - `RESEARCH_READY`: a concrete source-contract question can be resolved without
-  Product implementation or Sol;
+  Product implementation or a reviewer;
 - `NO_SAFE_VARIANT`: narrowing and any required source research are closed with
   concrete evidence.
 
@@ -277,7 +280,7 @@ funnel as the Epoch stabilizes: focused tests, integration/contract tests,
 User QA, Agent QA, Renderer/visual QA when applicable, and the mandatory
 repository suite.
 
-Before spending Sol, Luna performs one consolidated adversarial falsification
+Before review, Luna performs one consolidated adversarial falsification
 pass asking: **What would an independent reviewer most likely reject?**
 
 Challenge, where applicable:
@@ -321,7 +324,7 @@ Before review:
 6. prove Candidate, branch HEAD, and PR head equality;
 7. obtain all mandatory remote CI success on that exact SHA.
 
-Never spend Sol against a knowingly stale base or a different CI SHA.
+Never review a knowingly stale base or a different CI SHA.
 
 The Candidate evidence input must explicitly name the current fetched Base SHA
 and exact branch-HEAD Candidate SHA. A stale control-plane Base may be advanced
@@ -332,32 +335,38 @@ marks the Draft PR ready for review. Mandatory checks must report `SUCCESS`;
 
 ## 8. Review budget and reservation
 
-A normal reviewed Product Epoch records:
+A new Product Epoch starts with:
 
 - `expected: 1`
-- `max: 2`
+- `max: 6`
 - `consumed: 0`
 - `reserved: 0`
 
-An Autonomous outer run records:
+A new Autonomous Outer Run starts with:
 
-- `max: 4`
+- `max: 97`
 - `consumed: 0`
 - `reserved: 0`
-- `product: { max: 3, consumed: 0, reserved: 0 }`
+- `product: { max: 96, consumed: 0, reserved: 0 }`
 - `closure: { max: 1, consumed: 0, reserved: 0 }`
 - `runtime_recovery: { max: 1, consumed: 0, reserved: 0 }`
 
-The automatic ceilings are executable hard caps: Epoch `max` can never exceed
-`2`, Outer Product launches can never exceed `3`, frontier-closure launches can
-never exceed `1`, and their sum can never exceed Outer `4`, including caller
-options and edited GitHub control blocks. The fourth slot is not available to a
-Product review. After the third Product launch, any remaining Product finding
-uses the Luna final-corrective gate so the independent closure slot remains
-available. The separate shared runtime-recovery ledger can add at most one
-replacement context, making the worst-case context count five while leaving
-the normal Product/closure ceilings unchanged. A user may lower a budget but
-cannot raise a cap inside the run.
+The V3 `outer_sol` field is retained for control-block compatibility; it now
+records model-agnostic reviewer slots. Existing Runs keep their consumed and
+reserved counts. `run:start` upgrades a resumed active Run's Product allowance
+to at least 96 and records the migration. `run:budget-extend` adds more Run
+slots; `review:budget-extend` adds slots to the active Epoch. Both record the
+reason and old/new limits in the durable control block. Use these transitions
+before a default limit would move actionable work into a final-corrective or
+budget-stopped state.
+
+The historical limits (Epoch 2, Outer Product 3, Outer total 4) remain the
+unextended V3 baseline for old control blocks. A valid extension history may
+raise an allowance up to the safe persisted integer range; counts are never
+reset. The independent frontier-closure review remains one exact-hash verdict
+per Run. After `DISCOVERY_REQUIRED`, continue useful Product/research work; do
+not repeat a verdict against unchanged closure inputs. A fresh Run can review
+new, revalidated inputs.
 
 Before a reviewer launch, create one paired reservation id for exactly one Epoch
 slot and one Outer slot in the GitHub control planes. Another launch is
@@ -390,7 +399,7 @@ The runtime-recovery reservation is paired across the Run and Epoch for Product
 review and atomic in the Run for frontier review. Partial writes are reconciled
 conservatively. A launch known not to have occurred releases the reservation;
 otherwise the recovery context is consumed. Recovery consumption never
-decrements or rewrites normal Sol consumption. If recovery itself becomes
+decrements or rewrites normal reviewer consumption. If recovery itself becomes
 unavailable, Product may transparently spend an otherwise-available normal
 slot. With no normal slot it enters `REVIEW_RUNTIME_BLOCKED`. Frontier enters
 `FRONTIER_REVIEW_RUNTIME_BLOCKED` because it has no second ordinary closure
@@ -399,36 +408,29 @@ slot. Both states prohibit integration or trusted exhaustion.
 Normal sequence:
 
 ```text
-Luna engineering
+Luna Max engineering
 -> Scope Closure
 -> adversarial preflight
 -> exact Candidate
 -> exact-SHA CI
--> Sol #1
+-> Luna Max review #1
 ```
 
 `PASS` proceeds to automatic integration. `CORRECTIVE_REQUIRED` sends every
-recorded finding back to Luna. Luna fixes the root-cause classes, establishes a
-new Candidate, repeats validation/CI, and may spend Sol #2 by continuing the
-same reviewer identity. A new Sol context for the corrective re-review is
-rejected when the original reviewer identity remains known.
+recorded finding back to Luna Max. Fix the root-cause classes, establish a new
+Candidate, repeat validation/CI, and continue the same reviewer identity. If
+related findings remain as the configured allowance approaches exhaustion,
+extend the Epoch and Run budgets before reserving the final available review
+slot. Do not route routine findings to a final-corrective path solely because a
+default reviewer allowance is nearly exhausted; extend the allowance instead.
 
-If Sol #2 still returns `CORRECTIVE_REQUIRED`, the review budget is exhausted,
-but Luna's engineering authority is not. Enter `FINAL_CORRECTIVE_REQUIRED` on
-the same PR and branch. Luna Max must:
-
-1. fix every active finding, including any accompanying P2;
-2. record one closure entry per stable finding id with the root cause,
-   neighboring equivalence class, generalized fix, regression tests, and
-   validation evidence;
-3. run the full relevant validation funnel and adversarial regression scan;
-4. establish a fresh Candidate and obtain mandatory exact-SHA CI;
-5. automatically integrate that exact Candidate when the target base remains
-   equal to the recorded final-corrective Base SHA.
-
-No Sol #3 is launched. Sol exhaustion limits further review launches; it does
-not convert routine correctness, pagination, coverage, Renderer, test, or
-maintenance findings into a human decision.
+A final-corrective path remains available for a genuinely bounded corrective
+integration when further verdict rounds would not add useful evidence. It must
+fix every active finding, including any accompanying P2; record one closure
+entry per stable finding id with root cause, neighboring equivalence class,
+generalized fix, regression evidence, and validation; establish a fresh
+Candidate and mandatory exact-SHA CI; then integrate only when the target base
+still equals the recorded final-corrective Base SHA.
 
 ## 9. Reviewer runtime
 
@@ -467,10 +469,9 @@ classifications. Recording `INTERRUPTED` retains the same reviewer id. Returning
 that same id to `ACTIVE` performs no reserve, consumes no budget, changes no
 Candidate/CI, launches nothing, and creates no Git or polling write.
 
-Continue or resume the same id whenever possible. Any Sol #2 continues that
-same reviewer id so
-the second launch spends its context on verifying the fix or changed
-integration instead of rebuilding repository understanding. Only a confirmed
+Continue or resume the same id whenever possible. Later rounds continue the
+same reviewer id so each launch verifies the fix or changed integration instead
+of rebuilding repository understanding. Only a confirmed
 `UNAVAILABLE` state may request a replacement. The lost id, replacement id,
 allocation (`RECOVERY` or remaining `NORMAL`), relationship, and reason remain
 durable. Use `--runtime-recovery` on reserve/started/reconcile only for the
@@ -499,7 +500,8 @@ Trusted exhaustion is a different review job from Product review. After Luna
 has made the ledger valid, closed every actionable record, produced a complete
 cross-consistent evidence inventory, and bound it to the exact synchronized
 master SHA, policy version, ledger hash, and evidence hash, reserve the single
-Outer closure slot and launch one comprehensive Sol High reviewer sequentially.
+Outer closure slot and launch one comprehensive GPT-6 Luna Max reviewer in a
+separate task context.
 The reservation persists the complete verified closure evidence in a
 hash-bound, lossless compressed control payload. Before any Issue update the CLI
 checks that the complete body fits; silent truncation is prohibited.
@@ -540,7 +542,7 @@ a verdict round.
 `PARKED_FOR_HUMAN` isolates a protected direction. In autonomous mode, other
 independent safe work may continue when the repository is safe.
 
-Routine engineering findings never use `PARKED_FOR_HUMAN`. Sol #2 corrective
+Routine engineering findings never use `PARKED_FOR_HUMAN`. Corrective
 findings enter `FINAL_CORRECTIVE_REQUIRED`, remain the active Epoch, and block
 discovery of another Epoch until Luna completes the final corrective and
 integration. The legacy `PARKED_REVIEW_LIMIT` / `QUALITY_CIRCUIT_BREAKER`
@@ -570,22 +572,21 @@ base, delete the remote feature branch, delete the local feature branch when
 safe, checkout `master`, and synchronize `master` with `origin/master`.
 
 If the base advanced after PASS, the old PASS does not authorize the new
-combination. Synchronize the base into the feature branch safely, validate,
-establish a new Candidate, and re-review only when both Epoch and outer budget
-remain. If review budget is exhausted, use the same final-corrective gate with
-a durable base-drift finding and root-cause/integration closure, fresh exact-SHA
-CI, and the new Base SHA; do not park for a human. Never claim old CI or review
-evidence covers the changed combination.
+combination. Synchronize the base into the feature branch safely, validate, and
+establish a new Candidate. If review allowance is low, extend the Epoch and Run
+budgets before the next review. Then re-review the changed combination and
+obtain fresh exact-SHA CI; do not park routine base drift for a human. Never
+claim old CI or review evidence covers the changed combination.
 
 For `FINAL_CORRECTIVE_READY`, the integration authority is the exact final
-Candidate, its exact-SHA CI, complete per-finding closure, exhausted Epoch Sol
+Candidate, its exact-SHA CI, complete per-finding closure, exhausted Epoch review
 ledger, the matching last review record (`CORRECTIVE_REQUIRED` for review-limit
 findings or `PASS` for post-PASS base drift), and the recorded final-corrective
-Base SHA. This authority never claims that Sol passed the final Candidate. If
+Base SHA. This authority never claims that a reviewer passed the final Candidate. If
 the base advances, invalidate the Candidate and closure validation, return to
 `FINAL_CORRECTIVE_REQUIRED`, synchronize safely, rerun the closure regression
 scan and CI, and establish a new final Candidate. Do not park for a human and
-do not launch Sol #3.
+do not relaunch a reviewer solely to recreate an unchanged verdict.
 
 When permission, protection, conflict, freshness, ancestry, or another real
 gate prevents integration, update the PR control state to
@@ -703,7 +704,7 @@ candidates, missing cross-audit delta, or missing scope salvage are rejected.
 `UNASSESSED`, `PARTIAL`, `IMPLEMENTATION_READY`, `RESEARCH_READY`, or still-open
 source research blocks trusted closure.
 
-After mechanical validation, the one frontier-closure Sol reviewer must return
+After mechanical validation, the independent Luna Max frontier reviewer must return
 `PASS` on the exact master SHA, ledger hash, and evidence hash. Missing review,
 `DISCOVERY_REQUIRED`, runtime uncertainty, or any hash drift blocks the stop.
 `UNCHANGED_EXHAUSTION` may reuse only this trusted closure for seven days while
@@ -731,10 +732,32 @@ Outer Run block contains:
   "profile": "AUTONOMOUS_EVOLUTION",
   "state": "...",
   "outer_sol": {
-    "max": 4,
+    "max": 97,
     "consumed": 0,
     "reserved": 0,
-    "product": { "max": 3, "consumed": 0, "reserved": 0 },
+    "budget_extension_history": [
+      {
+        "from_max": 4,
+        "to_max": 97,
+        "added": 93,
+        "reason": "GPT-6 Luna Max long-goal default policy",
+        "at": "..."
+      }
+    ],
+    "product": {
+      "max": 96,
+      "consumed": 0,
+      "reserved": 0,
+      "budget_extension_history": [
+        {
+          "from_max": 3,
+          "to_max": 96,
+          "added": 93,
+          "reason": "GPT-6 Luna Max long-goal default policy",
+          "at": "..."
+        }
+      ]
+    },
     "closure": { "max": 1, "consumed": 0, "reserved": 0 },
     "runtime_recovery": { "max": 1, "consumed": 0, "reserved": 0 }
   },
@@ -772,9 +795,18 @@ An Epoch PR block contains:
   "advances_frontier_ids": ["OP-..."],
   "review": {
     "expected": 1,
-    "max": 2,
+    "max": 6,
     "consumed": 0,
     "reserved": 0,
+    "budget_extension_history": [
+      {
+        "from_max": 2,
+        "to_max": 6,
+        "added": 4,
+        "reason": "GPT-6 Luna Max long-goal default policy",
+        "at": "..."
+      }
+    ],
     "runtime": { "state": "NOT_STARTED", "reason": null, "allocation": null },
     "runtime_history": [],
     "runtime_recovery": { "max": 1, "consumed": 0, "reserved": 0 }
@@ -794,7 +826,7 @@ Questions, Included Work Packages, Explicit Non-Scope, Acceptance Criteria,
 Validation, Why Not Review Earlier?, and Why Not Extend Further?.
 
 The schema identifier remains `bangumi-harness/v3`. V3.3 reviewer-runtime fields
-are additive. When an older V3.2 block omits them, the CLI normalizes zero
+and V3.5 review-budget extension histories are additive. When an older V3.2 block omits them, the CLI normalizes zero
 recovery usage and an observation-required reviewer runtime in memory; it
 creates no migration commit and does not infer that the old task is active.
 V3.4 integration recovery derives authority from the existing exact Candidate,
@@ -811,8 +843,13 @@ help` for exact arguments.
 - `discovery:check`: cheaply classify active work, changed master/policy,
   actionable frontiers, refresh cadence, or unchanged exhaustion without any
   control-plane write.
-- `run:start`: resume the one open nonterminal Outer Run, reconcile legacy open
-  terminal Runs, or create one Run when none exists.
+- `run:start`: resume the one open nonterminal Outer Run and migrate its Product
+  allowance to at least the current 96-slot default without resetting counts;
+  reconcile legacy open terminal Runs or create one Run when none exists.
+- `run:budget-extend`: add auditable Product review slots to an active Run or
+  reopen a budget-stopped resumable Run without resetting consumed counts.
+- `review:budget-extend`: extend the active Epoch PR allowance with an audit
+  reason before its default allowance is exhausted.
 - `epoch:start`: record a selected Epoch in the Run Issue before branch work.
 - `epoch:open-pr`: open the single Draft PR after a meaningful commit.
 - `guard:legacy-paths`: reject V3 Product changes to legacy runtime paths.

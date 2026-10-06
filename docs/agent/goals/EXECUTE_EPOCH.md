@@ -4,16 +4,19 @@ Read [`../PRODUCT_CHARTER.md`](../PRODUCT_CHARTER.md) and
 [`../HARNESS.md`](../HARNESS.md), then execute this profile.
 
 - Mode: `EXECUTE_EPOCH`
-- Primary: GPT-5.6 Luna `max` (`xhigh` availability fallback only)
+- All configured model roles: GPT-6 Luna `max`
 - Generic subagents: `0`
-- Expected Sol for a reviewed Epoch: `1`
-- Automatic Sol maximum: `2`
+- Expected Luna Max reviews for a reviewed Epoch: `1`
+- Default Epoch review maximum: `6`, extendable when findings remain actionable
 - Shared Outer reviewer-runtime recovery maximum: `1`
 
 Execute the one explicitly selected Epoch PR through engineering, Scope
 Closure, adversarial preflight, Candidate/CI, review, and the default
-PASS-to-merge cleanup path. If Sol #2 returns corrective findings, complete the
-same-PR Luna final-corrective and exact-SHA integration path without Sol #3.
+PASS-to-merge cleanup path. If review round 2 returns corrective findings,
+continue the same GPT-6 Luna reviewer and extend the Epoch/Run allowances while
+those findings remain actionable. Use the same-PR final-corrective and
+exact-SHA integration path only when another verdict round would not add useful
+evidence.
 Do not discover or select another Epoch.
 
 If that PR is `INTEGRATION_BLOCKED`, run `pnpm harness
