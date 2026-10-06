@@ -66,6 +66,14 @@ export const FORMULA_REGISTRY: readonly FormulaDescriptor[] = Object.freeze([
     evidenceStatus: 'derived',
     description: 'collection bucket count / collection bucket population × 100',
   },
+  {
+    id: 'bangumi.rating.score_band_8_9_share.v1',
+    version: 1,
+    inputs: Array.from({ length: 10 }, (_, index) => `rating.count.${index + 1}`),
+    evidenceStatus: 'derived',
+    description:
+      '100 × (rating count at 8 + rating count at 9) / complete current rating histogram population; descriptive band share, not a polarization classification',
+  },
 ]);
 
 export const COMPLETION_FORMULA = FORMULA_REGISTRY[0] as FormulaDescriptor;
@@ -73,6 +81,7 @@ export const RATING_PERCENTAGES_FORMULA = FORMULA_REGISTRY[1] as FormulaDescript
 export const HISTOGRAM_MEAN_FORMULA = FORMULA_REGISTRY[2] as FormulaDescriptor;
 export const POPULATION_SD_FORMULA = FORMULA_REGISTRY[3] as FormulaDescriptor;
 export const COLLECTION_PERCENTAGES_FORMULA = FORMULA_REGISTRY[4] as FormulaDescriptor;
+export const RATING_SCORE_BAND_8_9_SHARE_FORMULA = FORMULA_REGISTRY[5] as FormulaDescriptor;
 
 /** Upstream scores are published to one decimal place; this is the rounding band. */
 export const UPSTREAM_SCORE_ROUNDING_TOLERANCE = 0.05;
@@ -86,6 +95,12 @@ export interface PopulationStandardDeviationData {
 
 export type RatingPercentages = Record<keyof RatingHistogram, number>;
 export type CollectionPercentages = Record<SubjectCollectionBucket, number>;
+
+export interface RatingScoreBand8To9Share {
+  count: number;
+  population: number;
+  percentage: number;
+}
 
 function formulaSource(formula: FormulaDescriptor): SourceDescriptor {
   return {
@@ -204,6 +219,42 @@ export function computeRatingPercentages(
       (histogram[score as keyof RatingHistogram] / population) * 100;
   }
   return { state: 'ok', data, evidence: { value: [formulaRef], ...inputs }, retrievedAt };
+}
+
+export function computeRatingScoreBand8To9Share(
+  histogram: RatingHistogram,
+  input: FieldEvidence = {},
+  retrievedAt = new Date().toISOString(),
+): CapabilityResult<RatingScoreBand8To9Share | null> {
+  const population = histogramPopulation(histogram);
+  const formulaRef = formulaEvidence(
+    RATING_SCORE_BAND_8_9_SHARE_FORMULA,
+    retrievedAt,
+    'scoreBand8To9Share',
+  );
+  const inputs = inputEvidence(input, RATING_SCORE_BAND_8_9_SHARE_FORMULA.inputs);
+  if (population === 0) {
+    return {
+      state: 'not_computable',
+      data: null,
+      evidence: { value: [formulaRef], ...inputs },
+      retrievedAt,
+      warnings: [
+        warning(
+          'MISSING_FIELD',
+          'Rating histogram population is zero; the 8–9 score-band share is not computable.',
+        ),
+      ],
+    };
+  }
+
+  const count = histogram[8] + histogram[9];
+  return {
+    state: 'ok',
+    data: { count, population, percentage: (count / population) * 100 },
+    evidence: { value: [formulaRef], ...inputs },
+    retrievedAt,
+  };
 }
 
 export function computeCollectionPercentages(

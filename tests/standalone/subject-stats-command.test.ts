@@ -203,6 +203,30 @@ describe('Standalone subject statistics commands', () => {
         state: 'complete',
         mean: 8.6,
         standardDeviation: 0.49,
+        scoreBand8To9Share: {
+          state: 'complete',
+          count: 100,
+          population: 100,
+          percentage: 100,
+          formula: {
+            id: 'bangumi.rating.score_band_8_9_share.v1',
+            version: 1,
+            inputs: [
+              'rating.count.1',
+              'rating.count.2',
+              'rating.count.3',
+              'rating.count.4',
+              'rating.count.5',
+              'rating.count.6',
+              'rating.count.7',
+              'rating.count.8',
+              'rating.count.9',
+              'rating.count.10',
+            ],
+            description:
+              '100 × (rating count at 8 + rating count at 9) / complete current rating histogram population; descriptive band share, not a polarization classification',
+          },
+        },
         distribution: [{ score: 8, count: 40, percentage: 40 }],
         formulas: {
           percentages: {
@@ -255,15 +279,17 @@ describe('Standalone subject statistics commands', () => {
         collectionBucketsExpected: 5,
         ratingPopulation: 100,
         collectionPopulation: 10,
-        formulasComplete: 5,
+        formulasComplete: 6,
         formulasPartial: 0,
-        formulasAttempted: 5,
+        formulasAttempted: 6,
         formulasConflict: 0,
         formulasNotComputable: 0,
       },
       source: {
         official: { operations: ['getSubjectStats'] },
-        derived: { operations: ['bangumi.rating.percentages.v1'] },
+        derived: {
+          operations: ['bangumi.rating.percentages.v1', 'bangumi.rating.score_band_8_9_share.v1'],
+        },
       },
       warnings: [],
       limitations: ['当前快照不是历史趋势。'],
@@ -271,10 +297,42 @@ describe('Standalone subject statistics commands', () => {
     expect(complete).toContain('条目统计智能');
     expect(complete).toContain('完成率 40.0%');
     expect(complete).toContain('评分分布');
+    expect(complete).toContain('8–9 分占比 100.0% · n=100/100');
+    expect(complete).toContain('标准差只描述分散程度，不能单独判定两极分化');
+    expect(complete).toContain(
+      '公式 8–9 分占比：bangumi.rating.score_band_8_9_share.v1 v1 · inputs rating.count.1, rating.count.2, rating.count.3, rating.count.4, rating.count.5, rating.count.6, rating.count.7, rating.count.8, rating.count.9, rating.count.10',
+    );
+    expect(complete).toContain(
+      '公式说明 8–9 分占比：100 × (rating count at 8 + rating count at 9) / complete current rating histogram population; descriptive band share, not a polarization classification',
+    );
     expect(complete).toContain('覆盖：来源请求 1/1 成功');
     expect(complete).toContain('评分桶 10/10');
     expect(complete).toContain('公式 直方图均值');
     expect(complete).toContain('bangumi.rating.histogram_mean.v1');
+
+    const partial = formatHuman({
+      state: 'partial',
+      subjectId: 123,
+      raw: { ratingTotal: 100 },
+      rating: {
+        state: 'partial',
+        scoreBand8To9Share: {
+          state: 'partial',
+          formula: {
+            id: 'bangumi.rating.score_band_8_9_share.v1',
+            version: 1,
+            inputs: Array.from({ length: 10 }, (_, index) => `rating.count.${index + 1}`),
+            description: 'descriptive 8–9 share over the complete current histogram',
+          },
+        },
+        distribution: [],
+      },
+      collection: { state: 'partial', completionState: 'partial', distribution: [] },
+      warnings: [],
+      limitations: [],
+    });
+    expect(partial).toContain('8–9 分占比 部分 · 未提供占比');
+    expect(partial).not.toContain('100.0%');
 
     const unavailable = formatHuman({
       state: 'unavailable',

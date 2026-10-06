@@ -106,6 +106,14 @@ export interface SubjectStatsIntelligenceResult {
     population?: number;
     mean?: number;
     standardDeviation?: number;
+    /** Descriptive share of the complete current histogram in score buckets 8 and 9. */
+    scoreBand8To9Share?: {
+      state: SubjectStatsMetricState;
+      count?: number;
+      population?: number;
+      percentage?: number;
+      formula: SubjectStatsFormulaDescriptor;
+    };
     distribution: Array<{ score: number; count?: number; percentage?: number }>;
     formulas: {
       percentages: SubjectStatsFormulaDescriptor;

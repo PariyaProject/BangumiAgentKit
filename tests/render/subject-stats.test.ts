@@ -32,6 +32,31 @@ const result: SubjectStatsIntelligenceResult = {
     population: 100,
     mean: 8.6,
     standardDeviation: 0.49,
+    scoreBand8To9Share: {
+      state: 'complete',
+      count: 100,
+      population: 100,
+      percentage: 100,
+      formula: {
+        id: 'bangumi.rating.score_band_8_9_share.v1',
+        version: 1,
+        inputs: [
+          'rating.count.1',
+          'rating.count.2',
+          'rating.count.3',
+          'rating.count.4',
+          'rating.count.5',
+          'rating.count.6',
+          'rating.count.7',
+          'rating.count.8',
+          'rating.count.9',
+          'rating.count.10',
+        ],
+        evidenceStatus: 'derived',
+        description:
+          '100 × (rating count at 8 + rating count at 9) / complete current rating histogram population; descriptive band share, not a polarization classification',
+      },
+    },
     distribution: Array.from({ length: 10 }, (_, index) => ({
       score: index + 1,
       count: index === 7 ? 40 : index === 8 ? 60 : 0,
@@ -99,8 +124,8 @@ const result: SubjectStatsIntelligenceResult = {
     collectionBucketsObserved: 5,
     ratingPopulation: 100,
     collectionPopulation: 10,
-    formulasAttempted: 5,
-    formulasComplete: 5,
+    formulasAttempted: 6,
+    formulasComplete: 6,
     formulasPartial: 0,
     formulasNotComputable: 0,
     formulasConflict: 0,
@@ -116,6 +141,7 @@ const result: SubjectStatsIntelligenceResult = {
       operations: [
         'bangumi.rating.percentages.v1',
         'bangumi.rating.population_sd.v1',
+        'bangumi.rating.score_band_8_9_share.v1',
         'bangumi.collection.percentages.v1',
         'bangumi.subject.completion.v1',
       ],
@@ -182,6 +208,9 @@ describe('subject-stats renderer', () => {
       expect(html).toContain('Bangumi ID 123');
       expect(html).toContain('官方 v0 条目名称');
       expect(html).toContain('评分分布');
+      expect(html).toContain('8–9 分占比');
+      expect(html).toContain('100.0% (100/100)');
+      expect(html).toContain('不能单独判定两极化、质量、原因或推荐');
       expect(html).toContain('40.0%');
       expect(html).toContain('完成率');
       expect(html).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
@@ -221,7 +250,7 @@ describe('subject-stats renderer', () => {
     expect(missingHtml).toContain('评分分布');
     expect(missingHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
     expect(missingHtml).toContain('样本验证，并非官方 API 契约');
-    expect(missingHtml).toContain('当前快照，不代表历史趋势或推荐');
+    expect(missingHtml).toContain('当前快照，不代表历史趋势。');
     expect(missingHtml).not.toContain("Girls' Last Tour");
 
     const mismatch = buildSubjectStatsViewModel(result, {
@@ -235,7 +264,7 @@ describe('subject-stats renderer', () => {
     expect(mismatchHtml).toContain('官方返回的条目 ID 与请求 ID 不一致');
     expect(mismatchHtml).toContain('完成率＝看过人数 ÷ 五类收藏状态总人数');
     expect(mismatchHtml).toContain('样本验证，并非官方 API 契约');
-    expect(mismatchHtml).toContain('当前快照，不代表历史趋势或推荐');
+    expect(mismatchHtml).toContain('当前快照，不代表历史趋势。');
     expect(mismatchHtml).not.toContain('Wrong subject');
     expect(mismatchHtml).not.toContain('错误作品');
 
@@ -274,7 +303,7 @@ describe('subject-stats renderer', () => {
       });
       expect(layout.titleBlocks[0]?.title).toContain('少女终末旅行');
       expect(html).toContain('样本验证，并非官方 API 契约');
-      expect(html).toContain('当前快照，不代表历史趋势或推荐');
+      expect(html).toContain('当前快照，不代表历史趋势。');
       const rendered = await renderService.renderCard(viewModel, {
         width,
         deviceScaleFactor: 2,
@@ -476,6 +505,12 @@ describe('subject-stats renderer', () => {
     sparse.rating.population = 1;
     sparse.rating.mean = 8;
     sparse.rating.standardDeviation = 0;
+    sparse.rating.scoreBand8To9Share = {
+      ...sparse.rating.scoreBand8To9Share!,
+      count: 1,
+      population: 1,
+      percentage: 100,
+    };
     sparse.rating.distribution = sparse.rating.distribution.map((item) => ({
       ...item,
       count: item.score === 8 ? 1 : 0,
@@ -514,6 +549,10 @@ describe('subject-stats renderer', () => {
     };
     partial.rating.state = 'partial';
     partial.rating.population = 90;
+    partial.rating.scoreBand8To9Share = {
+      state: 'partial',
+      formula: { ...partial.rating.scoreBand8To9Share!.formula },
+    };
     partial.rating.distribution = partial.rating.distribution.map((item) =>
       item.score === 10 ? { score: item.score } : item,
     );
@@ -531,7 +570,7 @@ describe('subject-stats renderer', () => {
       ratingPopulation: 90,
       collectionPopulation: 9,
       formulasComplete: 0,
-      formulasPartial: 5,
+      formulasPartial: 6,
     };
     partial.warnings = [
       {
@@ -630,7 +669,11 @@ describe('subject-stats renderer', () => {
       ratingPopulation: 0,
       collectionPopulation: 0,
       formulasComplete: 0,
-      formulasNotComputable: 5,
+      formulasNotComputable: 6,
+    };
+    notComputable.rating.scoreBand8To9Share = {
+      state: 'not_computable',
+      formula: { ...notComputable.rating.scoreBand8To9Share!.formula },
     };
     notComputable.warnings = [
       { code: 'ZERO_POPULATION', state: 'not_computable', message: '评分与收藏样本量为零。' },
@@ -642,6 +685,9 @@ describe('subject-stats renderer', () => {
 
     const partialHtml = renderHtmlTemplate(buildStatsViewModel(partial), 'bangumi-dark', {}, 480);
     expect(partialHtml).toContain('已收到 9/10 档');
+    expect(partialHtml).toContain('8–9 分占比');
+    expect(partialHtml).toContain('数据不全');
+    expect(partialHtml).not.toContain('100.0% (100/100)');
     expect(partialHtml).toContain('未知 · 未知');
     expect(partialHtml).toContain('部分统计字段未返回，相关指标保持未知。');
     expect(partialHtml).not.toContain('MISSING_FIELD');

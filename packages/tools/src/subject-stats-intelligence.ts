@@ -5,9 +5,11 @@ import {
   computeCollectionPercentages,
   computePopulationStandardDeviation,
   computeRatingPercentages,
+  computeRatingScoreBand8To9Share,
   HISTOGRAM_MEAN_FORMULA,
   POPULATION_SD_FORMULA,
   RATING_PERCENTAGES_FORMULA,
+  RATING_SCORE_BAND_8_9_SHARE_FORMULA,
   type CapabilityResult,
   type CapabilityConflict,
   type EvidenceRef,
@@ -16,6 +18,7 @@ import {
   type PopulationStandardDeviationData,
   type ProviderRegistry,
   type RatingPercentages,
+  type RatingScoreBand8To9Share,
   type CollectionPercentages,
   type SubjectStatsData,
 } from '@bangumi-agent-kit/provider-core';
@@ -44,7 +47,7 @@ const COLLECTION_STATUSES: SubjectStatsCollectionStatus[] = [
 const RATING_SCORES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const LIMITATIONS = [
   '评分直方图与收藏桶是本次官方 v0 当前快照，不是历史趋势或跨时间比较。',
-  '评分标准差是对 1–10 分直方图的总体标准差；它不等于质量、两极化原因或推荐结论。',
+  '评分标准差只描述当前 1–10 分直方图的离散程度；它不能单独判定分布是否两极化、原因、质量或推荐。8–9 分占比只描述这两档在当前完整直方图中的份额。',
   '收藏完成率公式已用样本交叉验证但不是官方 API 合同；结果保留公式证据与限制。',
   '本能力不读取评论、社区统计、网站专有交叉图表或其他用户的私有收藏数据。',
 ];
@@ -275,6 +278,10 @@ function emptyResult(subjectId: number): SubjectStatsIntelligenceResult {
     state: 'unavailable',
     rating: {
       state: 'unavailable',
+      scoreBand8To9Share: {
+        state: 'unavailable',
+        formula: descriptor(RATING_SCORE_BAND_8_9_SHARE_FORMULA),
+      },
       distribution: [],
       formulas: {
         percentages: descriptor(RATING_PERCENTAGES_FORMULA),
@@ -610,6 +617,12 @@ export async function getSubjectStatsIntelligence(
         POPULATION_SD_FORMULA,
         'Rating histogram contains missing or invalid buckets; histogram mean and standard deviation are suppressed.',
       );
+  const ratingScoreBand8To9Share = ratingInputsComplete
+    ? computeRatingScoreBand8To9Share(stats.ratingHistogram, sourceResult.evidence, retrievedAt)
+    : suppressedFormula<RatingScoreBand8To9Share>(
+        RATING_SCORE_BAND_8_9_SHARE_FORMULA,
+        'Rating histogram contains missing or invalid buckets; the 8–9 score-band share is suppressed.',
+      );
   const collectionPercentages = collectionInputsComplete
     ? computeCollectionPercentages(stats, sourceResult.evidence, retrievedAt)
     : suppressedFormula<CollectionPercentages>(
@@ -646,6 +659,12 @@ export async function getSubjectStatsIntelligence(
         : ratingDeviation.data?.standardDeviation !== undefined
           ? 'complete'
           : stateForFormula(ratingDeviation);
+  const ratingScoreBand8To9ShareFormulaState: SubjectStatsMetricState =
+    allProviderConflict || ratingConflictAffects(sourceConflicts, 'population')
+      ? 'conflict'
+      : !ratingInputsComplete
+        ? 'partial'
+        : stateForFormula(ratingScoreBand8To9Share);
   const collectionPercentagesFormulaState: SubjectStatsMetricState =
     allProviderConflict || collectionConflictAffects(sourceConflicts)
       ? 'conflict'
@@ -664,6 +683,7 @@ export async function getSubjectStatsIntelligence(
           ratingPercentagesFormulaState,
           ratingMeanFormulaState,
           ratingStandardDeviationFormulaState,
+          ratingScoreBand8To9ShareFormulaState,
         ].includes('conflict')
       ? 'conflict'
       : stateForFormula(ratingPercentages);
@@ -682,6 +702,7 @@ export async function getSubjectStatsIntelligence(
     { state: ratingPercentagesFormulaState },
     { state: ratingMeanFormulaState },
     { state: ratingStandardDeviationFormulaState },
+    { state: ratingScoreBand8To9ShareFormulaState },
     { state: collectionPercentagesFormulaState },
     { state: completionFormulaState },
   ];
@@ -720,6 +741,17 @@ export async function getSubjectStatsIntelligence(
 
   result.rating = {
     state: ratingState,
+    scoreBand8To9Share: {
+      state: ratingScoreBand8To9ShareFormulaState,
+      formula: descriptor(RATING_SCORE_BAND_8_9_SHARE_FORMULA),
+      ...(ratingScoreBand8To9Share.data
+        ? {
+            count: ratingScoreBand8To9Share.data.count,
+            population: ratingScoreBand8To9Share.data.population,
+            percentage: ratingScoreBand8To9Share.data.percentage,
+          }
+        : {}),
+    },
     ...(ratingPopulation === undefined ? {} : { population: ratingPopulation }),
     ...(ratingDeviation.data?.histogramMean === undefined
       ? {}
@@ -777,6 +809,11 @@ export async function getSubjectStatsIntelligence(
     ...formulaEvidence(ratingDeviation, HISTOGRAM_MEAN_FORMULA, HISTOGRAM_MEAN_FORMULA.description),
     ...formulaEvidence(ratingDeviation, POPULATION_SD_FORMULA, POPULATION_SD_FORMULA.description),
     ...formulaEvidence(
+      ratingScoreBand8To9Share,
+      RATING_SCORE_BAND_8_9_SHARE_FORMULA,
+      RATING_SCORE_BAND_8_9_SHARE_FORMULA.description,
+    ),
+    ...formulaEvidence(
       collectionPercentages,
       COLLECTION_PERCENTAGES_FORMULA,
       COLLECTION_PERCENTAGES_FORMULA.description,
@@ -807,6 +844,7 @@ export async function getSubjectStatsIntelligence(
     })),
     ...formatFormulaWarnings(ratingPercentages, ratingState),
     ...formatFormulaWarnings(ratingDeviation, ratingState),
+    ...formatFormulaWarnings(ratingScoreBand8To9Share, ratingState),
     ...formatFormulaWarnings(collectionPercentages, collectionState),
     ...formatFormulaWarnings(completion, completionState),
   );

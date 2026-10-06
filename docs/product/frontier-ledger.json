@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-05T08:25:10Z",
+  "updated_at": "2026-10-06T00:54:20Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1148,11 +1148,35 @@
       "kind": "scenario",
       "user_question": "一部作品的评分是集中在 8–9 分还是两极分化？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/tool-catalog.json",
+        "packages/provider-core/src/formulas.ts",
+        "packages/bangumi-core/src/models/subject-stats-intelligence.ts",
+        "packages/tools/src/subject-stats-intelligence.ts",
+        "packages/renderer/src/templates/SubjectStatsCard.tsx",
+        "apps/standalone/src/presenter.ts",
+        "tests/semantic/subject-stats-intelligence.test.ts",
+        "tests/render/subject-stats.test.ts",
+        "tests/standalone/subject-stats-command.test.ts",
+        "docs/live-probes/public-tools-2026-10-06-004828186-74416.json"
+      ],
+      "next_action": "Use the complete-current-snapshot 8–9 band share together with the retained ten-bin distribution and source coverage. Do not infer polarization or its cause from dispersion. Reopen when a separately validated shape-classification method and sample-size/source contract becomes available.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "closure_reason": "Delivered the bounded descriptive 8–9 share with explicit formula/evidence and complete, partial, invalid, zero, and conflict states. The original question also asks whether ratings are polarized; the official v0 histogram and standard deviation do not provide a validated polarization classifier, so this scenario remains PARTIAL.",
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_subject_stats_intelligence",
+          "bangumi.render_subject_stats_intelligence"
+        ],
+        "tests": [
+          "tests/semantic/subject-stats-intelligence.test.ts",
+          "tests/render/subject-stats.test.ts",
+          "tests/standalone/subject-stats-command.test.ts"
+        ]
+      }
     },
     {
       "id": "G24",
