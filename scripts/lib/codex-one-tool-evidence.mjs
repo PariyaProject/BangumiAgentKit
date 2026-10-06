@@ -82,6 +82,13 @@ export function summarizeSubjectStatsFacts(result) {
         scoreBand8To9CountFromBins: scoreBandCount,
         scoreBand8To9PercentageFromBins: scoreBandPercentage,
       },
+      distribution: Array.isArray(result.rating.distribution)
+        ? result.rating.distribution.map((item) => ({
+            score: Number.isInteger(item?.score) ? item.score : null,
+            count: Number.isInteger(item?.count) ? item.count : null,
+            percentage: Number.isFinite(item?.percentage) ? item.percentage : null,
+          }))
+        : [],
     },
     collection: {
       state: typeof result.collection.state === 'string' ? result.collection.state : null,
@@ -95,6 +102,14 @@ export function summarizeSubjectStatsFacts(result) {
         ? completionFormula.version : null,
       completionEvidenceStatus: typeof completionFormula.evidenceStatus === 'string'
         ? completionFormula.evidenceStatus : null,
+      distribution: Array.isArray(result.collection.distribution)
+        ? result.collection.distribution.map((item) => ({
+            status: ['wish', 'doing', 'collect', 'on_hold', 'dropped'].includes(item?.status)
+              ? item.status : null,
+            count: Number.isInteger(item?.count) ? item.count : null,
+            percentage: Number.isFinite(item?.percentage) ? item.percentage : null,
+          }))
+        : [],
     },
     coverage: result.coverage && typeof result.coverage === 'object' ? {
       sourceRequestsAttempted: Number.isInteger(result.coverage.sourceRequestsAttempted)

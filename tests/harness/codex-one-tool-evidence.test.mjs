@@ -86,6 +86,9 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
     raw: { ratingHistogram: histogram },
     rating: {
       state: 'complete', population: 45, mean: 7.2, standardDeviation: 1.1,
+      distribution: Array.from({ length: 10 }, (_, index) => ({
+        score: index + 1, count: histogram[index + 1], percentage: histogram[index + 1] / 45,
+      })),
       scoreBand8To9Share: {
         state: 'complete', count: 15, population: 45, percentage: 1/3,
         formula: { id: 'bangumi.rating.score_band_8_9_share.v1', version: 1, evidenceStatus: 'official_contract' },
@@ -93,6 +96,7 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
     },
     collection: {
       state: 'complete', total: 100, completionState: 'empirically_verified', completionRate: 0.3,
+      distribution: [{ status: 'wish', count: 10, percentage: 0.1 }],
       formulas: { completion: { id: 'subject-stats-collection-completion-v1', version: 1, evidenceStatus: 'empirically_verified' } },
     },
     coverage: { ratingBucketsExpected: 10, ratingBucketsObserved: 10, collectionBucketsExpected: 5,
@@ -113,5 +117,7 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
   assert.equal(facts.rating.mean, 7.2);
   assert.equal(facts.rating.standardDeviation, 1.1);
   assert.equal(facts.collection.completionRate, 0.3);
+  assert.deepEqual(facts.rating.distribution[7], { score: 8, count: 7, percentage: 7/45 });
+  assert.deepEqual(facts.collection.distribution, [{ status: 'wish', count: 10, percentage: 0.1 }]);
   assert.doesNotMatch(JSON.stringify(facts), /subjectName|title/);
 });
