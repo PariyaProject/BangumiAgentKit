@@ -236,12 +236,16 @@ CODEX_SCENARIO_FIELDS = {
     'id', 'passed', 'exactArgumentsMatched', 'oneToolAllowlistVerified',
     'resultReadbackVerified', 'answerCheckPassed', 'answerChecks', 'toolCalls', 'result',
 }
-CODEX_ANSWER_CHECK_FIELDS = {
+CODEX_BASE_ANSWER_CHECK_FIELDS = {
     'typedFieldsMatch', 'subjectIdMentioned', 'currentSnapshotMentioned',
     'ratingAndBandMentioned', 'collectionMentioned', 'officialV0Mentioned',
     'coverageStateMentioned', 'singleParagraphNoMarkdown', 'noUnsupportedPositiveClaim',
-    'artifactMentioned',
 }
+CODEX_STATS_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {
+    'metricStatesMentioned', 'limitationsMentioned',
+}
+CODEX_RENDERER_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {'artifactMentioned'}
+CODEX_ANSWER_CHECK_FIELDS = CODEX_STATS_ANSWER_CHECK_FIELDS | CODEX_RENDERER_ANSWER_CHECK_FIELDS
 CODEX_RESULT_FIELDS = {
     'toolName', 'resultState', 'resultByteLength', 'resultSha256', 'sourceOperations', 'artifact',
 }
@@ -353,8 +357,8 @@ def codex_mcp_evidence_is_valid(
             or scenario.get('answerCheckPassed') is not True
             or not isinstance(scenario.get('answerChecks'), dict)
             or set(scenario.get('answerChecks', {})) != (
-                CODEX_ANSWER_CHECK_FIELDS if tool_name.startswith('bangumi.render_')
-                else CODEX_ANSWER_CHECK_FIELDS - {'artifactMentioned'}
+                CODEX_RENDERER_ANSWER_CHECK_FIELDS if tool_name.startswith('bangumi.render_')
+                else CODEX_STATS_ANSWER_CHECK_FIELDS
             )
             or any(value is not True for value in scenario.get('answerChecks', {}).values())
             or not isinstance(calls, list)

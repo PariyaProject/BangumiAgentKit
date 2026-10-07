@@ -299,8 +299,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         arguments = GENERATOR.CODEX_G23_PROBE_ARGUMENTS[tool_name]
         is_renderer = tool_name.startswith('bangumi.render_')
         answer_checks = {
-            key: True for key in GENERATOR.CODEX_ANSWER_CHECK_FIELDS
-            if key != 'artifactMentioned' or is_renderer
+            key: True for key in (GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer
+                                  else GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS)
         }
         result = {
             'toolName': tool_name,
@@ -393,8 +393,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'oneToolAllowlistVerified': True,
                 'resultReadbackVerified': True,
                 'answerCheckPassed': True,
-                'answerChecks': {key: True for key in GENERATOR.CODEX_ANSWER_CHECK_FIELDS
-                                 if key != 'artifactMentioned'},
+                'answerChecks': {key: True for key in GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS},
                 'toolCalls': [{'name': 'bangumi.get_subject_stats_intelligence', 'state': 'DONE'}],
                 'result': {
                     'toolName': 'bangumi.get_subject_stats_intelligence',

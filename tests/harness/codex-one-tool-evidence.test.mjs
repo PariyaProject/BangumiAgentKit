@@ -7,6 +7,8 @@ import {
   authorizeToolCall,
   canonicalJson,
   claimSingleToolCall,
+  checkRendererAnswer,
+  checkStatsAnswer,
   filterAllowedTools,
   publicReadOnlyToolAnnotations,
   summarizeSubjectStatsFacts,
@@ -129,7 +131,13 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
     },
     collection: {
       state: 'complete', total: 100, completionState: 'empirically_verified', completionRate: 0.3,
-      distribution: [{ status: 'wish', count: 10, percentage: 10 }],
+      distribution: [
+        { status: 'wish', count: 10, percentage: 10 },
+        { status: 'doing', count: 20, percentage: 20 },
+        { status: 'collect', count: 30, percentage: 30 },
+        { status: 'on_hold', count: 25, percentage: 25 },
+        { status: 'dropped', count: 15, percentage: 15 },
+      ],
       formulas: { completion: { id: 'subject-stats-collection-completion-v1', version: 1, evidenceStatus: 'empirically_verified' } },
     },
     coverage: { ratingBucketsExpected: 10, ratingBucketsObserved: 10, collectionBucketsExpected: 5,
@@ -151,6 +159,35 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
   assert.equal(facts.rating.standardDeviation, 1.1);
   assert.equal(facts.collection.completionRate, 0.3);
   assert.deepEqual(facts.rating.distribution[7], { score: 8, count: 7, percentage: (7/45) * 100 });
-  assert.deepEqual(facts.collection.distribution, [{ status: 'wish', count: 10, percentage: 10 }]);
+  assert.deepEqual(facts.collection.distribution, [
+    { status: 'wish', count: 10, percentage: 10 },
+    { status: 'doing', count: 20, percentage: 20 },
+    { status: 'collect', count: 30, percentage: 30 },
+    { status: 'on_hold', count: 25, percentage: 25 },
+    { status: 'dropped', count: 15, percentage: 15 },
+  ]);
   assert.doesNotMatch(JSON.stringify(facts), /subjectName|title/);
+
+  const answer = '条目218707的当前官方 v0 快照中，评分1到10分人数依次为0、1、2、3、4、5、6、7、8、9，8–9分占比33.3%。收藏分布为愿望10人、在看20人、看过30人、搁置25人、抛弃15人，完成率30%，评分和收藏覆盖完整。这只是当前快照，不代表趋势或作品质量，也不能据此判断口碑。';
+  const answerCheck = checkStatsAnswer(answer, facts);
+  assert.equal(answerCheck.passed, true, JSON.stringify(answerCheck.answerChecks));
+  assert.equal(checkStatsAnswer(answer.replace('33.3%', '98.7%'), facts).answerChecks.typedFieldsMatch, false);
+  assert.equal(checkStatsAnswer(answer.replace('完成率30%', '完成率99%'), facts).answerChecks.typedFieldsMatch, false);
+  assert.equal(checkStatsAnswer(answer.replace('这只是当前快照，不代表趋势或作品质量，也不能据此判断口碑。', ''), facts).answerChecks.limitationsMentioned, false);
+  assert.equal(checkStatsAnswer(`${answer} 这不代表质量结论。`, facts).answerChecks.noUnsupportedPositiveClaim, true);
+  assert.equal(checkStatsAnswer(`${answer} 说明质量很好。`, facts).answerChecks.noUnsupportedPositiveClaim, false);
+});
+
+test('renderer answer checks only the request identity and returned ephemeral Artifact metadata', () => {
+  const result = {
+    resultState: 'artifact_returned',
+    artifact: {
+      returned: true, persisted: false, mimeType: 'image/png', width: 720, height: 1200,
+      byteLength: 123456, sha256: 'a'.repeat(64), pngSignatureValid: true,
+    },
+  };
+  const answer = '条目218707的当前官方 v0 评分与收藏统计图卡 PNG Artifact 已生成，尺寸720×1200。卡片覆盖评分直方图、8–9分占比、收藏分布和完成率，并说明覆盖状态；我没有从 Artifact 元数据推断图像像素或指标值。';
+  assert.equal(checkRendererAnswer(answer, result).passed, true);
+  assert.equal(checkRendererAnswer(`${answer} 很可能是优质作品。`, result).answerChecks.noUnsupportedPositiveClaim, false);
+  assert.equal(checkRendererAnswer(`${answer} 评分99%。`, result).answerChecks.typedFieldsMatch, false);
 });
