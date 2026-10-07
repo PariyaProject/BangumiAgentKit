@@ -1115,11 +1115,59 @@
       "kind": "scenario",
       "user_question": "某系列中哪些作品是前传、续作、外传，应该按什么顺序看？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-g20-direct-relation-source-contract-2026-10-07.md",
+        "docs/tool-catalog.json",
+        "packages/tools/src/definitions/read-tools.ts",
+        "apps/mcp/src/result-presenter.ts",
+        "scripts/acceptance/g20-direct-relations-answer-check.mjs",
+        "tests/integration/tool-catalog-completeness.test.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "tests/unit/g20-direct-relations-answer-check.test.ts"
+      ],
+      "next_action": "Run #95 G20 now offers an opt-in includeEvidence=true envelope while preserving the legacy relation-array output by default. Evidence mode records source-directed official-v0 rows, exact labels, response counts, schema-drift omissions, non-pagination/non-total limits, and an MCP text projection with omission counts plus full structuredContent. The offline G20 checker verifies exact direct row IDs/names/labels, source scope, coverage disclosures, no unsupported completeness/reverse/canonical-order claims, and requires every returned row through full structuredContent or complete unclipped MCP text; omitted rows without the full payload fail readback. Focused MCP/registry tests pass 24/24; G20 checker tests pass 9/9; typecheck and lint pass. Keep PARTIAL until one exact-Candidate, exact-head CI, candidate:check-gated anonymous one-tool get_subject_relations Agent/MCP query with includeEvidence=true has readable matching result evidence. If readback fails, keep PARTIAL and do not retry. This direct response still cannot establish a complete franchise or official watch order.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "capabilities": [
+          "bangumi.get_subject_relations"
+        ],
+        "tests": [
+          "tests/integration/tool-catalog-completeness.test.ts",
+          "tests/integration/mcp-result-presenter.test.ts",
+          "tests/unit/g20-direct-relations-answer-check.test.ts"
+        ],
+        "implementation": [
+          "packages/tools/src/definitions/read-tools.ts",
+          "apps/mcp/src/result-presenter.ts"
+        ],
+        "source_contract": "Official v0 GET /v0/subjects/{subject_id}/subjects returns source-directed relation rows without pagination, total count, completeness marker, or canonical-order field. The product reports current response-only rows; raw relation labels are preserved. See docs/research/run95-g20-direct-relation-source-contract-2026-10-07.md.",
+        "mcp_text_projection": {
+          "text_limit_utf8_bytes": 3600,
+          "opt_in_argument": "includeEvidence=true; default array output retained",
+          "source_scope_and_limits_precede_rows": true,
+          "omitted_rows_and_clipped_fields_counted": true,
+          "full_structured_content_preserved": true,
+          "live_agent_mcp_evidence": "pending exact Candidate, CI, and Harness candidate gate"
+        },
+        "answer_checker": {
+          "script": "scripts/acceptance/g20-direct-relations-answer-check.mjs",
+          "method": "direct-relation-rows-and-source-scope-v1",
+          "checks": [
+            "exact subjectId/includeEvidence arguments and one target tool call",
+            "source-directed operation and response-only coverage",
+            "exact returned row IDs, names, and raw relation labels",
+            "MCP text budget, omission counts, and complete row readback from structuredContent or unclipped text",
+            "bounded response disclosure and schema-drift count",
+            "no unsupported completeness, absence, reverse-edge, or canonical-order claim"
+          ],
+          "raw_answer_or_result_persisted": false,
+          "live_query": "not run"
+        },
+        "status_boundary": "G20 remains PARTIAL. Offline contract, output, and checker regressions do not prove a current natural-language Agent/MCP answer, an exhaustive franchise graph, or an official watch order."
+      }
     },
     {
       "id": "G21",

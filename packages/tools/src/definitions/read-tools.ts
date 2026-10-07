@@ -469,9 +469,14 @@ export function createReadTools(
 
   const getSubjectRelations = defineTool({
     name: 'bangumi.get_subject_relations',
-    description: '获取与指定 Bangumi 条目关联的其他作品（前传、续集、衍生作、原著书籍、游戏等）。',
+    description:
+      '读取指定 Bangumi 条目的官方 v0 直接关系响应，并保留原始 relation 标签。默认返回原始关系数组以兼容现有调用；设置 includeEvidence=true 时附带来源方向、响应行数、解析限制和明确覆盖说明。此接口没有分页、总数或全系列完整性承诺；结果只代表当前来源条目指向的可见直接关系，不包含反向或传递关系，也不能证明未返回的关系不存在。关系行的接口顺序不是官方观看顺序；如需观看建议，请单独使用 bangumi.get_series_watch_order，它是有限的本地推导而非 canonical 顺序。匿名可见性可能隐藏敏感条目。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
+      includeEvidence: z
+        .boolean()
+        .optional()
+        .describe('启用带来源与覆盖限制的证据 envelope；默认 false，保持原始数组返回形式'),
     }),
     auth: 'none',
     scopes: [],
@@ -479,7 +484,35 @@ export function createReadTools(
     execute: async (input, context, deps) => {
       const activeClient = deps?.executionSession?.client || publicHttpClient;
       const activeService = new SubjectService(activeClient);
-      return await activeService.getSubjectRelations(input.subjectId);
+      const result = await activeService.getSubjectRelationsWithCoverage(input.subjectId);
+      if (input.includeEvidence !== true) return result.items;
+      return {
+        state: result.coverage.truncated ? 'partial' : 'observed',
+        subjectId: input.subjectId,
+        source: {
+          api: 'Bangumi official v0',
+          operation: 'GET /v0/subjects/{subject_id}/subjects',
+          direction: 'source_subject_to_returned_target',
+          scope: 'visible_direct_rows_returned_for_source_subject',
+          retrievedAt: new Date().toISOString(),
+        },
+        coverage: {
+          responseRowsObserved: result.coverage.observed,
+          rowsReturned: result.coverage.returned,
+          schemaDriftRows: result.coverage.schemaDriftRows,
+          truncated: result.coverage.truncated,
+          paginationAvailable: false,
+          totalCountAvailable: false,
+          completeness: 'not_provided_by_source',
+        },
+        items: result.items,
+        limitations: [
+          '仅表示本次响应中指定来源条目指向目标条目的直接关系，不含反向或传递关系。',
+          '官方 v0 此操作没有分页、总数或系列完整性字段；未返回关系不等于不存在。',
+          'relation 是来源记录的原始标签；接口行顺序不表示官方观看顺序。',
+          '匿名可见性可能不包含敏感条目。',
+        ],
+      };
     },
   });
 

@@ -110,15 +110,18 @@ describe('complete Bangumi tool surface', () => {
 
   it('executes the previously uncovered read and account-removal entry points', async () => {
     const publicClient = new HttpClient({ fetchFn: vi.fn() });
-    vi.spyOn(SubjectService.prototype, 'getSubjectRelations').mockResolvedValue([
-      {
-        id: 2,
-        type: 'anime',
-        name: '续集',
-        nameCn: '续集',
-        relation: '续集',
-      },
-    ] as any);
+    vi.spyOn(SubjectService.prototype, 'getSubjectRelationsWithCoverage').mockResolvedValue({
+      items: [
+        {
+          id: 2,
+          type: 'anime',
+          name: 'Sequel',
+          nameCn: '续集',
+          relation: '续集',
+        },
+      ],
+      coverage: { observed: 1, returned: 1, truncated: false, schemaDriftRows: 0 },
+    } as any);
     vi.spyOn(EpisodeService.prototype, 'getEpisodeById').mockResolvedValue({
       id: 4,
       name: '第 1 话',
@@ -190,7 +193,46 @@ describe('complete Bangumi tool surface', () => {
       (reads.get('bangumi.get_subject_relations')!.execute as any)({ subjectId: 1 }, context, {
         publicHttpClient: publicClient,
       }),
-    ).resolves.toMatchObject([{ id: 2, relation: '续集' }]);
+    ).resolves.toEqual([
+      {
+        id: 2,
+        type: 'anime',
+        name: 'Sequel',
+        nameCn: '续集',
+        relation: '续集',
+      },
+    ]);
+    await expect(
+      (reads.get('bangumi.get_subject_relations')!.execute as any)(
+        { subjectId: 1, includeEvidence: true },
+        context,
+        { publicHttpClient: publicClient },
+      ),
+    ).resolves.toMatchObject({
+      state: 'observed',
+      subjectId: 1,
+      source: {
+        api: 'Bangumi official v0',
+        operation: 'GET /v0/subjects/{subject_id}/subjects',
+        direction: 'source_subject_to_returned_target',
+        scope: 'visible_direct_rows_returned_for_source_subject',
+      },
+      coverage: {
+        responseRowsObserved: 1,
+        rowsReturned: 1,
+        schemaDriftRows: 0,
+        truncated: false,
+        paginationAvailable: false,
+        totalCountAvailable: false,
+        completeness: 'not_provided_by_source',
+      },
+      items: [{ id: 2, relation: '续集' }],
+      limitations: expect.arrayContaining([
+        expect.stringContaining('不含反向或传递关系'),
+        expect.stringContaining('没有分页、总数或系列完整性字段'),
+        expect.stringContaining('不表示官方观看顺序'),
+      ]),
+    });
     await expect(
       (reads.get('bangumi.get_episode')!.execute as any)({ episodeId: 4 }, context, {
         publicHttpClient: publicClient,
