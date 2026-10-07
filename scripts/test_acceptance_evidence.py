@@ -871,13 +871,35 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
         self.assertFalse(GENERATOR.codex_g26_report_is_valid(report))
 
-    def test_g26_bundle_attestation_ignores_caller_git_repository_overrides(self):
+    def test_g26_candidate_validation_ignores_caller_git_repository_overrides(self):
         expected = GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision)
         self.assertRegex(expected or '', r'^[0-9a-f]{64}$')
+        report_path = self.live_probe_dir / 'g26-exact-tag-agent-mcp-run95.json'
+        report_path.write_text(
+            json.dumps(self._g26_report_fixture()),
+            encoding='utf-8',
+        )
+        self._git('add', report_path.relative_to(self.root).as_posix())
+        self._git('commit', '-qm', 'add sanitized G26 evidence after its candidate')
+        self.assertTrue(
+            GENERATOR.codex_g26_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
 
         alternate = self.root / 'alternate-git-context'
         alternate.mkdir()
         subprocess.run(['git', 'init', '-q'], cwd=alternate, check=True)
+        caller_global_config = self.root / 'caller-global.gitconfig'
+        caller_global_config.write_text(
+            f'[core]\n\tworktree = {alternate}\n',
+            encoding='utf-8',
+        )
+        caller_system_config = self.root / 'caller-system.gitconfig'
+        caller_system_config.write_text(
+            f'[core]\n\tworktree = {alternate}\n',
+            encoding='utf-8',
+        )
         overrides = {
             'GIT_DIR': str(alternate / '.git'),
             'GIT_WORK_TREE': str(alternate),
@@ -886,13 +908,32 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'GIT_CONFIG_COUNT': '1',
             'GIT_CONFIG_KEY_0': 'core.worktree',
             'GIT_CONFIG_VALUE_0': str(alternate),
+            'GIT_CONFIG_GLOBAL': str(caller_global_config),
+            'GIT_CONFIG_SYSTEM': str(caller_system_config),
+            'GIT_CONFIG_NOSYSTEM': '0',
         }
         previous = {key: os.environ.get(key) for key in overrides}
         try:
             os.environ.update(overrides)
+            sanitized_environment = GENERATOR._sanitized_repository_git_environment()
+            self.assertEqual(sanitized_environment['GIT_CONFIG_GLOBAL'], os.devnull)
+            self.assertEqual(sanitized_environment['GIT_CONFIG_SYSTEM'], os.devnull)
+            self.assertEqual(sanitized_environment['GIT_CONFIG_NOSYSTEM'], '1')
+            GENERATOR._codex_probe_revision_has_implementation.cache_clear()
+            self.assertTrue(GENERATOR._codex_revision_has_markers(
+                str(self.root),
+                self.source_revision,
+                GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
+            ))
             self.assertEqual(
                 GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision),
                 expected,
+            )
+            GENERATOR._codex_probe_revision_has_implementation.cache_clear()
+            self.assertTrue(
+                GENERATOR.codex_g26_report_matches_candidate_revision(
+                    report_path, self.source_revision,
+                ),
             )
         finally:
             for key, value in previous.items():
@@ -900,6 +941,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     os.environ.pop(key, None)
                 else:
                     os.environ[key] = value
+            GENERATOR._codex_probe_revision_has_implementation.cache_clear()
 
     def test_rejects_g26_report_with_raw_data_wrong_scope_or_failed_answer_checks(self):
         invalid_reports = [

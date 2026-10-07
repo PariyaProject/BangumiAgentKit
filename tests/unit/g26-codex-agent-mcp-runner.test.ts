@@ -203,11 +203,17 @@ describe('G26 Codex one-tool runner', () => {
       GIT_CONFIG_COUNT: '1',
       GIT_CONFIG_KEY_0: 'core.worktree',
       GIT_CONFIG_VALUE_0: '/alternate',
+      GIT_CONFIG_GLOBAL: '/alternate/global.gitconfig',
+      GIT_CONFIG_SYSTEM: '/alternate/system.gitconfig',
+      GIT_CONFIG_NOSYSTEM: '0',
     });
 
     expect(sanitized).toEqual({
       PATH: '/usr/bin',
       CODEX_HOME: '/private/codex-home',
+      GIT_CONFIG_GLOBAL: os.devNull,
+      GIT_CONFIG_SYSTEM: os.devNull,
+      GIT_CONFIG_NOSYSTEM: '1',
     });
   });
 

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const DIST_RELATIVE_PATHS = ['apps/mcp/dist'];
@@ -29,6 +30,9 @@ export function sanitizeGitRepositoryEnvironment(source = process.env) {
       delete environment[key];
     }
   }
+  environment.GIT_CONFIG_GLOBAL = os.devNull;
+  environment.GIT_CONFIG_SYSTEM = os.devNull;
+  environment.GIT_CONFIG_NOSYSTEM = '1';
   return environment;
 }
 

@@ -590,31 +590,62 @@ def codex_g20_result_is_valid(result: object, expected_subject_id: int) -> bool:
     return artifact == {'returned': False, 'persisted': False}
 
 
-@functools.lru_cache(maxsize=128)
-def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
-    """Bind a report revision to the tracked one-tool server and its evidence checks."""
-    return _codex_revision_has_markers(
-        repository_root, revision, CODEX_PROBE_IMPLEMENTATION_MARKERS,
+_GIT_REPOSITORY_OVERRIDE_KEYS = {
+    'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+    'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM',
+    'GIT_NAMESPACE', 'GIT_PREFIX', 'GIT_CONFIG',
+}
+
+
+def _sanitized_repository_git_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    for key in tuple(environment):
+        if key in _GIT_REPOSITORY_OVERRIDE_KEYS or key.startswith('GIT_CONFIG_'):
+            environment.pop(key, None)
+    environment.update({
+        'GIT_CONFIG_GLOBAL': os.devnull,
+        'GIT_CONFIG_SYSTEM': os.devnull,
+        'GIT_CONFIG_NOSYSTEM': '1',
+    })
+    return environment
+
+
+def _run_repository_git(
+    repository_root: str | Path, *arguments: str,
+) -> subprocess.CompletedProcess:
+    """Run a Git read against this checkout, ignoring caller-selected Git metadata/config."""
+    return subprocess.run(
+        ['git', *arguments],
+        cwd=repository_root,
+        env=_sanitized_repository_git_environment(),
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
 def _codex_revision_has_markers(
     repository_root: str, revision: str, markers_by_path: dict[str, tuple[str, ...]],
 ) -> bool:
-    resolved = subprocess.run(
-        ['git', 'rev-parse', '--verify', f'{revision}^{{commit}}'],
-        cwd=repository_root, capture_output=True, text=True, check=False,
+    resolved = _run_repository_git(
+        repository_root, 'rev-parse', '--verify', f'{revision}^{{commit}}',
     )
     if resolved.returncode != 0 or resolved.stdout.strip() != revision:
         return False
     for relative_path, markers in markers_by_path.items():
-        source = subprocess.run(
-            ['git', 'show', f'{revision}:{relative_path}'],
-            cwd=repository_root, capture_output=True, text=True, check=False,
-        )
+        source = _run_repository_git(repository_root, 'show', f'{revision}:{relative_path}')
         if source.returncode != 0 or any(marker not in source.stdout for marker in markers):
             return False
     return True
+
+
+@functools.lru_cache(maxsize=128)
+def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
+    """Bind a report revision to the tracked one-tool server and its evidence checks."""
+    return _codex_revision_has_markers(
+        repository_root, revision, CODEX_PROBE_IMPLEMENTATION_MARKERS,
+    )
 
 
 def codex_probe_revision_has_implementation(revision: object) -> bool:
@@ -654,33 +685,24 @@ def codex_g20_report_matches_candidate_revision(report_path: Path, revision: obj
     except ValueError:
         return False
 
-    head = subprocess.run(
-        ['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True, check=False,
-    )
+    head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
     if head.returncode != 0:
         return False
     head_sha = head.stdout.strip()
-    committed_in_head = subprocess.run(
-        ['git', 'cat-file', '-e', f'{head_sha}:{relative_path}'],
-        cwd=ROOT, capture_output=True, text=True, check=False,
-    )
+    committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
     if committed_in_head.returncode != 0:
         # Before the sanitized report is committed, HEAD is still the candidate
         # that authorized the one-shot query. A staged report is also absent
         # from the HEAD tree and follows this path.
         return revision == head_sha
 
-    added_commit = subprocess.run(
-        ['git', 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+    added_commit = _run_repository_git(
+        ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
     )
     commit_sha = added_commit.stdout.strip()
     if added_commit.returncode != 0 or not re.fullmatch(r'[0-9a-f]{40}', commit_sha):
         return False
-    parents = subprocess.run(
-        ['git', 'rev-list', '--parents', '-n', '1', commit_sha],
-        cwd=ROOT, capture_output=True, text=True, check=False,
-    )
+    parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
 
@@ -696,21 +718,8 @@ def codex_g26_candidate_bundle_sha256(revision: object) -> str | None:
     """Read the exact runtime-bundle digest attested by the source Candidate commit."""
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return None
-    git_environment = os.environ.copy()
-    for key in tuple(git_environment):
-        if (
-            key in {
-                'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
-                'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
-                'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM',
-                'GIT_NAMESPACE', 'GIT_PREFIX', 'GIT_CONFIG',
-            }
-            or key.startswith('GIT_CONFIG_')
-        ):
-            git_environment.pop(key, None)
-    result = subprocess.run(
-        ['git', 'show', f'{revision}:{CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH}'],
-        cwd=ROOT, env=git_environment, capture_output=True, text=True, check=False,
+    result = _run_repository_git(
+        ROOT, 'show', f'{revision}:{CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH}',
     )
     if result.returncode != 0:
         return None
