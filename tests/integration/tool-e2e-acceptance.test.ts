@@ -396,6 +396,58 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(CURRENT_FULL_PUBLIC_QA_EVIDENCE).not.toContain(report);
   });
 
+  it('counts a G20 Luna report only when its sanitized direct-row readback matches the current contract', () => {
+    const reports = CODEX_LUNA_EVIDENCE.filter(
+      (report: any) => report.toolName === 'bangumi.get_subject_relations',
+    );
+    expect(reports.length).toBeLessThanOrEqual(1);
+    for (const report of reports) {
+      expect(toolContractMatchesCurrent(report, 'bangumi.get_subject_relations')).toBe(true);
+      expect(report).toMatchObject({
+        evidenceKind: 'codex_cli_mcp_tool_use',
+        profile: 'codex-luna-max-one-tool-v1',
+        model: 'gpt-6-luna',
+        reasoningEffort: 'max',
+        processExitCode: 0,
+        resultStatus: 'SUCCESS',
+        resultCount: 1,
+        codexMcpToolEventCount: 1,
+        nonMcpToolEventCount: 0,
+        shellToolCallCount: 0,
+        allowedCallCount: 1,
+        deniedCallCount: 0,
+        privacy: {
+          authProfile: 'anonymous',
+          oauthAttempted: false,
+          accountDataRead: false,
+          writesAttempted: false,
+          qqPipelineTested: false,
+          timClientTested: false,
+          promptStored: false,
+          answerStored: false,
+          rawResultStored: false,
+          artifactImageBytesStored: false,
+          credentialsStored: false,
+        },
+      });
+      expect(report.scenarios).toHaveLength(1);
+      expect(report.scenarios[0]).toMatchObject({
+        id: 'bangumi.get_subject_relations',
+        passed: true,
+        exactArgumentsMatched: true,
+        oneToolAllowlistVerified: true,
+        resultReadbackVerified: true,
+        answerCheckPassed: true,
+        toolCalls: [{ name: 'bangumi.get_subject_relations', state: 'DONE' }],
+      });
+      expect(report.scenarios[0].result.visibleRows.length).toBeGreaterThan(0);
+      expect(report.scenarios[0].result).not.toHaveProperty('items');
+      expect(report.scenarios[0].result).not.toHaveProperty('structuredContent');
+      expect(report.scenarios[0]).not.toHaveProperty('answer');
+      expect(report.scenarios[0]).not.toHaveProperty('prompt');
+    }
+  });
+
   it('records observed model-to-MCP calls without implying QQ or TIM acceptance', () => {
     const rows = rowsByTool();
     const catalogNames = catalog.map((item) => item.name).sort();
@@ -417,7 +469,15 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(new Set(evidenceNames).size).toBe(evidenceNames.length);
     const observedEvidenceNames = new Set(evidenceNames);
     const uncoveredNames = catalogNames.filter((name) => !observedEvidenceNames.has(name));
-    expect(uncoveredNames).toEqual(['bangumi.get_subject_relations']);
+    const currentG20Report = CODEX_LUNA_EVIDENCE.find(
+      (report: any) => report.toolName === 'bangumi.get_subject_relations',
+    );
+    const currentG20Evidence = Boolean(
+      currentG20Report &&
+        currentG20Report.scenarios?.[0]?.passed === true &&
+        toolContractMatchesCurrent(currentG20Report, 'bangumi.get_subject_relations'),
+    );
+    expect(uncoveredNames).toEqual(currentG20Evidence ? [] : ['bangumi.get_subject_relations']);
     expect(evidenceNames.sort()).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
@@ -482,6 +542,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.search_subjects',
         'bangumi.auth_start',
         'bangumi.auth_switch_account',
+        ...(currentG20Evidence ? ['bangumi.get_subject_relations'] : []),
         'bangumi.call_operation',
         'bangumi.render_calendar',
         'bangumi.render_collection_backlog',

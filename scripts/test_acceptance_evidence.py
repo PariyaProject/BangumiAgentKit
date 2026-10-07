@@ -272,6 +272,19 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'description': 'Render current stats snapshot.',
                 'inputSchema': {'type': 'object', 'properties': {'subjectId': {'type': 'integer'}}},
             },
+            {
+                'name': 'bangumi.get_subject_relations',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Read direct official subject relations with optional evidence.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'subjectId': {'type': 'integer'},
+                        'includeEvidence': {'type': 'boolean'},
+                    },
+                    'required': ['subjectId'],
+                },
+            },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
         self.catalog_path = self.root / 'docs/tool-catalog.json'
@@ -291,7 +304,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         )
 
     def _init_probe_source_history(self):
-        for relative_path in GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS:
+        relative_paths = {
+            *GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
+        }
+        for relative_path in relative_paths:
             source_path = self.original_root / relative_path
             fixture_path = self.root / relative_path
             fixture_path.parent.mkdir(parents=True, exist_ok=True)
@@ -299,8 +316,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self._git('init', '-q')
         self._git('config', 'user.name', 'Acceptance Evidence Test')
         self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
-        self._git('add', 'apps/mcp/codex-one-tool-mcp-server.mjs',
-                  'scripts/lib/codex-one-tool-evidence.mjs')
+        self._git('add', *sorted(relative_paths))
         self._git('commit', '-qm', 'add one-tool probe implementation fixture')
         implementation_revision = self._git('rev-parse', 'HEAD').stdout.strip()
         server_path = self.root / 'apps/mcp/codex-one-tool-mcp-server.mjs'
@@ -322,24 +338,81 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
     def write_report(self, tool_name='bangumi.get_subject_stats_intelligence', **overrides):
         tool = next(item for item in self.catalog if item['name'] == tool_name)
-        arguments = GENERATOR.CODEX_G23_PROBE_ARGUMENTS[tool_name]
+        arguments = GENERATOR.CODEX_PROBE_ARGUMENTS[tool_name]
+        is_g20 = tool_name in GENERATOR.CODEX_G20_PROBE_ARGUMENTS
         is_renderer = tool_name.startswith('bangumi.render_')
-        answer_checks = {
-            key: True for key in (GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer
-                                  else GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS)
-        }
-        result = {
-            'toolName': tool_name,
-            'resultState': 'artifact_returned' if is_renderer else 'partial',
-            'resultByteLength': 128,
-            'resultSha256': 'b' * 64,
-            'sourceOperations': [{'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 1,
-                                  'succeeded': 1, 'failed': 0}],
-            'artifact': ({'returned': True, 'persisted': False, 'mimeType': 'image/png',
-                          'width': 720, 'height': 1200, 'byteLength': 128000,
-                          'sha256': 'c' * 64, 'pngSignatureValid': True}
-                         if is_renderer else {'returned': False, 'persisted': False}),
-        }
+        if is_g20:
+            answer_checks = {key: True for key in GENERATOR.CODEX_G20_ANSWER_CHECK_FIELDS}
+            result = {
+                'toolName': tool_name,
+                'resultState': 'observed',
+                'resultByteLength': 1024,
+                'resultSha256': 'd' * 64,
+                'sourceOperations': [],
+                'artifact': {'returned': False, 'persisted': False},
+                'sourceSubjectId': 227245,
+                'source': {
+                    'api': 'Bangumi official v0',
+                    'operation': 'GET /v0/subjects/{subject_id}/subjects',
+                    'direction': 'source_subject_to_returned_target',
+                    'scope': 'visible_direct_rows_returned_for_source_subject',
+                    'retrievedAt': '2026-10-07T10:30:00.000Z',
+                },
+                'coverage': {
+                    'responseRowsObserved': 2,
+                    'rowsReturned': 2,
+                    'schemaDriftRows': 0,
+                    'truncated': False,
+                    'paginationAvailable': False,
+                    'totalCountAvailable': False,
+                    'completeness': 'not_provided_by_source',
+                },
+                'limitationsCount': 4,
+                'visibleRows': [
+                    {'id': 218707, 'name': 'Fixture root', 'nameCn': '测试主线', 'relation': '主线故事'},
+                    {'id': 227246, 'name': 'Fixture extra', 'relation': '外传'},
+                ],
+                'textProjection': {
+                    'textUtf8Bytes': 1180,
+                    'rowsIncluded': 2,
+                    'rowsOmitted': 0,
+                    'displayNamesClipped': 0,
+                    'relationLabelsClipped': 0,
+                    'limitationsClipped': 0,
+                    'imageFieldsOmitted': 2,
+                    'fullStructuredContentAvailable': True,
+                },
+                'answerCounters': {
+                    'visibleSourceRows': 2,
+                    'invalidSourceRowsCount': 0,
+                    'duplicateSourceRowsCount': 0,
+                    'answerRowsParsed': 2,
+                    'rowsMatched': 2,
+                    'missingRowsCount': 0,
+                    'mismatchedRowsCount': 0,
+                    'unmatchedRowsCount': 0,
+                    'duplicateAnswerRowsCount': 0,
+                    'unstructuredAnswerLinesCount': 0,
+                    'toolTextUtf8Bytes': 1180,
+                },
+            }
+        else:
+            answer_checks = {
+                key: True for key in (GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer
+                                      else GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS)
+            }
+            result = {
+                'toolName': tool_name,
+                'resultState': 'artifact_returned' if is_renderer else 'partial',
+                'resultByteLength': 128,
+                'resultSha256': 'b' * 64,
+                'sourceOperations': [{'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 1,
+                                      'succeeded': 1, 'failed': 0}],
+                'artifact': ({'returned': True, 'persisted': False, 'mimeType': 'image/png',
+                              'width': 720, 'height': 1200, 'byteLength': 128000,
+                              'sha256': 'c' * 64, 'pngSignatureValid': True}
+                             if is_renderer else {'returned': False, 'persisted': False}),
+            }
         report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_mcp_tool_use',
@@ -352,7 +425,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'toolName': tool_name,
             'toolDescriptionSha256': self.sha256(tool['description']),
             'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
-            'argumentProfile': 'fixed-public-subject-218707-v1',
+            'argumentProfile': GENERATOR.CODEX_ARGUMENT_PROFILES[tool_name],
             'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(arguments),
             'serverToolNames': [tool_name],
             'serverToolCount': 1,
@@ -400,6 +473,130 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 },
             },
         )
+
+    def test_accepts_catalog_bound_g20_report_with_verified_visible_rows_only(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        self.assertTrue(GENERATOR.codex_g20_probe_revision_has_implementation(self.source_revision))
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_names(self.catalog),
+            {'bangumi.get_subject_relations'},
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_subject_relations'],
+            {'docs/live-probes/pariya-agent-codex-luna-e2e-G20-relations.json'},
+        )
+        self.assertNotIn('answer', report['scenarios'][0])
+        self.assertNotIn('prompt', report['scenarios'][0])
+        self.assertNotIn('structuredContent', report['scenarios'][0]['result'])
+        self.assertEqual(len(report['scenarios'][0]['result']['visibleRows']), 2)
+
+    def test_rejects_g20_contract_mismatch_or_incomplete_visible_readback(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'
+        invalid_reports = [
+            {'argumentProfile': 'fixed-public-subject-218707-v1'},
+            {'sourceRevision': self.unrelated_source_revision},
+            {'scenarios': [{
+                'id': 'bangumi.get_subject_relations',
+                'passed': True,
+                'exactArgumentsMatched': True,
+                'oneToolAllowlistVerified': True,
+                'resultReadbackVerified': True,
+                'answerCheckPassed': True,
+                'answerChecks': {key: True for key in GENERATOR.CODEX_G20_ANSWER_CHECK_FIELDS},
+                'toolCalls': [{'name': 'bangumi.get_subject_relations', 'state': 'DONE'}],
+                'result': {**self._g20_result_fixture(), 'sourceSubjectId': 218707},
+            }]},
+            {'scenarios': [{
+                'id': 'bangumi.get_subject_relations',
+                'passed': True,
+                'exactArgumentsMatched': True,
+                'oneToolAllowlistVerified': True,
+                'resultReadbackVerified': True,
+                'answerCheckPassed': True,
+                'answerChecks': {key: True for key in GENERATOR.CODEX_G20_ANSWER_CHECK_FIELDS},
+                'toolCalls': [{'name': 'bangumi.get_subject_relations', 'state': 'DONE'}],
+                'result': {
+                    **self._g20_result_fixture(),
+                    'visibleRows': [],
+                },
+            }]},
+            {'scenarios': [{
+                'id': 'bangumi.get_subject_relations',
+                'passed': True,
+                'exactArgumentsMatched': True,
+                'oneToolAllowlistVerified': True,
+                'resultReadbackVerified': True,
+                'answerCheckPassed': True,
+                'answerChecks': {key: True for key in GENERATOR.CODEX_G20_ANSWER_CHECK_FIELDS},
+                'toolCalls': [{'name': 'bangumi.get_subject_relations', 'state': 'DONE'}],
+                'result': {**self._g20_result_fixture(), 'structuredContent': {'items': []}},
+            }]},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                self.write_report(tool_name='bangumi.get_subject_relations', **override)
+                self.assertEqual(
+                    GENERATOR.model_mcp_e2e_names(self.catalog),
+                    set(),
+                )
+
+    @staticmethod
+    def _g20_result_fixture():
+        return {
+            'toolName': 'bangumi.get_subject_relations',
+            'resultState': 'observed',
+            'resultByteLength': 1024,
+            'resultSha256': 'd' * 64,
+            'sourceOperations': [],
+            'artifact': {'returned': False, 'persisted': False},
+            'sourceSubjectId': 227245,
+            'source': {
+                'api': 'Bangumi official v0',
+                'operation': 'GET /v0/subjects/{subject_id}/subjects',
+                'direction': 'source_subject_to_returned_target',
+                'scope': 'visible_direct_rows_returned_for_source_subject',
+                'retrievedAt': '2026-10-07T10:30:00.000Z',
+            },
+            'coverage': {
+                'responseRowsObserved': 2,
+                'rowsReturned': 2,
+                'schemaDriftRows': 0,
+                'truncated': False,
+                'paginationAvailable': False,
+                'totalCountAvailable': False,
+                'completeness': 'not_provided_by_source',
+            },
+            'limitationsCount': 4,
+            'visibleRows': [
+                {'id': 218707, 'name': 'Fixture root', 'nameCn': '测试主线', 'relation': '主线故事'},
+                {'id': 227246, 'name': 'Fixture extra', 'relation': '外传'},
+            ],
+            'textProjection': {
+                'textUtf8Bytes': 1180,
+                'rowsIncluded': 2,
+                'rowsOmitted': 0,
+                'displayNamesClipped': 0,
+                'relationLabelsClipped': 0,
+                'limitationsClipped': 0,
+                'imageFieldsOmitted': 2,
+                'fullStructuredContentAvailable': True,
+            },
+            'answerCounters': {
+                'visibleSourceRows': 2,
+                'invalidSourceRowsCount': 0,
+                'duplicateSourceRowsCount': 0,
+                'answerRowsParsed': 2,
+                'rowsMatched': 2,
+                'missingRowsCount': 0,
+                'mismatchedRowsCount': 0,
+                'unmatchedRowsCount': 0,
+                'duplicateAnswerRowsCount': 0,
+                'unstructuredAnswerLinesCount': 0,
+                'toolTextUtf8Bytes': 1180,
+            },
+        }
 
     def test_rejects_wrong_model_effort_catalog_scope_privacy_or_raw_content(self):
         invalid_reports = [
