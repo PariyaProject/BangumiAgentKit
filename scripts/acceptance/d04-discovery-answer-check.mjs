@@ -410,3 +410,113 @@ export function createSanitizedD04CanaryReport(input) {
     passed,
   };
 }
+
+export function createD04CodexAcceptanceReport(input) {
+  const sanitized = createSanitizedD04CanaryReport(input);
+  const server = input?.serverSummary;
+  const codex = input?.codexSummary;
+  const answerCheck = input?.answerCheck;
+  const checks = answerCheck?.checks && typeof answerCheck.checks === 'object'
+    ? answerCheck.checks
+    : {};
+  const answerChecks = {
+    exactTargetToolCalledOnce: checks.exactTargetToolCalledOnce === true,
+    exactQueryArguments: checks.exactQueryArguments === true,
+    mcpTextProjectionPreservesFullStructuredResult:
+      checks.mcpTextProjectionPreservesFullStructuredResult === true,
+    officialExperimentalSourceAndEstimatedCoverage:
+      checks.officialExperimentalSourceAndEstimatedCoverage === true,
+    exactAnimeTagAndRatingFilters: checks.exactAnimeTagAndRatingFilters === true,
+    reportedEpisodeCountIsLocalPostFilter: checks.reportedEpisodeCountIsLocalPostFilter === true,
+    withinResourceCeilings: checks.withinResourceCeilings === true,
+    allObservedRowsMatchRequestedFilters: checks.allObservedRowsMatchRequestedFilters === true,
+    answerRowsMatchVisibleSourceRows: checks.answerRowsMatchVisibleSourceRows === true,
+    queryConditionsDisclosed: checks.queryConditionsDisclosed === true,
+    boundedExperimentalEstimatedScopeDisclosed:
+      checks.boundedExperimentalEstimatedScopeDisclosed === true,
+    reportedEpsMeaningDisclosed: checks.reportedEpsMeaningDisclosed === true,
+    nonExhaustiveBoundaryDisclosed: checks.nonExhaustiveBoundaryDisclosed === true,
+    textProjectionOmissionDisclosed: checks.textProjectionOmissionDisclosed === true,
+    emptyResultNotOverclaimed: checks.emptyResultNotOverclaimed === true,
+    noUnsupportedCompletenessOrAbsenceClaim:
+      checks.unsupportedCompletenessOrAbsenceClaim === false,
+    numericClaimsMatchObservedSource: checks.numericClaimsMatchObservedSource === true,
+    plainTextWithoutMarkdown: checks.markdownFormattingDetected === false,
+  };
+  const result = server?.result;
+  const facts = result?.d04DiscoveryChecks;
+  const resultState = facts?.coverageState === 'complete' && facts?.resultState === 'ok'
+    ? 'complete'
+    : ['ok', 'partial'].includes(facts?.resultState) ? 'partial' : 'unavailable';
+  const eventStreamAccepted = codex?.eventStreamParsed === true &&
+    codex?.processExitCode === 0 && codex?.codexMcpToolEventCount === 1 &&
+    codex?.nonMcpToolEventCount === 0 && codex?.shellToolCallCount === 0;
+  const passed = sanitized.passed && eventStreamAccepted &&
+    Object.values(answerChecks).every(Boolean) &&
+    typeof codex?.codexCliVersion === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+$/u.test(codex.codexCliVersion) &&
+    codex?.model === 'gpt-6-luna' && codex?.reasoningEffort === 'max' &&
+    Number.isSafeInteger(result?.resultByteLength) && result.resultByteLength > 0 &&
+    typeof result?.resultSha256 === 'string' && /^[0-9a-f]{64}$/u.test(result.resultSha256) &&
+    Array.isArray(result?.sourceOperations) && ['complete', 'partial'].includes(resultState);
+  return {
+    schemaVersion: 1,
+    evidenceKind: 'codex_cli_mcp_tool_use',
+    sourceRevision: sanitized.sourceRevision,
+    codexCliVersion: codex?.codexCliVersion ?? null,
+    catalogSha256: sanitized.catalogSha256,
+    profile: 'codex-luna-max-one-tool-v1',
+    model: codex?.model === 'gpt-6-luna' ? 'gpt-6-luna' : null,
+    reasoningEffort: codex?.reasoningEffort === 'max' ? 'max' : null,
+    toolName: D04_DISCOVERY_TOOL,
+    toolDescriptionSha256: sanitized.toolDescriptionSha256,
+    inputSchemaSha256: sanitized.inputSchemaSha256,
+    argumentProfile: 'd04-reported-episode-count-discovery-v1',
+    expectedArgumentsSha256: sanitized.expectedArgumentsSha256,
+    serverToolNames: [D04_DISCOVERY_TOOL],
+    serverToolCount: Number.isSafeInteger(server?.serverToolCount) ? server.serverToolCount : 0,
+    processExitCode: Number.isInteger(codex?.processExitCode) ? codex.processExitCode : -1,
+    resultStatus: server?.serverResultStatus === 'SUCCESS' ? 'SUCCESS' : 'NOT_ACCEPTED',
+    resultCount: server?.serverResultStatus === 'SUCCESS' ? 1 : 0,
+    eventStreamParsed: codex?.eventStreamParsed === true,
+    codexMcpToolEventCount: Number.isSafeInteger(codex?.codexMcpToolEventCount)
+      ? codex.codexMcpToolEventCount : 0,
+    nonMcpToolEventCount: Number.isSafeInteger(codex?.nonMcpToolEventCount)
+      ? codex.nonMcpToolEventCount : 0,
+    shellToolCallCount: Number.isSafeInteger(codex?.shellToolCallCount) ? codex.shellToolCallCount : 0,
+    allowedCallCount: Number.isSafeInteger(server?.allowedCallCount) ? server.allowedCallCount : 0,
+    deniedCallCount: Number.isSafeInteger(server?.deniedCallCount) ? server.deniedCallCount : 0,
+    qqPipelineTested: false,
+    timClientTested: false,
+    privacy: {
+      authProfile: 'anonymous',
+      oauthAttempted: false,
+      accountDataRead: false,
+      writesAttempted: false,
+      qqPipelineTested: false,
+      timClientTested: false,
+      promptStored: false,
+      answerStored: false,
+      rawResultStored: false,
+      artifactImageBytesStored: false,
+      credentialsStored: false,
+    },
+    scenarios: [{
+      id: D04_DISCOVERY_TOOL,
+      passed,
+      exactArgumentsMatched: sanitized.queryArgumentsMatch,
+      oneToolAllowlistVerified: sanitized.serverContract,
+      resultReadbackVerified: checks.resultReadbackAvailable === true,
+      answerCheckPassed: answerCheck?.passed === true,
+      answerChecks,
+      toolCalls: [{ name: D04_DISCOVERY_TOOL, state: 'DONE' }],
+      result: {
+        toolName: D04_DISCOVERY_TOOL,
+        resultState,
+        resultByteLength: Number.isSafeInteger(result?.resultByteLength) ? result.resultByteLength : 0,
+        resultSha256: typeof result?.resultSha256 === 'string' ? result.resultSha256 : '0'.repeat(64),
+        sourceOperations: Array.isArray(result?.sourceOperations) ? result.sourceOperations : [],
+        artifact: { returned: false, persisted: false },
+      },
+    }],
+  };
+}

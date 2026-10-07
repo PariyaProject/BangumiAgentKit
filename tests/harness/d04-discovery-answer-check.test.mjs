@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  createD04CodexAcceptanceReport,
   createSanitizedD04CanaryReport,
   D04_DISCOVERY_ARGUMENTS,
   verifyD04DiscoveryAnswer,
@@ -234,4 +235,74 @@ test('sanitized D04 report retains only hashes, booleans, and aggregate counters
   assert.doesNotMatch(encoded, /公开条目|Official title|科幻|3001|3500|episodesReported|名称=/u);
   assert.equal(report.rawAnswerStored, false);
   assert.equal(report.subjectFactsStored, false);
+});
+
+test('D04 Codex evidence uses the strict sanitized one-tool acceptance schema', () => {
+  const { toolOutput } = resultFixture();
+  const answerCheck = verifyD04DiscoveryAnswer(
+    answerFixture(),
+    [{ name: 'bangumi.query_subjects', state: 'DONE' }],
+    D04_DISCOVERY_ARGUMENTS,
+    toolOutput,
+  );
+  const privacy = {
+    authProfile: 'anonymous', oauthAttempted: false, accountDataRead: false,
+    writesAttempted: false, qqPipelineTested: false, timClientTested: false,
+    promptStored: false, answerStored: false, rawResultStored: false,
+    artifactImageBytesStored: false, credentialsStored: false,
+  };
+  const report = createD04CodexAcceptanceReport({
+    queryArguments: D04_DISCOVERY_ARGUMENTS,
+    answerCheck,
+    serverSummary: {
+      serverProfile: 'one-tool-anonymous-public-v1',
+      sourceRevision: 'a'.repeat(40),
+      catalogSha256: 'b'.repeat(64),
+      toolName: 'bangumi.query_subjects',
+      toolDescriptionSha256: 'c'.repeat(64),
+      inputSchemaSha256: 'd'.repeat(64),
+      expectedArgumentsSha256: 'e'.repeat(64),
+      serverToolNames: ['bangumi.query_subjects'],
+      serverToolCount: 1,
+      serverResultStatus: 'SUCCESS',
+      allowedCallCount: 1,
+      deniedCallCount: 0,
+      argumentMatch: true,
+      result: {
+        resultState: 'partial',
+        resultByteLength: 4096,
+        resultSha256: 'f'.repeat(64),
+        sourceOperations: [{ operation: 'POST /v0/search/subjects', attempted: 1, succeeded: 1, failed: 0 }],
+        artifact: { returned: false, persisted: false },
+        d04DiscoveryChecks: { operation: 'searchSubjects', resultState: 'partial', coverageState: 'partial' },
+      },
+      privacy,
+    },
+    codexSummary: {
+      codexCliVersion: '0.160.1',
+      processExitCode: 0,
+      eventStreamParsed: true,
+      codexMcpToolEventCount: 1,
+      nonMcpToolEventCount: 0,
+      shellToolCallCount: 0,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+    },
+  });
+  const encoded = JSON.stringify(report);
+
+  assert.deepEqual(Object.keys(report).sort(), [
+    'schemaVersion', 'evidenceKind', 'sourceRevision', 'codexCliVersion', 'catalogSha256',
+    'profile', 'model', 'reasoningEffort', 'toolName', 'toolDescriptionSha256',
+    'inputSchemaSha256', 'argumentProfile', 'expectedArgumentsSha256', 'serverToolNames',
+    'serverToolCount', 'processExitCode', 'resultStatus', 'resultCount', 'eventStreamParsed',
+    'codexMcpToolEventCount', 'nonMcpToolEventCount', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'qqPipelineTested', 'timClientTested', 'privacy', 'scenarios',
+  ].sort());
+  assert.equal(report.scenarios[0].passed, true);
+  assert.equal(report.scenarios[0].answerCheckPassed, true);
+  assert.equal(report.scenarios[0].result.resultState, 'partial');
+  assert.doesNotMatch(encoded, /公开条目|Official title|科幻|3001|episodesReported|subjectId/u);
+  assert.equal(Object.hasOwn(report, 'prompt'), false);
+  assert.equal(Object.hasOwn(report, 'answer'), false);
 });

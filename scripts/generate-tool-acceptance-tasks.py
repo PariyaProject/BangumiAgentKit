@@ -220,6 +220,18 @@ CODEX_G23_PROBE_ARGUMENTS = {
     'bangumi.get_subject_stats_intelligence': {'subjectId': 218707},
     'bangumi.render_subject_stats_intelligence': {'subjectId': 218707},
 }
+CODEX_D04_PROBE_ARGUMENTS = {
+    'bangumi.query_subjects': {
+        'media': 'anime',
+        'tags': ['科幻'],
+        'ratingCount': {'min': 3001},
+        'episodeCount': {'max': 12},
+        'resultMode': 'all',
+        'limit': 100,
+        'explain': 'full',
+    },
+}
+CODEX_ONE_TOOL_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_D04_PROBE_ARGUMENTS
 CODEX_PRIVACY_FLAGS = (
     'oauthAttempted', 'accountDataRead', 'writesAttempted', 'qqPipelineTested',
     'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
@@ -248,6 +260,18 @@ CODEX_STATS_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {
     'collectionDistributionClaimsMatch',
 }
 CODEX_RENDERER_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {'artifactMentioned'}
+CODEX_D04_ANSWER_CHECK_FIELDS = {
+    'exactTargetToolCalledOnce', 'exactQueryArguments',
+    'mcpTextProjectionPreservesFullStructuredResult',
+    'officialExperimentalSourceAndEstimatedCoverage', 'exactAnimeTagAndRatingFilters',
+    'reportedEpisodeCountIsLocalPostFilter', 'withinResourceCeilings',
+    'allObservedRowsMatchRequestedFilters', 'answerRowsMatchVisibleSourceRows',
+    'queryConditionsDisclosed', 'boundedExperimentalEstimatedScopeDisclosed',
+    'reportedEpsMeaningDisclosed', 'nonExhaustiveBoundaryDisclosed',
+    'textProjectionOmissionDisclosed', 'emptyResultNotOverclaimed',
+    'noUnsupportedCompletenessOrAbsenceClaim', 'numericClaimsMatchObservedSource',
+    'plainTextWithoutMarkdown',
+}
 CODEX_ANSWER_CHECK_FIELDS = CODEX_STATS_ANSWER_CHECK_FIELDS | CODEX_RENDERER_ANSWER_CHECK_FIELDS
 CODEX_RESULT_FIELDS = {
     'toolName', 'resultState', 'resultByteLength', 'resultSha256', 'sourceOperations', 'artifact',
@@ -372,7 +396,17 @@ def codex_mcp_evidence_is_valid(
         return False
 
     tool_name = report.get('toolName')
-    arguments = CODEX_G23_PROBE_ARGUMENTS.get(tool_name)
+    arguments = CODEX_ONE_TOOL_PROBE_ARGUMENTS.get(tool_name)
+    is_d04 = tool_name == 'bangumi.query_subjects'
+    expected_argument_profile = (
+        'd04-reported-episode-count-discovery-v1'
+        if is_d04 else 'fixed-public-subject-218707-v1'
+    )
+    expected_answer_checks = (
+        CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
+        CODEX_RENDERER_ANSWER_CHECK_FIELDS if isinstance(tool_name, str) and tool_name.startswith('bangumi.render_') else
+        CODEX_STATS_ANSWER_CHECK_FIELDS
+    )
     current_tool = current_by_name.get(tool_name) if isinstance(tool_name, str) else None
     if (arguments is None or current_tool is None
             or evidence_by_name.get(tool_name) != current_tool
@@ -382,7 +416,7 @@ def codex_mcp_evidence_is_valid(
             or report.get('serverToolCount') != 1
             or report.get('allowedCallCount') != 1
             or report.get('deniedCallCount') != 0
-            or report.get('argumentProfile') != 'fixed-public-subject-218707-v1'
+            or report.get('argumentProfile') != expected_argument_profile
             or report.get('expectedArgumentsSha256') != _canonical_json_sha256(arguments)
             or report.get('toolDescriptionSha256') != hashlib.sha256(
                 current_tool.get('description', '').encode('utf-8')
@@ -414,10 +448,7 @@ def codex_mcp_evidence_is_valid(
             or scenario.get('resultReadbackVerified') is not True
             or scenario.get('answerCheckPassed') is not True
             or not isinstance(scenario.get('answerChecks'), dict)
-            or set(scenario.get('answerChecks', {})) != (
-                CODEX_RENDERER_ANSWER_CHECK_FIELDS if tool_name.startswith('bangumi.render_')
-                else CODEX_STATS_ANSWER_CHECK_FIELDS
-            )
+            or set(scenario.get('answerChecks', {})) != expected_answer_checks
             or any(value is not True for value in scenario.get('answerChecks', {}).values())
             or not isinstance(calls, list)
             or len(calls) != 1
