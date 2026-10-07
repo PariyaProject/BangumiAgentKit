@@ -268,9 +268,9 @@ async function main(argv = process.argv.slice(2)) {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   const shutdown = async () => {
-    try { await server.close(); } catch {}
-    try { await registry.close(); } catch {}
-    try { await storage.close(); } catch {}
+    try { await server.close(); } catch { /* Continue best-effort cleanup. */ }
+    try { await registry.close(); } catch { /* Continue best-effort cleanup. */ }
+    try { await storage.close(); } catch { /* Continue best-effort cleanup. */ }
   };
   process.once('SIGINT', () => void shutdown());
   process.once('SIGTERM', () => void shutdown());

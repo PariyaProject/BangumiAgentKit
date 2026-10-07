@@ -44,7 +44,7 @@ export function claimSingleToolCall(lockPath) {
     return true;
   } catch (error) {
     if (descriptor !== undefined) {
-      try { fs.closeSync(descriptor); } catch {}
+      try { fs.closeSync(descriptor); } catch { /* Preserve the original failure. */ }
     }
     if (error?.code === 'EEXIST') return false;
     throw error;
