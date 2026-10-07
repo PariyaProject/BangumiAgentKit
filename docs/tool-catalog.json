@@ -1879,8 +1879,8 @@
           "description": "Bangumi 条目 ID"
         },
         "includeEvidence": {
-          "type": "boolean",
-          "description": "启用带来源与覆盖限制的证据 envelope；默认 false，保持原始数组返回形式"
+          "description": "启用带来源与覆盖限制的证据 envelope；默认 false，保持原始数组返回形式",
+          "type": "boolean"
         }
       },
       "required": ["subjectId"],
