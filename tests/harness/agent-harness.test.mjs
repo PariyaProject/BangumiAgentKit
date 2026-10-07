@@ -951,6 +951,8 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(harness): update run state',
     'fix(harness): update the run state',
     'fix(harness): mark candidate ready',
+    'fix(harness): mark candidate ready for review',
+    'fix(harness): update run state to COMPLETE',
   ]) {
     assert.throws(
       () => assertProductCommitHygiene([subject]),
