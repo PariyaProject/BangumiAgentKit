@@ -466,7 +466,7 @@ export function assertProductCommitHygiene(subjects) {
   const runtimeStateIdentifier =
     '(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?';
   const runtimeStateEnumTransition = new RegExp(
-    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:${runtimeStatePath})(?:\\[\\d*\\])?[\\s._-]+(?:state|status|outcome|verdict)\\s+(?:to|as|is)\\s+${runtimeStateValue}${runtimeStateIdentifier}$`,
+    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:${runtimeStatePath})(?:\\[\\d*\\])?[\\s._-]+(?:state|status|outcome|verdict)\\s+(?:(?:to|as|is)\\s+${runtimeStateValue}|from\\s+${runtimeStateValue}\\s+to\\s+${runtimeStateValue})${runtimeStateIdentifier}$`,
     'iu',
   );
   const durableEngineering =
