@@ -457,6 +457,9 @@ export function assertNoLegacyRuntimeChanges(paths) {
 export function assertProductCommitHygiene(subjects) {
   const runtimeTransition =
     /^(?:(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish)\s+(?:the\s+)?)*(?:plan activation|validation complete|review readiness|ci green|candidate(?:\s+(?:review readiness|readiness|ready|checked|accepted|active|selected|frozen|passed|state|status))?|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)(?:\s+(?:for|to|is|as)\s+(?:review|merge|integration|complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped)|\s+(?:complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped))?(?:\s+(?:for|on)\s+(?:run|epoch|pr)\s*#?\d+|\s+#?\d+)?$/iu;
+  // Keep future uppercase Harness state enums inside the same runtime-only boundary.
+  const runtimeStateEnumTransition =
+    /^(?:(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish)\s+(?:the\s+)?)*(?:run|epoch|candidate|review|frontier|ci|merge|cleanup|outer)\s+(?:state|status)\s+(?:to|as|is)\s+[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*(?:\s+(?:for|on)\s+(?:run|epoch|pr)\s*#?\d+|\s+#?\d+)?$/u;
   const durableEngineering =
     /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
   const engineeringPrefix =
@@ -464,7 +467,7 @@ export function assertProductCommitHygiene(subjects) {
   const runtimeOnly = subjects.filter((subject) => {
     if (!durableEngineering.test(subject)) return true;
     const message = subject.replace(engineeringPrefix, '').trim();
-    return runtimeTransition.test(message);
+    return runtimeTransition.test(message) || runtimeStateEnumTransition.test(message);
   });
   if (runtimeOnly.length > 0) {
     throw new HarnessInvariantError(
