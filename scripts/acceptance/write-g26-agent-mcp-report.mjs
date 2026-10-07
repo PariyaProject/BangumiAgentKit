@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, openSync, closeSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { verifyG26ExactTagAnswer } from './g26-exact-tag-answer-check.mjs';
-import { computeMcpBundleSha256, readG26McpBundleAttestation } from '../lib/g26-mcp-bundle.mjs';
+import {
+  computeMcpBundleSha256,
+  gitRepositoryText,
+  readG26McpBundleAttestation,
+} from '../lib/g26-mcp-bundle.mjs';
 
 const TOOL_NAME = 'bangumi.query_subjects';
 const REPORT_PATH = join(
@@ -54,7 +57,7 @@ function readToolCatalog() {
 }
 
 function gitText(args) {
-  return execFileSync('git', args, { encoding: 'utf8' }).trim();
+  return gitRepositoryText(process.cwd(), args);
 }
 
 function assertSafeInvocation(input) {

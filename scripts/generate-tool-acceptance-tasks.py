@@ -4,6 +4,7 @@ import argparse
 import functools
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
@@ -695,9 +696,21 @@ def codex_g26_candidate_bundle_sha256(revision: object) -> str | None:
     """Read the exact runtime-bundle digest attested by the source Candidate commit."""
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return None
+    git_environment = os.environ.copy()
+    for key in tuple(git_environment):
+        if (
+            key in {
+                'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
+                'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+                'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM',
+                'GIT_NAMESPACE', 'GIT_PREFIX', 'GIT_CONFIG',
+            }
+            or key.startswith('GIT_CONFIG_')
+        ):
+            git_environment.pop(key, None)
     result = subprocess.run(
         ['git', 'show', f'{revision}:{CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH}'],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        cwd=ROOT, env=git_environment, capture_output=True, text=True, check=False,
     )
     if result.returncode != 0:
         return None

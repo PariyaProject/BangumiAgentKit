@@ -1,9 +1,44 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const DIST_RELATIVE_PATHS = ['apps/mcp/dist'];
 const G26_BUNDLE_ATTESTATION_PATH = 'docs/product/g26-mcp-bundle-attestation.json';
+const GIT_REPOSITORY_OVERRIDE_KEYS = new Set([
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_COMMON_DIR',
+  'GIT_INDEX_FILE',
+  'GIT_OBJECT_DIRECTORY',
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  'GIT_CEILING_DIRECTORIES',
+  'GIT_DISCOVERY_ACROSS_FILESYSTEM',
+  'GIT_NAMESPACE',
+  'GIT_PREFIX',
+]);
+
+export function sanitizeGitRepositoryEnvironment(source = process.env) {
+  const environment = { ...source };
+  for (const key of Object.keys(environment)) {
+    if (
+      GIT_REPOSITORY_OVERRIDE_KEYS.has(key) ||
+      key === 'GIT_CONFIG' ||
+      key.startsWith('GIT_CONFIG_')
+    ) {
+      delete environment[key];
+    }
+  }
+  return environment;
+}
+
+export function gitRepositoryText(root, args, sourceEnvironment = process.env) {
+  return execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    env: sanitizeGitRepositoryEnvironment(sourceEnvironment),
+  }).trim();
+}
 
 export function readG26McpBundleAttestation(root) {
   const attestation = JSON.parse(

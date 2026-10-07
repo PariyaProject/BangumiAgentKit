@@ -4,6 +4,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -869,6 +870,36 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         counters['rowsMatched'] = 1
 
         self.assertFalse(GENERATOR.codex_g26_report_is_valid(report))
+
+    def test_g26_bundle_attestation_ignores_caller_git_repository_overrides(self):
+        expected = GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision)
+        self.assertRegex(expected or '', r'^[0-9a-f]{64}$')
+
+        alternate = self.root / 'alternate-git-context'
+        alternate.mkdir()
+        subprocess.run(['git', 'init', '-q'], cwd=alternate, check=True)
+        overrides = {
+            'GIT_DIR': str(alternate / '.git'),
+            'GIT_WORK_TREE': str(alternate),
+            'GIT_COMMON_DIR': str(alternate / '.git'),
+            'GIT_INDEX_FILE': str(alternate / '.git' / 'index'),
+            'GIT_CONFIG_COUNT': '1',
+            'GIT_CONFIG_KEY_0': 'core.worktree',
+            'GIT_CONFIG_VALUE_0': str(alternate),
+        }
+        previous = {key: os.environ.get(key) for key in overrides}
+        try:
+            os.environ.update(overrides)
+            self.assertEqual(
+                GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision),
+                expected,
+            )
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
     def test_rejects_g26_report_with_raw_data_wrong_scope_or_failed_answer_checks(self):
         invalid_reports = [

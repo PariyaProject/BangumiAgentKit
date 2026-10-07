@@ -196,6 +196,13 @@ describe('G26 Codex one-tool runner', () => {
       CODEX_MODEL_CATALOG_JSON: '/private/model-catalog.json',
       GEMINI_API_KEY: 'test',
       ANTHROPIC_API_KEY: 'test',
+      GIT_DIR: '/alternate/.git',
+      GIT_WORK_TREE: '/alternate',
+      GIT_COMMON_DIR: '/alternate/.git',
+      GIT_INDEX_FILE: '/alternate/.git/index',
+      GIT_CONFIG_COUNT: '1',
+      GIT_CONFIG_KEY_0: 'core.worktree',
+      GIT_CONFIG_VALUE_0: '/alternate',
     });
 
     expect(sanitized).toEqual({
@@ -267,21 +274,42 @@ describe('G26 Codex one-tool runner', () => {
     }
   });
 
-  it('keeps the run-level one-shot lock independent of a caller-selected mirror path', () => {
+  it('keeps the run-level one-shot lock independent of HOME, Git overrides, and mirror path', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-canonical-claim-test-'));
     const repositoryRoot = path.join(directory, 'repository');
+    const alternateRepositoryRoot = path.join(directory, 'alternate-repository');
     mkdirSync(repositoryRoot, { recursive: true });
+    mkdirSync(alternateRepositoryRoot, { recursive: true });
     execFileSync('git', ['init', '-q'], { cwd: repositoryRoot });
+    execFileSync('git', ['init', '-q'], { cwd: alternateRepositoryRoot });
+    const gitCommonDirectory = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+    }).trim();
     const firstMirror = path.join(directory, 'pariya-state', 'claim.json');
     const alternateMirror = path.join(directory, 'alternate', 'claim.json');
-    const previousHome = process.env.HOME;
+    const gitOverrideKeys = [
+      'GIT_DIR',
+      'GIT_WORK_TREE',
+      'GIT_COMMON_DIR',
+      'GIT_INDEX_FILE',
+      'GIT_CONFIG_COUNT',
+      'GIT_CONFIG_KEY_0',
+      'GIT_CONFIG_VALUE_0',
+    ];
+    const previousEnvironment = new Map(
+      ['HOME', ...gitOverrideKeys].map((key) => [key, process.env[key]]),
+    );
     try {
       process.env.HOME = path.join(directory, 'home-a');
+      process.env.GIT_DIR = path.join(alternateRepositoryRoot, '.git');
+      process.env.GIT_WORK_TREE = alternateRepositoryRoot;
+      process.env.GIT_COMMON_DIR = path.join(alternateRepositoryRoot, '.git');
+      process.env.GIT_INDEX_FILE = path.join(alternateRepositoryRoot, '.git', 'index');
+      process.env.GIT_CONFIG_COUNT = '1';
+      process.env.GIT_CONFIG_KEY_0 = 'core.worktree';
+      process.env.GIT_CONFIG_VALUE_0 = alternateRepositoryRoot;
       const canonicalPath = canonicalG26ClaimPath(repositoryRoot);
-      const gitCommonDirectory = execFileSync('git', ['rev-parse', '--git-common-dir'], {
-        cwd: repositoryRoot,
-        encoding: 'utf8',
-      }).trim();
       expect(canonicalPath).toBe(
         path.join(
           path.resolve(repositoryRoot, gitCommonDirectory),
@@ -298,6 +326,9 @@ describe('G26 Codex one-tool runner', () => {
 
       expect(first.paths).toEqual([canonicalPath, firstMirror]);
       process.env.HOME = path.join(directory, 'home-b');
+      process.env.GIT_DIR = path.join(directory, 'not-a-repository');
+      process.env.GIT_WORK_TREE = path.join(directory, 'not-a-worktree');
+      process.env.GIT_COMMON_DIR = path.join(directory, 'not-a-common-dir');
       expect(canonicalG26ClaimPath(repositoryRoot)).toBe(canonicalPath);
       expect(() =>
         createOneShotClaims({
@@ -309,8 +340,10 @@ describe('G26 Codex one-tool runner', () => {
       ).toThrow('G26 one-shot claim already exists');
       expect(() => readFileSync(alternateMirror)).toThrow();
     } finally {
-      if (previousHome === undefined) delete process.env.HOME;
-      else process.env.HOME = previousHome;
+      for (const [key, value] of previousEnvironment) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
       rmSync(directory, { recursive: true, force: true });
     }
   });

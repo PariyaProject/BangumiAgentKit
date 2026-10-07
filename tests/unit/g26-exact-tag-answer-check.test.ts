@@ -226,6 +226,7 @@ describe('G26 exact-tag Agent/MCP answer check', () => {
       '这是全部女性受众作品。',
       '这是完整分类体系。',
       'This establishes a complete female-audience taxonomy.',
+      'Not only is this a complete female-audience list.',
     ]) {
       const answer = makeAnswer().replace(
         '这不代表全部女性受众作品。',
@@ -249,6 +250,7 @@ describe('G26 exact-tag Agent/MCP answer check', () => {
       '这不代表女性向作品的完整清单。',
       '女性向标签并非完整分类体系。',
       'This does not define a complete female-audience taxonomy.',
+      'This is not a complete female-audience list.',
     ]) {
       const answer = makeAnswer().replace('本次有限覆盖不等于完整目录。', caveat);
       expect(verify({ answer }).unsupportedCompletenessClaim).toBe(false);

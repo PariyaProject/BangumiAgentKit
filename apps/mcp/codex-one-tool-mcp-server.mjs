@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -18,6 +17,7 @@ import {
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import {
   computeMcpBundleSha256,
+  gitRepositoryText,
   readG26McpBundleAttestation,
 } from '../../scripts/lib/g26-mcp-bundle.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
@@ -160,16 +160,8 @@ function parseArguments(argv) {
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
   try {
-    const currentRevision = execFileSync('git', ['rev-parse', 'HEAD'], {
-      cwd: PRODUCT_ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    const status = execFileSync('git', ['status', '--porcelain'], {
-      cwd: PRODUCT_ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    const currentRevision = gitRepositoryText(PRODUCT_ROOT, ['rev-parse', 'HEAD']);
+    const status = gitRepositoryText(PRODUCT_ROOT, ['status', '--porcelain']);
     return (
       currentRevision === sourceRevision &&
       status === '' &&
@@ -198,11 +190,7 @@ async function main(argv = process.argv.slice(2)) {
       'Only catalogued auth=none, risk=read tools may be exposed by this probe server.',
     );
   }
-  const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], {
-    cwd: PRODUCT_ROOT,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore'],
-  }).trim();
+  const sourceRevision = gitRepositoryText(PRODUCT_ROOT, ['rev-parse', 'HEAD']);
   const bundleSha256 = computeMcpBundleSha256(PRODUCT_ROOT);
   if (
     sourceRevision !== config.candidateSha ||

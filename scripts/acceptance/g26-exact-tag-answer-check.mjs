@@ -654,7 +654,7 @@ function hasUnqualifiedCompletenessClaim(scope) {
     /[。！？；;，,、：:—–\n]+|并且|而且|同时|此外|另外|以及|且|但|而是|然而|不过|只是|可是|所以|因此|\b(?:and|also|but|however|yet|whereas|while)\b/iu,
   );
   const negation =
-    /(?:不代表|不等于|并非|不是|无法证明|无法确认|不能据此|不构成|不定义|does not(?:\s+(?:mean|prove|represent|establish|define))?|is not|not|cannot(?:\s+(?:prove|define))?)/iu;
+    /(?:不代表|不等于|并非|不是|无法证明|无法确认|不能据此|不构成|不定义|does not(?!\s+(?:only|merely|just|simply))(?:\s+(?:mean|prove|represent|establish|define))?|is not(?!\s+(?:only|merely|just|simply))\b|not(?!\s+(?:only|merely|just|simply))\b|cannot(?:\s+(?:prove|define))?)/iu;
   for (const clause of clauses) {
     const claimSpans = [];
     for (const claim of claims) {

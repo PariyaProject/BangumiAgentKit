@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import {
   closeSync,
   existsSync,
@@ -13,7 +13,12 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeMcpBundleSha256, readG26McpBundleAttestation } from '../lib/g26-mcp-bundle.mjs';
+import {
+  computeMcpBundleSha256,
+  gitRepositoryText,
+  readG26McpBundleAttestation,
+  sanitizeGitRepositoryEnvironment,
+} from '../lib/g26-mcp-bundle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REPORT_PATH = path.join(ROOT, 'docs/live-probes/g26-exact-tag-agent-mcp-run95.json');
@@ -225,7 +230,7 @@ export function summarizeCodexEvents(events) {
 }
 
 function gitText(args) {
-  return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).trim();
+  return gitRepositoryText(ROOT, args);
 }
 
 function assertCleanCandidate() {
@@ -283,10 +288,7 @@ function buildExactCandidateBundle(sourceRevision) {
 }
 
 export function canonicalG26ClaimPath(root = ROOT) {
-  const gitCommonDirectory = execFileSync('git', ['rev-parse', '--git-common-dir'], {
-    cwd: root,
-    encoding: 'utf8',
-  }).trim();
+  const gitCommonDirectory = gitRepositoryText(root, ['rev-parse', '--git-common-dir']);
   if (!gitCommonDirectory) throw new Error('G26 one-shot state requires a Git common directory.');
   return path.join(
     path.resolve(root, gitCommonDirectory),
@@ -426,7 +428,7 @@ export function sanitizeCodexEnvironment(source = process.env) {
       delete environment[key];
     }
   }
-  return environment;
+  return sanitizeGitRepositoryEnvironment(environment);
 }
 
 function readServerSummary(summaryPath) {
