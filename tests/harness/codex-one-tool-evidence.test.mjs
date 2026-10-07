@@ -12,6 +12,7 @@ import {
   filterAllowedTools,
   publicReadOnlyToolAnnotations,
   statsTypedAnswerMatches,
+  statsTypedAnswerMismatches,
   summarizeSubjectStatsFacts,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
@@ -204,12 +205,15 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
   const wrongScoreBucket = structuredClone(typedAnswer);
   wrongScoreBucket.ratingDistribution[7].count = 8;
   assert.equal(statsTypedAnswerMatches(wrongScoreBucket, facts), false);
+  assert.deepEqual(statsTypedAnswerMismatches(wrongScoreBucket, facts), ['ratingDistribution[8].count']);
   const wrongCollectionStatus = structuredClone(typedAnswer);
   wrongCollectionStatus.collectionDistribution[0].status = 'dropped';
   assert.equal(statsTypedAnswerMatches(wrongCollectionStatus, facts), false);
+  assert.deepEqual(statsTypedAnswerMismatches(wrongCollectionStatus, facts), ['collectionDistribution[wish].status']);
   const fabricatedCompletion = structuredClone(typedAnswer);
   fabricatedCompletion.completionRatePercentage = 99;
   assert.equal(statsTypedAnswerMatches(fabricatedCompletion, facts), false);
+  assert.deepEqual(statsTypedAnswerMismatches(fabricatedCompletion, facts), ['completionRatePercentage']);
 });
 
 test('renderer answer checks only the request identity and returned ephemeral Artifact metadata', () => {

@@ -359,14 +359,14 @@ function objectHasExactKeys(value, keys) {
     Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 }
 
-export function statsTypedAnswerMatches(typedAnswer, facts) {
+export function statsTypedAnswerMismatches(typedAnswer, facts) {
   const fields = [
     'subjectId', 'resultState', 'ratingState', 'ratingPopulation', 'ratingMean',
     'ratingStandardDeviation', 'scoreBand8To9Share', 'ratingDistribution',
     'collectionState', 'collectionTotal', 'completionState', 'completionRatePercentage',
     'collectionDistribution', 'coverage', 'officialSourceClass', 'evidenceSources', 'answer',
   ];
-  if (!objectHasExactKeys(typedAnswer, fields)) return false;
+  if (!objectHasExactKeys(typedAnswer, fields)) return ['shape'];
   const rating = facts?.rating || {};
   const collection = facts?.collection || {};
   const share = rating.scoreBand8To9Share || {};
@@ -377,52 +377,92 @@ export function statsTypedAnswerMatches(typedAnswer, facts) {
     'ratingBucketsObserved', 'collectionBucketsExpected', 'collectionBucketsObserved',
   ];
   const typedCoverage = typedAnswer.coverage;
-  if (!objectHasExactKeys(typedShare, shareFields) ||
-      !objectHasExactKeys(typedCoverage, coverageFields)) return false;
-
-  const exactFieldsMatch = typedAnswer.subjectId === facts.subjectId &&
-    typedAnswer.resultState === facts.state &&
-    typedAnswer.ratingState === rating.state &&
-    sameExactNumber(typedAnswer.ratingPopulation, rating.population) &&
-    sameRoundedNumber(typedAnswer.ratingMean, rating.mean) &&
-    sameRoundedNumber(typedAnswer.ratingStandardDeviation, rating.standardDeviation) &&
-    typedShare.state === share.state && typedShare.count === share.count &&
-    typedShare.population === share.population &&
-    samePercent(typedShare.percentage, share.percentage) &&
-    typedShare.formulaId === share.formulaId && typedShare.formulaVersion === share.formulaVersion &&
-    typedShare.evidenceStatus === share.evidenceStatus &&
-    typedAnswer.collectionState === collection.state &&
-    typedAnswer.collectionTotal === collection.total &&
-    typedAnswer.completionState === collection.completionState &&
-    samePercent(typedAnswer.completionRatePercentage,
-      Number.isFinite(collection.completionRate) ? collection.completionRate * 100 : null) &&
-    typedAnswer.officialSourceClass === facts.officialSourceClass &&
-    Array.isArray(typedAnswer.evidenceSources) &&
-    JSON.stringify(typedAnswer.evidenceSources) === JSON.stringify(facts.evidenceSources) &&
-    objectHasExactKeys(typedCoverage, coverageFields) &&
-    coverageFields.every((field) => typedCoverage[field] === facts.coverage?.[field]);
-  if (!exactFieldsMatch) return false;
+  const mismatches = [];
+  if (typedAnswer.subjectId !== facts.subjectId) mismatches.push('subjectId');
+  if (typedAnswer.resultState !== facts.state) mismatches.push('resultState');
+  if (typedAnswer.ratingState !== rating.state) mismatches.push('ratingState');
+  if (!sameExactNumber(typedAnswer.ratingPopulation, rating.population)) mismatches.push('ratingPopulation');
+  if (!sameRoundedNumber(typedAnswer.ratingMean, rating.mean)) mismatches.push('ratingMean');
+  if (!sameRoundedNumber(typedAnswer.ratingStandardDeviation, rating.standardDeviation)) {
+    mismatches.push('ratingStandardDeviation');
+  }
+  if (!objectHasExactKeys(typedShare, shareFields)) {
+    mismatches.push('scoreBand8To9Share.shape');
+  } else {
+    if (typedShare.state !== share.state) mismatches.push('scoreBand8To9Share.state');
+    if (typedShare.count !== share.count) mismatches.push('scoreBand8To9Share.count');
+    if (typedShare.population !== share.population) mismatches.push('scoreBand8To9Share.population');
+    if (!samePercent(typedShare.percentage, share.percentage)) mismatches.push('scoreBand8To9Share.percentage');
+    if (typedShare.formulaId !== share.formulaId) mismatches.push('scoreBand8To9Share.formulaId');
+    if (typedShare.formulaVersion !== share.formulaVersion) mismatches.push('scoreBand8To9Share.formulaVersion');
+    if (typedShare.evidenceStatus !== share.evidenceStatus) mismatches.push('scoreBand8To9Share.evidenceStatus');
+  }
+  if (typedAnswer.collectionState !== collection.state) mismatches.push('collectionState');
+  if (typedAnswer.collectionTotal !== collection.total) mismatches.push('collectionTotal');
+  if (typedAnswer.completionState !== collection.completionState) mismatches.push('completionState');
+  if (!samePercent(typedAnswer.completionRatePercentage,
+    Number.isFinite(collection.completionRate) ? collection.completionRate * 100 : null)) {
+    mismatches.push('completionRatePercentage');
+  }
+  if (typedAnswer.officialSourceClass !== facts.officialSourceClass) mismatches.push('officialSourceClass');
+  if (!Array.isArray(typedAnswer.evidenceSources) ||
+      JSON.stringify([...typedAnswer.evidenceSources].sort()) !== JSON.stringify([...facts.evidenceSources].sort())) {
+    mismatches.push('evidenceSources');
+  }
+  if (!objectHasExactKeys(typedCoverage, coverageFields)) {
+    mismatches.push('coverage.shape');
+  } else {
+    for (const field of coverageFields) {
+      if (typedCoverage[field] !== facts.coverage?.[field]) mismatches.push(`coverage.${field}`);
+    }
+  }
 
   const ratingDistribution = rating.distribution || [];
   const typedRatingDistribution = typedAnswer.ratingDistribution;
-  if (!Array.isArray(typedRatingDistribution) || typedRatingDistribution.length !== ratingDistribution.length ||
-      !typedRatingDistribution.every((row, index) => {
-        const expected = ratingDistribution[index];
-        return objectHasExactKeys(row, ['score', 'count', 'percentage']) &&
-          row.score === expected.score && row.count === expected.count &&
-          samePercent(row.percentage, expected.percentage);
-      })) return false;
+  if (!Array.isArray(typedRatingDistribution)) {
+    mismatches.push('ratingDistribution.shape');
+  } else {
+    if (typedRatingDistribution.length !== ratingDistribution.length) mismatches.push('ratingDistribution.length');
+    for (let index = 0; index < Math.min(typedRatingDistribution.length, ratingDistribution.length); index += 1) {
+      const row = typedRatingDistribution[index];
+      const expected = ratingDistribution[index];
+      const prefix = `ratingDistribution[${expected.score}]`;
+      if (!objectHasExactKeys(row, ['score', 'count', 'percentage'])) {
+        mismatches.push(`${prefix}.shape`);
+        continue;
+      }
+      if (row.score !== expected.score) mismatches.push(`${prefix}.score`);
+      if (row.count !== expected.count) mismatches.push(`${prefix}.count`);
+      if (!samePercent(row.percentage, expected.percentage)) mismatches.push(`${prefix}.percentage`);
+    }
+  }
 
   const collectionDistribution = collection.distribution || [];
   const typedCollectionDistribution = typedAnswer.collectionDistribution;
-  return Array.isArray(typedCollectionDistribution) &&
-    typedCollectionDistribution.length === collectionDistribution.length &&
-    typedCollectionDistribution.every((row, index) => {
+  if (!Array.isArray(typedCollectionDistribution)) {
+    mismatches.push('collectionDistribution.shape');
+  } else {
+    if (typedCollectionDistribution.length !== collectionDistribution.length) {
+      mismatches.push('collectionDistribution.length');
+    }
+    for (let index = 0; index < Math.min(typedCollectionDistribution.length, collectionDistribution.length); index += 1) {
+      const row = typedCollectionDistribution[index];
       const expected = collectionDistribution[index];
-      return objectHasExactKeys(row, ['status', 'count', 'percentage']) &&
-        row.status === expected.status && row.count === expected.count &&
-        samePercent(row.percentage, expected.percentage);
-    });
+      const prefix = `collectionDistribution[${expected.status}]`;
+      if (!objectHasExactKeys(row, ['status', 'count', 'percentage'])) {
+        mismatches.push(`${prefix}.shape`);
+        continue;
+      }
+      if (row.status !== expected.status) mismatches.push(`${prefix}.status`);
+      if (row.count !== expected.count) mismatches.push(`${prefix}.count`);
+      if (!samePercent(row.percentage, expected.percentage)) mismatches.push(`${prefix}.percentage`);
+    }
+  }
+  return mismatches;
+}
+
+export function statsTypedAnswerMatches(typedAnswer, facts) {
+  return statsTypedAnswerMismatches(typedAnswer, facts).length === 0;
 }
 
 export function checkStatsAnswer(answer, facts, typedAnswer) {
