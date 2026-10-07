@@ -162,8 +162,18 @@ export function summarizeSubjectStatsFacts(result) {
 }
 
 const SUBJECT_STATS_COLLECTION_STATUSES = ['wish', 'doing', 'collect', 'on_hold', 'dropped'];
-const UNSUPPORTED_STATS_CLAIM_TERMS = ['质量', '口碑', '推荐', '因果', '趋势', '两极化', '两极分化', '争议', '热度', '优质'];
+const UNSUPPORTED_STATS_CLAIM_TERMS = [
+  '质量', '口碑', '推荐', '因果', '趋势', '两极化', '两极分化', '双峰', '多峰',
+  'bimodal', 'multimodal', '争议', '热度', '优质',
+];
 const CLAIM_NEGATION_MARKERS = ['不', '不能', '不代表', '不可', '未', '无法', '并非', '不应', '没有', '无'];
+const COLLECTION_STATUS_LABELS = {
+  wish: ['愿望', '想看', 'wish'],
+  doing: ['在看', '在做', 'doing'],
+  collect: ['看过', '已看', 'collect'],
+  on_hold: ['搁置', '暂停', 'on_hold'],
+  dropped: ['抛弃', '弃看', '弃坑', 'dropped'],
+};
 
 function addRoundedPercent(out, value) {
   if (!Number.isFinite(value)) return;
@@ -295,6 +305,77 @@ function statsClaimPercentagesMatch(answer, facts) {
   if (Number.isFinite(completionRate) && /完成率/iu.test(answer)) {
     const rate = answer.match(/完成率[^。；;]{0,48}/iu)?.[0] || '';
     if (!hasExpectedPercentMention(rate, completionRate * 100)) return false;
+  }
+  return true;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
+function collectionStatusCountClaims(answer, status) {
+  const aliases = COLLECTION_STATUS_LABELS[status] || [status];
+  const numeric = '(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d+)?';
+  const separator = '[^\\d。！？；;,，、\\n]{0,8}?';
+  const claims = [];
+  for (const alias of aliases) {
+    const label = /^[a-z_]+$/iu.test(alias)
+      ? `\\b${escapeRegExp(alias)}\\b`
+      : escapeRegExp(alias);
+    const afterLabel = new RegExp(`${label}${separator}(${numeric})\\s*(人|条|个|件|users?|items?)?`, 'giu');
+    const beforeLabel = new RegExp(`(${numeric})\\s*(人|条|个|件|users?|items?)?${separator}${label}`, 'giu');
+    for (const match of answer.matchAll(afterLabel)) {
+      const token = match[1];
+      const tokenEnd = match.index + match[0].lastIndexOf(token) + token.length;
+      if (!/[％%]/u.test(answer.slice(tokenEnd, tokenEnd + 2))) claims.push(Number(token.replaceAll(',', '')));
+    }
+    for (const match of answer.matchAll(beforeLabel)) {
+      const token = match[1];
+      const tokenEnd = match.index + match[0].indexOf(token) + token.length;
+      if (!/[％%]/u.test(answer.slice(tokenEnd, tokenEnd + 2))) claims.push(Number(token.replaceAll(',', '')));
+    }
+  }
+  return claims;
+}
+
+function statsCollectionStatusCountsMatch(answer, facts) {
+  if (typeof answer !== 'string') return false;
+  const distribution = facts?.collection?.distribution;
+  if (!Array.isArray(distribution)) return false;
+  const distributionClaim = /收藏.{0,8}(?:分布|状态)|collection.{0,8}(?:distribution|status)/iu.test(answer);
+  for (const row of distribution) {
+    if (!Number.isInteger(row?.count) || typeof row?.status !== 'string') continue;
+    const aliases = COLLECTION_STATUS_LABELS[row.status] || [row.status];
+    const mentioned = aliases.some((alias) => {
+      const label = /^[a-z_]+$/iu.test(alias)
+        ? new RegExp(`\\b${escapeRegExp(alias)}\\b`, 'iu')
+        : new RegExp(escapeRegExp(alias), 'u');
+      return label.test(answer);
+    });
+    const claims = collectionStatusCountClaims(answer, row.status);
+    if (claims.some((count) => count !== row.count)) return false;
+    if (distributionClaim && (!mentioned || claims.length === 0)) return false;
+  }
+  return true;
+}
+
+function statsRatingHistogramSequenceMatches(answer, facts) {
+  if (typeof answer !== 'string') return false;
+  const distribution = facts?.rating?.distribution;
+  if (!Array.isArray(distribution) || distribution.length !== 10) return false;
+  const expected = distribution.map((row, index) => {
+    if (row?.score !== index + 1 || !Number.isInteger(row.count)) return null;
+    return row.count;
+  });
+  if (expected.some((count) => count === null)) return false;
+  const marker = /1\s*(?:至|到|[-–—])\s*10\s*分[^。！？；;\n]{0,24}?(?:人数|分布)?[^。！？；;\n]{0,12}?(?:依次|分别)\s*(?:为|是)\s*/giu;
+  const integer = '(?:\\d{1,3}(?:,\\d{3})+|\\d+)';
+  for (const match of answer.matchAll(marker)) {
+    const tail = answer.slice(match.index + match[0].length);
+    const sequence = tail.match(new RegExp(`^[\\s:：]*${integer}(?:\\s*[、，,]\\s*${integer}){9}`, 'u'));
+    const observed = sequence?.[0].match(new RegExp(integer, 'gu'))
+      ?.map((token) => Number(token.replaceAll(',', '')));
+    if (observed?.length !== 10 || observed.some((count, index) => count !== expected[index])) return false;
   }
   return true;
 }
@@ -471,6 +552,8 @@ export function checkStatsAnswer(answer, facts, typedAnswer) {
     metricStatesMentioned: statsMetricStatesMentioned(answer, facts),
     limitationsMentioned: statsLimitationsMentioned(answer),
     typedFieldsMatch: statsFactsAreConsistent(facts) && hasOnlySupportedNumbers(answer, facts) &&
+      statsRatingHistogramSequenceMatches(answer, facts) &&
+      statsCollectionStatusCountsMatch(answer, facts) &&
       (typedAnswer === undefined ||
         typedAnswer.answer === answer && statsTypedAnswerMatches(typedAnswer, facts)) &&
       statsClaimPercentagesMatch(answer, facts),

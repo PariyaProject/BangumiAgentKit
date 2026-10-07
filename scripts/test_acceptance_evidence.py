@@ -277,12 +277,38 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
         self.original_root = GENERATOR.ROOT
+        self.source_revision, self.unrelated_source_revision = self._init_probe_source_history()
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
         GENERATOR.ROOT = self.root
         GENERATOR.CATALOG = self.catalog_path
         GENERATOR.LIVE_PROBE_DIR = self.live_probe_dir
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G23.json'
+
+    def _git(self, *args):
+        return subprocess.run(
+            ['git', *args], cwd=self.root, check=True, capture_output=True, text=True,
+        )
+
+    def _init_probe_source_history(self):
+        for relative_path in GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS:
+            source_path = self.original_root / relative_path
+            fixture_path = self.root / relative_path
+            fixture_path.parent.mkdir(parents=True, exist_ok=True)
+            fixture_path.write_bytes(source_path.read_bytes())
+        self._git('init', '-q')
+        self._git('config', 'user.name', 'Acceptance Evidence Test')
+        self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
+        self._git('add', 'apps/mcp/codex-one-tool-mcp-server.mjs',
+                  'scripts/lib/codex-one-tool-evidence.mjs')
+        self._git('commit', '-qm', 'add one-tool probe implementation fixture')
+        implementation_revision = self._git('rev-parse', 'HEAD').stdout.strip()
+        server_path = self.root / 'apps/mcp/codex-one-tool-mcp-server.mjs'
+        server_path.write_text('export const unrelatedProgram = true;\n', encoding='utf-8')
+        self._git('add', 'apps/mcp/codex-one-tool-mcp-server.mjs')
+        self._git('commit', '-qm', 'replace probe implementation with unrelated code')
+        unrelated_revision = self._git('rev-parse', 'HEAD').stdout.strip()
+        return implementation_revision, unrelated_revision
 
     def tearDown(self):
         GENERATOR.ROOT = self.original_root
@@ -317,7 +343,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_mcp_tool_use',
-            'sourceRevision': 'a' * 40,
+            'sourceRevision': self.source_revision,
             'codexCliVersion': '0.160.0',
             'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
             'profile': 'codex-luna-max-one-tool-v1',
@@ -379,6 +405,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {'model': 'gemini-3.8-flash-low'},
             {'reasoningEffort': 'high'},
+            {'sourceRevision': 'a' * 40},
+            {'sourceRevision': self.unrelated_source_revision},
             {'catalogSha256': '0' * 64},
             {'toolDescriptionSha256': '0' * 64},
             {'serverToolNames': ['bangumi.get_subject_stats_intelligence', 'bangumi.auth_status']},

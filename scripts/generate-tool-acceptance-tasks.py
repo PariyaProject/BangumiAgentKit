@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Generate the per-tool Bangumi acceptance checklist from the catalog and tests."""
 import argparse
+import functools
 import hashlib
 import json
 import re
 from pathlib import Path
+import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -253,6 +255,29 @@ CODEX_SOURCE_OPERATION_FIELDS = {'operation', 'attempted', 'succeeded', 'failed'
 CODEX_ARTIFACT_FIELDS = {
     'returned', 'persisted', 'mimeType', 'width', 'height', 'byteLength', 'sha256', 'pngSignatureValid',
 }
+CODEX_PROBE_IMPLEMENTATION_MARKERS = {
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        "serverProfile: 'one-tool-anonymous-public-v1'",
+        'new MemoryStorage()',
+        "baseUrl: 'https://api.bgm.tv'",
+        'filterAllowedTools(registry.getTools(), config.toolName)',
+        'authorizeToolCall({',
+        'claimSingleToolCall(',
+        'writeSanitizedSummary(',
+    ),
+    'scripts/lib/codex-one-tool-evidence.mjs': (
+        'export function filterAllowedTools(',
+        'export function publicReadOnlyToolAnnotations(',
+        'export function authorizeToolCall(',
+        'export function claimSingleToolCall(',
+        'export function summarizeToolResult(',
+        'export function checkStatsAnswer(',
+        'export function checkRendererAnswer(',
+        'function statsCollectionStatusCountsMatch(',
+        'function statsRatingHistogramSequenceMatches(',
+        "'双峰'",
+    ),
+}
 CODEX_FORBIDDEN_CONTENT_KEYS = {
     'prompt', 'userprompt', 'rawprompt', 'answer', 'assistanttext', 'rawanswer',
     'resultbody', 'rawresult', 'rawtoolresult', 'structuredcontent', 'imagedata',
@@ -278,6 +303,31 @@ def _contains_forbidden_codex_content(value: object) -> bool:
     return False
 
 
+@functools.lru_cache(maxsize=128)
+def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
+    """Bind a report revision to the tracked one-tool server and its evidence checks."""
+    resolved = subprocess.run(
+        ['git', 'rev-parse', '--verify', f'{revision}^{{commit}}'],
+        cwd=repository_root, capture_output=True, text=True, check=False,
+    )
+    if resolved.returncode != 0 or resolved.stdout.strip() != revision:
+        return False
+    for relative_path, markers in CODEX_PROBE_IMPLEMENTATION_MARKERS.items():
+        source = subprocess.run(
+            ['git', 'show', f'{revision}:{relative_path}'],
+            cwd=repository_root, capture_output=True, text=True, check=False,
+        )
+        if source.returncode != 0 or any(marker not in source.stdout for marker in markers):
+            return False
+    return True
+
+
+def codex_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_probe_revision_has_implementation(str(ROOT), revision)
+
+
 def codex_mcp_evidence_is_valid(
     report: dict, evidence_by_name: dict[str, dict], current_by_name: dict[str, dict],
 ) -> bool:
@@ -294,6 +344,7 @@ def codex_mcp_evidence_is_valid(
             or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
             or not isinstance(report.get('sourceRevision'), str)
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
+            or not codex_probe_revision_has_implementation(report['sourceRevision'])
             or type(report.get('processExitCode')) is not int
             or report.get('processExitCode') != 0
             or report.get('resultStatus') != 'SUCCESS'
