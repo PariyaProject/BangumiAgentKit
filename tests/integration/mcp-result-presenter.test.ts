@@ -1109,6 +1109,84 @@ function makeSubjectRelationsEvidenceResult(count = 2, highCardinality = false) 
   };
 }
 
+function makeDiscoveryResult(count = 100) {
+  return {
+    state: 'partial',
+    items: Array.from({ length: count }, (_, index) => ({
+      id: 26000 + index,
+      name: `Public title ${index} ${'LongTitle'.repeat(18)}`,
+      nameCn: `公开条目${index}${'长标题'.repeat(18)}`,
+      displayName: `公开条目${index} (Public title ${index})`,
+      media: 'anime',
+      category: 'tv',
+      date: '2024-10-01',
+      ratingCount: 10001 + index,
+      tags: ['冒险', '恋爱', '动画', '奇幻', 'Drama', '制作', '播出', '系列', '女性向'],
+      metaTags: ['漫画改'],
+      evidence: [{ token: 'this evidence must stay in structuredContent only' }],
+    })),
+    plan: {
+      source: 'official_v0',
+      operation: 'searchSubjects',
+      totalKind: 'estimated',
+      quality: 'bounded_exact',
+      resultMode: 'all',
+      budget: { maxPages: 10, maxCandidates: 500, maxHydrations: 120, maxReturnedItems: 100 },
+      steps: [
+        {
+          kind: 'search',
+          request: {
+            limit: 50,
+            filter: {
+              type: [2],
+              airDate: ['>=2019-01-01', '<2025-01-01'],
+              ratingCount: ['>=10001'],
+              tag: ['女性向'],
+            },
+          },
+        },
+      ],
+      postFilters: [{ field: 'categories', classification: 'POST_FILTER', value: ['tv'] }],
+      limitations: ['Enumeration is bounded by maxPages and maxCandidates.'],
+    },
+    coverage: {
+      state: 'partial',
+      requested: 500,
+      scanned: 500,
+      matched: 120,
+      returned: count,
+      pagesRequested: 10,
+      pagesScanned: 10,
+      upstreamExhausted: false,
+      budgetExceeded: true,
+      totalKind: 'estimated',
+      hydrationsAttempted: 120,
+      hydrationsSucceeded: 118,
+      hydrationsFailed: 0,
+      hydrationsUnresolved: 2,
+      hydrationBudgetExceeded: true,
+      outputCap: 100,
+      reason: 'The search remains bounded and partial.',
+    },
+    warnings: [
+      {
+        code: 'EXPERIMENTAL_SOURCE',
+        state: 'partial',
+        message: 'Official subject search is experimental.',
+      },
+      {
+        code: 'DISCOVERY_BUDGET_EXCEEDED',
+        state: 'partial',
+        message: 'The candidate budget was exhausted.',
+      },
+    ],
+    explanation: {
+      coverageScope: 'Only this bounded observed search result set is covered.',
+      limitations: ['Estimated totals do not establish whole-database completeness.'],
+    },
+  };
+}
+
 describe('MCP tool result presentation', () => {
   it('keeps the existing full pretty JSON text for small and unrelated results', () => {
     const small = { state: 'complete', count: 1 };
@@ -1120,6 +1198,70 @@ describe('MCP tool result presentation', () => {
     expect(unrelatedPresentation).toEqual({
       text: JSON.stringify(unrelatedLarge, null, 2),
     });
+  });
+
+  it('bounds large discovery text while preserving decision-critical scope and full structuredContent', () => {
+    const original = makeDiscoveryResult();
+    const fullJsonBytes = Buffer.byteLength(JSON.stringify(original, null, 2), 'utf8');
+    const presentation = presentMcpToolResult('bangumi.query_subjects', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(fullJsonBytes).toBeGreaterThan(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.plan).toMatchObject({
+      source: 'official_v0',
+      operation: 'searchSubjects',
+      totalKind: 'estimated',
+      filter: {
+        airDate: ['>=2019-01-01', '<2025-01-01'],
+        ratingCount: ['>=10001'],
+        tag: ['女性向'],
+      },
+      postFilters: [{ field: 'categories', classification: 'POST_FILTER', value: ['tv'] }],
+    });
+    expect(parsed.coverage).toMatchObject({
+      state: 'partial',
+      scanned: 500,
+      matched: 120,
+      returned: 100,
+      totalKind: 'estimated',
+      hydrationsUnresolved: 2,
+      budgetExceeded: true,
+    });
+    expect(parsed.warnings[0].code).toBe('EXPERIMENTAL_SOURCE');
+    expect(parsed.limitations.join(' ')).toContain('experimental');
+    expect(parsed.textProjection).toMatchObject({
+      fullStructuredContentAvailable: true,
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      rowsIncluded: parsed.items.length,
+      rowsOmitted: original.items.length - parsed.items.length,
+    });
+    expect(parsed.items.length).toBeGreaterThan(0);
+    expect(parsed.items[0].tags).toContain('女性向');
+    expect(parsed.textProjection.textViewScope).toContain(
+      'omitted rows are not evidence of absence',
+    );
+    expect(presentation.text).not.toContain('this evidence must stay in structuredContent only');
+  });
+
+  it('bounds long query-filter values and discloses filter values omitted from text', () => {
+    const original = makeDiscoveryResult(2);
+    const filter = original.plan.steps[0]?.request.filter;
+    if (!filter) throw new Error('Expected the discovery search request to have filters.');
+    filter.tag = Array.from({ length: 50 }, (_, index) => `${'长标签'.repeat(35)}${index}`);
+    const presentation = presentMcpToolResult('bangumi.query_subjects', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.plan.filter.tag).toHaveLength(4);
+    expect(parsed.plan.filterValuesOmitted).toBeGreaterThan(0);
+    expect(parsed.textProjection.textViewScope).toContain('query filter value(s) are omitted');
   });
 
   it('presents direct relation scope even for a small result and retains structuredContent', () => {

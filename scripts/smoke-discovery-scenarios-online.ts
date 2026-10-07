@@ -7,6 +7,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import {
   DISCOVERY_SCENARIOS,
+  selectDiscoveryScenario,
   summarizeDiscoveryScenarioItems,
   validateDiscoveryScenarioItems,
   type DiscoveryScenarioId,
@@ -117,14 +118,18 @@ function validateResult(
     coverageReported,
     coverageConsistent,
     estimatedSearchTotal: coverage.totalKind === 'estimated',
+    ...(scenario === 'G26'
+      ? { experimentalSourceWarning: result.warningCodes.includes('EXPERIMENTAL_SOURCE') }
+      : {}),
     ...itemChecks,
   };
   return { ...checks, passed: Object.values(checks).every(Boolean) };
 }
 
 async function main(): Promise<void> {
+  const scenarios: DiscoveryScenarioId[] = [selectDiscoveryScenario(process.argv.slice(2))];
   if (!process.argv.includes(LIVE_FLAG)) {
-    throw new Error(`Refusing public API requests without ${LIVE_FLAG}.`);
+    throw new Error(`Refusing public API requests without ${LIVE_FLAG}; pass one --scenario <id>.`);
   }
   let requestCount = 0;
   const client = new HttpClient({
@@ -144,9 +149,7 @@ async function main(): Promise<void> {
   const startedAt = new Date().toISOString();
   const results: Array<Record<string, unknown>> = [];
   try {
-    for (const [index, scenario] of (
-      Object.keys(DISCOVERY_SCENARIOS) as DiscoveryScenarioId[]
-    ).entries()) {
+    for (const [index, scenario] of scenarios.entries()) {
       const before = requestCount;
       let rawResult: unknown;
       let failureClass: string | undefined;
@@ -178,7 +181,7 @@ async function main(): Promise<void> {
         result: summary,
         assertions,
       });
-      if (index < Object.keys(DISCOVERY_SCENARIOS).length - 1) {
+      if (index < scenarios.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 1200));
       }
     }

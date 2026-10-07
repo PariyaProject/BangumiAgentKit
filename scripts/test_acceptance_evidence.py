@@ -285,6 +285,25 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'required': ['subjectId'],
                 },
             },
+            {
+                'name': 'bangumi.query_subjects',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Bounded public subject discovery.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'media': {'type': 'string'},
+                        'from': {'type': 'string'},
+                        'to': {'type': 'string'},
+                        'ratingCount': {'type': 'object'},
+                        'tags': {'type': 'array'},
+                        'categories': {'type': 'string'},
+                        'resultMode': {'type': 'string'},
+                        'limit': {'type': 'integer'},
+                        'explain': {'type': 'string'},
+                    },
+                },
+            },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
         self.catalog_path = self.root / 'docs/tool-catalog.json'
@@ -311,6 +330,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         relative_paths = {
             *GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
             source_path = self.original_root / relative_path
@@ -686,6 +706,172 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report['scenarios'][0]['result']['artifact']['persisted'] = True
         self.report_path.write_text(json.dumps(report), encoding='utf-8')
         self.assertEqual(GENERATOR.model_mcp_e2e_names(self.catalog), set())
+
+    def _g26_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.query_subjects')
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_g26_exact_tag_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'G26',
+            'scenarioId': 'G26',
+            'sourceRevision': source_revision or self.source_revision,
+            'observedAt': '2026-10-07T12:00:00.000Z',
+            'codexCliVersion': '1.2.14',
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': 'bangumi.query_subjects',
+            'argumentProfile': 'fixed-g26-exact-public-tag-2019-2024-v1',
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_G26_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'toolCalls': [{'name': 'bangumi.query_subjects', 'state': 'DONE'}],
+            'answerCheckMethod': 'g26-exact-public-tag-query-v1',
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_G26_ANSWER_CHECK_FIELDS
+            },
+            'resultCounters': {
+                'resultState': 'ok',
+                'coverageState': 'complete',
+                'totalKind': 'estimated',
+                'scanned': 2,
+                'matched': 2,
+                'returned': 2,
+                'pagesRequested': 1,
+                'pagesScanned': 1,
+                'upstreamExhausted': True,
+                'budgetExceeded': False,
+                'hydrationsAttempted': 0,
+                'hydrationsSucceeded': 0,
+                'hydrationsFailed': 0,
+                'hydrationsUnresolved': 0,
+                'hydrationBudgetExceeded': False,
+                'outputCap': None,
+                'visibleSourceRows': 2,
+                'invalidSourceRowsCount': 0,
+                'duplicateSourceRowsCount': 0,
+                'textRowsIncluded': 2,
+                'textRowsOmitted': 0,
+                'displayNamesClipped': 0,
+                'textUtf8Bytes': 2100,
+                'answerRowsParsed': 2,
+                'rowsMatched': 2,
+                'missingRowsCount': 0,
+                'mismatchedRowsCount': 0,
+                'unmatchedRowsCount': 0,
+                'duplicateAnswerRowsCount': 0,
+                'unstructuredAnswerLinesCount': 0,
+            },
+            'warningCodes': ['EXPERIMENTAL_SOURCE'],
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawResultStored': False,
+                'credentialsStored': False,
+            },
+        }
+
+    def _write_g26_frontier(self, status, source_refs=None):
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'G26',
+                'status': status,
+                'source_refs': source_refs or ['docs/research/user-scenario-catalog.md'],
+            }],
+        }), encoding='utf-8')
+
+    def test_g26_frontier_stays_unassessed_without_a_live_report(self):
+        self._write_g26_frontier('UNASSESSED')
+        self.assertTrue(GENERATOR.validate_g26_frontier_evidence())
+        self.assertFalse(GENERATOR.codex_g26_report_is_valid({}))
+
+    def test_accepts_candidate_bound_sanitized_g26_report_and_partial_frontier(self):
+        report_path = self.live_probe_dir / 'g26-exact-tag-agent-mcp-run95.json'
+        report_path.write_text(json.dumps(self._g26_report_fixture()), encoding='utf-8')
+        self._write_g26_frontier('PARTIAL', [
+            'docs/research/user-scenario-catalog.md',
+            GENERATOR.CODEX_G26_REPORT_RELATIVE_PATH,
+        ])
+
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        self.assertTrue(GENERATOR.codex_g26_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_g26_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_g26_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertTrue(GENERATOR.validate_g26_frontier_evidence())
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('items', report['resultCounters'])
+
+        self._git('add', 'docs/live-probes/g26-exact-tag-agent-mcp-run95.json')
+        self._git('commit', '-qm', 'add sanitized G26 evidence after its candidate')
+        self.assertTrue(
+            GENERATOR.codex_g26_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_stale_or_unreferenced_g26_evidence_before_frontier_promotion(self):
+        report_path = self.live_probe_dir / 'g26-exact-tag-agent-mcp-run95.json'
+        report_path.write_text(
+            json.dumps(self._g26_report_fixture(self.stale_candidate_source_revision)),
+            encoding='utf-8',
+        )
+        self._write_g26_frontier('PARTIAL', [
+            'docs/research/user-scenario-catalog.md',
+            GENERATOR.CODEX_G26_REPORT_RELATIVE_PATH,
+        ])
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        self.assertTrue(GENERATOR.codex_g26_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_g26_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
+        self.assertFalse(GENERATOR.validate_g26_frontier_evidence())
+
+        self._write_g26_frontier('PARTIAL')
+        self.assertFalse(GENERATOR.validate_g26_frontier_evidence())
+
+    def test_rejects_g26_report_with_raw_data_wrong_scope_or_failed_answer_checks(self):
+        invalid_reports = [
+            {'answer': 'raw answer must not be persisted'},
+            {'sourceRevision': self.unrelated_source_revision},
+            {'expectedArgumentsSha256': '0' * 64},
+            {'answerChecks': {'passed': False}},
+            {'resultCounters': {'visibleSourceRows': 2}},
+            {'warningCodes': []},
+            {'privacy': {'authProfile': 'anonymous', 'rawResultStored': True}},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                report = self._g26_report_fixture()
+                report.update(override)
+                self.assertFalse(GENERATOR.codex_g26_report_is_valid(report))
 
 
 class PerToolClientEvidenceTests(unittest.TestCase):
