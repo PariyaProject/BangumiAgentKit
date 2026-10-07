@@ -1325,8 +1325,8 @@
       "user_question": "找出集数少于 13、评分人数超过 3000 的科幻动画。",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/d04-reported-episode-count-discovery-contract-2026-10-07.md", "packages/discovery/src/compiler.ts", "tests/discovery/engine.test.ts"],
+      "next_action": "The implementation and deterministic tests now carry reported subject.eps through search and browse discovery, Renderer, MCP, and Standalone with bounded local filtering and unresolved missing values. Keep D04 UNASSESSED until a sanitized exact-current anonymous Agent/MCP query is observed after exact Candidate CI; then advance to PARTIAL at most. No account, OAuth, QQ, or TIM evidence is in scope.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
