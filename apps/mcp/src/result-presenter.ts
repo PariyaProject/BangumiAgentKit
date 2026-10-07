@@ -2841,9 +2841,18 @@ function createDiscoveryTextProjection(
       ? result.explanation.limitations
       : []),
   ].filter((value): value is string => typeof value === 'string');
-  const limitations = [...new Set(limitationSources)]
+  const uniqueLimitations = [...new Set(limitationSources)];
+  const reportedEpisodeLimitation = uniqueLimitations.find((value) =>
+    value.includes('reported subject.eps'),
+  );
+  const prioritizedLimitations = reportedEpisodeLimitation
+    ? [reportedEpisodeLimitation, ...uniqueLimitations.filter((value) => value !== reportedEpisodeLimitation)]
+    : uniqueLimitations;
+  const limitations = prioritizedLimitations
     .slice(0, limitationLimit)
-    .map((value) => clippedDisplayText(value, textCharacters).text);
+    .map((value) => value === reportedEpisodeLimitation
+      ? value
+      : clippedDisplayText(value, textCharacters).text);
   const evidence = Array.isArray(result.evidence) ? result.evidence : [];
   const sources = evidence.flatMap((item) => {
     if (!isJsonObject(item) || !isJsonObject(item.source)) return [];
@@ -2903,6 +2912,19 @@ function compactDiscoveryResult(result: JsonObject): string {
   let warningLimit = 2;
   let limitationLimit = 3;
   let textCharacters = 96;
+  const plan = isJsonObject(result.plan) ? result.plan : {};
+  const hasEpisodeCountPostFilter = Array.isArray(plan.postFilters) && plan.postFilters.some(
+    (item) => isJsonObject(item) && item.field === 'episodeCount',
+  );
+  const reportedEpisodeLimitation = [
+    ...(Array.isArray(plan.limitations) ? plan.limitations : []),
+    ...(Array.isArray(result.limitations) ? result.limitations : []),
+    ...(isJsonObject(result.explanation) && Array.isArray(result.explanation.limitations)
+      ? result.explanation.limitations
+      : []),
+  ].find((value): value is string =>
+    typeof value === 'string' && value.includes('reported subject.eps'),
+  );
   while (true) {
     const text = JSON.stringify(
       createDiscoveryTextProjection(
@@ -2917,7 +2939,7 @@ function compactDiscoveryResult(result: JsonObject): string {
     if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
     if (rowLimit > 1) rowLimit = Math.floor(rowLimit / 2);
     else if (filterLimit > 1) filterLimit = Math.floor(filterLimit / 2);
-    else if (limitationLimit > 0) limitationLimit -= 1;
+    else if (limitationLimit > (hasEpisodeCountPostFilter ? 1 : 0)) limitationLimit -= 1;
     else if (warningLimit > 0) warningLimit -= 1;
     else if (textCharacters > 24) textCharacters = Math.floor(textCharacters / 2);
     else {
@@ -2927,6 +2949,7 @@ function compactDiscoveryResult(result: JsonObject): string {
         coverage: Object.fromEntries(['state', 'scanned', 'matched', 'returned', 'totalKind']
           .filter((field) => fallbackCoverage[field] !== undefined)
           .map((field) => [field, fallbackCoverage[field]])),
+        ...(reportedEpisodeLimitation ? { limitations: [reportedEpisodeLimitation] } : {}),
         itemsOmittedFromText: Array.isArray(result.items) ? result.items.length : 0,
         textViewScope: 'Bounded text omitted details; full result remains in structuredContent.',
       });

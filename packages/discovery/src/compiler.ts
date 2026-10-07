@@ -239,6 +239,9 @@ export function compileDiscoveryPlan(
     ? { kind: 'browse', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoveryBrowseRequest }
     : { kind: 'search', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoverySearchRequest };
   const limitations = [
+    ...(query.episodeCount === undefined
+      ? []
+      : ['Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.']),
     'Enumeration is bounded by maxPages and maxCandidates.',
     ...(operation === 'searchSubjects'
       ? ['Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.']
@@ -247,9 +250,6 @@ export function compileDiscoveryPlan(
     ...(query.excludeMetaTags.length > 0
       ? ['Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.']
       : []),
-    ...(query.episodeCount === undefined
-      ? []
-      : ['Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.']),
     ...(query.sort === 'heat' ? ['heat means upstream 收藏人数 and is not a recent-trend metric.'] : []),
     ...(query.tieBreak
       ? ['A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.']

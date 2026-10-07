@@ -1111,7 +1111,12 @@ describe('MCP tool result presentation', () => {
         ],
         derivedFilters: [],
         unsupported: [],
-        limitations: ['Official search is experimental; estimated totals do not establish full database coverage.'],
+        limitations: [
+          'Enumeration is bounded by maxPages and maxCandidates.',
+          'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+          'all requests a complete attempt; budget exhaustion is reported as partial.',
+          'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.',
+        ],
       },
       coverage: {
         state: 'partial',
@@ -1149,6 +1154,10 @@ describe('MCP tool result presentation', () => {
       value: { max: 12 },
     }));
     expect(parsed.coverage).toMatchObject({ state: 'partial', scanned: 500, totalKind: 'estimated' });
+    expect(parsed.limitations[0]).toContain('reported subject.eps');
+    expect(parsed.limitations[0]).toContain('total_episodes');
+    expect(parsed.limitations[0]).toContain('Missing values remain unresolved');
+    expect(parsed.limitationsOmittedFromText).toBeGreaterThan(0);
     expect(parsed.mcpTextProjection.structuredContentHasFullResult).toBe(true);
     expect(parsed.mcpTextProjection.textViewScope).toContain('omitted rows do not prove absence');
   });

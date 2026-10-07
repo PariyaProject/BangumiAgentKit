@@ -8,7 +8,7 @@ import {
   type StandaloneCommandContext,
 } from '../../apps/standalone/src/command-registry.js';
 import { tokenizeCommandLine, type CliFlags } from '../../apps/standalone/src/command-parser.js';
-import { Presenter } from '../../apps/standalone/src/presenter.js';
+import { formatHuman, Presenter } from '../../apps/standalone/src/presenter.js';
 import type { StandaloneHost } from '../../apps/standalone/src/standalone-host.js';
 
 const flags: CliFlags = {
@@ -89,6 +89,61 @@ describe('Standalone discovery and raw tool playground', () => {
       expect.objectContaining({ episodeCount: { max: 0 } }),
       expect.anything(),
     );
+  });
+
+  it('presents effective D04 filters, reported episodes, and partial source limits', () => {
+    const output = formatHuman({
+      state: 'partial',
+      items: [
+        {
+          id: 123,
+          displayName: '示例动画',
+          media: 'anime',
+          ratingCount: 3001,
+          episodesReported: 12,
+        },
+      ],
+      plan: {
+        source: 'official_v0',
+        operation: 'searchSubjects',
+        totalKind: 'estimated',
+        pushdown: [
+          { field: 'media', operator: 'in', value: ['anime'] },
+          { field: 'tags', operator: 'contains_all', value: ['科幻'] },
+          { field: 'ratingCount', operator: 'range', value: { min: 3001 } },
+        ],
+        postFilters: [
+          { field: 'episodeCount', operator: 'range', value: { max: 12 } },
+        ],
+        derivedFilters: [],
+        limitations: [
+          'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.',
+          'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+        ],
+      },
+      coverage: {
+        state: 'partial',
+        totalKind: 'estimated',
+        scanned: 200,
+        matched: 118,
+        returned: 100,
+      },
+      warnings: [
+        { code: 'EXPERIMENTAL_SOURCE', message: 'Official subject search is experimental.' },
+        { code: 'DISCOVERY_BUDGET_EXCEEDED', message: 'The bounded candidate budget was reached.' },
+      ],
+    });
+
+    expect(output).toContain('来源: official_v0 / searchSubjects');
+    expect(output).toContain('媒介 属于 [anime]');
+    expect(output).toContain('标签 包含全部 [科幻]');
+    expect(output).toContain('评分人数 ≥3001');
+    expect(output).toContain('报告集数（Bangumi subject.eps） ≤12');
+    expect(output).toContain('报告集数（Bangumi subject.eps）: 12');
+    expect(output).toContain('state=partial totalKind=estimated');
+    expect(output).toContain('EXPERIMENTAL_SOURCE');
+    expect(output).toContain('total_episodes');
+    expect(output).toContain('Missing values remain unresolved');
   });
 
   it('PR-7D: person, staff, and person renderer commands route to semantic tools', async () => {
