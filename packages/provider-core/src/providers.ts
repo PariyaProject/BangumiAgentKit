@@ -217,6 +217,8 @@ export interface SubjectDiscoveryCandidate {
   score?: number;
   rank?: number;
   ratingCount?: number;
+  /** Bangumi-reported `subject.eps`; this is not the database chapter count. */
+  eps?: number;
   collection?: SubjectDiscoveryCollection;
   tags: string[];
   metaTags: string[];
@@ -1086,6 +1088,10 @@ function optionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function optionalNonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+}
+
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
@@ -1124,6 +1130,7 @@ function parseDiscoveryCandidate(raw: Subject): SubjectDiscoveryCandidate {
     score: rating ? optionalNumber(rating.score) : undefined,
     rank: rating ? optionalNumber(rating.rank) : undefined,
     ratingCount: rating ? optionalNumber(rating.total) : undefined,
+    eps: optionalNonNegativeInteger(value.eps),
     collection: optionalCollection(value.collection),
     tags: stringList(value.tags),
     metaTags: stringList(value.meta_tags),
@@ -1186,6 +1193,7 @@ function discoveryEvidence(
       'score',
       'rank',
       'ratingCount',
+      'eps',
       'collection',
       'tags',
       'metaTags',

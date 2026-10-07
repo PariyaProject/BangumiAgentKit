@@ -538,6 +538,78 @@ class FailedHydrationProvider implements SubjectDiscoveryProvider {
   }
 }
 
+class EpisodeCountProvider implements SubjectDiscoveryProvider {
+  getSubjectCalls = 0;
+  requests: SubjectDiscoverySearchRequest[] = [];
+  browseRequests: SubjectDiscoveryBrowseRequest[] = [];
+
+  async getSubject(id: number): Promise<CapabilityResult<ProviderSubjectData>> {
+    this.getSubjectCalls += 1;
+    if (id === 913) {
+      return {
+        state: 'ok',
+        data: {
+          id,
+          type: 2,
+          name: 'Hydrated match',
+          nameCn: '补全后命中',
+          summary: '',
+          nsfw: false,
+          locked: false,
+          date: '2024-01-01',
+          platform: 'TV',
+          images: {},
+          eps: 11,
+          totalEpisodes: 11,
+          stats: stats(8, 50, 3500),
+        },
+        evidence: {},
+      };
+    }
+    return {
+      state: 'unavailable',
+      error: { code: 'upstream_unavailable', retryable: true },
+    };
+  }
+
+  async getSubjectStats(): Promise<CapabilityResult<SubjectStatsData>> {
+    return { state: 'unavailable', error: { code: 'upstream_unavailable', retryable: true } };
+  }
+
+  async searchSubjects(request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    this.requests.push(request);
+    const items: SubjectDiscoveryCandidate[] = request.offset === 0
+      ? [
+          { id: 911, type: 2, name: 'Direct match', ratingCount: 3100, eps: 12, tags: ['科幻'], metaTags: [] },
+          { id: 912, type: 2, name: 'Too many episodes', ratingCount: 6000, eps: 13, tags: ['科幻'], metaTags: [] },
+          { id: 913, type: 2, name: 'Hydration match', ratingCount: 3500, tags: ['科幻'], metaTags: [] },
+          { id: 914, type: 2, name: 'Unresolved count', ratingCount: 4100, tags: ['科幻'], metaTags: [] },
+        ]
+      : [];
+    return {
+      state: 'ok',
+      data: { items, total: 4, totalKind: 'estimated', limit: 20, offset: request.offset },
+      evidence: {},
+    };
+  }
+
+  async browseSubjects(request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    this.browseRequests.push(request);
+    const candidates: SubjectDiscoveryCandidate[] = [
+      { id: 911, type: 2, name: 'Direct match', date: '2026-07-01', ratingCount: 3100, eps: 12, tags: ['科幻'], metaTags: [] },
+      { id: 912, type: 2, name: 'Too many episodes', date: '2026-07-02', ratingCount: 6000, eps: 13, tags: ['科幻'], metaTags: [] },
+      { id: 913, type: 2, name: 'Hydration match', date: '2026-07-03', ratingCount: 3500, tags: ['科幻'], metaTags: [] },
+      { id: 914, type: 2, name: 'Unresolved count', date: '2026-07-04', ratingCount: 4100, tags: ['科幻'], metaTags: [] },
+    ];
+    const items = candidates.slice(request.offset, request.offset + request.limit);
+    return {
+      state: 'ok',
+      data: { items, total: candidates.length, totalKind: 'exact', limit: request.limit, offset: request.offset },
+      evidence: {},
+    };
+  }
+}
+
 describe('bounded discovery engine', () => {
   it('deduplicates pages, hydrates with bounded concurrency, and applies post-filters', async () => {
     const provider = new FixtureDiscoveryProvider();
@@ -873,6 +945,84 @@ describe('bounded discovery engine', () => {
       field: 'excludeMetaTags',
       classification: 'POST_FILTER',
     }));
+  });
+
+  it('filters on reported eps, hydrates missing values within budget, and keeps failures unresolved', async () => {
+    const provider = new EpisodeCountProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      tags: ['科幻'],
+      ratingCount: { min: 3001 },
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+      explain: 'full',
+    });
+
+    expect(provider.requests[0]?.filter).toMatchObject({
+      type: [2],
+      tag: ['科幻'],
+      ratingCount: ['>=3001'],
+    });
+    expect(provider.requests[0]?.filter).not.toHaveProperty('eps');
+    expect(result.plan.postFilters).toContainEqual(expect.objectContaining({
+      field: 'episodeCount',
+      classification: 'POST_FILTER',
+      value: { max: 12 },
+    }));
+    expect(result.items.map((item) => [item.id, item.episodesReported])).toEqual([
+      [911, 12],
+      [913, 11],
+    ]);
+    expect(provider.getSubjectCalls).toBe(2);
+    expect(result.coverage).toMatchObject({
+      scanned: 4,
+      matched: 2,
+      hydrationsAttempted: 2,
+      hydrationsSucceeded: 1,
+      hydrationsFailed: 1,
+      hydrationsUnresolved: 1,
+      state: 'partial',
+      totalKind: 'estimated',
+    });
+    expect(result.warnings).toContainEqual(expect.objectContaining({
+      code: 'DISCOVERY_HYDRATION_UNRESOLVED',
+    }));
+    expect(result.plan.limitations.join(' ')).toContain('total_episodes');
+  });
+
+  it('applies the reported episode-count post-filter on the browse path too', async () => {
+    const provider = new EpisodeCountProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      year: 2026,
+      month: 7,
+      sort: 'date',
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+    });
+
+    expect(result.plan.operation).toBe('browseSubjects');
+    expect(provider.browseRequests).toHaveLength(1);
+    expect(provider.requests).toHaveLength(0);
+    expect(result.plan.postFilters).toContainEqual(expect.objectContaining({
+      field: 'episodeCount',
+      classification: 'POST_FILTER',
+      operation: 'browseSubjects',
+    }));
+    expect(result.items.map((item) => [item.id, item.episodesReported])).toEqual([
+      [911, 12],
+      [913, 11],
+    ]);
+    expect(result.coverage).toMatchObject({
+      matched: 2,
+      postFilterCount: 1,
+      hydrationsAttempted: 2,
+      hydrationsSucceeded: 1,
+      hydrationsFailed: 1,
+      hydrationsUnresolved: 1,
+      state: 'partial',
+      totalKind: 'exact',
+    });
   });
 
   it('does not call the provider for an ambiguous concept', async () => {

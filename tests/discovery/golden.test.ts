@@ -18,6 +18,14 @@ describe('PR-7C golden planning scenarios', () => {
     ['G08 hot isekai TV top 10', { media: 'anime', year: 2024, concepts: ['异世界'], categories: 'tv', sort: 'heat', limit: 10 }, 'searchSubjects'],
     ['G09 unsupported concept', { concepts: ['未知词'] }, 'searchSubjects'],
     ['G10 ambiguous concept', { concepts: ['双源'] }, 'searchSubjects'],
+    ['D04 bounded science-fiction anime by reported episode count', {
+      media: 'anime',
+      tags: ['科幻'],
+      ratingCount: { min: 3001 },
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+      limit: 100,
+    }, 'searchSubjects'],
   ] as const;
 
   it.each(cases)('%s', (_name, input, operation) => {

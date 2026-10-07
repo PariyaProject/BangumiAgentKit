@@ -36,6 +36,7 @@ General:
 Bangumi:
   search <query> [--type anime] [--limit 5]
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
+           [--episode-count-min N] [--episode-count-max N]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
   subject-identity <subjectId>
@@ -1198,6 +1199,8 @@ export class StandaloneCommandRegistry {
       '--rating-max',
       '--rating-count-min',
       '--rating-count-max',
+      '--episode-count-min',
+      '--episode-count-max',
       '--rank-min',
       '--rank-max',
       '--collection-count-min',
@@ -1279,6 +1282,18 @@ export class StandaloneCommandRegistry {
           break;
         case '--rating-count-max':
           input.ratingCount = { ...(input.ratingCount as object | undefined), max: Number(value) };
+          break;
+        case '--episode-count-min':
+          input.episodeCount = {
+            ...(input.episodeCount as object | undefined),
+            min: optionNumber(value, '--episode-count-min'),
+          };
+          break;
+        case '--episode-count-max':
+          input.episodeCount = {
+            ...(input.episodeCount as object | undefined),
+            max: optionNumber(value, '--episode-count-max'),
+          };
           break;
         case '--rank-min':
           input.rank = { ...(input.rank as object | undefined), min: Number(value) };

@@ -337,6 +337,11 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
                   {item.rank !== undefined ? `#${item.rank}` : '排名未知'} ·{' '}
                   {numberLabel(item.ratingCount, ' 人评分')}
                 </div>
+                {item.episodesReported !== undefined ? (
+                  <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+                    Bangumi 报告集数 {item.episodesReported}（subject.eps）
+                  </div>
+                ) : null}
                 {item.collectionTotal !== undefined ? (
                   <div style={{ color: theme.textMuted, fontSize: '11px' }}>
                     收藏合计 {item.collectionTotal}

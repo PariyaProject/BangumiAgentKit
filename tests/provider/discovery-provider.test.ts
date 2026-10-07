@@ -23,6 +23,7 @@ describe('official v0 discovery adapter', () => {
               name_cn: '少女终末旅行',
               date: '2017-10-06',
               platform: 'TV',
+              eps: 12,
               nsfw: false,
               rating: { score: 8.2, rank: 42, total: 100 },
               collection: { wish: 1, collect: 2, doing: 3, on_hold: 4, dropped: 5 },
@@ -55,11 +56,13 @@ describe('official v0 discovery adapter', () => {
     expect(result.data?.totalKind).toBe('estimated');
     expect(result.data?.items[0]).toMatchObject({
       id: 123,
+      eps: 12,
       tags: ['后宫'],
       metaTags: ['原创'],
       collection: { collect: 2, onHold: 4 },
     });
     expect(result.evidence?.['items[123].id']?.[0]?.source.operation).toBe('searchSubjects');
+    expect(result.evidence?.['items[123].eps']?.[0]?.source.operation).toBe('searchSubjects');
     expect(result.evidence?.['items[123].id']?.[0]?.source.experimental).toBe(true);
     const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toMatchObject({

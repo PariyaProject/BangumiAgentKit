@@ -648,7 +648,7 @@ export function createRenderPresentationTools(
   const renderQuerySubjects = defineTool({
     name: 'bangumi.render_query_subjects',
     description:
-      '生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；卡片不是完整数据库枚举的承诺。',
+      '生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；报告集数来自 subject.eps，不是已播集数或 total_episodes；卡片不是完整数据库枚举的承诺。',
     input: discoveryQueryInput,
     auth: 'none',
     scopes: [],

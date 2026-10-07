@@ -213,6 +213,18 @@ export function compileDiscoveryPlan(
   if (operation === 'browseSubjects' && query.categories.length > 0) {
     requireHydration('category_filter', ['platform']);
   }
+  if (query.episodeCount) {
+    postFilters.push(
+      planFilter(
+        'episodeCount',
+        operation,
+        'range',
+        query.episodeCount,
+        'The official source exposes reported subject.eps but no episode-count search filter; compare locally.',
+      ),
+    );
+    requireHydration('episode_count_filter', ['episodesReported']);
+  }
   if (query.sort === 'score') requireHydration('score_sort', ['score']);
   if (query.sort === 'rank') requireHydration('rank_sort', ['rank']);
   if (query.tieBreak) requireHydration('tie_break_sort', ['ratingCount']);
@@ -235,6 +247,9 @@ export function compileDiscoveryPlan(
     ...(query.excludeMetaTags.length > 0
       ? ['Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.']
       : []),
+    ...(query.episodeCount === undefined
+      ? []
+      : ['Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.']),
     ...(query.sort === 'heat' ? ['heat means upstream 收藏人数 and is not a recent-trend metric.'] : []),
     ...(query.tieBreak
       ? ['A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.']

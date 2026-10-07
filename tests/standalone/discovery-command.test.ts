@@ -47,6 +47,14 @@ describe('Standalone discovery and raw tool playground', () => {
         '2026-summer',
         '--concept',
         '后宫',
+        '--tag',
+        '科幻',
+        '--rating-count-min',
+        '3001',
+        '--episode-count-min',
+        '0',
+        '--episode-count-max',
+        '12',
         '--all',
         '--explain',
       ],
@@ -58,10 +66,27 @@ describe('Standalone discovery and raw tool playground', () => {
         media: 'anime',
         season: '2026-summer',
         concepts: ['后宫'],
+        tags: ['科幻'],
+        ratingCount: { min: 3001 },
+        episodeCount: { min: 0, max: 12 },
         resultMode: 'all',
         explain: 'full',
         limit: 100,
       }),
+      expect.anything(),
+    );
+  });
+
+  it('accepts zero for non-negative reported episode-count bounds', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'ok', items: [], coverage: {} });
+    const host = { executeTool } as unknown as StandaloneHost;
+    await new StandaloneCommandRegistry().execute(
+      ['discover', '--media', 'anime', '--episode-count-max', '0'],
+      context(host),
+    );
+    expect(executeTool).toHaveBeenCalledWith(
+      'bangumi.query_subjects',
+      expect.objectContaining({ episodeCount: { max: 0 } }),
       expect.anything(),
     );
   });

@@ -1399,6 +1399,7 @@ interface DiscoveryQueryInputLike {
   concepts?: readonly string[];
   rating?: { min?: number; max?: number };
   ratingCount?: { min?: number; max?: number };
+  episodeCount?: { min?: number; max?: number };
   rank?: { min?: number; max?: number };
   collectionCount?: { min?: number; max?: number };
   nsfw?: string | boolean;
@@ -1429,6 +1430,7 @@ interface DiscoveryResultLike {
     score?: number;
     rank?: number;
     ratingCount?: number;
+    episodesReported?: number;
     collectionTotal?: number;
     image?: string;
   }>;
@@ -1496,6 +1498,7 @@ const DISCOVERY_FIELD_LABELS: Record<string, string> = {
   concepts: '概念',
   rating: '评分',
   ratingCount: '评分人数',
+  episodeCount: '报告集数',
   rank: '排名',
   collectionCount: '收藏人数',
   nsfw: 'NSFW',
@@ -1624,6 +1627,7 @@ function queryFacets(input: DiscoveryQueryInputLike): string[] {
   for (const [label, value] of [
     ['评分', rangeLabel(input.rating)],
     ['评分人数', rangeLabel(input.ratingCount)],
+    ['报告集数（subject.eps）', rangeLabel(input.episodeCount)],
     ['排名', rangeLabel(input.rank)],
     ['收藏人数', rangeLabel(input.collectionCount)],
   ] as const) {
@@ -1741,6 +1745,7 @@ export function buildDiscoveryResultsViewModel(
     score: item.score,
     rank: item.rank,
     ratingCount: item.ratingCount,
+    episodesReported: item.episodesReported,
     collectionTotal: item.collectionTotal,
     image: item.image,
   }));

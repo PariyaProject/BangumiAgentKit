@@ -182,6 +182,14 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
 
   const rating = normalizeRange(input.rating, 'rating', issues);
   const ratingCount = normalizeRange(input.ratingCount, 'ratingCount', issues);
+  const episodeCount = normalizeRange(input.episodeCount, 'episodeCount', issues);
+  if (episodeCount) {
+    for (const [bound, value] of Object.entries(episodeCount)) {
+      if (!Number.isSafeInteger(value) || value < 0) {
+        issues.push(`episodeCount.${bound} must be a non-negative integer`);
+      }
+    }
+  }
   const rank = normalizeRange(input.rank, 'rank', issues);
   const collectionCount = normalizeRange(input.collectionCount, 'collectionCount', issues);
   const sort = input.sort ?? 'relevance';
@@ -223,6 +231,7 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
     concepts,
     ...(rating === undefined ? {} : { rating }),
     ...(ratingCount === undefined ? {} : { ratingCount }),
+    ...(episodeCount === undefined ? {} : { episodeCount }),
     ...(rank === undefined ? {} : { rank }),
     ...(collectionCount === undefined ? {} : { collectionCount }),
     nsfw,
