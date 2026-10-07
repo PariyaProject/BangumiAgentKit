@@ -146,6 +146,45 @@ describe('Standalone discovery and raw tool playground', () => {
     expect(output).toContain('Missing values remain unresolved');
   });
 
+  it('keeps coverage and source caveats ahead of the human row cap', () => {
+    const output = formatHuman({
+      state: 'partial',
+      items: Array.from({ length: 25 }, (_, index) => ({
+        id: index + 1,
+        displayName: `示例动画 ${index + 1}`,
+        media: 'anime',
+        ratingCount: 3001 + index,
+        episodesReported: 12,
+      })),
+      plan: {
+        source: 'official_v0',
+        operation: 'searchSubjects',
+        postFilters: [
+          { field: 'episodeCount', operator: 'range', value: { max: 12 } },
+        ],
+        limitations: [
+          'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.',
+        ],
+      },
+      coverage: {
+        state: 'partial',
+        totalKind: 'estimated',
+        scanned: 200,
+        matched: 118,
+        returned: 100,
+      },
+      warnings: [
+        { code: 'EXPERIMENTAL_SOURCE', message: 'Official subject search is experimental.' },
+      ],
+    });
+
+    expect(output).toContain('覆盖: state=partial totalKind=estimated');
+    expect(output).toContain('EXPERIMENTAL_SOURCE');
+    expect(output).toContain('限制: Episode-count filtering compares the reported subject.eps');
+    expect(output).toContain('total_episodes');
+    expect(output).toContain('输出已截断');
+  });
+
   it('PR-7D: person, staff, and person renderer commands route to semantic tools', async () => {
     const executeTool = vi.fn().mockResolvedValue({ state: 'ok' });
     const host = { executeTool } as unknown as StandaloneHost;

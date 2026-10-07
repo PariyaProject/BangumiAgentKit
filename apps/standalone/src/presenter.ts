@@ -298,23 +298,6 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
     if (filters.length > 0) lines.push(`${label}: ${filters.join('；')}`);
   }
 
-  for (const [index, candidate] of items.entries()) {
-    if (!candidate || typeof candidate !== 'object') continue;
-    const item = candidate as Record<string, unknown>;
-    lines.push(
-      `${index + 1}. ${String(item.displayName || item.nameCn || item.name || `#${item.id}`)}`,
-    );
-    lines.push(`   ID: ${String(item.id)}${item.media ? ` | ${String(item.media)}` : ''}`);
-    if (item.score !== undefined) lines.push(`   评分: ${String(item.score)}`);
-    if (item.ratingCount !== undefined) lines.push(`   评分人数: ${String(item.ratingCount)}`);
-    if (typeof item.episodesReported === 'number') {
-      lines.push(`   报告集数（Bangumi subject.eps）: ${String(item.episodesReported)}`);
-    } else if (hasEpisodeCountFilter) {
-      lines.push('   报告集数（Bangumi subject.eps）: 未能确认（未作为已匹配证据）');
-    }
-    if (item.date) lines.push(`   日期: ${String(item.date)}`);
-  }
-
   const coverage = value.coverage;
   if (coverage && typeof coverage === 'object') {
     const details = coverage as Record<string, unknown>;
@@ -353,6 +336,23 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
   }
   if (prioritizedLimitations.length > 4) {
     lines.push(`另有 ${prioritizedLimitations.length - 4} 条限制未展开。`);
+  }
+
+  for (const [index, candidate] of items.entries()) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const item = candidate as Record<string, unknown>;
+    lines.push(
+      `${index + 1}. ${String(item.displayName || item.nameCn || item.name || `#${item.id}`)}`,
+    );
+    lines.push(`   ID: ${String(item.id)}${item.media ? ` | ${String(item.media)}` : ''}`);
+    if (item.score !== undefined) lines.push(`   评分: ${String(item.score)}`);
+    if (item.ratingCount !== undefined) lines.push(`   评分人数: ${String(item.ratingCount)}`);
+    if (typeof item.episodesReported === 'number') {
+      lines.push(`   报告集数（Bangumi subject.eps）: ${String(item.episodesReported)}`);
+    } else if (hasEpisodeCountFilter) {
+      lines.push('   报告集数（Bangumi subject.eps）: 未能确认（未作为已匹配证据）');
+    }
+    if (item.date) lines.push(`   日期: ${String(item.date)}`);
   }
 
   return boundHumanLines(lines);
