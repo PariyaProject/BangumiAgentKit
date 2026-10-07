@@ -276,6 +276,9 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         'export function checkRendererAnswer(',
         'function statsCollectionStatusCountsMatch(',
         'function statsRatingHistogramSequenceMatches(',
+        'function hasUnsupportedPositiveStatsClaim(',
+        'CLAIM_NEGATION_PATTERNS',
+        'answer.toLowerCase()',
         "'双峰'",
     ),
 }

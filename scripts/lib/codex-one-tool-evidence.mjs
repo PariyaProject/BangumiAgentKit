@@ -166,7 +166,14 @@ const UNSUPPORTED_STATS_CLAIM_TERMS = [
   '质量', '口碑', '推荐', '因果', '趋势', '两极化', '两极分化', '双峰', '多峰',
   'bimodal', 'multimodal', '争议', '热度', '优质',
 ];
-const CLAIM_NEGATION_MARKERS = ['不', '不能', '不代表', '不可', '未', '无法', '并非', '不应', '没有', '无'];
+const CLAIM_NEGATION_PATTERNS = [
+  /(?:不能|无法|不可)(?:(?:据此|因此|由此|从而)?(?:判断|推断|确认|证明|说明|得出|判定))?[^。！？；;，,、]{0,10}$/u,
+  /不代表[^。！？；;，,、]*$/u,
+  /(?:并非|不是|不应|不支持)(?:为|是|被|视为)?$/u,
+  /(?:没有|无)(?:证据|依据|根据)(?:支持|表明|证明)?$/u,
+  /未(?:经|被|能|有)?(?:验证|支持|证实|证明|确认)?$/u,
+  /\b(?:not|no|cannot|can't|unable\s+to)\b(?:\s+(?:possibly|necessarily|establish(?:ed)?|show(?:n)?|support(?:ed)?|prove(?:n)?|confirm(?:ed)?|indicate(?:d)?|demonstrate(?:d)?|a|an|the|that|it|to|be|evidence|of|any|claim(?:s)?)){0,6}\s*$/iu,
+];
 const COLLECTION_STATUS_LABELS = {
   wish: ['愿望', '想看', 'wish'],
   doing: ['在看', '在做', 'doing'],
@@ -235,16 +242,18 @@ function hasOnlySupportedNumbers(answer, supportedFacts) {
 }
 
 function hasUnsupportedPositiveStatsClaim(answer) {
+  if (typeof answer !== 'string') return false;
+  const normalizedAnswer = answer.toLowerCase();
   for (const term of UNSUPPORTED_STATS_CLAIM_TERMS) {
     let start = 0;
     while (true) {
-      const index = answer.indexOf(term, start);
+      const index = normalizedAnswer.indexOf(term, start);
       if (index < 0) break;
-      const prefix = answer.slice(0, index);
-      const delimiters = [...prefix.matchAll(/[。！？；;，,]|但是|然而|不过|可是/gu)];
+      const prefix = normalizedAnswer.slice(0, index);
+      const delimiters = [...prefix.matchAll(/[。！？；;，,]|但是|然而|不过|可是|并且|而且|同时|另外|但|\b(?:but|however|yet)\b/giu)];
       const lastDelimiter = delimiters.at(-1);
       const precedingText = prefix.slice(lastDelimiter ? lastDelimiter.index + lastDelimiter[0].length : 0);
-      if (!CLAIM_NEGATION_MARKERS.some((marker) => precedingText.includes(marker))) return true;
+      if (!CLAIM_NEGATION_PATTERNS.some((pattern) => pattern.test(precedingText.trim()))) return true;
       start = index + term.length;
     }
   }

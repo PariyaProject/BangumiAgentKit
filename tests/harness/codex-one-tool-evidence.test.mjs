@@ -195,6 +195,11 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
   assert.equal(checkStatsAnswer(`${answer} 评分呈现双峰分布。`, facts).answerChecks.noUnsupportedPositiveClaim, false);
   assert.equal(checkStatsAnswer(`${answer} 不能据此判断是否双峰。`, facts).answerChecks.noUnsupportedPositiveClaim, true);
   assert.equal(checkStatsAnswer(`${answer} 评分呈现多峰分布。`, facts).answerChecks.noUnsupportedPositiveClaim, false);
+  assert.equal(checkStatsAnswer(`${answer} 这不仅说明评分可能是双峰分布。`, facts).answerChecks.noUnsupportedPositiveClaim, false);
+  assert.equal(checkStatsAnswer(`${answer} This is a Bimodal distribution.`, facts).answerChecks.noUnsupportedPositiveClaim, false);
+  assert.equal(checkStatsAnswer(`${answer} The data does not establish a Bimodal pattern.`, facts).answerChecks.noUnsupportedPositiveClaim, true);
+  assert.equal(checkStatsAnswer(`${answer} 仅为当前快照，不能据此推断历史趋势或两极分化。`, facts).answerChecks.noUnsupportedPositiveClaim, true);
+  assert.equal(checkStatsAnswer(`${answer} 不代表作品质量，但数据显示双峰。`, facts).answerChecks.noUnsupportedPositiveClaim, false);
 
   const typedAnswer = {
     subjectId: 218707, resultState: 'complete', ratingState: 'complete', ratingPopulation: 45,
