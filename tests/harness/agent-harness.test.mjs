@@ -929,6 +929,7 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'feat(subject): compose intelligence',
     'fix(renderer): bound character rows',
     'fix(g26): isolate candidate history checks from git overrides',
+    'fix(g26): update candidate history verifier',
   ]);
   assert.throws(
     () => assertNoLegacyRuntimeChanges(['docs/product/loop-status.md']),
@@ -946,6 +947,10 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'docs(agent): CI green',
     'fix(harness): candidate review readiness',
     'fix(harness): plan activation',
+    'fix(harness): record CI green',
+    'fix(harness): update run state',
+    'fix(harness): update the run state',
+    'fix(harness): mark candidate ready',
   ]) {
     assert.throws(
       () => assertProductCommitHygiene([subject]),

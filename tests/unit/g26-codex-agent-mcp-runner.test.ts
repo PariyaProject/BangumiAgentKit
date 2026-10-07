@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,6 +18,7 @@ import {
 } from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
 import {
   computeMcpBundleSha256,
+  gitRepositoryText,
   readG26McpBundleAttestation,
 } from '../../scripts/lib/g26-mcp-bundle.mjs';
 
@@ -284,10 +285,26 @@ describe('G26 Codex one-tool runner', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-canonical-claim-test-'));
     const repositoryRoot = path.join(directory, 'repository');
     const alternateRepositoryRoot = path.join(directory, 'alternate-repository');
+    const homeA = path.join(directory, 'home-a');
+    const homeB = path.join(directory, 'home-b');
+    const callerGlobalConfigA = path.join(directory, 'global-a.gitconfig');
+    const callerGlobalConfigB = path.join(directory, 'global-b.gitconfig');
+    const callerSystemConfig = path.join(directory, 'system.gitconfig');
     mkdirSync(repositoryRoot, { recursive: true });
     mkdirSync(alternateRepositoryRoot, { recursive: true });
+    mkdirSync(homeA, { recursive: true });
+    mkdirSync(homeB, { recursive: true });
     execFileSync('git', ['init', '-q'], { cwd: repositoryRoot });
     execFileSync('git', ['init', '-q'], { cwd: alternateRepositoryRoot });
+    for (const configPath of [
+      path.join(homeA, '.gitconfig'),
+      path.join(homeB, '.gitconfig'),
+      callerGlobalConfigA,
+      callerGlobalConfigB,
+      callerSystemConfig,
+    ]) {
+      writeFileSync(configPath, `[core]\n\tworktree = ${alternateRepositoryRoot}\n`);
+    }
     const gitCommonDirectory = execFileSync('git', ['rev-parse', '--git-common-dir'], {
       cwd: repositoryRoot,
       encoding: 'utf8',
@@ -302,12 +319,15 @@ describe('G26 Codex one-tool runner', () => {
       'GIT_CONFIG_COUNT',
       'GIT_CONFIG_KEY_0',
       'GIT_CONFIG_VALUE_0',
+      'GIT_CONFIG_GLOBAL',
+      'GIT_CONFIG_SYSTEM',
+      'GIT_CONFIG_NOSYSTEM',
     ];
     const previousEnvironment = new Map(
       ['HOME', ...gitOverrideKeys].map((key) => [key, process.env[key]]),
     );
     try {
-      process.env.HOME = path.join(directory, 'home-a');
+      process.env.HOME = homeA;
       process.env.GIT_DIR = path.join(alternateRepositoryRoot, '.git');
       process.env.GIT_WORK_TREE = alternateRepositoryRoot;
       process.env.GIT_COMMON_DIR = path.join(alternateRepositoryRoot, '.git');
@@ -315,6 +335,12 @@ describe('G26 Codex one-tool runner', () => {
       process.env.GIT_CONFIG_COUNT = '1';
       process.env.GIT_CONFIG_KEY_0 = 'core.worktree';
       process.env.GIT_CONFIG_VALUE_0 = alternateRepositoryRoot;
+      process.env.GIT_CONFIG_GLOBAL = callerGlobalConfigA;
+      process.env.GIT_CONFIG_SYSTEM = callerSystemConfig;
+      process.env.GIT_CONFIG_NOSYSTEM = '0';
+      expect(gitRepositoryText(repositoryRoot, ['rev-parse', '--show-toplevel'])).toBe(
+        realpathSync(repositoryRoot),
+      );
       const canonicalPath = canonicalG26ClaimPath(repositoryRoot);
       expect(canonicalPath).toBe(
         path.join(
@@ -331,10 +357,15 @@ describe('G26 Codex one-tool runner', () => {
       });
 
       expect(first.paths).toEqual([canonicalPath, firstMirror]);
-      process.env.HOME = path.join(directory, 'home-b');
+      process.env.HOME = homeB;
       process.env.GIT_DIR = path.join(directory, 'not-a-repository');
       process.env.GIT_WORK_TREE = path.join(directory, 'not-a-worktree');
       process.env.GIT_COMMON_DIR = path.join(directory, 'not-a-common-dir');
+      process.env.GIT_CONFIG_GLOBAL = callerGlobalConfigB;
+      process.env.GIT_CONFIG_SYSTEM = callerGlobalConfigB;
+      expect(gitRepositoryText(repositoryRoot, ['rev-parse', '--show-toplevel'])).toBe(
+        realpathSync(repositoryRoot),
+      );
       expect(canonicalG26ClaimPath(repositoryRoot)).toBe(canonicalPath);
       expect(() =>
         createOneShotClaims({
