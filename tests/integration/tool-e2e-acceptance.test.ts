@@ -35,6 +35,10 @@ const FULL_RENDERER_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter((name) => name.startsWith('pariya-agent-full-renderer-qa-e2e-') && name.endsWith('.json'))
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const CODEX_LUNA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
+  .filter((name) => name.startsWith('pariya-agent-codex-luna-e2e-') && name.endsWith('.json'))
+  .sort()
+  .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -166,6 +170,7 @@ const EVIDENCE = [
   COMPACT_EVIDENCE,
   ...CURRENT_FULL_PUBLIC_QA_EVIDENCE,
   ...FULL_RENDERER_QA_EVIDENCE,
+  ...CODEX_LUNA_EVIDENCE,
   ...FULL_OPERATION_QA_EVIDENCE,
   ...FULL_AUTH_START_QA_EVIDENCE,
   ...FULL_AUTH_SWITCH_QA_EVIDENCE,
@@ -402,15 +407,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(new Set(evidenceNames).size).toBe(evidenceNames.length);
     const observedEvidenceNames = new Set(evidenceNames);
     const uncoveredNames = catalogNames.filter((name) => !observedEvidenceNames.has(name));
-    // G23 changed these two public stats tool descriptions. Preserve the older
-    // reports as history but keep both current-contract Agent/MCP rows pending.
-    expect(uncoveredNames).toEqual([
-      'bangumi.get_subject_stats_intelligence',
-      'bangumi.render_subject_stats_intelligence',
-    ]);
-    for (const name of uncoveredNames) {
-      expect(statusMark(rows.get(name)?.[9])).toBe('⬜');
-    }
+    expect(uncoveredNames).toEqual([]);
     expect(evidenceNames.sort()).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
@@ -459,6 +456,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
         'bangumi.get_subject_stats_history',
+        'bangumi.get_subject_stats_intelligence',
         'bangumi.get_user',
         'bangumi.list_character_collections',
         'bangumi.list_collections',
@@ -504,6 +502,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',
         'bangumi.render_subject_overview',
+        'bangumi.render_subject_stats_intelligence',
         'bangumi.render_subject_stats_history',
         'bangumi.update_collection',
         'bangumi.update_episode_progress',

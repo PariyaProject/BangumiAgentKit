@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Generate the per-tool Bangumi acceptance checklist from the catalog and tests."""
 import argparse
+import functools
 import hashlib
 import json
 import re
 from pathlib import Path
+import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -214,6 +216,260 @@ def public_api_smoke_names(catalog: list[dict]) -> set[str]:
     return set(public_api_smoke_sources(catalog))
 
 
+CODEX_G23_PROBE_ARGUMENTS = {
+    'bangumi.get_subject_stats_intelligence': {'subjectId': 218707},
+    'bangumi.render_subject_stats_intelligence': {'subjectId': 218707},
+}
+CODEX_PRIVACY_FLAGS = (
+    'oauthAttempted', 'accountDataRead', 'writesAttempted', 'qqPipelineTested',
+    'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
+    'artifactImageBytesStored', 'credentialsStored',
+)
+CODEX_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'sourceRevision', 'codexCliVersion', 'catalogSha256',
+    'profile', 'model', 'reasoningEffort', 'toolName', 'toolDescriptionSha256',
+    'inputSchemaSha256', 'argumentProfile', 'expectedArgumentsSha256', 'serverToolNames',
+    'serverToolCount', 'processExitCode', 'resultStatus', 'resultCount', 'eventStreamParsed',
+    'codexMcpToolEventCount', 'nonMcpToolEventCount', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'qqPipelineTested', 'timClientTested',
+    'privacy', 'scenarios',
+}
+CODEX_SCENARIO_FIELDS = {
+    'id', 'passed', 'exactArgumentsMatched', 'oneToolAllowlistVerified',
+    'resultReadbackVerified', 'answerCheckPassed', 'answerChecks', 'toolCalls', 'result',
+}
+CODEX_BASE_ANSWER_CHECK_FIELDS = {
+    'typedFieldsMatch', 'subjectIdMentioned', 'currentSnapshotMentioned',
+    'ratingAndBandMentioned', 'collectionMentioned', 'officialV0Mentioned',
+    'coverageStateMentioned', 'singleParagraphNoMarkdown', 'noUnsupportedPositiveClaim',
+}
+CODEX_STATS_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {
+    'metricStatesMentioned', 'limitationsMentioned', 'ratingDistributionClaimsMatch',
+    'collectionDistributionClaimsMatch',
+}
+CODEX_RENDERER_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {'artifactMentioned'}
+CODEX_ANSWER_CHECK_FIELDS = CODEX_STATS_ANSWER_CHECK_FIELDS | CODEX_RENDERER_ANSWER_CHECK_FIELDS
+CODEX_RESULT_FIELDS = {
+    'toolName', 'resultState', 'resultByteLength', 'resultSha256', 'sourceOperations', 'artifact',
+}
+CODEX_SOURCE_OPERATION_FIELDS = {'operation', 'attempted', 'succeeded', 'failed'}
+CODEX_ARTIFACT_FIELDS = {
+    'returned', 'persisted', 'mimeType', 'width', 'height', 'byteLength', 'sha256', 'pngSignatureValid',
+}
+CODEX_PROBE_IMPLEMENTATION_MARKERS = {
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        "serverProfile: 'one-tool-anonymous-public-v1'",
+        'new MemoryStorage()',
+        "baseUrl: 'https://api.bgm.tv'",
+        'filterAllowedTools(registry.getTools(), config.toolName)',
+        'authorizeToolCall({',
+        'claimSingleToolCall(',
+        'writeSanitizedSummary(',
+    ),
+    'scripts/lib/codex-one-tool-evidence.mjs': (
+        'export function filterAllowedTools(',
+        'export function publicReadOnlyToolAnnotations(',
+        'export function authorizeToolCall(',
+        'export function claimSingleToolCall(',
+        'export function summarizeToolResult(',
+        'export function checkStatsAnswer(',
+        'export function checkRendererAnswer(',
+        'function statsCollectionStatusCountsMatch(',
+        'function statsRatingHistogramSequenceMatches(',
+        'function hasUnsupportedPositiveStatsClaim(',
+        'function isStatsClaimNegated(',
+        'CLAIM_NEGATION_PREFIX',
+        'CLAIM_NEGATION_PREDICATE',
+        'CLAIM_NEGATION_PATTERNS',
+        'answer.toLowerCase()',
+        "'双峰'",
+    ),
+}
+CODEX_FORBIDDEN_CONTENT_KEYS = {
+    'prompt', 'userprompt', 'rawprompt', 'answer', 'assistanttext', 'rawanswer',
+    'resultbody', 'rawresult', 'rawtoolresult', 'structuredcontent', 'imagedata',
+    'imagebytes', 'base64', 'credential', 'credentials', 'accesstoken', 'oauthtoken',
+    'accountid', 'username', 'messagebody', 'replybody',
+}
+
+
+def _canonical_json_sha256(value: object) -> str:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(encoded.encode('utf-8')).hexdigest()
+
+
+def _contains_forbidden_codex_content(value: object) -> bool:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if str(key).replace('_', '').lower() in CODEX_FORBIDDEN_CONTENT_KEYS:
+                return True
+            if _contains_forbidden_codex_content(child):
+                return True
+    elif isinstance(value, list):
+        return any(_contains_forbidden_codex_content(child) for child in value)
+    return False
+
+
+@functools.lru_cache(maxsize=128)
+def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
+    """Bind a report revision to the tracked one-tool server and its evidence checks."""
+    resolved = subprocess.run(
+        ['git', 'rev-parse', '--verify', f'{revision}^{{commit}}'],
+        cwd=repository_root, capture_output=True, text=True, check=False,
+    )
+    if resolved.returncode != 0 or resolved.stdout.strip() != revision:
+        return False
+    for relative_path, markers in CODEX_PROBE_IMPLEMENTATION_MARKERS.items():
+        source = subprocess.run(
+            ['git', 'show', f'{revision}:{relative_path}'],
+            cwd=repository_root, capture_output=True, text=True, check=False,
+        )
+        if source.returncode != 0 or any(marker not in source.stdout for marker in markers):
+            return False
+    return True
+
+
+def codex_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_probe_revision_has_implementation(str(ROOT), revision)
+
+
+def codex_mcp_evidence_is_valid(
+    report: dict, evidence_by_name: dict[str, dict], current_by_name: dict[str, dict],
+) -> bool:
+    """Accept only sanitized, exact-catalog GPT-6 Luna Max one-tool reports."""
+    if set(report) != CODEX_REPORT_FIELDS:
+        return False
+    if (type(report.get('schemaVersion')) is not int
+            or report.get('schemaVersion') != 1
+            or report.get('evidenceKind') != 'codex_cli_mcp_tool_use'
+            or report.get('profile') != 'codex-luna-max-one-tool-v1'
+            or report.get('model') != 'gpt-6-luna'
+            or report.get('reasoningEffort') != 'max'
+            or not isinstance(report.get('codexCliVersion'), str)
+            or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+            or not isinstance(report.get('sourceRevision'), str)
+            or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
+            or not codex_probe_revision_has_implementation(report['sourceRevision'])
+            or type(report.get('processExitCode')) is not int
+            or report.get('processExitCode') != 0
+            or report.get('resultStatus') != 'SUCCESS'
+            or type(report.get('resultCount')) is not int
+            or report.get('resultCount') != 1
+            or report.get('eventStreamParsed') is not True
+            or type(report.get('codexMcpToolEventCount')) is not int
+            or report.get('codexMcpToolEventCount') != 1
+            or type(report.get('nonMcpToolEventCount')) is not int
+            or report.get('nonMcpToolEventCount') != 0
+            or type(report.get('shellToolCallCount')) is not int
+            or report.get('shellToolCallCount') != 0
+            or report.get('qqPipelineTested') is not False
+            or report.get('timClientTested') is not False
+            or type(report.get('serverToolCount')) is not int
+            or type(report.get('allowedCallCount')) is not int
+            or type(report.get('deniedCallCount')) is not int):
+        return False
+
+    tool_name = report.get('toolName')
+    arguments = CODEX_G23_PROBE_ARGUMENTS.get(tool_name)
+    current_tool = current_by_name.get(tool_name) if isinstance(tool_name, str) else None
+    if (arguments is None or current_tool is None
+            or evidence_by_name.get(tool_name) != current_tool
+            or current_tool.get('auth') != 'none'
+            or current_tool.get('risk') != 'read'
+            or report.get('serverToolNames') != [tool_name]
+            or report.get('serverToolCount') != 1
+            or report.get('allowedCallCount') != 1
+            or report.get('deniedCallCount') != 0
+            or report.get('argumentProfile') != 'fixed-public-subject-218707-v1'
+            or report.get('expectedArgumentsSha256') != _canonical_json_sha256(arguments)
+            or report.get('toolDescriptionSha256') != hashlib.sha256(
+                current_tool.get('description', '').encode('utf-8')
+            ).hexdigest()
+            or report.get('inputSchemaSha256') != _canonical_json_sha256(
+                current_tool.get('inputSchema')
+            )):
+        return False
+
+    privacy = report.get('privacy')
+    if (not isinstance(privacy, dict)
+            or set(privacy) != set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
+            or privacy.get('authProfile') != 'anonymous'):
+        return False
+    if any(privacy.get(flag) is not False for flag in CODEX_PRIVACY_FLAGS):
+        return False
+
+    scenarios = report.get('scenarios')
+    if not isinstance(scenarios, list) or len(scenarios) != 1:
+        return False
+    scenario = scenarios[0]
+    calls = scenario.get('toolCalls') if isinstance(scenario, dict) else None
+    if (not isinstance(scenario, dict)
+            or set(scenario) != CODEX_SCENARIO_FIELDS
+            or scenario.get('passed') is not True
+            or scenario.get('id') != tool_name
+            or scenario.get('exactArgumentsMatched') is not True
+            or scenario.get('oneToolAllowlistVerified') is not True
+            or scenario.get('resultReadbackVerified') is not True
+            or scenario.get('answerCheckPassed') is not True
+            or not isinstance(scenario.get('answerChecks'), dict)
+            or set(scenario.get('answerChecks', {})) != (
+                CODEX_RENDERER_ANSWER_CHECK_FIELDS if tool_name.startswith('bangumi.render_')
+                else CODEX_STATS_ANSWER_CHECK_FIELDS
+            )
+            or any(value is not True for value in scenario.get('answerChecks', {}).values())
+            or not isinstance(calls, list)
+            or len(calls) != 1
+            or calls[0] != {'name': tool_name, 'state': 'DONE'}
+            or _contains_forbidden_codex_content(report)):
+        return False
+
+    result = scenario.get('result')
+    if (not isinstance(result, dict)
+            or set(result) != CODEX_RESULT_FIELDS
+            or result.get('toolName') != tool_name
+            or type(result.get('resultByteLength')) is not int
+            or result.get('resultByteLength') <= 0
+            or not re.fullmatch(r'[0-9a-f]{64}', str(result.get('resultSha256', '')))
+            or not isinstance(result.get('sourceOperations'), list)
+            or len(result.get('sourceOperations', [])) > 20
+            or any(not isinstance(item, dict) or set(item) != CODEX_SOURCE_OPERATION_FIELDS
+                   or not isinstance(item.get('operation'), str)
+                   or not re.fullmatch(
+                       r'(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /[A-Za-z0-9_{}./-]{1,112}|unclassified',
+                       item.get('operation', ''),
+                   )
+                   or any(type(item.get(key)) is not int or item[key] < 0
+                          for key in ('attempted', 'succeeded', 'failed'))
+                   for item in result.get('sourceOperations', []))):
+        return False
+    artifact = result.get('artifact')
+    if not isinstance(artifact, dict):
+        return False
+    if tool_name.startswith('bangumi.render_'):
+        if (set(artifact) != CODEX_ARTIFACT_FIELDS
+                or result.get('resultState') != 'artifact_returned'
+                or artifact.get('returned') is not True
+                or artifact.get('persisted') is not False
+                or artifact.get('mimeType') != 'image/png'
+                or type(artifact.get('width')) is not int or artifact['width'] <= 0
+                or type(artifact.get('height')) is not int or artifact['height'] <= 0
+                or type(artifact.get('byteLength')) is not int or artifact['byteLength'] <= 0
+                or artifact.get('pngSignatureValid') is not True
+                or not re.fullmatch(r'[0-9a-f]{64}', str(artifact.get('sha256', '')))):
+            return False
+    else:
+        if (set(artifact) != {'returned', 'persisted'}
+                or result.get('resultState') not in {
+                    'complete', 'partial', 'unavailable', 'not_found', 'not_computable',
+                }
+                or artifact.get('returned') is not False or artifact.get('persisted') is not False
+                or 'width' in artifact or 'height' in artifact or 'sha256' in artifact):
+            return False
+    return True
+
+
 def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     """Trust passed CLI MCP reports whose individual tool catalog entry is current."""
     sources: dict[str, set[str]] = {}
@@ -265,17 +521,21 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         if not isinstance(report, dict):
             continue
         evidence_by_name = catalog_for_hash(report.get('catalogSha256'))
-        if (report.get('schemaVersion') != 1
-                or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
-                or evidence_by_name is None
-                or report.get('profile') not in valid_profiles
-                or type(report.get('processExitCode')) is not int
-                or report.get('processExitCode') != 0
-                or report.get('resultStatus') != 'SUCCESS'
-                or type(report.get('resultCount')) is not int
-                or report.get('resultCount') < 1
-                or report.get('qqPipelineTested') is not False
-                or report.get('timClientTested') is not False):
+        if evidence_by_name is None:
+            continue
+        if report.get('evidenceKind') == 'codex_cli_mcp_tool_use':
+            if not codex_mcp_evidence_is_valid(report, evidence_by_name, current_by_name):
+                continue
+        elif (report.get('schemaVersion') != 1
+              or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
+              or report.get('profile') not in valid_profiles
+              or type(report.get('processExitCode')) is not int
+              or report.get('processExitCode') != 0
+              or report.get('resultStatus') != 'SUCCESS'
+              or type(report.get('resultCount')) is not int
+              or report.get('resultCount') < 1
+              or report.get('qqPipelineTested') is not False
+              or report.get('timClientTested') is not False):
             continue
         scenarios = report.get('scenarios')
         if not isinstance(scenarios, list) or len(scenarios) != report.get('resultCount'):

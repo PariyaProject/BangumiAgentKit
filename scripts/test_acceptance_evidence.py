@@ -253,6 +253,208 @@ class PublicApiEvidenceTests(unittest.TestCase):
         self.assertEqual(GENERATOR.public_api_smoke_names(self.catalog), set())
 
 
+class CodexModelMcpEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory(prefix='codex-model-mcp-evidence-test-')
+        self.root = Path(self.temp_dir.name)
+        self.live_probe_dir = self.root / 'docs/live-probes'
+        self.live_probe_dir.mkdir(parents=True)
+        self.catalog = [
+            {
+                'name': 'bangumi.get_subject_stats_intelligence',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Current stats snapshot and evidence.',
+                'inputSchema': {'type': 'object', 'properties': {'subjectId': {'type': 'integer'}}},
+            },
+            {
+                'name': 'bangumi.render_subject_stats_intelligence',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Render current stats snapshot.',
+                'inputSchema': {'type': 'object', 'properties': {'subjectId': {'type': 'integer'}}},
+            },
+            {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
+        ]
+        self.catalog_path = self.root / 'docs/tool-catalog.json'
+        self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
+        self.original_root = GENERATOR.ROOT
+        self.source_revision, self.unrelated_source_revision = self._init_probe_source_history()
+        self.original_catalog = GENERATOR.CATALOG
+        self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
+        GENERATOR.ROOT = self.root
+        GENERATOR.CATALOG = self.catalog_path
+        GENERATOR.LIVE_PROBE_DIR = self.live_probe_dir
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G23.json'
+
+    def _git(self, *args):
+        return subprocess.run(
+            ['git', *args], cwd=self.root, check=True, capture_output=True, text=True,
+        )
+
+    def _init_probe_source_history(self):
+        for relative_path in GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS:
+            source_path = self.original_root / relative_path
+            fixture_path = self.root / relative_path
+            fixture_path.parent.mkdir(parents=True, exist_ok=True)
+            fixture_path.write_bytes(source_path.read_bytes())
+        self._git('init', '-q')
+        self._git('config', 'user.name', 'Acceptance Evidence Test')
+        self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
+        self._git('add', 'apps/mcp/codex-one-tool-mcp-server.mjs',
+                  'scripts/lib/codex-one-tool-evidence.mjs')
+        self._git('commit', '-qm', 'add one-tool probe implementation fixture')
+        implementation_revision = self._git('rev-parse', 'HEAD').stdout.strip()
+        server_path = self.root / 'apps/mcp/codex-one-tool-mcp-server.mjs'
+        server_path.write_text('export const unrelatedProgram = true;\n', encoding='utf-8')
+        self._git('add', 'apps/mcp/codex-one-tool-mcp-server.mjs')
+        self._git('commit', '-qm', 'replace probe implementation with unrelated code')
+        unrelated_revision = self._git('rev-parse', 'HEAD').stdout.strip()
+        return implementation_revision, unrelated_revision
+
+    def tearDown(self):
+        GENERATOR.ROOT = self.original_root
+        GENERATOR.CATALOG = self.original_catalog
+        GENERATOR.LIVE_PROBE_DIR = self.original_probe_dir
+        self.temp_dir.cleanup()
+
+    @staticmethod
+    def sha256(value):
+        return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+    def write_report(self, tool_name='bangumi.get_subject_stats_intelligence', **overrides):
+        tool = next(item for item in self.catalog if item['name'] == tool_name)
+        arguments = GENERATOR.CODEX_G23_PROBE_ARGUMENTS[tool_name]
+        is_renderer = tool_name.startswith('bangumi.render_')
+        answer_checks = {
+            key: True for key in (GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer
+                                  else GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS)
+        }
+        result = {
+            'toolName': tool_name,
+            'resultState': 'artifact_returned' if is_renderer else 'partial',
+            'resultByteLength': 128,
+            'resultSha256': 'b' * 64,
+            'sourceOperations': [{'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 1,
+                                  'succeeded': 1, 'failed': 0}],
+            'artifact': ({'returned': True, 'persisted': False, 'mimeType': 'image/png',
+                          'width': 720, 'height': 1200, 'byteLength': 128000,
+                          'sha256': 'c' * 64, 'pngSignatureValid': True}
+                         if is_renderer else {'returned': False, 'persisted': False}),
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_mcp_tool_use',
+            'sourceRevision': self.source_revision,
+            'codexCliVersion': '0.160.0',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': tool_name,
+            'toolDescriptionSha256': self.sha256(tool['description']),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'argumentProfile': 'fixed-public-subject-218707-v1',
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(arguments),
+            'serverToolNames': [tool_name],
+            'serverToolCount': 1,
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'resultCount': 1,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'privacy': {key: False for key in GENERATOR.CODEX_PRIVACY_FLAGS} | {'authProfile': 'anonymous'},
+            'scenarios': [{
+                'id': tool_name,
+                'passed': True,
+                'exactArgumentsMatched': True,
+                'oneToolAllowlistVerified': True,
+                'resultReadbackVerified': True,
+                'answerCheckPassed': True,
+                'answerChecks': answer_checks,
+                'toolCalls': [{'name': tool_name, 'state': 'DONE'}],
+                'result': result,
+            }],
+        }
+        report.update(overrides)
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+
+    def test_accepts_both_exact_catalog_bound_luna_max_one_tool_reports(self):
+        self.write_report()
+        stats_bytes = self.report_path.read_bytes()
+        self.write_report(tool_name='bangumi.render_subject_stats_intelligence')
+        stats_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G23-stats.json'
+        stats_path.write_bytes(stats_bytes)
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog),
+            {
+                'bangumi.get_subject_stats_intelligence': {
+                    'docs/live-probes/pariya-agent-codex-luna-e2e-G23-stats.json'
+                },
+                'bangumi.render_subject_stats_intelligence': {
+                    'docs/live-probes/pariya-agent-codex-luna-e2e-G23.json'
+                },
+            },
+        )
+
+    def test_rejects_wrong_model_effort_catalog_scope_privacy_or_raw_content(self):
+        invalid_reports = [
+            {'model': 'gemini-3.8-flash-low'},
+            {'reasoningEffort': 'high'},
+            {'sourceRevision': 'a' * 40},
+            {'sourceRevision': self.unrelated_source_revision},
+            {'catalogSha256': '0' * 64},
+            {'toolDescriptionSha256': '0' * 64},
+            {'serverToolNames': ['bangumi.get_subject_stats_intelligence', 'bangumi.auth_status']},
+            {'allowedCallCount': 2},
+            {'privacy': {**{key: False for key in GENERATOR.CODEX_PRIVACY_FLAGS},
+                         'authProfile': 'anonymous', 'oauthAttempted': True}},
+            {'answer': 'raw model answer must never be retained'},
+            {'scenarios': [{
+                'id': 'bangumi.get_subject_stats_intelligence',
+                'passed': True,
+                'exactArgumentsMatched': True,
+                'oneToolAllowlistVerified': True,
+                'resultReadbackVerified': True,
+                'answerCheckPassed': True,
+                'answerChecks': {key: True for key in GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS},
+                'toolCalls': [{'name': 'bangumi.get_subject_stats_intelligence', 'state': 'DONE'}],
+                'result': {
+                    'toolName': 'bangumi.get_subject_stats_intelligence',
+                    'resultState': 'partial',
+                    'resultByteLength': 128,
+                    'resultSha256': 'b' * 64,
+                    'sourceOperations': [{'operation': 'GET /v0/subjects/{subject_id}',
+                                         'attempted': 1, 'succeeded': 1, 'failed': 0}],
+                    'artifact': {'returned': False, 'persisted': False},
+                    'unrecognizedPayload': 'raw Bangumi response',
+                },
+            }]},
+            {'scenarios': [{'passed': True, 'exactArgumentsMatched': True,
+                            'oneToolAllowlistVerified': True, 'resultReadbackVerified': True,
+                            'answerCheckPassed': True,
+                            'toolCalls': [{'name': 'bangumi.get_subject_stats_intelligence', 'state': 'DONE'},
+                                          {'name': 'bangumi.auth_status', 'state': 'DONE'}],
+                            'result': {'toolName': 'bangumi.get_subject_stats_intelligence',
+                                       'resultState': 'partial'}}]},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                self.write_report(**override)
+                self.assertEqual(GENERATOR.model_mcp_e2e_names(self.catalog), set())
+
+    def test_rejects_renderer_report_without_ephemeral_png_metadata(self):
+        self.write_report(tool_name='bangumi.render_subject_stats_intelligence')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['scenarios'][0]['result']['artifact']['persisted'] = True
+        self.report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertEqual(GENERATOR.model_mcp_e2e_names(self.catalog), set())
+
+
 class PerToolClientEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='tool-client-evidence-test-')
