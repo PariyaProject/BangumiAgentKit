@@ -1127,7 +1127,7 @@
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/unit/g20-direct-relations-answer-check.test.ts"
       ],
-      "next_action": "Run #95 G20 now offers an opt-in includeEvidence=true envelope while preserving the legacy relation-array output by default. Evidence mode records source-directed official-v0 rows, exact labels, response counts, schema-drift omissions, non-pagination/non-total limits, and an MCP text projection with omission counts plus full structuredContent. The offline G20 checker verifies exact direct row IDs/names/labels, source scope, coverage disclosures, no unsupported completeness/reverse/canonical-order claims, and refuses a missing structuredContent readback. Focused MCP/registry tests pass 24/24; G20 checker tests pass 9/9; typecheck and lint pass. Keep PARTIAL until one exact-Candidate, exact-head CI, candidate:check-gated anonymous one-tool get_subject_relations Agent/MCP query with includeEvidence=true has readable matching result evidence. If readback fails, keep PARTIAL and do not retry. This direct response still cannot establish a complete franchise or official watch order.",
+      "next_action": "Run #95 G20 now offers an opt-in includeEvidence=true envelope while preserving the legacy relation-array output by default. Evidence mode records source-directed official-v0 rows, exact labels, response counts, schema-drift omissions, non-pagination/non-total limits, and an MCP text projection with omission counts plus full structuredContent. The offline G20 checker verifies exact direct row IDs/names/labels, source scope, coverage disclosures, no unsupported completeness/reverse/canonical-order claims, and requires every returned row through full structuredContent or complete unclipped MCP text; omitted rows without the full payload fail readback. Focused MCP/registry tests pass 24/24; G20 checker tests pass 9/9; typecheck and lint pass. Keep PARTIAL until one exact-Candidate, exact-head CI, candidate:check-gated anonymous one-tool get_subject_relations Agent/MCP query with includeEvidence=true has readable matching result evidence. If readback fails, keep PARTIAL and do not retry. This direct response still cannot establish a complete franchise or official watch order.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -1159,7 +1159,7 @@
             "exact subjectId/includeEvidence arguments and one target tool call",
             "source-directed operation and response-only coverage",
             "exact returned row IDs, names, and raw relation labels",
-            "MCP text budget, omission counts, and structuredContent readback",
+            "MCP text budget, omission counts, and complete row readback from structuredContent or unclipped text",
             "bounded response disclosure and schema-drift count",
             "no unsupported completeness, absence, reverse-edge, or canonical-order claim"
           ],

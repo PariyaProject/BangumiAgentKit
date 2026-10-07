@@ -5,6 +5,7 @@ export interface G20DirectRelationsAnswerCheck {
   queryArgumentsMatch: boolean;
   exactSingleToolCall: boolean;
   resultReadbackAvailable: boolean;
+  resultRowsReadbackAvailable: boolean;
   structuredContentReadbackAvailable: boolean;
   sourceScopeVerified: boolean;
   coverageConsistent: boolean;

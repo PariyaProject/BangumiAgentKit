@@ -96,6 +96,8 @@ export function verifyG20DirectRelationsAnswer(
     result?.coverage?.schemaDriftRows === 0 ||
     hasSchemaDriftDisclosure(scopeText, result?.coverage?.schemaDriftRows);
   const textProjectionConsistent = isTextProjectionConsistent(textResult, fullResult);
+  const resultRowsReadbackAvailable =
+    fullResult !== null || hasCompleteTextReadback(textResult);
   const textBudgetVerified =
     Number.isInteger(toolTextUtf8Bytes) &&
     toolTextUtf8Bytes > 0 &&
@@ -117,7 +119,7 @@ export function verifyG20DirectRelationsAnswer(
     sourceScopeVerified &&
     coverageConsistent &&
     textProjectionConsistent &&
-    structuredContentReadbackAvailable &&
+    resultRowsReadbackAvailable &&
     textBudgetVerified &&
     validRows.length > 0 &&
     duplicateSourceRowsCount === 0 &&
@@ -144,7 +146,8 @@ export function verifyG20DirectRelationsAnswer(
     method: G20_DIRECT_RELATIONS_ANSWER_CHECK_METHOD,
     queryArgumentsMatch,
     exactSingleToolCall,
-    resultReadbackAvailable: result !== null,
+    resultReadbackAvailable: result !== null && resultRowsReadbackAvailable,
+    resultRowsReadbackAvailable,
     structuredContentReadbackAvailable,
     sourceScopeVerified,
     coverageConsistent,
@@ -273,16 +276,23 @@ function projectionHasOmissions(textResult) {
 }
 
 function isTextProjectionConsistent(textResult, fullResult) {
-  if (!textResult || !fullResult || !Array.isArray(textResult.items)) return false;
+  if (!textResult || !Array.isArray(textResult.items)) return false;
   const projection = textResult.textProjection;
   if (
     !projection ||
     projection.fullStructuredContentAvailable !== true ||
     projection.rowsIncluded !== textResult.items.length ||
-    projection.rowsOmitted !== fullResult.items.length - textResult.items.length
+    !Number.isInteger(projection.rowsOmitted)
   ) {
     return false;
   }
+  if (!fullResult) {
+    return (
+      projection.rowsOmitted === textResult.coverage.rowsReturned - textResult.items.length &&
+      projection.rowsOmitted >= 0
+    );
+  }
+  if (projection.rowsOmitted !== fullResult.items.length - textResult.items.length) return false;
   const fullById = new Map(fullResult.items.map((item) => [item.id, normalizeSourceRow(item)]));
   return textResult.items.every((item) => {
     const source = fullById.get(item.id);
@@ -296,6 +306,20 @@ function isTextProjectionConsistent(textResult, fullResult) {
       )
     );
   });
+}
+
+function hasCompleteTextReadback(textResult) {
+  const projection = textResult?.textProjection;
+  return (
+    Boolean(textResult) &&
+    projection?.fullStructuredContentAvailable === true &&
+    projection.rowsIncluded === textResult.items.length &&
+    projection.rowsOmitted === 0 &&
+    projection.displayNamesClipped === 0 &&
+    projection.relationLabelsClipped === 0 &&
+    projection.limitationsClipped === 0 &&
+    textResult.coverage?.rowsReturned === textResult.items.length
+  );
 }
 
 function isProjectedSourceText(source, projected) {

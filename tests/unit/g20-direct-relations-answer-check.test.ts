@@ -146,16 +146,26 @@ describe('G20 direct subject-relation answer checks', () => {
     expect(check(makeAnswer(), queryArguments, multipleCalls).exactSingleToolCall).toBe(false);
   });
 
-  it('requires an actual structuredContent readback and an MCP text result within the byte cap', () => {
+  it('accepts a complete text readback but rejects omitted rows without the full structured payload', () => {
     const output = makeToolOutput();
     const textOnly = { content: output.content };
     const textBytes = Buffer.byteLength(output.content[0]!.text, 'utf8');
-    const noStructuredReadback = verifyG20DirectRelationsAnswer(
+    const completeTextReadback = verifyG20DirectRelationsAnswer(
       makeAnswer(),
       queryArguments,
       textOnly,
       toolCalls,
       textBytes,
+    );
+    const manyResult = makeResult({ many: true });
+    const manyOutput = makeToolOutput(manyResult);
+    const omittedTextOnly = { content: manyOutput.content };
+    const omittedText = verifyG20DirectRelationsAnswer(
+      makeAnswer(manyResult),
+      queryArguments,
+      omittedTextOnly,
+      toolCalls,
+      Buffer.byteLength(manyOutput.content[0]!.text, 'utf8'),
     );
     const overBudget = verifyG20DirectRelationsAnswer(
       makeAnswer(),
@@ -165,8 +175,12 @@ describe('G20 direct subject-relation answer checks', () => {
       3601,
     );
 
-    expect(noStructuredReadback.structuredContentReadbackAvailable).toBe(false);
-    expect(noStructuredReadback.passed).toBe(false);
+    expect(completeTextReadback.structuredContentReadbackAvailable).toBe(false);
+    expect(completeTextReadback.resultRowsReadbackAvailable).toBe(true);
+    expect(completeTextReadback.passed).toBe(true);
+    expect(omittedText.structuredContentReadbackAvailable).toBe(false);
+    expect(omittedText.resultRowsReadbackAvailable).toBe(false);
+    expect(omittedText.passed).toBe(false);
     expect(overBudget.textBudgetVerified).toBe(false);
     expect(overBudget.passed).toBe(false);
   });
