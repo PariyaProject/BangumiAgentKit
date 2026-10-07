@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { presentMcpToolResult } from '../../apps/mcp/src/result-presenter.js';
 import { verifyG20DirectRelationsAnswer } from '../../scripts/acceptance/g20-direct-relations-answer-check.mjs';
 
-const subjectId = 4123;
+const subjectId = 227245;
 const queryArguments = { subjectId, includeEvidence: true };
-const toolCalls = [{ name: 'bangumi.get_subject_relations', state: 'DONE' }];
+const toolCalls = [{ name: 'bangumi.get_subject_relations', state: 'DONE', arguments: queryArguments }];
 
 function makeResult(options: { many?: boolean; schemaDriftRows?: number } = {}) {
   const count = options.many ? 60 : 2;
@@ -138,11 +138,16 @@ describe('G20 direct subject-relation answer checks', () => {
     const wrongArguments = { ...queryArguments, limit: 20 };
     const legacyDefaultArguments = { subjectId };
     const otherSubject = { subjectId: subjectId + 1, includeEvidence: true };
+    const wrongRecordedArguments = [{
+      ...toolCalls[0],
+      arguments: { ...queryArguments, subjectId: subjectId + 1 },
+    }];
     const multipleCalls = [...toolCalls, ...toolCalls];
 
     expect(check(makeAnswer(), wrongArguments).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), legacyDefaultArguments).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), otherSubject).queryArgumentsMatch).toBe(false);
+    expect(check(makeAnswer(), queryArguments, wrongRecordedArguments).exactSingleToolCall).toBe(false);
     expect(check(makeAnswer(), queryArguments, multipleCalls).exactSingleToolCall).toBe(false);
   });
 

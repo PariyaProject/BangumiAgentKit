@@ -325,6 +325,9 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
     ),
 }
 CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_g20_report_matches_candidate_revision(',
+    ),
     'packages/tools/src/definitions/read-tools.ts': (
         "name: 'bangumi.get_subject_relations'",
         'includeEvidence',
@@ -338,7 +341,9 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/acceptance/g20-direct-relations-answer-check.mjs': (
         'export function verifyG20DirectRelationsAnswer(',
+        'const FIXED_G20_SUBJECT_ID = 227245;',
         'exactQueryArguments(',
+        'exactQueryArguments(toolCalls[0]?.arguments, FIXED_G20_SUBJECT_ID)',
         'resultRowsReadbackAvailable',
         'unsupportedCanonicalOrderClaim',
     ),
@@ -514,6 +519,46 @@ def codex_g20_probe_revision_has_implementation(revision: object) -> bool:
             str(ROOT), revision, CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
         )
     )
+
+
+def codex_g20_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require G20 evidence to originate from the exact pre-query candidate."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+
+    head = subprocess.run(
+        ['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    if head.returncode != 0:
+        return False
+    head_sha = head.stdout.strip()
+    committed_in_head = subprocess.run(
+        ['git', 'cat-file', '-e', f'{head_sha}:{relative_path}'],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    if committed_in_head.returncode != 0:
+        # Before the sanitized report is committed, HEAD is still the candidate
+        # that authorized the one-shot query. A staged report is also absent
+        # from the HEAD tree and follows this path.
+        return revision == head_sha
+
+    added_commit = subprocess.run(
+        ['git', 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    commit_sha = added_commit.stdout.strip()
+    if added_commit.returncode != 0 or not re.fullmatch(r'[0-9a-f]{40}', commit_sha):
+        return False
+    parents = subprocess.run(
+        ['git', 'rev-list', '--parents', '-n', '1', commit_sha],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    parent_shas = parents.stdout.strip().split()
+    return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
 
 
 def codex_mcp_evidence_is_valid(
@@ -713,6 +758,11 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             continue
         if report.get('evidenceKind') == 'codex_cli_mcp_tool_use':
             if not codex_mcp_evidence_is_valid(report, evidence_by_name, current_by_name):
+                continue
+            if (report.get('toolName') == 'bangumi.get_subject_relations'
+                    and not codex_g20_report_matches_candidate_revision(
+                        path, report.get('sourceRevision'),
+                    )):
                 continue
         elif (report.get('schemaVersion') != 1
               or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'

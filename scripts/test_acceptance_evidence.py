@@ -290,7 +290,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
         self.original_root = GENERATOR.ROOT
-        self.source_revision, self.unrelated_source_revision = self._init_probe_source_history()
+        (
+            self.source_revision,
+            self.stale_candidate_source_revision,
+            self.unrelated_source_revision,
+        ) = self._init_probe_source_history()
         self.original_catalog = GENERATOR.CATALOG
         self.original_probe_dir = GENERATOR.LIVE_PROBE_DIR
         GENERATOR.ROOT = self.root
@@ -318,13 +322,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
         self._git('add', *sorted(relative_paths))
         self._git('commit', '-qm', 'add one-tool probe implementation fixture')
-        implementation_revision = self._git('rev-parse', 'HEAD').stdout.strip()
+        stale_candidate_revision = self._git('rev-parse', 'HEAD').stdout.strip()
+        self._git('commit', '--allow-empty', '-qm', 'candidate revision authorizing the G20 probe')
+        candidate_revision = self._git('rev-parse', 'HEAD').stdout.strip()
         server_path = self.root / 'apps/mcp/codex-one-tool-mcp-server.mjs'
         server_path.write_text('export const unrelatedProgram = true;\n', encoding='utf-8')
         self._git('add', 'apps/mcp/codex-one-tool-mcp-server.mjs')
         self._git('commit', '-qm', 'replace probe implementation with unrelated code')
         unrelated_revision = self._git('rev-parse', 'HEAD').stdout.strip()
-        return implementation_revision, unrelated_revision
+        self._git('tag', 'test-unrelated-source-revision', unrelated_revision)
+        self._git('reset', '--hard', candidate_revision)
+        return candidate_revision, stale_candidate_revision, unrelated_revision
 
     def tearDown(self):
         GENERATOR.ROOT = self.original_root
@@ -479,6 +487,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.write_report(tool_name='bangumi.get_subject_relations')
         report = json.loads(self.report_path.read_text(encoding='utf-8'))
         self.assertTrue(GENERATOR.codex_g20_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_g20_report_matches_candidate_revision(
+            self.report_path, self.source_revision,
+        ))
         self.assertEqual(
             GENERATOR.model_mcp_e2e_names(self.catalog),
             {'bangumi.get_subject_relations'},
@@ -491,6 +502,31 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertNotIn('prompt', report['scenarios'][0])
         self.assertNotIn('structuredContent', report['scenarios'][0]['result'])
         self.assertEqual(len(report['scenarios'][0]['result']['visibleRows']), 2)
+
+        self._git('add', 'docs/live-probes/pariya-agent-codex-luna-e2e-G20-relations.json')
+        self._git('commit', '-qm', 'add sanitized G20 evidence after its candidate')
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_subject_relations'],
+            {'docs/live-probes/pariya-agent-codex-luna-e2e-G20-relations.json'},
+        )
+
+    def test_rejects_g20_report_from_older_revision_with_same_implementation_markers(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'
+        self.write_report(
+            tool_name='bangumi.get_subject_relations',
+            sourceRevision=self.stale_candidate_source_revision,
+        )
+        self.assertTrue(
+            GENERATOR.codex_g20_probe_revision_has_implementation(
+                self.stale_candidate_source_revision,
+            )
+        )
+        self.assertFalse(
+            GENERATOR.codex_g20_report_matches_candidate_revision(
+                self.report_path, self.stale_candidate_source_revision,
+            )
+        )
+        self.assertNotIn('bangumi.get_subject_relations', GENERATOR.model_mcp_e2e_names(self.catalog))
 
     def test_rejects_g20_contract_mismatch_or_incomplete_visible_readback(self):
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'

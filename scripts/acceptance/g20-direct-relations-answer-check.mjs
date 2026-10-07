@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 export const G20_DIRECT_RELATIONS_ANSWER_CHECK_METHOD = 'direct-relation-rows-and-source-scope-v1';
 
 const TOOL_NAME = 'bangumi.get_subject_relations';
+const FIXED_G20_SUBJECT_ID = 227245;
 const ROW_SEPARATOR = '｜';
 const SCOPE_LINE = /^(?:范围|说明)[:：]/u;
 const MARKDOWN_LINE = /^\s*(?:#{1,6}\s|[-*+]\s|>\s|```)/u;
@@ -63,12 +64,15 @@ export function verifyG20DirectRelationsAnswer(
     (row) => !parsedAnswer.rows.some((answerRow) => answerRow.id === row.id),
   ).length;
   const scopeText = parsedAnswer.scopeLines.join('\n');
-  const queryArgumentsMatch = exactQueryArguments(normalizedArguments, result?.subjectId);
+  const queryArgumentsMatch =
+    exactQueryArguments(normalizedArguments, FIXED_G20_SUBJECT_ID) &&
+    result?.subjectId === FIXED_G20_SUBJECT_ID;
   const exactSingleToolCall =
     Array.isArray(toolCalls) &&
     toolCalls.length === 1 &&
     toolCalls[0]?.name === TOOL_NAME &&
-    toolCalls[0]?.state === 'DONE';
+    toolCalls[0]?.state === 'DONE' &&
+    exactQueryArguments(toolCalls[0]?.arguments, FIXED_G20_SUBJECT_ID);
   const sourceScopeVerified =
     result?.source?.operation === 'GET /v0/subjects/{subject_id}/subjects' &&
     result?.source?.direction === 'source_subject_to_returned_target' &&
@@ -179,12 +183,13 @@ export function verifyG20DirectRelationsAnswer(
 }
 
 function exactQueryArguments(value, subjectId) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const argumentsObject = unwrapArguments(value);
+  if (!argumentsObject || typeof argumentsObject !== 'object' || Array.isArray(argumentsObject)) return false;
   return (
-    Number.isInteger(subjectId) &&
-    Object.keys(value).sort().join('\u0000') === 'includeEvidence\u0000subjectId' &&
-    value.subjectId === subjectId &&
-    value.includeEvidence === true
+    subjectId === FIXED_G20_SUBJECT_ID &&
+    Object.keys(argumentsObject).sort().join('\u0000') === 'includeEvidence\u0000subjectId' &&
+    argumentsObject.subjectId === subjectId &&
+    argumentsObject.includeEvidence === true
   );
 }
 
