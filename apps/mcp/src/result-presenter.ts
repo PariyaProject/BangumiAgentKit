@@ -37,12 +37,44 @@ type SubjectStaffToolResult = JsonObject & {
   capabilityStates: Record<string, string>;
 };
 
+type SubjectRelationsEvidenceResult = JsonObject & {
+  state: 'observed' | 'partial';
+  subjectId: number;
+  source: JsonObject & {
+    api: string;
+    operation: string;
+    direction: string;
+    scope: string;
+    retrievedAt: string;
+  };
+  coverage: JsonObject & {
+    responseRowsObserved: number;
+    rowsReturned: number;
+    schemaDriftRows: number;
+    truncated: boolean;
+    paginationAvailable: boolean;
+    totalCountAvailable: boolean;
+    completeness: string;
+  };
+  items: Array<
+    JsonObject & {
+      id: number;
+      type: string;
+      name: string;
+      nameCn?: string;
+      relation: string;
+    }
+  >;
+  limitations: string[];
+};
+
 const PERSON_ACTIVITY_TOOL = 'bangumi.get_person_activity';
 const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
 const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const SUBJECT_COMPARISON_TOOL = 'bangumi.get_subject_comparison';
 const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
+const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
@@ -58,6 +90,17 @@ const TEXT_VIEW_SCOPE_NOTE =
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
+  if (
+    toolName === SUBJECT_RELATIONS_TOOL &&
+    isJsonObject(result) &&
+    isSubjectRelationsEvidenceResult(result)
+  ) {
+    return {
+      text: compactSubjectRelations(result),
+      structuredContent: result,
+    };
+  }
+
   if (utf8Bytes(fullText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
     return { text: fullText };
   }
@@ -122,8 +165,116 @@ function utf8Bytes(value: string): number {
   return Buffer.byteLength(value, 'utf8');
 }
 
+function clipSubjectRelationText(value: string, maximumCharacters: number): string {
+  const characters = Array.from(value);
+  return characters.length <= maximumCharacters
+    ? value
+    : `${characters.slice(0, maximumCharacters).join('')}…`;
+}
+
+function compactSubjectRelations(result: SubjectRelationsEvidenceResult): string {
+  const options = {
+    rowLimit: Math.min(24, result.items.length),
+    displayCharacters: 72,
+    limitationCharacters: 180,
+  };
+
+  while (true) {
+    let displayNamesClipped = 0;
+    let relationLabelsClipped = 0;
+    let limitationsClipped = 0;
+    const items = result.items.slice(0, options.rowLimit).map((item) => {
+      const name = clipSubjectRelationText(item.name, options.displayCharacters);
+      const nameCn =
+        item.nameCn === undefined
+          ? undefined
+          : clipSubjectRelationText(item.nameCn, options.displayCharacters);
+      const relation = clipSubjectRelationText(item.relation, options.displayCharacters);
+      if (name !== item.name || (item.nameCn !== undefined && nameCn !== item.nameCn)) {
+        displayNamesClipped += 1;
+      }
+      if (relation !== item.relation) relationLabelsClipped += 1;
+      return {
+        id: item.id,
+        type: item.type,
+        name,
+        ...(nameCn === undefined ? {} : { nameCn }),
+        relation,
+      };
+    });
+    const limitations = result.limitations.map((limitation) => {
+      const projected = clipSubjectRelationText(limitation, options.limitationCharacters);
+      if (projected !== limitation) limitationsClipped += 1;
+      return projected;
+    });
+    const text = JSON.stringify({
+      state: result.state,
+      subjectId: result.subjectId,
+      source: result.source,
+      coverage: result.coverage,
+      limitations,
+      items,
+      textProjection: {
+        rowsIncluded: items.length,
+        rowsOmitted: result.items.length - items.length,
+        displayNamesClipped,
+        relationLabelsClipped,
+        limitationsClipped,
+        imageFieldsOmitted: result.items.filter((item) => item.images !== undefined).length,
+        fullStructuredContentAvailable: true,
+      },
+    });
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (options.rowLimit > 1) options.rowLimit = Math.floor(options.rowLimit / 2);
+    else if (options.rowLimit === 1) options.rowLimit = 0;
+    else if (options.displayCharacters > 12) {
+      options.displayCharacters = Math.floor(options.displayCharacters / 2);
+    } else if (options.limitationCharacters > 48) {
+      options.limitationCharacters = Math.floor(options.limitationCharacters / 2);
+    } else {
+      throw new Error('Unable to produce bounded MCP subject-relations text');
+    }
+  }
+}
+
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSubjectRelationsEvidenceResult(
+  value: JsonObject,
+): value is SubjectRelationsEvidenceResult {
+  return (
+    ['observed', 'partial'].includes(String(value.state)) &&
+    Number.isInteger(value.subjectId) &&
+    isJsonObject(value.source) &&
+    typeof value.source.api === 'string' &&
+    typeof value.source.operation === 'string' &&
+    typeof value.source.direction === 'string' &&
+    typeof value.source.scope === 'string' &&
+    typeof value.source.retrievedAt === 'string' &&
+    isJsonObject(value.coverage) &&
+    Number.isInteger(value.coverage.responseRowsObserved) &&
+    Number.isInteger(value.coverage.rowsReturned) &&
+    Number.isInteger(value.coverage.schemaDriftRows) &&
+    typeof value.coverage.truncated === 'boolean' &&
+    typeof value.coverage.paginationAvailable === 'boolean' &&
+    typeof value.coverage.totalCountAvailable === 'boolean' &&
+    typeof value.coverage.completeness === 'string' &&
+    Array.isArray(value.items) &&
+    value.items.every(
+      (item) =>
+        isJsonObject(item) &&
+        Number.isInteger(item.id) &&
+        typeof item.type === 'string' &&
+        typeof item.name === 'string' &&
+        (item.nameCn === undefined || typeof item.nameCn === 'string') &&
+        typeof item.relation === 'string',
+    ) &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((limitation) => typeof limitation === 'string')
+  );
 }
 
 function isPersonActivityResult(value: JsonObject): value is JsonObject & PersonActivityResult {

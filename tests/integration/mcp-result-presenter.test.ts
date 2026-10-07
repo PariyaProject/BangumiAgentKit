@@ -1070,6 +1070,45 @@ async function callMcpToolWithResult(name: string, toolResult: Record<string, un
   }
 }
 
+function makeSubjectRelationsEvidenceResult(count = 2, highCardinality = false) {
+  const repeated = highCardinality ? '关系'.repeat(180) : '续集';
+  const nameSuffix = highCardinality ? '作品'.repeat(180) : '';
+  return {
+    state: 'observed' as const,
+    subjectId: 4123,
+    source: {
+      api: 'Bangumi official v0',
+      operation: 'GET /v0/subjects/{subject_id}/subjects',
+      direction: 'source_subject_to_returned_target',
+      scope: 'visible_direct_rows_returned_for_source_subject',
+      retrievedAt: '2026-10-07T09:00:00.000Z',
+    },
+    coverage: {
+      responseRowsObserved: count,
+      rowsReturned: count,
+      schemaDriftRows: 0,
+      truncated: false,
+      paginationAvailable: false,
+      totalCountAvailable: false,
+      completeness: 'not_provided_by_source',
+    },
+    items: Array.from({ length: count }, (_, index) => ({
+      id: 5000 + index,
+      type: 'anime',
+      name: `Source title ${index}${nameSuffix}`,
+      nameCn: `来源作品${index}${nameSuffix}`,
+      relation: `${index === 0 ? '前传' : '续集'}${repeated}`,
+      images: { small: `https://images.example.test/${index}.jpg` },
+    })),
+    limitations: [
+      '仅表示本次响应中指定来源条目指向目标条目的直接关系，不含反向或传递关系。',
+      '官方 v0 此操作没有分页、总数或系列完整性字段；未返回关系不等于不存在。',
+      'relation 是来源记录的原始标签；接口行顺序不表示官方观看顺序。',
+      '匿名可见性可能不包含敏感条目。',
+    ],
+  };
+}
+
 describe('MCP tool result presentation', () => {
   it('keeps the existing full pretty JSON text for small and unrelated results', () => {
     const small = { state: 'complete', count: 1 };
@@ -1081,6 +1120,79 @@ describe('MCP tool result presentation', () => {
     expect(unrelatedPresentation).toEqual({
       text: JSON.stringify(unrelatedLarge, null, 2),
     });
+  });
+
+  it('presents direct relation scope even for a small result and retains structuredContent', () => {
+    const original = makeSubjectRelationsEvidenceResult();
+    const presentation = presentMcpToolResult('bangumi.get_subject_relations', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed).toMatchObject({
+      subjectId: 4123,
+      source: {
+        operation: 'GET /v0/subjects/{subject_id}/subjects',
+        direction: 'source_subject_to_returned_target',
+        scope: 'visible_direct_rows_returned_for_source_subject',
+      },
+      coverage: {
+        responseRowsObserved: 2,
+        rowsReturned: 2,
+        paginationAvailable: false,
+        totalCountAvailable: false,
+        completeness: 'not_provided_by_source',
+      },
+      items: [
+        { id: 5000, name: 'Source title 0', nameCn: '来源作品0', relation: '前传续集' },
+        { id: 5001, name: 'Source title 1', nameCn: '来源作品1', relation: '续集续集' },
+      ],
+      textProjection: {
+        rowsIncluded: 2,
+        rowsOmitted: 0,
+        imageFieldsOmitted: 2,
+        fullStructuredContentAvailable: true,
+      },
+    });
+    expect(parsed.limitations.join(' ')).toContain('未返回关系不等于不存在');
+    expect(parsed.limitations.join(' ')).toContain('不表示官方观看顺序');
+  });
+
+  it('bounds high-cardinality direct relations and counts omitted or clipped text while retaining full rows', async () => {
+    const original = makeSubjectRelationsEvidenceResult(60, true);
+    const response = await callMcpToolWithResult(
+      'bangumi.get_subject_relations',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text ?? '';
+    const parsed = JSON.parse(text);
+
+    expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(response.structuredContent).toEqual(original);
+    expect(parsed).toMatchObject({
+      state: 'observed',
+      subjectId: 4123,
+      coverage: {
+        responseRowsObserved: 60,
+        rowsReturned: 60,
+        paginationAvailable: false,
+        totalCountAvailable: false,
+        completeness: 'not_provided_by_source',
+      },
+      textProjection: {
+        rowsOmitted: 60 - parsed.items.length,
+        fullStructuredContentAvailable: true,
+      },
+    });
+    expect(parsed.items.length).toBeGreaterThan(0);
+    expect(parsed.textProjection.rowsOmitted).toBeGreaterThan(0);
+    expect(parsed.textProjection.displayNamesClipped).toBeGreaterThan(0);
+    expect(parsed.textProjection.relationLabelsClipped).toBeGreaterThan(0);
+    expect(parsed.textProjection.imageFieldsOmitted).toBe(60);
+    expect(parsed.limitations.join(' ')).toContain('未返回关系不等于不存在');
+    expect(parsed.limitations.join(' ')).toContain('不表示官方观看顺序');
   });
 
   it('bounds the G09 watch-order MCP text while preserving ordered evidence and the full structure', async () => {
