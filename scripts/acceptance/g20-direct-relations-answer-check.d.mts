@@ -12,6 +12,17 @@ export interface G20DirectRelationsAnswerCheck {
   textProjectionConsistent: boolean;
   textBudgetVerified: boolean;
   toolTextUtf8Bytes: number | null;
+  sourceResponseRowsObserved: number | null;
+  sourceRowsReturned: number | null;
+  sourceSchemaDriftRows: number | null;
+  sourceTruncated: boolean | null;
+  sourcePaginationAvailable: boolean | null;
+  sourceTotalCountAvailable: boolean | null;
+  sourceCompleteness: string | null;
+  mcpTextRowsOmitted: number | null;
+  mcpTextDisplayNamesClipped: number | null;
+  mcpTextRelationLabelsClipped: number | null;
+  mcpTextLimitationsClipped: number | null;
   visibleSourceRows: number;
   invalidSourceRowsCount: number;
   duplicateSourceRowsCount: number;

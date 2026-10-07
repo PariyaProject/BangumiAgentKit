@@ -5,7 +5,9 @@ import { verifyG20DirectRelationsAnswer } from '../../scripts/acceptance/g20-dir
 
 const subjectId = 227245;
 const queryArguments = { subjectId, includeEvidence: true };
-const toolCalls = [{ name: 'bangumi.get_subject_relations', state: 'DONE', arguments: queryArguments }];
+const toolCalls = [
+  { name: 'bangumi.get_subject_relations', state: 'DONE', arguments: queryArguments },
+];
 
 function makeResult(options: { many?: boolean; schemaDriftRows?: number } = {}) {
   const count = options.many ? 60 : 2;
@@ -54,7 +56,9 @@ function makeToolOutput(result = makeResult()) {
   );
   return {
     content: [{ type: 'text', text: presentation.text }],
-    ...(presentation.structuredContent ? { structuredContent: presentation.structuredContent } : {}),
+    ...(presentation.structuredContent
+      ? { structuredContent: presentation.structuredContent }
+      : {}),
   };
 }
 
@@ -88,7 +92,9 @@ function check(
 describe('G20 direct subject-relation answer checks', () => {
   it('matches every returned target and raw relation label with source and response-only scope', () => {
     const result = makeResult();
-    expect(check(makeAnswer(result), queryArguments, toolCalls, makeToolOutput(result))).toMatchObject({
+    expect(
+      check(makeAnswer(result), queryArguments, toolCalls, makeToolOutput(result)),
+    ).toMatchObject({
       queryArgumentsMatch: true,
       exactSingleToolCall: true,
       resultReadbackAvailable: true,
@@ -98,6 +104,14 @@ describe('G20 direct subject-relation answer checks', () => {
       textProjectionConsistent: true,
       textBudgetVerified: true,
       visibleSourceRows: 2,
+      sourceResponseRowsObserved: 2,
+      sourceRowsReturned: 2,
+      sourceSchemaDriftRows: 0,
+      sourceTruncated: false,
+      sourcePaginationAvailable: false,
+      sourceTotalCountAvailable: false,
+      sourceCompleteness: 'not_provided_by_source',
+      mcpTextRowsOmitted: 0,
       rowsMatched: 2,
       missingRowsCount: 0,
       mismatchedRowsCount: 0,
@@ -138,16 +152,20 @@ describe('G20 direct subject-relation answer checks', () => {
     const wrongArguments = { ...queryArguments, limit: 20 };
     const legacyDefaultArguments = { subjectId };
     const otherSubject = { subjectId: subjectId + 1, includeEvidence: true };
-    const wrongRecordedArguments = [{
-      ...toolCalls[0],
-      arguments: { ...queryArguments, subjectId: subjectId + 1 },
-    }];
+    const wrongRecordedArguments = [
+      {
+        ...toolCalls[0],
+        arguments: { ...queryArguments, subjectId: subjectId + 1 },
+      },
+    ];
     const multipleCalls = [...toolCalls, ...toolCalls];
 
     expect(check(makeAnswer(), wrongArguments).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), legacyDefaultArguments).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), otherSubject).queryArgumentsMatch).toBe(false);
-    expect(check(makeAnswer(), queryArguments, wrongRecordedArguments).exactSingleToolCall).toBe(false);
+    expect(check(makeAnswer(), queryArguments, wrongRecordedArguments).exactSingleToolCall).toBe(
+      false,
+    );
     expect(check(makeAnswer(), queryArguments, multipleCalls).exactSingleToolCall).toBe(false);
   });
 
@@ -206,8 +224,33 @@ describe('G20 direct subject-relation answer checks', () => {
     expect(omitted).toBe(true);
     expect(omissionDisclosure).toBe(true);
     expect(resultCheck.textProjectionConsistent).toBe(true);
+    expect(resultCheck.mcpTextRowsOmitted).toBeGreaterThan(0);
     expect(resultCheck.omissionNotAbsenceDisclosurePresent).toBe(true);
     expect(resultCheck.passed).toBe(true);
+  });
+
+  it('rejects invalid rows that are present in the readback but cannot be safely rendered', () => {
+    const result = makeResult();
+    result.items.push({
+      id: 7001,
+      type: 'anime',
+      name: 'Invalid row',
+      nameCn: 'Invalid row',
+      relation: '   ',
+    } as (typeof result.items)[number]);
+    result.coverage.responseRowsObserved += 1;
+    result.coverage.rowsReturned += 1;
+    const output = makeToolOutput(result);
+    const checkResult = verifyG20DirectRelationsAnswer(
+      makeAnswer(result),
+      queryArguments,
+      output,
+      [...toolCalls],
+      Buffer.byteLength(output.content[0]!.text, 'utf8'),
+    );
+
+    expect(checkResult.invalidSourceRowsCount).toBe(1);
+    expect(checkResult.passed).toBe(false);
   });
 
   it('marks source schema drift as partial and requires its exact skipped-row count', () => {
@@ -267,7 +310,11 @@ describe('G20 direct subject-relation answer checks', () => {
 
     expect(run.status).toBe(0);
     expect(run.stderr).toBe('');
-    expect(JSON.parse(run.stdout)).toMatchObject({ passed: true, visibleSourceRows: 2, rowsMatched: 2 });
+    expect(JSON.parse(run.stdout)).toMatchObject({
+      passed: true,
+      visibleSourceRows: 2,
+      rowsMatched: 2,
+    });
     expect(run.stdout).not.toContain('来源作品');
     expect(run.stdout).not.toContain('前传');
   });

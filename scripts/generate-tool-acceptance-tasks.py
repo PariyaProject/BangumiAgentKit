@@ -398,6 +398,21 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
         'resultRowsReadbackAvailable',
         'unsupportedCanonicalOrderClaim',
     ),
+    'scripts/acceptance/run-g20-codex-agent-mcp.mjs': (
+        'export function buildCodexExecArgs(',
+        'export function validateRunnerArgs(',
+        'export function createOneShotClaim(',
+        'export function createOneShotClaims(',
+        'function buildExactCandidateBundle(',
+        'assertG20CandidateReviewGate(status, pr',
+        "'features.shell_tool=false'",
+    ),
+    'scripts/acceptance/write-g20-agent-mcp-report.mjs': (
+        "const TOOL_NAME = 'bangumi.get_subject_relations'",
+        'verifyG20DirectRelationsAnswer(',
+        'input.sourceRevision !== sourceRevision',
+        "openSync(reportPath, 'wx', 0o600)",
+    ),
 }
 CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/run-g26-codex-agent-mcp.mjs': (
