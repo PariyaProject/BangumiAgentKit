@@ -166,8 +166,9 @@ const UNSUPPORTED_STATS_CLAIM_TERMS = [
   '质量', '口碑', '推荐', '因果', '趋势', '两极化', '两极分化', '双峰', '多峰',
   'bimodal', 'multimodal', '争议', '热度', '优质',
 ];
+const CLAIM_NEGATION_PREFIX = /(?:不能|无法|不可)(?:据此|因此|由此|从而)?$/u;
+const CLAIM_NEGATION_PREDICATE = /(?:判断|推断|确认|证明|说明|得出|判定)[^。！？；;，,、]{0,10}$/u;
 const CLAIM_NEGATION_PATTERNS = [
-  /(?:不能|无法|不可)(?:(?:据此|因此|由此|从而)?(?:判断|推断|确认|证明|说明|得出|判定))?[^。！？；;，,、]{0,10}$/u,
   /不代表[^。！？；;，,、]*$/u,
   /(?:并非|不是|不应|不支持)(?:为|是|被|视为)?$/u,
   /(?:没有|无)(?:证据|依据|根据)(?:支持|表明|证明)?$/u,
@@ -253,11 +254,21 @@ function hasUnsupportedPositiveStatsClaim(answer) {
       const delimiters = [...prefix.matchAll(/[。！？；;，,]|但是|然而|不过|可是|并且|而且|同时|另外|但|\b(?:but|however|yet)\b/giu)];
       const lastDelimiter = delimiters.at(-1);
       const precedingText = prefix.slice(lastDelimiter ? lastDelimiter.index + lastDelimiter[0].length : 0);
-      if (!CLAIM_NEGATION_PATTERNS.some((pattern) => pattern.test(precedingText.trim()))) return true;
+      if (!isStatsClaimNegated(precedingText)) return true;
       start = index + term.length;
     }
   }
   return false;
+}
+
+function isStatsClaimNegated(precedingText) {
+  const normalized = precedingText.trim();
+  const predicate = normalized.match(CLAIM_NEGATION_PREDICATE);
+  if (predicate) {
+    const negationPrefix = normalized.slice(0, predicate.index).trim();
+    if (CLAIM_NEGATION_PREFIX.test(negationPrefix)) return true;
+  }
+  return CLAIM_NEGATION_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 function hasOnePlainParagraph(answer) {
