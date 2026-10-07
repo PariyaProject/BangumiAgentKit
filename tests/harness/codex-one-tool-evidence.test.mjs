@@ -11,6 +11,7 @@ import {
   checkStatsAnswer,
   filterAllowedTools,
   publicReadOnlyToolAnnotations,
+  statsTypedAnswerMatches,
   summarizeSubjectStatsFacts,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
@@ -176,6 +177,39 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
   assert.equal(checkStatsAnswer(answer.replace('这只是当前快照，不代表趋势或作品质量，也不能据此判断口碑。', ''), facts).answerChecks.limitationsMentioned, false);
   assert.equal(checkStatsAnswer(`${answer} 这不代表质量结论。`, facts).answerChecks.noUnsupportedPositiveClaim, true);
   assert.equal(checkStatsAnswer(`${answer} 说明质量很好。`, facts).answerChecks.noUnsupportedPositiveClaim, false);
+
+  const typedAnswer = {
+    subjectId: 218707, resultState: 'complete', ratingState: 'complete', ratingPopulation: 45,
+    ratingMean: 7.2, ratingStandardDeviation: 1.1,
+    scoreBand8To9Share: {
+      state: 'complete', count: 15, population: 45, percentage: 33.3,
+      formulaId: 'bangumi.rating.score_band_8_9_share.v1', formulaVersion: 1,
+      evidenceStatus: 'official_contract',
+    },
+    ratingDistribution: Array.from({ length: 10 }, (_, index) => ({
+      score: index + 1, count: histogram[index + 1],
+      percentage: Math.round((histogram[index + 1] / 45) * 1000) / 10,
+    })),
+    collectionState: 'complete', collectionTotal: 100, completionState: 'empirically_verified',
+    completionRatePercentage: 30,
+    collectionDistribution: facts.collection.distribution,
+    coverage: facts.coverage, officialSourceClass: 'official-v0',
+    evidenceSources: ['derived-s7', 'official-v0'], answer,
+  };
+  assert.equal(statsTypedAnswerMatches(typedAnswer, facts), true);
+  assert.equal(checkStatsAnswer(answer, facts, typedAnswer).answerChecks.typedFieldsMatch, true);
+  assert.equal(checkStatsAnswer(`${answer} altered`, facts, typedAnswer).answerChecks.typedFieldsMatch, false);
+  const unsupportedAnswer = `${answer} 新增指标为99%。`;
+  assert.equal(checkStatsAnswer(unsupportedAnswer, facts, { ...typedAnswer, answer: unsupportedAnswer }).answerChecks.typedFieldsMatch, false);
+  const wrongScoreBucket = structuredClone(typedAnswer);
+  wrongScoreBucket.ratingDistribution[7].count = 8;
+  assert.equal(statsTypedAnswerMatches(wrongScoreBucket, facts), false);
+  const wrongCollectionStatus = structuredClone(typedAnswer);
+  wrongCollectionStatus.collectionDistribution[0].status = 'dropped';
+  assert.equal(statsTypedAnswerMatches(wrongCollectionStatus, facts), false);
+  const fabricatedCompletion = structuredClone(typedAnswer);
+  fabricatedCompletion.completionRatePercentage = 99;
+  assert.equal(statsTypedAnswerMatches(fabricatedCompletion, facts), false);
 });
 
 test('renderer answer checks only the request identity and returned ephemeral Artifact metadata', () => {
