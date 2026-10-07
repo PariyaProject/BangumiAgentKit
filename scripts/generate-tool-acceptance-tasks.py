@@ -244,7 +244,8 @@ CODEX_BASE_ANSWER_CHECK_FIELDS = {
     'coverageStateMentioned', 'singleParagraphNoMarkdown', 'noUnsupportedPositiveClaim',
 }
 CODEX_STATS_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {
-    'metricStatesMentioned', 'limitationsMentioned',
+    'metricStatesMentioned', 'limitationsMentioned', 'ratingDistributionClaimsMatch',
+    'collectionDistributionClaimsMatch',
 }
 CODEX_RENDERER_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {'artifactMentioned'}
 CODEX_ANSWER_CHECK_FIELDS = CODEX_STATS_ANSWER_CHECK_FIELDS | CODEX_RENDERER_ANSWER_CHECK_FIELDS

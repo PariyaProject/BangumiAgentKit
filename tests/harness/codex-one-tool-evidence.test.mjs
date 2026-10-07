@@ -177,11 +177,18 @@ test('stats fact projection verifies the 8-9 band against all ten histogram bins
   assert.equal(checkStatsAnswer(answer.replace('完成率30%', '完成率99%'), facts).answerChecks.typedFieldsMatch, false);
   const swappedRatingCounts = answer.replace('人数依次为0、1、2', '人数依次为1、0、2');
   assert.equal(checkStatsAnswer(swappedRatingCounts, facts).answerChecks.typedFieldsMatch, false);
+  assert.equal(checkStatsAnswer(swappedRatingCounts, facts).answerChecks.ratingDistributionClaimsMatch, false);
   const swappedCollectionCounts = answer.replace(
     '愿望10人、在看20人',
     '愿望20人、在看10人',
   );
   assert.equal(checkStatsAnswer(swappedCollectionCounts, facts).answerChecks.typedFieldsMatch, false);
+  assert.equal(checkStatsAnswer(swappedCollectionCounts, facts).answerChecks.collectionDistributionClaimsMatch, false);
+  const distributionWithoutCounts = answer.replace(
+    '愿望10人、在看20人、看过30人、搁置25人、抛弃15人',
+    '愿望、在看、看过、搁置、抛弃',
+  );
+  assert.equal(checkStatsAnswer(distributionWithoutCounts, facts).answerChecks.typedFieldsMatch, true);
   assert.equal(checkStatsAnswer(answer.replace('这只是当前快照，不代表趋势或作品质量，也不能据此判断口碑。', ''), facts).answerChecks.limitationsMentioned, false);
   assert.equal(checkStatsAnswer(`${answer} 这不代表质量结论。`, facts).answerChecks.noUnsupportedPositiveClaim, true);
   assert.equal(checkStatsAnswer(`${answer} 说明质量很好。`, facts).answerChecks.noUnsupportedPositiveClaim, false);

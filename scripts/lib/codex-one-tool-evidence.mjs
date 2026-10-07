@@ -342,19 +342,10 @@ function statsCollectionStatusCountsMatch(answer, facts) {
   if (typeof answer !== 'string') return false;
   const distribution = facts?.collection?.distribution;
   if (!Array.isArray(distribution)) return false;
-  const distributionClaim = /收藏.{0,8}(?:分布|状态)|collection.{0,8}(?:distribution|status)/iu.test(answer);
   for (const row of distribution) {
     if (!Number.isInteger(row?.count) || typeof row?.status !== 'string') continue;
-    const aliases = COLLECTION_STATUS_LABELS[row.status] || [row.status];
-    const mentioned = aliases.some((alias) => {
-      const label = /^[a-z_]+$/iu.test(alias)
-        ? new RegExp(`\\b${escapeRegExp(alias)}\\b`, 'iu')
-        : new RegExp(escapeRegExp(alias), 'u');
-      return label.test(answer);
-    });
     const claims = collectionStatusCountClaims(answer, row.status);
     if (claims.some((count) => count !== row.count)) return false;
-    if (distributionClaim && (!mentioned || claims.length === 0)) return false;
   }
   return true;
 }
@@ -547,13 +538,16 @@ export function statsTypedAnswerMatches(typedAnswer, facts) {
 }
 
 export function checkStatsAnswer(answer, facts, typedAnswer) {
+  const ratingDistributionClaimsMatch = statsRatingHistogramSequenceMatches(answer, facts);
+  const collectionDistributionClaimsMatch = statsCollectionStatusCountsMatch(answer, facts);
   const answerChecks = {
     ...commonStatsAnswerChecks(answer),
     metricStatesMentioned: statsMetricStatesMentioned(answer, facts),
     limitationsMentioned: statsLimitationsMentioned(answer),
+    ratingDistributionClaimsMatch,
+    collectionDistributionClaimsMatch,
     typedFieldsMatch: statsFactsAreConsistent(facts) && hasOnlySupportedNumbers(answer, facts) &&
-      statsRatingHistogramSequenceMatches(answer, facts) &&
-      statsCollectionStatusCountsMatch(answer, facts) &&
+      ratingDistributionClaimsMatch && collectionDistributionClaimsMatch &&
       (typedAnswer === undefined ||
         typedAnswer.answer === answer && statsTypedAnswerMatches(typedAnswer, facts)) &&
       statsClaimPercentagesMatch(answer, facts),
