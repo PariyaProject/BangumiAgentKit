@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DISCOVERY_SCENARIOS,
+  selectDiscoveryScenario,
   summarizeDiscoveryScenarioItems,
   validateDiscoveryScenarioItems,
 } from '../../scripts/discovery-scenario-cases.js';
@@ -144,5 +145,85 @@ describe('fixed discovery acceptance scenarios', () => {
     expect(JSON.stringify(summaries)).not.toContain('原创');
     expect(summaries.every((item) => item.conceptMatched)).toBe(true);
     expect(summaries.map((item) => item.id)).toEqual([50, 51]);
+  });
+
+  it('defines G26 as one exact documented tag with integer and half-open bounds', () => {
+    expect(DISCOVERY_SCENARIOS.G26.query).toEqual({
+      media: 'anime',
+      from: '2019-01-01',
+      to: '2025-01-01',
+      ratingCount: { min: 10001 },
+      tags: ['女性向'],
+      categories: 'tv',
+      resultMode: 'all',
+      limit: 100,
+      explain: 'full',
+    });
+
+    const valid = summarizeDiscoveryScenarioItems('G26', [
+      {
+        id: 260,
+        name: 'public title',
+        media: 'anime',
+        category: 'tv',
+        date: '2019-01-01',
+        ratingCount: 10001,
+        tags: ['女性向', '恋爱'],
+        metaTags: ['游戏'],
+      },
+      {
+        id: 261,
+        media: 'anime',
+        category: 'tv',
+        date: '2024-12-31',
+        ratingCount: 25000,
+        tags: ['女性向'],
+        metaTags: [],
+      },
+    ]);
+    expect(Object.values(validateDiscoveryScenarioItems('G26', valid)).every(Boolean)).toBe(true);
+    expect(valid.every((item) => item.exactTagMatched)).toBe(true);
+    expect(JSON.stringify(valid)).not.toContain('public title');
+    expect(JSON.stringify(valid)).not.toContain('女性向');
+
+    const underThreshold = summarizeDiscoveryScenarioItems('G26', [
+      {
+        id: 262,
+        media: 'anime',
+        category: 'tv',
+        date: '2020-01-01',
+        ratingCount: 10000,
+        tags: ['女性向'],
+      },
+    ]);
+    expect(validateDiscoveryScenarioItems('G26', underThreshold).strictRatingCountThreshold).toBe(
+      false,
+    );
+
+    const wrongFacetAndEndDate = summarizeDiscoveryScenarioItems('G26', [
+      {
+        id: 263,
+        media: 'anime',
+        category: 'tv',
+        date: '2025-01-01',
+        ratingCount: 10001,
+        tags: ['乙女向'],
+        metaTags: ['女性向'],
+      },
+    ]);
+    const checks = validateDiscoveryScenarioItems('G26', wrongFacetAndEndDate);
+    expect(checks.dateWindow).toBe(false);
+    expect(checks.exactTagMatch).toBe(false);
+  });
+
+  it('requires an explicit single live scenario selection', () => {
+    expect(selectDiscoveryScenario(['--scenario', 'G26', '--live'])).toBe('G26');
+    expect(() => selectDiscoveryScenario(['--live'])).toThrow(/exactly one --scenario/u);
+    expect(() => selectDiscoveryScenario(['--scenario', 'G26', '--scenario', 'G02'])).toThrow(
+      /exactly one --scenario/u,
+    );
+    expect(() => selectDiscoveryScenario(['--scenario', 'unknown'])).toThrow(
+      /Unknown discovery scenario/u,
+    );
   });
 });

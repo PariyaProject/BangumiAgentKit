@@ -4,6 +4,7 @@ import argparse
 import functools
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
@@ -223,6 +224,19 @@ CODEX_G23_PROBE_ARGUMENTS = {
 CODEX_G20_PROBE_ARGUMENTS = {
     'bangumi.get_subject_relations': {'subjectId': 227245, 'includeEvidence': True},
 }
+CODEX_G26_EXPECTED_ARGUMENTS = {
+    'media': 'anime',
+    'from': '2019-01-01',
+    'to': '2025-01-01',
+    'ratingCount': {'min': 10001},
+    'tags': ['女性向'],
+    'categories': 'tv',
+    'resultMode': 'all',
+    'limit': 100,
+    'explain': 'full',
+}
+CODEX_G26_REPORT_RELATIVE_PATH = 'docs/live-probes/g26-exact-tag-agent-mcp-run95.json'
+CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/g26-mcp-bundle-attestation.json'
 CODEX_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_G20_PROBE_ARGUMENTS
 CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
@@ -265,6 +279,43 @@ CODEX_G20_ANSWER_CHECK_FIELDS = {
     'nonCanonicalOrderDisclosurePresent', 'schemaDriftDisclosurePresent',
     'noUnsupportedCompletenessClaim', 'noUnsupportedCanonicalOrderClaim',
     'noUnsupportedAbsenceClaim', 'noUnsupportedReverseClaim', 'noMarkdownFormatting',
+}
+CODEX_G26_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId',
+    'sourceRevision', 'mcpBundleSha256', 'observedAt', 'codexCliVersion', 'profile', 'model',
+    'reasoningEffort', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256', 'processExitCode',
+    'resultStatus', 'eventStreamParsed', 'codexMcpToolEventCount',
+    'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
+    'toolCalls', 'answerCheckMethod', 'answerChecks', 'resultCounters', 'warningCodes',
+    'privacy',
+}
+CODEX_G26_ANSWER_CHECK_FIELDS = {
+    'queryArgumentsMatch', 'exactSingleToolCall', 'resultReadbackAvailable',
+    'resultRowsReadbackAvailable', 'textProjectionConsistent', 'textBudgetVerified',
+    'sourceScopeVerified', 'coverageConsistent', 'experimentalSourceWarningPresent',
+    'exactTagDisclosurePresent', 'demographicLimitDisclosurePresent',
+    'experimentalSearchDisclosurePresent', 'estimatedTotalDisclosurePresent',
+    'dateScopeDisclosurePresent', 'ratingCountDisclosurePresent', 'tvDisclosurePresent',
+    'boundedCoverageDisclosurePresent', 'coverageCountsDisclosurePresent',
+    'partialStateDisclosurePresent', 'textOmissionDisclosurePresent',
+    'titleClippingDisclosurePresent', 'noUnsupportedCompletenessClaim',
+    'noMarkdownFormatting', 'passed',
+}
+CODEX_G26_RESULT_COUNTER_FIELDS = {
+    'resultState', 'coverageState', 'totalKind', 'scanned', 'matched', 'returned',
+    'pagesRequested', 'pagesScanned', 'upstreamExhausted', 'budgetExceeded',
+    'hydrationsAttempted', 'hydrationsSucceeded', 'hydrationsFailed',
+    'hydrationsUnresolved', 'hydrationBudgetExceeded', 'outputCap',
+    'visibleSourceRows', 'invalidSourceRowsCount', 'duplicateSourceRowsCount',
+    'textRowsIncluded', 'textRowsOmitted', 'displayNamesClipped', 'textUtf8Bytes',
+    'answerRowsParsed', 'rowsMatched', 'missingRowsCount', 'mismatchedRowsCount',
+    'unmatchedRowsCount', 'duplicateAnswerRowsCount', 'unstructuredAnswerLinesCount',
+}
+CODEX_G26_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored',
+    'rawResultStored', 'credentialsStored',
 }
 CODEX_RESULT_FIELDS = {
     'toolName', 'resultState', 'resultByteLength', 'resultSha256', 'sourceOperations', 'artifact',
@@ -346,6 +397,68 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
         'exactQueryArguments(toolCalls[0]?.arguments, FIXED_G20_SUBJECT_ID)',
         'resultRowsReadbackAvailable',
         'unsupportedCanonicalOrderClaim',
+    ),
+}
+CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/run-g26-codex-agent-mcp.mjs': (
+        'export function buildCodexExecArgs(',
+        'export function validateRunnerArgs(',
+        'export function parseCodexJsonl(',
+        'export function summarizeCodexEvents(',
+        'export function sanitizeCodexEnvironment(',
+        'export function createOneShotClaim(',
+        'export function createOneShotClaims(',
+        'function buildExactCandidateBundle(',
+        'readG26McpBundleAttestation(ROOT)',
+        'canonicalG26ClaimPath()',
+        'function serverSummaryMatchesCandidate(',
+        "'features.shell_tool=false'",
+    ),
+    'scripts/acceptance/g26-exact-tag-answer-check.mjs': (
+        "export const G26_EXACT_TAG_ANSWER_CHECK_METHOD = 'g26-exact-public-tag-query-v1'",
+        'export function verifyG26ExactTagAnswer(',
+        "exactStringArray(args.tags, ['女性向'])",
+        'function checkPlanScope(',
+        'function validateScopeDisclosure(',
+    ),
+    'scripts/acceptance/write-g26-agent-mcp-report.mjs': (
+        "const TOOL_NAME = 'bangumi.query_subjects'",
+        'verifyG26ExactTagAnswer(',
+        'input.sourceRevision !== sourceRevision',
+        'computeMcpBundleSha256(process.cwd())',
+        'readG26McpBundleAttestation(process.cwd())',
+        "openSync(REPORT_PATH, 'wx', 0o600)",
+    ),
+    'scripts/lib/g26-mcp-bundle.mjs': (
+        'export function computeMcpBundleSha256(',
+        'export function readG26McpBundleAttestation(',
+        "const DIST_RELATIVE_PATHS = ['apps/mcp/dist']",
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        "'--candidate-sha'",
+        'computeMcpBundleSha256(PRODUCT_ROOT)',
+        'readG26McpBundleAttestation(PRODUCT_ROOT)',
+        'runtimeCandidateMatches(sourceRevision, bundleSha256)',
+    ),
+    CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH: (
+        '"kind": "g26-mcp-runtime-bundle-attestation-v1"',
+        '"bundleSha256":',
+    ),
+    'apps/mcp/src/result-presenter.ts': (
+        'function compactDiscoveryResult(',
+        'fullStructuredContentAvailable: true',
+        'Only included rows are shown in this text view',
+    ),
+    'scripts/discovery-scenario-cases.ts': (
+        '  G26: {',
+        "exactTag: '女性向'",
+        'export function selectDiscoveryScenario(',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_g26_report_is_valid(',
+        'def codex_g26_candidate_bundle_sha256(',
+        'def codex_g26_report_matches_candidate_revision(',
+        'def validate_g26_frontier_evidence(',
     ),
 }
 CODEX_FORBIDDEN_CONTENT_KEYS = {
@@ -477,31 +590,62 @@ def codex_g20_result_is_valid(result: object, expected_subject_id: int) -> bool:
     return artifact == {'returned': False, 'persisted': False}
 
 
-@functools.lru_cache(maxsize=128)
-def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
-    """Bind a report revision to the tracked one-tool server and its evidence checks."""
-    return _codex_revision_has_markers(
-        repository_root, revision, CODEX_PROBE_IMPLEMENTATION_MARKERS,
+_GIT_REPOSITORY_OVERRIDE_KEYS = {
+    'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+    'GIT_CEILING_DIRECTORIES', 'GIT_DISCOVERY_ACROSS_FILESYSTEM',
+    'GIT_NAMESPACE', 'GIT_PREFIX', 'GIT_CONFIG',
+}
+
+
+def _sanitized_repository_git_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    for key in tuple(environment):
+        if key in _GIT_REPOSITORY_OVERRIDE_KEYS or key.startswith('GIT_CONFIG_'):
+            environment.pop(key, None)
+    environment.update({
+        'GIT_CONFIG_GLOBAL': os.devnull,
+        'GIT_CONFIG_SYSTEM': os.devnull,
+        'GIT_CONFIG_NOSYSTEM': '1',
+    })
+    return environment
+
+
+def _run_repository_git(
+    repository_root: str | Path, *arguments: str,
+) -> subprocess.CompletedProcess:
+    """Run a Git read against this checkout, ignoring caller-selected Git metadata/config."""
+    return subprocess.run(
+        ['git', *arguments],
+        cwd=repository_root,
+        env=_sanitized_repository_git_environment(),
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
 def _codex_revision_has_markers(
     repository_root: str, revision: str, markers_by_path: dict[str, tuple[str, ...]],
 ) -> bool:
-    resolved = subprocess.run(
-        ['git', 'rev-parse', '--verify', f'{revision}^{{commit}}'],
-        cwd=repository_root, capture_output=True, text=True, check=False,
+    resolved = _run_repository_git(
+        repository_root, 'rev-parse', '--verify', f'{revision}^{{commit}}',
     )
     if resolved.returncode != 0 or resolved.stdout.strip() != revision:
         return False
     for relative_path, markers in markers_by_path.items():
-        source = subprocess.run(
-            ['git', 'show', f'{revision}:{relative_path}'],
-            cwd=repository_root, capture_output=True, text=True, check=False,
-        )
+        source = _run_repository_git(repository_root, 'show', f'{revision}:{relative_path}')
         if source.returncode != 0 or any(marker not in source.stdout for marker in markers):
             return False
     return True
+
+
+@functools.lru_cache(maxsize=128)
+def _codex_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
+    """Bind a report revision to the tracked one-tool server and its evidence checks."""
+    return _codex_revision_has_markers(
+        repository_root, revision, CODEX_PROBE_IMPLEMENTATION_MARKERS,
+    )
 
 
 def codex_probe_revision_has_implementation(revision: object) -> bool:
@@ -521,6 +665,17 @@ def codex_g20_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
+def codex_g26_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
 def codex_g20_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
     """Require G20 evidence to originate from the exact pre-query candidate."""
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
@@ -530,35 +685,228 @@ def codex_g20_report_matches_candidate_revision(report_path: Path, revision: obj
     except ValueError:
         return False
 
-    head = subprocess.run(
-        ['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True, check=False,
-    )
+    head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
     if head.returncode != 0:
         return False
     head_sha = head.stdout.strip()
-    committed_in_head = subprocess.run(
-        ['git', 'cat-file', '-e', f'{head_sha}:{relative_path}'],
-        cwd=ROOT, capture_output=True, text=True, check=False,
-    )
+    committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
     if committed_in_head.returncode != 0:
         # Before the sanitized report is committed, HEAD is still the candidate
         # that authorized the one-shot query. A staged report is also absent
         # from the HEAD tree and follows this path.
         return revision == head_sha
 
-    added_commit = subprocess.run(
-        ['git', 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+    added_commit = _run_repository_git(
+        ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
     )
     commit_sha = added_commit.stdout.strip()
     if added_commit.returncode != 0 or not re.fullmatch(r'[0-9a-f]{40}', commit_sha):
         return False
-    parents = subprocess.run(
-        ['git', 'rev-list', '--parents', '-n', '1', commit_sha],
-        cwd=ROOT, capture_output=True, text=True, check=False,
-    )
+    parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def codex_g26_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require G26 evidence to originate from the exact pre-query Product Candidate."""
+    if not codex_g26_probe_revision_has_implementation(revision):
+        return False
+    return codex_g20_report_matches_candidate_revision(report_path, revision)
+
+
+def codex_g26_candidate_bundle_sha256(revision: object) -> str | None:
+    """Read the exact runtime-bundle digest attested by the source Candidate commit."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return None
+    result = _run_repository_git(
+        ROOT, 'show', f'{revision}:{CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH}',
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        attestation = json.loads(result.stdout)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not isinstance(attestation, dict)
+        or set(attestation) != {'schemaVersion', 'kind', 'bundleSha256'}
+        or type(attestation.get('schemaVersion')) is not int
+        or attestation.get('schemaVersion') != 1
+        or attestation.get('kind') != 'g26-mcp-runtime-bundle-attestation-v1'
+        or not isinstance(attestation.get('bundleSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', attestation['bundleSha256'])
+    ):
+        return None
+    return attestation['bundleSha256']
+
+
+def codex_g26_report_is_valid(report: object) -> bool:
+    """Validate sanitized one-shot G26 Agent/MCP evidence without storing answer data."""
+    if not isinstance(report, dict) or set(report) != CODEX_G26_REPORT_FIELDS:
+        return False
+    if (type(report.get('schemaVersion')) is not int
+            or report.get('schemaVersion') != 1
+            or report.get('evidenceKind') != 'codex_cli_g26_exact_tag_agent_mcp'
+            or report.get('runNumber') != 95
+            or report.get('frontierId') != 'G26'
+            or report.get('scenarioId') != 'G26'
+            or report.get('profile') != 'codex-luna-max-one-tool-v1'
+            or report.get('model') != 'gpt-6-luna'
+            or report.get('reasoningEffort') != 'max'
+            or not isinstance(report.get('codexCliVersion'), str)
+            or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+            or report.get('toolName') != 'bangumi.query_subjects'
+            or report.get('argumentProfile') != 'fixed-g26-exact-public-tag-2019-2024-v1'
+            or report.get('expectedArgumentsSha256') != _canonical_json_sha256(
+                CODEX_G26_EXPECTED_ARGUMENTS,
+            )
+            or report.get('processExitCode') != 0
+            or report.get('resultStatus') != 'SUCCESS'
+            or report.get('eventStreamParsed') is not True
+            or report.get('codexMcpToolEventCount') != 1
+            or report.get('nonMcpToolEventCount') != 0
+            or report.get('shellToolCallCount') != 0
+            or report.get('allowedCallCount') != 1
+            or report.get('deniedCallCount') != 0
+            or report.get('answerCheckMethod') != 'g26-exact-public-tag-query-v1'
+            or not isinstance(report.get('sourceRevision'), str)
+            or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
+            or not isinstance(report.get('mcpBundleSha256'), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256'])
+            or codex_g26_candidate_bundle_sha256(report['sourceRevision']) != report['mcpBundleSha256']
+            or not codex_g26_probe_revision_has_implementation(report['sourceRevision'])):
+        return False
+
+    observed_at = report.get('observedAt')
+    if (not isinstance(observed_at, str)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at)):
+        return False
+
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    current_tool = next(
+        (item for item in catalog if isinstance(item, dict)
+         and item.get('name') == 'bangumi.query_subjects'),
+        None,
+    )
+    if (not isinstance(current_tool, dict)
+            or current_tool.get('auth') != 'none'
+            or current_tool.get('risk') != 'read'
+            or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+            or report.get('toolDescriptionSha256') != hashlib.sha256(
+                current_tool.get('description', '').encode('utf-8'),
+            ).hexdigest()
+            or report.get('inputSchemaSha256') != _canonical_json_sha256(
+                current_tool.get('inputSchema'),
+            )):
+        return False
+
+    if report.get('toolCalls') != [{'name': 'bangumi.query_subjects', 'state': 'DONE'}]:
+        return False
+    answer_checks = report.get('answerChecks')
+    if (not isinstance(answer_checks, dict)
+            or set(answer_checks) != CODEX_G26_ANSWER_CHECK_FIELDS
+            or any(value is not True for value in answer_checks.values())):
+        return False
+
+    counters = report.get('resultCounters')
+    if not isinstance(counters, dict) or set(counters) != CODEX_G26_RESULT_COUNTER_FIELDS:
+        return False
+    nonnegative_ints = CODEX_G26_RESULT_COUNTER_FIELDS - {
+        'resultState', 'coverageState', 'totalKind', 'upstreamExhausted',
+        'budgetExceeded', 'hydrationBudgetExceeded', 'outputCap',
+    }
+    if any(type(counters.get(key)) is not int or counters[key] < 0 for key in nonnegative_ints):
+        return False
+    if (counters.get('resultState') not in {'ok', 'partial'}
+            or counters.get('coverageState') not in {'complete', 'partial', 'unknown'}
+            or counters.get('totalKind') != 'estimated'
+            or type(counters.get('upstreamExhausted')) is not bool
+            or type(counters.get('budgetExceeded')) is not bool
+            or type(counters.get('hydrationBudgetExceeded')) is not bool
+            or (counters.get('outputCap') is not None and (
+                type(counters.get('outputCap')) is not int or counters['outputCap'] < 0
+            ))
+            or counters['scanned'] > 500
+            or counters['matched'] < counters['returned']
+            or counters['returned'] > 100
+            or counters['pagesRequested'] > 10
+            or counters['pagesScanned'] > 10
+            or counters['hydrationsAttempted'] > 120
+            or counters['visibleSourceRows'] != counters['returned']
+            or counters['invalidSourceRowsCount'] != 0
+            or counters['duplicateSourceRowsCount'] != 0
+            or counters['textRowsIncluded'] + counters['textRowsOmitted'] != counters['returned']
+            or not 0 < counters['textUtf8Bytes'] <= 3600
+            or counters['answerRowsParsed'] != counters['rowsMatched']
+            or counters['answerRowsParsed'] != counters['visibleSourceRows']
+            or any(counters[key] != 0 for key in (
+                'missingRowsCount', 'mismatchedRowsCount', 'unmatchedRowsCount',
+                'duplicateAnswerRowsCount', 'unstructuredAnswerLinesCount',
+            ))):
+        return False
+
+    warning_codes = report.get('warningCodes')
+    if (not isinstance(warning_codes, list)
+            or any(not isinstance(code, str) for code in warning_codes)
+            or 'EXPERIMENTAL_SOURCE' not in warning_codes
+            or len(set(warning_codes)) != len(warning_codes)):
+        return False
+    privacy = report.get('privacy')
+    expected_privacy = {
+        'authProfile': 'anonymous',
+        'oauthAttempted': False,
+        'accountDataRead': False,
+        'writesAttempted': False,
+        'qqPipelineTested': False,
+        'timClientTested': False,
+        'promptStored': False,
+        'answerStored': False,
+        'rawResultStored': False,
+        'credentialsStored': False,
+    }
+    return (
+        isinstance(privacy, dict)
+        and set(privacy) == CODEX_G26_PRIVACY_FIELDS
+        and privacy == expected_privacy
+        and not _contains_forbidden_codex_content(report)
+    )
+
+
+def validate_g26_frontier_evidence() -> bool:
+    """Keep the canonical G26 status tied to its one-shot sanitized report."""
+    frontier_path = ROOT / 'docs/product/frontier-ledger.json'
+    report_path = ROOT / CODEX_G26_REPORT_RELATIVE_PATH
+    try:
+        frontier = json.loads(frontier_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'G26'),
+        None,
+    )
+    if not isinstance(record, dict):
+        return False
+    if record.get('status') == 'UNASSESSED':
+        return not report_path.exists()
+    if (
+        record.get('status') != 'PARTIAL'
+        or not report_path.is_file()
+        or CODEX_G26_REPORT_RELATIVE_PATH not in record.get('source_refs', [])
+    ):
+        return False
+    try:
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    return (
+        codex_g26_report_is_valid(report)
+        and codex_g26_report_matches_candidate_revision(report_path, report.get('sourceRevision'))
+    )
 
 
 def codex_mcp_evidence_is_valid(
@@ -937,6 +1285,11 @@ def main() -> None:
         help='fail if the checked-in acceptance table differs from current evidence',
     )
     args = parser.parse_args()
+    if not validate_g26_frontier_evidence():
+        raise SystemExit(
+            'G26 frontier status/evidence mismatch: keep it UNASSESSED without a report, '
+            'or bind PARTIAL to the exact candidate-bound report.'
+        )
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
     source = test_source()
     direct_source_refs = direct_execute_sources()
@@ -1069,6 +1422,11 @@ def main() -> None:
                'auth_gate_pending': sum(item.get('auth') == 'required' and item['name'] not in auth_gate_denial_set for item in catalog),
                'agent_mcp_e2e': model_mcp_count, 'qq_pipeline_e2e': len(qq_pipeline_e2e),
                'tim_client_e2e': len(tim_client_e2e),
+               'g26_frontier_evidence': (
+                   'partial_verified'
+                   if (ROOT / CODEX_G26_REPORT_RELATIVE_PATH).is_file()
+                   else 'not_run'
+               ),
                'output': str(OUTPUT)}
     if args.check:
         try:

@@ -456,12 +456,28 @@ export function assertNoLegacyRuntimeChanges(paths) {
 
 export function assertProductCommitHygiene(subjects) {
   const runtimeTransition =
-    /(?:plan activation|validation complete|review readiness|ci green|candidate|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)/iu;
+    /^(?:(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish)\s+(?:the\s+)?)*(?:plan activation|validation complete|review readiness|ci green|candidate(?:\s+(?:review readiness|readiness|ready|checked|accepted|active|selected|frozen|passed|state|status))?|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)(?:\s+(?:for|to|is|as)\s+(?:review|merge|integration|complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped)|\s+(?:complete(?:d)?|pass(?:ed)?|ready|active|closed|open|merged|stopped))?(?:\s+(?:for|on)\s+(?:run|epoch|pr)\s*#?\d+|\s+#?\d+)?$/iu;
+  // Keep nested control-plane state paths and future enum values in this boundary.
+  const runtimeStateVerb =
+    '(?:record|write|set|mark|update|report|confirm|declare|announce|publish|complete|finish|advance|transition|move|enter|exit|begin|start|stop|open|close|resume|interrupt|recover|reconcile|restore|reserve|release|approve|reject|consume|cancel|clear|reset)';
+  const runtimeStatePath =
+    '(?:frontier(?:[\\s._-]+(?:closure|review))?(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|epoch(?:[\\s._-]+review)?(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|review(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|runtime[\\s._-]+(?:recovery|history)|run(?:[\\s._-]+runtime(?:[\\s._-]+history)?)?|candidate|ci|merge|cleanup|outer(?:[\\s._-]+run)?)';
+  const runtimeStateValue = '[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*';
+  const runtimeStateIdentifier =
+    '(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?';
+  const runtimeStateEnumTransition = new RegExp(
+    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:${runtimeStatePath})(?:\\[\\d*\\])?[\\s._-]+(?:state|status|outcome|verdict)\\s+(?:(?:to|as|is)\\s+${runtimeStateValue}|from\\s+${runtimeStateValue}\\s+to\\s+${runtimeStateValue})${runtimeStateIdentifier}$`,
+    'iu',
+  );
   const durableEngineering =
     /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
-  const runtimeOnly = subjects.filter(
-    (subject) => runtimeTransition.test(subject) || !durableEngineering.test(subject),
-  );
+  const engineeringPrefix =
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+/u;
+  const runtimeOnly = subjects.filter((subject) => {
+    if (!durableEngineering.test(subject)) return true;
+    const message = subject.replace(engineeringPrefix, '').trim();
+    return runtimeTransition.test(message) || runtimeStateEnumTransition.test(message);
+  });
   if (runtimeOnly.length > 0) {
     throw new HarnessInvariantError(
       'RUNTIME_ONLY_COMMIT_REJECTED',

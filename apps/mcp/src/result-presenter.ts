@@ -74,6 +74,7 @@ const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const SUBJECT_COMPARISON_TOOL = 'bangumi.get_subject_comparison';
 const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
+const QUERY_SUBJECTS_TOOL = 'bangumi.query_subjects';
 const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
@@ -107,6 +108,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
 
   if (!isJsonObject(result)) {
     return { text: fullText };
+  }
+
+  if (toolName === QUERY_SUBJECTS_TOOL && isDiscoveryResult(result)) {
+    return {
+      text: compactDiscoveryResult(result),
+      structuredContent: result,
+    };
   }
 
   if (toolName === PERSON_ACTIVITY_TOOL && isPersonActivityResult(result)) {
@@ -163,6 +171,351 @@ function serializeFullResult(result: unknown): string {
 
 function utf8Bytes(value: string): number {
   return Buffer.byteLength(value, 'utf8');
+}
+
+type DiscoveryToolResult = JsonObject & {
+  state: string;
+  items: JsonObject[];
+  plan: JsonObject;
+  coverage: JsonObject;
+};
+
+function isDiscoveryResult(value: JsonObject): value is DiscoveryToolResult {
+  return (
+    ['ok', 'partial'].includes(String(value.state)) &&
+    Array.isArray(value.items) &&
+    value.items.every(isJsonObject) &&
+    isJsonObject(value.plan) &&
+    isJsonObject(value.coverage)
+  );
+}
+
+function compactDiscoveryResult(result: DiscoveryToolResult): string {
+  const fullJsonBytes = utf8Bytes(JSON.stringify(result, null, 2));
+  const explanation = isJsonObject(result.explanation) ? result.explanation : {};
+  const plan = result.plan;
+  const request = firstDiscoveryRequest(plan);
+  const filter = isJsonObject(request?.filter) ? request.filter : {};
+  const requiredTags = stringValues(filter.tag);
+  const requiredMetaTags = stringValues(filter.metaTags);
+  const sourceNote =
+    plan.operation === 'searchSubjects'
+      ? 'Official Bangumi subject search is experimental; totals are estimated and do not establish complete database coverage.'
+      : undefined;
+  const rawWarnings = Array.isArray(result.warnings)
+    ? result.warnings.filter(isJsonObject).flatMap((item) =>
+        typeof item.code === 'string'
+          ? [
+              {
+                code: item.code,
+                ...(typeof item.state === 'string' ? { state: item.state } : {}),
+                ...(typeof item.message === 'string' ? { message: item.message } : {}),
+              },
+            ]
+          : [],
+      )
+    : [];
+  const orderedWarnings = [
+    ...rawWarnings.filter((item) => item.code === 'EXPERIMENTAL_SOURCE'),
+    ...rawWarnings.filter((item) => item.code !== 'EXPERIMENTAL_SOURCE'),
+  ];
+  const rawLimitations = [
+    ...(sourceNote ? [sourceNote] : []),
+    ...(typeof explanation.coverageScope === 'string' ? [explanation.coverageScope] : []),
+    ...(Array.isArray(explanation.limitations)
+      ? explanation.limitations.filter((item): item is string => typeof item === 'string')
+      : []),
+    ...(Array.isArray(plan.limitations)
+      ? plan.limitations.filter((item): item is string => typeof item === 'string')
+      : []),
+  ];
+  const limitations = [...new Set(rawLimitations)];
+  const coverage = projectDiscoveryCoverage(result.coverage);
+  const planSummary = projectDiscoveryPlan(plan, filter);
+  const filterValuesOmitted = planSummary.filterValuesOmitted + planSummary.postFiltersOmitted;
+  const filterTextNote =
+    filterValuesOmitted > 0
+      ? ` ${filterValuesOmitted} query filter value(s) are omitted from this text view.`
+      : '';
+  const baseTextViewScope =
+    'Only included rows are shown in this text view; omitted rows are not evidence of absence. Source coverage can still be partial.' +
+    filterTextNote;
+  let rowLimit = result.items.length;
+  let displayCharacters = 120;
+  let messageCharacters = 220;
+  let facetLimit = 6;
+  let warningLimit = Math.min(4, orderedWarnings.length);
+  let limitationLimit = Math.min(5, limitations.length);
+
+  while (true) {
+    let displayNamesClipped = 0;
+    let tagsOmitted = 0;
+    let metaTagsOmitted = 0;
+    const items = result.items.slice(0, rowLimit).map((item) => {
+      const projection = projectDiscoveryItem(
+        item,
+        requiredTags,
+        requiredMetaTags,
+        displayCharacters,
+        facetLimit,
+      );
+      displayNamesClipped += projection.displayNamesClipped;
+      tagsOmitted += projection.tagsOmitted;
+      metaTagsOmitted += projection.metaTagsOmitted;
+      return projection.item;
+    });
+    const warnings = orderedWarnings.slice(0, warningLimit).map((item) => ({
+      ...item,
+      ...(typeof item.message === 'string'
+        ? { message: clippedDisplayText(item.message, messageCharacters).text }
+        : {}),
+    }));
+    const projectedLimitations = limitations
+      .slice(0, limitationLimit)
+      .map((item) => clippedDisplayText(item, messageCharacters).text);
+    const text = JSON.stringify({
+      state: result.state,
+      plan: planSummary,
+      coverage,
+      warnings,
+      limitations: projectedLimitations,
+      items,
+      textProjection: {
+        rowsIncluded: items.length,
+        rowsOmitted: result.items.length - items.length,
+        displayNamesClipped,
+        tagsOmitted,
+        metaTagsOmitted,
+        warningsOmitted: orderedWarnings.length - warnings.length,
+        limitationsOmitted: limitations.length - projectedLimitations.length,
+        fullStructuredContentAvailable: true,
+        textViewScope: baseTextViewScope,
+        maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+        fullResultUtf8Bytes: fullJsonBytes,
+      },
+    });
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (rowLimit > 1) rowLimit = Math.floor(rowLimit / 2);
+    else if (rowLimit === 1) rowLimit = 0;
+    else if (displayCharacters > 24) displayCharacters = Math.floor(displayCharacters / 2);
+    else if (messageCharacters > 80) messageCharacters = Math.floor(messageCharacters / 2);
+    else if (facetLimit > 0) facetLimit -= 1;
+    else if (limitationLimit > 1) limitationLimit -= 1;
+    else if (warningLimit > 1) warningLimit -= 1;
+    else break;
+  }
+
+  const fallback = JSON.stringify({
+    state: result.state,
+    plan: planSummary,
+    coverage,
+    warnings: orderedWarnings
+      .filter((item) => item.code === 'EXPERIMENTAL_SOURCE')
+      .slice(0, 1)
+      .map(({ code, state }) => ({ code, ...(state ? { state } : {}) })),
+    limitations: sourceNote ? [sourceNote] : [],
+    items: [],
+    textProjection: {
+      rowsIncluded: 0,
+      rowsOmitted: result.items.length,
+      fullStructuredContentAvailable: true,
+      textViewScope:
+        'No rows fit this bounded text view; omitted rows are not evidence of absence. Source coverage can still be partial.' +
+        filterTextNote,
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      fullResultUtf8Bytes: fullJsonBytes,
+    },
+  });
+  if (utf8Bytes(fallback) > MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
+    throw new Error('Unable to produce bounded MCP discovery text');
+  }
+  return fallback;
+}
+
+function firstDiscoveryRequest(plan: JsonObject): JsonObject | undefined {
+  if (!Array.isArray(plan.steps)) return undefined;
+  const first = plan.steps.find(isJsonObject);
+  if (!first || !isJsonObject(first.request)) return undefined;
+  return first.request;
+}
+
+function projectDiscoveryPlan(
+  plan: JsonObject,
+  filter: JsonObject,
+): JsonObject & { filterValuesOmitted: number; postFiltersOmitted: number } {
+  const budget = isJsonObject(plan.budget) ? plan.budget : {};
+  const projectedFilter: JsonObject = {};
+  let filterValuesOmitted = 0;
+  for (const key of [
+    'type',
+    'tag',
+    'metaTags',
+    'airDate',
+    'rating',
+    'ratingCount',
+    'rank',
+    'nsfw',
+  ]) {
+    if (filter[key] !== undefined) {
+      const projected = projectQueryFilterValue(filter[key]);
+      projectedFilter[key] = projected.value;
+      filterValuesOmitted += projected.omitted;
+    }
+  }
+  const allPostFilters = Array.isArray(plan.postFilters)
+    ? plan.postFilters.filter(isJsonObject)
+    : [];
+  const postFilters = allPostFilters.slice(0, 8).map((item) => {
+    const value = item.value === undefined ? undefined : projectQueryFilterValue(item.value);
+    filterValuesOmitted += value?.omitted ?? 0;
+    return {
+      ...(typeof item.field === 'string' ? { field: item.field } : {}),
+      ...(typeof item.classification === 'string' ? { classification: item.classification } : {}),
+      ...(value === undefined ? {} : { value: value.value }),
+    };
+  });
+  return {
+    ...(typeof plan.source === 'string' ? { source: plan.source } : {}),
+    ...(typeof plan.operation === 'string' ? { operation: plan.operation } : {}),
+    ...(typeof plan.totalKind === 'string' ? { totalKind: plan.totalKind } : {}),
+    ...(typeof plan.quality === 'string' ? { quality: plan.quality } : {}),
+    ...(typeof plan.resultMode === 'string' ? { resultMode: plan.resultMode } : {}),
+    filter: projectedFilter,
+    postFilters,
+    filterValuesOmitted,
+    postFiltersOmitted: Math.max(0, allPostFilters.length - postFilters.length),
+    budget: {
+      ...copyIntegerFields(budget, [
+        'maxPages',
+        'maxCandidates',
+        'maxHydrations',
+        'maxReturnedItems',
+      ]),
+    },
+  };
+}
+
+function projectQueryFilterValue(value: unknown): { value: unknown; omitted: number } {
+  if (Array.isArray(value)) {
+    const maximum = 4;
+    let clippedItems = 0;
+    const visible = value.slice(0, maximum).map((item) => {
+      if (typeof item !== 'string') return item;
+      const clipped = clippedDisplayText(item, 80);
+      if (clipped.clipped) clippedItems += 1;
+      return clipped.text;
+    });
+    return {
+      value: visible,
+      omitted: Math.max(0, value.length - visible.length) + clippedItems,
+    };
+  }
+  if (typeof value === 'string') {
+    const clipped = clippedDisplayText(value, 80);
+    return { value: clipped.text, omitted: clipped.clipped ? 1 : 0 };
+  }
+  if (isJsonObject(value)) {
+    const entries = Object.entries(value);
+    const visible = Object.fromEntries(entries.slice(0, 8));
+    return { value: visible, omitted: Math.max(0, entries.length - 8) };
+  }
+  return { value, omitted: 0 };
+}
+
+function projectDiscoveryCoverage(coverage: JsonObject): JsonObject {
+  const projected: JsonObject = {};
+  for (const key of [
+    'state',
+    'requested',
+    'scanned',
+    'matched',
+    'returned',
+    'pagesRequested',
+    'pagesScanned',
+    'upstreamExhausted',
+    'budgetExceeded',
+    'totalKind',
+    'hydrationsAttempted',
+    'hydrationsSucceeded',
+    'hydrationsFailed',
+    'hydrationsUnresolved',
+    'hydrationBudgetExceeded',
+    'outputCap',
+    'reason',
+  ]) {
+    const value = coverage[key];
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value === null
+    ) {
+      projected[key] = value;
+    }
+  }
+  return projected;
+}
+
+function copyIntegerFields(source: JsonObject, fields: readonly string[]): JsonObject {
+  return Object.fromEntries(
+    fields.flatMap((field) => (Number.isInteger(source[field]) ? [[field, source[field]]] : [])),
+  );
+}
+
+function projectDiscoveryItem(
+  item: JsonObject,
+  requiredTags: readonly string[],
+  requiredMetaTags: readonly string[],
+  displayCharacters: number,
+  facetLimit: number,
+): {
+  item: JsonObject;
+  displayNamesClipped: number;
+  tagsOmitted: number;
+  metaTagsOmitted: number;
+} {
+  let displayNamesClipped = 0;
+  const projected: JsonObject = {};
+  if (Number.isSafeInteger(item.id)) projected.id = item.id;
+  for (const key of ['name', 'nameCn', 'displayName']) {
+    if (typeof item[key] !== 'string') continue;
+    const clipped = clippedDisplayText(item[key] as string, displayCharacters);
+    projected[key] = clipped.text;
+    if (clipped.clipped) displayNamesClipped += 1;
+  }
+  for (const key of ['media', 'category', 'date']) {
+    if (typeof item[key] === 'string') projected[key] = item[key];
+  }
+  if (Number.isFinite(item.ratingCount)) projected.ratingCount = item.ratingCount;
+  const tags = projectDiscoveryFacets(item.tags, requiredTags, facetLimit);
+  const metaTags = projectDiscoveryFacets(item.metaTags, requiredMetaTags, facetLimit);
+  if (tags.values.length > 0 || Array.isArray(item.tags)) projected.tags = tags.values;
+  if (metaTags.values.length > 0 || Array.isArray(item.metaTags))
+    projected.metaTags = metaTags.values;
+  return {
+    item: projected,
+    displayNamesClipped,
+    tagsOmitted: tags.omitted,
+    metaTagsOmitted: metaTags.omitted,
+  };
+}
+
+function projectDiscoveryFacets(
+  value: unknown,
+  required: readonly string[],
+  maximum: number,
+): { values: string[]; omitted: number } {
+  const values = stringValues(value);
+  const requiredValues = [...new Set(required.filter((item) => values.includes(item)))];
+  const remaining = values.filter((item) => !requiredValues.includes(item));
+  const visible = [...requiredValues, ...remaining.slice(0, maximum)];
+  return { values: visible, omitted: Math.max(0, values.length - visible.length) };
+}
+
+function stringValues(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
 }
 
 function clipSubjectRelationText(value: string, maximumCharacters: number): string {

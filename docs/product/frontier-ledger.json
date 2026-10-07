@@ -1256,8 +1256,8 @@
       "user_question": "找出 2019–2024 年评分人数超过 1 万的女性向 TV 动画。",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md"],
+      "next_action": "Run #95 exact-tag implementation is on the current candidate: anime, air_date [2019-01-01, 2025-01-01), rating_count >= 10001, exact documented tag=女性向, and TV platform post-filter. This tag is only an operational facet, not a female-audience ontology. After exact-head CI and Harness candidate gates, execute one anonymous Agent/MCP query and require exact row/readback plus experimental/estimated/partial disclosures. If evidence is unreadable or the query is inconclusive, keep UNASSESSED and do not retry. On fully passing evidence, transition only to PARTIAL with measured bounded coverage; never claim exhaustive or DELIVERED. Do not access accounts, community content, QQ, or TIM.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

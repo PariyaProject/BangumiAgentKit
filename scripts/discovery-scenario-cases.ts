@@ -47,6 +47,22 @@ export const DISCOVERY_SCENARIOS = {
     dateFrom: '2026-04-01',
     dateTo: '2026-07-01',
   },
+  G26: {
+    query: {
+      media: 'anime',
+      from: '2019-01-01',
+      to: '2025-01-01',
+      ratingCount: { min: 10001 },
+      tags: ['女性向'],
+      categories: 'tv',
+      resultMode: 'all',
+      limit: 100,
+      explain: 'full',
+    },
+    dateFrom: '2019-01-01',
+    dateTo: '2025-01-01',
+    exactTag: '女性向',
+  },
 } as const;
 
 export type DiscoveryScenarioId = keyof typeof DISCOVERY_SCENARIOS;
@@ -60,6 +76,7 @@ export interface DiscoveryScenarioItem {
   ratingCount?: number;
   collectionTotal?: number;
   conceptMatched?: boolean;
+  exactTagMatched?: boolean;
 }
 
 export function summarizeDiscoveryScenarioItems(
@@ -69,6 +86,7 @@ export function summarizeDiscoveryScenarioItems(
   if (!Array.isArray(value)) return [];
   const concept = scenario === 'G02' ? '异世界' : '原创';
   const conceptField = scenario === 'G02' ? 'tags' : 'metaTags';
+  const exactTag = scenario === 'G26' ? DISCOVERY_SCENARIOS.G26.exactTag : undefined;
   return value.flatMap((item) => {
     if (
       !item ||
@@ -95,9 +113,16 @@ export function summarizeDiscoveryScenarioItems(
         Number.isFinite(source.collectionTotal)
           ? { collectionTotal: source.collectionTotal }
           : {}),
-        conceptMatched:
-          Array.isArray(source[conceptField]) &&
-          (source[conceptField] as unknown[]).includes(concept),
+        ...(scenario === 'G26'
+          ? {
+              exactTagMatched:
+                Array.isArray(source.tags) && (source.tags as unknown[]).includes(exactTag),
+            }
+          : {
+              conceptMatched:
+                Array.isArray(source[conceptField]) &&
+                (source[conceptField] as unknown[]).includes(concept),
+            }),
       },
     ];
   });
@@ -118,17 +143,46 @@ export function validateDiscoveryScenarioItems(
         item.date >= selected.dateFrom &&
         item.date < selected.dateTo,
     );
-  const exactConceptMatch = items.length > 0 && items.every((item) => item.conceptMatched === true);
+  const exactFacetMatch =
+    items.length > 0 &&
+    items.every((item) =>
+      scenario === 'G26' ? item.exactTagMatched === true : item.conceptMatched === true,
+    );
   const checks: Record<string, boolean> = {
     nonEmpty: items.length > 0,
     uniqueIds,
     mediaType,
     dateWindow,
-    exactConceptMatch,
+    ...(scenario === 'G26'
+      ? { exactTagMatch: exactFacetMatch }
+      : { exactConceptMatch: exactFacetMatch }),
   };
 
+  if (scenario === 'G26') {
+    const query = DISCOVERY_SCENARIOS.G26.query;
+    checks.exactQueryScope =
+      query.media === 'anime' &&
+      query.from === '2019-01-01' &&
+      query.to === '2025-01-01' &&
+      query.ratingCount.min === 10001 &&
+      query.tags.length === 1 &&
+      query.tags[0] === DISCOVERY_SCENARIOS.G26.exactTag &&
+      query.categories === 'tv' &&
+      query.resultMode === 'all' &&
+      query.limit === 100 &&
+      !('metaTags' in query) &&
+      !('concepts' in query);
+    checks.strictRatingCountThreshold =
+      items.length > 0 &&
+      items.every((item) => typeof item.ratingCount === 'number' && item.ratingCount >= 10001);
+    checks.tvCategory = items.length > 0 && items.every((item) => item.category === 'tv');
+    return checks;
+  }
+
   if (scenario === 'G02') {
-    checks.heatSortRequested = selected.query.sort === 'heat' && selected.query.order === 'desc';
+    checks.heatSortRequested =
+      DISCOVERY_SCENARIOS.G02.query.sort === 'heat' &&
+      DISCOVERY_SCENARIOS.G02.query.order === 'desc';
     checks.heatOrderDescending =
       items.length > 0 &&
       items.every(
@@ -193,4 +247,22 @@ export function validateDiscoveryScenarioItems(
       );
     });
   return checks;
+}
+
+export function selectDiscoveryScenario(args: readonly string[]): DiscoveryScenarioId {
+  const indices = args.flatMap((arg, index) => (arg === '--scenario' ? [index] : []));
+  const flagIndex = indices[0];
+  if (indices.length !== 1 || flagIndex === undefined) {
+    throw new Error(
+      'Pass exactly one --scenario <scenario-id> to prevent running other scenarios.',
+    );
+  }
+  const value = args[flagIndex + 1];
+  if (!value || value.startsWith('--')) {
+    throw new Error('Pass one scenario ID after --scenario.');
+  }
+  if (!Object.prototype.hasOwnProperty.call(DISCOVERY_SCENARIOS, value)) {
+    throw new Error(`Unknown discovery scenario: ${value}`);
+  }
+  return value as DiscoveryScenarioId;
 }

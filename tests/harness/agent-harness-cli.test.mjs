@@ -1000,6 +1000,15 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
         (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'ready',
       ),
     );
+    assert.ok(
+      state.calls.some(
+        (call) =>
+          call.tool === 'gh' &&
+          call.args[0] === 'api' &&
+          call.args[1] === 'repos/{owner}/{repo}/pulls/42' &&
+          call.args.includes('PATCH'),
+      ),
+    );
   } finally {
     environment.cleanup();
   }

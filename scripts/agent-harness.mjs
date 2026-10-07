@@ -212,14 +212,18 @@ function epochState(number) {
 function updateIssue(number, state) {
   const body = renderRunBody(state);
   assertControlBodyFits(body, 'Run Issue');
-  gh('issue', 'edit', String(number), '--body-file', '-', { input: body });
+  gh('api', `repos/{owner}/{repo}/issues/${number}`, '--method', 'PATCH', '--input', '-', {
+    input: JSON.stringify({ body }),
+  });
   return body;
 }
 
 function updatePr(number, state) {
   const body = renderEpochBody(state);
   assertControlBodyFits(body, 'Epoch PR');
-  gh('pr', 'edit', String(number), '--body-file', '-', { input: body });
+  gh('api', `repos/{owner}/{repo}/pulls/${number}`, '--method', 'PATCH', '--input', '-', {
+    input: JSON.stringify({ body }),
+  });
   return body;
 }
 

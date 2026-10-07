@@ -928,6 +928,8 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
   assertProductCommitHygiene([
     'feat(subject): compose intelligence',
     'fix(renderer): bound character rows',
+    'fix(g26): isolate candidate history checks from git overrides',
+    'fix(g26): update candidate history verifier',
   ]);
   assert.throws(
     () => assertNoLegacyRuntimeChanges(['docs/product/loop-status.md']),
@@ -939,7 +941,28 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     (error) =>
       error instanceof HarnessInvariantError && error.code === 'RUNTIME_ONLY_COMMIT_REJECTED',
   );
-  for (const subject of ['docs: freeze Candidate', 'chore: park state', 'docs(agent): CI green']) {
+  for (const subject of [
+    'docs: freeze Candidate',
+    'chore: park state',
+    'docs(agent): CI green',
+    'fix(harness): candidate review readiness',
+    'fix(harness): plan activation',
+    'fix(harness): record CI green',
+    'fix(harness): update run state',
+    'fix(harness): update the run state',
+    'fix(harness): mark candidate ready',
+    'fix(harness): mark candidate ready for review',
+    'fix(harness): update run state to COMPLETE',
+    'fix(harness): set run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
+    'fix(harness): set frontier closure state to PASS',
+    'fix(harness): set epoch.review.runtime.state to review_runtime_recovery_required for PR #103',
+    'fix(harness): record frontier closure runtime history outcome as UNAVAILABLE',
+    'fix(harness): record epoch review runtime history verdict as CORRECTIVE_REQUIRED',
+    'fix(harness): advance run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
+    'fix(harness): interrupt epoch review runtime state to INTERRUPTED_RESUMABLE',
+    'fix(harness): recover run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
+    'fix(harness): transition epoch.review.runtime.state from REVIEW_RUNNING to REVIEW_INTERRUPTED_RESUMABLE',
+  ]) {
     assert.throws(
       () => assertProductCommitHygiene([subject]),
       (error) =>
