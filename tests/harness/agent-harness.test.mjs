@@ -928,6 +928,7 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
   assertProductCommitHygiene([
     'feat(subject): compose intelligence',
     'fix(renderer): bound character rows',
+    'fix(g26): isolate candidate history checks from git overrides',
   ]);
   assert.throws(
     () => assertNoLegacyRuntimeChanges(['docs/product/loop-status.md']),
@@ -939,7 +940,13 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     (error) =>
       error instanceof HarnessInvariantError && error.code === 'RUNTIME_ONLY_COMMIT_REJECTED',
   );
-  for (const subject of ['docs: freeze Candidate', 'chore: park state', 'docs(agent): CI green']) {
+  for (const subject of [
+    'docs: freeze Candidate',
+    'chore: park state',
+    'docs(agent): CI green',
+    'fix(harness): candidate review readiness',
+    'fix(harness): plan activation',
+  ]) {
     assert.throws(
       () => assertProductCommitHygiene([subject]),
       (error) =>

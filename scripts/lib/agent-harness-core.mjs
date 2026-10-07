@@ -456,12 +456,16 @@ export function assertNoLegacyRuntimeChanges(paths) {
 
 export function assertProductCommitHygiene(subjects) {
   const runtimeTransition =
-    /(?:plan activation|validation complete|review readiness|ci green|candidate|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)/iu;
+    /^(?:plan activation|validation complete|review readiness|ci green|candidate|review (?:authorization|start|wait|poll|verdict|result)|freeze|park(?:ed)?(?: state)?|merge state|cleanup state|outer ledger|review ledger|run state|epoch state)\b/iu;
   const durableEngineering =
     /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
-  const runtimeOnly = subjects.filter(
-    (subject) => runtimeTransition.test(subject) || !durableEngineering.test(subject),
-  );
+  const engineeringPrefix =
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+/u;
+  const runtimeOnly = subjects.filter((subject) => {
+    if (!durableEngineering.test(subject)) return true;
+    const message = subject.replace(engineeringPrefix, '').trim();
+    return runtimeTransition.test(message);
+  });
   if (runtimeOnly.length > 0) {
     throw new HarnessInvariantError(
       'RUNTIME_ONLY_COMMIT_REJECTED',
