@@ -53,12 +53,9 @@ export function verifyG26ExactTagAnswer(
   const resultReadbackAvailable = result !== null;
   const structuredContentReadbackAvailable = structuredResult !== null;
   const textProjectionConsistent = checkTextProjection(textResult, structuredResult);
+  const textRowsReadbackComplete = checkCompleteTextRows(textResult);
   const resultRowsReadbackAvailable =
-    structuredContentReadbackAvailable ||
-    (textResult !== null &&
-      (textResult.textProjection === undefined ||
-        (textResult.textProjection.rowsOmitted === 0 &&
-          textResult.textProjection.fullStructuredContentAvailable === true)));
+    structuredContentReadbackAvailable || textRowsReadbackComplete;
   const textBudgetVerified =
     Number.isInteger(toolTextUtf8Bytes) && toolTextUtf8Bytes > 0 && toolTextUtf8Bytes <= 3600;
   const sourceScopeVerified = checkPlanScope(result?.plan);
@@ -72,7 +69,9 @@ export function verifyG26ExactTagAnswer(
     answerText.includes('`');
   const rowsReadbackValid =
     parsedAnswer.rows.length > 0 &&
-    (answerRowMatches.fullRowsMatch || answerRowMatches.textRowsMatch) &&
+    (structuredContentReadbackAvailable
+      ? answerRowMatches.fullRowsMatch
+      : textRowsReadbackComplete && answerRowMatches.textRowsMatch) &&
     parsedAnswer.unstructuredAnswerLinesCount === 0 &&
     answerRowMatches.duplicateAnswerRowsCount === 0;
   const requiredOmissionDisclosurePresent =
@@ -454,7 +453,7 @@ function compareAnswerRows(answerRows, sourceRows, textResult) {
     unmatchedRowsCount: chosen.unmatchedRowsCount,
     duplicateAnswerRowsCount,
     fullRowsMatch: fullMatch.matchesAll,
-    textRowsMatch: Boolean(projection) && textMatch.matchesAll,
+    textRowsMatch: textResult !== null && textMatch.matchesAll,
     usesOmittedTextRows:
       Boolean(projection) &&
       textMatch.matchesAll &&
@@ -520,7 +519,7 @@ function checkTextProjection(textResult, structuredResult) {
     return !structuredResult || sameJsonValue(textResult, structuredResult);
   }
   if (
-    projection.fullStructuredContentAvailable !== true ||
+    typeof projection.fullStructuredContentAvailable !== 'boolean' ||
     projection.rowsIncluded !== textResult.items.length ||
     !Number.isInteger(projection.rowsOmitted) ||
     projection.rowsOmitted < 0
@@ -532,6 +531,7 @@ function checkTextProjection(textResult, structuredResult) {
       projection.rowsOmitted === 0 && textResult.coverage?.returned === textResult.items.length
     );
   }
+  if (projection.fullStructuredContentAvailable !== true) return false;
   if (projection.rowsOmitted !== structuredResult.items.length - textResult.items.length)
     return false;
   const sourceById = new Map(structuredResult.items.map((item) => [item.id, item]));
@@ -642,13 +642,39 @@ function sameOrProjectedText(source, projected) {
 }
 
 function hasUnqualifiedCompletenessClaim(scope) {
-  const phrases = [/(?:完整|全部|全量)(?:的)?(?:女性向|女性受众)(?:作品|动画|清单|名单|目录)?/u];
-  return phrases.some((pattern) => {
-    const match = pattern.exec(scope);
-    if (!match || match.index === undefined) return false;
-    const prefix = scope.slice(Math.max(0, match.index - 32), match.index).trimEnd();
-    return !/(?:不代表|不等于|并非|不是|不能据此|无法证明|not|does not)/iu.test(prefix);
-  });
+  const claims = [
+    /(?:完整|全部|全量|所有)(?:的)?(?:女性向|女性受众)(?:作品|动画|番剧|清单|名单|目录|列表|结果)?/u,
+    /(?:女性向|女性受众)(?:作品|动画|番剧)?(?:的)?(?:完整|全部|全量)(?:女性向|女性受众)?(?:作品|动画|番剧|清单|名单|目录|列表|结果)?/u,
+    /(?:完整|全部|全量|所有)(?:的)?(?:名单|清单|目录|列表|结果集?|作品|动画|番剧)/u,
+    /所有(?:符合条件的)?(?:女性向|女性受众)?(?:作品|动画|番剧|名单|清单|列表|结果)/u,
+  ];
+  const clauses = scope.split(/[。！？；;，,：:—–\n]+|但|而是|然而|不过|\bbut\b|\bhowever\b/iu);
+  const negation =
+    /(?:不代表|不等于|并非|不是|无法证明|无法确认|不能据此|不构成|does not(?:\s+(?:mean|prove|represent|establish))?|is not|not|cannot(?:\s+prove)?)/iu;
+  return clauses.some((clause) =>
+    claims.some((pattern) => {
+      const match = pattern.exec(clause);
+      if (!match || match.index === undefined) return false;
+      return !negation.test(clause.slice(0, match.index));
+    }),
+  );
+}
+
+function checkCompleteTextRows(textResult) {
+  if (!textResult || !Array.isArray(textResult.items)) return false;
+  const projection = textResult.textProjection;
+  if (projection === undefined) {
+    return (
+      Number.isInteger(textResult.coverage?.returned) &&
+      textResult.coverage.returned === textResult.items.length
+    );
+  }
+  return (
+    Number.isInteger(projection.rowsIncluded) &&
+    projection.rowsIncluded === textResult.items.length &&
+    projection.rowsOmitted === 0 &&
+    textResult.coverage?.returned === textResult.items.length
+  );
 }
 
 function findDiscoveryResults(value) {

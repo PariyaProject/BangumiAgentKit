@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, openSync, closeSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { verifyG26ExactTagAnswer } from './g26-exact-tag-answer-check.mjs';
+import { computeMcpBundleSha256 } from '../lib/g26-mcp-bundle.mjs';
 
 const TOOL_NAME = 'bangumi.query_subjects';
 const REPORT_PATH = join(
@@ -97,12 +98,20 @@ function assertSafeInvocation(input) {
   const dirty = gitText(['status', '--porcelain']);
   if (dirty) throw new Error('G26 evidence must be bound to a clean exact candidate revision.');
   const sourceRevision = gitText(['rev-parse', 'HEAD']);
-  if (!/^[0-9a-f]{40}$/u.test(sourceRevision)) throw new Error('Invalid source revision.');
-  return sourceRevision;
+  if (!/^[0-9a-f]{40}$/u.test(input.sourceRevision) || input.sourceRevision !== sourceRevision) {
+    throw new Error('G26 answer evidence Candidate does not match the current checkout.');
+  }
+  if (
+    !/^[0-9a-f]{64}$/u.test(input.bundleSha256) ||
+    input.bundleSha256 !== computeMcpBundleSha256(process.cwd())
+  ) {
+    throw new Error('G26 answer evidence does not match the current executed MCP bundle.');
+  }
+  return { sourceRevision, bundleSha256: input.bundleSha256 };
 }
 
 function writeReport(input) {
-  const sourceRevision = assertSafeInvocation(input);
+  const { sourceRevision, bundleSha256 } = assertSafeInvocation(input);
   const check = verifyG26ExactTagAnswer(
     input.answer,
     input.queryArguments,
@@ -128,6 +137,7 @@ function writeReport(input) {
     frontierId: 'G26',
     scenarioId: 'G26',
     sourceRevision,
+    mcpBundleSha256: bundleSha256,
     observedAt: new Date().toISOString(),
     codexCliVersion: input.codexCliVersion,
     profile: 'codex-luna-max-one-tool-v1',

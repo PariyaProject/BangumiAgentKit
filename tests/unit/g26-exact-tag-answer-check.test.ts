@@ -219,7 +219,28 @@ describe('G26 exact-tag Agent/MCP answer check', () => {
     expect(verify({ answer: overclaim }).unsupportedCompletenessClaim).toBe(true);
   });
 
-  it('accepts only visible text-projection rows when omitted rows are disclosed', () => {
+  it('rejects positive complete-list claims even after a valid demographic caveat', () => {
+    for (const claim of [
+      '这是完整名单。',
+      '女性向作品的完整清单如下。',
+      '这是全部女性受众作品。',
+    ]) {
+      const answer = makeAnswer().replace(
+        '这不代表全部女性受众作品。',
+        `这不代表全部女性受众作品。${claim}`,
+      );
+      const check = verify({ answer });
+      expect(check.unsupportedCompletenessClaim).toBe(true);
+      expect(check.passed).toBe(false);
+    }
+
+    for (const caveat of ['这不是完整名单。', '这不代表女性向作品的完整清单。']) {
+      const answer = makeAnswer().replace('本次有限覆盖不等于完整目录。', caveat);
+      expect(verify({ answer }).unsupportedCompletenessClaim).toBe(false);
+    }
+  });
+
+  it('rejects text-projection-only rows when full structured results contain more rows', () => {
     const full = makeResult();
     const textResult = {
       ...full,
@@ -240,6 +261,26 @@ describe('G26 exact-tag Agent/MCP answer check', () => {
     expect(check.textProjectionConsistent).toBe(true);
     expect(check.answerUsesTextProjectionRows).toBe(true);
     expect(check.textOmissionDisclosurePresent).toBe(true);
+    expect(check.answerUsesFullStructuredRows).toBe(false);
+    expect(check.passed).toBe(false);
+  });
+
+  it('accepts every available text row when structured content is unavailable', () => {
+    const full = makeResult();
+    const textResult = {
+      ...full,
+      textProjection: {
+        rowsIncluded: full.items.length,
+        rowsOmitted: 0,
+        displayNamesClipped: 0,
+        fullStructuredContentAvailable: false,
+      },
+    };
+    const check = verify({ result: full, textResult, includeStructured: false });
+
+    expect(check.structuredContentReadbackAvailable).toBe(false);
+    expect(check.resultRowsReadbackAvailable).toBe(true);
+    expect(check.answerUsesTextProjectionRows).toBe(true);
     expect(check.passed).toBe(true);
   });
 

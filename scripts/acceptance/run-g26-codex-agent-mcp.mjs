@@ -13,6 +13,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { computeMcpBundleSha256 } from '../lib/g26-mcp-bundle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REPORT_PATH = path.join(ROOT, 'docs/live-probes/g26-exact-tag-agent-mcp-run95.json');
@@ -20,8 +21,16 @@ const TARGET_TOOL = 'bangumi.query_subjects';
 const SERVER_ID = 'bgk_g26_one_tool';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
+const CANONICAL_CLAIM_RELATIVE_PATH = [
+  '.local',
+  'state',
+  'pariyaagent',
+  'bangumiagentkit',
+  'run95-g26-one-shot-claim.json',
+];
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
+const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
 
 export const G26_EXPECTED_QUERY_ARGUMENTS = {
   media: 'anime',
@@ -65,7 +74,14 @@ function tomlStringArray(values) {
   return `[${values.map(tomlString).join(', ')}]`;
 }
 
-export function buildCodexExecArgs({ root = ROOT, nodePath, serverScript, summaryPath }) {
+export function buildCodexExecArgs({
+  root = ROOT,
+  nodePath,
+  serverScript,
+  summaryPath,
+  sourceRevision,
+  bundleSha256,
+}) {
   const serverArguments = [
     serverScript,
     '--tool',
@@ -74,6 +90,10 @@ export function buildCodexExecArgs({ root = ROOT, nodePath, serverScript, summar
     JSON.stringify(G26_EXPECTED_QUERY_ARGUMENTS),
     '--summary-file',
     summaryPath,
+    '--candidate-sha',
+    sourceRevision,
+    '--bundle-sha256',
+    bundleSha256,
   ];
   const config = [
     `model_reasoning_effort=${tomlString(REASONING_EFFORT)}`,
@@ -233,6 +253,41 @@ function assertCleanCandidate() {
   return revision;
 }
 
+function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
+  try {
+    return (
+      gitText(['status', '--porcelain']) === '' &&
+      gitText(['rev-parse', 'HEAD']) === sourceRevision &&
+      computeMcpBundleSha256(ROOT) === bundleSha256
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildExactCandidateBundle(sourceRevision) {
+  if (gitText(['rev-parse', 'HEAD']) !== sourceRevision || gitText(['status', '--porcelain'])) {
+    throw new Error('G26 runtime build requires the unchanged clean Candidate.');
+  }
+  const result = spawnSync('pnpm', ['build'], {
+    cwd: ROOT,
+    env: sanitizeCodexEnvironment(),
+    stdio: ['ignore', 'ignore', 'ignore'],
+    timeout: BUILD_TIMEOUT_MS,
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error('Unable to build the G26 runtime from the exact Candidate.');
+  }
+  if (gitText(['rev-parse', 'HEAD']) !== sourceRevision || gitText(['status', '--porcelain'])) {
+    throw new Error('Candidate changed or became dirty during the G26 runtime build.');
+  }
+  return computeMcpBundleSha256(ROOT);
+}
+
+export function canonicalG26ClaimPath(homeDirectory = os.homedir()) {
+  return path.join(homeDirectory, ...CANONICAL_CLAIM_RELATIVE_PATH);
+}
+
 function writeClaim(claimPath, state) {
   const body = `${JSON.stringify(state, null, 2)}\n`;
   const temporaryPath = `${claimPath}.${process.pid}.tmp`;
@@ -240,9 +295,12 @@ function writeClaim(claimPath, state) {
   renameSync(temporaryPath, claimPath);
 }
 
-export function createOneShotClaim(claimPath, sourceRevision) {
+export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
   if (!/^[0-9a-f]{40}$/u.test(sourceRevision)) {
     throw new Error('G26 one-shot claim must name an exact Candidate SHA.');
+  }
+  if (!/^[0-9a-f]{64}$/u.test(bundleSha256)) {
+    throw new Error('G26 one-shot claim must name the exact built MCP bundle.');
   }
   if (!path.isAbsolute(claimPath) || claimPath.startsWith(`${ROOT}${path.sep}`)) {
     throw new Error(
@@ -256,6 +314,7 @@ export function createOneShotClaim(claimPath, sourceRevision) {
     frontierId: 'G26',
     state: 'CLAIMED',
     sourceRevision,
+    bundleSha256,
     expectedArgumentsSha256: createHash('sha256')
       .update(canonicalJson(G26_EXPECTED_QUERY_ARGUMENTS))
       .digest('hex'),
@@ -279,6 +338,20 @@ export function createOneShotClaim(claimPath, sourceRevision) {
   return claim;
 }
 
+export function createOneShotClaims({
+  canonicalClaimPath,
+  localClaimPath,
+  sourceRevision,
+  bundleSha256,
+}) {
+  const canonical = path.resolve(canonicalClaimPath);
+  const local = path.resolve(localClaimPath);
+  const canonicalClaim = createOneShotClaim(canonical, sourceRevision, bundleSha256);
+  if (local === canonical) return { paths: [canonical], claim: canonicalClaim };
+  const localClaim = createOneShotClaim(local, sourceRevision, bundleSha256);
+  return { paths: [canonical, local], claim: localClaim };
+}
+
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value && typeof value === 'object') {
@@ -294,11 +367,12 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function serverSummaryMatchesCandidate(summary, sourceRevision) {
+export function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
   if (
     !summary ||
     summary.serverProfile !== 'one-tool-anonymous-public-v1' ||
     summary.sourceRevision !== sourceRevision ||
+    summary.bundleSha256 !== bundleSha256 ||
     summary.toolName !== TARGET_TOOL ||
     summary.serverToolCount !== 1 ||
     JSON.stringify(summary.serverToolNames) !== JSON.stringify([TARGET_TOOL]) ||
@@ -365,8 +439,19 @@ function markClaim(claimPath, claim, state, safeSummary) {
   });
 }
 
+function markClaims(claimPaths, claim, state, safeSummary) {
+  for (const claimPath of claimPaths) {
+    try {
+      markClaim(claimPath, claim, state, safeSummary);
+    } catch {
+      // A missing mirror never removes the canonical create-new retry guard.
+    }
+  }
+}
+
 function buildWriterInput({
   sourceRevision,
+  bundleSha256,
   codexCliVersion,
   serverSummary,
   eventsSummary,
@@ -403,6 +488,7 @@ function buildWriterInput({
     toolCalls: eventsSummary.toolCalls,
     toolTextUtf8Bytes: textResultBytes(result),
     sourceRevision,
+    bundleSha256,
   };
 }
 
@@ -419,10 +505,17 @@ function codexVersion() {
   return match[1];
 }
 
-function invokeCodex({ nodePath, serverScript, summaryPath }) {
+function invokeCodex({ nodePath, serverScript, summaryPath, sourceRevision, bundleSha256 }) {
   const result = spawnSync(
     'codex',
-    buildCodexExecArgs({ root: ROOT, nodePath, serverScript, summaryPath }),
+    buildCodexExecArgs({
+      root: ROOT,
+      nodePath,
+      serverScript,
+      summaryPath,
+      sourceRevision,
+      bundleSha256,
+    }),
     {
       cwd: ROOT,
       env: sanitizeCodexEnvironment(),
@@ -464,11 +557,19 @@ function printSanitized(value) {
 
 function run() {
   const sourceRevision = assertCleanCandidate();
-  const claimPath = process.env.PARIYA_G26_RUN95_CLAIM_FILE;
-  if (!claimPath)
+  const localClaimPath = process.env.PARIYA_G26_RUN95_CLAIM_FILE;
+  if (!localClaimPath)
     throw new Error('Set PARIYA_G26_RUN95_CLAIM_FILE to the local-only recovery claim path.');
   const codexCliVersion = codexVersion();
-  const claim = createOneShotClaim(claimPath, sourceRevision);
+  const bundleSha256 = buildExactCandidateBundle(sourceRevision);
+  const claimPair = createOneShotClaims({
+    canonicalClaimPath: canonicalG26ClaimPath(),
+    localClaimPath,
+    sourceRevision,
+    bundleSha256,
+  });
+  const claimPaths = claimPair.paths;
+  const claim = claimPair.claim;
   const temporaryRoot = path.resolve(os.tmpdir());
   const temporaryDirectory = path.join(temporaryRoot, `bgk-g26-run95-${process.pid}`);
   const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
@@ -477,13 +578,20 @@ function run() {
 
   let safeClaimSummary = {
     codexCliVersion,
+    bundleSha256,
     codexExitCode: null,
     toolEventCount: 0,
     allowedCallCount: 0,
   };
   try {
     mkdirSync(temporaryDirectory, { mode: 0o700 });
-    const execution = invokeCodex({ nodePath, serverScript, summaryPath });
+    const execution = invokeCodex({
+      nodePath,
+      serverScript,
+      summaryPath,
+      sourceRevision,
+      bundleSha256,
+    });
     const parsed = parseCodexJsonl(execution.stdout);
     const eventsSummary = summarizeCodexEvents(parsed.events);
     const serverSummary = readServerSummary(summaryPath);
@@ -508,12 +616,14 @@ function run() {
           ? serverSummary.serverResultStatus
           : 'unavailable',
       serverRevisionMatchesCandidate: serverSummary?.sourceRevision === sourceRevision,
+      serverBundleMatchesCandidate: serverSummary?.bundleSha256 === bundleSha256,
       fixedArgumentsAuthorized: serverSummary?.argumentMatch === true,
     };
 
     if (
       execution.failed ||
-      !serverSummaryMatchesCandidate(serverSummary, sourceRevision) ||
+      !serverSummaryMatchesCandidate(serverSummary, sourceRevision, bundleSha256) ||
+      !currentCandidateBundleMatches(sourceRevision, bundleSha256) ||
       !parsed.parsed ||
       !eventsSummary.eventStreamComplete ||
       eventsSummary.codexMcpToolEventCount !== 1 ||
@@ -531,13 +641,14 @@ function run() {
       serverSummary.deniedCallCount !== 0 ||
       serverSummary.serverResultStatus !== 'SUCCESS'
     ) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', safeClaimSummary);
+      markClaims(claimPaths, claim, 'INCONCLUSIVE', safeClaimSummary);
       printSanitized({ passed: false, state: 'INCONCLUSIVE', ...safeClaimSummary });
       return 1;
     }
 
     const input = buildWriterInput({
       sourceRevision,
+      bundleSha256,
       codexCliVersion,
       serverSummary,
       eventsSummary,
@@ -545,7 +656,7 @@ function run() {
     });
     const writerResult = invokeWriter(input);
     if (writerResult.exitCode !== 0 || !writerResult.output?.passed) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', {
+      markClaims(claimPaths, claim, 'INCONCLUSIVE', {
         ...safeClaimSummary,
         answerChecks: writerResult.output?.answerChecks ?? null,
       });
@@ -559,7 +670,7 @@ function run() {
     }
 
     const output = writerResult.output;
-    markClaim(claimPath, claim, 'REPORT_WRITTEN', {
+    markClaims(claimPaths, claim, 'REPORT_WRITTEN', {
       ...safeClaimSummary,
       resultCounters: output.resultCounters,
       warningCodes: output.warningCodes,
@@ -573,7 +684,7 @@ function run() {
     });
     return 0;
   } catch {
-    markClaim(claimPath, claim, 'INCONCLUSIVE', safeClaimSummary);
+    markClaims(claimPaths, claim, 'INCONCLUSIVE', safeClaimSummary);
     printSanitized({ passed: false, state: 'INCONCLUSIVE', ...safeClaimSummary });
     return 1;
   } finally {

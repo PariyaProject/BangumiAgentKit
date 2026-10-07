@@ -280,7 +280,7 @@ CODEX_G20_ANSWER_CHECK_FIELDS = {
 }
 CODEX_G26_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId',
-    'sourceRevision', 'observedAt', 'codexCliVersion', 'profile', 'model',
+    'sourceRevision', 'mcpBundleSha256', 'observedAt', 'codexCliVersion', 'profile', 'model',
     'reasoningEffort', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
     'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256', 'processExitCode',
     'resultStatus', 'eventStreamParsed', 'codexMcpToolEventCount',
@@ -405,6 +405,9 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
         'export function summarizeCodexEvents(',
         'export function sanitizeCodexEnvironment(',
         'export function createOneShotClaim(',
+        'export function createOneShotClaims(',
+        'function buildExactCandidateBundle(',
+        'canonicalG26ClaimPath()',
         'function serverSummaryMatchesCandidate(',
         "'features.shell_tool=false'",
     ),
@@ -418,7 +421,18 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-g26-agent-mcp-report.mjs': (
         "const TOOL_NAME = 'bangumi.query_subjects'",
         'verifyG26ExactTagAnswer(',
+        'input.sourceRevision !== sourceRevision',
+        'computeMcpBundleSha256(process.cwd())',
         "openSync(REPORT_PATH, 'wx', 0o600)",
+    ),
+    'scripts/lib/g26-mcp-bundle.mjs': (
+        'export function computeMcpBundleSha256(',
+        "const DIST_RELATIVE_PATHS = ['apps/mcp/dist']",
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        "'--candidate-sha'",
+        'computeMcpBundleSha256(PRODUCT_ROOT)',
+        'runtimeCandidateMatches(sourceRevision, bundleSha256)',
     ),
     'apps/mcp/src/result-presenter.ts': (
         'function compactDiscoveryResult(',
@@ -698,6 +712,8 @@ def codex_g26_report_is_valid(report: object) -> bool:
             or report.get('answerCheckMethod') != 'g26-exact-public-tag-query-v1'
             or not isinstance(report.get('sourceRevision'), str)
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
+            or not isinstance(report.get('mcpBundleSha256'), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256'])
             or not codex_g26_probe_revision_has_implementation(report['sourceRevision'])):
         return False
 
@@ -766,9 +782,7 @@ def codex_g26_report_is_valid(report: object) -> bool:
             or counters['textRowsIncluded'] + counters['textRowsOmitted'] != counters['returned']
             or not 0 < counters['textUtf8Bytes'] <= 3600
             or counters['answerRowsParsed'] != counters['rowsMatched']
-            or counters['answerRowsParsed'] not in {
-                counters['visibleSourceRows'], counters['textRowsIncluded'],
-            }
+            or counters['answerRowsParsed'] != counters['visibleSourceRows']
             or any(counters[key] != 0 for key in (
                 'missingRowsCount', 'mismatchedRowsCount', 'unmatchedRowsCount',
                 'duplicateAnswerRowsCount', 'unstructuredAnswerLinesCount',

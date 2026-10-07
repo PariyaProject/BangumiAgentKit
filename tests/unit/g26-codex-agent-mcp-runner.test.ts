@@ -1,19 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import {
   G26_EXPECTED_QUERY_ARGUMENTS,
   buildCodexExecArgs,
+  canonicalG26ClaimPath,
   createOneShotClaim,
+  createOneShotClaims,
   parseCodexJsonl,
   sanitizeCodexEnvironment,
   serverSummaryMatchesCandidate,
   summarizeCodexEvents,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
+import { computeMcpBundleSha256 } from '../../scripts/lib/g26-mcp-bundle.mjs';
 
 const canonicalJson = (value: unknown): string =>
   Array.isArray(value)
@@ -103,8 +106,10 @@ describe('G26 Codex one-tool runner', () => {
       nodePath: '/usr/bin/node',
       serverScript: '/repo/apps/mcp/codex-one-tool-mcp-server.mjs',
       summaryPath: '/tmp/g26/server-summary.json',
+      sourceRevision: 'a'.repeat(40),
+      bundleSha256: 'b'.repeat(64),
     });
-    const configs = args.flatMap((item, index) => (item === '--config' ? [args[index + 1]] : []));
+    const configs = args.flatMap((item, index) => (item === '--config' ? [args[index + 1]!] : []));
 
     expect(args).toContain('--ignore-user-config');
     expect(args).toContain('--strict-config');
@@ -121,6 +126,10 @@ describe('G26 Codex one-tool runner', () => {
     expect(configs).toContain(
       'mcp_servers.bgk_g26_one_tool.enabled_tools=["bangumi.query_subjects"]',
     );
+    expect(configs.some((value) => value.includes('--candidate-sha'))).toBe(true);
+    expect(configs.some((value) => value.includes('a'.repeat(40)))).toBe(true);
+    expect(configs.some((value) => value.includes('--bundle-sha256'))).toBe(true);
+    expect(configs.some((value) => value.includes('b'.repeat(64)))).toBe(true);
     expect(args.at(-1)).toContain(JSON.stringify(G26_EXPECTED_QUERY_ARGUMENTS));
   });
 
@@ -200,6 +209,7 @@ describe('G26 Codex one-tool runner', () => {
     const summary = {
       serverProfile: 'one-tool-anonymous-public-v1',
       sourceRevision,
+      bundleSha256: 'b'.repeat(64),
       toolName: 'bangumi.query_subjects',
       serverToolNames: ['bangumi.query_subjects'],
       serverToolCount: 1,
@@ -210,17 +220,27 @@ describe('G26 Codex one-tool runner', () => {
       inputSchemaSha256: sha256(canonicalJson(tool.inputSchema)),
     };
 
-    expect(serverSummaryMatchesCandidate(summary, sourceRevision)).toBe(true);
+    expect(serverSummaryMatchesCandidate(summary, sourceRevision, 'b'.repeat(64))).toBe(true);
     expect(
-      serverSummaryMatchesCandidate({ ...summary, sourceRevision: '0'.repeat(40) }, sourceRevision),
+      serverSummaryMatchesCandidate(
+        { ...summary, sourceRevision: '0'.repeat(40) },
+        sourceRevision,
+        'b'.repeat(64),
+      ),
     ).toBe(false);
+    expect(serverSummaryMatchesCandidate(summary, sourceRevision, 'c'.repeat(64))).toBe(false);
     expect(
-      serverSummaryMatchesCandidate({ ...summary, argumentMatch: false }, sourceRevision),
+      serverSummaryMatchesCandidate(
+        { ...summary, argumentMatch: false },
+        sourceRevision,
+        'b'.repeat(64),
+      ),
     ).toBe(false);
     expect(
       serverSummaryMatchesCandidate(
         { ...summary, serverToolNames: ['bangumi.auth_status'] },
         sourceRevision,
+        'b'.repeat(64),
       ),
     ).toBe(false);
   });
@@ -229,15 +249,67 @@ describe('G26 Codex one-tool runner', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-claim-test-'));
     const claimPath = path.join(directory, 'claimed.json');
     try {
-      const claim = createOneShotClaim(claimPath, 'a'.repeat(40));
+      const claim = createOneShotClaim(claimPath, 'a'.repeat(40), 'b'.repeat(64));
       const stored = JSON.parse(readFileSync(claimPath, 'utf8')) as Record<string, unknown>;
 
       expect(claim.state).toBe('CLAIMED');
       expect(stored.sourceRevision).toBe('a'.repeat(40));
+      expect(stored.bundleSha256).toBe('b'.repeat(64));
       expect(Object.keys(stored)).not.toContain('answer');
-      expect(() => createOneShotClaim(claimPath, 'a'.repeat(40))).toThrow(
+      expect(() => createOneShotClaim(claimPath, 'a'.repeat(40), 'b'.repeat(64))).toThrow(
         'G26 one-shot claim already exists',
       );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the run-level one-shot lock independent of a caller-selected mirror path', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-canonical-claim-test-'));
+    const canonicalPath = path.join(directory, 'canonical', 'run95-g26.json');
+    const firstMirror = path.join(directory, 'pariya-state', 'claim.json');
+    const alternateMirror = path.join(directory, 'alternate', 'claim.json');
+    try {
+      const first = createOneShotClaims({
+        canonicalClaimPath: canonicalPath,
+        localClaimPath: firstMirror,
+        sourceRevision: 'a'.repeat(40),
+        bundleSha256: 'b'.repeat(64),
+      });
+
+      expect(first.paths).toEqual([canonicalPath, firstMirror]);
+      expect(() =>
+        createOneShotClaims({
+          canonicalClaimPath: canonicalPath,
+          localClaimPath: alternateMirror,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+        }),
+      ).toThrow('G26 one-shot claim already exists');
+      expect(() => readFileSync(alternateMirror)).toThrow();
+      expect(canonicalG26ClaimPath('/home/example')).toBe(
+        '/home/example/.local/state/pariyaagent/bangumiagentkit/run95-g26-one-shot-claim.json',
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('fingerprints compiled MCP and workspace dependency outputs deterministically', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-bundle-test-'));
+    const mcpFile = path.join(directory, 'apps', 'mcp', 'dist', 'index.js');
+    const packageFile = path.join(directory, 'packages', 'tools', 'dist', 'index.js');
+    try {
+      mkdirSync(path.dirname(mcpFile), { recursive: true });
+      mkdirSync(path.dirname(packageFile), { recursive: true });
+      writeFileSync(mcpFile, 'export const mcp = true;');
+      writeFileSync(packageFile, 'export const tools = true;');
+      const first = computeMcpBundleSha256(directory);
+
+      expect(first).toMatch(/^[0-9a-f]{64}$/u);
+      expect(computeMcpBundleSha256(directory)).toBe(first);
+      writeFileSync(packageFile, 'export const tools = false;');
+      expect(computeMcpBundleSha256(directory)).not.toBe(first);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

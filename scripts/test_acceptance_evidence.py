@@ -717,6 +717,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'frontierId': 'G26',
             'scenarioId': 'G26',
             'sourceRevision': source_revision or self.source_revision,
+            'mcpBundleSha256': 'b' * 64,
             'observedAt': '2026-10-07T12:00:00.000Z',
             'codexCliVersion': '1.2.14',
             'profile': 'codex-luna-max-one-tool-v1',
@@ -857,10 +858,21 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self._write_g26_frontier('PARTIAL')
         self.assertFalse(GENERATOR.validate_g26_frontier_evidence())
 
+    def test_rejects_g26_evidence_that_matches_only_a_clipped_text_projection(self):
+        report = self._g26_report_fixture()
+        counters = report['resultCounters']
+        counters['textRowsIncluded'] = 1
+        counters['textRowsOmitted'] = 1
+        counters['answerRowsParsed'] = 1
+        counters['rowsMatched'] = 1
+
+        self.assertFalse(GENERATOR.codex_g26_report_is_valid(report))
+
     def test_rejects_g26_report_with_raw_data_wrong_scope_or_failed_answer_checks(self):
         invalid_reports = [
             {'answer': 'raw answer must not be persisted'},
             {'sourceRevision': self.unrelated_source_revision},
+            {'mcpBundleSha256': 'not-a-sha256'},
             {'expectedArgumentsSha256': '0' * 64},
             {'answerChecks': {'passed': False}},
             {'resultCounters': {'visibleSourceRows': 2}},
