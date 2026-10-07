@@ -386,6 +386,16 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     });
   });
 
+  it('keeps old relation reports historical after the direct-evidence contract changes', () => {
+    const report = FULL_PUBLIC_QA_EVIDENCE.find(
+      (candidate: any) => candidate.scenarios?.[0]?.id === 'bangumi.get_subject_relations',
+    );
+    expect(report).toBeDefined();
+    expect(catalogForHash(report.catalogSha256)).toBeDefined();
+    expect(toolContractMatchesCurrent(report, 'bangumi.get_subject_relations')).toBe(false);
+    expect(CURRENT_FULL_PUBLIC_QA_EVIDENCE).not.toContain(report);
+  });
+
   it('records observed model-to-MCP calls without implying QQ or TIM acceptance', () => {
     const rows = rowsByTool();
     const catalogNames = catalog.map((item) => item.name).sort();
@@ -407,7 +417,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(new Set(evidenceNames).size).toBe(evidenceNames.length);
     const observedEvidenceNames = new Set(evidenceNames);
     const uncoveredNames = catalogNames.filter((name) => !observedEvidenceNames.has(name));
-    expect(uncoveredNames).toEqual([]);
+    expect(uncoveredNames).toEqual(['bangumi.get_subject_relations']);
     expect(evidenceNames.sort()).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
@@ -452,7 +462,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
         'bangumi.get_subject_overview',
-        'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
         'bangumi.get_subject_stats_history',
@@ -612,7 +621,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_subject_index_membership',
         'bangumi.get_subject_overlap',
         'bangumi.get_subject_overview',
-        'bangumi.get_subject_relations',
         'bangumi.get_subject_staff',
         'bangumi.get_subject_stats',
         'bangumi.get_subject_stats_history',
