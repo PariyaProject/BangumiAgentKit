@@ -959,6 +959,8 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(harness): record frontier closure runtime history outcome as UNAVAILABLE',
     'fix(harness): record epoch review runtime history verdict as CORRECTIVE_REQUIRED',
     'fix(harness): advance run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
+    'fix(harness): interrupt epoch review runtime state to INTERRUPTED_RESUMABLE',
+    'fix(harness): recover run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
   ]) {
     assert.throws(
       () => assertProductCommitHygiene([subject]),
