@@ -53,7 +53,16 @@ if (tool === 'gh') {
   if (group === '--version') output('gh version mock');
   else if (group === 'auth' && action === 'status') output('authenticated');
   else if (group === 'repo' && action === 'view') output({ nameWithOwner: 'mock/repo' });
-  else if (group === 'issue' && action === 'list') {
+  else if (group === 'api' && flagValue('--method') === 'PATCH' && flagValue('--input') === '-') {
+    const payload = JSON.parse(stdin());
+    if (/^repos\/\{owner\}\/\{repo\}\/issues\/\d+$/u.test(action)) {
+      state.runBody = payload.body;
+      output('updated');
+    } else if (/^repos\/\{owner\}\/\{repo\}\/pulls\/\d+$/u.test(action)) {
+      state.prBody = payload.body;
+      output('updated');
+    } else fail(`unsupported GitHub API mutation: ${action}`);
+  } else if (group === 'issue' && action === 'list') {
     const requestedState = flagValue('--state') ?? 'open';
     if (state.issues) {
       output(
