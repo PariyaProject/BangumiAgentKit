@@ -16,7 +16,10 @@ import {
   publicReadOnlyToolAnnotations,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
-import { computeMcpBundleSha256 } from '../../scripts/lib/g26-mcp-bundle.mjs';
+import {
+  computeMcpBundleSha256,
+  readG26McpBundleAttestation,
+} from '../../scripts/lib/g26-mcp-bundle.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -170,7 +173,8 @@ function runtimeCandidateMatches(sourceRevision, bundleSha256) {
     return (
       currentRevision === sourceRevision &&
       status === '' &&
-      computeMcpBundleSha256(PRODUCT_ROOT) === bundleSha256
+      computeMcpBundleSha256(PRODUCT_ROOT) === bundleSha256 &&
+      readG26McpBundleAttestation(PRODUCT_ROOT) === bundleSha256
     );
   } catch {
     return false;
@@ -203,6 +207,7 @@ async function main(argv = process.argv.slice(2)) {
   if (
     sourceRevision !== config.candidateSha ||
     bundleSha256 !== config.bundleSha256 ||
+    readG26McpBundleAttestation(PRODUCT_ROOT) !== bundleSha256 ||
     !runtimeCandidateMatches(sourceRevision, bundleSha256)
   ) {
     throw new Error('G26 MCP server is not running the immutable exact Candidate bundle.');

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, openSync, closeSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { verifyG26ExactTagAnswer } from './g26-exact-tag-answer-check.mjs';
-import { computeMcpBundleSha256 } from '../lib/g26-mcp-bundle.mjs';
+import { computeMcpBundleSha256, readG26McpBundleAttestation } from '../lib/g26-mcp-bundle.mjs';
 
 const TOOL_NAME = 'bangumi.query_subjects';
 const REPORT_PATH = join(
@@ -103,7 +103,8 @@ function assertSafeInvocation(input) {
   }
   if (
     !/^[0-9a-f]{64}$/u.test(input.bundleSha256) ||
-    input.bundleSha256 !== computeMcpBundleSha256(process.cwd())
+    input.bundleSha256 !== computeMcpBundleSha256(process.cwd()) ||
+    input.bundleSha256 !== readG26McpBundleAttestation(process.cwd())
   ) {
     throw new Error('G26 answer evidence does not match the current executed MCP bundle.');
   }

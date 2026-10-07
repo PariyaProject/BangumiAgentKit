@@ -19,7 +19,7 @@ export declare function buildCodexExecArgs(options: {
   bundleSha256: string;
 }): string[];
 
-export declare function canonicalG26ClaimPath(homeDirectory?: string): string;
+export declare function canonicalG26ClaimPath(root?: string): string;
 
 export declare function validateRunnerArgs(args: readonly string[]): 'help' | 'run';
 

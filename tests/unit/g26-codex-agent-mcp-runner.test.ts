@@ -16,7 +16,10 @@ import {
   summarizeCodexEvents,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-g26-codex-agent-mcp.mjs';
-import { computeMcpBundleSha256 } from '../../scripts/lib/g26-mcp-bundle.mjs';
+import {
+  computeMcpBundleSha256,
+  readG26McpBundleAttestation,
+} from '../../scripts/lib/g26-mcp-bundle.mjs';
 
 const canonicalJson = (value: unknown): string =>
   Array.isArray(value)
@@ -266,10 +269,26 @@ describe('G26 Codex one-tool runner', () => {
 
   it('keeps the run-level one-shot lock independent of a caller-selected mirror path', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-canonical-claim-test-'));
-    const canonicalPath = path.join(directory, 'canonical', 'run95-g26.json');
+    const repositoryRoot = path.join(directory, 'repository');
+    mkdirSync(repositoryRoot, { recursive: true });
+    execFileSync('git', ['init', '-q'], { cwd: repositoryRoot });
     const firstMirror = path.join(directory, 'pariya-state', 'claim.json');
     const alternateMirror = path.join(directory, 'alternate', 'claim.json');
+    const previousHome = process.env.HOME;
     try {
+      process.env.HOME = path.join(directory, 'home-a');
+      const canonicalPath = canonicalG26ClaimPath(repositoryRoot);
+      const gitCommonDirectory = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      }).trim();
+      expect(canonicalPath).toBe(
+        path.join(
+          path.resolve(repositoryRoot, gitCommonDirectory),
+          'pariya-agent-state',
+          'g26-run95-one-shot-claim.json',
+        ),
+      );
       const first = createOneShotClaims({
         canonicalClaimPath: canonicalPath,
         localClaimPath: firstMirror,
@@ -278,19 +297,20 @@ describe('G26 Codex one-tool runner', () => {
       });
 
       expect(first.paths).toEqual([canonicalPath, firstMirror]);
+      process.env.HOME = path.join(directory, 'home-b');
+      expect(canonicalG26ClaimPath(repositoryRoot)).toBe(canonicalPath);
       expect(() =>
         createOneShotClaims({
-          canonicalClaimPath: canonicalPath,
+          canonicalClaimPath: canonicalG26ClaimPath(repositoryRoot),
           localClaimPath: alternateMirror,
           sourceRevision: 'a'.repeat(40),
           bundleSha256: 'b'.repeat(64),
         }),
       ).toThrow('G26 one-shot claim already exists');
       expect(() => readFileSync(alternateMirror)).toThrow();
-      expect(canonicalG26ClaimPath('/home/example')).toBe(
-        '/home/example/.local/state/pariyaagent/bangumiagentkit/run95-g26-one-shot-claim.json',
-      );
     } finally {
+      if (previousHome === undefined) delete process.env.HOME;
+      else process.env.HOME = previousHome;
       rmSync(directory, { recursive: true, force: true });
     }
   });
@@ -308,6 +328,22 @@ describe('G26 Codex one-tool runner', () => {
 
       expect(first).toMatch(/^[0-9a-f]{64}$/u);
       expect(computeMcpBundleSha256(directory)).toBe(first);
+      const attestationPath = path.join(
+        directory,
+        'docs',
+        'product',
+        'g26-mcp-bundle-attestation.json',
+      );
+      mkdirSync(path.dirname(attestationPath), { recursive: true });
+      writeFileSync(
+        attestationPath,
+        JSON.stringify({
+          schemaVersion: 1,
+          kind: 'g26-mcp-runtime-bundle-attestation-v1',
+          bundleSha256: first,
+        }),
+      );
+      expect(readG26McpBundleAttestation(directory)).toBe(first);
       writeFileSync(packageFile, 'export const tools = false;');
       expect(computeMcpBundleSha256(directory)).not.toBe(first);
     } finally {

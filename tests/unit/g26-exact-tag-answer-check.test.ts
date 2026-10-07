@@ -224,6 +224,8 @@ describe('G26 exact-tag Agent/MCP answer check', () => {
       '这是完整名单。',
       '女性向作品的完整清单如下。',
       '这是全部女性受众作品。',
+      '这是完整分类体系。',
+      'This establishes a complete female-audience taxonomy.',
     ]) {
       const answer = makeAnswer().replace(
         '这不代表全部女性受众作品。',
@@ -234,7 +236,20 @@ describe('G26 exact-tag Agent/MCP answer check', () => {
       expect(check.passed).toBe(false);
     }
 
-    for (const caveat of ['这不是完整名单。', '这不代表女性向作品的完整清单。']) {
+    for (const conjunction of ['而且', '并且', '同时', '且']) {
+      const answer = makeAnswer().replace(
+        '这不代表全部女性受众作品。',
+        `这不代表全部女性受众作品${conjunction}这是完整分类体系。`,
+      );
+      expect(verify({ answer }).unsupportedCompletenessClaim).toBe(true);
+    }
+
+    for (const caveat of [
+      '这不是完整名单。',
+      '这不代表女性向作品的完整清单。',
+      '女性向标签并非完整分类体系。',
+      'This does not define a complete female-audience taxonomy.',
+    ]) {
       const answer = makeAnswer().replace('本次有限覆盖不等于完整目录。', caveat);
       expect(verify({ answer }).unsupportedCompletenessClaim).toBe(false);
     }

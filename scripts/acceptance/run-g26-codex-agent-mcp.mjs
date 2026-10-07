@@ -13,7 +13,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeMcpBundleSha256 } from '../lib/g26-mcp-bundle.mjs';
+import { computeMcpBundleSha256, readG26McpBundleAttestation } from '../lib/g26-mcp-bundle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const REPORT_PATH = path.join(ROOT, 'docs/live-probes/g26-exact-tag-agent-mcp-run95.json');
@@ -21,13 +21,6 @@ const TARGET_TOOL = 'bangumi.query_subjects';
 const SERVER_ID = 'bgk_g26_one_tool';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
-const CANONICAL_CLAIM_RELATIVE_PATH = [
-  '.local',
-  'state',
-  'pariyaagent',
-  'bangumiagentkit',
-  'run95-g26-one-shot-claim.json',
-];
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
@@ -258,7 +251,8 @@ function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
     return (
       gitText(['status', '--porcelain']) === '' &&
       gitText(['rev-parse', 'HEAD']) === sourceRevision &&
-      computeMcpBundleSha256(ROOT) === bundleSha256
+      computeMcpBundleSha256(ROOT) === bundleSha256 &&
+      readG26McpBundleAttestation(ROOT) === bundleSha256
     );
   } catch {
     return false;
@@ -281,11 +275,24 @@ function buildExactCandidateBundle(sourceRevision) {
   if (gitText(['rev-parse', 'HEAD']) !== sourceRevision || gitText(['status', '--porcelain'])) {
     throw new Error('Candidate changed or became dirty during the G26 runtime build.');
   }
-  return computeMcpBundleSha256(ROOT);
+  const bundleSha256 = computeMcpBundleSha256(ROOT);
+  if (readG26McpBundleAttestation(ROOT) !== bundleSha256) {
+    throw new Error('Built G26 MCP bundle does not match its exact-Candidate attestation.');
+  }
+  return bundleSha256;
 }
 
-export function canonicalG26ClaimPath(homeDirectory = os.homedir()) {
-  return path.join(homeDirectory, ...CANONICAL_CLAIM_RELATIVE_PATH);
+export function canonicalG26ClaimPath(root = ROOT) {
+  const gitCommonDirectory = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim();
+  if (!gitCommonDirectory) throw new Error('G26 one-shot state requires a Git common directory.');
+  return path.join(
+    path.resolve(root, gitCommonDirectory),
+    'pariya-agent-state',
+    'g26-run95-one-shot-claim.json',
+  );
 }
 
 function writeClaim(claimPath, state) {
@@ -302,9 +309,18 @@ export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
   if (!/^[0-9a-f]{64}$/u.test(bundleSha256)) {
     throw new Error('G26 one-shot claim must name the exact built MCP bundle.');
   }
-  if (!path.isAbsolute(claimPath) || claimPath.startsWith(`${ROOT}${path.sep}`)) {
+  const absoluteClaimPath = path.resolve(claimPath);
+  const absoluteRoot = path.resolve(ROOT);
+  const gitCommonDirectory = path.resolve(ROOT, gitText(['rev-parse', '--git-common-dir']));
+  const insideCheckout =
+    absoluteClaimPath === absoluteRoot ||
+    absoluteClaimPath.startsWith(`${absoluteRoot}${path.sep}`);
+  const insideGitMetadata =
+    absoluteClaimPath === gitCommonDirectory ||
+    absoluteClaimPath.startsWith(`${gitCommonDirectory}${path.sep}`);
+  if (!path.isAbsolute(claimPath) || (insideCheckout && !insideGitMetadata)) {
     throw new Error(
-      'G26 one-shot claim file must be an absolute path outside the Product checkout.',
+      'G26 one-shot claim must be absolute and outside the Product working tree, except local Git metadata.',
     );
   }
   mkdirSync(path.dirname(claimPath), { recursive: true });

@@ -643,21 +643,48 @@ function sameOrProjectedText(source, projected) {
 
 function hasUnqualifiedCompletenessClaim(scope) {
   const claims = [
-    /(?:完整|全部|全量|所有)(?:的)?(?:女性向|女性受众)(?:作品|动画|番剧|清单|名单|目录|列表|结果)?/u,
-    /(?:女性向|女性受众)(?:作品|动画|番剧)?(?:的)?(?:完整|全部|全量)(?:女性向|女性受众)?(?:作品|动画|番剧|清单|名单|目录|列表|结果)?/u,
-    /(?:完整|全部|全量|所有)(?:的)?(?:名单|清单|目录|列表|结果集?|作品|动画|番剧)/u,
-    /所有(?:符合条件的)?(?:女性向|女性受众)?(?:作品|动画|番剧|名单|清单|列表|结果)/u,
+    /(?:完整|全部|全量|全体|所有)(?:的)?(?:女性向|女性受众|女性观众)?(?:作品|动画|番剧|清单|名单|目录|列表|结果集?|分类体系|分类|标签体系|类型体系|受众定义)/gu,
+    /(?:女性向|女性受众|女性观众)(?:作品|动画|番剧|标签|分类)?(?:的)?(?:完整|全部|全量|全体)(?:女性向|女性受众)?(?:作品|动画|番剧|清单|名单|目录|列表|结果集?|分类体系|分类|标签体系|类型体系|受众定义)?/gu,
+    /(?:女性向|女性受众|女性观众)(?:作品|动画|番剧)?(?:的)?(?:分类体系|分类|标签体系|类型体系|定义)(?:是|为|已经|已)?(?:完整|全部|全量|全体)/gu,
+    /(?:complete|comprehensive|exhaustive|full)\s+(?:(?:female[- ]audience|women[- ]oriented|female-oriented)\s+)?(?:taxonomy|classification(?:\s+system)?|list|catalog|directory|set|results|works|anime)\b/giu,
+    /(?:female[- ]audience|women[- ]oriented|female-oriented)\s+(?:taxonomy|classification(?:\s+system)?)(?:\s+(?:is|are))?\s+(?:complete|comprehensive|exhaustive|full)\b/giu,
+    /(?:all|every|entire)\s+(?:(?:female[- ]audience|women[- ]oriented|female-oriented)\s+)?(?:taxonomy|classification(?:\s+system)?|list|catalog|directory|results|works|anime)\b/giu,
   ];
-  const clauses = scope.split(/[。！？；;，,：:—–\n]+|但|而是|然而|不过|\bbut\b|\bhowever\b/iu);
-  const negation =
-    /(?:不代表|不等于|并非|不是|无法证明|无法确认|不能据此|不构成|does not(?:\s+(?:mean|prove|represent|establish))?|is not|not|cannot(?:\s+prove)?)/iu;
-  return clauses.some((clause) =>
-    claims.some((pattern) => {
-      const match = pattern.exec(clause);
-      if (!match || match.index === undefined) return false;
-      return !negation.test(clause.slice(0, match.index));
-    }),
+  const clauses = scope.split(
+    /[。！？；;，,、：:—–\n]+|并且|而且|同时|此外|另外|以及|且|但|而是|然而|不过|只是|可是|所以|因此|\b(?:and|also|but|however|yet|whereas|while)\b/iu,
   );
+  const negation =
+    /(?:不代表|不等于|并非|不是|无法证明|无法确认|不能据此|不构成|不定义|does not(?:\s+(?:mean|prove|represent|establish|define))?|is not|not|cannot(?:\s+(?:prove|define))?)/iu;
+  for (const clause of clauses) {
+    const claimSpans = [];
+    for (const claim of claims) {
+      const matcher = new RegExp(claim.source, claim.flags);
+      let match;
+      while ((match = matcher.exec(clause)) !== null) {
+        claimSpans.push({ start: match.index, end: match.index + match[0].length });
+        if (match[0].length === 0) matcher.lastIndex += 1;
+      }
+    }
+    claimSpans.sort((left, right) => left.start - right.start || right.end - left.end);
+    const claimsInClause = [];
+    for (const span of claimSpans) {
+      const previous = claimsInClause.at(-1);
+      if (previous && span.start <= previous.end) previous.end = Math.max(previous.end, span.end);
+      else claimsInClause.push({ ...span });
+    }
+    const negations = [...clause.matchAll(new RegExp(negation.source, 'giu'))];
+    let consumedThrough = 0;
+    for (const claim of claimsInClause) {
+      const inScope = negations.filter(
+        (match) =>
+          match.index !== undefined && match.index >= consumedThrough && match.index < claim.start,
+      );
+      if (inScope.length === 0) return true;
+      const lastNegation = inScope.at(-1);
+      consumedThrough = lastNegation.index + lastNegation[0].length;
+    }
+  }
+  return false;
 }
 
 function checkCompleteTextRows(textResult) {

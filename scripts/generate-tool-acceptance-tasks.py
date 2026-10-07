@@ -235,6 +235,7 @@ CODEX_G26_EXPECTED_ARGUMENTS = {
     'explain': 'full',
 }
 CODEX_G26_REPORT_RELATIVE_PATH = 'docs/live-probes/g26-exact-tag-agent-mcp-run95.json'
+CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/g26-mcp-bundle-attestation.json'
 CODEX_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_G20_PROBE_ARGUMENTS
 CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
@@ -407,6 +408,7 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
         'export function createOneShotClaim(',
         'export function createOneShotClaims(',
         'function buildExactCandidateBundle(',
+        'readG26McpBundleAttestation(ROOT)',
         'canonicalG26ClaimPath()',
         'function serverSummaryMatchesCandidate(',
         "'features.shell_tool=false'",
@@ -423,16 +425,23 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
         'verifyG26ExactTagAnswer(',
         'input.sourceRevision !== sourceRevision',
         'computeMcpBundleSha256(process.cwd())',
+        'readG26McpBundleAttestation(process.cwd())',
         "openSync(REPORT_PATH, 'wx', 0o600)",
     ),
     'scripts/lib/g26-mcp-bundle.mjs': (
         'export function computeMcpBundleSha256(',
+        'export function readG26McpBundleAttestation(',
         "const DIST_RELATIVE_PATHS = ['apps/mcp/dist']",
     ),
     'apps/mcp/codex-one-tool-mcp-server.mjs': (
         "'--candidate-sha'",
         'computeMcpBundleSha256(PRODUCT_ROOT)',
+        'readG26McpBundleAttestation(PRODUCT_ROOT)',
         'runtimeCandidateMatches(sourceRevision, bundleSha256)',
+    ),
+    CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH: (
+        '"kind": "g26-mcp-runtime-bundle-attestation-v1"',
+        '"bundleSha256":',
     ),
     'apps/mcp/src/result-presenter.ts': (
         'function compactDiscoveryResult(',
@@ -446,6 +455,7 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_g26_report_is_valid(',
+        'def codex_g26_candidate_bundle_sha256(',
         'def codex_g26_report_matches_candidate_revision(',
         'def validate_g26_frontier_evidence(',
     ),
@@ -681,6 +691,33 @@ def codex_g26_report_matches_candidate_revision(report_path: Path, revision: obj
     return codex_g20_report_matches_candidate_revision(report_path, revision)
 
 
+def codex_g26_candidate_bundle_sha256(revision: object) -> str | None:
+    """Read the exact runtime-bundle digest attested by the source Candidate commit."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return None
+    result = subprocess.run(
+        ['git', 'show', f'{revision}:{CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH}'],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        attestation = json.loads(result.stdout)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not isinstance(attestation, dict)
+        or set(attestation) != {'schemaVersion', 'kind', 'bundleSha256'}
+        or type(attestation.get('schemaVersion')) is not int
+        or attestation.get('schemaVersion') != 1
+        or attestation.get('kind') != 'g26-mcp-runtime-bundle-attestation-v1'
+        or not isinstance(attestation.get('bundleSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', attestation['bundleSha256'])
+    ):
+        return None
+    return attestation['bundleSha256']
+
+
 def codex_g26_report_is_valid(report: object) -> bool:
     """Validate sanitized one-shot G26 Agent/MCP evidence without storing answer data."""
     if not isinstance(report, dict) or set(report) != CODEX_G26_REPORT_FIELDS:
@@ -714,6 +751,7 @@ def codex_g26_report_is_valid(report: object) -> bool:
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
             or not isinstance(report.get('mcpBundleSha256'), str)
             or not re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256'])
+            or codex_g26_candidate_bundle_sha256(report['sourceRevision']) != report['mcpBundleSha256']
             or not codex_g26_probe_revision_has_implementation(report['sourceRevision'])):
         return False
 

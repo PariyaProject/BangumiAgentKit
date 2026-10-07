@@ -717,7 +717,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'frontierId': 'G26',
             'scenarioId': 'G26',
             'sourceRevision': source_revision or self.source_revision,
-            'mcpBundleSha256': 'b' * 64,
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(
+                source_revision or self.source_revision,
+            ),
             'observedAt': '2026-10-07T12:00:00.000Z',
             'codexCliVersion': '1.2.14',
             'profile': 'codex-luna-max-one-tool-v1',
@@ -872,7 +874,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {'answer': 'raw answer must not be persisted'},
             {'sourceRevision': self.unrelated_source_revision},
-            {'mcpBundleSha256': 'not-a-sha256'},
+            {'mcpBundleSha256': 'c' * 64},
             {'expectedArgumentsSha256': '0' * 64},
             {'answerChecks': {'passed': False}},
             {'resultCounters': {'visibleSourceRows': 2}},

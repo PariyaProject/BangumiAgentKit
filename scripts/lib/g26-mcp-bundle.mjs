@@ -3,6 +3,26 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const DIST_RELATIVE_PATHS = ['apps/mcp/dist'];
+const G26_BUNDLE_ATTESTATION_PATH = 'docs/product/g26-mcp-bundle-attestation.json';
+
+export function readG26McpBundleAttestation(root) {
+  const attestation = JSON.parse(
+    readFileSync(path.join(path.resolve(root), G26_BUNDLE_ATTESTATION_PATH), 'utf8'),
+  );
+  if (
+    !attestation ||
+    typeof attestation !== 'object' ||
+    Array.isArray(attestation) ||
+    Object.keys(attestation).sort().join(',') !== 'bundleSha256,kind,schemaVersion' ||
+    attestation.schemaVersion !== 1 ||
+    attestation.kind !== 'g26-mcp-runtime-bundle-attestation-v1' ||
+    typeof attestation.bundleSha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(attestation.bundleSha256)
+  ) {
+    throw new Error('G26 Candidate MCP bundle attestation is missing or invalid.');
+  }
+  return attestation.bundleSha256;
+}
 
 export function computeMcpBundleSha256(root) {
   const absoluteRoot = path.resolve(root);
