@@ -64,6 +64,77 @@ function safeSourceOperationSummary(result) {
   }));
 }
 
+function summarizeD04DiscoveryFacts(result) {
+  if (!result || typeof result !== 'object' || !Array.isArray(result.items) ||
+      !result.plan || typeof result.plan !== 'object' || !result.coverage ||
+      typeof result.coverage !== 'object') return null;
+  const plan = result.plan;
+  const searchStep = Array.isArray(plan.steps)
+    ? plan.steps.find((step) => step?.kind === 'search' && step?.operation === 'searchSubjects')
+    : undefined;
+  const filter = searchStep?.request?.filter || {};
+  const episodeFilter = Array.isArray(plan.postFilters)
+    ? plan.postFilters.find((item) => item?.field === 'episodeCount')
+    : undefined;
+  const rows = result.items;
+  const integerCount = (field) => rows.filter((item) => Number.isSafeInteger(item?.[field]) && item[field] >= 0).length;
+  const sourceClasses = Array.isArray(result.evidence)
+    ? [...new Set(result.evidence.map((item) => item?.source?.class)
+      .filter((value) => value === 'official_v0' || value === 'derived'))].sort()
+    : [];
+  const coverage = result.coverage;
+  const counters = {};
+  for (const field of [
+    'requested', 'scanned', 'matched', 'returned', 'pagesScanned', 'hydrationsAttempted',
+    'hydrationsSucceeded', 'hydrationsFailed', 'hydrationsUnresolved',
+  ]) {
+    counters[field] = Number.isSafeInteger(coverage[field]) && coverage[field] >= 0
+      ? coverage[field] : null;
+  }
+  return {
+    resultState: typeof result.state === 'string' ? result.state : null,
+    operation: plan.operation === 'searchSubjects' ? 'searchSubjects' : 'other',
+    officialV0Plan: plan.source === 'official_v0',
+    sourceClasses,
+    coverageState: ['complete', 'partial', 'unknown', 'not_applicable'].includes(coverage.state)
+      ? coverage.state : 'unknown',
+    totalKind: ['exact', 'estimated', 'unknown'].includes(coverage.totalKind)
+      ? coverage.totalKind : 'unknown',
+    counters,
+    queryChecks: {
+      animeTypePushedDown: Array.isArray(filter.type) && filter.type.includes(2),
+      exactScienceFictionTagPushedDown: Array.isArray(filter.tag) && filter.tag.includes('科幻'),
+      strictRatingCountLowerBoundPushedDown:
+        Array.isArray(filter.ratingCount) && filter.ratingCount.includes('>=3001'),
+      reportedEpisodeMaximumIsTwelve: episodeFilter?.classification === 'POST_FILTER' &&
+        episodeFilter?.value?.max === 12,
+      episodeCountWasNotSentAsUpstreamFilter:
+        !Object.keys(filter).some((key) => /episode|eps/iu.test(key)),
+    },
+    rowChecks: {
+      count: rows.length,
+      rowsWithReportedEpisodeCount: integerCount('episodesReported'),
+      missingReportedEpisodeCount: rows.filter((item) =>
+        !Number.isSafeInteger(item?.episodesReported) || item.episodesReported < 0).length,
+      rowsWithinReportedEpisodeMaximum: rows.filter((item) =>
+        Number.isSafeInteger(item?.episodesReported) && item.episodesReported >= 0 && item.episodesReported <= 12).length,
+      rowsWithRatingCount: integerCount('ratingCount'),
+      rowsMeetingRatingCountLowerBound: rows.filter((item) =>
+        Number.isSafeInteger(item?.ratingCount) && item.ratingCount >= 3001).length,
+      rowsWithAnimeMedia: rows.filter((item) => item?.media === 'anime').length,
+      rowsWithExactTag: rows.filter((item) => Array.isArray(item?.tags) && item.tags.includes('科幻')).length,
+    },
+    experimentalSearchDisclosurePresent: Array.isArray(plan.limitations) &&
+      plan.limitations.some((item) => typeof item === 'string' && /experimental/iu.test(item)),
+    reportedEpisodeFieldDisclosurePresent: Array.isArray(plan.limitations) &&
+      plan.limitations.some((item) => typeof item === 'string' && /subject\.eps/iu.test(item)),
+    warningCodes: Array.isArray(result.warnings)
+      ? result.warnings.map((item) => item?.code).filter((value) => typeof value === 'string').slice(0, 20)
+      : [],
+    limitationCount: Array.isArray(result.limitations) ? result.limitations.length : 0,
+  };
+}
+
 export function summarizeSubjectStatsFacts(result) {
   if (!result || typeof result !== 'object' || !result.rating || !result.collection) return null;
   const histogram = result.raw?.ratingHistogram;
@@ -606,5 +677,7 @@ export function summarizeToolResult(toolName, result, artifactSummary = { return
     artifact: hasArtifact ? artifactSummary : { returned: false, persisted: false },
     ...(toolName === 'bangumi.get_subject_stats_intelligence'
       ? { subjectStatsFacts: summarizeSubjectStatsFacts(result) } : {}),
+    ...(toolName === 'bangumi.query_subjects'
+      ? { d04DiscoveryChecks: summarizeD04DiscoveryFacts(result) } : {}),
   };
 }

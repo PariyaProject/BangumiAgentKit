@@ -1083,6 +1083,85 @@ describe('MCP tool result presentation', () => {
     });
   });
 
+  it('bounds discovery text with reported episodes and preserves the full structured result', () => {
+    const original = {
+      state: 'partial',
+      items: Array.from({ length: 40 }, (_, index) => ({
+        id: index + 1,
+        name: `Original title ${index + 1} ${'界'.repeat(90)}`,
+        nameCn: `中文条目 ${index + 1} ${'番'.repeat(90)}`,
+        media: 'anime',
+        category: 'tv',
+        ratingCount: 3001 + index,
+        episodesReported: 12,
+        tags: ['科幻', '冒险', '旅行', '日常'],
+        metaTags: ['原创'],
+        evidence: { eps: [{ source: 'official_v0' }] },
+      })),
+      plan: {
+        operation: 'searchSubjects',
+        quality: 'bounded_exact',
+        pushdown: [
+          { field: 'media', classification: 'PUSHDOWN', operator: 'in', value: ['anime'] },
+          { field: 'tags', classification: 'PUSHDOWN', operator: 'contains_all', value: ['科幻'] },
+          { field: 'ratingCount', classification: 'PUSHDOWN', operator: 'range', value: { min: 3001 } },
+        ],
+        postFilters: [
+          { field: 'episodeCount', classification: 'POST_FILTER', operator: 'range', value: { max: 12 } },
+        ],
+        derivedFilters: [],
+        unsupported: [],
+        limitations: [
+          'Enumeration is bounded by maxPages and maxCandidates.',
+          'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+          'all requests a complete attempt; budget exhaustion is reported as partial.',
+          'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.',
+        ],
+      },
+      coverage: {
+        state: 'partial',
+        requested: 100,
+        scanned: 500,
+        matched: 40,
+        returned: 40,
+        pagesScanned: 10,
+        totalKind: 'estimated',
+        upstreamExhausted: false,
+        budgetExceeded: true,
+        postFilterCount: 10,
+        hydrationsAttempted: 20,
+        hydrationsSucceeded: 18,
+        hydrationsFailed: 2,
+        hydrationsUnresolved: 2,
+        hydrationBudgetExceeded: false,
+      },
+      warnings: [{ code: 'DISCOVERY_BUDGET_EXCEEDED', message: 'Bounded search candidate budget reached.' }],
+      limitations: ['Reported eps is not aired or personal progress.'],
+      evidence: [{ source: { class: 'official_v0', operation: 'searchSubjects', experimental: true } }],
+    };
+
+    const presentation = presentMcpToolResult('bangumi.query_subjects', original);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toEqual(original);
+    const parsed = JSON.parse(presentation.text);
+    expect(parsed.items[0]).toMatchObject({ id: 1, episodesReported: 12 });
+    expect(parsed.itemsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.plan.postFilters.rows).toContainEqual(expect.objectContaining({
+      field: 'episodeCount',
+      classification: 'POST_FILTER',
+      value: { max: 12 },
+    }));
+    expect(parsed.coverage).toMatchObject({ state: 'partial', scanned: 500, totalKind: 'estimated' });
+    expect(parsed.limitations[0]).toContain('reported subject.eps');
+    expect(parsed.limitations[0]).toContain('total_episodes');
+    expect(parsed.limitations[0]).toContain('Missing values remain unresolved');
+    expect(parsed.limitationsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.structuredContentHasFullResult).toBe(true);
+    expect(parsed.mcpTextProjection.textViewScope).toContain('omitted rows do not prove absence');
+  });
+
   it('bounds the G09 watch-order MCP text while preserving ordered evidence and the full structure', async () => {
     const original = await makeG09SeriesWatchOrderResult();
     const fullJsonBytes = Buffer.byteLength(JSON.stringify(original, null, 2), 'utf8');

@@ -47,6 +47,17 @@ export const DISCOVERY_SCENARIOS = {
     dateFrom: '2026-04-01',
     dateTo: '2026-07-01',
   },
+  D04: {
+    query: {
+      media: 'anime',
+      tags: ['科幻'],
+      ratingCount: { min: 3001 },
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+      limit: 100,
+      explain: 'full',
+    },
+  },
 } as const;
 
 export type DiscoveryScenarioId = keyof typeof DISCOVERY_SCENARIOS;
@@ -58,6 +69,7 @@ export interface DiscoveryScenarioItem {
   date?: string;
   score?: number;
   ratingCount?: number;
+  episodesReported?: number;
   collectionTotal?: number;
   conceptMatched?: boolean;
 }
@@ -67,8 +79,8 @@ export function summarizeDiscoveryScenarioItems(
   value: unknown,
 ): DiscoveryScenarioItem[] {
   if (!Array.isArray(value)) return [];
-  const concept = scenario === 'G02' ? '异世界' : '原创';
-  const conceptField = scenario === 'G02' ? 'tags' : 'metaTags';
+  const concept = scenario === 'G02' ? '异世界' : scenario === 'D04' ? '科幻' : '原创';
+  const conceptField = scenario === 'G02' || scenario === 'D04' ? 'tags' : 'metaTags';
   return value.flatMap((item) => {
     if (
       !item ||
@@ -90,6 +102,9 @@ export function summarizeDiscoveryScenarioItems(
         ...(typeof source.ratingCount === 'number' && Number.isFinite(source.ratingCount)
           ? { ratingCount: source.ratingCount }
           : {}),
+        ...(typeof source.episodesReported === 'number' && Number.isSafeInteger(source.episodesReported)
+          ? { episodesReported: source.episodesReported }
+          : {}),
         ...(scenario === 'G02' &&
         typeof source.collectionTotal === 'number' &&
         Number.isFinite(source.collectionTotal)
@@ -107,9 +122,31 @@ export function validateDiscoveryScenarioItems(
   scenario: DiscoveryScenarioId,
   items: readonly DiscoveryScenarioItem[],
 ): Record<string, boolean> {
-  const selected = DISCOVERY_SCENARIOS[scenario];
   const uniqueIds = new Set(items.map((item) => item.id)).size === items.length;
   const mediaType = items.length > 0 && items.every((item) => item.media === 'anime');
+  if (scenario === 'D04') {
+    const selectedD04 = DISCOVERY_SCENARIOS.D04;
+    return {
+      nonEmpty: items.length > 0,
+      uniqueIds,
+      mediaType,
+      exactTagRequested:
+        selectedD04.query.tags.length === 1 && selectedD04.query.tags[0] === '科幻',
+      exactTagMatched: items.length > 0 && items.every((item) => item.conceptMatched === true),
+      ratingCountThreshold:
+        items.length > 0 && items.every((item) => (item.ratingCount ?? -1) >= 3001),
+      reportedEpisodeCountThreshold:
+        items.length > 0 && items.every((item) =>
+          Number.isSafeInteger(item.episodesReported) &&
+          item.episodesReported !== undefined &&
+          item.episodesReported >= 0 &&
+          item.episodesReported <= 12,
+        ),
+      queryUsesReportedEpisodeUpperBound: selectedD04.query.episodeCount.max === 12,
+      queryUsesStrictRatingCountLowerBound: selectedD04.query.ratingCount.min === 3001,
+    };
+  }
+  const selected = DISCOVERY_SCENARIOS[scenario];
   const dateWindow =
     items.length > 0 &&
     items.every(

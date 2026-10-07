@@ -68,6 +68,7 @@ export interface DiscoveryResultsItemViewModel {
   score?: number;
   rank?: number;
   ratingCount?: number;
+  episodesReported?: number;
   collectionTotal?: number;
   image?: string;
 }

@@ -33,6 +33,7 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
       score: index === 2 ? undefined : 8.2,
       rank: index === 3 ? undefined : index + 1,
       ratingCount: index === 4 ? undefined : 5000 + index,
+      episodesReported: index === 0 ? 12 : undefined,
       collectionTotal: index === 5 ? undefined : 100 + index,
     })),
     plan: {
@@ -101,6 +102,7 @@ describe('discovery-results renderer', () => {
       media: 'anime',
       concepts: ['后宫'],
       rating: { min: 8 },
+      episodeCount: { max: 12 },
       sort: 'score',
       limit: 10,
     });
@@ -117,8 +119,9 @@ describe('discovery-results renderer', () => {
       rendered: 12,
     });
     expect(viewModel.query.facets).toEqual(
-      expect.arrayContaining(['媒介：动画', '概念：后宫', '评分：≥8']),
+      expect.arrayContaining(['媒介：动画', '概念：后宫', '评分：≥8', '报告集数（subject.eps）：≤12']),
     );
+    expect(viewModel.items[0]?.episodesReported).toBe(12);
     expect(viewModel.items[2]?.score).toBeUndefined();
     expect(viewModel.plan.pushdown[0]).toContain('媒介');
     expect(viewModel.plan.pushdown[0]).toContain('动画');
@@ -127,6 +130,33 @@ describe('discovery-results renderer', () => {
     expect(viewModel.plan.derivedFilters[0]).toContain('降序');
     expect(viewModel.source.operations).toEqual(expect.arrayContaining(['searchSubjects']));
     expect(viewModel.coverage.budgetExceeded).toBe(true);
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+    expect(html).toContain('Bangumi 报告集数 12（subject.eps）');
+  });
+
+  it('keeps the reported-eps scope caveat visible within the bounded limitations list', () => {
+    const result = makeResult('partial', 1);
+    const reportedEpisodeLimitation =
+      'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.';
+    result.plan.limitations = [
+      'Enumeration is bounded by maxPages and maxCandidates.',
+      'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+      'all requests a complete attempt; budget exhaustion is reported as partial.',
+      reportedEpisodeLimitation,
+    ];
+
+    const viewModel = buildDiscoveryResultsViewModel(result, {
+      media: 'anime',
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+    });
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(viewModel.limitations.indexOf(reportedEpisodeLimitation)).toBeGreaterThan(2);
+    expect(html).toContain('集数筛选使用 Bangumi 报告的 subject.eps 本地过滤');
+    expect(html).toContain('total_episodes 章节数');
+    expect(html).toContain('缺失值保留为未解决');
+    expect(html).toContain('Bangumi 报告集数 12（subject.eps）');
   });
 
   it('labels collection heat precisely and shows the score tie-break boundary in Chinese', () => {

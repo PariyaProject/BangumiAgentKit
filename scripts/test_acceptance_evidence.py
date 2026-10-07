@@ -272,6 +272,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'description': 'Render current stats snapshot.',
                 'inputSchema': {'type': 'object', 'properties': {'subjectId': {'type': 'integer'}}},
             },
+            {
+                'name': 'bangumi.query_subjects',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Bounded public discovery using reported episode counts.',
+                'inputSchema': {'type': 'object', 'properties': {
+                    'media': {'type': 'string'}, 'tags': {'type': 'array'},
+                    'ratingCount': {'type': 'object'}, 'episodeCount': {'type': 'object'},
+                    'resultMode': {'type': 'string'}, 'limit': {'type': 'integer'},
+                    'explain': {'type': 'string'},
+                }},
+            },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
         self.catalog_path = self.root / 'docs/tool-catalog.json'
@@ -322,12 +333,15 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
     def write_report(self, tool_name='bangumi.get_subject_stats_intelligence', **overrides):
         tool = next(item for item in self.catalog if item['name'] == tool_name)
-        arguments = GENERATOR.CODEX_G23_PROBE_ARGUMENTS[tool_name]
+        arguments = GENERATOR.CODEX_ONE_TOOL_PROBE_ARGUMENTS[tool_name]
         is_renderer = tool_name.startswith('bangumi.render_')
-        answer_checks = {
-            key: True for key in (GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer
-                                  else GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS)
-        }
+        is_d04 = tool_name == 'bangumi.query_subjects'
+        answer_check_fields = (
+            GENERATOR.CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
+            GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer else
+            GENERATOR.CODEX_STATS_ANSWER_CHECK_FIELDS
+        )
+        answer_checks = {key: True for key in answer_check_fields}
         result = {
             'toolName': tool_name,
             'resultState': 'artifact_returned' if is_renderer else 'partial',
@@ -352,7 +366,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'toolName': tool_name,
             'toolDescriptionSha256': self.sha256(tool['description']),
             'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
-            'argumentProfile': 'fixed-public-subject-218707-v1',
+            'argumentProfile': (
+                'd04-reported-episode-count-discovery-v1'
+                if is_d04 else 'fixed-public-subject-218707-v1'
+            ),
             'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(arguments),
             'serverToolNames': [tool_name],
             'serverToolCount': 1,
@@ -400,6 +417,20 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 },
             },
         )
+
+    def test_accepts_catalog_bound_sanitized_d04_query_report(self):
+        self.write_report(tool_name='bangumi.query_subjects')
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog),
+            {'bangumi.query_subjects': {
+                'docs/live-probes/pariya-agent-codex-luna-e2e-G23.json'
+            }},
+        )
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            json.loads(self.report_path.read_text(encoding='utf-8')),
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
 
     def test_rejects_wrong_model_effort_catalog_scope_privacy_or_raw_content(self):
         invalid_reports = [

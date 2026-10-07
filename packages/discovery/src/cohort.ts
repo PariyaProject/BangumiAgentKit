@@ -334,6 +334,11 @@ function querySummary(label: string, query: DiscoveryQuery): string {
   if (query.from || query.to) facets.push(`范围=${query.from || '?'}..${query.to || '?'}`);
   if (query.metaTags?.length) facets.push(`元标签=${query.metaTags.join('/')}`);
   if (query.tags?.length) facets.push(`标签=${query.tags.join('/')}`);
+  if (query.episodeCount) {
+    const lower = query.episodeCount.min === undefined ? '−∞' : String(query.episodeCount.min);
+    const upper = query.episodeCount.max === undefined ? '+∞' : String(query.episodeCount.max);
+    facets.push(`Bangumi 报告集数 subject.eps=${lower}..${upper}`);
+  }
   if (query.sort) facets.push(`排序=${query.sort}/${query.order || 'desc'}`);
   return facets.join(' · ');
 }

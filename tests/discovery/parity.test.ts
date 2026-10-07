@@ -23,6 +23,9 @@ describe('discovery surface parity', () => {
     );
     expect(tool?.input.safeParse({ sort: 'score', tieBreak: { field: 'ratingCount' } }).success).toBe(true);
     expect(tool?.input.safeParse({ sort: 'heat', tieBreak: { field: 'ratingCount' } }).success).toBe(false);
+    expect(tool?.input.safeParse({ media: 'anime', episodeCount: { max: 12 } }).success).toBe(true);
+    expect(tool?.input.safeParse({ media: 'anime', episodeCount: { max: 12.5 } }).success).toBe(false);
+    expect(tool?.input.safeParse({ media: 'anime', episodeCount: {} }).success).toBe(false);
 
     const renderTool = new ToolRegistry({ storage: new MemoryStorage() }).getTool(
       'bangumi.render_query_subjects',
@@ -33,5 +36,6 @@ describe('discovery surface parity', () => {
       false,
     );
     expect(renderTool?.input.safeParse({ sort: 'score', tieBreak: { field: 'ratingCount' } }).success).toBe(true);
+    expect(renderTool?.input.safeParse({ media: 'anime', episodeCount: { max: 12 } }).success).toBe(true);
   });
 });

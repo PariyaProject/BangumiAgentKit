@@ -100,6 +100,61 @@ test('sanitized result metadata never retains title, stats values, or raw artifa
   assert.doesNotMatch(encoded, /raw|result body/i);
 });
 
+test('D04 discovery evidence retains only aggregate filter and coverage checks', () => {
+  const raw = {
+    state: 'partial',
+    items: [{
+      id: 998877,
+      name: 'A public title that must not persist',
+      nameCn: '公开标题不得保留',
+      media: 'anime',
+      ratingCount: 3101,
+      episodesReported: 12,
+      tags: ['科幻'],
+    }],
+    plan: {
+      source: 'official_v0',
+      operation: 'searchSubjects',
+      steps: [{ kind: 'search', operation: 'searchSubjects', request: { filter: {
+        type: [2], tag: ['科幻'], ratingCount: ['>=3001'],
+      } } }],
+      postFilters: [{ field: 'episodeCount', classification: 'POST_FILTER', value: { max: 12 } }],
+      limitations: ['Official subject search is experimental.', 'Local filter over reported subject.eps.'],
+    },
+    coverage: {
+      state: 'partial', requested: 100, scanned: 20, matched: 1, returned: 1,
+      pagesScanned: 1, totalKind: 'estimated', hydrationsAttempted: 0,
+      hydrationsSucceeded: 0, hydrationsFailed: 0, hydrationsUnresolved: 0,
+    },
+    evidence: [{ source: { class: 'official_v0' } }],
+    warnings: [{ code: 'DISCOVERY_BUDGET_EXCEEDED' }],
+    limitations: ['Partial source coverage.'],
+  };
+
+  const summary = summarizeToolResult('bangumi.query_subjects', raw);
+  const encoded = JSON.stringify(summary);
+  assert.deepEqual(summary.d04DiscoveryChecks.queryChecks, {
+    animeTypePushedDown: true,
+    exactScienceFictionTagPushedDown: true,
+    strictRatingCountLowerBoundPushedDown: true,
+    reportedEpisodeMaximumIsTwelve: true,
+    episodeCountWasNotSentAsUpstreamFilter: true,
+  });
+  assert.deepEqual(summary.d04DiscoveryChecks.rowChecks, {
+    count: 1,
+    rowsWithReportedEpisodeCount: 1,
+    missingReportedEpisodeCount: 0,
+    rowsWithinReportedEpisodeMaximum: 1,
+    rowsWithRatingCount: 1,
+    rowsMeetingRatingCountLowerBound: 1,
+    rowsWithAnimeMedia: 1,
+    rowsWithExactTag: 1,
+  });
+  assert.equal(summary.d04DiscoveryChecks.coverageState, 'partial');
+  assert.equal(summary.d04DiscoveryChecks.totalKind, 'estimated');
+  assert.doesNotMatch(encoded, /998877|public title|公开标题|科幻|3101|episodesReported/);
+});
+
 test('source operation summaries discard query strings and arbitrary payload text', () => {
   const summary = summarizeToolResult(target, {
     sourceOperations: [

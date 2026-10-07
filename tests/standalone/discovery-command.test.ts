@@ -8,7 +8,7 @@ import {
   type StandaloneCommandContext,
 } from '../../apps/standalone/src/command-registry.js';
 import { tokenizeCommandLine, type CliFlags } from '../../apps/standalone/src/command-parser.js';
-import { Presenter } from '../../apps/standalone/src/presenter.js';
+import { formatHuman, Presenter } from '../../apps/standalone/src/presenter.js';
 import type { StandaloneHost } from '../../apps/standalone/src/standalone-host.js';
 
 const flags: CliFlags = {
@@ -47,6 +47,14 @@ describe('Standalone discovery and raw tool playground', () => {
         '2026-summer',
         '--concept',
         '后宫',
+        '--tag',
+        '科幻',
+        '--rating-count-min',
+        '3001',
+        '--episode-count-min',
+        '0',
+        '--episode-count-max',
+        '12',
         '--all',
         '--explain',
       ],
@@ -58,12 +66,123 @@ describe('Standalone discovery and raw tool playground', () => {
         media: 'anime',
         season: '2026-summer',
         concepts: ['后宫'],
+        tags: ['科幻'],
+        ratingCount: { min: 3001 },
+        episodeCount: { min: 0, max: 12 },
         resultMode: 'all',
         explain: 'full',
         limit: 100,
       }),
       expect.anything(),
     );
+  });
+
+  it('accepts zero for non-negative reported episode-count bounds', async () => {
+    const executeTool = vi.fn().mockResolvedValue({ state: 'ok', items: [], coverage: {} });
+    const host = { executeTool } as unknown as StandaloneHost;
+    await new StandaloneCommandRegistry().execute(
+      ['discover', '--media', 'anime', '--episode-count-max', '0'],
+      context(host),
+    );
+    expect(executeTool).toHaveBeenCalledWith(
+      'bangumi.query_subjects',
+      expect.objectContaining({ episodeCount: { max: 0 } }),
+      expect.anything(),
+    );
+  });
+
+  it('presents effective D04 filters, reported episodes, and partial source limits', () => {
+    const output = formatHuman({
+      state: 'partial',
+      items: [
+        {
+          id: 123,
+          displayName: '示例动画',
+          media: 'anime',
+          ratingCount: 3001,
+          episodesReported: 12,
+        },
+      ],
+      plan: {
+        source: 'official_v0',
+        operation: 'searchSubjects',
+        totalKind: 'estimated',
+        pushdown: [
+          { field: 'media', operator: 'in', value: ['anime'] },
+          { field: 'tags', operator: 'contains_all', value: ['科幻'] },
+          { field: 'ratingCount', operator: 'range', value: { min: 3001 } },
+        ],
+        postFilters: [
+          { field: 'episodeCount', operator: 'range', value: { max: 12 } },
+        ],
+        derivedFilters: [],
+        limitations: [
+          'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.',
+          'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+        ],
+      },
+      coverage: {
+        state: 'partial',
+        totalKind: 'estimated',
+        scanned: 200,
+        matched: 118,
+        returned: 100,
+      },
+      warnings: [
+        { code: 'EXPERIMENTAL_SOURCE', message: 'Official subject search is experimental.' },
+        { code: 'DISCOVERY_BUDGET_EXCEEDED', message: 'The bounded candidate budget was reached.' },
+      ],
+    });
+
+    expect(output).toContain('来源: official_v0 / searchSubjects');
+    expect(output).toContain('媒介 属于 [anime]');
+    expect(output).toContain('标签 包含全部 [科幻]');
+    expect(output).toContain('评分人数 ≥3001');
+    expect(output).toContain('报告集数（Bangumi subject.eps） ≤12');
+    expect(output).toContain('报告集数（Bangumi subject.eps）: 12');
+    expect(output).toContain('state=partial totalKind=estimated');
+    expect(output).toContain('EXPERIMENTAL_SOURCE');
+    expect(output).toContain('total_episodes');
+    expect(output).toContain('Missing values remain unresolved');
+  });
+
+  it('keeps coverage and source caveats ahead of the human row cap', () => {
+    const output = formatHuman({
+      state: 'partial',
+      items: Array.from({ length: 25 }, (_, index) => ({
+        id: index + 1,
+        displayName: `示例动画 ${index + 1}`,
+        media: 'anime',
+        ratingCount: 3001 + index,
+        episodesReported: 12,
+      })),
+      plan: {
+        source: 'official_v0',
+        operation: 'searchSubjects',
+        postFilters: [
+          { field: 'episodeCount', operator: 'range', value: { max: 12 } },
+        ],
+        limitations: [
+          'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.',
+        ],
+      },
+      coverage: {
+        state: 'partial',
+        totalKind: 'estimated',
+        scanned: 200,
+        matched: 118,
+        returned: 100,
+      },
+      warnings: [
+        { code: 'EXPERIMENTAL_SOURCE', message: 'Official subject search is experimental.' },
+      ],
+    });
+
+    expect(output).toContain('覆盖: state=partial totalKind=estimated');
+    expect(output).toContain('EXPERIMENTAL_SOURCE');
+    expect(output).toContain('限制: Episode-count filtering compares the reported subject.eps');
+    expect(output).toContain('total_episodes');
+    expect(output).toContain('输出已截断');
   });
 
   it('PR-7D: person, staff, and person renderer commands route to semantic tools', async () => {

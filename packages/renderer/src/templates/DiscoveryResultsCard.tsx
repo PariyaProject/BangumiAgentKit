@@ -85,6 +85,8 @@ function limitationLabel(message: string): string {
       '官方搜索总数为估算值，不能据此认定 Bangumi 全库已完整覆盖',
     'all requests a complete attempt; budget exhaustion is reported as partial.':
       '“尽量完整”会在预算内继续检索；预算耗尽时仍标记为部分覆盖',
+    'Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.':
+      '集数筛选使用 Bangumi 报告的 subject.eps 本地过滤；它不是实际播出集数、个人观看进度或 total_episodes 章节数。缺失值保留为未解决，有界覆盖也可能不完整。',
     'heat means upstream 收藏人数 and is not a recent-trend metric.':
       '排序热度使用官方当前收藏人数，不代表近期讨论趋势或历史热度',
     'A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.':
@@ -145,7 +147,16 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
   const itemBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
   const stateTone = stateColor(viewModel.state, theme);
   const visibleWarnings = viewModel.warnings.slice(0, 4);
-  const visibleLimitations = viewModel.limitations.slice(0, 3);
+  const reportedEpisodeLimitationIndex = viewModel.limitations.findIndex((limitation) =>
+    limitation.includes('reported subject.eps'),
+  );
+  const prioritizedLimitations = reportedEpisodeLimitationIndex > 0
+    ? [
+        viewModel.limitations[reportedEpisodeLimitationIndex]!,
+        ...viewModel.limitations.filter((_, index) => index !== reportedEpisodeLimitationIndex),
+      ]
+    : viewModel.limitations;
+  const visibleLimitations = prioritizedLimitations.slice(0, 3);
   const hiddenWarnings = Math.max(0, viewModel.warnings.length - visibleWarnings.length);
   const hiddenLimitations = Math.max(0, viewModel.limitations.length - visibleLimitations.length);
   const coverage = viewModel.coverage;
@@ -337,6 +348,11 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
                   {item.rank !== undefined ? `#${item.rank}` : '排名未知'} ·{' '}
                   {numberLabel(item.ratingCount, ' 人评分')}
                 </div>
+                {item.episodesReported !== undefined ? (
+                  <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+                    Bangumi 报告集数 {item.episodesReported}（subject.eps）
+                  </div>
+                ) : null}
                 {item.collectionTotal !== undefined ? (
                   <div style={{ color: theme.textMuted, fontSize: '11px' }}>
                     收藏合计 {item.collectionTotal}

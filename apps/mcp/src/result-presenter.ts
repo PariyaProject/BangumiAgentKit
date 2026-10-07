@@ -43,6 +43,7 @@ const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const SUBJECT_COMPARISON_TOOL = 'bangumi.get_subject_comparison';
 const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
+const DISCOVERY_QUERY_TOOL = 'bangumi.query_subjects';
 const MAX_PERSON_ROWS = 6;
 const MAX_MONTH_BUCKETS = 6;
 const MAX_SECTION_ITEMS = 4;
@@ -110,6 +111,13 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
     };
   }
 
+  if (toolName === DISCOVERY_QUERY_TOOL && isDiscoveryToolResult(result)) {
+    return {
+      text: compactDiscoveryResult(result),
+      structuredContent: result,
+    };
+  }
+
   return { text: fullText };
 }
 
@@ -124,6 +132,17 @@ function utf8Bytes(value: string): number {
 
 function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isDiscoveryToolResult(value: JsonObject): boolean {
+  return (
+    typeof value.state === 'string' &&
+    Array.isArray(value.items) &&
+    isJsonObject(value.plan) &&
+    isJsonObject(value.coverage) &&
+    Array.isArray(value.warnings) &&
+    Array.isArray(value.evidence)
+  );
 }
 
 function isPersonActivityResult(value: JsonObject): value is JsonObject & PersonActivityResult {
@@ -2729,4 +2748,211 @@ function createBareMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderRes
         result.excluded.samples.reduce((total, item) => total + item.relationPaths.length, 0),
     },
   };
+}
+
+function boundedDiscoveryValue(value: unknown, depth = 0): unknown {
+  if (depth > 2) return '[nested value omitted]';
+  if (typeof value === 'string') return clippedDisplayText(value, 48).text;
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) return value;
+  if (Array.isArray(value)) return value.slice(0, 4).map((item) => boundedDiscoveryValue(item, depth + 1));
+  if (isJsonObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .slice(0, 4)
+        .map(([key, item]) => [clippedDisplayText(key, 32).text, boundedDiscoveryValue(item, depth + 1)]),
+    );
+  }
+  return undefined;
+}
+
+function compactDiscoveryFilter(value: unknown): unknown {
+  if (!isJsonObject(value)) return undefined;
+  return {
+    field: typeof value.field === 'string' ? clippedDisplayText(value.field, 48).text : 'unknown',
+    classification:
+      typeof value.classification === 'string' ? value.classification : 'unknown',
+    operator: typeof value.operator === 'string' ? clippedDisplayText(value.operator, 32).text : 'unknown',
+    ...(value.value === undefined ? {} : { value: boundedDiscoveryValue(value.value) }),
+    ...(typeof value.reason === 'string'
+      ? { reason: clippedDisplayText(value.reason, 120).text }
+      : {}),
+  };
+}
+
+function createDiscoveryTextProjection(
+  result: JsonObject,
+  rowLimit: number,
+  filterLimit: number,
+  warningLimit: number,
+  limitationLimit: number,
+  textCharacters: number,
+) {
+  const items = Array.isArray(result.items) ? result.items : [];
+  const plan = isJsonObject(result.plan) ? result.plan : {};
+  const coverage = isJsonObject(result.coverage) ? result.coverage : {};
+  const rows = items.slice(0, rowLimit).flatMap((item) => {
+    if (!isJsonObject(item)) return [];
+    const row: JsonObject = {};
+    for (const field of [
+      'id', 'media', 'category', 'date', 'score', 'rank', 'ratingCount',
+      'episodesReported', 'collectionTotal', 'nsfw',
+    ]) {
+      const value = item[field];
+      if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string') {
+        row[field] = typeof value === 'string' ? clippedDisplayText(value, textCharacters).text : value;
+      }
+    }
+    for (const field of ['name', 'nameCn']) {
+      if (typeof item[field] === 'string') {
+        row[field] = clippedDisplayText(item[field] as string, textCharacters).text;
+      }
+    }
+    for (const field of ['tags', 'metaTags']) {
+      const values = Array.isArray(item[field]) ? item[field] as unknown[] : [];
+      row[field] = values.slice(0, 3).flatMap((value) =>
+        typeof value === 'string' ? [clippedDisplayText(value, 40).text] : [],
+      );
+      row[`${field}OmittedFromText`] = Math.max(0, values.length - 3);
+    }
+    return [row];
+  });
+  const filterProjection = (field: string) => {
+    const source = Array.isArray(plan[field]) ? plan[field] as unknown[] : [];
+    return {
+      rows: source.slice(0, filterLimit).map(compactDiscoveryFilter),
+      omitted: Math.max(0, source.length - filterLimit),
+    };
+  };
+  const warningSource = Array.isArray(result.warnings) ? result.warnings : [];
+  const warnings = warningSource.slice(0, warningLimit).flatMap((warning) => {
+    if (!isJsonObject(warning)) return [];
+    return [{
+      ...(typeof warning.code === 'string' ? { code: clippedDisplayText(warning.code, 64).text } : {}),
+      ...(typeof warning.state === 'string' ? { state: clippedDisplayText(warning.state, 32).text } : {}),
+      ...(typeof warning.message === 'string'
+        ? { message: clippedDisplayText(warning.message, textCharacters).text }
+        : {}),
+    }];
+  });
+  const limitationSources = [
+    ...(Array.isArray(plan.limitations) ? plan.limitations : []),
+    ...(Array.isArray(result.limitations) ? result.limitations : []),
+    ...(isJsonObject(result.explanation) && Array.isArray(result.explanation.limitations)
+      ? result.explanation.limitations
+      : []),
+  ].filter((value): value is string => typeof value === 'string');
+  const uniqueLimitations = [...new Set(limitationSources)];
+  const reportedEpisodeLimitation = uniqueLimitations.find((value) =>
+    value.includes('reported subject.eps'),
+  );
+  const prioritizedLimitations = reportedEpisodeLimitation
+    ? [reportedEpisodeLimitation, ...uniqueLimitations.filter((value) => value !== reportedEpisodeLimitation)]
+    : uniqueLimitations;
+  const limitations = prioritizedLimitations
+    .slice(0, limitationLimit)
+    .map((value) => value === reportedEpisodeLimitation
+      ? value
+      : clippedDisplayText(value, textCharacters).text);
+  const evidence = Array.isArray(result.evidence) ? result.evidence : [];
+  const sources = evidence.flatMap((item) => {
+    if (!isJsonObject(item) || !isJsonObject(item.source)) return [];
+    return [{
+      ...(typeof item.source.class === 'string' ? { class: item.source.class } : {}),
+      ...(typeof item.source.operation === 'string' ? { operation: item.source.operation } : {}),
+      ...(typeof item.source.experimental === 'boolean' ? { experimental: item.source.experimental } : {}),
+    }];
+  });
+  const uniqueSources = [...new Map(sources.map((source) => [JSON.stringify(source), source])).values()];
+  const coverageFields = [
+    'state', 'requested', 'scanned', 'matched', 'returned', 'pagesScanned', 'totalKind',
+    'upstreamExhausted', 'budgetExceeded', 'postFilterCount', 'hydrationsAttempted',
+    'hydrationsSucceeded', 'hydrationsFailed', 'hydrationsUnresolved', 'hydrationBudgetExceeded',
+    'outputCap', 'reason',
+  ];
+  const coverageView = Object.fromEntries(
+    coverageFields.flatMap((field) => {
+      const value = coverage[field];
+      return value === undefined ? [] : [[field, typeof value === 'string'
+        ? clippedDisplayText(value, textCharacters).text
+        : value]];
+    }),
+  );
+  return {
+    state: result.state,
+    items: rows,
+    itemsOmittedFromText: Math.max(0, items.length - rows.length),
+    coverage: coverageView,
+    plan: {
+      operation: plan.operation,
+      quality: plan.quality,
+      pushdown: filterProjection('pushdown'),
+      postFilters: filterProjection('postFilters'),
+      derivedFilters: filterProjection('derivedFilters'),
+      unsupported: filterProjection('unsupported'),
+    },
+    sources: uniqueSources.slice(0, 3),
+    sourcesOmittedFromText: Math.max(0, uniqueSources.length - 3),
+    warnings,
+    warningsOmittedFromText: Math.max(0, warningSource.length - warnings.length),
+    limitations,
+    limitationsOmittedFromText: Math.max(0, limitationSources.length - limitations.length),
+    mcpTextProjection: {
+      version: 'discovery-results-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      fullResultUtf8Bytes: utf8Bytes(JSON.stringify(result, null, 2)),
+      structuredContentHasFullResult: true,
+      textViewScope: 'Only a bounded sample is shown; omitted rows do not prove absence. Full result remains in structuredContent.',
+    },
+  };
+}
+
+function compactDiscoveryResult(result: JsonObject): string {
+  let rowLimit = Math.min(6, Array.isArray(result.items) ? result.items.length : 0);
+  let filterLimit = 6;
+  let warningLimit = 2;
+  let limitationLimit = 3;
+  let textCharacters = 96;
+  const plan = isJsonObject(result.plan) ? result.plan : {};
+  const hasEpisodeCountPostFilter = Array.isArray(plan.postFilters) && plan.postFilters.some(
+    (item) => isJsonObject(item) && item.field === 'episodeCount',
+  );
+  const reportedEpisodeLimitation = [
+    ...(Array.isArray(plan.limitations) ? plan.limitations : []),
+    ...(Array.isArray(result.limitations) ? result.limitations : []),
+    ...(isJsonObject(result.explanation) && Array.isArray(result.explanation.limitations)
+      ? result.explanation.limitations
+      : []),
+  ].find((value): value is string =>
+    typeof value === 'string' && value.includes('reported subject.eps'),
+  );
+  while (true) {
+    const text = JSON.stringify(
+      createDiscoveryTextProjection(
+        result,
+        rowLimit,
+        filterLimit,
+        warningLimit,
+        limitationLimit,
+        textCharacters,
+      ),
+    );
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+    if (rowLimit > 1) rowLimit = Math.floor(rowLimit / 2);
+    else if (filterLimit > 1) filterLimit = Math.floor(filterLimit / 2);
+    else if (limitationLimit > (hasEpisodeCountPostFilter ? 1 : 0)) limitationLimit -= 1;
+    else if (warningLimit > 0) warningLimit -= 1;
+    else if (textCharacters > 24) textCharacters = Math.floor(textCharacters / 2);
+    else {
+      const fallbackCoverage = isJsonObject(result.coverage) ? result.coverage : {};
+      return JSON.stringify({
+        state: result.state,
+        coverage: Object.fromEntries(['state', 'scanned', 'matched', 'returned', 'totalKind']
+          .filter((field) => fallbackCoverage[field] !== undefined)
+          .map((field) => [field, fallbackCoverage[field]])),
+        ...(reportedEpisodeLimitation ? { limitations: [reportedEpisodeLimitation] } : {}),
+        itemsOmittedFromText: Array.isArray(result.items) ? result.items.length : 0,
+        textViewScope: 'Bounded text omitted details; full result remains in structuredContent.',
+      });
+    }
+  }
 }

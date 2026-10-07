@@ -145,4 +145,43 @@ describe('fixed discovery acceptance scenarios', () => {
     expect(summaries.every((item) => item.conceptMatched)).toBe(true);
     expect(summaries.map((item) => item.id)).toEqual([50, 51]);
   });
+
+  it('maps D04 to exact integer boundaries and retains only sanitized positive checks', () => {
+    expect(DISCOVERY_SCENARIOS.D04.query).toMatchObject({
+      media: 'anime',
+      tags: ['科幻'],
+      ratingCount: { min: 3001 },
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+      limit: 100,
+    });
+    const summaries = summarizeDiscoveryScenarioItems('D04', [
+      {
+        id: 80,
+        name: 'private-looking fixture title',
+        media: 'anime',
+        tags: ['科幻', '冒险'],
+        ratingCount: 3001,
+        episodesReported: 12,
+      },
+      {
+        id: 81,
+        name: 'another fixture title',
+        media: 'anime',
+        tags: ['科幻'],
+        ratingCount: 5000,
+        episodesReported: 1,
+      },
+    ]);
+
+    expect(Object.values(validateDiscoveryScenarioItems('D04', summaries)).every(Boolean)).toBe(true);
+    expect(JSON.stringify(summaries)).not.toContain('fixture title');
+    expect(JSON.stringify(summaries)).not.toContain('科幻');
+    expect(
+      validateDiscoveryScenarioItems('D04', [
+        ...summaries,
+        { id: 82, media: 'anime', ratingCount: 9000, episodesReported: 13, conceptMatched: true },
+      ]).reportedEpisodeCountThreshold,
+    ).toBe(false);
+  });
 });

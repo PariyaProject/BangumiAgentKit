@@ -221,8 +221,123 @@ function presentSearch(value: Record<string, unknown>): string | undefined {
 function presentDiscovery(value: Record<string, unknown>): string | undefined {
   const items = Array.isArray(value.items) ? value.items : undefined;
   if (!items) return undefined;
+  const plan = value.plan && typeof value.plan === 'object'
+    ? value.plan as Record<string, unknown>
+    : {};
   const lines: string[] = [];
   if (value.state) lines.push(`状态: ${String(value.state)}`);
+  const operation = typeof plan.operation === 'string' ? plan.operation : undefined;
+  const source = typeof plan.source === 'string' ? plan.source : undefined;
+  if (source || operation) lines.push(`来源: ${[source, operation].filter(Boolean).join(' / ')}`);
+
+  const filterLabels: Record<string, string> = {
+    categories: '类型',
+    concepts: '概念',
+    dateRange: '日期',
+    episodeCount: '报告集数（Bangumi subject.eps）',
+    keyword: '关键词',
+    media: '媒介',
+    metaTags: '元标签',
+    nsfw: 'NSFW',
+    rating: '评分',
+    ratingCount: '评分人数',
+    rank: '排名',
+    tags: '标签',
+    collectionCount: '收藏人数',
+  };
+  const displayFilterValue = (filterValue: unknown): string => {
+    if (Array.isArray(filterValue)) return `[${filterValue.map(String).join('、')}]`;
+    if (filterValue && typeof filterValue === 'object') {
+      return Object.entries(filterValue as Record<string, unknown>)
+        .map(([key, nestedValue]) => `${key}=${String(nestedValue)}`)
+        .join('，');
+    }
+    return String(filterValue);
+  };
+  const formatFilter = (candidate: unknown): string | undefined => {
+    if (!candidate || typeof candidate !== 'object') return undefined;
+    const filter = candidate as Record<string, unknown>;
+    if (typeof filter.field !== 'string') return undefined;
+    const field = filter.field;
+    const label = field.startsWith('sort:')
+      ? `排序（${field.slice('sort:'.length)}）`
+      : filterLabels[field] || field;
+    const filterValue = filter.value;
+    if (filter.operator === 'range' && filterValue && typeof filterValue === 'object') {
+      const range = filterValue as Record<string, unknown>;
+      const bounds = [
+        range.min === undefined ? undefined : `≥${String(range.min)}`,
+        range.max === undefined ? undefined : `≤${String(range.max)}`,
+      ].filter(Boolean);
+      return bounds.length > 0 ? `${label} ${bounds.join('，')}` : label;
+    }
+    const operator = filter.operator === 'contains_all'
+      ? '包含全部'
+      : filter.operator === 'in'
+        ? '属于'
+        : filter.operator === 'eq'
+          ? '='
+          : typeof filter.operator === 'string'
+            ? filter.operator
+            : '=';
+    return `${label} ${operator} ${displayFilterValue(filterValue)}`;
+  };
+  const hasEpisodeCountFilter = ['pushdown', 'postFilters', 'derivedFilters'].some((group) =>
+    Array.isArray(plan[group]) && (plan[group] as unknown[]).some((filter) =>
+      Boolean(filter && typeof filter === 'object' && (filter as Record<string, unknown>).field === 'episodeCount'),
+    ),
+  );
+  for (const [key, label] of [
+    ['pushdown', '上游筛选'],
+    ['postFilters', '本地筛选'],
+    ['derivedFilters', '派生筛选'],
+  ] as const) {
+    const filters = Array.isArray(plan[key])
+      ? (plan[key] as unknown[]).map(formatFilter).filter((filter): filter is string => Boolean(filter))
+      : [];
+    if (filters.length > 0) lines.push(`${label}: ${filters.join('；')}`);
+  }
+
+  const coverage = value.coverage;
+  if (coverage && typeof coverage === 'object') {
+    const details = coverage as Record<string, unknown>;
+    lines.push(
+      `覆盖: state=${String(details.state ?? value.state)} totalKind=${String(details.totalKind ?? plan.totalKind ?? 'unknown')} scanned=${String(details.scanned)} matched=${String(details.matched)} returned=${String(details.returned)}`,
+    );
+  }
+
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  for (const warning of warnings.slice(0, 3)) {
+    if (!warning || typeof warning !== 'object') continue;
+    const detail = warning as Record<string, unknown>;
+    const code = typeof detail.code === 'string' ? detail.code : undefined;
+    const message = typeof detail.message === 'string' ? detail.message : undefined;
+    if (code || message) lines.push(`告警: ${[code, message].filter(Boolean).join('：')}`);
+  }
+  if (warnings.length > 3) lines.push(`另有 ${warnings.length - 3} 条告警未展开。`);
+
+  const explanation = value.explanation && typeof value.explanation === 'object'
+    ? value.explanation as Record<string, unknown>
+    : {};
+  const rawLimitations = [
+    ...(Array.isArray(plan.limitations) ? plan.limitations : []),
+    ...(Array.isArray(value.limitations) ? value.limitations : []),
+    ...(Array.isArray(explanation.limitations) ? explanation.limitations : []),
+  ].filter((limitation): limitation is string => typeof limitation === 'string');
+  const uniqueLimitations = [...new Set(rawLimitations)];
+  const reportedEpisodeLimitation = uniqueLimitations.find((limitation) =>
+    limitation.includes('reported subject.eps'),
+  );
+  const prioritizedLimitations = reportedEpisodeLimitation
+    ? [reportedEpisodeLimitation, ...uniqueLimitations.filter((limitation) => limitation !== reportedEpisodeLimitation)]
+    : uniqueLimitations;
+  for (const limitation of prioritizedLimitations.slice(0, 4)) {
+    lines.push(`限制: ${limitation}`);
+  }
+  if (prioritizedLimitations.length > 4) {
+    lines.push(`另有 ${prioritizedLimitations.length - 4} 条限制未展开。`);
+  }
+
   for (const [index, candidate] of items.entries()) {
     if (!candidate || typeof candidate !== 'object') continue;
     const item = candidate as Record<string, unknown>;
@@ -231,16 +346,16 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
     );
     lines.push(`   ID: ${String(item.id)}${item.media ? ` | ${String(item.media)}` : ''}`);
     if (item.score !== undefined) lines.push(`   评分: ${String(item.score)}`);
+    if (item.ratingCount !== undefined) lines.push(`   评分人数: ${String(item.ratingCount)}`);
+    if (typeof item.episodesReported === 'number') {
+      lines.push(`   报告集数（Bangumi subject.eps）: ${String(item.episodesReported)}`);
+    } else if (hasEpisodeCountFilter) {
+      lines.push('   报告集数（Bangumi subject.eps）: 未能确认（未作为已匹配证据）');
+    }
     if (item.date) lines.push(`   日期: ${String(item.date)}`);
   }
-  const coverage = value.coverage;
-  if (coverage && typeof coverage === 'object') {
-    const details = coverage as Record<string, unknown>;
-    lines.push(
-      `覆盖: scanned=${String(details.scanned)} matched=${String(details.matched)} returned=${String(details.returned)}`,
-    );
-  }
-  return lines.join('\n');
+
+  return boundHumanLines(lines);
 }
 
 function presentEpisodeIntegrity(value: Record<string, unknown>): string | undefined {

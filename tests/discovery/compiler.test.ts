@@ -88,6 +88,72 @@ describe('discovery capability compiler', () => {
     expect(matrix.find((item) => item.field === 'sort:heat' && item.operation === 'searchSubjects')?.notes).toContain(
       '收藏人数',
     );
+    expect(
+      matrix.find((item) => item.field === 'episodeCount' && item.operation === 'searchSubjects')?.classification,
+    ).toBe('POST_FILTER');
+    expect(
+      matrix.find((item) => item.field === 'episodeCount' && item.operation === 'browseSubjects')?.classification,
+    ).toBe('POST_FILTER');
+  });
+
+  it('keeps reported episode count as a local post-filter beside exact upstream D04 filters', () => {
+    const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
+      media: 'anime',
+      tags: ['科幻'],
+      ratingCount: { min: 3001 },
+      episodeCount: { max: 12 },
+      resultMode: 'all',
+      limit: 100,
+    }));
+
+    expect(plan.operation).toBe('searchSubjects');
+    expect(plan.pushdown).toContainEqual(expect.objectContaining({
+      field: 'ratingCount',
+      classification: 'PUSHDOWN',
+      value: { min: 3001 },
+    }));
+    expect(plan.postFilters).toContainEqual(expect.objectContaining({
+      field: 'episodeCount',
+      classification: 'POST_FILTER',
+      value: { max: 12 },
+    }));
+    expect(plan.hydrationRequirements).toContainEqual(expect.objectContaining({
+      reason: 'episode_count_filter',
+      fields: ['episodesReported'],
+      source: 'candidate_or_detail',
+    }));
+    expect(plan.steps[0]?.kind === 'search' ? plan.steps[0].request.filter : undefined).toMatchObject({
+      type: [2],
+      tag: ['科幻'],
+      ratingCount: ['>=3001'],
+    });
+    expect(plan.steps[0]?.kind === 'search' ? plan.steps[0].request.filter : undefined).not.toHaveProperty('eps');
+    expect(plan.limitations.join(' ')).toContain('subject.eps');
+    expect(plan.limitations[0]).toContain('reported subject.eps');
+    expect(plan.limitations[0]).toContain('total_episodes');
+  });
+
+  it('keeps reported episode count as a local post-filter when the plan uses browse', () => {
+    const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
+      media: 'anime',
+      year: 2026,
+      month: 7,
+      sort: 'date',
+      episodeCount: { max: 12 },
+    }));
+
+    expect(plan.operation).toBe('browseSubjects');
+    expect(plan.postFilters).toContainEqual(expect.objectContaining({
+      field: 'episodeCount',
+      classification: 'POST_FILTER',
+      operation: 'browseSubjects',
+      value: { max: 12 },
+    }));
+    expect(plan.hydrationRequirements).toContainEqual(expect.objectContaining({
+      reason: 'episode_count_filter',
+      fields: ['episodesReported'],
+      source: 'candidate_or_detail',
+    }));
   });
 
   it('does not treat undocumented negative meta-tag syntax as trusted pushdown', () => {

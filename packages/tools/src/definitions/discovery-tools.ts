@@ -14,6 +14,16 @@ const range = z
   })
   .strict();
 
+const episodeCountRange = z
+  .object({
+    min: z.number().int().min(0).optional(),
+    max: z.number().int().min(0).optional(),
+  })
+  .strict()
+  .refine((value) => value.min !== undefined || value.max !== undefined, {
+    message: 'Provide at least one episode-count bound.',
+  });
+
 const discoveryQueryInputBase = z
   .object({
     keyword: z.string().max(200).optional(),
@@ -55,6 +65,9 @@ const discoveryQueryInputBase = z
     concepts: z.array(z.string().min(1).max(120)).max(20).optional(),
     rating: range.optional(),
     ratingCount: range.optional(),
+    episodeCount: episodeCountRange.optional().describe(
+      '按 Bangumi 报告的 subject.eps（集数，不是 total_episodes 章节数）做本地闭区间过滤；至少提供 min 或 max，缺失值会保留为未解析/partial。',
+    ),
     rank: range.optional(),
     collectionCount: range.optional(),
     nsfw: z.union([z.enum(['include', 'exclude', 'only']), z.boolean()]).optional(),
@@ -140,7 +153,7 @@ export function createDiscoveryTools() {
   const querySubjects = defineTool({
     name: 'bangumi.query_subjects',
     description:
-      '按受控条件发现 Bangumi 条目。支持媒体类型、日期、标签/精确概念、评分/排名/收藏人数范围、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；heat 表示当前收藏人数，不是讨论热度或历史趋势。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject。',
+      '按受控条件发现 Bangumi 条目。支持媒体类型、日期、标签/精确概念、评分/评分人数/报告集数/排名/收藏人数范围、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序。episodeCount 按 subject.eps 本地过滤；它不是 total_episodes、已播集数或观看进度。heat 表示当前收藏人数，不是讨论热度或历史趋势。官方搜索为实验性接口，估算总数和显式覆盖限制不证明全库完整；不替代已知 ID 的 bangumi.get_subject。',
     input: discoveryQueryInput,
     auth: 'none',
     scopes: [],

@@ -213,6 +213,18 @@ export function compileDiscoveryPlan(
   if (operation === 'browseSubjects' && query.categories.length > 0) {
     requireHydration('category_filter', ['platform']);
   }
+  if (query.episodeCount) {
+    postFilters.push(
+      planFilter(
+        'episodeCount',
+        operation,
+        'range',
+        query.episodeCount,
+        'The official source exposes reported subject.eps but no episode-count search filter; compare locally.',
+      ),
+    );
+    requireHydration('episode_count_filter', ['episodesReported']);
+  }
   if (query.sort === 'score') requireHydration('score_sort', ['score']);
   if (query.sort === 'rank') requireHydration('rank_sort', ['rank']);
   if (query.tieBreak) requireHydration('tie_break_sort', ['ratingCount']);
@@ -227,6 +239,9 @@ export function compileDiscoveryPlan(
     ? { kind: 'browse', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoveryBrowseRequest }
     : { kind: 'search', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoverySearchRequest };
   const limitations = [
+    ...(query.episodeCount === undefined
+      ? []
+      : ['Episode-count filtering compares the reported subject.eps field locally; it is not an aired/seen count or the total_episodes chapter count. Missing values remain unresolved, and bounded coverage may be partial.']),
     'Enumeration is bounded by maxPages and maxCandidates.',
     ...(operation === 'searchSubjects'
       ? ['Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.']
