@@ -145,10 +145,18 @@ if (tool === 'gh') {
     if (ref === 'HEAD') {
       output(state.branch === state.baseBranch ? state.baseSha : state.featureHeadSha);
     } else if (ref === `origin/${state.baseBranch}`) output(state.baseSha);
-    else if (ref === `origin/${state.featureBranch}`) output(state.featureHeadSha);
+    else if (ref === `origin/${state.featureBranch}`)
+      output(state.remoteTrackingFeatureSha ?? state.featureHeadSha);
     else fail(`unknown ref: ${ref}`);
-  } else if (command === 'fetch') output();
-  else if (command === 'diff' && rest.includes('--name-only')) {
+  } else if (command === 'fetch') {
+    const refspec = rest.at(-1);
+    if (
+      refspec === `refs/heads/${state.featureBranch}:refs/remotes/origin/${state.featureBranch}`
+    ) {
+      state.remoteTrackingFeatureSha = state.featureHeadSha;
+    }
+    output();
+  } else if (command === 'diff' && rest.includes('--name-only')) {
     output((state.changedPaths ?? []).join('\n'));
   } else if (command === 'log') output((state.commitSubjects ?? []).join('\n'));
   else if (command === 'merge-base' && rest[0] === '--is-ancestor') {

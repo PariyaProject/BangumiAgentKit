@@ -876,7 +876,10 @@ help` for exact arguments.
 - `review:started`: convert the matching reservation to consumed and record
   reviewer id/replacement relationship.
 - `review:result`: record a verdict/history and enter PASS, correction, final
-  correction, or protected-human semantics.
+  correction, or protected-human semantics. Before recording PASS, it fetches
+  the exact remote branch ref into its tracking ref and checks that SHA against
+  the Candidate and PR head, so a stale local `origin/<branch>` ref cannot
+  block a valid verdict.
 - `review:runtime`: record explicit `ACTIVE`, `INTERRUPTED`, or `UNAVAILABLE`
   runtime truth for the exact reviewer id.
 - `review:wait`: after explicit `ACTIVE` observation, validate same-reviewer

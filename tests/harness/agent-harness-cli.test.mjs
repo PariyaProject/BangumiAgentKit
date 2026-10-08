@@ -1014,6 +1014,53 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
   }
 });
 
+test('CLI PASS result refreshes a stale remote-tracking Candidate ref before validation', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RUNNING';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.review.consumed = 1;
+  epoch.review.reviewer_id = 'luna-reviewer';
+  epoch.review.runtime = { state: 'ACTIVE', reason: null, allocation: 'NORMAL' };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('b'),
+    remoteTrackingFeatureSha: sha('a'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'review:result',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--verdict',
+      'PASS',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const state = environment.readState();
+    const stored = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.equal(stored.review_pass_sha, sha('b'));
+    assert.equal(state.remoteTrackingFeatureSha, sha('b'));
+    assert.ok(
+      state.calls.some(
+        (call) =>
+          call.tool === 'git' &&
+          call.args[0] === 'fetch' &&
+          call.args.at(-1) === 'refs/heads/codex/epoch-cli:refs/remotes/origin/codex/epoch-cli',
+      ),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 function passedCandidateFixture() {
   const { run, epoch } = controlFixture();
   epoch.state = 'REVIEW_PASSED';

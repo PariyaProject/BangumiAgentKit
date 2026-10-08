@@ -1456,7 +1456,7 @@
         "tests/unit/d05-mcp-bundle-attestation-writer.test.ts",
         "tests/unit/d05-report-writer.test.ts"
       ],
-      "next_action": "Review #3 confirmed D05-001 through D05-005 are closed and added D05-006: a comma in the English “Notably” regression split the adverb from the positive complete-list claim, so it did not exercise the token-boundary guard. The regression now keeps “Notably this is a complete list” in one clause and verifies that it is rejected. Establish a fresh Candidate with exact seven-job CI and the same GPT-6 Luna Max reviewer for review #4 before the single fixed anonymous D05 query. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated; if the query is inconclusive, preserve the spent claim and never retry.",
+      "next_action": "The single gated D05 query was consumed once on Candidate c6a008d; the runner recorded INCONCLUSIVE because the event stream contained three non-MCP tool events despite one successful target call. No report or raw answer/tool result was written. Never retry this claim. Keep D05 PARTIAL and continue the remaining 96-tool acceptance work; official-v0 search remains experimental with estimated totals.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -1525,7 +1525,25 @@
           "requires_exact_candidate_current_base_CI_and_review_pass": true,
           "creates_canonical_and_local_create_once_claims": true,
           "inconclusive_query_retry": "never",
-          "live_query": "not run; no claim consumed; must wait for exact candidate, CI, and review gates",
+          "live_query": "INCONCLUSIVE; one-shot claim consumed on exact Candidate c6a008d; one target MCP call and one allowed call succeeded, but 3 non-MCP tool events failed the acceptance gate; no report or raw answer/result written; retry is never allowed.",
+          "last_attempt": {
+            "state": "INCONCLUSIVE",
+            "candidate_sha": "c6a008d908df047ea6b8e0d35551f30a40b98c48",
+            "base_sha": "e64129ad9ffeec8f03f8487caa0c0473e5cdb123",
+            "bundle_sha256": "2ad2bbcf1f2f314d29427c5f861d1ab784fe004f8490f8e59a3eb8d3a4dd3209",
+            "codex_exit_code": 0,
+            "event_stream_parsed": true,
+            "target_mcp_call_count": 1,
+            "non_mcp_tool_event_count": 3,
+            "shell_tool_call_count": 0,
+            "allowed_call_count": 1,
+            "denied_call_count": 0,
+            "result_status": "SUCCESS",
+            "report_written": false,
+            "raw_answer_persisted": false,
+            "raw_tool_result_persisted": false,
+            "retry": "never"
+          },
           "report_persists_answer_or_raw_tool_result": false
         },
         "status_boundary": "D05 remains PARTIAL until a post-gate one-tool Agent/MCP result passes. Even a passing single current response cannot establish a complete current-season population or global tag completeness because official search is experimental and totals are estimated."

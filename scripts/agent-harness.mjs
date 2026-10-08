@@ -1169,10 +1169,11 @@ function commandReviewResult(options) {
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
   if (verdict === 'PASS') {
-    git('fetch', 'origin', epochResult.state.branch);
+    const branch = epochResult.state.branch;
+    git('fetch', '--no-tags', 'origin', `refs/heads/${branch}:refs/remotes/origin/${branch}`);
     assertCandidateInvariant({
       candidateSha: epochResult.state.candidate_sha,
-      branchHeadSha: git('rev-parse', `origin/${epochResult.state.branch}`),
+      branchHeadSha: git('rev-parse', `origin/${branch}`),
       prHeadSha: epochResult.view.headRefOid,
     });
   }
