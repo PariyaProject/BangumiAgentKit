@@ -78,6 +78,13 @@ function validActor(value: unknown): value is ValidSubjectCharacterRow['actors']
   );
 }
 
+function normalizeOptionalSubjectCharacterActors(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const row = value as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(row, 'actors')) return row;
+  return { ...row, actors: [] };
+}
+
 function validSubjectCharacter(value: unknown): value is ValidSubjectCharacterRow {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const row = value as Record<string, unknown>;
@@ -243,7 +250,9 @@ export class CharacterService {
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     const rawRows = Array.isArray(raw) ? raw : [];
-    const validRows = rawRows.filter(validSubjectCharacter);
+    const validRows = rawRows
+      .map(normalizeOptionalSubjectCharacterActors)
+      .filter(validSubjectCharacter);
     const schemaDriftRows = Array.isArray(raw) ? rawRows.length - validRows.length : 1;
     const invalidActorIdRows = countInvalidActorIds(rawRows);
     const responseBytes = getHttpResponseByteLength(raw) ?? null;

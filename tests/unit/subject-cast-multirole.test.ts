@@ -143,6 +143,55 @@ describe('subject cast multi-role voice actor groups', () => {
     }
   });
 
+  it('defaults omitted actors to an empty list but rejects a malformed present value', async () => {
+    const rows = [
+      {
+        id: 401,
+        name: '没有演员字段的角色',
+        type: 1,
+        summary: '',
+        relation: '主角',
+      },
+      {
+        id: 402,
+        name: '错误演员字段的角色',
+        type: 1,
+        summary: '',
+        relation: '配角',
+        actors: null,
+      },
+    ];
+    const payload = JSON.stringify(rows);
+    const { service } = serviceFor(payload);
+
+    const result = await getSubjectCast(service, 9005, { limit: 100 });
+
+    expect(result).toMatchObject({
+      observed: 2,
+      returned: 1,
+      selectedRows: 1,
+      omittedRowsByLimit: 0,
+      truncated: true,
+      schemaDriftRows: 1,
+      invalidActorIdRows: 0,
+      duplicateActorCharacterLinks: 0,
+      source: { status: 'partial' },
+    });
+    expect(result.cast).toEqual([
+      {
+        character: {
+          id: 401,
+          name: '没有演员字段的角色',
+          type: 1,
+          summary: '',
+        },
+        relation: '主角',
+        actors: [],
+      },
+    ]);
+    expect(result.multiRoleVoiceActors).toEqual([]);
+  });
+
   it('fails closed for oversized, malformed, and unavailable source responses', async () => {
     const oversized = serviceFor(`[]${' '.repeat(SUBJECT_CAST_MAX_RESPONSE_BYTES)}`);
     await expect(
