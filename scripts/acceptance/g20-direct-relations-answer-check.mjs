@@ -7,7 +7,7 @@ export const G20_DIRECT_RELATIONS_ANSWER_CHECK_METHOD = 'direct-relation-rows-an
 const TOOL_NAME = 'bangumi.get_subject_relations';
 const FIXED_G20_SUBJECT_ID = 227245;
 const ROW_SEPARATOR = '｜';
-const SCOPE_LINE = /^(?:范围|说明)[:：]/u;
+const SCOPE_LINE = /^范围[:：]/u;
 const MARKDOWN_LINE = /^\s*(?:#{1,6}\s|[-*+]\s|>\s|```)/u;
 const COMPLETENESS_CLAIM =
   /(?:完整(?:系列|关系|名单|列表|作品)|全系列|全量(?:关系|作品|条目)|所有作品|全部作品|没有遗漏)/gu;
@@ -15,7 +15,8 @@ const CANONICAL_ORDER_CLAIM =
   /(?:唯一正确(?:的)?顺序|唯一(?:官方)?(?:观看)?顺序|官方(?:观看)?顺序|canonical\s+order)/giu;
 const ABSENCE_CLAIM =
   /(?:(?:没有|不存在|不再有|找不到)(?:任何|其他|更多|其余)?(?:关系|作品|条目|关联)|(?:关系|作品|条目).{0,8}(?:只有|仅有)(?:以上|这些|上述|前述)?(?:\d+|[零〇一二两三四五六七八九十百千万]+)?(?:条|项|个)?)/gu;
-const REVERSE_CLAIM = /(?:(?:包括|包含|涵盖|也有|还有)(?:所有|完整|全部)?反向(?:关系|边)|(?:完整|所有|全量)?反向(?:关系|边))/gu;
+const REVERSE_CLAIM =
+  /(?:(?:包括|包含|涵盖|也有|还有)(?:所有|完整|全部)?反向(?:关系|边)|(?:完整|所有|全量)?反向(?:关系|边))/gu;
 const CLAIM_NEGATION =
   /(?:不代表|并非|并不是|不是|不等于|不构成|不能(?:据此)?(?:证明|确认|说明|称为|说|认定)?|无法(?:据此)?(?:证明|确认|说明|称为|说|认定)?|(?:未|没有|尚未)[^。！？\n]{0,24}(?:发布|提供|定义)[^。！？\n]{0,16}|未能证明|不足以(?:证明|确认)|不含|不包含|未覆盖|不提供)\s*$/u;
 const CLAIM_CLAUSE_BOUNDARY =
@@ -64,6 +65,9 @@ export function verifyG20DirectRelationsAnswer(
     (row) => !parsedAnswer.rows.some((answerRow) => answerRow.id === row.id),
   ).length;
   const scopeText = parsedAnswer.scopeLines.join('\n');
+  const finalScopeLineVerified =
+    parsedAnswer.scopeLines.length === 1 && parsedAnswer.scopeLineIsFinal;
+  const sourceSubjectDisclosurePresent = hasSourceSubjectDisclosure(scopeText, result?.subjectId);
   const queryArgumentsMatch =
     exactQueryArguments(normalizedArguments, FIXED_G20_SUBJECT_ID) &&
     result?.subjectId === FIXED_G20_SUBJECT_ID;
@@ -92,20 +96,22 @@ export function verifyG20DirectRelationsAnswer(
   const responseCountsDisclosurePresent = hasResponseCountsDisclosure(
     scopeText,
     result?.coverage?.responseRowsObserved,
+    result?.coverage?.rowsReturned,
   );
-  const omissionNotAbsenceDisclosurePresent =
-    !projectionHasOmissions(textResult) || hasOmissionNotAbsenceDisclosure(scopeText);
+  const projectionRowsOmittedDisclosurePresent = hasRowsOmittedDisclosure(
+    scopeText,
+    textResult?.textProjection?.rowsOmitted,
+  );
+  const omissionNotAbsenceDisclosurePresent = hasOmissionNotAbsenceDisclosure(scopeText);
+  const reverseTransitiveDisclosurePresent = hasReverseTransitiveDisclosure(scopeText);
   const nonCanonicalOrderDisclosurePresent = hasNonCanonicalOrderDisclosure(scopeText);
   const schemaDriftDisclosurePresent =
     result?.coverage?.schemaDriftRows === 0 ||
     hasSchemaDriftDisclosure(scopeText, result?.coverage?.schemaDriftRows);
   const textProjectionConsistent = isTextProjectionConsistent(textResult, fullResult);
-  const resultRowsReadbackAvailable =
-    fullResult !== null || hasCompleteTextReadback(textResult);
+  const resultRowsReadbackAvailable = fullResult !== null || hasCompleteTextReadback(textResult);
   const textBudgetVerified =
-    Number.isInteger(toolTextUtf8Bytes) &&
-    toolTextUtf8Bytes > 0 &&
-    toolTextUtf8Bytes <= 3600;
+    Number.isInteger(toolTextUtf8Bytes) && toolTextUtf8Bytes > 0 && toolTextUtf8Bytes <= 3600;
   const structuredContentReadbackAvailable = fullResult !== null;
   const unsupportedCompletenessClaim = hasUnqualifiedClaim(answerText, COMPLETENESS_CLAIM);
   const unsupportedCanonicalOrderClaim = hasUnqualifiedClaim(answerText, CANONICAL_ORDER_CLAIM);
@@ -115,6 +121,8 @@ export function verifyG20DirectRelationsAnswer(
     answerText.split(/\r?\n/u).some((line) => MARKDOWN_LINE.test(line)) ||
     answerText.includes('**') ||
     answerText.includes('`');
+  const sourceCoverage = result?.coverage;
+  const textProjection = textResult?.textProjection;
   const passed =
     answerText.trim().length > 0 &&
     queryArgumentsMatch &&
@@ -126,8 +134,10 @@ export function verifyG20DirectRelationsAnswer(
     resultRowsReadbackAvailable &&
     textBudgetVerified &&
     validRows.length > 0 &&
+    sourceItems.length === validRows.length &&
     duplicateSourceRowsCount === 0 &&
-    parsedAnswer.scopeLines.length > 0 &&
+    finalScopeLineVerified &&
+    sourceSubjectDisclosurePresent &&
     parsedAnswer.unstructuredAnswerLinesCount === 0 &&
     parsedAnswer.rows.length === validRows.length &&
     rowsMatchedCount === validRows.length &&
@@ -137,7 +147,9 @@ export function verifyG20DirectRelationsAnswer(
     duplicateAnswerRowsCount === 0 &&
     boundedSourceDisclosurePresent &&
     responseCountsDisclosurePresent &&
+    projectionRowsOmittedDisclosurePresent &&
     omissionNotAbsenceDisclosurePresent &&
+    reverseTransitiveDisclosurePresent &&
     nonCanonicalOrderDisclosurePresent &&
     schemaDriftDisclosurePresent &&
     !unsupportedCompletenessClaim &&
@@ -158,6 +170,39 @@ export function verifyG20DirectRelationsAnswer(
     textProjectionConsistent,
     textBudgetVerified,
     toolTextUtf8Bytes: Number.isInteger(toolTextUtf8Bytes) ? toolTextUtf8Bytes : null,
+    sourceResponseRowsObserved: Number.isInteger(sourceCoverage?.responseRowsObserved)
+      ? sourceCoverage.responseRowsObserved
+      : null,
+    sourceRowsReturned: Number.isInteger(sourceCoverage?.rowsReturned)
+      ? sourceCoverage.rowsReturned
+      : null,
+    sourceSchemaDriftRows: Number.isInteger(sourceCoverage?.schemaDriftRows)
+      ? sourceCoverage.schemaDriftRows
+      : null,
+    sourceTruncated:
+      typeof sourceCoverage?.truncated === 'boolean' ? sourceCoverage.truncated : null,
+    sourcePaginationAvailable:
+      typeof sourceCoverage?.paginationAvailable === 'boolean'
+        ? sourceCoverage.paginationAvailable
+        : null,
+    sourceTotalCountAvailable:
+      typeof sourceCoverage?.totalCountAvailable === 'boolean'
+        ? sourceCoverage.totalCountAvailable
+        : null,
+    sourceCompleteness:
+      typeof sourceCoverage?.completeness === 'string' ? sourceCoverage.completeness : null,
+    mcpTextRowsOmitted: Number.isInteger(textProjection?.rowsOmitted)
+      ? textProjection.rowsOmitted
+      : null,
+    mcpTextDisplayNamesClipped: Number.isInteger(textProjection?.displayNamesClipped)
+      ? textProjection.displayNamesClipped
+      : null,
+    mcpTextRelationLabelsClipped: Number.isInteger(textProjection?.relationLabelsClipped)
+      ? textProjection.relationLabelsClipped
+      : null,
+    mcpTextLimitationsClipped: Number.isInteger(textProjection?.limitationsClipped)
+      ? textProjection.limitationsClipped
+      : null,
     visibleSourceRows: validRows.length,
     invalidSourceRowsCount: sourceItems.length - validRows.length,
     duplicateSourceRowsCount,
@@ -168,9 +213,13 @@ export function verifyG20DirectRelationsAnswer(
     unmatchedRowsCount,
     duplicateAnswerRowsCount,
     unstructuredAnswerLinesCount: parsedAnswer.unstructuredAnswerLinesCount,
+    finalScopeLineVerified,
+    sourceSubjectDisclosurePresent,
     boundedSourceDisclosurePresent,
     responseCountsDisclosurePresent,
+    projectionRowsOmittedDisclosurePresent,
     omissionNotAbsenceDisclosurePresent,
+    reverseTransitiveDisclosurePresent,
     nonCanonicalOrderDisclosurePresent,
     schemaDriftDisclosurePresent,
     unsupportedCompletenessClaim,
@@ -184,7 +233,8 @@ export function verifyG20DirectRelationsAnswer(
 
 function exactQueryArguments(value, subjectId) {
   const argumentsObject = unwrapArguments(value);
-  if (!argumentsObject || typeof argumentsObject !== 'object' || Array.isArray(argumentsObject)) return false;
+  if (!argumentsObject || typeof argumentsObject !== 'object' || Array.isArray(argumentsObject))
+    return false;
   return (
     subjectId === FIXED_G20_SUBJECT_ID &&
     Object.keys(argumentsObject).sort().join('\u0000') === 'includeEvidence\u0000subjectId' &&
@@ -197,13 +247,16 @@ function parseAnswer(answer) {
   const rows = [];
   const scopeLines = [];
   let unstructuredAnswerLinesCount = 0;
+  let scopeLineIsFinal = false;
   for (const rawLine of answer.split(/\r?\n/u)) {
     const line = rawLine.trim();
     if (!line) continue;
     if (SCOPE_LINE.test(line)) {
       scopeLines.push(line.replace(SCOPE_LINE, '').trim());
+      scopeLineIsFinal = true;
       continue;
     }
+    scopeLineIsFinal = false;
     const columns = line.split(ROW_SEPARATOR).map((column) => column.trim());
     if (columns.length !== 3 || columns.some((column) => !column)) {
       unstructuredAnswerLinesCount += 1;
@@ -216,7 +269,7 @@ function parseAnswer(answer) {
     }
     rows.push({ id: Number(idMatch[1]), title: columns[1], relation: columns[2] });
   }
-  return { rows, scopeLines, unstructuredAnswerLinesCount };
+  return { rows, scopeLines, scopeLineIsFinal, unstructuredAnswerLinesCount };
 }
 
 function normalizeSourceRow(item) {
@@ -230,7 +283,9 @@ function normalizeSourceRow(item) {
   const valid =
     item &&
     Number.isInteger(item.id) &&
+    item.id > 0 &&
     typeof item.relation === 'string' &&
+    item.relation.trim().length > 0 &&
     names.length > 0;
   return valid ? { valid: true, id: item.id, names, relation: item.relation } : { valid: false };
 }
@@ -238,23 +293,48 @@ function normalizeSourceRow(item) {
 function hasBoundedSourceDisclosure(scopeText) {
   return (
     /(?:本次|当前|这一响应|来源条目)/u.test(scopeText) &&
+    /官方\s*v0/iu.test(scopeText) &&
     /(?:直接关系|直接行)/u.test(scopeText) &&
     /(?:无分页|没有分页)/u.test(scopeText) &&
     /(?:无总数|没有总数|未提供总数)/u.test(scopeText) &&
-    /(?:不能据此(?:认定|证明|确认)|不保证|不代表).{0,14}(?:完整|全集|全系列)/u.test(
-      scopeText,
-    )
+    /(?:不能据此(?:认定|证明|确认)|不保证|不代表).{0,14}(?:完整|全集|全系列)/u.test(scopeText)
   );
 }
 
-function hasResponseCountsDisclosure(scopeText, expectedCount) {
-  if (!Number.isInteger(expectedCount)) return false;
-  const countPattern = new RegExp(`(?:返回|观察(?:到)?|共)\\s*${expectedCount}\\s*(?:条|行)`, 'u');
-  return countPattern.test(scopeText);
+function hasSourceSubjectDisclosure(scopeText, subjectId) {
+  if (!Number.isInteger(subjectId) || subjectId <= 0) return false;
+  return new RegExp(`来源条目\\s*${subjectId}(?!\\d)`, 'u').test(scopeText);
+}
+
+function hasResponseCountsDisclosure(scopeText, observedCount, returnedCount) {
+  if (
+    !Number.isInteger(observedCount) ||
+    observedCount < 0 ||
+    !Number.isInteger(returnedCount) ||
+    returnedCount < 0
+  ) {
+    return false;
+  }
+  const observedPattern = new RegExp(`观察(?:到)?\\s*${observedCount}\\s*行`, 'u');
+  const returnedPattern = new RegExp(`返回\\s*${returnedCount}\\s*条`, 'u');
+  return observedPattern.test(scopeText) && returnedPattern.test(scopeText);
+}
+
+function hasRowsOmittedDisclosure(scopeText, rowsOmitted) {
+  if (!Number.isInteger(rowsOmitted) || rowsOmitted < 0) return false;
+  if (rowsOmitted === 0) return true;
+  const omittedPattern = new RegExp(`MCP文本视图省略(?:了)?\\s*${rowsOmitted}\\s*行`, 'u');
+  return omittedPattern.test(scopeText);
 }
 
 function hasOmissionNotAbsenceDisclosure(scopeText) {
   return /(?:未(?:返回|显示|列出|观察到).{0,12}(?:不代表|不等于|不足以|不能据此).{0,10}(?:不存在|没有)|未返回关系不等于不存在)/u.test(
+    scopeText,
+  );
+}
+
+function hasReverseTransitiveDisclosure(scopeText) {
+  return /(?:不含|不包括|不包含|不涉及)[^。！？\n]{0,8}反向[^。！？\n]{0,8}(?:和|及|与|或)[^。！？\n]{0,8}传递关系/u.test(
     scopeText,
   );
 }
@@ -267,17 +347,11 @@ function hasNonCanonicalOrderDisclosure(scopeText) {
 
 function hasSchemaDriftDisclosure(scopeText, count) {
   if (!Number.isInteger(count) || count <= 0) return false;
-  const countPattern = new RegExp(`(?:解析|格式异常|schema.?drift)[^。！？\\n]{0,20}${count}\\s*(?:条|行)`, 'iu');
-  return countPattern.test(scopeText);
-}
-
-function projectionHasOmissions(textResult) {
-  const projection = textResult?.textProjection;
-  return (
-    (Number.isInteger(projection?.rowsOmitted) && projection.rowsOmitted > 0) ||
-    (Number.isInteger(projection?.displayNamesClipped) && projection.displayNamesClipped > 0) ||
-    (Number.isInteger(projection?.relationLabelsClipped) && projection.relationLabelsClipped > 0)
+  const countPattern = new RegExp(
+    `(?:解析|格式异常|schema.?drift)[^。！？\\n]{0,20}${count}\\s*(?:条|行)`,
+    'iu',
   );
+  return countPattern.test(scopeText);
 }
 
 function isTextProjectionConsistent(textResult, fullResult) {
@@ -365,7 +439,8 @@ function findStructuredRelationsResult(value) {
     if (visited.has(candidate)) continue;
     visited.add(candidate);
     if (Array.isArray(candidate)) {
-      for (const item of candidate.slice(0, 100)) pending.push({ value: item, depth: current.depth + 1 });
+      for (const item of candidate.slice(0, 100))
+        pending.push({ value: item, depth: current.depth + 1 });
       continue;
     }
     if (isDirectRelationsResult(candidate.structuredContent)) return candidate.structuredContent;
@@ -388,7 +463,8 @@ function findTextProjectionResult(value) {
     if (visited.has(candidate)) continue;
     visited.add(candidate);
     if (Array.isArray(candidate)) {
-      for (const item of candidate.slice(0, 100)) pending.push({ value: item, depth: current.depth + 1 });
+      for (const item of candidate.slice(0, 100))
+        pending.push({ value: item, depth: current.depth + 1 });
       continue;
     }
     if (isDirectRelationsResult(candidate) && candidate.textProjection) return candidate;

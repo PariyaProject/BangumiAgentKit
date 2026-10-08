@@ -1125,15 +1125,17 @@
         "scripts/acceptance/g20-direct-relations-answer-check.mjs",
         "tests/integration/tool-catalog-completeness.test.ts",
         "tests/integration/mcp-result-presenter.test.ts",
-        "tests/unit/g20-direct-relations-answer-check.test.ts"
+        "tests/unit/g20-direct-relations-answer-check.test.ts",
+        "scripts/acceptance/run-g20-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-g20-agent-mcp-report.mjs",
+        "tests/unit/g20-codex-agent-mcp-runner.test.ts",
+        "scripts/generate-tool-acceptance-tasks.py"
       ],
-      "next_action": "Run #95 G20 now offers an opt-in includeEvidence=true envelope while preserving the legacy relation-array output by default. Evidence mode records source-directed official-v0 rows, exact labels, response counts, schema-drift omissions, non-pagination/non-total limits, and an MCP text projection with omission counts plus full structuredContent. The offline G20 checker verifies exact direct row IDs/names/labels, source scope, coverage disclosures, no unsupported completeness/reverse/canonical-order claims, and requires every returned row through full structuredContent or complete unclipped MCP text; omitted rows without the full payload fail readback. Focused MCP/registry tests pass 24/24; G20 checker tests pass 9/9; typecheck and lint pass. Keep PARTIAL until one exact-Candidate, exact-head CI, candidate:check-gated anonymous one-tool get_subject_relations Agent/MCP query with includeEvidence=true has readable matching result evidence. If readback fails, keep PARTIAL and do not retry. This direct response still cannot establish a complete franchise or official watch order.",
+      "next_action": "Run #95 has a dedicated GPT-6 Luna Max one-tool runner, exact Candidate/current-master/Harness review-PASS preflight, and canonical plus PariyaAgent local create-new one-shot claims. The one anonymous get_subject_relations call with includeEvidence=true is still unrun; run it only once after exact-head CI, candidate:check, and reviewer PASS. The sanitized report must match the established codex_cli_mcp_tool_use acceptance schema so the current-source matrix can count it. On any unreadable or inconclusive result, retain PARTIAL and never retry. Even a pass cannot prove a complete franchise, reverse edges, or official viewing order.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
-        "capabilities": [
-          "bangumi.get_subject_relations"
-        ],
+        "capabilities": ["bangumi.get_subject_relations"],
         "tests": [
           "tests/integration/tool-catalog-completeness.test.ts",
           "tests/integration/mcp-result-presenter.test.ts",
@@ -1150,7 +1152,9 @@
           "source_scope_and_limits_precede_rows": true,
           "omitted_rows_and_clipped_fields_counted": true,
           "full_structured_content_preserved": true,
-          "live_agent_mcp_evidence": "pending exact Candidate, CI, and Harness candidate gate"
+          "live_agent_mcp_evidence": "pending one exact Candidate after current-base CI, Harness candidate gate, and recorded GPT-6 Luna Max review PASS; query not run",
+          "raw_answer_or_result_persisted": false,
+          "acceptance_report_schema": "codex_cli_mcp_tool_use with sanitized direct rows, source/coverage counts, text projection counts, and answer counters only"
         },
         "answer_checker": {
           "script": "scripts/acceptance/g20-direct-relations-answer-check.mjs",
@@ -1164,9 +1168,42 @@
             "no unsupported completeness, absence, reverse-edge, or canonical-order claim"
           ],
           "raw_answer_or_result_persisted": false,
-          "live_query": "not run"
+          "live_query": "not run",
+          "coverage_counters": [
+            "sourceResponseRowsObserved",
+            "sourceRowsReturned",
+            "sourceSchemaDriftRows",
+            "sourceTruncated",
+            "sourcePaginationAvailable",
+            "sourceTotalCountAvailable",
+            "sourceCompleteness",
+            "mcpTextRowsOmitted",
+            "mcpTextDisplayNamesClipped",
+            "mcpTextRelationLabelsClipped",
+            "mcpTextLimitationsClipped"
+          ]
         },
-        "status_boundary": "G20 remains PARTIAL. Offline contract, output, and checker regressions do not prove a current natural-language Agent/MCP answer, an exhaustive franchise graph, or an official watch order."
+        "status_boundary": "G20 remains PARTIAL. Offline contract, output, and checker regressions do not prove a current natural-language Agent/MCP answer, an exhaustive franchise graph, or an official watch order.",
+        "agent_mcp_runner": {
+          "runner": "scripts/acceptance/run-g20-codex-agent-mcp.mjs",
+          "report_writer": "scripts/acceptance/write-g20-agent-mcp-report.mjs",
+          "offline_tests": [
+            "tests/unit/g20-codex-agent-mcp-runner.test.ts",
+            "tests/unit/g20-direct-relations-answer-check.test.ts"
+          ],
+          "tool": "bangumi.get_subject_relations",
+          "fixed_arguments": {
+            "subjectId": 227245,
+            "includeEvidence": true
+          },
+          "model": "gpt-6-luna",
+          "reasoning_effort": "max",
+          "requires_active_epoch_exact_candidate": true,
+          "requires_current_master_ci_candidate_gate_and_recorded_review_pass": true,
+          "create_new_canonical_and_local_one_shot_claims": true,
+          "inconclusive_query_retry": "never",
+          "report_persists_answer_or_raw_tool_result": false
+        }
       }
     },
     {

@@ -5,7 +5,9 @@ import { verifyG20DirectRelationsAnswer } from '../../scripts/acceptance/g20-dir
 
 const subjectId = 227245;
 const queryArguments = { subjectId, includeEvidence: true };
-const toolCalls = [{ name: 'bangumi.get_subject_relations', state: 'DONE', arguments: queryArguments }];
+const toolCalls = [
+  { name: 'bangumi.get_subject_relations', state: 'DONE', arguments: queryArguments },
+];
 
 function makeResult(options: { many?: boolean; schemaDriftRows?: number } = {}) {
   const count = options.many ? 60 : 2;
@@ -54,16 +56,20 @@ function makeToolOutput(result = makeResult()) {
   );
   return {
     content: [{ type: 'text', text: presentation.text }],
-    ...(presentation.structuredContent ? { structuredContent: presentation.structuredContent } : {}),
+    ...(presentation.structuredContent
+      ? { structuredContent: presentation.structuredContent }
+      : {}),
   };
 }
 
 function makeAnswer(result = makeResult()) {
   const rows = result.items.map((item) => `${item.id}｜${item.nameCn}｜${item.relation}`);
-  const returnedCount = result.coverage.responseRowsObserved;
+  const projection = JSON.parse(makeToolOutput(result).content[0]!.text).textProjection;
+  const omittedRowsDisclosure =
+    projection.rowsOmitted > 0 ? `；MCP文本视图省略 ${projection.rowsOmitted} 行` : '';
   return [
     ...rows,
-    `范围：本次官方 v0 响应对来源条目 ${subjectId} 观察 ${returnedCount} 行，返回 ${result.coverage.rowsReturned} 条直接关系；此操作无分页、无总数，不能据此认定全系列完整；未返回关系不等于不存在，也不含反向或传递关系。关系接口顺序不是官方观看顺序。${
+    `范围：本次官方 v0 响应对来源条目 ${subjectId} 观察到 ${result.coverage.responseRowsObserved} 行，返回 ${result.coverage.rowsReturned} 条直接关系${omittedRowsDisclosure}；此操作无分页、无总数，不能据此认定全系列完整；未返回关系不等于不存在，也不含反向或传递关系。关系接口顺序不是官方观看顺序。${
       result.coverage.schemaDriftRows > 0 ? `解析遗漏 ${result.coverage.schemaDriftRows} 条。` : ''
     }`,
   ].join('\n');
@@ -88,7 +94,9 @@ function check(
 describe('G20 direct subject-relation answer checks', () => {
   it('matches every returned target and raw relation label with source and response-only scope', () => {
     const result = makeResult();
-    expect(check(makeAnswer(result), queryArguments, toolCalls, makeToolOutput(result))).toMatchObject({
+    expect(
+      check(makeAnswer(result), queryArguments, toolCalls, makeToolOutput(result)),
+    ).toMatchObject({
       queryArgumentsMatch: true,
       exactSingleToolCall: true,
       resultReadbackAvailable: true,
@@ -98,16 +106,51 @@ describe('G20 direct subject-relation answer checks', () => {
       textProjectionConsistent: true,
       textBudgetVerified: true,
       visibleSourceRows: 2,
+      sourceResponseRowsObserved: 2,
+      sourceRowsReturned: 2,
+      sourceSchemaDriftRows: 0,
+      sourceTruncated: false,
+      sourcePaginationAvailable: false,
+      sourceTotalCountAvailable: false,
+      sourceCompleteness: 'not_provided_by_source',
+      mcpTextRowsOmitted: 0,
       rowsMatched: 2,
       missingRowsCount: 0,
       mismatchedRowsCount: 0,
       boundedSourceDisclosurePresent: true,
       responseCountsDisclosurePresent: true,
+      finalScopeLineVerified: true,
+      sourceSubjectDisclosurePresent: true,
+      projectionRowsOmittedDisclosurePresent: true,
       omissionNotAbsenceDisclosurePresent: true,
+      reverseTransitiveDisclosurePresent: true,
       nonCanonicalOrderDisclosurePresent: true,
       schemaDriftDisclosurePresent: true,
       passed: true,
     });
+  });
+
+  it('requires the unreturned-relations caveat even when the MCP text view is complete', () => {
+    const result = makeResult();
+    const output = makeToolOutput(result);
+    const projection = JSON.parse(output.content[0]!.text).textProjection;
+    const answerWithoutCaveat = makeAnswer(result).replace('未返回关系不等于不存在，', '');
+    const resultCheck = check(answerWithoutCaveat, queryArguments, toolCalls, output);
+
+    expect(projection.rowsOmitted).toBe(0);
+    expect(projection.displayNamesClipped).toBe(0);
+    expect(projection.relationLabelsClipped).toBe(0);
+    expect(resultCheck.omissionNotAbsenceDisclosurePresent).toBe(false);
+    expect(resultCheck.passed).toBe(false);
+  });
+
+  it('requires an explicit reverse/transitive exclusion disclosure', () => {
+    const result = makeResult();
+    const answerWithoutDisclosure = makeAnswer(result).replace('也不含反向或传递关系。', '');
+    const resultCheck = check(answerWithoutDisclosure);
+
+    expect(resultCheck.reverseTransitiveDisclosurePresent).toBe(false);
+    expect(resultCheck.passed).toBe(false);
   });
 
   it('rejects changed names or labels, omitted rows, duplicates, and unstructured answer text', () => {
@@ -134,20 +177,53 @@ describe('G20 direct subject-relation answer checks', () => {
     expect(check(prose).passed).toBe(false);
   });
 
+  it('requires one final scope line with the exact source ID and both response counts', () => {
+    const result = makeResult();
+    const answer = makeAnswer(result);
+    const lines = answer.split('\n');
+    const scopeLine = lines.pop()!;
+    const misplaced = [scopeLine, ...lines].join('\n');
+    const repeated = [...lines, scopeLine, scopeLine].join('\n');
+    const wrongSource = answer.replace(`来源条目 ${subjectId}`, `来源条目 ${subjectId + 1}`);
+    const missingObserved = answer.replace(
+      `观察到 ${result.coverage.responseRowsObserved} 行，`,
+      '观察到若干行，',
+    );
+    const wrongReturned = answer.replace(
+      `返回 ${result.coverage.rowsReturned} 条`,
+      `返回 ${result.coverage.rowsReturned + 1} 条`,
+    );
+
+    expect(check(misplaced).finalScopeLineVerified).toBe(false);
+    expect(check(repeated).finalScopeLineVerified).toBe(false);
+    expect(check(wrongSource).sourceSubjectDisclosurePresent).toBe(false);
+    expect(check(missingObserved).responseCountsDisclosurePresent).toBe(false);
+    expect(check(wrongReturned).responseCountsDisclosurePresent).toBe(false);
+    expect(check(misplaced).passed).toBe(false);
+    expect(check(repeated).passed).toBe(false);
+    expect(check(wrongSource).passed).toBe(false);
+    expect(check(missingObserved).passed).toBe(false);
+    expect(check(wrongReturned).passed).toBe(false);
+  });
+
   it('rejects extra or mismatched query arguments and more than one target tool call', () => {
     const wrongArguments = { ...queryArguments, limit: 20 };
     const legacyDefaultArguments = { subjectId };
     const otherSubject = { subjectId: subjectId + 1, includeEvidence: true };
-    const wrongRecordedArguments = [{
-      ...toolCalls[0],
-      arguments: { ...queryArguments, subjectId: subjectId + 1 },
-    }];
+    const wrongRecordedArguments = [
+      {
+        ...toolCalls[0],
+        arguments: { ...queryArguments, subjectId: subjectId + 1 },
+      },
+    ];
     const multipleCalls = [...toolCalls, ...toolCalls];
 
     expect(check(makeAnswer(), wrongArguments).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), legacyDefaultArguments).queryArgumentsMatch).toBe(false);
     expect(check(makeAnswer(), otherSubject).queryArgumentsMatch).toBe(false);
-    expect(check(makeAnswer(), queryArguments, wrongRecordedArguments).exactSingleToolCall).toBe(false);
+    expect(check(makeAnswer(), queryArguments, wrongRecordedArguments).exactSingleToolCall).toBe(
+      false,
+    );
     expect(check(makeAnswer(), queryArguments, multipleCalls).exactSingleToolCall).toBe(false);
   });
 
@@ -198,16 +274,56 @@ describe('G20 direct subject-relation answer checks', () => {
     const answer = makeAnswer(result);
     const omitted = projection.textProjection.rowsOmitted > 0;
     const omissionDisclosure = answer.includes('未返回关系不等于不存在');
+    const exactOmittedRowsDisclosure = answer.includes(
+      `MCP文本视图省略 ${projection.textProjection.rowsOmitted} 行`,
+    );
     const resultCheck = check(answer, queryArguments, toolCalls, output);
+    const missingCount = answer.replace(
+      `；MCP文本视图省略 ${projection.textProjection.rowsOmitted} 行`,
+      '',
+    );
+    const wrongCount = answer.replace(
+      `MCP文本视图省略 ${projection.textProjection.rowsOmitted} 行`,
+      `MCP文本视图省略 ${projection.textProjection.rowsOmitted + 1} 行`,
+    );
 
     expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(3600);
     expect(projection.textProjection.fullStructuredContentAvailable).toBe(true);
     expect(projection.textProjection.rowsOmitted).toBeGreaterThan(0);
     expect(omitted).toBe(true);
     expect(omissionDisclosure).toBe(true);
+    expect(exactOmittedRowsDisclosure).toBe(true);
     expect(resultCheck.textProjectionConsistent).toBe(true);
+    expect(resultCheck.mcpTextRowsOmitted).toBeGreaterThan(0);
+    expect(resultCheck.projectionRowsOmittedDisclosurePresent).toBe(true);
     expect(resultCheck.omissionNotAbsenceDisclosurePresent).toBe(true);
     expect(resultCheck.passed).toBe(true);
+    expect(check(missingCount, queryArguments, toolCalls, output).passed).toBe(false);
+    expect(check(wrongCount, queryArguments, toolCalls, output).passed).toBe(false);
+  });
+
+  it('rejects invalid rows that are present in the readback but cannot be safely rendered', () => {
+    const result = makeResult();
+    result.items.push({
+      id: 7001,
+      type: 'anime',
+      name: 'Invalid row',
+      nameCn: 'Invalid row',
+      relation: '   ',
+    } as (typeof result.items)[number]);
+    result.coverage.responseRowsObserved += 1;
+    result.coverage.rowsReturned += 1;
+    const output = makeToolOutput(result);
+    const checkResult = verifyG20DirectRelationsAnswer(
+      makeAnswer(result),
+      queryArguments,
+      output,
+      [...toolCalls],
+      Buffer.byteLength(output.content[0]!.text, 'utf8'),
+    );
+
+    expect(checkResult.invalidSourceRowsCount).toBe(1);
+    expect(checkResult.passed).toBe(false);
   });
 
   it('marks source schema drift as partial and requires its exact skipped-row count', () => {
@@ -267,7 +383,11 @@ describe('G20 direct subject-relation answer checks', () => {
 
     expect(run.status).toBe(0);
     expect(run.stderr).toBe('');
-    expect(JSON.parse(run.stdout)).toMatchObject({ passed: true, visibleSourceRows: 2, rowsMatched: 2 });
+    expect(JSON.parse(run.stdout)).toMatchObject({
+      passed: true,
+      visibleSourceRows: 2,
+      rowsMatched: 2,
+    });
     expect(run.stdout).not.toContain('来源作品');
     expect(run.stdout).not.toContain('前传');
   });
