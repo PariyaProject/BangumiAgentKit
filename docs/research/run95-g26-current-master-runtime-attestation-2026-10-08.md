@@ -27,3 +27,9 @@ After the exact Candidate/Base, seven mandatory exact-SHA CI checks, Harness rea
 The local claim remains `CLAIMED`, bound to Candidate `9a91881f29f6afb5973466be808dbf3a5f874525`; it has no execution summary. The sanitized report is absent. No Codex model call, MCP event, or Bangumi API request occurred. Keep G26 `UNASSESSED`; do not delete or rewrite the claim, rerun the runner, or make another G26 query.
 
 The runner now resolves each path through its nearest existing ancestor before comparing physical paths, after validating both requested paths against the local Git-metadata boundary. When canonical and mirror paths alias, it creates and tracks only the canonical claim. A symlink regression verifies one file is created and a second claim attempt is rejected. This is runner-safety evidence only and does not change G26 acceptance coverage.
+
+## Review #2 correction — physical checkout boundary
+
+Independent GPT-6 Luna Max review #2 found that the first alias fix still used lexical paths for the checkout/Git-metadata containment check. An external symlink could therefore point a requested mirror path into the checkout and pass that boundary check. Harness recorded finding `G26-CLAIM-PHYSICAL-BOUNDARY` as P2 and moved PR #112 to `CORRECTIVE_REQUIRED`.
+
+The correction now resolves the requested claim path, checkout root, and Git common directory through their nearest existing ancestors before checking containment with `path.relative`. Paths physically inside the checkout remain allowed only inside the Git common directory. A new regression points an external symlink at the checkout's existing `docs` directory and verifies rejection occurs before either claim is created; the `/tmp` and `/private/tmp` alias regression remains. Focused G26 runner tests pass 12/12. The original G26 claim remains untouched and no model/MCP/API call occurred.

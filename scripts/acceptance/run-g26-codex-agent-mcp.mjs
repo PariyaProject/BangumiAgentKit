@@ -310,16 +310,37 @@ function writeClaim(claimPath, state) {
   renameSync(temporaryPath, claimPath);
 }
 
+function physicalPathForComparison(absolutePath) {
+  let existingAncestor = absolutePath;
+  const missingSegments = [];
+  while (!existsSync(existingAncestor)) {
+    const parent = path.dirname(existingAncestor);
+    if (parent === existingAncestor) return absolutePath;
+    missingSegments.unshift(path.basename(existingAncestor));
+    existingAncestor = parent;
+  }
+  return path.join(realpathSync.native(existingAncestor), ...missingSegments);
+}
+
+function isPathWithin(candidatePath, parentPath) {
+  const relativePath = path.relative(parentPath, candidatePath);
+  return (
+    relativePath === '' ||
+    (relativePath !== '..' &&
+      !relativePath.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relativePath))
+  );
+}
+
 function assertSafeOneShotClaimPath(claimPath) {
   const absoluteClaimPath = path.resolve(claimPath);
   const absoluteRoot = path.resolve(ROOT);
   const gitCommonDirectory = path.resolve(ROOT, gitText(['rev-parse', '--git-common-dir']));
-  const insideCheckout =
-    absoluteClaimPath === absoluteRoot ||
-    absoluteClaimPath.startsWith(`${absoluteRoot}${path.sep}`);
-  const insideGitMetadata =
-    absoluteClaimPath === gitCommonDirectory ||
-    absoluteClaimPath.startsWith(`${gitCommonDirectory}${path.sep}`);
+  const physicalClaimPath = physicalPathForComparison(absoluteClaimPath);
+  const physicalRoot = physicalPathForComparison(absoluteRoot);
+  const physicalGitCommonDirectory = physicalPathForComparison(gitCommonDirectory);
+  const insideCheckout = isPathWithin(physicalClaimPath, physicalRoot);
+  const insideGitMetadata = isPathWithin(physicalClaimPath, physicalGitCommonDirectory);
   if (!path.isAbsolute(claimPath) || (insideCheckout && !insideGitMetadata)) {
     throw new Error(
       'G26 one-shot claim must be absolute and outside the Product working tree, except local Git metadata.',
@@ -365,18 +386,6 @@ export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
     throw new Error('G26 one-shot claim already exists; refusing to invoke Codex again.');
   }
   return claim;
-}
-
-function physicalPathForComparison(absolutePath) {
-  let existingAncestor = absolutePath;
-  const missingSegments = [];
-  while (!existsSync(existingAncestor)) {
-    const parent = path.dirname(existingAncestor);
-    if (parent === existingAncestor) return absolutePath;
-    missingSegments.unshift(path.basename(existingAncestor));
-    existingAncestor = parent;
-  }
-  return path.join(realpathSync.native(existingAncestor), ...missingSegments);
 }
 
 export function createOneShotClaims({

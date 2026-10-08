@@ -329,6 +329,30 @@ describe('G26 Codex one-tool runner', () => {
     }
   });
 
+  it('rejects an external symlink that redirects a claim into the product checkout', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-claim-boundary-test-'));
+    const checkoutRoot = gitRepositoryText(process.cwd(), ['rev-parse', '--show-toplevel']);
+    const aliasDirectory = path.join(directory, 'checkout-docs');
+    const canonicalClaimPath = path.join(directory, 'canonical', 'claimed.json');
+    const localClaimPath = path.join(aliasDirectory, 'claimed.json');
+    symlinkSync(path.join(checkoutRoot, 'docs'), aliasDirectory, 'dir');
+
+    try {
+      expect(() =>
+        createOneShotClaims({
+          canonicalClaimPath,
+          localClaimPath,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+        }),
+      ).toThrow('outside the Product working tree, except local Git metadata');
+      expect(existsSync(canonicalClaimPath)).toBe(false);
+      expect(existsSync(localClaimPath)).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('does not create a one-shot claim when the built bundle attestation is stale', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-stale-attestation-test-'));
     const canonicalClaimPath = path.join(directory, 'canonical', 'claim.json');

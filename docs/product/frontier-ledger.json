@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-08T14:40:17.867Z",
+  "updated_at": "2026-10-08T14:52:57.107Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1298,7 +1298,7 @@
         "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md",
         "docs/research/run95-g26-current-master-runtime-attestation-2026-10-08.md"
       ],
-      "next_action": "Run #95 / PR #112 one-shot runner was invoked once after the exact Candidate CI and GPT-6 Luna Max review PASS, but stopped before Codex/MCP/API because macOS /tmp and /private/tmp spellings of the same physical claim path were compared as distinct. The canonical .git claim is CLAIMED with no execution summary; the exact report is absent. Do not delete, replace, or retry the claim. Keep G26 UNASSESSED and acceptance counts unchanged. PR #112 now fixes physical path alias comparison and adds a symlink regression. Refresh the post-PASS Candidate, require exact-SHA CI and GPT-6 Luna Max review #2, then integrate the safety correction; continue another unspent frontier without another G26 query.",
+      "next_action": "Run #95 G26 remains UNASSESSED and its one-shot claim remains CLAIMED after one runner invocation stopped before Codex/MCP/API. PR #112 review #2 identified P2 G26-CLAIM-PHYSICAL-BOUNDARY: lexical containment allowed an external symlink into the checkout. The corrective Candidate now resolves claim/root/Git common paths through nearest existing ancestors and adds a rejection-before-write symlink regression while retaining alias deduplication. The claim is preserved; never retry or edit it. Require exact-SHA CI, corrective closure, and GPT-6 Luna Max review #3 before integration. Keep acceptance counts unchanged and continue other frontiers afterward.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
