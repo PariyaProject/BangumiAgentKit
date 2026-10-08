@@ -48,7 +48,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prefer Ubuntu HTTPS package mirrors
+        run: |
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf 'https://archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://azure.archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n' \
+              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sudo tee /etc/apt/apt.conf.d/99pariya-network-timeouts >/dev/null <<'EOF'
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          Acquire::Retries "2";
+          EOF
+
       - name: Install Playwright Chromium
+        timeout-minutes: 15
         run: pnpm --filter @bangumi-agent-kit/renderer exec playwright install --with-deps chromium
 
       - name: Setup local database & environment
@@ -214,7 +227,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prefer Ubuntu HTTPS package mirrors
+        run: |
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf 'https://archive.ubuntu.com/ubuntu/\tpriority:1\nhttp://azure.archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n' \
+              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sudo tee /etc/apt/apt.conf.d/99pariya-network-timeouts >/dev/null <<'EOF'
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          Acquire::Retries "2";
+          EOF
+
       - name: Install Playwright Chromium for integration render assertions
+        timeout-minutes: 15
         run: pnpm --filter @bangumi-agent-kit/renderer exec playwright install --with-deps chromium
 
       - name: Run database migrations
