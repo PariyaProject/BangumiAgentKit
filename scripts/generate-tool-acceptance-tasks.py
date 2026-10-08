@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate the per-tool Bangumi acceptance checklist from the catalog and tests."""
 import argparse
+import base64
 import functools
 import hashlib
 import json
@@ -10,6 +11,8 @@ import re
 from pathlib import Path
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from client_evidence import tool_client_e2e_sources
@@ -275,6 +278,7 @@ CODEX_S03_EXPECTED_ARGUMENTS = {
 }
 CODEX_S03_REPORT_RELATIVE_PATH = 'docs/live-probes/s03-series-voice-overlap-agent-mcp-run95.json'
 CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/s03-mcp-bundle-attestation.json'
+CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH = 'docs/product/s03-run95-attestation-ed25519.pub'
 CODEX_D05_EXPECTED_ARGUMENTS = {
     'media': 'anime',
     'season': 'current',
@@ -428,7 +432,8 @@ CODEX_S03_ANSWER_CHECK_FIELDS = {
     'sourceOperationValid', 'answerPersonIdMatches', 'answerMatchStatusMatches',
     'answerDistinctWorkCountMatches', 'twoDistinctWorksMatched', 'expectedDirectRelationPreserved',
     'boundedCoverageValid', 'coverageMatches', 'answerRowsMatch', 'noMatchCaveatPresent',
-    'observedScopeCaveatPresent', 'noUnsupportedCompletenessClaim', 'noMarkdownFormatting',
+    'observedScopeCaveatPresent', 'careerAndCanonicalOrderCaveatsPresent',
+    'noUnsupportedCompletenessClaim', 'noMarkdownFormatting',
 }
 CODEX_S03_RESULT_COUNTER_FIELDS = {
     'distinctWorks', 'answerWorks', 'matchedCreditRows', 'personRowsObserved',
@@ -462,8 +467,8 @@ CODEX_S03_REPORT_FIELDS = {
     'rawAnswerPersisted', 'rawToolResultPersisted', 'evidenceProvenance',
 }
 CODEX_S03_PROVENANCE_FIELDS = {
-    'schemaVersion', 'kind', 'reviewerId', 'summaryPathSha256', 'serverSummarySha256',
-    'eventsSha256', 'proofSha256',
+    'schemaVersion', 'kind', 'algorithm', 'reviewerId', 'keyIdSha256', 'summaryPathSha256',
+    'serverSummarySha256', 'eventsSha256', 'proofSha256', 'signature',
 }
 CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
     'packages/bangumi-core/src/services/series-service.ts': (
@@ -484,6 +489,9 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
         'pr?.baseRefOid === currentBaseSha',
         'round1$/u.exec(review.reviewer_id)',
         'summaryPathSha256: sha256(path.resolve(summaryPath))',
+        'loadS03EvidenceSigningKey()',
+        'PARIYA_S03_EVIDENCE_SIGNING_KEY_PATH',
+        'S03 runner attestation trust:',
     ),
     'scripts/lib/s03-one-shot-authorization.mjs': (
         'function assertClaimPath(',
@@ -500,13 +508,23 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
         'verifyS03ReportClaim(',
         's03EventEvidenceSha256(',
         'evidenceProvenance.proofSha256 = sha256(canonicalJson(proofPayload))',
+        'evidenceProvenance.signature = sign(',
     ),
     'scripts/acceptance/s03-agent-answer-check.mjs': (
         'export function verifyS03VoiceActorOverlapAnswer(',
         '未命中不证明没有其他演出',
+        'careerAndCanonicalOrderCaveatsPresent',
         'Object.keys(parsedAnswer).sort()',
         'noUnsupportedCompletenessClaim: !hasUnsupportedCompletenessClaim(parsedAnswer)',
         'negatedClaimPrefix.test(clause.trim())',
+    ),
+    CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH: ('-----BEGIN PUBLIC KEY-----',),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_s03_report_provenance_is_valid(',
+        'def codex_s03_harness_control_record_trusts_attestation(',
+        'CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH',
+        'verify(null, Buffer.from(input.proofSha256',
+        'https://api.github.com/repos/PariyaProject/BangumiAgentKit/pulls/',
     ),
 }
 CODEX_S02_COVERAGE_FIELDS = {
@@ -1335,6 +1353,93 @@ def codex_s03_report_matches_candidate_revision(report_path: Path, revision: obj
     )
 
 
+def codex_s03_harness_control_record_trusts_attestation(
+    pr_number: object,
+    source_revision: object,
+    base_sha: object,
+    reviewer_id: object,
+    key_id_sha256: object,
+) -> bool:
+    """Trust an S03 key only when the exact PASS and key pin are in the GitHub Harness control plane."""
+    if (
+        type(pr_number) is not int
+        or pr_number <= 0
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not isinstance(base_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or not isinstance(reviewer_id, str)
+        or reviewer_id != f'gpt-6-luna-max-run95-s03-pr{pr_number}-round1'
+        or not isinstance(key_id_sha256, str)
+        or not re.fullmatch(r'[0-9a-f]{64}', key_id_sha256)
+    ):
+        return False
+    request = urllib.request.Request(
+        f'https://api.github.com/repos/PariyaProject/BangumiAgentKit/pulls/{pr_number}',
+        headers={
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'PariyaAgent-acceptance-evidence',
+            'X-GitHub-Api-Version': '2022-11-28',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = response.read(1_000_001)
+        if len(payload) > 1_000_000:
+            return False
+        pr = json.loads(payload)
+    except (
+        OSError,
+        TimeoutError,
+        UnicodeDecodeError,
+        urllib.error.URLError,
+        json.JSONDecodeError,
+    ):
+        return False
+    if not isinstance(pr, dict) or pr.get('number') != pr_number:
+        return False
+    body = pr.get('body')
+    if not isinstance(body, str):
+        return False
+    start_marker = '<!-- bangumi-harness:v3:epoch:start -->'
+    end_marker = '<!-- bangumi-harness:v3:epoch:end -->'
+    start = body.find(start_marker)
+    end = body.find(end_marker)
+    if start < 0 or end <= start:
+        return False
+    content = body[start + len(start_marker):end].strip()
+    content = re.sub(r'^\x60{3}json\s*|\s*\x60{3}$', '', content)
+    try:
+        epoch = json.loads(content)
+    except json.JSONDecodeError:
+        return False
+    preflight = epoch.get('adversarial_preflight') if isinstance(epoch, dict) else None
+    review_history = epoch.get('review_history') if isinstance(epoch, dict) else None
+    if not isinstance(preflight, dict) or not isinstance(review_history, list):
+        return False
+    marker = (
+        f'S03 runner attestation trust: candidate {source_revision}; '
+        f'Ed25519 public key SHA-256 {key_id_sha256}.'
+    )
+    return (
+        isinstance(epoch, dict)
+        and epoch.get('schema') == 'bangumi-harness/v3'
+        and epoch.get('kind') == 'epoch'
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_sha') == base_sha
+        and preflight.get('completed') is True
+        and marker in str(preflight.get('summary', ''))
+        and any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == source_revision
+            and review.get('reviewed_base_sha') == base_sha
+            and review.get('reviewer_id') == reviewer_id
+            and review.get('verdict') == 'PASS'
+            for review in review_history
+        )
+    )
+
+
 def codex_s03_report_provenance_is_valid(report: object) -> bool:
     if not isinstance(report, dict):
         return False
@@ -1346,14 +1451,42 @@ def codex_s03_report_provenance_is_valid(report: object) -> bool:
         or type(provenance.get('schemaVersion')) is not int
         or provenance.get('schemaVersion') != 1
         or provenance.get('kind') != 's03-runner-evidence-digest-v1'
+        or provenance.get('algorithm') != 'Ed25519'
         or type(pr_number) is not int
         or pr_number <= 0
         or provenance.get('reviewerId') != f'gpt-6-luna-max-run95-s03-pr{pr_number}-round1'
         or any(
             not isinstance(provenance.get(field), str)
             or not re.fullmatch(r'[0-9a-f]{64}', provenance[field])
-            for field in ('summaryPathSha256', 'serverSummarySha256', 'eventsSha256', 'proofSha256')
+            for field in (
+                'keyIdSha256', 'summaryPathSha256', 'serverSummarySha256',
+                'eventsSha256', 'proofSha256',
+            )
         )
+        or not isinstance(provenance.get('signature'), str)
+    ):
+        return False
+    try:
+        signature = base64.b64decode(provenance['signature'], validate=True)
+    except (ValueError, TypeError):
+        return False
+    if len(signature) != 64 or base64.b64encode(signature).decode('ascii') != provenance['signature']:
+        return False
+    source_revision = report.get('sourceRevision')
+    if not isinstance(source_revision, str) or not re.fullmatch(r'[0-9a-f]{40}', source_revision):
+        return False
+    key_result = _run_repository_git(
+        ROOT,
+        'show',
+        f'{source_revision}:{CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH}',
+    )
+    if key_result.returncode != 0:
+        return False
+    public_key_pem = key_result.stdout
+    if (
+        not public_key_pem.startswith('-----BEGIN PUBLIC KEY-----')
+        or hashlib.sha256(public_key_pem.encode('utf-8')).hexdigest()
+        != provenance['keyIdSha256']
     ):
         return False
     report_without_provenance = dict(report)
@@ -1367,12 +1500,51 @@ def codex_s03_report_provenance_is_valid(report: object) -> bool:
         'model': report.get('model'),
         'reasoningEffort': report.get('reasoningEffort'),
         'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'algorithm': provenance['algorithm'],
+        'keyIdSha256': provenance['keyIdSha256'],
         'summaryPathSha256': provenance['summaryPathSha256'],
         'serverSummarySha256': provenance['serverSummarySha256'],
         'eventsSha256': provenance['eventsSha256'],
         'reportSha256': _canonical_json_sha256(report_without_provenance),
     }
-    return provenance['proofSha256'] == _canonical_json_sha256(proof_payload)
+    if provenance['proofSha256'] != _canonical_json_sha256(proof_payload):
+        return False
+    verifier_script = (
+        'import { createPublicKey, verify } from "node:crypto";\n'
+        'import { readFileSync } from "node:fs";\n'
+        'try {\n'
+        '  const input = JSON.parse(readFileSync(0, "utf8"));\n'
+        '  const valid = verify(null, Buffer.from(input.proofSha256, "hex"), '
+        'createPublicKey(input.publicKeyPem), Buffer.from(input.signature, "base64"));\n'
+        '  process.exitCode = valid ? 0 : 1;\n'
+        '} catch { process.exitCode = 1; }\n'
+    )
+    verification_env = os.environ.copy()
+    verification_env.pop('PARIYA_S03_EVIDENCE_SIGNING_KEY_PATH', None)
+    try:
+        verification = subprocess.run(
+            ['node', '--input-type=module', '-e', verifier_script],
+            cwd=ROOT,
+            env=verification_env,
+            input=json.dumps({
+                'proofSha256': provenance['proofSha256'],
+                'publicKeyPem': public_key_pem,
+                'signature': provenance['signature'],
+            }),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return verification.returncode == 0 and codex_s03_harness_control_record_trusts_attestation(
+        pr_number,
+        source_revision,
+        report.get('baseSha'),
+        provenance['reviewerId'],
+        provenance['keyIdSha256'],
+    )
 
 
 def codex_s03_report_is_valid(report: object) -> bool:

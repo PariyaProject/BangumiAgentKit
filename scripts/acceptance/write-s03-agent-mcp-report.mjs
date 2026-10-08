@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createPublicKey, sign } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -260,6 +260,7 @@ export function writeS03AgentMcpReport(input, root = ROOT) {
   const evidenceProvenance = {
     schemaVersion: 1,
     kind: 's03-runner-evidence-digest-v1',
+    algorithm: 'Ed25519',
     reviewerId: input.reviewerId,
     summaryPathSha256: sha256(path.resolve(input.summaryPath)),
     serverSummarySha256: s03ServerSummarySha256(serverSummary),
@@ -271,6 +272,10 @@ export function writeS03AgentMcpReport(input, root = ROOT) {
       toolTextUtf8Bytes: input.toolTextUtf8Bytes,
     }),
   };
+  const publicKeyPem = createPublicKey(input.evidenceSigningKey)
+    .export({ type: 'spki', format: 'pem' })
+    .toString();
+  evidenceProvenance.keyIdSha256 = sha256(publicKeyPem);
   const proofPayload = {
     sourceRevision,
     baseSha: input.baseSha,
@@ -280,12 +285,19 @@ export function writeS03AgentMcpReport(input, root = ROOT) {
     model: MODEL,
     reasoningEffort: REASONING_EFFORT,
     expectedArgumentsSha256: report.expectedArgumentsSha256,
+    algorithm: evidenceProvenance.algorithm,
+    keyIdSha256: evidenceProvenance.keyIdSha256,
     summaryPathSha256: evidenceProvenance.summaryPathSha256,
     serverSummarySha256: evidenceProvenance.serverSummarySha256,
     eventsSha256: evidenceProvenance.eventsSha256,
     reportSha256: sha256(canonicalJson(report)),
   };
   evidenceProvenance.proofSha256 = sha256(canonicalJson(proofPayload));
+  evidenceProvenance.signature = sign(
+    null,
+    Buffer.from(evidenceProvenance.proofSha256, 'hex'),
+    input.evidenceSigningKey,
+  ).toString('base64');
   report.evidenceProvenance = evidenceProvenance;
   mkdirSync(path.dirname(reportPath), { recursive: true });
   writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, {

@@ -255,6 +255,25 @@ class PublicApiEvidenceTests(unittest.TestCase):
 
 
 class CodexModelMcpEvidenceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        keypair_script = (
+            'import { generateKeyPairSync } from "node:crypto"; '
+            'const pair = generateKeyPairSync("ed25519"); '
+            'process.stdout.write(JSON.stringify({'
+            'privateKeyPem: pair.privateKey.export({type:"pkcs8",format:"pem"}), '
+            'publicKeyPem: pair.publicKey.export({type:"spki",format:"pem"})}));'
+        )
+        keypair_result = subprocess.run(
+            ['node', '--input-type=module', '-e', keypair_script],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        keypair = json.loads(keypair_result.stdout)
+        cls.s03_test_attestation_private_key = keypair['privateKeyPem']
+        cls.s03_test_attestation_public_key = keypair['publicKeyPem']
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='codex-model-mcp-evidence-test-')
         self.root = Path(self.temp_dir.name)
@@ -350,11 +369,86 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         GENERATOR.CATALOG = self.catalog_path
         GENERATOR.LIVE_PROBE_DIR = self.live_probe_dir
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G23.json'
+        self.original_urlopen = GENERATOR.urllib.request.urlopen
+        self.s03_control_candidate_revision = self.source_revision
+        self.s03_control_base_sha = 'b' * 40
+        self.s03_control_key_sha256 = hashlib.sha256(
+            self.s03_test_attestation_public_key.encode('utf-8'),
+        ).hexdigest()
+        self.s03_control_available = True
+        GENERATOR.urllib.request.urlopen = self._fake_s03_control_urlopen
+
+    def _fake_s03_control_urlopen(self, request, timeout=10):
+        if not self.s03_control_available:
+            raise GENERATOR.urllib.error.URLError('fixture control plane unavailable')
+
+        reviewer_id = 'gpt-6-luna-max-run95-s03-pr128-round1'
+        marker = (
+            'S03 runner attestation trust: candidate '
+            f'{self.s03_control_candidate_revision}; Ed25519 public key SHA-256 '
+            f'{self.s03_control_key_sha256}.'
+        )
+        epoch = {
+            'schema': 'bangumi-harness/v3',
+            'kind': 'epoch',
+            'pr_number': 128,
+            'base_sha': self.s03_control_base_sha,
+            'adversarial_preflight': {'completed': True, 'summary': marker},
+            'review_history': [{
+                'candidate_sha': self.s03_control_candidate_revision,
+                'reviewed_base_sha': self.s03_control_base_sha,
+                'reviewer_id': reviewer_id,
+                'verdict': 'PASS',
+            }],
+        }
+        fence = chr(96) * 3
+        body = (
+            '<!-- bangumi-harness:v3:epoch:start -->\n'
+            + fence
+            + 'json\n'
+            + json.dumps(epoch)
+            + '\n'
+            + fence
+            + '\n<!-- bangumi-harness:v3:epoch:end -->'
+        )
+        payload = json.dumps({'number': 128, 'body': body}).encode('utf-8')
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exception_type, exception, traceback):
+                return False
+
+            def read(self, size=-1):
+                return payload if size < 0 else payload[:size]
+
+        return Response()
 
     def _git(self, *args):
         return subprocess.run(
             ['git', *args], cwd=self.root, check=True, capture_output=True, text=True,
         )
+
+    def _sign_s03_test_proof(self, proof_sha256):
+        signer_script = (
+            'import { createPrivateKey, sign } from "node:crypto"; '
+            'import { readFileSync } from "node:fs"; '
+            'const input = JSON.parse(readFileSync(0,"utf8")); '
+            'process.stdout.write(sign(null, Buffer.from(input.proofSha256,"hex"), '
+            'createPrivateKey(input.privateKeyPem)).toString("base64"));'
+        )
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', signer_script],
+            input=json.dumps({
+                'privateKeyPem': self.s03_test_attestation_private_key,
+                'proofSha256': proof_sha256,
+            }),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
 
     def _init_probe_source_history(self):
         relative_paths = {
@@ -375,6 +469,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             fixture_path = self.root / relative_path
             fixture_path.parent.mkdir(parents=True, exist_ok=True)
             fixture_path.write_bytes(source_path.read_bytes())
+        attestation_key_path = (
+            self.root / GENERATOR.CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH
+        )
+        attestation_key_path.parent.mkdir(parents=True, exist_ok=True)
+        attestation_key_path.write_text(self.s03_test_attestation_public_key, encoding='utf-8')
         s02_attestation_path = self.root / GENERATOR.CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH
         s02_attestation_path.parent.mkdir(parents=True, exist_ok=True)
         s02_attestation_path.write_text(json.dumps({
@@ -423,6 +522,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         GENERATOR.ROOT = self.original_root
         GENERATOR.CATALOG = self.original_catalog
         GENERATOR.LIVE_PROBE_DIR = self.original_probe_dir
+        GENERATOR.urllib.request.urlopen = self.original_urlopen
         self.temp_dir.cleanup()
 
     @staticmethod
@@ -1059,6 +1159,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
         revision = source_revision or self.source_revision
+        self.s03_control_candidate_revision = revision
         coverage = {
             'relationRowsObserved': 12,
             'eligibleDirectAnimeWorksObserved': 1,
@@ -1148,7 +1249,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         provenance = {
             'schemaVersion': 1,
             'kind': 's03-runner-evidence-digest-v1',
+            'algorithm': 'Ed25519',
             'reviewerId': 'gpt-6-luna-max-run95-s03-pr128-round1',
+            'keyIdSha256': hashlib.sha256(
+                self.s03_test_attestation_public_key.encode('utf-8'),
+            ).hexdigest(),
             'summaryPathSha256': '1' * 64,
             'serverSummarySha256': '2' * 64,
             'eventsSha256': '3' * 64,
@@ -1162,12 +1267,15 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'model': report['model'],
             'reasoningEffort': report['reasoningEffort'],
             'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'algorithm': provenance['algorithm'],
+            'keyIdSha256': provenance['keyIdSha256'],
             'summaryPathSha256': provenance['summaryPathSha256'],
             'serverSummarySha256': provenance['serverSummarySha256'],
             'eventsSha256': provenance['eventsSha256'],
             'reportSha256': GENERATOR._canonical_json_sha256(report),
         }
         provenance['proofSha256'] = GENERATOR._canonical_json_sha256(proof_payload)
+        provenance['signature'] = self._sign_s03_test_proof(provenance['proofSha256'])
         report['evidenceProvenance'] = provenance
         return report
 
@@ -1307,6 +1415,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'proofSha256': '0' * 64,
                 },
             },
+            {
+                'evidenceProvenance': {
+                    **report['evidenceProvenance'],
+                    'signature': 'A' + report['evidenceProvenance']['signature'][1:],
+                },
+            },
             {'privacy': {**report['privacy'], 'accountDataRead': True}},
             {'answer': 'raw answer must never persist'},
         ]
@@ -1325,6 +1439,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report_path, report['sourceRevision'],
             ),
         )
+
+    def test_requires_the_candidate_pass_and_trusted_key_from_harness_control_plane(self):
+        report = self._s03_report_fixture()
+        self.s03_control_key_sha256 = '0' * 64
+        self.assertFalse(GENERATOR.codex_s03_report_is_valid(report))
+
+        self.s03_control_key_sha256 = hashlib.sha256(
+            self.s03_test_attestation_public_key.encode('utf-8'),
+        ).hexdigest()
+        self.s03_control_available = False
+        self.assertFalse(GENERATOR.codex_s03_report_is_valid(report))
 
     def test_accepts_candidate_bound_sanitized_g26_report_and_partial_frontier(self):
         report_path = self.live_probe_dir / 'g26-exact-tag-agent-mcp-run95.json'

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync, verify } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,6 +31,7 @@ import {
 import * as S03AuthorizationModule from '../../scripts/lib/s03-one-shot-authorization.mjs';
 
 const tempRoots: string[] = [];
+const evidenceSigningKeyPair = generateKeyPairSync('ed25519');
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -186,7 +187,7 @@ function positiveFixture() {
     works,
     coverage,
     caveat:
-      '仅覆盖当前匿名可见、无分页的直接关系和人物角色行；未命中不证明没有其他演出；不是完整履历或官方唯一顺序。',
+      '仅覆盖当前匿名可见、无分页的直接关系和人物角色行；未命中不证明没有其他演出；不是完整履历；不是官方唯一顺序。',
   };
   const toolOutput = {
     content: [{ type: 'text', text: JSON.stringify(result) }],
@@ -201,6 +202,16 @@ function gateFixture() {
   const baseSha = 'b'.repeat(40);
   const branch = 'codex/epoch-s03-series-voice-credit-overlap';
   const prNumber = 128;
+  const attestationPublicKey = readFileSync(
+    'docs/product/s03-run95-attestation-ed25519.pub',
+    'utf8',
+  );
+  const attestationTrustMarker =
+    'S03 runner attestation trust: candidate ' +
+    candidateSha +
+    '; Ed25519 public key SHA-256 ' +
+    createHash('sha256').update(attestationPublicKey).digest('hex') +
+    '.';
   const checks = [
     'harness-control',
     'sqlite-default',
@@ -235,7 +246,10 @@ function gateFixture() {
       why_not_review_earlier: 'The exact-SHA regression suite was necessary.',
       why_not_extend_further: 'The bounded source contract closes the selected S03 scope.',
     },
-    adversarial_preflight: { completed: true, summary: 'No blocker remained.' },
+    adversarial_preflight: {
+      completed: true,
+      summary: 'No blocker remained. ' + attestationTrustMarker,
+    },
   };
   return {
     candidateSha,
@@ -350,6 +364,10 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     unsupportedTitleClaim.works[0]!.title = '完整履历';
     const unrelatedNegationClaim = structuredClone(answer);
     unrelatedNegationClaim.works[0]!.title = '这是完整履历，没有其他遗漏';
+    const causalNegationBypass = {
+      ...answer,
+      caveat: '不是完整履历，所以这是官方唯一顺序。',
+    };
     const wrongRelationResult = structuredClone(toolOutput);
     const directRelation =
       wrongRelationResult.structuredContent.voiceActorPresence.works[1]?.relationEvidence.find(
@@ -385,6 +403,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     ).toBe(false);
     expect(
       verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(missingCaveat),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.careerAndCanonicalOrderCaveatsPresent,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
         JSON.stringify(extraAnswerClaim),
         S03_EXPECTED_QUERY_ARGUMENTS,
         toolOutput,
@@ -410,6 +436,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     expect(
       verifyS03VoiceActorOverlapAnswer(
         JSON.stringify(unrelatedNegationClaim),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.noUnsupportedCompletenessClaim,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(causalNegationBypass),
         S03_EXPECTED_QUERY_ARGUMENTS,
         toolOutput,
         toolCalls,
@@ -530,6 +564,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     Reflect.deleteProperty(missingReviewer.epoch.state.review_history[0]!, 'reviewer_id');
     expect(() =>
       assertS03CandidateReviewGate(missingReviewer, fixture.pr, {
+        sourceRevision: fixture.candidateSha,
+        currentBaseSha: fixture.baseSha,
+      }),
+    ).toThrow();
+    const missingTrustRecord = structuredClone(fixture.status);
+    missingTrustRecord.epoch.state.adversarial_preflight.summary = 'No blocker remained.';
+    expect(() =>
+      assertS03CandidateReviewGate(missingTrustRecord, fixture.pr, {
         sourceRevision: fixture.candidateSha,
         currentBaseSha: fixture.baseSha,
       }),
@@ -707,6 +749,7 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     };
     const reportInput = {
       authorizationToken,
+      evidenceSigningKey: evidenceSigningKeyPair.privateKey,
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
       codexCliVersion: '1.2.14',
@@ -780,6 +823,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       serverSummarySha256: reportAuthorization.serverSummarySha256,
       eventsSha256: reportAuthorization.eventsSha256,
     });
+    expect(
+      verify(
+        null,
+        Buffer.from(report.evidenceProvenance.proofSha256, 'hex'),
+        evidenceSigningKeyPair.publicKey,
+        Buffer.from(report.evidenceProvenance.signature, 'base64'),
+      ),
+    ).toBe(true);
     expect(JSON.stringify(report)).not.toContain('间谍过家家');
   });
 
@@ -787,12 +838,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     const env = sanitizeS03CodexEnvironment({
       PATH: '/usr/bin',
       PARIYA_S03_RUN95_STATE_DIR: '/private/.git/pariya-agent-state',
+      PARIYA_S03_EVIDENCE_SIGNING_KEY_PATH: '/private/key.pem',
       BANGUMI_ACCESS_TOKEN: 'never-copy',
       OPENAI_API_KEY: 'never-copy',
       GITHUB_TOKEN: 'never-copy',
     });
     expect(env.PATH).toBe('/usr/bin');
     expect(env.PARIYA_S03_RUN95_STATE_DIR).toBeUndefined();
+    expect(env.PARIYA_S03_EVIDENCE_SIGNING_KEY_PATH).toBeUndefined();
     expect(env.BANGUMI_ACCESS_TOKEN).toBeUndefined();
     expect(env.OPENAI_API_KEY).toBeUndefined();
     expect(env.GITHUB_TOKEN).toBeUndefined();
