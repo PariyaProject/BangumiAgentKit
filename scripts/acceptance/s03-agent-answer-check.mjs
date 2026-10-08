@@ -90,10 +90,11 @@ function normalizedCredits(work) {
 function hasUnsupportedCompletenessClaim(value) {
   if (typeof value === 'string') {
     const forbiddenPhrases = /(?:完整履历|全部演出|全系列完整|官方唯一顺序)/u;
-    const explicitNegation = /(?:不是|不代表|不构成|不能证明|不等于|不意味着|未能证明|没有)/u;
+    const negatedClaimPrefix =
+      /^(?:(?:这个答案|本结果|该结果|结果|答案|这|此结果)\s*)?(?:不是|并非|不代表|不构成|不能证明|不等于|不意味着|未能证明|没有|未显示|不包含|并不代表|不能称为|尚未证明)(?:\s|$|完整履历|全部演出|全系列完整|官方唯一顺序)/u;
     return value
-      .split(/[；。]/u)
-      .some((clause) => forbiddenPhrases.test(clause) && !explicitNegation.test(clause));
+      .split(/[，,；。！？!?]|但是|不过|然而|但|却/u)
+      .some((clause) => forbiddenPhrases.test(clause) && !negatedClaimPrefix.test(clause.trim()));
   }
   if (Array.isArray(value)) return value.some(hasUnsupportedCompletenessClaim);
   if (isRecord(value)) return Object.values(value).some(hasUnsupportedCompletenessClaim);

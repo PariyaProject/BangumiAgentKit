@@ -459,7 +459,11 @@ CODEX_S03_REPORT_FIELDS = {
     'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount', 'shellToolCallCount',
     'allowedCallCount', 'deniedCallCount', 'resultStatus', 'toolCalls', 'answerCheckMethod',
     'toolTextUtf8Bytes', 'answerChecks', 'resultCounters', 'resultSummary', 'privacy',
-    'rawAnswerPersisted', 'rawToolResultPersisted',
+    'rawAnswerPersisted', 'rawToolResultPersisted', 'evidenceProvenance',
+}
+CODEX_S03_PROVENANCE_FIELDS = {
+    'schemaVersion', 'kind', 'reviewerId', 'summaryPathSha256', 'serverSummarySha256',
+    'eventsSha256', 'proofSha256',
 }
 CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
     'packages/bangumi-core/src/services/series-service.ts': (
@@ -474,15 +478,17 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/run-s03-codex-agent-mcp.mjs': (
         'assertS03CandidateReviewGate(',
         'createS03OneShotClaim(',
+        'function prepareS03ReportClaim(',
         "'features.shell_tool=false'",
         'review?.reviewed_base_sha === currentBaseSha',
         'pr?.baseRefOid === currentBaseSha',
         'round1$/u.exec(review.reviewer_id)',
+        'summaryPathSha256: sha256(path.resolve(summaryPath))',
     ),
     'scripts/lib/s03-one-shot-authorization.mjs': (
         'function assertClaimPath(',
         'const lockPath = `${claimPath}.server-call-claimed`;',
-        'export function prepareS03ReportClaim(',
+        'claim.summaryPathSha256 !== summaryPathSha256',
         'export function verifyS03ReportClaim(',
     ),
     'apps/mcp/s03-one-tool-mcp-server.mjs': (
@@ -493,12 +499,14 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-s03-agent-mcp-report.mjs': (
         'verifyS03ReportClaim(',
         's03EventEvidenceSha256(',
+        'evidenceProvenance.proofSha256 = sha256(canonicalJson(proofPayload))',
     ),
     'scripts/acceptance/s03-agent-answer-check.mjs': (
         'export function verifyS03VoiceActorOverlapAnswer(',
         '未命中不证明没有其他演出',
         'Object.keys(parsedAnswer).sort()',
         'noUnsupportedCompletenessClaim: !hasUnsupportedCompletenessClaim(parsedAnswer)',
+        'negatedClaimPrefix.test(clause.trim())',
     ),
 }
 CODEX_S02_COVERAGE_FIELDS = {
@@ -1327,9 +1335,51 @@ def codex_s03_report_matches_candidate_revision(report_path: Path, revision: obj
     )
 
 
+def codex_s03_report_provenance_is_valid(report: object) -> bool:
+    if not isinstance(report, dict):
+        return False
+    provenance = report.get('evidenceProvenance')
+    pr_number = report.get('prNumber')
+    if (
+        not isinstance(provenance, dict)
+        or set(provenance) != CODEX_S03_PROVENANCE_FIELDS
+        or type(provenance.get('schemaVersion')) is not int
+        or provenance.get('schemaVersion') != 1
+        or provenance.get('kind') != 's03-runner-evidence-digest-v1'
+        or type(pr_number) is not int
+        or pr_number <= 0
+        or provenance.get('reviewerId') != f'gpt-6-luna-max-run95-s03-pr{pr_number}-round1'
+        or any(
+            not isinstance(provenance.get(field), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', provenance[field])
+            for field in ('summaryPathSha256', 'serverSummarySha256', 'eventsSha256', 'proofSha256')
+        )
+    ):
+        return False
+    report_without_provenance = dict(report)
+    report_without_provenance.pop('evidenceProvenance', None)
+    proof_payload = {
+        'sourceRevision': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'prNumber': report.get('prNumber'),
+        'reviewerId': provenance['reviewerId'],
+        'model': report.get('model'),
+        'reasoningEffort': report.get('reasoningEffort'),
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'summaryPathSha256': provenance['summaryPathSha256'],
+        'serverSummarySha256': provenance['serverSummarySha256'],
+        'eventsSha256': provenance['eventsSha256'],
+        'reportSha256': _canonical_json_sha256(report_without_provenance),
+    }
+    return provenance['proofSha256'] == _canonical_json_sha256(proof_payload)
+
+
 def codex_s03_report_is_valid(report: object) -> bool:
     """Validate sanitized S03 Agent/MCP evidence for the fixed Luna Max call."""
     if not isinstance(report, dict) or set(report) != CODEX_S03_REPORT_FIELDS:
+        return False
+    if not codex_s03_report_provenance_is_valid(report):
         return False
     source_revision = report.get('sourceRevision')
     if (

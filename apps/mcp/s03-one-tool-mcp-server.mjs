@@ -179,6 +179,7 @@ async function main(argv = process.argv.slice(2)) {
     expectedArgumentsSha256,
     baseSha: config.baseSha,
     reviewerId: config.reviewerId,
+    summaryPathSha256: createHash('sha256').update(config.summaryPath, 'utf8').digest('hex'),
   });
 
   const catalogBytes = fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
@@ -221,6 +222,7 @@ async function main(argv = process.argv.slice(2)) {
     claimBundleSha256: claim.bundleSha256,
     claimBaseSha: claim.baseSha,
     claimReviewerId: claim.reviewerId,
+    claimSummaryPathSha256: claim.summaryPathSha256,
     catalogSha256,
     toolName: TOOL_NAME,
     toolDescriptionSha256,
@@ -269,6 +271,7 @@ async function main(argv = process.argv.slice(2)) {
           expectedArgumentsSha256,
           baseSha: config.baseSha,
           reviewerId: config.reviewerId,
+          summaryPathSha256: createHash('sha256').update(config.summaryPath, 'utf8').digest('hex'),
         });
     } catch {
       oneShotClaimed = false;

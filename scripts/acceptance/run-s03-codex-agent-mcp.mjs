@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -22,7 +22,6 @@ import {
 import { gitRepositoryText, sanitizeGitRepositoryEnvironment } from '../lib/g26-mcp-bundle.mjs';
 import { computeMcpBundleSha256, readS03McpBundleAttestation } from '../lib/s03-mcp-bundle.mjs';
 import {
-  prepareS03ReportClaim,
   s03EventEvidenceSha256,
   s03ServerSummarySha256,
 } from '../lib/s03-one-shot-authorization.mjs';
@@ -198,12 +197,12 @@ export function canonicalS03ClaimPath(
   return path.join(stateDirectory(root, configuredDirectory), 's03-run95-one-shot-claim.json');
 }
 
-export function createS03OneShotClaim(
+function createS03OneShotClaim(
   claimPath,
   sourceRevision,
   bundleSha256,
   root = ROOT,
-  { authorizationToken, baseSha, reviewerId } = {},
+  { authorizationToken, baseSha, reviewerId, summaryPath } = {},
 ) {
   if (!/^[0-9a-f]{40}$/u.test(sourceRevision) || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
     throw new Error('S03 one-shot claim must bind an exact Candidate and runtime bundle.');
@@ -211,7 +210,9 @@ export function createS03OneShotClaim(
   if (
     !/^[0-9a-f]{64}$/u.test(authorizationToken ?? '') ||
     !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
-    !/^gpt-6-luna-max-run95-s03-pr\d+-round[1-6]$/u.test(reviewerId ?? '')
+    !/^gpt-6-luna-max-run95-s03-pr\d+-round1$/u.test(reviewerId ?? '') ||
+    typeof summaryPath !== 'string' ||
+    !path.resolve(summaryPath).startsWith(`${path.resolve(os.tmpdir())}${path.sep}`)
   ) {
     throw new Error(
       'S03 one-shot claim must bind the reviewed Base and designated Luna Max reviewer.',
@@ -232,6 +233,7 @@ export function createS03OneShotClaim(
     bundleSha256,
     baseSha,
     reviewerId,
+    summaryPathSha256: sha256(path.resolve(summaryPath)),
     authorizationTokenSha256: sha256(authorizationToken),
     expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
     claimedAt: new Date().toISOString(),
@@ -504,6 +506,48 @@ function writeClaimState(claimPath, claim, state, summary) {
   renameSync(temporaryPath, claimPath);
 }
 
+function prepareS03ReportClaim(claimPath, authorizationToken, reportAuthorization) {
+  let claim;
+  try {
+    claim = JSON.parse(readFileSync(claimPath, 'utf8'));
+  } catch {
+    throw new Error('S03 report authorization requires the runner-created claim.');
+  }
+  if (
+    claim?.authorizationTokenSha256 !== sha256(authorizationToken) ||
+    claim.state !== 'SERVER_RESULT_CAPTURED' ||
+    claim.serverResultStatus !== 'SUCCESS' ||
+    claim.serverSummarySha256 !== reportAuthorization?.serverSummarySha256 ||
+    claim.sourceRevision !== reportAuthorization?.sourceRevision ||
+    claim.bundleSha256 !== reportAuthorization?.bundleSha256 ||
+    claim.baseSha !== reportAuthorization?.baseSha ||
+    claim.reviewerId !== reportAuthorization?.reviewerId ||
+    claim.summaryPathSha256 !== reportAuthorization?.summaryPathSha256
+  ) {
+    throw new Error(
+      'S03 report authorization requires the runner-captured result and fixed summary path.',
+    );
+  }
+  const unsignedClaim = {
+    ...claim,
+    state: 'REPORT_READY',
+    reportAuthorization,
+    reportReadyAt: new Date().toISOString(),
+  };
+  const reportAuthorizationProof = createHmac('sha256', authorizationToken)
+    .update(canonicalJson(unsignedClaim))
+    .digest('hex');
+  const signedClaim = { ...unsignedClaim, reportAuthorizationProof };
+  const temporaryPath = `${claimPath}.${process.pid}.tmp`;
+  writeFileSync(temporaryPath, `${JSON.stringify(signedClaim, null, 2)}\n`, {
+    encoding: 'utf8',
+    mode: 0o600,
+    flag: 'wx',
+  });
+  renameSync(temporaryPath, claimPath);
+  return signedClaim;
+}
+
 function readServerSummary(summaryPath) {
   try {
     return JSON.parse(readFileSync(summaryPath, 'utf8'));
@@ -512,7 +556,14 @@ function readServerSummary(summaryPath) {
   }
 }
 
-function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256, baseSha, reviewerId) {
+function serverSummaryMatchesCandidate(
+  summary,
+  sourceRevision,
+  bundleSha256,
+  baseSha,
+  reviewerId,
+  summaryPath,
+) {
   if (
     !summary ||
     summary.serverProfile !== 's03-one-tool-anonymous-public-v1' ||
@@ -528,6 +579,7 @@ function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256, ba
     summary.claimBundleSha256 !== bundleSha256 ||
     summary.claimBaseSha !== baseSha ||
     summary.claimReviewerId !== reviewerId ||
+    summary.claimSummaryPathSha256 !== sha256(summaryPath) ||
     summary.expectedArgumentsSha256 !== sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)) ||
     summary.argumentMatch !== true ||
     summary.allowedCallCount !== 1 ||
@@ -633,14 +685,21 @@ function runS03() {
     throw new Error('S03 query requires a passing canonical frontier:check.');
   }
 
-  const authorizationToken = randomBytes(32).toString('hex');
-  const claim = createS03OneShotClaim(claimPath, sourceRevision, bundleSha256, ROOT, {
-    authorizationToken,
-    baseSha: initialGate.baseSha,
-    reviewerId: initialGate.reviewerId,
-  });
   const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), `bgk-s03-run95-${process.pid}-`));
   const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
+  const authorizationToken = randomBytes(32).toString('hex');
+  let claim;
+  try {
+    claim = createS03OneShotClaim(claimPath, sourceRevision, bundleSha256, ROOT, {
+      authorizationToken,
+      baseSha: initialGate.baseSha,
+      reviewerId: initialGate.reviewerId,
+      summaryPath,
+    });
+  } catch (error) {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
   const safeClaimSummary = {
     codexCliVersion,
     bundleSha256,
@@ -671,6 +730,7 @@ function runS03() {
       bundleSha256,
       initialGate.baseSha,
       initialGate.reviewerId,
+      summaryPath,
     );
     const completedCall = eventsSummary.completedMcpCalls[0];
     const answerResult = verifyS03VoiceActorOverlapAnswer(
@@ -749,6 +809,7 @@ function runS03() {
       bundleSha256,
       prNumber: initialGate.prNumber,
       reviewerId: initialGate.reviewerId,
+      summaryPathSha256: sha256(path.resolve(summaryPath)),
       model: MODEL,
       reasoningEffort: REASONING_EFFORT,
       codexCliVersion,
@@ -788,6 +849,7 @@ function runS03() {
       baseSha,
       reviewerId: initialGate.reviewerId,
       claimPath,
+      summaryPath,
       serverSummary,
     });
     if (!report.passed || !report.report) {

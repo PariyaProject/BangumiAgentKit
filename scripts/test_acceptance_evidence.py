@@ -1075,7 +1075,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'maxResponseBytes': 1_048_576,
             'truncated': False,
         }
-        return {
+        report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_s03_series_voice_overlap_agent_mcp',
             'runNumber': 95,
@@ -1145,6 +1145,31 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'rawAnswerPersisted': False,
             'rawToolResultPersisted': False,
         }
+        provenance = {
+            'schemaVersion': 1,
+            'kind': 's03-runner-evidence-digest-v1',
+            'reviewerId': 'gpt-6-luna-max-run95-s03-pr128-round1',
+            'summaryPathSha256': '1' * 64,
+            'serverSummarySha256': '2' * 64,
+            'eventsSha256': '3' * 64,
+        }
+        proof_payload = {
+            'sourceRevision': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'prNumber': report['prNumber'],
+            'reviewerId': provenance['reviewerId'],
+            'model': report['model'],
+            'reasoningEffort': report['reasoningEffort'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'summaryPathSha256': provenance['summaryPathSha256'],
+            'serverSummarySha256': provenance['serverSummarySha256'],
+            'eventsSha256': provenance['eventsSha256'],
+            'reportSha256': GENERATOR._canonical_json_sha256(report),
+        }
+        provenance['proofSha256'] = GENERATOR._canonical_json_sha256(proof_payload)
+        report['evidenceProvenance'] = provenance
+        return report
 
     def _write_g26_frontier(self, status, source_refs=None):
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
@@ -1270,6 +1295,18 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {'answerChecks': {'twoDistinctWorksMatched': False}},
             {'resultCounters': {**report['resultCounters'], 'distinctWorks': 1}},
             {'resultSummary': {**report['resultSummary'], 'subjectIds': [329906]}},
+            {
+                'evidenceProvenance': {
+                    **report['evidenceProvenance'],
+                    'eventsSha256': '4' * 64,
+                },
+            },
+            {
+                'evidenceProvenance': {
+                    **report['evidenceProvenance'],
+                    'proofSha256': '0' * 64,
+                },
+            },
             {'privacy': {**report['privacy'], 'accountDataRead': True}},
             {'answer': 'raw answer must never persist'},
         ]

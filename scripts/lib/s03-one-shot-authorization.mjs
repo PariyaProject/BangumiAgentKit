@@ -95,7 +95,7 @@ export function verifyS03ServerAuthorization(claimPath, authorizationToken, expe
 function assertS03ServerClaimMatches(
   claim,
   authorizationToken,
-  { sourceRevision, bundleSha256, expectedArgumentsSha256, baseSha, reviewerId },
+  { sourceRevision, bundleSha256, expectedArgumentsSha256, baseSha, reviewerId, summaryPathSha256 },
 ) {
   assertToken(claim, authorizationToken);
   if (
@@ -106,7 +106,8 @@ function assertS03ServerClaimMatches(
     claim.bundleSha256 !== bundleSha256 ||
     claim.expectedArgumentsSha256 !== expectedArgumentsSha256 ||
     claim.baseSha !== baseSha ||
-    claim.reviewerId !== reviewerId
+    claim.reviewerId !== reviewerId ||
+    claim.summaryPathSha256 !== summaryPathSha256
   ) {
     throw new Error('S03 server authorization does not match the runner-created Candidate claim.');
   }
@@ -116,7 +117,7 @@ function assertS03ServerClaimMatches(
 export function claimS03ServerCall(
   claimPath,
   authorizationToken,
-  { sourceRevision, bundleSha256, expectedArgumentsSha256, baseSha, reviewerId },
+  { sourceRevision, bundleSha256, expectedArgumentsSha256, baseSha, reviewerId, summaryPathSha256 },
 ) {
   const claim = assertS03ServerClaimMatches(readClaim(claimPath), authorizationToken, {
     sourceRevision,
@@ -124,6 +125,7 @@ export function claimS03ServerCall(
     expectedArgumentsSha256,
     baseSha,
     reviewerId,
+    summaryPathSha256,
   });
   const lockPath = `${claimPath}.server-call-claimed`;
   if (existsSync(lockPath)) return false;
@@ -179,34 +181,6 @@ export function captureS03ServerResult(claimPath, authorizationToken, serverSumm
   };
   writeClaimAtomic(claimPath, next);
   return next;
-}
-
-export function prepareS03ReportClaim(claimPath, authorizationToken, reportAuthorization) {
-  const claim = readClaim(claimPath);
-  assertToken(claim, authorizationToken);
-  if (
-    claim.state !== 'SERVER_RESULT_CAPTURED' ||
-    claim.serverResultStatus !== 'SUCCESS' ||
-    claim.serverSummarySha256 !== reportAuthorization?.serverSummarySha256 ||
-    claim.sourceRevision !== reportAuthorization?.sourceRevision ||
-    claim.bundleSha256 !== reportAuthorization?.bundleSha256
-  ) {
-    throw new Error(
-      'S03 report authorization requires the captured result from the claimed server call.',
-    );
-  }
-  const unsignedClaim = {
-    ...claim,
-    state: 'REPORT_READY',
-    reportAuthorization,
-    reportReadyAt: new Date().toISOString(),
-  };
-  const reportAuthorizationProof = createHmac('sha256', authorizationToken)
-    .update(canonicalJson(unsignedClaim))
-    .digest('hex');
-  const signedClaim = { ...unsignedClaim, reportAuthorizationProof };
-  writeClaimAtomic(claimPath, signedClaim);
-  return signedClaim;
 }
 
 export function verifyS03ReportClaim(claimPath, authorizationToken) {

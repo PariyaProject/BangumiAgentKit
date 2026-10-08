@@ -13,13 +13,6 @@ export function buildCodexExecArgs(input: {
 }): string[];
 export function validateRunnerArgs(args: string[]): 'help' | 'run';
 export function canonicalS03ClaimPath(root?: string, configuredDirectory?: string): string;
-export function createS03OneShotClaim(
-  claimPath: string,
-  sourceRevision: string,
-  bundleSha256: string,
-  root?: string,
-  authorization: { authorizationToken: string; baseSha: string; reviewerId: string },
-): Record<string, unknown>;
 export function assertS03CandidateReviewGate(
   status: unknown,
   pr: unknown,

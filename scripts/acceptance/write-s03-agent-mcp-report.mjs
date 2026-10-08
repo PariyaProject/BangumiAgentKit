@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gitRepositoryText } from '../lib/g26-mcp-bundle.mjs';
@@ -56,6 +57,14 @@ function assertClaim(input, root, sourceRevision, bundleSha256) {
   if (typeof input?.claimPath !== 'string' || !path.isAbsolute(input.claimPath)) {
     throw new Error('S03 report requires the local create-once claim path.');
   }
+  if (
+    typeof input?.summaryPath !== 'string' ||
+    !path.isAbsolute(input.summaryPath) ||
+    !path.resolve(input.summaryPath).startsWith(`${path.resolve(os.tmpdir())}${path.sep}`)
+  ) {
+    throw new Error('S03 report requires the runner-bound temporary summary path.');
+  }
+  const summaryPathSha256 = sha256(path.resolve(input.summaryPath));
   const claimPath = path.resolve(input.claimPath);
   const claim = verifyS03ReportClaim(claimPath, input.authorizationToken);
   if (
@@ -63,7 +72,8 @@ function assertClaim(input, root, sourceRevision, bundleSha256) {
     claim.bundleSha256 !== bundleSha256 ||
     claim.expectedArgumentsSha256 !== sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)) ||
     claim.baseSha !== input.baseSha ||
-    claim.reviewerId !== input.reviewerId
+    claim.reviewerId !== input.reviewerId ||
+    claim.summaryPathSha256 !== summaryPathSha256
   ) {
     throw new Error('S03 report Candidate does not match the authenticated one-shot claim.');
   }
@@ -90,6 +100,7 @@ function assertClaim(input, root, sourceRevision, bundleSha256) {
     authorization?.codexCliVersion !== input.codexCliVersion ||
     authorization?.processExitCode !== input.processExitCode ||
     authorization?.eventStreamParsed !== input.eventStreamParsed ||
+    authorization?.summaryPathSha256 !== summaryPathSha256 ||
     authorization?.toolTextUtf8Bytes !== input.toolTextUtf8Bytes ||
     authorization?.serverSummarySha256 !== s03ServerSummarySha256(input.serverSummary) ||
     authorization?.eventsSha256 !==
@@ -246,6 +257,36 @@ export function writeS03AgentMcpReport(input, root = ROOT) {
     rawAnswerPersisted: false,
     rawToolResultPersisted: false,
   };
+  const evidenceProvenance = {
+    schemaVersion: 1,
+    kind: 's03-runner-evidence-digest-v1',
+    reviewerId: input.reviewerId,
+    summaryPathSha256: sha256(path.resolve(input.summaryPath)),
+    serverSummarySha256: s03ServerSummarySha256(serverSummary),
+    eventsSha256: s03EventEvidenceSha256({
+      eventsSummary,
+      queryArguments: input.queryArguments,
+      toolOutput: input.toolOutput,
+      answer: input.answer,
+      toolTextUtf8Bytes: input.toolTextUtf8Bytes,
+    }),
+  };
+  const proofPayload = {
+    sourceRevision,
+    baseSha: input.baseSha,
+    bundleSha256,
+    prNumber: input.prNumber,
+    reviewerId: input.reviewerId,
+    model: MODEL,
+    reasoningEffort: REASONING_EFFORT,
+    expectedArgumentsSha256: report.expectedArgumentsSha256,
+    summaryPathSha256: evidenceProvenance.summaryPathSha256,
+    serverSummarySha256: evidenceProvenance.serverSummarySha256,
+    eventsSha256: evidenceProvenance.eventsSha256,
+    reportSha256: sha256(canonicalJson(report)),
+  };
+  evidenceProvenance.proofSha256 = sha256(canonicalJson(proofPayload));
+  report.evidenceProvenance = evidenceProvenance;
   mkdirSync(path.dirname(reportPath), { recursive: true });
   writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, {
     encoding: 'utf8',

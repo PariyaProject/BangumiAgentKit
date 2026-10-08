@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,10 +8,10 @@ import {
   assertS03CandidateReviewGate,
   buildCodexExecArgs,
   canonicalS03ClaimPath,
-  createS03OneShotClaim,
   sanitizeS03CodexEnvironment,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-s03-codex-agent-mcp.mjs';
+import * as S03RunnerModule from '../../scripts/acceptance/run-s03-codex-agent-mcp.mjs';
 import {
   S03_ANSWER_CHECK_METHOD,
   S03_EXPECTED_QUERY_ARGUMENTS,
@@ -25,10 +25,10 @@ import {
 import {
   captureS03ServerResult,
   claimS03ServerCall,
-  prepareS03ReportClaim,
   s03EventEvidenceSha256,
   s03ServerSummarySha256,
 } from '../../scripts/lib/s03-one-shot-authorization.mjs';
+import * as S03AuthorizationModule from '../../scripts/lib/s03-one-shot-authorization.mjs';
 
 const tempRoots: string[] = [];
 
@@ -46,6 +46,59 @@ function canonicalJson(value: unknown): string {
 
 function sha256(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function writeClaimFixture(input: {
+  claimPath: string;
+  candidateSha: string;
+  bundleSha256: string;
+  authorizationToken: string;
+  baseSha: string;
+  reviewerId: string;
+  summaryPath: string;
+}) {
+  const claim = {
+    schemaVersion: 1,
+    runNumber: 95,
+    frontierId: 'S03',
+    state: 'CLAIMED',
+    sourceRevision: input.candidateSha,
+    bundleSha256: input.bundleSha256,
+    baseSha: input.baseSha,
+    reviewerId: input.reviewerId,
+    summaryPathSha256: sha256(path.resolve(input.summaryPath)),
+    authorizationTokenSha256: sha256(input.authorizationToken),
+    expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
+    claimedAt: '2026-10-08T00:00:00.000Z',
+  };
+  writeFileSync(input.claimPath, `${JSON.stringify(claim, null, 2)}\n`, {
+    encoding: 'utf8',
+    mode: 0o600,
+    flag: 'wx',
+  });
+  return claim;
+}
+
+function signReportClaimFixture(
+  claimPath: string,
+  authorizationToken: string,
+  reportAuthorization: Record<string, unknown>,
+) {
+  const claim = JSON.parse(readFileSync(claimPath, 'utf8'));
+  const unsignedClaim = {
+    ...claim,
+    state: 'REPORT_READY',
+    reportAuthorization,
+    reportReadyAt: '2026-10-08T00:01:00.000Z',
+  };
+  const reportAuthorizationProof = createHmac('sha256', authorizationToken)
+    .update(canonicalJson(unsignedClaim))
+    .digest('hex');
+  writeFileSync(
+    claimPath,
+    `${JSON.stringify({ ...unsignedClaim, reportAuthorizationProof }, null, 2)}\n`,
+    { encoding: 'utf8', mode: 0o600 },
+  );
 }
 
 function positiveFixture() {
@@ -295,6 +348,8 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     const extraAnswerClaim = { ...answer, careerSummary: '这是完整履历。' };
     const unsupportedTitleClaim = structuredClone(answer);
     unsupportedTitleClaim.works[0]!.title = '完整履历';
+    const unrelatedNegationClaim = structuredClone(answer);
+    unrelatedNegationClaim.works[0]!.title = '这是完整履历，没有其他遗漏';
     const wrongRelationResult = structuredClone(toolOutput);
     const directRelation =
       wrongRelationResult.structuredContent.voiceActorPresence.works[1]?.relationEvidence.find(
@@ -354,6 +409,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     ).toBe(false);
     expect(
       verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(unrelatedNegationClaim),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.noUnsupportedCompletenessClaim,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
         JSON.stringify(answer),
         S03_EXPECTED_QUERY_ARGUMENTS,
         toolOutput,
@@ -376,6 +439,8 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     });
 
     expect(validateRunnerArgs(['--help'])).toBe('help');
+    expect(S03RunnerModule).not.toHaveProperty('createS03OneShotClaim');
+    expect(S03AuthorizationModule).not.toHaveProperty('prepareS03ReportClaim');
     expect(validateRunnerArgs(['--run', '95'])).toBe('run');
     expect(() => validateRunnerArgs(['--run', '96'])).toThrow();
     expect(args.slice(args.indexOf('--model'), args.indexOf('--model') + 2)).toEqual([
@@ -471,16 +536,22 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     ).toThrow();
   });
 
-  it('creates one claim under Git metadata and refuses a second query attempt', () => {
+  it('consumes one canonical MCP claim and binds it to the runner summary path', () => {
     const { root, bundleSha256, candidateSha } = tempGitRoot();
     const claimPath = canonicalS03ClaimPath(root, path.join(root, '.git/pariya-agent-state'));
     const authorizationToken = 'd'.repeat(64);
     const baseSha = 'b'.repeat(40);
     const reviewerId = 'gpt-6-luna-max-run95-s03-pr128-round1';
-    const claim = createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root, {
+    const summaryPath = path.join(os.tmpdir(), 's03-summary.json');
+    const summaryPathSha256 = sha256(path.resolve(summaryPath));
+    const claim = writeClaimFixture({
+      claimPath,
+      candidateSha,
+      bundleSha256,
       authorizationToken,
       baseSha,
       reviewerId,
+      summaryPath,
     });
 
     expect(claim).toMatchObject({
@@ -491,6 +562,7 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       bundleSha256,
       baseSha,
       reviewerId,
+      summaryPathSha256,
       authorizationTokenSha256: sha256(authorizationToken),
     });
     expect(JSON.parse(readFileSync(claimPath, 'utf8'))).toMatchObject(claim);
@@ -501,6 +573,7 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
         expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
         baseSha,
         reviewerId,
+        summaryPathSha256,
       }),
     ).toBe(true);
     expect(JSON.parse(readFileSync(claimPath, 'utf8')).state).toBe('SERVER_CALL_STARTED');
@@ -511,24 +584,22 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
         expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
         baseSha,
         reviewerId,
+        summaryPathSha256,
       }),
     ).toBe(false);
     expect(() =>
-      createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root, {
-        authorizationToken,
+      claimS03ServerCall(claimPath, authorizationToken, {
+        sourceRevision: candidateSha,
+        bundleSha256,
+        expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
         baseSha,
         reviewerId,
+        summaryPathSha256: sha256(path.join(os.tmpdir(), 'alternate-summary.json')),
       }),
-    ).toThrow('already exists');
-    expect(() =>
-      createS03OneShotClaim(
-        path.join(root, 'outside-claim.json'),
-        candidateSha,
-        bundleSha256,
-        root,
-        { authorizationToken, baseSha, reviewerId },
-      ),
-    ).toThrow('local .git');
+    ).toThrow('runner-created Candidate claim');
+    expect(() => canonicalS03ClaimPath(root, path.join(root, 'outside-state'))).toThrow(
+      'local .git',
+    );
   });
 
   it('writes a sanitized exact-Candidate report without storing the raw answer or tool result', () => {
@@ -537,10 +608,16 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     const authorizationToken = 'e'.repeat(64);
     const baseSha = 'b'.repeat(40);
     const reviewerId = 'gpt-6-luna-max-run95-s03-pr128-round1';
-    createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root, {
+    const summaryPath = path.join(os.tmpdir(), 's03-report-summary.json');
+    const summaryPathSha256 = sha256(path.resolve(summaryPath));
+    writeClaimFixture({
+      claimPath,
+      candidateSha,
+      bundleSha256,
       authorizationToken,
       baseSha,
       reviewerId,
+      summaryPath,
     });
     const { answer, toolOutput, toolCalls } = positiveFixture();
     const tool = JSON.parse(readFileSync(path.join(root, 'docs/tool-catalog.json'), 'utf8'))[0];
@@ -602,6 +679,7 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
         expectedArgumentsSha256,
         baseSha,
         reviewerId,
+        summaryPathSha256,
       }),
     ).toBe(true);
     captureS03ServerResult(claimPath, authorizationToken, serverSummary);
@@ -611,6 +689,7 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       bundleSha256,
       prNumber: 128,
       reviewerId,
+      summaryPathSha256,
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
       codexCliVersion: '1.2.14',
@@ -645,15 +724,25 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       baseSha,
       reviewerId,
       claimPath,
+      summaryPath,
       serverSummary,
     };
     expect(() => writeS03AgentMcpReport(reportInput, root)).toThrow(
       'runner-authorized REPORT_READY claim',
     );
-    prepareS03ReportClaim(claimPath, authorizationToken, reportAuthorization);
+    signReportClaimFixture(claimPath, authorizationToken, reportAuthorization);
     expect(() =>
       writeS03AgentMcpReport({ ...reportInput, authorizationToken: 'f'.repeat(64) }, root),
     ).toThrow('authorization token');
+    expect(() =>
+      writeS03AgentMcpReport(
+        {
+          ...reportInput,
+          summaryPath: path.join(os.tmpdir(), 'alternate-s03-summary.json'),
+        },
+        root,
+      ),
+    ).toThrow('authenticated one-shot claim');
     expect(() =>
       writeS03AgentMcpReport(
         {
@@ -685,6 +774,12 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     });
     expect(report).not.toHaveProperty('answer');
     expect(report).not.toHaveProperty('toolOutput');
+    expect(report.evidenceProvenance).toMatchObject({
+      kind: 's03-runner-evidence-digest-v1',
+      summaryPathSha256,
+      serverSummarySha256: reportAuthorization.serverSummarySha256,
+      eventsSha256: reportAuthorization.eventsSha256,
+    });
     expect(JSON.stringify(report)).not.toContain('间谍过家家');
   });
 
