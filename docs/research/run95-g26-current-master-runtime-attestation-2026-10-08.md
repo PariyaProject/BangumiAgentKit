@@ -7,10 +7,11 @@
 
 ## Build evidence
 
-- `pnpm build`: PASS on the clean synchronized master before this documentation-only Candidate change.
+- `pnpm build`: PASS on clean synchronized master and rerun after the one-shot preclaim guard/test change; it produced the same bundle digest below.
 - `scripts/lib/g26-mcp-bundle.mjs::computeMcpBundleSha256`: `9a95f14e3b434da8ec9d88fb1121f9d21b8f319ec8a59cffd3be3477fc75cc83`
 - Previous committed G26 attestation: `1e7b390232b4903da3dfc42a669c553db06faddcd590e532b94e753e97fdcb1a` (stale after S04 updated shared source included in the runtime build).
 - `docs/product/g26-mcp-bundle-attestation.json` now binds to the built digest above. The attestation file and this report are outside the bundle hash input (`apps/mcp/dist` and `packages/*/dist`).
+- `tests/unit/g26-codex-agent-mcp-runner.test.ts`: focused run passed 10/10; `pnpm typecheck` and `pnpm lint` passed. A new regression verifies that a stale bundle digest is rejected before either canonical or mirrored one-shot claim file is created. The same assertion is used in the exact-build preflight and immediately before claim creation.
 - The fresh Run #95 G26 acceptance Epoch is selected; this note does not assert Candidate, CI, review, or live-query readiness.
 
 ## Source and safety boundary

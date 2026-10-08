@@ -14,6 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  assertG26McpBundleAttestationMatches,
   computeMcpBundleSha256,
   gitRepositoryText,
   readG26McpBundleAttestation,
@@ -253,12 +254,18 @@ function assertCleanCandidate() {
 
 function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
   try {
-    return (
-      gitText(['status', '--porcelain']) === '' &&
-      gitText(['rev-parse', 'HEAD']) === sourceRevision &&
-      computeMcpBundleSha256(ROOT) === bundleSha256 &&
-      readG26McpBundleAttestation(ROOT) === bundleSha256
+    if (
+      gitText(['status', '--porcelain']) !== '' ||
+      gitText(['rev-parse', 'HEAD']) !== sourceRevision ||
+      computeMcpBundleSha256(ROOT) !== bundleSha256
+    ) {
+      return false;
+    }
+    assertG26McpBundleAttestationMatches(
+      bundleSha256,
+      readG26McpBundleAttestation(ROOT),
     );
+    return true;
   } catch {
     return false;
   }
@@ -281,9 +288,7 @@ function buildExactCandidateBundle(sourceRevision) {
     throw new Error('Candidate changed or became dirty during the G26 runtime build.');
   }
   const bundleSha256 = computeMcpBundleSha256(ROOT);
-  if (readG26McpBundleAttestation(ROOT) !== bundleSha256) {
-    throw new Error('Built G26 MCP bundle does not match its exact-Candidate attestation.');
-  }
+  assertG26McpBundleAttestationMatches(bundleSha256, readG26McpBundleAttestation(ROOT));
   return bundleSha256;
 }
 
@@ -368,6 +373,22 @@ export function createOneShotClaims({
   if (local === canonical) return { paths: [canonical], claim: canonicalClaim };
   const localClaim = createOneShotClaim(local, sourceRevision, bundleSha256);
   return { paths: [canonical, local], claim: localClaim };
+}
+
+export function createAttestedOneShotClaims({
+  canonicalClaimPath,
+  localClaimPath,
+  sourceRevision,
+  bundleSha256,
+  attestationSha256,
+}) {
+  assertG26McpBundleAttestationMatches(bundleSha256, attestationSha256);
+  return createOneShotClaims({
+    canonicalClaimPath,
+    localClaimPath,
+    sourceRevision,
+    bundleSha256,
+  });
 }
 
 function canonicalJson(value) {
@@ -580,11 +601,12 @@ function run() {
     throw new Error('Set PARIYA_G26_RUN95_CLAIM_FILE to the local-only recovery claim path.');
   const codexCliVersion = codexVersion();
   const bundleSha256 = buildExactCandidateBundle(sourceRevision);
-  const claimPair = createOneShotClaims({
+  const claimPair = createAttestedOneShotClaims({
     canonicalClaimPath: canonicalG26ClaimPath(),
     localClaimPath,
     sourceRevision,
     bundleSha256,
+    attestationSha256: readG26McpBundleAttestation(ROOT),
   });
   const claimPaths = claimPair.paths;
   const claim = claimPair.claim;

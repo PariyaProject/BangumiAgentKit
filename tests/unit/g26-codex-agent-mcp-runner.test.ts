@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +16,7 @@ import {
   G26_EXPECTED_QUERY_ARGUMENTS,
   buildCodexExecArgs,
   canonicalG26ClaimPath,
+  createAttestedOneShotClaims,
   createOneShotClaim,
   createOneShotClaims,
   parseCodexJsonl,
@@ -276,6 +285,27 @@ describe('G26 Codex one-tool runner', () => {
       expect(() => createOneShotClaim(claimPath, 'a'.repeat(40), 'b'.repeat(64))).toThrow(
         'G26 one-shot claim already exists',
       );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not create a one-shot claim when the built bundle attestation is stale', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-stale-attestation-test-'));
+    const canonicalClaimPath = path.join(directory, 'canonical', 'claim.json');
+    const localClaimPath = path.join(directory, 'local', 'claim.json');
+    try {
+      expect(() =>
+        createAttestedOneShotClaims({
+          canonicalClaimPath,
+          localClaimPath,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+          attestationSha256: 'c'.repeat(64),
+        }),
+      ).toThrow('Built G26 MCP bundle does not match its exact-Candidate attestation.');
+      expect(existsSync(canonicalClaimPath)).toBe(false);
+      expect(existsSync(localClaimPath)).toBe(false);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

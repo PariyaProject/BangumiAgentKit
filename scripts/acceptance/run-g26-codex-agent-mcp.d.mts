@@ -52,6 +52,14 @@ export declare function createOneShotClaims(options: {
   bundleSha256: string;
 }): { paths: string[]; claim: Record<string, unknown> };
 
+export declare function createAttestedOneShotClaims(options: {
+  canonicalClaimPath: string;
+  localClaimPath: string;
+  sourceRevision: string;
+  bundleSha256: string;
+  attestationSha256: string;
+}): { paths: string[]; claim: Record<string, unknown> };
+
 export declare function summarizeCodexEvents(events: readonly unknown[]): {
   eventStreamComplete: boolean;
   codexMcpToolEventCount: number;
