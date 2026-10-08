@@ -93,6 +93,21 @@ function normalizeRange(
   return { ...(min === undefined ? {} : { min }), ...(max === undefined ? {} : { max }) };
 }
 
+function normalizeNonNegativeIntegerRange(
+  value: { min?: number; max?: number } | undefined,
+  field: string,
+  issues: string[],
+): NumericRange | undefined {
+  const range = normalizeRange(value, field, issues);
+  if (!range) return undefined;
+  for (const [bound, count] of Object.entries(range)) {
+    if (!Number.isSafeInteger(count) || count < 0) {
+      issues.push(`${field}.${bound} must be a non-negative safe integer`);
+    }
+  }
+  return range;
+}
+
 function isoDate(value: string | undefined, field: string, issues: string[]): string | undefined {
   if (value === undefined) return undefined;
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
@@ -260,6 +275,11 @@ export function normalizeDiscoveryQuery(
 
   const rating = normalizeRange(input.rating, 'rating', issues);
   const ratingCount = normalizeRange(input.ratingCount, 'ratingCount', issues);
+  const reportedEpisodeCount = normalizeNonNegativeIntegerRange(
+    input.reportedEpisodeCount,
+    'reportedEpisodeCount',
+    issues,
+  );
   const rank = normalizeRange(input.rank, 'rank', issues);
   const collectionCount = normalizeRange(input.collectionCount, 'collectionCount', issues);
   const sort = input.sort ?? 'relevance';
@@ -304,6 +324,7 @@ export function normalizeDiscoveryQuery(
     concepts,
     ...(rating === undefined ? {} : { rating }),
     ...(ratingCount === undefined ? {} : { ratingCount }),
+    ...(reportedEpisodeCount === undefined ? {} : { reportedEpisodeCount }),
     ...(rank === undefined ? {} : { rank }),
     ...(collectionCount === undefined ? {} : { collectionCount }),
     nsfw,

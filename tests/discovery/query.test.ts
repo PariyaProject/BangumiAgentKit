@@ -65,6 +65,18 @@ describe('discovery query normalization', () => {
     ).toThrow(DiscoveryValidationError);
   });
 
+  it('normalizes reported episode counts as non-negative safe integers', () => {
+    expect(normalizeDiscoveryQuery({ reportedEpisodeCount: { min: 1, max: 12 } })).toMatchObject({
+      reportedEpisodeCount: { min: 1, max: 12 },
+    });
+    expect(() => normalizeDiscoveryQuery({ reportedEpisodeCount: { max: 12.5 } })).toThrow(
+      DiscoveryValidationError,
+    );
+    expect(() => normalizeDiscoveryQuery({ reportedEpisodeCount: { min: -1 } })).toThrow(
+      DiscoveryValidationError,
+    );
+  });
+
   it('provides bounded defaults', () => {
     const query = normalizeDiscoveryQuery({ media: 'anime', limit: 10 });
     expect(query.budget).toEqual({

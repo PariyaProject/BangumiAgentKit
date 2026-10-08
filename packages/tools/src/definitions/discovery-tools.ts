@@ -14,6 +14,16 @@ const range = z
   })
   .strict();
 
+const reportedEpisodeCountRange = z
+  .object({
+    min: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+    max: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+  })
+  .strict()
+  .describe(
+    '按 Bangumi Subject.eps（旧版来源报告话数）本地筛选；不等同于 total_episodes、实际播出话数或个人观看进度，缺失值会保留为未解析并使覆盖状态变为 partial。',
+  );
+
 const discoveryQueryInputBase = z
   .object({
     keyword: z.string().max(200).optional(),
@@ -101,6 +111,7 @@ export const discoveryQueryInput = discoveryQueryInputBase
       .strict()
       .optional()
       .describe('同主排序值时的次级顺序；当前仅支持 sort=score 时按评分人数排序，默认从高到低。'),
+    reportedEpisodeCount: reportedEpisodeCountRange.optional(),
   })
   .strict()
   .superRefine(rejectTieBreakWithoutScore);
@@ -167,7 +178,7 @@ export function createDiscoveryTools() {
   const querySubjects = defineTool({
     name: 'bangumi.query_subjects',
     description:
-      '按受控条件发现 Bangumi 条目。支持媒体类型、固定季度或按 Asia/Tokyo 运行时日期解析的当前季度、日期、标签/精确概念、评分/排名/收藏人数范围、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；heat 表示当前收藏人数，不是讨论热度或历史趋势。当前季度会在执行计划中显示解析后的半开日期范围。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject。',
+      '按受控条件发现 Bangumi 条目。支持媒体类型、固定季度或按 Asia/Tokyo 运行时日期解析的当前季度、日期、标签/精确概念、评分/排名/收藏人数范围、Bangumi 来源报告话数（本地基于 Subject.eps 筛选，不等同于 total_episodes、实际播出话数或个人观看进度）、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；heat 表示当前收藏人数，不是讨论热度或历史趋势。当前季度会在执行计划中显示解析后的半开日期范围。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject。',
     input: discoveryQueryInput,
     auth: 'none',
     scopes: [],

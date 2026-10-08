@@ -64,6 +64,8 @@ export interface DiscoveryQuery {
   concepts?: readonly string[];
   rating?: NumericRangeInput;
   ratingCount?: NumericRangeInput;
+  /** Locally filters Bangumi's legacy Subject.eps field, not total_episodes. */
+  reportedEpisodeCount?: NumericRangeInput;
   rank?: NumericRangeInput;
   collectionCount?: NumericRangeInput;
   nsfw?: NsfwFilter | boolean;
@@ -103,6 +105,7 @@ export interface NormalizedDiscoveryQuery {
   concepts: string[];
   rating?: NumericRange;
   ratingCount?: NumericRange;
+  reportedEpisodeCount?: NumericRange;
   rank?: NumericRange;
   collectionCount?: NumericRange;
   nsfw: NsfwFilter;
@@ -169,6 +172,7 @@ export type DiscoveryHydrationReason =
   | 'collection_count_filter'
   | 'rating_filter'
   | 'rating_count_filter'
+  | 'reported_episode_count_filter'
   | 'rank_filter'
   | 'nsfw_filter'
   | 'date_sort'
@@ -236,6 +240,8 @@ export interface DiscoveryItem {
   score?: number;
   rank?: number;
   ratingCount?: number;
+  /** Bangumi-reported legacy Subject.eps value; never a watched or total episode count. */
+  reportedEpisodeCount?: number;
   collectionTotal?: number;
   tags: string[];
   metaTags: string[];

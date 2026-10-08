@@ -93,6 +93,40 @@ describe('discovery capability compiler', () => {
     });
   });
 
+  it('keeps reported Subject.eps filtering local while preserving exact server filters', () => {
+    const plan = compileDiscoveryPlan(
+      normalizeDiscoveryQuery({
+        media: 'anime',
+        tags: ['科幻'],
+        ratingCount: { min: 3001 },
+        reportedEpisodeCount: { max: 12 },
+        resultMode: 'all',
+      }),
+    );
+
+    expect(plan.operation).toBe('searchSubjects');
+    expect(plan.steps[0]).toMatchObject({
+      kind: 'search',
+      request: {
+        filter: { type: [2], tag: ['科幻'], ratingCount: ['>=3001'] },
+      },
+    });
+    expect(
+      plan.steps[0]?.kind === 'search' ? plan.steps[0].request.filter : undefined,
+    ).not.toHaveProperty('eps');
+    expect(plan.postFilters).toContainEqual(
+      expect.objectContaining({
+        field: 'reportedEpisodeCount',
+        classification: 'POST_FILTER',
+        value: { max: 12 },
+      }),
+    );
+    expect(plan.hydrationRequirements).toContainEqual(
+      expect.objectContaining({ reason: 'reported_episode_count_filter', fields: ['eps'] }),
+    );
+    expect(plan.limitations.join(' ')).toContain('total_episodes');
+  });
+
   it('carries the explicit score tie-break into the executable plan', () => {
     const plan = compileDiscoveryPlan(
       normalizeDiscoveryQuery({

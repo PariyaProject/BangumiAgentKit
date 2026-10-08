@@ -46,6 +46,7 @@ function canBrowse(query: NormalizedDiscoveryQuery): boolean {
     query.excludeMetaTags.length === 0 &&
     query.rating === undefined &&
     query.ratingCount === undefined &&
+    query.reportedEpisodeCount === undefined &&
     query.rank === undefined &&
     query.collectionCount === undefined &&
     query.nsfw === 'include' &&
@@ -202,6 +203,12 @@ export function compileDiscoveryPlan(
       pushdown.push(planFilter('ratingCount', operation, 'range', query.ratingCount));
       requireHydration('rating_count_filter', ['ratingCount']);
     }
+    if (query.reportedEpisodeCount) {
+      postFilters.push(
+        planFilter('reportedEpisodeCount', operation, 'range', query.reportedEpisodeCount),
+      );
+      requireHydration('reported_episode_count_filter', ['eps']);
+    }
     if (query.rank) {
       pushdown.push(planFilter('rank', operation, 'range', query.rank));
       requireHydration('rank_filter', ['rank']);
@@ -278,6 +285,12 @@ export function compileDiscoveryPlan(
           'Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.',
         ]
       : []),
+    ...(query.reportedEpisodeCount === undefined
+      ? []
+      : [
+          'reportedEpisodeCount uses the legacy source-reported Subject.eps field; it is distinct from total_episodes, aired episode count, and personal viewing progress.',
+          'Missing or invalid Subject.eps values remain unresolved and make coverage partial.',
+        ]),
     ...(query.sort === 'heat'
       ? ['heat means upstream 收藏人数 and is not a recent-trend metric.']
       : []),

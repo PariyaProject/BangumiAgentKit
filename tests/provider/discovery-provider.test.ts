@@ -24,6 +24,8 @@ describe('official v0 discovery adapter', () => {
               date: '2017-10-06',
               platform: 'TV',
               nsfw: false,
+              eps: 12,
+              total_episodes: 24,
               rating: { score: 8.2, rank: 42, total: 100 },
               collection: { wish: 1, collect: 2, doing: 3, on_hold: 4, dropped: 5 },
               tags: [{ name: '后宫' }],
@@ -58,8 +60,11 @@ describe('official v0 discovery adapter', () => {
       tags: ['后宫'],
       metaTags: ['原创'],
       collection: { collect: 2, onHold: 4 },
+      reportedEpisodeCount: 12,
     });
+    expect(result.data?.items[0]?.reportedEpisodeCount).not.toBe(24);
     expect(result.evidence?.['items[123].id']?.[0]?.source.operation).toBe('searchSubjects');
+    expect(result.evidence?.['items[123].eps']?.[0]?.fieldPath).toBe('items[123].eps');
     expect(result.evidence?.['items[123].id']?.[0]?.source.experimental).toBe(true);
     const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toMatchObject({
@@ -72,6 +77,33 @@ describe('official v0 discovery adapter', () => {
         rating_count: ['>=5000'],
       },
     });
+  });
+
+  it('leaves invalid legacy eps values unavailable instead of coercing or using total_episodes', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          total: 1,
+          limit: 20,
+          offset: 0,
+          data: [{ id: 124, type: 2, name: 'Invalid eps', eps: 12.5, total_episodes: 12 }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const provider = new OfficialV0Provider(
+      new GeneratedBangumiOpenApiClient(new HttpClient({ fetchFn })),
+    );
+
+    const result = await provider.searchSubjects({
+      keyword: '',
+      limit: 20,
+      offset: 0,
+      sort: 'match',
+    });
+
+    expect(result.state).toBe('ok');
+    expect(result.data?.items[0]?.reportedEpisodeCount).toBeUndefined();
   });
 
   it('marks database-count browse totals as exact', async () => {

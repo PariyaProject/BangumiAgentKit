@@ -112,6 +112,20 @@ function numberFor(
   return detail?.stats.ratingTotal ?? candidate.ratingCount;
 }
 
+function isReportedEpisodeCount(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function reportedEpisodeCountFor(
+  candidate: SubjectDiscoveryCandidate,
+  detail: ProviderSubjectData | undefined,
+): number | undefined {
+  if (isReportedEpisodeCount(detail?.eps)) return detail.eps;
+  return isReportedEpisodeCount(candidate.reportedEpisodeCount)
+    ? candidate.reportedEpisodeCount
+    : undefined;
+}
+
 function mergeEvidence(
   candidate: SubjectDiscoveryCandidate,
   pageEvidence: FieldEvidence | undefined,
@@ -120,13 +134,15 @@ function mergeEvidence(
 ): FieldEvidence {
   const evidence: FieldEvidence = {};
   const id = candidate.id;
-  for (const field of ['id', 'name', 'nameCn', 'date', 'platform', 'score', 'rank', 'ratingCount', 'collection', 'tags', 'metaTags', 'images', 'nsfw']) {
-    const pageKey = `items[${id}].${field}`;
+  for (const field of ['id', 'name', 'nameCn', 'date', 'platform', 'score', 'rank', 'ratingCount', 'reportedEpisodeCount', 'collection', 'tags', 'metaTags', 'images', 'nsfw']) {
+    const pageField = field === 'reportedEpisodeCount' ? 'eps' : field;
+    const pageKey = `items[${id}].${pageField}`;
     const refs = pageEvidence?.[pageKey] ?? [];
     if (refs.length > 0) evidence[field] = [...refs];
   }
   for (const [field, refs] of Object.entries(detailResult?.evidence ?? {})) {
-    evidence[field] = [...(evidence[field] ?? []), ...refs];
+    const resultField = field === 'eps' ? 'reportedEpisodeCount' : field;
+    evidence[resultField] = [...(evidence[resultField] ?? []), ...refs];
   }
   if (derivedCollection) {
     evidence.collectionTotal = [
@@ -183,6 +199,8 @@ function candidateHasField(item: CandidateWithDetail, field: string): boolean {
       return Number.isFinite(item.candidate.rank);
     case 'ratingCount':
       return Number.isFinite(item.candidate.ratingCount);
+    case 'eps':
+      return isReportedEpisodeCount(item.candidate.reportedEpisodeCount);
     case 'nsfw':
       return typeof item.candidate.nsfw === 'boolean';
     case 'collection.wish':
@@ -215,6 +233,8 @@ function detailHasField(item: CandidateWithDetail, field: string): boolean {
       return Number.isFinite(item.detail.stats.rank);
     case 'ratingCount':
       return Number.isFinite(item.detail.stats.ratingTotal);
+    case 'eps':
+      return isReportedEpisodeCount(item.detail.eps);
     case 'nsfw':
       return typeof item.detail.nsfw === 'boolean';
     case 'collection.wish':
@@ -258,6 +278,7 @@ function evaluateCandidate(
   const score = numberFor(item.candidate, item.detail, 'score');
   const rank = numberFor(item.candidate, item.detail, 'rank');
   const ratingCount = numberFor(item.candidate, item.detail, 'ratingCount');
+  const reportedEpisodeCount = reportedEpisodeCountFor(item.candidate, item.detail);
   const collectionValue = collection.total;
   const isMatch =
     matchesCategory(item, query.categories) &&
@@ -265,6 +286,7 @@ function evaluateCandidate(
     matchesNsfw(item, query) &&
     matchesRange(score, query.rating) &&
     matchesRange(ratingCount, query.ratingCount) &&
+    matchesRange(reportedEpisodeCount, query.reportedEpisodeCount) &&
     matchesRange(rank, query.rank) &&
     matchesRange(collectionValue, query.collectionCount);
   return isMatch ? 'match' : 'non_match';
@@ -817,6 +839,9 @@ export class DiscoveryEngine {
       ...(numberFor(item.candidate, detail, 'ratingCount') === undefined
         ? {}
         : { ratingCount: numberFor(item.candidate, detail, 'ratingCount') }),
+      ...(reportedEpisodeCountFor(item.candidate, detail) === undefined
+        ? {}
+        : { reportedEpisodeCount: reportedEpisodeCountFor(item.candidate, detail) }),
       ...(collection.total === undefined ? {} : { collectionTotal: collection.total }),
       tags: [...(detail?.tags ?? item.candidate.tags)],
       metaTags: [...(detail?.metaTags ?? item.candidate.metaTags)],

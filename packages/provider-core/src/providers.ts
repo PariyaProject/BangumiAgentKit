@@ -217,6 +217,8 @@ export interface SubjectDiscoveryCandidate {
   score?: number;
   rank?: number;
   ratingCount?: number;
+  /** Legacy Bangumi Subject.eps value; distinct from database total_episodes. */
+  reportedEpisodeCount?: number;
   collection?: SubjectDiscoveryCollection;
   tags: string[];
   metaTags: string[];
@@ -1124,6 +1126,10 @@ function parseDiscoveryCandidate(raw: Subject): SubjectDiscoveryCandidate {
     score: rating ? optionalNumber(rating.score) : undefined,
     rank: rating ? optionalNumber(rating.rank) : undefined,
     ratingCount: rating ? optionalNumber(rating.total) : undefined,
+    reportedEpisodeCount:
+      Number.isSafeInteger(value.eps) && (value.eps as number) >= 0
+        ? (value.eps as number)
+        : undefined,
     collection: optionalCollection(value.collection),
     tags: stringList(value.tags),
     metaTags: stringList(value.meta_tags),
@@ -1186,6 +1192,7 @@ function discoveryEvidence(
       'score',
       'rank',
       'ratingCount',
+      'eps',
       'collection',
       'tags',
       'metaTags',

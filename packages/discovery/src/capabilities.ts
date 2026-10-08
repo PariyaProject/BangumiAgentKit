@@ -24,6 +24,7 @@ const MATRIX: readonly SourceCapability[] = [
   { field: 'concepts', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'resolved to literal tag/meta_tag values' },
   { field: 'rating', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'rating range expressions' },
   { field: 'ratingCount', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'rating_count range expressions' },
+  { field: 'reportedEpisodeCount', operation: 'searchSubjects', classification: 'POST_FILTER', notes: 'local filter on legacy Subject.eps; not total_episodes' },
   { field: 'rank', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'rank range expressions' },
   { field: 'nsfw', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'boolean nsfw filter' },
   { field: 'collectionCount', operation: 'searchSubjects', classification: 'DERIVED_FILTER', notes: 'sum collection buckets after hydration' },

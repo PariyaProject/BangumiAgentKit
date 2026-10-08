@@ -324,10 +324,22 @@ CODEX_D05_REPORT_FIELDS = {
     'toolTextUtf8Bytes', 'resultCounters', 'answerChecks', 'warningCodes',
     'privacy', 'rawAnswerPersisted', 'rawToolResultPersisted',
 }
-CODEX_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_G20_PROBE_ARGUMENTS
+CODEX_D04_PROBE_ARGUMENTS = {
+    'bangumi.query_subjects': {
+        'media': 'anime',
+        'tags': ['科幻'],
+        'ratingCount': {'min': 3001},
+        'reportedEpisodeCount': {'max': 12},
+        'resultMode': 'all',
+        'limit': 100,
+        'explain': 'full',
+    },
+}
+CODEX_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_G20_PROBE_ARGUMENTS | CODEX_D04_PROBE_ARGUMENTS
 CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
     **{name: 'fixed-g20-subject-227245-include-evidence-v1' for name in CODEX_G20_PROBE_ARGUMENTS},
+    'bangumi.query_subjects': 'd04-reported-episode-count-discovery-v1',
 }
 CODEX_PRIVACY_FLAGS = (
     'oauthAttempted', 'accountDataRead', 'writesAttempted', 'qqPipelineTested',
@@ -553,6 +565,67 @@ CODEX_G20_SOURCE_FIELDS = {'api', 'operation', 'direction', 'scope', 'retrievedA
 CODEX_G20_COVERAGE_FIELDS = {
     'responseRowsObserved', 'rowsReturned', 'schemaDriftRows', 'truncated',
     'paginationAvailable', 'totalCountAvailable', 'completeness',
+}
+CODEX_D04_ANSWER_CHECK_FIELDS = {
+    'exactTargetToolCalledOnce', 'exactQueryArguments',
+    'mcpTextProjectionPreservesFullStructuredResult',
+    'officialExperimentalSourceAndEstimatedCoverage', 'coverageStateConsistent',
+    'exactAnimeTagAndRatingFilters',
+    'reportedEpisodeCountIsLocalPostFilter', 'reportedEpisodeEvidenceVisible',
+    'withinResourceCeilings', 'allObservedRowsMatchRequestedFilters',
+    'answerRowsMatchVisibleSourceRows', 'queryConditionsDisclosed',
+    'boundedExperimentalEstimatedScopeDisclosed', 'partialCoverageDisclosure',
+    'reportedEpsMeaningDisclosed',
+    'nonExhaustiveBoundaryDisclosed', 'textProjectionOmissionDisclosed',
+    'emptyResultNotOverclaimed', 'unsupportedCompletenessOrAbsenceClaim',
+    'numericClaimsMatchObservedSource', 'markdownFormattingDetected',
+}
+CODEX_D04_COVERAGE_FIELDS = {
+    'resultState', 'operation', 'officialV0Plan', 'totalKind', 'coverageState',
+    'counters', 'flags', 'queryChecks', 'rows', 'experimentalDisclosure',
+    'reportedEpsDisclosure', 'warningCodes',
+}
+CODEX_D04_COVERAGE_COUNTER_FIELDS = {
+    'requested', 'scanned', 'matched', 'returned', 'pagesRequested', 'pagesScanned',
+    'hydrationsAttempted', 'hydrationsSucceeded', 'hydrationsFailed',
+    'hydrationsUnresolved', 'outputCap',
+}
+CODEX_D04_COVERAGE_FLAGS = {
+    'upstreamExhausted', 'budgetExceeded', 'hydrationBudgetExceeded',
+}
+CODEX_D04_QUERY_CHECKS = {
+    'animeTypePushedDown', 'exactScienceFictionTagPushedDown',
+    'strictRatingCountLowerBoundPushedDown', 'reportedEpisodeMaximumIsLocal',
+    'reportedEpisodeWasNotSentUpstream',
+}
+CODEX_D04_ROW_COUNTERS = {'observed', 'valid', 'withReportedEpisodeEvidence'}
+CODEX_D04_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
+    'runNumber', 'frontierId', 'mcpBundleSha256', 'prNumber', 'baseSha',
+    'observedAt', 'coverage', 'warningCodes', 'resultHash', 'resultByteLength',
+}
+CODEX_D04_PRIVACY_FIELDS = set(CODEX_PRIVACY_FLAGS) | {'authProfile', 'communityRead'}
+CODEX_D04_PROBE_IMPLEMENTATION_MARKERS = {
+    'apps/mcp/d04-one-tool-mcp-server.mjs': (
+        "serverProfile: 'one-tool-anonymous-public-v1'",
+        'filterAllowedTools(registry.getTools(), D04_DISCOVERY_TOOL)',
+        'authorizeToolCall({',
+        'claimSingleToolCall(',
+        'summarizeD04DiscoveryFacts(result)',
+    ),
+    'scripts/acceptance/run-d04-codex-agent-mcp.mjs': (
+        'assertD04CandidateReviewGate(',
+        'createD04OneShotClaim(',
+        'physicalPathForComparison(',
+        'isPathWithin(',
+        "'features.shell_tool=false'",
+        "'features.web_search=false'",
+    ),
+    'scripts/acceptance/d04-discovery-answer-check.mjs': (
+        'export function verifyD04DiscoveryAnswer(',
+        'reportedEpisodeEvidenceVisible',
+        'const unsupportedCompletenessClaim',
+        'mcpTextProjectionPreservesFullStructuredResult',
+    ),
 }
 CODEX_G20_VISIBLE_ROW_FIELDS = {'id', 'name', 'nameCn', 'relation'}
 CODEX_G20_TEXT_PROJECTION_FIELDS = {
@@ -980,6 +1053,20 @@ def codex_probe_revision_has_implementation(revision: object) -> bool:
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return False
     return _codex_probe_revision_has_implementation(str(ROOT), revision)
+
+
+@functools.lru_cache(maxsize=128)
+def _codex_d04_probe_revision_has_implementation(repository_root: str, revision: str) -> bool:
+    """Bind D04 query evidence to the exact isolated runner, MCP server, and answer checker."""
+    return _codex_revision_has_markers(
+        repository_root, revision, CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
+    )
+
+
+def codex_d04_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_d04_probe_revision_has_implementation(str(ROOT), revision)
 
 
 def codex_g20_probe_revision_has_implementation(revision: object) -> bool:
@@ -2062,11 +2149,71 @@ def validate_g26_frontier_evidence() -> bool:
     )
 
 
+def codex_d04_coverage_is_valid(coverage: object) -> bool:
+    if not isinstance(coverage, dict) or set(coverage) != CODEX_D04_COVERAGE_FIELDS:
+        return False
+    if (coverage.get('resultState') not in {'ok', 'partial'}
+            or coverage.get('operation') != 'searchSubjects'
+            or coverage.get('officialV0Plan') is not True
+            or coverage.get('totalKind') != 'estimated'
+            or coverage.get('coverageState') not in {'complete', 'partial'}
+            or coverage.get('experimentalDisclosure') is not True
+            or coverage.get('reportedEpsDisclosure') is not True):
+        return False
+    if ((coverage.get('resultState') == 'ok' and coverage.get('coverageState') != 'complete')
+            or (coverage.get('resultState') == 'partial' and coverage.get('coverageState') != 'partial')):
+        return False
+    counters = coverage.get('counters')
+    if (not isinstance(counters, dict)
+            or set(counters) != CODEX_D04_COVERAGE_COUNTER_FIELDS
+            or any(type(counters.get(key)) is not int or counters[key] < 0
+                   for key in CODEX_D04_COVERAGE_COUNTER_FIELDS - {'outputCap'})):
+        return False
+    if (counters.get('outputCap') is not None
+            and (type(counters['outputCap']) is not int or counters['outputCap'] < 0)):
+        return False
+    if (counters['requested'] > 500 or counters['scanned'] > 500
+            or counters['matched'] < counters['returned'] or counters['returned'] > 100
+            or counters['pagesRequested'] > 10 or counters['pagesScanned'] > 10
+            or counters['hydrationsAttempted'] > 120
+            or counters['hydrationsSucceeded'] > 120 or counters['hydrationsFailed'] > 120
+            or counters['hydrationsUnresolved'] > 120
+            or (counters['outputCap'] is not None and counters['outputCap'] > 100)):
+        return False
+    flags = coverage.get('flags')
+    if (not isinstance(flags, dict) or set(flags) != CODEX_D04_COVERAGE_FLAGS
+            or any(type(value) is not bool for value in flags.values())):
+        return False
+    query_checks = coverage.get('queryChecks')
+    if (not isinstance(query_checks, dict) or set(query_checks) != CODEX_D04_QUERY_CHECKS
+            or any(value is not True for value in query_checks.values())):
+        return False
+    rows = coverage.get('rows')
+    if (not isinstance(rows, dict) or set(rows) != CODEX_D04_ROW_COUNTERS
+            or any(type(value) is not int or value < 0 for value in rows.values())
+            or rows['valid'] != rows['observed']
+            or rows['withReportedEpisodeEvidence'] != rows['observed']
+            or rows['observed'] != counters['returned']):
+        return False
+    warning_codes = coverage.get('warningCodes')
+    return (
+        isinstance(warning_codes, list)
+        and len(set(warning_codes)) == len(warning_codes)
+        and all(isinstance(code, str) and re.fullmatch(r'[A-Z0-9_]{1,64}', code) for code in warning_codes)
+        and 'EXPERIMENTAL_SOURCE' in warning_codes
+    )
+
+
 def codex_mcp_evidence_is_valid(
     report: dict, evidence_by_name: dict[str, dict], current_by_name: dict[str, dict],
 ) -> bool:
     """Accept only sanitized, exact-catalog GPT-6 Luna Max one-tool reports."""
-    if set(report) != CODEX_REPORT_FIELDS:
+    if not isinstance(report, dict):
+        return False
+    tool_name = report.get('toolName')
+    is_d04 = tool_name == 'bangumi.query_subjects'
+    expected_report_fields = CODEX_D04_REPORT_FIELDS if is_d04 else CODEX_REPORT_FIELDS
+    if set(report) != expected_report_fields:
         return False
     if (type(report.get('schemaVersion')) is not int
             or report.get('schemaVersion') != 1
@@ -2078,7 +2225,8 @@ def codex_mcp_evidence_is_valid(
             or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
             or not isinstance(report.get('sourceRevision'), str)
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
-            or not codex_probe_revision_has_implementation(report['sourceRevision'])
+            or not (codex_d04_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_d04 else codex_probe_revision_has_implementation(report['sourceRevision']))
             or type(report.get('processExitCode')) is not int
             or report.get('processExitCode') != 0
             or report.get('resultStatus') != 'SUCCESS'
@@ -2098,9 +2246,33 @@ def codex_mcp_evidence_is_valid(
             or type(report.get('deniedCallCount')) is not int):
         return False
 
-    tool_name = report.get('toolName')
-    arguments = CODEX_PROBE_ARGUMENTS.get(tool_name)
+    if is_d04 and (
+        type(report.get('runNumber')) is not int or report['runNumber'] != 95
+        or report.get('frontierId') != 'D04'
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        or type(report.get('prNumber')) is not int or report['prNumber'] < 1
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+        or not codex_d04_coverage_is_valid(report.get('coverage'))
+        or report.get('warningCodes') != report['coverage'].get('warningCodes')
+        or 'EXPERIMENTAL_SOURCE' not in report.get('warningCodes', [])
+        or type(report.get('resultByteLength')) is not int or report['resultByteLength'] <= 0
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('resultHash', '')))
+    ):
+        return False
+
+    arguments = CODEX_D04_PROBE_ARGUMENTS.get(tool_name) if is_d04 else CODEX_PROBE_ARGUMENTS.get(tool_name)
     is_g20 = tool_name in CODEX_G20_PROBE_ARGUMENTS
+    expected_argument_profile = (
+        'd04-reported-episode-count-discovery-v1' if is_d04
+        else CODEX_ARGUMENT_PROFILES.get(tool_name)
+    )
+    expected_answer_checks = (
+        CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
+        CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 else
+        CODEX_RENDERER_ANSWER_CHECK_FIELDS if isinstance(tool_name, str) and tool_name.startswith('bangumi.render_') else
+        CODEX_STATS_ANSWER_CHECK_FIELDS
+    )
     current_tool = current_by_name.get(tool_name) if isinstance(tool_name, str) else None
     if (arguments is None or current_tool is None
             or evidence_by_name.get(tool_name) != current_tool
@@ -2110,7 +2282,7 @@ def codex_mcp_evidence_is_valid(
             or report.get('serverToolCount') != 1
             or report.get('allowedCallCount') != 1
             or report.get('deniedCallCount') != 0
-            or report.get('argumentProfile') != CODEX_ARGUMENT_PROFILES.get(tool_name)
+            or report.get('argumentProfile') != expected_argument_profile
             or report.get('expectedArgumentsSha256') != _canonical_json_sha256(arguments)
             or report.get('toolDescriptionSha256') != hashlib.sha256(
                 current_tool.get('description', '').encode('utf-8')
@@ -2123,11 +2295,13 @@ def codex_mcp_evidence_is_valid(
         return False
 
     privacy = report.get('privacy')
+    expected_privacy_fields = CODEX_D04_PRIVACY_FIELDS if is_d04 else set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
     if (not isinstance(privacy, dict)
-            or set(privacy) != set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
+            or set(privacy) != expected_privacy_fields
             or privacy.get('authProfile') != 'anonymous'):
         return False
-    if any(privacy.get(flag) is not False for flag in CODEX_PRIVACY_FLAGS):
+    privacy_false_fields = CODEX_D04_PRIVACY_FIELDS - {'authProfile'} if is_d04 else CODEX_PRIVACY_FLAGS
+    if any(privacy.get(flag) is not False for flag in privacy_false_fields):
         return False
 
     scenarios = report.get('scenarios')
@@ -2144,12 +2318,7 @@ def codex_mcp_evidence_is_valid(
             or scenario.get('resultReadbackVerified') is not True
             or scenario.get('answerCheckPassed') is not True
             or not isinstance(scenario.get('answerChecks'), dict)
-            or set(scenario.get('answerChecks', {})) != (
-                CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 else (
-                    CODEX_RENDERER_ANSWER_CHECK_FIELDS if tool_name.startswith('bangumi.render_')
-                    else CODEX_STATS_ANSWER_CHECK_FIELDS
-                )
-            )
+            or set(scenario.get('answerChecks', {})) != expected_answer_checks
             or any(value is not True for value in scenario.get('answerChecks', {}).values())
             or not isinstance(calls, list)
             or len(calls) != 1
@@ -2158,6 +2327,18 @@ def codex_mcp_evidence_is_valid(
         return False
 
     result = scenario.get('result')
+    if is_d04 and (
+        not isinstance(result, dict)
+        or result.get('resultState') != (
+            'complete'
+            if report['coverage'].get('coverageState') == 'complete'
+            and report['coverage'].get('resultState') == 'ok'
+            else 'partial'
+        )
+        or report.get('resultHash') != result.get('resultSha256')
+        or report.get('resultByteLength') != result.get('resultByteLength')
+    ):
+        return False
     if is_g20:
         return codex_g20_result_is_valid(result, arguments['subjectId'])
     if (not isinstance(result, dict)

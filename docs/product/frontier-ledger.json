@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-08T14:52:57.107Z",
+  "updated_at": "2026-10-08T15:23:22Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1298,7 +1298,7 @@
         "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md",
         "docs/research/run95-g26-current-master-runtime-attestation-2026-10-08.md"
       ],
-      "next_action": "Run #95 G26 remains UNASSESSED and its one-shot claim remains CLAIMED after one runner invocation stopped before Codex/MCP/API. PR #112 review #2 identified P2 G26-CLAIM-PHYSICAL-BOUNDARY: lexical containment allowed an external symlink into the checkout. The corrective Candidate now resolves claim/root/Git common paths through nearest existing ancestors and adds a rejection-before-write symlink regression while retaining alias deduplication. The claim is preserved; never retry or edit it. Require exact-SHA CI, corrective closure, and GPT-6 Luna Max review #3 before integration. Keep acceptance counts unchanged and continue other frontiers afterward.",
+      "next_action": "PR #112 merged through Harness at a3a046b5 with the physical claim-boundary correction. G26 remains UNASSESSED: its original one-shot claim is CLAIMED with no Codex/model/MCP/API call and no report. Never rerun or edit that claim; do not imply acceptance or change G26 coverage counts.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -1414,8 +1414,11 @@
       "user_question": "找出集数少于 13、评分人数超过 3000 的科幻动画。",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-d04-short-anime-discovery-source-contract-2026-10-09.md"
+      ],
+      "next_action": "Run #95 selected the D04 reported-episode discovery Epoch at base a3a046b5. The candidate implementation now carries only valid non-negative integer Subject.eps as reportedEpisodeCount, filters it locally, preserves source evidence, and leaves unresolved values partial; focused regression and typecheck pass. D04 remains UNASSESSED: establish exact Candidate/Base, mandatory exact-SHA CI, Harness readiness, and GPT-6 Luna Max PASS before the single governed anonymous Agent/MCP attempt. Preserve literal 科幻 and rating_count>=3001 filters, 10-page/500-candidate/120-hydration/100-row caps, estimated/experimental coverage limits, and never substitute total_episodes.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
