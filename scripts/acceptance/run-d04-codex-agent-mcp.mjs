@@ -174,7 +174,8 @@ export function mandatoryChecksSuccessful(checks) {
   return MANDATORY_CI_CHECKS.every((name) => {
     const rows = byName.get(name);
     return (
-      rows?.length === 1 && rows[0]?.status === 'COMPLETED' && rows[0]?.conclusion === 'SUCCESS'
+      rows?.length > 0 &&
+      rows.every((row) => row?.status === 'COMPLETED' && row?.conclusion === 'SUCCESS')
     );
   });
 }

@@ -142,16 +142,23 @@ test('D04 query gate binds one exact candidate, current base, CI, scope closure,
   );
 });
 
-test('D04 mandatory CI requires each exact named job once with SUCCESS', () => {
+test('D04 mandatory CI requires every occurrence of all exact jobs to complete successfully', () => {
   assert.equal(mandatoryChecksSuccessful(mandatoryChecks()), true);
   assert.equal(mandatoryChecksSuccessful(mandatoryChecks().slice(1)), false);
-  assert.equal(mandatoryChecksSuccessful([...mandatoryChecks(), mandatoryChecks()[0]]), false);
+  assert.equal(mandatoryChecksSuccessful([...mandatoryChecks(), mandatoryChecks()[0]]), true);
   assert.equal(
     mandatoryChecksSuccessful(
       mandatoryChecks().map((row) =>
         row.name === 'discovery-foundation' ? { ...row, conclusion: 'FAILURE' } : row,
       ),
     ),
+    false,
+  );
+  assert.equal(
+    mandatoryChecksSuccessful([
+      ...mandatoryChecks(),
+      { ...mandatoryChecks()[0], status: 'IN_PROGRESS', conclusion: '' },
+    ]),
     false,
   );
 });
