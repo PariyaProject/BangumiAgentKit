@@ -104,7 +104,7 @@ function makeStatus(overrides: Record<string, any> = {}) {
     base_sha: 'c'.repeat(40),
     candidate_sha: candidateSha,
     ci: { sha: candidateSha, status: 'SUCCESS' },
-    state: 'PASS',
+    state: 'REVIEW_PASSED',
     advances_frontier_ids: ['S02'],
     review_pass_sha: candidateSha,
     review_history: [{ candidate_sha: candidateSha, verdict: 'PASS' }],
@@ -189,6 +189,31 @@ describe('S02 Codex Agent/MCP runner', () => {
     expect(() =>
       assertS02CandidateReviewGate(
         makeStatus({ epochState: { scope_closure: { related_work_remaining: true } } }),
+        fixture.pr,
+        { sourceRevision: candidateSha, currentBaseSha: fixture.currentBaseSha },
+      ),
+    ).toThrow(/exact Candidate/u);
+  });
+
+  it('accepts Harness V3 REVIEW_PASSED and rejects the stale legacy PASS state', () => {
+    const fixture = makeStatus();
+    expect(
+      assertS02CandidateReviewGate(fixture, fixture.pr, {
+        sourceRevision: candidateSha,
+        currentBaseSha: fixture.currentBaseSha,
+      }),
+    ).toEqual({ prNumber, candidateSha });
+
+    expect(() =>
+      assertS02CandidateReviewGate(makeStatus({ epochState: { state: 'PASS' } }), fixture.pr, {
+        sourceRevision: candidateSha,
+        currentBaseSha: fixture.currentBaseSha,
+      }),
+    ).toThrow(/exact Candidate/u);
+
+    expect(() =>
+      assertS02CandidateReviewGate(
+        makeStatus({ epochState: { review_pass_sha: 'd'.repeat(40) } }),
         fixture.pr,
         { sourceRevision: candidateSha, currentBaseSha: fixture.currentBaseSha },
       ),

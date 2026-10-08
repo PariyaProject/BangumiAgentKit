@@ -206,7 +206,7 @@ export function assertS02CandidateReviewGate(status, pr, { sourceRevision, curre
     epoch?.candidate_sha === sourceRevision,
     epoch?.ci?.sha === sourceRevision,
     epoch?.ci?.status === 'SUCCESS',
-    epoch?.state === 'PASS',
+    epoch?.state === 'REVIEW_PASSED',
     epoch?.advances_frontier_ids?.includes('S02') === true,
     epoch?.review_pass_sha === sourceRevision,
     passRecorded,

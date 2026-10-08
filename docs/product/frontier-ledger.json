@@ -1706,9 +1706,11 @@
         "tests/semantic/person-activity.test.ts",
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/render/person-activity.test.ts",
-        "tests/standalone/person-activity-presenter.test.ts"
+        "tests/standalone/person-activity-presenter.test.ts",
+        "scripts/acceptance/run-s02-codex-agent-mcp.mjs",
+        "tests/unit/s02-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The explicit top_rated_main_voice mode returns distinct current-response main-role subjects ordered by Bangumi score, rating total, and subject ID; it retains score/role coverage through MCP, Renderer, and Standalone. Keep S02 PARTIAL: relation roles are heuristic free text, current relation responses have no paging/total, and caps or missing scores/details can change the observed ranking. Do not claim a career-wide top five or historical score. After exact Candidate CI, Harness candidate:check, and GPT-6 Luna Max PASS all match the same Candidate, use the dedicated one-shot runner once for the anonymous person 3474 Agent/MCP answer; it verifies exact row identity/order and coverage wording and keeps only sanitized IDs, scores, counters, and booleans. If inconclusive, preserve the claim and do not repeat the call.",
+      "next_action": "The explicit top_rated_main_voice mode returns distinct current-response main-role subjects ordered by Bangumi score, rating total, and subject ID; it retains score/role coverage through MCP, Renderer, and Standalone. Keep S02 PARTIAL: relation roles are heuristic free text, current relation responses have no paging/total, and caps or missing scores/details can change the observed ranking. The one-tool runner must require Harness V3 REVIEW_PASSED plus a PASS history entry for the exact candidate, matching CI, base, branch, and open ready PR. Only after exact Candidate CI, Harness candidate:check, and GPT-6 Luna Max review PASS align on one SHA, run the anonymous personId=3474 Agent/MCP query exactly once; retain sanitized counters and result checks only. If inconclusive, preserve the claim and do not retry. Do not claim a career-wide top five or historical rating.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
