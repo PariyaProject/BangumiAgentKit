@@ -308,7 +308,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {
                 'name': 'bangumi.query_subjects',
                 'auth': 'none', 'risk': 'read',
-                'description': 'Bounded public subject discovery; current uses Asia/Tokyo.',
+                'description': 'Bounded public subject discovery with local reported Subject.eps filtering.',
                 'inputSchema': {
                     'type': 'object',
                     'properties': {
@@ -317,6 +317,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                         'from': {'type': 'string'},
                         'to': {'type': 'string'},
                         'ratingCount': {'type': 'object'},
+                        'reportedEpisodeCount': {
+                            'type': 'object',
+                            'properties': {
+                                'min': {'type': 'integer', 'minimum': 0},
+                                'max': {'type': 'integer', 'minimum': 0},
+                            },
+                            'additionalProperties': False,
+                        },
                         'tags': {'type': 'array'},
                         'categories': {'type': 'string'},
                         'resultMode': {'type': 'string'},
@@ -458,6 +466,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
             if relative_path in {
@@ -533,6 +542,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         tool = next(item for item in self.catalog if item['name'] == tool_name)
         arguments = GENERATOR.CODEX_PROBE_ARGUMENTS[tool_name]
         is_g20 = tool_name in GENERATOR.CODEX_G20_PROBE_ARGUMENTS
+        is_d04 = tool_name == 'bangumi.query_subjects'
         is_renderer = tool_name.startswith('bangumi.render_')
         if is_g20:
             answer_checks = {key: True for key in GENERATOR.CODEX_G20_ANSWER_CHECK_FIELDS}
@@ -589,6 +599,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'toolTextUtf8Bytes': 1180,
                 },
             }
+        elif is_d04:
+            answer_checks = {key: True for key in GENERATOR.CODEX_D04_ANSWER_CHECK_FIELDS}
+            result = {
+                'toolName': tool_name,
+                'resultState': 'partial',
+                'resultByteLength': 4096,
+                'resultSha256': 'd' * 64,
+                'sourceOperations': [{'operation': 'POST /v0/search/subjects', 'attempted': 1,
+                                      'succeeded': 1, 'failed': 0}],
+                'artifact': {'returned': False, 'persisted': False},
+            }
         else:
             answer_checks = {
                 key: True for key in (GENERATOR.CODEX_RENDERER_ANSWER_CHECK_FIELDS if is_renderer
@@ -633,7 +654,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'deniedCallCount': 0,
             'qqPipelineTested': False,
             'timClientTested': False,
-            'privacy': {key: False for key in GENERATOR.CODEX_PRIVACY_FLAGS} | {'authProfile': 'anonymous'},
+            'privacy': ({key: False for key in GENERATOR.CODEX_PRIVACY_FLAGS} |
+                        {'authProfile': 'anonymous'} |
+                        ({'communityRead': False} if is_d04 else {})),
             'scenarios': [{
                 'id': tool_name,
                 'passed': True,
@@ -646,6 +669,43 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'result': result,
             }],
         }
+        if is_d04:
+            report.update({
+                'runNumber': 95,
+                'frontierId': 'D04',
+                'mcpBundleSha256': 'e' * 64,
+                'prNumber': 113,
+                'baseSha': 'b' * 40,
+                'observedAt': '2026-10-09T00:00:00.000Z',
+                'coverage': {
+                    'resultState': 'partial',
+                    'operation': 'searchSubjects',
+                    'officialV0Plan': True,
+                    'totalKind': 'estimated',
+                    'coverageState': 'partial',
+                    'counters': {
+                        'requested': 100, 'scanned': 2, 'matched': 2, 'returned': 2,
+                        'pagesRequested': 1, 'pagesScanned': 1, 'hydrationsAttempted': 0,
+                        'hydrationsSucceeded': 0, 'hydrationsFailed': 0,
+                        'hydrationsUnresolved': 0, 'outputCap': 100,
+                    },
+                    'flags': {
+                        'upstreamExhausted': True,
+                        'budgetExceeded': False,
+                        'hydrationBudgetExceeded': False,
+                    },
+                    'queryChecks': {
+                        key: True for key in GENERATOR.CODEX_D04_QUERY_CHECKS
+                    },
+                    'rows': {'observed': 2, 'valid': 2, 'withReportedEpisodeEvidence': 2},
+                    'experimentalDisclosure': True,
+                    'reportedEpsDisclosure': True,
+                    'warningCodes': ['EXPERIMENTAL_SOURCE'],
+                },
+                'warningCodes': ['EXPERIMENTAL_SOURCE'],
+                'resultHash': 'd' * 64,
+                'resultByteLength': 4096,
+            })
         report.update(overrides)
         self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
 
@@ -666,6 +726,37 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 },
             },
         )
+
+    def test_accepts_catalog_bound_sanitized_d04_query_report(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-D04-run95.json'
+        self.write_report(tool_name='bangumi.query_subjects')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        self.assertTrue(GENERATOR.codex_d04_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            report,
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.query_subjects'],
+            {'docs/live-probes/pariya-agent-codex-luna-e2e-D04-run95.json'},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('structuredContent', report['scenarios'][0]['result'])
+
+    def test_rejects_d04_report_with_unknown_coverage_or_changed_query_summary(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-D04-run95.json'
+        invalid = [
+            {'coverage': {'coverageState': 'unknown'}},
+            {'warningCodes': []},
+            {'mcpBundleSha256': 'z' * 64},
+            {'prNumber': 0},
+        ]
+        for override in invalid:
+            with self.subTest(override=override):
+                self.write_report(tool_name='bangumi.query_subjects', **override)
+                self.assertNotIn('bangumi.query_subjects', GENERATOR.model_mcp_e2e_names(self.catalog))
 
     def test_accepts_catalog_bound_g20_report_with_verified_visible_rows_only(self):
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'
