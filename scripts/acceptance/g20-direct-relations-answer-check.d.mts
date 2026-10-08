@@ -33,8 +33,11 @@ export interface G20DirectRelationsAnswerCheck {
   unmatchedRowsCount: number;
   duplicateAnswerRowsCount: number;
   unstructuredAnswerLinesCount: number;
+  finalScopeLineVerified: boolean;
+  sourceSubjectDisclosurePresent: boolean;
   boundedSourceDisclosurePresent: boolean;
   responseCountsDisclosurePresent: boolean;
+  projectionRowsOmittedDisclosurePresent: boolean;
   omissionNotAbsenceDisclosurePresent: boolean;
   nonCanonicalOrderDisclosurePresent: boolean;
   schemaDriftDisclosurePresent: boolean;

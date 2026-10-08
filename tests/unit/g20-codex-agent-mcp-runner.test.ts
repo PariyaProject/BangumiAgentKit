@@ -29,6 +29,15 @@ import {
 
 const TARGET_TOOL = 'bangumi.get_subject_relations';
 const SERVER_ID = 'bgk_g20_one_tool';
+const MANDATORY_CI_CHECKS = [
+  'harness-control',
+  'sqlite-default',
+  'host-integration',
+  'standalone-release-smoke',
+  'postgres-compat',
+  'provider-foundation',
+  'discovery-foundation',
+];
 const canonicalJson = (value: unknown): string =>
   Array.isArray(value)
     ? `[${value.map(canonicalJson).join(',')}]`
@@ -99,7 +108,7 @@ function makeAnswer(result = makeResult()) {
   const returned = result.coverage.rowsReturned;
   return [
     ...rows,
-    `范围：本次官方 v0 响应对来源条目 227245 观察 ${observed} 行，返回 ${returned} 条直接关系；此操作无分页、无总数，不能据此认定全系列完整；未返回关系不等于不存在，也不含反向或传递关系。关系接口顺序不是官方观看顺序。${result.coverage.schemaDriftRows > 0 ? `解析遗漏 ${result.coverage.schemaDriftRows} 条。` : ''}`,
+    `范围：本次官方 v0 响应对来源条目 227245 观察到 ${observed} 行，返回 ${returned} 条直接关系；此操作无分页、无总数，不能据此认定全系列完整；未返回关系不等于不存在，也不含反向或传递关系。关系接口顺序不是官方观看顺序。${result.coverage.schemaDriftRows > 0 ? `解析遗漏 ${result.coverage.schemaDriftRows} 条。` : ''}`,
   ].join('\n');
 }
 
@@ -234,6 +243,8 @@ describe('G20 Codex one-tool runner', () => {
       'mcp_servers.bgk_g20_one_tool.enabled_tools=["bangumi.get_subject_relations"]',
     );
     expect(args.at(-1)).toContain(JSON.stringify(G20_EXPECTED_QUERY_ARGUMENTS));
+    expect(args.at(-1)).toContain('来源条目 227245');
+    expect(args.at(-1)).toContain('MCP文本视图省略 K 行');
   });
 
   it('requires the explicit one-shot run flag', () => {
@@ -268,7 +279,23 @@ describe('G20 Codex one-tool runner', () => {
         },
       },
     };
-    const pr = { state: 'OPEN', isDraft: false, headRefOid: candidateSha, headRefName: branch };
+    const pr: {
+      state: string;
+      isDraft: boolean;
+      headRefOid: string;
+      headRefName: string;
+      statusCheckRollup: Array<{ name: string; status: string; conclusion: string | null }>;
+    } = {
+      state: 'OPEN',
+      isDraft: false,
+      headRefOid: candidateSha,
+      headRefName: branch,
+      statusCheckRollup: MANDATORY_CI_CHECKS.map((name) => ({
+        name,
+        status: 'COMPLETED',
+        conclusion: 'SUCCESS',
+      })),
+    };
 
     expect(
       assertG20CandidateReviewGate(status, pr, {
@@ -300,6 +327,64 @@ describe('G20 Codex one-tool runner', () => {
         currentBaseSha: baseSha,
       }),
     ).toThrow(/Luna Max PASS/u);
+    const pendingChecks = structuredClone(pr);
+    pendingChecks.statusCheckRollup[1] = {
+      name: 'sqlite-default',
+      status: 'IN_PROGRESS',
+      conclusion: null,
+    };
+    expect(() =>
+      assertG20CandidateReviewGate(status, pendingChecks, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
+    const staleSuccessChecks = structuredClone(pr);
+    staleSuccessChecks.statusCheckRollup[1] = {
+      name: 'sqlite-default',
+      status: 'IN_PROGRESS',
+      conclusion: 'SUCCESS',
+    };
+    expect(() =>
+      assertG20CandidateReviewGate(status, staleSuccessChecks, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
+    const failedChecks = structuredClone(pr);
+    failedChecks.statusCheckRollup[1] = {
+      name: 'sqlite-default',
+      status: 'COMPLETED',
+      conclusion: 'FAILURE',
+    };
+    expect(() =>
+      assertG20CandidateReviewGate(status, failedChecks, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
+    const missingChecks = structuredClone(pr);
+    missingChecks.statusCheckRollup = missingChecks.statusCheckRollup.filter(
+      (check) => check.name !== 'postgres-compat',
+    );
+    expect(() =>
+      assertG20CandidateReviewGate(status, missingChecks, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
+    const duplicateChecks = structuredClone(pr);
+    duplicateChecks.statusCheckRollup.push({
+      name: 'sqlite-default',
+      status: 'IN_PROGRESS',
+      conclusion: null,
+    });
+    expect(() =>
+      assertG20CandidateReviewGate(status, duplicateChecks, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
   });
 
   it('sanitizes Bangumi, credential, model-route, claim, and Git override environment values', () => {
@@ -566,6 +651,10 @@ describe('G20 Codex one-tool runner', () => {
             passed: true,
             toolCalls: [{ name: TARGET_TOOL, state: 'DONE' }],
             answerChecks: {
+              finalScopeLineVerified: true,
+              sourceSubjectDisclosurePresent: true,
+              responseCountsDisclosurePresent: true,
+              projectionRowsOmittedDisclosurePresent: true,
               noUnsupportedCompletenessClaim: true,
               noUnsupportedCanonicalOrderClaim: true,
               noUnsupportedAbsenceClaim: true,

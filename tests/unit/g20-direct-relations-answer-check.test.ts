@@ -64,10 +64,12 @@ function makeToolOutput(result = makeResult()) {
 
 function makeAnswer(result = makeResult()) {
   const rows = result.items.map((item) => `${item.id}｜${item.nameCn}｜${item.relation}`);
-  const returnedCount = result.coverage.responseRowsObserved;
+  const projection = JSON.parse(makeToolOutput(result).content[0]!.text).textProjection;
+  const omittedRowsDisclosure =
+    projection.rowsOmitted > 0 ? `；MCP文本视图省略 ${projection.rowsOmitted} 行` : '';
   return [
     ...rows,
-    `范围：本次官方 v0 响应对来源条目 ${subjectId} 观察 ${returnedCount} 行，返回 ${result.coverage.rowsReturned} 条直接关系；此操作无分页、无总数，不能据此认定全系列完整；未返回关系不等于不存在，也不含反向或传递关系。关系接口顺序不是官方观看顺序。${
+    `范围：本次官方 v0 响应对来源条目 ${subjectId} 观察到 ${result.coverage.responseRowsObserved} 行，返回 ${result.coverage.rowsReturned} 条直接关系${omittedRowsDisclosure}；此操作无分页、无总数，不能据此认定全系列完整；未返回关系不等于不存在，也不含反向或传递关系。关系接口顺序不是官方观看顺序。${
       result.coverage.schemaDriftRows > 0 ? `解析遗漏 ${result.coverage.schemaDriftRows} 条。` : ''
     }`,
   ].join('\n');
@@ -117,6 +119,9 @@ describe('G20 direct subject-relation answer checks', () => {
       mismatchedRowsCount: 0,
       boundedSourceDisclosurePresent: true,
       responseCountsDisclosurePresent: true,
+      finalScopeLineVerified: true,
+      sourceSubjectDisclosurePresent: true,
+      projectionRowsOmittedDisclosurePresent: true,
       omissionNotAbsenceDisclosurePresent: true,
       nonCanonicalOrderDisclosurePresent: true,
       schemaDriftDisclosurePresent: true,
@@ -146,6 +151,35 @@ describe('G20 direct subject-relation answer checks', () => {
     expect(check(duplicateRow).passed).toBe(false);
     expect(check(prose).unstructuredAnswerLinesCount).toBe(1);
     expect(check(prose).passed).toBe(false);
+  });
+
+  it('requires one final scope line with the exact source ID and both response counts', () => {
+    const result = makeResult();
+    const answer = makeAnswer(result);
+    const lines = answer.split('\n');
+    const scopeLine = lines.pop()!;
+    const misplaced = [scopeLine, ...lines].join('\n');
+    const repeated = [...lines, scopeLine, scopeLine].join('\n');
+    const wrongSource = answer.replace(`来源条目 ${subjectId}`, `来源条目 ${subjectId + 1}`);
+    const missingObserved = answer.replace(
+      `观察到 ${result.coverage.responseRowsObserved} 行，`,
+      '观察到若干行，',
+    );
+    const wrongReturned = answer.replace(
+      `返回 ${result.coverage.rowsReturned} 条`,
+      `返回 ${result.coverage.rowsReturned + 1} 条`,
+    );
+
+    expect(check(misplaced).finalScopeLineVerified).toBe(false);
+    expect(check(repeated).finalScopeLineVerified).toBe(false);
+    expect(check(wrongSource).sourceSubjectDisclosurePresent).toBe(false);
+    expect(check(missingObserved).responseCountsDisclosurePresent).toBe(false);
+    expect(check(wrongReturned).responseCountsDisclosurePresent).toBe(false);
+    expect(check(misplaced).passed).toBe(false);
+    expect(check(repeated).passed).toBe(false);
+    expect(check(wrongSource).passed).toBe(false);
+    expect(check(missingObserved).passed).toBe(false);
+    expect(check(wrongReturned).passed).toBe(false);
   });
 
   it('rejects extra or mismatched query arguments and more than one target tool call', () => {
@@ -216,17 +250,32 @@ describe('G20 direct subject-relation answer checks', () => {
     const answer = makeAnswer(result);
     const omitted = projection.textProjection.rowsOmitted > 0;
     const omissionDisclosure = answer.includes('未返回关系不等于不存在');
+    const exactOmittedRowsDisclosure = answer.includes(
+      `MCP文本视图省略 ${projection.textProjection.rowsOmitted} 行`,
+    );
     const resultCheck = check(answer, queryArguments, toolCalls, output);
+    const missingCount = answer.replace(
+      `；MCP文本视图省略 ${projection.textProjection.rowsOmitted} 行`,
+      '',
+    );
+    const wrongCount = answer.replace(
+      `MCP文本视图省略 ${projection.textProjection.rowsOmitted} 行`,
+      `MCP文本视图省略 ${projection.textProjection.rowsOmitted + 1} 行`,
+    );
 
     expect(Buffer.byteLength(text, 'utf8')).toBeLessThanOrEqual(3600);
     expect(projection.textProjection.fullStructuredContentAvailable).toBe(true);
     expect(projection.textProjection.rowsOmitted).toBeGreaterThan(0);
     expect(omitted).toBe(true);
     expect(omissionDisclosure).toBe(true);
+    expect(exactOmittedRowsDisclosure).toBe(true);
     expect(resultCheck.textProjectionConsistent).toBe(true);
     expect(resultCheck.mcpTextRowsOmitted).toBeGreaterThan(0);
+    expect(resultCheck.projectionRowsOmittedDisclosurePresent).toBe(true);
     expect(resultCheck.omissionNotAbsenceDisclosurePresent).toBe(true);
     expect(resultCheck.passed).toBe(true);
+    expect(check(missingCount, queryArguments, toolCalls, output).passed).toBe(false);
+    expect(check(wrongCount, queryArguments, toolCalls, output).passed).toBe(false);
   });
 
   it('rejects invalid rows that are present in the readback but cannot be safely rendered', () => {
