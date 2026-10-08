@@ -129,6 +129,20 @@ describe('G20 direct subject-relation answer checks', () => {
     });
   });
 
+  it('requires the unreturned-relations caveat even when the MCP text view is complete', () => {
+    const result = makeResult();
+    const output = makeToolOutput(result);
+    const projection = JSON.parse(output.content[0]!.text).textProjection;
+    const answerWithoutCaveat = makeAnswer(result).replace('未返回关系不等于不存在，', '');
+    const resultCheck = check(answerWithoutCaveat, queryArguments, toolCalls, output);
+
+    expect(projection.rowsOmitted).toBe(0);
+    expect(projection.displayNamesClipped).toBe(0);
+    expect(projection.relationLabelsClipped).toBe(0);
+    expect(resultCheck.omissionNotAbsenceDisclosurePresent).toBe(false);
+    expect(resultCheck.passed).toBe(false);
+  });
+
   it('rejects changed names or labels, omitted rows, duplicates, and unstructured answer text', () => {
     const result = makeResult();
     const answer = makeAnswer(result);

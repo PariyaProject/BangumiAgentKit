@@ -102,8 +102,7 @@ export function verifyG20DirectRelationsAnswer(
     scopeText,
     textResult?.textProjection?.rowsOmitted,
   );
-  const omissionNotAbsenceDisclosurePresent =
-    !projectionHasOmissions(textResult) || hasOmissionNotAbsenceDisclosure(scopeText);
+  const omissionNotAbsenceDisclosurePresent = hasOmissionNotAbsenceDisclosure(scopeText);
   const nonCanonicalOrderDisclosurePresent = hasNonCanonicalOrderDisclosure(scopeText);
   const schemaDriftDisclosurePresent =
     result?.coverage?.schemaDriftRows === 0 ||
@@ -344,15 +343,6 @@ function hasSchemaDriftDisclosure(scopeText, count) {
     'iu',
   );
   return countPattern.test(scopeText);
-}
-
-function projectionHasOmissions(textResult) {
-  const projection = textResult?.textProjection;
-  return (
-    (Number.isInteger(projection?.rowsOmitted) && projection.rowsOmitted > 0) ||
-    (Number.isInteger(projection?.displayNamesClipped) && projection.displayNamesClipped > 0) ||
-    (Number.isInteger(projection?.relationLabelsClipped) && projection.relationLabelsClipped > 0)
-  );
 }
 
 function isTextProjectionConsistent(textResult, fullResult) {
