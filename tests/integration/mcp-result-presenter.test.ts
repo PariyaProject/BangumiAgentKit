@@ -1210,6 +1210,7 @@ function makeDiscoveryResult(count = 100) {
       category: 'tv',
       date: '2024-10-01',
       ratingCount: 10001 + index,
+      reportedEpisodeCount: 12 + index,
       tags: ['冒险', '恋爱', '动画', '奇幻', 'Drama', '制作', '播出', '系列', '女性向'],
       metaTags: ['漫画改'],
       evidence: [{ token: 'this evidence must stay in structuredContent only' }],
@@ -1330,6 +1331,7 @@ describe('MCP tool result presentation', () => {
     });
     expect(parsed.items.length).toBeGreaterThan(0);
     expect(parsed.items[0].tags).toContain('女性向');
+    expect(parsed.items[0].reportedEpisodeCount).toBe(12);
     expect(parsed.textProjection.textViewScope).toContain(
       'omitted rows are not evidence of absence',
     );

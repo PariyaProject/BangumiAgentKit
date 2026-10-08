@@ -4,6 +4,7 @@ import {
   DiscoveryEngine,
   type ConceptDefinition,
 } from '@bangumi-agent-kit/discovery';
+import { createEvidenceRef, SOURCE_V0 } from '@bangumi-agent-kit/provider-core';
 import type {
   CapabilityResult,
   ProviderRequestContext,
@@ -87,6 +88,122 @@ class FixtureDiscoveryProvider implements SubjectDiscoveryProvider {
 
   async browseSubjects(_request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
     return { state: 'ok', data: { items: [], total: 0, totalKind: 'exact', limit: 20, offset: 0 }, evidence: {} };
+  }
+}
+
+class ReportedEpisodeFixtureProvider implements SubjectDiscoveryProvider {
+  readonly candidates: SubjectDiscoveryCandidate[] = [
+    {
+      id: 11,
+      type: 2,
+      name: 'Reported short',
+      tags: ['科幻'],
+      metaTags: [],
+      ratingCount: 4001,
+      reportedEpisodeCount: 12,
+    },
+    {
+      id: 12,
+      type: 2,
+      name: 'Reported long',
+      tags: ['科幻'],
+      metaTags: [],
+      ratingCount: 4001,
+      reportedEpisodeCount: 13,
+    },
+    { id: 13, type: 2, name: 'Hydrated short', tags: ['科幻'], metaTags: [], ratingCount: 4001 },
+    { id: 14, type: 2, name: 'Unresolved eps', tags: ['科幻'], metaTags: [], ratingCount: 4001 },
+  ];
+
+  async getSubject(
+    id: number,
+    _context?: ProviderRequestContext,
+  ): Promise<CapabilityResult<ProviderSubjectData>> {
+    const eps = id === 13 ? 11 : 1.5;
+    return {
+      state: 'ok',
+      data: {
+        id,
+        type: 2,
+        name: `Subject ${id}`,
+        nameCn: '',
+        summary: '',
+        nsfw: false,
+        locked: false,
+        platform: 'TV',
+        images: {},
+        eps,
+        totalEpisodes: 99,
+        tags: ['科幻'],
+        metaTags: [],
+        stats: stats(8, 1, 4001),
+      },
+      evidence: {
+        eps: [
+          createEvidenceRef({
+            source: { ...SOURCE_V0, operation: 'getSubjectById' },
+            retrievedAt: '2026-10-09T00:00:00.000Z',
+            entity: { type: 'subject', id },
+            fieldPath: 'eps',
+            freshness: { state: 'unknown' },
+            authScope: 'public',
+            confidence: 'high',
+          }),
+        ],
+      },
+    };
+  }
+
+  async getSubjectStats(
+    id: number,
+    context?: ProviderRequestContext,
+  ): Promise<CapabilityResult<SubjectStatsData>> {
+    const result = await this.getSubject(id, context);
+    return result.data
+      ? { ...result, data: result.data.stats }
+      : (result as unknown as CapabilityResult<SubjectStatsData>);
+  }
+
+  async searchSubjects(
+    request: SubjectDiscoverySearchRequest,
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    const evidence = Object.fromEntries(
+      this.candidates.map((candidate) => [
+        `items[${candidate.id}].eps`,
+        [
+          createEvidenceRef({
+            source: { ...SOURCE_V0, operation: 'searchSubjects' },
+            retrievedAt: '2026-10-09T00:00:00.000Z',
+            entity: { type: 'subject', id: candidate.id },
+            fieldPath: `items[${candidate.id}].eps`,
+            freshness: { state: 'unknown' },
+            authScope: 'public',
+            confidence: 'high',
+          }),
+        ],
+      ]),
+    );
+    return {
+      state: 'ok',
+      data: {
+        items: this.candidates.slice(request.offset, request.offset + request.limit),
+        total: this.candidates.length,
+        totalKind: 'estimated',
+        limit: request.limit,
+        offset: request.offset,
+      },
+      evidence,
+    };
+  }
+
+  async browseSubjects(
+    _request: SubjectDiscoveryBrowseRequest,
+  ): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return {
+      state: 'ok',
+      data: { items: [], total: 0, totalKind: 'exact', limit: 20, offset: 0 },
+      evidence: {},
+    };
   }
 }
 
@@ -539,6 +656,29 @@ class FailedHydrationProvider implements SubjectDiscoveryProvider {
 }
 
 describe('bounded discovery engine', () => {
+  it('filters on reported Subject.eps and leaves invalid values unresolved without using total_episodes', async () => {
+    const result = await new DiscoveryEngine(new ReportedEpisodeFixtureProvider()).query({
+      media: 'anime',
+      tags: ['科幻'],
+      ratingCount: { min: 3001 },
+      reportedEpisodeCount: { max: 12 },
+      resultMode: 'all',
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.items.map((item) => item.id)).toEqual([11, 13]);
+    expect(result.items[0]).toMatchObject({ id: 11, reportedEpisodeCount: 12 });
+    expect(result.items[0]?.evidence.reportedEpisodeCount?.[0]?.fieldPath).toBe('items[11].eps');
+    expect(result.items[1]).toMatchObject({ id: 13, reportedEpisodeCount: 11 });
+    expect(result.items[1]?.evidence.reportedEpisodeCount?.map((ref) => ref.fieldPath)).toEqual(
+      expect.arrayContaining(['items[13].eps', 'eps']),
+    );
+    expect(result.coverage.hydrationsUnresolved).toBe(1);
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'DISCOVERY_HYDRATION_UNRESOLVED' }),
+    );
+  });
+
   it('deduplicates pages, hydrates with bounded concurrency, and applies post-filters', async () => {
     const provider = new FixtureDiscoveryProvider();
     const result = await new DiscoveryEngine(provider).query({

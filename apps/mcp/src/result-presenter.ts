@@ -494,6 +494,12 @@ function projectDiscoveryItem(
     if (typeof item[key] === 'string') projected[key] = item[key];
   }
   if (Number.isFinite(item.ratingCount)) projected.ratingCount = item.ratingCount;
+  if (
+    Number.isSafeInteger(item.reportedEpisodeCount) &&
+    (item.reportedEpisodeCount as number) >= 0
+  ) {
+    projected.reportedEpisodeCount = item.reportedEpisodeCount;
+  }
   const tags = projectDiscoveryFacets(item.tags, requiredTags, facetLimit);
   const metaTags = projectDiscoveryFacets(item.metaTags, requiredMetaTags, facetLimit);
   if (tags.values.length > 0 || Array.isArray(item.tags)) projected.tags = tags.values;

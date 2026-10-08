@@ -78,6 +78,21 @@ function createFixtureProvider() {
 }
 
 describe('direct execute coverage for discovery tools', () => {
+  it('accepts reported episode count only on the discovery query tool', () => {
+    expect(discoveryQueryInput.parse({ reportedEpisodeCount: { max: 12 } })).toMatchObject({
+      reportedEpisodeCount: { max: 12 },
+    });
+    expect(discoveryQueryInput.safeParse({ reportedEpisodeCount: { min: -1 } }).success).toBe(
+      false,
+    );
+    expect(discoveryQueryInput.safeParse({ reportedEpisodeCount: { max: 12.5 } }).success).toBe(
+      false,
+    );
+    expect(renderQuerySubjectsInput.safeParse({ reportedEpisodeCount: { max: 12 } }).success).toBe(
+      false,
+    );
+  });
+
   it('accepts current season through the discovery tool and sends the resolved D05 request', async () => {
     expect(discoveryQueryInput.parse({ season: 'current' })).toMatchObject({ season: 'current' });
     expect(discoveryQueryInput.safeParse({ season: 'this-season' }).success).toBe(false);
