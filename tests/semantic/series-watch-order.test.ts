@@ -55,6 +55,33 @@ describe('Series / Watch-Order semantic contracts', () => {
           { status: 200, headers: { 'content-type': 'application/json' } },
         );
       }
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 1,
+              name: '角色一',
+              type: 1,
+              subject_id: 100,
+              subject_type: 2,
+              subject_name: '起点',
+              subject_name_cn: '起点',
+              staff: '主役',
+            },
+            {
+              id: 2,
+              name: '角色二',
+              type: 1,
+              subject_id: 101,
+              subject_type: 2,
+              subject_name: '续集',
+              subject_name_cn: '续集',
+              staff: '配角',
+            },
+          ]),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
       return new Response('not found', { status: 404 });
     });
     const readTool = createReadTools(new HttpClient({ fetchFn: fetchFn as typeof fetch }))[3];
@@ -67,17 +94,40 @@ describe('Series / Watch-Order semantic contracts', () => {
     expect(
       readTool?.input.safeParse({ subjectId: 100, depth: 2, maxNodes: 16, media: 'all' }).success,
     ).toBe(true);
+    expect(
+      readTool?.input.safeParse({
+        subjectId: 100,
+        voiceActorPersonId: 20,
+        maxVoiceCredits: 120,
+      }).success,
+    ).toBe(true);
+    expect(readTool?.input.safeParse({ subjectId: 100, voiceActorPersonId: 0 }).success).toBe(
+      false,
+    );
+    expect(readTool?.input.safeParse({ subjectId: 100, maxVoiceCredits: 121 }).success).toBe(false);
     expect(readTool?.input.safeParse({ subjectId: 100, depth: 3 }).success).toBe(false);
     expect(readTool?.input.safeParse({ subjectId: 100, maxNodes: 17 }).success).toBe(false);
 
     const result = await readTool?.execute(
-      { subjectId: 100, depth: 0, maxNodes: 1, media: 'all' },
+      {
+        subjectId: 100,
+        depth: 0,
+        maxNodes: 1,
+        media: 'all',
+        voiceActorPersonId: 20,
+        maxVoiceCredits: 4,
+      },
       { principalId: 'p', botInstanceId: 'b', conversationId: 'c' },
       { publicHttpClient: new HttpClient({ fetchFn: fetchFn as typeof fetch }) },
     );
     expect(result).toMatchObject({
       subjectId: 100,
       coverage: { maxNodes: 1, media: 'all', nonAnimeRowsReturned: 1 },
+      voiceActorPresence: {
+        matchStatus: 'multi_work_found',
+        distinctWorks: 2,
+        works: [{ subjectId: 100 }, { subjectId: 101 }],
+      },
     });
 
     const renderService = { renderCard: vi.fn() } as unknown as RenderService;
@@ -95,5 +145,18 @@ describe('Series / Watch-Order semantic contracts', () => {
     expect(
       renderTool?.input.safeParse({ subjectId: 100, depth: 2, maxNodes: 16, media: 'all' }).success,
     ).toBe(true);
+    expect(
+      renderTool?.input.safeParse({
+        subjectId: 100,
+        voiceActorPersonId: 20,
+        maxVoiceCredits: 120,
+      }).success,
+    ).toBe(true);
+    expect(renderTool?.input.safeParse({ subjectId: 100, voiceActorPersonId: -1 }).success).toBe(
+      false,
+    );
+    expect(renderTool?.input.safeParse({ subjectId: 100, maxVoiceCredits: 121 }).success).toBe(
+      false,
+    );
   });
 });

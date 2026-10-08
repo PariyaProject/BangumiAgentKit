@@ -1917,6 +1917,7 @@ export function buildSeriesRelationsViewModel(
       ),
     ),
   ];
+  const voiceActorPresence = result.voiceActorPresence;
 
   return {
     template: 'series-relations',
@@ -1935,6 +1936,35 @@ export function buildSeriesRelationsViewModel(
     steps,
     related,
     edges,
+    ...(voiceActorPresence
+      ? {
+          voiceActorPresence: {
+            personId: voiceActorPresence.personId,
+            state: voiceActorPresence.state,
+            matchStatus: voiceActorPresence.matchStatus,
+            distinctWorks: voiceActorPresence.distinctWorks,
+            works: voiceActorPresence.works.slice(0, 8).map((work) => ({
+              subjectId: work.subjectId,
+              subjectName: work.subjectName,
+              subjectNameCn: work.subjectNameCn,
+              relationEvidence: work.relationEvidence.slice(0, 4),
+              omittedRelationEvidence: Math.max(0, work.relationEvidence.length - 4),
+              credits: work.credits.slice(0, 4),
+              omittedCredits: Math.max(0, work.credits.length - 4),
+            })),
+            omittedWorks: Math.max(0, voiceActorPresence.works.length - 8),
+            coverage: { ...voiceActorPresence.coverage },
+            sourceOperation: {
+              path: voiceActorPresence.sourceOperation.path,
+              status: voiceActorPresence.sourceOperation.status,
+              ...(voiceActorPresence.sourceOperation.failureReason === undefined
+                ? {}
+                : { failureReason: voiceActorPresence.sourceOperation.failureReason }),
+            },
+            limitations: voiceActorPresence.limitations.slice(0, 4),
+          },
+        }
+      : {}),
     excluded: {
       count: result.excluded.count,
       byReason: result.excluded.byReason.map((item) => ({

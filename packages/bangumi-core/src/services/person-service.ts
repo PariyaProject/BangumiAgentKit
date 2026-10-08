@@ -31,6 +31,34 @@ function imageMap(value: unknown): value is Record<string, string> {
   );
 }
 
+function validPersonRelationCharacter(value: unknown): value is {
+  id: number;
+  name: string;
+  type: number;
+  images?: Record<string, string> | null;
+  subject_id: number;
+  subject_type: number;
+  subject_name: string;
+  subject_name_cn: string;
+  staff?: string;
+} {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    positiveInteger(row.id) &&
+    typeof row.name === 'string' &&
+    typeof row.type === 'number' &&
+    Number.isInteger(row.type) &&
+    positiveInteger(row.subject_id) &&
+    typeof row.subject_type === 'number' &&
+    Number.isInteger(row.subject_type) &&
+    typeof row.subject_name === 'string' &&
+    typeof row.subject_name_cn === 'string' &&
+    imageMap(row.images) &&
+    (row.staff === undefined || typeof row.staff === 'string')
+  );
+}
+
 function validSubjectStaffRow(value: unknown): value is {
   id: number;
   name: string;
@@ -199,7 +227,7 @@ export function mapPersonRelationCharacter(raw: {
   id: number;
   name?: string;
   type?: number;
-  images?: Record<string, string>;
+  images?: Record<string, string> | null;
   subject_id?: number;
   subject_type?: number;
   subject_name?: string;
@@ -470,6 +498,36 @@ export class PersonService {
     const raw = await this.api.getRelatedCharactersByPersonId(personId);
     const items = (raw || []).slice(0, limit);
     return items.map(mapPersonRelationCharacter);
+  }
+
+  async getPersonRelatedCharactersWithCoverage(
+    personId: number,
+    limit = 120,
+    options: { maxResponseBytes?: number } = {},
+  ): Promise<RelationCollection<PersonRelationCharacter>> {
+    const raw = await this.api.getRelatedCharactersByPersonId(personId, {
+      ...(options.maxResponseBytes === undefined
+        ? {}
+        : { maxResponseBytes: options.maxResponseBytes }),
+    });
+    const rawRows: unknown[] = Array.isArray(raw) ? raw : [];
+    const validRows = rawRows.filter(validPersonRelationCharacter);
+    const safeLimit = Math.max(0, Math.floor(limit));
+    const selectedRows = validRows.slice(0, safeLimit);
+    const items = selectedRows.map((row) => {
+      const item = mapPersonRelationCharacter(row);
+      // Keep the exact source value, including an empty role label.
+      if (row.staff !== undefined) item.staff = row.staff;
+      return item;
+    });
+    const schemaDriftRows = Array.isArray(raw) ? rawRows.length - validRows.length : 1;
+    return {
+      items,
+      observed: rawRows.length,
+      returned: items.length,
+      truncated: validRows.length > items.length || schemaDriftRows > 0,
+      schemaDriftRows,
+    };
   }
 
   async getSubjectStaff(

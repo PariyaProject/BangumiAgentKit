@@ -255,6 +255,25 @@ class PublicApiEvidenceTests(unittest.TestCase):
 
 
 class CodexModelMcpEvidenceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        keypair_script = (
+            'import { generateKeyPairSync } from "node:crypto"; '
+            'const pair = generateKeyPairSync("ed25519"); '
+            'process.stdout.write(JSON.stringify({'
+            'privateKeyPem: pair.privateKey.export({type:"pkcs8",format:"pem"}), '
+            'publicKeyPem: pair.publicKey.export({type:"spki",format:"pem"})}));'
+        )
+        keypair_result = subprocess.run(
+            ['node', '--input-type=module', '-e', keypair_script],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        keypair = json.loads(keypair_result.stdout)
+        cls.s03_test_attestation_private_key = keypair['privateKeyPem']
+        cls.s03_test_attestation_public_key = keypair['publicKeyPem']
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix='codex-model-mcp-evidence-test-')
         self.root = Path(self.temp_dir.name)
@@ -320,6 +339,20 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'required': ['personId'],
                 },
             },
+            {
+                'name': 'bangumi.get_series_watch_order',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Bounded series relations with optional voice actor overlap.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'subjectId': {'type': 'integer'},
+                        'voiceActorPersonId': {'type': 'integer'},
+                        'maxVoiceCredits': {'type': 'integer'},
+                    },
+                    'required': ['subjectId'],
+                },
+            },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
         self.catalog_path = self.root / 'docs/tool-catalog.json'
@@ -336,11 +369,86 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         GENERATOR.CATALOG = self.catalog_path
         GENERATOR.LIVE_PROBE_DIR = self.live_probe_dir
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G23.json'
+        self.original_urlopen = GENERATOR.urllib.request.urlopen
+        self.s03_control_candidate_revision = self.source_revision
+        self.s03_control_base_sha = 'b' * 40
+        self.s03_control_key_sha256 = hashlib.sha256(
+            self.s03_test_attestation_public_key.encode('utf-8'),
+        ).hexdigest()
+        self.s03_control_available = True
+        GENERATOR.urllib.request.urlopen = self._fake_s03_control_urlopen
+
+    def _fake_s03_control_urlopen(self, request, timeout=10):
+        if not self.s03_control_available:
+            raise GENERATOR.urllib.error.URLError('fixture control plane unavailable')
+
+        reviewer_id = 'gpt-6-luna-max-run95-s03-pr128-round1'
+        marker = (
+            'S03 runner attestation trust: candidate '
+            f'{self.s03_control_candidate_revision}; Ed25519 public key SHA-256 '
+            f'{self.s03_control_key_sha256}.'
+        )
+        epoch = {
+            'schema': 'bangumi-harness/v3',
+            'kind': 'epoch',
+            'pr_number': 128,
+            'base_sha': self.s03_control_base_sha,
+            'adversarial_preflight': {'completed': True, 'summary': marker},
+            'review_history': [{
+                'candidate_sha': self.s03_control_candidate_revision,
+                'reviewed_base_sha': self.s03_control_base_sha,
+                'reviewer_id': reviewer_id,
+                'verdict': 'PASS',
+            }],
+        }
+        fence = chr(96) * 3
+        body = (
+            '<!-- bangumi-harness:v3:epoch:start -->\n'
+            + fence
+            + 'json\n'
+            + json.dumps(epoch)
+            + '\n'
+            + fence
+            + '\n<!-- bangumi-harness:v3:epoch:end -->'
+        )
+        payload = json.dumps({'number': 128, 'body': body}).encode('utf-8')
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exception_type, exception, traceback):
+                return False
+
+            def read(self, size=-1):
+                return payload if size < 0 else payload[:size]
+
+        return Response()
 
     def _git(self, *args):
         return subprocess.run(
             ['git', *args], cwd=self.root, check=True, capture_output=True, text=True,
         )
+
+    def _sign_s03_test_proof(self, proof_sha256):
+        signer_script = (
+            'import { createPrivateKey, sign } from "node:crypto"; '
+            'import { readFileSync } from "node:fs"; '
+            'const input = JSON.parse(readFileSync(0,"utf8")); '
+            'process.stdout.write(sign(null, Buffer.from(input.proofSha256,"hex"), '
+            'createPrivateKey(input.privateKeyPem)).toString("base64"));'
+        )
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', signer_script],
+            input=json.dumps({
+                'privateKeyPem': self.s03_test_attestation_private_key,
+                'proofSha256': proof_sha256,
+            }),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
 
     def _init_probe_source_history(self):
         relative_paths = {
@@ -348,15 +456,24 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
-            if relative_path == GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH:
+            if relative_path in {
+                GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH,
+                GENERATOR.CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH,
+            }:
                 continue
             source_path = self.original_root / relative_path
             fixture_path = self.root / relative_path
             fixture_path.parent.mkdir(parents=True, exist_ok=True)
             fixture_path.write_bytes(source_path.read_bytes())
+        attestation_key_path = (
+            self.root / GENERATOR.CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH
+        )
+        attestation_key_path.parent.mkdir(parents=True, exist_ok=True)
+        attestation_key_path.write_text(self.s03_test_attestation_public_key, encoding='utf-8')
         s02_attestation_path = self.root / GENERATOR.CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH
         s02_attestation_path.parent.mkdir(parents=True, exist_ok=True)
         s02_attestation_path.write_text(json.dumps({
@@ -373,6 +490,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'bundleSha256': 'f' * 64,
         }), encoding='utf-8')
         relative_paths.add(GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH)
+        s03_attestation_path = self.root / GENERATOR.CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH
+        s03_attestation_path.parent.mkdir(parents=True, exist_ok=True)
+        s03_attestation_path.write_text(json.dumps({
+            'schemaVersion': 1,
+            'kind': 's03-mcp-runtime-bundle-attestation-v1',
+            'bundleSha256': 'a' * 64,
+        }), encoding='utf-8')
+        relative_paths.add(GENERATOR.CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH)
         smoke_script = self.root / 'scripts/smoke-public-tools-online.ts'
         smoke_script.parent.mkdir(parents=True, exist_ok=True)
         smoke_script.write_text('// public probe report validator fixture\n', encoding='utf-8')
@@ -397,6 +522,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         GENERATOR.ROOT = self.original_root
         GENERATOR.CATALOG = self.original_catalog
         GENERATOR.LIVE_PROBE_DIR = self.original_probe_dir
+        GENERATOR.urllib.request.urlopen = self.original_urlopen
         self.temp_dir.cleanup()
 
     @staticmethod
@@ -1029,6 +1155,130 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _s03_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
+        revision = source_revision or self.source_revision
+        self.s03_control_candidate_revision = revision
+        coverage = {
+            'relationRowsObserved': 12,
+            'eligibleDirectAnimeWorksObserved': 1,
+            'eligibleDirectAnimeWorksSelected': 1,
+            'eligibleDirectAnimeWorksOmitted': 0,
+            'personRowsObserved': 75,
+            'personRowsReturned': 75,
+            'personRowsOmitted': 0,
+            'matchedCreditRows': 2,
+            'duplicateRows': 0,
+            'schemaDriftRows': 0,
+            'maxRelatedAnimeWorks': 8,
+            'maxVoiceCredits': 120,
+            'maxResponseBytes': 1_048_576,
+            'truncated': False,
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_s03_series_voice_overlap_agent_mcp',
+            'runNumber': 95,
+            'scenarioId': 'S03',
+            'profile': 'run95-s03-series-voice-overlap-agent-mcp-v1',
+            'frontierId': 'S03',
+            'sourceRevision': revision,
+            'mcpBundleSha256': GENERATOR.codex_s03_candidate_bundle_sha256(revision),
+            'prNumber': 128,
+            'baseSha': 'b' * 40,
+            'observedAt': '2026-10-08T06:00:00.000Z',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '1.2.14',
+            'toolName': 'bangumi.get_series_watch_order',
+            'argumentProfile': 'fixed-s03-spy-family-goto-hiroki-voice-overlap-v1',
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_S03_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_series_watch_order'],
+            'mcpServerNames': ['bgk_s03_one_tool'],
+            'serverToolCount': 1,
+            'processExitCode': 0,
+            'resultCount': 1,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'resultStatus': 'SUCCESS',
+            'toolCalls': [{'name': 'bangumi.get_series_watch_order', 'state': 'DONE'}],
+            'answerCheckMethod': 's03-series-voice-overlap-answer-v1',
+            'toolTextUtf8Bytes': 1800,
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_S03_ANSWER_CHECK_FIELDS
+            },
+            'resultCounters': {
+                'distinctWorks': 2,
+                'answerWorks': 2,
+                'matchedCreditRows': 2,
+                'personRowsObserved': 75,
+                'personRowsReturned': 75,
+                'directAnimeWorksOmitted': 0,
+                'coverageFieldsMatched': len(GENERATOR.CODEX_S03_COVERAGE_FIELDS),
+            },
+            'resultSummary': {
+                'rootSubjectId': 329906,
+                'matchStatus': 'multi_work_found',
+                'distinctWorks': 2,
+                'subjectIds': [329906, 373267],
+                'characterIds': [71479, 7602],
+                'state': 'observed',
+                'coverage': coverage,
+                'sourceOperationStatus': 'succeeded',
+            },
+            'privacy': {
+                'authProfile': 'anonymous',
+                **{
+                    key: False
+                    for key in GENERATOR.CODEX_S03_PRIVACY_FIELDS - {'authProfile'}
+                },
+            },
+            'rawAnswerPersisted': False,
+            'rawToolResultPersisted': False,
+        }
+        provenance = {
+            'schemaVersion': 1,
+            'kind': 's03-runner-evidence-digest-v1',
+            'algorithm': 'Ed25519',
+            'reviewerId': 'gpt-6-luna-max-run95-s03-pr128-round1',
+            'keyIdSha256': hashlib.sha256(
+                self.s03_test_attestation_public_key.encode('utf-8'),
+            ).hexdigest(),
+            'summaryPathSha256': '1' * 64,
+            'serverSummarySha256': '2' * 64,
+            'eventsSha256': '3' * 64,
+        }
+        proof_payload = {
+            'sourceRevision': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'prNumber': report['prNumber'],
+            'reviewerId': provenance['reviewerId'],
+            'model': report['model'],
+            'reasoningEffort': report['reasoningEffort'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'algorithm': provenance['algorithm'],
+            'keyIdSha256': provenance['keyIdSha256'],
+            'summaryPathSha256': provenance['summaryPathSha256'],
+            'serverSummarySha256': provenance['serverSummarySha256'],
+            'eventsSha256': provenance['eventsSha256'],
+            'reportSha256': GENERATOR._canonical_json_sha256(report),
+        }
+        provenance['proofSha256'] = GENERATOR._canonical_json_sha256(proof_payload)
+        provenance['signature'] = self._sign_s03_test_proof(provenance['proofSha256'])
+        report['evidenceProvenance'] = provenance
+        return report
+
     def _write_g26_frontier(self, status, source_refs=None):
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
         frontier_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1111,6 +1361,95 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report_path, self.stale_candidate_source_revision,
             ),
         )
+
+    def test_accepts_exact_candidate_bound_s03_positive_agent_mcp_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH).name
+        report = self._s03_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_s03_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_s03_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_s03_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_series_watch_order'],
+            {GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH},
+        )
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog)['bangumi.get_series_watch_order'],
+            {GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('角色甲', json.dumps(report, ensure_ascii=False))
+
+        self._git('add', GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized S03 one-shot evidence')
+        self.assertTrue(
+            GENERATOR.codex_s03_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_s03_report_without_positive_id_grounded_scope_or_privacy(self):
+        report = self._s03_report_fixture()
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'mcpBundleSha256': '0' * 64},
+            {'answerChecks': {'twoDistinctWorksMatched': False}},
+            {'resultCounters': {**report['resultCounters'], 'distinctWorks': 1}},
+            {'resultSummary': {**report['resultSummary'], 'subjectIds': [329906]}},
+            {
+                'evidenceProvenance': {
+                    **report['evidenceProvenance'],
+                    'eventsSha256': '4' * 64,
+                },
+            },
+            {
+                'evidenceProvenance': {
+                    **report['evidenceProvenance'],
+                    'proofSha256': '0' * 64,
+                },
+            },
+            {
+                'evidenceProvenance': {
+                    **report['evidenceProvenance'],
+                    'signature': 'A' + report['evidenceProvenance']['signature'][1:],
+                },
+            },
+            {'privacy': {**report['privacy'], 'accountDataRead': True}},
+            {'answer': 'raw answer must never persist'},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                candidate = {**report, **override}
+                self.assertFalse(GENERATOR.codex_s03_report_is_valid(candidate))
+
+    def test_rejects_s03_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH).name
+        report = self._s03_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_s03_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_s03_report_matches_candidate_revision(
+                report_path, report['sourceRevision'],
+            ),
+        )
+
+    def test_requires_the_candidate_pass_and_trusted_key_from_harness_control_plane(self):
+        report = self._s03_report_fixture()
+        self.s03_control_key_sha256 = '0' * 64
+        self.assertFalse(GENERATOR.codex_s03_report_is_valid(report))
+
+        self.s03_control_key_sha256 = hashlib.sha256(
+            self.s03_test_attestation_public_key.encode('utf-8'),
+        ).hexdigest()
+        self.s03_control_available = False
+        self.assertFalse(GENERATOR.codex_s03_report_is_valid(report))
 
     def test_accepts_candidate_bound_sanitized_g26_report_and_partial_frontier(self):
         report_path = self.live_probe_dir / 'g26-exact-tag-agent-mcp-run95.json'

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate the per-tool Bangumi acceptance checklist from the catalog and tests."""
 import argparse
+import base64
 import functools
 import hashlib
 import json
@@ -10,6 +11,8 @@ import re
 from pathlib import Path
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from client_evidence import tool_client_e2e_sources
@@ -221,6 +224,16 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         and codex_d05_report_matches_candidate_revision(d05_path, d05_report.get('sourceRevision'))
     ):
         sources.setdefault('bangumi.query_subjects', set()).add(report_source_ref(d05_path))
+    s03_path = LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1]
+    try:
+        s03_report = json.loads(s03_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        s03_report = None
+    if (
+        codex_s03_report_is_valid(s03_report)
+        and codex_s03_report_matches_candidate_revision(s03_path, s03_report.get('sourceRevision'))
+    ):
+        sources.setdefault('bangumi.get_series_watch_order', set()).add(report_source_ref(s03_path))
     return sources
 
 
@@ -255,6 +268,17 @@ CODEX_S02_EXPECTED_ARGUMENTS = {
 }
 CODEX_S02_REPORT_RELATIVE_PATH = 'docs/live-probes/s02-top-rated-main-voice-run95.json'
 CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/s02-mcp-bundle-attestation.json'
+CODEX_S03_EXPECTED_ARGUMENTS = {
+    'subjectId': 329906,
+    'depth': 0,
+    'maxNodes': 8,
+    'media': 'anime',
+    'voiceActorPersonId': 7602,
+    'maxVoiceCredits': 120,
+}
+CODEX_S03_REPORT_RELATIVE_PATH = 'docs/live-probes/s03-series-voice-overlap-agent-mcp-run95.json'
+CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/s03-mcp-bundle-attestation.json'
+CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH = 'docs/product/s03-run95-attestation-ed25519.pub'
 CODEX_D05_EXPECTED_ARGUMENTS = {
     'media': 'anime',
     'season': 'current',
@@ -403,6 +427,107 @@ CODEX_S02_ANSWER_COUNTER_FIELDS = {
 }
 CODEX_S02_RESULT_SUMMARY_FIELDS = {'state', 'scope', 'media', 'truncated', 'rows', 'coverage'}
 CODEX_S02_RESULT_ROW_FIELDS = {'subjectId', 'ratingScore', 'ratingTotal'}
+CODEX_S03_ANSWER_CHECK_FIELDS = {
+    'queryArgumentsMatch', 'exactSingleToolCall', 'structuredResultReadbackAvailable',
+    'sourceOperationValid', 'answerPersonIdMatches', 'answerMatchStatusMatches',
+    'answerDistinctWorkCountMatches', 'twoDistinctWorksMatched', 'expectedDirectRelationPreserved',
+    'boundedCoverageValid', 'coverageMatches', 'answerRowsMatch', 'noMatchCaveatPresent',
+    'observedScopeCaveatPresent', 'careerAndCanonicalOrderCaveatsPresent',
+    'noUnsupportedCompletenessClaim', 'noMarkdownFormatting',
+}
+CODEX_S03_RESULT_COUNTER_FIELDS = {
+    'distinctWorks', 'answerWorks', 'matchedCreditRows', 'personRowsObserved',
+    'personRowsReturned', 'directAnimeWorksOmitted', 'coverageFieldsMatched',
+}
+CODEX_S03_RESULT_SUMMARY_FIELDS = {
+    'rootSubjectId', 'matchStatus', 'distinctWorks', 'subjectIds', 'characterIds',
+    'state', 'coverage', 'sourceOperationStatus',
+}
+CODEX_S03_COVERAGE_FIELDS = {
+    'relationRowsObserved', 'eligibleDirectAnimeWorksObserved',
+    'eligibleDirectAnimeWorksSelected', 'eligibleDirectAnimeWorksOmitted',
+    'personRowsObserved', 'personRowsReturned', 'personRowsOmitted', 'matchedCreditRows',
+    'duplicateRows', 'schemaDriftRows', 'maxRelatedAnimeWorks', 'maxVoiceCredits',
+    'maxResponseBytes', 'truncated',
+}
+CODEX_S03_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'communityRead', 'writesAttempted',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
+    'credentialsStored',
+}
+CODEX_S03_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'scenarioId', 'profile', 'frontierId',
+    'sourceRevision', 'mcpBundleSha256', 'prNumber', 'baseSha', 'observedAt', 'model',
+    'reasoningEffort', 'codexCliVersion', 'toolName', 'argumentProfile',
+    'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'serverToolNames', 'mcpServerNames', 'serverToolCount', 'processExitCode', 'resultCount',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'resultStatus', 'toolCalls', 'answerCheckMethod',
+    'toolTextUtf8Bytes', 'answerChecks', 'resultCounters', 'resultSummary', 'privacy',
+    'rawAnswerPersisted', 'rawToolResultPersisted', 'evidenceProvenance',
+}
+CODEX_S03_PROVENANCE_FIELDS = {
+    'schemaVersion', 'kind', 'algorithm', 'reviewerId', 'keyIdSha256', 'summaryPathSha256',
+    'serverSummarySha256', 'eventsSha256', 'proofSha256', 'signature',
+}
+CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
+    'packages/bangumi-core/src/services/series-service.ts': (
+        'voiceActorPersonId',
+        'makeVoiceActorPresence(',
+        'MAX_VOICE_RESPONSE_BYTES = 1_048_576',
+    ),
+    'apps/mcp/src/result-presenter.ts': (
+        'function projectSeriesVoiceActorPresence(',
+        "answerScope:",
+    ),
+    'scripts/acceptance/run-s03-codex-agent-mcp.mjs': (
+        'assertS03CandidateReviewGate(',
+        'createS03OneShotClaim(',
+        'function prepareS03ReportClaim(',
+        "'features.shell_tool=false'",
+        'review?.reviewed_base_sha === currentBaseSha',
+        'pr?.baseRefOid === currentBaseSha',
+        'round1$/u.exec(review.reviewer_id)',
+        'summaryPathSha256: sha256(path.resolve(summaryPath))',
+        'loadS03EvidenceSigningKey()',
+        'PARIYA_S03_EVIDENCE_SIGNING_KEY_PATH',
+        'S03 runner attestation trust:',
+    ),
+    'scripts/lib/s03-one-shot-authorization.mjs': (
+        'function assertClaimPath(',
+        'const lockPath = `${claimPath}.server-call-claimed`;',
+        'claim.summaryPathSha256 !== summaryPathSha256',
+        'export function verifyS03ReportClaim(',
+    ),
+    'apps/mcp/s03-one-tool-mcp-server.mjs': (
+        'verifyS03ServerAuthorization(',
+        'claimS03ServerCall(',
+        'captureS03ServerResult(',
+    ),
+    'scripts/acceptance/write-s03-agent-mcp-report.mjs': (
+        'verifyS03ReportClaim(',
+        's03EventEvidenceSha256(',
+        'evidenceProvenance.proofSha256 = sha256(canonicalJson(proofPayload))',
+        'evidenceProvenance.signature = sign(',
+    ),
+    'scripts/acceptance/s03-agent-answer-check.mjs': (
+        'export function verifyS03VoiceActorOverlapAnswer(',
+        '未命中不证明没有其他演出',
+        'careerAndCanonicalOrderCaveatsPresent',
+        'Object.keys(parsedAnswer).sort()',
+        'noUnsupportedCompletenessClaim: !hasUnsupportedCompletenessClaim(parsedAnswer)',
+        'negatedClaimPrefix.test(clause.trim())',
+        '|于是|因为|但|且|却|而/u',
+    ),
+    CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH: ('-----BEGIN PUBLIC KEY-----',),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_s03_report_provenance_is_valid(',
+        'def codex_s03_harness_control_record_trusts_attestation(',
+        'CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH',
+        'verify(null, Buffer.from(input.proofSha256',
+        'https://api.github.com/repos/PariyaProject/BangumiAgentKit/pulls/',
+    ),
+}
 CODEX_S02_COVERAGE_FIELDS = {
     'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
     'subjectDetailRequests', 'subjectDetailsSucceeded', 'subjectDetailsFailed',
@@ -1181,6 +1306,415 @@ def codex_s02_report_is_valid(report: object) -> bool:
     )
 
 
+def codex_s03_candidate_bundle_sha256(revision: object) -> str | None:
+    """Read the S03 runtime-bundle digest attested by its exact Candidate."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return None
+    result = _run_repository_git(
+        ROOT, 'show', f'{revision}:{CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH}',
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        attestation = json.loads(result.stdout)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not isinstance(attestation, dict)
+        or set(attestation) != {'schemaVersion', 'kind', 'bundleSha256'}
+        or type(attestation.get('schemaVersion')) is not int
+        or attestation.get('schemaVersion') != 1
+        or attestation.get('kind') != 's03-mcp-runtime-bundle-attestation-v1'
+        or not isinstance(attestation.get('bundleSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', attestation['bundleSha256'])
+    ):
+        return None
+    return attestation['bundleSha256']
+
+
+def codex_s03_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_revision_has_markers(
+        str(ROOT), revision, CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
+    )
+
+
+def codex_s03_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind S03's sanitized evidence to the exact pre-query Candidate."""
+    if not codex_s03_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    return (
+        relative_path == CODEX_S03_REPORT_RELATIVE_PATH
+        and codex_g20_report_matches_candidate_revision(report_path, revision)
+    )
+
+
+def codex_s03_harness_control_record_trusts_attestation(
+    pr_number: object,
+    source_revision: object,
+    base_sha: object,
+    reviewer_id: object,
+    key_id_sha256: object,
+) -> bool:
+    """Trust an S03 key only when the exact PASS and key pin are in the GitHub Harness control plane."""
+    if (
+        type(pr_number) is not int
+        or pr_number <= 0
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not isinstance(base_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or not isinstance(reviewer_id, str)
+        or reviewer_id != f'gpt-6-luna-max-run95-s03-pr{pr_number}-round1'
+        or not isinstance(key_id_sha256, str)
+        or not re.fullmatch(r'[0-9a-f]{64}', key_id_sha256)
+    ):
+        return False
+    request = urllib.request.Request(
+        f'https://api.github.com/repos/PariyaProject/BangumiAgentKit/pulls/{pr_number}',
+        headers={
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'PariyaAgent-acceptance-evidence',
+            'X-GitHub-Api-Version': '2022-11-28',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = response.read(1_000_001)
+        if len(payload) > 1_000_000:
+            return False
+        pr = json.loads(payload)
+    except (
+        OSError,
+        TimeoutError,
+        UnicodeDecodeError,
+        urllib.error.URLError,
+        json.JSONDecodeError,
+    ):
+        return False
+    if not isinstance(pr, dict) or pr.get('number') != pr_number:
+        return False
+    body = pr.get('body')
+    if not isinstance(body, str):
+        return False
+    start_marker = '<!-- bangumi-harness:v3:epoch:start -->'
+    end_marker = '<!-- bangumi-harness:v3:epoch:end -->'
+    start = body.find(start_marker)
+    end = body.find(end_marker)
+    if start < 0 or end <= start:
+        return False
+    content = body[start + len(start_marker):end].strip()
+    content = re.sub(r'^\x60{3}json\s*|\s*\x60{3}$', '', content)
+    try:
+        epoch = json.loads(content)
+    except json.JSONDecodeError:
+        return False
+    preflight = epoch.get('adversarial_preflight') if isinstance(epoch, dict) else None
+    review_history = epoch.get('review_history') if isinstance(epoch, dict) else None
+    if not isinstance(preflight, dict) or not isinstance(review_history, list):
+        return False
+    marker = (
+        f'S03 runner attestation trust: candidate {source_revision}; '
+        f'Ed25519 public key SHA-256 {key_id_sha256}.'
+    )
+    return (
+        isinstance(epoch, dict)
+        and epoch.get('schema') == 'bangumi-harness/v3'
+        and epoch.get('kind') == 'epoch'
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_sha') == base_sha
+        and preflight.get('completed') is True
+        and marker in str(preflight.get('summary', ''))
+        and any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == source_revision
+            and review.get('reviewed_base_sha') == base_sha
+            and review.get('reviewer_id') == reviewer_id
+            and review.get('verdict') == 'PASS'
+            for review in review_history
+        )
+    )
+
+
+def codex_s03_report_provenance_is_valid(report: object) -> bool:
+    if not isinstance(report, dict):
+        return False
+    provenance = report.get('evidenceProvenance')
+    pr_number = report.get('prNumber')
+    if (
+        not isinstance(provenance, dict)
+        or set(provenance) != CODEX_S03_PROVENANCE_FIELDS
+        or type(provenance.get('schemaVersion')) is not int
+        or provenance.get('schemaVersion') != 1
+        or provenance.get('kind') != 's03-runner-evidence-digest-v1'
+        or provenance.get('algorithm') != 'Ed25519'
+        or type(pr_number) is not int
+        or pr_number <= 0
+        or provenance.get('reviewerId') != f'gpt-6-luna-max-run95-s03-pr{pr_number}-round1'
+        or any(
+            not isinstance(provenance.get(field), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', provenance[field])
+            for field in (
+                'keyIdSha256', 'summaryPathSha256', 'serverSummarySha256',
+                'eventsSha256', 'proofSha256',
+            )
+        )
+        or not isinstance(provenance.get('signature'), str)
+    ):
+        return False
+    try:
+        signature = base64.b64decode(provenance['signature'], validate=True)
+    except (ValueError, TypeError):
+        return False
+    if len(signature) != 64 or base64.b64encode(signature).decode('ascii') != provenance['signature']:
+        return False
+    source_revision = report.get('sourceRevision')
+    if not isinstance(source_revision, str) or not re.fullmatch(r'[0-9a-f]{40}', source_revision):
+        return False
+    key_result = _run_repository_git(
+        ROOT,
+        'show',
+        f'{source_revision}:{CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH}',
+    )
+    if key_result.returncode != 0:
+        return False
+    public_key_pem = key_result.stdout
+    if (
+        not public_key_pem.startswith('-----BEGIN PUBLIC KEY-----')
+        or hashlib.sha256(public_key_pem.encode('utf-8')).hexdigest()
+        != provenance['keyIdSha256']
+    ):
+        return False
+    report_without_provenance = dict(report)
+    report_without_provenance.pop('evidenceProvenance', None)
+    proof_payload = {
+        'sourceRevision': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'prNumber': report.get('prNumber'),
+        'reviewerId': provenance['reviewerId'],
+        'model': report.get('model'),
+        'reasoningEffort': report.get('reasoningEffort'),
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'algorithm': provenance['algorithm'],
+        'keyIdSha256': provenance['keyIdSha256'],
+        'summaryPathSha256': provenance['summaryPathSha256'],
+        'serverSummarySha256': provenance['serverSummarySha256'],
+        'eventsSha256': provenance['eventsSha256'],
+        'reportSha256': _canonical_json_sha256(report_without_provenance),
+    }
+    if provenance['proofSha256'] != _canonical_json_sha256(proof_payload):
+        return False
+    verifier_script = (
+        'import { createPublicKey, verify } from "node:crypto";\n'
+        'import { readFileSync } from "node:fs";\n'
+        'try {\n'
+        '  const input = JSON.parse(readFileSync(0, "utf8"));\n'
+        '  const valid = verify(null, Buffer.from(input.proofSha256, "hex"), '
+        'createPublicKey(input.publicKeyPem), Buffer.from(input.signature, "base64"));\n'
+        '  process.exitCode = valid ? 0 : 1;\n'
+        '} catch { process.exitCode = 1; }\n'
+    )
+    verification_env = os.environ.copy()
+    verification_env.pop('PARIYA_S03_EVIDENCE_SIGNING_KEY_PATH', None)
+    try:
+        verification = subprocess.run(
+            ['node', '--input-type=module', '-e', verifier_script],
+            cwd=ROOT,
+            env=verification_env,
+            input=json.dumps({
+                'proofSha256': provenance['proofSha256'],
+                'publicKeyPem': public_key_pem,
+                'signature': provenance['signature'],
+            }),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return verification.returncode == 0 and codex_s03_harness_control_record_trusts_attestation(
+        pr_number,
+        source_revision,
+        report.get('baseSha'),
+        provenance['reviewerId'],
+        provenance['keyIdSha256'],
+    )
+
+
+def codex_s03_report_is_valid(report: object) -> bool:
+    """Validate sanitized S03 Agent/MCP evidence for the fixed Luna Max call."""
+    if not isinstance(report, dict) or set(report) != CODEX_S03_REPORT_FIELDS:
+        return False
+    if not codex_s03_report_provenance_is_valid(report):
+        return False
+    source_revision = report.get('sourceRevision')
+    if (
+        type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_cli_s03_series_voice_overlap_agent_mcp'
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('scenarioId') != 'S03'
+        or report.get('profile') != 'run95-s03-series-voice-overlap-agent-mcp-v1'
+        or report.get('frontierId') != 'S03'
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not codex_s03_probe_revision_has_implementation(source_revision)
+        or report.get('mcpBundleSha256') != codex_s03_candidate_bundle_sha256(source_revision)
+        or type(report.get('prNumber')) is not int
+        or report.get('prNumber') <= 0
+        or not isinstance(report.get('baseSha'), str)
+        or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
+        or not isinstance(report.get('observedAt'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt'])
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+        or report.get('toolName') != 'bangumi.get_series_watch_order'
+        or report.get('argumentProfile') != 'fixed-s03-spy-family-goto-hiroki-voice-overlap-v1'
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(
+            CODEX_S03_EXPECTED_ARGUMENTS,
+        )
+        or type(report.get('processExitCode')) is not int
+        or report.get('processExitCode') != 0
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('eventStreamParsed') is not True
+        or report.get('codexMcpToolEventCount') != 1
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0
+        or report.get('answerCheckMethod') != 's03-series-voice-overlap-answer-v1'
+        or type(report.get('toolTextUtf8Bytes')) is not int
+        or not 1 <= report['toolTextUtf8Bytes'] <= 3600
+        or type(report.get('rawAnswerPersisted')) is not bool
+        or report.get('rawAnswerPersisted') is not False
+        or type(report.get('rawToolResultPersisted')) is not bool
+        or report.get('rawToolResultPersisted') is not False
+    ):
+        return False
+
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    current_tool = next(
+        (item for item in catalog if isinstance(item, dict)
+         and item.get('name') == 'bangumi.get_series_watch_order'),
+        None,
+    )
+    if (
+        not isinstance(current_tool, dict)
+        or current_tool.get('auth') != 'none'
+        or current_tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(
+            current_tool.get('description', '').encode('utf-8'),
+        ).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(
+            current_tool.get('inputSchema'),
+        )
+    ):
+        return False
+
+    if (
+        report.get('serverToolNames') != ['bangumi.get_series_watch_order']
+        or report.get('mcpServerNames') != ['bgk_s03_one_tool']
+        or report.get('serverToolCount') != 1
+        or report.get('resultCount') != 1
+        or report.get('toolCalls') != [
+            {'name': 'bangumi.get_series_watch_order', 'state': 'DONE'},
+        ]
+    ):
+        return False
+    answer_checks = report.get('answerChecks')
+    if (
+        not isinstance(answer_checks, dict)
+        or set(answer_checks) != CODEX_S03_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in answer_checks.values())
+    ):
+        return False
+    counters = report.get('resultCounters')
+    if (
+        not isinstance(counters, dict)
+        or set(counters) != CODEX_S03_RESULT_COUNTER_FIELDS
+        or any(type(value) is not int or value < 0 for value in counters.values())
+        or counters['distinctWorks'] < 2
+        or counters['answerWorks'] != counters['distinctWorks']
+        or counters['matchedCreditRows'] < 2
+        or counters['personRowsReturned'] > 120
+        or counters['personRowsReturned'] > counters['personRowsObserved']
+        or counters['coverageFieldsMatched'] != len(CODEX_S03_COVERAGE_FIELDS)
+    ):
+        return False
+
+    summary = report.get('resultSummary')
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != CODEX_S03_RESULT_SUMMARY_FIELDS
+        or summary.get('rootSubjectId') != 329906
+        or summary.get('matchStatus') != 'multi_work_found'
+        or type(summary.get('distinctWorks')) is not int
+        or summary['distinctWorks'] < 2
+        or summary.get('state') not in {'observed', 'partial'}
+        or summary.get('sourceOperationStatus') != 'succeeded'
+    ):
+        return False
+    subject_ids = summary.get('subjectIds')
+    character_ids = summary.get('characterIds')
+    if (
+        not isinstance(subject_ids, list)
+        or any(type(item) is not int or item <= 0 for item in subject_ids)
+        or len(set(subject_ids)) != len(subject_ids)
+        or summary['distinctWorks'] != len(subject_ids)
+        or not {329906, 373267}.issubset(set(subject_ids))
+        or not isinstance(character_ids, list)
+        or len(character_ids) < 2
+        or any(type(item) is not int or item <= 0 for item in character_ids)
+    ):
+        return False
+    coverage = summary.get('coverage')
+    if (
+        not isinstance(coverage, dict)
+        or set(coverage) != CODEX_S03_COVERAGE_FIELDS
+        or type(coverage.get('truncated')) is not bool
+        or any(
+            type(value) is not int or value < 0
+            for key, value in coverage.items() if key != 'truncated'
+        )
+        or coverage['maxVoiceCredits'] != 120
+        or coverage['maxResponseBytes'] != 1_048_576
+        or coverage['personRowsReturned'] > 120
+        or coverage['personRowsReturned'] > coverage['personRowsObserved']
+        or coverage['personRowsOmitted'] != (
+            coverage['personRowsObserved'] - coverage['personRowsReturned']
+        )
+        or coverage['eligibleDirectAnimeWorksSelected'] > 8
+        or coverage['eligibleDirectAnimeWorksObserved'] != (
+            coverage['eligibleDirectAnimeWorksSelected'] +
+            coverage['eligibleDirectAnimeWorksOmitted']
+        )
+    ):
+        return False
+    privacy = report.get('privacy')
+    return (
+        isinstance(privacy, dict)
+        and set(privacy) == CODEX_S03_PRIVACY_FIELDS
+        and privacy.get('authProfile') == 'anonymous'
+        and all(value is False for key, value in privacy.items() if key != 'authProfile')
+        and not _contains_forbidden_codex_content(report)
+    )
+
+
 def codex_d05_candidate_bundle_sha256(revision: object) -> str | None:
     """Read the D05 runtime bundle attestation from the exact query Candidate."""
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
@@ -1715,12 +2249,24 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     }
     report_paths = list(LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'))
     report_paths.append(LIVE_PROBE_DIR / CODEX_S02_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
     for path in report_paths:
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             continue
         if not isinstance(report, dict):
+            continue
+        if report.get('evidenceKind') == 'codex_cli_s03_series_voice_overlap_agent_mcp':
+            if (
+                path.name != Path(CODEX_S03_REPORT_RELATIVE_PATH).name
+                or not codex_s03_report_is_valid(report)
+                or not codex_s03_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault('bangumi.get_series_watch_order', set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_cli_s02_person_activity_agent_mcp':
             if (
@@ -1782,6 +2328,16 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         and codex_d05_report_matches_candidate_revision(d05_path, d05_report.get('sourceRevision'))
     ):
         sources.setdefault('bangumi.query_subjects', set()).add(report_source_ref(d05_path))
+    s03_path = LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1]
+    try:
+        s03_report = json.loads(s03_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        s03_report = None
+    if (
+        codex_s03_report_is_valid(s03_report)
+        and codex_s03_report_matches_candidate_revision(s03_path, s03_report.get('sourceRevision'))
+    ):
+        sources.setdefault('bangumi.get_series_watch_order', set()).add(report_source_ref(s03_path))
     return sources
 
 

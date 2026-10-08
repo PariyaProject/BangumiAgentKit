@@ -1,6 +1,8 @@
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import { DomainSubject, SubjectRelationItem, SubjectType } from '../models/subject.js';
+import { PersonRelationCharacter, RelationCollection } from '../models/person.js';
+import { PersonService } from './person-service.js';
 import { SubjectService } from './subject-service.js';
 
 export type SeriesWatchOrderState = 'complete' | 'partial' | 'not_computable';
@@ -37,6 +39,66 @@ export interface SeriesWatchOrderOptions {
   depth?: number;
   maxNodes?: number;
   media?: 'anime' | 'all';
+  voiceActorPersonId?: number;
+  maxVoiceCredits?: number;
+}
+
+export type SeriesVoiceActorPresenceState =
+  'observed' | 'partial' | 'unavailable' | 'not_attempted';
+
+export interface SeriesVoiceActorRelationEvidence {
+  sourceSubjectId: number;
+  targetSubjectId: number;
+  direction: 'anchor' | 'outgoing_direct';
+  rawRelationLabel?: string;
+  relationKind?: SeriesRelationKind;
+}
+
+export interface SeriesVoiceActorCredit {
+  characterId: number;
+  characterName: string;
+  /** Exact official v0 staff value, including an empty string when present. */
+  staff?: string;
+}
+
+export interface SeriesVoiceActorWork {
+  subjectId: number;
+  subjectName: string;
+  subjectNameCn: string;
+  relationEvidence: SeriesVoiceActorRelationEvidence[];
+  credits: SeriesVoiceActorCredit[];
+}
+
+export interface SeriesVoiceActorPresence {
+  personId: number;
+  state: SeriesVoiceActorPresenceState;
+  matchStatus: 'multi_work_found' | 'not_established';
+  distinctWorks: number;
+  works: SeriesVoiceActorWork[];
+  coverage: {
+    relationRowsObserved: number;
+    eligibleDirectAnimeWorksObserved: number;
+    eligibleDirectAnimeWorksSelected: number;
+    eligibleDirectAnimeWorksOmitted: number;
+    personRowsObserved: number | null;
+    personRowsReturned: number;
+    personRowsOmitted: number | null;
+    matchedCreditRows: number;
+    duplicateRows: number;
+    schemaDriftRows: number;
+    maxRelatedAnimeWorks: number;
+    maxVoiceCredits: number;
+    maxResponseBytes: number;
+    truncated: boolean;
+    retrievedAt: string;
+  };
+  sourceOperation: {
+    operation: 'GET /v0/persons/{person_id}/characters';
+    path: string;
+    status: 'succeeded' | 'failed' | 'not_attempted';
+    failureReason?: string;
+  };
+  limitations: string[];
 }
 
 export interface SeriesWatchOrderPath {
@@ -135,13 +197,15 @@ export interface SeriesWatchOrderResult {
   };
   capabilityStates: {
     watchOrder: SeriesWatchOrderCapabilityState;
+    voiceActorSeriesCredits?: SeriesVoiceActorPresenceState;
   };
   evidence: {
     sources: Array<{
       operation: string;
       path: string;
       status: 'succeeded' | 'failed';
-      subjectId: number;
+      subjectId?: number;
+      personId?: number;
       depth?: number;
     }>;
     derivation: 'series-watch-order-v2';
@@ -149,6 +213,7 @@ export interface SeriesWatchOrderResult {
   };
   warnings: string[];
   limitations: string[];
+  voiceActorPresence?: SeriesVoiceActorPresence;
 }
 
 type RelationObservation = SeriesWatchOrderPath;
@@ -212,6 +277,8 @@ const MAX_NON_ANIME_EVIDENCE = 8;
 const MAX_EDGE_EVIDENCE = 64;
 const MAX_RELATED_PATHS_PER_NODE = 8;
 const MAX_EXCLUSION_SAMPLES = 12;
+const MAX_VOICE_CREDIT_ROWS = 120;
+const MAX_VOICE_RESPONSE_BYTES = 1_048_576;
 
 const EXACT_RELATION_KINDS: Record<string, SeriesRelationKind> = {
   前传: 'prequel',
@@ -600,15 +667,23 @@ function candidateEvidencePriority(classification: {
 
 export class SeriesService {
   private readonly subjectService: SubjectService;
+  private readonly personService: PersonService;
 
   constructor(client: GeneratedBangumiOpenApiClient | HttpClient) {
     this.subjectService = new SubjectService(client);
+    this.personService = new PersonService(client);
   }
 
   async getSeriesWatchOrder(
     subjectId: number,
     options: SeriesWatchOrderOptions = {},
   ): Promise<SeriesWatchOrderResult> {
+    if (
+      options.voiceActorPersonId !== undefined &&
+      (!Number.isInteger(options.voiceActorPersonId) || options.voiceActorPersonId <= 0)
+    ) {
+      throw new RangeError('voiceActorPersonId must be a positive integer');
+    }
     const depth = Math.max(0, Math.min(MAX_DEPTH, Math.trunc(options.depth ?? DEFAULT_DEPTH)));
     const maxNodes = Math.max(
       1,
@@ -1088,7 +1163,7 @@ export class SeriesService {
     const nonAnimeRowsObserved = nonAnimeClassifications.length;
     const nonAnimeRowsReturned = relatedNonAnime.length;
 
-    return {
+    const result: SeriesWatchOrderResult = {
       state: root.type !== 'anime' ? 'not_computable' : partial ? 'partial' : 'complete',
       subjectId,
       root,
@@ -1137,6 +1212,214 @@ export class SeriesService {
       },
       warnings,
       limitations,
+    };
+
+    if (options.voiceActorPersonId !== undefined) {
+      const maxVoiceCredits = Math.max(
+        1,
+        Math.min(
+          MAX_VOICE_CREDIT_ROWS,
+          Math.floor(options.maxVoiceCredits ?? MAX_VOICE_CREDIT_ROWS),
+        ),
+      );
+      const voiceActorPresence = await this.makeVoiceActorPresence(
+        options.voiceActorPersonId,
+        root,
+        rootRelations,
+        maxNodes,
+        maxVoiceCredits,
+      );
+      result.voiceActorPresence = voiceActorPresence;
+      result.capabilityStates.voiceActorSeriesCredits = voiceActorPresence.state;
+      if (voiceActorPresence.sourceOperation.status !== 'not_attempted') {
+        result.evidence.sources.push({
+          operation: voiceActorPresence.sourceOperation.operation,
+          path: voiceActorPresence.sourceOperation.path,
+          status: voiceActorPresence.sourceOperation.status,
+          personId: options.voiceActorPersonId,
+        });
+      }
+      if (voiceActorPresence.state === 'unavailable') {
+        result.warnings.push('声优角色来源暂不可用；本次观察未建立声优作品交集。');
+      }
+      if (voiceActorPresence.state === 'partial') {
+        result.warnings.push('声优作品交集仅覆盖有界的当前可见行；请同时阅读 coverage 和限制。');
+      }
+    }
+
+    return result;
+  }
+
+  private async makeVoiceActorPresence(
+    personId: number,
+    root: SeriesWatchOrderNode,
+    rootRelations: SubjectRelationItem[],
+    maxRelatedAnimeWorks: number,
+    maxVoiceCredits: number,
+  ): Promise<SeriesVoiceActorPresence> {
+    const retrievedAt = new Date().toISOString();
+    const path = `/v0/persons/${personId}/characters`;
+    const relationGroups = new Map<number, SubjectRelationItem[]>();
+    for (const relation of rootRelations) {
+      if (relation.id === root.id || !isStableWatchRelation(relation)) continue;
+      const group = relationGroups.get(relation.id) || [];
+      group.push(relation);
+      relationGroups.set(relation.id, group);
+    }
+    const eligibleIds = [...relationGroups.keys()].sort((left, right) => left - right);
+    const selectedIds = eligibleIds.slice(0, maxRelatedAnimeWorks);
+    const omittedIds = Math.max(0, eligibleIds.length - selectedIds.length);
+    const baseCoverage = {
+      relationRowsObserved: rootRelations.length,
+      eligibleDirectAnimeWorksObserved: eligibleIds.length,
+      eligibleDirectAnimeWorksSelected: selectedIds.length,
+      eligibleDirectAnimeWorksOmitted: omittedIds,
+      personRowsObserved: null as number | null,
+      personRowsReturned: 0,
+      personRowsOmitted: null as number | null,
+      matchedCreditRows: 0,
+      duplicateRows: 0,
+      schemaDriftRows: 0,
+      maxRelatedAnimeWorks,
+      maxVoiceCredits,
+      maxResponseBytes: MAX_VOICE_RESPONSE_BYTES,
+      truncated: omittedIds > 0,
+      retrievedAt,
+    };
+    const baseLimitations = [
+      '人物角色与条目关系响应是当前匿名可见的无分页数组；此结果只覆盖本次观察到的行，不代表完整履历或完整系列。',
+      '只按数字 subject_id 匹配锚点和最多 maxNodes 个当前可见直接动画前传、续集、衍生或总集篇关系；未命中或只命中一部作品不证明没有其他演出。',
+    ];
+    const candidateWorks = new Map<number, Omit<SeriesVoiceActorWork, 'credits'>>();
+    if (root.type === 'anime') {
+      candidateWorks.set(root.id, {
+        subjectId: root.id,
+        subjectName: root.name,
+        subjectNameCn: root.nameCn || root.name,
+        relationEvidence: [
+          {
+            sourceSubjectId: root.id,
+            targetSubjectId: root.id,
+            direction: 'anchor',
+          },
+        ],
+      });
+    }
+    for (const id of selectedIds) {
+      const rows = relationGroups.get(id) || [];
+      const first = rows[0];
+      if (!first) continue;
+      candidateWorks.set(id, {
+        subjectId: id,
+        subjectName: first.name,
+        subjectNameCn: first.nameCn || first.name,
+        relationEvidence: rows.map((row) => ({
+          sourceSubjectId: root.id,
+          targetSubjectId: row.id,
+          direction: 'outgoing_direct',
+          rawRelationLabel: row.relation,
+          relationKind: normalizeRelation(row.relation),
+        })),
+      });
+    }
+
+    let collection: RelationCollection<PersonRelationCharacter>;
+    try {
+      collection = await this.personService.getPersonRelatedCharactersWithCoverage(
+        personId,
+        maxVoiceCredits,
+        { maxResponseBytes: MAX_VOICE_RESPONSE_BYTES },
+      );
+    } catch (error) {
+      return {
+        personId,
+        state: 'unavailable',
+        matchStatus: 'not_established',
+        distinctWorks: 0,
+        works: [],
+        coverage: { ...baseCoverage, truncated: true },
+        sourceOperation: {
+          operation: 'GET /v0/persons/{person_id}/characters',
+          path,
+          status: 'failed',
+          failureReason: errorText(error).slice(0, 160),
+        },
+        limitations: ['人物角色来源请求失败，未能评估本次可见作品交集。', ...baseLimitations],
+      };
+    }
+
+    const creditsByWork = new Map<number, SeriesVoiceActorCredit[]>();
+    const seenCredits = new Set<string>();
+    let duplicateRows = 0;
+    let schemaDriftRows = collection.schemaDriftRows || 0;
+    for (const character of collection.items) {
+      if (
+        !Number.isInteger(character.subjectId) ||
+        !character.subjectId ||
+        character.subjectId < 1
+      ) {
+        schemaDriftRows += 1;
+        continue;
+      }
+      const creditKey = `${character.subjectId}:${character.id}`;
+      if (seenCredits.has(creditKey)) {
+        duplicateRows += 1;
+        continue;
+      }
+      seenCredits.add(creditKey);
+      if (!candidateWorks.has(character.subjectId)) continue;
+      if (character.subjectType !== 'anime' || character.subjectTypeCode !== 2) {
+        schemaDriftRows += 1;
+        continue;
+      }
+      const credits = creditsByWork.get(character.subjectId) || [];
+      credits.push({
+        characterId: character.id,
+        characterName: character.name,
+        ...(character.staff === undefined ? {} : { staff: character.staff }),
+      });
+      creditsByWork.set(character.subjectId, credits);
+    }
+    const works = [...candidateWorks.values()]
+      .flatMap((work) => {
+        const credits = creditsByWork.get(work.subjectId);
+        return credits && credits.length > 0 ? [{ ...work, credits }] : [];
+      })
+      .sort((left, right) => {
+        if (left.subjectId === root.id) return -1;
+        if (right.subjectId === root.id) return 1;
+        return left.subjectId - right.subjectId;
+      });
+    const truncated =
+      collection.truncated || omittedIds > 0 || duplicateRows > 0 || schemaDriftRows > 0;
+
+    return {
+      personId,
+      state: truncated ? 'partial' : 'observed',
+      matchStatus: works.length >= 2 ? 'multi_work_found' : 'not_established',
+      distinctWorks: works.length,
+      works,
+      coverage: {
+        ...baseCoverage,
+        personRowsObserved: collection.observed,
+        personRowsReturned: collection.returned,
+        personRowsOmitted: Math.max(0, collection.observed - collection.returned),
+        matchedCreditRows: works.reduce((total, work) => total + work.credits.length, 0),
+        duplicateRows,
+        schemaDriftRows,
+        truncated,
+      },
+      sourceOperation: {
+        operation: 'GET /v0/persons/{person_id}/characters',
+        path,
+        status: 'succeeded',
+      },
+      limitations: [
+        ...baseLimitations,
+        ...(truncated
+          ? ['达到直接关系、人物响应行数、重复行或 schema drift 上限；结果标记为 partial。']
+          : []),
+      ],
     };
   }
 }

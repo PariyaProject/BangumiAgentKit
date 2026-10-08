@@ -519,7 +519,7 @@ export function createReadTools(
   const getSeriesWatchOrder = defineTool({
     name: 'bangumi.get_series_watch_order',
     description:
-      '根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。media=all 额外展示有界的非动画证据。',
+      '根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。media=all 额外展示有界的非动画证据。可选 voiceActorPersonId 仅按数字条目 ID 检查该人物在起点和当前可见直接动画关系中的角色；至少两部作品才报告本次观察到正向交集，未命中不证明没有其他演出。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
       depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),
@@ -536,6 +536,21 @@ export function createReadTools(
         .describe(
           'anime 的 related 只返回动画证据，但 edges/排除统计仍可保留观察到的非动画关系；all 额外返回最多 8 条非动画 related 证据；非动画永不进入步骤或详情请求',
         ),
+      voiceActorPersonId: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          '可选 Bangumi 声优/人物 ID；仅返回当前可见关系邻域内按 subject ID 匹配的正向证据',
+        ),
+      maxVoiceCredits: z
+        .number()
+        .int()
+        .min(1)
+        .max(120)
+        .optional()
+        .describe('声优角色来源的本地选取上限，1-120；默认 120'),
     }),
     auth: 'none',
     scopes: [],
@@ -548,6 +563,8 @@ export function createReadTools(
         depth: input.depth,
         maxNodes: input.maxNodes,
         media: input.media,
+        voiceActorPersonId: input.voiceActorPersonId,
+        maxVoiceCredits: input.maxVoiceCredits,
       });
     },
   });

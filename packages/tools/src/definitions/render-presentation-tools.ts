@@ -609,7 +609,7 @@ export function createRenderPresentationTools(
   const renderSeriesWatchOrder = defineTool({
     name: 'bangumi.render_series_watch_order',
     description:
-      '生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；maxNodes 先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。非动画证据不会消耗动画节点上限。',
+      '生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；maxNodes 先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。非动画证据不会消耗动画节点上限。可选 voiceActorPersonId 仅显示该人物与起点和当前可见直接动画关系之间按数字条目 ID 匹配的正向角色证据；未命中不代表没有其他演出。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 起始条目 ID'),
       depth: z.number().int().min(0).max(2).optional().describe('关系遍历深度，0-2；默认 1'),
@@ -626,6 +626,21 @@ export function createRenderPresentationTools(
         .describe(
           'anime 的 related 只展示动画证据，但边证据/排除统计仍可保留观察到的非动画关系；all 额外展示最多 8 条非动画证据',
         ),
+      voiceActorPersonId: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          '可选 Bangumi 声优/人物 ID；仅显示当前可见关系邻域中按 subject ID 匹配的正向证据',
+        ),
+      maxVoiceCredits: z
+        .number()
+        .int()
+        .min(1)
+        .max(120)
+        .optional()
+        .describe('声优角色来源的本地选取上限，1-120；默认 120'),
     }),
     auth: 'none',
     scopes: [],
@@ -640,6 +655,8 @@ export function createRenderPresentationTools(
         depth: input.depth,
         maxNodes: input.maxNodes,
         media: input.media,
+        voiceActorPersonId: input.voiceActorPersonId,
+        maxVoiceCredits: input.maxVoiceCredits,
       });
       return await executeRenderAndSave(buildSeriesRelationsViewModel(result));
     },
