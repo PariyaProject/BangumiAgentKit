@@ -3111,6 +3111,11 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
   const count = (record: Record<string, unknown> | undefined, key: string): unknown =>
     record?.[key] ?? '?';
   const window = comparisonRecord(value.window);
+  const ranking = comparisonRecord(value.ranking);
+  const rankingCoverage = comparisonRecord(ranking?.coverage);
+  const rankingItems = Array.isArray(ranking?.items)
+    ? ranking.items.map(comparisonRecord).filter((item): item is Record<string, unknown> => !!item)
+    : [];
   const staffRole = value.staffRole
     ? ` · 职位筛选: ${humanField(staffRoleLabels[String(value.staffRole)] || value.staffRole, 48)}`
     : '';
@@ -3130,6 +3135,23 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}${staffRole}`,
     `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
     `窗口摘要：${summaryMetric('去重作品', 'uniqueSubjects', '部')} · ${summaryMetric('关系行', 'creditRows', '行')} · ${summaryMetric('去重角色', 'uniqueCharacters', '个')}`,
+    ...(ranking
+      ? [
+          `主役作品评分排序 · ${comparisonStateLabel(ranking.state)} · 媒介 ${humanField(mediaLabels[String(ranking.media)] || ranking.media || '未知', 48)} · 当前官方人物角色关系，不受最近日期窗限制。`,
+          ...(rankingItems.length > 0
+            ? rankingItems.slice(0, 5).map((item, index) => {
+                const rawRoles = Array.isArray(item.rawRoles)
+                  ? item.rawRoles.filter((role): role is string => typeof role === 'string')
+                  : [];
+                return `${index + 1}. ${humanField(item.subjectNameCn || item.subjectName || `条目 ${item.subjectId || '?'}`, 180)} #${humanField(item.subjectId ?? '?', 32)} · ${humanField(item.ratingScore ?? '?', 24)} 分 · 评分人数 ${humanField(item.ratingTotal ?? '未知', 32)}${item.firstAirDate ? ` · ${humanField(item.firstAirDate, 32)}` : ''}${rawRoles.length > 0 ? ` · 原始角色 ${humanField(rawRoles.slice(0, 3).join(' / '), 120)}` : ''}`;
+              })
+            : ['当前覆盖中没有可排序的主役评分结果。']),
+          `排序覆盖：已评分主役 ${humanField(rankingCoverage?.scoreableMainRoleSubjects ?? '?', 32)} 部 · 零分 ${humanField(rankingCoverage?.zeroRatingScoreSubjects ?? '?', 32)} · 缺分 ${humanField(rankingCoverage?.missingRatingScoreSubjects ?? '?', 32)} 部 · 评分人数缺失 ${humanField(rankingCoverage?.missingRatingTotalSubjects ?? '?', 32)} 部 · 未知角色 ${humanField(rankingCoverage?.unknownRoleRows ?? '?', 32)} 行 · 媒介未知 ${humanField(rankingCoverage?.mediaUnknownSubjects ?? '?', 32)} 部 · 缺作品 ID ${humanField(rankingCoverage?.missingSubjectIdRows ?? '?', 32)} 行 · 关系省略 ${humanField(rankingCoverage?.relationRowsDroppedAtLimit ?? '?', 32)} 行 · 详情失败 ${humanField(rankingCoverage?.subjectDetailsFailed ?? '?', 32)} 部 · 详情省略 ${humanField(rankingCoverage?.subjectDetailIdsDroppedAtLimit ?? '?', 32)} 部`,
+          ...(ranking.state === 'partial'
+            ? ['说明：仅表示本次观察样本中的高分主役作品，不代表完整生涯排名。']
+            : ['说明：完整状态仅指当前官方关系响应内的覆盖，不代表历史履历。']),
+        ]
+      : []),
     ...(byYear.length > 0
       ? [
           `按年观察（首尾年份按窗口日期截断；按唯一 subject ID 去重）：${byYear

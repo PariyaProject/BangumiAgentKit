@@ -2683,6 +2683,19 @@ export function buildPersonActivityViewModel(
           },
         }
       : {}),
+    ...(result.ranking
+      ? {
+          ranking: {
+            ...result.ranking,
+            items: result.ranking.items.map((item) => ({
+              ...item,
+              subjectName: truncateText(item.subjectName, 160).text,
+              subjectNameCn: truncateText(item.subjectNameCn, 160).text,
+              rawRoles: item.rawRoles.slice(0, 3).map((role) => truncateText(role, 64).text),
+            })),
+          },
+        }
+      : {}),
     coverage: {
       relationRowsObserved: result.coverage.relationRowsObserved,
       relationRowsSelected: result.coverage.relationRowsSelected,

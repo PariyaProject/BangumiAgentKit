@@ -191,6 +191,87 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
         </div>
       )}
 
+      {viewModel.ranking ? (
+        <div
+          style={{
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+            color: theme.textMuted,
+            fontSize: '12px',
+            lineHeight: 1.55,
+          }}
+        >
+          <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
+            当前主役作品评分排序 · {stateLabel(viewModel.ranking.state)} ·{' '}
+            {mediaLabel(viewModel.ranking.media)}
+          </div>
+          <div>
+            排名不受上方最近活动窗口限制；评分取自当前 Bangumi
+            作品详情，主役根据可识别的原始角色标签分类。
+          </div>
+          {viewModel.ranking.state === 'partial' ? (
+            <div style={{ marginTop: theme.spacing.xs }}>
+              这里只能表示本次观察样本中的高分主役作品，不代表完整生涯排名。
+            </div>
+          ) : null}
+          {viewModel.ranking.items.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+              {viewModel.ranking.items.map((item, index) => (
+                <div
+                  key={item.subjectId}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: theme.spacing.sm,
+                    borderTop: index === 0 ? `1px solid ${theme.border}` : undefined,
+                    paddingTop: index === 0 ? theme.spacing.xs : 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: theme.text,
+                      flex: '1 1 190px',
+                      minWidth: 0,
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {index + 1}. {item.subjectNameCn || item.subjectName} #{item.subjectId}
+                    {item.firstAirDate ? ` · ${item.firstAirDate}` : ''}
+                    {item.rawRoles.length > 0 ? ` · ${item.rawRoles.slice(0, 2).join(' / ')}` : ''}
+                  </span>
+                  <span style={{ color: theme.accent, flex: '0 0 auto', whiteSpace: 'nowrap' }}>
+                    {String(item.ratingScore)} 分 · {item.ratingTotal ?? '人数未知'} 人
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ marginTop: theme.spacing.xs }}>
+              当前可排序的主役作品不足以显示评分结果。
+            </div>
+          )}
+          <div style={{ marginTop: theme.spacing.xs }}>
+            覆盖：关系 {viewModel.ranking.coverage.relationRowsSelected}/
+            {viewModel.ranking.coverage.relationRowsObserved}（省略{' '}
+            {viewModel.ranking.coverage.relationRowsDroppedAtLimit}） · 详情{' '}
+            {viewModel.ranking.coverage.subjectDetailsSucceeded}/
+            {viewModel.ranking.coverage.subjectDetailRequests} 成功（失败{' '}
+            {viewModel.ranking.coverage.subjectDetailsFailed} · 省略{' '}
+            {viewModel.ranking.coverage.subjectDetailIdsDroppedAtLimit}）
+          </div>
+          <div style={{ marginTop: theme.spacing.xs }}>
+            评分可用 {viewModel.ranking.coverage.scoreableMainRoleSubjects} 部 · 零分{' '}
+            {viewModel.ranking.coverage.zeroRatingScoreSubjects} · 缺分{' '}
+            {viewModel.ranking.coverage.missingRatingScoreSubjects} · 评分人数未知{' '}
+            {viewModel.ranking.coverage.missingRatingTotalSubjects} · 未识别角色{' '}
+            {viewModel.ranking.coverage.unknownRoleRows} · 媒介未知{' '}
+            {viewModel.ranking.coverage.mediaUnknownSubjects}
+          </div>
+        </div>
+      ) : null}
+
       <div
         style={{
           backgroundColor: theme.surfaceAlt,

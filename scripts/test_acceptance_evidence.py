@@ -305,6 +305,20 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     },
                 },
             },
+            {
+                'name': 'bangumi.get_person_activity',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Person activity with a coverage-aware top rated voice role ranking.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'personId': {'type': 'integer'},
+                        'rankingMode': {'type': 'string'},
+                        'media': {'type': 'string'},
+                    },
+                    'required': ['personId'],
+                },
+            },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
         self.catalog_path = self.root / 'docs/tool-catalog.json'
@@ -332,12 +346,21 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
             source_path = self.original_root / relative_path
             fixture_path = self.root / relative_path
             fixture_path.parent.mkdir(parents=True, exist_ok=True)
             fixture_path.write_bytes(source_path.read_bytes())
+        s02_attestation_path = self.root / GENERATOR.CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH
+        s02_attestation_path.parent.mkdir(parents=True, exist_ok=True)
+        s02_attestation_path.write_text(json.dumps({
+            'schemaVersion': 1,
+            'kind': 's02-mcp-runtime-bundle-attestation-v1',
+            'bundleSha256': 'e' * 64,
+        }), encoding='utf-8')
+        relative_paths.add(GENERATOR.CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH)
         self._git('init', '-q')
         self._git('config', 'user.name', 'Acceptance Evidence Test')
         self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
@@ -794,6 +817,81 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _s02_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
+        revision = source_revision or self.source_revision
+        coverage = {key: 0 for key in GENERATOR.CODEX_S02_COVERAGE_FIELDS}
+        coverage.update({
+            'relationRowsObserved': 4,
+            'relationRowsSelected': 4,
+            'subjectDetailRequests': 2,
+            'subjectDetailsSucceeded': 2,
+            'mainRoleSubjectsSelected': 2,
+            'scoreableMainRoleSubjects': 2,
+            'unknownRoleRows': 1,
+            'rowsReturned': 1,
+        })
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_s02_person_activity_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'S02',
+            'scenarioId': 'S02',
+            'sourceRevision': revision,
+            'mcpBundleSha256': GENERATOR.codex_s02_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-08T05:00:00.000Z',
+            'codexCliVersion': '1.2.14',
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': 'fixed-s02-person-3474-top-rated-main-voice-v1',
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_S02_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'toolCalls': [{'name': 'bangumi.get_person_activity', 'state': 'DONE'}],
+            'answerCheckMethod': 's02-top-rated-main-voice-answer-v1',
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_S02_ANSWER_CHECK_FIELDS
+            },
+            'answerCounters': {
+                'sourceRows': 1,
+                'answerRows': 1,
+                'rowsMatched': 1,
+                'missingRowsCount': 0,
+                'extraRowsCount': 0,
+                'duplicateAnswerRowsCount': 0,
+                'coverageFieldsMatched': len(GENERATOR.CODEX_S02_COVERAGE_FIELDS),
+            },
+            'resultSummary': {
+                'state': 'partial',
+                'scope': 'current_official_person_character_response',
+                'media': 'all',
+                'truncated': False,
+                'rows': [{'subjectId': 1001, 'ratingScore': 8.9, 'ratingTotal': 8123}],
+                'coverage': coverage,
+            },
+            'privacy': {
+                'authProfile': 'anonymous',
+                **{
+                    key: False
+                    for key in GENERATOR.CODEX_S02_PRIVACY_FIELDS - {'authProfile'}
+                },
+            },
+        }
+
     def _write_g26_frontier(self, status, source_refs=None):
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
         frontier_path.parent.mkdir(parents=True, exist_ok=True)
@@ -809,6 +907,73 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self._write_g26_frontier('UNASSESSED')
         self.assertTrue(GENERATOR.validate_g26_frontier_evidence())
         self.assertFalse(GENERATOR.codex_g26_report_is_valid({}))
+
+    def test_accepts_exact_candidate_bound_sanitized_s02_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S02_REPORT_RELATIVE_PATH).name
+        report = self._s02_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_s02_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_s02_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_s02_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_S02_REPORT_RELATIVE_PATH},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('作品甲', json.dumps(report, ensure_ascii=False))
+
+        self._git('add', GENERATOR.CODEX_S02_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized S02 one-shot evidence')
+        self.assertTrue(
+            GENERATOR.codex_s02_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_s02_evidence_with_wrong_rank_order_scope_or_raw_content(self):
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'mcpBundleSha256': '0' * 64},
+            {'answerChecks': {'queryArgumentsMatch': False}},
+            {'answer': 'raw response must never be retained'},
+            {'resultSummary': {'state': 'complete'}},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                report = self._s02_report_fixture()
+                report.update(override)
+                self.assertFalse(GENERATOR.codex_s02_report_is_valid(report))
+
+        report = self._s02_report_fixture()
+        report['resultSummary']['rows'] = [
+            {'subjectId': 1001, 'ratingScore': 8.7, 'ratingTotal': 8123},
+            {'subjectId': 1002, 'ratingScore': 8.9, 'ratingTotal': 8123},
+        ]
+        report['answerCounters'].update({
+            'sourceRows': 2,
+            'answerRows': 2,
+            'rowsMatched': 2,
+        })
+        report['resultSummary']['coverage']['rowsReturned'] = 2
+        self.assertFalse(GENERATOR.codex_s02_report_is_valid(report))
+
+    def test_rejects_s02_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S02_REPORT_RELATIVE_PATH).name
+        report = self._s02_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_s02_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_s02_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
 
     def test_accepts_candidate_bound_sanitized_g26_report_and_partial_frontier(self):
         report_path = self.live_probe_dir / 'g26-exact-tag-agent-mcp-run95.json'

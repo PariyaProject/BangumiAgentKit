@@ -8,6 +8,7 @@ export type PersonActivityState = 'complete' | 'partial' | 'unavailable' | 'not_
 export type PersonActivityRelationKind = 'voice' | 'staff';
 export type PersonActivityRoleFamily = 'main' | 'support' | 'staff' | 'unknown';
 export type PersonActivityOriginState = 'explicit_original' | 'not_observed' | 'unknown';
+export type PersonActivityRankingMode = 'top_rated_main_voice';
 
 export interface PersonActivityOriginObservation {
   state: PersonActivityOriginState;
@@ -199,6 +200,52 @@ export interface PersonActivityCoverage {
   origin: PersonActivityOriginCoverage;
 }
 
+export interface PersonActivityRankedWork {
+  subjectId: number;
+  subjectName: string;
+  subjectNameCn: string;
+  subjectType: SubjectType;
+  firstAirDate?: string;
+  ratingScore: number;
+  ratingTotal?: number;
+  characterCount: number;
+  rawRoles: string[];
+}
+
+export interface PersonActivityRankingCoverage {
+  relationRowsObserved: number;
+  relationRowsSelected: number;
+  relationRowsDroppedAtLimit: number;
+  subjectIdsObserved: number;
+  subjectIdsSelected: number;
+  subjectDetailRequests: number;
+  subjectDetailsSucceeded: number;
+  subjectDetailsFailed: number;
+  subjectDetailIdsDroppedAtLimit: number;
+  mainRoleSubjectsSelected: number;
+  scoreableMainRoleSubjects: number;
+  missingRatingScoreSubjects: number;
+  zeroRatingScoreSubjects: number;
+  missingRatingTotalSubjects: number;
+  mediaUnknownSubjects: number;
+  unknownRoleRows: number;
+  missingSubjectIdRows: number;
+  mainRoleSubjectsMissingDetail: number;
+  rowsReturned: number;
+  retrievedAt: string;
+  truncated: boolean;
+}
+
+export interface PersonActivityRanking {
+  mode: PersonActivityRankingMode;
+  scope: 'current_official_person_character_response';
+  media: PersonActivityMedia;
+  state: PersonActivityState;
+  limit: 5;
+  items: PersonActivityRankedWork[];
+  coverage: PersonActivityRankingCoverage;
+}
+
 export interface PersonActivityResult {
   personId: number;
   state: PersonActivityState;
@@ -210,6 +257,7 @@ export interface PersonActivityResult {
   rows: PersonActivityRow[];
   summary: PersonActivityWindowSummary;
   comparison?: PersonActivityComparison;
+  ranking?: PersonActivityRanking;
   coverage: PersonActivityCoverage;
   exclusions: PersonActivityExclusion[];
   sourceOperations: PersonActivitySourceOperation[];

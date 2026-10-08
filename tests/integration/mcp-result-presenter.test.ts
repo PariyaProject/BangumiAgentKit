@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import type {
+  PersonActivityRanking,
   PersonActivityResult,
   SeriesWatchOrderResult,
   SubjectComparisonResult,
@@ -383,6 +384,52 @@ function makePersonActivityResult(): PersonActivityResult {
       state: 'partial' as const,
       message: `Warning ${index}: this bounded result retains raw relation and coverage details.`,
     })),
+  };
+}
+
+function makePersonActivityRanking(): PersonActivityRanking {
+  return {
+    mode: 'top_rated_main_voice',
+    scope: 'current_official_person_character_response',
+    media: 'all',
+    state: 'partial',
+    limit: 5,
+    items: [
+      {
+        subjectId: 701,
+        subjectName: 'High scored title',
+        subjectNameCn: '高分作品',
+        subjectType: 'anime',
+        firstAirDate: '2001-04-01',
+        ratingScore: 9.1,
+        ratingTotal: 2048,
+        characterCount: 2,
+        rawRoles: ['主役', '主角'],
+      },
+    ],
+    coverage: {
+      relationRowsObserved: 80,
+      relationRowsSelected: 40,
+      relationRowsDroppedAtLimit: 40,
+      subjectIdsObserved: 60,
+      subjectIdsSelected: 40,
+      subjectDetailRequests: 40,
+      subjectDetailsSucceeded: 40,
+      subjectDetailsFailed: 0,
+      subjectDetailIdsDroppedAtLimit: 0,
+      mainRoleSubjectsSelected: 1,
+      scoreableMainRoleSubjects: 1,
+      missingRatingScoreSubjects: 0,
+      zeroRatingScoreSubjects: 0,
+      missingRatingTotalSubjects: 0,
+      mediaUnknownSubjects: 0,
+      unknownRoleRows: 4,
+      missingSubjectIdRows: 0,
+      mainRoleSubjectsMissingDetail: 0,
+      rowsReturned: 1,
+      retrievedAt: '2026-10-08T00:00:00.000Z',
+      truncated: true,
+    },
   };
 }
 
@@ -1934,6 +1981,37 @@ describe('MCP tool result presentation', () => {
     expect(parsed.exclusions[0]).toEqual({ reason: 'subject_detail_cap', count: 12 });
   });
 
+  it('retains the score ranking and its independent partial coverage in MCP text', async () => {
+    const original = makePersonActivityResult();
+    original.rows = [];
+    original.summary.byRole = [];
+    original.summary.byMedia = [];
+    original.summary.byMonth = [];
+    original.exclusions = [];
+    original.sourceOperations = [];
+    original.evidence = [];
+    original.limitations = [];
+    original.warnings = [];
+    original.ranking = makePersonActivityRanking();
+    const response = await callMcpToolWithResult(
+      'bangumi.get_person_activity',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(response.structuredContent).toEqual(original);
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(parsed.ranking).toMatchObject({
+      scope: 'current_official_person_character_response',
+      state: 'partial',
+      media: 'all',
+      items: [{ subjectId: 701, title: '高分作品', ratingScore: 9.1, ratingTotal: 2048 }],
+      coverage: { omittedRelations: 40, unknownRoleRows: 4 },
+    });
+    expect(parsed.mcpTextProjection.rankingScopeNote).toContain('样本排序');
+  });
+
   it('retains a compact comparison core for high-volume partial windows', async () => {
     const original = makePersonActivityResult();
     original.comparison = makePersonActivityComparison(original, { highVolume: true });
@@ -1977,6 +2055,7 @@ describe('MCP tool result presentation', () => {
 
   it('retains observed counts, delta, and peak through the minimum partial comparison fallback', async () => {
     const original = makePersonActivityResult();
+    original.ranking = makePersonActivityRanking();
     original.coverage = {
       ...original.coverage,
       retrievedAt: 'retrieval-time-'.repeat(1000),
@@ -2008,6 +2087,10 @@ describe('MCP tool result presentation', () => {
       metric: 'uniqueSubjects',
       state: 'partial',
       months: [expect.objectContaining({ period: 'recent' })],
+    });
+    expect(parsed.ranking).toMatchObject({
+      state: 'partial',
+      items: [expect.objectContaining({ subjectId: 701, ratingScore: 9.1 })],
     });
     expect(response.structuredContent).toEqual(original);
   });
