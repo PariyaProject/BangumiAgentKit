@@ -52,6 +52,7 @@ import {
   resolveSubject,
   getSubjectCast,
   groupSubjectStaff,
+  SUBJECT_CAST_INTERNAL_MAX_LIMIT,
   RevisionEntityType,
 } from '@bangumi-agent-kit/bangumi-core';
 import { getSubjectOverview } from '../subject-overview.js';
@@ -572,7 +573,7 @@ export function createReadTools(
   const getSubjectCastTool = defineTool({
     name: 'bangumi.get_subject_cast',
     description:
-      '获取作品中的角色关系，以及 Bangumi 返回的演员/声优人物列表。动画中 actors 通常对应声优，三次元作品中可能对应演员。',
+      '读取一个指定作品的角色关系与 Bangumi 演员/声优人物列表；仅按本次已选取的角色行，以稳定人物 ID 归组重复角色，且 career 含精确 seiyu 标签时才称为声优。保留来源关系原文，不分类主角/主役；响应最多 1 MiB，未观察到组不代表完整角色表中不存在。',
     input: z.object({
       subjectId: z.number().int().positive().describe('Bangumi 条目 ID'),
       limit: z.number().int().min(1).max(100).optional().describe('显示条数上限'),
@@ -613,7 +614,10 @@ export function createReadTools(
       const limit = input.limit ?? 200;
       const [collection, castResult] = await Promise.all([
         activePersonService.getSubjectStaff(input.subjectId, limit),
-        getSubjectCast(activeCharacterService, input.subjectId, { limit }),
+        getSubjectCast(activeCharacterService, input.subjectId, {
+          limit,
+          maxLimit: SUBJECT_CAST_INTERNAL_MAX_LIMIT,
+        }),
       ]);
       const retrievedAt = new Date().toISOString();
       const partial = collection.truncated || castResult.truncated;

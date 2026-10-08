@@ -29,6 +29,11 @@ export interface SubjectCharactersCoverage {
   truncated: boolean;
   schemaDriftRows: number;
   invalidActorIdRows: number;
+  responseBytes?: number | null;
+  responseByteLimit?: number | null;
+  rowsOmittedByLimit?: number;
+  duplicateActorCharacterLinks?: number;
+  sourceStatus?: 'observed' | 'partial';
 }
 
 export interface SubjectCharactersResult {

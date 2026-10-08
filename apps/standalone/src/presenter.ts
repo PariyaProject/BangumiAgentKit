@@ -775,6 +775,80 @@ function comparisonRecord(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
+function presentSubjectCast(value: Record<string, unknown>): string | undefined {
+  if (
+    value.status !== 'ok' ||
+    !Number.isInteger(value.subjectId) ||
+    !Array.isArray(value.cast) ||
+    !Array.isArray(value.multiRoleVoiceActors)
+  ) {
+    return undefined;
+  }
+
+  const source = comparisonRecord(value.source);
+  const lines = [
+    `作品角色与声优 · 条目 ID ${humanField(value.subjectId, 32)}`,
+    `来源：${humanField(source?.api || 'official-v0', 48)} · ${humanField(source?.operation || '角色表', 96)} · 检索 ${humanField(source?.retrievedAt || '未知', 64)}`,
+    `覆盖：观测 ${humanField(value.observed ?? '?', 32)} · 选取 ${humanField(value.selectedRows ?? value.returned ?? '?', 32)} · 按行数上限省略 ${humanField(value.omittedRowsByLimit ?? 0, 32)} · 字段异常 ${humanField(value.schemaDriftRows ?? 0, 32)} · 无效演员 ID ${humanField(value.invalidActorIdRows ?? 0, 32)} · 重复 ID 关系 ${humanField(value.duplicateActorCharacterLinks ?? 0, 32)}`,
+    `响应：${humanField(source?.responseBytes ?? '未知', 32)} / ${humanField(source?.responseByteLimit ?? '未记录', 32)} bytes · 来源状态 ${humanField(source?.status || '未知', 24)}${value.truncated ? ' · 部分读取' : ''}`,
+    '多角色声优：仅按人物 ID 分组，且 Bangumi career 含精确标签 seiyu；角色关系保留原始标签。',
+  ];
+
+  const groups = value.multiRoleVoiceActors;
+  if (groups.length === 0) {
+    lines.push('本次选取的合法角色行中未建立重复角色声优组；这不证明完整角色表中不存在。');
+  } else {
+    lines.push(`已建立 ${groups.length} 个多角色声优组：`);
+    for (const [index, rawGroup] of groups.slice(0, 8).entries()) {
+      const group = comparisonRecord(rawGroup);
+      const person = comparisonRecord(group?.person);
+      const roles = Array.isArray(group?.roles) ? group.roles : [];
+      if (!person) continue;
+      const careers = Array.isArray(person.career) ? person.career.map(String) : [];
+      lines.push(
+        `${index + 1}. ${humanField(person.name || '未知人物', 120)}（人物 ID ${humanField(person.id ?? '?', 32)}；${humanField(group?.distinctCharacterCount ?? roles.length, 32)} 个不同角色；career: ${humanField(careers.join(' / ') || '未知', 120)}）`,
+      );
+      const visibleRoles = roles
+        .slice(0, 8)
+        .map(comparisonRecord)
+        .filter((role): role is Record<string, unknown> => Boolean(role))
+        .map(
+          (role) =>
+            `${humanField(role.characterName || '未知角色', 72)}（角色 ID ${humanField(role.characterId ?? '?', 32)}）· 原始关系：${humanField(role.relation || '未知关系', 48)}`,
+        );
+      if (visibleRoles.length > 0) {
+        lines.push(`   角色与原始关系：${visibleRoles.join('；')}`);
+      }
+      if (roles.length > 8)
+        lines.push(`   另有 ${humanField(roles.length - 8, 32)} 个角色未展开。`);
+    }
+    if (groups.length > 8) lines.push(`另有 ${humanField(groups.length - 8, 32)} 个组未展开。`);
+  }
+  const castRows = value.cast;
+  lines.push(`本次选取的角色行（最多显示 20 条，共 ${castRows.length} 条）：`);
+  for (const [index, rawRow] of castRows.slice(0, 20).entries()) {
+    const row = comparisonRecord(rawRow);
+    const character = comparisonRecord(row?.character);
+    if (!row || !character) continue;
+    const actors = Array.isArray(row.actors) ? row.actors : [];
+    const visibleActors = actors
+      .slice(0, 4)
+      .map(comparisonRecord)
+      .filter((actor): actor is Record<string, unknown> => Boolean(actor))
+      .map(
+        (actor) => `${humanField(actor.name || '未知人物', 64)}#${humanField(actor.id ?? '?', 24)}`,
+      );
+    const actorText = visibleActors.length > 0 ? visibleActors.join('、') : '无演员关系';
+    lines.push(
+      `${index + 1}. ${humanField(character.name || '未知角色', 100)}（角色 ID ${humanField(character.id ?? '?', 32)}）· 原始关系：${humanField(row.relation || '未知', 72)} · ${actorText}${actors.length > 4 ? `；另有 ${actors.length - 4} 位未展开` : ''}`,
+    );
+  }
+  if (castRows.length > 20)
+    lines.push(`另有 ${humanField(castRows.length - 20, 32)} 条角色行未展开。`);
+  lines.push('范围：接口没有分页或总数；未显示角色和演员不作为不存在的证据。');
+  return boundHumanLines(lines);
+}
+
 function nonNegativeInteger(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
 }
@@ -3506,6 +3580,8 @@ export function formatHuman(value: unknown): string {
   if (safe && typeof safe === 'object' && !Array.isArray(safe)) {
     const artifact = presentArtifact(safe as Record<string, unknown>);
     if (artifact) return artifact;
+    const subjectCast = presentSubjectCast(safe as Record<string, unknown>);
+    if (subjectCast) return subjectCast;
     const characterCreditIntegrity = presentCharacterCreditIntegrity(
       safe as Record<string, unknown>,
     );

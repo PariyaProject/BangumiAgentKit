@@ -5,11 +5,11 @@
 ## 总览
 
 - [x] 每个工具都有直接 `execute` 夹具：96/96。
-- [ ] 匿名可用的公开 API 工具有逐项实测：59/65；待补 6。
+- [ ] 匿名可用的公开 API 工具有逐项实测：58/65；待补 7。
 - [x] 匿名公开 API 不适用项已单独分类：31/96；这些工具由账号验收或本地状态验收覆盖。
 - [ ] 需要账号的工具完成真实 OAuth/账号验收：33 项目前不能用本地 mock 代替。
 - [x] 无账号认证门禁拒绝路径已验证：22/22 项；门禁通过不代表真实账号功能通过。
-- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：90/96。
+- [ ] 每个工具都有实际 Agent→MCP 模型调用证据：89/96。
 - [ ] 每个工具都有 QQ 消息管线端到端证据：当前 0/96。
 - [ ] 每个工具都有 TIM 客户端端到端证据：当前 0/96。
 
@@ -57,7 +57,7 @@
 | `bangumi.get_revision_intelligence` | `none` | `read` | `docs/tool-catalog.json#/36` | `tests/integration/tool-direct-execute-read.test.ts:86` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-revision-intelligence-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_series_watch_order` | `none` | `read` | `docs/tool-catalog.json#/37` | `tests/integration/tool-direct-execute-read.test.ts:249` | ✅ | ⬜ | — | — | ⬜ | ⬜ | ⬜ | 补公开 API；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject` | `none` | `read` | `docs/tool-catalog.json#/38` | `tests/integration/mcp-tools.test.ts:126`<br>`tests/integration/mcp-tools.test.ts:88` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compact-refresh-get-subject-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
-| `bangumi.get_subject_cast` | `none` | `read` | `docs/tool-catalog.json#/39` | `tests/integration/live-subject-credit.acceptance.test.ts:37`<br>`tests/integration/tool-direct-execute-read.test.ts:79` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-compact-refresh-get-subject-cast-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
+| `bangumi.get_subject_cast` | `none` | `read` | `docs/tool-catalog.json#/39` | `tests/integration/live-subject-credit.acceptance.test.ts:37`<br>`tests/integration/tool-direct-execute-read.test.ts:79` | ✅ | ⬜ | — | — | ⬜ | ⬜ | ⬜ | 补公开 API；补 Agent/MCP 实际调用证据；补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_comparison` | `none` | `read` | `docs/tool-catalog.json#/40` | `tests/integration/tool-direct-execute-read.test.ts:239` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-comparison-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_identity` | `none` | `read` | `docs/tool-catalog.json#/41` | `tests/integration/tool-direct-execute-read.test.ts:189` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-identity-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |
 | `bangumi.get_subject_index_membership` | `none` | `read` | `docs/tool-catalog.json#/42` | `tests/integration/tool-direct-execute-read.test.ts:264` | ✅ | ◐<br>`docs/live-probes/public-tools-2026-09-29-074258522-38348.json` | — | — | ✅<br>`docs/live-probes/pariya-agent-full-public-qa-e2e-get-subject-index-membership-2026-09-23.json` | ⬜ | ⬜ | 补 QQ 消息管线 E2E；补 TIM 客户端 E2E |

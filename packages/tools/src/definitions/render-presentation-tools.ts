@@ -7,6 +7,7 @@ import {
   SeriesService,
   UserService,
   CharacterService,
+  getSubjectCast,
   CharacterCreditIntegrityService,
   CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_PERSONS,
   CHARACTER_CREDIT_INTEGRITY_DEFAULT_MAX_SUBJECTS,
@@ -287,13 +288,25 @@ export function createRenderPresentationTools(
       const characterService = new CharacterService(client);
 
       const subjectData = await subjectService.getSubjectById(input.subjectId);
-      const castResult = await characterService.getSubjectCharactersWithCoverage(input.subjectId);
+      const castResult = await getSubjectCast(characterService, input.subjectId, { limit: 100 });
 
       const viewModel = buildCastCardViewModel(
         { id: subjectData.id, name: subjectData.name, nameCn: subjectData.nameCn },
-        castResult.items,
+        castResult.cast,
         20,
-        castResult.coverage,
+        {
+          observed: castResult.observed,
+          returned: castResult.returned,
+          truncated: castResult.truncated,
+          schemaDriftRows: castResult.schemaDriftRows,
+          invalidActorIdRows: castResult.invalidActorIdRows,
+          responseBytes: castResult.source.responseBytes,
+          responseByteLimit: castResult.source.responseByteLimit,
+          rowsOmittedByLimit: castResult.omittedRowsByLimit,
+          duplicateActorCharacterLinks: castResult.duplicateActorCharacterLinks,
+          sourceStatus: castResult.source.status,
+        },
+        castResult.multiRoleVoiceActors,
       );
       return await executeRenderAndSave(viewModel);
     },

@@ -299,6 +299,18 @@ export interface CastCardSourceCoverageViewModel {
   truncated: boolean;
   schemaDriftRows: number;
   invalidActorIdRows: number;
+  responseBytes?: number | null;
+  responseByteLimit?: number | null;
+  rowsOmittedByLimit?: number;
+  duplicateActorCharacterLinks?: number;
+  sourceStatus?: 'observed' | 'partial';
+}
+
+export interface CastCardMultiRoleVoiceActorViewModel {
+  person: { id: number; name: string; career: string[] };
+  distinctCharacterCount: number;
+  roles: Array<{ characterId: number; characterName: string; relation: string }>;
+  rolesOmitted: number;
 }
 
 export interface CastCardViewModel {
@@ -312,6 +324,8 @@ export interface CastCardViewModel {
   items: CastItemViewModel[];
   hiddenCount?: number;
   coverage?: CastCardSourceCoverageViewModel;
+  multiRoleVoiceActors?: CastCardMultiRoleVoiceActorViewModel[];
+  multiRoleVoiceActorGroupsOmitted?: number;
 }
 
 export interface CollectionProgressViewModel {

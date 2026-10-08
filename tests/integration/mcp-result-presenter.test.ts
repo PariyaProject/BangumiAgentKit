@@ -1110,6 +1110,30 @@ function makeSubjectCastResult() {
     truncated: true,
     schemaDriftRows: 2,
     invalidActorIdRows: 1,
+    selectedRows: 100,
+    omittedRowsByLimit: 13,
+    duplicateActorCharacterLinks: 0,
+    multiRoleVoiceActors: [
+      {
+        person: { id: 70200, name: '共同声优', career: ['seiyu'] },
+        distinctCharacterCount: 2,
+        roles: [
+          { characterId: 80000, characterName: '角色0', relation: '主角' },
+          { characterId: 80001, characterName: '角色1', relation: '配角' },
+        ],
+      },
+    ],
+    source: {
+      api: 'official-v0',
+      operation: 'GET /v0/subjects/{subject_id}/characters',
+      retrievedAt: '2026-10-08T12:00:00.000Z',
+      status: 'partial',
+      responseBytes: 900_000,
+      responseByteLimit: 1_048_576,
+      paginationAvailable: false,
+      totalCountAvailable: false,
+    },
+    limitations: ['仅基于已选取的角色行。'],
   };
 }
 
@@ -1803,9 +1827,13 @@ describe('MCP tool result presentation', () => {
     expect(parsed.coverage).toEqual({
       observed: 115,
       returned: 100,
+      selectedRows: 100,
+      omittedRowsByLimit: 13,
       truncated: true,
       schemaDriftRows: 2,
       invalidActorIdRows: 1,
+      duplicateActorCharacterLinks: 0,
+      sourceStatus: 'partial',
     });
 
     const firstSourceRow = original.cast[0]!;
@@ -1842,6 +1870,18 @@ describe('MCP tool result presentation', () => {
         0,
       ),
       actorRowsOmittedFromText: expect.any(Number),
+      multiRoleVoiceActorGroupsReturned: 1,
+      multiRoleVoiceActorGroupsIncluded: 1,
+      multiRoleVoiceActorGroupsOmittedFromText: 0,
+      fullMultiRoleVoiceActorGroupsRetainedInStructuredContent: true,
+    });
+    expect(parsed.multiRoleVoiceActors[0]).toMatchObject({
+      person: { id: 70200, name: '共同声优', career: [{ value: 'seiyu', textTruncated: false }] },
+      distinctCharacterCount: 2,
+      roles: [
+        { characterId: 80000, characterName: '角色0', relation: '主角' },
+        { characterId: 80001, characterName: '角色1', relation: '配角' },
+      ],
     });
     expect(parsed.mcpTextProjection.castRowsOmittedFromText).toBeGreaterThan(0);
     expect(parsed.mcpTextProjection.actorRowsOmittedFromText).toBeGreaterThan(0);
@@ -1849,8 +1889,54 @@ describe('MCP tool result presentation', () => {
       'partial or truncated coverage is not a complete source list',
     );
     expect(JSON.stringify(parsed)).not.toContain('角色简介');
-    expect(JSON.stringify(parsed)).not.toContain('career');
+    expect(parsed.cast[0].actors[0]).not.toHaveProperty('career');
     expect(JSON.stringify(parsed)).not.toContain('images.example.test');
+  });
+
+  it('reports voice-actor groups and role omissions from compact MCP text', async () => {
+    const original = makeSubjectCastResult();
+    original.cast = [];
+    original.multiRoleVoiceActors = Array.from({ length: 6 }, (_, groupIndex) => ({
+      person: {
+        id: 71000 + groupIndex,
+        name: `声优${groupIndex}`,
+        career: ['seiyu'],
+      },
+      distinctCharacterCount: 7,
+      roles: Array.from({ length: 7 }, (_, roleIndex) => ({
+        characterId: 81000 + groupIndex * 10 + roleIndex,
+        characterName: `角色${groupIndex}-${roleIndex}`,
+        relation: roleIndex === 0 ? '主角' : `原始关系${roleIndex}`,
+      })),
+    }));
+
+    const response = await callMcpToolWithResult(
+      'bangumi.get_subject_cast',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(response.structuredContent).toEqual(original);
+    expect(parsed.multiRoleVoiceActors).toHaveLength(3);
+    expect(parsed.multiRoleVoiceActors[0]).toMatchObject({
+      person: { id: 71000, career: [{ value: 'seiyu', textTruncated: false }] },
+      distinctCharacterCount: 7,
+      roles: [
+        { characterId: 81000, relation: '主角' },
+        { characterId: 81001, relation: '原始关系1' },
+        { characterId: 81002, relation: '原始关系2' },
+      ],
+      rolesOmittedFromText: 4,
+    });
+    expect(parsed.mcpTextProjection).toMatchObject({
+      multiRoleVoiceActorGroupsReturned: 6,
+      multiRoleVoiceActorGroupsIncluded: 3,
+      multiRoleVoiceActorGroupsOmittedFromText: 3,
+      multiRoleVoiceActorRolesReturned: 42,
+      multiRoleVoiceActorRolesIncluded: 9,
+    });
   });
 
   it('bounds subject-comparison text while retaining identities, requested metrics, states, and full structure', async () => {

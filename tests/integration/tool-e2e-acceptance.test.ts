@@ -46,6 +46,13 @@ const D05_REPORT_PATH = join(
 const D05_REPORT = existsSync(D05_REPORT_PATH)
   ? JSON.parse(readFileSync(D05_REPORT_PATH, 'utf8'))
   : null;
+const S04_REPORT_PATH = join(
+  ROOT,
+  'docs/live-probes/s04-subject-cast-multirole-agent-mcp-run95.json',
+);
+const S04_REPORT = existsSync(S04_REPORT_PATH)
+  ? JSON.parse(readFileSync(S04_REPORT_PATH, 'utf8'))
+  : null;
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -183,7 +190,43 @@ function isCurrentD05Report(report: any): boolean {
   );
 }
 
+function isCurrentS04Report(report: any): boolean {
+  const checks = report?.answerChecks;
+  return Boolean(
+    report?.evidenceKind === 'codex_cli_s04_subject_cast_multirole_agent_mcp' &&
+    report?.runNumber === 95 &&
+    report?.scenarioId === 'S04' &&
+    report?.frontierId === 'S04' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.get_subject_cast' &&
+    report?.processExitCode === 0 &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    Array.isArray(checks) === false &&
+    checks &&
+    Object.values(checks).length > 0 &&
+    Object.values(checks).every((value) => value === true) &&
+    report?.sourceCoverage?.responseByteLimit === 1_048_576 &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    report?.privacy?.communityRead === false &&
+    report?.privacy?.rawAnswerPersisted === false &&
+    report?.privacy?.rawToolResultPersisted === false &&
+    toolContractMatchesCurrent(report, 'bangumi.get_subject_cast'),
+  );
+}
+
 const CURRENT_D05_REPORT = isCurrentD05Report(D05_REPORT) ? D05_REPORT : null;
+const CURRENT_S04_REPORT = isCurrentS04Report(S04_REPORT) ? S04_REPORT : null;
 
 // Preserve prior reports as history, but count only the newest current-contract
 // report for each tool in the current-source acceptance matrix.
@@ -509,6 +552,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ),
       ),
       ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
+      ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
     ];
 
     expect(rows.size).toBe(96);
@@ -527,6 +571,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     expect(uncoveredNames).toEqual(
       [
         ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
+        ...(CURRENT_S04_REPORT ? [] : ['bangumi.get_subject_cast']),
         'bangumi.get_person_activity',
         'bangumi.get_series_watch_order',
         'bangumi.render_query_subjects',
@@ -570,7 +615,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_revision',
         'bangumi.get_revision_intelligence',
         'bangumi.get_subject',
-        'bangumi.get_subject_cast',
+        ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
         'bangumi.get_subject_comparison',
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',
@@ -628,6 +673,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.update_collection',
         'bangumi.update_episode_progress',
         ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
+        ...(CURRENT_S04_REPORT ? ['bangumi.get_subject_cast'] : []),
       ].sort(),
     );
 
@@ -685,18 +731,30 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       for (const call of scenario.toolCalls) {
         if (toolContractMatchesCurrent(COMPACT_EVIDENCE, call.name)) continue;
 
-        // The historical Compact query report predates this schema change.
-        // Only the post-gate D05 report can restore the current query tool row.
-        expect(call.name).toBe('bangumi.query_subjects');
-        if (CURRENT_D05_REPORT) {
-          expect(CURRENT_D05_REPORT.toolName).toBe(call.name);
-          expect(toolContractMatchesCurrent(CURRENT_D05_REPORT, call.name)).toBe(true);
-        } else {
-          const currentReport = CURRENT_FULL_PUBLIC_QA_EVIDENCE.find(
-            (report: any) => report.scenarios?.[0]?.id === call.name,
-          );
-          expect(currentReport).toBeUndefined();
+        if (call.name === 'bangumi.query_subjects') {
+          // The historical Compact query report predates this schema change.
+          // Only the post-gate D05 report can restore the current query tool row.
+          if (CURRENT_D05_REPORT) {
+            expect(CURRENT_D05_REPORT.toolName).toBe(call.name);
+            expect(toolContractMatchesCurrent(CURRENT_D05_REPORT, call.name)).toBe(true);
+          } else {
+            const currentReport = CURRENT_FULL_PUBLIC_QA_EVIDENCE.find(
+              (report: any) => report.scenarios?.[0]?.id === call.name,
+            );
+            expect(currentReport).toBeUndefined();
+          }
+          continue;
         }
+        if (call.name === 'bangumi.get_subject_cast') {
+          // The S04 feature changes this tool's current catalog contract.
+          // Only its exact post-gate one-shot report can refresh old cast calls.
+          if (CURRENT_S04_REPORT) {
+            expect(CURRENT_S04_REPORT.toolName).toBe(call.name);
+            expect(toolContractMatchesCurrent(CURRENT_S04_REPORT, call.name)).toBe(true);
+          }
+          continue;
+        }
+        expect(call.name).toBe('bangumi.get_subject_cast');
       }
     }
 
@@ -728,7 +786,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_revision',
         'bangumi.get_revision_intelligence',
         'bangumi.get_subject',
-        'bangumi.get_subject_cast',
         'bangumi.get_subject_comparison',
         'bangumi.get_subject_identity',
         'bangumi.get_subject_index_membership',

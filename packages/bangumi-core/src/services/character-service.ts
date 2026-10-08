@@ -1,4 +1,4 @@
-import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { getHttpResponseByteLength, HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { GeneratedBangumiOpenApiClient, Character } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   DomainCharacter,
@@ -78,6 +78,13 @@ function validActor(value: unknown): value is ValidSubjectCharacterRow['actors']
   );
 }
 
+function normalizeOptionalSubjectCharacterActors(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const row = value as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(row, 'actors')) return row;
+  return { ...row, actors: [] };
+}
+
 function validSubjectCharacter(value: unknown): value is ValidSubjectCharacterRow {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const row = value as Record<string, unknown>;
@@ -108,6 +115,19 @@ function countInvalidActorIds(rows: readonly unknown[]): number {
     }).length;
   }
   return count;
+}
+
+function countDuplicateActorCharacterLinks(rows: readonly ValidSubjectCharacterRow[]): number {
+  const seen = new Set<string>();
+  let duplicates = 0;
+  for (const row of rows) {
+    for (const actor of row.actors) {
+      const link = `${actor.id}:${row.id}`;
+      if (seen.has(link)) duplicates += 1;
+      else seen.add(link);
+    }
+  }
+  return duplicates;
 }
 
 const subjectCharacterCoverage = new WeakMap<DomainRelatedCharacter[], SubjectCharactersCoverage>();
@@ -230,9 +250,12 @@ export class CharacterService {
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     const rawRows = Array.isArray(raw) ? raw : [];
-    const validRows = rawRows.filter(validSubjectCharacter);
+    const validRows = rawRows
+      .map(normalizeOptionalSubjectCharacterActors)
+      .filter(validSubjectCharacter);
     const schemaDriftRows = Array.isArray(raw) ? rawRows.length - validRows.length : 1;
     const invalidActorIdRows = countInvalidActorIds(rawRows);
+    const responseBytes = getHttpResponseByteLength(raw) ?? null;
     const limit = Math.max(0, Math.floor(options.limit ?? Number.MAX_SAFE_INTEGER));
     const selectedRows = validRows.slice(0, limit);
     const items = selectedRows.map((item) => ({
@@ -267,6 +290,14 @@ export class CharacterService {
         truncated: validRows.length > selectedRows.length || schemaDriftRows > 0,
         schemaDriftRows,
         invalidActorIdRows,
+        responseBytes,
+        responseByteLimit: options.maxResponseBytes ?? null,
+        rowsOmittedByLimit: validRows.length - selectedRows.length,
+        duplicateActorCharacterLinks: countDuplicateActorCharacterLinks(validRows),
+        sourceStatus:
+          responseBytes === null || validRows.length > selectedRows.length || schemaDriftRows > 0
+            ? 'partial'
+            : 'observed',
       },
     };
   }

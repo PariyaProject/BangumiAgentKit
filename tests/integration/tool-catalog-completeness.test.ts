@@ -424,13 +424,18 @@ describe('complete Bangumi tool surface', () => {
     expect(renderCard).toHaveBeenCalledWith(
       expect.objectContaining({
         template: 'cast-card',
-        coverage: {
+        coverage: expect.objectContaining({
           observed: 2,
           returned: 1,
           truncated: true,
           schemaDriftRows: 1,
           invalidActorIdRows: 1,
-        },
+          responseBytes: null,
+          responseByteLimit: 1_048_576,
+          rowsOmittedByLimit: 0,
+          duplicateActorCharacterLinks: 0,
+          sourceStatus: 'partial',
+        }),
       }),
     );
     expect(renderCard).toHaveBeenCalledWith(expect.objectContaining({ template: 'search-list' }));

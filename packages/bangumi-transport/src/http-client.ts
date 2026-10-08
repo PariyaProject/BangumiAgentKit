@@ -2,6 +2,13 @@ import { BangumiError, isBangumiError } from './errors.js';
 import { withRetry, RetryOptions } from './retry.js';
 import { MemoryCache, buildCacheKey, CacheKeyContext } from './cache.js';
 
+const responseByteLengths = new WeakMap<object, number>();
+
+/** Returns the exact UTF-8 response-body size for an object parsed by HttpClient. */
+export function getHttpResponseByteLength(value: unknown): number | undefined {
+  return value && typeof value === 'object' ? responseByteLengths.get(value) : undefined;
+}
+
 export interface HttpClientConfig {
   baseUrl?: string;
   userAgent?: string;
@@ -197,12 +204,23 @@ export class HttpClient {
       }
 
       let dataText = '';
+      let responseByteLength: number | undefined;
       try {
-        dataText = await readResponseText(response, maxResponseBytes, options.signal);
+        dataText = await readResponseText(
+          response,
+          maxResponseBytes,
+          options.signal,
+          (byteLength) => {
+            responseByteLength = byteLength;
+          },
+        );
         if (!dataText) {
           return {} as T;
         }
         const data = JSON.parse(dataText) as T;
+        if (data && typeof data === 'object' && responseByteLength !== undefined) {
+          responseByteLengths.set(data, responseByteLength);
+        }
         return data;
       } catch (error) {
         if (error instanceof BangumiError) throw error;
@@ -256,6 +274,7 @@ async function readResponseText(
   response: Response,
   maxResponseBytes: number,
   signal?: AbortSignal,
+  onBytesRead?: (byteLength: number) => void,
 ): Promise<string> {
   assertResponseContentLength(response, maxResponseBytes);
   if (!Number.isFinite(maxResponseBytes) || !response.body) {
@@ -285,6 +304,7 @@ async function readResponseText(
         response.status,
       );
     }
+    onBytesRead?.(new TextEncoder().encode(text).byteLength);
     return text;
   }
 
@@ -329,6 +349,7 @@ async function readResponseText(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  onBytesRead?.(totalBytes);
   return new TextDecoder().decode(bytes);
 }
 

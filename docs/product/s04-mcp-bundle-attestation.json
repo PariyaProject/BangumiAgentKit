@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "kind": "s04-mcp-runtime-bundle-attestation-v1",
+  "bundleSha256": "9a95f14e3b434da8ec9d88fb1121f9d21b8f319ec8a59cffd3be3477fc75cc83"
+}

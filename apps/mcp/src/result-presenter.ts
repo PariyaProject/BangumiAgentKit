@@ -1007,7 +1007,13 @@ function isSubjectCastResult(value: JsonObject): value is JsonObject & SubjectCa
     typeof value.truncated === 'boolean' &&
     typeof value.schemaDriftRows === 'number' &&
     typeof value.invalidActorIdRows === 'number' &&
+    typeof value.selectedRows === 'number' &&
+    typeof value.omittedRowsByLimit === 'number' &&
+    typeof value.duplicateActorCharacterLinks === 'number' &&
     Array.isArray(value.cast) &&
+    Array.isArray(value.multiRoleVoiceActors) &&
+    isJsonObject(value.source) &&
+    Array.isArray(value.limitations) &&
     value.cast.every(
       (item) =>
         isJsonObject(item) &&
@@ -2712,6 +2718,8 @@ function createSubjectCastProjection(
   result: SubjectCastResult,
   castLimit: number,
   actorsPerCharacter: number,
+  multiRoleVoiceActorLimit: number,
+  rolesPerVoiceActor: number,
   textLimit: number,
 ) {
   const cast = result.cast
@@ -2719,18 +2727,64 @@ function createSubjectCastProjection(
     .map((item) => projectSubjectStaffCastItem(item, actorsPerCharacter, textLimit));
   const actorRowsReturned = result.cast.reduce((total, item) => total + item.actors.length, 0);
   const actorRowsIncluded = cast.reduce((total, item) => total + item.actors.length, 0);
+  const multiRoleVoiceActors = result.multiRoleVoiceActors
+    .slice(0, multiRoleVoiceActorLimit)
+    .map((group) => {
+      const careerValues = [...group.person.career];
+      const prioritizedCareers = [
+        ...careerValues.filter((career) => career === 'seiyu'),
+        ...careerValues.filter((career) => career !== 'seiyu'),
+      ];
+      const visibleCareers = prioritizedCareers.slice(0, 4).map((career) => {
+        const clipped = clippedDisplayText(career, textLimit);
+        return { value: clipped.text, textTruncated: clipped.clipped };
+      });
+      const roles = group.roles.slice(0, rolesPerVoiceActor).map((role) => {
+        const characterName = clippedDisplayText(role.characterName, textLimit);
+        const relation = clippedDisplayText(role.relation, textLimit);
+        return {
+          characterId: role.characterId,
+          characterName: characterName.text,
+          characterNameTextTruncated: characterName.clipped,
+          relation: relation.text,
+          relationTextTruncated: relation.clipped,
+        };
+      });
+      const personName = clippedDisplayText(group.person.name, textLimit);
+      return {
+        person: {
+          id: group.person.id,
+          name: personName.text,
+          displayNameTextTruncated: personName.clipped,
+          career: visibleCareers,
+          careerValuesOmittedFromText:
+            Math.max(0, careerValues.length - visibleCareers.length) +
+            visibleCareers.filter((career) => career.textTruncated).length,
+        },
+        distinctCharacterCount: group.distinctCharacterCount,
+        roles,
+        rolesOmittedFromText: Math.max(0, group.roles.length - roles.length),
+      };
+    });
 
   return {
     status: result.status,
     subjectId: result.subjectId,
+    source: result.source,
     coverage: {
       observed: result.observed,
       returned: result.returned,
+      selectedRows: result.selectedRows,
+      omittedRowsByLimit: result.omittedRowsByLimit,
       truncated: result.truncated,
       schemaDriftRows: result.schemaDriftRows,
       invalidActorIdRows: result.invalidActorIdRows,
+      duplicateActorCharacterLinks: result.duplicateActorCharacterLinks,
+      sourceStatus: result.source.status,
     },
     cast,
+    multiRoleVoiceActors,
+    limitations: result.limitations,
     mcpTextProjection: {
       version: 'mcp-text-projection-v1',
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
@@ -2742,6 +2796,18 @@ function createSubjectCastProjection(
       actorRowsReturned,
       actorRowsIncluded,
       actorRowsOmittedFromText: Math.max(0, actorRowsReturned - actorRowsIncluded),
+      multiRoleVoiceActorGroupsReturned: result.multiRoleVoiceActors.length,
+      multiRoleVoiceActorGroupsIncluded: multiRoleVoiceActors.length,
+      multiRoleVoiceActorGroupsOmittedFromText:
+        result.multiRoleVoiceActors.length - multiRoleVoiceActors.length,
+      multiRoleVoiceActorRolesReturned: result.multiRoleVoiceActors.reduce(
+        (total, group) => total + group.roles.length,
+        0,
+      ),
+      multiRoleVoiceActorRolesIncluded: multiRoleVoiceActors.reduce(
+        (total, group) => total + group.roles.length,
+        0,
+      ),
       characterNamesTruncated: cast.filter(
         (item) => item.character.displayNameTextTruncated === true,
       ).length,
@@ -2752,7 +2818,9 @@ function createSubjectCastProjection(
         0,
       ),
       characterSummariesAndImagesOmittedFromText: true,
-      actorCareersAndImagesOmittedFromText: true,
+      castRowActorCareersAndImagesOmittedFromText: true,
+      multiRoleGroupPersonCareerValuesIncludedInText: true,
+      fullMultiRoleVoiceActorGroupsRetainedInStructuredContent: true,
     },
   };
 }
@@ -2760,6 +2828,8 @@ function createSubjectCastProjection(
 function compactSubjectCast(result: SubjectCastResult): string {
   let castLimit = Math.min(MAX_SECTION_ITEMS, result.cast.length);
   let actorsPerCharacter = MAX_ACTORS_PER_CHARACTER;
+  let multiRoleVoiceActorLimit = Math.min(3, result.multiRoleVoiceActors.length);
+  let rolesPerVoiceActor = 3;
   let textLimit = DISPLAY_TEXT_LIMIT;
 
   while (true) {
@@ -2767,6 +2837,8 @@ function compactSubjectCast(result: SubjectCastResult): string {
       result,
       castLimit,
       actorsPerCharacter,
+      multiRoleVoiceActorLimit,
+      rolesPerVoiceActor,
       textLimit,
     );
     const text = JSON.stringify(projection);
@@ -2774,6 +2846,9 @@ function compactSubjectCast(result: SubjectCastResult): string {
 
     if (actorsPerCharacter > 1) actorsPerCharacter -= 1;
     else if (castLimit > 1) castLimit -= 1;
+    else if (multiRoleVoiceActorLimit > 1) multiRoleVoiceActorLimit -= 1;
+    else if (rolesPerVoiceActor > 1) rolesPerVoiceActor -= 1;
+    else if (multiRoleVoiceActorLimit > 0) multiRoleVoiceActorLimit -= 1;
     else if (textLimit > 8) textLimit = Math.max(8, textLimit - 8);
     else if (castLimit > 0) castLimit -= 1;
     else if (actorsPerCharacter > 0) actorsPerCharacter -= 1;
