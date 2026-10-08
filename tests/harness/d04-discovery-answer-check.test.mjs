@@ -254,6 +254,28 @@ test('D04 answer checker accepts source-exact titles with digits and clipped MCP
   assert.equal(result.passed, true, JSON.stringify(result));
 });
 
+test('D04 answer checker rejects a visible title that does not match its structured source row', () => {
+  const { toolOutput } = resultFixture();
+  const textView = JSON.parse(toolOutput.content[0].text);
+  textView.items[0].nameCn = '伪造条目名称';
+  textView.items[0].displayName = '伪造条目名称';
+  const mismatchedOutput = {
+    structuredContent: toolOutput.structuredContent,
+    content: [{ type: 'text', text: JSON.stringify(textView) }],
+  };
+  const answer = answerFixture().replace('名称=公开条目甲', '名称=伪造条目名称');
+  const result = verifyD04DiscoveryAnswer(
+    answer,
+    [{ name: 'bangumi.query_subjects', state: 'DONE' }],
+    D04_DISCOVERY_ARGUMENTS,
+    mismatchedOutput,
+  );
+
+  assert.equal(result.passed, false);
+  assert.equal(result.checks.answerRowsMatchVisibleSourceRows, false);
+  assert.equal(result.counts.mismatchedRows, 1);
+});
+
 test('D04 answer checker fails closed when the MCP text fallback hides all rows', () => {
   const { toolOutput } = resultFixture();
   const full = toolOutput.structuredContent;

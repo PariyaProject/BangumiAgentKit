@@ -191,6 +191,20 @@ function rowsFromAnswer(answer) {
   });
 }
 
+function visibleNameMatchesStructuredSource(visibleName, sourceNames) {
+  if (sourceNames.includes(visibleName)) return true;
+  const visibleCharacters = Array.from(visibleName);
+  if (visibleCharacters.length < 2 || visibleCharacters.at(-1) !== '…') return false;
+  const prefix = visibleCharacters.slice(0, -1);
+  return sourceNames.some((sourceName) => {
+    const sourceCharacters = Array.from(sourceName);
+    return (
+      sourceCharacters.length > prefix.length &&
+      prefix.every((character, index) => character === sourceCharacters[index])
+    );
+  });
+}
+
 function precedingClauseIsNegated(text, index, pattern) {
   const prefix = text.slice(0, index);
   const boundaries = [...prefix.matchAll(/[。！？；;，,\n]|但是|然而|不过|但|however|but/giu)];
@@ -237,8 +251,15 @@ function checkItemRows(result, answerRows, visibleItems) {
     const names = [displayed.name, displayed.nameCn, displayed.displayName].filter(
       (value) => typeof value === 'string',
     );
+    const structuredNames = [expected.name, expected.nameCn, expected.displayName].filter(
+      (value) => typeof value === 'string',
+    );
+    const projectedNamesMatchSource =
+      names.length > 0 &&
+      names.every((name) => visibleNameMatchesStructuredSource(name, structuredNames));
     if (
       !names.includes(row.name) ||
+      !projectedNamesMatchSource ||
       displayed.ratingCount !== expected.ratingCount ||
       displayed.reportedEpisodeCount !== expected.reportedEpisodeCount ||
       row.ratingCount !== displayed.ratingCount ||
