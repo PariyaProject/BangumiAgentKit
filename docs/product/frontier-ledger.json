@@ -1876,7 +1876,7 @@
         "tests/standalone/subject-cast-presenter.test.ts",
         "scripts/acceptance/run-s04-codex-agent-mcp.mjs"
       ],
-      "next_action": "The safe subscenario remains one user-supplied subject: group only exact-seiyuu career actors by stable person ID across distinct character IDs, preserve raw relation labels, and bound the response to 1 MiB/100 public rows. The S04 one-shot is unspent. Its Codex CLI invocation must explicitly set top-level web_search=\"disabled\" and retain sorted unique non-MCP item type labels in sanitized diagnostics while still rejecting any non-MCP event. Then pass exact-Candidate/current-Base CI, Harness readiness, and GPT-6 Luna Max PASS before its single create-once Agent/MCP call. Keep no-match/omission caveats; QQ/TIM remain untested.",
+      "next_action": "The sole S04 Run #95 Agent/MCP attempt ran on merged PR #111 at Candidate b024928f253e2f4f8e6e965756de18a9d142a3ed / Base d744835fb5207081e255132e20107296a754fd36. The local canonical claim is INCONCLUSIVE: one target MCP call and server SUCCESS, three non-MCP events, zero shell calls; coverageValid=false and answerCoverageMatches=false; no report. The claim is consumed. Never retry; keep S04 PARTIAL. The current unpaged response and 100-row cap do not establish complete credits or main-role status. Shared runner hardening may continue, but it must not rerun S04.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["S01"]
     },

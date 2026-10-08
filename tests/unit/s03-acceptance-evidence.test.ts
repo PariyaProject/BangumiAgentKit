@@ -496,6 +496,7 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     expect(args).toContain('model_reasoning_effort="max"');
     expect(args).toContain('features.shell_tool=false');
     expect(args).toContain('features.web_search=false');
+    expect(args).toContain('web_search="disabled"');
     expect(args).toContain(
       'mcp_servers.bgk_s03_one_tool.enabled_tools=["bangumi.get_series_watch_order"]',
     );

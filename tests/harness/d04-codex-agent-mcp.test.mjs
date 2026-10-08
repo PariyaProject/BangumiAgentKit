@@ -108,6 +108,7 @@ test('D04 Codex profile pins Luna Max, one MCP tool, and disables unrelated tool
   assert.equal(args[args.indexOf('--sandbox') + 1], 'read-only');
   assert.ok(args.includes('features.shell_tool=false'));
   assert.ok(args.includes('features.web_search=false'));
+  assert.ok(args.includes('web_search="disabled"'));
   assert.ok(args.includes('mcp_servers.bgk_d04_one_tool.enabled_tools=["bangumi.query_subjects"]'));
   assert.ok(args.at(-1).includes(JSON.stringify(D04_DISCOVERY_ARGUMENTS)));
   assert.doesNotMatch(args.join('\n'), /gpt-6-sol|gpt-6-astra|gemini|anthropic/iu);
