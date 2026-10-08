@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-06T00:54:20Z",
+  "updated_at": "2026-10-08T14:52:57.107Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1295,9 +1295,10 @@
       "status": "UNASSESSED",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md"
+        "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md",
+        "docs/research/run95-g26-current-master-runtime-attestation-2026-10-08.md"
       ],
-      "next_action": "Run #95 exact-tag implementation is on the current candidate: anime, air_date [2019-01-01, 2025-01-01), rating_count >= 10001, exact documented tag=女性向, and TV platform post-filter. This tag is only an operational facet, not a female-audience ontology. After exact-head CI and Harness candidate gates, execute one anonymous Agent/MCP query and require exact row/readback plus experimental/estimated/partial disclosures. If evidence is unreadable or the query is inconclusive, keep UNASSESSED and do not retry. On fully passing evidence, transition only to PARTIAL with measured bounded coverage; never claim exhaustive or DELIVERED. Do not access accounts, community content, QQ, or TIM.",
+      "next_action": "Run #95 G26 remains UNASSESSED and its one-shot claim remains CLAIMED after one runner invocation stopped before Codex/MCP/API. PR #112 review #2 identified P2 G26-CLAIM-PHYSICAL-BOUNDARY: lexical containment allowed an external symlink into the checkout. The corrective Candidate now resolves claim/root/Git common paths through nearest existing ancestors and adds a rejection-before-write symlink regression while retaining alias deduplication. The claim is preserved; never retry or edit it. Require exact-SHA CI, corrective closure, and GPT-6 Luna Max review #3 before integration. Keep acceptance counts unchanged and continue other frontiers afterward.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

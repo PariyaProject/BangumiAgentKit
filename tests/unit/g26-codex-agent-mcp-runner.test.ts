@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +18,7 @@ import {
   G26_EXPECTED_QUERY_ARGUMENTS,
   buildCodexExecArgs,
   canonicalG26ClaimPath,
+  createAttestedOneShotClaims,
   createOneShotClaim,
   createOneShotClaims,
   parseCodexJsonl,
@@ -276,6 +287,88 @@ describe('G26 Codex one-tool runner', () => {
       expect(() => createOneShotClaim(claimPath, 'a'.repeat(40), 'b'.repeat(64))).toThrow(
         'G26 one-shot claim already exists',
       );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('creates one claim when canonical and mirror paths alias through a symlink', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-claim-alias-test-'));
+    const canonicalDirectory = path.join(directory, 'canonical');
+    const aliasDirectory = path.join(directory, 'alias');
+    const canonicalClaimPath = path.join(canonicalDirectory, 'claimed.json');
+    const localClaimPath = path.join(aliasDirectory, 'claimed.json');
+    mkdirSync(canonicalDirectory, { recursive: true });
+    symlinkSync(canonicalDirectory, aliasDirectory, 'dir');
+
+    try {
+      const result = createOneShotClaims({
+        canonicalClaimPath,
+        localClaimPath,
+        sourceRevision: 'a'.repeat(40),
+        bundleSha256: 'b'.repeat(64),
+      });
+
+      expect(result.paths).toEqual([canonicalClaimPath]);
+      expect(readdirSync(canonicalDirectory)).toEqual(['claimed.json']);
+      expect(JSON.parse(readFileSync(localClaimPath, 'utf8'))).toMatchObject({
+        state: 'CLAIMED',
+        sourceRevision: 'a'.repeat(40),
+        bundleSha256: 'b'.repeat(64),
+      });
+      expect(() =>
+        createOneShotClaims({
+          canonicalClaimPath,
+          localClaimPath,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+        }),
+      ).toThrow('G26 one-shot claim already exists');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an external symlink that redirects a claim into the product checkout', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-claim-boundary-test-'));
+    const checkoutRoot = gitRepositoryText(process.cwd(), ['rev-parse', '--show-toplevel']);
+    const aliasDirectory = path.join(directory, 'checkout-docs');
+    const canonicalClaimPath = path.join(directory, 'canonical', 'claimed.json');
+    const localClaimPath = path.join(aliasDirectory, 'claimed.json');
+    symlinkSync(path.join(checkoutRoot, 'docs'), aliasDirectory, 'dir');
+
+    try {
+      expect(() =>
+        createOneShotClaims({
+          canonicalClaimPath,
+          localClaimPath,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+        }),
+      ).toThrow('outside the Product working tree, except local Git metadata');
+      expect(existsSync(canonicalClaimPath)).toBe(false);
+      expect(existsSync(localClaimPath)).toBe(false);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not create a one-shot claim when the built bundle attestation is stale', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-stale-attestation-test-'));
+    const canonicalClaimPath = path.join(directory, 'canonical', 'claim.json');
+    const localClaimPath = path.join(directory, 'local', 'claim.json');
+    try {
+      expect(() =>
+        createAttestedOneShotClaims({
+          canonicalClaimPath,
+          localClaimPath,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+          attestationSha256: 'c'.repeat(64),
+        }),
+      ).toThrow('Built G26 MCP bundle does not match its exact-Candidate attestation.');
+      expect(existsSync(canonicalClaimPath)).toBe(false);
+      expect(existsSync(localClaimPath)).toBe(false);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

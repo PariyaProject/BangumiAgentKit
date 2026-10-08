@@ -63,6 +63,18 @@ export function readG26McpBundleAttestation(root) {
   return attestation.bundleSha256;
 }
 
+export function assertG26McpBundleAttestationMatches(bundleSha256, attestationSha256) {
+  if (
+    typeof bundleSha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(bundleSha256) ||
+    typeof attestationSha256 !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(attestationSha256) ||
+    bundleSha256 !== attestationSha256
+  ) {
+    throw new Error('Built G26 MCP bundle does not match its exact-Candidate attestation.');
+  }
+}
+
 export function computeMcpBundleSha256(root) {
   const absoluteRoot = path.resolve(root);
   const packageRoot = path.join(absoluteRoot, 'packages');
