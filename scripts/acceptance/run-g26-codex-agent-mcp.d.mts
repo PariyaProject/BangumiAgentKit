@@ -65,6 +65,7 @@ export declare function summarizeCodexEvents(events: readonly unknown[]): {
   codexMcpToolEventCount: number;
   mcpServerNames: unknown[];
   nonMcpToolEventCount: number;
+  nonMcpToolTypes: string[];
   shellToolCallCount: number;
   toolCalls: Array<{ name: unknown; arguments: unknown; state: string }>;
   completedMcpCalls: Array<{

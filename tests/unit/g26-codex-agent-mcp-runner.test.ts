@@ -181,6 +181,38 @@ describe('G26 Codex one-tool runner', () => {
     expect(summary.answer).toContain('Public sample');
   });
 
+  it('reports only sorted unique non-MCP item type labels for safe diagnostics', () => {
+    const summary = summarizeCodexEvents([
+      ...codexEvents(),
+      {
+        type: 'item.completed',
+        item: { id: 'search-1', type: 'web_search_call', query: 'private query text' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'search-2', type: 'web_search_call', query: 'another private query' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'file-1', type: 'file_search_call', path: '/private/file' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'odd-1', type: 'untrusted label / private', value: 'secret' },
+      },
+    ]);
+
+    expect(summary.nonMcpToolEventCount).toBe(4);
+    expect(summary.nonMcpToolTypes).toEqual([
+      'file_search_call',
+      'unknown_tool_type',
+      'web_search_call',
+    ]);
+    expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('private');
+    expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('query');
+    expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('/private/file');
+  });
+
   it('fails closed on malformed JSONL or a shell event', () => {
     const malformed = parseCodexJsonl('{"type":"thread.started"}\nnot-json');
     const withShell = summarizeCodexEvents([

@@ -220,6 +220,13 @@ export function summarizeCodexEvents(events) {
     codexMcpToolEventCount: mcpCalls.length,
     mcpServerNames: mcpCalls.map((item) => item.server),
     nonMcpToolEventCount: nonMcpTypes.length,
+    nonMcpToolTypes: [
+      ...new Set(
+        nonMcpTypes.map((type) =>
+          /^[a-z][a-z0-9_]{0,63}$/u.test(type) ? type : 'unknown_tool_type',
+        ),
+      ),
+    ].sort(),
     shellToolCallCount,
     toolCalls: mcpCalls.map((item) => ({
       name: item.tool,
