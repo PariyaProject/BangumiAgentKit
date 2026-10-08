@@ -1002,13 +1002,38 @@ function projectMessages(
   };
 }
 
-function projectWindowSummary(summary: PersonActivityWindowSummary, monthLimit: number) {
+function canExposePersonActivityCounts(result: PersonActivityResult): boolean {
+  return (
+    result.state === 'complete' || (result.state === 'partial' && result.coverage.rowsEligible > 0)
+  );
+}
+
+function projectYearBuckets(summary: PersonActivityWindowSummary, countsAvailable: boolean) {
+  if (countsAvailable) return summary.byYear;
+  return summary.byYear.map(({ year, start, end }) => ({
+    year,
+    start,
+    end,
+    countsOmittedDueToCoverage: true,
+  }));
+}
+
+const PERSON_ACTIVITY_YEAR_SCOPE_NOTE =
+  '按首播年分组、与窗口求交并按 subject ID 去重；部分覆盖下 0 不证明无作品。';
+
+function projectWindowSummary(
+  summary: PersonActivityWindowSummary,
+  monthLimit: number,
+  countsAvailable: boolean,
+) {
   return {
     creditRows: summary.creditRows,
     uniqueSubjects: summary.uniqueSubjects,
     uniqueCharacters: summary.uniqueCharacters,
     byRole: summary.byRole.slice(0, 8),
     byMedia: summary.byMedia.slice(0, 8),
+    byYear: projectYearBuckets(summary, countsAvailable),
+    byYearOmittedFromText: 0,
     byMonth: summary.byMonth.slice(0, monthLimit),
     origin: { ...summary.origin },
     byRoleOmittedFromText: Math.max(0, summary.byRole.length - 8),
@@ -1193,11 +1218,16 @@ function projectComparison(
               creditRows: period.summary.creditRows,
               uniqueSubjects: period.summary.uniqueSubjects,
               uniqueCharacters: period.summary.uniqueCharacters,
+              byYear: period.summary.byYear,
+              byYearOmittedFromText: 0,
               ...(includeSummaryOrigin
                 ? { origin: { ...period.summary.origin } }
                 : { originOmittedFromText: true }),
             }
-          : { countsOmittedDueToCoverage: true }),
+          : {
+              countsOmittedDueToCoverage: true,
+              byYearOmittedFromText: period.summary.byYear.length,
+            }),
         byRole,
         byRoleOmittedFromText: period.summary.byRole.length - byRole.length,
         byMedia,
@@ -1308,6 +1338,7 @@ function projectComparison(
       (canExposeComparisonCounts(comparison.recent)
         ? Math.min(detailLimit, comparison.recent.summary.byMedia.length)
         : 0) +
+      (canExposeComparisonCounts(comparison.recent) ? 0 : comparison.recent.summary.byYear.length) +
       comparison.recent.summary.byMonth.length +
       comparison.recent.exclusions.length -
       Math.min(detailLimit, comparison.recent.exclusions.length) +
@@ -1319,6 +1350,9 @@ function projectComparison(
       (canExposeComparisonCounts(comparison.previous)
         ? Math.min(detailLimit, comparison.previous.summary.byMedia.length)
         : 0) +
+      (canExposeComparisonCounts(comparison.previous)
+        ? 0
+        : comparison.previous.summary.byYear.length) +
       comparison.previous.summary.byMonth.length +
       comparison.previous.exclusions.length -
       Math.min(detailLimit, comparison.previous.exclusions.length) +
@@ -1359,6 +1393,7 @@ function createPersonActivityProjection(
   comparisonDetailLimit: number,
 ) {
   const rows = result.rows.slice(0, rowLimit).map(projectPersonRow);
+  const countsAvailable = canExposePersonActivityCounts(result);
   const messages = projectMessages(
     result.warnings,
     result.limitations,
@@ -1374,7 +1409,7 @@ function createPersonActivityProjection(
     media: result.media,
     ...(result.staffRole ? { staffRole: result.staffRole } : {}),
     window: projectActivityWindow(result.window),
-    summary: projectWindowSummary(result.summary, monthLimit),
+    summary: projectWindowSummary(result.summary, monthLimit, countsAvailable),
     ...(comparison ? { comparison } : {}),
     coverage: projectPersonCoverage(result.coverage),
     rows,
@@ -1389,6 +1424,10 @@ function createPersonActivityProjection(
       rowsIncluded: rows.length,
       rowsOmittedFromText: result.rows.length - rows.length,
       rowNamesTextTruncated: rows.filter((row) => row.displayNameTextTruncated === true).length,
+      fullYearBucketsReturned: result.summary.byYear.length,
+      yearBucketsIncluded: result.summary.byYear.length,
+      yearBucketsOmittedFromText: 0,
+      yearBucketsScopeNote: PERSON_ACTIVITY_YEAR_SCOPE_NOTE,
       fullMonthBucketsReturned: result.summary.byMonth.length,
       monthBucketsIncluded: Math.min(result.summary.byMonth.length, monthLimit),
       monthBucketsOmittedFromText: Math.max(0, result.summary.byMonth.length - monthLimit),
@@ -1445,6 +1484,7 @@ function compactPersonActivity(result: PersonActivityResult): string {
 }
 
 function minimalPersonActivityProjection(result: PersonActivityResult): string {
+  const countsAvailable = canExposePersonActivityCounts(result);
   const projection = {
     personId: result.personId,
     ...(result.person ? { person: projectPersonIdentity(result.person) } : {}),
@@ -1457,6 +1497,7 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
       creditRows: result.summary.creditRows,
       uniqueSubjects: result.summary.uniqueSubjects,
       uniqueCharacters: result.summary.uniqueCharacters,
+      byYear: projectYearBuckets(result.summary, countsAvailable),
       origin: { ...result.summary.origin },
     },
     coverage: {
@@ -1473,6 +1514,10 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
       structuredContentHasFullResult: true,
       textViewScope: TEXT_VIEW_SCOPE_NOTE,
       rowsOmittedFromText: result.rows.length,
+      fullYearBucketsReturned: result.summary.byYear.length,
+      yearBucketsIncluded: result.summary.byYear.length,
+      yearBucketsOmittedFromText: 0,
+      yearBucketsScopeNote: PERSON_ACTIVITY_YEAR_SCOPE_NOTE,
       evidenceRecordsOmittedFromText: result.evidence.length,
       sourceOperationRecordsOmittedFromText: result.sourceOperations.length,
       warningRecordsOmittedFromText: result.warnings.length,
@@ -1483,10 +1528,11 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
   const text = JSON.stringify(projection);
   if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
 
-  let minimalText = JSON.stringify(
-    createMinimalPersonActivityProjection(result, DISPLAY_TEXT_LIMIT, true),
-  );
-  if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
+  let minimalText: string;
+  for (let textLimit = DISPLAY_TEXT_LIMIT; textLimit >= 0; textLimit -= 1) {
+    minimalText = JSON.stringify(createMinimalPersonActivityProjection(result, textLimit, true));
+    if (utf8Bytes(minimalText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return minimalText;
+  }
 
   minimalText = JSON.stringify(
     createMinimalPersonActivityProjection(result, DISPLAY_TEXT_LIMIT, false),
@@ -1506,6 +1552,7 @@ function createMinimalPersonActivityProjection(
   textLimit: number,
   includeAnswerSummary: boolean,
 ) {
+  const countsAvailable = canExposePersonActivityCounts(result);
   return {
     state: result.state,
     personId: result.personId,
@@ -1516,6 +1563,10 @@ function createMinimalPersonActivityProjection(
     ...(result.comparison
       ? { comparison: projectMinimalComparison(result, textLimit, includeAnswerSummary) }
       : {}),
+    annualObservations: {
+      byYear: projectYearBuckets(result.summary, countsAvailable),
+      zeroIsNotProofOfAbsence: true,
+    },
     mcpTextProjection: {
       version: 'mcp-text-projection-v1',
       maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,

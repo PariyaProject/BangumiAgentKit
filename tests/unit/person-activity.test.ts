@@ -92,6 +92,102 @@ function activityFetch(options: { failSubjectIds?: number[] } = {}) {
 }
 
 describe('PersonActivityService', () => {
+  it('groups bounded TV voice observations by clipped calendar year and deduplicates subjects', async () => {
+    const relations = [
+      { id: 101, name: 'Character A', subject_id: 1, subject_type: 2, staff: '主角' },
+      { id: 102, name: 'Character B', subject_id: 1, subject_type: 2, staff: '配角' },
+      { id: 201, name: 'Character C', subject_id: 2, subject_type: 2, staff: '主角' },
+      { id: 301, name: 'Character D', subject_id: 3, subject_type: 2, staff: '主角' },
+    ];
+    const subjects = new Map([
+      [1, subjectPayload(1, { date: '2023-11-30', meta_tags: [] })],
+      [2, subjectPayload(2, { date: '2024-03-01', meta_tags: [] })],
+      [3, subjectPayload(3, { date: '2026-10-08', meta_tags: [] })],
+    ]);
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) return json(relations);
+      if (url.includes('/v0/subjects/')) {
+        const subject = subjects.get(Number(url.split('/').pop()));
+        return subject ? json(subject) : json({ error: 'not found' }, 404);
+      }
+      return json({ error: 'not found' }, 404);
+    });
+    const service = new PersonActivityService(new HttpClient({ fetchFn }));
+
+    const complete = await service.getPersonActivity(20, {
+      asOf: '2026-10-08',
+      windowMonths: 36,
+      kind: 'voice',
+      media: 'tv',
+    });
+
+    expect(complete.state).toBe('complete');
+    expect(complete.window).toMatchObject({ start: '2023-11-01', end: '2026-10-08' });
+    expect(complete.summary.byYear).toEqual([
+      {
+        year: 2023,
+        start: '2023-11-01',
+        end: '2023-12-31',
+        creditRows: 2,
+        uniqueSubjects: 1,
+        uniqueCharacters: 2,
+      },
+      {
+        year: 2024,
+        start: '2024-01-01',
+        end: '2024-12-31',
+        creditRows: 1,
+        uniqueSubjects: 1,
+        uniqueCharacters: 1,
+      },
+      {
+        year: 2025,
+        start: '2025-01-01',
+        end: '2025-12-31',
+        creditRows: 0,
+        uniqueSubjects: 0,
+        uniqueCharacters: 0,
+      },
+      {
+        year: 2026,
+        start: '2026-01-01',
+        end: '2026-10-08',
+        creditRows: 1,
+        uniqueSubjects: 1,
+        uniqueCharacters: 1,
+      },
+    ]);
+    expect(
+      complete.summary.byYear.reduce((total, bucket) => total + bucket.uniqueSubjects, 0),
+    ).toBe(complete.summary.uniqueSubjects);
+    expect(complete.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'person-activity-calendar-year-observations',
+          formulaVersion: 'person-activity-year-summary-v1',
+        }),
+      ]),
+    );
+
+    const partial = await service.getPersonActivity(20, {
+      asOf: '2026-10-08',
+      windowMonths: 36,
+      kind: 'voice',
+      media: 'tv',
+      maxRelations: 3,
+    });
+    expect(partial.state).toBe('partial');
+    expect(partial.coverage.relationRowsDroppedAtLimit).toBe(1);
+    expect(partial.summary.byYear.find((bucket) => bucket.year === 2025)).toMatchObject({
+      uniqueSubjects: 0,
+    });
+    expect(partial.summary.byYear.reduce((total, bucket) => total + bucket.uniqueSubjects, 0)).toBe(
+      partial.summary.uniqueSubjects,
+    );
+  });
+
   it('hydrates bounded subject details and preserves window/media/role evidence', async () => {
     const fixture = activityFetch();
     const service = new PersonActivityService(new HttpClient({ fetchFn: fixture.fetchFn }));

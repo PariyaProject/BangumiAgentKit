@@ -3101,6 +3101,11 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
   };
   const origin = comparisonRecord(summary.origin);
   const coverageOrigin = comparisonRecord(coverage.origin);
+  const byYear = Array.isArray(summary.byYear)
+    ? summary.byYear
+        .map(comparisonRecord)
+        .filter((bucket): bucket is Record<string, unknown> => !!bucket)
+    : [];
   const labelOrigin = (state: unknown): string =>
     originLabels[String(state)] || String(state || '未知');
   const count = (record: Record<string, unknown> | undefined, key: string): unknown =>
@@ -3125,9 +3130,19 @@ function presentPersonActivity(value: Record<string, unknown>): string | undefin
     `人物 activity · 状态: ${comparisonStateLabel(value.state)} · ${humanField(kindLabels[String(value.kind)] || value.kind || '未知', 48)} · ${humanField(mediaLabels[String(value.media)] || value.media || '未知', 48)}${staffRole}`,
     `人物: ${humanField(person?.nameCn || person?.name || '未知人物', 180)} · ID ${humanField(personId, 32)} · 窗口 ${humanField(window?.start || '未知', 32)} 至 ${humanField(window?.end || '未知', 32)}`,
     `窗口摘要：${summaryMetric('去重作品', 'uniqueSubjects', '部')} · ${summaryMetric('关系行', 'creditRows', '行')} · ${summaryMetric('去重角色', 'uniqueCharacters', '个')}`,
+    ...(byYear.length > 0
+      ? [
+          `按年观察（首尾年份按窗口日期截断；按唯一 subject ID 去重）：${byYear
+            .map(
+              (bucket) =>
+                `${humanField(bucket.year ?? '?', 32)}（${humanField(bucket.start ?? '未知', 32)} 至 ${humanField(bucket.end ?? '未知', 32)}）${summaryCountsObservable ? ` ${summaryScope}去重作品 ${personActivityMetric(bucket, 'uniqueSubjects')} 部` : ' 作品数不可用'}`,
+            )
+            .join(' · ')}`,
+        ]
+      : []),
     ...(value.state === 'partial'
       ? [
-          '说明：部分覆盖下的汇总只统计本次选取关系和成功读取详情中的可计数观察，不代表整个时间窗的总数。',
+          '说明：部分覆盖下的汇总只统计本次选取关系和成功读取详情中的可计数观察，不代表整个时间窗的总数；某年观察值为 0 不证明该年没有作品。',
         ]
       : []),
     `覆盖: 关系 ${humanField(coverage.relationRowsSelected ?? '?', 32)}/${humanField(coverage.relationRowsObserved ?? '?', 32)} · 作品 ${humanField(coverage.subjectIdsSelected ?? '?', 32)}/${humanField(coverage.subjectIdsObserved ?? '?', 32)} · 详情 ${humanField(coverage.subjectDetailsSucceeded ?? '?', 32)}/${humanField(coverage.subjectDetailRequests ?? '?', 32)} 成功 · 返回 ${humanField(coverage.rowsReturned ?? '?', 32)}/${humanField(coverage.rowsEligible ?? '?', 32)}${coverage.truncated ? ' · 有界/截断' : ''}`,

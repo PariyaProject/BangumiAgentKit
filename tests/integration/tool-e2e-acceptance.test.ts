@@ -474,10 +474,14 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     );
     const currentG20Evidence = Boolean(
       currentG20Report &&
-        currentG20Report.scenarios?.[0]?.passed === true &&
-        toolContractMatchesCurrent(currentG20Report, 'bangumi.get_subject_relations'),
+      currentG20Report.scenarios?.[0]?.passed === true &&
+      toolContractMatchesCurrent(currentG20Report, 'bangumi.get_subject_relations'),
     );
-    expect(uncoveredNames).toEqual(currentG20Evidence ? [] : ['bangumi.get_subject_relations']);
+    expect(uncoveredNames).toEqual(
+      currentG20Evidence
+        ? ['bangumi.get_person_activity']
+        : ['bangumi.get_person_activity', 'bangumi.get_subject_relations'],
+    );
     expect(evidenceNames.sort()).toEqual(
       [
         'bangumi.aggregate_subject_cohort',
@@ -507,7 +511,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
-        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',
@@ -580,7 +583,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     );
 
     const newlyVerifiedPublicTools = [
-      'bangumi.get_person_activity',
       'bangumi.get_subject_overview',
       'bangumi.render_subject_overview',
     ];
@@ -668,7 +670,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_index',
         'bangumi.get_latest_subject_revision',
         'bangumi.get_person',
-        'bangumi.get_person_activity',
         'bangumi.get_person_collaboration',
         'bangumi.get_person_collection',
         'bangumi.get_person_profile',

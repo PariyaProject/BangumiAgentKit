@@ -280,6 +280,24 @@ function makePersonActivityResult(): PersonActivityResult {
           uniqueCharacters: 10,
         },
       ],
+      byYear: [
+        {
+          year: 2025,
+          start: '2025-10-04',
+          end: '2025-12-31',
+          creditRows: 0,
+          uniqueSubjects: 0,
+          uniqueCharacters: 0,
+        },
+        {
+          year: 2026,
+          start: '2026-01-01',
+          end: '2026-10-04',
+          creditRows: 40,
+          uniqueSubjects: 20,
+          uniqueCharacters: 10,
+        },
+      ],
       byMonth,
       origin,
     },
@@ -1903,10 +1921,15 @@ describe('MCP tool result presentation', () => {
     expect(parsed.person.nameCn).toBe('水濑祈');
     expect(parsed.window.start).toBe('2025-10-04');
     expect(parsed.summary.uniqueSubjects).toBe(20);
+    expect(parsed.summary.byYear).toEqual(original.summary.byYear);
+    expect(parsed.mcpTextProjection.yearBucketsOmittedFromText).toBe(0);
+    expect(parsed.mcpTextProjection.yearBucketsScopeNote).toContain('部分覆盖下 0 不证明无作品');
     expect(parsed.coverage.relationRowsDroppedAtLimit).toBe(40);
-    expect(parsed.rows.length).toBeGreaterThan(0);
-    expect(parsed.rows[0].origin.metaTags).toEqual(['漫画']);
-    expect(parsed.mcpTextProjection.rowsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.mcpTextProjection.rowsIncluded).toBe(parsed.rows.length);
+    expect(parsed.mcpTextProjection.rowsOmittedFromText).toBe(
+      original.rows.length - parsed.rows.length,
+    );
+    if (parsed.rows.length > 0) expect(parsed.rows[0].origin.metaTags).toEqual(['漫画']);
     expect(parsed.mcpTextProjection.evidenceRecordsOmittedFromText).toBe(80);
     expect(parsed.exclusions[0]).toEqual({ reason: 'subject_detail_cap', count: 12 });
   });
@@ -1929,6 +1952,7 @@ describe('MCP tool result presentation', () => {
     expect(parsed.comparison.recent.window.start).toBe('2023-10-04');
     expect(parsed.comparison.recent.summary.creditRows).toBe(40);
     expect(parsed.comparison.recent.coverage.rowsEligible).toBe(20);
+    expect(parsed.comparison.recent.summary.byYearOmittedFromText).toBe(0);
     expect(parsed.comparison.recent.summary.byRoleOmittedFromText).toBeGreaterThan(0);
     expect(parsed.comparison.recent.summary.byMonthBucketsOmittedFromText).toBe(36);
     expect(parsed.comparison.recent.exclusionsOmittedFromText).toBeGreaterThan(0);
@@ -2159,11 +2183,9 @@ describe('MCP tool result presentation', () => {
 
     expect(Buffer.byteLength(text ?? '', 'utf8')).toBeLessThanOrEqual(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
     expect(parsed.mcpTextProjection.summaryOmittedFromText).toBe(true);
-    expect(parsed.person).toMatchObject({
-      id: 13684,
-      name: '声'.repeat(120),
-      nameCn: '名'.repeat(120),
-    });
+    expect(parsed.person).toMatchObject({ id: 13684, displayNameTextTruncated: true });
+    expect(parsed.person.name.endsWith('…')).toBe(true);
+    expect(parsed.person.nameCn.endsWith('…')).toBe(true);
     expect(parsed.kind).toBe('voice');
     expect(parsed.media).toBe('tv');
     expect(parsed.comparison.recent).toMatchObject({
@@ -2205,6 +2227,16 @@ describe('MCP tool result presentation', () => {
       uniqueCharacters: 0,
       byRole: [],
       byMedia: [],
+      byYear: [
+        {
+          year: 2025,
+          start: '2025-10-04',
+          end: '2025-12-31',
+          creditRows: 0,
+          uniqueSubjects: 0,
+          uniqueCharacters: 0,
+        },
+      ],
       byMonth: [],
     };
     original.coverage = {
@@ -2241,9 +2273,54 @@ describe('MCP tool result presentation', () => {
       state: 'unavailable',
       months: [],
     });
+    expect(parsed.annualObservations.byYear).toEqual([
+      {
+        year: 2025,
+        start: '2025-10-04',
+        end: '2025-12-31',
+        countsOmittedDueToCoverage: true,
+      },
+    ]);
+    expect(parsed.annualObservations.byYear[0].countsOmittedDueToCoverage).toBe(true);
+    expect(parsed.annualObservations.zeroIsNotProofOfAbsence).toBe(true);
     expect(parsed.comparison.answerSummary).toContain('差值（unavailable）未提供数值（不等于零）');
     expect(parsed.comparison.answerSummary).not.toContain('差值（unavailable）0部');
     expect(response.structuredContent).toEqual(original);
+  });
+
+  it('preserves annual ranges but omits counts when partial coverage has no eligible rows', async () => {
+    const original = makePersonActivityResult();
+    original.state = 'partial';
+    original.coverage.rowsEligible = 0;
+    original.summary.byYear = [
+      {
+        year: 2025,
+        start: '2025-10-04',
+        end: '2025-12-31',
+        creditRows: 0,
+        uniqueSubjects: 0,
+        uniqueCharacters: 0,
+      },
+    ];
+
+    const response = await callMcpToolWithResult(
+      'bangumi.get_person_activity',
+      original as unknown as Record<string, unknown>,
+    );
+    const text = (response.content as Array<{ type: string; text?: string }>)[0]?.text;
+    const parsed = JSON.parse(text ?? '');
+
+    expect(parsed.state).toBe('partial');
+    expect(parsed.coverage.rowsEligible).toBe(0);
+    expect(parsed.summary.byYear).toEqual([
+      {
+        year: 2025,
+        start: '2025-10-04',
+        end: '2025-12-31',
+        countsOmittedDueToCoverage: true,
+      },
+    ]);
+    expect(parsed.summary.byYear[0].countsOmittedDueToCoverage).toBe(true);
   });
 
   it('returns bounded subject-overview text with exact source labels and full structured content', async () => {
