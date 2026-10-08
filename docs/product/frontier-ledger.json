@@ -1131,7 +1131,7 @@
         "tests/unit/g20-codex-agent-mcp-runner.test.ts",
         "scripts/generate-tool-acceptance-tasks.py"
       ],
-      "next_action": "Run #95 has a dedicated GPT-6 Luna Max one-tool runner, exact Candidate/current-master/Harness review-PASS preflight, and canonical plus PariyaAgent local create-new one-shot claims. The one anonymous get_subject_relations call with includeEvidence=true is still unrun; run it only once after exact-head CI, candidate:check, and reviewer PASS. The sanitized report must match the established codex_cli_mcp_tool_use acceptance schema so the current-source matrix can count it. On any unreadable or inconclusive result, retain PARTIAL and never retry. Even a pass cannot prove a complete franchise, reverse edges, or official viewing order.",
+      "next_action": "Run #95’s single anonymous G20 read was executed after exact-Candidate CI, candidate:check, and GPT-6 Luna Max review PASS. It is INCONCLUSIVE: one target MCP call/server completed successfully, but 3 non-MCP tool events caused the runner to reject acceptance; no report was written. The one-shot claim is consumed. Do not retry. Keep PARTIAL; this result does not establish a complete franchise graph, reverse edges, or official viewing order.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -1152,7 +1152,7 @@
           "source_scope_and_limits_precede_rows": true,
           "omitted_rows_and_clipped_fields_counted": true,
           "full_structured_content_preserved": true,
-          "live_agent_mcp_evidence": "pending one exact Candidate after current-base CI, Harness candidate gate, and recorded GPT-6 Luna Max review PASS; query not run",
+          "live_agent_mcp_evidence": "One Run #95 exact-Candidate one-shot ran after the required gates. Sanitized outcome: one target MCP call and server SUCCESS, fixed arguments/Candidate/bundle matched, zero shell calls, but three non-MCP tool events caused INCONCLUSIVE status. No accepted report was written, so this is not credited as Agent/MCP acceptance. Canonical and local one-shot claims are consumed; never retry.",
           "raw_answer_or_result_persisted": false,
           "acceptance_report_schema": "codex_cli_mcp_tool_use with sanitized direct rows, source/coverage counts, text projection counts, and answer counters only"
         },
@@ -1168,7 +1168,7 @@
             "no unsupported completeness, absence, reverse-edge, or canonical-order claim"
           ],
           "raw_answer_or_result_persisted": false,
-          "live_query": "not run",
+          "live_query": "inconclusive; no accepted answer/readback report; one-shot consumed; never retry",
           "coverage_counters": [
             "sourceResponseRowsObserved",
             "sourceRowsReturned",
@@ -1183,7 +1183,7 @@
             "mcpTextLimitationsClipped"
           ]
         },
-        "status_boundary": "G20 remains PARTIAL. Offline contract, output, and checker regressions do not prove a current natural-language Agent/MCP answer, an exhaustive franchise graph, or an official watch order.",
+        "status_boundary": "G20 remains PARTIAL. Its only Run #95 live query is INCONCLUSIVE and has no accepted answer/readback report. Never retry the consumed one-shot. Offline contract, output, and checker regressions do not prove a complete franchise graph or official watch order.",
         "agent_mcp_runner": {
           "runner": "scripts/acceptance/run-g20-codex-agent-mcp.mjs",
           "report_writer": "scripts/acceptance/write-g20-agent-mcp-report.mjs",

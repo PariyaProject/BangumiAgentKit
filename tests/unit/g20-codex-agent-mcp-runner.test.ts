@@ -427,7 +427,7 @@ describe('G20 Codex one-tool runner', () => {
     expect(canonicalG20ClaimPath(root)).toBe(expectedCanonical);
   });
 
-  it('creates canonical and local create-new claims and refuses another run', () => {
+  it('creates canonical and local claims and refuses retry after inconclusive result', () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), 'g20-claim-test-'));
     const canonical = path.join(directory, 'canonical', 'claim.json');
     const mirror = path.join(directory, 'pariya-state', 'claim.json');
@@ -446,6 +446,17 @@ describe('G20 Codex one-tool runner', () => {
         sha256(canonicalJson(G20_EXPECTED_QUERY_ARGUMENTS)),
       );
       expect(Object.keys(stored)).not.toContain('answer');
+
+      const canonicalStored = JSON.parse(readFileSync(canonical, 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      writeFileSync(
+        canonical,
+        JSON.stringify({ ...canonicalStored, state: 'INCONCLUSIVE' }, null, 2),
+      );
+      writeFileSync(mirror, JSON.stringify({ ...stored, state: 'INCONCLUSIVE' }, null, 2));
+      expect(JSON.parse(readFileSync(mirror, 'utf8')).state).toBe('INCONCLUSIVE');
       expect(() => createOneShotClaim(mirror, 'a'.repeat(40), 'b'.repeat(64))).toThrow(
         /already exists/u,
       );
