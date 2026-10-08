@@ -32,6 +32,7 @@ import type {
   SubjectIdentityResult,
   SubjectStatsHistoryResult,
   SubjectIndexMembershipResult,
+  MultiRoleVoiceActorGroup,
 } from '@bangumi-agent-kit/bangumi-core';
 import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 import type {
@@ -1990,6 +1991,7 @@ export function buildCastCardViewModel(
   castItems: DomainRelatedCharacter[],
   maxItems = 20,
   coverage?: CastCardSourceCoverageViewModel,
+  multiRoleVoiceActors?: MultiRoleVoiceActorGroup[],
 ): CastCardViewModel {
   const capped = castItems.slice(0, maxItems);
   const hiddenCount = Math.max(0, castItems.length - maxItems);
@@ -2022,6 +2024,25 @@ export function buildCastCardViewModel(
     items,
     hiddenCount: hiddenCount > 0 ? hiddenCount : undefined,
     ...(coverage === undefined ? {} : { coverage }),
+    ...(multiRoleVoiceActors === undefined
+      ? {}
+      : {
+          multiRoleVoiceActors: multiRoleVoiceActors.slice(0, 8).map((group) => ({
+            person: {
+              id: group.person.id,
+              name: group.person.name,
+              career: [...group.person.career],
+            },
+            distinctCharacterCount: group.distinctCharacterCount,
+            roles: group.roles.slice(0, 6).map((role) => ({
+              characterId: role.characterId,
+              characterName: role.characterName,
+              relation: role.relation,
+            })),
+            rolesOmitted: Math.max(0, group.roles.length - 6),
+          })),
+          multiRoleVoiceActorGroupsOmitted: Math.max(0, multiRoleVoiceActors.length - 8),
+        }),
   };
 }
 

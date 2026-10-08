@@ -1633,7 +1633,7 @@
   },
   {
     "name": "bangumi.get_subject_cast",
-    "description": "获取作品中的角色关系，以及 Bangumi 返回的演员/声优人物列表。动画中 actors 通常对应声优，三次元作品中可能对应演员。",
+    "description": "读取一个指定作品的角色关系与 Bangumi 演员/声优人物列表；仅按本次已选取的角色行，以稳定人物 ID 归组重复角色，且 career 含精确 seiyu 标签时才称为声优。保留来源关系原文，不分类主角/主役；响应最多 1 MiB，未观察到组不代表完整角色表中不存在。",
     "auth": "none",
     "risk": "read",
     "scopes": [],

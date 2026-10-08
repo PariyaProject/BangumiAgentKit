@@ -47,7 +47,14 @@ export const CastCard: React.FC<CastCardProps> = ({
             本次来源响应：观测 {viewModel.coverage.observed} 条，可用 {viewModel.coverage.returned}{' '}
             条；本卡显示 {items.length} 条。
           </div>
-          {viewModel.coverage.truncated ? (
+          {viewModel.coverage.responseBytes !== undefined ? (
+            <div>
+              响应字节：{viewModel.coverage.responseBytes ?? '未知'} / 上限{' '}
+              {viewModel.coverage.responseByteLimit ?? '未记录'}；按行数上限省略{' '}
+              {viewModel.coverage.rowsOmittedByLimit ?? 0} 条。
+            </div>
+          ) : null}
+          {viewModel.coverage.truncated || viewModel.coverage.sourceStatus === 'partial' ? (
             <div>本次读取结果不完整；以上计数只描述当前观察到的来源响应。</div>
           ) : null}
           {viewModel.coverage.schemaDriftRows > 0 ? (
@@ -58,7 +65,70 @@ export const CastCard: React.FC<CastCardProps> = ({
               无效演员 ID：{viewModel.coverage.invalidActorIdRows} 个（与字段异常记录可能重叠）。
             </div>
           ) : null}
+          {(viewModel.coverage.duplicateActorCharacterLinks ?? 0) > 0 ? (
+            <div>
+              重复人物 ID—角色 ID 关系：{viewModel.coverage.duplicateActorCharacterLinks}{' '}
+              条（分组时去重）。
+            </div>
+          ) : null}
         </div>
+      ) : null}
+
+      {viewModel.multiRoleVoiceActors ? (
+        <section
+          aria-label="同一声优对应多个角色"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.sm,
+            backgroundColor: theme.surfaceAlt,
+          }}
+        >
+          <div style={{ color: theme.text, fontWeight: 700, fontSize: '13px' }}>
+            同一声优 ID 对应多个角色
+          </div>
+          <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+            接口不提供分页或总数；只依据本次已选取的来源角色行。关系标签保留原文，不作主角或主役分类；未显示不代表不存在。
+          </div>
+          {viewModel.multiRoleVoiceActors.length === 0 ? (
+            <div style={{ color: theme.textMuted, fontSize: '12px' }}>
+              本次观察范围未建立多角色声优组；这不证明完整角色表中不存在。
+            </div>
+          ) : (
+            viewModel.multiRoleVoiceActors.map((group) => (
+              <div
+                key={group.person.id}
+                style={{ color: theme.text, fontSize: '12px', lineHeight: 1.5 }}
+              >
+                <div>
+                  {group.person.name}（人物 ID {group.person.id}，{group.distinctCharacterCount}{' '}
+                  个不同角色；career: {group.person.career.join(' / ')}）
+                </div>
+                {group.roles.map((role) => (
+                  <div
+                    key={role.characterId}
+                    style={{ color: theme.textMuted, paddingLeft: '8px' }}
+                  >
+                    {role.characterName}（角色 ID {role.characterId}）· 原始关系：{role.relation}
+                  </div>
+                ))}
+                {group.rolesOmitted > 0 ? (
+                  <div style={{ color: theme.textMuted, paddingLeft: '8px' }}>
+                    另有 {group.rolesOmitted} 个角色未显示。
+                  </div>
+                ) : null}
+              </div>
+            ))
+          )}
+          {(viewModel.multiRoleVoiceActorGroupsOmitted ?? 0) > 0 ? (
+            <div style={{ color: theme.textMuted, fontSize: '11px' }}>
+              另有 {viewModel.multiRoleVoiceActorGroupsOmitted} 个多角色声优组未显示。
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>

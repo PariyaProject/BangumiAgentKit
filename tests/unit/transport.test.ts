@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   HttpClient,
+  getHttpResponseByteLength,
   BangumiError,
   buildCacheKey,
   MemoryCache,
@@ -22,6 +23,23 @@ describe('Phase 2: HTTP Transport Tests', () => {
 
     expect(result.id).toBe(12345);
     expect(result.name).toBe('Steins;Gate');
+  });
+
+  it('retains the exact UTF-8 response body byte count with the parsed object', async () => {
+    const body = JSON.stringify({ name: '声优甲' });
+    const client = new HttpClient();
+    const result = await client.request<{ name: string }>({
+      path: '/v0/subjects/12345',
+      fetchFn: vi
+        .fn()
+        .mockResolvedValue(
+          new Response(body, { status: 200, headers: { 'content-type': 'application/json' } }),
+        ) as any,
+      maxResponseBytes: 1_048_576,
+    });
+
+    expect(result.name).toBe('声优甲');
+    expect(getHttpResponseByteLength(result)).toBe(Buffer.byteLength(body));
   });
 
   it('handles HTTP 200 with empty response body without PARSER_ERROR', async () => {

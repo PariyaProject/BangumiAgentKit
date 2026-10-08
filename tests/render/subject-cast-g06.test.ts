@@ -168,6 +168,83 @@ describe('G06 Girls’ Last Tour cast and voice-actor scenario', () => {
     }
   });
 
+  it('renders bounded ID-grounded multi-role voice-actor groups with raw relation labels', async () => {
+    const rows = [
+      {
+        id: 257181,
+        type: 1,
+        name: '角色甲',
+        summary: '',
+        relation: '主角',
+        actors: [{ id: 777, name: '同一声优', type: 1, career: ['seiyu'] }],
+      },
+      {
+        id: 257182,
+        type: 1,
+        name: '角色乙',
+        summary: '',
+        relation: '原始关系标签·乙',
+        actors: [{ id: 777, name: '同一声优', type: 1, career: ['seiyu'] }],
+      },
+      {
+        id: 257182,
+        type: 1,
+        name: '重复角色乙行',
+        summary: '',
+        relation: '另一个原始标签',
+        actors: [{ id: 777, name: '同一声优', type: 1, career: ['seiyu'] }],
+      },
+    ];
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(JSON.stringify(rows), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const result = await getSubjectCast(
+      new CharacterService(new HttpClient({ fetchFn: fetchFn as typeof fetch })),
+      G06_SUBJECT_ID,
+      { limit: 100 },
+    );
+    const viewModel = buildCastCardViewModel(
+      { id: G06_SUBJECT_ID, name: '少女终末旅行' },
+      result.cast,
+      20,
+      {
+        observed: result.observed,
+        returned: result.returned,
+        truncated: result.truncated,
+        schemaDriftRows: result.schemaDriftRows,
+        invalidActorIdRows: result.invalidActorIdRows,
+        responseBytes: result.source.responseBytes,
+        responseByteLimit: result.source.responseByteLimit,
+        rowsOmittedByLimit: result.omittedRowsByLimit,
+        duplicateActorCharacterLinks: result.duplicateActorCharacterLinks,
+        sourceStatus: result.source.status,
+      },
+      result.multiRoleVoiceActors,
+    );
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 360);
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.multiRoleVoiceActors).toMatchObject([
+      {
+        person: { id: 777, career: ['seiyu'] },
+        distinctCharacterCount: 2,
+        roles: [
+          { characterId: 257181, relation: '主角' },
+          { characterId: 257182, relation: '原始关系标签·乙' },
+        ],
+      },
+    ]);
+    expect(html).toContain('同一声优 ID 对应多个角色');
+    expect(html).toContain('career: seiyu');
+    expect(html).toContain('原始关系标签·乙');
+    expect(html).toContain('关系标签保留原文，不作主角或主役分类');
+    expect(html).toContain('重复人物 ID—角色 ID 关系：1 条（分组时去重）。');
+  });
+
   it('separates a source limit from the card display cap', async () => {
     const cappedFetchFn = vi.fn(async (input: string | URL) => {
       const url = String(input);
