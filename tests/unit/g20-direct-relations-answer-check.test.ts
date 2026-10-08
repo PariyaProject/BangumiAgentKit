@@ -123,6 +123,7 @@ describe('G20 direct subject-relation answer checks', () => {
       sourceSubjectDisclosurePresent: true,
       projectionRowsOmittedDisclosurePresent: true,
       omissionNotAbsenceDisclosurePresent: true,
+      reverseTransitiveDisclosurePresent: true,
       nonCanonicalOrderDisclosurePresent: true,
       schemaDriftDisclosurePresent: true,
       passed: true,
@@ -140,6 +141,15 @@ describe('G20 direct subject-relation answer checks', () => {
     expect(projection.displayNamesClipped).toBe(0);
     expect(projection.relationLabelsClipped).toBe(0);
     expect(resultCheck.omissionNotAbsenceDisclosurePresent).toBe(false);
+    expect(resultCheck.passed).toBe(false);
+  });
+
+  it('requires an explicit reverse/transitive exclusion disclosure', () => {
+    const result = makeResult();
+    const answerWithoutDisclosure = makeAnswer(result).replace('也不含反向或传递关系。', '');
+    const resultCheck = check(answerWithoutDisclosure);
+
+    expect(resultCheck.reverseTransitiveDisclosurePresent).toBe(false);
     expect(resultCheck.passed).toBe(false);
   });
 

@@ -39,6 +39,7 @@ export interface G20DirectRelationsAnswerCheck {
   responseCountsDisclosurePresent: boolean;
   projectionRowsOmittedDisclosurePresent: boolean;
   omissionNotAbsenceDisclosurePresent: boolean;
+  reverseTransitiveDisclosurePresent: boolean;
   nonCanonicalOrderDisclosurePresent: boolean;
   schemaDriftDisclosurePresent: boolean;
   unsupportedCompletenessClaim: boolean;

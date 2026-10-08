@@ -103,6 +103,7 @@ export function verifyG20DirectRelationsAnswer(
     textResult?.textProjection?.rowsOmitted,
   );
   const omissionNotAbsenceDisclosurePresent = hasOmissionNotAbsenceDisclosure(scopeText);
+  const reverseTransitiveDisclosurePresent = hasReverseTransitiveDisclosure(scopeText);
   const nonCanonicalOrderDisclosurePresent = hasNonCanonicalOrderDisclosure(scopeText);
   const schemaDriftDisclosurePresent =
     result?.coverage?.schemaDriftRows === 0 ||
@@ -148,6 +149,7 @@ export function verifyG20DirectRelationsAnswer(
     responseCountsDisclosurePresent &&
     projectionRowsOmittedDisclosurePresent &&
     omissionNotAbsenceDisclosurePresent &&
+    reverseTransitiveDisclosurePresent &&
     nonCanonicalOrderDisclosurePresent &&
     schemaDriftDisclosurePresent &&
     !unsupportedCompletenessClaim &&
@@ -217,6 +219,7 @@ export function verifyG20DirectRelationsAnswer(
     responseCountsDisclosurePresent,
     projectionRowsOmittedDisclosurePresent,
     omissionNotAbsenceDisclosurePresent,
+    reverseTransitiveDisclosurePresent,
     nonCanonicalOrderDisclosurePresent,
     schemaDriftDisclosurePresent,
     unsupportedCompletenessClaim,
@@ -326,6 +329,12 @@ function hasRowsOmittedDisclosure(scopeText, rowsOmitted) {
 
 function hasOmissionNotAbsenceDisclosure(scopeText) {
   return /(?:未(?:返回|显示|列出|观察到).{0,12}(?:不代表|不等于|不足以|不能据此).{0,10}(?:不存在|没有)|未返回关系不等于不存在)/u.test(
+    scopeText,
+  );
+}
+
+function hasReverseTransitiveDisclosure(scopeText) {
+  return /(?:不含|不包括|不包含|不涉及)[^。！？\n]{0,8}反向[^。！？\n]{0,8}(?:和|及|与|或)[^。！？\n]{0,8}传递关系/u.test(
     scopeText,
   );
 }

@@ -655,6 +655,7 @@ describe('G20 Codex one-tool runner', () => {
               sourceSubjectDisclosurePresent: true,
               responseCountsDisclosurePresent: true,
               projectionRowsOmittedDisclosurePresent: true,
+              reverseTransitiveDisclosurePresent: true,
               noUnsupportedCompletenessClaim: true,
               noUnsupportedCanonicalOrderClaim: true,
               noUnsupportedAbsenceClaim: true,
