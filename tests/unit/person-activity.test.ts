@@ -316,6 +316,41 @@ describe('PersonActivityService', () => {
     );
   });
 
+  it('keeps explicitly negated main-role labels out of the ranking as unresolved coverage', async () => {
+    const relations = [
+      { id: 101, name: '主役', subject_id: 1, subject_type: 2, staff: '主役' },
+      { id: 201, name: '非主角', subject_id: 2, subject_type: 2, staff: '非主角' },
+    ];
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) return json(relations);
+      if (url.endsWith('/v0/subjects/1')) {
+        return json(subjectPayload(1, { rating: { score: 8.8, total: 30, count: {} } }));
+      }
+      if (url.endsWith('/v0/subjects/2')) {
+        return json(subjectPayload(2, { rating: { score: 10, total: 500, count: {} } }));
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      { media: 'all', rankingMode: 'top_rated_main_voice' },
+    );
+
+    expect(result.ranking).toMatchObject({
+      state: 'partial',
+      items: [{ subjectId: 1, ratingScore: 8.8 }],
+      coverage: {
+        mainRoleSubjectsSelected: 1,
+        scoreableMainRoleSubjects: 1,
+        unknownRoleRows: 1,
+      },
+    });
+    expect(result.ranking?.items.map((item) => item.subjectId)).not.toContain(2);
+  });
+
   it('hydrates bounded subject details and preserves window/media/role evidence', async () => {
     const fixture = activityFetch();
     const service = new PersonActivityService(new HttpClient({ fetchFn: fixture.fetchFn }));

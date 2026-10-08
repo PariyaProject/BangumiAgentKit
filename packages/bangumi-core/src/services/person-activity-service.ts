@@ -134,6 +134,13 @@ function classifyVoiceRole(rawRole?: string): PersonActivityRoleFamily {
   const normalized = rawRole?.trim().toLowerCase() || '';
   if (!normalized) return 'unknown';
   if (
+    /(?:非\s*(?:主角|主役)|(?:不是|并非|不属于)\s*(?:主角|主役)|(?:主角|主役)\s*(?:ではない|じゃない|不是|并非)|\b(?:non[-\s]?(?:protagonist|main)|not\s+(?:the\s+)?(?:protagonist|main))\b)/u.test(
+      normalized,
+    )
+  ) {
+    return 'unknown';
+  }
+  if (
     normalized.includes('主角') ||
     normalized.includes('主役') ||
     normalized.includes('protagonist') ||
