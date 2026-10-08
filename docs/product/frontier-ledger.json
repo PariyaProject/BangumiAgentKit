@@ -1849,9 +1849,10 @@
         "docs/research/s03-series-voice-credit-source-contract-2026-10-08.md",
         "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md",
         "packages/bangumi-core/src/services/series-service.ts",
-        "tests/unit/series-watch-order.test.ts"
+        "tests/unit/series-watch-order.test.ts",
+        "docs/research/run95-s03-one-shot-disposition-2026-10-09.md"
       ],
-      "next_action": "The optional series voice-credit join is implemented as a positive-only, numeric subject_id match over the anime anchor and at most maxNodes currently observed direct anime prequel/sequel/side-story/recap rows. Person-character reads are capped at 1 MiB/120 rows and unpaged source limitations are explicit. Next: pass exact-Candidate CI, Harness readiness, and Luna Max PASS, then make the single create-once S03 Agent/MCP call; QQ/TIM remain untested.",
+      "next_action": "The sole Run #95 S03 anonymous Agent/MCP one-shot is consumed on Candidate f491918ab2010261e143aeb02a4bfddbee022886 / Base e9ec3ba1a4715b9681b3d0b8de50d03b7d0f17ba and remains INCONCLUSIVE. The sanitized claim records one target MCP event, three non-MCP events, zero shell calls, one allowed/zero denied server calls, and target server SUCCESS; exact-call, answer, and coverage checks did not pass. No accepted report exists. Never retry or edit the claim; keep S03 PARTIAL. This bounded current-row join does not establish a complete career, exhaustive series relations, or a canonical order. Continue with a different safe unspent frontier.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
