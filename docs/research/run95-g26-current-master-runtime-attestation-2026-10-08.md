@@ -18,4 +18,12 @@
 
 The current official OpenAPI marks `POST /v0/search/subjects` experimental and lists the `tag` and `rating_count` filters. G26 uses the exact literal tag `女性向` as an operational facet, not an audience taxonomy; TV remains a platform post-filter, with the 2019–2024 half-open date interval and integer rating threshold >=10001. Search totals and bounded candidate/hydration coverage must remain disclosed. Source contract: [`run95-g26-exact-tag-discovery-contract-2026-10-07.md`](run95-g26-exact-tag-discovery-contract-2026-10-07.md).
 
-No live Bangumi API, OAuth/account, community, QQ, or TIM access occurred for this build/attestation refresh. The canonical one-shot G26 claim and the exact sanitized Agent/MCP report were absent at this checkpoint. Execute the dedicated runner once only after exact Candidate/Base, seven mandatory exact-SHA CI checks, Harness readiness, and GPT-6 Luna Max review PASS all match. Keep G26 UNASSESSED unless every answer/source/coverage check passes; on any inconclusive result, keep the claim spent and never retry.
+No live Bangumi API, OAuth/account, community, QQ, or TIM access occurred for this build/attestation refresh. At this recorded build checkpoint, the canonical one-shot G26 claim and exact sanitized Agent/MCP report were absent. A subsequent runner attempt and the resulting safety correction are recorded below.
+
+## Run #95 one-shot attempt and path-alias correction
+
+After the exact Candidate/Base, seven mandatory exact-SHA CI checks, Harness readiness, and GPT-6 Luna Max review #1 passed, the dedicated G26 runner was invoked once. It stopped before `invokeCodex()` because the canonical claim path under `/private/tmp` and mirror path under `/tmp` refer to the same physical macOS directory but were compared as different strings. The exclusive create wrote the canonical claim and then rejected the apparent second claim.
+
+The local claim remains `CLAIMED`, bound to Candidate `9a91881f29f6afb5973466be808dbf3a5f874525`; it has no execution summary. The sanitized report is absent. No Codex model call, MCP event, or Bangumi API request occurred. Keep G26 `UNASSESSED`; do not delete or rewrite the claim, rerun the runner, or make another G26 query.
+
+The runner now resolves each path through its nearest existing ancestor before comparing physical paths, after validating both requested paths against the local Git-metadata boundary. When canonical and mirror paths alias, it creates and tracks only the canonical claim. A symlink regression verifies one file is created and a second claim attempt is rejected. This is runner-safety evidence only and does not change G26 acceptance coverage.

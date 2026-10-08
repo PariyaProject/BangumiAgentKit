@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  realpathSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -309,13 +310,7 @@ function writeClaim(claimPath, state) {
   renameSync(temporaryPath, claimPath);
 }
 
-export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
-  if (!/^[0-9a-f]{40}$/u.test(sourceRevision)) {
-    throw new Error('G26 one-shot claim must name an exact Candidate SHA.');
-  }
-  if (!/^[0-9a-f]{64}$/u.test(bundleSha256)) {
-    throw new Error('G26 one-shot claim must name the exact built MCP bundle.');
-  }
+function assertSafeOneShotClaimPath(claimPath) {
   const absoluteClaimPath = path.resolve(claimPath);
   const absoluteRoot = path.resolve(ROOT);
   const gitCommonDirectory = path.resolve(ROOT, gitText(['rev-parse', '--git-common-dir']));
@@ -330,7 +325,18 @@ export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
       'G26 one-shot claim must be absolute and outside the Product working tree, except local Git metadata.',
     );
   }
-  mkdirSync(path.dirname(claimPath), { recursive: true });
+  return absoluteClaimPath;
+}
+
+export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceRevision)) {
+    throw new Error('G26 one-shot claim must name an exact Candidate SHA.');
+  }
+  if (!/^[0-9a-f]{64}$/u.test(bundleSha256)) {
+    throw new Error('G26 one-shot claim must name the exact built MCP bundle.');
+  }
+  const absoluteClaimPath = assertSafeOneShotClaimPath(claimPath);
+  mkdirSync(path.dirname(absoluteClaimPath), { recursive: true });
   const claim = {
     schemaVersion: 1,
     runNumber: 95,
@@ -345,7 +351,7 @@ export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
   };
   let descriptor;
   try {
-    descriptor = openSync(claimPath, 'wx', 0o600);
+    descriptor = openSync(absoluteClaimPath, 'wx', 0o600);
     writeFileSync(descriptor, `${JSON.stringify(claim, null, 2)}\n`, 'utf8');
     closeSync(descriptor);
   } catch {
@@ -361,6 +367,18 @@ export function createOneShotClaim(claimPath, sourceRevision, bundleSha256) {
   return claim;
 }
 
+function physicalPathForComparison(absolutePath) {
+  let existingAncestor = absolutePath;
+  const missingSegments = [];
+  while (!existsSync(existingAncestor)) {
+    const parent = path.dirname(existingAncestor);
+    if (parent === existingAncestor) return absolutePath;
+    missingSegments.unshift(path.basename(existingAncestor));
+    existingAncestor = parent;
+  }
+  return path.join(realpathSync.native(existingAncestor), ...missingSegments);
+}
+
 export function createOneShotClaims({
   canonicalClaimPath,
   localClaimPath,
@@ -369,6 +387,12 @@ export function createOneShotClaims({
 }) {
   const canonical = path.resolve(canonicalClaimPath);
   const local = path.resolve(localClaimPath);
+  assertSafeOneShotClaimPath(canonical);
+  assertSafeOneShotClaimPath(local);
+  if (physicalPathForComparison(canonical) === physicalPathForComparison(local)) {
+    const claim = createOneShotClaim(canonical, sourceRevision, bundleSha256);
+    return { paths: [canonical], claim };
+  }
   const canonicalClaim = createOneShotClaim(canonical, sourceRevision, bundleSha256);
   if (local === canonical) return { paths: [canonical], claim: canonicalClaim };
   const localClaim = createOneShotClaim(local, sourceRevision, bundleSha256);

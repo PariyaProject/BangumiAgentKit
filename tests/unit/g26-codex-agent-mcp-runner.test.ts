@@ -4,9 +4,11 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -285,6 +287,43 @@ describe('G26 Codex one-tool runner', () => {
       expect(() => createOneShotClaim(claimPath, 'a'.repeat(40), 'b'.repeat(64))).toThrow(
         'G26 one-shot claim already exists',
       );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('creates one claim when canonical and mirror paths alias through a symlink', () => {
+    const directory = mkdtempSync(path.join(os.tmpdir(), 'g26-claim-alias-test-'));
+    const canonicalDirectory = path.join(directory, 'canonical');
+    const aliasDirectory = path.join(directory, 'alias');
+    const canonicalClaimPath = path.join(canonicalDirectory, 'claimed.json');
+    const localClaimPath = path.join(aliasDirectory, 'claimed.json');
+    mkdirSync(canonicalDirectory, { recursive: true });
+    symlinkSync(canonicalDirectory, aliasDirectory, 'dir');
+
+    try {
+      const result = createOneShotClaims({
+        canonicalClaimPath,
+        localClaimPath,
+        sourceRevision: 'a'.repeat(40),
+        bundleSha256: 'b'.repeat(64),
+      });
+
+      expect(result.paths).toEqual([canonicalClaimPath]);
+      expect(readdirSync(canonicalDirectory)).toEqual(['claimed.json']);
+      expect(JSON.parse(readFileSync(localClaimPath, 'utf8'))).toMatchObject({
+        state: 'CLAIMED',
+        sourceRevision: 'a'.repeat(40),
+        bundleSha256: 'b'.repeat(64),
+      });
+      expect(() =>
+        createOneShotClaims({
+          canonicalClaimPath,
+          localClaimPath,
+          sourceRevision: 'a'.repeat(40),
+          bundleSha256: 'b'.repeat(64),
+        }),
+      ).toThrow('G26 one-shot claim already exists');
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
