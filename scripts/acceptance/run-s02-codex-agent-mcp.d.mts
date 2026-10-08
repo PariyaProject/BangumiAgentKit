@@ -17,8 +17,8 @@ export function createS02OneShotClaim(
 ): Record<string, unknown>;
 
 export function assertS02CandidateReviewGate(
-  status: Record<string, any>,
-  pr: Record<string, any>,
+  status: Record<string, unknown>,
+  pr: Record<string, unknown>,
   input: { sourceRevision: string; currentBaseSha: string },
 ): { prNumber: number; candidateSha: string };
 
@@ -32,10 +32,15 @@ export function buildS02EvidenceReport(input: {
   observedAt: string;
   codexCliVersion: string;
   processExitCode: number;
-  serverSummary: Record<string, any>;
+  serverSummary: Record<string, unknown>;
   eventStreamParsed: boolean;
-  eventsSummary: Record<string, any>;
+  eventsSummary: {
+    codexMcpToolEventCount: number;
+    nonMcpToolEventCount: number;
+    shellToolCallCount: number;
+    toolCalls: Array<{ name: string; state: string }>;
+  };
 }): {
-  report: Record<string, any>;
+  report: Record<string, unknown>;
   answer: ReturnType<typeof import('./s02-agent-answer-check.mjs').verifyS02RankingAnswer>;
 };

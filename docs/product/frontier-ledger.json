@@ -1675,6 +1675,7 @@
         "scripts/acceptance/run-s02-codex-agent-mcp.mjs",
         "scripts/acceptance/write-s02-mcp-bundle-attestation.mjs",
         "scripts/lib/s02-mcp-bundle.mjs",
+        "docs/product/s02-mcp-bundle-attestation.json",
         "scripts/generate-tool-acceptance-tasks.py",
         "scripts/test_acceptance_evidence.py",
         "tests/unit/s02-agent-answer-check.test.ts",
