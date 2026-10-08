@@ -91,6 +91,8 @@ function resultFixture() {
   };
   const textView = {
     state: 'ok',
+    plan,
+    coverage,
     items,
     textProjection: {
       rowsIncluded: items.length,
@@ -113,10 +115,11 @@ function resultFixture() {
 
 function answerFixture() {
   return [
-    '条件｜动画；精确标签科幻；评分人数≥3001；报告话数（subject.eps）≤12。',
+    '条件｜动画媒体=anime(type=2)｜精确标签=科幻｜评分人数下限=3001｜报告话数(subject.eps)上限=12',
     '条目｜101｜名称=公开条目甲｜评分人数=3001｜报告话数=12',
     '条目｜102｜名称=公开条目乙｜评分人数=3500｜报告话数=8',
-    '范围｜本次有限检索使用实验性官方搜索，总数为估算；不构成全库完整清单，遗漏不代表不存在。',
+    '范围｜state=complete｜scanned=2｜matched=2｜returned=2｜totalKind=estimated',
+    '说明｜本次有限检索使用实验性官方搜索，总数为估算；不构成全库完整清单，遗漏不代表不存在。',
     '口径｜subject.eps 是 Bangumi 报告话数，不是 total_episodes 章节数、已播集数或观看进度。',
   ].join('\n');
 }
@@ -150,15 +153,40 @@ test('D04 answer checker accepts full pretty-JSON readback when the result fits 
   assert.equal(result.counts.visibleRows, 2);
 });
 
+test('D04 answer checker requires source rows in the MCP text when structured content is available', () => {
+  const { full } = resultFixture();
+  const structuredOnly = { structuredContent: full };
+  const hiddenRowsWithoutProjection = {
+    structuredContent: full,
+    content: [{ type: 'text', text: JSON.stringify({ ...full, items: [] }) }],
+  };
+
+  for (const toolOutput of [structuredOnly, hiddenRowsWithoutProjection]) {
+    const result = verifyD04DiscoveryAnswer(
+      answerFixture(),
+      [{ name: 'bangumi.query_subjects', state: 'DONE' }],
+      D04_DISCOVERY_ARGUMENTS,
+      toolOutput,
+    );
+    assert.equal(result.passed, false);
+    assert.equal(result.checks.resultReadbackAvailable, false);
+    assert.equal(result.checks.mcpTextProjectionPreservesFullStructuredResult, false);
+  }
+});
+
 test('D04 answer checker requires partial-state disclosure after unresolved source coverage', () => {
   const { toolOutput } = resultFixture();
   toolOutput.structuredContent.state = 'partial';
   toolOutput.structuredContent.coverage.state = 'partial';
   toolOutput.structuredContent.coverage.hydrationsUnresolved = 1;
-  const partialAnswer = answerFixture().replace(
-    '本次有限检索使用实验性官方搜索',
-    '本次部分结果来自有限的实验性官方搜索',
-  );
+  const partialTextView = JSON.parse(toolOutput.content[0].text);
+  partialTextView.state = 'partial';
+  partialTextView.coverage.state = 'partial';
+  partialTextView.coverage.hydrationsUnresolved = 1;
+  toolOutput.content[0].text = JSON.stringify(partialTextView);
+  const partialAnswer = answerFixture()
+    .replace('本次有限检索使用实验性官方搜索', '本次部分结果来自有限的实验性官方搜索')
+    .replace('范围｜state=complete', '范围｜state=partial');
   const accepted = verifyD04DiscoveryAnswer(
     partialAnswer,
     [{ name: 'bangumi.query_subjects', state: 'DONE' }],
@@ -228,13 +256,14 @@ test('D04 answer checker accepts source-exact titles with digits and clipped MCP
 
 test('D04 answer checker fails closed when the MCP text fallback hides all rows', () => {
   const { toolOutput } = resultFixture();
+  const full = toolOutput.structuredContent;
   const output = {
-    structuredContent: toolOutput.structuredContent,
+    structuredContent: full,
     content: [
       {
         type: 'text',
         text: JSON.stringify({
-          state: 'ok',
+          ...full,
           items: [],
           textProjection: {
             rowsIncluded: 0,
@@ -277,6 +306,26 @@ test('D04 answer checker rejects fabricated episode counts, extra tools, and uns
   assert.equal(result.checks.exactTargetToolCalledOnce, false);
   assert.equal(result.checks.answerRowsMatchVisibleSourceRows, false);
   assert.equal(result.checks.unsupportedCompletenessOrAbsenceClaim, true);
+});
+
+test('D04 answer checker binds coverage counters and non-row numbers to their exact claims', () => {
+  const { toolOutput } = resultFixture();
+  const wrongCoverage = answerFixture().replace('scanned=2', 'scanned=1');
+  const unsupportedNumber = answerFixture().replace(
+    '说明｜本次有限检索',
+    '说明｜本次观察到101项扫描。有限检索',
+  );
+
+  for (const answer of [wrongCoverage, unsupportedNumber]) {
+    const result = verifyD04DiscoveryAnswer(
+      answer,
+      [{ name: 'bangumi.query_subjects', state: 'DONE' }],
+      D04_DISCOVERY_ARGUMENTS,
+      toolOutput,
+    );
+    assert.equal(result.passed, false);
+    assert.equal(result.checks.numericClaimsMatchObservedSource, false);
+  }
 });
 
 test('sanitized D04 report retains only hashes, booleans, and aggregate counters', () => {

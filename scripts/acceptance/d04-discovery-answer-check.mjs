@@ -137,6 +137,20 @@ function findDiscoveryTextView(value, seen = new Set(), depth = 0) {
   return null;
 }
 
+function findDiscoveryTextResult(value) {
+  if (!isObject(value) || !Array.isArray(value.content)) return null;
+  for (const item of value.content) {
+    if (typeof item?.text !== 'string') continue;
+    try {
+      const result = findDiscoveryResult(JSON.parse(item.text));
+      if (result) return result;
+    } catch {
+      // Non-JSON text is not a structured discovery readback.
+    }
+  }
+  return null;
+}
+
 function unwrapArguments(value) {
   if (!isObject(value)) return value;
   if (isObject(value.arguments)) return value.arguments;
@@ -225,8 +239,10 @@ function checkItemRows(result, answerRows, visibleItems) {
     );
     if (
       !names.includes(row.name) ||
-      row.ratingCount !== expected.ratingCount ||
-      row.reportedEpisodeCount !== expected.reportedEpisodeCount
+      displayed.ratingCount !== expected.ratingCount ||
+      displayed.reportedEpisodeCount !== expected.reportedEpisodeCount ||
+      row.ratingCount !== displayed.ratingCount ||
+      row.reportedEpisodeCount !== displayed.reportedEpisodeCount
     ) {
       mismatched += 1;
       continue;
@@ -250,37 +266,100 @@ function checkItemRows(result, answerRows, visibleItems) {
   };
 }
 
-function supportedAnswerNumbers(answer, result, rows) {
-  if (typeof answer !== 'string') return false;
-  const allowed = new Set([13, 12, 3000, 3001, 100, 6]);
-  const coverage = isObject(result.coverage) ? result.coverage : {};
-  for (const value of Object.values(coverage)) {
-    if (Number.isSafeInteger(value) && value >= 0) allowed.add(value);
-  }
-  for (const row of Array.isArray(result.items) ? result.items : []) {
-    for (const field of ['id', 'ratingCount', 'reportedEpisodeCount']) {
-      if (Number.isSafeInteger(row?.[field]) && row[field] >= 0) allowed.add(row[field]);
-    }
-  }
-  for (const row of rows) {
-    allowed.add(row.id);
-    allowed.add(row.ratingCount);
-    allowed.add(row.reportedEpisodeCount);
-  }
-  const claimText = answer
-    .split(/\r?\n/u)
-    .map((line) => {
-      const rowMatch = ITEM_ROW.exec(line);
-      return rowMatch ? line.replace(rowMatch[2], '') : line;
-    })
-    .join('\n');
-  const tokens = claimText.match(NUMBER_TOKEN) || [];
-  return tokens.every((token) => {
-    const value = Number(token.replaceAll(',', ''));
-    return (
-      Number.isFinite(value) &&
-      [...allowed].some((candidate) => Math.abs(candidate - value) < 0.011)
+function coverageSummaryMatches(line, coverage) {
+  const match =
+    /^范围[｜|]state=([a-z_]+)[｜|]scanned=(\d+)[｜|]matched=(\d+)[｜|]returned=(\d+)[｜|]totalKind=([a-z_]+)$/u.exec(
+      line,
     );
+  return Boolean(
+    match &&
+    typeof coverage?.state === 'string' &&
+    Number.isSafeInteger(coverage.scanned) &&
+    Number.isSafeInteger(coverage.matched) &&
+    Number.isSafeInteger(coverage.returned) &&
+    typeof coverage.totalKind === 'string' &&
+    match[1] === coverage.state &&
+    Number(match[2]) === coverage.scanned &&
+    Number(match[3]) === coverage.matched &&
+    Number(match[4]) === coverage.returned &&
+    match[5] === coverage.totalKind,
+  );
+}
+
+function discoveryTextReadbackMatches(result, textResult, textView) {
+  if (!result || !textResult || !Array.isArray(result.items) || !Array.isArray(textResult.items))
+    return false;
+  const sourceCoverage = result.coverage;
+  const visibleCoverage = textResult.coverage;
+  if (
+    !isObject(sourceCoverage) ||
+    !isObject(visibleCoverage) ||
+    result.state !== textResult.state ||
+    sourceCoverage.state !== visibleCoverage.state ||
+    sourceCoverage.scanned !== visibleCoverage.scanned ||
+    sourceCoverage.matched !== visibleCoverage.matched ||
+    sourceCoverage.returned !== visibleCoverage.returned ||
+    sourceCoverage.totalKind !== visibleCoverage.totalKind ||
+    sourceCoverage.returned !== result.items.length
+  ) {
+    return false;
+  }
+  if (textView) {
+    const projection = textView.textProjection;
+    if (
+      projection.fullStructuredContentAvailable !== true ||
+      projection.rowsIncluded !== textResult.items.length ||
+      projection.rowsOmitted !== result.items.length - textResult.items.length
+    ) {
+      return false;
+    }
+  } else if (textResult.items.length !== result.items.length) {
+    return false;
+  }
+  const expectedVisible = result.items.slice(0, textResult.items.length);
+  return textResult.items.every((item, index) => {
+    const expected = expectedVisible[index];
+    return (
+      expected &&
+      item?.id === expected.id &&
+      item?.media === expected.media &&
+      item?.ratingCount === expected.ratingCount &&
+      item?.reportedEpisodeCount === expected.reportedEpisodeCount &&
+      Array.isArray(item?.tags) &&
+      item.tags.includes('科幻')
+    );
+  });
+}
+
+function supportedAnswerNumbers(answer, result, rows) {
+  if (typeof answer !== 'string' || !isObject(result?.coverage)) return false;
+  const lines = answer
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const conditions = lines.filter((line) => line.startsWith('条件｜') || line.startsWith('条件|'));
+  const coverageLines = lines.filter(
+    (line) => line.startsWith('范围｜') || line.startsWith('范围|'),
+  );
+  if (
+    conditions.length !== 1 ||
+    coverageLines.length !== 1 ||
+    !coverageSummaryMatches(coverageLines[0], result.coverage)
+  ) {
+    return false;
+  }
+  const conditionNumbers = conditions[0].match(NUMBER_TOKEN) ?? [];
+  if (
+    canonicalD04Json(conditionNumbers.map((token) => Number(token.replaceAll(',', '')))) !==
+    canonicalD04Json([2, 3001, 12])
+  ) {
+    return false;
+  }
+  const rowLines = lines.filter((line) => ITEM_ROW.test(line));
+  if (rowLines.length !== rows.length) return false;
+  return lines.every((line) => {
+    if (ITEM_ROW.test(line) || line === conditions[0] || line === coverageLines[0]) return true;
+    return (line.match(NUMBER_TOKEN) ?? []).length === 0;
   });
 }
 
@@ -290,7 +369,9 @@ export function verifyD04DiscoveryAnswer(answer, toolCalls, queryArguments, tool
     canonicalD04Json(parsedArguments) === canonicalD04Json(D04_DISCOVERY_ARGUMENTS);
   const result = findDiscoveryResult(toolOutput);
   const textView = findDiscoveryTextView(toolOutput);
-  const visibleItems = textView?.items ?? result?.items ?? [];
+  const textResult = findDiscoveryTextResult(toolOutput);
+  const visibleItems = textResult?.items ?? [];
+  const textReadbackMatches = discoveryTextReadbackMatches(result, textResult, textView);
   const rows = rowsFromAnswer(answer);
   const rowChecks = result
     ? checkItemRows(result, rows, visibleItems)
@@ -404,10 +485,12 @@ export function verifyD04DiscoveryAnswer(answer, toolCalls, queryArguments, tool
   const nonExhaustiveDisclosure =
     /(?:不构成|不代表|不能据此|无法据此|not\s+(?:a\s+)?complete)/iu.test(scopeText) &&
     /(?:完整清单|全库|完整结果|complete\s+(?:list|inventory))/iu.test(scopeText);
-  const omissionDisclosure =
-    !textView ||
-    textView.textProjection.rowsOmitted === 0 ||
-    /(?:仅显示|文本视图|省略|未展示|omitted)/iu.test(scopeText);
+  const omissionDisclosure = Boolean(
+    textReadbackMatches &&
+    (!textView ||
+      textView.textProjection.rowsOmitted === 0 ||
+      /(?:仅显示|文本视图|省略|未展示|omitted)/iu.test(scopeText)),
+  );
   const emptyResultDisclosure =
     rowChecks.sourceRowCount > 0 ||
     (/(?:本次|当前).{0,12}(?:未观察到|没有观察到|未发现|没有找到)/u.test(answerText) &&
@@ -419,11 +502,7 @@ export function verifyD04DiscoveryAnswer(answer, toolCalls, queryArguments, tool
   const unsupportedCompletenessClaim =
     hasUnnegated(COMPLETENESS_TERMS, COMPLETENESS_NEGATION, answerText) ||
     hasUnnegated(ABSENCE_TERMS, ABSENCE_NEGATION, answerText);
-  const numericClaimsMatch = supportedAnswerNumbers(
-    answerText,
-    result ?? { items: [], coverage: {} },
-    rows,
-  );
+  const numericClaimsMatch = supportedAnswerNumbers(answerText, result, rows);
   const visibleRowsMatch =
     rowChecks.answerRowCount === rowChecks.visibleRowCount &&
     rowChecks.matched === rowChecks.answerRowCount &&
@@ -435,10 +514,8 @@ export function verifyD04DiscoveryAnswer(answer, toolCalls, queryArguments, tool
   const checks = {
     exactTargetToolCalledOnce: singleTargetCall,
     exactQueryArguments: queryArgumentsMatch,
-    resultReadbackAvailable: Boolean(result),
-    mcpTextProjectionPreservesFullStructuredResult:
-      Boolean(result) &&
-      (!textView || textView.textProjection?.fullStructuredContentAvailable === true),
+    resultReadbackAvailable: Boolean(result && textResult && textReadbackMatches),
+    mcpTextProjectionPreservesFullStructuredResult: textReadbackMatches,
     officialExperimentalSourceAndEstimatedCoverage: sourceContract,
     coverageStateConsistent,
     exactAnimeTagAndRatingFilters: mediaFilter && tagFilter && ratingFilter,
