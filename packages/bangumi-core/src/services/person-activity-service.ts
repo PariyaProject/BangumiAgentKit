@@ -33,6 +33,7 @@ import {
 import type { DomainSubject } from '../models/subject.js';
 
 export const PERSON_ACTIVITY_FORMULA_VERSION = 'person-activity-window-v1';
+export const PERSON_ACTIVITY_YEAR_FORMULA_VERSION = 'person-activity-year-summary-v1';
 export const PERSON_ACTIVITY_ORIGIN_FORMULA_VERSION = 'person-activity-origin-v1';
 export const PERSON_ACTIVITY_DETAIL_CONCURRENCY = 4;
 export const PERSON_ACTIVITY_MAX_RELATIONS = 120;
@@ -374,11 +375,18 @@ function makeOriginCoverage(rows: readonly ActivityRowWithSets[]): PersonActivit
 
 function makeSummary(
   rows: readonly ActivityRowWithSets[],
-  monthKeys: readonly string[],
+  window: { start: Date; end: Date; monthKeys: readonly string[] },
 ): PersonActivityWindowSummary {
   const months = new Map<string, ActivityRowWithSets[]>();
-  for (const month of monthKeys) months.set(month, []);
+  for (const month of window.monthKeys) months.set(month, []);
   for (const row of rows) months.get(row.month)?.push(row);
+  const windowStart = formatDateOnly(window.start);
+  const windowEnd = formatDateOnly(window.end);
+  const firstYear = window.start.getUTCFullYear();
+  const lastYear = window.end.getUTCFullYear();
+  const years = new Map<number, ActivityRowWithSets[]>();
+  for (let year = firstYear; year <= lastYear; year += 1) years.set(year, []);
+  for (const row of rows) years.get(Number(row.firstAirDate.slice(0, 4)))?.push(row);
   return {
     creditRows: rows.length,
     uniqueSubjects: new Set(rows.map((row) => row.subjectId)).size,
@@ -387,7 +395,17 @@ function makeSummary(
     ).size,
     byRole: makeDistribution(rows, (row) => row.roleFamily),
     byMedia: makeDistribution(rows, (row) => row.subjectType),
-    byMonth: monthKeys.map((month) => {
+    byYear: [...years.entries()].map(([year, bucket]) => ({
+      year,
+      start: windowStart > `${year}-01-01` ? windowStart : `${year}-01-01`,
+      end: windowEnd < `${year}-12-31` ? windowEnd : `${year}-12-31`,
+      creditRows: bucket.length,
+      uniqueSubjects: new Set(bucket.map((row) => row.subjectId)).size,
+      uniqueCharacters: new Set(
+        bucket.map((row) => row.characterId).filter((id): id is number => id !== undefined),
+      ).size,
+    })),
+    byMonth: window.monthKeys.map((month) => {
       const bucket = months.get(month) || [];
       return {
         month,
@@ -795,7 +813,7 @@ export class PersonActivityService {
     );
     const rows = accepted.slice(0, maxRows);
     const outputTruncated = accepted.length > rows.length;
-    const summary = makeSummary(accepted, window.monthKeys);
+    const summary = makeSummary(accepted, window);
     const originCoverage = makeOriginCoverage(accepted);
     const exclusionValues = exclusionList(exclusions);
     const relationFailures = sourceOperations
@@ -972,6 +990,14 @@ export class PersonActivityService {
         operation: 'person-activity-window-composition',
         formulaVersion: PERSON_ACTIVITY_FORMULA_VERSION,
         description: `按稳定 subject/character ID 去重；超过预算时按官方关系返回顺序做确定性等距抽样，不假设条目 ID 或返回顺序代表新旧；使用作品 first_air_date 归入日历月，保留原始 role 并仅做保守的主役/配角/未知分类${staffRole ? `；职位筛选“${staffRole}”只匹配记录在案的精确官方标签` : ''}。`,
+        retrievedAt,
+      },
+      {
+        source: 'derived-s7',
+        operation: 'person-activity-calendar-year-observations',
+        formulaVersion: PERSON_ACTIVITY_YEAR_FORMULA_VERSION,
+        description:
+          '按有效作品首播日期归入交叠的日历年；每年日期边界裁剪到当前窗口，作品数按唯一条目 ID 去重。计数仅代表本次选取并成功判定的关系与详情观察。',
         retrievedAt,
       },
       {

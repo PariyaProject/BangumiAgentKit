@@ -58,6 +58,16 @@ const result: PersonActivityResult = {
     byMedia: [
       { key: 'anime', label: 'anime', creditRows: 22, uniqueSubjects: 22, uniqueCharacters: 22 },
     ],
+    byYear: [
+      {
+        year: 2026,
+        start: '2026-03-01',
+        end: '2026-08-15',
+        creditRows: 22,
+        uniqueSubjects: 22,
+        uniqueCharacters: 22,
+      },
+    ],
     byMonth: ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'].map((month) => ({
       month,
       creditRows: 3,
@@ -151,6 +161,10 @@ describe('Person activity renderer', () => {
     expect(viewModel.hiddenRows).toBe(10);
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
     expect(html).toContain('2026-03-01');
+    expect(html).toContain('按年观察（当前窗口）');
+    expect(html).toContain('2026（2026-03-01 至 2026-08-15）');
+    expect(html).toContain('首尾年份按窗口日期截断');
+    expect(html).toContain('部分覆盖下某年观察值为 0');
     expect(html).toContain('逐行明细返回 22 条，图卡展开 12 条；另有 10 条已返回明细未展开。');
     expect(html).toContain('缺少作品首播日期');
     expect(html).toContain('first_air_date');
@@ -524,6 +538,7 @@ describe('Person activity renderer', () => {
       640,
     );
     expect(partialEmptyHtml).toContain('观察到的去重作品');
+    expect(partialEmptyHtml).toContain('2026（2026-03-01 至 2026-08-15）');
     expect(partialEmptyHtml).toContain('当前窗口的月度计数不可用（部分覆盖）');
     expect(partialEmptyHtml).toContain('当前窗口的角色/职位计数不可用（部分覆盖）');
     expect(partialEmptyHtml).not.toContain('观察到的 11 行 · 观察到的 11 部');
@@ -539,6 +554,7 @@ describe('Person activity renderer', () => {
         uniqueSubjects: 0,
         uniqueCharacters: 0,
         byRole: [],
+        byYear: [],
         byMonth: [],
         origin: { explicitOriginalSubjects: 0, notObservedSubjects: 0, unknownSubjects: 0 },
       },

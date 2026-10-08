@@ -2667,6 +2667,7 @@ export function buildPersonActivityViewModel(
         uniqueSubjects: item.uniqueSubjects,
         uniqueCharacters: item.uniqueCharacters,
       })),
+      byYear: result.summary.byYear,
       byMonth: result.summary.byMonth,
       origin: result.summary.origin,
     },

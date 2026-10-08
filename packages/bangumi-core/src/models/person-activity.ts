@@ -95,12 +95,22 @@ export interface PersonActivityMonthBucket {
   uniqueCharacters: number;
 }
 
+export interface PersonActivityYearBucket {
+  year: number;
+  start: string;
+  end: string;
+  creditRows: number;
+  uniqueSubjects: number;
+  uniqueCharacters: number;
+}
+
 export interface PersonActivityWindowSummary {
   creditRows: number;
   uniqueSubjects: number;
   uniqueCharacters: number;
   byRole: PersonActivityWindowDistribution[];
   byMedia: PersonActivityWindowDistribution[];
+  byYear: PersonActivityYearBucket[];
   byMonth: PersonActivityMonthBucket[];
   origin: PersonActivityOriginSummary;
 }

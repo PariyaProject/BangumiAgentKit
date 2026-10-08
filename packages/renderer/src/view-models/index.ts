@@ -716,6 +716,14 @@ export interface PersonActivityViewModel {
       uniqueSubjects: number;
       uniqueCharacters: number;
     }>;
+    byYear: Array<{
+      year: number;
+      start: string;
+      end: string;
+      creditRows: number;
+      uniqueSubjects: number;
+      uniqueCharacters: number;
+    }>;
     byMonth: Array<{
       month: string;
       creditRows: number;

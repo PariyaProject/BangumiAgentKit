@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { formatHuman } from '../../apps/standalone/src/presenter.js';
 
-function summaryActivity(state: string, rowsEligible: number, count: number): Record<string, unknown> {
+function summaryActivity(
+  state: string,
+  rowsEligible: number,
+  count: number,
+): Record<string, unknown> {
   return {
     personId: 20,
     state,
@@ -10,7 +14,25 @@ function summaryActivity(state: string, rowsEligible: number, count: number): Re
     media: 'tv',
     window: { start: '2025-11-01', end: '2026-10-03' },
     rows: [],
-    summary: { creditRows: count, uniqueSubjects: count, uniqueCharacters: count },
+    summary: {
+      creditRows: count,
+      uniqueSubjects: count,
+      uniqueCharacters: count,
+      byYear: [
+        {
+          year: 2025,
+          start: '2025-11-01',
+          end: '2025-12-31',
+          uniqueSubjects: count,
+        },
+        {
+          year: 2026,
+          start: '2026-01-01',
+          end: '2026-10-03',
+          uniqueSubjects: count,
+        },
+      ],
+    },
     coverage: {
       relationRowsObserved: rowsEligible,
       relationRowsSelected: rowsEligible,
@@ -65,6 +87,14 @@ describe('Standalone person activity presenter', () => {
         creditRows: 2,
         uniqueSubjects: 2,
         uniqueCharacters: 2,
+        byYear: [
+          {
+            year: 2026,
+            start: '2026-03-01',
+            end: '2026-08-15',
+            uniqueSubjects: 2,
+          },
+        ],
         origin: { explicitOriginalSubjects: 1, notObservedSubjects: 1, unknownSubjects: 0 },
       },
       coverage: {
@@ -145,6 +175,9 @@ describe('Standalone person activity presenter', () => {
     expect(output).toContain(
       '窗口摘要：观察到的去重作品 2 部 · 观察到的关系行 2 行 · 观察到的去重角色 2 个',
     );
+    expect(output).toContain('按年观察（首尾年份按窗口日期截断；按唯一 subject ID 去重）');
+    expect(output).toContain('2026（2026-03-01 至 2026-08-15） 观察到的去重作品 2 部');
+    expect(output).toContain('某年观察值为 0 不证明该年没有作品');
     expect(output).toContain('不代表整个时间窗的总数');
     expect(output).toContain('本次观察到的窗口内作品：');
     expect(output).toContain('职位筛选: 导演');
@@ -165,9 +198,8 @@ describe('Standalone person activity presenter', () => {
 
   it('shows complete summary counts and hides partial-empty or unavailable zeros', () => {
     const completeOutput = formatHuman(summaryActivity('complete', 3, 3));
-    expect(completeOutput).toContain(
-      '窗口摘要：去重作品 3 部 · 关系行 3 行 · 去重角色 3 个',
-    );
+    expect(completeOutput).toContain('窗口摘要：去重作品 3 部 · 关系行 3 行 · 去重角色 3 个');
+    expect(completeOutput).toContain('2025（2025-11-01 至 2025-12-31） 去重作品 3 部');
     expect(completeOutput).toContain('窗口内作品：');
 
     const partialEmptyOutput = formatHuman(summaryActivity('partial', 0, 0));
@@ -175,6 +207,7 @@ describe('Standalone person activity presenter', () => {
       '窗口摘要：观察到的去重作品 不可用 · 观察到的关系行 不可用 · 观察到的去重角色 不可用',
     );
     expect(partialEmptyOutput).not.toContain('观察到的去重作品 0 部');
+    expect(partialEmptyOutput).toContain('作品数不可用');
     expect(partialEmptyOutput).toContain('不代表整个时间窗的总数');
 
     const unavailableOutput = formatHuman(summaryActivity('unavailable', 0, 0));
@@ -182,6 +215,7 @@ describe('Standalone person activity presenter', () => {
       '窗口摘要：去重作品 不可用 · 关系行 不可用 · 去重角色 不可用',
     );
     expect(unavailableOutput).not.toContain('去重作品 0 部');
+    expect(unavailableOutput).toContain('作品数不可用');
   });
 
   it('prints bounded window comparisons, operations, exclusions, and unavailable states', () => {

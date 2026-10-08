@@ -359,6 +359,48 @@ export const PersonActivityCard: React.FC<PersonActivityCardProps> = ({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         <div style={{ flex: '1 1 280px' }}>
           <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
+            按年观察（当前窗口）
+          </div>
+          <div style={{ color: theme.textMuted, fontSize: '12px', marginBottom: theme.spacing.xs }}>
+            首尾年份按窗口日期截断；作品数按条目 ID 去重，仅代表本次选取的当前关系与详情观察。
+          </div>
+          {viewModel.state === 'partial' ? (
+            <div
+              style={{ color: theme.textMuted, fontSize: '12px', marginBottom: theme.spacing.xs }}
+            >
+              部分覆盖下某年观察值为 0 只表示本次未观察到，不能证明该年没有作品。
+            </div>
+          ) : null}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {viewModel.summary.byYear.length > 0 ? (
+              viewModel.summary.byYear.map((item) => (
+                <div
+                  key={item.year}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: theme.spacing.sm,
+                  }}
+                >
+                  <span style={{ color: theme.textMuted, fontSize: '12px' }}>
+                    {item.year}（{item.start} 至 {item.end}）
+                  </span>
+                  <span style={{ color: theme.text, fontSize: '12px' }}>
+                    {primaryCountsAvailable
+                      ? distributionCount(item.uniqueSubjects, '部')
+                      : '不可用'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <span style={{ color: theme.textMuted, fontSize: '12px' }}>
+                当前窗口的年度计数不可用（{stateLabel(viewModel.state)}）。
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ flex: '1 1 280px' }}>
+          <div style={{ color: theme.text, fontSize: '14px', fontWeight: 700, marginBottom: 6 }}>
             按月分布
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
