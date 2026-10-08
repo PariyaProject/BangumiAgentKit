@@ -138,6 +138,7 @@ describe('G26 Codex one-tool runner', () => {
     expect(configs).toContain('features.shell_tool=false');
     expect(configs).toContain('features.multi_agent=false');
     expect(configs).toContain('features.web_search_request=false');
+    expect(configs).toContain('web_search="disabled"');
     expect(configs).toContain(
       'mcp_servers.bgk_g26_one_tool.enabled_tools=["bangumi.query_subjects"]',
     );
@@ -179,6 +180,38 @@ describe('G26 Codex one-tool runner', () => {
     ]);
     expect(summary.completedMcpCalls[0]?.result?.structuredContent?.items?.[0]?.id).toBe(42);
     expect(summary.answer).toContain('Public sample');
+  });
+
+  it('reports only sorted unique non-MCP item type labels for safe diagnostics', () => {
+    const summary = summarizeCodexEvents([
+      ...codexEvents(),
+      {
+        type: 'item.completed',
+        item: { id: 'search-1', type: 'web_search_call', query: 'private query text' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'search-2', type: 'web_search_call', query: 'another private query' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'file-1', type: 'file_search_call', path: '/private/file' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'odd-1', type: 'untrusted label / private', value: 'secret' },
+      },
+    ]);
+
+    expect(summary.nonMcpToolEventCount).toBe(4);
+    expect(summary.nonMcpToolTypes).toEqual([
+      'file_search_call',
+      'unknown_tool_type',
+      'web_search_call',
+    ]);
+    expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('private');
+    expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('query');
+    expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('/private/file');
   });
 
   it('fails closed on malformed JSONL or a shell event', () => {

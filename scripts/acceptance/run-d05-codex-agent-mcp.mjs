@@ -120,6 +120,7 @@ export function buildCodexExecArgs({
     `model_reasoning_effort=${tomlString(REASONING_EFFORT)}`,
     'history.persistence="none"',
     'check_for_update_on_startup=false',
+    'web_search="disabled"',
     'features.apps=false',
     'features.browser_use=false',
     'features.computer_use=false',
@@ -602,6 +603,7 @@ function run() {
     eventStreamParsed: false,
     codexMcpToolEventCount: 0,
     nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
     shellToolCallCount: 0,
     allowedCallCount: 0,
     deniedCallCount: 0,
@@ -622,6 +624,7 @@ function run() {
       targetServerMatch:
         events.mcpServerNames.length === 1 && events.mcpServerNames[0] === SERVER_ID,
       nonMcpToolEventCount: events.nonMcpToolEventCount,
+      nonMcpToolTypes: events.nonMcpToolTypes,
       shellToolCallCount: events.shellToolCallCount,
       allowedCallCount: Number.isInteger(serverSummary?.allowedCallCount)
         ? serverSummary.allowedCallCount

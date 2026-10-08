@@ -1418,7 +1418,7 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-d04-short-anime-discovery-source-contract-2026-10-09.md"
       ],
-      "next_action": "Run #95 selected the D04 reported-episode discovery Epoch at base a3a046b5. The candidate implementation now carries only valid non-negative integer Subject.eps as reportedEpisodeCount, filters it locally, preserves source evidence, and leaves unresolved values partial; focused regression and typecheck pass. D04 remains UNASSESSED: establish exact Candidate/Base, mandatory exact-SHA CI, Harness readiness, and GPT-6 Luna Max PASS before the single governed anonymous Agent/MCP attempt. Preserve literal 科幻 and rating_count>=3001 filters, 10-page/500-candidate/120-hydration/100-row caps, estimated/experimental coverage limits, and never substitute total_episodes.",
+      "next_action": "The sole Run #95 D04 anonymous Agent/MCP attempt was executed after exact Candidate/Base, exact-SHA CI, Harness readiness, and GPT-6 Luna Max review PASS. It is INCONCLUSIVE: one target MCP event and server SUCCESS, but three non-MCP tool events caused the exact-run gate to fail; zero shell calls and no sanitized report. The local one-shot claim is consumed. Never retry or edit the claim; keep D04 UNASSESSED. The feature code is merged at 9edb51b544cb6061fc8967ae6e0ecf8f74c8cea9; this is not answer acceptance.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -1876,7 +1876,7 @@
         "tests/standalone/subject-cast-presenter.test.ts",
         "scripts/acceptance/run-s04-codex-agent-mcp.mjs"
       ],
-      "next_action": "The safe subscenario is implemented for one user-supplied subject: group only exact-seiyu career actors by stable person ID across distinct character IDs, preserve raw relation labels, and bound the response to 1 MiB/100 public rows. The original cross-work discovery and main/lead-role claim remain unsupported; next run the sole S04 Agent/MCP query only after exact-Candidate/current-Base CI, Harness readiness, and GPT-6 Luna Max PASS. Keep no-match/omission caveats; QQ/TIM remain untested.",
+      "next_action": "The sole S04 Run #95 Agent/MCP attempt ran on merged PR #111 at Candidate b024928f253e2f4f8e6e965756de18a9d142a3ed / Base d744835fb5207081e255132e20107296a754fd36. The local canonical claim is INCONCLUSIVE: one target MCP call and server SUCCESS, three non-MCP events, zero shell calls; coverageValid=false and answerCoverageMatches=false; no report. The claim is consumed. Never retry; keep S04 PARTIAL. The current unpaged response and 100-row cap do not establish complete credits or main-role status. Shared runner hardening may continue, but it must not rerun S04.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["S01"]
     },

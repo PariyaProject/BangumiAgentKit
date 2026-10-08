@@ -239,6 +239,7 @@ describe('G20 Codex one-tool runner', () => {
     expect(configs).toContain('features.shell_tool=false');
     expect(configs).toContain('features.multi_agent=false');
     expect(configs).toContain('features.web_search_request=false');
+    expect(configs).toContain('web_search="disabled"');
     expect(configs).toContain(
       'mcp_servers.bgk_g20_one_tool.enabled_tools=["bangumi.get_subject_relations"]',
     );

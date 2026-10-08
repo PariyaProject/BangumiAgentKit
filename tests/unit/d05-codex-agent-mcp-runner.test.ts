@@ -97,6 +97,7 @@ describe('D05 Codex one-tool Agent/MCP runner', () => {
     expect(configs).toContain('model_reasoning_effort="max"');
     expect(configs).toContain('features.shell_tool=false');
     expect(configs).toContain('features.multi_agent=false');
+    expect(configs).toContain('web_search="disabled"');
     expect(configs).toContain(
       'mcp_servers.bgk_d05_one_tool.enabled_tools=["bangumi.query_subjects"]',
     );

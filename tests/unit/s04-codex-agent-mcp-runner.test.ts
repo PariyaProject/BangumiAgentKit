@@ -192,6 +192,9 @@ describe('S04 create-once Agent/MCP runner', () => {
     expect(args).toContain('read-only');
     expect(args).toContain('features.multi_agent=false');
     expect(args).toContain('features.shell_tool=false');
+    expect(args).toContain('web_search="disabled"');
+    expect(args).toContain('--ignore-user-config');
+    expect(args).toContain('--strict-config');
     expect(args).toContain(
       'mcp_servers.bgk_s04_one_tool.enabled_tools=["bangumi.get_subject_cast"]',
     );

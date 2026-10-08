@@ -99,6 +99,7 @@ export function buildCodexExecArgs({
     `model_reasoning_effort=${tomlString(REASONING_EFFORT)}`,
     'history.persistence="none"',
     'check_for_update_on_startup=false',
+    'web_search="disabled"',
     'features.apps=false',
     'features.browser_use=false',
     'features.computer_use=false',
@@ -220,6 +221,13 @@ export function summarizeCodexEvents(events) {
     codexMcpToolEventCount: mcpCalls.length,
     mcpServerNames: mcpCalls.map((item) => item.server),
     nonMcpToolEventCount: nonMcpTypes.length,
+    nonMcpToolTypes: [
+      ...new Set(
+        nonMcpTypes.map((type) =>
+          /^[a-z][a-z0-9_]{0,63}$/u.test(type) ? type : 'unknown_tool_type',
+        ),
+      ),
+    ].sort(),
     shellToolCallCount,
     toolCalls: mcpCalls.map((item) => ({
       name: item.tool,
@@ -654,6 +662,8 @@ function run() {
     bundleSha256,
     codexExitCode: null,
     toolEventCount: 0,
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
     allowedCallCount: 0,
   };
   try {
@@ -679,6 +689,7 @@ function run() {
       targetServerMatch:
         eventsSummary.mcpServerNames.length === 1 && eventsSummary.mcpServerNames[0] === SERVER_ID,
       nonMcpToolEventCount: eventsSummary.nonMcpToolEventCount,
+      nonMcpToolTypes: eventsSummary.nonMcpToolTypes,
       shellToolCallCount: eventsSummary.shellToolCallCount,
       allowedCallCount,
       deniedCallCount: Number.isInteger(serverSummary?.deniedCallCount)

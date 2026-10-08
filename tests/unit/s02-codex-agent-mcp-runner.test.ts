@@ -164,6 +164,7 @@ describe('S02 Codex Agent/MCP runner', () => {
     expect(args).toContain('gpt-6-luna');
     expect(args).toContain('features.shell_tool=false');
     expect(args).toContain('features.multi_agent=false');
+    expect(args).toContain('web_search="disabled"');
     expect(args).toContain('history.persistence="none"');
     expect(args.join(' ')).toContain('reasoning_effort="max"');
     expect(args.join(' ')).toContain('bangumi.get_person_activity');
@@ -247,6 +248,7 @@ describe('S02 Codex Agent/MCP runner', () => {
     const eventsSummary = {
       codexMcpToolEventCount: 1,
       nonMcpToolEventCount: 0,
+      nonMcpToolTypes: [],
       shellToolCallCount: 0,
       toolCalls: [{ name: call.name, state: call.state }],
     };
@@ -273,6 +275,7 @@ describe('S02 Codex Agent/MCP runner', () => {
       eventsSummary,
     });
     expect(built.answer.passed).toBe(true);
+    expect(built.report).not.toHaveProperty('nonMcpToolTypes');
     expect(built.report).toMatchObject({
       evidenceKind: 'codex_cli_s02_person_activity_agent_mcp',
       model: 'gpt-6-luna',
