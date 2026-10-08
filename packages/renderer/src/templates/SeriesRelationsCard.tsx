@@ -369,6 +369,7 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
   const evidenceGridColumns = 'repeat(2, minmax(0, 1fr))';
   const compactRelatedGridColumns = width && width >= 900 ? 'repeat(2, minmax(0, 1fr))' : '1fr';
   const root = viewModel.root;
+  const voiceActorPresence = viewModel.voiceActorPresence;
 
   return (
     <CardFrame theme={theme} width={width}>
@@ -471,6 +472,120 @@ export const SeriesRelationsCard: React.FC<SeriesRelationsCardProps> = ({
       ) : (
         <div style={{ color: theme.textMuted, fontSize: '12px' }}>没有可确认的观看步骤。</div>
       )}
+
+      {voiceActorPresence ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: theme.spacing.sm,
+            backgroundColor: theme.surfaceAlt,
+            border: `1px solid ${theme.border}`,
+            borderRadius: theme.radius.md,
+            padding: theme.spacing.md,
+          }}
+        >
+          <div style={{ color: theme.accent, fontWeight: 800, fontSize: '14px' }}>
+            声优作品交集 · 人物 ID {voiceActorPresence.personId}
+          </div>
+          <div style={{ color: theme.text, fontSize: '12px', lineHeight: 1.5 }}>
+            {voiceActorPresence.matchStatus === 'multi_work_found'
+              ? `在本次观察范围内，按数字条目 ID 匹配到 ${voiceActorPresence.distinctWorks} 部不同作品。`
+              : '本次观察范围未建立多部作品交集；未命中不证明没有其他演出。'}{' '}
+            {voiceActorPresence.state === 'partial'
+              ? '来源或候选关系有截断，当前结果为部分覆盖。'
+              : voiceActorPresence.state === 'unavailable'
+                ? '人物角色来源不可用。'
+                : voiceActorPresence.state === 'not_attempted'
+                  ? '起点不适用，未请求人物角色来源。'
+                  : '仅表示当前匿名可见行中的结果。'}
+          </div>
+          {voiceActorPresence.works.map((work) => (
+            <div
+              key={work.subjectId}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                backgroundColor: theme.surface,
+                border: `1px solid ${theme.border}`,
+                borderRadius: theme.radius.sm,
+                padding: theme.spacing.sm,
+                minWidth: 0,
+              }}
+            >
+              <div
+                style={{
+                  color: theme.text,
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {work.subjectNameCn || work.subjectName} · ID {work.subjectId}
+              </div>
+              {work.relationEvidence.map((relation, index) => (
+                <div
+                  key={`${relation.sourceSubjectId}-${relation.targetSubjectId}-${index}`}
+                  style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}
+                >
+                  {relation.direction === 'anchor'
+                    ? '起点条目'
+                    : `直接关系 ${relation.sourceSubjectId} → ${relation.targetSubjectId} · ${relation.rawRelationLabel || '标签未知'}`}
+                </div>
+              ))}
+              {work.credits.map((credit) => (
+                <div
+                  key={`${work.subjectId}-${credit.characterId}`}
+                  style={{
+                    color: theme.textMuted,
+                    fontSize: '11px',
+                    lineHeight: 1.4,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  角色 {credit.characterName} · ID {credit.characterId}
+                  {credit.staff !== undefined ? ` · 原始角色标签：${credit.staff || '空值'}` : ''}
+                </div>
+              ))}
+              {work.omittedCredits > 0 || work.omittedRelationEvidence > 0 ? (
+                <div style={{ color: theme.textMuted, fontSize: '10px' }}>
+                  另省略角色 {work.omittedCredits} 条、关系行 {work.omittedRelationEvidence} 条。
+                </div>
+              ) : null}
+            </div>
+          ))}
+          {voiceActorPresence.omittedWorks > 0 ? (
+            <div style={{ color: theme.textMuted, fontSize: '10px' }}>
+              另有 {voiceActorPresence.omittedWorks} 部命中作品未在卡片展开。
+            </div>
+          ) : null}
+          <div
+            style={{
+              color: theme.textMuted,
+              fontSize: '10px',
+              lineHeight: 1.45,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            覆盖：人物角色行 {voiceActorPresence.coverage.personRowsReturned}/
+            {voiceActorPresence.coverage.personRowsObserved ?? '未知'} · 省略{' '}
+            {voiceActorPresence.coverage.personRowsOmitted ?? '未知'} · 匹配作品{' '}
+            {voiceActorPresence.coverage.eligibleDirectAnimeWorksSelected}/
+            {voiceActorPresence.coverage.eligibleDirectAnimeWorksObserved} 个直接动画关系候选 · max
+            response {voiceActorPresence.coverage.maxResponseBytes} bytes · 来源{' '}
+            {voiceActorPresence.sourceOperation.path} ({voiceActorPresence.sourceOperation.status})
+          </div>
+          {voiceActorPresence.sourceOperation.failureReason ? (
+            <div style={{ color: theme.warning, fontSize: '10px', lineHeight: 1.45 }}>
+              来源错误：{voiceActorPresence.sourceOperation.failureReason}
+            </div>
+          ) : null}
+          <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.45 }}>
+            限制：{voiceActorPresence.limitations.join('；')}
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{

@@ -1562,7 +1562,7 @@
   },
   {
     "name": "bangumi.get_series_watch_order",
-    "description": "根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。media=all 额外展示有界的非动画证据。",
+    "description": "根据官方 v0 关系数据生成有界的系列观看顺序建议。保留起点直接关系、可组合的同向前传/续集路径、原始关系标签、媒介排除、覆盖范围和冲突；这不是 Bangumi 发布的唯一官方顺序。maxNodes 只限制动画推荐/遍历节点，先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。media=all 额外展示有界的非动画证据。可选 voiceActorPersonId 仅按数字条目 ID 检查该人物在起点和当前可见直接动画关系中的角色；至少两部作品才报告本次观察到正向交集，未命中不证明没有其他演出。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -1592,6 +1592,18 @@
           "description": "anime 的 related 只返回动画证据，但 edges/排除统计仍可保留观察到的非动画关系；all 额外返回最多 8 条非动画 related 证据；非动画永不进入步骤或详情请求",
           "type": "string",
           "enum": ["anime", "all"]
+        },
+        "voiceActorPersonId": {
+          "description": "可选 Bangumi 声优/人物 ID；仅返回当前可见关系邻域内按 subject ID 匹配的正向证据",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxVoiceCredits": {
+          "description": "声优角色来源的本地选取上限，1-120；默认 120",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
         }
       },
       "required": ["subjectId"],
@@ -3446,7 +3458,7 @@
   },
   {
     "name": "bangumi.render_series_watch_order",
-    "description": "生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；maxNodes 先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。非动画证据不会消耗动画节点上限。",
+    "description": "生成系列关系与有界观看顺序建议图片卡片 Artifact。卡片显示起点、确定性步骤、原始关系标签、方向路径、媒介排除、覆盖、冲突和限制；maxNodes 先按关系证据确定有界候选，再对选中的条目补充详情日期并排序；日期不会回溯改变已选上限。非动画证据不会消耗动画节点上限。可选 voiceActorPersonId 仅显示该人物与起点和当前可见直接动画关系之间按数字条目 ID 匹配的正向角色证据；未命中不代表没有其他演出。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -3476,6 +3488,18 @@
           "description": "anime 的 related 只展示动画证据，但边证据/排除统计仍可保留观察到的非动画关系；all 额外展示最多 8 条非动画证据",
           "type": "string",
           "enum": ["anime", "all"]
+        },
+        "voiceActorPersonId": {
+          "description": "可选 Bangumi 声优/人物 ID；仅显示当前可见关系邻域中按 subject ID 匹配的正向证据",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxVoiceCredits": {
+          "description": "声优角色来源的本地选取上限，1-120；默认 120",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
         }
       },
       "required": ["subjectId"],

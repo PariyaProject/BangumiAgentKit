@@ -26,6 +26,9 @@ interface FixtureOptions {
   relations: Record<number, RelationFixture[]>;
   failedDetails?: number[];
   failedRelations?: number[];
+  personCharacters?: unknown[];
+  failedPersonCharacters?: boolean;
+  personCharactersContentLength?: number;
 }
 
 function subject(id: number, type = 2, date = `202${id % 10}-01-01`): SubjectFixture {
@@ -55,6 +58,20 @@ function fixture(options: FixtureOptions) {
   const fetchFn = vi.fn(async (input: string | URL) => {
     const url = String(input);
     calls.push(url);
+    if (/\/v0\/persons\/\d+\/characters$/u.test(url)) {
+      if (options.failedPersonCharacters) {
+        return new Response('person characters unavailable', { status: 503 });
+      }
+      return new Response(JSON.stringify(options.personCharacters || []), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          ...(options.personCharactersContentLength === undefined
+            ? {}
+            : { 'content-length': String(options.personCharactersContentLength) }),
+        },
+      });
+    }
     const relationMatch = url.match(/\/v0\/subjects\/(\d+)\/subjects$/u);
     if (relationMatch) {
       const id = Number(relationMatch[1]);
@@ -83,6 +100,23 @@ function fixture(options: FixtureOptions) {
     calls,
     fetchFn,
     service: new SeriesService(new HttpClient({ fetchFn: fetchFn as typeof fetch })),
+  };
+}
+
+function personCharacter(
+  subjectId: number,
+  characterId: number,
+  staff = '主役',
+): Record<string, unknown> {
+  return {
+    id: characterId,
+    name: `角色 ${characterId}`,
+    type: 1,
+    subject_id: subjectId,
+    subject_type: 2,
+    subject_name: `作品 ${subjectId}`,
+    subject_name_cn: `作品 ${subjectId}`,
+    staff,
   };
 }
 
@@ -443,5 +477,176 @@ describe('SeriesService bounded watch-order intelligence', () => {
     expect(calls.some((url) => url.endsWith('/subjects/600'))).toBe(true);
     expect(calls.some((url) => url.endsWith('/subjects/601'))).toBe(false);
     expect(result.limitations.join(' ')).toContain('有限深度');
+  });
+
+  it('joins voice credits only by subject IDs in the anchor and observed direct anime relations', async () => {
+    const { service, calls } = fixture({
+      subjects: [subject(100), subject(101), subject(102)],
+      relations: {
+        100: [relation(102, '外传'), relation(103, '相关作品'), relation(101, '续集')],
+      },
+      personCharacters: [
+        personCharacter(100, 10, '主役'),
+        personCharacter(100, 11, ''),
+        personCharacter(101, 12, '配角'),
+        personCharacter(102, 13, '客串'),
+        personCharacter(103, 14, '主役'),
+        personCharacter(100, 10, '主役'),
+      ],
+    });
+
+    const result = await service.getSeriesWatchOrder(100, {
+      depth: 0,
+      maxNodes: 2,
+      voiceActorPersonId: 20,
+    });
+
+    expect(calls.filter((url) => url.endsWith('/v0/persons/20/characters'))).toHaveLength(1);
+    expect(result.voiceActorPresence).toMatchObject({
+      state: 'partial',
+      matchStatus: 'multi_work_found',
+      distinctWorks: 3,
+      sourceOperation: {
+        operation: 'GET /v0/persons/{person_id}/characters',
+        path: '/v0/persons/20/characters',
+        status: 'succeeded',
+      },
+      coverage: {
+        eligibleDirectAnimeWorksObserved: 2,
+        eligibleDirectAnimeWorksSelected: 2,
+        duplicateRows: 1,
+        matchedCreditRows: 4,
+      },
+    });
+    expect(result.voiceActorPresence?.works.map((work) => work.subjectId)).toEqual([100, 101, 102]);
+    expect(result.voiceActorPresence?.works[0]?.relationEvidence).toEqual([
+      { sourceSubjectId: 100, targetSubjectId: 100, direction: 'anchor' },
+    ]);
+    expect(result.voiceActorPresence?.works[1]?.relationEvidence).toEqual([
+      {
+        sourceSubjectId: 100,
+        targetSubjectId: 101,
+        direction: 'outgoing_direct',
+        rawRelationLabel: '续集',
+        relationKind: 'sequel',
+      },
+    ]);
+    expect(result.voiceActorPresence?.works[0]?.credits).toEqual([
+      { characterId: 10, characterName: '角色 10', staff: '主役' },
+      { characterId: 11, characterName: '角色 11', staff: '' },
+    ]);
+    expect(result.voiceActorPresence?.limitations.join(' ')).toContain('未命中');
+  });
+
+  it('does not count multiple characters within one work as multiple works', async () => {
+    const { service } = fixture({
+      subjects: [subject(100)],
+      relations: { 100: [] },
+      personCharacters: [personCharacter(100, 10), personCharacter(100, 11)],
+    });
+
+    const result = await service.getSeriesWatchOrder(100, { voiceActorPersonId: 20 });
+
+    expect(result.voiceActorPresence).toMatchObject({
+      state: 'observed',
+      matchStatus: 'not_established',
+      distinctWorks: 1,
+      works: [{ subjectId: 100, credits: [{ characterId: 10 }, { characterId: 11 }] }],
+    });
+    expect(result.voiceActorPresence?.limitations.join(' ')).toContain('不证明没有其他演出');
+  });
+
+  it('preserves known matches while marking source schema drift and local caps as partial', async () => {
+    const { service } = fixture({
+      subjects: [subject(100), subject(101), subject(102), subject(103)],
+      relations: {
+        100: [relation(103, '前传'), relation(101, '续集'), relation(102, '外传')],
+      },
+      personCharacters: [
+        personCharacter(100, 10),
+        personCharacter(101, 11),
+        { ...personCharacter(101, 12), subject_type: 1 },
+        { ...personCharacter(102, 13), subject_id: '102' },
+      ],
+    });
+
+    const result = await service.getSeriesWatchOrder(100, {
+      depth: 0,
+      maxNodes: 1,
+      voiceActorPersonId: 20,
+      maxVoiceCredits: 3,
+    });
+
+    expect(result.voiceActorPresence).toMatchObject({
+      state: 'partial',
+      matchStatus: 'multi_work_found',
+      distinctWorks: 2,
+      coverage: {
+        eligibleDirectAnimeWorksObserved: 3,
+        eligibleDirectAnimeWorksSelected: 1,
+        eligibleDirectAnimeWorksOmitted: 2,
+        personRowsObserved: 4,
+        personRowsReturned: 3,
+        personRowsOmitted: 1,
+        schemaDriftRows: 2,
+        maxVoiceCredits: 3,
+        maxResponseBytes: 1_048_576,
+        truncated: true,
+      },
+    });
+  });
+
+  it('reports unavailable and oversized actor sources, and skips the request for a non-anime root', async () => {
+    const failed = fixture({
+      subjects: [subject(100)],
+      relations: { 100: [] },
+      failedPersonCharacters: true,
+    });
+    const failedResult = await failed.service.getSeriesWatchOrder(100, { voiceActorPersonId: 20 });
+    expect(failedResult.voiceActorPresence).toMatchObject({
+      state: 'unavailable',
+      matchStatus: 'not_established',
+      works: [],
+      sourceOperation: { status: 'failed', path: '/v0/persons/20/characters' },
+      coverage: { personRowsObserved: null, truncated: true },
+    });
+
+    const oversized = fixture({
+      subjects: [subject(100)],
+      relations: { 100: [] },
+      personCharacters: [],
+      personCharactersContentLength: 1_048_577,
+    });
+    const oversizedResult = await oversized.service.getSeriesWatchOrder(100, {
+      voiceActorPersonId: 20,
+    });
+    expect(oversizedResult.voiceActorPresence).toMatchObject({
+      state: 'unavailable',
+      sourceOperation: { status: 'failed' },
+      coverage: { maxResponseBytes: 1_048_576 },
+    });
+
+    const nonAnime = fixture({
+      subjects: [subject(100, 1)],
+      relations: { 100: [relation(101, '续集')] },
+    });
+    const nonAnimeResult = await nonAnime.service.getSeriesWatchOrder(100, {
+      voiceActorPersonId: 20,
+    });
+    expect(nonAnimeResult.voiceActorPresence).toMatchObject({
+      state: 'not_attempted',
+      sourceOperation: { status: 'not_attempted' },
+    });
+    expect(nonAnime.calls.some((url) => url.includes('/v0/persons/'))).toBe(false);
+  });
+
+  it('leaves the default serialized result and source requests unchanged without a person ID', async () => {
+    const { service, calls } = fixture({ subjects: [subject(100)], relations: { 100: [] } });
+
+    const result = await service.getSeriesWatchOrder(100);
+
+    expect(Object.hasOwn(result, 'voiceActorPresence')).toBe(false);
+    expect(Object.hasOwn(result.capabilityStates, 'voiceActorSeriesCredits')).toBe(false);
+    expect(calls.some((url) => url.includes('/v0/persons/'))).toBe(false);
   });
 });

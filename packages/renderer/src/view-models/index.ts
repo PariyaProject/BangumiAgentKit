@@ -185,6 +185,51 @@ export interface SeriesRelationsViewModel {
   steps: SeriesRelationsStepViewModel[];
   related: SeriesRelationsRelatedViewModel[];
   edges: SeriesRelationPathViewModel[];
+  voiceActorPresence?: {
+    personId: number;
+    state: 'observed' | 'partial' | 'unavailable' | 'not_attempted';
+    matchStatus: 'multi_work_found' | 'not_established';
+    distinctWorks: number;
+    works: Array<{
+      subjectId: number;
+      subjectName: string;
+      subjectNameCn: string;
+      relationEvidence: Array<{
+        sourceSubjectId: number;
+        targetSubjectId: number;
+        direction: 'anchor' | 'outgoing_direct';
+        rawRelationLabel?: string;
+        relationKind?: string;
+      }>;
+      omittedRelationEvidence: number;
+      credits: Array<{ characterId: number; characterName: string; staff?: string }>;
+      omittedCredits: number;
+    }>;
+    omittedWorks: number;
+    coverage: {
+      relationRowsObserved: number;
+      eligibleDirectAnimeWorksObserved: number;
+      eligibleDirectAnimeWorksSelected: number;
+      eligibleDirectAnimeWorksOmitted: number;
+      personRowsObserved: number | null;
+      personRowsReturned: number;
+      personRowsOmitted: number | null;
+      matchedCreditRows: number;
+      duplicateRows: number;
+      schemaDriftRows: number;
+      maxRelatedAnimeWorks: number;
+      maxVoiceCredits: number;
+      maxResponseBytes: number;
+      truncated: boolean;
+      retrievedAt: string;
+    };
+    sourceOperation: {
+      path: string;
+      status: 'succeeded' | 'failed' | 'not_attempted';
+      failureReason?: string;
+    };
+    limitations: string[];
+  };
   excluded: {
     count: number;
     byReason: Array<{ reason: SeriesRelationsExclusionReason; count: number }>;

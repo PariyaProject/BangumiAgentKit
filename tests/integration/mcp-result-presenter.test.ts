@@ -1489,6 +1489,143 @@ describe('MCP tool result presentation', () => {
     expect(parsed.mcpTextProjection.textViewScope).toContain('not one official order');
   });
 
+  it('keeps bounded voice-credit evidence, source path, and the positive-only scope in MCP text', async () => {
+    const original = await makeG09SeriesWatchOrderResult();
+    original.voiceActorPresence = {
+      personId: 20,
+      state: 'partial',
+      matchStatus: 'multi_work_found',
+      distinctWorks: 2,
+      works: [
+        {
+          subjectId: 218707,
+          subjectName: '少女终末旅行',
+          subjectNameCn: '少女终末旅行',
+          relationEvidence: [
+            { sourceSubjectId: 218707, targetSubjectId: 218707, direction: 'anchor' },
+          ],
+          credits: [{ characterId: 1, characterName: '千都', staff: '主役' }],
+        },
+        {
+          subjectId: 227245,
+          subjectName: '外传',
+          subjectNameCn: '外传',
+          relationEvidence: [
+            {
+              sourceSubjectId: 218707,
+              targetSubjectId: 227245,
+              direction: 'outgoing_direct',
+              rawRelationLabel: '衍生',
+              relationKind: 'side_story',
+            },
+          ],
+          credits: [{ characterId: 2, characterName: '角色乙', staff: '配角' }],
+        },
+      ],
+      coverage: {
+        relationRowsObserved: 10,
+        eligibleDirectAnimeWorksObserved: 1,
+        eligibleDirectAnimeWorksSelected: 1,
+        eligibleDirectAnimeWorksOmitted: 0,
+        personRowsObserved: 2,
+        personRowsReturned: 2,
+        personRowsOmitted: 0,
+        matchedCreditRows: 2,
+        duplicateRows: 0,
+        schemaDriftRows: 0,
+        maxRelatedAnimeWorks: 8,
+        maxVoiceCredits: 120,
+        maxResponseBytes: 1_048_576,
+        truncated: true,
+        retrievedAt: '2026-10-08T00:00:00Z',
+      },
+      sourceOperation: {
+        operation: 'GET /v0/persons/{person_id}/characters',
+        path: '/v0/persons/20/characters',
+        status: 'succeeded',
+      },
+      limitations: ['未命中或单部作品不证明没有其他演出。'],
+    };
+    original.capabilityStates.voiceActorSeriesCredits = 'partial';
+    original.evidence.sources.push({
+      operation: 'GET /v0/persons/{person_id}/characters',
+      path: '/v0/persons/20/characters',
+      status: 'succeeded',
+      personId: 20,
+    });
+
+    const presentation = presentMcpToolResult(
+      'bangumi.get_series_watch_order',
+      original as unknown as Record<string, unknown>,
+    );
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toEqual(original);
+    expect(parsed.voiceActorPresence).toMatchObject({
+      matchStatus: 'multi_work_found',
+      distinctWorks: 2,
+      sourceOperation: { path: '/v0/persons/20/characters', status: 'succeeded' },
+      answerScope: '多部作品只代表本次观察到的不同条目。',
+      works: [
+        { subjectId: 218707, credits: [{ characterId: 1 }] },
+        { subjectId: 227245, credits: [{ characterId: 2 }] },
+      ],
+    });
+    expect(parsed.voiceActorPresence.sourceOperation.path).toContain('/characters');
+  });
+
+  it('keeps the no-match caveat in the minimal series projection', async () => {
+    const original = await makeG09SeriesWatchOrderResult();
+    original.voiceActorPresence = {
+      personId: 20,
+      state: 'observed',
+      matchStatus: 'not_established',
+      distinctWorks: 0,
+      works: [],
+      coverage: {
+        relationRowsObserved: 0,
+        eligibleDirectAnimeWorksObserved: 0,
+        eligibleDirectAnimeWorksSelected: 0,
+        eligibleDirectAnimeWorksOmitted: 0,
+        personRowsObserved: 0,
+        personRowsReturned: 0,
+        personRowsOmitted: 0,
+        matchedCreditRows: 0,
+        duplicateRows: 0,
+        schemaDriftRows: 0,
+        maxRelatedAnimeWorks: 8,
+        maxVoiceCredits: 120,
+        maxResponseBytes: 1_048_576,
+        truncated: false,
+        retrievedAt: '2026-10-08T00:00:00Z',
+      },
+      sourceOperation: {
+        operation: 'GET /v0/persons/{person_id}/characters',
+        path: '/v0/persons/20/characters',
+        status: 'succeeded',
+      },
+      limitations: ['未命中或只命中一部作品不证明没有其他演出。'],
+    };
+
+    const presentation = presentMcpToolResult(
+      'bangumi.get_series_watch_order',
+      original as unknown as Record<string, unknown>,
+    );
+    const parsed = JSON.parse(presentation.text);
+
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(parsed.voiceActorPresence).toMatchObject({
+      matchStatus: 'not_established',
+      answerScope: '未命中或只命中一部作品不证明没有其他演出。',
+      sourceOperation: { path: '/v0/persons/20/characters' },
+    });
+  });
+
   it('keeps high-cardinality series projections within the byte budget with explicit omissions', async () => {
     const original = makeHighCardinalitySeriesResult(await makeG09SeriesWatchOrderResult());
     const presentation = presentMcpToolResult('bangumi.get_series_watch_order', original);

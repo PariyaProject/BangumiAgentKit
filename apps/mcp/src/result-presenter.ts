@@ -8,6 +8,7 @@ import type {
   SubjectOverviewResult,
   SubjectStatsIntelligenceResult,
   SeriesWatchOrderResult,
+  SeriesVoiceActorPresence,
   SubjectStaffGroup,
   SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
@@ -742,6 +743,72 @@ const SERIES_WATCH_ORDER_COVERAGE_BOOLEAN_FIELDS = [
   'truncated',
 ];
 
+function isSeriesVoiceActorPresence(value: unknown): value is SeriesVoiceActorPresence {
+  if (!isJsonObject(value) || !isJsonObject(value.coverage)) return false;
+  const coverage = value.coverage;
+  return (
+    Number.isInteger(value.personId) &&
+    Number(value.personId) > 0 &&
+    ['observed', 'partial', 'unavailable', 'not_attempted'].includes(String(value.state)) &&
+    ['multi_work_found', 'not_established'].includes(String(value.matchStatus)) &&
+    Number.isInteger(value.distinctWorks) &&
+    Array.isArray(value.works) &&
+    value.works.every(
+      (work) =>
+        isJsonObject(work) &&
+        Number.isInteger(work.subjectId) &&
+        Number(work.subjectId) > 0 &&
+        typeof work.subjectName === 'string' &&
+        typeof work.subjectNameCn === 'string' &&
+        Array.isArray(work.relationEvidence) &&
+        work.relationEvidence.every(
+          (relation) =>
+            isJsonObject(relation) &&
+            Number.isInteger(relation.sourceSubjectId) &&
+            Number.isInteger(relation.targetSubjectId) &&
+            ['anchor', 'outgoing_direct'].includes(String(relation.direction)) &&
+            (relation.rawRelationLabel === undefined ||
+              typeof relation.rawRelationLabel === 'string') &&
+            (relation.relationKind === undefined || typeof relation.relationKind === 'string'),
+        ) &&
+        Array.isArray(work.credits) &&
+        work.credits.every(
+          (credit) =>
+            isJsonObject(credit) &&
+            Number.isInteger(credit.characterId) &&
+            Number(credit.characterId) > 0 &&
+            typeof credit.characterName === 'string' &&
+            (credit.staff === undefined || typeof credit.staff === 'string'),
+        ),
+    ) &&
+    [
+      'relationRowsObserved',
+      'eligibleDirectAnimeWorksObserved',
+      'eligibleDirectAnimeWorksSelected',
+      'eligibleDirectAnimeWorksOmitted',
+      'personRowsReturned',
+      'matchedCreditRows',
+      'duplicateRows',
+      'schemaDriftRows',
+      'maxRelatedAnimeWorks',
+      'maxVoiceCredits',
+      'maxResponseBytes',
+    ].every((key) => Number.isInteger(coverage[key])) &&
+    (coverage.personRowsObserved === null || Number.isInteger(coverage.personRowsObserved)) &&
+    (coverage.personRowsOmitted === null || Number.isInteger(coverage.personRowsOmitted)) &&
+    typeof coverage.truncated === 'boolean' &&
+    typeof coverage.retrievedAt === 'string' &&
+    isJsonObject(value.sourceOperation) &&
+    value.sourceOperation.operation === 'GET /v0/persons/{person_id}/characters' &&
+    typeof value.sourceOperation.path === 'string' &&
+    ['succeeded', 'failed', 'not_attempted'].includes(String(value.sourceOperation.status)) &&
+    (value.sourceOperation.failureReason === undefined ||
+      typeof value.sourceOperation.failureReason === 'string') &&
+    Array.isArray(value.limitations) &&
+    value.limitations.every((limitation) => typeof limitation === 'string')
+  );
+}
+
 function isSeriesWatchOrderResult(value: JsonObject): value is JsonObject & SeriesWatchOrderResult {
   return (
     ['complete', 'partial', 'not_computable'].includes(String(value.state)) &&
@@ -780,6 +847,8 @@ function isSeriesWatchOrderResult(value: JsonObject): value is JsonObject & Seri
     isSeriesWatchOrderCoverage(value.coverage) &&
     isJsonObject(value.capabilityStates) &&
     typeof value.capabilityStates.watchOrder === 'string' &&
+    (value.voiceActorPresence === undefined ||
+      isSeriesVoiceActorPresence(value.voiceActorPresence)) &&
     isJsonObject(value.evidence) &&
     Array.isArray(value.evidence.sources) &&
     value.evidence.sources.every(
@@ -788,7 +857,7 @@ function isSeriesWatchOrderResult(value: JsonObject): value is JsonObject & Seri
         typeof source.operation === 'string' &&
         typeof source.path === 'string' &&
         ['succeeded', 'failed'].includes(String(source.status)) &&
-        Number.isInteger(source.subjectId) &&
+        (Number.isInteger(source.subjectId) || Number.isInteger(source.personId)) &&
         (source.depth === undefined || Number.isInteger(source.depth)),
     ) &&
     typeof value.evidence.derivation === 'string' &&
@@ -2744,6 +2813,64 @@ interface MinimumSeriesProjectionOptions {
   includeCapabilityState: boolean;
 }
 
+function projectSeriesVoiceActorPresence(presence: SeriesVoiceActorPresence, minimal = false) {
+  const workLimit = minimal ? (presence.matchStatus === 'multi_work_found' ? 2 : 1) : 4;
+  const creditLimit = minimal ? 1 : 3;
+  const relationLimit = minimal ? 1 : 2;
+  const works = presence.works.slice(0, workLimit).map((work) => {
+    const credits = work.credits.slice(0, creditLimit).map((credit) => ({
+      characterId: credit.characterId,
+      characterName: clippedDisplayText(credit.characterName, minimal ? 20 : 36).text,
+      ...(credit.staff === undefined
+        ? {}
+        : { staff: clippedDisplayText(credit.staff, minimal ? 16 : 28).text }),
+    }));
+    const relationEvidence = work.relationEvidence.slice(0, relationLimit).map((relation) => ({
+      sourceSubjectId: relation.sourceSubjectId,
+      targetSubjectId: relation.targetSubjectId,
+      direction: relation.direction,
+      ...(relation.rawRelationLabel === undefined
+        ? {}
+        : { rawRelationLabel: clippedDisplayText(relation.rawRelationLabel, 24).text }),
+      ...(relation.relationKind === undefined ? {} : { relationKind: relation.relationKind }),
+    }));
+    return {
+      subjectId: work.subjectId,
+      subjectName: clippedDisplayText(work.subjectName, minimal ? 22 : 42).text,
+      subjectNameCn: clippedDisplayText(work.subjectNameCn, minimal ? 22 : 42).text,
+      relationEvidence,
+      relationEvidenceOmittedFromText: work.relationEvidence.length - relationEvidence.length,
+      credits,
+      creditsOmittedFromText: work.credits.length - credits.length,
+    };
+  });
+  return {
+    personId: presence.personId,
+    state: presence.state,
+    matchStatus: presence.matchStatus,
+    distinctWorks: presence.distinctWorks,
+    works,
+    worksOmittedFromText: presence.works.length - works.length,
+    coverage: { ...presence.coverage },
+    sourceOperation: {
+      operation: presence.sourceOperation.operation,
+      path: presence.sourceOperation.path,
+      status: presence.sourceOperation.status,
+      ...(presence.sourceOperation.failureReason === undefined
+        ? {}
+        : { failureReason: clippedDisplayText(presence.sourceOperation.failureReason, 64).text }),
+    },
+    limitations: presence.limitations
+      .slice(0, minimal ? 1 : 2)
+      .map((limitation) => clippedDisplayText(limitation, minimal ? 72 : 120).text),
+    limitationRecordsOmittedFromText: Math.max(0, presence.limitations.length - (minimal ? 1 : 2)),
+    answerScope:
+      presence.matchStatus === 'multi_work_found'
+        ? '多部作品只代表本次观察到的不同条目。'
+        : '未命中或只命中一部作品不证明没有其他演出。',
+  };
+}
+
 function compactSeriesWatchOrder(result: SeriesWatchOrderResult): string {
   const options: SeriesProjectionOptions = {
     orderLimit: Math.min(17, result.watchOrder.length),
@@ -2973,7 +3100,8 @@ function createSeriesWatchOrderProjection(
     operation: projectText(source.operation, 56, 'sourceText'),
     path: projectText(source.path, 72, 'sourceText'),
     status: source.status,
-    subjectId: source.subjectId,
+    ...(source.subjectId === undefined ? {} : { subjectId: source.subjectId }),
+    ...(source.personId === undefined ? {} : { personId: source.personId }),
     ...(source.depth === undefined ? {} : { depth: source.depth }),
   }));
   const warnings = result.warnings
@@ -3009,6 +3137,9 @@ function createSeriesWatchOrderProjection(
     root,
     capabilityStates: { ...result.capabilityStates },
     watchOrder,
+    ...(result.voiceActorPresence
+      ? { voiceActorPresence: projectSeriesVoiceActorPresence(result.voiceActorPresence) }
+      : {}),
     related,
     edges,
     excluded: {
@@ -3082,6 +3213,12 @@ function createSeriesWatchOrderProjection(
       sourceOperationsReturned: result.evidence.sources.length,
       sourceOperationsIncluded: sources.length,
       sourceOperationsOmittedFromText: result.evidence.sources.length - sources.length,
+      voiceActorWorksReturned: result.voiceActorPresence?.works.length ?? 0,
+      voiceActorWorksIncluded: Math.min(4, result.voiceActorPresence?.works.length ?? 0),
+      voiceActorWorksOmittedFromText: Math.max(
+        0,
+        (result.voiceActorPresence?.works.length ?? 0) - 4,
+      ),
       warningRecordsOmittedFromText: result.warnings.length - warnings.length,
       limitationRecordsOmittedFromText: result.limitations.length - limitations.length,
       displayNamesTruncated: clipped.displayNames,
@@ -3159,7 +3296,8 @@ function createMinimumSeriesWatchOrderProjection(
     operation: clipMetadata(source.operation),
     path: clipMetadata(source.path),
     status: source.status,
-    subjectId: source.subjectId,
+    ...(source.subjectId === undefined ? {} : { subjectId: source.subjectId }),
+    ...(source.personId === undefined ? {} : { personId: source.personId }),
   }));
   sourceTextTruncated = metadataTextTruncated;
   const truncationReasons = result.coverage.truncationReasons
@@ -3209,6 +3347,9 @@ function createMinimumSeriesWatchOrderProjection(
       ? { capabilityStates: {}, capabilityStateOmittedFromText: true }
       : { capabilityStates: { watchOrder: capabilityState } }),
     watchOrder,
+    ...(result.voiceActorPresence
+      ? { voiceActorPresence: projectSeriesVoiceActorPresence(result.voiceActorPresence, true) }
+      : {}),
     coverage: {
       depth: result.coverage.depth,
       maxNodes: result.coverage.maxNodes,
@@ -3249,6 +3390,20 @@ function createMinimumSeriesWatchOrderProjection(
       watchOrderRowsReturned: result.watchOrder.length,
       watchOrderRowsIncluded: watchOrder.length,
       watchOrderRowsOmittedFromText: result.watchOrder.length - watchOrder.length,
+      voiceActorWorksReturned: result.voiceActorPresence?.works.length ?? 0,
+      voiceActorWorksIncluded: result.voiceActorPresence
+        ? Math.min(
+            result.voiceActorPresence.matchStatus === 'multi_work_found' ? 2 : 1,
+            result.voiceActorPresence.works.length,
+          )
+        : 0,
+      voiceActorWorksOmittedFromText: result.voiceActorPresence
+        ? Math.max(
+            0,
+            result.voiceActorPresence.works.length -
+              (result.voiceActorPresence.matchStatus === 'multi_work_found' ? 2 : 1),
+          )
+        : 0,
       displayNamesTruncated,
       relationLabelsTruncated,
       relationLabelsOmittedFromText,
@@ -3299,6 +3454,9 @@ function createBareMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderRes
     capabilityStates: {},
     capabilityStateOmittedFromText: true,
     watchOrder,
+    ...(result.voiceActorPresence
+      ? { voiceActorPresence: projectSeriesVoiceActorPresence(result.voiceActorPresence, true) }
+      : {}),
     coverage: {
       depth: result.coverage.depth,
       maxNodes: result.coverage.maxNodes,
@@ -3333,6 +3491,20 @@ function createBareMinimumSeriesWatchOrderProjection(result: SeriesWatchOrderRes
       watchOrderRowsReturned: result.watchOrder.length,
       watchOrderRowsIncluded: watchOrder.length,
       watchOrderRowsOmittedFromText: result.watchOrder.length - watchOrder.length,
+      voiceActorWorksReturned: result.voiceActorPresence?.works.length ?? 0,
+      voiceActorWorksIncluded: result.voiceActorPresence
+        ? Math.min(
+            result.voiceActorPresence.matchStatus === 'multi_work_found' ? 2 : 1,
+            result.voiceActorPresence.works.length,
+          )
+        : 0,
+      voiceActorWorksOmittedFromText: result.voiceActorPresence
+        ? Math.max(
+            0,
+            result.voiceActorPresence.works.length -
+              (result.voiceActorPresence.matchStatus === 'multi_work_found' ? 2 : 1),
+          )
+        : 0,
       displayNamesTruncated:
         Number(Boolean(result.root.name || result.root.nameCn)) +
         Number(Boolean(result.watchOrder[0]?.name || result.watchOrder[0]?.nameCn)),

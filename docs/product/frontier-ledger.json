@@ -1839,9 +1839,15 @@
       "kind": "scenario",
       "user_question": "某声优是否同时出演了一个系列的多部作品？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/s03-series-voice-credit-source-contract-2026-10-08.md",
+        "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md",
+        "packages/bangumi-core/src/services/series-service.ts",
+        "tests/unit/series-watch-order.test.ts"
+      ],
+      "next_action": "The optional series voice-credit join is implemented as a positive-only, numeric subject_id match over the anime anchor and at most maxNodes currently observed direct anime prequel/sequel/side-story/recap rows. Person-character reads are capped at 1 MiB/120 rows and unpaged source limitations are explicit. Next: pass exact-Candidate CI, Harness readiness, and Luna Max PASS, then make the single create-once S03 Agent/MCP call; QQ/TIM remain untested.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

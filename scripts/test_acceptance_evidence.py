@@ -320,6 +320,20 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'required': ['personId'],
                 },
             },
+            {
+                'name': 'bangumi.get_series_watch_order',
+                'auth': 'none', 'risk': 'read',
+                'description': 'Bounded series relations with optional voice actor overlap.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'subjectId': {'type': 'integer'},
+                        'voiceActorPersonId': {'type': 'integer'},
+                        'maxVoiceCredits': {'type': 'integer'},
+                    },
+                    'required': ['subjectId'],
+                },
+            },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
         self.catalog_path = self.root / 'docs/tool-catalog.json'
@@ -348,10 +362,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
-            if relative_path == GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH:
+            if relative_path in {
+                GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH,
+                GENERATOR.CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH,
+            }:
                 continue
             source_path = self.original_root / relative_path
             fixture_path = self.root / relative_path
@@ -373,6 +391,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'bundleSha256': 'f' * 64,
         }), encoding='utf-8')
         relative_paths.add(GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH)
+        s03_attestation_path = self.root / GENERATOR.CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH
+        s03_attestation_path.parent.mkdir(parents=True, exist_ok=True)
+        s03_attestation_path.write_text(json.dumps({
+            'schemaVersion': 1,
+            'kind': 's03-mcp-runtime-bundle-attestation-v1',
+            'bundleSha256': 'a' * 64,
+        }), encoding='utf-8')
+        relative_paths.add(GENERATOR.CODEX_S03_BUNDLE_ATTESTATION_RELATIVE_PATH)
         smoke_script = self.root / 'scripts/smoke-public-tools-online.ts'
         smoke_script.parent.mkdir(parents=True, exist_ok=True)
         smoke_script.write_text('// public probe report validator fixture\n', encoding='utf-8')
@@ -1029,6 +1055,97 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _s03_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
+        revision = source_revision or self.source_revision
+        coverage = {
+            'relationRowsObserved': 12,
+            'eligibleDirectAnimeWorksObserved': 1,
+            'eligibleDirectAnimeWorksSelected': 1,
+            'eligibleDirectAnimeWorksOmitted': 0,
+            'personRowsObserved': 75,
+            'personRowsReturned': 75,
+            'personRowsOmitted': 0,
+            'matchedCreditRows': 2,
+            'duplicateRows': 0,
+            'schemaDriftRows': 0,
+            'maxRelatedAnimeWorks': 8,
+            'maxVoiceCredits': 120,
+            'maxResponseBytes': 1_048_576,
+            'truncated': False,
+        }
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_s03_series_voice_overlap_agent_mcp',
+            'runNumber': 95,
+            'scenarioId': 'S03',
+            'profile': 'run95-s03-series-voice-overlap-agent-mcp-v1',
+            'frontierId': 'S03',
+            'sourceRevision': revision,
+            'mcpBundleSha256': GENERATOR.codex_s03_candidate_bundle_sha256(revision),
+            'prNumber': 128,
+            'baseSha': 'b' * 40,
+            'observedAt': '2026-10-08T06:00:00.000Z',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '1.2.14',
+            'toolName': 'bangumi.get_series_watch_order',
+            'argumentProfile': 'fixed-s03-spy-family-goto-hiroki-voice-overlap-v1',
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_S03_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_series_watch_order'],
+            'mcpServerNames': ['bgk_s03_one_tool'],
+            'serverToolCount': 1,
+            'processExitCode': 0,
+            'resultCount': 1,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'resultStatus': 'SUCCESS',
+            'toolCalls': [{'name': 'bangumi.get_series_watch_order', 'state': 'DONE'}],
+            'answerCheckMethod': 's03-series-voice-overlap-answer-v1',
+            'toolTextUtf8Bytes': 1800,
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_S03_ANSWER_CHECK_FIELDS
+            },
+            'resultCounters': {
+                'distinctWorks': 2,
+                'answerWorks': 2,
+                'matchedCreditRows': 2,
+                'personRowsObserved': 75,
+                'personRowsReturned': 75,
+                'directAnimeWorksOmitted': 0,
+                'coverageFieldsMatched': len(GENERATOR.CODEX_S03_COVERAGE_FIELDS),
+            },
+            'resultSummary': {
+                'rootSubjectId': 329906,
+                'matchStatus': 'multi_work_found',
+                'distinctWorks': 2,
+                'subjectIds': [329906, 373267],
+                'characterIds': [71479, 7602],
+                'state': 'observed',
+                'coverage': coverage,
+                'sourceOperationStatus': 'succeeded',
+            },
+            'privacy': {
+                'authProfile': 'anonymous',
+                **{
+                    key: False
+                    for key in GENERATOR.CODEX_S03_PRIVACY_FIELDS - {'authProfile'}
+                },
+            },
+            'rawAnswerPersisted': False,
+            'rawToolResultPersisted': False,
+        }
+
     def _write_g26_frontier(self, status, source_refs=None):
         frontier_path = self.root / 'docs/product/frontier-ledger.json'
         frontier_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1109,6 +1226,66 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertFalse(
             GENERATOR.codex_s02_report_matches_candidate_revision(
                 report_path, self.stale_candidate_source_revision,
+            ),
+        )
+
+    def test_accepts_exact_candidate_bound_s03_positive_agent_mcp_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH).name
+        report = self._s03_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_s03_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_s03_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_s03_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_series_watch_order'],
+            {GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH},
+        )
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog)['bangumi.get_series_watch_order'],
+            {GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('角色甲', json.dumps(report, ensure_ascii=False))
+
+        self._git('add', GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized S03 one-shot evidence')
+        self.assertTrue(
+            GENERATOR.codex_s03_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_s03_report_without_positive_id_grounded_scope_or_privacy(self):
+        report = self._s03_report_fixture()
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'mcpBundleSha256': '0' * 64},
+            {'answerChecks': {'twoDistinctWorksMatched': False}},
+            {'resultCounters': {**report['resultCounters'], 'distinctWorks': 1}},
+            {'resultSummary': {**report['resultSummary'], 'subjectIds': [329906]}},
+            {'privacy': {**report['privacy'], 'accountDataRead': True}},
+            {'answer': 'raw answer must never persist'},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                candidate = {**report, **override}
+                self.assertFalse(GENERATOR.codex_s03_report_is_valid(candidate))
+
+    def test_rejects_s03_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_S03_REPORT_RELATIVE_PATH).name
+        report = self._s03_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_s03_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_s03_report_matches_candidate_revision(
+                report_path, report['sourceRevision'],
             ),
         )
 

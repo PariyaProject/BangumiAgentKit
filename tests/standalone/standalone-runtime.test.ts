@@ -258,6 +258,8 @@ describe('PR-6R-C standalone runtime', () => {
           depth: z.number().int().min(0).max(2).optional(),
           maxNodes: z.number().int().min(1).max(16).optional(),
           media: z.enum(['anime', 'all']).optional(),
+          voiceActorPersonId: z.number().int().positive().optional(),
+          maxVoiceCredits: z.number().int().min(1).max(120).optional(),
         }),
         auth: 'none',
         scopes: [],
@@ -277,6 +279,8 @@ describe('PR-6R-C standalone runtime', () => {
           depth: z.number().int().min(0).max(2).optional(),
           maxNodes: z.number().int().min(1).max(16).optional(),
           media: z.enum(['anime', 'all']).optional(),
+          voiceActorPersonId: z.number().int().positive().optional(),
+          maxVoiceCredits: z.number().int().min(1).max(120).optional(),
         }),
         auth: 'none',
         scopes: [],
@@ -300,11 +304,31 @@ describe('PR-6R-C standalone runtime', () => {
     };
     await expect(
       registry.execute(
-        ['watch-order', '218707', '--depth', '2', '--max-nodes', '4', '--media', 'all'],
+        [
+          'watch-order',
+          '218707',
+          '--depth',
+          '2',
+          '--max-nodes',
+          '4',
+          '--media',
+          'all',
+          '--voice-actor-id',
+          '20',
+          '--max-voice-credits',
+          '60',
+        ],
         semanticContext,
       ),
     ).resolves.toMatchObject({ value: { subjectId: 218707 } });
-    expect(semanticInput).toEqual({ subjectId: 218707, depth: 2, maxNodes: 4, media: 'all' });
+    expect(semanticInput).toEqual({
+      subjectId: 218707,
+      depth: 2,
+      maxNodes: 4,
+      media: 'all',
+      voiceActorPersonId: 20,
+      maxVoiceCredits: 60,
+    });
 
     const renderContext = {
       host,
@@ -314,11 +338,32 @@ describe('PR-6R-C standalone runtime', () => {
     };
     await expect(
       registry.execute(
-        ['render', 'watch-order', '218707', '--depth', '0', '--max-nodes', '3', '--media', 'anime'],
+        [
+          'render',
+          'watch-order',
+          '218707',
+          '--depth',
+          '0',
+          '--max-nodes',
+          '3',
+          '--media',
+          'anime',
+          '--voice-actor-id',
+          '20',
+          '--max-voice-credits',
+          '25',
+        ],
         renderContext,
       ),
     ).resolves.toMatchObject({ value: { artifact: { id: 'series-fixture' } } });
-    expect(renderInput).toEqual({ subjectId: 218707, depth: 0, maxNodes: 3, media: 'anime' });
+    expect(renderInput).toEqual({
+      subjectId: 218707,
+      depth: 0,
+      maxNodes: 3,
+      media: 'anime',
+      voiceActorPersonId: 20,
+      maxVoiceCredits: 25,
+    });
 
     await expect(registry.execute(['help'], semanticContext)).resolves.toMatchObject({
       value: expect.stringContaining('watch-order'),

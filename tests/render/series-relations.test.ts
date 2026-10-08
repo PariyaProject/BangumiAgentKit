@@ -52,6 +52,82 @@ describe('series-relations renderer', () => {
     }
   });
 
+  it('renders bounded positive voice-credit overlap and its partial-coverage caveat at mobile widths', async () => {
+    const fixtures = await buildSeriesWatchOrderFixtureRuns();
+    const result = {
+      ...fixtures.complete.result,
+      voiceActorPresence: {
+        personId: 20,
+        state: 'partial' as const,
+        matchStatus: 'multi_work_found' as const,
+        distinctWorks: 2,
+        works: [
+          {
+            subjectId: 300,
+            subjectName: 'Anchor',
+            subjectNameCn: '起点作品',
+            relationEvidence: [
+              { sourceSubjectId: 300, targetSubjectId: 300, direction: 'anchor' as const },
+            ],
+            credits: [{ characterId: 41, characterName: '角色甲', staff: '主役' }],
+          },
+          {
+            subjectId: 301,
+            subjectName: 'Sequel',
+            subjectNameCn: '续作作品',
+            relationEvidence: [
+              {
+                sourceSubjectId: 300,
+                targetSubjectId: 301,
+                direction: 'outgoing_direct' as const,
+                rawRelationLabel: '续集',
+                relationKind: 'sequel' as const,
+              },
+            ],
+            credits: [{ characterId: 42, characterName: '角色乙', staff: '配角' }],
+          },
+        ],
+        coverage: {
+          relationRowsObserved: 4,
+          eligibleDirectAnimeWorksObserved: 1,
+          eligibleDirectAnimeWorksSelected: 1,
+          eligibleDirectAnimeWorksOmitted: 0,
+          personRowsObserved: 9,
+          personRowsReturned: 8,
+          personRowsOmitted: 1,
+          matchedCreditRows: 2,
+          duplicateRows: 0,
+          schemaDriftRows: 0,
+          maxRelatedAnimeWorks: 8,
+          maxVoiceCredits: 120,
+          maxResponseBytes: 1_048_576,
+          truncated: true,
+          retrievedAt: '2026-10-08T00:00:00Z',
+        },
+        sourceOperation: {
+          operation: 'GET /v0/persons/{person_id}/characters' as const,
+          path: '/v0/persons/20/characters',
+          status: 'succeeded' as const,
+        },
+        limitations: [
+          '当前匿名可见响应没有分页或总数，结果只覆盖本次观察到的行。',
+          '未命中不证明没有其他演出。',
+        ],
+      },
+    };
+    const viewModel = buildSeriesRelationsViewModel(result);
+
+    for (const width of [320, 360, 520]) {
+      const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, width);
+      expect(html).toContain('声优作品交集');
+      expect(html).toContain('起点作品');
+      expect(html).toContain('角色甲');
+      expect(html).toContain('原始角色标签：主役');
+      expect(html).toContain('/v0/persons/20/characters');
+      expect(html).toContain('未命中不证明没有其他演出');
+    }
+  });
+
   it('keeps a service-emittable non-anime root explicitly not computable while retaining evidence sections', async () => {
     const fixtures = await buildSeriesWatchOrderFixtureRuns();
     const fixture = fixtures['not-computable'];

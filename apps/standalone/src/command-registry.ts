@@ -53,6 +53,7 @@ Bangumi:
   overlap <subjectId...> [--kind cast|staff|all] [--cast-role all|main]
           [--max-cast 1..80] [--max-staff 1..80] [--max-pairs 1..28] [--max-people 1..24]
   watch-order <subjectId> [--depth 0|1|2] [--max-nodes 1..16] [--media anime|all]
+              [--voice-actor-id <personId>] [--max-voice-credits 1..120]
   cast <subjectId>
   character-integrity <characterId> [--max-subjects 1..64] [--max-persons 1..64]
   person <personId>
@@ -1057,8 +1058,22 @@ export class StandaloneCommandRegistry {
       const depth = takeOption(watchArgs, '--depth');
       const maxNodes = takeOption(watchArgs, '--max-nodes');
       const media = takeOption(watchArgs, '--media');
+      const voiceActorId = takeOption(watchArgs, '--voice-actor-id');
+      const maxVoiceCredits = takeOption(watchArgs, '--max-voice-credits');
       if (depth !== undefined) input.depth = parseNonNegativeInteger(depth, 'depth');
       if (maxNodes !== undefined) input.maxNodes = parsePositiveInteger(maxNodes, 'max-nodes');
+      if (voiceActorId !== undefined) {
+        input.voiceActorPersonId = parsePositiveInteger(voiceActorId, 'voice-actor-id');
+      }
+      if (maxVoiceCredits !== undefined) {
+        input.maxVoiceCredits = parsePositiveInteger(maxVoiceCredits, 'max-voice-credits');
+        if ((input.maxVoiceCredits as number) > 120) {
+          throw new StandaloneCliError(
+            'USAGE_ERROR: max-voice-credits must be between 1 and 120.',
+            2,
+          );
+        }
+      }
       if (media !== undefined && media !== 'anime' && media !== 'all') {
         throw new StandaloneCliError('USAGE_ERROR: media must be anime or all.', 2);
       }
@@ -1472,8 +1487,22 @@ export class StandaloneCommandRegistry {
       const depth = takeOption(args, '--depth');
       const maxNodes = takeOption(args, '--max-nodes');
       const media = takeOption(args, '--media');
+      const voiceActorId = takeOption(args, '--voice-actor-id');
+      const maxVoiceCredits = takeOption(args, '--max-voice-credits');
       if (depth !== undefined) input.depth = parseNonNegativeInteger(depth, 'depth');
       if (maxNodes !== undefined) input.maxNodes = parsePositiveInteger(maxNodes, 'max-nodes');
+      if (voiceActorId !== undefined) {
+        input.voiceActorPersonId = parsePositiveInteger(voiceActorId, 'voice-actor-id');
+      }
+      if (maxVoiceCredits !== undefined) {
+        input.maxVoiceCredits = parsePositiveInteger(maxVoiceCredits, 'max-voice-credits');
+        if ((input.maxVoiceCredits as number) > 120) {
+          throw new StandaloneCliError(
+            'USAGE_ERROR: max-voice-credits must be between 1 and 120.',
+            2,
+          );
+        }
+      }
       if (media !== undefined && media !== 'anime' && media !== 'all') {
         throw new StandaloneCliError('USAGE_ERROR: media must be anime or all.', 2);
       }
