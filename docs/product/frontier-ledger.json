@@ -1456,7 +1456,7 @@
         "tests/unit/d05-mcp-bundle-attestation-writer.test.ts",
         "tests/unit/d05-report-writer.test.ts"
       ],
-      "next_action": "Review #2 confirmed D05-001 through D05-004 are closed and added D05-005: an unqualified positive claim such as “这是完整列表” could escape the completeness detector. The checker now rejects scoped completeness claims and unqualified complete-list claims, while retaining explicit negation handling; regression coverage includes both positive and explicitly incomplete wording. Establish a fresh Candidate with exact seven-job CI and the same GPT-6 Luna Max reviewer for review #3 before the single fixed anonymous D05 query. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated; if the query is inconclusive, preserve the spent claim and never retry.",
+      "next_action": "Review #3 confirmed D05-001 through D05-005 are closed and added D05-006: a comma in the English “Notably” regression split the adverb from the positive complete-list claim, so it did not exercise the token-boundary guard. The regression now keeps “Notably this is a complete list” in one clause and verifies that it is rejected. Establish a fresh Candidate with exact seven-job CI and the same GPT-6 Luna Max reviewer for review #4 before the single fixed anonymous D05 query. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated; if the query is inconclusive, preserve the spent claim and never retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {

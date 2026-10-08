@@ -245,7 +245,7 @@ describe('D05 current-season multi-tag heat answer checker', () => {
 
     const englishCompleteList = JSON.parse(makeAnswer()) as Record<string, any>;
     englishCompleteList.caveat =
-      'The experimental search has estimated totals. Notably, this is a complete list. This is a bounded observation and is not a complete season or whole-site list.';
+      'The experimental search has estimated totals. Notably this is a complete list. This is a bounded observation and is not a complete season or whole-site list.';
     expect(verify({ answer: JSON.stringify(englishCompleteList) }).passed).toBe(false);
   });
 
