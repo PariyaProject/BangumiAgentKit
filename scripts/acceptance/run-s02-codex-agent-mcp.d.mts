@@ -37,7 +37,6 @@ export function buildS02EvidenceReport(input: {
   eventsSummary: {
     codexMcpToolEventCount: number;
     nonMcpToolEventCount: number;
-    nonMcpToolTypes: string[];
     shellToolCallCount: number;
     toolCalls: Array<{ name: string; state: string }>;
   };

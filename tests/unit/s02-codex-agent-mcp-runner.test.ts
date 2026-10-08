@@ -275,6 +275,7 @@ describe('S02 Codex Agent/MCP runner', () => {
       eventsSummary,
     });
     expect(built.answer.passed).toBe(true);
+    expect(built.report).not.toHaveProperty('nonMcpToolTypes');
     expect(built.report).toMatchObject({
       evidenceKind: 'codex_cli_s02_person_activity_agent_mcp',
       model: 'gpt-6-luna',

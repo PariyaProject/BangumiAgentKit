@@ -264,7 +264,6 @@ export function buildS02EvidenceReport(input) {
     eventStreamParsed: input.eventStreamParsed,
     codexMcpToolEventCount: input.eventsSummary.codexMcpToolEventCount,
     nonMcpToolEventCount: input.eventsSummary.nonMcpToolEventCount,
-    nonMcpToolTypes: input.eventsSummary.nonMcpToolTypes,
     shellToolCallCount: input.eventsSummary.shellToolCallCount,
     allowedCallCount: input.serverSummary.allowedCallCount,
     deniedCallCount: input.serverSummary.deniedCallCount,
