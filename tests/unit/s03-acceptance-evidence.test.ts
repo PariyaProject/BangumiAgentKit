@@ -22,6 +22,13 @@ import {
   computeMcpBundleSha256,
   S03_MCP_BUNDLE_ATTESTATION_PATH,
 } from '../../scripts/lib/s03-mcp-bundle.mjs';
+import {
+  captureS03ServerResult,
+  claimS03ServerCall,
+  prepareS03ReportClaim,
+  s03EventEvidenceSha256,
+  s03ServerSummarySha256,
+} from '../../scripts/lib/s03-one-shot-authorization.mjs';
 
 const tempRoots: string[] = [];
 
@@ -159,8 +166,17 @@ function gateFixture() {
     ci: { sha: candidateSha, status: 'SUCCESS' },
     state: 'REVIEW_PASSED',
     review_pass_sha: candidateSha,
+    reviewed_base_sha: baseSha,
     advances_frontier_ids: ['S03'],
-    review_history: [{ candidate_sha: candidateSha, verdict: 'PASS' }],
+    review_history: [
+      {
+        review_number: 1,
+        reviewer_id: `gpt-6-luna-max-run95-s03-pr${prNumber}-round1`,
+        candidate_sha: candidateSha,
+        reviewed_base_sha: baseSha,
+        verdict: 'PASS',
+      },
+    ],
     scope_closure: {
       related_work_remaining: false,
       why_not_review_earlier: 'The exact-SHA regression suite was necessary.',
@@ -192,6 +208,7 @@ function gateFixture() {
       headRefOid: candidateSha,
       headRefName: branch,
       baseRefName: 'master',
+      baseRefOid: baseSha,
       statusCheckRollup: checks,
     },
   };
@@ -275,6 +292,9 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     const wrongActorResult = structuredClone(toolOutput);
     wrongActorResult.structuredContent.voiceActorPresence.personId = 7601;
     const missingCaveat = { ...answer, caveat: '在两部作品中发现了交集。' };
+    const extraAnswerClaim = { ...answer, careerSummary: '这是完整履历。' };
+    const unsupportedTitleClaim = structuredClone(answer);
+    unsupportedTitleClaim.works[0]!.title = '完整履历';
     const wrongRelationResult = structuredClone(toolOutput);
     const directRelation =
       wrongRelationResult.structuredContent.voiceActorPresence.works[1]?.relationEvidence.find(
@@ -310,6 +330,30 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     ).toBe(false);
     expect(
       verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(extraAnswerClaim),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.answerRowsMatch,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(extraAnswerClaim),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.noUnsupportedCompletenessClaim,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(unsupportedTitleClaim),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.noUnsupportedCompletenessClaim,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
         JSON.stringify(answer),
         S03_EXPECTED_QUERY_ARGUMENTS,
         toolOutput,
@@ -325,6 +369,10 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       summaryPath: '/tmp/s03-summary.json',
       sourceRevision: 'a'.repeat(40),
       bundleSha256: 'b'.repeat(64),
+      claimPath: '/private/.git/pariya-agent-state/s03-run95-one-shot-claim.json',
+      authorizationToken: 'c'.repeat(64),
+      currentBaseSha: 'd'.repeat(40),
+      reviewerId: 'gpt-6-luna-max-run95-s03-pr110-round2',
     });
 
     expect(validateRunnerArgs(['--help'])).toBe('help');
@@ -340,6 +388,12 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     expect(args).toContain(
       'mcp_servers.bgk_s03_one_tool.enabled_tools=["bangumi.get_series_watch_order"]',
     );
+    const serializedArgs = args.join('\n');
+    expect(serializedArgs).toContain(
+      '/private/.git/pariya-agent-state/s03-run95-one-shot-claim.json',
+    );
+    expect(serializedArgs).toContain('gpt-6-luna-max-run95-s03-pr110-round2');
+    expect(serializedArgs).toContain('c'.repeat(64));
     expect(args.at(-1)).toContain(JSON.stringify(S03_EXPECTED_QUERY_ARGUMENTS));
   });
 
@@ -350,7 +404,12 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
         sourceRevision: fixture.candidateSha,
         currentBaseSha: fixture.baseSha,
       }),
-    ).toEqual({ prNumber: 128, candidateSha: fixture.candidateSha });
+    ).toEqual({
+      prNumber: 128,
+      candidateSha: fixture.candidateSha,
+      baseSha: fixture.baseSha,
+      reviewerId: 'gpt-6-luna-max-run95-s03-pr128-round1',
+    });
 
     const stalePr = structuredClone(fixture.pr);
     stalePr.headRefOid = 'c'.repeat(40);
@@ -376,12 +435,44 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
         currentBaseSha: fixture.baseSha,
       }),
     ).toThrow();
+    const staleReviewedBase = structuredClone(fixture.status);
+    staleReviewedBase.epoch.state.reviewed_base_sha = 'c'.repeat(40);
+    staleReviewedBase.epoch.state.review_history[0]!.reviewed_base_sha = 'c'.repeat(40);
+    expect(() =>
+      assertS03CandidateReviewGate(staleReviewedBase, fixture.pr, {
+        sourceRevision: fixture.candidateSha,
+        currentBaseSha: fixture.baseSha,
+      }),
+    ).toThrow();
+    const wrongReviewer = structuredClone(fixture.status);
+    wrongReviewer.epoch.state.review_history[0]!.reviewer_id = 'gpt-6-sol-run95-s03-pr128-round1';
+    expect(() =>
+      assertS03CandidateReviewGate(wrongReviewer, fixture.pr, {
+        sourceRevision: fixture.candidateSha,
+        currentBaseSha: fixture.baseSha,
+      }),
+    ).toThrow();
+    const missingReviewer = structuredClone(fixture.status);
+    Reflect.deleteProperty(missingReviewer.epoch.state.review_history[0]!, 'reviewer_id');
+    expect(() =>
+      assertS03CandidateReviewGate(missingReviewer, fixture.pr, {
+        sourceRevision: fixture.candidateSha,
+        currentBaseSha: fixture.baseSha,
+      }),
+    ).toThrow();
   });
 
   it('creates one claim under Git metadata and refuses a second query attempt', () => {
     const { root, bundleSha256, candidateSha } = tempGitRoot();
     const claimPath = canonicalS03ClaimPath(root, path.join(root, '.git/pariya-agent-state'));
-    const claim = createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root);
+    const authorizationToken = 'd'.repeat(64);
+    const baseSha = 'b'.repeat(40);
+    const reviewerId = 'gpt-6-luna-max-run95-s03-pr128-round1';
+    const claim = createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root, {
+      authorizationToken,
+      baseSha,
+      reviewerId,
+    });
 
     expect(claim).toMatchObject({
       runNumber: 95,
@@ -389,17 +480,44 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       state: 'CLAIMED',
       sourceRevision: candidateSha,
       bundleSha256,
+      baseSha,
+      reviewerId,
+      authorizationTokenSha256: sha256(authorizationToken),
     });
     expect(JSON.parse(readFileSync(claimPath, 'utf8'))).toMatchObject(claim);
-    expect(() => createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root)).toThrow(
-      'already exists',
-    );
+    expect(
+      claimS03ServerCall(claimPath, authorizationToken, {
+        sourceRevision: candidateSha,
+        bundleSha256,
+        expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
+        baseSha,
+        reviewerId,
+      }),
+    ).toBe(true);
+    expect(JSON.parse(readFileSync(claimPath, 'utf8')).state).toBe('SERVER_CALL_STARTED');
+    expect(
+      claimS03ServerCall(claimPath, authorizationToken, {
+        sourceRevision: candidateSha,
+        bundleSha256,
+        expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
+        baseSha,
+        reviewerId,
+      }),
+    ).toBe(false);
+    expect(() =>
+      createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root, {
+        authorizationToken,
+        baseSha,
+        reviewerId,
+      }),
+    ).toThrow('already exists');
     expect(() =>
       createS03OneShotClaim(
         path.join(root, 'outside-claim.json'),
         candidateSha,
         bundleSha256,
         root,
+        { authorizationToken, baseSha, reviewerId },
       ),
     ).toThrow('local .git');
   });
@@ -407,7 +525,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
   it('writes a sanitized exact-Candidate report without storing the raw answer or tool result', () => {
     const { root, bundleSha256, candidateSha } = tempGitRoot();
     const claimPath = canonicalS03ClaimPath(root, path.join(root, '.git/pariya-agent-state'));
-    createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root);
+    const authorizationToken = 'e'.repeat(64);
+    const baseSha = 'b'.repeat(40);
+    const reviewerId = 'gpt-6-luna-max-run95-s03-pr128-round1';
+    createS03OneShotClaim(claimPath, candidateSha, bundleSha256, root, {
+      authorizationToken,
+      baseSha,
+      reviewerId,
+    });
     const { answer, toolOutput, toolCalls } = positiveFixture();
     const tool = JSON.parse(readFileSync(path.join(root, 'docs/tool-catalog.json'), 'utf8'))[0];
     const serverSummary = {
@@ -443,41 +568,102 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
         credentialsStored: false,
       },
     };
-    const result = writeS03AgentMcpReport(
-      {
-        model: 'gpt-6-luna',
-        reasoningEffort: 'max',
-        codexCliVersion: '1.2.14',
-        processExitCode: 0,
-        resultStatus: 'SUCCESS',
-        eventStreamParsed: true,
-        eventsSummary: {
-          codexMcpToolEventCount: 1,
-          mcpServerNames: ['bgk_s03_one_tool'],
-          nonMcpToolEventCount: 0,
-          shellToolCallCount: 0,
-          toolCalls,
-          completedMcpCalls: [
-            {
-              tool: 'bangumi.get_series_watch_order',
-              arguments: S03_EXPECTED_QUERY_ARGUMENTS,
-              result: toolOutput,
-            },
-          ],
+    const eventsSummary = {
+      eventStreamComplete: true,
+      codexMcpToolEventCount: 1,
+      mcpServerNames: ['bgk_s03_one_tool'],
+      nonMcpToolEventCount: 0,
+      shellToolCallCount: 0,
+      toolCalls,
+      completedMcpCalls: [
+        {
+          tool: 'bangumi.get_series_watch_order',
+          arguments: S03_EXPECTED_QUERY_ARGUMENTS,
+          result: toolOutput,
         },
-        queryArguments: S03_EXPECTED_QUERY_ARGUMENTS,
-        toolOutput,
-        answer: JSON.stringify(answer),
-        toolTextUtf8Bytes: 1800,
+      ],
+    };
+    const answerText = JSON.stringify(answer);
+    const toolTextUtf8Bytes = 1800;
+    const expectedArgumentsSha256 = sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS));
+    expect(
+      claimS03ServerCall(claimPath, authorizationToken, {
         sourceRevision: candidateSha,
         bundleSha256,
-        prNumber: 128,
-        baseSha: 'b'.repeat(40),
-        claimPath,
-        serverSummary,
-      },
-      root,
+        expectedArgumentsSha256,
+        baseSha,
+        reviewerId,
+      }),
+    ).toBe(true);
+    captureS03ServerResult(claimPath, authorizationToken, serverSummary);
+    const reportAuthorization = {
+      sourceRevision: candidateSha,
+      baseSha,
+      bundleSha256,
+      prNumber: 128,
+      reviewerId,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      codexCliVersion: '1.2.14',
+      processExitCode: 0,
+      eventStreamParsed: true,
+      eventsSha256: s03EventEvidenceSha256({
+        eventsSummary,
+        queryArguments: S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        answer: answerText,
+        toolTextUtf8Bytes,
+      }),
+      serverSummarySha256: s03ServerSummarySha256(serverSummary),
+      toolTextUtf8Bytes,
+    };
+    const reportInput = {
+      authorizationToken,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      codexCliVersion: '1.2.14',
+      processExitCode: 0,
+      resultStatus: 'SUCCESS',
+      eventStreamParsed: true,
+      eventsSummary,
+      queryArguments: S03_EXPECTED_QUERY_ARGUMENTS,
+      toolOutput,
+      answer: answerText,
+      toolTextUtf8Bytes,
+      sourceRevision: candidateSha,
+      bundleSha256,
+      prNumber: 128,
+      baseSha,
+      reviewerId,
+      claimPath,
+      serverSummary,
+    };
+    expect(() => writeS03AgentMcpReport(reportInput, root)).toThrow(
+      'runner-authorized REPORT_READY claim',
     );
+    prepareS03ReportClaim(claimPath, authorizationToken, reportAuthorization);
+    expect(() =>
+      writeS03AgentMcpReport({ ...reportInput, authorizationToken: 'f'.repeat(64) }, root),
+    ).toThrow('authorization token');
+    expect(() =>
+      writeS03AgentMcpReport(
+        {
+          ...reportInput,
+          eventsSummary: { ...eventsSummary, shellToolCallCount: 1 },
+        },
+        root,
+      ),
+    ).toThrow('runner-authenticated evidence digest');
+    expect(() =>
+      writeS03AgentMcpReport(
+        {
+          ...reportInput,
+          serverSummary: { ...serverSummary, serverResultStatus: 'ERROR' },
+        },
+        root,
+      ),
+    ).toThrow('runner-authenticated evidence digest');
+    const result = writeS03AgentMcpReport(reportInput, root);
 
     expect(result.passed).toBe(true);
     const report = JSON.parse(readFileSync(path.join(root, result.reportPath!), 'utf8'));

@@ -475,10 +475,30 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
         'assertS03CandidateReviewGate(',
         'createS03OneShotClaim(',
         "'features.shell_tool=false'",
+        'review?.reviewed_base_sha === currentBaseSha',
+        'pr?.baseRefOid === currentBaseSha',
+        'review_number === Number(reviewerMatch?.[2])',
+    ),
+    'scripts/lib/s03-one-shot-authorization.mjs': (
+        'function assertClaimPath(',
+        'const lockPath = `${claimPath}.server-call-claimed`;',
+        'export function prepareS03ReportClaim(',
+        'export function verifyS03ReportClaim(',
+    ),
+    'apps/mcp/s03-one-tool-mcp-server.mjs': (
+        'verifyS03ServerAuthorization(',
+        'claimS03ServerCall(',
+        'captureS03ServerResult(',
+    ),
+    'scripts/acceptance/write-s03-agent-mcp-report.mjs': (
+        'verifyS03ReportClaim(',
+        's03EventEvidenceSha256(',
     ),
     'scripts/acceptance/s03-agent-answer-check.mjs': (
         'export function verifyS03VoiceActorOverlapAnswer(',
         '未命中不证明没有其他演出',
+        'Object.keys(parsedAnswer).sort()',
+        'noUnsupportedCompletenessClaim: !hasUnsupportedCompletenessClaim(parsedAnswer)',
     ),
 }
 CODEX_S02_COVERAGE_FIELDS = {

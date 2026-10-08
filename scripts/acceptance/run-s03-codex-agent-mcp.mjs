@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   closeSync,
   existsSync,
@@ -21,6 +21,11 @@ import {
 } from './run-g26-codex-agent-mcp.mjs';
 import { gitRepositoryText, sanitizeGitRepositoryEnvironment } from '../lib/g26-mcp-bundle.mjs';
 import { computeMcpBundleSha256, readS03McpBundleAttestation } from '../lib/s03-mcp-bundle.mjs';
+import {
+  prepareS03ReportClaim,
+  s03EventEvidenceSha256,
+  s03ServerSummarySha256,
+} from '../lib/s03-one-shot-authorization.mjs';
 import {
   S03_EXPECTED_QUERY_ARGUMENTS,
   verifyS03VoiceActorOverlapAnswer,
@@ -96,6 +101,10 @@ export function buildCodexExecArgs({
   summaryPath,
   sourceRevision,
   bundleSha256,
+  claimPath,
+  authorizationToken,
+  currentBaseSha,
+  reviewerId,
 }) {
   const serverArguments = [
     serverScript,
@@ -105,6 +114,14 @@ export function buildCodexExecArgs({
     sourceRevision,
     '--bundle-sha256',
     bundleSha256,
+    '--base-sha',
+    currentBaseSha,
+    '--reviewer-id',
+    reviewerId,
+    '--claim-path',
+    claimPath,
+    '--authorization-token',
+    authorizationToken,
   ];
   const config = [
     `model_reasoning_effort=${tomlString(REASONING_EFFORT)}`,
@@ -181,9 +198,24 @@ export function canonicalS03ClaimPath(
   return path.join(stateDirectory(root, configuredDirectory), 's03-run95-one-shot-claim.json');
 }
 
-export function createS03OneShotClaim(claimPath, sourceRevision, bundleSha256, root = ROOT) {
+export function createS03OneShotClaim(
+  claimPath,
+  sourceRevision,
+  bundleSha256,
+  root = ROOT,
+  { authorizationToken, baseSha, reviewerId } = {},
+) {
   if (!/^[0-9a-f]{40}$/u.test(sourceRevision) || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
     throw new Error('S03 one-shot claim must bind an exact Candidate and runtime bundle.');
+  }
+  if (
+    !/^[0-9a-f]{64}$/u.test(authorizationToken ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
+    !/^gpt-6-luna-max-run95-s03-pr\d+-round[1-6]$/u.test(reviewerId ?? '')
+  ) {
+    throw new Error(
+      'S03 one-shot claim must bind the reviewed Base and designated Luna Max reviewer.',
+    );
   }
   const absolutePath = path.resolve(claimPath);
   const expectedDirectory = stateDirectory(root, path.dirname(absolutePath));
@@ -198,6 +230,9 @@ export function createS03OneShotClaim(claimPath, sourceRevision, bundleSha256, r
     state: 'CLAIMED',
     sourceRevision,
     bundleSha256,
+    baseSha,
+    reviewerId,
+    authorizationTokenSha256: sha256(authorizationToken),
     expectedArgumentsSha256: sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)),
     claimedAt: new Date().toISOString(),
   };
@@ -223,11 +258,20 @@ export function assertS03CandidateReviewGate(status, pr, { sourceRevision, curre
   const runState = status?.run?.state;
   const epochView = status?.epoch;
   const epoch = epochView?.state;
-  const passRecorded =
-    Array.isArray(epoch?.review_history) &&
-    epoch.review_history.some(
-      (review) => review?.candidate_sha === sourceRevision && review?.verdict === 'PASS',
-    );
+  const passRecord = Array.isArray(epoch?.review_history)
+    ? epoch.review_history.find((review) => {
+        const reviewerMatch =
+          typeof review?.reviewer_id === 'string' &&
+          /^gpt-6-luna-max-run95-s03-pr(\d+)-round([1-6])$/u.exec(review.reviewer_id);
+        return (
+          review?.candidate_sha === sourceRevision &&
+          review?.reviewed_base_sha === currentBaseSha &&
+          review?.verdict === 'PASS' &&
+          review?.review_number === Number(reviewerMatch?.[2]) &&
+          Number(reviewerMatch?.[1]) === epochView?.number
+        );
+      })
+    : undefined;
   const checks = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
@@ -240,13 +284,15 @@ export function assertS03CandidateReviewGate(status, pr, { sourceRevision, curre
     epoch?.branch === status?.git?.branch,
     epoch?.base_branch === pr?.baseRefName,
     epoch?.base_sha === currentBaseSha,
+    epoch?.reviewed_base_sha === currentBaseSha,
+    pr?.baseRefOid === currentBaseSha,
     epoch?.candidate_sha === sourceRevision,
     epoch?.ci?.sha === sourceRevision,
     epoch?.ci?.status === 'SUCCESS',
     epoch?.state === 'REVIEW_PASSED',
     epoch?.advances_frontier_ids?.includes('S03') === true,
     epoch?.review_pass_sha === sourceRevision,
-    passRecorded,
+    Boolean(passRecord),
     epoch?.scope_closure?.related_work_remaining === false,
     typeof epoch?.scope_closure?.why_not_review_earlier === 'string' &&
       epoch.scope_closure.why_not_review_earlier.trim().length > 0,
@@ -266,7 +312,12 @@ export function assertS03CandidateReviewGate(status, pr, { sourceRevision, curre
       'S03 query requires a clean exact Candidate, current-base CI, Harness readiness, and recorded Luna Max PASS.',
     );
   }
-  return { prNumber: epochView.number, candidateSha: sourceRevision };
+  return {
+    prNumber: epochView.number,
+    candidateSha: sourceRevision,
+    baseSha: currentBaseSha,
+    reviewerId: passRecord.reviewer_id,
+  };
 }
 
 function mandatoryChecksSuccessful(checks) {
@@ -330,7 +381,7 @@ function readActivePr(prNumber) {
         'view',
         String(prNumber),
         '--json',
-        'state,isDraft,headRefOid,headRefName,baseRefName,statusCheckRollup',
+        'state,isDraft,headRefOid,headRefName,baseRefName,baseRefOid,statusCheckRollup',
       ]),
     );
   } catch {
@@ -435,10 +486,20 @@ function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
 }
 
 function writeClaimState(claimPath, claim, state, summary) {
+  let latestClaim = claim;
+  try {
+    latestClaim = JSON.parse(readFileSync(claimPath, 'utf8'));
+  } catch {
+    /* Preserve the in-memory create-once claim when no server update exists. */
+  }
   const temporaryPath = `${claimPath}.${process.pid}.tmp`;
   writeFileSync(
     temporaryPath,
-    `${JSON.stringify({ ...claim, state, updatedAt: new Date().toISOString(), summary }, null, 2)}\n`,
+    `${JSON.stringify(
+      { ...latestClaim, state, updatedAt: new Date().toISOString(), summary },
+      null,
+      2,
+    )}\n`,
     { mode: 0o600, flag: 'wx' },
   );
   renameSync(temporaryPath, claimPath);
@@ -452,7 +513,7 @@ function readServerSummary(summaryPath) {
   }
 }
 
-function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
+function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256, baseSha, reviewerId) {
   if (
     !summary ||
     summary.serverProfile !== 's03-one-tool-anonymous-public-v1' ||
@@ -462,6 +523,12 @@ function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
     summary.serverToolNames?.length !== 1 ||
     summary.serverToolNames[0] !== TOOL_NAME ||
     summary.serverToolCount !== 1 ||
+    summary.claimAuthorizationStatus !== 'valid' ||
+    summary.serverCallClaimStatus !== 'claimed' ||
+    summary.claimSourceRevision !== sourceRevision ||
+    summary.claimBundleSha256 !== bundleSha256 ||
+    summary.claimBaseSha !== baseSha ||
+    summary.claimReviewerId !== reviewerId ||
     summary.expectedArgumentsSha256 !== sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)) ||
     summary.argumentMatch !== true ||
     summary.allowedCallCount !== 1 ||
@@ -486,10 +553,29 @@ function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
   );
 }
 
-function invokeCodex({ nodePath, summaryPath, sourceRevision, bundleSha256 }) {
+function invokeCodex({
+  nodePath,
+  summaryPath,
+  sourceRevision,
+  bundleSha256,
+  claimPath,
+  authorizationToken,
+  currentBaseSha,
+  reviewerId,
+}) {
   const result = spawnSync(
     'codex',
-    buildCodexExecArgs({ root: ROOT, nodePath, summaryPath, sourceRevision, bundleSha256 }),
+    buildCodexExecArgs({
+      root: ROOT,
+      nodePath,
+      summaryPath,
+      sourceRevision,
+      bundleSha256,
+      claimPath,
+      authorizationToken,
+      currentBaseSha,
+      reviewerId,
+    }),
     {
       cwd: ROOT,
       env: sanitizeS03CodexEnvironment(),
@@ -530,7 +616,11 @@ function runS03() {
     throw new Error('S03 Candidate or runtime bundle changed before one-shot claim creation.');
   }
   const currentGate = assertCandidateGate(sourceRevision);
-  if (currentGate.prNumber !== initialGate.prNumber) {
+  if (
+    currentGate.prNumber !== initialGate.prNumber ||
+    currentGate.baseSha !== initialGate.baseSha ||
+    currentGate.reviewerId !== initialGate.reviewerId
+  ) {
     throw new Error('Run 95 changed active Epochs during the S03 query preflight.');
   }
   const frontierCheck = spawnSync('pnpm', ['harness', 'frontier:check'], {
@@ -544,7 +634,12 @@ function runS03() {
     throw new Error('S03 query requires a passing canonical frontier:check.');
   }
 
-  const claim = createS03OneShotClaim(claimPath, sourceRevision, bundleSha256, ROOT);
+  const authorizationToken = randomBytes(32).toString('hex');
+  const claim = createS03OneShotClaim(claimPath, sourceRevision, bundleSha256, ROOT, {
+    authorizationToken,
+    baseSha: initialGate.baseSha,
+    reviewerId: initialGate.reviewerId,
+  });
   const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), `bgk-s03-run95-${process.pid}-`));
   const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
   const safeClaimSummary = {
@@ -563,6 +658,10 @@ function runS03() {
       summaryPath,
       sourceRevision,
       bundleSha256,
+      claimPath,
+      authorizationToken,
+      currentBaseSha: initialGate.baseSha,
+      reviewerId: initialGate.reviewerId,
     });
     const parsed = parseCodexJsonl(execution.stdout);
     const eventsSummary = summarizeCodexEvents(parsed.events);
@@ -571,6 +670,8 @@ function runS03() {
       serverSummary,
       sourceRevision,
       bundleSha256,
+      initialGate.baseSha,
+      initialGate.reviewerId,
     );
     const completedCall = eventsSummary.completedMcpCalls[0];
     const answerResult = verifyS03VoiceActorOverlapAnswer(
@@ -581,9 +682,16 @@ function runS03() {
     );
     let candidateMatches =
       summaryMatches && currentCandidateBundleMatches(sourceRevision, bundleSha256);
+    let postQueryBaseSha = null;
     try {
       const postQueryGate = assertCandidateGate(sourceRevision);
-      candidateMatches = candidateMatches && postQueryGate.prNumber === initialGate.prNumber;
+      postQueryBaseSha = currentRemoteBase();
+      candidateMatches =
+        candidateMatches &&
+        postQueryGate.prNumber === initialGate.prNumber &&
+        postQueryGate.baseSha === initialGate.baseSha &&
+        postQueryGate.reviewerId === initialGate.reviewerId &&
+        postQueryBaseSha === initialGate.baseSha;
     } catch {
       candidateMatches = false;
     }
@@ -629,7 +737,41 @@ function runS03() {
       return 1;
     }
 
+    const baseSha = postQueryBaseSha;
+    if (baseSha !== initialGate.baseSha) {
+      throw new Error('S03 target Base changed before sanitized evidence authorization.');
+    }
+    const toolOutput = completedCall.result;
+    const answer = eventsSummary.answer;
+    const toolTextUtf8Bytes = textResultBytes(toolOutput);
+    const reportAuthorization = {
+      sourceRevision,
+      baseSha,
+      bundleSha256,
+      prNumber: initialGate.prNumber,
+      reviewerId: initialGate.reviewerId,
+      model: MODEL,
+      reasoningEffort: REASONING_EFFORT,
+      codexCliVersion,
+      processExitCode: execution.exitCode,
+      eventStreamParsed: parsed.parsed && eventsSummary.eventStreamComplete,
+      eventsSha256: s03EventEvidenceSha256({
+        eventsSummary,
+        queryArguments: completedCall.arguments,
+        toolOutput,
+        answer,
+        toolTextUtf8Bytes,
+      }),
+      serverSummarySha256: s03ServerSummarySha256(serverSummary),
+      toolTextUtf8Bytes,
+    };
+    const reportReadyClaim = prepareS03ReportClaim(
+      claimPath,
+      authorizationToken,
+      reportAuthorization,
+    );
     const report = writeS03AgentMcpReport({
+      authorizationToken,
       model: MODEL,
       reasoningEffort: REASONING_EFFORT,
       codexCliVersion,
@@ -638,17 +780,21 @@ function runS03() {
       eventStreamParsed: parsed.parsed && eventsSummary.eventStreamComplete,
       eventsSummary,
       queryArguments: completedCall.arguments,
-      toolOutput: completedCall.result,
-      answer: eventsSummary.answer,
-      toolTextUtf8Bytes: textResultBytes(completedCall.result),
+      toolOutput,
+      answer,
+      toolTextUtf8Bytes,
       sourceRevision,
       bundleSha256,
       prNumber: initialGate.prNumber,
-      baseSha: currentRemoteBase(),
+      baseSha,
+      reviewerId: initialGate.reviewerId,
       claimPath,
       serverSummary,
     });
-    writeClaimState(claimPath, claim, 'REPORT_WRITTEN', {
+    if (!report.passed || !report.report) {
+      throw new Error('S03 sanitized report failed its authenticated evidence checks.');
+    }
+    writeClaimState(claimPath, reportReadyClaim, 'REPORT_WRITTEN', {
       ...safeClaimSummary,
       reportPath: report.reportPath,
       answerChecks: report.report.answerChecks,

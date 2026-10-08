@@ -88,12 +88,16 @@ function normalizedCredits(work) {
 }
 
 function hasUnsupportedCompletenessClaim(value) {
-  if (typeof value !== 'string') return true;
-  const forbiddenPhrases = /(?:完整履历|全部演出|全系列完整|官方唯一顺序)/u;
-  const explicitNegation = /(?:不是|不代表|不构成|不能证明|不等于|不意味着|未能证明|没有)/u;
-  return value
-    .split(/[；。]/u)
-    .some((clause) => forbiddenPhrases.test(clause) && !explicitNegation.test(clause));
+  if (typeof value === 'string') {
+    const forbiddenPhrases = /(?:完整履历|全部演出|全系列完整|官方唯一顺序)/u;
+    const explicitNegation = /(?:不是|不代表|不构成|不能证明|不等于|不意味着|未能证明|没有)/u;
+    return value
+      .split(/[；。]/u)
+      .some((clause) => forbiddenPhrases.test(clause) && !explicitNegation.test(clause));
+  }
+  if (Array.isArray(value)) return value.some(hasUnsupportedCompletenessClaim);
+  if (isRecord(value)) return Object.values(value).some(hasUnsupportedCompletenessClaim);
+  return false;
 }
 
 export function verifyS03VoiceActorOverlapAnswer(answer, queryArguments, toolOutput, toolCalls) {
@@ -155,7 +159,17 @@ export function verifyS03VoiceActorOverlapAnswer(answer, queryArguments, toolOut
     credits: normalizedCredits(work),
   }));
   const expectedAnswerCoverage = expectedCoverage(presence || {});
+  const expectedAnswerKeys = [
+    'caveat',
+    'coverage',
+    'distinctWorks',
+    'matchStatus',
+    'personId',
+    'works',
+  ];
   const answerRowsMatch =
+    isRecord(parsedAnswer) &&
+    sameJson(Object.keys(parsedAnswer).sort(), expectedAnswerKeys) &&
     Array.isArray(parsedAnswer?.works) &&
     parsedAnswer.works.length === expectedWorks.length &&
     expectedWorks.every((expected, index) => sameJson(parsedAnswer.works[index], expected));
@@ -179,9 +193,7 @@ export function verifyS03VoiceActorOverlapAnswer(answer, queryArguments, toolOut
       typeof parsedAnswer?.caveat === 'string' &&
       parsedAnswer.caveat.includes('当前匿名可见') &&
       parsedAnswer.caveat.includes('无分页'),
-    noUnsupportedCompletenessClaim:
-      typeof parsedAnswer?.caveat === 'string' &&
-      !hasUnsupportedCompletenessClaim(parsedAnswer.caveat),
+    noUnsupportedCompletenessClaim: !hasUnsupportedCompletenessClaim(parsedAnswer),
     noMarkdownFormatting:
       typeof answer === 'string' && !/^\s*```/u.test(answer) && !/^\s*#/mu.test(answer),
   };

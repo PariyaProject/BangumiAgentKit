@@ -6,6 +6,10 @@ export function buildCodexExecArgs(input: {
   summaryPath: string;
   sourceRevision: string;
   bundleSha256: string;
+  claimPath: string;
+  authorizationToken: string;
+  currentBaseSha: string;
+  reviewerId: string;
 }): string[];
 export function validateRunnerArgs(args: string[]): 'help' | 'run';
 export function canonicalS03ClaimPath(root?: string, configuredDirectory?: string): string;
@@ -14,9 +18,10 @@ export function createS03OneShotClaim(
   sourceRevision: string,
   bundleSha256: string,
   root?: string,
+  authorization: { authorizationToken: string; baseSha: string; reviewerId: string },
 ): Record<string, unknown>;
 export function assertS03CandidateReviewGate(
   status: unknown,
   pr: unknown,
   state: { sourceRevision: string; currentBaseSha: string },
-): { prNumber: number; candidateSha: string };
+): { prNumber: number; candidateSha: string; baseSha: string; reviewerId: string };

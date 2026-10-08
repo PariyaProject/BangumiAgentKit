@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { gitRepositoryText } from '../lib/g26-mcp-bundle.mjs';
 import { computeMcpBundleSha256, readS03McpBundleAttestation } from '../lib/s03-mcp-bundle.mjs';
 import {
+  s03EventEvidenceSha256,
+  s03ServerSummarySha256,
+  verifyS03ReportClaim,
+} from '../lib/s03-one-shot-authorization.mjs';
+import {
   S03_ANSWER_CHECK_METHOD,
   S03_EXPECTED_QUERY_ARGUMENTS,
   verifyS03VoiceActorOverlapAnswer,
@@ -52,34 +57,51 @@ function assertClaim(input, root, sourceRevision, bundleSha256) {
     throw new Error('S03 report requires the local create-once claim path.');
   }
   const claimPath = path.resolve(input.claimPath);
-  const claimDirectory = path.dirname(claimPath);
+  const claim = verifyS03ReportClaim(claimPath, input.authorizationToken);
   if (
-    path.basename(claimDirectory) !== 'pariya-agent-state' ||
-    path.basename(path.dirname(claimDirectory)) !== '.git'
-  ) {
-    throw new Error('S03 one-shot claim must stay under local .git/pariya-agent-state.');
-  }
-  let claim;
-  try {
-    claim = JSON.parse(readFileSync(claimPath, 'utf8'));
-  } catch {
-    throw new Error('S03 report requires the canonical create-once query claim.');
-  }
-  if (
-    claim?.schemaVersion !== 1 ||
-    claim.runNumber !== 95 ||
-    claim.frontierId !== 'S03' ||
-    claim.state !== 'CLAIMED' ||
     claim.sourceRevision !== sourceRevision ||
     claim.bundleSha256 !== bundleSha256 ||
-    claim.expectedArgumentsSha256 !== sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS))
+    claim.expectedArgumentsSha256 !== sha256(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS)) ||
+    claim.baseSha !== input.baseSha ||
+    claim.reviewerId !== input.reviewerId
   ) {
-    throw new Error('S03 report Candidate does not match the active one-shot claim.');
+    throw new Error('S03 report Candidate does not match the authenticated one-shot claim.');
   }
   const commonDirectory = path.resolve(root, git(root, ['rev-parse', '--git-common-dir']));
-  if (claimDirectory === path.join(commonDirectory, 'pariya-agent-state')) return;
-  if (!path.isAbsolute(input.claimPath)) {
-    throw new Error('S03 claim path must be absolute.');
+  const claimDirectory = path.dirname(claimPath);
+  if (
+    claimDirectory !== path.join(commonDirectory, 'pariya-agent-state') &&
+    !(
+      path.basename(claimDirectory) === 'pariya-agent-state' &&
+      path.basename(path.dirname(claimDirectory)) === '.git'
+    )
+  ) {
+    throw new Error('S03 claim path is outside local .git/pariya-agent-state.');
+  }
+  const authorization = claim.reportAuthorization;
+  if (
+    authorization?.sourceRevision !== sourceRevision ||
+    authorization?.baseSha !== input.baseSha ||
+    authorization?.bundleSha256 !== bundleSha256 ||
+    authorization?.prNumber !== input.prNumber ||
+    authorization?.reviewerId !== input.reviewerId ||
+    authorization?.model !== input.model ||
+    authorization?.reasoningEffort !== input.reasoningEffort ||
+    authorization?.codexCliVersion !== input.codexCliVersion ||
+    authorization?.processExitCode !== input.processExitCode ||
+    authorization?.eventStreamParsed !== input.eventStreamParsed ||
+    authorization?.toolTextUtf8Bytes !== input.toolTextUtf8Bytes ||
+    authorization?.serverSummarySha256 !== s03ServerSummarySha256(input.serverSummary) ||
+    authorization?.eventsSha256 !==
+      s03EventEvidenceSha256({
+        eventsSummary: input.eventsSummary,
+        queryArguments: input.queryArguments,
+        toolOutput: input.toolOutput,
+        answer: input.answer,
+        toolTextUtf8Bytes: input.toolTextUtf8Bytes,
+      })
+  ) {
+    throw new Error('S03 report input does not match the runner-authenticated evidence digest.');
   }
 }
 
@@ -104,14 +126,6 @@ export function assertS03ReportCandidate(input, root = ROOT) {
   }
   assertClaim(input, root, sourceRevision, bundleSha256);
   return { sourceRevision, bundleSha256 };
-}
-
-function readInput() {
-  const input = readFileSync(0, 'utf8');
-  if (!input || Buffer.byteLength(input, 'utf8') > 12 * 1024 * 1024) {
-    throw new Error('S03 report input is empty or exceeds its in-memory bound.');
-  }
-  return JSON.parse(input);
 }
 
 export function writeS03AgentMcpReport(input, root = ROOT) {
@@ -239,15 +253,4 @@ export function writeS03AgentMcpReport(input, root = ROOT) {
     flag: 'wx',
   });
   return { passed: true, reportPath: S03_REPORT_RELATIVE_PATH, report };
-}
-
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    const result = writeS03AgentMcpReport(readInput());
-    process.stdout.write(`${JSON.stringify(result)}\n`);
-    process.exitCode = result.passed ? 0 : 1;
-  } catch {
-    process.stdout.write(`${JSON.stringify({ passed: false, state: 'REPORT_REJECTED' })}\n`);
-    process.exitCode = 1;
-  }
 }

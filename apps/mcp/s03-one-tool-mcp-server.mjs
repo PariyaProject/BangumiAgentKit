@@ -10,7 +10,6 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import {
   authorizeToolCall,
   canonicalJson,
-  claimSingleToolCall,
   filterAllowedTools,
   publicReadOnlyToolAnnotations,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
@@ -19,6 +18,11 @@ import {
   computeMcpBundleSha256,
   readS03McpBundleAttestation,
 } from '../../scripts/lib/s03-mcp-bundle.mjs';
+import {
+  captureS03ServerResult,
+  claimS03ServerCall,
+  verifyS03ServerAuthorization,
+} from '../../scripts/lib/s03-one-shot-authorization.mjs';
 import { gitRepositoryText } from '../../scripts/lib/g26-mcp-bundle.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
@@ -34,7 +38,17 @@ function parseArguments(argv) {
   const values = new Map();
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
-    if (!['--summary-file', '--candidate-sha', '--bundle-sha256'].includes(key)) {
+    if (
+      ![
+        '--summary-file',
+        '--candidate-sha',
+        '--bundle-sha256',
+        '--base-sha',
+        '--reviewer-id',
+        '--claim-path',
+        '--authorization-token',
+      ].includes(key)
+    ) {
       throw new Error(`Unknown argument: ${key}`);
     }
     if (values.has(key) || index + 1 >= argv.length) throw new Error(`Invalid ${key} argument.`);
@@ -44,11 +58,31 @@ function parseArguments(argv) {
   const summaryPath = values.get('--summary-file');
   const candidateSha = values.get('--candidate-sha');
   const bundleSha256 = values.get('--bundle-sha256');
-  if (!summaryPath || !candidateSha || !bundleSha256) {
-    throw new Error('--summary-file, --candidate-sha, and --bundle-sha256 are required.');
+  const baseSha = values.get('--base-sha');
+  const reviewerId = values.get('--reviewer-id');
+  const claimPath = values.get('--claim-path');
+  const authorizationToken = values.get('--authorization-token');
+  if (
+    !summaryPath ||
+    !candidateSha ||
+    !bundleSha256 ||
+    !baseSha ||
+    !reviewerId ||
+    !claimPath ||
+    !authorizationToken
+  ) {
+    throw new Error(
+      '--summary-file, --candidate-sha, --bundle-sha256, --base-sha, --reviewer-id, --claim-path, and --authorization-token are required.',
+    );
   }
-  if (!/^[0-9a-f]{40}$/u.test(candidateSha) || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
-    throw new Error('Exact Candidate and built MCP bundle hashes are required.');
+  if (
+    !/^[0-9a-f]{40}$/u.test(candidateSha) ||
+    !/^[0-9a-f]{64}$/u.test(bundleSha256) ||
+    !/^[0-9a-f]{40}$/u.test(baseSha) ||
+    !/^gpt-6-luna-max-run95-s03-pr\d+-round[1-6]$/u.test(reviewerId) ||
+    !/^[0-9a-f]{64}$/u.test(authorizationToken)
+  ) {
+    throw new Error('Exact Candidate, MCP bundle, and one-shot authorization tokens are required.');
   }
   const absoluteSummaryPath = path.resolve(summaryPath);
   if (!absoluteSummaryPath.startsWith(`${path.resolve(os.tmpdir())}${path.sep}`)) {
@@ -56,7 +90,15 @@ function parseArguments(argv) {
       'S03 summary output must stay inside the operating-system temporary directory.',
     );
   }
-  return { summaryPath: absoluteSummaryPath, candidateSha, bundleSha256 };
+  return {
+    summaryPath: absoluteSummaryPath,
+    candidateSha,
+    bundleSha256,
+    baseSha,
+    reviewerId,
+    claimPath: path.resolve(claimPath),
+    authorizationToken,
+  };
 }
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
@@ -128,6 +170,16 @@ async function main(argv = process.argv.slice(2)) {
   if (!runtimeCandidateMatches(config.candidateSha, config.bundleSha256)) {
     throw new Error('S03 MCP server is not running the immutable exact Candidate bundle.');
   }
+  const expectedArgumentsSha256 = createHash('sha256')
+    .update(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS), 'utf8')
+    .digest('hex');
+  const claim = verifyS03ServerAuthorization(config.claimPath, config.authorizationToken, {
+    sourceRevision: config.candidateSha,
+    bundleSha256: config.bundleSha256,
+    expectedArgumentsSha256,
+    baseSha: config.baseSha,
+    reviewerId: config.reviewerId,
+  });
 
   const catalogBytes = fs.readFileSync(path.join(PRODUCT_ROOT, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
@@ -152,9 +204,6 @@ async function main(argv = process.argv.slice(2)) {
     .update(canonicalJson(mcpTool.inputSchema), 'utf8')
     .digest('hex');
   const catalogSha256 = createHash('sha256').update(catalogBytes).digest('hex');
-  const expectedArgumentsSha256 = createHash('sha256')
-    .update(canonicalJson(S03_EXPECTED_QUERY_ARGUMENTS), 'utf8')
-    .digest('hex');
   const server = new Server(
     { name: 'bangumi-codex-s03-one-tool-qa', version: '1.0.0' },
     { capabilities: { tools: {} } },
@@ -166,6 +215,12 @@ async function main(argv = process.argv.slice(2)) {
     serverProfile: 's03-one-tool-anonymous-public-v1',
     sourceRevision: config.candidateSha,
     bundleSha256: config.bundleSha256,
+    claimAuthorizationStatus: 'valid',
+    serverCallClaimStatus: 'not_claimed',
+    claimSourceRevision: claim.sourceRevision,
+    claimBundleSha256: claim.bundleSha256,
+    claimBaseSha: claim.baseSha,
+    claimReviewerId: claim.reviewerId,
     catalogSha256,
     toolName: TOOL_NAME,
     toolDescriptionSha256,
@@ -203,11 +258,22 @@ async function main(argv = process.argv.slice(2)) {
       expectedArguments: S03_EXPECTED_QUERY_ARGUMENTS,
       completedCalls: allowedCallCount,
     });
-    if (
-      !call.allowed ||
-      !claimSingleToolCall(`${config.summaryPath}.call-claimed`) ||
-      !runtimeCandidateMatches(config.candidateSha, config.bundleSha256)
-    ) {
+    let oneShotClaimed = false;
+    try {
+      oneShotClaimed =
+        call.allowed &&
+        runtimeCandidateMatches(config.candidateSha, config.bundleSha256) &&
+        claimS03ServerCall(config.claimPath, config.authorizationToken, {
+          sourceRevision: config.candidateSha,
+          bundleSha256: config.bundleSha256,
+          expectedArgumentsSha256,
+          baseSha: config.baseSha,
+          reviewerId: config.reviewerId,
+        });
+    } catch {
+      oneShotClaimed = false;
+    }
+    if (!oneShotClaimed) {
       deniedCallCount += 1;
       summary = { ...summary, deniedCallCount };
       writeSanitizedSummary(config.summaryPath, summary);
@@ -218,7 +284,12 @@ async function main(argv = process.argv.slice(2)) {
     }
 
     allowedCallCount += 1;
-    summary = { ...summary, allowedCallCount, argumentMatch: true };
+    summary = {
+      ...summary,
+      allowedCallCount,
+      argumentMatch: true,
+      serverCallClaimStatus: 'claimed',
+    };
     writeSanitizedSummary(config.summaryPath, summary);
     try {
       const identity = await identityProvider.resolveContext(request);
@@ -230,6 +301,7 @@ async function main(argv = process.argv.slice(2)) {
       if (!runtimeCandidateMatches(config.candidateSha, config.bundleSha256)) {
         summary = { ...summary, serverResultStatus: 'ERROR', errorCode: 'CANDIDATE_DRIFT' };
         writeSanitizedSummary(config.summaryPath, summary);
+        captureS03ServerResult(config.claimPath, config.authorizationToken, summary);
         return {
           content: [{ type: 'text', text: 'S03 result rejected because the Candidate changed.' }],
           isError: true,
@@ -245,6 +317,7 @@ async function main(argv = process.argv.slice(2)) {
         },
       };
       writeSanitizedSummary(config.summaryPath, summary);
+      captureS03ServerResult(config.claimPath, config.authorizationToken, summary);
       const presentation = presentMcpToolResult(TOOL_NAME, result);
       return {
         content: [{ type: 'text', text: presentation.text }],
@@ -260,6 +333,11 @@ async function main(argv = process.argv.slice(2)) {
         errorCode: typeof publicError.code === 'string' ? publicError.code : 'UNKNOWN_ERROR',
       };
       writeSanitizedSummary(config.summaryPath, summary);
+      try {
+        captureS03ServerResult(config.claimPath, config.authorizationToken, summary);
+      } catch {
+        /* The consumed global call lock still prevents any retry. */
+      }
       return {
         content: [
           {
