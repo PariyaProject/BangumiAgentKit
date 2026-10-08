@@ -91,6 +91,76 @@ describe('bangumi.render_query_subjects', () => {
     );
   });
 
+  it('parses season=current and renders the resolved quarter facet', async () => {
+    const provider = {
+      getSubject: vi.fn(async () => ({ state: 'not_found' as const })),
+      getSubjectStats: vi.fn(async () => ({ state: 'not_found' as const })),
+      searchSubjects: vi.fn(async (request: { limit: number; offset: number }) => ({
+        state: 'ok' as const,
+        data: {
+          items: [],
+          total: 0,
+          totalKind: 'estimated' as const,
+          limit: request.limit,
+          offset: request.offset,
+        },
+        evidence: {},
+      })),
+      browseSubjects: vi.fn(async (request: { limit: number; offset: number }) => ({
+        state: 'ok' as const,
+        data: {
+          items: [],
+          total: 0,
+          totalKind: 'exact' as const,
+          limit: request.limit,
+          offset: request.offset,
+        },
+        evidence: {},
+      })),
+    };
+    const providerRegistry = new ProviderRegistry({ v0: provider });
+    const renderCard = vi.fn(async (_viewModel: unknown) => ({
+      buffer: Buffer.from('png'),
+      width: 640,
+      height: 320,
+      template: 'discovery-results' as const,
+      templateVersion: 1,
+      cacheKey: 'current-season-fixture',
+      warnings: [],
+    }));
+    const saveArtifact = vi.fn(async () => ({
+      id: 'art_current_season',
+      mimeType: 'image/png' as const,
+      width: 640,
+      height: 320,
+      expiresAt: '2026-08-12T00:00:00.000Z',
+    }));
+    const [tool] = createRenderPresentationTools(
+      { renderCard } as never,
+      { saveArtifact } as never,
+    ).filter((item) => item.name === 'bangumi.render_query_subjects');
+    const parsed = tool!.input.safeParse({ media: 'anime', season: 'current' });
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+
+    const execute = tool!.execute as unknown as (
+      input: { media: 'anime'; season: 'current' },
+      context: { principalId: string; botInstanceId: string; conversationId: string },
+      deps: { providerRegistry: ProviderRegistry },
+    ) => Promise<unknown>;
+    await execute(
+      parsed.data as { media: 'anime'; season: 'current' },
+      { principalId: 'test', botInstanceId: 'test', conversationId: 'test' },
+      { providerRegistry },
+    );
+
+    expect(provider.searchSubjects).toHaveBeenCalledTimes(1);
+    const facets = (renderCard.mock.calls[0]?.[0] as { query: { facets: string[] } }).query.facets;
+    expect(facets.some((facet) => /^季度：\d{4}-(winter|spring|summer|autumn)$/u.test(facet))).toBe(
+      true,
+    );
+  });
+
   it('honors explicit explain none without changing the presentation contract', async () => {
     const provider = {
       getSubject: vi.fn(async () => ({ state: 'not_found' as const })),

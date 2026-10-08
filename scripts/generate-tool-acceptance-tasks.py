@@ -647,10 +647,14 @@ CODEX_D05_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-d05-agent-mcp-report.mjs': (
         "evidenceKind: 'codex_cli_d05_current_season_agent_mcp'",
         'verifyD05CurrentSeasonAnswer(',
+        'export function assertD05ReportCandidate(',
+        'function readCanonicalClaim(',
         "rawAnswerPersisted: false",
     ),
     'scripts/acceptance/write-d05-mcp-bundle-attestation.mjs': (
         'export function writeD05McpBundleAttestation(',
+        'const previousAttestationBytes = existsSync(outputPath)',
+        'readD05McpBundleAttestation(root)',
     ),
     'scripts/lib/d05-mcp-bundle.mjs': (
         'export function readD05McpBundleAttestation(',

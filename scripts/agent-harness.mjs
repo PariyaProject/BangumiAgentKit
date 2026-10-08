@@ -38,6 +38,7 @@ import {
   recordIntegrationBlocked,
   reconcileFrontierReviewReservation,
   reconcileReviewReservation,
+  refreshPassedCandidate,
   restoreIntegrationAuthority,
   resumeDiscoveryAfterFrontierRejection,
   resumeReviewLimitForFinalCorrective,
@@ -867,7 +868,8 @@ function commandCandidateCheck(options) {
   const prNumber = required(options, 'pr');
   const evidence = readJsonFile(required(options, 'evidence'));
   const epochResult = epochState(prNumber);
-  const epoch = structuredClone(epochResult.state);
+  let epoch = structuredClone(epochResult.state);
+  const refreshingPassedCandidate = epoch.state === 'REVIEW_PASSED';
   const reconciledWithoutLaunch =
     epoch.state === 'REVIEW_RESERVATION_RECONCILED' &&
     epoch.review?.consumed === 0 &&
@@ -880,6 +882,7 @@ function commandCandidateCheck(options) {
       'PASS_INVALIDATED_BASE_DRIFT',
       'FINAL_CORRECTIVE_REQUIRED',
       'FINAL_CORRECTIVE_READY',
+      ...(refreshingPassedCandidate ? ['REVIEW_PASSED'] : []),
     ].includes(epoch.state) &&
     !reconciledWithoutLaunch
   ) {
@@ -908,7 +911,33 @@ function commandCandidateCheck(options) {
       },
     );
   }
-  epoch.candidate_sha = head;
+  if (refreshingPassedCandidate) {
+    if (epoch.review_pass_sha !== epoch.candidate_sha) {
+      throw new HarnessInvariantError(
+        'PASSED_CANDIDATE_AUTHORITY_INVALID',
+        'The stored PASS does not authorize the currently recorded Candidate',
+      );
+    }
+    if (head === epoch.review_pass_sha) {
+      throw new HarnessInvariantError(
+        'PASSED_CANDIDATE_UNCHANGED',
+        'The passed Candidate is unchanged; no refresh is needed or allowed',
+      );
+    }
+    if (!isAncestor(epoch.review_pass_sha, head)) {
+      throw new HarnessInvariantError(
+        'PASSED_CANDIDATE_NOT_ANCESTOR',
+        'A refreshed Candidate must preserve the exact passed Candidate in its history',
+      );
+    }
+    epoch = refreshPassedCandidate(epoch, {
+      candidateSha: head,
+      baseSha,
+      reason: evidence.candidate_refresh_reason,
+    });
+  } else {
+    epoch.candidate_sha = head;
+  }
   epoch.validation = evidence.validation ?? epoch.validation;
   epoch.scope_closure = evidence.scope_closure;
   epoch.adversarial_preflight = evidence.adversarial_preflight;

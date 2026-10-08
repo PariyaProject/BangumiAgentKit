@@ -84,7 +84,7 @@ describe('direct execute coverage for discovery tools', () => {
     expect(renderQuerySubjectsInput.parse({ season: '2026-autumn' })).toMatchObject({
       season: '2026-autumn',
     });
-    expect(renderQuerySubjectsInput.safeParse({ season: 'current' }).success).toBe(false);
+    expect(renderQuerySubjectsInput.safeParse({ season: 'current' }).success).toBe(true);
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-10-07T15:00:00.000Z'));

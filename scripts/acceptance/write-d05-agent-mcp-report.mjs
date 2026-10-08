@@ -6,12 +6,12 @@ import {
   D05_EXPECTED_QUERY_ARGUMENTS,
   verifyD05CurrentSeasonAnswer,
 } from './d05-current-season-answer-check.mjs';
+import { computeMcpBundleSha256, readD05McpBundleAttestation } from '../lib/d05-mcp-bundle.mjs';
+import { gitRepositoryText } from '../lib/g26-mcp-bundle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const REPORT_PATH = path.join(
-  ROOT,
-  'docs/live-probes/d05-current-season-multitag-heat-agent-mcp-run95.json',
-);
+const REPORT_RELATIVE_PATH =
+  'docs/live-probes/d05-current-season-multitag-heat-agent-mcp-run95.json';
 const TARGET_TOOL = 'bangumi.query_subjects';
 const SERVER_ID = 'bgk_d05_one_tool';
 const MODEL = 'gpt-6-luna';
@@ -41,6 +41,63 @@ function canonicalize(value) {
   return value;
 }
 
+const EXPECTED_ARGUMENTS_SHA256 = sha256(
+  JSON.stringify(canonicalize(D05_EXPECTED_QUERY_ARGUMENTS)),
+);
+
+function git(root, args) {
+  return gitRepositoryText(root, args);
+}
+
+function readCanonicalClaim(root, sourceRevision, bundleSha256) {
+  const gitCommonDirectory = git(root, ['rev-parse', '--git-common-dir']);
+  const claimPath = path.join(
+    path.resolve(root, gitCommonDirectory),
+    'pariya-agent-state',
+    'd05-run95-one-shot-claim.json',
+  );
+  let claim;
+  try {
+    claim = JSON.parse(readFileSync(claimPath, 'utf8'));
+  } catch {
+    throw new Error('D05 report requires the canonical create-once query claim.');
+  }
+  if (
+    claim?.schemaVersion !== 1 ||
+    claim.runNumber !== 95 ||
+    claim.frontierId !== 'D05' ||
+    claim.state !== 'CLAIMED' ||
+    claim.sourceRevision !== sourceRevision ||
+    claim.bundleSha256 !== bundleSha256 ||
+    claim.expectedArgumentsSha256 !== EXPECTED_ARGUMENTS_SHA256
+  ) {
+    throw new Error('D05 report Candidate does not match the active one-shot claim.');
+  }
+}
+
+export function assertD05ReportCandidate(input, root = ROOT) {
+  if (git(root, ['status', '--porcelain'])) {
+    throw new Error('D05 report must be bound to a clean exact Candidate revision.');
+  }
+  const sourceRevision = git(root, ['rev-parse', 'HEAD']);
+  if (
+    !/^[0-9a-f]{40}$/u.test(input?.sourceRevision ?? '') ||
+    input.sourceRevision !== sourceRevision
+  ) {
+    throw new Error('D05 report Candidate does not match the current checkout.');
+  }
+  const bundleSha256 = computeMcpBundleSha256(root);
+  if (
+    !/^[0-9a-f]{64}$/u.test(input?.bundleSha256 ?? '') ||
+    input.bundleSha256 !== bundleSha256 ||
+    readD05McpBundleAttestation(root) !== bundleSha256
+  ) {
+    throw new Error('D05 report does not match the exact attested MCP bundle.');
+  }
+  readCanonicalClaim(root, sourceRevision, bundleSha256);
+  return { sourceRevision, bundleSha256 };
+}
+
 function readInput() {
   const input = readFileSync(0, 'utf8');
   if (!input || Buffer.byteLength(input, 'utf8') > 12 * 1024 * 1024) {
@@ -49,7 +106,8 @@ function readInput() {
   return JSON.parse(input);
 }
 
-export function writeD05AgentMcpReport(input) {
+export function writeD05AgentMcpReport(input, root = ROOT) {
+  const { sourceRevision, bundleSha256 } = assertD05ReportCandidate(input, root);
   const answer = typeof input?.answer === 'string' ? input.answer : '';
   const toolOutput = input?.toolOutput;
   const toolCalls = input?.toolCalls;
@@ -102,10 +160,11 @@ export function writeD05AgentMcpReport(input) {
       warningCodes: answerResult.warningCodes ?? [],
     };
   }
-  if (existsSync(REPORT_PATH))
+  const reportPath = path.join(root, REPORT_RELATIVE_PATH);
+  if (existsSync(reportPath))
     throw new Error('A D05 report already exists; refusing to overwrite it.');
 
-  const catalogBytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
+  const catalogBytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(catalogBytes.toString('utf8'));
   const catalogTool = catalog.find((item) => item?.name === TARGET_TOOL);
   if (!catalogTool || catalogTool.auth !== 'none' || catalogTool.risk !== 'read') {
@@ -119,8 +178,8 @@ export function writeD05AgentMcpReport(input) {
     scenarioId: 'D05',
     profile: 'run95-d05-current-season-multitag-heat-agent-mcp-v1',
     frontierId: 'D05',
-    sourceRevision: input.sourceRevision,
-    mcpBundleSha256: input.bundleSha256,
+    sourceRevision,
+    mcpBundleSha256: bundleSha256,
     prNumber: input.prNumber,
     baseSha: input.baseSha,
     observedAt: new Date().toISOString(),
@@ -169,14 +228,14 @@ export function writeD05AgentMcpReport(input) {
     rawAnswerPersisted: false,
     rawToolResultPersisted: false,
   };
-  writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`, {
+  writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, {
     encoding: 'utf8',
     mode: 0o644,
     flag: 'wx',
   });
   return {
     passed: true,
-    reportPath: 'docs/live-probes/d05-current-season-multitag-heat-agent-mcp-run95.json',
+    reportPath: REPORT_RELATIVE_PATH,
     report,
   };
 }

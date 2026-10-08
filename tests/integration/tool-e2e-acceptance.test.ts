@@ -528,6 +528,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       [
         ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
         'bangumi.get_person_activity',
+        'bangumi.render_query_subjects',
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
       ].sort(),
     );
@@ -611,7 +612,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_activity',
         'bangumi.render_person_collaboration',
         'bangumi.render_person_profile',
-        'bangumi.render_query_subjects',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
         'bangumi.render_series_watch_order',
@@ -874,7 +874,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_activity',
         'bangumi.render_person_collaboration',
         'bangumi.render_person_profile',
-        'bangumi.render_query_subjects',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
         'bangumi.render_series_watch_order',

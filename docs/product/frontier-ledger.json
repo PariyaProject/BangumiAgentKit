@@ -1441,16 +1441,22 @@
         "scripts/test_acceptance_evidence.py",
         "tests/discovery/query.test.ts",
         "tests/discovery/compiler.test.ts",
+        "tests/discovery/parity.test.ts",
+        "tests/discovery/render-query-tool.test.ts",
         "tests/integration/tool-direct-execute-discovery.test.ts",
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/render/discovery-results.test.ts",
         "scripts/acceptance/d05-current-season-answer-check.mjs",
         "scripts/acceptance/run-d05-codex-agent-mcp.mjs",
         "scripts/acceptance/write-d05-agent-mcp-report.mjs",
+        "scripts/acceptance/write-d05-agent-mcp-report.d.mts",
         "scripts/acceptance/write-d05-mcp-bundle-attestation.mjs",
-        "scripts/lib/d05-mcp-bundle.mjs"
+        "scripts/acceptance/write-d05-mcp-bundle-attestation.d.mts",
+        "scripts/lib/d05-mcp-bundle.mjs",
+        "tests/unit/d05-mcp-bundle-attestation-writer.test.ts",
+        "tests/unit/d05-report-writer.test.ts"
       ],
-      "next_action": "The product resolves season=current using an Asia/Tokyo runtime date, retains the canonical YYYY-season and exact half-open date range in the query plan, pushes both exact tags as AND, and labels heat as current collection count. Current local regressions cover Tokyo quarter/year boundaries, the exact D05 search request, MCP projection, Renderer facets, and sanitized answer validation. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated. Only after exact Candidate CI, Harness candidate:check, and GPT-6 Luna Max review PASS align, run the fixed anonymous D05 Agent/MCP query exactly once. Record only sanitized counters and exact returned-row checks; if inconclusive, preserve the spent claim and never retry.",
+      "next_action": "The first GPT-6 Luna Max review identified four issues, now corrected: coverage.state is checked independently of result.state; completeness negation is scoped so a site caveat cannot excuse a positive current-season claim; query and Renderer tool schemas share season=current; and the report writer requires a clean exact Candidate, matching bundle attestation, and canonical CLAIMED one-shot record. Local regressions cover these fixes plus Tokyo boundaries, exact search planning, MCP projection, Renderer execution, and sanitized reporting. Establish a fresh Candidate, exact seven-job CI, and same-reviewer GPT-6 Luna Max PASS before the single fixed anonymous D05 query. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated; if the query is inconclusive, preserve the spent claim and never retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -1463,17 +1469,24 @@
           "packages/discovery/src/query.ts: season=current resolves the invocation instant in Asia/Tokyo and normalizes to a canonical quarter and half-open range.",
           "packages/discovery/src/compiler.ts: preserves canonical season, anime type, both exact tags, air_date bounds, and descending heat in the plan/request.",
           "packages/discovery/src/cohort.ts: cohort summaries use the resolved canonical season when the input requested current.",
+          "packages/tools/src/definitions/discovery-tools.ts; packages/tools/src/definitions/render-presentation-tools.ts: query and Renderer tool schemas share the Asia/Tokyo current-season selector.",
           "apps/mcp/src/result-presenter.ts: bounded MCP plan includes resolved season/date predicates, sort/order, current-collection heat meaning, estimated totals, and experimental coverage limits.",
+          "scripts/acceptance/write-d05-agent-mcp-report.mjs: report creation requires the clean exact Candidate, matching built bundle/attestation, and canonical CLAIMED one-shot record.",
+          "scripts/acceptance/write-d05-mcp-bundle-attestation.mjs: refreshes a stale bundle digest only from a clean exact Candidate and leaves matching attestations unchanged.",
           "packages/renderer/src/view-model-builders/index.ts; packages/renderer/src/templates/DiscoveryResultsCard.tsx: current is rendered using the resolved quarter; date filters, current collection heat, and partial/experimental limits remain visible."
         ],
         "tests": [
           "tests/discovery/query.test.ts",
           "tests/discovery/compiler.test.ts",
+          "tests/discovery/parity.test.ts",
+          "tests/discovery/render-query-tool.test.ts",
           "tests/integration/tool-direct-execute-discovery.test.ts",
           "tests/integration/mcp-result-presenter.test.ts",
           "tests/render/discovery-results.test.ts",
           "tests/unit/d05-current-season-answer-check.test.ts",
-          "tests/unit/d05-codex-agent-mcp-runner.test.ts"
+          "tests/unit/d05-codex-agent-mcp-runner.test.ts",
+          "tests/unit/d05-mcp-bundle-attestation-writer.test.ts",
+          "tests/unit/d05-report-writer.test.ts"
         ],
         "answer_checker": {
           "script": "scripts/acceptance/d05-current-season-answer-check.mjs",

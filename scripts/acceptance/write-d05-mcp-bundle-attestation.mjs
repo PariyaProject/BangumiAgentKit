@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   computeMcpBundleSha256,
   D05_MCP_BUNDLE_ATTESTATION_PATH,
   D05_MCP_BUNDLE_ATTESTATION_KIND,
+  readD05McpBundleAttestation,
 } from '../lib/d05-mcp-bundle.mjs';
 import { gitRepositoryText, sanitizeGitRepositoryEnvironment } from '../lib/g26-mcp-bundle.mjs';
 
@@ -20,9 +21,8 @@ export function writeD05McpBundleAttestation(root = ROOT) {
     throw new Error('D05 bundle attestation requires a clean Candidate checkout.');
   }
   const outputPath = path.join(root, D05_MCP_BUNDLE_ATTESTATION_PATH);
-  if (existsSync(outputPath)) {
-    throw new Error('D05 bundle attestation already exists; refusing to replace it.');
-  }
+  const previousAttestationBytes = existsSync(outputPath) ? readFileSync(outputPath) : null;
+  const previousBundleSha256 = previousAttestationBytes ? readD05McpBundleAttestation(root) : null;
   const build = spawnSync('pnpm', ['build'], {
     cwd: root,
     env: sanitizeGitRepositoryEnvironment(),
@@ -34,11 +34,16 @@ export function writeD05McpBundleAttestation(root = ROOT) {
   }
   if (
     gitRepositoryText(root, ['rev-parse', 'HEAD']) !== sourceRevision ||
-    gitRepositoryText(root, ['status', '--porcelain'])
+    gitRepositoryText(root, ['status', '--porcelain']) ||
+    (previousAttestationBytes && !readFileSync(outputPath).equals(previousAttestationBytes)) ||
+    (!previousAttestationBytes && existsSync(outputPath))
   ) {
     throw new Error('Candidate changed or became dirty during the D05 bundle build.');
   }
   const bundleSha256 = computeMcpBundleSha256(root);
+  if (previousBundleSha256 === bundleSha256) {
+    return { sourceRevision, bundleSha256, state: 'ALREADY_CURRENT' };
+  }
   const temporaryPath = `${outputPath}.${process.pid}.tmp`;
   const attestation = {
     schemaVersion: 1,
@@ -50,7 +55,11 @@ export function writeD05McpBundleAttestation(root = ROOT) {
     flag: 'wx',
   });
   renameSync(temporaryPath, outputPath);
-  return { sourceRevision, bundleSha256 };
+  return {
+    sourceRevision,
+    bundleSha256,
+    state: previousAttestationBytes ? 'UPDATED' : 'WRITTEN',
+  };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

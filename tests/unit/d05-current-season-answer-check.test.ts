@@ -77,14 +77,14 @@ function makeAnswer(result = makeResult()) {
       collectionTotal: item.collectionTotal,
     })),
     coverage: {
-      state: 'partial',
+      state: result.coverage.state,
       scanned: 20,
       matched: 2,
       returned: 2,
       totalKind: 'estimated',
     },
     caveat:
-      '官方搜索仍处于实验阶段，总数为估算。本次是有界观察，不代表全站完整；未返回的作品不据此视为不存在。',
+      '官方搜索仍处于实验阶段，总数为估算。本次是有界观察，不代表本季完整；不代表全站完整，未返回的作品不据此视为不存在。',
   });
 }
 
@@ -195,6 +195,18 @@ describe('D05 current-season multi-tag heat answer checker', () => {
     ).toBe(true);
   });
 
+  it('copies coverage.state independently from the top-level result state', () => {
+    const result = makeResult();
+    result.state = 'ok';
+    result.coverage.state = 'complete';
+    const answer = JSON.parse(makeAnswer(result)) as Record<string, any>;
+
+    expect(answer.coverage.state).toBe('complete');
+    expect(
+      verify({ answer: JSON.stringify(answer), toolOutput: makeToolOutput(result) }).passed,
+    ).toBe(true);
+  });
+
   it('rejects changed arguments, source filters, ordering, and unsupported completeness', () => {
     const wrongArguments = { ...D05_EXPECTED_QUERY_ARGUMENTS, tags: ['校园'] };
     expect(verify({ argumentsValue: wrongArguments }).passed).toBe(false);
@@ -212,6 +224,14 @@ describe('D05 current-season multi-tag heat answer checker', () => {
     const unsupportedClaim = JSON.parse(makeAnswer()) as Record<string, unknown>;
     unsupportedClaim.caveat = '本季全部作品均已完整列出。官方搜索仍处于实验阶段，总数为估算。';
     expect(verify({ answer: JSON.stringify(unsupportedClaim) }).passed).toBe(false);
+
+    const unrelatedNegation = JSON.parse(makeAnswer()) as Record<string, any>;
+    unrelatedNegation.caveat = '本次是有界观察，但本季全部作品均已完整列出，不代表全站完整。';
+    expect(verify({ answer: JSON.stringify(unrelatedNegation) }).passed).toBe(false);
+
+    const separatedClaim = JSON.parse(makeAnswer()) as Record<string, any>;
+    separatedClaim.caveat = '不代表本季完整，而且全站全部作品都已完整列出。';
+    expect(verify({ answer: JSON.stringify(separatedClaim) }).passed).toBe(false);
   });
 
   it('rejects incomplete text-only readback, wrong coverage counters, and clipped text', () => {

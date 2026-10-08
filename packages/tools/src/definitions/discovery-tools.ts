@@ -37,7 +37,10 @@ const discoveryQueryInputBase = z
       .optional(),
     year: z.number().int().min(1900).max(2200).optional(),
     month: z.number().int().min(1).max(12).optional(),
-    season: z.string().regex(/^\d{4}-(winter|spring|summer|autumn)$/u).optional(),
+    season: z
+      .string()
+      .regex(/^\d{4}-(winter|spring|summer|autumn)$/u)
+      .optional(),
     from: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/u)
@@ -63,6 +66,14 @@ const discoveryQueryInputBase = z
   })
   .strict();
 
+const currentSeasonSelector = z
+  .string()
+  .regex(/^(?:current|\d{4}-(winter|spring|summer|autumn))$/u)
+  .describe(
+    '季度；使用 current 时按运行时 Asia/Tokyo 日期解析为当前季度，并在计划中记录确切日期范围；也可传 YYYY-winter|spring|summer|autumn。',
+  )
+  .optional();
+
 function rejectTieBreakWithoutScore(
   input: { sort?: string; tieBreak?: unknown },
   context: z.RefinementCtx,
@@ -78,13 +89,7 @@ function rejectTieBreakWithoutScore(
 
 export const discoveryQueryInput = discoveryQueryInputBase
   .extend({
-    season: z
-      .string()
-      .regex(/^(?:current|\d{4}-(winter|spring|summer|autumn))$/u)
-      .describe(
-        '季度；使用 current 时按运行时 Asia/Tokyo 日期解析为当前季度，并在计划中记录确切日期范围；也可传 YYYY-winter|spring|summer|autumn。',
-      )
-      .optional(),
+    season: currentSeasonSelector,
   })
   .strict()
   .extend({
@@ -102,6 +107,7 @@ export const discoveryQueryInput = discoveryQueryInputBase
 
 export const renderQuerySubjectsInput = discoveryQueryInputBase
   .extend({
+    season: currentSeasonSelector,
     tieBreak: z
       .object({
         field: z.literal('ratingCount'),

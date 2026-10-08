@@ -3174,7 +3174,7 @@
   },
   {
     "name": "bangumi.render_query_subjects",
-    "description": "生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；卡片不是完整数据库枚举的承诺。",
+    "description": "生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；支持固定季度或按 Asia/Tokyo 运行时日期解析的当前季度；卡片不是完整数据库枚举的承诺。",
     "auth": "none",
     "risk": "read",
     "scopes": [],
@@ -3232,7 +3232,8 @@
         },
         "season": {
           "type": "string",
-          "pattern": "^\\d{4}-(winter|spring|summer|autumn)$"
+          "pattern": "^(?:current|\\d{4}-(winter|spring|summer|autumn))$",
+          "description": "季度；使用 current 时按运行时 Asia/Tokyo 日期解析为当前季度，并在计划中记录确切日期范围；也可传 YYYY-winter|spring|summer|autumn。"
         },
         "from": {
           "type": "string",

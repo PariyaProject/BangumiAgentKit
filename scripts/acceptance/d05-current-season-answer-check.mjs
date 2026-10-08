@@ -105,20 +105,21 @@ function findTextDisclosure(value, patterns) {
 function hasUnsupportedCompletenessClaim(caveat) {
   if (typeof caveat !== 'string') return true;
   const clauses = caveat
-    .split(/[。！？；;\n]/u)
+    .split(/[。！？；;，,\n]|但|但是|不过|然而|而且|并且|同时|以及|\bbut\b|\bhowever\b|\band\b/iu)
     .map((item) => item.trim())
     .filter(Boolean);
   return clauses.some((clause) => {
-    if (
-      !/(?:全部|所有|全站|全库|完整列表|完整目录|无遗漏|exhaustive|complete list|all matching)/iu.test(
-        clause,
-      )
-    ) {
-      return false;
-    }
-    return !/(?:不代表|不能|无法|并非|不是|不等于|未证明|未能证明|not|cannot|does not|doesn't|no guarantee)/iu.test(
-      clause,
-    );
+    const scopedCompleteness =
+      /(?:本季|本季度|当前季(?:度)?|这季|全站|全库|(?:整个|全部)\s*Bangumi|current season|this season|whole site|entire site|entire database|all matching|every matching)/iu;
+    const completeness =
+      /(?:全部|所有|完整(?:列表|目录|列出|覆盖)?|无遗漏|全量|exhaustive|complete(?: list| coverage)?|all matching|every matching)/iu;
+    if (!scopedCompleteness.test(clause) || !completeness.test(clause)) return false;
+
+    const negation =
+      /(?:不代表|不能|无法|并非|不是|不等于|未证明|未能证明|不完整|未完整|not|cannot|does not|doesn't|no guarantee)/iu;
+    const negationIndex = clause.search(negation);
+    const completenessIndex = clause.search(completeness);
+    return negationIndex < 0 || negationIndex > completenessIndex;
   });
 }
 
@@ -171,7 +172,7 @@ function verifyAnswerShape(answer, result, sourceItems) {
   const range = dateRangeForSeason(result?.plan?.season);
   const coverage = result?.coverage;
   const expectedCoverage = {
-    state: result?.state,
+    state: coverage?.state,
     scanned: coverage?.scanned,
     matched: coverage?.matched,
     returned: coverage?.returned,
@@ -199,8 +200,9 @@ function verifyAnswerShape(answer, result, sourceItems) {
       /bounded/iu,
     ]),
     nonCompletenessDisclosure: findTextDisclosure(caveat, [
-      /不代表.{0,8}(?:完整|全站|全库)/u,
+      /不代表.{0,8}(?:完整|全站|全库|本季|本季度|当前季度)/u,
       /不能.{0,8}(?:完整|全站|全库)/u,
+      /(?:本季|本季度|当前季度).{0,8}(?:不完整|未能证明|未证明)/u,
       /not.{0,12}(?:complete|exhaustive)/iu,
       /no guarantee of completeness/iu,
     ]),
@@ -260,6 +262,7 @@ export function verifyD05CurrentSeasonAnswer(
   const coverage = result?.coverage;
   const coverageConsistent = Boolean(
     coverage &&
+    ['complete', 'partial', 'unknown', 'not_applicable'].includes(coverage.state) &&
     coverage.totalKind === 'estimated' &&
     integer(coverage.scanned) &&
     integer(coverage.matched) &&
@@ -288,7 +291,8 @@ export function verifyD05CurrentSeasonAnswer(
     ((Array.isArray(plan?.limitations) &&
       plan.limitations.some(
         (item) => typeof item === 'string' && /heat means upstream 收藏人数/u.test(item),
-      )) || plan?.heatMeaning === '当前收藏人数；不是讨论趋势或历史热度'),
+      )) ||
+      plan?.heatMeaning === '当前收藏人数；不是讨论趋势或历史热度'),
   );
   const textBudgetVerified =
     Number.isInteger(toolTextUtf8Bytes) && toolTextUtf8Bytes > 0 && toolTextUtf8Bytes <= 3600;
