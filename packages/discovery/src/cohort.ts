@@ -318,7 +318,7 @@ async function hydrate(
   });
 }
 
-function querySummary(label: string, query: DiscoveryQuery): string {
+function querySummary(label: string, query: DiscoveryQuery, resolvedSeason?: string): string {
   const facets: string[] = [label];
   if (query.media)
     facets.push(`媒介=${Array.isArray(query.media) ? query.media.join('/') : query.media}`);
@@ -327,7 +327,7 @@ function querySummary(label: string, query: DiscoveryQuery): string {
       `分类=${Array.isArray(query.categories) ? query.categories.join('/') : query.categories}`,
     );
   }
-  if (query.season) facets.push(`季度=${query.season}`);
+  if (query.season) facets.push(`季度=${resolvedSeason || query.season}`);
   else if (query.year !== undefined && query.month !== undefined) {
     facets.push(`日期=${query.year}-${String(query.month).padStart(2, '0')}`);
   } else if (query.year !== undefined) facets.push(`年份=${query.year}`);
@@ -455,7 +455,9 @@ function buildGroup(
     cohort: {
       label: boundedText(label, 80),
       query: definition.query,
-      querySummary: boundedText(querySummary(boundedText(label, 80), definition.query)),
+      querySummary: boundedText(
+        querySummary(boundedText(label, 80), definition.query, result.plan.season),
+      ),
       subjects,
       coverage: {
         query,

@@ -94,6 +94,8 @@ export interface NormalizedDiscoveryQuery {
   categories: DiscoveryCategory[];
   year?: number;
   month?: number;
+  /** Canonical YYYY-season label; `current` is resolved during normalization. */
+  season?: string;
   dateRange?: DateRange;
   tags: string[];
   metaTags: string[];
@@ -157,16 +159,9 @@ export interface DiscoveryHydrateStep {
   ids: number[];
 }
 
-export type DiscoveryPlanStep =
-  | DiscoverySearchStep
-  | DiscoveryBrowseStep
-  | DiscoveryHydrateStep;
+export type DiscoveryPlanStep = DiscoverySearchStep | DiscoveryBrowseStep | DiscoveryHydrateStep;
 
-export type DiscoveryPlanQuality =
-  | 'exact'
-  | 'bounded_exact'
-  | 'partial_possible'
-  | 'unsupported';
+export type DiscoveryPlanQuality = 'exact' | 'bounded_exact' | 'partial_possible' | 'unsupported';
 
 export type DiscoveryHydrationReason =
   | 'canonical_meta_tags'
@@ -190,6 +185,8 @@ export interface DiscoveryHydrationRequirement {
 export interface DiscoveryPlan {
   source: 'official_v0';
   operation: 'searchSubjects' | 'browseSubjects';
+  /** Canonical YYYY-season label after resolving `season=current`, when supplied. */
+  season?: string;
   sort?: DiscoverySort;
   order?: DiscoveryOrder;
   tieBreak?: DiscoveryTieBreak;

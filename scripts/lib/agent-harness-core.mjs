@@ -371,6 +371,7 @@ export function createEpochState({
     candidate_sha: null,
     reviewed_base_sha: null,
     review_pass_sha: null,
+    candidate_refresh_history: [],
     ci: { sha: null, status: 'NOT_RUN', url: null },
     review,
     integration: DEFAULT_INTEGRATION,
@@ -994,6 +995,75 @@ export function assertExactShaCi({ candidateSha, ciSha, ciStatus }) {
     );
   }
   return true;
+}
+
+export function refreshPassedCandidate(epoch, { candidateSha, baseSha, reason, at } = {}) {
+  requireText(candidateSha, 'CANDIDATE_REFRESH_INVALID', 'candidate_sha');
+  requireText(baseSha, 'CANDIDATE_REFRESH_INVALID', 'base_sha');
+  requireText(reason, 'CANDIDATE_REFRESH_REASON_REQUIRED', 'candidate_refresh_reason');
+  if (reason.trim().length < 12 || reason.trim().length > 500) {
+    throw new HarnessInvariantError(
+      'CANDIDATE_REFRESH_REASON_REQUIRED',
+      'candidate_refresh_reason must contain 12 to 500 non-whitespace characters',
+    );
+  }
+  if (epoch.state !== 'REVIEW_PASSED' || epoch.review_pass_sha !== epoch.candidate_sha) {
+    throw new HarnessInvariantError(
+      'PASSED_CANDIDATE_AUTHORITY_INVALID',
+      'Only the exact currently passed Candidate can be refreshed',
+    );
+  }
+  if (epoch.reviewed_base_sha !== baseSha || epoch.base_sha !== baseSha) {
+    throw new HarnessInvariantError(
+      'PASS_INVALIDATED_BASE_DRIFT',
+      'A post-PASS Candidate refresh is allowed only on the exact reviewed Base',
+      {
+        reviewedBaseSha: epoch.reviewed_base_sha,
+        recordedBaseSha: epoch.base_sha,
+        currentBaseSha: baseSha,
+      },
+    );
+  }
+  if (candidateSha === epoch.review_pass_sha) {
+    throw new HarnessInvariantError(
+      'PASSED_CANDIDATE_UNCHANGED',
+      'A post-PASS Candidate refresh requires a new exact branch HEAD',
+    );
+  }
+  if ((epoch.review?.reserved ?? 0) !== 0 || epoch.review?.reviewer_id) {
+    throw new HarnessInvariantError(
+      'CANDIDATE_REFRESH_REVIEW_ACTIVE',
+      'A passed Candidate cannot be refreshed while another review is reserved or running',
+    );
+  }
+  if ((epoch.review?.consumed ?? 0) >= (epoch.review?.max ?? 0)) {
+    throw new HarnessInvariantError(
+      'REVIEW_BUDGET_EXHAUSTED',
+      'No Epoch review slot remains for the refreshed Candidate',
+    );
+  }
+
+  const nextEpoch = cloneState(epoch);
+  nextEpoch.candidate_refresh_history ??= [];
+  nextEpoch.candidate_refresh_history.push({
+    review_number: nextEpoch.review.consumed,
+    previous_candidate_sha: nextEpoch.review_pass_sha,
+    candidate_sha: candidateSha,
+    reviewed_base_sha: baseSha,
+    reason: reason.trim(),
+    at: at ?? new Date().toISOString(),
+  });
+  nextEpoch.state = 'REVIEW_READY';
+  nextEpoch.candidate_sha = candidateSha;
+  nextEpoch.reviewed_base_sha = null;
+  nextEpoch.review_pass_sha = null;
+  nextEpoch.findings = [];
+  nextEpoch.corrective_closure = [];
+  nextEpoch.final_corrective_sha = null;
+  nextEpoch.final_corrective_base_sha = null;
+  nextEpoch.final_corrective_reason = null;
+  nextEpoch.next_action = `RESERVE_REVIEWER_${nextEpoch.review.consumed + 1}`;
+  return nextEpoch;
 }
 
 export function beforeReviewBaseAction({ recordedBaseSha, currentBaseSha }) {
@@ -2103,6 +2173,7 @@ export function parseControlBlock(body, marker) {
     }
   }
   if (marker === EPOCH_MARKER && state.review) {
+    state.candidate_refresh_history ??= [];
     state.review.runtime_recovery ??= defaultRuntimeRecoveryLedger();
     state.review.runtime ??= {
       state: state.review.reviewer_id ? 'OBSERVATION_REQUIRED' : 'NOT_STARTED',

@@ -313,6 +313,19 @@ After Candidate establishment, runtime or governance Git commits are forbidden.
 Runtime results live in GitHub. Any meaningful repository change invalidates the
 Candidate and requires a new Candidate, validation, and exact-SHA CI.
 
+If a required post-PASS evidence artifact must be committed before integration,
+`candidate:check` may establish a refreshed Candidate only when the current PR
+head descends from the exact passed Candidate, the reviewed Base is unchanged,
+all normal Candidate and exact-SHA CI checks pass, and the evidence file includes
+a specific `candidate_refresh_reason` (12–500 characters). The transition
+records the old and new SHAs, Base, reason, and timestamp in
+`candidate_refresh_history`, clears the old PASS authority, and returns the
+Epoch to `REVIEW_READY`. The next review consumes a new paired slot and follows
+the same reviewer-identity rule. The old PASS can no longer authorize merge.
+An unchanged Candidate, a rewritten-away PASS commit, Base drift, or an
+exhausted Epoch review budget is rejected. Base drift continues through the
+existing post-PASS synchronization/final-corrective path.
+
 Before review:
 
 1. run the legacy-runtime-path guard;
@@ -812,6 +825,7 @@ An Epoch PR block contains:
     "runtime_recovery": { "max": 1, "consumed": 0, "reserved": 0 }
   },
   "review_history": [],
+  "candidate_refresh_history": [],
   "findings": [],
   "corrective_closure": [],
   "final_corrective_sha": null,
@@ -854,13 +868,18 @@ help` for exact arguments.
 - `epoch:open-pr`: open the single Draft PR after a meaningful commit.
 - `guard:legacy-paths`: reject V3 Product changes to legacy runtime paths.
 - `candidate:check`: enforce path, Scope Closure, preflight, Candidate, base,
-  and exact-SHA CI invariants.
+  and exact-SHA CI invariants. After PASS, it can revoke the old PASS and
+  establish a new reviewable Candidate for a required evidence commit only
+  under the descendant, unchanged-Base, audit-reason, and fresh-CI guards above.
 - `review:reserve`: reserve Epoch and outer review slots; `--runtime-recovery`
   addresses only an authorized exceptional replacement.
 - `review:started`: convert the matching reservation to consumed and record
   reviewer id/replacement relationship.
 - `review:result`: record a verdict/history and enter PASS, correction, final
-  correction, or protected-human semantics.
+  correction, or protected-human semantics. Before recording PASS, it fetches
+  the exact remote branch ref into its tracking ref and checks that SHA against
+  the Candidate and PR head, so a stale local `origin/<branch>` ref cannot
+  block a valid verdict.
 - `review:runtime`: record explicit `ACTIVE`, `INTERRUPTED`, or `UNAVAILABLE`
   runtime truth for the exact reviewer id.
 - `review:wait`: after explicit `ACTIVE` observation, validate same-reviewer

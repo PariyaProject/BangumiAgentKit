@@ -289,11 +289,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {
                 'name': 'bangumi.query_subjects',
                 'auth': 'none', 'risk': 'read',
-                'description': 'Bounded public subject discovery.',
+                'description': 'Bounded public subject discovery; current uses Asia/Tokyo.',
                 'inputSchema': {
                     'type': 'object',
                     'properties': {
                         'media': {'type': 'string'},
+                        'season': {'type': 'string', 'pattern': '^(?:current|\\d{4}-(winter|spring|summer|autumn))$'},
                         'from': {'type': 'string'},
                         'to': {'type': 'string'},
                         'ratingCount': {'type': 'object'},
@@ -347,8 +348,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
+            if relative_path == GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH:
+                continue
             source_path = self.original_root / relative_path
             fixture_path = self.root / relative_path
             fixture_path.parent.mkdir(parents=True, exist_ok=True)
@@ -361,6 +365,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'bundleSha256': 'e' * 64,
         }), encoding='utf-8')
         relative_paths.add(GENERATOR.CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH)
+        d05_attestation_path = self.root / GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH
+        d05_attestation_path.parent.mkdir(parents=True, exist_ok=True)
+        d05_attestation_path.write_text(json.dumps({
+            'schemaVersion': 1,
+            'kind': 'd05-mcp-runtime-bundle-attestation-v1',
+            'bundleSha256': 'f' * 64,
+        }), encoding='utf-8')
+        relative_paths.add(GENERATOR.CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH)
+        smoke_script = self.root / 'scripts/smoke-public-tools-online.ts'
+        smoke_script.parent.mkdir(parents=True, exist_ok=True)
+        smoke_script.write_text('// public probe report validator fixture\n', encoding='utf-8')
         self._git('init', '-q')
         self._git('config', 'user.name', 'Acceptance Evidence Test')
         self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
@@ -730,6 +745,128 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report['scenarios'][0]['result']['artifact']['persisted'] = True
         self.report_path.write_text(json.dumps(report), encoding='utf-8')
         self.assertEqual(GENERATOR.model_mcp_e2e_names(self.catalog), set())
+
+    def _d05_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.query_subjects')
+        revision = source_revision or self.source_revision
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_d05_current_season_agent_mcp',
+            'runNumber': 95,
+            'scenarioId': 'D05',
+            'profile': 'run95-d05-current-season-multitag-heat-agent-mcp-v1',
+            'frontierId': 'D05',
+            'sourceRevision': revision,
+            'mcpBundleSha256': GENERATOR.codex_d05_candidate_bundle_sha256(revision),
+            'prNumber': 127,
+            'baseSha': 'b' * 40,
+            'observedAt': '2026-10-08T05:00:00.000Z',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '1.2.14',
+            'toolName': 'bangumi.query_subjects',
+            'argumentProfile': 'fixed-d05-current-season-campus-romance-heat-v1',
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_D05_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.query_subjects'],
+            'mcpServerNames': ['bgk_d05_one_tool'],
+            'serverToolCount': 1,
+            'processExitCode': 0,
+            'resultCount': 1,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'resultStatus': 'SUCCESS',
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'toolCalls': [{'name': 'bangumi.query_subjects', 'state': 'DONE'}],
+            'answerCheckMethod': 'd05-current-season-multitag-heat-v1',
+            'toolTextUtf8Bytes': 1800,
+            'resultCounters': {
+                'state': 'partial',
+                'season': '2026-autumn',
+                'totalKind': 'estimated',
+                'scanned': 20,
+                'matched': 2,
+                'returned': 2,
+                'sourceRowsValid': 2,
+                'sourceRowsInvalid': 0,
+                'sourceRowsDuplicate': 0,
+                'textRowsOmitted': 0,
+                'displayNamesClipped': 0,
+                'textUtf8Bytes': 1800,
+                'answerRows': 2,
+            },
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_D05_ANSWER_CHECK_FIELDS
+            },
+            'warningCodes': ['EXPERIMENTAL_SOURCE'],
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawResultStored': False,
+                'artifactImageBytesStored': False,
+                'credentialsStored': False,
+            },
+            'rawAnswerPersisted': False,
+            'rawToolResultPersisted': False,
+        }
+
+    def test_d05_report_counts_as_public_and_agent_mcp_evidence_for_current_query_tool(self):
+        report = self._d05_report_fixture()
+        report_path = self.live_probe_dir / GENERATOR.CODEX_D05_REPORT_RELATIVE_PATH.split('/')[-1]
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_d05_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_d05_report_matches_candidate_revision(
+                report_path, report['sourceRevision'],
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog).get('bangumi.query_subjects'),
+            {GENERATOR.CODEX_D05_REPORT_RELATIVE_PATH},
+        )
+        self.assertEqual(
+            GENERATOR.public_api_smoke_sources(self.catalog).get('bangumi.query_subjects'),
+            {GENERATOR.CODEX_D05_REPORT_RELATIVE_PATH},
+        )
+
+    def test_d05_report_rejects_stale_candidate_catalog_or_unsanitized_result(self):
+        report = self._d05_report_fixture()
+        self.assertTrue(GENERATOR.codex_d05_report_is_valid(report))
+
+        stale = {**report, 'sourceRevision': self.stale_candidate_source_revision}
+        stale_path = self.live_probe_dir / GENERATOR.CODEX_D05_REPORT_RELATIVE_PATH.split('/')[-1]
+        stale_path.write_text(json.dumps(stale), encoding='utf-8')
+        self.assertFalse(
+            GENERATOR.codex_d05_report_matches_candidate_revision(
+                stale_path, stale['sourceRevision'],
+            ),
+        )
+
+        raw_answer = {**report, 'answer': 'raw answer must not persist'}
+        self.assertFalse(GENERATOR.codex_d05_report_is_valid(raw_answer))
+
+        failed_check = {
+            **report,
+            'answerChecks': {**report['answerChecks'], 'requestFilterMatches': False},
+        }
+        self.assertFalse(GENERATOR.codex_d05_report_is_valid(failed_check))
 
     def _g26_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()

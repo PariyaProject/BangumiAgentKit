@@ -1014,6 +1014,246 @@ test('CLI Candidate gate makes the Draft PR ready and refreshes its human-readab
   }
 });
 
+test('CLI PASS result refreshes a stale remote-tracking Candidate ref before validation', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RUNNING';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.review.consumed = 1;
+  epoch.review.reviewer_id = 'luna-reviewer';
+  epoch.review.runtime = { state: 'ACTIVE', reason: null, allocation: 'NORMAL' };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('b'),
+    remoteTrackingFeatureSha: sha('a'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'review:result',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--verdict',
+      'PASS',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const state = environment.readState();
+    const stored = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.equal(stored.review_pass_sha, sha('b'));
+    assert.equal(state.remoteTrackingFeatureSha, sha('b'));
+    assert.ok(
+      state.calls.some(
+        (call) =>
+          call.tool === 'git' &&
+          call.args[0] === 'fetch' &&
+          call.args.at(-1) === 'refs/heads/codex/epoch-cli:refs/remotes/origin/codex/epoch-cli',
+      ),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+function passedCandidateFixture() {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_PASSED';
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.review_pass_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.review.consumed = 1;
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: 'luna-max-d05',
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  return { run, epoch };
+}
+
+test('CLI Candidate gate revokes prior PASS authority for an audited post-PASS evidence commit', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason:
+          'Attach the sanitized one-shot result and update its frontier evidence.',
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.candidate_sha, sha('d'));
+    assert.equal(stored.review_pass_sha, null);
+    assert.equal(stored.reviewed_base_sha, null);
+    assert.equal(stored.ci.sha, sha('d'));
+    assert.equal(stored.review.consumed, 1);
+    assert.equal(stored.review_history[0].candidate_sha, sha('b'));
+    assert.equal(stored.candidate_refresh_history.length, 1);
+    assert.deepEqual(
+      {
+        review_number: stored.candidate_refresh_history[0].review_number,
+        previous_candidate_sha: stored.candidate_refresh_history[0].previous_candidate_sha,
+        candidate_sha: stored.candidate_refresh_history[0].candidate_sha,
+        reviewed_base_sha: stored.candidate_refresh_history[0].reviewed_base_sha,
+        reason: stored.candidate_refresh_history[0].reason,
+      },
+      {
+        review_number: 1,
+        previous_candidate_sha: sha('b'),
+        candidate_sha: sha('d'),
+        reviewed_base_sha: sha('a'),
+        reason: 'Attach the sanitized one-shot result and update its frontier evidence.',
+      },
+    );
+    assert.equal(typeof stored.candidate_refresh_history[0].at, 'string');
+
+    const reserved = environment.execute(['review:reserve', '--run', '1', '--pr', '42']);
+    assert.equal(reserved.status, 0, reserved.stderr);
+    const next = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(next.state, 'REVIEW_RESERVED');
+    assert.equal(next.review.consumed, 1);
+    assert.equal(next.review.reserved, 1);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate gate rejects an unchanged or unaudited post-PASS refresh', () => {
+  const unchangedFixture = passedCandidateFixture();
+  const unchangedEnvironment = createMockEnvironment({
+    runBody: renderRunBody(unchangedFixture.run),
+    prBody: renderEpochBody(unchangedFixture.epoch),
+  });
+  try {
+    const unchanged = unchangedEnvironment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(unchangedEnvironment, {
+        candidate_refresh_reason: 'Attempt an unchanged candidate refresh.',
+      }),
+    ]);
+    assert.equal(unchanged.status, 2);
+    assert.match(unchanged.stderr, /^PASSED_CANDIDATE_UNCHANGED:/u);
+    const stored = parseControlBlock(unchangedEnvironment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.equal(stored.candidate_sha, sha('b'));
+  } finally {
+    unchangedEnvironment.cleanup();
+  }
+
+  const unauditedFixture = passedCandidateFixture();
+  const unauditedEnvironment = createMockEnvironment({
+    runBody: renderRunBody(unauditedFixture.run),
+    prBody: renderEpochBody(unauditedFixture.epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const noReason = unauditedEnvironment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(unauditedEnvironment, { candidate_sha: sha('d') }),
+    ]);
+    assert.equal(noReason.status, 2);
+    assert.match(noReason.stderr, /^CANDIDATE_REFRESH_REASON_REQUIRED:/u);
+    const stored = parseControlBlock(unauditedEnvironment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.equal(stored.candidate_sha, sha('b'));
+  } finally {
+    unauditedEnvironment.cleanup();
+  }
+});
+
+test('CLI Candidate gate rejects post-PASS Base drift and a rewritten-away passed Candidate', () => {
+  const driftFixture = passedCandidateFixture();
+  const driftEnvironment = createMockEnvironment({
+    runBody: renderRunBody(driftFixture.run),
+    prBody: renderEpochBody(driftFixture.epoch),
+    baseSha: sha('d'),
+    featureHeadSha: sha('e'),
+    draft: false,
+  });
+  try {
+    const drift = driftEnvironment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(driftEnvironment, {
+        base_sha: sha('d'),
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Attach the required post-PASS evidence artifact.',
+      }),
+    ]);
+    assert.equal(drift.status, 2);
+    assert.match(drift.stderr, /^PASS_INVALIDATED_BASE_DRIFT:/u);
+    assert.equal(
+      parseControlBlock(driftEnvironment.readState().prBody, EPOCH_MARKER).state,
+      'REVIEW_PASSED',
+    );
+  } finally {
+    driftEnvironment.cleanup();
+  }
+
+  const rewrittenFixture = passedCandidateFixture();
+  const rewrittenEnvironment = createMockEnvironment({
+    runBody: renderRunBody(rewrittenFixture.run),
+    prBody: renderEpochBody(rewrittenFixture.epoch),
+    featureHeadSha: sha('e'),
+    candidateIsAncestor: false,
+    draft: false,
+  });
+  try {
+    const rewritten = rewrittenEnvironment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(rewrittenEnvironment, {
+        candidate_sha: sha('e'),
+        candidate_refresh_reason: 'Attach the required post-PASS evidence artifact.',
+      }),
+    ]);
+    assert.equal(rewritten.status, 2);
+    assert.match(rewritten.stderr, /^PASSED_CANDIDATE_NOT_ANCESTOR:/u);
+    assert.equal(
+      parseControlBlock(rewrittenEnvironment.readState().prBody, EPOCH_MARKER).state,
+      'REVIEW_PASSED',
+    );
+  } finally {
+    rewrittenEnvironment.cleanup();
+  }
+});
+
 test('CLI product guard uses the actual PR head when GitHub checks out a merge ref', () => {
   const environment = createMockEnvironment();
   const prHeadSha = sha('d');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -39,6 +39,13 @@ const CODEX_LUNA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter((name) => name.startsWith('pariya-agent-codex-luna-e2e-') && name.endsWith('.json'))
   .sort()
   .map((name) => JSON.parse(readFileSync(join(ROOT, 'docs/live-probes', name), 'utf8')));
+const D05_REPORT_PATH = join(
+  ROOT,
+  'docs/live-probes/d05-current-season-multitag-heat-agent-mcp-run95.json',
+);
+const D05_REPORT = existsSync(D05_REPORT_PATH)
+  ? JSON.parse(readFileSync(D05_REPORT_PATH, 'utf8'))
+  : null;
 const FULL_OPERATION_QA_EVIDENCE = readdirSync(join(ROOT, 'docs/live-probes'))
   .filter(
     (name) => name.startsWith('pariya-agent-full-operation-qa-e2e-') && name.endsWith('.json'),
@@ -140,6 +147,43 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
     evidenceTool && currentTool && stableJson(evidenceTool) === stableJson(currentTool),
   );
 }
+
+function isCurrentD05Report(report: any): boolean {
+  const checks = report?.answerChecks;
+  return Boolean(
+    report?.evidenceKind === 'codex_cli_d05_current_season_agent_mcp' &&
+    report?.runNumber === 95 &&
+    report?.scenarioId === 'D05' &&
+    report?.frontierId === 'D05' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.query_subjects' &&
+    report?.processExitCode === 0 &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    report?.rawAnswerPersisted === false &&
+    report?.rawToolResultPersisted === false &&
+    toolContractMatchesCurrent(report, 'bangumi.query_subjects') &&
+    Array.isArray(checks) === false &&
+    checks &&
+    Object.values(checks).length > 0 &&
+    Object.values(checks).every((value) => value === true) &&
+    report?.resultCounters?.totalKind === 'estimated' &&
+    report?.warningCodes?.includes('EXPERIMENTAL_SOURCE') &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false,
+  );
+}
+
+const CURRENT_D05_REPORT = isCurrentD05Report(D05_REPORT) ? D05_REPORT : null;
 
 // Preserve prior reports as history, but count only the newest current-contract
 // report for each tool in the current-source acceptance matrix.
@@ -451,18 +495,21 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
   it('records observed model-to-MCP calls without implying QQ or TIM acceptance', () => {
     const rows = rowsByTool();
     const catalogNames = catalog.map((item) => item.name).sort();
-    const evidenceNames = EVIDENCE.filter(
-      (report) => report.processExitCode === 0 && report.resultStatus === 'SUCCESS',
-    ).flatMap((report) =>
-      report.scenarios.flatMap(
-        (scenario: { toolCalls: Array<{ name: string }>; passed: boolean }) =>
-          scenario.passed
-            ? scenario.toolCalls
-                .filter((call: { name: string }) => toolContractMatchesCurrent(report, call.name))
-                .map((call: { name: string }) => call.name)
-            : [],
+    const evidenceNames = [
+      ...EVIDENCE.filter(
+        (report) => report.processExitCode === 0 && report.resultStatus === 'SUCCESS',
+      ).flatMap((report) =>
+        report.scenarios.flatMap(
+          (scenario: { toolCalls: Array<{ name: string }>; passed: boolean }) =>
+            scenario.passed
+              ? scenario.toolCalls
+                  .filter((call: { name: string }) => toolContractMatchesCurrent(report, call.name))
+                  .map((call: { name: string }) => call.name)
+              : [],
+        ),
       ),
-    );
+      ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
+    ];
 
     expect(rows.size).toBe(96);
     expect([...rows.keys()].sort()).toEqual(catalogNames);
@@ -478,9 +525,12 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       toolContractMatchesCurrent(currentG20Report, 'bangumi.get_subject_relations'),
     );
     expect(uncoveredNames).toEqual(
-      currentG20Evidence
-        ? ['bangumi.get_person_activity']
-        : ['bangumi.get_person_activity', 'bangumi.get_subject_relations'],
+      [
+        ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
+        'bangumi.get_person_activity',
+        'bangumi.render_query_subjects',
+        ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
+      ].sort(),
     );
     expect(evidenceNames.sort()).toEqual(
       [
@@ -538,7 +588,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.manage_character_collection',
         'bangumi.manage_index',
         'bangumi.manage_person_collection',
-        'bangumi.query_subjects',
         'bangumi.resolve_subject_concept',
         'bangumi.search_characters',
         'bangumi.search_persons',
@@ -563,7 +612,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_activity',
         'bangumi.render_person_collaboration',
         'bangumi.render_person_profile',
-        'bangumi.render_query_subjects',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
         'bangumi.render_series_watch_order',
@@ -579,6 +627,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_subject_stats_history',
         'bangumi.update_collection',
         'bangumi.update_episode_progress',
+        ...(CURRENT_D05_REPORT ? ['bangumi.query_subjects'] : []),
       ].sort(),
     );
 
@@ -636,15 +685,18 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       for (const call of scenario.toolCalls) {
         if (toolContractMatchesCurrent(COMPACT_EVIDENCE, call.name)) continue;
 
-        // The historical Compact query report predates the deliberate discovery
-        // schema change in this Epoch; it remains history, while the current full
-        // profile report supplies fresh evidence for that exact tool contract.
+        // The historical Compact query report predates this schema change.
+        // Only the post-gate D05 report can restore the current query tool row.
         expect(call.name).toBe('bangumi.query_subjects');
-        const currentReport = CURRENT_FULL_PUBLIC_QA_EVIDENCE.find(
-          (report: any) => report.scenarios?.[0]?.id === call.name,
-        );
-        expect(currentReport).toBeDefined();
-        expect(toolContractMatchesCurrent(currentReport, call.name)).toBe(true);
+        if (CURRENT_D05_REPORT) {
+          expect(CURRENT_D05_REPORT.toolName).toBe(call.name);
+          expect(toolContractMatchesCurrent(CURRENT_D05_REPORT, call.name)).toBe(true);
+        } else {
+          const currentReport = CURRENT_FULL_PUBLIC_QA_EVIDENCE.find(
+            (report: any) => report.scenarios?.[0]?.id === call.name,
+          );
+          expect(currentReport).toBeUndefined();
+        }
       }
     }
 
@@ -696,7 +748,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.search_characters',
         'bangumi.search_persons',
         'bangumi.search_subjects',
-        'bangumi.query_subjects',
       ].sort(),
     );
     for (const report of CURRENT_FULL_PUBLIC_QA_EVIDENCE) {
@@ -823,7 +874,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_person_activity',
         'bangumi.render_person_collaboration',
         'bangumi.render_person_profile',
-        'bangumi.render_query_subjects',
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
         'bangumi.render_series_watch_order',

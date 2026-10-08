@@ -33,38 +33,86 @@ describe('discovery capability compiler', () => {
     });
   });
 
+  it('compiles the D05 current-season multi-tag heat query to exact AND-tag and date filters', () => {
+    const query = normalizeDiscoveryQuery(
+      {
+        media: 'anime',
+        season: 'current',
+        tags: ['校园', '恋爱'],
+        sort: 'heat',
+        limit: 12,
+      },
+      { now: new Date('2026-10-07T15:00:00.000Z') },
+    );
+    const plan = compileDiscoveryPlan(query);
+
+    expect(query).toMatchObject({
+      season: '2026-autumn',
+      dateRange: { from: '2026-10-01', to: '2027-01-01' },
+    });
+    expect(plan.operation).toBe('searchSubjects');
+    expect(plan).toMatchObject({ season: '2026-autumn', sort: 'heat', order: 'desc' });
+    expect(plan.totalKind).toBe('estimated');
+    expect(plan.pushdown).toContainEqual(
+      expect.objectContaining({
+        field: 'tags',
+        operator: 'contains_all',
+        value: ['校园', '恋爱'],
+      }),
+    );
+    expect(plan.steps[0]).toMatchObject({
+      kind: 'search',
+      request: {
+        sort: 'heat',
+        filter: {
+          type: [2],
+          tag: ['校园', '恋爱'],
+          airDate: ['>=2026-10-01', '<2027-01-01'],
+        },
+      },
+    });
+  });
+
   it('turns a year-only search into a half-open year window', () => {
-    const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
-      media: 'anime',
-      year: 2024,
-      concepts: ['异世界'],
-      sort: 'heat',
-    }));
-    expect(plan.pushdown).toContainEqual(expect.objectContaining({
-      field: 'dateRange',
-      value: { from: '2024-01-01', to: '2025-01-01' },
-    }));
+    const plan = compileDiscoveryPlan(
+      normalizeDiscoveryQuery({
+        media: 'anime',
+        year: 2024,
+        concepts: ['异世界'],
+        sort: 'heat',
+      }),
+    );
+    expect(plan.pushdown).toContainEqual(
+      expect.objectContaining({
+        field: 'dateRange',
+        value: { from: '2024-01-01', to: '2025-01-01' },
+      }),
+    );
     expect(plan.steps[0]).toMatchObject({
       request: { filter: { airDate: ['>=2024-01-01', '<2025-01-01'] } },
     });
   });
 
   it('carries the explicit score tie-break into the executable plan', () => {
-    const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
-      media: 'anime',
-      sort: 'score',
-      tieBreak: { field: 'ratingCount', order: 'asc' },
-    }));
+    const plan = compileDiscoveryPlan(
+      normalizeDiscoveryQuery({
+        media: 'anime',
+        sort: 'score',
+        tieBreak: { field: 'ratingCount', order: 'asc' },
+      }),
+    );
 
     expect(plan).toMatchObject({
       sort: 'score',
       order: 'desc',
       tieBreak: { field: 'ratingCount', order: 'asc' },
     });
-    expect(plan.hydrationRequirements).toContainEqual(expect.objectContaining({
-      reason: 'tie_break_sort',
-      fields: ['ratingCount'],
-    }));
+    expect(plan.hydrationRequirements).toContainEqual(
+      expect.objectContaining({
+        reason: 'tie_break_sort',
+        fields: ['ratingCount'],
+      }),
+    );
   });
 
   it('selects browse when the upstream browse contract is the cheapest exact path', () => {
@@ -81,27 +129,35 @@ describe('discovery capability compiler', () => {
 
   it('exposes one explicit classification per source operation and field', () => {
     const matrix = getSourceCapabilityMatrix();
-    expect(matrix.find((item) => item.field === 'collectionCount' && item.operation === 'searchSubjects')?.classification).toBe(
-      'DERIVED_FILTER',
-    );
+    expect(
+      matrix.find((item) => item.field === 'collectionCount' && item.operation === 'searchSubjects')
+        ?.classification,
+    ).toBe('DERIVED_FILTER');
     expect(matrix.filter((item) => item.field === 'heat').length).toBe(0);
-    expect(matrix.find((item) => item.field === 'sort:heat' && item.operation === 'searchSubjects')?.notes).toContain(
-      '收藏人数',
-    );
+    expect(
+      matrix.find((item) => item.field === 'sort:heat' && item.operation === 'searchSubjects')
+        ?.notes,
+    ).toContain('收藏人数');
   });
 
   it('does not treat undocumented negative meta-tag syntax as trusted pushdown', () => {
-    const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
-      media: 'anime',
-      excludeMetaTags: ['科幻'],
-    }));
+    const plan = compileDiscoveryPlan(
+      normalizeDiscoveryQuery({
+        media: 'anime',
+        excludeMetaTags: ['科幻'],
+      }),
+    );
 
     expect(plan.operation).toBe('searchSubjects');
-    expect(plan.postFilters).toContainEqual(expect.objectContaining({
-      field: 'excludeMetaTags',
-      classification: 'POST_FILTER',
-    }));
-    expect(plan.steps[0]?.kind === 'search' ? plan.steps[0].request.filter : undefined).not.toHaveProperty('metaTags');
+    expect(plan.postFilters).toContainEqual(
+      expect.objectContaining({
+        field: 'excludeMetaTags',
+        classification: 'POST_FILTER',
+      }),
+    );
+    expect(
+      plan.steps[0]?.kind === 'search' ? plan.steps[0].request.filter : undefined,
+    ).not.toHaveProperty('metaTags');
     expect(plan.hydrationRequired).toBe(true);
   });
 });

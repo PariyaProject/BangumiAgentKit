@@ -211,6 +211,16 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault(name, set()).add(report_source_ref(path))
+    d05_path = LIVE_PROBE_DIR / CODEX_D05_REPORT_RELATIVE_PATH.split('/')[-1]
+    try:
+        d05_report = json.loads(d05_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        d05_report = None
+    if (
+        codex_d05_report_is_valid(d05_report)
+        and codex_d05_report_matches_candidate_revision(d05_path, d05_report.get('sourceRevision'))
+    ):
+        sources.setdefault('bangumi.query_subjects', set()).add(report_source_ref(d05_path))
     return sources
 
 
@@ -245,6 +255,51 @@ CODEX_S02_EXPECTED_ARGUMENTS = {
 }
 CODEX_S02_REPORT_RELATIVE_PATH = 'docs/live-probes/s02-top-rated-main-voice-run95.json'
 CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/s02-mcp-bundle-attestation.json'
+CODEX_D05_EXPECTED_ARGUMENTS = {
+    'media': 'anime',
+    'season': 'current',
+    'tags': ['校园', '恋爱'],
+    'sort': 'heat',
+    'order': 'desc',
+    'resultMode': 'top',
+    'limit': 8,
+    'explain': 'compact',
+}
+CODEX_D05_REPORT_RELATIVE_PATH = 'docs/live-probes/d05-current-season-multitag-heat-agent-mcp-run95.json'
+CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/d05-mcp-bundle-attestation.json'
+CODEX_D05_ANSWER_CHECK_FIELDS = {
+    'queryArgumentsMatch', 'exactSingleToolCall', 'resultReadbackAvailable',
+    'rowsReadbackComplete', 'sourceRowsValid', 'sourceRowsUnique', 'sourceRowsNonEmpty',
+    'rowsMatchAnimeMedia', 'requestFilterMatches', 'planContractMatches',
+    'coverageConsistent', 'experimentalSourceWarningPresent', 'textBudgetVerified',
+    'answerShapeAndRowsMatch', 'answerCoverageCountersMatch',
+    'answerRangeMatchesResolvedSeason', 'experimentalSearchDisclosure',
+    'estimatedTotalDisclosure', 'boundedCoverageDisclosure',
+    'nonCompletenessDisclosure', 'noUnsupportedCompletenessClaim',
+}
+CODEX_D05_RESULT_COUNTER_FIELDS = {
+    'state', 'season', 'totalKind', 'scanned', 'matched', 'returned',
+    'sourceRowsValid', 'sourceRowsInvalid', 'sourceRowsDuplicate',
+    'textRowsOmitted', 'displayNamesClipped', 'textUtf8Bytes', 'answerRows',
+}
+CODEX_D05_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored',
+    'rawResultStored', 'artifactImageBytesStored', 'credentialsStored',
+}
+CODEX_D05_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'scenarioId', 'profile',
+    'frontierId', 'sourceRevision', 'mcpBundleSha256', 'prNumber', 'baseSha',
+    'observedAt', 'model', 'reasoningEffort', 'codexCliVersion', 'toolName',
+    'argumentProfile', 'expectedArgumentsSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'serverToolNames',
+    'mcpServerNames', 'serverToolCount', 'processExitCode', 'resultCount',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount',
+    'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'resultStatus',
+    'qqPipelineTested', 'timClientTested', 'toolCalls', 'answerCheckMethod',
+    'toolTextUtf8Bytes', 'resultCounters', 'answerChecks', 'warningCodes',
+    'privacy', 'rawAnswerPersisted', 'rawToolResultPersisted',
+}
 CODEX_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_G20_PROBE_ARGUMENTS
 CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
@@ -556,6 +611,57 @@ CODEX_S02_PROBE_IMPLEMENTATION_MARKERS = {
         'export function writeS02McpBundleAttestation(',
         'computeMcpBundleSha256(root)',
         "'pnpm', ['build']",
+    ),
+}
+CODEX_D05_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_d05_report_is_valid(',
+        'def codex_d05_report_matches_candidate_revision(',
+    ),
+    'packages/discovery/src/query.ts': (
+        "timeZone: 'Asia/Tokyo'",
+        "input.season === 'current'",
+    ),
+    'packages/discovery/src/compiler.ts': (
+        "query.season === undefined ? {} : { season: query.season }",
+    ),
+    'packages/tools/src/definitions/discovery-tools.ts': (
+        '按运行时 Asia/Tokyo 日期解析为当前季度',
+    ),
+    'apps/mcp/d05-one-tool-mcp-server.mjs': (
+        "const TARGET_TOOL = 'bangumi.query_subjects'",
+        'readD05McpBundleAttestation(PRODUCT_ROOT)',
+        'authorizeToolCall({',
+    ),
+    'scripts/acceptance/d05-current-season-answer-check.mjs': (
+        "export const D05_ANSWER_CHECK_METHOD = 'd05-current-season-multitag-heat-v1'",
+        'export function verifyD05CurrentSeasonAnswer(',
+        'requestFilterMatches',
+    ),
+    'scripts/acceptance/run-d05-codex-agent-mcp.mjs': (
+        'export function assertD05CandidateReviewGate(',
+        'export function createD05OneShotClaim(',
+        'function assertCurrentD05ReviewGate(',
+        'const MODEL = \'gpt-6-luna\'',
+    ),
+    'scripts/acceptance/write-d05-agent-mcp-report.mjs': (
+        "evidenceKind: 'codex_cli_d05_current_season_agent_mcp'",
+        'verifyD05CurrentSeasonAnswer(',
+        'export function assertD05ReportCandidate(',
+        'function readCanonicalClaim(',
+        "rawAnswerPersisted: false",
+    ),
+    'scripts/acceptance/write-d05-mcp-bundle-attestation.mjs': (
+        'export function writeD05McpBundleAttestation(',
+        'const previousAttestationBytes = existsSync(outputPath)',
+        'readD05McpBundleAttestation(root)',
+    ),
+    'scripts/lib/d05-mcp-bundle.mjs': (
+        'export function readD05McpBundleAttestation(',
+    ),
+    CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH: (
+        '"kind": "d05-mcp-runtime-bundle-attestation-v1"',
+        '"bundleSha256":',
     ),
 }
 CODEX_FORBIDDEN_CONTENT_KEYS = {
@@ -1075,6 +1181,184 @@ def codex_s02_report_is_valid(report: object) -> bool:
     )
 
 
+def codex_d05_candidate_bundle_sha256(revision: object) -> str | None:
+    """Read the D05 runtime bundle attestation from the exact query Candidate."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return None
+    result = _run_repository_git(
+        ROOT, 'show', f'{revision}:{CODEX_D05_BUNDLE_ATTESTATION_RELATIVE_PATH}',
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        attestation = json.loads(result.stdout)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not isinstance(attestation, dict)
+        or set(attestation) != {'schemaVersion', 'kind', 'bundleSha256'}
+        or type(attestation.get('schemaVersion')) is not int
+        or attestation.get('schemaVersion') != 1
+        or attestation.get('kind') != 'd05-mcp-runtime-bundle-attestation-v1'
+        or not isinstance(attestation.get('bundleSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', attestation['bundleSha256'])
+    ):
+        return None
+    return attestation['bundleSha256']
+
+
+def codex_d05_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_revision_has_markers(
+        str(ROOT), revision, CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
+    )
+
+
+def codex_d05_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    if (
+        not isinstance(revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', revision)
+        or not codex_d05_probe_revision_has_implementation(revision)
+    ):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    return relative_path == CODEX_D05_REPORT_RELATIVE_PATH and codex_g20_report_matches_candidate_revision(
+        report_path, revision,
+    )
+
+
+def codex_d05_report_is_valid(report: object) -> bool:
+    """Validate the sanitized D05 current-season anonymous Agent/MCP result."""
+    if not isinstance(report, dict) or set(report) != CODEX_D05_REPORT_FIELDS:
+        return False
+    source_revision = report.get('sourceRevision')
+    if (
+        type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_cli_d05_current_season_agent_mcp'
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('scenarioId') != 'D05'
+        or report.get('profile') != 'run95-d05-current-season-multitag-heat-agent-mcp-v1'
+        or report.get('frontierId') != 'D05'
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not codex_d05_probe_revision_has_implementation(source_revision)
+        or report.get('mcpBundleSha256') != codex_d05_candidate_bundle_sha256(source_revision)
+        or type(report.get('prNumber')) is not int
+        or report.get('prNumber') <= 0
+        or not isinstance(report.get('baseSha'), str)
+        or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
+        or not isinstance(report.get('observedAt'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt'])
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion'])
+        or report.get('toolName') != 'bangumi.query_subjects'
+        or report.get('argumentProfile') != 'fixed-d05-current-season-campus-romance-heat-v1'
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(CODEX_D05_EXPECTED_ARGUMENTS)
+        or report.get('processExitCode') != 0
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('eventStreamParsed') is not True
+        or report.get('resultCount') != 1
+        or report.get('codexMcpToolEventCount') != 1
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('shellToolCallCount') != 0
+        or report.get('serverToolNames') != ['bangumi.query_subjects']
+        or report.get('mcpServerNames') != ['bgk_d05_one_tool']
+        or report.get('serverToolCount') != 1
+        or report.get('allowedCallCount') != 1
+        or report.get('deniedCallCount') != 0
+        or report.get('qqPipelineTested') is not False
+        or report.get('timClientTested') is not False
+        or report.get('toolCalls') != [{'name': 'bangumi.query_subjects', 'state': 'DONE'}]
+        or report.get('answerCheckMethod') != 'd05-current-season-multitag-heat-v1'
+        or report.get('rawAnswerPersisted') is not False
+        or report.get('rawToolResultPersisted') is not False
+    ):
+        return False
+
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    tool = next(
+        (item for item in catalog if isinstance(item, dict) and item.get('name') == 'bangumi.query_subjects'),
+        None,
+    )
+    if (
+        not isinstance(tool, dict)
+        or tool.get('auth') != 'none'
+        or tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(
+            tool.get('description', '').encode('utf-8'),
+        ).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(tool.get('inputSchema'))
+    ):
+        return False
+
+    answer_checks = report.get('answerChecks')
+    if (
+        not isinstance(answer_checks, dict)
+        or set(answer_checks) != CODEX_D05_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in answer_checks.values())
+    ):
+        return False
+    counters = report.get('resultCounters')
+    if not isinstance(counters, dict) or set(counters) != CODEX_D05_RESULT_COUNTER_FIELDS:
+        return False
+    integer_fields = CODEX_D05_RESULT_COUNTER_FIELDS - {'state', 'season', 'totalKind'}
+    if any(type(counters.get(key)) is not int or counters[key] < 0 for key in integer_fields):
+        return False
+    if (
+        counters.get('state') not in {'ok', 'partial'}
+        or not isinstance(counters.get('season'), str)
+        or not re.fullmatch(r'\d{4}-(?:winter|spring|summer|autumn)', counters['season'])
+        or counters.get('totalKind') != 'estimated'
+        or counters['scanned'] < counters['matched']
+        or counters['matched'] < counters['returned']
+        or counters['returned'] != counters['sourceRowsValid']
+        or counters['sourceRowsInvalid'] != 0
+        or counters['sourceRowsDuplicate'] != 0
+        or counters['returned'] > CODEX_D05_EXPECTED_ARGUMENTS['limit']
+        or counters['answerRows'] != counters['returned']
+        or not 0 < counters['textUtf8Bytes'] <= 3600
+        or type(report.get('toolTextUtf8Bytes')) is not int
+        or report['toolTextUtf8Bytes'] != counters['textUtf8Bytes']
+        or not isinstance(report.get('warningCodes'), list)
+        or 'EXPERIMENTAL_SOURCE' not in report['warningCodes']
+        or len(set(report['warningCodes'])) != len(report['warningCodes'])
+    ):
+        return False
+    privacy = report.get('privacy')
+    expected_privacy = {
+        'authProfile': 'anonymous',
+        'oauthAttempted': False,
+        'accountDataRead': False,
+        'writesAttempted': False,
+        'qqPipelineTested': False,
+        'timClientTested': False,
+        'promptStored': False,
+        'answerStored': False,
+        'rawResultStored': False,
+        'artifactImageBytesStored': False,
+        'credentialsStored': False,
+    }
+    return (
+        isinstance(privacy, dict)
+        and set(privacy) == CODEX_D05_PRIVACY_FIELDS
+        and privacy == expected_privacy
+        and not _contains_forbidden_codex_content(report)
+    )
+
+
 def codex_g26_report_is_valid(report: object) -> bool:
     """Validate sanitized one-shot G26 Agent/MCP evidence without storing answer data."""
     if not isinstance(report, dict) or set(report) != CODEX_G26_REPORT_FIELDS:
@@ -1488,6 +1772,16 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 continue
             for call in calls:
                 sources.setdefault(call['name'], set()).add(report_source_ref(path))
+    d05_path = LIVE_PROBE_DIR / CODEX_D05_REPORT_RELATIVE_PATH.split('/')[-1]
+    try:
+        d05_report = json.loads(d05_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        d05_report = None
+    if (
+        codex_d05_report_is_valid(d05_report)
+        and codex_d05_report_matches_candidate_revision(d05_path, d05_report.get('sourceRevision'))
+    ):
+        sources.setdefault('bangumi.query_subjects', set()).add(report_source_ref(d05_path))
     return sources
 
 
