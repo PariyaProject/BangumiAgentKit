@@ -1435,6 +1435,7 @@ interface DiscoveryResultLike {
   plan: {
     operation: string;
     quality: string;
+    season?: string;
     pushdown: DiscoveryPlanFilterLike[];
     postFilters: DiscoveryPlanFilterLike[];
     derivedFilters: DiscoveryPlanFilterLike[];
@@ -1727,7 +1728,11 @@ export function buildDiscoveryResultsViewModel(
   maxItems = DISCOVERY_MAX_RENDERED_ITEMS,
 ): DiscoveryResultsViewModel {
   const rawItems = result.items || [];
-  const facets = queryFacets(input);
+  const resolvedInput =
+    input.season === 'current' && result.plan.season
+      ? { ...input, season: result.plan.season }
+      : input;
+  const facets = queryFacets(resolvedInput);
   const itemCap = Number.isFinite(maxItems)
     ? Math.min(DISCOVERY_MAX_RENDERED_ITEMS, Math.max(1, Math.floor(maxItems)))
     : DISCOVERY_MAX_RENDERED_ITEMS;

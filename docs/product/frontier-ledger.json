@@ -1423,11 +1423,99 @@
       "kind": "scenario",
       "user_question": "本季同时满足“校园”和“恋爱”标签的作品按热度列出。",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-d05-current-season-multitag-heat-source-contract-2026-10-08.md",
+        "packages/discovery/src/contracts.ts",
+        "packages/discovery/src/query.ts",
+        "packages/discovery/src/compiler.ts",
+        "packages/discovery/src/cohort.ts",
+        "packages/tools/src/definitions/discovery-tools.ts",
+        "packages/tools/src/definitions/render-presentation-tools.ts",
+        "apps/mcp/src/result-presenter.ts",
+        "apps/mcp/d05-one-tool-mcp-server.mjs",
+        "packages/renderer/src/view-model-builders/index.ts",
+        "docs/tool-catalog.json",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "scripts/test_acceptance_evidence.py",
+        "tests/discovery/query.test.ts",
+        "tests/discovery/compiler.test.ts",
+        "tests/integration/tool-direct-execute-discovery.test.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "tests/render/discovery-results.test.ts",
+        "scripts/acceptance/d05-current-season-answer-check.mjs",
+        "scripts/acceptance/run-d05-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-d05-agent-mcp-report.mjs",
+        "scripts/acceptance/write-d05-mcp-bundle-attestation.mjs",
+        "scripts/lib/d05-mcp-bundle.mjs"
+      ],
+      "next_action": "The product resolves season=current using an Asia/Tokyo runtime date, retains the canonical YYYY-season and exact half-open date range in the query plan, pushes both exact tags as AND, and labels heat as current collection count. Current local regressions cover Tokyo quarter/year boundaries, the exact D05 search request, MCP projection, Renderer facets, and sanitized answer validation. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated. Only after exact Candidate CI, Harness candidate:check, and GPT-6 Luna Max review PASS align, run the fixed anonymous D05 Agent/MCP query exactly once. Record only sanitized counters and exact returned-row checks; if inconclusive, preserve the spent claim and never retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "source_contract": "Official POST /v0/search/subjects documents repeated tag filters as AND, air_date predicates as AND, and sort=heat as 收藏人数; the endpoint is experimental. See docs/research/run95-d05-current-season-multitag-heat-source-contract-2026-10-08.md.",
+        "capabilities": [
+          "bangumi.query_subjects",
+          "bangumi.render_query_subjects"
+        ],
+        "implementation": [
+          "packages/discovery/src/query.ts: season=current resolves the invocation instant in Asia/Tokyo and normalizes to a canonical quarter and half-open range.",
+          "packages/discovery/src/compiler.ts: preserves canonical season, anime type, both exact tags, air_date bounds, and descending heat in the plan/request.",
+          "packages/discovery/src/cohort.ts: cohort summaries use the resolved canonical season when the input requested current.",
+          "apps/mcp/src/result-presenter.ts: bounded MCP plan includes resolved season/date predicates, sort/order, current-collection heat meaning, estimated totals, and experimental coverage limits.",
+          "packages/renderer/src/view-model-builders/index.ts; packages/renderer/src/templates/DiscoveryResultsCard.tsx: current is rendered using the resolved quarter; date filters, current collection heat, and partial/experimental limits remain visible."
+        ],
+        "tests": [
+          "tests/discovery/query.test.ts",
+          "tests/discovery/compiler.test.ts",
+          "tests/integration/tool-direct-execute-discovery.test.ts",
+          "tests/integration/mcp-result-presenter.test.ts",
+          "tests/render/discovery-results.test.ts",
+          "tests/unit/d05-current-season-answer-check.test.ts",
+          "tests/unit/d05-codex-agent-mcp-runner.test.ts"
+        ],
+        "answer_checker": {
+          "script": "scripts/acceptance/d05-current-season-answer-check.mjs",
+          "method": "d05-current-season-multitag-heat-v1",
+          "checks": [
+            "exact fixed arguments and one target MCP tool call",
+            "resolved season matches its half-open source date range",
+            "anime type plus both exact tags and heat-descending request match",
+            "estimated coverage and experimental warning are present",
+            "source rows are valid, unique, fully read back, and answer order/identity/counts match",
+            "bounded experimental/estimated-total/non-completeness caveat is present"
+          ],
+          "report_persists_answer_or_raw_tool_result": false
+        },
+        "agent_mcp_runner": {
+          "runner": "scripts/acceptance/run-d05-codex-agent-mcp.mjs",
+          "report_writer": "scripts/acceptance/write-d05-agent-mcp-report.mjs",
+          "bundle_attestation": "docs/product/d05-mcp-bundle-attestation.json",
+          "tool": "bangumi.query_subjects",
+          "fixed_arguments": {
+            "media": "anime",
+            "season": "current",
+            "tags": [
+              "校园",
+              "恋爱"
+            ],
+            "sort": "heat",
+            "order": "desc",
+            "resultMode": "top",
+            "limit": 8,
+            "explain": "compact"
+          },
+          "model": "gpt-6-luna",
+          "reasoning_effort": "max",
+          "requires_exact_candidate_current_base_CI_and_review_pass": true,
+          "creates_canonical_and_local_create_once_claims": true,
+          "inconclusive_query_retry": "never",
+          "live_query": "not run; no claim consumed; must wait for exact candidate, CI, and review gates",
+          "report_persists_answer_or_raw_tool_result": false
+        },
+        "status_boundary": "D05 remains PARTIAL until a post-gate one-tool Agent/MCP result passes. Even a passing single current response cannot establish a complete current-season population or global tag completeness because official search is experimental and totals are estimated."
+      }
     },
     {
       "id": "D06",

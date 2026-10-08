@@ -1312,6 +1312,38 @@ describe('MCP tool result presentation', () => {
     expect(presentation.text).not.toContain('this evidence must stay in structuredContent only');
   });
 
+  it('projects the resolved current season and collection-heat meaning into bounded D05 text', () => {
+    const original = makeDiscoveryResult(100);
+    Object.assign(original.plan, { season: '2026-autumn', sort: 'heat', order: 'desc' });
+    const request = original.plan.steps[0]?.request;
+    if (!request) throw new Error('Expected the discovery search request.');
+    Object.assign(request, {
+      sort: 'heat',
+      filter: {
+        ...request.filter,
+        type: [2],
+        tag: ['校园', '恋爱'],
+        airDate: ['>=2026-10-01', '<2027-01-01'],
+      },
+    });
+
+    const presentation = presentMcpToolResult('bangumi.query_subjects', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(parsed.plan).toMatchObject({
+      season: '2026-autumn',
+      sort: 'heat',
+      order: 'desc',
+      heatMeaning: '当前收藏人数；不是讨论趋势或历史热度',
+      filter: {
+        type: [2],
+        tag: ['校园', '恋爱'],
+        airDate: ['>=2026-10-01', '<2027-01-01'],
+      },
+    });
+    expect(parsed.limitations.join(' ')).toContain('experimental');
+  });
+
   it('bounds long query-filter values and discloses filter values omitted from text', () => {
     const original = makeDiscoveryResult(2);
     const filter = original.plan.steps[0]?.request.filter;

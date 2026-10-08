@@ -379,6 +379,10 @@ function projectDiscoveryPlan(
   return {
     ...(typeof plan.source === 'string' ? { source: plan.source } : {}),
     ...(typeof plan.operation === 'string' ? { operation: plan.operation } : {}),
+    ...(typeof plan.season === 'string' ? { season: plan.season } : {}),
+    ...(typeof plan.sort === 'string' ? { sort: plan.sort } : {}),
+    ...(typeof plan.order === 'string' ? { order: plan.order } : {}),
+    ...(plan.sort === 'heat' ? { heatMeaning: '当前收藏人数；不是讨论趋势或历史热度' } : {}),
     ...(typeof plan.totalKind === 'string' ? { totalKind: plan.totalKind } : {}),
     ...(typeof plan.quality === 'string' ? { quality: plan.quality } : {}),
     ...(typeof plan.resultMode === 'string' ? { resultMode: plan.resultMode } : {}),

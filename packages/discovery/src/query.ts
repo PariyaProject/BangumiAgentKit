@@ -38,11 +38,16 @@ const SEASON_MONTHS = {
   autumn: [10, 1],
 } as const;
 
-function asStringArray(value: string | readonly string[] | undefined, field: string, issues: string[]): string[] {
+function asStringArray(
+  value: string | readonly string[] | undefined,
+  field: string,
+  issues: string[],
+): string[] {
   if (value === undefined) return [];
   const values = Array.isArray(value) ? value : [value];
   const normalized = values.map((item) => item.trim()).filter(Boolean);
-  if (normalized.some((item) => item.length > 120)) issues.push(`${field} values must be at most 120 characters`);
+  if (normalized.some((item) => item.length > 120))
+    issues.push(`${field} values must be at most 120 characters`);
   return [...new Set(normalized)];
 }
 
@@ -54,11 +59,18 @@ function asEnumArray<T extends string>(
 ): T[] {
   const values = value === undefined ? [] : Array.isArray(value) ? value : [value];
   const invalid = values.filter((item) => !allowed.includes(item));
-  if (invalid.length > 0) issues.push(`${field} contains unsupported value(s): ${invalid.join(', ')}`);
+  if (invalid.length > 0)
+    issues.push(`${field} contains unsupported value(s): ${invalid.join(', ')}`);
   return [...new Set(values.filter((item) => allowed.includes(item)))];
 }
 
-function assertInteger(value: number | undefined, field: string, min: number, max: number, issues: string[]): void {
+function assertInteger(
+  value: number | undefined,
+  field: string,
+  min: number,
+  max: number,
+  issues: string[],
+): void {
   if (value === undefined) return;
   if (!Number.isInteger(value) || value < min || value > max) {
     issues.push(`${field} must be an integer from ${min} to ${max}`);
@@ -75,7 +87,8 @@ function normalizeRange(
   const max = value.max;
   if (min !== undefined && !Number.isFinite(min)) issues.push(`${field}.min must be finite`);
   if (max !== undefined && !Number.isFinite(max)) issues.push(`${field}.max must be finite`);
-  if (min !== undefined && max !== undefined && min > max) issues.push(`${field}.min must not exceed ${field}.max`);
+  if (min !== undefined && max !== undefined && min > max)
+    issues.push(`${field}.min must not exceed ${field}.max`);
   if (min === undefined && max === undefined) issues.push(`${field} must contain min or max`);
   return { ...(min === undefined ? {} : { min }), ...(max === undefined ? {} : { max }) };
 }
@@ -103,6 +116,26 @@ function dateRangeForYearMonth(year: number, month: number): DateRange {
   };
 }
 
+function currentSeasonAt(instant: Date, issues: string[]): string | undefined {
+  if (!Number.isFinite(instant.getTime())) {
+    issues.push('season=current requires a valid reference instant');
+    return undefined;
+  }
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(instant);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const season = month <= 3 ? 'winter' : month <= 6 ? 'spring' : month <= 9 ? 'summer' : 'autumn';
+  if (!Number.isInteger(year) || !Number.isInteger(month)) {
+    issues.push('season=current could not resolve the Asia/Tokyo calendar date');
+    return undefined;
+  }
+  return `${year}-${season}`;
+}
+
 function dateRangeForSeason(value: string, issues: string[]): DateRange | undefined {
   const match = /^(\d{4})-(winter|spring|summer|autumn)$/u.exec(value);
   if (!match) {
@@ -119,14 +152,53 @@ function dateRangeForSeason(value: string, issues: string[]): DateRange | undefi
   };
 }
 
-function normalizeBudget(input: DiscoveryBudgetInput | undefined, issues: string[]): ExecutionBudget {
+function normalizeBudget(
+  input: DiscoveryBudgetInput | undefined,
+  issues: string[],
+): ExecutionBudget {
   const budget = { ...DEFAULT_BUDGET, ...(input ?? {}) };
-  assertInteger(budget.maxPages, 'budget.maxPages', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxPages, issues);
-  assertInteger(budget.maxCandidates, 'budget.maxCandidates', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxCandidates, issues);
-  assertInteger(budget.maxHydrations, 'budget.maxHydrations', 0, SERVER_EXECUTION_BUDGET_CEILINGS.maxHydrations, issues);
-  assertInteger(budget.concurrency, 'budget.concurrency', 1, SERVER_EXECUTION_BUDGET_CEILINGS.concurrency, issues);
-  assertInteger(budget.maxConceptProbes, 'budget.maxConceptProbes', 0, SERVER_EXECUTION_BUDGET_CEILINGS.maxConceptProbes, issues);
-  assertInteger(budget.maxReturnedItems, 'budget.maxReturnedItems', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxReturnedItems, issues);
+  assertInteger(
+    budget.maxPages,
+    'budget.maxPages',
+    1,
+    SERVER_EXECUTION_BUDGET_CEILINGS.maxPages,
+    issues,
+  );
+  assertInteger(
+    budget.maxCandidates,
+    'budget.maxCandidates',
+    1,
+    SERVER_EXECUTION_BUDGET_CEILINGS.maxCandidates,
+    issues,
+  );
+  assertInteger(
+    budget.maxHydrations,
+    'budget.maxHydrations',
+    0,
+    SERVER_EXECUTION_BUDGET_CEILINGS.maxHydrations,
+    issues,
+  );
+  assertInteger(
+    budget.concurrency,
+    'budget.concurrency',
+    1,
+    SERVER_EXECUTION_BUDGET_CEILINGS.concurrency,
+    issues,
+  );
+  assertInteger(
+    budget.maxConceptProbes,
+    'budget.maxConceptProbes',
+    0,
+    SERVER_EXECUTION_BUDGET_CEILINGS.maxConceptProbes,
+    issues,
+  );
+  assertInteger(
+    budget.maxReturnedItems,
+    'budget.maxReturnedItems',
+    1,
+    SERVER_EXECUTION_BUDGET_CEILINGS.maxReturnedItems,
+    issues,
+  );
   return budget;
 }
 
@@ -140,7 +212,10 @@ function normalizeNsfw(value: DiscoveryQuery['nsfw'], issues: string[]): NsfwFil
 
 export const DEFAULT_EXECUTION_BUDGET = Object.freeze({ ...DEFAULT_BUDGET });
 
-export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedDiscoveryQuery {
+export function normalizeDiscoveryQuery(
+  input: DiscoveryQuery = {},
+  options: { now?: Date } = {},
+): NormalizedDiscoveryQuery {
   const issues: string[] = [];
   const keyword = input.keyword?.trim() ?? '';
   if (keyword.length > 200) issues.push('keyword must be at most 200 characters');
@@ -158,7 +233,8 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   const excludeMetaTags = asStringArray(input.excludeMetaTags, 'excludeMetaTags', issues);
   const concepts = asStringArray(input.concepts, 'concepts', issues);
   const overlap = metaTags.filter((tag) => excludeMetaTags.includes(tag));
-  if (overlap.length > 0) issues.push(`metaTags and excludeMetaTags contradict for: ${overlap.join(', ')}`);
+  if (overlap.length > 0)
+    issues.push(`metaTags and excludeMetaTags contradict for: ${overlap.join(', ')}`);
 
   const from = isoDate(input.from, 'from', issues);
   const to = isoDate(input.to, 'to', issues);
@@ -166,6 +242,8 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   if ((from && !to) || (!from && to)) issues.push('from and to must be provided together');
 
   let dateRange: DateRange | undefined = from && to ? { from, to } : undefined;
+  const season =
+    input.season === 'current' ? currentSeasonAt(options.now ?? new Date(), issues) : input.season;
   if (input.season !== undefined && input.month !== undefined) {
     issues.push('season and month cannot be combined');
   }
@@ -173,7 +251,7 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
     issues.push('season already contains a year and cannot be combined with year');
   }
   if (input.season !== undefined) {
-    dateRange = dateRangeForSeason(input.season, issues);
+    if (season !== undefined) dateRange = dateRangeForSeason(season, issues);
     if (from || to) issues.push('season cannot be combined with from/to');
   } else if (input.month !== undefined && input.year !== undefined) {
     dateRange = dateRangeForYearMonth(input.year, input.month);
@@ -185,7 +263,8 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   const rank = normalizeRange(input.rank, 'rank', issues);
   const collectionCount = normalizeRange(input.collectionCount, 'collectionCount', issues);
   const sort = input.sort ?? 'relevance';
-  if (!DISCOVERY_SORTS.includes(sort)) issues.push(`sort must be one of: ${DISCOVERY_SORTS.join(', ')}`);
+  if (!DISCOVERY_SORTS.includes(sort))
+    issues.push(`sort must be one of: ${DISCOVERY_SORTS.join(', ')}`);
   const order = input.order ?? (sort === 'rank' ? 'asc' : 'desc');
   if (order !== 'asc' && order !== 'desc') issues.push('order must be asc or desc');
   let tieBreak: DiscoveryTieBreak | undefined;
@@ -202,7 +281,8 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   const resultMode = input.resultMode ?? 'top';
   if (resultMode !== 'top' && resultMode !== 'all') issues.push('resultMode must be top or all');
   const explain = input.explain ?? 'none';
-  if (explain !== 'none' && explain !== 'compact' && explain !== 'full') issues.push('explain must be none, compact, or full');
+  if (explain !== 'none' && explain !== 'compact' && explain !== 'full')
+    issues.push('explain must be none, compact, or full');
   const limit = input.limit ?? 20;
   assertInteger(limit, 'limit', 1, SERVER_EXECUTION_BUDGET_CEILINGS.maxReturnedItems, issues);
   const budget = normalizeBudget(input.budget, issues);
@@ -216,6 +296,7 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
     categories,
     ...(input.year === undefined ? {} : { year: input.year }),
     ...(input.month === undefined ? {} : { month: input.month }),
+    ...(season === undefined ? {} : { season }),
     ...(dateRange === undefined ? {} : { dateRange }),
     tags,
     metaTags,
@@ -236,7 +317,9 @@ export function normalizeDiscoveryQuery(input: DiscoveryQuery = {}): NormalizedD
   };
 }
 
-export function isNormalizedDiscoveryQuery(value: DiscoveryQuery | NormalizedDiscoveryQuery): value is NormalizedDiscoveryQuery {
+export function isNormalizedDiscoveryQuery(
+  value: DiscoveryQuery | NormalizedDiscoveryQuery,
+): value is NormalizedDiscoveryQuery {
   const candidate = value as Partial<NormalizedDiscoveryQuery>;
   return (
     Array.isArray(candidate.media) &&
@@ -250,9 +333,8 @@ export function isNormalizedDiscoveryQuery(value: DiscoveryQuery | NormalizedDis
     typeof candidate.limit === 'number' &&
     typeof candidate.budget === 'object' &&
     candidate.budget !== null &&
-    (candidate.tieBreak === undefined || (
-      candidate.tieBreak.field === 'ratingCount' &&
-      (candidate.tieBreak.order === 'asc' || candidate.tieBreak.order === 'desc')
-    ))
+    (candidate.tieBreak === undefined ||
+      (candidate.tieBreak.field === 'ratingCount' &&
+        (candidate.tieBreak.order === 'asc' || candidate.tieBreak.order === 'desc')))
   );
 }

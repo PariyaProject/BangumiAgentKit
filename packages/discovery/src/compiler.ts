@@ -75,10 +75,16 @@ function conceptFilters(
   candidates: readonly ConceptCandidate[],
 ): PlanFilter[] {
   const tagValues = candidates.filter((item) => item.source === 'tag').map((item) => item.value);
-  const metaValues = candidates.filter((item) => item.source === 'meta_tag').map((item) => item.value);
+  const metaValues = candidates
+    .filter((item) => item.source === 'meta_tag')
+    .map((item) => item.value);
   return [
-    ...(tagValues.length === 0 ? [] : [planFilter('concepts', operation, 'contains_all', tagValues)]),
-    ...(metaValues.length === 0 ? [] : [planFilter('concepts', operation, 'contains_all', metaValues)]),
+    ...(tagValues.length === 0
+      ? []
+      : [planFilter('concepts', operation, 'contains_all', tagValues)]),
+    ...(metaValues.length === 0
+      ? []
+      : [planFilter('concepts', operation, 'contains_all', metaValues)]),
   ];
 }
 
@@ -101,12 +107,16 @@ function searchRequest(
         ? {}
         : { airDate: [`>=${query.year}-01-01`, `<${query.year + 1}-01-01`] }),
     ...(query.rating === undefined ? {} : { rating: rangeExpressions(query.rating) }),
-    ...(query.ratingCount === undefined ? {} : { ratingCount: rangeExpressions(query.ratingCount) }),
+    ...(query.ratingCount === undefined
+      ? {}
+      : { ratingCount: rangeExpressions(query.ratingCount) }),
     ...(query.rank === undefined ? {} : { rank: rangeExpressions(query.rank) }),
     ...(query.nsfw === 'include' ? {} : { nsfw: query.nsfw === 'only' }),
   };
   const tagConcepts = candidates.filter((item) => item.source === 'tag').map((item) => item.value);
-  const metaConcepts = candidates.filter((item) => item.source === 'meta_tag').map((item) => item.value);
+  const metaConcepts = candidates
+    .filter((item) => item.source === 'meta_tag')
+    .map((item) => item.value);
   if (tagConcepts.length > 0) filter.tag = [...(filter.tag ?? []), ...tagConcepts];
   if (metaConcepts.length > 0) filter.metaTags = [...(filter.metaTags ?? []), ...metaConcepts];
   return {
@@ -124,7 +134,9 @@ function browseRequest(query: NormalizedDiscoveryQuery): SubjectDiscoveryBrowseR
     type: MEDIA_TO_TYPE[media ?? 'anime'],
     limit: Math.min(50, Math.max(query.limit, 20)),
     offset: 0,
-    ...(query.categories[0] === undefined ? {} : { category: CATEGORY_TO_CAT[query.categories[0]] }),
+    ...(query.categories[0] === undefined
+      ? {}
+      : { category: CATEGORY_TO_CAT[query.categories[0]] }),
     ...(query.year === undefined ? {} : { year: query.year }),
     ...(query.month === undefined ? {} : { month: query.month }),
   };
@@ -139,7 +151,9 @@ export function compileDiscoveryPlan(
   const query = isNormalizedDiscoveryQuery(input)
     ? input
     : normalizeDiscoveryQuery(input as DiscoveryQuery);
-  const operation: DiscoveryPlan['operation'] = canBrowse(query) ? 'browseSubjects' : 'searchSubjects';
+  const operation: DiscoveryPlan['operation'] = canBrowse(query)
+    ? 'browseSubjects'
+    : 'searchSubjects';
   const pushdown: PlanFilter[] = [];
   const postFilters: PlanFilter[] = [];
   const derivedFilters: PlanFilter[] = [];
@@ -153,26 +167,33 @@ export function compileDiscoveryPlan(
     if (hydrationRequirements.some((item) => item.reason === reason)) return;
     hydrationRequirements.push({ reason, fields, source });
   };
-  const searchDateRange = query.dateRange ?? (
-    query.year !== undefined && query.month === undefined ? fullYearRange(query.year) : undefined
-  );
+  const searchDateRange =
+    query.dateRange ??
+    (query.year !== undefined && query.month === undefined ? fullYearRange(query.year) : undefined);
 
   if (operation === 'browseSubjects') {
-    if (query.media.length === 1) pushdown.push(planFilter('media', operation, 'eq', query.media[0] ?? 'anime'));
-    if (query.categories.length > 0) pushdown.push(planFilter('categories', operation, 'in', query.categories));
+    if (query.media.length === 1)
+      pushdown.push(planFilter('media', operation, 'eq', query.media[0] ?? 'anime'));
+    if (query.categories.length > 0)
+      pushdown.push(planFilter('categories', operation, 'in', query.categories));
     if (query.year !== undefined) pushdown.push(planFilter('year', operation, 'eq', query.year));
     if (query.month !== undefined) pushdown.push(planFilter('month', operation, 'eq', query.month));
     pushdown.push(planFilter(`sort:${query.sort}`, operation, 'eq', query.sort));
   } else {
     if (query.keyword) pushdown.push(planFilter('keyword', operation, 'eq', query.keyword));
     if (query.media.length > 0) pushdown.push(planFilter('media', operation, 'in', query.media));
-    if (query.tags.length > 0) pushdown.push(planFilter('tags', operation, 'contains_all', query.tags));
-    if (query.metaTags.length > 0) pushdown.push(planFilter('metaTags', operation, 'contains_all', query.metaTags));
+    if (query.tags.length > 0)
+      pushdown.push(planFilter('tags', operation, 'contains_all', query.tags));
+    if (query.metaTags.length > 0)
+      pushdown.push(planFilter('metaTags', operation, 'contains_all', query.metaTags));
     if (query.excludeMetaTags.length > 0) {
-      postFilters.push(planFilter('excludeMetaTags', operation, 'contains_all', query.excludeMetaTags));
+      postFilters.push(
+        planFilter('excludeMetaTags', operation, 'contains_all', query.excludeMetaTags),
+      );
       requireHydration('canonical_meta_tags', ['metaTags'], 'canonical_detail');
     }
-    if (searchDateRange) pushdown.push(planFilter('dateRange', operation, 'range', searchDateRange));
+    if (searchDateRange)
+      pushdown.push(planFilter('dateRange', operation, 'range', searchDateRange));
     if (query.rating) {
       pushdown.push(planFilter('rating', operation, 'range', query.rating));
       requireHydration('rating_filter', ['score']);
@@ -216,33 +237,60 @@ export function compileDiscoveryPlan(
   if (query.sort === 'score') requireHydration('score_sort', ['score']);
   if (query.sort === 'rank') requireHydration('rank_sort', ['rank']);
   if (query.tieBreak) requireHydration('tie_break_sort', ['ratingCount']);
-  if (operation === 'browseSubjects' && query.sort === 'date') requireHydration('date_sort', ['date']);
+  if (operation === 'browseSubjects' && query.sort === 'date')
+    requireHydration('date_sort', ['date']);
   if (query.order !== nativeOrder(operation, query.sort)) {
     derivedFilters.push(planFilter('order', operation, 'eq', query.order));
   }
-  if (operation === 'browseSubjects' && query.collectionCount) derivedFilters.push(planFilter('collectionCount', operation, 'range', query.collectionCount));
+  if (operation === 'browseSubjects' && query.collectionCount)
+    derivedFilters.push(planFilter('collectionCount', operation, 'range', query.collectionCount));
 
-  const request = operation === 'browseSubjects' ? browseRequest(query) : searchRequest(query, resolvedConcepts);
-  const firstStep: DiscoverySearchStep | DiscoveryBrowseStep = operation === 'browseSubjects'
-    ? { kind: 'browse', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoveryBrowseRequest }
-    : { kind: 'search', source: 'official_v0', operation, page: 0, request: request as SubjectDiscoverySearchRequest };
+  const request =
+    operation === 'browseSubjects' ? browseRequest(query) : searchRequest(query, resolvedConcepts);
+  const firstStep: DiscoverySearchStep | DiscoveryBrowseStep =
+    operation === 'browseSubjects'
+      ? {
+          kind: 'browse',
+          source: 'official_v0',
+          operation,
+          page: 0,
+          request: request as SubjectDiscoveryBrowseRequest,
+        }
+      : {
+          kind: 'search',
+          source: 'official_v0',
+          operation,
+          page: 0,
+          request: request as SubjectDiscoverySearchRequest,
+        };
   const limitations = [
     'Enumeration is bounded by maxPages and maxCandidates.',
     ...(operation === 'searchSubjects'
-      ? ['Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.']
+      ? [
+          'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+        ]
       : []),
-    ...(query.resultMode === 'all' ? ['all requests a complete attempt; budget exhaustion is reported as partial.'] : []),
+    ...(query.resultMode === 'all'
+      ? ['all requests a complete attempt; budget exhaustion is reported as partial.']
+      : []),
     ...(query.excludeMetaTags.length > 0
-      ? ['Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.']
+      ? [
+          'Negative meta-tag exclusion is verified locally against hydrated canonical metaTags, not assumed from upstream minus syntax.',
+        ]
       : []),
-    ...(query.sort === 'heat' ? ['heat means upstream 收藏人数 and is not a recent-trend metric.'] : []),
+    ...(query.sort === 'heat'
+      ? ['heat means upstream 收藏人数 and is not a recent-trend metric.']
+      : []),
     ...(query.tieBreak
-      ? ['A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.']
+      ? [
+          'A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.',
+        ]
       : []),
   ];
   return {
     source: 'official_v0',
     operation,
+    ...(query.season === undefined ? {} : { season: query.season }),
     sort: query.sort,
     order: query.order,
     ...(query.tieBreak === undefined ? {} : { tieBreak: query.tieBreak }),

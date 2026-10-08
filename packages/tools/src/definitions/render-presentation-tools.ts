@@ -81,7 +81,7 @@ import {
   buildEpisodeIntegrityViewModel,
 } from '@bangumi-agent-kit/renderer';
 import {
-  discoveryQueryInput,
+  renderQuerySubjectsInput,
   subjectCohortAggregationInput,
   subjectCohortComparisonInput,
 } from './discovery-tools.js';
@@ -649,7 +649,7 @@ export function createRenderPresentationTools(
     name: 'bangumi.render_query_subjects',
     description:
       '生成高级 Bangumi 条目发现结果图片卡片。复用 bangumi.query_subjects 的受控筛选、覆盖、计划、证据和限制；卡片不是完整数据库枚举的承诺。',
-    input: discoveryQueryInput,
+    input: renderQuerySubjectsInput,
     auth: 'none',
     scopes: [],
     risk: 'read',

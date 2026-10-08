@@ -153,7 +153,31 @@ describe('discovery-results renderer', () => {
     const html = renderHtmlTemplate(tieViewModel, 'bangumi-dark', {}, 360);
 
     expect(tieViewModel.query.facets).toContain('同分排序：评分人数 / 降序');
-    expect(html).toContain('评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖');
+    expect(html).toContain(
+      '评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖',
+    );
+  });
+
+  it('renders the resolved season when the query requested the current season', () => {
+    const result = makeResult('partial', 1);
+    Object.assign(result.plan, { season: '2026-autumn' });
+    const viewModel = buildDiscoveryResultsViewModel(result, {
+      media: 'anime',
+      season: 'current',
+      tags: ['校园', '恋爱'],
+      sort: 'heat',
+      order: 'desc',
+      limit: 12,
+    });
+
+    expect(viewModel.query.facets).toEqual(
+      expect.arrayContaining([
+        '季度：2026-autumn',
+        '标签：校园、恋爱',
+        '排序：收藏人数（当前） / 降序',
+      ]),
+    );
+    expect(viewModel.query.facets).not.toContain('季度：current');
   });
 
   it('explains experimental search and bounded coverage in Chinese at mobile chat size', async () => {
