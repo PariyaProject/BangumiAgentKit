@@ -1456,7 +1456,7 @@
         "tests/unit/d05-mcp-bundle-attestation-writer.test.ts",
         "tests/unit/d05-report-writer.test.ts"
       ],
-      "next_action": "The first GPT-6 Luna Max review identified four issues, now corrected: coverage.state is checked independently of result.state; completeness negation is scoped so a site caveat cannot excuse a positive current-season claim; query and Renderer tool schemas share season=current; and the report writer requires a clean exact Candidate, matching bundle attestation, and canonical CLAIMED one-shot record. Local regressions cover these fixes plus Tokyo boundaries, exact search planning, MCP projection, Renderer execution, and sanitized reporting. Establish a fresh Candidate, exact seven-job CI, and same-reviewer GPT-6 Luna Max PASS before the single fixed anonymous D05 query. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated; if the query is inconclusive, preserve the spent claim and never retry.",
+      "next_action": "Review #2 confirmed D05-001 through D05-004 are closed and added D05-005: an unqualified positive claim such as “这是完整列表” could escape the completeness detector. The checker now rejects scoped completeness claims and unqualified complete-list claims, while retaining explicit negation handling; regression coverage includes both positive and explicitly incomplete wording. Establish a fresh Candidate with exact seven-job CI and the same GPT-6 Luna Max reviewer for review #3 before the single fixed anonymous D05 query. Keep D05 PARTIAL because official-v0 search is experimental and totals are estimated; if the query is inconclusive, preserve the spent claim and never retry.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -1497,7 +1497,8 @@
             "anime type plus both exact tags and heat-descending request match",
             "estimated coverage and experimental warning are present",
             "source rows are valid, unique, fully read back, and answer order/identity/counts match",
-            "bounded experimental/estimated-total/non-completeness caveat is present"
+            "bounded experimental/estimated-total/non-completeness caveat is present",
+            "scoped and unqualified positive complete-list claims are rejected; explicit negation, bounded coverage, and estimated totals remain required"
           ],
           "report_persists_answer_or_raw_tool_result": false
         },

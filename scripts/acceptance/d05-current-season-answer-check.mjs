@@ -112,11 +112,14 @@ function hasUnsupportedCompletenessClaim(caveat) {
     const scopedCompleteness =
       /(?:本季|本季度|当前季(?:度)?|这季|全站|全库|(?:整个|全部)\s*Bangumi|current season|this season|whole site|entire site|entire database|all matching|every matching)/iu;
     const completeness =
-      /(?:全部|所有|完整(?:列表|目录|列出|覆盖)?|无遗漏|全量|exhaustive|complete(?: list| coverage)?|all matching|every matching)/iu;
-    if (!scopedCompleteness.test(clause) || !completeness.test(clause)) return false;
+      /(?:全部|所有|完整(?:列表|清单|目录|名单|列出|覆盖)?|无遗漏|全量|exhaustive|complete(?: list| coverage)?|full(?: list)?|all matching|every matching)/iu;
+    const unqualifiedCompleteList =
+      /(?:完整(?:的)?(?:列表|清单|目录|名单)|(?:列表|清单|目录|名单)(?:是|为)?完整|(?:complete|exhaustive|full)\s+(?:list|catalog(?:ue)?|index)|(?:list|catalog(?:ue)?|index)\s+(?:is\s+)?(?:complete|exhaustive|full))/iu;
+    const scopedClaim = scopedCompleteness.test(clause) && completeness.test(clause);
+    if (!scopedClaim && !unqualifiedCompleteList.test(clause)) return false;
 
     const negation =
-      /(?:不代表|不能|无法|并非|不是|不等于|未证明|未能证明|不完整|未完整|not|cannot|does not|doesn't|no guarantee)/iu;
+      /(?:不代表|不能|无法|并非|不是|不等于|未证明|未能证明|不完整|未完整|\bincomplete\b|\bnot\b|\bcannot\b|\bdoes not\b|\bdoesn't\b|\bno guarantee\b)/iu;
     const negationIndex = clause.search(negation);
     const completenessIndex = clause.search(completeness);
     return negationIndex < 0 || negationIndex > completenessIndex;

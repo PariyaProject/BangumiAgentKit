@@ -232,6 +232,21 @@ describe('D05 current-season multi-tag heat answer checker', () => {
     const separatedClaim = JSON.parse(makeAnswer()) as Record<string, any>;
     separatedClaim.caveat = '不代表本季完整，而且全站全部作品都已完整列出。';
     expect(verify({ answer: JSON.stringify(separatedClaim) }).passed).toBe(false);
+
+    const unqualifiedCompleteList = JSON.parse(makeAnswer()) as Record<string, any>;
+    unqualifiedCompleteList.caveat =
+      '官方搜索仍处于实验阶段，总数为估算。这是完整列表。本次是有界观察，不代表本季完整；不代表全站完整。热度为当前收藏人数，不是讨论趋势或历史热度。';
+    expect(verify({ answer: JSON.stringify(unqualifiedCompleteList) }).passed).toBe(false);
+
+    const explicitlyIncompleteList = JSON.parse(makeAnswer()) as Record<string, any>;
+    explicitlyIncompleteList.caveat =
+      '官方搜索仍处于实验阶段，总数为估算。这不是完整列表。本次是有界观察，不代表本季完整；不代表全站完整。热度为当前收藏人数，不是讨论趋势或历史热度。';
+    expect(verify({ answer: JSON.stringify(explicitlyIncompleteList) }).passed).toBe(true);
+
+    const englishCompleteList = JSON.parse(makeAnswer()) as Record<string, any>;
+    englishCompleteList.caveat =
+      'The experimental search has estimated totals. Notably, this is a complete list. This is a bounded observation and is not a complete season or whole-site list.';
+    expect(verify({ answer: JSON.stringify(englishCompleteList) }).passed).toBe(false);
   });
 
   it('rejects incomplete text-only readback, wrong coverage counters, and clipped text', () => {
