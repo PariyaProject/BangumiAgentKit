@@ -1290,39 +1290,21 @@ export class SeriesService {
       '人物角色与条目关系响应是当前匿名可见的无分页数组；此结果只覆盖本次观察到的行，不代表完整履历或完整系列。',
       '只按数字 subject_id 匹配锚点和最多 maxNodes 个当前可见直接动画前传、续集、衍生或总集篇关系；未命中或只命中一部作品不证明没有其他演出。',
     ];
-    if (root.type !== 'anime') {
-      return {
-        personId,
-        state: 'not_attempted',
-        matchStatus: 'not_established',
-        distinctWorks: 0,
-        works: [],
-        coverage: baseCoverage,
-        sourceOperation: {
-          operation: 'GET /v0/persons/{person_id}/characters',
-          path,
-          status: 'not_attempted',
-        },
-        limitations: [
-          '起点不是动画；未请求人物角色来源，因此本次没有建立声优作品交集。',
-          ...baseLimitations,
-        ],
-      };
-    }
-
     const candidateWorks = new Map<number, Omit<SeriesVoiceActorWork, 'credits'>>();
-    candidateWorks.set(root.id, {
-      subjectId: root.id,
-      subjectName: root.name,
-      subjectNameCn: root.nameCn || root.name,
-      relationEvidence: [
-        {
-          sourceSubjectId: root.id,
-          targetSubjectId: root.id,
-          direction: 'anchor',
-        },
-      ],
-    });
+    if (root.type === 'anime') {
+      candidateWorks.set(root.id, {
+        subjectId: root.id,
+        subjectName: root.name,
+        subjectNameCn: root.nameCn || root.name,
+        relationEvidence: [
+          {
+            sourceSubjectId: root.id,
+            targetSubjectId: root.id,
+            direction: 'anchor',
+          },
+        ],
+      });
+    }
     for (const id of selectedIds) {
       const rows = relationGroups.get(id) || [];
       const first = rows[0];

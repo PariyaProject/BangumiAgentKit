@@ -368,6 +368,10 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       ...answer,
       caveat: '不是完整履历，所以这是官方唯一顺序。',
     };
+    const becauseNegationBypass = {
+      ...answer,
+      caveat: '不是完整履历；不是官方唯一顺序；并非官方唯一顺序因为这就是官方唯一顺序。',
+    };
     const wrongRelationResult = structuredClone(toolOutput);
     const directRelation =
       wrongRelationResult.structuredContent.voiceActorPresence.works[1]?.relationEvidence.find(
@@ -444,6 +448,14 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
     expect(
       verifyS03VoiceActorOverlapAnswer(
         JSON.stringify(causalNegationBypass),
+        S03_EXPECTED_QUERY_ARGUMENTS,
+        toolOutput,
+        toolCalls,
+      ).answerChecks.noUnsupportedCompletenessClaim,
+    ).toBe(false);
+    expect(
+      verifyS03VoiceActorOverlapAnswer(
+        JSON.stringify(becauseNegationBypass),
         S03_EXPECTED_QUERY_ARGUMENTS,
         toolOutput,
         toolCalls,

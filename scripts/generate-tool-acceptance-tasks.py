@@ -517,6 +517,7 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
         'Object.keys(parsedAnswer).sort()',
         'noUnsupportedCompletenessClaim: !hasUnsupportedCompletenessClaim(parsedAnswer)',
         'negatedClaimPrefix.test(clause.trim())',
+        '|于是|因为|但|且|却|而/u',
     ),
     CODEX_S03_ATTESTATION_PUBLIC_KEY_RELATIVE_PATH: ('-----BEGIN PUBLIC KEY-----',),
     'scripts/generate-tool-acceptance-tasks.py': (

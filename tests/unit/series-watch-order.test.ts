@@ -596,7 +596,7 @@ describe('SeriesService bounded watch-order intelligence', () => {
     });
   });
 
-  it('reports unavailable and oversized actor sources, and skips the request for a non-anime root', async () => {
+  it('reports unavailable and oversized actor sources, and requests a supplied actor for a non-anime root', async () => {
     const failed = fixture({
       subjects: [subject(100)],
       relations: { 100: [] },
@@ -629,15 +629,31 @@ describe('SeriesService bounded watch-order intelligence', () => {
     const nonAnime = fixture({
       subjects: [subject(100, 1)],
       relations: { 100: [relation(101, '续集')] },
+      personCharacters: [
+        { ...personCharacter(100, 10), subject_type: 1 },
+        personCharacter(101, 11),
+      ],
     });
     const nonAnimeResult = await nonAnime.service.getSeriesWatchOrder(100, {
       voiceActorPersonId: 20,
+      maxVoiceCredits: 5,
     });
     expect(nonAnimeResult.voiceActorPresence).toMatchObject({
-      state: 'not_attempted',
-      sourceOperation: { status: 'not_attempted' },
+      state: 'observed',
+      matchStatus: 'not_established',
+      distinctWorks: 1,
+      works: [{ subjectId: 101 }],
+      sourceOperation: { status: 'succeeded', path: '/v0/persons/20/characters' },
+      coverage: {
+        maxVoiceCredits: 5,
+        personRowsObserved: 2,
+        personRowsReturned: 2,
+        maxResponseBytes: 1_048_576,
+      },
     });
-    expect(nonAnime.calls.some((url) => url.includes('/v0/persons/'))).toBe(false);
+    expect(nonAnime.calls.filter((url) => url.endsWith('/v0/persons/20/characters'))).toHaveLength(
+      1,
+    );
   });
 
   it('leaves the default serialized result and source requests unchanged without a person ID', async () => {

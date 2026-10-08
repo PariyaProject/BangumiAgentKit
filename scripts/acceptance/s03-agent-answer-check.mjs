@@ -93,7 +93,9 @@ function hasUnsupportedCompletenessClaim(value) {
     const negatedClaimPrefix =
       /^(?:(?:这个答案|本结果|该结果|结果|答案|这|此结果)\s*)?(?:不是|并非|不代表|不构成|不能证明|不等于|不意味着|未能证明|没有|未显示|不包含|并不代表|不能称为|尚未证明)(?:\s|$|完整履历|全部演出|全系列完整|官方唯一顺序)/u;
     return value
-      .split(/[，,；。！？!?]|并且|而且|同时|然而|不过|但是|所以|因此|因而|由此|于是|但|且|却|而/u)
+      .split(
+        /[，,；。！？!?]|并且|而且|同时|然而|不过|但是|所以|因此|因而|由此|于是|因为|但|且|却|而/u,
+      )
       .some((clause) => forbiddenPhrases.test(clause) && !negatedClaimPrefix.test(clause.trim()));
   }
   if (Array.isArray(value)) return value.some(hasUnsupportedCompletenessClaim);
