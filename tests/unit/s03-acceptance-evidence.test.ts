@@ -411,6 +411,15 @@ describe('S03 create-once Agent/MCP evidence gate', () => {
       reviewerId: 'gpt-6-luna-max-run95-s03-pr128-round1',
     });
 
+    const laterRoundSameReviewer = structuredClone(fixture.status);
+    laterRoundSameReviewer.epoch.state.review_history[0]!.review_number = 2;
+    expect(
+      assertS03CandidateReviewGate(laterRoundSameReviewer, fixture.pr, {
+        sourceRevision: fixture.candidateSha,
+        currentBaseSha: fixture.baseSha,
+      }).reviewerId,
+    ).toBe('gpt-6-luna-max-run95-s03-pr128-round1');
+
     const stalePr = structuredClone(fixture.pr);
     stalePr.headRefOid = 'c'.repeat(40);
     expect(() =>

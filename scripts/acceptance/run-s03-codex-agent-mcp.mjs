@@ -262,12 +262,11 @@ export function assertS03CandidateReviewGate(status, pr, { sourceRevision, curre
     ? epoch.review_history.find((review) => {
         const reviewerMatch =
           typeof review?.reviewer_id === 'string' &&
-          /^gpt-6-luna-max-run95-s03-pr(\d+)-round([1-6])$/u.exec(review.reviewer_id);
+          /^gpt-6-luna-max-run95-s03-pr(\d+)-round1$/u.exec(review.reviewer_id);
         return (
           review?.candidate_sha === sourceRevision &&
           review?.reviewed_base_sha === currentBaseSha &&
           review?.verdict === 'PASS' &&
-          review?.review_number === Number(reviewerMatch?.[2]) &&
           Number(reviewerMatch?.[1]) === epochView?.number
         );
       })

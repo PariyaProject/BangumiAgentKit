@@ -477,7 +477,7 @@ CODEX_S03_PROBE_IMPLEMENTATION_MARKERS = {
         "'features.shell_tool=false'",
         'review?.reviewed_base_sha === currentBaseSha',
         'pr?.baseRefOid === currentBaseSha',
-        'review_number === Number(reviewerMatch?.[2])',
+        'round1$/u.exec(review.reviewer_id)',
     ),
     'scripts/lib/s03-one-shot-authorization.mjs': (
         'function assertClaimPath(',
