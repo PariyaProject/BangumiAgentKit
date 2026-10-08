@@ -16,7 +16,7 @@ test('consumed Run 95 S03 one-shot stays partial and cannot be retried', () => {
   assert.ok(
     record.source_refs.includes('docs/research/run95-s03-one-shot-disposition-2026-10-09.md'),
   );
-  assert.match(record.next_action, /one-shot is consumed/u);
+  assert.match(record.next_action, /one-shot (?:is|remains) consumed/u);
   assert.match(record.next_action, /INCONCLUSIVE/u);
   assert.match(record.next_action, /Never retry/u);
   assert.match(record.next_action, /different safe unspent frontier/u);

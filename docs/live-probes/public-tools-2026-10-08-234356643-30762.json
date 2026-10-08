@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_public_api_tool_registry_smoke",
+  "observedAt": "2026-10-08T23:43:56.643Z",
+  "mode": "read_only_public_api_smoke",
+  "catalogSha256": "963b571873c1fbcab423ea3ca464588a683c46409183421462838b6d66b6798d",
+  "probeScriptSha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+  "sourceProgram": "scripts/smoke-public-tools-online.ts",
+  "subjectId": 41529,
+  "userAgent": "BangumiAgentKit/live-public-probe",
+  "probeCount": 7,
+  "httpRequests": 11,
+  "selectedTools": [
+    "bangumi.get_subject_cast",
+    "bangumi.query_subjects",
+    "bangumi.get_subject_relations",
+    "bangumi.get_series_watch_order",
+    "bangumi.get_person_activity",
+    "bangumi.render_query_subjects",
+    "bangumi.render_series_watch_order"
+  ],
+  "limits": [
+    "selected named public/read tools only",
+    "sequential probes with 1.2s spacing",
+    "no OAuth",
+    "no writes",
+    "summaries only"
+  ],
+  "redactions": [
+    "username values are omitted from recorded inputs"
+  ],
+  "results": [
+    {
+      "tool": "bangumi.get_subject_cast",
+      "input": {
+        "subjectId": 41529,
+        "limit": 2
+      },
+      "httpRequests": 1,
+      "result": {
+        "subjectId": 41529,
+        "observed": 9,
+        "returned": 2,
+        "castCount": 2
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "identityMatchesRequest": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2026,
+        "month": 7,
+        "resultMode": "top",
+        "limit": 1,
+        "sort": "date",
+        "order": "asc",
+        "explain": "none"
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "ok",
+        "itemsCount": 1,
+        "warningsCount": 0
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "minimumCountObserved": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_subject_relations",
+      "input": {
+        "subjectId": 41529
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "0",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_series_watch_order",
+      "input": {
+        "subjectId": 41529,
+        "depth": 0,
+        "maxNodes": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "subjectId": 41529,
+        "warningsCount": 2
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "identityMatchesRequest": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.get_person_activity",
+      "input": {
+        "personId": 3474,
+        "windowMonths": 3,
+        "maxRelations": 1,
+        "maxSubjectDetails": 1,
+        "maxRows": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "complete",
+        "warningsCount": 1
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_query_subjects",
+      "input": {
+        "media": "anime",
+        "year": 2012,
+        "resultMode": "top",
+        "limit": 1
+      },
+      "httpRequests": 1,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    },
+    {
+      "tool": "bangumi.render_series_watch_order",
+      "input": {
+        "subjectId": 41529,
+        "depth": 0,
+        "maxNodes": 1
+      },
+      "httpRequests": 2,
+      "result": {
+        "state": "value",
+        "keys": [
+          "artifact"
+        ]
+      },
+      "assertions": {
+        "httpRequestObserved": true,
+        "nonEmptySummary": true,
+        "noErrorResult": true,
+        "nonNegativeCounts": true,
+        "countConsistency": true,
+        "passed": true
+      }
+    }
+  ]
+}
