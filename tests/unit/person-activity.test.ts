@@ -188,6 +188,134 @@ describe('PersonActivityService', () => {
     );
   });
 
+  it('ranks distinct main voice works by current score across all dates', async () => {
+    const relations = [
+      { id: 101, name: '角色 A', subject_id: 1, subject_type: 2, staff: '主役' },
+      { id: 201, name: '角色 B', subject_id: 2, subject_type: 2, staff: '主角' },
+      { id: 301, name: '角色 C', subject_id: 3, subject_type: 2, staff: '主役' },
+      { id: 302, name: '角色 D', subject_id: 3, subject_type: 2, staff: '主角' },
+      { id: 401, name: '角色 E', subject_id: 4, subject_type: 2, staff: '主役' },
+    ];
+    const subjects = new Map([
+      [1, subjectPayload(1, { date: '2001-01-01', rating: { score: 8.4, total: 500, count: {} } })],
+      [2, subjectPayload(2, { date: '2002-01-01', rating: { score: 9.2, total: 50, count: {} } })],
+      [3, subjectPayload(3, { date: '2003-01-01', rating: { score: 9.2, total: 99, count: {} } })],
+      [4, subjectPayload(4, { date: '2004-01-01', rating: { score: 9.2, total: 99, count: {} } })],
+    ]);
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) return json(relations);
+      if (url.includes('/v0/subjects/')) {
+        const subject = subjects.get(Number(url.split('/').pop()));
+        return subject ? json(subject) : json({ error: 'not found' }, 404);
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-10-08',
+        windowMonths: 3,
+        kind: 'voice',
+        media: 'all',
+        rankingMode: 'top_rated_main_voice',
+      },
+    );
+
+    expect(result.rows).toEqual([]);
+    expect(result.ranking).toMatchObject({
+      state: 'complete',
+      media: 'all',
+      scope: 'current_official_person_character_response',
+      items: [
+        { subjectId: 3, ratingScore: 9.2, ratingTotal: 99, characterCount: 2 },
+        { subjectId: 4, ratingScore: 9.2, ratingTotal: 99, characterCount: 1 },
+        { subjectId: 2, ratingScore: 9.2, ratingTotal: 50, characterCount: 1 },
+        { subjectId: 1, ratingScore: 8.4, ratingTotal: 500, characterCount: 1 },
+      ],
+      coverage: {
+        relationRowsObserved: 5,
+        relationRowsSelected: 5,
+        relationRowsDroppedAtLimit: 0,
+        mainRoleSubjectsSelected: 4,
+        scoreableMainRoleSubjects: 4,
+        rowsReturned: 4,
+        truncated: false,
+      },
+    });
+    expect(result.ranking?.items[0]?.rawRoles).toEqual(['主役', '主角']);
+    expect(result.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'person-activity-top-rated-main-voice-ranking',
+          formulaVersion: 'person-activity-top-rated-main-voice-v1',
+        }),
+      ]),
+    );
+  });
+
+  it('keeps unknown roles and missing scores visible as partial ranking coverage', async () => {
+    const relations = [
+      { id: 101, name: '主役', subject_id: 1, subject_type: 2, staff: '主役' },
+      { id: 201, name: '标签未知', subject_id: 2, subject_type: 2 },
+      { id: 301, name: '配角', subject_id: 3, subject_type: 2, staff: '配角' },
+      { id: 401, name: '未评分主役', subject_id: 4, subject_type: 2, staff: '主角' },
+      { id: 501, name: '零分主役', subject_id: 5, subject_type: 2, staff: '主角' },
+    ];
+    const subjects = new Map([
+      [1, subjectPayload(1, { rating: { score: 8.8, total: 30, count: {} } })],
+      [2, subjectPayload(2, { rating: { score: 9.9, total: 1000, count: {} } })],
+      [3, subjectPayload(3, { rating: { score: 10, total: 500, count: {} } })],
+      [4, subjectPayload(4, { rating: { total: 0, count: {} } })],
+      [5, subjectPayload(5, { rating: { score: 0, count: {} } })],
+    ]);
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json(personPayload());
+      if (url.endsWith('/v0/persons/20/characters')) return json(relations);
+      if (url.includes('/v0/subjects/')) {
+        const subject = subjects.get(Number(url.split('/').pop()));
+        return subject ? json(subject) : json({ error: 'not found' }, 404);
+      }
+      return json({ error: 'not found' }, 404);
+    });
+
+    const result = await new PersonActivityService(new HttpClient({ fetchFn })).getPersonActivity(
+      20,
+      {
+        asOf: '2026-10-08',
+        media: 'all',
+        rankingMode: 'top_rated_main_voice',
+      },
+    );
+
+    expect(result.ranking).toMatchObject({
+      state: 'partial',
+      items: [
+        { subjectId: 1, ratingScore: 8.8 },
+        { subjectId: 5, ratingScore: 0 },
+      ],
+      coverage: {
+        mainRoleSubjectsSelected: 3,
+        scoreableMainRoleSubjects: 2,
+        missingRatingScoreSubjects: 1,
+        zeroRatingScoreSubjects: 1,
+        missingRatingTotalSubjects: 1,
+        unknownRoleRows: 1,
+        subjectDetailsSucceeded: 5,
+      },
+    });
+    expect(result.ranking?.items.map((item) => item.subjectId)).not.toContain(2);
+    expect(result.ranking?.items.map((item) => item.subjectId)).not.toContain(3);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'RANKING_COVERAGE', state: 'partial' }),
+      ]),
+    );
+  });
+
   it('hydrates bounded subject details and preserves window/media/role evidence', async () => {
     const fixture = activityFetch();
     const service = new PersonActivityService(new HttpClient({ fetchFn: fixture.fetchFn }));
@@ -865,6 +993,7 @@ describe('PersonActivityService', () => {
         asOf: '2026-08-15',
         kind: 'voice',
         media: 'tv',
+        rankingMode: 'top_rated_main_voice',
         maxRelations: 4,
         maxSubjectDetails: 4,
       },
@@ -872,6 +1001,16 @@ describe('PersonActivityService', () => {
 
     expect(result.state).toBe('partial');
     expect(result.rows.map((row) => row.subjectId)).toEqual([1, 3, 6, 8]);
+    expect(result.ranking).toMatchObject({
+      state: 'partial',
+      items: [
+        { subjectId: 1, ratingScore: 8 },
+        { subjectId: 3, ratingScore: 8 },
+        { subjectId: 6, ratingScore: 8 },
+        { subjectId: 8, ratingScore: 8 },
+      ],
+      coverage: { relationRowsDroppedAtLimit: 4, truncated: true },
+    });
     expect(result.coverage).toMatchObject({
       relationRowsObserved: 8,
       relationRowsSelected: 4,

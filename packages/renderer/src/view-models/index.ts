@@ -780,6 +780,7 @@ export interface PersonActivityViewModel {
       }>;
     };
   };
+  ranking?: import('@bangumi-agent-kit/bangumi-core').PersonActivityRanking;
   coverage: {
     relationRowsObserved: number;
     relationRowsSelected: number;

@@ -1293,7 +1293,10 @@
       "user_question": "找出 2019–2024 年评分人数超过 1 万的女性向 TV 动画。",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md"],
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md"
+      ],
       "next_action": "Run #95 exact-tag implementation is on the current candidate: anime, air_date [2019-01-01, 2025-01-01), rating_count >= 10001, exact documented tag=女性向, and TV platform post-filter. This tag is only an operational facet, not a female-audience ontology. After exact-head CI and Harness candidate gates, execute one anonymous Agent/MCP query and require exact row/readback plus experimental/estimated/partial disclosures. If evidence is unreadable or the query is inconclusive, keep UNASSESSED and do not retry. On fully passing evidence, transition only to PARTIAL with measured bounded coverage; never claim exhaustive or DELIVERED. Do not access accounts, community content, QQ, or TIM.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
@@ -1666,7 +1669,16 @@
         "tests/unit/person-activity.test.ts",
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/render/person-activity.test.ts",
-        "tests/standalone/person-activity-presenter.test.ts"
+        "tests/standalone/person-activity-presenter.test.ts",
+        "apps/mcp/s02-one-tool-mcp-server.mjs",
+        "scripts/acceptance/s02-agent-answer-check.mjs",
+        "scripts/acceptance/run-s02-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-s02-mcp-bundle-attestation.mjs",
+        "scripts/lib/s02-mcp-bundle.mjs",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "scripts/test_acceptance_evidence.py",
+        "tests/unit/s02-agent-answer-check.test.ts",
+        "tests/unit/s02-codex-agent-mcp-runner.test.ts"
       ],
       "next_action": "Annual buckets now group eligible current relation/detail observations by first-air calendar year, clip the exact 36-calendar-month window boundaries, and deduplicate subject IDs. Keep S01 PARTIAL: the official relation operation is a bare array without paging/total, selection/detail limits and the current TV platform classifier cannot establish complete career counts, and no current-source Agent/MCP query was run in this Epoch. A zero under partial coverage is not evidence of absence. Reopen when source coverage or bounded current-source Agent/MCP evidence materially changes; no live query is in scope here.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
@@ -1677,9 +1689,25 @@
       "kind": "scenario",
       "user_question": "某声优主役作品中评分最高的五部是什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/s02-voice-actor-top-rated-lead-roles-2026-10-08.md",
+        "packages/bangumi-core/src/models/person-activity.ts",
+        "packages/bangumi-core/src/services/person-activity-service.ts",
+        "packages/tools/src/definitions/read-tools.ts",
+        "apps/mcp/src/result-presenter.ts",
+        "packages/renderer/src/view-models/index.ts",
+        "packages/renderer/src/view-model-builders/index.ts",
+        "packages/renderer/src/templates/PersonActivityCard.tsx",
+        "apps/standalone/src/presenter.ts",
+        "tests/unit/person-activity.test.ts",
+        "tests/semantic/person-activity.test.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "tests/render/person-activity.test.ts",
+        "tests/standalone/person-activity-presenter.test.ts"
+      ],
+      "next_action": "The explicit top_rated_main_voice mode returns distinct current-response main-role subjects ordered by Bangumi score, rating total, and subject ID; it retains score/role coverage through MCP, Renderer, and Standalone. Keep S02 PARTIAL: relation roles are heuristic free text, current relation responses have no paging/total, and caps or missing scores/details can change the observed ranking. Do not claim a career-wide top five or historical score. After exact Candidate CI, Harness candidate:check, and GPT-6 Luna Max PASS all match the same Candidate, use the dedicated one-shot runner once for the anonymous person 3474 Agent/MCP answer; it verifies exact row identity/order and coverage wording and keeps only sanitized IDs, scores, counters, and booleans. If inconclusive, preserve the claim and do not repeat the call.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

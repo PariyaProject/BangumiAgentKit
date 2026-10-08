@@ -16,6 +16,8 @@ import {
   PersonActivityOriginCoverage,
   PersonActivityOriginSummary,
   PersonActivityComparison,
+  PersonActivityRanking,
+  PersonActivityRankingMode,
   PersonActivityRelationKind,
   PersonActivityResult,
   PersonActivityRoleFamily,
@@ -45,6 +47,8 @@ export const PERSON_ACTIVITY_MAX_RESPONSE_BYTES = 1_048_576;
 export interface PersonActivityOptions {
   kind?: PersonActivityKind;
   media?: PersonActivityMedia;
+  /** Rank five distinct main voice-role subjects by current official rating score. */
+  rankingMode?: PersonActivityRankingMode;
   /** Exact official staff-role filter; supplying it defaults kind to staff. */
   staffRole?: PersonActivityStaffRole;
   windowMonths?: number;
@@ -227,6 +231,162 @@ function uniqueNumbers(values: Iterable<number | undefined>): number[] {
   return Array.from(
     new Set(Array.from(values).filter((value): value is number => value !== undefined)),
   );
+}
+
+interface SubjectRatingObservation {
+  score?: number;
+  total?: number;
+}
+
+function rankMainVoiceWorks(options: {
+  observedCandidates: readonly ActivityCandidate[];
+  selectedCandidates: readonly ActivityCandidate[];
+  selectedSubjectIds: readonly number[];
+  detailIds: readonly number[];
+  detailMap: ReadonlyMap<number, DomainSubject>;
+  detailFailures: ReadonlyMap<number, DetailFailure>;
+  subjectRatings: ReadonlyMap<number, SubjectRatingObservation>;
+  media: PersonActivityMedia;
+  relationRowsDroppedAtLimit: number;
+  subjectDetailIdsDroppedAtLimit: number;
+  relationResponseAvailable: boolean;
+  retrievedAt: string;
+}): PersonActivityRanking {
+  const relationsBySubject = new Map<number, ActivityCandidate[]>();
+  let missingSubjectIdRows = 0;
+  let unknownRoleRows = 0;
+  for (const candidate of options.selectedCandidates) {
+    const role = classifyRole(candidate);
+    if (role === 'unknown') unknownRoleRows += 1;
+    if (candidate.subjectId === undefined) {
+      missingSubjectIdRows += 1;
+      continue;
+    }
+    const relations = relationsBySubject.get(candidate.subjectId) ?? [];
+    relations.push(candidate);
+    relationsBySubject.set(candidate.subjectId, relations);
+  }
+
+  const items: PersonActivityRanking['items'] = [];
+  let mainRoleSubjectsSelected = 0;
+  let mainRoleSubjectsMissingDetail = 0;
+  let missingRatingScoreSubjects = 0;
+  let zeroRatingScoreSubjects = 0;
+  let missingRatingTotalSubjects = 0;
+  let mediaUnknownSubjects = 0;
+  for (const [subjectId, relations] of relationsBySubject) {
+    const mainRelations = relations.filter((candidate) => classifyRole(candidate) === 'main');
+    if (mainRelations.length === 0) continue;
+    mainRoleSubjectsSelected += 1;
+    const subject = options.detailMap.get(subjectId);
+    const rating = options.subjectRatings.get(subjectId);
+    if (!subject || !options.detailIds.includes(subjectId)) {
+      mainRoleSubjectsMissingDetail += 1;
+      continue;
+    }
+    if (options.media !== 'all' && subject.type !== 'anime') continue;
+    if (options.media === 'tv') {
+      const isTv = isTvPlatform(subject.platform);
+      if (isTv === undefined) {
+        mediaUnknownSubjects += 1;
+        continue;
+      }
+      if (!isTv) continue;
+    }
+    if (typeof rating?.score !== 'number' || !Number.isFinite(rating.score)) {
+      missingRatingScoreSubjects += 1;
+      continue;
+    }
+    if (rating.score === 0) zeroRatingScoreSubjects += 1;
+    if (typeof rating.total !== 'number' || !Number.isFinite(rating.total)) {
+      missingRatingTotalSubjects += 1;
+    }
+    const rawRoles = Array.from(
+      new Set(
+        mainRelations
+          .map((candidate) => candidate.rawRole)
+          .filter((role): role is string => Boolean(role)),
+      ),
+    );
+    const characterIds = new Set(
+      mainRelations
+        .filter((candidate) => candidate.relationKind === 'voice')
+        .map((candidate) => candidate.relationId)
+        .filter((id): id is number => id !== undefined),
+    );
+    items.push({
+      subjectId,
+      subjectName: subject.name,
+      subjectNameCn: subject.nameCn,
+      subjectType: subject.type,
+      ...(subject.date ? { firstAirDate: subject.date } : {}),
+      ratingScore: rating.score,
+      ...(typeof rating.total === 'number' && Number.isFinite(rating.total)
+        ? { ratingTotal: rating.total }
+        : {}),
+      characterCount: characterIds.size,
+      rawRoles,
+    });
+  }
+
+  items.sort(
+    (left, right) =>
+      right.ratingScore - left.ratingScore ||
+      (right.ratingTotal ?? -1) - (left.ratingTotal ?? -1) ||
+      left.subjectId - right.subjectId,
+  );
+  const selectedItems = items.slice(0, 5);
+  const truncated =
+    options.relationRowsDroppedAtLimit > 0 ||
+    options.subjectDetailIdsDroppedAtLimit > 0 ||
+    options.detailFailures.size > 0 ||
+    missingSubjectIdRows > 0;
+  const incomplete =
+    truncated ||
+    !options.relationResponseAvailable ||
+    unknownRoleRows > 0 ||
+    mainRoleSubjectsMissingDetail > 0 ||
+    mediaUnknownSubjects > 0 ||
+    missingRatingScoreSubjects > 0 ||
+    missingRatingTotalSubjects > 0;
+  const state = !options.relationResponseAvailable
+    ? 'unavailable'
+    : incomplete
+      ? 'partial'
+      : 'complete';
+
+  return {
+    mode: 'top_rated_main_voice',
+    scope: 'current_official_person_character_response',
+    media: options.media,
+    state,
+    limit: 5,
+    items: selectedItems,
+    coverage: {
+      relationRowsObserved: options.observedCandidates.length,
+      relationRowsSelected: options.selectedCandidates.length,
+      relationRowsDroppedAtLimit: options.relationRowsDroppedAtLimit,
+      subjectIdsObserved: uniqueNumbers(options.observedCandidates.map((item) => item.subjectId))
+        .length,
+      subjectIdsSelected: options.selectedSubjectIds.length,
+      subjectDetailRequests: options.detailIds.length,
+      subjectDetailsSucceeded: options.detailMap.size,
+      subjectDetailsFailed: options.detailFailures.size,
+      subjectDetailIdsDroppedAtLimit: options.subjectDetailIdsDroppedAtLimit,
+      mainRoleSubjectsSelected,
+      scoreableMainRoleSubjects: items.length,
+      missingRatingScoreSubjects,
+      zeroRatingScoreSubjects,
+      missingRatingTotalSubjects,
+      mediaUnknownSubjects,
+      unknownRoleRows,
+      missingSubjectIdRows,
+      mainRoleSubjectsMissingDetail,
+      rowsReturned: selectedItems.length,
+      retrievedAt: options.retrievedAt,
+      truncated,
+    },
+  };
 }
 
 function makeDistribution(
@@ -562,11 +722,20 @@ export class PersonActivityService {
     personId: number,
     options: PersonActivityOptions = {},
   ): Promise<PersonActivityResult> {
+    const rankingMode = options.rankingMode;
+    if (
+      rankingMode &&
+      ((options.kind !== undefined && options.kind !== 'voice') ||
+        options.staffRole !== undefined ||
+        options.comparePreviousWindow)
+    ) {
+      throw new Error('rankingMode requires voice relations and cannot compare activity windows');
+    }
     if (options.comparePreviousWindow) {
       return await this.getPersonActivityWithComparison(personId, options);
     }
     const staffRole = options.staffRole;
-    const kind = options.kind ?? (staffRole ? 'staff' : 'voice');
+    const kind = rankingMode ? 'voice' : (options.kind ?? (staffRole ? 'staff' : 'voice'));
     if (staffRole && kind !== 'staff') {
       throw new Error('staffRole requires kind=staff');
     }
@@ -687,6 +856,7 @@ export class PersonActivityService {
     );
     const detailMap = new Map<number, DomainSubject>();
     const detailFailures = new Map<number, DetailFailure>();
+    const subjectRatings = new Map<number, SubjectRatingObservation>();
     for (let index = 0; index < detailIds.length; index += PERSON_ACTIVITY_DETAIL_CONCURRENCY) {
       const batch = detailIds.slice(index, index + PERSON_ACTIVITY_DETAIL_CONCURRENCY);
       const results = await Promise.all(
@@ -705,6 +875,11 @@ export class PersonActivityService {
             item.subjectId,
             mapSubject(item.result.value, { metaTagsProjection: 'bounded' }),
           );
+          const rating = item.result.value.rating;
+          subjectRatings.set(item.subjectId, {
+            ...(typeof rating?.score === 'number' ? { score: rating.score } : {}),
+            ...(typeof rating?.total === 'number' ? { total: rating.total } : {}),
+          });
         } else
           detailFailures.set(item.subjectId, item.result.failure || { code: 'INTERNAL_ERROR' });
       }
@@ -956,6 +1131,35 @@ export class PersonActivityService {
     }
 
     const retrievedAt = new Date().toISOString();
+    const ranking = rankingMode
+      ? rankMainVoiceWorks({
+          observedCandidates: roleFilteredCandidates,
+          selectedCandidates,
+          selectedSubjectIds,
+          detailIds,
+          detailMap,
+          detailFailures,
+          subjectRatings,
+          media,
+          relationRowsDroppedAtLimit,
+          subjectDetailIdsDroppedAtLimit,
+          relationResponseAvailable: characterResult.value !== undefined,
+          retrievedAt,
+        })
+      : undefined;
+    if (ranking?.state === 'partial') {
+      warnings.push({
+        code: 'RANKING_COVERAGE',
+        state: 'partial',
+        message: `评分排序只覆盖本次当前关系观察：已评分主役作品 ${ranking.coverage.scoreableMainRoleSubjects} 部；零分 ${ranking.coverage.zeroRatingScoreSubjects} 部，未知角色 ${ranking.coverage.unknownRoleRows} 行，缺分 ${ranking.coverage.missingRatingScoreSubjects} 部，缺评分人数 ${ranking.coverage.missingRatingTotalSubjects} 部，媒介未知 ${ranking.coverage.mediaUnknownSubjects} 部，主役详情不可用 ${ranking.coverage.mainRoleSubjectsMissingDetail} 部，详情失败或省略 ${ranking.coverage.subjectDetailsFailed + ranking.coverage.subjectDetailIdsDroppedAtLimit} 部。只能称为当前观察样本中的评分排序。`,
+      });
+    } else if (ranking?.state === 'unavailable') {
+      warnings.push({
+        code: 'RANKING_SOURCE_UNAVAILABLE',
+        state: 'unavailable',
+        message: '当前 Bangumi 人物角色关系来源不可用，无法计算主役作品评分排序。',
+      });
+    }
     const evidence: PersonActivityResult['evidence'] = [
       {
         source: 'official-v0',
@@ -1007,6 +1211,18 @@ export class PersonActivityService {
         description: `只把官方 subject.meta_tags 完整响应中精确观察到的“原创”标记为 explicit_original；person-activity 输出最多 ${SUBJECT_META_TAGS_MAX_COUNT} 项、每项 ${SUBJECT_META_TAG_MAX_CHARACTERS} 个字符，并通过 coverage 报告省略、异常和文本截断；not_observed 和 unknown 都不等于改编，不从其他字段推断作品来源。`,
         retrievedAt,
       },
+      ...(ranking
+        ? [
+            {
+              source: 'derived-s7' as const,
+              operation: 'person-activity-top-rated-main-voice-ranking',
+              formulaVersion: 'person-activity-top-rated-main-voice-v1',
+              description:
+                '在当前官方人物角色关系与作品详情观察中，仅对可识别的主役角色按当前 subject.rating.score 排序；subject ID 去重，按评分人数和 subject ID 确定性破同分；关系、角色、评分或详情覆盖不完整时标记 partial。此值不是完整生涯排名或历史评分快照。',
+              retrievedAt,
+            },
+          ]
+        : []),
     ];
 
     return {
@@ -1025,6 +1241,7 @@ export class PersonActivityService {
       },
       rows: rows.map(({ characterId: _characterId, ...row }) => row),
       summary,
+      ...(ranking ? { ranking } : {}),
       coverage: {
         relationRowsObserved: candidates.length,
         relationRowsSelected: selectedCandidates.length,
@@ -1081,6 +1298,11 @@ export class PersonActivityService {
         `每个官方 v0 人物、人物关系和作品详情响应最多读取 ${PERSON_ACTIVITY_MAX_RESPONSE_BYTES} 字节；超出上限按来源失败处理，不当作空结果；maxRelations 是完整的有界关系响应后的本地选取上限，不是上游响应行数上限。`,
         '结果不推断工作时长、工作强度、收入、热度或推荐；达到关系、详情或输出上限的行不会被猜测补全。',
         `只有官方 subject.meta_tags 完整响应中精确观察到“原创”才标记明确原创；person-activity 每个条目最多保留 ${SUBJECT_META_TAGS_MAX_COUNT} 项、每项 ${SUBJECT_META_TAG_MAX_CHARACTERS} 个字符，coverage 会报告省略、异常和文本截断；未观察到该标签不等于改编，meta_tags 缺失或字段异常保持来源未知。`,
+        ...(ranking
+          ? [
+              '主役评分排序不使用最近时间窗，但只覆盖当前官方人物角色关系响应；主役识别基于可识别的原始自由文本标签，评分来自当前 subject.rating。只有关系、角色和评分覆盖完整时才能描述为当前响应中的前五；partial 只代表本次有界观察样本，不代表完整生涯或历史评分。',
+            ]
+          : []),
       ],
       warnings,
     };

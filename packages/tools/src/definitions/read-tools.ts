@@ -1094,7 +1094,7 @@ export function createReadTools(
   const getPersonActivity = defineTool({
     name: 'bangumi.get_person_activity',
     description:
-      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月，并按窗口交叠的日历年汇总观察值（首尾年份附实际日期范围，作品数按唯一 subject ID 去重）；支持 3、6、12、36 个日历月，达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算。state=partial 时，summary 中作品、关系行和角色的数量只代表本次选取关系及已成功读取、可判定详情中的观察，不是整个时间窗的总数；部分覆盖下某年观察为零不证明该年没有作品；rowsEligible=0 时不得把零行解释为完整窗口计数。每个人物、人物关系和作品详情官方响应均受 1048576 字节硬上限，超限按来源失败处理；maxRelations 是在有界关系响应收到后的本地选取上限，不是上游响应行数上限。staffRole=director 只对 person-subject relation 中精确记录的导演标签匹配，指定时 kind 默认 staff，缺失职位标签单独计为未知而不是否定证据。对每个有界作品观察保留官方 subject.meta_tags，并只将精确的“原创”字面量标为明确原创；未观察到原创标签或字段缺失分别标为 not_observed/unknown，均不等于改编。可选 comparePreviousWindow=true 计算最近窗口与紧邻等长窗口的作品/角色数量差值和观察到的发布月份峰值；每个窗口及差值/峰值都保留完整、部分、不可用或不可计算状态，不把不可用窗口当作零；这仍基于当前关系与作品首播日期，不是完整历史履历、历史快照、劳动时长或实际配音时间。',
+      '按官方 v0 人物关系与有界作品详情计算指定时间窗内的声优/制作人员 activity。保留原始角色或职位标签，按作品 first_air_date 归入日历月，并按窗口交叠的日历年汇总观察值（首尾年份附实际日期范围，作品数按唯一 subject ID 去重）；支持 3、6、12、36 个日历月，达到关系或详情预算时在官方返回顺序上做确定性等距抽样，并显式报告媒介筛选、缺日期、未知角色、详情失败、观察/选取/省略 ID 和各项预算。state=partial 时，summary 中作品、关系行和角色的数量只代表本次选取关系及已成功读取、可判定详情中的观察，不是整个时间窗的总数；部分覆盖下某年观察为零不证明该年没有作品；rowsEligible=0 时不得把零行解释为完整窗口计数。可选 rankingMode=top_rated_main_voice 会额外返回不受最近日期窗限制的主役声优作品评分排序；它依据当前人物角色关系和当前 subject.rating，按 subject ID 去重，并报告原始角色标签、评分、评分人数及独立 coverage.state。主役标签是对可识别自由文本的保守分类；只有当前关系、角色和作品详情覆盖完整时，才能称为当前官方响应中的前五；partial 结果只能称为本次观察样本里的评分排序，不代表完整生涯或历史评分。该模式要求 kind=voice，不能与 staffRole 或 comparePreviousWindow 同用。每个人物、人物关系和作品详情官方响应均受 1048576 字节硬上限，超限按来源失败处理；maxRelations 是在有界关系响应收到后的本地选取上限，不是上游响应行数上限。staffRole=director 只对 person-subject relation 中精确记录的导演标签匹配，指定时 kind 默认 staff，缺失职位标签单独计为未知而不是否定证据。对每个有界作品观察保留官方 subject.meta_tags，并只将精确的“原创”字面量标为明确原创；未观察到原创标签或字段缺失分别标为 not_observed/unknown，均不等于改编。可选 comparePreviousWindow=true 计算最近窗口与紧邻等长窗口的作品/角色数量差值和观察到的发布月份峰值；每个窗口及差值/峰值都保留完整、部分、不可用或不可计算状态，不把不可用窗口当作零；这仍基于当前关系与作品首播日期，不是完整历史履历、历史快照、劳动时长或实际配音时间。',
     input: z
       .object({
         personId: z.number().int().positive().describe('Bangumi 人物 ID'),
@@ -1102,6 +1102,12 @@ export function createReadTools(
           .enum(['voice', 'staff', 'all'])
           .optional()
           .describe('关系类型：voice 声优、staff 制作人员、all 两者；默认 voice'),
+        rankingMode: z
+          .enum(['top_rated_main_voice'])
+          .optional()
+          .describe(
+            '额外计算当前人物角色关系中的评分最高主役声优作品（最多 5 部）；该排序不受 windowMonths 日期窗限制，但仍受关系/详情上限及媒介筛选影响',
+          ),
         media: z
           .enum(['anime', 'tv', 'all'])
           .optional()
@@ -1150,6 +1156,14 @@ export function createReadTools(
         path: ['kind'],
         message: 'staffRole 只能与 kind=staff 一起使用；省略 kind 时默认 staff',
       })
+      .refine((input) => !input.rankingMode || !input.kind || input.kind === 'voice', {
+        path: ['kind'],
+        message: 'rankingMode 只能与 kind=voice 一起使用；省略 kind 时默认 voice',
+      })
+      .refine((input) => !input.rankingMode || (!input.staffRole && !input.comparePreviousWindow), {
+        path: ['rankingMode'],
+        message: 'rankingMode 不能与 staffRole 或 comparePreviousWindow 一起使用',
+      })
       .strict(),
     auth: 'none',
     scopes: [],
@@ -1158,6 +1172,7 @@ export function createReadTools(
       const activeClient = deps?.executionSession?.client || publicHttpClient;
       return await new PersonActivityService(activeClient).getPersonActivity(input.personId, {
         kind: input.kind,
+        rankingMode: input.rankingMode,
         media: input.media,
         staffRole: input.staffRole,
         windowMonths: input.windowMonths,

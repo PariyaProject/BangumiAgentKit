@@ -90,6 +90,44 @@ describe('bangumi.get_person_activity', () => {
     );
   });
 
+  it('exposes the all-time main-role score ranking through the shared tool', async () => {
+    const fetchFn = async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/v0/persons/20')) return json({ id: 20, name: 'Person' });
+      if (url.endsWith('/v0/persons/20/characters')) {
+        return json([{ id: 1, name: 'Character', subject_id: 10, subject_type: 2, staff: '主役' }]);
+      }
+      if (url.endsWith('/v0/subjects/10')) {
+        return json({
+          id: 10,
+          type: 2,
+          name: 'Subject',
+          name_cn: '条目',
+          date: '2001-01-01',
+          rating: { score: 9.1, total: 123, count: {} },
+        });
+      }
+      return json({ error: 'not found' }, 404);
+    };
+    const result = (await getTool(new HttpClient({ fetchFn })).execute(
+      {
+        personId: 20,
+        rankingMode: 'top_rated_main_voice',
+        kind: 'voice',
+        media: 'all',
+        windowMonths: 3,
+      },
+      { principalId: 'p', botInstanceId: 'b', conversationId: 'c' },
+    )) as Record<string, any>;
+
+    expect(result.rows).toEqual([]);
+    expect(result.ranking).toMatchObject({
+      state: 'complete',
+      media: 'all',
+      items: [{ subjectId: 10, ratingScore: 9.1, ratingTotal: 123, rawRoles: ['主役'] }],
+    });
+  });
+
   it('frames partial summary counts as observed and retains a partial empty state', async () => {
     const now = new Date();
     const currentMonthDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
@@ -170,6 +208,16 @@ describe('bangumi.get_person_activity', () => {
     expect(() =>
       tool.input.parse({ personId: 20, staffRole: 'director', windowMonths: 36 }),
     ).not.toThrow();
+    expect(() =>
+      tool.input.parse({ personId: 20, rankingMode: 'top_rated_main_voice', kind: 'staff' }),
+    ).toThrow();
+    expect(() =>
+      tool.input.parse({
+        personId: 20,
+        rankingMode: 'top_rated_main_voice',
+        comparePreviousWindow: true,
+      }),
+    ).toThrow();
   });
 
   it('defaults a role-filtered query to staff and preserves the 36-month contract', async () => {

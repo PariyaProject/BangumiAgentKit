@@ -1,4 +1,5 @@
 import type {
+  PersonActivityRanking,
   PersonActivityResult,
   PersonActivityWindowSummary,
   SubjectCastItem,
@@ -1101,6 +1102,68 @@ function projectPersonRow(row: PersonActivityResult['rows'][number]) {
   };
 }
 
+function projectPersonRanking(ranking: PersonActivityRanking, textLimit = DISPLAY_TEXT_LIMIT) {
+  const items = ranking.items.slice(0, 5).map((item) => {
+    const subjectName = clippedDisplayText(item.subjectName, textLimit);
+    const subjectNameCn = clippedDisplayText(item.subjectNameCn, textLimit);
+    const rawRoles = item.rawRoles
+      .slice(0, 3)
+      .map((role) => clippedDisplayText(role, MESSAGE_TEXT_LIMIT));
+    return {
+      subjectId: item.subjectId,
+      subjectName: subjectName.text,
+      subjectNameCn: subjectNameCn.text,
+      ...(subjectName.clipped || subjectNameCn.clipped ? { displayNameTextTruncated: true } : {}),
+      subjectType: item.subjectType,
+      ...(item.firstAirDate ? { firstAirDate: item.firstAirDate } : {}),
+      ratingScore: item.ratingScore,
+      ...(item.ratingTotal !== undefined ? { ratingTotal: item.ratingTotal } : {}),
+      characterCount: item.characterCount,
+      rawRoles: rawRoles.map((role) => role.text),
+      rawRolesOmittedFromText: Math.max(0, item.rawRoles.length - rawRoles.length),
+    };
+  });
+  return {
+    mode: ranking.mode,
+    scope: ranking.scope,
+    media: ranking.media,
+    state: ranking.state,
+    limit: ranking.limit,
+    items,
+    coverage: { ...ranking.coverage },
+  };
+}
+
+function projectMinimalPersonRanking(ranking: PersonActivityRanking, textLimit = 80) {
+  return {
+    scope: ranking.scope,
+    media: ranking.media,
+    state: ranking.state,
+    items: ranking.items.slice(0, 5).map((item) => {
+      const title = clippedDisplayText(item.subjectNameCn || item.subjectName, textLimit);
+      const rawRole = item.rawRoles[0] ? clippedDisplayText(item.rawRoles[0], 40) : undefined;
+      return {
+        subjectId: item.subjectId,
+        title: title.text,
+        ratingScore: item.ratingScore,
+        ...(item.ratingTotal !== undefined ? { ratingTotal: item.ratingTotal } : {}),
+        ...(rawRole ? { rawRole: rawRole.text } : {}),
+      };
+    }),
+    coverage: {
+      relations: ranking.coverage.relationRowsObserved,
+      selectedRelations: ranking.coverage.relationRowsSelected,
+      omittedRelations: ranking.coverage.relationRowsDroppedAtLimit,
+      scoredMainSubjects: ranking.coverage.scoreableMainRoleSubjects,
+      missingScores: ranking.coverage.missingRatingScoreSubjects,
+      unknownRoleRows: ranking.coverage.unknownRoleRows,
+      failedDetails: ranking.coverage.subjectDetailsFailed,
+      omittedDetails: ranking.coverage.subjectDetailIdsDroppedAtLimit,
+      truncated: ranking.coverage.truncated,
+    },
+  };
+}
+
 function projectPersonIdentity(
   person: NonNullable<PersonActivityResult['person']>,
   maxCharacters = DISPLAY_TEXT_LIMIT,
@@ -1411,6 +1474,7 @@ function createPersonActivityProjection(
     window: projectActivityWindow(result.window),
     summary: projectWindowSummary(result.summary, monthLimit, countsAvailable),
     ...(comparison ? { comparison } : {}),
+    ...(result.ranking ? { ranking: projectPersonRanking(result.ranking) } : {}),
     coverage: projectPersonCoverage(result.coverage),
     rows,
     exclusions: result.exclusions.map(({ reason, count }) => ({ reason, count })),
@@ -1428,6 +1492,12 @@ function createPersonActivityProjection(
       yearBucketsIncluded: result.summary.byYear.length,
       yearBucketsOmittedFromText: 0,
       yearBucketsScopeNote: PERSON_ACTIVITY_YEAR_SCOPE_NOTE,
+      rankingRowsReturned: result.ranking?.items.length ?? 0,
+      rankingRowsIncluded: result.ranking?.items.length ?? 0,
+      rankingRowsOmittedFromText: 0,
+      ...(result.ranking
+        ? { rankingScopeNote: '当前官方人物角色关系的有界评分观察；partial 只代表样本排序。' }
+        : {}),
       fullMonthBucketsReturned: result.summary.byMonth.length,
       monthBucketsIncluded: Math.min(result.summary.byMonth.length, monthLimit),
       monthBucketsOmittedFromText: Math.max(0, result.summary.byMonth.length - monthLimit),
@@ -1493,6 +1563,7 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
     media: result.media,
     window: projectActivityWindow(result.window),
     ...(result.comparison ? { comparison: projectComparison(result, 0) } : {}),
+    ...(result.ranking ? { ranking: projectMinimalPersonRanking(result.ranking) } : {}),
     summary: {
       creditRows: result.summary.creditRows,
       uniqueSubjects: result.summary.uniqueSubjects,
@@ -1518,6 +1589,12 @@ function minimalPersonActivityProjection(result: PersonActivityResult): string {
       yearBucketsIncluded: result.summary.byYear.length,
       yearBucketsOmittedFromText: 0,
       yearBucketsScopeNote: PERSON_ACTIVITY_YEAR_SCOPE_NOTE,
+      rankingRowsReturned: result.ranking?.items.length ?? 0,
+      rankingRowsIncluded: result.ranking?.items.length ?? 0,
+      rankingRowsOmittedFromText: 0,
+      ...(result.ranking
+        ? { rankingScopeNote: '当前官方人物角色关系的有界评分观察；partial 只代表样本排序。' }
+        : {}),
       evidenceRecordsOmittedFromText: result.evidence.length,
       sourceOperationRecordsOmittedFromText: result.sourceOperations.length,
       warningRecordsOmittedFromText: result.warnings.length,
@@ -1563,6 +1640,7 @@ function createMinimalPersonActivityProjection(
     ...(result.comparison
       ? { comparison: projectMinimalComparison(result, textLimit, includeAnswerSummary) }
       : {}),
+    ...(result.ranking ? { ranking: projectMinimalPersonRanking(result.ranking, textLimit) } : {}),
     annualObservations: {
       byYear: projectYearBuckets(result.summary, countsAvailable),
       zeroIsNotProofOfAbsence: true,
@@ -1574,6 +1652,12 @@ function createMinimalPersonActivityProjection(
       textViewScope: TEXT_VIEW_SCOPE_NOTE,
       warningRecordsOmittedFromText: result.warnings.length,
       limitationRecordsOmittedFromText: result.limitations.length,
+      rankingRowsReturned: result.ranking?.items.length ?? 0,
+      rankingRowsIncluded: result.ranking?.items.length ?? 0,
+      rankingRowsOmittedFromText: 0,
+      ...(result.ranking
+        ? { rankingScopeNote: '当前官方人物角色关系的有界评分观察；partial 只代表样本排序。' }
+        : {}),
       summaryOmittedFromText: true,
     },
   };

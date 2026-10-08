@@ -156,6 +156,67 @@ const result: PersonActivityResult = {
 };
 
 describe('Person activity renderer', () => {
+  it('renders a separately scoped top-rated main voice-work ranking', () => {
+    const rankedResult: PersonActivityResult = {
+      ...result,
+      ranking: {
+        mode: 'top_rated_main_voice',
+        scope: 'current_official_person_character_response',
+        media: 'all',
+        state: 'partial',
+        limit: 5,
+        items: [
+          {
+            subjectId: 701,
+            subjectName: 'High scored title',
+            subjectNameCn: '高分主役作品',
+            subjectType: 'anime',
+            firstAirDate: '2001-04-01',
+            ratingScore: 9.1,
+            ratingTotal: 2048,
+            characterCount: 2,
+            rawRoles: ['主役', '主角'],
+          },
+        ],
+        coverage: {
+          relationRowsObserved: 80,
+          relationRowsSelected: 40,
+          relationRowsDroppedAtLimit: 40,
+          subjectIdsObserved: 60,
+          subjectIdsSelected: 40,
+          subjectDetailRequests: 40,
+          subjectDetailsSucceeded: 40,
+          subjectDetailsFailed: 0,
+          subjectDetailIdsDroppedAtLimit: 0,
+          mainRoleSubjectsSelected: 1,
+          scoreableMainRoleSubjects: 1,
+          missingRatingScoreSubjects: 0,
+          zeroRatingScoreSubjects: 0,
+          missingRatingTotalSubjects: 0,
+          mediaUnknownSubjects: 0,
+          unknownRoleRows: 4,
+          missingSubjectIdRows: 0,
+          mainRoleSubjectsMissingDetail: 0,
+          rowsReturned: 1,
+          retrievedAt: '2026-08-15T00:00:00.000Z',
+          truncated: true,
+        },
+      },
+    };
+    const html = renderHtmlTemplate(
+      buildPersonActivityViewModel(rankedResult, { maxRows: 8 }),
+      'bangumi-dark',
+      {},
+      360,
+    );
+
+    expect(html).toContain('当前主役作品评分排序 · 部分覆盖');
+    expect(html).toContain('排名不受上方最近活动窗口限制');
+    expect(html).toContain('高分主役作品 #701');
+    expect(html).toContain('9.1 分 · 2048 人');
+    expect(html).toContain('本次观察样本中的高分主役作品，不代表完整生涯排名');
+  });
+
   it('keeps window, evidence limits, exclusions, and rows readable at narrow width', async () => {
     const viewModel = buildPersonActivityViewModel(result, { maxRows: 12 });
     expect(viewModel.hiddenRows).toBe(10);

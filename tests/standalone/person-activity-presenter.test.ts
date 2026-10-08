@@ -53,6 +53,60 @@ function summaryActivity(
 }
 
 describe('Standalone person activity presenter', () => {
+  it('prints score-ranked main voice works with their independent partial scope', () => {
+    const value = summaryActivity('partial', 3, 3);
+    value.ranking = {
+      mode: 'top_rated_main_voice',
+      scope: 'current_official_person_character_response',
+      media: 'all',
+      state: 'partial',
+      limit: 5,
+      items: [
+        {
+          subjectId: 701,
+          subjectName: 'High scored title',
+          subjectNameCn: '高分作品',
+          subjectType: 'anime',
+          firstAirDate: '2001-04-01',
+          ratingScore: 9.1,
+          ratingTotal: 2048,
+          characterCount: 2,
+          rawRoles: ['主役', '主角'],
+        },
+      ],
+      coverage: {
+        relationRowsObserved: 80,
+        relationRowsSelected: 40,
+        relationRowsDroppedAtLimit: 40,
+        subjectIdsObserved: 60,
+        subjectIdsSelected: 40,
+        subjectDetailRequests: 40,
+        subjectDetailsSucceeded: 40,
+        subjectDetailsFailed: 0,
+        subjectDetailIdsDroppedAtLimit: 0,
+        mainRoleSubjectsSelected: 1,
+        scoreableMainRoleSubjects: 1,
+        missingRatingScoreSubjects: 0,
+        zeroRatingScoreSubjects: 0,
+        missingRatingTotalSubjects: 0,
+        mediaUnknownSubjects: 0,
+        unknownRoleRows: 4,
+        missingSubjectIdRows: 0,
+        mainRoleSubjectsMissingDetail: 0,
+        rowsReturned: 1,
+        retrievedAt: '2026-08-30T00:00:00.000Z',
+        truncated: true,
+      },
+    };
+
+    const output = formatHuman(value);
+
+    expect(output).toContain('主役作品评分排序 · 部分 · 媒介 全部媒介');
+    expect(output).toContain('高分作品 #701 · 9.1 分 · 评分人数 2048');
+    expect(output).toContain('未知角色 4 行');
+    expect(output).toContain('本次观察样本中的高分主役作品，不代表完整生涯排名');
+  });
+
   it('exposes origin groups, source coverage, and the positive-only limitation', () => {
     const output = formatHuman({
       personId: 20,
