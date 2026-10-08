@@ -1295,9 +1295,10 @@
       "status": "UNASSESSED",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
-        "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md"
+        "docs/research/run95-g26-exact-tag-discovery-contract-2026-10-07.md",
+        "docs/research/run95-g26-current-master-runtime-attestation-2026-10-08.md"
       ],
-      "next_action": "Run #95 exact-tag implementation is on the current candidate: anime, air_date [2019-01-01, 2025-01-01), rating_count >= 10001, exact documented tag=女性向, and TV platform post-filter. This tag is only an operational facet, not a female-audience ontology. After exact-head CI and Harness candidate gates, execute one anonymous Agent/MCP query and require exact row/readback plus experimental/estimated/partial disclosures. If evidence is unreadable or the query is inconclusive, keep UNASSESSED and do not retry. On fully passing evidence, transition only to PARTIAL with measured bounded coverage; never claim exhaustive or DELIVERED. Do not access accounts, community content, QQ, or TIM.",
+      "next_action": "Run #95 selected Epoch g26-current-master-agent-mcp-acceptance on exact current master Base 145d3e446eb6d1be78d9d1a938afc3dab6e254ac. A clean build produced MCP bundle SHA-256 9a95f14e3b434da8ec9d88fb1121f9d21b8f319ec8a59cffd3be3477fc75cc83, refreshing the older 1e7b390232b4903da3dfc42a669c553db06faddcd590e532b94e753e97fdcb1a attestation. The exact G26 query claim/report are still absent. After this Candidate passes exact-head CI and Harness/GPT-6 Luna Max review, run the dedicated anonymous one-tool query exactly once and require row/readback, source and coverage checks plus all bounded-scope caveats. If any result is inconclusive, retain UNASSESSED and never retry; if every check passes, mark PARTIAL only with measured coverage. No OAuth/account/community/QQ/TIM.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
