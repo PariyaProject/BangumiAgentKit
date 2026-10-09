@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-09T04:03:21Z",
+  "updated_at": "2026-10-09T09:53:45Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2200,9 +2200,18 @@
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/integration/tool-direct-execute-discovery.test.ts",
         "tests/render/subject-cohort-comparison.test.ts",
-        "tests/standalone/subject-cohort-command.test.ts"
+        "tests/standalone/subject-cohort-command.test.ts",
+        "docs/product/g26-mcp-bundle-attestation.json",
+        "scripts/acceptance/a01-agent-answer-check.mjs",
+        "scripts/acceptance/a01-agent-answer-check.d.mts",
+        "scripts/acceptance/run-a01-codex-agent-mcp.mjs",
+        "scripts/acceptance/run-a01-codex-agent-mcp.d.mts",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "scripts/test_acceptance_evidence.py",
+        "tests/unit/a01-agent-answer-check.test.ts",
+        "tests/unit/a01-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "Run #95 PR #124 implements the anonymous bounded cohort rating-dispersion metric via bangumi.rating.population_sd.v1 and has engineering/test evidence below. No current-source Agent/MCP answer is accepted; keep A01 UNASSESSED. Only after exact Candidate CI and GPT-6 Luna Max review PASS, make at most one anonymous read-only compare_subject_cohorts attempt with explicit sample, coverage, overlap, and non-inferential caveats. Never exercise OAuth, community, QQ, or TIM for this scenario.",
+      "next_action": "PR #124 integrates the cohort rating-dispersion implementation. Harness Epoch run95-a01-agent-mcp-acceptance adds a fixed one-tool public Agent/MCP runner and exact runtime bundle attestation. No live A01 request has run; keep UNASSESSED. Only after exact current-base Candidate CI and GPT-6 Luna Max review PASS, invoke scripts/acceptance/run-a01-codex-agent-mcp.mjs --run 95 once. Its Git-metadata one-shot claim blocks repeats. A wrong target, incomplete event stream, or checker failure is INCONCLUSIVE and must never be retried. Keep OAuth/accounts/community/QQ/TIM outside this scenario.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2228,7 +2237,7 @@
           "tests/render/subject-cohort-comparison.test.ts",
           "tests/standalone/subject-cohort-command.test.ts"
         ],
-        "acceptance_limit": "Engineering implementation evidence only; no current-source Agent/MCP answer is accepted, so A01 remains UNASSESSED."
+        "acceptance_limit": "PR #124 engineering implementation evidence only; the one-shot A01 current-source Agent/MCP attempt has not run. The follow-up runner and refreshed runtime attestation are acceptance infrastructure only. Keep A01 UNASSESSED until the single reviewed exact-Candidate answer is recorded and checked."
       }
     },
     {

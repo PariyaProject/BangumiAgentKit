@@ -234,6 +234,21 @@ def public_api_smoke_sources(catalog: list[dict]) -> dict[str, set[str]]:
         and codex_s03_report_matches_candidate_revision(s03_path, s03_report.get('sourceRevision'))
     ):
         sources.setdefault('bangumi.get_series_watch_order', set()).add(report_source_ref(s03_path))
+    a01_path = LIVE_PROBE_DIR / Path(CODEX_A01_REPORT_RELATIVE_PATH).name
+    try:
+        a01_report = json.loads(a01_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        a01_report = None
+    current_by_name = {item['name']: item for item in catalog}
+    if (
+        codex_a01_report_is_valid(a01_report, current_by_name)
+        and codex_a01_report_matches_candidate_revision(
+            a01_path, a01_report.get('sourceRevision'),
+        )
+    ):
+        sources.setdefault('bangumi.compare_subject_cohorts', set()).add(
+            report_source_ref(a01_path),
+        )
     return sources
 
 
@@ -248,6 +263,35 @@ CODEX_G23_PROBE_ARGUMENTS = {
 CODEX_G20_PROBE_ARGUMENTS = {
     'bangumi.get_subject_relations': {'subjectId': 227245, 'includeEvidence': True},
 }
+CODEX_A01_QUERY_ARGUMENTS = {
+    'cohorts': [
+        {
+            'label': '目标作品',
+            'query': {
+                'keyword': '少女终末旅行',
+                'media': 'anime',
+                'categories': 'tv',
+                'season': '2017-autumn',
+                'resultMode': 'all',
+                'nsfw': 'exclude',
+            },
+        },
+        {
+            'label': '2017-autumn 动画返回样本',
+            'query': {
+                'media': 'anime',
+                'season': '2017-autumn',
+                'resultMode': 'all',
+                'nsfw': 'exclude',
+            },
+        },
+    ],
+    'maxSubjects': 8,
+}
+CODEX_A01_REPORT_RELATIVE_PATH = (
+    'docs/live-probes/pariya-agent-codex-luna-e2e-A01.json'
+)
+CODEX_A01_ARGUMENT_PROFILE = 'a01-2017-autumn-cohort-rating-sd-v1'
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -361,12 +405,14 @@ CODEX_D04_PROBE_ARGUMENTS = {
 CODEX_PROBE_ARGUMENTS = (
     CODEX_G23_PROBE_ARGUMENTS
     | CODEX_G20_PROBE_ARGUMENTS
+    | {'bangumi.compare_subject_cohorts': CODEX_A01_QUERY_ARGUMENTS}
     | CODEX_D04_PROBE_ARGUMENTS
     | CODEX_G02_PROBE_ARGUMENTS
 )
 CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
     **{name: 'fixed-g20-subject-227245-include-evidence-v1' for name in CODEX_G20_PROBE_ARGUMENTS},
+    'bangumi.compare_subject_cohorts': CODEX_A01_ARGUMENT_PROFILE,
     'bangumi.query_subjects': 'd04-reported-episode-count-discovery-v1',
 }
 CODEX_PRIVACY_FLAGS = (
@@ -406,6 +452,79 @@ CODEX_G20_ANSWER_CHECK_FIELDS = {
     'nonCanonicalOrderDisclosurePresent', 'schemaDriftDisclosurePresent',
     'noUnsupportedCompletenessClaim', 'noUnsupportedCanonicalOrderClaim',
     'noUnsupportedAbsenceClaim', 'noUnsupportedReverseClaim', 'noMarkdownFormatting',
+}
+CODEX_A01_ANSWER_CHECK_FIELDS = {
+    'fixedArguments', 'resultStructuredContent', 'targetIdentity', 'queryPlan',
+    'sampleBound', 'returnedRowCount', 'metricFormula', 'metricCoverage',
+    'overlap', 'officialProvenance', 'officialPublicOperations', 'answerPresent',
+    'exactRows', 'exactMetricLine', 'exactScopeLine', 'rejectsUnsupportedSignificance',
+    'rejectsUnsupportedCompleteness', 'rejectsUnsupportedInterpretation',
+}
+CODEX_A01_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'profile', 'scenarioId', 'runNumber',
+    'frontierId', 'epochId', 'state', 'observedAt', 'model', 'reasoningEffort',
+    'codexCliVersion', 'sourceRevision', 'baseSha', 'prNumber', 'mcpBundleSha256',
+    'candidateGate', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'queryArguments', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode',
+    'resultCount', 'eventStreamParsed', 'codexMcpToolEventCount',
+    'nonMcpToolEventCount', 'shellToolCallCount', 'allowedCallCount',
+    'deniedCallCount', 'resultStatus', 'qqPipelineTested', 'timClientTested',
+    'serverSummaryMatchesCandidate', 'sameCandidateAfterCall', 'result',
+    'answerSha256', 'answerUtf8Bytes', 'answerCheckMethod', 'answerChecks',
+    'toolCalls', 'privacy', 'acceptanceLimit',
+}
+CODEX_A01_CANDIDATE_GATE_FIELDS = {
+    'candidateSha', 'baseSha', 'reviewPassSha', 'reviewVerdict', 'reviewerId',
+    'ciSha', 'ciStatus',
+}
+CODEX_A01_PRIVACY_FIELDS = set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
+CODEX_A01_RESULT_FIELDS = {
+    'state', 'formulaVersion', 'cohorts', 'ratingStandardDeviation',
+    'coverage', 'source', 'retrievedAt', 'evidence', 'warnings', 'limitations',
+}
+CODEX_A01_COHORT_FIELDS = {
+    'label', 'query', 'querySummary', 'queryPlan', 'queryState', 'queryCoverage',
+    'detailHydrations', 'ratingStandardDeviationCoverage', 'subjects',
+}
+CODEX_A01_QUERY_COVERAGE_FIELDS = {
+    'state', 'requested', 'scanned', 'matched', 'returned', 'pagesRequested',
+    'pagesScanned', 'upstreamExhausted', 'budgetExceeded', 'postFilterCount',
+    'totalKind', 'hydrationsAttempted', 'hydrationsSucceeded', 'hydrationsFailed',
+    'hydrationsUnresolved', 'hydrationBudgetExceeded', 'missing', 'reason',
+    'unresolvedCandidates', 'outputCap',
+}
+CODEX_A01_QUERY_BUDGET = {
+    'maxPages': 6,
+    'maxCandidates': 300,
+    'maxHydrations': 60,
+    'concurrency': 6,
+    'maxConceptProbes': 8,
+    'maxReturnedItems': 8,
+}
+CODEX_A01_METRIC_FIELDS = {
+    'key', 'label', 'sourceField', 'averages', 'partialAverages', 'validCounts',
+    'partialCounts', 'missingCounts', 'conflictCounts', 'notComputableCounts',
+    'formula', 'delta', 'state',
+}
+CODEX_A01_RESULT_COVERAGE_FIELDS = {
+    'maxSubjectsPerCohort', 'totalSubjectsReturned', 'cohortsComplete',
+    'cohortsPartial', 'detailHydrationsAttempted', 'detailHydrationsSucceeded',
+    'detailHydrationsFailed', 'truncated', 'overlap', 'evidence', 'warnings',
+}
+CODEX_A01_OVERLAP_FIELDS = {'count', 'subjectIds'}
+CODEX_A01_EVIDENCE_COVERAGE_FIELDS = {
+    'retained', 'omitted', 'deduplicated', 'omittedByBound', 'bytes',
+    'maxRefs', 'maxBytes', 'truncated',
+}
+CODEX_A01_WARNING_COVERAGE_FIELDS = {'retained', 'omitted', 'max', 'truncated'}
+CODEX_A01_SOURCE_SUMMARY_FIELDS = {'class', 'operations', 'attemptedAt', 'retrievedAt'}
+CODEX_A01_EVIDENCE_SOURCE_FIELDS = {'class', 'provider', 'version'}
+CODEX_A01_SUBJECT_FIELDS = {
+    'id', 'name', 'displayName', 'date', 'ratingCount', 'ratingCountState',
+    'ratingHistogramPopulation', 'ratingStandardDeviation',
+    'ratingStandardDeviationState', 'ratingStandardDeviationConflicts',
+    'ratingHistogramTotalValidation',
 }
 CODEX_G26_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId',
@@ -800,6 +919,39 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
         "openSync(reportPath, 'wx', 0o600)",
     ),
 }
+CODEX_A01_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/a01-agent-answer-check.mjs': (
+        "export const A01_TARGET_TOOL = 'bangumi.compare_subject_cohorts'",
+        'export function verifyA01AgentAnswer(',
+        'officialPublicOperations:',
+        'rejectsUnsupportedSignificance:',
+        'rejectsUnsupportedCompleteness:',
+        'rejectsUnsupportedInterpretation:',
+    ),
+    'scripts/acceptance/run-a01-codex-agent-mcp.mjs': (
+        "const EPOCH_ID = 'run95-a01-agent-mcp-acceptance'",
+        'export function buildCodexExecArgs(',
+        'createA01OneShotClaim(',
+        'function publicResultProjection(result)',
+        'export function projectA01CohortQuery(query)',
+        'function writeReport(report)',
+        "'features.shell_tool=false'",
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_a01_report_is_valid(',
+        'def codex_a01_report_matches_candidate_revision(',
+        "CODEX_A01_REPORT_RELATIVE_PATH = (",
+    ),
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        "'--candidate-sha'",
+        'runtimeCandidateMatches(sourceRevision, bundleSha256)',
+        'authorizeToolCall({',
+    ),
+    CODEX_G26_BUNDLE_ATTESTATION_RELATIVE_PATH: (
+        '"kind": "g26-mcp-runtime-bundle-attestation-v1"',
+        '"bundleSha256":',
+    ),
+}
 CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/run-g26-codex-agent-mcp.mjs': (
         'export function buildCodexExecArgs(',
@@ -974,6 +1126,584 @@ def _contains_forbidden_codex_content(value: object) -> bool:
     elif isinstance(value, list):
         return any(_contains_forbidden_codex_content(child) for child in value)
     return False
+
+
+def codex_a01_result_is_valid(result: object) -> bool:
+    """Validate the bounded, sanitized public projection for the A01 one-shot."""
+    if not isinstance(result, dict) or set(result) != CODEX_A01_RESULT_FIELDS:
+        return False
+    states = {
+        'complete', 'partial', 'conflict', 'unavailable', 'not_computable',
+        'not_found', 'upstream_error', 'unsupported', 'stale', 'auth_required',
+        'permission_denied',
+    }
+    metric_row_states = {'available', 'partial', 'missing', 'conflict', 'not_computable'}
+    timestamp = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z')
+
+    def nonnegative_int(value: object) -> bool:
+        return type(value) is int and value >= 0
+
+    def finite_number(value: object) -> bool:
+        return type(value) in (int, float) and math.isfinite(value)
+
+    def optional_number(value: object) -> bool:
+        return value is None or finite_number(value)
+
+    def valid_time(value: object, optional: bool = False) -> bool:
+        return optional and value is None or isinstance(value, str) and bool(timestamp.fullmatch(value))
+
+    if (result.get('state') not in states
+            or result.get('formulaVersion') != 'subject-cohort-comparison-v1'
+            or not isinstance(result.get('cohorts'), list)
+            or len(result['cohorts']) != 2
+            or not isinstance(result.get('ratingStandardDeviation'), dict)
+            or not isinstance(result.get('coverage'), dict)
+            or not isinstance(result.get('source'), dict)
+            or not isinstance(result.get('evidence'), list)
+            or not isinstance(result.get('warnings'), list)
+            or not isinstance(result.get('limitations'), list)
+            or not valid_time(result.get('retrievedAt'), optional=True)):
+        return False
+
+    returned_total = 0
+    complete_count = 0
+    partial_count = 0
+    hydration_totals = {'attempted': 0, 'succeeded': 0, 'failed': 0}
+    cohort_rating_coverage: list[dict] = []
+    cohort_ids: list[set[int]] = []
+    for index, cohort in enumerate(result['cohorts']):
+        if (not isinstance(cohort, dict)
+                or not CODEX_A01_COHORT_FIELDS.issuperset(cohort)
+                or not {'label', 'query', 'querySummary', 'queryPlan', 'queryState',
+                        'queryCoverage', 'detailHydrations',
+                        'ratingStandardDeviationCoverage', 'subjects'}.issubset(cohort)
+                or not isinstance(cohort.get('label'), str)
+                or len(cohort['label']) > 80
+                or cohort.get('label') != CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]['label']
+                or cohort.get('query') != CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]['query']
+                or not isinstance(cohort.get('querySummary'), str)
+                or len(cohort['querySummary']) > 500
+                or cohort.get('queryState') not in {'ok', 'partial'}
+                or not isinstance(cohort.get('queryCoverage'), dict)
+                or not isinstance(cohort.get('queryPlan'), dict)
+                or not isinstance(cohort.get('detailHydrations'), dict)
+                or not isinstance(cohort.get('ratingStandardDeviationCoverage'), dict)
+                or not isinstance(cohort.get('subjects'), list)
+                or len(cohort['subjects']) > CODEX_A01_QUERY_ARGUMENTS['maxSubjects']):
+            return False
+
+        plan = cohort['queryPlan']
+        plan_fields = {
+            'source', 'operation', 'season', 'sort', 'order', 'tieBreak', 'totalKind',
+            'pushdown', 'postFilters', 'derivedFilters', 'unsupported',
+            'hydrationRequired', 'hydrationRequirements', 'requestedTopN',
+            'resultMode', 'quality', 'budget', 'steps', 'limitations',
+        }
+        if (not plan_fields.issuperset(plan)
+                or not {'source', 'operation', 'totalKind', 'requestedTopN', 'resultMode',
+                        'quality', 'budget', 'steps', 'limitations'}.issubset(plan)
+                or plan.get('source') != 'official_v0'
+                or plan.get('operation') != ('searchSubjects' if index == 0 else 'browseSubjects')
+                or plan.get('season') != '2017-autumn'
+                or plan.get('totalKind') not in {'exact', 'estimated', 'unknown'}
+                or not nonnegative_int(plan.get('requestedTopN'))
+                or plan['requestedTopN'] < 1
+                or plan['requestedTopN'] > CODEX_A01_QUERY_ARGUMENTS['maxSubjects']
+                or plan.get('resultMode') != 'all'
+                or plan.get('quality') not in {'exact', 'bounded_exact', 'partial_possible'}
+                or plan.get('budget') != CODEX_A01_QUERY_BUDGET
+                or not isinstance(plan.get('steps'), list)
+                or len(plan['steps']) > 12
+                or not isinstance(plan.get('limitations'), list)
+                or any(not isinstance(item, str) or len(item) > 500 for item in plan['limitations'])):
+            return False
+
+        query_coverage = cohort['queryCoverage']
+        query_coverage_required = {
+            'state', 'requested', 'scanned', 'matched', 'returned', 'pagesRequested',
+            'pagesScanned', 'upstreamExhausted', 'budgetExceeded', 'postFilterCount',
+            'totalKind', 'hydrationsAttempted', 'hydrationsSucceeded', 'hydrationsFailed',
+            'hydrationsUnresolved', 'hydrationBudgetExceeded',
+        }
+        if (not CODEX_A01_QUERY_COVERAGE_FIELDS.issuperset(query_coverage)
+                or not query_coverage_required.issubset(query_coverage)
+                or query_coverage.get('state') not in {'complete', 'partial', 'unknown'}
+                or query_coverage.get('totalKind') not in {'exact', 'estimated', 'unknown'}
+                or any(not nonnegative_int(query_coverage.get(key)) for key in (
+                    'requested', 'scanned', 'matched', 'returned', 'pagesRequested',
+                    'pagesScanned', 'postFilterCount', 'hydrationsAttempted',
+                    'hydrationsSucceeded', 'hydrationsFailed', 'hydrationsUnresolved',
+                ))
+                or query_coverage['returned'] != len(cohort['subjects'])
+                or query_coverage['matched'] < query_coverage['returned']
+                or query_coverage['scanned'] < query_coverage['matched']
+                or query_coverage['requested'] > 300
+                or query_coverage['scanned'] > 300
+                or query_coverage['matched'] > 300
+                or query_coverage['postFilterCount'] > 300
+                or query_coverage['pagesRequested'] > 6
+                or query_coverage['requested'] != (
+                    query_coverage['scanned'] if query_coverage['upstreamExhausted'] else 0
+                )
+                or query_coverage['pagesScanned'] > query_coverage['pagesRequested']
+                or query_coverage['pagesScanned'] > 6
+                or query_coverage['hydrationsAttempted'] > 60
+                or query_coverage['hydrationsSucceeded'] + query_coverage['hydrationsFailed']
+                    > query_coverage['hydrationsAttempted']
+                or type(query_coverage.get('upstreamExhausted')) is not bool
+                or type(query_coverage.get('budgetExceeded')) is not bool
+                or type(query_coverage.get('hydrationBudgetExceeded')) is not bool
+                or ('missing' in query_coverage and not nonnegative_int(query_coverage['missing']))
+                or ('unresolvedCandidates' in query_coverage
+                    and not nonnegative_int(query_coverage['unresolvedCandidates']))
+                or ('outputCap' in query_coverage and query_coverage['outputCap'] is not None
+                    and (not nonnegative_int(query_coverage['outputCap'])
+                         or query_coverage['outputCap'] > 8))
+                or ('reason' in query_coverage and (
+                    not isinstance(query_coverage['reason'], str)
+                    or len(query_coverage['reason']) > 240
+                ))):
+            return False
+        if query_coverage['state'] == 'complete':
+            complete_count += 1
+        else:
+            partial_count += 1
+
+        detail = cohort['detailHydrations']
+        if (set(detail) != {'attempted', 'succeeded', 'failed'}
+                or any(not nonnegative_int(detail.get(key)) for key in detail)
+                or detail['attempted'] > CODEX_A01_QUERY_ARGUMENTS['maxSubjects']
+                or detail['succeeded'] + detail['failed'] != detail['attempted']):
+            return False
+        for key in hydration_totals:
+            hydration_totals[key] += detail[key]
+
+        metric_coverage = cohort['ratingStandardDeviationCoverage']
+        if (set(metric_coverage) != {
+                'valid', 'partial', 'missing', 'conflicts', 'notComputable', 'state',
+            }
+                or any(not nonnegative_int(metric_coverage.get(key)) for key in (
+                    'valid', 'partial', 'missing', 'conflicts', 'notComputable',
+                ))
+                or metric_coverage.get('state') not in states
+                or sum(metric_coverage[key] for key in (
+                    'valid', 'partial', 'missing', 'conflicts', 'notComputable',
+                )) != len(cohort['subjects'])):
+            return False
+
+        ids: set[int] = set()
+        row_states: dict[str, int] = {state: 0 for state in metric_row_states}
+        for subject in cohort['subjects']:
+            required_subject_fields = {
+                'id', 'name', 'displayName', 'ratingStandardDeviationState',
+            }
+            if (not isinstance(subject, dict)
+                    or not CODEX_A01_SUBJECT_FIELDS.issuperset(subject)
+                    or not required_subject_fields.issubset(subject)
+                    or not nonnegative_int(subject.get('id'))
+                    or subject['id'] in ids
+                    or not isinstance(subject.get('name'), str)
+                    or not subject['name']
+                    or len(subject['name']) > 180
+                    or not isinstance(subject.get('displayName'), str)
+                    or not subject['displayName']
+                    or len(subject['displayName']) > 180
+                    or subject.get('ratingStandardDeviationState') not in metric_row_states
+                    or ('date' in subject and (
+                        not isinstance(subject['date'], str) or len(subject['date']) > 40
+                    ))
+                    or ('ratingCount' in subject and not nonnegative_int(subject['ratingCount']))
+                    or ('ratingCountState' in subject and (
+                        subject['ratingCountState'] != 'invalid' or 'ratingCount' in subject
+                    ))
+                    or ('ratingHistogramPopulation' in subject
+                        and not nonnegative_int(subject['ratingHistogramPopulation']))
+                    or ('ratingStandardDeviation' in subject and (
+                        not finite_number(subject['ratingStandardDeviation'])
+                        or subject['ratingStandardDeviation'] < 0
+                    ))):
+                return False
+            ids.add(subject['id'])
+            row_states[subject['ratingStandardDeviationState']] += 1
+            conflicts = subject.get('ratingStandardDeviationConflicts', [])
+            if not isinstance(conflicts, list) or len(conflicts) > 8:
+                return False
+            for conflict in conflicts:
+                if not isinstance(conflict, dict):
+                    return False
+                score_conflict = conflict.get('kind') == 'score_vs_histogram_mean'
+                expected_conflict_fields = (
+                    {'kind', 'officialScore', 'histogramMean', 'reason'}
+                    if score_conflict else
+                    {'kind', 'discoveryRatingCount', 'detailRatingTotal', 'reason'}
+                )
+                if (set(conflict) != expected_conflict_fields
+                        or conflict.get('kind') not in {
+                            'score_vs_histogram_mean', 'discovery_vs_detail_rating_total',
+                        }
+                        or not isinstance(conflict.get('reason'), str)
+                        or len(conflict['reason']) > 240
+                        or (score_conflict and (
+                            not finite_number(conflict.get('officialScore'))
+                            or not finite_number(conflict.get('histogramMean'))
+                            or not 0 <= conflict['officialScore'] <= 10
+                            or not 0 <= conflict['histogramMean'] <= 10
+                        ))
+                        or (not score_conflict and (
+                            not nonnegative_int(conflict.get('discoveryRatingCount'))
+                            or not nonnegative_int(conflict.get('detailRatingTotal'))
+                        ))):
+                    return False
+            total_validation = subject.get('ratingHistogramTotalValidation')
+            if total_validation is not None and (
+                not isinstance(total_validation, dict)
+                or not set(total_validation).issubset({
+                    'state', 'detailRatingTotal', 'histogramPopulation',
+                })
+                or total_validation.get('state') not in {'match', 'mismatch', 'invalid'}
+                or not nonnegative_int(total_validation.get('histogramPopulation'))
+                or ('detailRatingTotal' in total_validation
+                    and not nonnegative_int(total_validation['detailRatingTotal']))
+            ):
+                return False
+
+        for state, count_key in (
+            ('available', 'valid'), ('partial', 'partial'), ('missing', 'missing'),
+            ('conflict', 'conflicts'), ('not_computable', 'notComputable'),
+        ):
+            if row_states[state] != metric_coverage[count_key]:
+                return False
+        cohort_rating_coverage.append(metric_coverage)
+        if index == 0:
+            target_rows = cohort['subjects']
+            if (len(target_rows) != 1
+                    or target_rows[0]['id'] != 218707
+                    or not {'少女终末旅行', '少女終末旅行'}.intersection({
+                        target_rows[0]['name'], target_rows[0]['displayName'],
+                    })):
+                return False
+        cohort_ids.append(ids)
+        returned_total += len(cohort['subjects'])
+
+    if result['state'] not in states:
+        return False
+    metric = result['ratingStandardDeviation']
+    required_metric_fields = {
+        'key', 'label', 'sourceField', 'averages', 'validCounts', 'partialCounts',
+        'missingCounts', 'conflictCounts', 'notComputableCounts', 'formula', 'state',
+    }
+    if (not CODEX_A01_METRIC_FIELDS.issuperset(metric)
+            or not required_metric_fields.issubset(metric)
+            or metric.get('key') != 'ratingStandardDeviation'
+            or metric.get('sourceField') != 'subject.rating.count[1..10]'
+            or metric.get('state') not in states
+            or not isinstance(metric.get('label'), str)
+            or len(metric['label']) > 80
+            or not isinstance(metric.get('formula'), dict)
+            or set(metric['formula']) != {'id', 'version', 'description'}
+            or metric['formula'].get('id') != 'bangumi.rating.population_sd.v1'
+            or metric['formula'].get('version') != 1
+            or not isinstance(metric['formula'].get('description'), str)
+            or len(metric['formula']['description']) > 240):
+        return False
+    for key in ('averages', 'validCounts', 'partialCounts', 'missingCounts',
+                'conflictCounts', 'notComputableCounts'):
+        values = metric.get(key)
+        if not isinstance(values, list) or len(values) != 2:
+            return False
+        if key == 'averages':
+            if any(not optional_number(value) for value in values):
+                return False
+        elif any(not nonnegative_int(value) for value in values):
+            return False
+    if ('partialAverages' in metric
+            and (not isinstance(metric['partialAverages'], list)
+                 or len(metric['partialAverages']) != 2
+                 or any(not optional_number(value) for value in metric['partialAverages']))):
+        return False
+    if 'delta' in metric and not optional_number(metric['delta']):
+        return False
+    if metric['state'] == 'complete':
+        if ('partialAverages' in metric
+                or any(not optional_number(value) for value in metric['averages'])
+                or ('delta' in metric and (
+                    not finite_number(metric['averages'][0])
+                    or not finite_number(metric['averages'][1])
+                    or not math.isclose(
+                        metric['delta'], metric['averages'][1] - metric['averages'][0],
+                        rel_tol=1e-9, abs_tol=1e-9,
+                    )
+                ))):
+            return False
+    elif (metric['averages'] != [None, None]
+          or 'partialAverages' not in metric
+          or 'delta' in metric):
+        return False
+    for index, coverage in enumerate(cohort_rating_coverage):
+        for metric_key, coverage_key in (
+            ('validCounts', 'valid'), ('partialCounts', 'partial'),
+            ('missingCounts', 'missing'), ('conflictCounts', 'conflicts'),
+            ('notComputableCounts', 'notComputable'),
+        ):
+            if metric[metric_key][index] != coverage[coverage_key]:
+                return False
+
+    coverage = result['coverage']
+    required_coverage = CODEX_A01_RESULT_COVERAGE_FIELDS
+    if (not isinstance(coverage, dict)
+            or set(coverage) != required_coverage
+            or coverage.get('maxSubjectsPerCohort') != CODEX_A01_QUERY_ARGUMENTS['maxSubjects']
+            or coverage.get('totalSubjectsReturned') != returned_total
+            or coverage.get('cohortsComplete') != complete_count
+            or coverage.get('cohortsPartial') != partial_count
+            or coverage.get('detailHydrationsAttempted') != hydration_totals['attempted']
+            or coverage.get('detailHydrationsSucceeded') != hydration_totals['succeeded']
+            or coverage.get('detailHydrationsFailed') != hydration_totals['failed']
+            or type(coverage.get('truncated')) is not bool):
+        return False
+    overlap = coverage.get('overlap')
+    expected_overlap = sorted(cohort_ids[0] & cohort_ids[1])
+    if (not isinstance(overlap, dict)
+            or set(overlap) != CODEX_A01_OVERLAP_FIELDS
+            or overlap.get('subjectIds') != expected_overlap
+            or overlap.get('count') != len(expected_overlap)):
+        return False
+
+    evidence_coverage = coverage.get('evidence')
+    if (not isinstance(evidence_coverage, dict)
+            or set(evidence_coverage) != CODEX_A01_EVIDENCE_COVERAGE_FIELDS
+            or any(not nonnegative_int(evidence_coverage.get(key)) for key in (
+                'retained', 'omitted', 'deduplicated', 'omittedByBound', 'bytes',
+                'maxRefs', 'maxBytes',
+            ))
+            or evidence_coverage['retained'] != len(result['evidence'])
+            or evidence_coverage['omitted'] != (
+                evidence_coverage['deduplicated'] + evidence_coverage['omittedByBound']
+            )
+            or evidence_coverage['retained'] > evidence_coverage['maxRefs']
+            or evidence_coverage['bytes'] > evidence_coverage['maxBytes']
+            or evidence_coverage['omittedByBound'] > evidence_coverage['omitted']
+            or evidence_coverage['maxRefs'] != 256
+            or evidence_coverage['maxBytes'] != 96_000
+            or type(evidence_coverage.get('truncated')) is not bool
+            or evidence_coverage['truncated'] != (evidence_coverage['omittedByBound'] > 0)):
+        return False
+    evidence_classes: set[str] = set()
+    for item in result['evidence']:
+        source = item.get('source') if isinstance(item, dict) else None
+        if (not isinstance(item, dict)
+                or set(item) != {'source', 'retrievedAt'}
+                or not isinstance(source, dict)
+                or source.get('class') not in {'official_v0', 'derived'}
+                or not valid_time(item.get('retrievedAt'))):
+            return False
+        if source.get('class') == 'official_v0':
+            if (set(source) != CODEX_A01_EVIDENCE_SOURCE_FIELDS
+                    or source.get('provider') != 'bangumi'
+                    or source.get('version') != 'v0'):
+                return False
+        elif (not set(source).issubset(CODEX_A01_EVIDENCE_SOURCE_FIELDS)
+              or source.get('provider') != 'bangumi-agent-kit'
+              or ('version' in source and (
+                  not isinstance(source['version'], str) or len(source['version']) > 40
+              ))):
+            return False
+        evidence_classes.add(source['class'])
+
+    warning_coverage = coverage.get('warnings')
+    if (not isinstance(warning_coverage, dict)
+            or set(warning_coverage) != CODEX_A01_WARNING_COVERAGE_FIELDS
+            or any(not nonnegative_int(warning_coverage.get(key)) for key in (
+                'retained', 'omitted', 'max',
+            ))
+            or warning_coverage['retained'] != len(result['warnings'])
+            or warning_coverage['retained'] > warning_coverage['max']
+            or warning_coverage['max'] != 12
+            or type(warning_coverage.get('truncated')) is not bool
+            or warning_coverage['truncated'] != (warning_coverage['omitted'] > 0)
+            or len(result['warnings']) > 12
+            or any(not isinstance(item, dict)
+                   or not set(item).issubset({'code', 'state', 'message', 'cohort'})
+                   or not {'code', 'state', 'message'}.issubset(item)
+                   or not isinstance(item.get('code'), str)
+                   or not re.fullmatch(r'[A-Z0-9_]{1,80}', item['code'])
+                   or item.get('state') not in states | {'ok'}
+                   or not isinstance(item.get('message'), str)
+                   or len(item['message']) > 500
+                   or ('cohort' in item and (
+                       not isinstance(item['cohort'], str) or len(item['cohort']) > 80
+                   )) for item in result['warnings'])):
+        return False
+    if any(not isinstance(item, str) or not item or len(item) > 500
+           for item in result['limitations']) or not result['limitations']:
+        return False
+    expected_truncated = (
+        partial_count > 0
+        or any(cohort['queryCoverage']['budgetExceeded'] for cohort in result['cohorts'])
+        or evidence_coverage['truncated']
+        or warning_coverage['truncated']
+    )
+    if coverage['truncated'] != expected_truncated:
+        return False
+
+    source = result['source']
+    if set(source) != {'official', 'derived'}:
+        return False
+    for key, expected_class in (('official', 'official-v0'), ('derived', 'derived-s7')):
+        summary = source.get(key)
+        if (not isinstance(summary, dict)
+                or not CODEX_A01_SOURCE_SUMMARY_FIELDS.issuperset(summary)
+                or not {'class', 'operations', 'attemptedAt'}.issubset(summary)
+                or summary.get('class') != expected_class
+                or not isinstance(summary.get('operations'), list)
+                or len(summary['operations']) > 16
+                or any(not isinstance(operation, str) or not operation or len(operation) > 240
+                       for operation in summary['operations'])
+                or not valid_time(summary.get('attemptedAt'))
+                or ('retrievedAt' in summary
+                    and not valid_time(summary['retrievedAt'], optional=True))):
+            return False
+    official_operations = source['official']['operations']
+    if (not official_operations
+            or any(not re.fullmatch(r'(?:GET|POST) /v0/[A-Za-z0-9_/{}/-]+', operation)
+                   for operation in official_operations)
+            or not source['official'].get('retrievedAt')
+            or 'official_v0' not in evidence_classes):
+        return False
+
+    return True
+
+
+def codex_a01_report_is_valid(report: object, current_by_name: dict[str, dict]) -> bool:
+    """Accept only exact-Candidate Luna Max A01 evidence with its checked bounded result."""
+    if (not isinstance(report, dict)
+            or set(report) != CODEX_A01_REPORT_FIELDS
+            or type(report.get('schemaVersion')) is not int
+            or report.get('schemaVersion') != 1
+            or report.get('evidenceKind') != 'codex_cli_a01_agent_mcp'
+            or report.get('profile') != 'codex-luna-max-one-tool-v1'
+            or report.get('scenarioId') != 'A01'
+            or report.get('frontierId') != 'A01'
+            or report.get('epochId') != 'run95-a01-agent-mcp-acceptance'
+            or report.get('runNumber') != 95
+            or report.get('state') != 'ANSWER_CHECK_PASSED'
+            or report.get('model') != 'gpt-6-luna'
+            or report.get('reasoningEffort') != 'max'
+            or not isinstance(report.get('codexCliVersion'), str)
+            or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+            or report.get('toolName') != 'bangumi.compare_subject_cohorts'
+            or report.get('argumentProfile') != CODEX_A01_ARGUMENT_PROFILE
+            or report.get('expectedArgumentsSha256') != _canonical_json_sha256(
+                CODEX_A01_QUERY_ARGUMENTS,
+            )
+            or report.get('queryArguments') != CODEX_A01_QUERY_ARGUMENTS
+            or type(report.get('processExitCode')) is not int
+            or report.get('processExitCode') != 0
+            or report.get('resultCount') != 1
+            or report.get('eventStreamParsed') is not True
+            or report.get('codexMcpToolEventCount') != 1
+            or report.get('nonMcpToolEventCount') != 0
+            or report.get('shellToolCallCount') != 0
+            or report.get('allowedCallCount') != 1
+            or report.get('deniedCallCount') != 0
+            or report.get('resultStatus') != 'SUCCESS'
+            or report.get('qqPipelineTested') is not False
+            or report.get('timClientTested') is not False
+            or report.get('serverSummaryMatchesCandidate') is not True
+            or report.get('sameCandidateAfterCall') is not True
+            or report.get('serverToolNames') != ['bangumi.compare_subject_cohorts']
+            or report.get('serverToolCount') != 1
+            or report.get('mcpServerNames') != ['bgk_a01_one_tool']
+            or not isinstance(report.get('sourceRevision'), str)
+            or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
+            or not isinstance(report.get('baseSha'), str)
+            or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
+            or _run_repository_git(
+                ROOT, 'merge-base', '--is-ancestor', report['baseSha'], report['sourceRevision'],
+            ).returncode != 0
+            or not isinstance(report.get('mcpBundleSha256'), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256'])
+            or not codex_a01_probe_revision_has_implementation(report['sourceRevision'])
+            or codex_g26_candidate_bundle_sha256(report['sourceRevision'])
+                != report['mcpBundleSha256']):
+        return False
+
+    timestamp = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z')
+    if not isinstance(report.get('observedAt'), str) or not timestamp.fullmatch(report['observedAt']):
+        return False
+
+    candidate_gate = report.get('candidateGate')
+    if (not isinstance(candidate_gate, dict)
+            or set(candidate_gate) != CODEX_A01_CANDIDATE_GATE_FIELDS
+            or candidate_gate.get('candidateSha') != report['sourceRevision']
+            or candidate_gate.get('baseSha') != report['baseSha']
+            or candidate_gate.get('reviewPassSha') != report['sourceRevision']
+            or candidate_gate.get('reviewVerdict') != 'PASS'
+            or not isinstance(candidate_gate.get('reviewerId'), str)
+            or not re.search(r'gpt[-_]6[-_]luna[-_]max', candidate_gate['reviewerId'], re.I)
+            or candidate_gate.get('ciSha') != report['sourceRevision']
+            or candidate_gate.get('ciStatus') != 'SUCCESS'):
+        return False
+
+    tool = current_by_name.get(report['toolName'])
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+    except OSError:
+        return False
+    if (not isinstance(tool, dict)
+            or tool.get('auth') != 'none'
+            or tool.get('risk') != 'read'
+            or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+            or report.get('toolDescriptionSha256') != hashlib.sha256(
+                tool.get('description', '').encode('utf-8'),
+            ).hexdigest()
+            or report.get('inputSchemaSha256') != _canonical_json_sha256(tool.get('inputSchema'))
+            or any(not re.fullmatch(r'[0-9a-f]{64}', str(report.get(key, '')))
+                   for key in ('catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256'))):
+        return False
+
+    checks = report.get('answerChecks')
+    if (not isinstance(checks, dict)
+            or set(checks) != CODEX_A01_ANSWER_CHECK_FIELDS
+            or any(value is not True for value in checks.values())
+            or report.get('answerCheckMethod') != 'a01-bounded-cohort-answer-v1'
+            or not isinstance(report.get('answerSha256'), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', report['answerSha256'])
+            or type(report.get('answerUtf8Bytes')) is not int
+            or report['answerUtf8Bytes'] <= 0
+            or report['answerUtf8Bytes'] > 64_000):
+        return False
+
+    expected_call = [{
+        'name': 'bangumi.compare_subject_cohorts',
+        'state': 'DONE',
+        'arguments': CODEX_A01_QUERY_ARGUMENTS,
+    }]
+    if report.get('toolCalls') != expected_call or not codex_a01_result_is_valid(report.get('result')):
+        return False
+    privacy = report.get('privacy')
+    expected_privacy = {
+        'authProfile': 'anonymous',
+        'oauthAttempted': False,
+        'accountDataRead': False,
+        'writesAttempted': False,
+        'qqPipelineTested': False,
+        'timClientTested': False,
+        'promptStored': False,
+        'answerStored': False,
+        'rawResultStored': False,
+        'artifactImageBytesStored': False,
+        'credentialsStored': False,
+    }
+    return (
+        isinstance(privacy, dict)
+        and set(privacy) == CODEX_A01_PRIVACY_FIELDS
+        and privacy == expected_privacy
+        and report.get('acceptanceLimit') == (
+            'One anonymous current-snapshot sample only; this does not establish global season coverage or statistical significance. No retry is authorized.'
+        )
+        and not _contains_forbidden_codex_content(report)
+    )
 
 
 def codex_g20_result_is_valid(result: object, expected_subject_id: int) -> bool:
@@ -1169,6 +1899,17 @@ def codex_g20_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
+def codex_a01_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_A01_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
 def codex_g02_probe_revision_has_implementation(revision: object) -> bool:
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return False
@@ -1211,6 +1952,47 @@ def codex_g20_report_matches_candidate_revision(report_path: Path, revision: obj
         # from the HEAD tree and follows this path.
         return revision == head_sha
 
+    added_commit = _run_repository_git(
+        ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
+    )
+    commit_sha = added_commit.stdout.strip()
+    if added_commit.returncode != 0 or not re.fullmatch(r'[0-9a-f]{40}', commit_sha):
+        return False
+    parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
+    parent_shas = parents.stdout.strip().split()
+    return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def codex_a01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind A01 live evidence to its exact reviewed runtime candidate and post-query report commit."""
+    if not codex_a01_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError, TypeError):
+        return False
+    if (
+        relative_path != CODEX_A01_REPORT_RELATIVE_PATH
+        or report.get('sourceRevision') != revision
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(revision)
+    ):
+        return False
+    base_sha = report.get('baseSha')
+    if (
+        not isinstance(base_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', base_sha, revision).returncode != 0
+    ):
+        return False
+
+    head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
+    if head.returncode != 0:
+        return False
+    head_sha = head.stdout.strip()
+    committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
+    if committed_in_head.returncode != 0:
+        return revision == head_sha
     added_commit = _run_repository_git(
         ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
     )
@@ -2633,6 +3415,19 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         except (OSError, ValueError):
             continue
         if not isinstance(report, dict):
+            continue
+        if report.get('evidenceKind') == 'codex_cli_a01_agent_mcp':
+            if (
+                path.name != Path(CODEX_A01_REPORT_RELATIVE_PATH).name
+                or not codex_a01_report_is_valid(report, current_by_name)
+                or not codex_a01_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault('bangumi.compare_subject_cohorts', set()).add(
+                report_source_ref(path),
+            )
             continue
         if report.get('evidenceKind') == 'codex_cli_s03_series_voice_overlap_agent_mcp':
             if (
