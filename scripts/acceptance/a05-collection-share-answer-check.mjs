@@ -13,6 +13,11 @@ export const A05_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
   limit: 8,
   explain: 'full',
 });
+export const A05_EXPECTED_CAVEATS = Object.freeze([
+  'This is a sample-verified ratio, not an official formula, episode completion, personal progress, or preference.',
+  'The experimental search has estimated totals; this is only the bounded observed sample and does not establish a complete list.',
+  'Missing, invalid, conflicting collection buckets and zero denominators remain unresolved or not computable.',
+]);
 
 const FORMULA = 'collect / (wish + collect + doing + on_hold + dropped)';
 const FORMULA_ID = A05_FORMULA_ID;
@@ -50,6 +55,33 @@ function finite(value) {
 
 function nonNegativeInteger(value) {
   return Number.isSafeInteger(value) && value >= 0;
+}
+
+function coverageStatesAreConsistent(resultState, coverage) {
+  if (
+    !isObject(coverage) ||
+    !['complete', 'partial', 'unknown'].includes(coverage.state) ||
+    typeof coverage.upstreamExhausted !== 'boolean'
+  ) {
+    return false;
+  }
+  const partialSignal =
+    coverage.unresolvedCandidates > 0 ||
+    coverage.hydrationsUnresolved > 0 ||
+    coverage.hydrationsFailed > 0 ||
+    coverage.budgetExceeded === true ||
+    coverage.hydrationBudgetExceeded === true ||
+    coverage.outputCap !== undefined ||
+    coverage.reason === 'output_cap';
+  if (partialSignal) return resultState === 'partial' && coverage.state === 'partial';
+  if (resultState === 'partial' || coverage.state === 'partial') {
+    return resultState === 'partial' && coverage.state === 'partial';
+  }
+  if (coverage.state === 'complete') {
+    return resultState === 'ok' && coverage.upstreamExhausted;
+  }
+  return coverage.state === 'unknown' && !coverage.upstreamExhausted &&
+    ['ok', 'unknown'].includes(resultState);
 }
 
 function parseMcpText(toolOutput) {
@@ -175,6 +207,7 @@ function answerShape(answer, result, resultItems) {
   const coverage = result.coverage;
   const answerCoverage = parsed?.coverage;
   const answerItems = Array.isArray(parsed?.items) ? parsed.items : [];
+  const answerCaveats = Array.isArray(parsed?.caveats) ? parsed.caveats : [];
   const answerUsesExactSanitizedShape =
     hasExactKeys(parsed, ['formula', 'thresholds', 'items', 'coverage', 'caveats']) &&
     hasExactKeys(parsed.thresholds, ['ratingMin', 'collectionCompletionRateMax']) &&
@@ -215,9 +248,11 @@ function answerShape(answer, result, resultItems) {
         item?.score === resultItems[index]?.score &&
         item?.collectionCompletionRate === resultItems[index]?.collectionCompletionRate,
     );
-  const caveats = Array.isArray(parsed?.caveats) ? parsed.caveats.join(' ') : '';
+  const caveats = answerCaveats.join(' ');
   const checks = {
     answerUsesExactSanitizedShape,
+    answerCaveatsMatchApprovedSet:
+      canonicalJson(answerCaveats) === canonicalJson(A05_EXPECTED_CAVEATS),
     answerThresholdsMatch:
       canonicalJson(parsed?.thresholds) ===
       canonicalJson({ ratingMin: 8, collectionCompletionRateMax: 0.4 }),
@@ -294,9 +329,12 @@ export function verifyA05CollectionShareAnswer(
       result?.plan?.source === 'official_v0' && result?.plan?.operation === 'searchSubjects',
     ratingFilterIsSearchPushdown:
       Array.isArray(requestFilter.rating) && requestFilter.rating.includes('>=8'),
+    animeMediaIsSearchPushdown:
+      Array.isArray(requestFilter.type) && requestFilter.type.length === 1 && requestFilter.type[0] === 2,
     collectionShareIsLocalDerivedFilter:
       completionFilter?.classification === 'DERIVED_FILTER' &&
       completionFilter?.value?.max === 0.4,
+    allReturnedRowsAreAnime: items.length > 0 && items.every((item) => item?.media === 'anime'),
     allReturnedRowsAreValid: validRows.length === items.length && items.length > 0,
     allReturnedScoresMeetThreshold: validRows.every((item) => item.score >= 8),
     allReturnedSharesMeetThreshold: validRows.every(
@@ -310,9 +348,13 @@ export function verifyA05CollectionShareAnswer(
     coverageIsBoundedAndConsistent:
       isObject(coverage) &&
       ['ok', 'partial', 'unknown'].includes(result?.state) &&
+      coverageStatesAreConsistent(result?.state, coverage) &&
       coverage.totalKind === 'estimated' &&
+      typeof coverage.budgetExceeded === 'boolean' &&
+      typeof coverage.hydrationBudgetExceeded === 'boolean' &&
       nonNegativeInteger(coverage.scanned) &&
       nonNegativeInteger(coverage.matched) &&
+      coverage.matched <= coverage.scanned &&
       nonNegativeInteger(coverage.returned) &&
       coverage.returned === items.length &&
       coverage.returned <= A05_EXPECTED_QUERY_ARGUMENTS.limit &&
@@ -324,12 +366,24 @@ export function verifyA05CollectionShareAnswer(
       nonNegativeInteger(coverage.pagesScanned) &&
       coverage.pagesScanned <= DEFAULT_MAX_PAGES &&
       nonNegativeInteger(coverage.hydrationsAttempted) &&
-      coverage.hydrationsAttempted <= DEFAULT_MAX_HYDRATIONS,
+      coverage.hydrationsAttempted <= DEFAULT_MAX_HYDRATIONS &&
+      nonNegativeInteger(coverage.hydrationsSucceeded) &&
+      nonNegativeInteger(coverage.hydrationsFailed) &&
+      nonNegativeInteger(coverage.hydrationsUnresolved) &&
+      coverage.hydrationsUnresolved === coverage.unresolvedCandidates &&
+      coverage.hydrationsSucceeded + coverage.hydrationsFailed <= coverage.hydrationsAttempted &&
+      coverage.hydrationsUnresolved <= coverage.scanned &&
+      (coverage.outputCap === undefined ||
+        (Number.isSafeInteger(coverage.outputCap) &&
+          coverage.outputCap >= 1 &&
+          coverage.outputCap <= DEFAULT_MAX_RETURNED_ITEMS)) &&
+      (coverage.reason === undefined || typeof coverage.reason === 'string'),
     effectiveBudgetIsServerBounded:
       budget?.maxPages === DEFAULT_MAX_PAGES &&
       budget?.maxCandidates === DEFAULT_MAX_CANDIDATES &&
       budget?.maxHydrations === DEFAULT_MAX_HYDRATIONS &&
-      budget?.concurrency === DEFAULT_CONCURRENCY,
+      budget?.concurrency === DEFAULT_CONCURRENCY &&
+      budget?.maxReturnedItems === DEFAULT_MAX_RETURNED_ITEMS,
     formulaCaveatIsPrioritized:
       formulaPosition >= 0 && (!hasTextProjection || rowsPosition > formulaPosition),
     formulaAndSampleLimitationsPresent:
@@ -395,3 +449,4 @@ const DEFAULT_MAX_PAGES = 10;
 const DEFAULT_MAX_CANDIDATES = 500;
 const DEFAULT_MAX_HYDRATIONS = 120;
 const DEFAULT_CONCURRENCY = 6;
+const DEFAULT_MAX_RETURNED_ITEMS = 100;

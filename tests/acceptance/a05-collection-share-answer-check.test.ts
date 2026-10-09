@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { presentMcpToolResult } from '../../apps/mcp/src/result-presenter.js';
 import {
+  A05_EXPECTED_CAVEATS,
   A05_EXPECTED_QUERY_ARGUMENTS,
   verifyA05CollectionShareAnswer,
 } from '../../scripts/acceptance/a05-collection-share-answer-check.mjs';
@@ -116,11 +117,7 @@ function answerFor(result: ReturnType<typeof makeResult>) {
       totalKind: result.coverage.totalKind,
       unresolvedCandidates: result.coverage.unresolvedCandidates,
     },
-    caveats: [
-      'This is a sample-verified ratio, not an official formula, episode completion, personal progress, or preference.',
-      'The experimental search has estimated totals; this is only the bounded observed sample and does not establish a complete list.',
-      'Missing, invalid, conflicting collection buckets and zero denominators remain unresolved or not computable.',
-    ],
+    caveats: A05_EXPECTED_CAVEATS,
   });
 }
 
@@ -209,6 +206,68 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
 
     expect(checked.passed).toBe(false);
     expect(checked.checks.answerUsesExactSanitizedShape).toBe(false);
+  });
+
+  it('rejects contradictory, paraphrased, or incomplete caveats', () => {
+    const result = makeResult();
+    const answer = JSON.parse(answerFor(result));
+    answer.caveats = [
+      ...A05_EXPECTED_CAVEATS,
+      'This is the full list and reflects personal progress and preference.',
+    ];
+
+    const checked = verify(result, JSON.stringify(answer));
+
+    expect(checked.passed).toBe(false);
+    expect(checked.checks.answerCaveatsMatchApprovedSet).toBe(false);
+
+    answer.caveats = A05_EXPECTED_CAVEATS.slice(0, 2);
+    const incomplete = verify(result, JSON.stringify(answer));
+    expect(incomplete.checks.answerCaveatsMatchApprovedSet).toBe(false);
+  });
+
+  it('requires anime result rows and an official anime type pushdown', () => {
+    const nonAnimeRow = makeResult();
+    nonAnimeRow.items[0]!.media = 'book';
+    const nonAnimeCheck = verify(nonAnimeRow);
+
+    const wrongSearchType = makeResult();
+    wrongSearchType.plan.steps[0]!.request.filter.type = [1];
+    const wrongSearchCheck = verify(wrongSearchType);
+
+    expect(nonAnimeCheck.checks.allReturnedRowsAreAnime).toBe(false);
+    expect(wrongSearchCheck.checks.animeMediaIsSearchPushdown).toBe(false);
+  });
+
+  it('requires consistent partial coverage for unresolved candidates and output caps', () => {
+    const unresolvedMarkedComplete = makeResult();
+    unresolvedMarkedComplete.state = 'ok';
+    unresolvedMarkedComplete.coverage.state = 'complete';
+    const badUnresolvedCoverage = verify(unresolvedMarkedComplete);
+
+    const cappedMarkedComplete = makeResult();
+    cappedMarkedComplete.state = 'ok';
+    cappedMarkedComplete.coverage.state = 'complete';
+    cappedMarkedComplete.coverage.unresolvedCandidates = 0;
+    cappedMarkedComplete.coverage.hydrationsUnresolved = 0;
+    cappedMarkedComplete.coverage.hydrationsFailed = 0;
+    cappedMarkedComplete.coverage.budgetExceeded = false;
+    cappedMarkedComplete.coverage.hydrationBudgetExceeded = false;
+    Object.assign(cappedMarkedComplete.coverage, { outputCap: 2 });
+    const badCappedCoverage = verify(cappedMarkedComplete);
+
+    const invalidCoverage = makeResult();
+    invalidCoverage.coverage.state = 'unbounded';
+    const badCoverageEnum = verify(invalidCoverage);
+
+    const inconsistentHydrationCount = makeResult();
+    inconsistentHydrationCount.coverage.hydrationsUnresolved = 0;
+    const badHydrationCount = verify(inconsistentHydrationCount);
+
+    expect(badUnresolvedCoverage.checks.coverageIsBoundedAndConsistent).toBe(false);
+    expect(badCappedCoverage.checks.coverageIsBoundedAndConsistent).toBe(false);
+    expect(badCoverageEnum.checks.coverageIsBoundedAndConsistent).toBe(false);
+    expect(badHydrationCount.checks.coverageIsBoundedAndConsistent).toBe(false);
   });
 
   it('rejects missing formula/source evidence, omitted MCP rows, and unsupported completeness claims', () => {
