@@ -29,6 +29,7 @@ const A05_SCRIPT_PATHS = {
   runner: 'scripts/acceptance/run-a05-codex-agent-mcp.mjs',
   answerChecker: 'scripts/acceptance/a05-collection-share-answer-check.mjs',
   reportWriter: 'scripts/acceptance/write-a05-agent-mcp-report.mjs',
+  sharedContract: 'packages/discovery/src/collection-completion-contract.json',
 };
 
 function sha256(value) {

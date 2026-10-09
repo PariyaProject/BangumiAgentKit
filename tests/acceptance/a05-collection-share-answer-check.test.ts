@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
 import { presentMcpToolResult } from '../../apps/mcp/src/result-presenter.js';
 import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 import {
   A05_EXPECTED_CAVEATS,
   A05_EXPECTED_QUERY_ARGUMENTS,
+  A05_EXPECTED_UNRESOLVED_CAVEAT,
   verifyA05CollectionShareAnswer,
 } from '../../scripts/acceptance/a05-collection-share-answer-check.mjs';
 import { buildA05AgentMcpReport } from '../../scripts/acceptance/write-a05-agent-mcp-report.mjs';
@@ -153,6 +158,45 @@ function verify(
 }
 
 describe('A05 sanitized Agent/MCP answer checker', () => {
+  it('loads the one-shot runner from a clean checkout before package dist exists', () => {
+    const sourceRoot = process.cwd();
+    const temporaryRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'a05-clean-runner-')));
+    const sourcePaths = [
+      'scripts/acceptance/run-a05-codex-agent-mcp.mjs',
+      'scripts/acceptance/a05-collection-share-answer-check.mjs',
+      'scripts/acceptance/write-a05-agent-mcp-report.mjs',
+      'scripts/acceptance/run-g26-codex-agent-mcp.mjs',
+      'scripts/lib/g26-mcp-bundle.mjs',
+      'packages/discovery/src/collection-completion-contract.json',
+    ];
+
+    try {
+      for (const relativePath of sourcePaths) {
+        const destination = path.join(temporaryRoot, relativePath);
+        mkdirSync(path.dirname(destination), { recursive: true });
+        copyFileSync(path.join(sourceRoot, relativePath), destination);
+      }
+
+      expect(existsSync(path.join(temporaryRoot, 'packages/discovery/dist/index.js'))).toBe(false);
+      expect(existsSync(path.join(temporaryRoot, 'node_modules'))).toBe(false);
+      const result = spawnSync(
+        process.execPath,
+        [path.join(temporaryRoot, 'scripts/acceptance/run-a05-codex-agent-mcp.mjs'), '--help'],
+        { cwd: temporaryRoot, encoding: 'utf8', timeout: 10_000 },
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('Usage: node scripts/acceptance/run-a05-codex-agent-mcp.mjs --run 95');
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('shares one dependency-free caveat source between discovery and the Node acceptance checker', () => {
+    expect(A05_EXPECTED_UNRESOLVED_CAVEAT).toBe(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
+  });
+
   it('accepts one exact query and returns only aggregate counters and checks', () => {
     const result = makeResult();
     const verified = verify(result);
@@ -318,6 +362,7 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
       runner: 'e'.repeat(64),
       answerChecker: 'f'.repeat(64),
       reportWriter: '9'.repeat(64),
+      sharedContract: '8'.repeat(64),
     };
     const input = {
       model: 'gpt-6-luna',

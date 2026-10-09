@@ -1,8 +1,12 @@
 import { createHash } from 'node:crypto';
-import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
+import collectionCompletionContract from '../../packages/discovery/src/collection-completion-contract.json' with {
+  type: 'json',
+};
 
 export const A05_ANSWER_CHECK_METHOD = 'a05-collection-share-agent-mcp-v1';
 export const A05_TARGET_TOOL = 'bangumi.query_subjects';
+export const A05_EXPECTED_UNRESOLVED_CAVEAT =
+  collectionCompletionContract.unresolvedCoverageCaveat;
 export const A05_FORMULA_ID = 'bangumi.subject.completion.v1';
 export const A05_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
   media: 'anime',
@@ -393,7 +397,7 @@ export function verifyA05CollectionShareAnswer(
       /estimated/u.test(planLimitations) &&
       /bounded observed sample/u.test(planLimitations),
     planDisclosesUnresolvedCoverage:
-      planLimitations.includes(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT),
+      planLimitations.includes(A05_EXPECTED_UNRESOLVED_CAVEAT),
     textReadbackHasAllUnclippedRows:
       textResult !== null && textRowsComplete && rowsEqual(validRows, textItems),
     toolTextWithinLimit:
