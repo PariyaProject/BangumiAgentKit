@@ -224,9 +224,9 @@ test('G02 renderer answer accepts only bounded non-persisted PNG metadata', () =
   });
   assert.equal(Object.hasOwn(result.artifactSummary, 'bytes'), false);
 
-  const missingMediaOrHalfOpen = verifyG02RendererAnswer({
+  const missingMedia = verifyG02RendererAnswer({
     answer:
-      '图片卡已生成。\n范围：2024-01-01至2025-01-01，异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。',
+      '图片卡已生成。\n范围：2024-01-01至2025-01-01（左闭右开），异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。',
     queryArguments: G02_QUERY_ARGUMENTS,
     toolResultSummary: {
       resultState: 'artifact_returned',
@@ -242,7 +242,27 @@ test('G02 renderer answer accepts only bounded non-persisted PNG metadata', () =
       },
     },
   });
-  assert.equal(missingMediaOrHalfOpen.answerChecks.exactDateAndConceptScopeDisclosed, false);
+  assert.equal(missingMedia.answerChecks.exactDateAndConceptScopeDisclosed, false);
+
+  const missingHalfOpen = verifyG02RendererAnswer({
+    answer:
+      '图片卡已生成。\n范围：2024-01-01至2025-01-01，动画异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。',
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolResultSummary: {
+      resultState: 'artifact_returned',
+      artifact: {
+        returned: true,
+        persisted: false,
+        mimeType: 'image/png',
+        width: 720,
+        height: 1200,
+        byteLength: 34000,
+        sha256: 'a'.repeat(64),
+        pngSignatureValid: true,
+      },
+    },
+  });
+  assert.equal(missingHalfOpen.answerChecks.exactDateAndConceptScopeDisclosed, false);
 });
 
 test('G02 renderer answer rejects persisted image bytes and missing scope disclosure', () => {
