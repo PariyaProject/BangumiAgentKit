@@ -64,10 +64,18 @@ const result = {
           name: 'Spring One',
           displayName: '春季一',
           score: 8,
+          ratingCount: 100,
+          ratingHistogramPopulation: 100,
+          ratingStandardDeviation: 1.25,
           collectionTotal: 100,
           episodesReported: 12,
           totalEpisodesReported: 12,
-          metricStates: { score: 'available', heat: 'available', episodesReported: 'available' },
+          metricStates: {
+            score: 'available',
+            heat: 'available',
+            episodesReported: 'available',
+            ratingStandardDeviation: 'available',
+          },
         },
       ],
       coverage: {
@@ -76,9 +84,38 @@ const result = {
         detailHydrationsSucceeded: 1,
         detailHydrationsFailed: 0,
         metrics: {
-          score: { valid: 1, missing: 0, conflicts: 0, state: 'complete' as const },
-          heat: { valid: 1, missing: 0, conflicts: 0, state: 'complete' as const },
-          episodesReported: { valid: 1, missing: 0, conflicts: 0, state: 'complete' as const },
+          score: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
+          heat: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
+          episodesReported: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
+          ratingStandardDeviation: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
         },
       },
     },
@@ -92,10 +129,18 @@ const result = {
           name: 'Summer One',
           displayName: '夏季一',
           score: 7,
+          ratingCount: 80,
+          ratingHistogramPopulation: 80,
+          ratingStandardDeviation: 1.75,
           collectionTotal: 80,
           episodesReported: 13,
           totalEpisodesReported: 13,
-          metricStates: { score: 'available', heat: 'available', episodesReported: 'available' },
+          metricStates: {
+            score: 'available',
+            heat: 'available',
+            episodesReported: 'available',
+            ratingStandardDeviation: 'available',
+          },
         },
       ],
       coverage: {
@@ -104,9 +149,38 @@ const result = {
         detailHydrationsSucceeded: 1,
         detailHydrationsFailed: 0,
         metrics: {
-          score: { valid: 1, missing: 0, conflicts: 0, state: 'complete' as const },
-          heat: { valid: 1, missing: 0, conflicts: 0, state: 'complete' as const },
-          episodesReported: { valid: 1, missing: 0, conflicts: 0, state: 'complete' as const },
+          score: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
+          heat: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
+          episodesReported: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
+          ratingStandardDeviation: {
+            valid: 1,
+            partial: 0,
+            missing: 0,
+            conflicts: 0,
+            notComputable: 0,
+            state: 'complete' as const,
+          },
         },
       },
     },
@@ -118,8 +192,10 @@ const result = {
       sourceField: 'subject.rating.score',
       averages: [8, 7] as [number, number],
       validCounts: [1, 1] as [number, number],
+      partialCounts: [0, 0] as [number, number],
       missingCounts: [0, 0] as [number, number],
       conflictCounts: [0, 0] as [number, number],
+      notComputableCounts: [0, 0] as [number, number],
       delta: -1,
       state: 'complete' as const,
     },
@@ -129,8 +205,10 @@ const result = {
       sourceField: 'subject.collection.total',
       averages: [100, 80] as [number, number],
       validCounts: [1, 1] as [number, number],
+      partialCounts: [0, 0] as [number, number],
       missingCounts: [0, 0] as [number, number],
       conflictCounts: [0, 0] as [number, number],
+      notComputableCounts: [0, 0] as [number, number],
       delta: -20,
       state: 'complete' as const,
     },
@@ -140,9 +218,29 @@ const result = {
       sourceField: 'subject.eps',
       averages: [12, 13] as [number, number],
       validCounts: [1, 1] as [number, number],
+      partialCounts: [0, 0] as [number, number],
       missingCounts: [0, 0] as [number, number],
       conflictCounts: [0, 0] as [number, number],
+      notComputableCounts: [0, 0] as [number, number],
       delta: 1,
+      state: 'complete' as const,
+    },
+    {
+      key: 'ratingStandardDeviation' as const,
+      label: '平均评分总体标准差',
+      sourceField: 'subject.rating.count[1..10]',
+      averages: [1.25, 1.75] as [number, number],
+      validCounts: [1, 1] as [number, number],
+      partialCounts: [0, 0] as [number, number],
+      missingCounts: [0, 0] as [number, number],
+      conflictCounts: [0, 0] as [number, number],
+      notComputableCounts: [0, 0] as [number, number],
+      formula: {
+        id: 'bangumi.rating.population_sd.v1',
+        version: 1,
+        description: 'population standard deviation over the rating histogram',
+      },
+      delta: 0.5,
       state: 'complete' as const,
     },
   ],
@@ -156,6 +254,7 @@ const result = {
     detailHydrationsSucceeded: 2,
     detailHydrationsFailed: 0,
     truncated: false,
+    overlap: { subjectIds: [], count: 0 },
     evidence: {
       retained: 0,
       omitted: 0,
@@ -198,6 +297,8 @@ describe('subject cohort comparison renderer', () => {
     const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 720);
     expect(html).toContain('条目群体比较');
     expect(html).toContain('2026 春季');
+    expect(html).toContain('评分总体标准差');
+    expect(html).toContain('bangumi.rating.population_sd.v1');
     expect(html).toContain('B − A');
   });
 
@@ -251,7 +352,7 @@ describe('subject cohort comparison renderer', () => {
         expect(rendered.buffer.subarray(0, 8)).toEqual(
           Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
         );
-        expect(rendered.height).toBeLessThan(6000);
+        expect(rendered.height).toBeLessThan(6200);
       }
     } finally {
       await service.close();

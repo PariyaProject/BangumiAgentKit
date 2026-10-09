@@ -32,7 +32,7 @@ function createFixtureProvider() {
       score: 8.5,
       rank: 12,
       ratingTotal: 1200,
-      ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 500, 9: 600, 10: 100 },
+      ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 600, 9: 600, 10: 0 },
       collection: { wish: 10, collect: 500, doing: 20, onHold: 5, dropped: 2 },
     },
   };

@@ -205,7 +205,7 @@ export function createDiscoveryTools() {
   const compareSubjectCohortsTool = defineTool({
     name: 'bangumi.compare_subject_cohorts',
     description:
-      '比较一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）和平均报告话数；两侧时才输出 B−A 差值，同时输出每项有效/缺失/冲突计数、查询覆盖与检索证据。结果是有界返回样本，不生成推荐、质量、因果或历史趋势结论。',
+      '比较一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）、平均报告话数和每条目评分直方图总体标准差的 cohort 均值；标准差复用 bangumi.rating.population_sd.v1，仅在完整十档直方图上计算。两侧时才输出 B−A 差值，同时输出每项有效/部分/缺失/冲突/不可计算计数、查询覆盖、重叠 ID 与检索证据。重叠条目仍分别计入两侧均值；结果是有界返回样本的描述性当前快照，不表示统计显著性、极化、质量、因果、推荐或历史趋势。',
     input: subjectCohortComparisonInput,
     auth: 'none',
     scopes: [],
@@ -226,7 +226,7 @@ export function createDiscoveryTools() {
   const aggregateSubjectCohortTool = defineTool({
     name: 'bangumi.aggregate_subject_cohort',
     description:
-      '聚合一个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）、平均报告话数、覆盖状态、检索证据和明确限制；不生成推荐、质量、因果或历史趋势结论。',
+      '聚合一个由现有 discovery 条件定义的 Bangumi 条目 cohort。仅使用官方 v0 discovery 与有界条目详情，输出平均评分、平均热度（collection 各状态之和）、平均报告话数、完整十档官方评分直方图计算的每条目总体标准差均值、覆盖状态、检索证据和明确限制；标准差复用 bangumi.rating.population_sd.v1。结果是有界返回样本的描述性当前快照，不表示统计显著性、极化、质量、因果、推荐或历史趋势。',
     input: subjectCohortAggregationInput,
     auth: 'none',
     scopes: [],

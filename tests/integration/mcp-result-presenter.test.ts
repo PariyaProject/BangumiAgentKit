@@ -13,6 +13,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { SeriesService } from '@bangumi-agent-kit/bangumi-core';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
+import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 import type { ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
 import {
@@ -1289,6 +1290,194 @@ describe('MCP tool result presentation', () => {
     expect(unrelatedPresentation).toEqual({
       text: JSON.stringify(unrelatedLarge, null, 2),
     });
+  });
+
+  it('bounds large cohort text while preserving standard deviation, overlap, and full structuredContent', () => {
+    const metricCoverage = {
+      valid: 60,
+      partial: 0,
+      missing: 0,
+      conflicts: 0,
+      notComputable: 0,
+      state: 'complete' as const,
+    };
+    const queryCoverage = {
+      state: 'ok' as const,
+      coverage: {
+        scanned: 60,
+        matched: 60,
+        returned: 60,
+        totalKind: 'estimated' as const,
+        budgetExceeded: false,
+        state: 'complete' as const,
+      },
+      plan: {} as SubjectCohortComparisonResult['cohorts'][number]['coverage']['query']['plan'],
+    };
+    const cohort = (label: string) => ({
+      label,
+      query: {
+        media: 'anime' as const,
+        season: '2026-autumn',
+        resultMode: 'all' as const,
+        tags: Array.from({ length: 50 }, (_, index) => `${'季节标签'.repeat(30)}-${index}`),
+        metaTags: Array.from({ length: 50 }, (_, index) => `${'原作元标签'.repeat(30)}-${index}`),
+      },
+      querySummary: `${label} · ${'冗长查询摘要'.repeat(30)}`,
+      subjects: Array.from({ length: 60 }, (_, index) => ({
+        id: index + 1,
+        name: `${'Bangumi source name'.repeat(12)} ${index + 1}`,
+        displayName: `${'超长中文动画名称'.repeat(12)} ${index + 1}`,
+        score: 8,
+        ratingCount: 100,
+        ratingHistogramPopulation: 100,
+        ratingStandardDeviation: 1.25,
+        collectionTotal: 1000,
+        episodesReported: 12,
+        metricStates: {
+          score: 'available' as const,
+          heat: 'available' as const,
+          episodesReported: 'available' as const,
+          ratingStandardDeviation: 'available' as const,
+        },
+      })),
+      coverage: {
+        query: queryCoverage,
+        detailHydrationsAttempted: 60,
+        detailHydrationsSucceeded: 60,
+        detailHydrationsFailed: 0,
+        metrics: {
+          score: metricCoverage,
+          heat: metricCoverage,
+          episodesReported: metricCoverage,
+          ratingStandardDeviation: metricCoverage,
+        },
+      },
+    });
+    const original = {
+      state: 'partial' as const,
+      cohorts: [cohort('目标作品'), cohort('2026 年秋季 TV 动画样本')],
+      metrics: [
+        {
+          key: 'ratingStandardDeviation' as const,
+          label: '平均评分总体标准差',
+          sourceField: 'subject.rating.count[1..10]',
+          averages: [1.25, 1.1],
+          validCounts: [1, 60],
+          partialCounts: [0, 0],
+          missingCounts: [0, 0],
+          conflictCounts: [0, 0],
+          notComputableCounts: [0, 0],
+          formula: {
+            id: 'bangumi.rating.population_sd.v1',
+            version: 1,
+            description: 'population standard deviation over the rating histogram',
+          },
+          delta: -0.15,
+          state: 'complete' as const,
+        },
+      ],
+      formulaVersion: 'subject-cohort-comparison-v1' as const,
+      coverage: {
+        maxSubjectsPerCohort: 60,
+        totalSubjectsReturned: 120,
+        cohortsComplete: 2,
+        cohortsPartial: 0,
+        detailHydrationsAttempted: 120,
+        detailHydrationsSucceeded: 120,
+        detailHydrationsFailed: 0,
+        truncated: true,
+        overlap: { subjectIds: Array.from({ length: 60 }, (_, index) => index + 1), count: 60 },
+        evidence: {
+          retained: 256,
+          omitted: 500,
+          deduplicated: 0,
+          omittedByBound: 500,
+          bytes: 90000,
+          maxRefs: 256,
+          maxBytes: 96000,
+          truncated: true,
+        },
+        warnings: { retained: 1, omitted: 0, max: 12, truncated: false },
+      },
+      source: {
+        official: {
+          class: 'official-v0' as const,
+          operations: ['searchSubjects', 'getSubjectById'],
+          attemptedAt: '2026-10-09T00:00:00.000Z',
+          retrievedAt: '2026-10-09T00:00:01.000Z',
+        },
+        derived: {
+          class: 'derived-s7' as const,
+          operations: ['subject-cohort-comparison'],
+          attemptedAt: '2026-10-09T00:00:00.000Z',
+          retrievedAt: '2026-10-09T00:00:01.000Z',
+        },
+      },
+      evidence: [],
+      warnings: [
+        {
+          code: 'COHORT_COVERAGE_DEGRADED',
+          state: 'partial' as const,
+          message: 'Only this bounded returned sample was observed.',
+        },
+      ],
+      limitations: ['Totals are estimated and do not establish whole-season completeness.'],
+      retrievedAt: '2026-10-09T00:00:01.000Z',
+    } as unknown as SubjectCohortComparisonResult;
+    const fullJsonBytes = Buffer.byteLength(JSON.stringify(original, null, 2), 'utf8');
+    const presentation = presentMcpToolResult('bangumi.compare_subject_cohorts', original);
+    const parsed = JSON.parse(presentation.text);
+
+    expect(fullJsonBytes).toBeGreaterThan(MCP_TOOL_TEXT_MAX_UTF8_BYTES);
+    expect(Buffer.byteLength(presentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.metrics[0]).toMatchObject({
+      key: 'ratingStandardDeviation',
+      averages: [1.25, 1.1],
+      formula: { id: 'bangumi.rating.population_sd.v1', version: 1 },
+    });
+    expect(parsed.cohorts[0].subjects.length).toBeGreaterThan(0);
+    expect(parsed.cohorts[0].subjectRowsOmittedFromText).toBeGreaterThan(0);
+    expect(parsed.coverage.overlap).toMatchObject({ count: 60, subjectIdsOmittedFromText: 48 });
+    expect(parsed.mcpTextProjection.structuredContentHasFullResult).toBe(true);
+    expect(parsed.mcpTextProjection.textViewScope).toContain(
+      'omitted rows are not evidence of absence',
+    );
+
+    const aggregationResult = {
+      ...original,
+      cohorts: [original.cohorts[0]!],
+      metrics: original.metrics.map((metric) => ({
+        ...metric,
+        averages: [metric.averages[0]],
+        ...(metric.partialAverages ? { partialAverages: [metric.partialAverages[0]] } : {}),
+        validCounts: [metric.validCounts[0]],
+        partialCounts: [metric.partialCounts[0]],
+        missingCounts: [metric.missingCounts[0]],
+        conflictCounts: [metric.conflictCounts[0]],
+        notComputableCounts: [metric.notComputableCounts[0]],
+        delta: undefined,
+      })),
+      coverage: {
+        ...original.coverage,
+        totalSubjectsReturned: 60,
+        cohortsComplete: 1,
+        cohortsPartial: 0,
+        detailHydrationsAttempted: 60,
+        detailHydrationsSucceeded: 60,
+        overlap: { subjectIds: [], count: 0 },
+      },
+    } as unknown as SubjectCohortComparisonResult;
+    const aggregationPresentation = presentMcpToolResult(
+      'bangumi.aggregate_subject_cohort',
+      aggregationResult,
+    );
+    expect(Buffer.byteLength(aggregationPresentation.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(aggregationPresentation.structuredContent).toBe(aggregationResult);
   });
 
   it('bounds large discovery text while preserving decision-critical scope and full structuredContent', () => {

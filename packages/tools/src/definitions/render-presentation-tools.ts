@@ -698,7 +698,7 @@ export function createRenderPresentationTools(
   const renderSubjectCohorts = defineTool({
     name: 'bangumi.render_subject_cohort_comparison',
     description:
-      '生成一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort 观察图片卡片。卡片展示官方 v0 返回样本覆盖、平均评分、平均热度（收藏总数）、平均报告话数；两侧时才展示 B−A 差值，同时展示缺失/冲突、检索证据和有界限制。不生成推荐、质量、因果或历史趋势结论，渲染器不读取网络资产。',
+      '生成一个或两个由现有 discovery 条件定义的 Bangumi 条目 cohort 观察图片卡片。卡片展示官方 v0 返回样本覆盖、平均评分、平均热度（收藏总数）、平均报告话数、基于完整十档直方图与 bangumi.rating.population_sd.v1 的平均逐条目总体标准差；两侧时才展示 B−A 差值，同时展示有效/部分/缺失/冲突/不可计算计数、重叠 ID、检索证据和有界限制。标准差是描述值，不表示统计显著性、极化、质量、因果或历史趋势；渲染器不读取网络资产。',
     input: subjectCohortComparisonInput,
     auth: 'none',
     scopes: [],
@@ -720,7 +720,7 @@ export function createRenderPresentationTools(
   const renderSubjectCohortAggregation = defineTool({
     name: 'bangumi.render_subject_cohort_aggregation',
     description:
-      '生成一个由现有 discovery 条件定义的 Bangumi 条目 cohort 聚合图片卡片。卡片展示官方 v0 返回样本覆盖、平均评分、平均热度（收藏总数）、平均报告话数、缺失/冲突、检索证据和有界限制；不生成推荐、质量、因果或历史趋势结论，渲染器不读取网络资产。',
+      '生成一个由现有 discovery 条件定义的 Bangumi 条目 cohort 聚合图片卡片。卡片展示官方 v0 返回样本覆盖、平均评分、平均热度（收藏总数）、平均报告话数、基于完整十档直方图与 bangumi.rating.population_sd.v1 的平均逐条目总体标准差、有效/部分/缺失/冲突/不可计算计数、检索证据和有界限制。标准差是描述值，不表示统计显著性、极化、质量、因果或历史趋势；渲染器不读取网络资产。',
     input: subjectCohortAggregationInput,
     auth: 'none',
     scopes: [],

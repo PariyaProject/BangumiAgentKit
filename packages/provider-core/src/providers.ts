@@ -56,7 +56,7 @@ export interface SubjectStatsData {
   rank: number;
   ratingTotal: number;
   ratingHistogram: RatingHistogram;
-  /** Present only on the tolerant stats read; false means missing or invalid upstream input. */
+  /** Present when upstream bucket presence is observable; false means missing or invalid input. */
   ratingHistogramPresence?: RatingHistogramPresence;
   collection: {
     wish: number;
@@ -484,6 +484,7 @@ function parseStats(
     } else {
       if (value !== undefined) requiredNumber(value, `rating.count.${score}`);
       histogram[score as keyof RatingHistogram] = value === undefined ? 0 : (value as number);
+      ratingHistogramPresence[score as keyof RatingHistogram] = value !== undefined;
     }
   }
 
@@ -503,7 +504,9 @@ function parseStats(
     rank: requiredNumber(rating.rank, 'rating.rank'),
     ratingTotal: requiredNumber(rating.total, 'rating.total'),
     ratingHistogram: histogram,
-    ...(allowIncomplete ? { ratingHistogramPresence } : {}),
+    ...(allowIncomplete || Object.values(ratingHistogramPresence).some((present) => !present)
+      ? { ratingHistogramPresence }
+      : {}),
     collection: {
       wish: wish.value,
       collect: collect.value,

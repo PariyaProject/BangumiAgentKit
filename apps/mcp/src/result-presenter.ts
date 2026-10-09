@@ -12,6 +12,7 @@ import type {
   SubjectStaffGroup,
   SubjectStaffMember,
 } from '@bangumi-agent-kit/bangumi-core';
+import type { SubjectCohortComparisonResult } from '@bangumi-agent-kit/discovery';
 
 export const MCP_TOOL_TEXT_MAX_UTF8_BYTES = 3600;
 
@@ -75,6 +76,8 @@ const SUBJECT_STAFF_TOOL = 'bangumi.get_subject_staff';
 const SUBJECT_CAST_TOOL = 'bangumi.get_subject_cast';
 const SUBJECT_OVERVIEW_TOOL = 'bangumi.get_subject_overview';
 const SUBJECT_COMPARISON_TOOL = 'bangumi.get_subject_comparison';
+const SUBJECT_COHORT_COMPARISON_TOOL = 'bangumi.compare_subject_cohorts';
+const SUBJECT_COHORT_AGGREGATION_TOOL = 'bangumi.aggregate_subject_cohort';
 const SERIES_WATCH_ORDER_TOOL = 'bangumi.get_series_watch_order';
 const QUERY_SUBJECTS_TOOL = 'bangumi.query_subjects';
 const SUBJECT_RELATIONS_TOOL = 'bangumi.get_subject_relations';
@@ -90,6 +93,8 @@ const MESSAGE_TEXT_LIMIT = 80;
 const DISPLAY_TEXT_LIMIT = 120;
 const TEXT_VIEW_SCOPE_NOTE =
   'Only included rows are shown; partial or truncated coverage is not a complete source list, and omission is not evidence of absence.';
+const SUBJECT_COHORT_TEXT_SCOPE_NOTE =
+  'Only included rows are shown; omitted rows are not evidence of absence. Rating standard deviation is a descriptive current-snapshot metric, not statistical significance or polarization. Overlapping IDs remain in both cohort means. Full result remains in structuredContent.';
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
@@ -110,6 +115,16 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
 
   if (!isJsonObject(result)) {
     return { text: fullText };
+  }
+
+  if (
+    (toolName === SUBJECT_COHORT_COMPARISON_TOOL || toolName === SUBJECT_COHORT_AGGREGATION_TOOL) &&
+    isSubjectCohortComparisonResult(result)
+  ) {
+    return {
+      text: compactSubjectCohortResult(result),
+      structuredContent: result,
+    };
   }
 
   if (toolName === QUERY_SUBJECTS_TOOL && isDiscoveryResult(result)) {
@@ -627,6 +642,30 @@ function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isSubjectCohortComparisonResult(
+  value: JsonObject,
+): value is JsonObject & SubjectCohortComparisonResult {
+  return (
+    typeof value.state === 'string' &&
+    Array.isArray(value.cohorts) &&
+    value.cohorts.length >= 1 &&
+    value.cohorts.length <= 2 &&
+    value.cohorts.every(
+      (cohort) =>
+        isJsonObject(cohort) &&
+        typeof cohort.label === 'string' &&
+        Array.isArray(cohort.subjects) &&
+        isJsonObject(cohort.coverage) &&
+        isJsonObject(cohort.coverage.metrics),
+    ) &&
+    Array.isArray(value.metrics) &&
+    isJsonObject(value.coverage) &&
+    isJsonObject(value.coverage.overlap) &&
+    Array.isArray(value.warnings) &&
+    Array.isArray(value.limitations)
+  );
+}
+
 function isSubjectRelationsEvidenceResult(
   value: JsonObject,
 ): value is SubjectRelationsEvidenceResult {
@@ -1077,6 +1116,234 @@ function clippedDisplayText(
     text: limit === 0 ? '' : characters.slice(0, limit - 1).join('') + '…',
     clipped: true,
   };
+}
+
+function createSubjectCohortProjection(
+  result: SubjectCohortComparisonResult,
+  rowLimit: number,
+  warningLimit: number,
+  displayCharacters: number,
+  facetLimit: number,
+  facetCharacters: number,
+) {
+  const cohorts = result.cohorts.map((cohort) => {
+    const queryCoverage = cohort.coverage.query.coverage;
+    const subjects = cohort.subjects.slice(0, rowLimit).map((subject) => {
+      const name = clippedDisplayText(subject.displayName || subject.name, displayCharacters);
+      return {
+        id: subject.id,
+        displayName: name.text,
+        ...(name.clipped ? { displayNameTruncated: true } : {}),
+        ...(subject.score === undefined ? {} : { score: subject.score }),
+        ...(subject.ratingCount === undefined ? {} : { ratingCount: subject.ratingCount }),
+        ...(subject.ratingHistogramPopulation === undefined
+          ? {}
+          : { ratingHistogramPopulation: subject.ratingHistogramPopulation }),
+        ...(subject.ratingStandardDeviation === undefined
+          ? {}
+          : { ratingStandardDeviation: subject.ratingStandardDeviation }),
+        ...(subject.collectionTotal === undefined
+          ? {}
+          : { collectionTotal: subject.collectionTotal }),
+        ...(subject.episodesReported === undefined
+          ? {}
+          : { episodesReported: subject.episodesReported }),
+        metricStates: { ...subject.metricStates },
+      };
+    });
+    const tags = cohort.query.tags
+      ?.slice(0, facetLimit)
+      .map((tag) => clippedDisplayText(tag, facetCharacters).text);
+    const metaTags = cohort.query.metaTags
+      ?.slice(0, facetLimit)
+      .map((tag) => clippedDisplayText(tag, facetCharacters).text);
+    const excludeMetaTags = cohort.query.excludeMetaTags
+      ?.slice(0, facetLimit)
+      .map((tag) => clippedDisplayText(tag, facetCharacters).text);
+    const concepts = cohort.query.concepts
+      ?.slice(0, facetLimit)
+      .map((concept) => clippedDisplayText(concept, facetCharacters).text);
+
+    return {
+      label: clippedDisplayText(cohort.label, 48).text,
+      query: {
+        ...(cohort.query.media === undefined ? {} : { media: cohort.query.media }),
+        ...(cohort.query.categories === undefined ? {} : { categories: cohort.query.categories }),
+        ...(cohort.query.keyword === undefined
+          ? {}
+          : { keyword: clippedDisplayText(cohort.query.keyword, 48).text }),
+        ...(cohort.query.season === undefined ? {} : { season: cohort.query.season }),
+        ...(cohort.query.year === undefined ? {} : { year: cohort.query.year }),
+        ...(cohort.query.month === undefined ? {} : { month: cohort.query.month }),
+        ...(cohort.query.from === undefined ? {} : { from: cohort.query.from }),
+        ...(cohort.query.to === undefined ? {} : { to: cohort.query.to }),
+        ...(cohort.query.rating === undefined ? {} : { rating: cohort.query.rating }),
+        ...(cohort.query.ratingCount === undefined
+          ? {}
+          : { ratingCount: cohort.query.ratingCount }),
+        ...(cohort.query.rank === undefined ? {} : { rank: cohort.query.rank }),
+        ...(cohort.query.collectionCount === undefined
+          ? {}
+          : { collectionCount: cohort.query.collectionCount }),
+        ...(cohort.query.collectionCompletionRate === undefined
+          ? {}
+          : { collectionCompletionRate: cohort.query.collectionCompletionRate }),
+        ...(cohort.query.nsfw === undefined ? {} : { nsfw: cohort.query.nsfw }),
+        ...(cohort.query.sort === undefined ? {} : { sort: cohort.query.sort }),
+        ...(cohort.query.order === undefined ? {} : { order: cohort.query.order }),
+        ...(cohort.query.resultMode === undefined ? {} : { resultMode: cohort.query.resultMode }),
+        ...(cohort.query.limit === undefined ? {} : { limit: cohort.query.limit }),
+        ...(metaTags === undefined ? {} : { metaTags }),
+        ...(metaTags === undefined
+          ? {}
+          : {
+              metaTagsOmittedFromText: Math.max(0, cohort.query.metaTags!.length - metaTags.length),
+            }),
+        ...(tags === undefined ? {} : { tags }),
+        ...(tags === undefined
+          ? {}
+          : { tagsOmittedFromText: Math.max(0, cohort.query.tags!.length - tags.length) }),
+        ...(excludeMetaTags === undefined ? {} : { excludeMetaTags }),
+        ...(excludeMetaTags === undefined
+          ? {}
+          : {
+              excludeMetaTagsOmittedFromText: Math.max(
+                0,
+                cohort.query.excludeMetaTags!.length - excludeMetaTags.length,
+              ),
+            }),
+        ...(concepts === undefined ? {} : { concepts }),
+        ...(concepts === undefined
+          ? {}
+          : {
+              conceptsOmittedFromText: Math.max(0, cohort.query.concepts!.length - concepts.length),
+            }),
+      },
+      queryCoverage: {
+        state: cohort.coverage.query.state,
+        scanned: queryCoverage.scanned,
+        matched: queryCoverage.matched,
+        returned: queryCoverage.returned,
+        totalKind: queryCoverage.totalKind,
+        budgetExceeded: queryCoverage.budgetExceeded,
+      },
+      subjects,
+      subjectRowsReturned: cohort.subjects.length,
+      subjectRowsIncluded: subjects.length,
+      subjectRowsOmittedFromText: cohort.subjects.length - subjects.length,
+    };
+  });
+  const metrics = result.metrics.slice(0, 8).map((metric) => ({
+    key: metric.key,
+    label: clippedDisplayText(metric.label, 64).text,
+    sourceField: clippedDisplayText(metric.sourceField, 64).text,
+    averages: [...metric.averages],
+    ...(metric.partialAverages ? { partialAverages: [...metric.partialAverages] } : {}),
+    validCounts: [...metric.validCounts],
+    partialCounts: [...metric.partialCounts],
+    missingCounts: [...metric.missingCounts],
+    conflictCounts: [...metric.conflictCounts],
+    notComputableCounts: [...metric.notComputableCounts],
+    ...(metric.formula ? { formula: { ...metric.formula } } : {}),
+    ...(metric.delta === undefined ? {} : { delta: metric.delta }),
+    state: metric.state,
+  }));
+  const warnings = result.warnings.slice(0, warningLimit).map((warning) => ({
+    code: clippedDisplayText(warning.code, 48).text,
+    state: warning.state,
+    message: clippedMessage(warning.message).text,
+  }));
+  const overlapSubjectIds = result.coverage.overlap.subjectIds.slice(0, 12);
+  const fullResultUtf8Bytes = utf8Bytes(JSON.stringify(result, null, 2));
+
+  return {
+    state: result.state,
+    formulaVersion: result.formulaVersion,
+    cohorts,
+    metrics,
+    metricsOmittedFromText: Math.max(0, result.metrics.length - metrics.length),
+    coverage: {
+      maxSubjectsPerCohort: result.coverage.maxSubjectsPerCohort,
+      totalSubjectsReturned: result.coverage.totalSubjectsReturned,
+      cohortsComplete: result.coverage.cohortsComplete,
+      cohortsPartial: result.coverage.cohortsPartial,
+      detailHydrationsAttempted: result.coverage.detailHydrationsAttempted,
+      detailHydrationsSucceeded: result.coverage.detailHydrationsSucceeded,
+      detailHydrationsFailed: result.coverage.detailHydrationsFailed,
+      truncated: result.coverage.truncated,
+      overlap: {
+        count: result.coverage.overlap.count,
+        subjectIds: overlapSubjectIds,
+        subjectIdsOmittedFromText: Math.max(
+          0,
+          result.coverage.overlap.subjectIds.length - overlapSubjectIds.length,
+        ),
+      },
+      evidence: {
+        retained: result.coverage.evidence.retained,
+        omitted: result.coverage.evidence.omitted,
+        bytes: result.coverage.evidence.bytes,
+        maxRefs: result.coverage.evidence.maxRefs,
+        maxBytes: result.coverage.evidence.maxBytes,
+        truncated: result.coverage.evidence.truncated,
+      },
+    },
+    source: {
+      official: {
+        class: result.source.official.class,
+        operations: result.source.official.operations.slice(0, 2),
+        operationsOmittedFromText: Math.max(0, result.source.official.operations.length - 2),
+        retrievedAt: result.source.official.retrievedAt,
+      },
+      derived: {
+        class: result.source.derived.class,
+        operations: result.source.derived.operations.slice(0, 2),
+        operationsOmittedFromText: Math.max(0, result.source.derived.operations.length - 2),
+      },
+    },
+    retrievedAt: result.retrievedAt,
+    warnings,
+    warningRecordsOmittedFromText: result.warnings.length - warnings.length,
+    mcpTextProjection: {
+      version: 'subject-cohort-comparison-mcp-text-v1',
+      maxUtf8Bytes: MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+      fullResultUtf8Bytes,
+      structuredContentHasFullResult: true,
+      textViewScope: SUBJECT_COHORT_TEXT_SCOPE_NOTE,
+      limitationRecordsOmittedFromText: result.limitations.length,
+      cohortRowsReturned: result.cohorts.map((cohort) => cohort.subjects.length),
+      cohortRowsIncluded: cohorts.map((cohort) => cohort.subjectRowsIncluded),
+      cohortRowsOmittedFromText: cohorts.map((cohort) => cohort.subjectRowsOmittedFromText),
+    },
+  };
+}
+
+function compactSubjectCohortResult(result: SubjectCohortComparisonResult): string {
+  let rowLimit = 4;
+  let warningLimit = Math.min(2, result.warnings.length);
+  let displayCharacters = 48;
+  let facetLimit = 4;
+  let facetCharacters = 32;
+
+  while (true) {
+    const projection = createSubjectCohortProjection(
+      result,
+      rowLimit,
+      warningLimit,
+      displayCharacters,
+      facetLimit,
+      facetCharacters,
+    );
+    const text = JSON.stringify(projection);
+    if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
+
+    if (rowLimit > 1) rowLimit -= 1;
+    else if (warningLimit > 0) warningLimit -= 1;
+    else if (displayCharacters > 16) displayCharacters = Math.floor(displayCharacters / 2);
+    else if (facetLimit > 1) facetLimit -= 1;
+    else if (facetCharacters > 12) facetCharacters = Math.floor(facetCharacters / 2);
+    else throw new Error('Minimum cohort MCP text projection exceeded its byte limit');
+  }
 }
 
 function projectMessages(

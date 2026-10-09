@@ -174,6 +174,9 @@ describe('Standalone subject cohort commands', () => {
               score: 8,
               collectionTotal: 10,
               episodesReported: 12,
+              ratingCount: 100,
+              ratingHistogramPopulation: 100,
+              ratingStandardDeviation: 1.25,
             },
           ],
         },
@@ -205,8 +208,26 @@ describe('Standalone subject cohort commands', () => {
           averages: [undefined, undefined],
           partialAverages: [8, undefined],
           validCounts: [1, 0],
+          partialCounts: [0, 0],
           missingCounts: [0, 1],
           conflictCounts: [0, 0],
+          notComputableCounts: [0, 0],
+          state: 'partial',
+        },
+        {
+          key: 'ratingStandardDeviation',
+          label: '平均评分总体标准差',
+          averages: [undefined, undefined],
+          partialAverages: [1.25, undefined],
+          validCounts: [0, 0],
+          partialCounts: [1, 0],
+          missingCounts: [0, 1],
+          conflictCounts: [0, 0],
+          notComputableCounts: [0, 0],
+          formula: {
+            id: 'bangumi.rating.population_sd.v1',
+            version: 1,
+          },
           state: 'partial',
         },
       ],
@@ -216,6 +237,7 @@ describe('Standalone subject cohort commands', () => {
         detailHydrationsAttempted: 3,
         detailHydrationsSucceeded: 1,
         truncated: true,
+        overlap: { subjectIds: [1], count: 1 },
       },
       source: { official: { operations: ['searchSubjects'], retrievedAt: '2026-08-30' } },
       formulaVersion: 'subject-cohort-comparison-v1',
@@ -228,5 +250,9 @@ describe('Standalone subject cohort commands', () => {
     expect(human).toContain('有效');
     expect(human).toContain('达到预算');
     expect(human).toContain('partial observation');
+    expect(human).toContain('平均评分总体标准差');
+    expect(human).toContain('bangumi.rating.population_sd.v1');
+    expect(human).toContain('重叠：1');
+    expect(human).toContain('不表示统计显著性');
   });
 });
