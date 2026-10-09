@@ -21,7 +21,9 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
 
     // 1. bangumi.search_subjects schema check
     const searchTool = tools.find((t: any) => t.name === 'bangumi.search_subjects');
+    const queryTool = tools.find((t: any) => t.name === 'bangumi.query_subjects');
     expect(searchTool).toBeDefined();
+    expect(queryTool).toBeDefined();
     const searchSchema = searchTool?.inputSchema as any;
     expect(searchSchema.type).toBe('object');
     expect(searchSchema.properties.query).toBeDefined();
@@ -30,6 +32,8 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
     expect(searchSchema.required).toContain('query');
     expect(searchSchema.properties.limit).toBeDefined();
     expect(searchSchema.properties.offset).toBeDefined();
+    expect(queryTool?.description).toContain('heat 表示当前收藏人数');
+    expect(queryTool?.description).toContain('不是讨论热度或历史趋势');
 
     // 2. bangumi.get_subject schema check
     const getSubjectTool = tools.find((t: any) => t.name === 'bangumi.get_subject');

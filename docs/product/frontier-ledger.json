@@ -767,9 +767,15 @@
       "kind": "scenario",
       "user_question": "当前 Bangumi 讨论热度最高的10部动画。",
       "lane": "recorded_product_opportunities",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-g10-discussion-heat-contract-2026-10-09.md",
+        "docs/tool-catalog.json",
+        "packages/tools/src/definitions/discovery-tools.ts",
+        "tests/integration/mcp-schema.test.ts"
+      ],
+      "next_action": "Current official v0 OpenAPI defines sort=heat as 收藏人数; it does not provide the requested discussion metric. The supported bangumi.query_subjects MCP description already states that heat means current collection count, not discussion heat or historical trend; the MCP schema regression now protects that disclosure. The separate legacy bangumi.search_subjects keyword tool is not treated as a discussion source. Official docs classify /p1 as a private frontend API, so no /p1 or HTML community source is used. No live G10 query or community request was made. Keep G10 PARTIAL; do not substitute collection counts for discussion ranking. Reopen when a supported public subject-level discussion API and metric/coverage contract exists. See docs/research/run95-g10-discussion-heat-contract-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
