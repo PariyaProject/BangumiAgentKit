@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   compareSubjectCohorts,
+  COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   DiscoveryEngine,
   ConceptResolver,
   SUBJECT_COHORT_MAX_SUBJECTS,
@@ -22,6 +23,16 @@ const reportedEpisodeCountRange = z
   .strict()
   .describe(
     '按 Bangumi Subject.eps（旧版来源报告话数）本地筛选；不等同于 total_episodes、实际播出话数或个人观看进度，缺失值会保留为未解析并使覆盖状态变为 partial。',
+  );
+
+const collectionCompletionRateRange = z
+  .object({
+    min: z.number().finite().min(0).max(1).optional(),
+    max: z.number().finite().min(0).max(1).optional(),
+  })
+  .strict()
+  .describe(
+    `按官方 Subject.collection 五种状态本地派生筛选：collect / (wish + collect + doing + on_hold + dropped)。范围为 0–1 的比例；该公式是样本验证的完成率代理，不是官方公式、章节完成度或个人进度。${COLLECTION_COMPLETION_UNRESOLVED_CAVEAT}`,
   );
 
 const discoveryQueryInputBase = z
@@ -67,6 +78,7 @@ const discoveryQueryInputBase = z
     ratingCount: range.optional(),
     rank: range.optional(),
     collectionCount: range.optional(),
+    collectionCompletionRate: collectionCompletionRateRange.optional(),
     nsfw: z.union([z.enum(['include', 'exclude', 'only']), z.boolean()]).optional(),
     sort: z.enum(['relevance', 'heat', 'rank', 'score', 'date']).optional(),
     order: z.enum(['asc', 'desc']).optional(),
@@ -177,8 +189,7 @@ export const subjectCohortAggregationInput = z
 export function createDiscoveryTools() {
   const querySubjects = defineTool({
     name: 'bangumi.query_subjects',
-    description:
-      '按受控条件发现 Bangumi 条目。支持媒体类型、固定季度或按 Asia/Tokyo 运行时日期解析的当前季度、日期、标签/精确概念、评分/排名/收藏人数范围、Bangumi 来源报告话数（本地基于 Subject.eps 筛选，不等同于 total_episodes、实际播出话数或个人观看进度）、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；heat 表示当前收藏人数，不是讨论热度或历史趋势。当前季度会在执行计划中显示解析后的半开日期范围。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject。',
+    description: `按受控条件发现 Bangumi 条目。支持媒体类型、固定季度或按 Asia/Tokyo 运行时日期解析的当前季度、日期、标签/精确概念、评分/排名/收藏人数范围、Bangumi 来源报告话数（本地基于 Subject.eps 筛选，不等同于 total_episodes、实际播出话数或个人观看进度）、按当前五类收藏状态派生的 collectionCompletionRate 范围、匹配度/收藏热度/排名/评分排序，以及评分同分时按评分人数作次级排序；collectionCompletionRate 是 collect 除以五种状态合计的样本验证比例，不是官方公式、章节完成率或个人进度；${COLLECTION_COMPLETION_UNRESOLVED_CAVEAT}此外，heat 表示当前收藏人数，不是讨论热度或历史趋势。当前季度会在执行计划中显示解析后的半开日期范围。结果受官方搜索实验状态与显式覆盖限制约束；不替代已知 ID 的 bangumi.get_subject.`,
     input: discoveryQueryInput,
     auth: 'none',
     scopes: [],

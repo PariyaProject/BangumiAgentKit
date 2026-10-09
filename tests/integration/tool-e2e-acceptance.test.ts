@@ -572,8 +572,12 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       [
         ...(CURRENT_D05_REPORT ? [] : ['bangumi.query_subjects']),
         ...(CURRENT_S04_REPORT ? [] : ['bangumi.get_subject_cast']),
+        'bangumi.aggregate_subject_cohort',
+        'bangumi.compare_subject_cohorts',
         'bangumi.get_person_activity',
         'bangumi.get_series_watch_order',
+        'bangumi.render_subject_cohort_aggregation',
+        'bangumi.render_subject_cohort_comparison',
         'bangumi.render_query_subjects',
         'bangumi.render_series_watch_order',
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
@@ -581,12 +585,10 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     );
     expect(evidenceNames.sort()).toEqual(
       [
-        'bangumi.aggregate_subject_cohort',
         'bangumi.auth_disconnect',
         'bangumi.auth_list_accounts',
         'bangumi.auth_remove_account',
         'bangumi.auth_status',
-        'bangumi.compare_subject_cohorts',
         'bangumi.describe_operation',
         'bangumi.get_calendar',
         'bangumi.get_calendar_intelligence',
@@ -661,8 +663,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
         'bangumi.render_subject_card',
-        'bangumi.render_subject_cohort_aggregation',
-        'bangumi.render_subject_cohort_comparison',
         'bangumi.render_subject_comparison',
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
@@ -762,10 +762,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       CURRENT_FULL_PUBLIC_QA_EVIDENCE.map((report: any) => report.scenarios[0].id).sort(),
     ).toEqual(
       [
-        'bangumi.aggregate_subject_cohort',
         'bangumi.auth_list_accounts',
         'bangumi.auth_status',
-        'bangumi.compare_subject_cohorts',
         'bangumi.describe_operation',
         'bangumi.get_calendar',
         'bangumi.get_calendar_intelligence',
@@ -933,8 +931,6 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_revision_timeline',
         'bangumi.render_search',
         'bangumi.render_subject_card',
-        'bangumi.render_subject_cohort_aggregation',
-        'bangumi.render_subject_cohort_comparison',
         'bangumi.render_subject_comparison',
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',

@@ -69,6 +69,7 @@ export interface DiscoveryResultsItemViewModel {
   rank?: number;
   ratingCount?: number;
   collectionTotal?: number;
+  collectionCompletionRate?: number;
   image?: string;
 }
 
@@ -109,6 +110,7 @@ export interface DiscoveryResultsViewModel {
     hydrationsSucceeded: number;
     hydrationsFailed: number;
     hydrationsUnresolved: number;
+    unresolvedCandidates: number;
     hydrationBudgetExceeded: boolean;
     reason?: string;
   };

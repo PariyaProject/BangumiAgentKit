@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_EXECUTION_BUDGET,
+  normalizeDiscoveryQuery,
+} from '@bangumi-agent-kit/discovery';
+import { A05_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/a05-collection-share-answer-check.mjs';
+import {
   DISCOVERY_SCENARIOS,
   selectDiscoveryScenario,
   summarizeDiscoveryScenarioItems,
@@ -145,6 +150,50 @@ describe('fixed discovery acceptance scenarios', () => {
     expect(JSON.stringify(summaries)).not.toContain('原创');
     expect(summaries.every((item) => item.conceptMatched)).toBe(true);
     expect(summaries.map((item) => item.id)).toEqual([50, 51]);
+  });
+
+  it('defines a bounded A05 public sample and checks explicit score/share thresholds', () => {
+    expect(DISCOVERY_SCENARIOS.A05.query).toMatchObject({
+      media: 'anime',
+      rating: { min: 8 },
+      collectionCompletionRate: { max: 0.4 },
+      sort: 'score',
+      order: 'desc',
+      limit: 8,
+      resultMode: 'top',
+      explain: 'full',
+    });
+    expect(DISCOVERY_SCENARIOS.A05.query).toEqual(A05_EXPECTED_QUERY_ARGUMENTS);
+    expect(DISCOVERY_SCENARIOS.A05.query).not.toHaveProperty('budget');
+    expect(normalizeDiscoveryQuery(DISCOVERY_SCENARIOS.A05.query).budget).toEqual(
+      DEFAULT_EXECUTION_BUDGET,
+    );
+
+    const summaries = summarizeDiscoveryScenarioItems('A05', [
+      {
+        id: 501,
+        name: 'public title',
+        media: 'anime',
+        score: 8.4,
+        collectionCompletionRate: 0.2,
+      },
+      {
+        id: 502,
+        name: 'threshold title',
+        media: 'anime',
+        score: 8,
+        collectionCompletionRate: 0.4,
+      },
+    ]);
+    expect(Object.values(validateDiscoveryScenarioItems('A05', summaries)).every(Boolean)).toBe(true);
+    expect(JSON.stringify(summaries)).not.toContain('public title');
+    expect(JSON.stringify(summaries)).not.toContain('threshold title');
+
+    const invalid = summarizeDiscoveryScenarioItems('A05', [
+      { id: 503, media: 'anime', score: 8, collectionCompletionRate: 0.401 },
+    ]);
+    const checks = validateDiscoveryScenarioItems('A05', invalid);
+    expect(checks.collectionCompletionRateThreshold).toBe(false);
   });
 
   it('defines G26 as one exact documented tag with integer and half-open bounds', () => {

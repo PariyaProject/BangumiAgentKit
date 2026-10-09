@@ -108,6 +108,19 @@ function normalizeNonNegativeIntegerRange(
   return range;
 }
 
+function normalizeUnitIntervalRange(
+  value: { min?: number; max?: number } | undefined,
+  field: string,
+  issues: string[],
+): NumericRange | undefined {
+  const range = normalizeRange(value, field, issues);
+  if (!range) return undefined;
+  for (const [bound, threshold] of Object.entries(range)) {
+    if (threshold < 0 || threshold > 1) issues.push(`${field}.${bound} must be between 0 and 1`);
+  }
+  return range;
+}
+
 function isoDate(value: string | undefined, field: string, issues: string[]): string | undefined {
   if (value === undefined) return undefined;
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(value)) {
@@ -282,6 +295,11 @@ export function normalizeDiscoveryQuery(
   );
   const rank = normalizeRange(input.rank, 'rank', issues);
   const collectionCount = normalizeRange(input.collectionCount, 'collectionCount', issues);
+  const collectionCompletionRate = normalizeUnitIntervalRange(
+    input.collectionCompletionRate,
+    'collectionCompletionRate',
+    issues,
+  );
   const sort = input.sort ?? 'relevance';
   if (!DISCOVERY_SORTS.includes(sort))
     issues.push(`sort must be one of: ${DISCOVERY_SORTS.join(', ')}`);
@@ -327,6 +345,7 @@ export function normalizeDiscoveryQuery(
     ...(reportedEpisodeCount === undefined ? {} : { reportedEpisodeCount }),
     ...(rank === undefined ? {} : { rank }),
     ...(collectionCount === undefined ? {} : { collectionCount }),
+    ...(collectionCompletionRate === undefined ? {} : { collectionCompletionRate }),
     nsfw,
     sort: sort as NormalizedDiscoveryQuery['sort'],
     order: order as NormalizedDiscoveryQuery['order'],

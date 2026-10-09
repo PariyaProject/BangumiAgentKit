@@ -1402,6 +1402,7 @@ interface DiscoveryQueryInputLike {
   ratingCount?: { min?: number; max?: number };
   rank?: { min?: number; max?: number };
   collectionCount?: { min?: number; max?: number };
+  collectionCompletionRate?: { min?: number; max?: number };
   nsfw?: string | boolean;
   sort?: string;
   order?: string;
@@ -1431,6 +1432,7 @@ interface DiscoveryResultLike {
     rank?: number;
     ratingCount?: number;
     collectionTotal?: number;
+    collectionCompletionRate?: number;
     image?: string;
   }>;
   plan: {
@@ -1458,6 +1460,7 @@ interface DiscoveryResultLike {
     hydrationsSucceeded?: number;
     hydrationsFailed?: number;
     hydrationsUnresolved?: number;
+    unresolvedCandidates?: number;
     hydrationBudgetExceeded?: boolean;
     reason?: string;
   };
@@ -1500,6 +1503,7 @@ const DISCOVERY_FIELD_LABELS: Record<string, string> = {
   ratingCount: '评分人数',
   rank: '排名',
   collectionCount: '收藏人数',
+  collectionCompletionRate: 'collect 在五类收藏状态中的占比',
   nsfw: 'NSFW',
   order: '顺序',
   'sort:relevance': '排序·匹配度',
@@ -1599,6 +1603,16 @@ function rangeLabel(value: { min?: number; max?: number } | undefined): string |
   return undefined;
 }
 
+function ratioRangeLabel(value: { min?: number; max?: number } | undefined): string | undefined {
+  if (!value) return undefined;
+  const percent = (ratio: number) => `${(ratio * 100).toFixed(1)}%`;
+  if (value.min !== undefined && value.max !== undefined)
+    return `${percent(value.min)}–${percent(value.max)}`;
+  if (value.min !== undefined) return `≥${percent(value.min)}`;
+  if (value.max !== undefined) return `≤${percent(value.max)}`;
+  return undefined;
+}
+
 function queryFacets(input: DiscoveryQueryInputLike): string[] {
   const facets: string[] = [];
   if (input.keyword) facets.push(`关键词：${boundedFacet(input.keyword)}`);
@@ -1625,6 +1639,7 @@ function queryFacets(input: DiscoveryQueryInputLike): string[] {
   }
   for (const [label, value] of [
     ['评分', rangeLabel(input.rating)],
+    ['collect 在五类收藏状态中的占比', ratioRangeLabel(input.collectionCompletionRate)],
     ['评分人数', rangeLabel(input.ratingCount)],
     ['排名', rangeLabel(input.rank)],
     ['收藏人数', rangeLabel(input.collectionCount)],
@@ -1678,6 +1693,9 @@ function filterValueLabel(value: unknown, field?: string): string {
     const range = value as { min?: number; max?: number; from?: string; to?: string };
     if (range.from !== undefined || range.to !== undefined) {
       return boundedFacet(`${range.from || '起始未知'} 至 ${range.to || '结束未知'}`);
+    }
+    if (field === 'collectionCompletionRate') {
+      return boundedFacet(ratioRangeLabel(range) || '范围已指定');
     }
     return boundedFacet(rangeLabel(range) || '范围已指定');
   }
@@ -1748,6 +1766,7 @@ export function buildDiscoveryResultsViewModel(
     rank: item.rank,
     ratingCount: item.ratingCount,
     collectionTotal: item.collectionTotal,
+    collectionCompletionRate: item.collectionCompletionRate,
     image: item.image,
   }));
   const coverage = result.coverage;
@@ -1810,6 +1829,7 @@ export function buildDiscoveryResultsViewModel(
       hydrationsSucceeded: coverage.hydrationsSucceeded ?? 0,
       hydrationsFailed: coverage.hydrationsFailed ?? 0,
       hydrationsUnresolved: coverage.hydrationsUnresolved ?? 0,
+      unresolvedCandidates: coverage.unresolvedCandidates ?? coverage.hydrationsUnresolved ?? 0,
       hydrationBudgetExceeded: coverage.hydrationBudgetExceeded ?? false,
       reason: coverage.reason,
     },

@@ -1,12 +1,13 @@
-import type {
-  ConceptCandidate,
-  DiscoveryBrowseStep,
-  DiscoveryHydrationRequirement,
-  DiscoveryPlan,
-  DiscoveryQuery,
-  DiscoverySearchStep,
-  NormalizedDiscoveryQuery,
-  PlanFilter,
+import {
+  COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
+  type ConceptCandidate,
+  type DiscoveryBrowseStep,
+  type DiscoveryHydrationRequirement,
+  type DiscoveryPlan,
+  type DiscoveryQuery,
+  type DiscoverySearchStep,
+  type NormalizedDiscoveryQuery,
+  type PlanFilter,
 } from './contracts.js';
 import { planFilter } from './capabilities.js';
 import { isNormalizedDiscoveryQuery, normalizeDiscoveryQuery } from './query.js';
@@ -49,6 +50,7 @@ function canBrowse(query: NormalizedDiscoveryQuery): boolean {
     query.reportedEpisodeCount === undefined &&
     query.rank === undefined &&
     query.collectionCount === undefined &&
+    query.collectionCompletionRate === undefined &&
     query.nsfw === 'include' &&
     (query.dateRange === undefined || (query.year !== undefined && query.month !== undefined)) &&
     query.categories.length <= 1 &&
@@ -231,6 +233,18 @@ export function compileDiscoveryPlan(
         'collection.dropped',
       ]);
     }
+    if (query.collectionCompletionRate) {
+      derivedFilters.push(
+        planFilter(
+          'collectionCompletionRate',
+          operation,
+          'range',
+          query.collectionCompletionRate,
+          'Local formula bangumi.subject.completion.v1 over all five current Subject.collection buckets.',
+        ),
+      );
+      requireHydration('collection_completion_rate_filter', ['collectionCompletionRate']);
+    }
     pushdown.push(planFilter(`sort:${query.sort}`, operation, 'eq', query.sort));
     pushdown.push(...conceptFilters(operation, resolvedConcepts));
     if (query.sort === 'date') {
@@ -271,6 +285,12 @@ export function compileDiscoveryPlan(
           request: request as SubjectDiscoverySearchRequest,
         };
   const limitations = [
+    ...(query.collectionCompletionRate === undefined
+      ? []
+      : [
+          'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
+          COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
+        ]),
     'Enumeration is bounded by maxPages and maxCandidates.',
     ...(operation === 'searchSubjects'
       ? [

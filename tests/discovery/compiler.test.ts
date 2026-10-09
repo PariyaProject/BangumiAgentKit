@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   compileDiscoveryPlan,
   getSourceCapabilityMatrix,
   normalizeDiscoveryQuery,
@@ -125,6 +126,42 @@ describe('discovery capability compiler', () => {
       expect.objectContaining({ reason: 'reported_episode_count_filter', fields: ['eps'] }),
     );
     expect(plan.limitations.join(' ')).toContain('total_episodes');
+  });
+
+  it('keeps collection completion-share filtering local and explains its sample formula', () => {
+    const plan = compileDiscoveryPlan(
+      normalizeDiscoveryQuery({
+        media: 'anime',
+        rating: { min: 8 },
+        collectionCompletionRate: { max: 0.4 },
+        resultMode: 'all',
+      }),
+    );
+
+    expect(plan.operation).toBe('searchSubjects');
+    expect(plan.steps[0]).toMatchObject({
+      kind: 'search',
+      request: { filter: { type: [2], rating: ['>=8'] } },
+    });
+    expect(
+      plan.steps[0]?.kind === 'search' ? plan.steps[0].request.filter : undefined,
+    ).not.toHaveProperty('collectionCompletionRate');
+    expect(plan.derivedFilters).toContainEqual(
+      expect.objectContaining({
+        field: 'collectionCompletionRate',
+        classification: 'DERIVED_FILTER',
+        value: { max: 0.4 },
+      }),
+    );
+    expect(plan.hydrationRequirements).toContainEqual(
+      expect.objectContaining({
+        reason: 'collection_completion_rate_filter',
+        fields: ['collectionCompletionRate'],
+      }),
+    );
+    expect(plan.limitations[0]).toContain('collect / (wish + collect + doing + on_hold + dropped)');
+    expect(plan.limitations[0]).toContain('estimated');
+    expect(plan.limitations).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
   });
 
   it('carries the explicit score tie-break into the executable plan', () => {

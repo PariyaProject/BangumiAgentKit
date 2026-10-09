@@ -36,6 +36,7 @@ General:
 Bangumi:
   search <query> [--type anime] [--limit 5]
   discover [--media anime] [--season 2026-summer] [--concept 后宫]
+           [--rating-min 8] [--collection-completion-rate-max 0.4]
            [--sort heat|score|rank|date] [--limit 20] [--all] [--explain]
   subject <id>
   subject-identity <subjectId>
@@ -670,6 +671,14 @@ function optionNumber(
   return parsed;
 }
 
+function optionUnitInterval(value: string, name: string): number {
+  const parsed = Number(value);
+  if (value.trim().length === 0 || !Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
+    throw new StandaloneCliError(`USAGE_ERROR: ${name} must be a number from 0 to 1.`, 2);
+  }
+  return parsed;
+}
+
 function appendOption(
   input: Record<string, unknown>,
   key: string,
@@ -1217,6 +1226,8 @@ export class StandaloneCommandRegistry {
       '--rank-max',
       '--collection-count-min',
       '--collection-count-max',
+      '--collection-completion-rate-min',
+      '--collection-completion-rate-max',
       '--nsfw',
       '--sort',
       '--order',
@@ -1311,6 +1322,18 @@ export class StandaloneCommandRegistry {
           input.collectionCount = {
             ...(input.collectionCount as object | undefined),
             max: Number(value),
+          };
+          break;
+        case '--collection-completion-rate-min':
+          input.collectionCompletionRate = {
+            ...(input.collectionCompletionRate as object | undefined),
+            min: optionUnitInterval(value, arg),
+          };
+          break;
+        case '--collection-completion-rate-max':
+          input.collectionCompletionRate = {
+            ...(input.collectionCompletionRate as object | undefined),
+            max: optionUnitInterval(value, arg),
           };
           break;
         case '--nsfw':

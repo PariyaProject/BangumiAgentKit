@@ -154,12 +154,21 @@ export function computeCollectionCompletionRate(
   input: FieldEvidence = {},
   retrievedAt = new Date().toISOString(),
 ): CapabilityResult<number | null> {
+  return computeCollectionCompletionRateFromBuckets(stats.collection, input, retrievedAt);
+}
+
+/** Share of the `collect` status across all five current subject collection buckets. */
+export function computeCollectionCompletionRateFromBuckets(
+  collection: SubjectStatsData['collection'],
+  input: FieldEvidence = {},
+  retrievedAt = new Date().toISOString(),
+): CapabilityResult<number | null> {
   const denominator =
-    stats.collection.wish +
-    stats.collection.collect +
-    stats.collection.doing +
-    stats.collection.onHold +
-    stats.collection.dropped;
+    collection.wish +
+    collection.collect +
+    collection.doing +
+    collection.onHold +
+    collection.dropped;
   const formulaRef = formulaEvidence(COMPLETION_FORMULA, retrievedAt, 'completionRate');
   const inputs = inputEvidence(input, COMPLETION_FORMULA.inputs);
 
@@ -177,7 +186,7 @@ export function computeCollectionCompletionRate(
 
   return {
     state: 'ok',
-    data: stats.collection.collect / denominator,
+    data: collection.collect / denominator,
     evidence: { value: [formulaRef], ...inputs },
     retrievedAt,
     warnings: [

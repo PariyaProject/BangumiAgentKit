@@ -1,4 +1,5 @@
 import { inspect } from 'node:util';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/renderer';
 
 export interface OutputSink {
   stdout: NodeJS.WritableStream;
@@ -223,6 +224,36 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
   if (!items) return undefined;
   const lines: string[] = [];
   if (value.state) lines.push(`状态: ${String(value.state)}`);
+  const plan = comparisonRecord(value.plan);
+  const derivedFilters = Array.isArray(plan?.derivedFilters)
+    ? plan.derivedFilters.map(comparisonRecord).filter((item): item is Record<string, unknown> => Boolean(item))
+    : [];
+  const completionFilter = derivedFilters.find((item) => item.field === 'collectionCompletionRate');
+  const showCompletionSummary = Boolean(completionFilter);
+  const coverage = comparisonRecord(value.coverage);
+  if (completionFilter) {
+    const range = comparisonRecord(completionFilter.value);
+    const formatPercent = (value: unknown) =>
+      typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : undefined;
+    const minimum = formatPercent(range?.min);
+    const maximum = formatPercent(range?.max);
+    const threshold = minimum && maximum ? `${minimum}–${maximum}` : minimum ? `≥${minimum}` : maximum ? `≤${maximum}` : '已指定';
+    lines.push(`派生条件：collect 在五类收藏状态中的占比 ${threshold}`);
+    lines.push('公式：collect ÷ (wish + collect + doing + on_hold + dropped)；样本验证代理，不是官方公式、章节完成率、个人进度或偏好。');
+    lines.push('范围：官方搜索为实验接口且总数估计；结果仅代表本次有界观察样本。');
+    lines.push(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
+    if (coverage) {
+      const unresolvedCandidates =
+        typeof coverage.unresolvedCandidates === 'number'
+          ? coverage.unresolvedCandidates
+          : coverage.hydrationsUnresolved;
+      const unresolvedLabel =
+        typeof unresolvedCandidates === 'number' ? ` · 未解析候选=${String(unresolvedCandidates)}` : '';
+      lines.push(
+        `覆盖: scanned=${String(coverage.scanned)} matched=${String(coverage.matched)} returned=${String(coverage.returned)} · ${String(coverage.totalKind || 'unknown')}${unresolvedLabel}`,
+      );
+    }
+  }
   for (const [index, candidate] of items.entries()) {
     if (!candidate || typeof candidate !== 'object') continue;
     const item = candidate as Record<string, unknown>;
@@ -231,13 +262,14 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
     );
     lines.push(`   ID: ${String(item.id)}${item.media ? ` | ${String(item.media)}` : ''}`);
     if (item.score !== undefined) lines.push(`   评分: ${String(item.score)}`);
+    if (typeof item.collectionCompletionRate === 'number' && Number.isFinite(item.collectionCompletionRate)) {
+      lines.push(`   collect 状态占比（五类状态合计）: ${(item.collectionCompletionRate * 100).toFixed(1)}%`);
+    }
     if (item.date) lines.push(`   日期: ${String(item.date)}`);
   }
-  const coverage = value.coverage;
-  if (coverage && typeof coverage === 'object') {
-    const details = coverage as Record<string, unknown>;
+  if (coverage && !showCompletionSummary) {
     lines.push(
-      `覆盖: scanned=${String(details.scanned)} matched=${String(details.matched)} returned=${String(details.returned)}`,
+      `覆盖: scanned=${String(coverage.scanned)} matched=${String(coverage.matched)} returned=${String(coverage.returned)}`,
     );
   }
   return lines.join('\n');

@@ -5,6 +5,7 @@ import {
   HISTOGRAM_MEAN_FORMULA,
   POPULATION_SD_FORMULA,
   computeCollectionCompletionRate,
+  computeCollectionCompletionRateFromBuckets,
   computeCollectionPercentages,
   computePopulationStandardDeviation,
   computeRatingPercentages,
@@ -133,6 +134,22 @@ describe('PR-7B formula foundation', () => {
     expect(COMPLETION_FORMULA.evidenceStatus).toBe('empirically_verified');
     expect(COMPLETION_FORMULA.evidenceStatus).not.toBe('official_contract');
     expect(result.evidence?.value?.[0]?.formula).toBe(COMPLETION_FORMULA.id);
+
+    const fromBuckets = computeCollectionCompletionRateFromBuckets(
+      stats.collection,
+      inputEvidence,
+      '2026-08-09T00:00:00Z',
+    );
+    expect(fromBuckets).toEqual(result);
+    const empty = computeCollectionCompletionRateFromBuckets({
+      wish: 0,
+      collect: 0,
+      doing: 0,
+      onHold: 0,
+      dropped: 0,
+    });
+    expect(empty.state).toBe('not_computable');
+    expect(empty.data).toBeNull();
   });
 
   it('PF33: collection percentages preserve all five buckets and zero-population semantics', () => {

@@ -12,6 +12,7 @@ import type {
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { SeriesService } from '@bangumi-agent-kit/bangumi-core';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 import type { ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
 import {
@@ -1336,6 +1337,41 @@ describe('MCP tool result presentation', () => {
       'omitted rows are not evidence of absence',
     );
     expect(presentation.text).not.toContain('this evidence must stay in structuredContent only');
+  });
+
+  it('keeps A05 score/share values and formula caveats in the bounded MCP projection', () => {
+    const original = makeDiscoveryResult(100);
+    Object.assign(original.items[0]!, { score: 8.4, collectionCompletionRate: 0.2 });
+    Object.assign(original.items[1]!, { score: 8, collectionCompletionRate: 0.4 });
+    Object.assign(original.plan, {
+      derivedFilters: [
+        { field: 'collectionCompletionRate', classification: 'DERIVED_FILTER', value: { max: 0.4 } },
+      ],
+      limitations: [
+        'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
+        COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
+      ],
+    });
+    Object.assign(original.coverage, { unresolvedCandidates: 3 });
+
+    const presentation = presentMcpToolResult('bangumi.query_subjects', original);
+    const parsed = JSON.parse(presentation.text);
+    const formulaPosition = presentation.text.indexOf('collectionCompletionRate = collect');
+    const rowsPosition = presentation.text.indexOf('"items"');
+
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.items[0]).toMatchObject({ score: 8.4, collectionCompletionRate: 0.2 });
+    expect(parsed.coverage.unresolvedCandidates).toBe(3);
+    expect(parsed.textProjection.rowsOmitted).toBeGreaterThan(0);
+    expect(parsed.items.length).toBeLessThan(original.items.length);
+    expect(parsed.plan.derivedFilters).toContainEqual(
+      expect.objectContaining({ field: 'collectionCompletionRate', value: { max: 0.4 } }),
+    );
+    expect(formulaPosition).toBeGreaterThanOrEqual(0);
+    expect(formulaPosition).toBeLessThan(rowsPosition);
+    expect(presentation.text).toContain('not an official API formula');
+    expect(presentation.text).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
+    expect(presentation.text).toContain('not evidence of absence');
   });
 
   it('projects the resolved current season and collection-heat meaning into bounded D05 text', () => {

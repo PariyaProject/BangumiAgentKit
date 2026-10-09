@@ -1,5 +1,6 @@
 import {
   assertSafeEvidence,
+  computeCollectionCompletionRateFromBuckets,
   createEvidenceRef,
   SOURCE_DERIVED,
   type CapabilityResult,
@@ -8,6 +9,7 @@ import {
   type FieldEvidence,
   type ProviderRequestContext,
   type ProviderSubjectData,
+  type SubjectStatsData,
   type SubjectDiscoveryCandidate,
   type SubjectDiscoveryBrowseRequest,
   type SubjectDiscoveryTotalKind,
@@ -38,6 +40,7 @@ interface CandidateWithDetail {
   candidate: SubjectDiscoveryCandidate;
   detail?: ProviderSubjectData;
   detailResult?: CapabilityResult<ProviderSubjectData>;
+  collectionCompletionRateResult?: CapabilityResult<number | null>;
   pageEvidence?: FieldEvidence;
   order: number;
   evaluation: 'pending' | 'match' | 'non_match' | 'unresolved';
@@ -102,6 +105,79 @@ function collectionFor(
   };
 }
 
+const COLLECTION_BUCKET_KEYS = ['wish', 'collect', 'doing', 'onHold', 'dropped'] as const;
+
+function isNonNegativeCollectionCount(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function observedCollectionBuckets(
+  value: SubjectStatsData['collection'] | SubjectDiscoveryCandidate['collection'] | undefined,
+): { values: Partial<Record<(typeof COLLECTION_BUCKET_KEYS)[number], number>>; invalid: boolean } {
+  const values: Partial<Record<(typeof COLLECTION_BUCKET_KEYS)[number], number>> = {};
+  if (!value) return { values, invalid: false };
+
+  let invalid = false;
+  for (const key of COLLECTION_BUCKET_KEYS) {
+    const observed = (value as unknown as Record<string, unknown>)[key];
+    if (observed === undefined) continue;
+    if (!isNonNegativeCollectionCount(observed)) invalid = true;
+    else values[key] = observed;
+  }
+  return { values, invalid };
+}
+
+function collectionBuckets(
+  value: SubjectStatsData['collection'] | SubjectDiscoveryCandidate['collection'] | undefined,
+  presence?: SubjectStatsData['collectionPresence'],
+): SubjectStatsData['collection'] | undefined {
+  if (!value || (presence && Object.values(presence).some((present) => present !== true))) {
+    return undefined;
+  }
+  if (COLLECTION_BUCKET_KEYS.some((key) => !isNonNegativeCollectionCount(value[key]))) {
+    return undefined;
+  }
+  return {
+    wish: value.wish as number,
+    collect: value.collect as number,
+    doing: value.doing as number,
+    onHold: value.onHold as number,
+    dropped: value.dropped as number,
+  };
+}
+
+function collectionBucketsFor(
+  item: CandidateWithDetail,
+): SubjectStatsData['collection'] | undefined {
+  const candidateObservation = observedCollectionBuckets(item.candidate.collection);
+  const candidateBuckets = collectionBuckets(item.candidate.collection);
+  const detailBuckets = collectionBuckets(
+    item.detail?.stats.collection,
+    item.detail?.stats.collectionPresence,
+  );
+  if (item.detailResult?.state === 'ok' && item.detail) {
+    if (!detailBuckets || candidateObservation.invalid) return undefined;
+    if (
+      COLLECTION_BUCKET_KEYS.some(
+        (key) =>
+          candidateObservation.values[key] !== undefined &&
+          candidateObservation.values[key] !== detailBuckets[key],
+      )
+    ) {
+      return undefined;
+    }
+    return detailBuckets;
+  }
+  return candidateBuckets ?? detailBuckets;
+}
+
+function collectionCompletionRateResultFor(
+  item: CandidateWithDetail,
+): CapabilityResult<number | null> | undefined {
+  const buckets = collectionBucketsFor(item);
+  return buckets === undefined ? undefined : computeCollectionCompletionRateFromBuckets(buckets);
+}
+
 function numberFor(
   candidate: SubjectDiscoveryCandidate,
   detail: ProviderSubjectData | undefined,
@@ -131,6 +207,7 @@ function mergeEvidence(
   pageEvidence: FieldEvidence | undefined,
   detailResult: CapabilityResult<ProviderSubjectData> | undefined,
   derivedCollection: string | undefined,
+  completionRate: CapabilityResult<number | null> | undefined,
 ): FieldEvidence {
   const evidence: FieldEvidence = {};
   const id = candidate.id;
@@ -156,6 +233,13 @@ function mergeEvidence(
         confidence: 'high',
       }),
     ];
+  }
+  if (completionRate?.state === 'ok' && typeof completionRate.data === 'number') {
+    const formulaRefs = (completionRate.evidence?.value ?? []).map((ref) => ({
+      ...ref,
+      fieldPath: 'collectionCompletionRate',
+    }));
+    evidence.collectionCompletionRate = [...formulaRefs, ...(evidence.collection ?? [])];
   }
   return evidence;
 }
@@ -213,6 +297,8 @@ function candidateHasField(item: CandidateWithDetail, field: string): boolean {
         && Number.isFinite(item.candidate.collection?.doing)
         && Number.isFinite(item.candidate.collection?.onHold)
         && Number.isFinite(item.candidate.collection?.dropped);
+    case 'collectionCompletionRate':
+      return collectionBucketsFor(item) !== undefined;
     case 'metaTags':
       return Array.isArray(item.candidate.metaTags);
     default:
@@ -247,6 +333,8 @@ function detailHasField(item: CandidateWithDetail, field: string): boolean {
         && Number.isFinite(item.detail.stats.collection.doing)
         && Number.isFinite(item.detail.stats.collection.onHold)
         && Number.isFinite(item.detail.stats.collection.dropped);
+    case 'collectionCompletionRate':
+      return collectionBucketsFor(item) !== undefined;
     case 'metaTags':
       return Array.isArray(item.detail.metaTags);
     default:
@@ -280,6 +368,13 @@ function evaluateCandidate(
   const ratingCount = numberFor(item.candidate, item.detail, 'ratingCount');
   const reportedEpisodeCount = reportedEpisodeCountFor(item.candidate, item.detail);
   const collectionValue = collection.total;
+  let collectionCompletionRate: number | undefined;
+  if (query.collectionCompletionRate !== undefined) {
+    const result = collectionCompletionRateResultFor(item);
+    item.collectionCompletionRateResult = result;
+    if (result?.state !== 'ok' || typeof result.data !== 'number') return 'unresolved';
+    collectionCompletionRate = result.data;
+  }
   const isMatch =
     matchesCategory(item, query.categories) &&
     matchesExcludedMetaTags(item, query.excludeMetaTags) &&
@@ -287,6 +382,7 @@ function evaluateCandidate(
     matchesRange(score, query.rating) &&
     matchesRange(ratingCount, query.ratingCount) &&
     matchesRange(reportedEpisodeCount, query.reportedEpisodeCount) &&
+    matchesRange(collectionCompletionRate, query.collectionCompletionRate) &&
     matchesRange(rank, query.rank) &&
     matchesRange(collectionValue, query.collectionCount);
   return isMatch ? 'match' : 'non_match';
@@ -369,6 +465,7 @@ function emptyCoverage(query: NormalizedDiscoveryQuery, reason?: string): Discov
     hydrationsSucceeded: 0,
     hydrationsFailed: 0,
     hydrationsUnresolved: 0,
+    unresolvedCandidates: 0,
     hydrationBudgetExceeded: false,
     ...(reason === undefined ? {} : { reason }),
   };
@@ -705,12 +802,15 @@ export class DiscoveryEngine {
       hydrationsSucceeded,
       hydrationsFailed,
       hydrationsUnresolved,
+      unresolvedCandidates: hydrationsUnresolved,
       hydrationBudgetExceeded,
       ...(outputTruncated
         ? { outputCap, reason: 'output_cap' }
         : hydrationBudgetExceeded
           ? { reason: 'Hydration budget was exhausted before all required candidates could be evaluated.' }
-        : budgetExceeded
+          : hydrationsUnresolved > 0
+            ? { reason: 'Some candidate filters remained unresolved because required data was missing, inconsistent, or not computable.' }
+          : budgetExceeded
           ? { reason: 'Execution budget was exhausted before upstream coverage was proven.' }
           : {}),
     };
@@ -731,8 +831,8 @@ export class DiscoveryEngine {
       warnings.push({
         code: 'DISCOVERY_HYDRATION_UNRESOLVED',
         message: hydrationSourceChanged
-          ? 'Some discovered candidates could not be reliably evaluated during hydration and remain unresolved (source_changed).'
-          : 'Some discovered candidates could not be reliably evaluated during hydration and remain unresolved.',
+          ? 'Some discovered candidates could not be reliably evaluated because required fields were missing or inconsistent; they remain unresolved (source_changed).'
+          : 'Some discovered candidates could not be reliably evaluated because required fields were missing, inconsistent, or not computable; they remain unresolved.',
       });
       lastState = 'partial';
     }
@@ -812,12 +912,18 @@ export class DiscoveryEngine {
     };
   }
 
-  private toItem(item: CandidateWithDetail, pageEvidence: FieldEvidence, _query: NormalizedDiscoveryQuery): DiscoveryItem {
+  private toItem(item: CandidateWithDetail, pageEvidence: FieldEvidence, query: NormalizedDiscoveryQuery): DiscoveryItem {
     const detail = item.detail;
     const collection = collectionFor(item.candidate, detail);
     const name = detail?.name ?? item.candidate.name;
     const nameCn = detail?.nameCn || item.candidate.nameCn || undefined;
-    const evidence = mergeEvidence(item.candidate, pageEvidence, item.detailResult, collection.formula);
+    const evidence = mergeEvidence(
+      item.candidate,
+      pageEvidence,
+      item.detailResult,
+      collection.formula,
+      query.collectionCompletionRate === undefined ? undefined : item.collectionCompletionRateResult,
+    );
     return {
       id: item.candidate.id,
       name,
@@ -843,6 +949,9 @@ export class DiscoveryEngine {
         ? {}
         : { reportedEpisodeCount: reportedEpisodeCountFor(item.candidate, detail) }),
       ...(collection.total === undefined ? {} : { collectionTotal: collection.total }),
+      ...(typeof item.collectionCompletionRateResult?.data === 'number'
+        ? { collectionCompletionRate: item.collectionCompletionRateResult.data }
+        : {}),
       tags: [...(detail?.tags ?? item.candidate.tags)],
       metaTags: [...(detail?.metaTags ?? item.candidate.metaTags)],
       ...(imageFor(item.candidate, detail) === undefined ? {} : { image: imageFor(item.candidate, detail) }),
