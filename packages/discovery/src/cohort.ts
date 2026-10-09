@@ -1,6 +1,9 @@
 import {
   assertSafeEvidence,
+  computePopulationStandardDeviation,
   createEvidenceRef,
+  POPULATION_SD_FORMULA,
+  SOURCE_DERIVED,
   type CapabilityResult,
   type CapabilityState,
   type EvidenceRef,
@@ -31,7 +34,12 @@ export const SUBJECT_COHORT_MAX_EVIDENCE_BYTES = 96_000;
 export const SUBJECT_COHORT_MAX_WARNINGS = 12;
 export const SUBJECT_COHORT_MAX_TEXT_LENGTH = 240;
 
-export const SUBJECT_COHORT_METRICS = ['score', 'heat', 'episodesReported'] as const;
+export const SUBJECT_COHORT_METRICS = [
+  'score',
+  'heat',
+  'episodesReported',
+  'ratingStandardDeviation',
+] as const;
 export type SubjectCohortMetricKey = (typeof SUBJECT_COHORT_METRICS)[number];
 export type SubjectCohortMetricState =
   | 'complete'
@@ -45,6 +53,26 @@ export type SubjectCohortMetricState =
   | 'stale'
   | 'auth_required'
   | 'permission_denied';
+
+export type SubjectCohortRatingConflict =
+  | {
+      kind: 'score_vs_histogram_mean';
+      officialScore: number;
+      histogramMean: number;
+      reason: string;
+    }
+  | {
+      kind: 'discovery_vs_detail_rating_total';
+      discoveryRatingCount: number;
+      detailRatingTotal: number;
+      reason: string;
+    };
+
+export interface SubjectCohortRatingHistogramTotalValidation {
+  state: 'match' | 'mismatch' | 'invalid';
+  detailRatingTotal?: number;
+  histogramPopulation: number;
+}
 
 export interface SubjectCohortDefinition {
   label?: string;
@@ -62,16 +90,27 @@ export interface SubjectCohortSubject {
   displayName: string;
   date?: string;
   score?: number;
+  ratingCount?: number;
+  ratingCountState?: 'invalid';
+  ratingHistogramPopulation?: number;
+  ratingStandardDeviation?: number;
+  ratingStandardDeviationConflicts?: SubjectCohortRatingConflict[];
+  ratingHistogramTotalValidation?: SubjectCohortRatingHistogramTotalValidation;
   collectionTotal?: number;
   episodesReported?: number;
   totalEpisodesReported?: number;
-  metricStates: Record<SubjectCohortMetricKey, 'available' | 'missing' | 'conflict'>;
+  metricStates: Record<
+    SubjectCohortMetricKey,
+    'available' | 'partial' | 'missing' | 'conflict' | 'not_computable'
+  >;
 }
 
 export interface SubjectCohortMetricCoverage {
   valid: number;
+  partial: number;
   missing: number;
   conflicts: number;
+  notComputable: number;
   state: SubjectCohortMetricState;
 }
 
@@ -102,8 +141,15 @@ export interface SubjectCohortMetric {
   averages: Array<number | undefined>;
   partialAverages?: Array<number | undefined>;
   validCounts: number[];
+  partialCounts: number[];
   missingCounts: number[];
   conflictCounts: number[];
+  notComputableCounts: number[];
+  formula?: {
+    id: string;
+    version: number;
+    description: string;
+  };
   delta?: number;
   state: SubjectCohortMetricState;
 }
@@ -149,6 +195,10 @@ export interface SubjectCohortComparisonResult {
     detailHydrationsSucceeded: number;
     detailHydrationsFailed: number;
     truncated: boolean;
+    overlap: {
+      subjectIds: number[];
+      count: number;
+    };
     evidence: {
       retained: number;
       omitted: number;
@@ -185,20 +235,22 @@ const METRIC_LABELS: Record<SubjectCohortMetricKey, string> = {
   score: '平均评分',
   heat: '平均热度（收藏总数）',
   episodesReported: '平均报告话数',
+  ratingStandardDeviation: '平均评分总体标准差',
 };
 
 const METRIC_SOURCE_FIELDS: Record<SubjectCohortMetricKey, string> = {
   score: 'subject.rating.score',
   heat: 'subject.collection.total',
   episodesReported: 'subject.eps',
+  ratingStandardDeviation: 'subject.rating.count[1..10]',
 };
 
 const LIMITATIONS = [
   '每个 cohort 是官方 v0 discovery 在本次硬上限内返回的条目样本；不把实验性搜索或估计总数转换为完整数据库枚举。',
   '热度使用官方 collection 各状态之和（收藏总数）；它不是社区趋势、质量、偏好或推荐分数。',
   '报告话数使用官方 subject.eps；它不等同于已播话数、观看进度、总生命周期或章节源完整性。',
-  '均值只对该指标有有效值的返回条目计算；缺失、来源冲突、不可用和未找到不会转换为零。',
-  '差值按输入顺序计算为 B − A；部分观察均值会明确标为 partial observation，不生成完整总体差值。',
+  '均值只对有效或明确标为 partial observation 的返回条目计算；缺失、冲突、不可用和未找到不会转换为零。差值按输入顺序计算为 B − A，部分观察不生成完整总体差值。',
+  '评分总体标准差复用 bangumi.rating.population_sd.v1，对完整官方十档评分直方图逐条目计算后取本次返回样本均值；它不是显著性检验、极化分类、质量或推荐。两侧重叠 ID 会列出且仍分别计入均值，因此不是独立样本或 peer-only 对照。',
 ];
 
 function boundedInteger(value: number | undefined, fallback: number, maximum: number): number {
@@ -249,6 +301,10 @@ function sumCollection(collection: ProviderSubjectData['stats']['collection']): 
 
 function finiteNonNegative(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function nonNegativeSafeInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
 
 function finiteScore(value: unknown): number | undefined {
@@ -342,8 +398,139 @@ function itemValue(
   item: DiscoveryItem,
   hydrated: CapabilityResult<ProviderSubjectData>,
   key: SubjectCohortMetricKey,
-): { value?: number; conflict: boolean } {
+): {
+  value?: number;
+  conflict: boolean;
+  state?: 'partial' | 'not_computable' | 'missing';
+  histogramPopulation?: number;
+  formulaEvidence?: EvidenceRef[];
+  ratingConflicts?: SubjectCohortRatingConflict[];
+  ratingHistogramTotalValidation?: SubjectCohortRatingHistogramTotalValidation;
+} {
   const detail = hydrated.state === 'ok' ? hydrated.data : undefined;
+  if (key === 'ratingStandardDeviation') {
+    if (!detail) return { conflict: false, state: 'not_computable' };
+    const stats = detail.stats;
+    const scores = Array.from({ length: 10 }, (_, index) => index + 1) as Array<
+      keyof typeof stats.ratingHistogram
+    >;
+    if (
+      stats.ratingHistogramPresence &&
+      scores.some((score) => stats.ratingHistogramPresence?.[score] !== true)
+    ) {
+      return { conflict: false, state: 'partial' };
+    }
+    const histogramCounts = scores.map((score) => stats.ratingHistogram[score]);
+    if (histogramCounts.some((count) => !Number.isSafeInteger(count) || count < 0)) {
+      return { conflict: false, state: 'partial' };
+    }
+    const rawHistogramPopulation = histogramCounts.reduce((sum, count) => sum + count, 0);
+    if (!Number.isSafeInteger(rawHistogramPopulation)) return { conflict: false, state: 'partial' };
+    const detailRatingTotal = nonNegativeSafeInteger(stats.ratingTotal);
+    const ratingHistogramTotalValidation: SubjectCohortRatingHistogramTotalValidation = {
+      state:
+        detailRatingTotal === undefined
+          ? 'invalid'
+          : detailRatingTotal === rawHistogramPopulation
+            ? 'match'
+            : 'mismatch',
+      ...(typeof stats.ratingTotal === 'number' && Number.isFinite(stats.ratingTotal)
+        ? { detailRatingTotal: stats.ratingTotal }
+        : {}),
+      histogramPopulation: rawHistogramPopulation,
+    };
+    if (rawHistogramPopulation === 0) {
+      return {
+        conflict: false,
+        state: 'not_computable',
+        histogramPopulation: 0,
+        ratingHistogramTotalValidation,
+      };
+    }
+
+    const calculation = computePopulationStandardDeviation(
+      stats,
+      hydrated.evidence,
+      hydrated.retrievedAt,
+    );
+    const histogramPopulation = calculation.data?.histogramPopulation;
+    const formulaEvidence = calculation.data
+      ? [
+          createEvidenceRef({
+            source: {
+              ...SOURCE_DERIVED,
+              operation: POPULATION_SD_FORMULA.id,
+              version: String(POPULATION_SD_FORMULA.version),
+            },
+            retrievedAt: hydrated.retrievedAt || new Date().toISOString(),
+            entity: { type: 'subject', id: item.id },
+            fieldPath: 'rating.standardDeviation',
+            freshness: { state: 'unknown' },
+            authScope: 'public',
+            confidence: 'high',
+            formula: POPULATION_SD_FORMULA.id,
+          }),
+        ]
+      : [];
+    if (calculation.state === 'not_computable') {
+      return {
+        conflict: false,
+        state: 'not_computable',
+        histogramPopulation: 0,
+        formulaEvidence,
+      };
+    }
+    if (!calculation.data) return { conflict: false, state: 'missing', formulaEvidence };
+
+    const discoveredRatingTotal = nonNegativeSafeInteger(item.ratingCount);
+    const discoveryRatingCountInvalid =
+      item.ratingCount !== undefined && discoveredRatingTotal === undefined;
+    const discoveredTotalConflict =
+      discoveredRatingTotal !== undefined &&
+      detailRatingTotal !== undefined &&
+      discoveredRatingTotal !== detailRatingTotal;
+    const ratingConflicts: SubjectCohortRatingConflict[] = [];
+    if (calculation.state === 'conflict') {
+      ratingConflicts.push({
+        kind: 'score_vs_histogram_mean',
+        officialScore: calculation.data.upstreamScore,
+        histogramMean: calculation.data.histogramMean,
+        reason:
+          calculation.conflicts?.[0]?.reason ||
+          'official detail score materially differs from the histogram-derived mean',
+      });
+    }
+    if (discoveredTotalConflict && discoveredRatingTotal !== undefined && detailRatingTotal !== undefined) {
+      ratingConflicts.push({
+        kind: 'discovery_vs_detail_rating_total',
+        discoveryRatingCount: discoveredRatingTotal,
+        detailRatingTotal,
+        reason: 'discovery rating count differs from the official detail rating total',
+      });
+    }
+    if (ratingConflicts.length > 0) {
+      return {
+        value: calculation.data.standardDeviation,
+        conflict: true,
+        histogramPopulation,
+        formulaEvidence,
+        ratingConflicts,
+        ratingHistogramTotalValidation,
+      };
+    }
+
+    return {
+      value: calculation.data.standardDeviation,
+      conflict: false,
+      state:
+        discoveryRatingCountInvalid || ratingHistogramTotalValidation.state !== 'match'
+          ? 'partial'
+          : undefined,
+      histogramPopulation,
+      formulaEvidence,
+      ratingHistogramTotalValidation,
+    };
+  }
   if (key === 'episodesReported') {
     return { value: finiteNonNegative(detail?.eps), conflict: false };
   }
@@ -368,28 +555,48 @@ function buildSubjectRow(
 ): {
   subject: SubjectCohortSubject;
   conflicts: SubjectCohortMetricKey[];
+  formulaEvidence: EvidenceRef[];
 } {
   const values = SUBJECT_COHORT_METRICS.map((key) => itemValue(item, hydrated, key));
-  const [score, heat, episodesReported] = values;
+  const [score, heat, episodesReported, ratingStandardDeviation] = values;
   const detail = hydrated.state === 'ok' ? hydrated.data : undefined;
   const totalEpisodesReported = finiteNonNegative(detail?.totalEpisodes);
+  const discoveryRatingCount = nonNegativeSafeInteger(item.ratingCount);
+  const ratingCountInvalid = item.ratingCount !== undefined && discoveryRatingCount === undefined;
+  const rowState = (
+    metric: (typeof values)[number],
+  ): 'available' | 'partial' | 'missing' | 'conflict' | 'not_computable' =>
+    metric.conflict
+      ? 'conflict'
+      : metric.state || (metric.value === undefined ? 'missing' : 'available');
   const subject: SubjectCohortSubject = {
     id: item.id,
     name: boundedText(item.name, 180),
     displayName: boundedText(item.displayName, 180),
     ...(item.date ? { date: item.date } : {}),
     ...(score?.value === undefined ? {} : { score: score.value }),
+    ...(discoveryRatingCount === undefined ? {} : { ratingCount: discoveryRatingCount }),
+    ...(ratingCountInvalid ? { ratingCountState: 'invalid' as const } : {}),
+    ...(ratingStandardDeviation?.histogramPopulation === undefined
+      ? {}
+      : { ratingHistogramPopulation: ratingStandardDeviation.histogramPopulation }),
+    ...(ratingStandardDeviation?.value === undefined
+      ? {}
+      : { ratingStandardDeviation: ratingStandardDeviation.value }),
+    ...(ratingStandardDeviation?.ratingConflicts === undefined
+      ? {}
+      : { ratingStandardDeviationConflicts: ratingStandardDeviation.ratingConflicts }),
+    ...(ratingStandardDeviation?.ratingHistogramTotalValidation === undefined
+      ? {}
+      : { ratingHistogramTotalValidation: ratingStandardDeviation.ratingHistogramTotalValidation }),
     ...(heat?.value === undefined ? {} : { collectionTotal: heat.value }),
     ...(episodesReported?.value === undefined ? {} : { episodesReported: episodesReported.value }),
     ...(totalEpisodesReported === undefined ? {} : { totalEpisodesReported }),
     metricStates: {
-      score: score?.conflict ? 'conflict' : score?.value === undefined ? 'missing' : 'available',
-      heat: heat?.conflict ? 'conflict' : heat?.value === undefined ? 'missing' : 'available',
-      episodesReported: episodesReported?.conflict
-        ? 'conflict'
-        : episodesReported?.value === undefined
-          ? 'missing'
-          : 'available',
+      score: rowState(score!),
+      heat: rowState(heat!),
+      episodesReported: rowState(episodesReported!),
+      ratingStandardDeviation: rowState(ratingStandardDeviation!),
     },
   };
   return {
@@ -397,6 +604,7 @@ function buildSubjectRow(
     conflicts: SUBJECT_COHORT_METRICS.filter(
       (key) => values.find((candidate, index) => SUBJECT_COHORT_METRICS[index] === key)?.conflict,
     ),
+    formulaEvidence: ratingStandardDeviation?.formulaEvidence || [],
   };
 }
 
@@ -404,9 +612,12 @@ function metricNumber(
   subject: SubjectCohortSubject,
   key: SubjectCohortMetricKey,
 ): number | undefined {
+  const state = subject.metricStates[key];
+  if (state !== 'available' && state !== 'partial') return undefined;
   if (key === 'score') return subject.score;
   if (key === 'heat') return subject.collectionTotal;
-  return subject.episodesReported;
+  if (key === 'episodesReported') return subject.episodesReported;
+  return subject.ratingStandardDeviation;
 }
 
 function metricCoverage(
@@ -415,18 +626,30 @@ function metricCoverage(
   key: SubjectCohortMetricKey,
 ): SubjectCohortMetricCoverage {
   const valid = subjects.filter((subject) => subject.metricStates[key] === 'available').length;
+  const partial = subjects.filter((subject) => subject.metricStates[key] === 'partial').length;
   const conflicts = subjects.filter((subject) => subject.metricStates[key] === 'conflict').length;
-  const missing = subjects.length - valid - conflicts;
+  const notComputable = subjects.filter(
+    (subject) => subject.metricStates[key] === 'not_computable',
+  ).length;
+  const missing = subjects.length - valid - partial - conflicts - notComputable;
   const queryState: SubjectCohortMetricState | undefined =
     query.state === 'ok' ? undefined : query.state === 'not_found' ? 'not_computable' : query.state;
   let state: SubjectCohortMetricState;
   if (queryState !== undefined && queryState !== 'partial') state = queryState;
   else if (conflicts > 0) state = 'conflict';
-  else if (valid === 0) state = 'not_computable';
-  else if (queryState === 'partial' || query.coverage.state !== 'complete' || missing > 0)
+  else if (key !== 'ratingStandardDeviation' && valid === 0) state = 'not_computable';
+  else if (valid + partial === 0 && notComputable > 0 && missing === 0) state = 'not_computable';
+  else if (
+    queryState === 'partial' ||
+    query.coverage.state !== 'complete' ||
+    partial > 0 ||
+    missing > 0 ||
+    notComputable > 0
+  )
     state = 'partial';
+  else if (valid === 0) state = 'not_computable';
   else state = 'complete';
-  return { valid, missing, conflicts, state };
+  return { valid, partial, missing, conflicts, notComputable, state };
 }
 
 function groupState(result: DiscoveryResult): CapabilityState {
@@ -439,7 +662,11 @@ function buildGroup(
   definition: SubjectCohortDefinition,
   result: DiscoveryResult,
   hydrated: HydratedSubject[],
-): { cohort: SubjectCohort; conflicts: SubjectCohortMetricKey[] } {
+): {
+  cohort: SubjectCohort;
+  conflicts: SubjectCohortMetricKey[];
+  formulaEvidence: EvidenceRef[];
+} {
   const label = definition.label?.trim() || '未命名组';
   const rows = hydrated.map(({ item, result: detail }) => buildSubjectRow(item, detail));
   const subjects = rows.map((row) => row.subject);
@@ -472,6 +699,7 @@ function buildGroup(
       },
     },
     conflicts: rows.flatMap((row) => row.conflicts),
+    formulaEvidence: rows.flatMap((row) => row.formulaEvidence),
   };
 }
 
@@ -624,6 +852,15 @@ function metricAverageState(
     : { averages: averages.map(() => undefined), partialAverages: averages };
 }
 
+function cohortOverlap(cohorts: SubjectCohort[]): { subjectIds: number[]; count: number } {
+  if (cohorts.length !== 2) return { subjectIds: [], count: 0 };
+  const firstIds = new Set(cohorts[0]?.subjects.map((subject) => subject.id) || []);
+  const subjectIds = [...new Set(cohorts[1]?.subjects.map((subject) => subject.id) || [])].filter(
+    (id) => firstIds.has(id),
+  );
+  return { subjectIds, count: subjectIds.length };
+}
+
 export async function compareSubjectCohorts(
   definitions: readonly SubjectCohortDefinition[],
   options: SubjectCohortComparisonOptions = {},
@@ -668,6 +905,7 @@ export async function compareSubjectCohorts(
     buildGroup(definition, result, hydrated),
   );
   const cohorts = built.map(({ cohort }) => cohort);
+  const overlap = cohortOverlap(cohorts);
   const metrics = SUBJECT_COHORT_METRICS.map((key): SubjectCohortMetric => {
     const coverages = cohorts.map((cohort) => cohort.coverage.metrics[key]);
     const averages = cohorts.map((cohort) => average(cohort.subjects, key));
@@ -678,8 +916,19 @@ export async function compareSubjectCohorts(
       sourceField: METRIC_SOURCE_FIELDS[key],
       ...metricAverageState(state, averages),
       validCounts: coverages.map((coverage) => coverage.valid),
+      partialCounts: coverages.map((coverage) => coverage.partial),
       missingCounts: coverages.map((coverage) => coverage.missing),
       conflictCounts: coverages.map((coverage) => coverage.conflicts),
+      notComputableCounts: coverages.map((coverage) => coverage.notComputable),
+      ...(key === 'ratingStandardDeviation'
+        ? {
+            formula: {
+              id: POPULATION_SD_FORMULA.id,
+              version: POPULATION_SD_FORMULA.version,
+              description: POPULATION_SD_FORMULA.description,
+            },
+          }
+        : {}),
       ...(cohorts.length === 2 &&
       state === 'complete' &&
       averages[0] !== undefined &&
@@ -694,10 +943,12 @@ export async function compareSubjectCohorts(
   const detailEvidence = groups.flatMap(({ hydrated }) =>
     hydrated.flatMap(({ result }) => flattenEvidence(result.evidence)),
   );
+  const ratingFormulaEvidence = built.flatMap(({ formulaEvidence }) => formulaEvidence);
   const derivedRetrievedAt =
     latestTimestamp([
       ...discoveryEvidence.map((item) => item.retrievedAt),
       ...detailEvidence.map((item) => item.retrievedAt),
+      ...ratingFormulaEvidence.map((item) => item.retrievedAt),
     ]) || attemptedAt;
   const derivedEvidence = createEvidenceRef({
     source: {
@@ -713,7 +964,12 @@ export async function compareSubjectCohorts(
     confidence: 'high',
     formula: SUBJECT_COHORT_COMPARISON_FORMULA_VERSION,
   });
-  const rawEvidence = [...discoveryEvidence, ...detailEvidence, derivedEvidence];
+  const rawEvidence = [
+    ...discoveryEvidence,
+    ...detailEvidence,
+    ...ratingFormulaEvidence,
+    derivedEvidence,
+  ];
   rawEvidence.forEach((item) => assertSafeEvidence(item));
   const boundedEvidence = capEvidence(rawEvidence);
 
@@ -721,7 +977,11 @@ export async function compareSubjectCohorts(
     warningFromDiscovery(definition.label?.trim() || '未命名组', result),
   );
   const conflicts = uniqueStrings(
-    built.flatMap(({ conflicts }) => conflicts.map((key) => `conflict:${key}`)),
+    built.flatMap(({ conflicts }) =>
+      conflicts
+        .filter((key) => key !== 'ratingStandardDeviation')
+        .map((key) => `conflict:${key}`),
+    ),
   );
   if (conflicts.length > 0) {
     warnings.push({
@@ -742,6 +1002,105 @@ export async function compareSubjectCohorts(
       code: 'COHORT_DETAIL_COVERAGE_DEGRADED',
       state: 'partial',
       message: '部分条目详情读取失败或未找到；报告话数及冲突检查保留为未知，不填充猜测值。',
+    });
+  }
+  const ratingCoverage = cohorts.map((cohort) => cohort.coverage.metrics.ratingStandardDeviation);
+  const cohortSubjects = cohorts.flatMap((cohort) => cohort.subjects);
+  const scoreHistogramConflicts = cohortSubjects.flatMap((subject) =>
+    (subject.ratingStandardDeviationConflicts || [])
+      .filter((conflict) => conflict.kind === 'score_vs_histogram_mean')
+      .map((conflict) => ({ subjectId: subject.id, conflict })),
+  );
+  if (scoreHistogramConflicts.length > 0) {
+    const examples = scoreHistogramConflicts
+      .slice(0, 2)
+      .map(
+        ({ subjectId, conflict }) =>
+          `#${subjectId} score=${conflict.officialScore} histogramMean=${conflict.histogramMean}`,
+      )
+      .join('；');
+    warnings.push({
+      code: 'COHORT_RATING_SCORE_HISTOGRAM_CONFLICT',
+      state: 'conflict',
+      message: `${scoreHistogramConflicts.length} 个条目的官方评分与直方图派生均值存在明显差异，评分标准差未计入有效均值。${examples ? ` 示例：${examples}` : ''}`,
+    });
+  }
+  const discoveryDetailTotalConflicts = cohortSubjects.flatMap((subject) =>
+    (subject.ratingStandardDeviationConflicts || [])
+      .filter((conflict) => conflict.kind === 'discovery_vs_detail_rating_total')
+      .map((conflict) => ({ subjectId: subject.id, conflict })),
+  );
+  if (discoveryDetailTotalConflicts.length > 0) {
+    const examples = discoveryDetailTotalConflicts
+      .slice(0, 2)
+      .map(
+        ({ subjectId, conflict }) =>
+          `#${subjectId} discovery=${conflict.discoveryRatingCount} detail=${conflict.detailRatingTotal}`,
+      )
+      .join('；');
+    warnings.push({
+      code: 'COHORT_RATING_TOTAL_SOURCE_CONFLICT',
+      state: 'conflict',
+      message: `${discoveryDetailTotalConflicts.length} 个条目的 discovery 评分人数与官方详情评分总数不一致，评分标准差未计入有效均值。${examples ? ` 示例：${examples}` : ''}`,
+    });
+  }
+  const invalidDiscoveryRatingCounts = cohortSubjects.filter(
+    (subject) => subject.ratingCountState === 'invalid',
+  ).length;
+  if (invalidDiscoveryRatingCounts > 0) {
+    warnings.push({
+      code: 'COHORT_RATING_COUNT_INVALID',
+      state: 'partial',
+      message: `${invalidDiscoveryRatingCounts} 个返回条目的 discovery 评分人数不是安全的非负整数；该值不会作为有效评分人数显示，相关标准差不计为完整有效值。`,
+    });
+  }
+  const incompleteRatingCount = ratingCoverage.reduce(
+    (sum, coverage) => sum + coverage.partial + coverage.missing,
+    0,
+  );
+  if (incompleteRatingCount > 0) {
+    warnings.push({
+      code: 'COHORT_RATING_HISTOGRAM_INCOMPLETE',
+      state: 'partial',
+      message: `${incompleteRatingCount} 个返回条目没有完整可用的十档评分直方图；其标准差未计入均值。`,
+    });
+  }
+  const nonComputableRatingCount = ratingCoverage.reduce(
+    (sum, coverage) => sum + coverage.notComputable,
+    0,
+  );
+  if (nonComputableRatingCount > 0) {
+    warnings.push({
+      code: 'COHORT_RATING_HISTOGRAM_EMPTY',
+      state: 'not_computable',
+      message: `${nonComputableRatingCount} 个返回条目的完整评分直方图没有样本；标准差保持不可计算。`,
+    });
+  }
+  const ratingTotalMismatchCount = cohortSubjects.filter(
+    (subject) => subject.ratingHistogramTotalValidation?.state === 'mismatch',
+  ).length;
+  if (ratingTotalMismatchCount > 0) {
+    warnings.push({
+      code: 'RATING_TOTAL_MISMATCH',
+      state: 'partial',
+      message: `${ratingTotalMismatchCount} 个条目的官方详情评分总数与直方图样本数不一致；两者及其校验状态均保留，相关标准差不计为完整有效值。`,
+    });
+  }
+  const invalidDetailRatingTotals = cohortSubjects.filter(
+    (subject) => subject.ratingHistogramTotalValidation?.state === 'invalid',
+  ).length;
+  if (invalidDetailRatingTotals > 0) {
+    warnings.push({
+      code: 'RATING_TOTAL_INVALID',
+      state: 'partial',
+      message: `${invalidDetailRatingTotals} 个条目的官方详情评分总数不是安全的非负整数；相关标准差不计为完整有效值。`,
+    });
+  }
+  if (overlap.count > 0) {
+    warnings.push({
+      code: 'COHORT_OVERLAP',
+      state: 'partial',
+      message: `${overlap.count} 个条目同时出现在 A、B；重叠条目分别计入两侧均值，不代表 peer-only 对照。`,
     });
   }
   if (boundedEvidence.coverage.truncated) {
@@ -789,6 +1148,7 @@ export async function compareSubjectCohorts(
         ) ||
         boundedEvidence.coverage.truncated ||
         boundedWarnings.coverage.truncated,
+      overlap,
       evidence: boundedEvidence.coverage,
       warnings: boundedWarnings.coverage,
     },

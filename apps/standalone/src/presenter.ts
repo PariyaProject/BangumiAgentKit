@@ -1299,7 +1299,7 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
   const showComparison = cohorts.length === 2;
 
   const lines = [
-    `条目群体${showComparison ? '比较' : '聚合'} · 状态: ${comparisonStateLabel(value.state)} · ${showComparison ? 'B−A · ' : ''}不生成推荐或质量结论`,
+    `条目群体${showComparison ? '比较' : '聚合'} · 状态: ${comparisonStateLabel(value.state)} · ${showComparison ? 'B−A · ' : ''}标准差仅为描述值，不表示统计显著性、极化或质量`,
   ];
   for (const [index, rawCohort] of cohorts.entries()) {
     const cohort = comparisonRecord(rawCohort);
@@ -1323,9 +1323,31 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
       for (const [subjectIndex, rawSubject] of subjects.slice(0, 8).entries()) {
         const subject = comparisonRecord(rawSubject);
         if (!subject) continue;
+        const ratingCount =
+          subject.ratingCountState === 'invalid'
+            ? '无效'
+            : humanField(subject.ratingCount ?? '未知', 32);
         lines.push(
-          `  ${subjectIndex + 1}. ${humanField(subject.displayName || subject.name || `条目 ${subject.id || '?'}`, 180)} #${humanField(subject.id ?? '?', 32)} · 评分 ${humanField(subject.score ?? '未知', 24)} · 热度 ${humanField(subject.collectionTotal ?? '未知', 32)} · 报告话数 ${humanField(subject.episodesReported ?? '未知', 32)}`,
+          `  ${subjectIndex + 1}. ${humanField(subject.displayName || subject.name || `条目 ${subject.id || '?'}`, 180)} #${humanField(subject.id ?? '?', 32)} · 评分 ${humanField(subject.score ?? '未知', 24)} · 热度 ${humanField(subject.collectionTotal ?? '未知', 32)} · 报告话数 ${humanField(subject.episodesReported ?? '未知', 32)} · 评分人数 ${ratingCount} · 总体标准差 ${humanField(subject.ratingStandardDeviation ?? '未知', 32)} · 直方图样本 ${humanField(subject.ratingHistogramPopulation ?? '未知', 32)}`,
         );
+        const ratingConflicts = Array.isArray(subject.ratingStandardDeviationConflicts)
+          ? subject.ratingStandardDeviationConflicts
+          : [];
+        for (const rawConflict of ratingConflicts) {
+          const conflict = comparisonRecord(rawConflict);
+          if (!conflict) continue;
+          const detail =
+            conflict.kind === 'score_vs_histogram_mean'
+              ? `官方评分 ${humanField(conflict.officialScore ?? '?', 24)} vs 直方图均值 ${humanField(conflict.histogramMean ?? '?', 24)}`
+              : `discovery 人数 ${humanField(conflict.discoveryRatingCount ?? '?', 24)} vs 详情总数 ${humanField(conflict.detailRatingTotal ?? '?', 24)}`;
+          lines.push(`    评分标准差冲突：${detail}`);
+        }
+        const totalValidation = comparisonRecord(subject.ratingHistogramTotalValidation);
+        if (totalValidation && totalValidation.state !== 'match') {
+          lines.push(
+            `    详情评分总数 ${totalValidation.state === 'invalid' ? '无效' : humanField(totalValidation.detailRatingTotal ?? '?', 24)} vs 直方图样本 ${humanField(totalValidation.histogramPopulation ?? '?', 24)}`,
+          );
+        }
       }
       if (subjects.length > 8) lines.push(`  另有 ${subjects.length - 8} 条样本未展开。`);
     }
@@ -1338,8 +1360,13 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
     const averages = Array.isArray(metric.averages) ? metric.averages : [];
     const partialAverages = Array.isArray(metric.partialAverages) ? metric.partialAverages : [];
     const valid = Array.isArray(metric.validCounts) ? metric.validCounts : [];
+    const partialCounts = Array.isArray(metric.partialCounts) ? metric.partialCounts : [];
     const missing = Array.isArray(metric.missingCounts) ? metric.missingCounts : [];
     const conflicts = Array.isArray(metric.conflictCounts) ? metric.conflictCounts : [];
+    const notComputable = Array.isArray(metric.notComputableCounts)
+      ? metric.notComputableCounts
+      : [];
+    const formula = comparisonRecord(metric.formula);
     const values = cohorts
       .map((_, index) => {
         const accepted = averages[index];
@@ -1349,7 +1376,7 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
       })
       .map(
         (average, index) =>
-          `${index === 0 ? 'A' : 'B'} ${average} (${humanField(valid[index] ?? '?', 24)} 有效/${humanField(missing[index] ?? '?', 24)} 缺失/${humanField(conflicts[index] ?? '?', 24)} 冲突)`,
+          `${index === 0 ? 'A' : 'B'} ${average} (${humanField(valid[index] ?? '?', 24)} 有效/${humanField(partialCounts[index] ?? '?', 24)} 部分/${humanField(missing[index] ?? '?', 24)} 缺失/${humanField(conflicts[index] ?? '?', 24)} 冲突/${humanField(notComputable[index] ?? '?', 24)} 不可计算)`,
       )
       .join(' · ');
     const delta = !showComparison
@@ -1358,12 +1385,22 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
         ? '不可计算'
         : humanField(metric.delta, 32);
     lines.push(
-      `- ${humanField(metric.label || metric.key || '指标', 100)} · ${values} · ${showComparison ? `B−A ${delta}` : '单 cohort，无 delta'} · ${comparisonStateLabel(metric.state)}`,
+      `- ${humanField(metric.label || metric.key || '指标', 100)} · ${values} · ${showComparison ? `B−A ${delta}` : '单 cohort，无 delta'} · ${comparisonStateLabel(metric.state)}${formula ? ` · 公式 ${humanField(formula.id || '?', 80)} v${humanField(formula.version ?? '?', 16)}` : ''}`,
     );
   }
 
   const coverage = comparisonRecord(value.coverage);
   if (coverage) {
+    const overlap = comparisonRecord(coverage.overlap);
+    const overlapIds = Array.isArray(overlap?.subjectIds) ? overlap.subjectIds : [];
+    if (overlapIds.length > 0) {
+      lines.push(
+        `重叠：${humanField(overlap?.count ?? overlapIds.length, 32)} 个条目同时出现在两侧，仍分别计入均值；ID ${overlapIds
+          .slice(0, 12)
+          .map((id) => `#${humanField(id, 24)}`)
+          .join(', ')}${overlapIds.length > 12 ? ' …' : ''}`,
+      );
+    }
     lines.push(
       `资源：每侧最多 ${humanField(coverage.maxSubjectsPerCohort ?? '?', 32)} 条 · 返回 ${humanField(coverage.totalSubjectsReturned ?? '?', 32)} 条 · 详情 ${humanField(coverage.detailHydrationsSucceeded ?? '?', 32)}/${humanField(coverage.detailHydrationsAttempted ?? '?', 32)} 成功${coverage.truncated ? ' · 至少一侧有界/部分' : ''}`,
     );

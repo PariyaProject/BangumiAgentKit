@@ -81,6 +81,23 @@ describe('PR-7B official provider foundation', () => {
     expect(result.coverage?.state).toBe('complete');
   });
 
+  it('preserves absent optional histogram buckets in full subject detail', async () => {
+    const raw = structuredClone(subjectFixture()) as unknown as {
+      rating: { count: Record<string, number> };
+    };
+    delete raw.rating.count['5'];
+
+    const result = await new OfficialV0Provider({
+      getSubjectById: async () => raw as Subject,
+    }).getSubject(123);
+
+    expect(result.state).toBe('ok');
+    expect(result.data?.stats.ratingHistogram[5]).toBe(0);
+    expect(result.data?.stats.ratingHistogramPresence?.[5]).toBe(false);
+    expect(result.evidence?.['rating.count.5']).toBeUndefined();
+    expect(result.evidence?.['rating.count']?.[0]?.fieldPath).toBe('rating.count');
+  });
+
   it('Subject stats capability retains the v0 evidence paths', async () => {
     const result = await new OfficialV0Provider({
       getSubjectById: async () => subjectFixture(),

@@ -19,15 +19,53 @@ interface FixtureSubject {
   score: number;
   heat: number;
   episodes: number;
+  discoveryRatingCount?: number;
+  ratingHistogram?: SubjectStatsData['ratingHistogram'];
+  ratingHistogramPresence?: SubjectStatsData['ratingHistogramPresence'];
+  ratingTotal?: number;
 }
 
-function stats(score: number, heat: number): SubjectStatsData {
+function stats(subject: FixtureSubject): SubjectStatsData {
+  const ratingHistogram = subject.ratingHistogram || {
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+    6: 0,
+    7: 0,
+    8: 0,
+    9: 0,
+    10: 0,
+    [Math.round(subject.score)]: 100,
+  };
+  const ratingTotal =
+    subject.ratingTotal ?? Object.values(ratingHistogram).reduce((sum, count) => sum + count, 0);
   return {
-    score,
+    score: subject.score,
     rank: 1,
-    ratingTotal: 100,
-    ratingHistogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 },
-    collection: { wish: 0, collect: heat, doing: 0, onHold: 0, dropped: 0 },
+    ratingTotal,
+    ratingHistogram,
+    ...(subject.ratingHistogramPresence
+      ? { ratingHistogramPresence: subject.ratingHistogramPresence }
+      : {}),
+    collection: { wish: 0, collect: subject.heat, doing: 0, onHold: 0, dropped: 0 },
+  };
+}
+
+function histogram(counts: Partial<SubjectStatsData['ratingHistogram']> = {}) {
+  return {
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+    6: 0,
+    7: 0,
+    8: 0,
+    9: 0,
+    10: 0,
+    ...counts,
   };
 }
 
@@ -76,7 +114,7 @@ class CohortProvider implements SubjectDiscoveryProvider {
         images: {},
         eps: subject.episodes,
         totalEpisodes: subject.episodes,
-        stats: stats(subject.score, subject.heat),
+        stats: stats(subject),
       },
       evidence: {},
     };
@@ -106,6 +144,12 @@ class CohortProvider implements SubjectDiscoveryProvider {
       date: '2026-01-01',
       platform: 'TV',
       ...(this.missingIds.has(subject.id) ? {} : { score: subject.score }),
+      ratingCount:
+        subject.discoveryRatingCount ??
+        subject.ratingTotal ??
+        (subject.ratingHistogram
+          ? Object.values(subject.ratingHistogram).reduce((sum, count) => sum + count, 0)
+          : 100),
       ...(this.missingIds.has(subject.id) ? {} : { collection: { collect: subject.heat } }),
       tags: [],
       metaTags: [],
@@ -179,13 +223,278 @@ describe('subject cohort comparison', () => {
       [9, 7],
       [20, 30],
       [10, 8],
+      [0, 0],
     ]);
-    expect(result.metrics.map((metric) => metric.delta)).toEqual([-2, 10, -2]);
+    expect(result.metrics.map((metric) => metric.delta)).toEqual([-2, 10, -2, 0]);
     expect(result.metrics.every((metric) => metric.state === 'complete')).toBe(true);
     expect(result.coverage.totalSubjectsReturned).toBe(4);
     expect(result.coverage.detailHydrationsSucceeded).toBe(4);
     expect(result.formulaVersion).toBe('subject-cohort-comparison-v1');
     expect(result.evidence.at(-1)?.source.class).toBe('derived');
+  });
+
+  it('computes per-subject population standard deviation, bounded cohort means, and overlap', async () => {
+    const spread = histogram({ 6: 50, 10: 50 });
+    const provider = new CohortProvider({
+      A: [{ id: 10, name: 'Target', score: 8, heat: 10, episodes: 12, ratingHistogram: spread }],
+      B: [
+        { id: 10, name: 'Target', score: 8, heat: 10, episodes: 12, ratingHistogram: spread },
+        {
+          id: 11,
+          name: 'Peer',
+          score: 8,
+          heat: 20,
+          episodes: 12,
+          ratingHistogram: histogram({ 8: 100 }),
+        },
+      ],
+    });
+
+    const result = await compareSubjectCohorts(definitions, { maxSubjects: 4 }, provider);
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation');
+
+    expect(metric).toMatchObject({
+      averages: [2, 1],
+      validCounts: [1, 2],
+      partialCounts: [0, 0],
+      missingCounts: [0, 0],
+      conflictCounts: [0, 0],
+      notComputableCounts: [0, 0],
+      delta: -1,
+      formula: { id: 'bangumi.rating.population_sd.v1', version: 1 },
+      state: 'complete',
+    });
+    expect(result.cohorts[0]?.subjects[0]).toMatchObject({
+      ratingCount: 100,
+      ratingHistogramPopulation: 100,
+      ratingStandardDeviation: 2,
+    });
+    expect(result.coverage.overlap).toEqual({ subjectIds: [10], count: 1 });
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'COHORT_OVERLAP', state: 'partial' }),
+    );
+    const ratingFormulaEvidence = result.evidence.find(
+      (item) => item.source.operation === 'bangumi.rating.population_sd.v1',
+    );
+    expect(ratingFormulaEvidence?.entity).toEqual({ type: 'subject', id: 10 });
+  });
+
+  it('does not compute a standard deviation from missing histogram buckets', async () => {
+    const presence = Object.fromEntries(
+      Array.from({ length: 10 }, (_, index) => [index + 1, index !== 4]),
+    ) as NonNullable<SubjectStatsData['ratingHistogramPresence']>;
+    const provider = new CohortProvider({
+      A: [
+        {
+          id: 20,
+          name: 'Incomplete',
+          score: 8,
+          heat: 10,
+          episodes: 12,
+          ratingHistogram: histogram({ 6: 50, 10: 50 }),
+          ratingHistogramPresence: presence,
+        },
+      ],
+      B: [
+        {
+          id: 21,
+          name: 'Complete',
+          score: 8,
+          heat: 20,
+          episodes: 12,
+          ratingHistogram: histogram({ 8: 100 }),
+        },
+      ],
+    });
+
+    const result = await compareSubjectCohorts(definitions, { maxSubjects: 4 }, provider);
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation');
+
+    expect(result.state).toBe('partial');
+    expect(metric).toMatchObject({
+      averages: [undefined, undefined],
+      partialAverages: [undefined, 0],
+      validCounts: [0, 1],
+      partialCounts: [1, 0],
+      missingCounts: [0, 0],
+      state: 'partial',
+    });
+    expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviation).toBeUndefined();
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'COHORT_RATING_HISTOGRAM_INCOMPLETE' }),
+    );
+  });
+
+  it('does not compute a standard deviation from invalid histogram counts without presence metadata', async () => {
+    const provider = new CohortProvider({
+      A: [
+        {
+          id: 22,
+          name: 'Invalid histogram',
+          score: 8,
+          heat: 10,
+          episodes: 12,
+          ratingHistogram: histogram({ 6: 50, 10: -1 }),
+        },
+      ],
+    });
+
+    const result = await compareSubjectCohorts(
+      [{ label: 'A', query: { keyword: 'A', media: 'anime' } }],
+      {},
+      provider,
+    );
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation');
+
+    expect(result.state).toBe('partial');
+    expect(metric).toMatchObject({
+      averages: [undefined],
+      partialCounts: [1],
+      missingCounts: [0],
+      state: 'partial',
+    });
+    expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviation).toBeUndefined();
+  });
+
+  it('marks a negative discovery rating count invalid instead of counting SD as fully available', async () => {
+    const provider = new CohortProvider({
+      A: [
+        {
+          id: 23,
+          name: 'Negative discovery rating count',
+          score: 8,
+          heat: 10,
+          episodes: 12,
+          discoveryRatingCount: -1,
+          ratingHistogram: histogram({ 8: 100 }),
+        },
+      ],
+    });
+
+    const result = await compareSubjectCohorts(
+      [{ label: 'A', query: { keyword: 'A', media: 'anime' } }],
+      {},
+      provider,
+    );
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation');
+    const subject = result.cohorts[0]?.subjects[0];
+
+    expect(metric).toMatchObject({
+      averages: [undefined],
+      partialAverages: [0],
+      validCounts: [0],
+      partialCounts: [1],
+      state: 'partial',
+    });
+    expect(subject).toMatchObject({ ratingCountState: 'invalid' });
+    expect(subject?.ratingCount).toBeUndefined();
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'COHORT_RATING_COUNT_INVALID', state: 'partial' }),
+    );
+  });
+
+  it('keeps empty histograms not-computable and total mismatches partial', async () => {
+    const empty = histogram();
+    const emptyProvider = new CohortProvider({
+      A: [{ id: 30, name: 'No ratings', score: 0, heat: 0, episodes: 0, ratingHistogram: empty }],
+    });
+    const emptyResult = await compareSubjectCohorts(
+      [{ label: 'A', query: { keyword: 'A', media: 'anime' } }],
+      {},
+      emptyProvider,
+    );
+    expect(
+      emptyResult.metrics.find((item) => item.key === 'ratingStandardDeviation'),
+    ).toMatchObject({
+      averages: [undefined],
+      notComputableCounts: [1],
+      state: 'not_computable',
+    });
+
+    const mismatchProvider = new CohortProvider({
+      A: [
+        {
+          id: 31,
+          name: 'Mismatched total',
+          score: 8,
+          heat: 0,
+          episodes: 0,
+          ratingHistogram: histogram({ 6: 50, 10: 50 }),
+          ratingTotal: 99,
+        },
+      ],
+    });
+    const mismatchResult = await compareSubjectCohorts(
+      [{ label: 'A', query: { keyword: 'A', media: 'anime' } }],
+      {},
+      mismatchProvider,
+    );
+    expect(
+      mismatchResult.metrics.find((item) => item.key === 'ratingStandardDeviation'),
+    ).toMatchObject({
+      averages: [undefined],
+      partialAverages: [2],
+      partialCounts: [1],
+      state: 'partial',
+    });
+    expect(mismatchResult.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'RATING_TOTAL_MISMATCH',
+        state: 'partial',
+        message: expect.stringContaining('官方详情评分总数'),
+      }),
+    );
+    expect(mismatchResult.cohorts[0]?.subjects[0]?.ratingHistogramTotalValidation).toEqual({
+      state: 'mismatch',
+      detailRatingTotal: 99,
+      histogramPopulation: 100,
+    });
+  });
+
+  it('excludes rating-score conflicts from the cohort standard-deviation mean', async () => {
+    const provider = new CohortProvider({
+      A: [
+        {
+          id: 40,
+          name: 'Conflicting score',
+          score: 9,
+          heat: 0,
+          episodes: 0,
+          ratingHistogram: histogram({ 6: 50, 10: 50 }),
+        },
+      ],
+    });
+
+    const result = await compareSubjectCohorts(
+      [{ label: 'A', query: { keyword: 'A', media: 'anime' } }],
+      {},
+      provider,
+    );
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation');
+
+    expect(metric).toMatchObject({
+      averages: [undefined],
+      conflictCounts: [1],
+      state: 'conflict',
+    });
+    expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviation).toBe(2);
+    expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviationConflicts).toEqual([
+      {
+        kind: 'score_vs_histogram_mean',
+        officialScore: 9,
+        histogramMean: 8,
+        reason: 'derived histogram mean differs materially from upstream score',
+      },
+    ]);
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'COHORT_RATING_SCORE_HISTOGRAM_CONFLICT',
+        state: 'conflict',
+        message: expect.stringContaining('score=9 histogramMean=8'),
+      }),
+    );
+    expect(result.warnings.some((warning) => warning.code === 'COHORT_METRIC_CONFLICT')).toBe(false);
+    expect(result.state).toBe('conflict');
   });
 
   it('keeps missing detail metrics partial and never substitutes zero', async () => {
@@ -240,7 +549,7 @@ describe('subject cohort comparison', () => {
       limit: 1,
     });
     expect(result.metrics.every((metric) => metric.averages.length === 1)).toBe(true);
-    expect(result.metrics.map((metric) => metric.averages)).toEqual([[8], [10], [12]]);
+    expect(result.metrics.map((metric) => metric.averages)).toEqual([[8], [10], [12], [0]]);
     expect(result.metrics.every((metric) => metric.delta === undefined)).toBe(true);
     expect(provider.searchRequests[0]).toMatchObject({
       filter: {

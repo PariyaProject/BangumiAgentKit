@@ -41,7 +41,7 @@ function numberLabel(value: number | undefined, digits: number): string {
 }
 
 function metricDigits(key: string): number {
-  return key === 'score' ? 2 : 1;
+  return key === 'score' || key === 'ratingStandardDeviation' ? 2 : 1;
 }
 
 function deltaLabel(metric: SubjectCohortComparisonViewModel['metrics'][number]): string {
@@ -67,7 +67,7 @@ function metricCoverageLabel(
   key: SubjectCohortComparisonViewModel['metrics'][number]['key'],
 ): string {
   const coverage = cohort.coverage.metrics[key];
-  return `${coverage.valid} 有效 · ${coverage.missing} 缺失 · ${coverage.conflicts} 冲突 · ${stateLabel(coverage.state)}`;
+  return `${coverage.valid} 有效 · ${coverage.partial} 部分 · ${coverage.missing} 缺失 · ${coverage.conflicts} 冲突 · ${coverage.notComputable} 不可计算 · ${stateLabel(coverage.state)}`;
 }
 
 export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardProps> = ({
@@ -183,10 +183,39 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                         <span style={{ color: theme.textMuted }}>#{subject.id}</span>
                       </div>
                       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
-                        评分 {numberLabel(subject.score, 2)} · 热度{' '}
-                        {numberLabel(subject.collectionTotal, 0)} · 报告话数{' '}
-                        {numberLabel(subject.episodesReported, 0)}
+                        评分 {numberLabel(subject.score, 2)} · 评分人数{' '}
+                        {subject.ratingCountState === 'invalid'
+                          ? '无效'
+                          : numberLabel(subject.ratingCount, 0)}{' '}
+                        · 热度{' '}
+                        {numberLabel(subject.collectionTotal, 0)}
+                        {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} · σ{' '}
+                        {numberLabel(subject.ratingStandardDeviation, 2)}（n=
+                        {numberLabel(subject.ratingHistogramPopulation, 0)}）
                       </div>
+                      {(subject.ratingStandardDeviationConflicts || []).map((conflict, index) => (
+                        <div
+                          key={`${subject.id}-rating-conflict-${index}`}
+                          style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.35 }}
+                        >
+                          评分标准差冲突：
+                          {conflict.kind === 'score_vs_histogram_mean'
+                            ? `官方评分 ${numberLabel(conflict.officialScore, 2)} vs 直方图均值 ${numberLabel(conflict.histogramMean, 2)}`
+                            : `discovery 人数 ${numberLabel(conflict.discoveryRatingCount, 0)} vs 详情总数 ${numberLabel(conflict.detailRatingTotal, 0)}`}
+                        </div>
+                      ))}
+                      {subject.ratingHistogramTotalValidation &&
+                      subject.ratingHistogramTotalValidation.state !== 'match' ? (
+                        <div
+                          style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.35 }}
+                        >
+                          详情评分总数
+                          {subject.ratingHistogramTotalValidation.state === 'invalid'
+                            ? '无效'
+                            : ` ${numberLabel(subject.ratingHistogramTotalValidation.detailRatingTotal, 0)}`}
+                          {' '}与直方图样本 {numberLabel(subject.ratingHistogramTotalValidation.histogramPopulation, 0)} 不匹配。
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -232,6 +261,11 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
               <div>
                 <div style={{ color: theme.text, fontWeight: 700 }}>{metric.label}</div>
                 <div style={{ color: theme.textMuted, fontSize: '9px' }}>{metric.sourceField}</div>
+                {metric.formula ? (
+                  <div style={{ color: theme.textMuted, fontSize: '9px' }}>
+                    公式 {metric.formula.id} v{metric.formula.version}
+                  </div>
+                ) : null}
               </div>
               {viewModel.cohorts.map((cohort, index) => (
                 <div key={`${metric.key}-${index}`} style={{ color: theme.textMuted }}>
@@ -267,6 +301,12 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
         条、 {viewModel.coverage.evidence.bytes}/{viewModel.coverage.evidence.maxBytes} 字节
         {viewModel.coverage.evidence.omitted > 0
           ? `（省略 ${viewModel.coverage.evidence.omitted}，去重 ${viewModel.coverage.evidence.deduplicated}）`
+          : ''}
+        {viewModel.coverage.overlap.count > 0
+          ? ` · 两侧重复 ${viewModel.coverage.overlap.count} 项（仍分别计入均值）：${viewModel.coverage.overlap.subjectIds
+              .slice(0, 12)
+              .map((id) => `#${id}`)
+              .join(', ')}${viewModel.coverage.overlap.count > 12 ? ' …' : ''}`
           : ''}
       </div>
 
