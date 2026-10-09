@@ -2187,10 +2187,49 @@
       "user_question": "某动画的评分标准差是否明显高于同季平均？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "packages/discovery/src/cohort.ts",
+        "packages/provider-core/src/providers.ts",
+        "packages/tools/src/definitions/discovery-tools.ts",
+        "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+        "apps/mcp/src/result-presenter.ts",
+        "apps/standalone/src/presenter.ts",
+        "tests/discovery/cohort.test.ts",
+        "tests/provider/provider-official.test.ts",
+        "tests/integration/mcp-result-presenter.test.ts",
+        "tests/integration/tool-direct-execute-discovery.test.ts",
+        "tests/render/subject-cohort-comparison.test.ts",
+        "tests/standalone/subject-cohort-command.test.ts"
+      ],
+      "next_action": "Run #95 PR #124 implements the anonymous bounded cohort rating-dispersion metric via bangumi.rating.population_sd.v1 and has engineering/test evidence below. No current-source Agent/MCP answer is accepted; keep A01 UNASSESSED. Only after exact Candidate CI and GPT-6 Luna Max review PASS, make at most one anonymous read-only compare_subject_cohorts attempt with explicit sample, coverage, overlap, and non-inferential caveats. Never exercise OAuth, community, QQ, or TIM for this scenario.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "capabilities": [
+          "bangumi.compare_subject_cohorts",
+          "bangumi.aggregate_subject_cohort",
+          "bangumi.render_subject_cohort_comparison",
+          "bangumi.render_subject_cohort_aggregation"
+        ],
+        "implementation": [
+          "packages/discovery/src/cohort.ts",
+          "packages/provider-core/src/providers.ts",
+          "packages/tools/src/definitions/discovery-tools.ts",
+          "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
+          "apps/mcp/src/result-presenter.ts",
+          "apps/standalone/src/presenter.ts"
+        ],
+        "tests": [
+          "tests/discovery/cohort.test.ts",
+          "tests/provider/provider-official.test.ts",
+          "tests/integration/mcp-result-presenter.test.ts",
+          "tests/integration/tool-direct-execute-discovery.test.ts",
+          "tests/render/subject-cohort-comparison.test.ts",
+          "tests/standalone/subject-cohort-command.test.ts"
+        ],
+        "acceptance_limit": "Engineering implementation evidence only; no current-source Agent/MCP answer is accepted, so A01 remains UNASSESSED."
+      }
     },
     {
       "id": "A02",
