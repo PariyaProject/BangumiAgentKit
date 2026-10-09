@@ -34,6 +34,7 @@ export const A01_EXPECTED_QUERY_ARGUMENTS: {
   maxSubjects: 8;
 };
 
+export function expectedA01QueryPlan(index: 0 | 1): Record<string, unknown>;
 export function canonicalJson(value: unknown): string;
 export function sha256(value: string): string;
 export function expectedA01AnswerLines(result: unknown): {

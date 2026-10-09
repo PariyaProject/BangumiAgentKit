@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  A01_EXPECTED_QUERY_ARGUMENTS,
+  expectedA01QueryPlan,
+} from '../../scripts/acceptance/a01-agent-answer-check.mjs';
+import {
   COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   compileDiscoveryPlan,
   getSourceCapabilityMatrix,
@@ -32,6 +36,48 @@ describe('discovery capability compiler', () => {
       kind: 'search',
       request: { sort: 'heat', filter: { airDate: ['>=2026-07-01', '<2026-10-01'] } },
     });
+  });
+
+  it('compiles both fixed A01 cohorts to the exact validated bounded search plans', () => {
+    const budget = {
+      maxPages: 6,
+      maxCandidates: 300,
+      maxHydrations: 60,
+      concurrency: 6,
+      maxConceptProbes: 8,
+      maxReturnedItems: 8,
+    };
+    for (const index of [0, 1] as const) {
+      const input = A01_EXPECTED_QUERY_ARGUMENTS.cohorts[index].query;
+      const plan = compileDiscoveryPlan(normalizeDiscoveryQuery({
+        ...input,
+        limit: A01_EXPECTED_QUERY_ARGUMENTS.maxSubjects,
+        budget,
+      }));
+
+      expect(plan).toEqual(expectedA01QueryPlan(index));
+      expect(plan.operation).toBe('searchSubjects');
+      const searchStep = plan.steps[0];
+      expect(searchStep?.kind).toBe('search');
+      if (searchStep?.kind !== 'search') throw new Error('expected one search step');
+      expect(searchStep.request).toMatchObject({
+        keyword: index === 0 ? '少女终末旅行' : '',
+        limit: 20,
+        offset: 0,
+        sort: 'match',
+        filter: {
+          type: [2],
+          airDate: ['>=2017-10-01', '<2018-01-01'],
+          nsfw: false,
+        },
+      });
+      expect(plan.postFilters.map((filter) => filter.field)).toEqual(
+        index === 0 ? ['categories'] : [],
+      );
+      expect(plan.hydrationRequirements.map((requirement) => requirement.reason)).toEqual(
+        index === 0 ? ['nsfw_filter', 'category_filter'] : ['nsfw_filter'],
+      );
+    }
   });
 
   it('compiles the D05 current-season multi-tag heat query to exact AND-tag and date filters', () => {

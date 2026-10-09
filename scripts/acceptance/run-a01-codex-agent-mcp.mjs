@@ -509,6 +509,10 @@ function publicResultProjection(result) {
   const metric = result?.metrics?.find((item) => item?.key === 'ratingStandardDeviation');
   return {
     state: result?.state ?? 'unavailable',
+    comparisonMetrics: (result?.metrics ?? []).map((metric) => ({
+      key: metric?.key,
+      state: metric?.state,
+    })),
     formulaVersion: result?.formulaVersion ?? null,
     cohorts: cohorts.map((cohort) => ({
       label: cohort.label,

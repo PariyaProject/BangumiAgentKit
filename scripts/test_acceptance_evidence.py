@@ -1748,7 +1748,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {
                 'evidenceProvenance': {
                     **report['evidenceProvenance'],
-                    'signature': 'A' + report['evidenceProvenance']['signature'][1:],
+                    'signature': (
+                        ('B' if report['evidenceProvenance']['signature'][0] == 'A' else 'A')
+                        + report['evidenceProvenance']['signature'][1:]
+                    ),
                 },
             },
             {'privacy': {**report['privacy'], 'accountDataRead': True}},
@@ -1947,6 +1950,85 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             })
         return subject
 
+    @staticmethod
+    def _a01_query_plan(index):
+        def plan_filter(field, operator, value, classification='PUSHDOWN'):
+            return {
+                'field': field,
+                'classification': classification,
+                'operator': operator,
+                'value': value,
+                'source': 'official_v0',
+                'operation': 'searchSubjects',
+            }
+
+        pushdown = [
+            *([plan_filter('keyword', 'eq', '少女终末旅行')] if index == 0 else []),
+            plan_filter('media', 'in', ['anime']),
+            plan_filter('dateRange', 'range', {
+                'from': '2017-10-01',
+                'to': '2018-01-01',
+            }),
+            plan_filter('nsfw', 'eq', False),
+            plan_filter('sort:relevance', 'eq', 'relevance'),
+        ]
+        post_filters = (
+            [plan_filter('categories', 'in', ['tv'], 'POST_FILTER')]
+            if index == 0 else []
+        )
+        hydration_requirements = [
+            {'reason': 'nsfw_filter', 'fields': ['nsfw'], 'source': 'candidate_or_detail'},
+            *([{'reason': 'category_filter', 'fields': ['platform'], 'source': 'candidate_or_detail'}]
+              if index == 0 else []),
+        ]
+        return {
+            'source': 'official_v0',
+            'operation': 'searchSubjects',
+            'season': '2017-autumn',
+            'sort': 'relevance',
+            'order': 'desc',
+            'totalKind': 'estimated',
+            'pushdown': pushdown,
+            'postFilters': post_filters,
+            'derivedFilters': [],
+            'unsupported': [],
+            'hydrationRequired': True,
+            'hydrationRequirements': hydration_requirements,
+            'requestedTopN': 8,
+            'resultMode': 'all',
+            'quality': 'bounded_exact',
+            'budget': {
+                'maxPages': 6,
+                'maxCandidates': 300,
+                'maxHydrations': 60,
+                'concurrency': 6,
+                'maxConceptProbes': 8,
+                'maxReturnedItems': 8,
+            },
+            'steps': [{
+                'kind': 'search',
+                'source': 'official_v0',
+                'operation': 'searchSubjects',
+                'page': 0,
+                'request': {
+                    'keyword': '少女终末旅行' if index == 0 else '',
+                    'limit': 20,
+                    'offset': 0,
+                    'sort': 'match',
+                    'filter': {
+                        'type': [2],
+                        'airDate': ['>=2017-10-01', '<2018-01-01'],
+                        'nsfw': False,
+                    },
+                },
+            }],
+            'limitations': [
+                'Enumeration is bounded by maxPages and maxCandidates.',
+                'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+                'all requests a complete attempt; budget exhaustion is reported as partial.',
+            ],
+        }
+
     def _a01_cohort(self, index):
         query = GENERATOR.CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]
         effective_query = {
@@ -1999,25 +2081,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'label': query['label'],
             'query': effective_query,
             'querySummary': f"{query['label']} · 2017-autumn · official-v0 bounded sample",
-            'queryPlan': {
-                'source': 'official_v0',
-                'operation': 'searchSubjects' if index == 0 else 'browseSubjects',
-                'season': '2017-autumn',
-                'totalKind': 'estimated',
-                'requestedTopN': 8,
-                'resultMode': 'all',
-                'quality': 'bounded_exact',
-                'budget': {
-                    'maxPages': 6,
-                    'maxCandidates': 300,
-                    'maxHydrations': 60,
-                    'concurrency': 6,
-                    'maxConceptProbes': 8,
-                    'maxReturnedItems': 8,
-                },
-                'steps': [],
-                'limitations': ['bounded sample only'],
-            },
+            'queryPlan': self._a01_query_plan(index),
             'queryState': query_state,
             'queryCoverage': query_coverage,
             'detailHydrations': {
@@ -2033,7 +2097,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         observed_at = '2026-10-09T10:00:00.000Z'
         official_source = {
             'class': 'official-v0',
-            'operations': ['searchSubjects', 'browseSubjects', 'getSubjectById'],
+            'operations': ['searchSubjects', 'getSubjectById'],
             'attemptedAt': observed_at,
             'retrievedAt': observed_at,
         }
@@ -2059,15 +2123,6 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'class': 'official_v0',
                     'provider': 'bangumi',
                     'version': 'v0',
-                    'operation': 'browseSubjects',
-                },
-                'retrievedAt': observed_at,
-            },
-            {
-                'source': {
-                    'class': 'official_v0',
-                    'provider': 'bangumi',
-                    'version': 'v0',
                     'operation': 'getSubjectById',
                 },
                 'retrievedAt': observed_at,
@@ -2084,6 +2139,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         ]
         return {
             'state': 'partial',
+            'comparisonMetrics': [
+                {'key': 'score', 'state': 'partial'},
+                {'key': 'heat', 'state': 'partial'},
+                {'key': 'episodesReported', 'state': 'partial'},
+                {'key': 'ratingStandardDeviation', 'state': 'partial'},
+            ],
             'formulaVersion': 'subject-cohort-comparison-v1',
             'cohorts': [self._a01_cohort(0), self._a01_cohort(1)],
             'ratingStandardDeviation': {
@@ -2115,8 +2176,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'truncated': True,
                 'overlap': {'count': 1, 'subjectIds': [218707]},
                 'evidence': {
-                    'retained': 4, 'omitted': 0, 'deduplicated': 0,
-                    'omittedByBound': 0, 'bytes': 400, 'maxRefs': 256,
+                    'retained': 3, 'omitted': 0, 'deduplicated': 0,
+                    'omittedByBound': 0, 'bytes': 300, 'maxRefs': 256,
                     'maxBytes': 96_000, 'truncated': False,
                 },
                 'warnings': {'retained': 1, 'omitted': 0, 'max': 12, 'truncated': False},
@@ -2277,6 +2338,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             if index == 1:
                 cohort['subjects'][1] = self._a01_subject(218708, '样本作品')
 
+        result['state'] = 'complete'
+        for metric in result['comparisonMetrics']:
+            metric['state'] = 'complete'
+
         metric = result['ratingStandardDeviation']
         metric.update({
             'averages': [1.2, 1.2],
@@ -2338,6 +2403,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             lambda report: report['result']['cohorts'][1]['subjects'].pop(),
             lambda report: report['result']['ratingStandardDeviation']['missingCounts'].__setitem__(1, 0),
             lambda report: report['result']['cohorts'][0]['query'].update({'tags': ['extra']}),
+            lambda report: report['result']['cohorts'][0]['queryPlan']['steps'][0]['request']['filter'].update({'airDate': ['>=2018-01-01', '<2018-04-01']}),
+            lambda report: report['result']['cohorts'][0]['queryPlan']['postFilters'].clear(),
+            lambda report: report['result']['cohorts'][0]['queryPlan']['hydrationRequirements'].pop(),
+            lambda report: report['result']['cohorts'][1]['queryPlan'].update({'operation': 'browseSubjects'}),
+            lambda report: report['result']['cohorts'][1]['detailHydrations'].update({'attempted': 0}),
+            lambda report: report['result'].update({'state': 'complete'}),
             lambda report: report['answerChecks'].update({'exactRows': False}),
             lambda report: report['privacy'].update({'accountDataRead': True}),
             lambda report: report['toolCalls'].append({'name': 'bangumi.get_subject', 'state': 'DONE'}),

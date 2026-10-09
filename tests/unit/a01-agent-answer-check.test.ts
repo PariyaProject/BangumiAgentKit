@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { compileDiscoveryPlan, normalizeDiscoveryQuery } from '@bangumi-agent-kit/discovery';
 import {
   A01_EXPECTED_QUERY_ARGUMENTS,
   expectedA01AnswerLines,
@@ -76,24 +77,7 @@ function cohort(label: string, query: unknown, rows: ReturnType<typeof subject>[
       query: {
         state: 'partial',
         coverage: { ...queryCoverage },
-        plan: {
-          source: 'official_v0',
-          operation: 'searchSubjects',
-          season: '2017-autumn',
-          totalKind: 'estimated',
-          resultMode: 'all',
-          pushdown: [],
-          postFilters: [],
-          derivedFilters: [],
-          unsupported: [],
-          hydrationRequired: true,
-          hydrationRequirements: [],
-          requestedTopN: 8,
-          quality: 'experimental',
-          budget: { maxRequests: 12 },
-          steps: [],
-          limitations: ['bounded return sample'],
-        },
+        plan: compileDiscoveryPlan(normalizeDiscoveryQuery(resultQuery)),
       },
       detailHydrationsAttempted: rows.length,
       detailHydrationsSucceeded: rows.length,
@@ -113,6 +97,24 @@ function cohort(label: string, query: unknown, rows: ReturnType<typeof subject>[
 }
 
 function fixture() {
+  const ratingMetric = {
+    key: 'ratingStandardDeviation',
+    label: '平均评分总体标准差',
+    sourceField: 'subject.rating.count[1..10]',
+    averages: [undefined, undefined],
+    partialAverages: [1.23456, 1.790115],
+    validCounts: [1, 2],
+    partialCounts: [0, 0],
+    missingCounts: [0, 0],
+    conflictCounts: [0, 0],
+    notComputableCounts: [0, 0],
+    formula: {
+      id: 'bangumi.rating.population_sd.v1',
+      version: 1,
+      description: 'population standard deviation',
+    },
+    state: 'partial',
+  };
   const cohorts = [
     cohort('目标作品', A01_EXPECTED_QUERY_ARGUMENTS.cohorts[0].query, [
       { ...subject(218707, '少女終末旅行', 1.23456), displayName: '少女终末旅行' },
@@ -126,24 +128,10 @@ function fixture() {
     state: 'partial',
     cohorts,
     metrics: [
-      {
-        key: 'ratingStandardDeviation',
-        label: '平均评分总体标准差',
-        sourceField: 'subject.rating.count[1..10]',
-        averages: [undefined, undefined],
-        partialAverages: [1.23456, 1.790115],
-        validCounts: [1, 2],
-        partialCounts: [0, 0],
-        missingCounts: [0, 0],
-        conflictCounts: [0, 0],
-        notComputableCounts: [0, 0],
-        formula: {
-          id: 'bangumi.rating.population_sd.v1',
-          version: 1,
-          description: 'population standard deviation',
-        },
-        state: 'partial',
-      },
+      { key: 'score', state: 'partial' },
+      { key: 'heat', state: 'partial' },
+      { key: 'episodesReported', state: 'partial' },
+      ratingMetric,
     ],
     formulaVersion: 'subject-cohort-comparison-v1',
     coverage: {
@@ -156,13 +144,13 @@ function fixture() {
       detailHydrationsFailed: 0,
       truncated: true,
       overlap: { subjectIds: [218707], count: 1 },
-      evidence: { retained: 4, omitted: 0, truncated: false },
+      evidence: { retained: 3, omitted: 0, truncated: false },
       warnings: { truncated: false },
     },
     source: {
       official: {
         class: 'official-v0',
-        operations: ['searchSubjects', 'browseSubjects', 'getSubjectById'],
+        operations: ['searchSubjects', 'getSubjectById'],
         attemptedAt: '2026-10-09T00:00:00.000Z',
         retrievedAt: '2026-10-09T00:00:01.000Z',
       },
@@ -182,15 +170,6 @@ function fixture() {
           version: 'v0',
           operation: 'searchSubjects',
           experimental: true,
-        },
-        retrievedAt: '2026-10-09T00:00:01.000Z',
-      },
-      {
-        source: {
-          class: 'official_v0',
-          provider: 'bangumi',
-          version: 'v0',
-          operation: 'browseSubjects',
         },
         retrievedAt: '2026-10-09T00:00:01.000Z',
       },
@@ -430,14 +409,52 @@ describe('A01 current-source answer checker', () => {
     expect(verified.checks.queryPlan).toBe(false);
   });
 
+  it('rejects a changed executed request, TV post-filter, hydration plan, or B operation', () => {
+    const mutations = [
+      (result: ReturnType<typeof fixture>['result']) => {
+        const plan = result.cohorts[0]!.coverage.query.plan;
+        const step = Reflect.get(plan, 'steps') as unknown[];
+        const request = Reflect.get(step[0] as object, 'request') as object;
+        const filter = Reflect.get(request, 'filter') as object;
+        Reflect.set(filter, 'airDate', ['>=2018-01-01', '<2018-04-01']);
+      },
+      (result: ReturnType<typeof fixture>['result']) => {
+        const filters = Reflect.get(result.cohorts[0]!.coverage.query.plan, 'postFilters') as unknown[];
+        filters.splice(0);
+      },
+      (result: ReturnType<typeof fixture>['result']) => {
+        const requirements = Reflect.get(
+          result.cohorts[0]!.coverage.query.plan,
+          'hydrationRequirements',
+        ) as unknown[];
+        requirements.pop();
+      },
+      (result: ReturnType<typeof fixture>['result']) => {
+        Reflect.set(result.cohorts[1]!.coverage.query.plan, 'operation', 'browseSubjects');
+      },
+    ];
+
+    for (const mutate of mutations) {
+      const { result, answer } = fixture();
+      mutate(result);
+      const verified = verifyA01AgentAnswer({
+        answer,
+        queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+        toolResult: { structuredContent: result },
+      });
+      expect(verified.checks.queryPlan).toBe(false);
+    }
+  });
+
   it('rejects complete aggregate metrics when query or row coverage is partial', () => {
     const { result, answer } = fixture();
-    Object.assign(result.metrics[0]!, {
+    const ratingMetric = result.metrics.find((metric) => metric.key === 'ratingStandardDeviation')!;
+    Object.assign(ratingMetric, {
       averages: [1.23456, 1.790115],
       delta: 0.555555,
       state: 'complete',
     });
-    Reflect.deleteProperty(result.metrics[0]!, 'partialAverages');
+    Reflect.deleteProperty(ratingMetric, 'partialAverages');
 
     const verified = verifyA01AgentAnswer({
       answer,
@@ -446,6 +463,30 @@ describe('A01 current-source answer checker', () => {
     });
 
     expect(verified.checks.metricCoverage).toBe(false);
+  });
+
+  it('rejects a complete top-level result state with partial queries or metric states', () => {
+    const { result, answer } = fixture();
+    result.state = 'complete';
+    const verified = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.comparisonState).toBe(false);
+  });
+
+  it('requires detail hydration attempts to cover every returned row', () => {
+    const { result, answer } = fixture();
+    result.cohorts[1]!.coverage.detailHydrationsAttempted = 1;
+    const verified = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.hydrationCoverage).toBe(false);
   });
 
   it('accepts complete aggregate metrics with complete cohort coverage and a matching delta', () => {
@@ -459,12 +500,13 @@ describe('A01 current-source answer checker', () => {
     result.coverage.cohortsComplete = 2;
     result.coverage.cohortsPartial = 0;
     result.coverage.truncated = false;
-    Object.assign(result.metrics[0]!, {
+    const ratingMetric = result.metrics.find((metric) => metric.key === 'ratingStandardDeviation')!;
+    Object.assign(ratingMetric, {
       averages: [1.23456, 1.790115],
       delta: 0.555555,
       state: 'complete',
     });
-    Reflect.deleteProperty(result.metrics[0]!, 'partialAverages');
+    Reflect.deleteProperty(ratingMetric, 'partialAverages');
     const expected = expectedA01AnswerLines(result);
     const answer = [
       ...expected.rows,
@@ -490,7 +532,8 @@ describe('A01 current-source answer checker', () => {
       missing: 1,
       state: 'partial',
     });
-    Object.assign(result.metrics[0]!, {
+    const ratingMetric = result.metrics.find((metric) => metric.key === 'ratingStandardDeviation')!;
+    Object.assign(ratingMetric, {
       averages: [undefined, undefined],
       partialAverages: [1.23456, 1.23456],
       delta: undefined,
@@ -518,7 +561,8 @@ describe('A01 current-source answer checker', () => {
       conflicts: 1,
       state: 'conflict',
     });
-    Object.assign(result.metrics[0]!, {
+    result.state = 'conflict';
+    Object.assign(ratingMetric, {
       averages: [undefined, undefined],
       partialAverages: [1.23456, 1.23456],
       missingCounts: [0, 0],

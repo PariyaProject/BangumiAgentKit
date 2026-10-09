@@ -38,7 +38,6 @@ export const A01_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
 
 const A01_OFFICIAL_OPERATIONS = new Set([
   'searchSubjects',
-  'browseSubjects',
   'getSubjectById',
 ]);
 const A01_EXPECTED_EFFECTIVE_QUERIES = A01_EXPECTED_QUERY_ARGUMENTS.cohorts.map(
@@ -76,6 +75,87 @@ const A01_TERMINAL_METRIC_STATES = [
   'unsupported',
   'stale',
 ];
+const A01_METRIC_KEYS = ['score', 'heat', 'episodesReported', 'ratingStandardDeviation'];
+const A01_TERMINAL_QUERY_STATES = [
+  'upstream_error',
+  'auth_required',
+  'permission_denied',
+  'unavailable',
+  'unsupported',
+  'stale',
+];
+const A01_PLAN_LIMITATIONS = [
+  'Enumeration is bounded by maxPages and maxCandidates.',
+  'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+  'all requests a complete attempt; budget exhaustion is reported as partial.',
+];
+const A01_DATE_RANGE = { from: '2017-10-01', to: '2018-01-01' };
+
+function a01PlanFilter(field, operator, value, classification = 'PUSHDOWN') {
+  return {
+    field,
+    classification,
+    operator,
+    value,
+    source: 'official_v0',
+    operation: 'searchSubjects',
+  };
+}
+
+export function expectedA01QueryPlan(index) {
+  const pushdown = [
+    ...(index === 0 ? [a01PlanFilter('keyword', 'eq', '少女终末旅行')] : []),
+    a01PlanFilter('media', 'in', ['anime']),
+    a01PlanFilter('dateRange', 'range', A01_DATE_RANGE),
+    a01PlanFilter('nsfw', 'eq', false),
+    a01PlanFilter('sort:relevance', 'eq', 'relevance'),
+  ];
+  const postFilters = index === 0
+    ? [a01PlanFilter('categories', 'in', ['tv'], 'POST_FILTER')]
+    : [];
+  const hydrationRequirements = [
+    { reason: 'nsfw_filter', fields: ['nsfw'], source: 'candidate_or_detail' },
+    ...(index === 0
+      ? [{ reason: 'category_filter', fields: ['platform'], source: 'candidate_or_detail' }]
+      : []),
+  ];
+  return {
+    source: 'official_v0',
+    operation: 'searchSubjects',
+    season: '2017-autumn',
+    sort: 'relevance',
+    order: 'desc',
+    totalKind: 'estimated',
+    pushdown,
+    postFilters,
+    derivedFilters: [],
+    unsupported: [],
+    hydrationRequired: true,
+    hydrationRequirements,
+    requestedTopN: A01_MAX_SUBJECTS,
+    resultMode: 'all',
+    quality: 'bounded_exact',
+    budget: A01_EXPECTED_QUERY_BUDGET,
+    steps: [{
+      kind: 'search',
+      source: 'official_v0',
+      operation: 'searchSubjects',
+      page: 0,
+      request: {
+        keyword: index === 0 ? '少女终末旅行' : '',
+        limit: 20,
+        offset: 0,
+        sort: 'match',
+        filter: {
+          type: [2],
+          airDate: ['>=2017-10-01', '<2018-01-01'],
+          nsfw: false,
+        },
+      },
+    }],
+    limitations: A01_PLAN_LIMITATIONS,
+  };
+}
 
 export function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -221,7 +301,9 @@ function exactTarget(cohorts) {
 function queryPlanMatches(cohorts) {
   return cohorts?.length === 2 && cohorts.every(
     (cohort, index) =>
-      canonicalJson(cohort?.query) === canonicalJson(A01_EXPECTED_EFFECTIVE_QUERIES[index]),
+      canonicalJson(cohort?.query) === canonicalJson(A01_EXPECTED_EFFECTIVE_QUERIES[index]) &&
+      canonicalJson(cohort?.coverage?.query?.plan) ===
+        canonicalJson(expectedA01QueryPlan(index)),
   );
 }
 
@@ -384,6 +466,72 @@ function metricCoverageMatches(result) {
   );
 }
 
+function expectedComparisonState(queryStates, metricStates) {
+  for (const state of A01_TERMINAL_QUERY_STATES) {
+    if (queryStates.includes(state)) return state;
+  }
+  if (queryStates.every((state) => state === 'not_found')) return 'not_found';
+  if (metricStates.includes('conflict')) return 'conflict';
+  if (metricStates.every((state) => state === 'not_computable')) return 'not_computable';
+  if (
+    queryStates.some((state) => state !== 'ok') ||
+    metricStates.some((state) => state !== 'complete')
+  ) return 'partial';
+  return 'complete';
+}
+
+function comparisonStateMatches(result) {
+  const cohorts = result?.cohorts;
+  const metrics = result?.metrics;
+  if (!Array.isArray(cohorts) || cohorts.length !== 2 || !Array.isArray(metrics)) return false;
+  if (metrics.length !== A01_METRIC_KEYS.length) return false;
+  const states = new Map();
+  for (const metric of metrics) {
+    if (
+      !metric ||
+      !A01_METRIC_KEYS.includes(metric.key) ||
+      states.has(metric.key) ||
+      !A01_METRIC_STATES.has(metric.state)
+    ) return false;
+    states.set(metric.key, metric.state);
+  }
+  if (!A01_METRIC_KEYS.every((key) => states.has(key))) return false;
+  const queryStates = cohorts.map((cohort) => cohort?.coverage?.query?.state);
+  if (queryStates.some((state) => typeof state !== 'string')) return false;
+  return result.state === expectedComparisonState(
+    queryStates,
+    A01_METRIC_KEYS.map((key) => states.get(key)),
+  );
+}
+
+function hydrationCoverageMatches(result) {
+  const cohorts = result?.cohorts;
+  const coverage = result?.coverage;
+  if (!Array.isArray(cohorts) || cohorts.length !== 2 || !coverage) return false;
+  const totals = { attempted: 0, succeeded: 0, failed: 0 };
+  for (const cohort of cohorts) {
+    const rows = cohort?.subjects;
+    const hydration = cohort?.coverage;
+    const counts = {
+      attempted: hydration?.detailHydrationsAttempted,
+      succeeded: hydration?.detailHydrationsSucceeded,
+      failed: hydration?.detailHydrationsFailed,
+    };
+    if (
+      !Array.isArray(rows) ||
+      Object.values(counts).some((value) => !Number.isSafeInteger(value) || value < 0) ||
+      counts.attempted !== rows.length ||
+      counts.succeeded + counts.failed !== counts.attempted
+    ) return false;
+    for (const key of Object.keys(totals)) totals[key] += counts[key];
+  }
+  return (
+    coverage.detailHydrationsAttempted === totals.attempted &&
+    coverage.detailHydrationsSucceeded === totals.succeeded &&
+    coverage.detailHydrationsFailed === totals.failed
+  );
+}
+
 function officialEvidenceMatches(result) {
   const operations = result?.source?.official?.operations;
   const sources = (Array.isArray(result?.evidence) ? result.evidence : [])
@@ -497,6 +645,8 @@ export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }) {
     metricFormula: metric?.formula?.id === 'bangumi.rating.population_sd.v1' &&
       metric?.formula?.version === 1,
     metricCoverage: metricCoverageMatches(result),
+    hydrationCoverage: hydrationCoverageMatches(result),
+    comparisonState: comparisonStateMatches(result),
     overlap: overlapMatches(result),
     officialProvenance: result?.source?.official?.class === 'official-v0' &&
       Array.isArray(result.source.official.operations) &&

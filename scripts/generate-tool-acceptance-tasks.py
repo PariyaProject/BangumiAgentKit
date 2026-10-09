@@ -456,6 +456,7 @@ CODEX_G20_ANSWER_CHECK_FIELDS = {
 CODEX_A01_ANSWER_CHECK_FIELDS = {
     'fixedArguments', 'resultStructuredContent', 'targetIdentity', 'queryPlan',
     'sampleBound', 'returnedRowCount', 'metricFormula', 'metricCoverage',
+    'hydrationCoverage', 'comparisonState',
     'overlap', 'officialProvenance', 'officialPublicOperations', 'answerPresent',
     'exactRows', 'exactMetricLine', 'exactScopeLine', 'rejectsUnsupportedSignificance',
     'rejectsUnsupportedCompleteness', 'rejectsUnsupportedInterpretation',
@@ -480,7 +481,7 @@ CODEX_A01_CANDIDATE_GATE_FIELDS = {
 }
 CODEX_A01_PRIVACY_FIELDS = set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
 CODEX_A01_RESULT_FIELDS = {
-    'state', 'formulaVersion', 'cohorts', 'ratingStandardDeviation',
+    'state', 'comparisonMetrics', 'formulaVersion', 'cohorts', 'ratingStandardDeviation',
     'coverage', 'source', 'retrievedAt', 'evidence', 'warnings', 'limitations',
 }
 CODEX_A01_COHORT_FIELDS = {
@@ -502,6 +503,83 @@ CODEX_A01_QUERY_BUDGET = {
     'maxConceptProbes': 8,
     'maxReturnedItems': 8,
 }
+CODEX_A01_PLAN_LIMITATIONS = [
+    'Enumeration is bounded by maxPages and maxCandidates.',
+    'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+    'all requests a complete attempt; budget exhaustion is reported as partial.',
+]
+
+
+def codex_a01_expected_query_plan(index: int) -> dict:
+    """Exact compiler plan/request for one of the fixed A01 cohorts."""
+    if index not in (0, 1):
+        raise ValueError('A01 has exactly two fixed cohort plans')
+
+    def filter_row(field: str, operator: str, value: object, classification: str = 'PUSHDOWN') -> dict:
+        return {
+            'field': field,
+            'classification': classification,
+            'operator': operator,
+            'value': value,
+            'source': 'official_v0',
+            'operation': 'searchSubjects',
+        }
+
+    pushdown = [
+        *([filter_row('keyword', 'eq', '少女终末旅行')] if index == 0 else []),
+        filter_row('media', 'in', ['anime']),
+        filter_row('dateRange', 'range', {
+            'from': '2017-10-01',
+            'to': '2018-01-01',
+        }),
+        filter_row('nsfw', 'eq', False),
+        filter_row('sort:relevance', 'eq', 'relevance'),
+    ]
+    post_filters = (
+        [filter_row('categories', 'in', ['tv'], 'POST_FILTER')]
+        if index == 0 else []
+    )
+    hydration_requirements = [
+        {'reason': 'nsfw_filter', 'fields': ['nsfw'], 'source': 'candidate_or_detail'},
+        *([{'reason': 'category_filter', 'fields': ['platform'], 'source': 'candidate_or_detail'}]
+          if index == 0 else []),
+    ]
+    return {
+        'source': 'official_v0',
+        'operation': 'searchSubjects',
+        'season': '2017-autumn',
+        'sort': 'relevance',
+        'order': 'desc',
+        'totalKind': 'estimated',
+        'pushdown': pushdown,
+        'postFilters': post_filters,
+        'derivedFilters': [],
+        'unsupported': [],
+        'hydrationRequired': True,
+        'hydrationRequirements': hydration_requirements,
+        'requestedTopN': CODEX_A01_QUERY_ARGUMENTS['maxSubjects'],
+        'resultMode': 'all',
+        'quality': 'bounded_exact',
+        'budget': dict(CODEX_A01_QUERY_BUDGET),
+        'steps': [{
+            'kind': 'search',
+            'source': 'official_v0',
+            'operation': 'searchSubjects',
+            'page': 0,
+            'request': {
+                'keyword': '少女终末旅行' if index == 0 else '',
+                'limit': 20,
+                'offset': 0,
+                'sort': 'match',
+                'filter': {
+                    'type': [2],
+                    'airDate': ['>=2017-10-01', '<2018-01-01'],
+                    'nsfw': False,
+                },
+            },
+        }],
+        'limitations': list(CODEX_A01_PLAN_LIMITATIONS),
+    }
 CODEX_A01_METRIC_FIELDS = {
     'key', 'label', 'sourceField', 'averages', 'partialAverages', 'validCounts',
     'partialCounts', 'missingCounts', 'conflictCounts', 'notComputableCounts',
@@ -523,7 +601,7 @@ CODEX_A01_EVIDENCE_SOURCE_FIELDS = {
     'class', 'provider', 'version', 'operation', 'experimental',
 }
 CODEX_A01_OFFICIAL_OPERATIONS = {
-    'searchSubjects', 'browseSubjects', 'getSubjectById',
+    'searchSubjects', 'getSubjectById',
 }
 CODEX_A01_SUBJECT_FIELDS = {
     'id', 'name', 'displayName', 'date', 'ratingCount', 'ratingCountState',
@@ -1198,6 +1276,24 @@ def codex_a01_result_is_valid(result: object) -> bool:
             return 'complete'
         return 'partial'
 
+    def expected_comparison_state(query_states: list[str], metric_states: list[str]) -> str:
+        for state in (
+            'upstream_error', 'auth_required', 'permission_denied',
+            'unavailable', 'unsupported', 'stale',
+        ):
+            if state in query_states:
+                return state
+        if all(state == 'not_found' for state in query_states):
+            return 'not_found'
+        if 'conflict' in metric_states:
+            return 'conflict'
+        if all(state == 'not_computable' for state in metric_states):
+            return 'not_computable'
+        if (any(state != 'ok' for state in query_states)
+                or any(state != 'complete' for state in metric_states)):
+            return 'partial'
+        return 'complete'
+
     if (result.get('state') not in states
             or result.get('formulaVersion') != 'subject-cohort-comparison-v1'
             or not isinstance(result.get('cohorts'), list)
@@ -1207,9 +1303,27 @@ def codex_a01_result_is_valid(result: object) -> bool:
             or not isinstance(result.get('source'), dict)
             or not isinstance(result.get('evidence'), list)
             or not isinstance(result.get('warnings'), list)
+            or not isinstance(result.get('comparisonMetrics'), list)
             or not isinstance(result.get('limitations'), list)
             or not valid_time(result.get('retrievedAt'), optional=True)):
         return False
+
+    comparison_metric_keys = {
+        'score', 'heat', 'episodesReported', 'ratingStandardDeviation',
+    }
+    comparison_metric_states: dict[str, str] = {}
+    if len(result['comparisonMetrics']) != len(comparison_metric_keys):
+        return False
+    for comparison_metric in result['comparisonMetrics']:
+        if (not isinstance(comparison_metric, dict)
+                or set(comparison_metric) != {'key', 'state'}
+                or not isinstance(comparison_metric.get('key'), str)
+                or comparison_metric.get('key') not in comparison_metric_keys
+                or comparison_metric.get('key') in comparison_metric_states
+                or not isinstance(comparison_metric.get('state'), str)
+                or comparison_metric.get('state') not in states):
+            return False
+        comparison_metric_states[comparison_metric['key']] = comparison_metric['state']
 
     returned_total = 0
     complete_count = 0
@@ -1243,29 +1357,7 @@ def codex_a01_result_is_valid(result: object) -> bool:
             return False
 
         plan = cohort['queryPlan']
-        plan_fields = {
-            'source', 'operation', 'season', 'sort', 'order', 'tieBreak', 'totalKind',
-            'pushdown', 'postFilters', 'derivedFilters', 'unsupported',
-            'hydrationRequired', 'hydrationRequirements', 'requestedTopN',
-            'resultMode', 'quality', 'budget', 'steps', 'limitations',
-        }
-        if (not plan_fields.issuperset(plan)
-                or not {'source', 'operation', 'totalKind', 'requestedTopN', 'resultMode',
-                        'quality', 'budget', 'steps', 'limitations'}.issubset(plan)
-                or plan.get('source') != 'official_v0'
-                or plan.get('operation') != ('searchSubjects' if index == 0 else 'browseSubjects')
-                or plan.get('season') != '2017-autumn'
-                or plan.get('totalKind') not in {'exact', 'estimated', 'unknown'}
-                or not nonnegative_int(plan.get('requestedTopN'))
-                or plan['requestedTopN'] < 1
-                or plan['requestedTopN'] > CODEX_A01_QUERY_ARGUMENTS['maxSubjects']
-                or plan.get('resultMode') != 'all'
-                or plan.get('quality') not in {'exact', 'bounded_exact', 'partial_possible'}
-                or plan.get('budget') != CODEX_A01_QUERY_BUDGET
-                or not isinstance(plan.get('steps'), list)
-                or len(plan['steps']) > 12
-                or not isinstance(plan.get('limitations'), list)
-                or any(not isinstance(item, str) or len(item) > 500 for item in plan['limitations'])):
+        if plan != codex_a01_expected_query_plan(index):
             return False
 
         query_coverage = cohort['queryCoverage']
@@ -1323,6 +1415,7 @@ def codex_a01_result_is_valid(result: object) -> bool:
         if (set(detail) != {'attempted', 'succeeded', 'failed'}
                 or any(not nonnegative_int(detail.get(key)) for key in detail)
                 or detail['attempted'] > CODEX_A01_QUERY_ARGUMENTS['maxSubjects']
+                or detail['attempted'] != len(cohort['subjects'])
                 or detail['succeeded'] + detail['failed'] != detail['attempted']):
             return False
         for key in hydration_totals:
@@ -1529,6 +1622,15 @@ def codex_a01_result_is_valid(result: object) -> bool:
         ):
             if metric[metric_key][index] != coverage[coverage_key]:
                 return False
+    if comparison_metric_states['ratingStandardDeviation'] != metric['state']:
+        return False
+    query_states = [cohort['queryState'] for cohort in result['cohorts']]
+    metric_states = [
+        comparison_metric_states[key]
+        for key in ('score', 'heat', 'episodesReported', 'ratingStandardDeviation')
+    ]
+    if result['state'] != expected_comparison_state(query_states, metric_states):
+        return False
 
     coverage = result['coverage']
     required_coverage = CODEX_A01_RESULT_COVERAGE_FIELDS
