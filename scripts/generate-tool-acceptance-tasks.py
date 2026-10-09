@@ -3620,6 +3620,8 @@ def codex_a01_aggregate_result_is_valid(result: object) -> bool:
         expected_state = 'not_found'
     elif 'conflict' in metric_states:
         expected_state = 'conflict'
+    elif query_state == 'partial' or coverage['truncated']:
+        expected_state = 'partial'
     elif all(state == 'not_computable' for state in metric_states):
         expected_state = 'not_computable'
     elif (
@@ -3649,7 +3651,8 @@ def codex_a01_aggregate_report_is_valid(report: dict) -> bool:
         or report.get('mcpServerNames') != ['bgk_a01_aggregate_one_tool']
         or report.get('queryArguments') != CODEX_A01_AGGREGATE_ARGUMENTS
         or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('answerSha256', '')))
-        or type(report.get('answerUtf8Bytes')) is not int or report['answerUtf8Bytes'] <= 0
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= 64_000
     ):
         return False
     gate = report.get('candidateGate')

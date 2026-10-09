@@ -1178,12 +1178,49 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             for metric in summary['metrics']:
                 metric['state'] = 'complete'
 
+        def make_partial_query_with_complete_coverage(report):
+            summary = report['scenarios'][0]['result']['summary']
+            summary['query'].update({
+                'state': 'partial',
+                'scanned': 20,
+                'matched': 1,
+                'returned': 1,
+                'budgetExceeded': False,
+                'upstreamExhausted': True,
+            })
+            summary['coverage'].update({
+                'cohortsComplete': 1,
+                'cohortsPartial': 0,
+                'truncated': False,
+            })
+
+        def make_partial_coverage_all_not_computable(report):
+            result = report['scenarios'][0]['result']
+            summary = result['summary']
+            result['resultState'] = 'not_computable'
+            summary['state'] = 'not_computable'
+            for metric in summary['metrics']:
+                metric.update({
+                    'state': 'not_computable',
+                    'value': None,
+                    'valid': 0,
+                    'partial': 0,
+                    'missing': 0,
+                    'conflicts': 0,
+                    'notComputable': 1,
+                })
+
+        def make_answer_byte_count_unbounded(report):
+            report['answerUtf8Bytes'] = 64_001
+
         invalid_summaries = [
             make_metric_complete,
             make_overall_complete,
             make_budget_exceeded_untruncated,
             make_complete_with_budget_and_output_truncation,
             make_complete_with_output_truncation,
+            make_partial_query_with_complete_coverage,
+            make_partial_coverage_all_not_computable,
             lambda report: report['scenarios'][0]['result']['summary']['query'].update(
                 {'returned': 0},
             ),
@@ -1193,6 +1230,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             lambda report: report['scenarios'][0]['result']['summary']['coverage'].update({
                 'detailHydrationsSucceeded': 0,
             }),
+            make_answer_byte_count_unbounded,
         ]
         for mutate in invalid_summaries:
             with self.subTest(mutate=mutate):

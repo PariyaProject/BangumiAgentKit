@@ -175,6 +175,7 @@ function expectedOverallState(queryState, metricStates, coverageTruncated = fals
   if (terminalQueryStates.includes(queryState)) return queryState;
   if (queryState === 'not_found') return 'not_found';
   if (metricStates.some((state) => state === 'conflict')) return 'conflict';
+  if (queryState === 'partial' || coverageTruncated) return 'partial';
   if (metricStates.every((state) => state === 'not_computable')) return 'not_computable';
   if (
     queryState !== 'ok' ||
@@ -276,6 +277,8 @@ export function summarizeA01AggregateResult(result) {
   const totalReturned = result.coverage.totalSubjectsReturned;
   const queryResultState = cohort.coverage.query.state;
   const queryLimited =
+    queryCoverage.state !== 'complete' ||
+    queryResultState === 'partial' ||
     queryCoverage.budgetExceeded ||
     !queryCoverage.upstreamExhausted ||
     queryCoverage.matched > queryCoverage.returned;
