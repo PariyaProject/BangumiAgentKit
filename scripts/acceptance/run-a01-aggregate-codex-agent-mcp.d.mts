@@ -7,8 +7,8 @@ export function buildCodexExecArgs(input: {
   bundleSha256: string;
 }): string[];
 export function assertA01AggregateCandidateGate(
-  status: Record<string, any>,
-  pr: Record<string, any>,
+  status: Record<string, unknown>,
+  pr: Record<string, unknown>,
   input: { candidateSha: string; currentBaseSha: string },
 ): {
   prNumber: number;
