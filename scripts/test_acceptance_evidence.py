@@ -2375,6 +2375,18 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             report, {item['name']: item for item in self.catalog},
         ))
 
+    def test_a01_report_accepts_the_runner_prerelease_cli_version(self):
+        report = self._a01_report_fixture()
+        report['codexCliVersion'] = '0.162.0-alpha.2'
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        report['codexCliVersion'] = '0.162.0+build.1'
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
     def test_a01_report_requires_unresolved_candidate_alias_to_match_hydration_count(self):
         report = self._a01_report_fixture()
         self.assertTrue(GENERATOR.codex_a01_report_is_valid(

@@ -1820,7 +1820,10 @@ def codex_a01_report_is_valid(report: object, current_by_name: dict[str, dict]) 
             or report.get('model') != 'gpt-6-luna'
             or report.get('reasoningEffort') != 'max'
             or not isinstance(report.get('codexCliVersion'), str)
-            or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+            or not re.fullmatch(
+                r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?',
+                report['codexCliVersion'],
+            )
             or report.get('toolName') != 'bangumi.compare_subject_cohorts'
             or report.get('argumentProfile') != CODEX_A01_ARGUMENT_PROFILE
             or report.get('expectedArgumentsSha256') != _canonical_json_sha256(

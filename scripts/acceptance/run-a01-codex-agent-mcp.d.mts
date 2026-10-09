@@ -1,4 +1,5 @@
 export function validateRunnerArgs(args: string[]): 'help' | 'run';
+export function parseCodexCliVersion(output: string): string;
 export function buildCodexExecArgs(input: {
   root?: string;
   nodePath: string;

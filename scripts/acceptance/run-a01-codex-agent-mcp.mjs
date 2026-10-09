@@ -258,12 +258,18 @@ function isAncestor(baseSha, candidateSha) {
   return !result.error && result.status === 0;
 }
 
-function codexVersion() {
+export function parseCodexCliVersion(output) {
   const match = /\b(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/u.exec(
-    runCommand('codex', ['--version'], { timeout: 5000 }),
+    output,
   );
   if (!match) throw new Error('Unable to identify the Codex CLI version.');
   return match[1];
+}
+
+function codexVersion() {
+  return parseCodexCliVersion(
+    runCommand('codex', ['--version'], { timeout: 5000 }),
+  );
 }
 
 function assertCleanCandidate() {

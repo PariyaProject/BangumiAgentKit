@@ -16,6 +16,7 @@ import {
   buildCodexExecArgs,
   canonicalA01ClaimPath,
   createA01OneShotClaim,
+  parseCodexCliVersion,
   projectA01CohortQuery,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-a01-codex-agent-mcp.mjs';
@@ -94,6 +95,11 @@ describe('A01 Codex/MCP runner gates', () => {
     expect(validateRunnerArgs(['--help'])).toBe('help');
     expect(() => validateRunnerArgs(['--run', '94'])).toThrow();
     expect(() => validateRunnerArgs(['--force'])).toThrow();
+  });
+
+  it('parses the Codex CLI prerelease version accepted by A01 report validation', () => {
+    expect(parseCodexCliVersion('codex-cli 0.162.0-alpha.2')).toBe('0.162.0-alpha.2');
+    expect(() => parseCodexCliVersion('codex-cli unknown')).toThrow();
   });
 
   it('forces Luna Max reasoning, one anonymous target MCP tool, and read-only CLI surfaces', () => {
