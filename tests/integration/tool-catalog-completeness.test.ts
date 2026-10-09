@@ -98,6 +98,29 @@ describe('complete Bangumi tool surface', () => {
       'bangumi.get_subject_cast',
       'bangumi.query_subjects',
     ]);
+
+    const discoverySchema = registry.getTool('bangumi.query_subjects')!.input;
+    expect(
+      discoverySchema.safeParse({
+        media: 'anime',
+        rating: { min: 8 },
+        collectionCompletionRate: { max: 0.4 },
+        sort: 'score',
+        order: 'desc',
+        resultMode: 'top',
+        limit: 8,
+        explain: 'full',
+      }).success,
+    ).toBe(true);
+    expect(discoverySchema.safeParse({ collectionCompletionRate: { min: 0, max: 1 } }).success).toBe(
+      true,
+    );
+    expect(discoverySchema.safeParse({ collectionCompletionRate: { min: -0.01 } }).success).toBe(
+      false,
+    );
+    expect(discoverySchema.safeParse({ collectionCompletionRate: { max: 1.01 } }).success).toBe(
+      false,
+    );
   });
 
   it('keeps a direct test-source reference for every catalog tool', () => {

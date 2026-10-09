@@ -34,6 +34,7 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
       rank: index === 3 ? undefined : index + 1,
       ratingCount: index === 4 ? undefined : 5000 + index,
       collectionTotal: index === 5 ? undefined : 100 + index,
+      collectionCompletionRate: index === 6 ? undefined : 0.4,
     })),
     plan: {
       operation: 'searchSubjects',
@@ -43,7 +44,11 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
         { field: 'dateRange', operator: 'range', value: { from: '2026-01-01', to: '2027-01-01' } },
       ],
       postFilters: [{ field: 'categories', operator: 'in', value: ['tv'] }],
-      derivedFilters: [{ field: 'order', operator: 'eq', value: 'desc' }],
+      derivedFilters: [{ field: 'order', operator: 'eq', value: 'desc' }] as Array<{
+        field: string;
+        operator: string;
+        value: unknown;
+      }>,
       unsupported: [],
       limitations: ['官方搜索总数是估计值。', '结果受有界预算限制。'],
     },
@@ -62,6 +67,7 @@ function makeResult(state: FixtureState = 'partial', itemCount = 13) {
       hydrationsSucceeded: state === 'ok' ? 0 : 4,
       hydrationsFailed: state === 'ok' ? 0 : 1,
       hydrationsUnresolved: state === 'ok' ? 0 : 1,
+      unresolvedCandidates: state === 'ok' ? 0 : 1,
       hydrationBudgetExceeded: false,
       reason: state === 'ok' ? undefined : 'Execution budget was exhausted.',
     },
@@ -156,6 +162,40 @@ describe('discovery-results renderer', () => {
     expect(html).toContain(
       '评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖',
     );
+  });
+
+  it('renders the collection-share threshold, row values, and formula caveat before bounded rows', () => {
+    const result = makeResult('partial', 2);
+    result.plan.derivedFilters = [
+      {
+        field: 'collectionCompletionRate',
+        operator: 'range',
+        value: { max: 0.4 },
+      },
+    ];
+    result.plan.limitations = [
+      'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
+      'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.',
+    ];
+    result.coverage.unresolvedCandidates = 3;
+    result.items[0]!.collectionCompletionRate = 0.2;
+    result.items[1]!.collectionCompletionRate = 0.4;
+
+    const viewModel = buildDiscoveryResultsViewModel(result, {
+      media: 'anime',
+      rating: { min: 8 },
+      collectionCompletionRate: { max: 0.4 },
+    });
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 640);
+
+    expect(viewModel.query.facets).toContain('collect 在五类收藏状态中的占比：≤40.0%');
+    expect(viewModel.items[0]?.collectionCompletionRate).toBe(0.2);
+    expect(viewModel.coverage.unresolvedCandidates).toBe(3);
+    expect(html).toContain('collect 状态占比（五类状态合计） 20.0%');
+    expect(html).toContain('40.0%');
+    expect(html).toContain('不是官方 API 公式、章节完成率、个人进度或偏好');
+    expect(html).toContain('未解析候选 3');
+    expect(html.indexOf('条件解释')).toBeLessThan(html.indexOf('Original title 1'));
   });
 
   it('renders the resolved season when the query requested the current season', () => {

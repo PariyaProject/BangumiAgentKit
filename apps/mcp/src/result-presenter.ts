@@ -234,7 +234,10 @@ function compactDiscoveryResult(result: DiscoveryToolResult): string {
   const limitations = [...new Set(rawLimitations)];
   const coverage = projectDiscoveryCoverage(result.coverage);
   const planSummary = projectDiscoveryPlan(plan, filter);
-  const filterValuesOmitted = planSummary.filterValuesOmitted + planSummary.postFiltersOmitted;
+  const filterValuesOmitted =
+    planSummary.filterValuesOmitted +
+    planSummary.postFiltersOmitted +
+    planSummary.derivedFiltersOmitted;
   const filterTextNote =
     filterValuesOmitted > 0
       ? ` ${filterValuesOmitted} query filter value(s) are omitted from this text view.`
@@ -345,7 +348,11 @@ function firstDiscoveryRequest(plan: JsonObject): JsonObject | undefined {
 function projectDiscoveryPlan(
   plan: JsonObject,
   filter: JsonObject,
-): JsonObject & { filterValuesOmitted: number; postFiltersOmitted: number } {
+): JsonObject & {
+  filterValuesOmitted: number;
+  postFiltersOmitted: number;
+  derivedFiltersOmitted: number;
+} {
   const budget = isJsonObject(plan.budget) ? plan.budget : {};
   const projectedFilter: JsonObject = {};
   let filterValuesOmitted = 0;
@@ -368,7 +375,10 @@ function projectDiscoveryPlan(
   const allPostFilters = Array.isArray(plan.postFilters)
     ? plan.postFilters.filter(isJsonObject)
     : [];
-  const postFilters = allPostFilters.slice(0, 8).map((item) => {
+  const allDerivedFilters = Array.isArray(plan.derivedFilters)
+    ? plan.derivedFilters.filter(isJsonObject)
+    : [];
+  const projectPlanFilters = (items: JsonObject[]) => items.slice(0, 8).map((item) => {
     const value = item.value === undefined ? undefined : projectQueryFilterValue(item.value);
     filterValuesOmitted += value?.omitted ?? 0;
     return {
@@ -377,6 +387,8 @@ function projectDiscoveryPlan(
       ...(value === undefined ? {} : { value: value.value }),
     };
   });
+  const postFilters = projectPlanFilters(allPostFilters);
+  const derivedFilters = projectPlanFilters(allDerivedFilters);
   return {
     ...(typeof plan.source === 'string' ? { source: plan.source } : {}),
     ...(typeof plan.operation === 'string' ? { operation: plan.operation } : {}),
@@ -389,8 +401,10 @@ function projectDiscoveryPlan(
     ...(typeof plan.resultMode === 'string' ? { resultMode: plan.resultMode } : {}),
     filter: projectedFilter,
     postFilters,
+    derivedFilters,
     filterValuesOmitted,
     postFiltersOmitted: Math.max(0, allPostFilters.length - postFilters.length),
+    derivedFiltersOmitted: Math.max(0, allDerivedFilters.length - derivedFilters.length),
     budget: {
       ...copyIntegerFields(budget, [
         'maxPages',
@@ -446,6 +460,7 @@ function projectDiscoveryCoverage(coverage: JsonObject): JsonObject {
     'hydrationsSucceeded',
     'hydrationsFailed',
     'hydrationsUnresolved',
+    'unresolvedCandidates',
     'hydrationBudgetExceeded',
     'outputCap',
     'reason',
@@ -493,7 +508,12 @@ function projectDiscoveryItem(
   for (const key of ['media', 'category', 'date']) {
     if (typeof item[key] === 'string') projected[key] = item[key];
   }
+  if (Number.isFinite(item.score)) projected.score = item.score;
+  if (Number.isFinite(item.rank)) projected.rank = item.rank;
   if (Number.isFinite(item.ratingCount)) projected.ratingCount = item.ratingCount;
+  if (typeof item.collectionCompletionRate === 'number' && Number.isFinite(item.collectionCompletionRate)) {
+    projected.collectionCompletionRate = item.collectionCompletionRate;
+  }
   if (
     Number.isSafeInteger(item.reportedEpisodeCount) &&
     (item.reportedEpisodeCount as number) >= 0

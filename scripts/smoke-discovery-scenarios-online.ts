@@ -128,6 +128,11 @@ function validateResult(
 
 async function main(): Promise<void> {
   const scenarios: DiscoveryScenarioId[] = [selectDiscoveryScenario(process.argv.slice(2))];
+  if (scenarios[0] === 'A05') {
+    throw new Error(
+      'A05 acceptance is reserved for the gated one-shot anonymous Agent/MCP runner; do not run it through the direct ToolRegistry smoke.',
+    );
+  }
   if (!process.argv.includes(LIVE_FLAG)) {
     throw new Error(`Refusing public API requests without ${LIVE_FLAG}; pass one --scenario <id>.`);
   }

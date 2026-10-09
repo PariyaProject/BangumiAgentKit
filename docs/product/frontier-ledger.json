@@ -2258,8 +2258,11 @@
       "user_question": "哪些条目评分高但完成率低？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-a05-collection-completion-source-contract-2026-10-09.md"
+      ],
+      "next_action": "After exact Candidate, CI, and GPT-6 Luna Max PASS gates, run one anonymous A05 Agent/MCP query and retain only sanitized evidence; keep UNASSESSED if inconclusive.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

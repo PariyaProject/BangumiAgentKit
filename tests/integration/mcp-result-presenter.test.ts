@@ -1338,6 +1338,40 @@ describe('MCP tool result presentation', () => {
     expect(presentation.text).not.toContain('this evidence must stay in structuredContent only');
   });
 
+  it('keeps A05 score/share values and formula caveats in the bounded MCP projection', () => {
+    const original = makeDiscoveryResult(100);
+    Object.assign(original.items[0]!, { score: 8.4, collectionCompletionRate: 0.2 });
+    Object.assign(original.items[1]!, { score: 8, collectionCompletionRate: 0.4 });
+    Object.assign(original.plan, {
+      derivedFilters: [
+        { field: 'collectionCompletionRate', classification: 'DERIVED_FILTER', value: { max: 0.4 } },
+      ],
+      limitations: [
+        'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
+        'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.',
+      ],
+    });
+    Object.assign(original.coverage, { unresolvedCandidates: 3 });
+
+    const presentation = presentMcpToolResult('bangumi.query_subjects', original);
+    const parsed = JSON.parse(presentation.text);
+    const formulaPosition = presentation.text.indexOf('collectionCompletionRate = collect');
+    const rowsPosition = presentation.text.indexOf('"items"');
+
+    expect(presentation.structuredContent).toBe(original);
+    expect(parsed.items[0]).toMatchObject({ score: 8.4, collectionCompletionRate: 0.2 });
+    expect(parsed.coverage.unresolvedCandidates).toBe(3);
+    expect(parsed.textProjection.rowsOmitted).toBeGreaterThan(0);
+    expect(parsed.items.length).toBeLessThan(original.items.length);
+    expect(parsed.plan.derivedFilters).toContainEqual(
+      expect.objectContaining({ field: 'collectionCompletionRate', value: { max: 0.4 } }),
+    );
+    expect(formulaPosition).toBeGreaterThanOrEqual(0);
+    expect(formulaPosition).toBeLessThan(rowsPosition);
+    expect(presentation.text).toContain('not an official API formula');
+    expect(presentation.text).toContain('not evidence of absence');
+  });
+
   it('projects the resolved current season and collection-heat meaning into bounded D05 text', () => {
     const original = makeDiscoveryResult(100);
     Object.assign(original.plan, { season: '2026-autumn', sort: 'heat', order: 'desc' });

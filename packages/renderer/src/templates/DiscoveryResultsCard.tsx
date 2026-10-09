@@ -89,6 +89,10 @@ function limitationLabel(message: string): string {
       '排序热度使用官方当前收藏人数，不代表近期讨论趋势或历史热度',
     'A top-N score tie-break scans the bounded ordered candidate window through the first lower-scored row; an unproven cutoff is reported as partial.':
       '评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖',
+    'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.':
+      'collect 状态占比＝collect ÷ 五类收藏状态人数之和；这是样本验证公式，不是官方 API 公式、章节完成率、个人进度或偏好。官方搜索仍处于实验阶段且总数为估计值，结果只代表本次有界观察样本',
+    'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.':
+      '收藏状态缺失/无效或分母为零时保持未解析/不可计算，不会作为已证实的不匹配排除',
   };
   return labels[message] || message;
 }
@@ -145,9 +149,13 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
   const itemBasis = width && width >= 900 ? 'calc(50% - 6px)' : '100%';
   const stateTone = stateColor(viewModel.state, theme);
   const visibleWarnings = viewModel.warnings.slice(0, 4);
-  const visibleLimitations = viewModel.limitations.slice(0, 3);
+  const completionLimitations = viewModel.limitations.filter((item) =>
+    item.startsWith('collectionCompletionRate =') || item.startsWith('Missing or invalid collection buckets'),
+  );
+  const otherLimitations = viewModel.limitations.filter((item) => !completionLimitations.includes(item));
+  const visibleLimitations = otherLimitations.slice(0, 3);
   const hiddenWarnings = Math.max(0, viewModel.warnings.length - visibleWarnings.length);
-  const hiddenLimitations = Math.max(0, viewModel.limitations.length - visibleLimitations.length);
+  const hiddenLimitations = Math.max(0, otherLimitations.length - visibleLimitations.length);
   const coverage = viewModel.coverage;
   const visibleItems = viewModel.items.slice(0, DISCOVERY_MAX_RENDERED_ITEMS);
   const overflowItemCount = Math.max(0, viewModel.items.length - visibleItems.length);
@@ -177,6 +185,12 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         状态：{stateLabel(viewModel.state)} · 来源：{viewModel.source.label}
         {viewModel.source.experimental ? ' · 来源覆盖边界较窄' : ''}
       </div>
+
+      {completionLimitations.length > 0 ? (
+        <div style={{ color: theme.textMuted, fontSize: '12px', lineHeight: 1.55 }}>
+          条件解释：{completionLimitations.map(limitationLabel).join('；')}
+        </div>
+      ) : null}
 
       <div
         style={{
@@ -217,6 +231,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
         {coverage.requested > 0 ? ` · 请求上限 ${coverage.requested}` : ''}
         {coverage.budgetExceeded ? ' · 达到执行预算' : ''}
         {coverage.outputCap !== undefined ? ` · 输出上限 ${coverage.outputCap}` : ''}
+        {coverage.unresolvedCandidates > 0 ? ` · 未解析候选 ${coverage.unresolvedCandidates}` : ''}
         {!coverage.upstreamExhausted && !coverage.budgetExceeded ? ' · 上游范围未证明耗尽' : ''}
       </div>
       {(coverage.hydrationsAttempted > 0 || coverage.hydrationsUnresolved > 0) && (
@@ -340,6 +355,11 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
                 {item.collectionTotal !== undefined ? (
                   <div style={{ color: theme.textMuted, fontSize: '11px' }}>
                     收藏合计 {item.collectionTotal}
+                  </div>
+                ) : null}
+                {item.collectionCompletionRate !== undefined ? (
+                  <div style={{ color: theme.textMuted, fontSize: '11px', lineHeight: 1.4 }}>
+                    collect 状态占比（五类状态合计） {(item.collectionCompletionRate * 100).toFixed(1)}%
                   </div>
                 ) : null}
               </div>

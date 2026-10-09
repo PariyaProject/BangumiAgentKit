@@ -66,6 +66,74 @@ describe('Standalone discovery and raw tool playground', () => {
     );
   });
 
+  it('maps collection-completion-share bounds and presents their caveat before result rows', async () => {
+    const output = {
+      state: 'partial',
+      items: [
+        {
+          id: 501,
+          name: 'Public title',
+          displayName: '公开条目',
+          media: 'anime',
+          score: 8.4,
+          collectionCompletionRate: 0.2,
+        },
+      ],
+      plan: {
+        derivedFilters: [
+          { field: 'collectionCompletionRate', value: { max: 0.4 } },
+        ],
+      },
+      coverage: {
+        scanned: 20,
+        matched: 1,
+        returned: 1,
+        totalKind: 'estimated',
+        unresolvedCandidates: 3,
+      },
+    };
+    const executeTool = vi.fn().mockResolvedValue(output);
+    const host = { executeTool } as unknown as StandaloneHost;
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    const standaloneContext: StandaloneCommandContext = {
+      host,
+      flags: { ...flags, json: false },
+      presenter: new Presenter({ stdout, stderr }),
+      confirm: async () => false,
+    };
+
+    const commandResult = await new StandaloneCommandRegistry().execute(
+      [
+        'discover',
+        '--media',
+        'anime',
+        '--rating-min',
+        '8',
+        '--collection-completion-rate-max',
+        '0.4',
+      ],
+      standaloneContext,
+    );
+    standaloneContext.presenter.result(commandResult.value, false);
+
+    expect(executeTool).toHaveBeenCalledWith(
+      'bangumi.query_subjects',
+      expect.objectContaining({
+        media: 'anime',
+        rating: { min: 8 },
+        collectionCompletionRate: { max: 0.4 },
+      }),
+      expect.anything(),
+    );
+    const text = stdout.read()?.toString() || '';
+    expect(text).toContain('collect ÷ (wish + collect + doing + on_hold + dropped)');
+    expect(text).toContain('个人进度或偏好');
+    expect(text).toContain('collect 状态占比（五类状态合计）: 20.0%');
+    expect(text).toContain('未解析候选=3');
+    expect(text.indexOf('派生条件')).toBeLessThan(text.indexOf('公开条目'));
+  });
+
   it('PR-7D: person, staff, and person renderer commands route to semantic tools', async () => {
     const executeTool = vi.fn().mockResolvedValue({ state: 'ok' });
     const host = { executeTool } as unknown as StandaloneHost;

@@ -77,6 +77,29 @@ describe('discovery query normalization', () => {
     );
   });
 
+  it('normalizes collection completion-share ranges as inclusive unit-interval values', () => {
+    expect(
+      normalizeDiscoveryQuery({ collectionCompletionRate: { min: 0, max: 0.4 } })
+        .collectionCompletionRate,
+    ).toEqual({ min: 0, max: 0.4 });
+    expect(
+      normalizeDiscoveryQuery({ collectionCompletionRate: { min: 0.4, max: 1 } })
+        .collectionCompletionRate,
+    ).toEqual({ min: 0.4, max: 1 });
+    expect(() => normalizeDiscoveryQuery({ collectionCompletionRate: { min: -0.01 } })).toThrow(
+      DiscoveryValidationError,
+    );
+    expect(() => normalizeDiscoveryQuery({ collectionCompletionRate: { max: 1.01 } })).toThrow(
+      DiscoveryValidationError,
+    );
+    expect(() => normalizeDiscoveryQuery({ collectionCompletionRate: { min: 0.7, max: 0.4 } })).toThrow(
+      DiscoveryValidationError,
+    );
+    expect(() => normalizeDiscoveryQuery({ collectionCompletionRate: {} })).toThrow(
+      DiscoveryValidationError,
+    );
+  });
+
   it('provides bounded defaults', () => {
     const query = normalizeDiscoveryQuery({ media: 'anime', limit: 10 });
     expect(query.budget).toEqual({

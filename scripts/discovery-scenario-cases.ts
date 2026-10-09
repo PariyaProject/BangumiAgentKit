@@ -47,6 +47,18 @@ export const DISCOVERY_SCENARIOS = {
     dateFrom: '2026-04-01',
     dateTo: '2026-07-01',
   },
+  A05: {
+    query: {
+      media: 'anime',
+      rating: { min: 8 },
+      collectionCompletionRate: { max: 0.4 },
+      sort: 'score',
+      order: 'desc',
+      resultMode: 'top',
+      limit: 8,
+      explain: 'full',
+    },
+  },
   G26: {
     query: {
       media: 'anime',
@@ -75,6 +87,7 @@ export interface DiscoveryScenarioItem {
   score?: number;
   ratingCount?: number;
   collectionTotal?: number;
+  collectionCompletionRate?: number;
   conceptMatched?: boolean;
   exactTagMatched?: boolean;
 }
@@ -113,12 +126,19 @@ export function summarizeDiscoveryScenarioItems(
         Number.isFinite(source.collectionTotal)
           ? { collectionTotal: source.collectionTotal }
           : {}),
+        ...(scenario === 'A05' &&
+        typeof source.collectionCompletionRate === 'number' &&
+        Number.isFinite(source.collectionCompletionRate)
+          ? { collectionCompletionRate: source.collectionCompletionRate }
+          : {}),
         ...(scenario === 'G26'
           ? {
               exactTagMatched:
                 Array.isArray(source.tags) && (source.tags as unknown[]).includes(exactTag),
             }
-          : {
+          : scenario === 'A05'
+            ? {}
+            : {
               conceptMatched:
                 Array.isArray(source[conceptField]) &&
                 (source[conceptField] as unknown[]).includes(concept),
@@ -132,6 +152,52 @@ export function validateDiscoveryScenarioItems(
   scenario: DiscoveryScenarioId,
   items: readonly DiscoveryScenarioItem[],
 ): Record<string, boolean> {
+  if (scenario === 'A05') {
+    const query = DISCOVERY_SCENARIOS.A05.query;
+    const rating = query.rating as { min?: number; max?: number };
+    const completionRate = query.collectionCompletionRate as { min?: number; max?: number };
+    return {
+      nonEmpty: items.length > 0,
+      uniqueIds: new Set(items.map((item) => item.id)).size === items.length,
+      mediaType: items.length > 0 && items.every((item) => item.media === 'anime'),
+      scoreThreshold:
+        items.length > 0 && items.every((item) => typeof item.score === 'number' && item.score >= 8),
+      collectionCompletionRateAvailable:
+        items.length > 0 &&
+        items.every(
+          (item) =>
+            typeof item.collectionCompletionRate === 'number' &&
+            Number.isFinite(item.collectionCompletionRate) &&
+            item.collectionCompletionRate >= 0 &&
+            item.collectionCompletionRate <= 1,
+        ),
+      collectionCompletionRateThreshold:
+        items.length > 0 &&
+        items.every(
+          (item) =>
+            typeof item.collectionCompletionRate === 'number' &&
+            item.collectionCompletionRate <= 0.4,
+        ),
+      explicitThresholds:
+        query.media === 'anime' &&
+        rating.min === 8 &&
+        rating.max === undefined &&
+        completionRate.min === undefined &&
+        completionRate.max === 0.4 &&
+        query.sort === 'score' &&
+        query.order === 'desc' &&
+        query.limit === 8 &&
+        query.resultMode === 'top' &&
+        query.explain === 'full' &&
+        !Object.prototype.hasOwnProperty.call(query, 'budget'),
+      scoreDescending:
+        items.length > 0 &&
+        items.slice(1).every((item, index) => {
+          const previous = items[index];
+          return previous?.score !== undefined && item.score !== undefined && previous.score >= item.score;
+        }),
+    };
+  }
   const selected = DISCOVERY_SCENARIOS[scenario];
   const uniqueIds = new Set(items.map((item) => item.id)).size === items.length;
   const mediaType = items.length > 0 && items.every((item) => item.media === 'anime');

@@ -68,6 +68,8 @@ export interface DiscoveryQuery {
   reportedEpisodeCount?: NumericRangeInput;
   rank?: NumericRangeInput;
   collectionCount?: NumericRangeInput;
+  /** Sample-verified collect share over all five current collection statuses; not personal progress. */
+  collectionCompletionRate?: NumericRangeInput;
   nsfw?: NsfwFilter | boolean;
   sort?: DiscoverySort;
   order?: DiscoveryOrder;
@@ -108,6 +110,7 @@ export interface NormalizedDiscoveryQuery {
   reportedEpisodeCount?: NumericRange;
   rank?: NumericRange;
   collectionCount?: NumericRange;
+  collectionCompletionRate?: NumericRange;
   nsfw: NsfwFilter;
   sort: DiscoverySort;
   order: DiscoveryOrder;
@@ -170,6 +173,7 @@ export type DiscoveryHydrationReason =
   | 'canonical_meta_tags'
   | 'category_filter'
   | 'collection_count_filter'
+  | 'collection_completion_rate_filter'
   | 'rating_filter'
   | 'rating_count_filter'
   | 'reported_episode_count_filter'
@@ -224,6 +228,7 @@ export interface DiscoveryCoverage extends Coverage {
   hydrationsSucceeded: number;
   hydrationsFailed: number;
   hydrationsUnresolved: number;
+  unresolvedCandidates?: number;
   hydrationBudgetExceeded: boolean;
   outputCap?: number;
   reason?: string;
@@ -243,6 +248,8 @@ export interface DiscoveryItem {
   /** Bangumi-reported legacy Subject.eps value; never a watched or total episode count. */
   reportedEpisodeCount?: number;
   collectionTotal?: number;
+  /** Derived collect share across all five current collection statuses. */
+  collectionCompletionRate?: number;
   tags: string[];
   metaTags: string[];
   image?: string;

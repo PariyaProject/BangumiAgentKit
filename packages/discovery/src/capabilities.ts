@@ -28,6 +28,7 @@ const MATRIX: readonly SourceCapability[] = [
   { field: 'rank', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'rank range expressions' },
   { field: 'nsfw', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'boolean nsfw filter' },
   { field: 'collectionCount', operation: 'searchSubjects', classification: 'DERIVED_FILTER', notes: 'sum collection buckets after hydration' },
+  { field: 'collectionCompletionRate', operation: 'searchSubjects', classification: 'DERIVED_FILTER', notes: 'sample-verified collect share over all five official-v0 collection buckets' },
   { field: 'sort:relevance', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'mapped to upstream match' },
   { field: 'sort:heat', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'upstream 收藏人数, not a trend metric' },
   { field: 'sort:rank', operation: 'searchSubjects', classification: 'PUSHDOWN', notes: 'upstream rank order' },

@@ -207,6 +207,110 @@ class ReportedEpisodeFixtureProvider implements SubjectDiscoveryProvider {
   }
 }
 
+class CompletionRateFixtureProvider implements SubjectDiscoveryProvider {
+  hydrateCalls = 0;
+  readonly candidates: SubjectDiscoveryCandidate[] = [
+    { id: 1, type: 2, name: 'Low collected share', platform: 'TV', score: 8.5, collection: { wish: 50, collect: 20, doing: 10, onHold: 10, dropped: 10 }, tags: [], metaTags: [] },
+    { id: 2, type: 2, name: 'Higher collected share', platform: 'TV', score: 9, collection: { wish: 10, collect: 50, doing: 0, onHold: 0, dropped: 40 }, tags: [], metaTags: [] },
+    { id: 3, type: 2, name: 'Low rating', platform: 'TV', score: 7.5, collection: { wish: 60, collect: 10, doing: 10, onHold: 10, dropped: 10 }, tags: [], metaTags: [] },
+    { id: 4, type: 2, name: 'Missing bucket', platform: 'TV', score: 8.5, collection: { wish: 25, collect: 25, doing: 25, onHold: 25 }, tags: [], metaTags: [] },
+    { id: 5, type: 2, name: 'Zero denominator', platform: 'TV', score: 8.5, collection: { wish: 0, collect: 0, doing: 0, onHold: 0, dropped: 0 }, tags: [], metaTags: [] },
+    { id: 6, type: 2, name: 'Changed status snapshot', score: 8.5, collection: { wish: 60, collect: 20, doing: 10, onHold: 5, dropped: 5 }, tags: [], metaTags: [] },
+    { id: 7, type: 2, name: 'Inclusive threshold', platform: 'TV', score: 8, collection: { wish: 30, collect: 40, doing: 10, onHold: 10, dropped: 10 }, tags: [], metaTags: [] },
+    { id: 8, type: 2, name: 'Partial conflicting snapshot', platform: 'TV', score: 8.5, collection: { wish: 60, collect: 10 }, tags: [], metaTags: [] },
+    { id: 9, type: 2, name: 'Invalid collection bucket', platform: 'TV', score: 8.5, collection: { wish: -1, collect: 10, doing: 0, onHold: 0, dropped: 0 }, tags: [], metaTags: [] },
+  ];
+
+  async getSubject(id: number): Promise<CapabilityResult<ProviderSubjectData>> {
+    this.hydrateCalls += 1;
+    const candidate = this.candidates.find((item) => item.id === id);
+    if (!candidate) return { state: 'not_found' };
+    const collection =
+      id === 6 || id === 8
+        ? { wish: 10, collect: 60, doing: 10, onHold: 10, dropped: 10 }
+        : { wish: 25, collect: 25, doing: 25, onHold: 25, dropped: 0 };
+    return {
+      state: 'ok',
+      data: {
+        id,
+        type: 2,
+        name: candidate.name,
+        nameCn: '',
+        summary: '',
+        nsfw: false,
+        locked: false,
+        platform: 'TV',
+        images: {},
+        eps: 12,
+        totalEpisodes: 12,
+        stats: {
+          ...stats(candidate.score ?? 8, 1, 100),
+          collection,
+          ...(id === 4
+            ? {
+                collectionPresence: {
+                  wish: true,
+                  collect: true,
+                  doing: true,
+                  onHold: true,
+                  dropped: false,
+                },
+              }
+            : {}),
+        },
+      },
+      evidence: {},
+    };
+  }
+
+  async getSubjectStats(id: number): Promise<CapabilityResult<SubjectStatsData>> {
+    const result = await this.getSubject(id);
+    if (result.data) return { ...result, data: result.data.stats };
+    return {
+      state: result.state,
+      ...(result.error === undefined ? {} : { error: result.error }),
+      ...(result.evidence === undefined ? {} : { evidence: result.evidence }),
+      ...(result.coverage === undefined ? {} : { coverage: result.coverage }),
+      ...(result.retrievedAt === undefined ? {} : { retrievedAt: result.retrievedAt }),
+      ...(result.warnings === undefined ? {} : { warnings: result.warnings }),
+      ...(result.conflicts === undefined ? {} : { conflicts: result.conflicts }),
+    };
+  }
+
+  async searchSubjects(request: SubjectDiscoverySearchRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return {
+      state: 'ok',
+      data: {
+        items: this.candidates.slice(request.offset, request.offset + request.limit),
+        total: this.candidates.length,
+        totalKind: 'estimated',
+        limit: request.limit,
+        offset: request.offset,
+      },
+      evidence: Object.fromEntries(
+        this.candidates.map((candidate) => [
+          `items[${candidate.id}].collection`,
+          [
+            createEvidenceRef({
+              source: { ...SOURCE_V0, operation: 'searchSubjects' },
+              retrievedAt: '2026-10-09T00:00:00.000Z',
+              entity: { type: 'subject', id: candidate.id },
+              fieldPath: `items[${candidate.id}].collection`,
+              freshness: { state: 'unknown' },
+              authScope: 'public',
+              confidence: 'high',
+            }),
+          ],
+        ]),
+      ),
+    };
+  }
+
+  async browseSubjects(_request: SubjectDiscoveryBrowseRequest): Promise<CapabilityResult<SubjectDiscoveryPage>> {
+    return { state: 'ok', data: { items: [], total: 0, totalKind: 'exact', limit: 20, offset: 0 }, evidence: {} };
+  }
+}
+
 class LargeAllModeProvider implements SubjectDiscoveryProvider {
   readonly searchCalls: number[] = [];
   private readonly subjects = Array.from({ length: 47 }, (_, index) => ({
@@ -656,6 +760,35 @@ class FailedHydrationProvider implements SubjectDiscoveryProvider {
 }
 
 describe('bounded discovery engine', () => {
+  it('filters by the five-bucket collection share and leaves incomplete or conflicting candidates unresolved', async () => {
+    const provider = new CompletionRateFixtureProvider();
+    const result = await new DiscoveryEngine(provider).query({
+      media: 'anime',
+      categories: 'tv',
+      rating: { min: 8 },
+      collectionCompletionRate: { max: 0.4 },
+      resultMode: 'all',
+      budget: { maxPages: 1, maxCandidates: 20, maxHydrations: 10, concurrency: 2 },
+    });
+
+    expect(result.state).toBe('partial');
+    expect(result.items.map((item) => item.id)).toEqual([1, 7]);
+    expect(result.items[0]).toMatchObject({ id: 1, score: 8.5, collectionCompletionRate: 0.2 });
+    expect(result.items[1]).toMatchObject({ id: 7, collectionCompletionRate: 0.4 });
+    expect(result.items[0]?.evidence.collectionCompletionRate?.map((item) => item.formula)).toContain(
+      'bangumi.subject.completion.v1',
+    );
+    expect(result.items[0]?.evidence.collectionCompletionRate?.map((item) => item.fieldPath)).toContain(
+      'items[1].collection',
+    );
+    expect(result.coverage.unresolvedCandidates).toBe(5);
+    expect(result.coverage.hydrationsUnresolved).toBe(5);
+    expect(provider.hydrateCalls).toBe(4);
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'DISCOVERY_HYDRATION_UNRESOLVED' }),
+    );
+  });
+
   it('filters on reported Subject.eps and leaves invalid values unresolved without using total_episodes', async () => {
     const result = await new DiscoveryEngine(new ReportedEpisodeFixtureProvider()).query({
       media: 'anime',
