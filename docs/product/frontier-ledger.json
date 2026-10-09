@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-09T03:42:06Z",
+  "updated_at": "2026-10-09T04:03:21Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1235,9 +1235,9 @@
       "kind": "scenario",
       "user_question": "讨论最多但评分人数较少的作品有哪些？",
       "lane": "recorded_product_opportunities",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-g22-discussion-rating-boundary-2026-10-09.md", "docs/research/run95-g10-discussion-heat-contract-2026-10-09.md", "docs/research/run95-g11-g21-public-source-boundary-2026-10-09.md", "docs/tool-catalog.json", "tests/contract/run95-discussion-source-boundary.test.ts"],
+      "next_action": "G22 remains PARTIAL. Current official v0 documents rating_count as a rating-user-count filter and sort=heat as current collection count; neither measures discussion volume. The reviewed v0 contract has no subject discussion/comment route or field, and search totals are experimental/estimated. No runtime, community, account, or private /p1 request was made; no discussion ranking or Agent/MCP acceptance is claimed. Do not substitute heat or rating_count for discussion volume. Reopen when an official supported public source defines a subject-linked discussion metric and pagination/coverage. See docs/research/run95-g22-discussion-rating-boundary-2026-10-09.md.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
