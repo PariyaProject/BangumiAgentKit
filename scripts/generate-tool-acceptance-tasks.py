@@ -2357,7 +2357,14 @@ def codex_a01_aggregate_report_matches_candidate_revision(
         return False
     parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
-    return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+    added_blob = _run_repository_git(ROOT, 'rev-parse', f'{commit_sha}:{relative_path}')
+    return (
+        parents.returncode == 0
+        and len(parent_shas) >= 2
+        and parent_shas[1] == revision
+        and added_blob.returncode == 0
+        and added_blob.stdout.strip() == committed_blob.stdout.strip()
+    )
 
 
 def _codex_a01_aggregate_expected_metric_state(
@@ -3544,6 +3551,7 @@ def codex_a01_aggregate_result_is_valid(result: object) -> bool:
             != coverage['detailHydrationsAttempted']
         or (query['state'] == 'ok' and coverage['totalSubjectsReturned'] == 0)
         or (query['state'] == 'not_found' and coverage['totalSubjectsReturned'] != 0)
+        or (query['budgetExceeded'] and not coverage['truncated'])
         or (coverage['cohortsPartial'] > 0 and not coverage['truncated'])
         or not isinstance(metrics, list)
         or len(metrics) != len(CODEX_A01_AGGREGATE_METRIC_KEYS)

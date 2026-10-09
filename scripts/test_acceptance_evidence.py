@@ -1106,6 +1106,20 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             GENERATOR.model_mcp_e2e_sources(self.catalog),
         )
 
+        rewritten = self.write_a01_aggregate_report()
+        rewritten['scenarios'][0]['result']['summary']['query']['scanned'] = 21
+        self.report_path.write_text(json.dumps(rewritten, ensure_ascii=False), encoding='utf-8')
+        self._git('add', self.report_path.relative_to(self.root).as_posix())
+        self._git('commit', '-qm', 'rewrite committed aggregate report')
+        self.assertFalse(GENERATOR.codex_a01_aggregate_report_matches_candidate_revision(
+            self.report_path,
+            self.source_revision,
+        ))
+        self.assertNotIn(
+            'bangumi.aggregate_subject_cohort',
+            GENERATOR.model_mcp_e2e_sources(self.catalog),
+        )
+
     def test_rejects_inconsistent_a01_aggregate_sanitized_summary(self):
         def make_metric_complete(report):
             report['scenarios'][0]['result']['summary']['metrics'][0]['state'] = 'complete'
@@ -1115,9 +1129,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             result['resultState'] = 'complete'
             result['summary']['state'] = 'complete'
 
+        def make_budget_exceeded_untruncated(report):
+            summary = report['scenarios'][0]['result']['summary']
+            summary['query']['budgetExceeded'] = True
+            summary['coverage']['cohortsComplete'] = 1
+            summary['coverage']['cohortsPartial'] = 0
+            summary['coverage']['truncated'] = False
+
         invalid_summaries = [
             make_metric_complete,
             make_overall_complete,
+            make_budget_exceeded_untruncated,
             lambda report: report['scenarios'][0]['result']['summary']['query'].update(
                 {'returned': 0},
             ),
