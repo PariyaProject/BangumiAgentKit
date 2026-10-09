@@ -755,7 +755,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         metrics = [
             {
                 'key': key,
-                'state': 'complete',
+                'state': 'partial',
                 'value': value,
                 'valid': 1,
                 'partial': 0,
@@ -1007,6 +1007,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {item['name']: item for item in self.catalog},
             {item['name']: item for item in self.catalog},
         ))
+        self.assertFalse(GENERATOR.codex_a01_aggregate_report_matches_candidate_revision(
+            self.report_path,
+            self.source_revision,
+        ))
+        self._git('add', self.report_path.relative_to(self.root).as_posix())
+        self._git('commit', '-qm', 'add exact-Candidate A01 aggregate report')
         self.assertTrue(GENERATOR.codex_a01_aggregate_report_matches_candidate_revision(
             self.report_path,
             self.source_revision,
@@ -1072,10 +1078,65 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {item['name']: item for item in self.catalog},
             {item['name']: item for item in self.catalog},
         ))
+        self._git('add', self.report_path.relative_to(self.root).as_posix())
+        self._git('commit', '-qm', 'add aggregate report with stale Candidate metadata')
         self.assertNotIn(
             'bangumi.aggregate_subject_cohort',
             GENERATOR.model_mcp_e2e_sources(self.catalog),
         )
+
+    def test_rejects_a01_aggregate_report_changed_after_commit(self):
+        report = self.write_a01_aggregate_report()
+        self._git('add', self.report_path.relative_to(self.root).as_posix())
+        self._git('commit', '-qm', 'add exact-Candidate A01 aggregate report')
+        self.assertTrue(GENERATOR.codex_a01_aggregate_report_matches_candidate_revision(
+            self.report_path,
+            self.source_revision,
+        ))
+        self.report_path.write_text(
+            self.report_path.read_text(encoding='utf-8') + ' ',
+            encoding='utf-8',
+        )
+        self.assertFalse(GENERATOR.codex_a01_aggregate_report_matches_candidate_revision(
+            self.report_path,
+            self.source_revision,
+        ))
+        self.assertNotIn(
+            'bangumi.aggregate_subject_cohort',
+            GENERATOR.model_mcp_e2e_sources(self.catalog),
+        )
+
+    def test_rejects_inconsistent_a01_aggregate_sanitized_summary(self):
+        def make_metric_complete(report):
+            report['scenarios'][0]['result']['summary']['metrics'][0]['state'] = 'complete'
+
+        def make_overall_complete(report):
+            result = report['scenarios'][0]['result']
+            result['resultState'] = 'complete'
+            result['summary']['state'] = 'complete'
+
+        invalid_summaries = [
+            make_metric_complete,
+            make_overall_complete,
+            lambda report: report['scenarios'][0]['result']['summary']['query'].update(
+                {'returned': 0},
+            ),
+            lambda report: report['scenarios'][0]['result']['summary']['query'].update(
+                {'state': 'not_found'},
+            ),
+            lambda report: report['scenarios'][0]['result']['summary']['coverage'].update({
+                'detailHydrationsSucceeded': 0,
+            }),
+        ]
+        for mutate in invalid_summaries:
+            with self.subTest(mutate=mutate):
+                report = self.write_a01_aggregate_report()
+                mutate(report)
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    report,
+                    {item['name']: item for item in self.catalog},
+                    {item['name']: item for item in self.catalog},
+                ))
 
     def test_accepts_current_catalog_g02_reports_and_codex_prerelease_version(self):
         query_report = self.write_g02_report()

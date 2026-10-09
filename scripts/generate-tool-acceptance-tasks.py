@@ -1027,9 +1027,14 @@ CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_a01_aggregate_result_is_valid(',
+        'def _codex_a01_aggregate_expected_metric_state(',
         'def codex_a01_aggregate_report_is_valid(',
         'def codex_a01_aggregate_report_matches_candidate_revision(',
         'CODEX_A01_AGGREGATE_PR_NUMBER = 126',
+        "query['returned'] != coverage['totalSubjectsReturned']",
+        "query['state'] == 'not_found' and coverage['totalSubjectsReturned'] != 0",
+        "summary['state'] != expected_state",
+        "_run_repository_git(ROOT, 'hash-object', str(report_path))",
         'CODEX_A01_AGGREGATE_ARGUMENTS',
     ),
 }
@@ -2336,9 +2341,14 @@ def codex_a01_aggregate_report_matches_candidate_revision(
     if head.returncode != 0:
         return False
     head_sha = head.stdout.strip()
-    committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
-    if committed_in_head.returncode != 0:
-        return revision == head_sha
+    committed_blob = _run_repository_git(ROOT, 'rev-parse', f'{head_sha}:{relative_path}')
+    working_blob = _run_repository_git(ROOT, 'hash-object', str(report_path))
+    if (
+        committed_blob.returncode != 0
+        or working_blob.returncode != 0
+        or committed_blob.stdout.strip() != working_blob.stdout.strip()
+    ):
+        return False
     added_commit = _run_repository_git(
         ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
     )
@@ -2348,6 +2358,32 @@ def codex_a01_aggregate_report_matches_candidate_revision(
     parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def _codex_a01_aggregate_expected_metric_state(
+    key: str, query_state: str, coverage: dict, metric: dict,
+) -> str:
+    if query_state not in {'ok', 'partial'}:
+        return 'not_computable' if query_state == 'not_found' else query_state
+    if metric['conflicts'] > 0:
+        return 'conflict'
+    if key != 'ratingStandardDeviation' and metric['valid'] == 0:
+        return 'not_computable'
+    if (
+        metric['valid'] + metric['partial'] == 0
+        and metric['notComputable'] > 0
+        and metric['missing'] == 0
+    ):
+        return 'not_computable'
+    if (
+        query_state == 'partial'
+        or coverage['cohortsPartial'] > 0
+        or metric['partial'] > 0
+        or metric['missing'] > 0
+        or metric['notComputable'] > 0
+    ):
+        return 'partial'
+    return 'not_computable' if metric['valid'] == 0 else 'complete'
 
 
 def codex_g02_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
@@ -3502,6 +3538,13 @@ def codex_a01_aggregate_result_is_valid(result: object) -> bool:
         or coverage['detailHydrationsSucceeded'] > coverage['detailHydrationsAttempted']
         or coverage['detailHydrationsFailed'] > coverage['detailHydrationsAttempted']
         or type(coverage.get('truncated')) is not bool
+        or query['returned'] != coverage['totalSubjectsReturned']
+        or coverage['detailHydrationsAttempted'] != coverage['totalSubjectsReturned']
+        or coverage['detailHydrationsSucceeded'] + coverage['detailHydrationsFailed']
+            != coverage['detailHydrationsAttempted']
+        or (query['state'] == 'ok' and coverage['totalSubjectsReturned'] == 0)
+        or (query['state'] == 'not_found' and coverage['totalSubjectsReturned'] != 0)
+        or (coverage['cohortsPartial'] > 0 and not coverage['truncated'])
         or not isinstance(metrics, list)
         or len(metrics) != len(CODEX_A01_AGGREGATE_METRIC_KEYS)
         or not isinstance(summary.get('officialOperations'), list)
@@ -3531,6 +3574,30 @@ def codex_a01_aggregate_result_is_valid(result: object) -> bool:
             or sum(metric[key] for key in count_fields) != coverage['totalSubjectsReturned']
         ):
             return False
+        if metric['state'] != _codex_a01_aggregate_expected_metric_state(
+            expected_key, query['state'], coverage, metric,
+        ):
+            return False
+    query_state = query['state']
+    metric_states = [metric['state'] for metric in metrics]
+    terminal_query_states = {
+        'upstream_error', 'auth_required', 'permission_denied', 'unavailable', 'unsupported',
+        'stale',
+    }
+    if query_state in terminal_query_states:
+        expected_state = query_state
+    elif query_state == 'not_found':
+        expected_state = 'not_found'
+    elif 'conflict' in metric_states:
+        expected_state = 'conflict'
+    elif all(state == 'not_computable' for state in metric_states):
+        expected_state = 'not_computable'
+    elif query_state != 'ok' or any(state != 'complete' for state in metric_states):
+        expected_state = 'partial'
+    else:
+        expected_state = 'complete'
+    if summary['state'] != expected_state:
+        return False
     return True
 
 
