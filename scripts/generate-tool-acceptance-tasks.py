@@ -455,7 +455,7 @@ CODEX_G20_ANSWER_CHECK_FIELDS = {
 }
 CODEX_A01_ANSWER_CHECK_FIELDS = {
     'fixedArguments', 'resultStructuredContent', 'targetIdentity', 'queryPlan',
-    'sampleBound', 'returnedRowCount', 'metricFormula', 'metricCoverage',
+    'queryCoverage', 'sampleBound', 'returnedRowCount', 'metricFormula', 'metricCoverage',
     'hydrationCoverage', 'comparisonState',
     'overlap', 'officialProvenance', 'officialPublicOperations', 'answerPresent',
     'exactRows', 'exactMetricLine', 'exactScopeLine', 'rejectsUnsupportedSignificance',
@@ -1294,6 +1294,16 @@ def codex_a01_result_is_valid(result: object) -> bool:
             return 'partial'
         return 'complete'
 
+    def expected_query_coverage_state(query_coverage: dict) -> str:
+        output_truncated = query_coverage['matched'] > query_coverage['returned']
+        if (query_coverage['budgetExceeded']
+                or output_truncated
+                or query_coverage['hydrationsUnresolved'] > 0):
+            return 'partial'
+        if query_coverage['upstreamExhausted']:
+            return 'complete'
+        return 'unknown'
+
     if (result.get('state') not in states
             or result.get('formulaVersion') != 'subject-cohort-comparison-v1'
             or not isinstance(result.get('cohorts'), list)
@@ -1347,7 +1357,7 @@ def codex_a01_result_is_valid(result: object) -> bool:
                 }
                 or not isinstance(cohort.get('querySummary'), str)
                 or len(cohort['querySummary']) > 500
-                or cohort.get('queryState') not in {'ok', 'partial'}
+                or cohort.get('queryState') not in {'ok', 'partial', 'not_found'}
                 or not isinstance(cohort.get('queryCoverage'), dict)
                 or not isinstance(cohort.get('queryPlan'), dict)
                 or not isinstance(cohort.get('detailHydrations'), dict)
@@ -1370,7 +1380,7 @@ def codex_a01_result_is_valid(result: object) -> bool:
         if (not CODEX_A01_QUERY_COVERAGE_FIELDS.issuperset(query_coverage)
                 or not query_coverage_required.issubset(query_coverage)
                 or query_coverage.get('state') not in {'complete', 'partial', 'unknown'}
-                or query_coverage.get('totalKind') not in {'exact', 'estimated', 'unknown'}
+                or query_coverage.get('totalKind') != plan['totalKind']
                 or any(not nonnegative_int(query_coverage.get(key)) for key in (
                     'requested', 'scanned', 'matched', 'returned', 'pagesRequested',
                     'pagesScanned', 'postFilterCount', 'hydrationsAttempted',
@@ -1395,6 +1405,8 @@ def codex_a01_result_is_valid(result: object) -> bool:
                 or type(query_coverage.get('upstreamExhausted')) is not bool
                 or type(query_coverage.get('budgetExceeded')) is not bool
                 or type(query_coverage.get('hydrationBudgetExceeded')) is not bool
+                or (query_coverage['hydrationBudgetExceeded']
+                    and not query_coverage['budgetExceeded'])
                 or ('missing' in query_coverage and not nonnegative_int(query_coverage['missing']))
                 or ('unresolvedCandidates' in query_coverage
                     and not nonnegative_int(query_coverage['unresolvedCandidates']))
@@ -1405,6 +1417,16 @@ def codex_a01_result_is_valid(result: object) -> bool:
                     not isinstance(query_coverage['reason'], str)
                     or len(query_coverage['reason']) > 240
                 ))):
+            return False
+        expected_coverage_state = expected_query_coverage_state(query_coverage)
+        if query_coverage['state'] != expected_coverage_state:
+            return False
+        expected_query_state = (
+            'partial' if expected_coverage_state == 'partial'
+            else 'not_found' if query_coverage['returned'] == 0
+            else 'ok'
+        )
+        if cohort['queryState'] != expected_query_state:
             return False
         if query_coverage['state'] == 'complete':
             complete_count += 1
@@ -1432,6 +1454,8 @@ def codex_a01_result_is_valid(result: object) -> bool:
                 or sum(metric_coverage[key] for key in (
                     'valid', 'partial', 'missing', 'conflicts', 'notComputable',
                 )) != len(cohort['subjects'])):
+            return False
+        if detail['failed'] > metric_coverage['notComputable']:
             return False
 
         ids: set[int] = set()

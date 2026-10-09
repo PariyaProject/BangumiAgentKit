@@ -2051,8 +2051,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 self._a01_subject(218707, '少女終末旅行'),
                 self._a01_subject(218708, '样本作品', 'missing'),
             ]
-            query_coverage_state = 'partial'
-            query_state = 'partial'
+            query_coverage_state = 'unknown'
+            query_state = 'ok'
             scanned = matched = returned = 2
             upstream_exhausted = False
             rating_coverage = {
@@ -2364,6 +2364,51 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             report, {item['name']: item for item in self.catalog},
         ))
 
+    def test_a01_report_accepts_unknown_coverage_when_upstream_is_not_exhausted(self):
+        report = self._a01_report_fixture()
+        cohort = report['result']['cohorts'][1]
+        self.assertEqual(cohort['queryCoverage']['state'], 'unknown')
+        self.assertFalse(cohort['queryCoverage']['upstreamExhausted'])
+        self.assertEqual(cohort['queryState'], 'ok')
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_accepts_partial_coverage_when_budget_is_exceeded(self):
+        report = self._a01_report_fixture()
+        cohort = report['result']['cohorts'][1]
+        cohort['queryCoverage'].update({'state': 'partial', 'budgetExceeded': True})
+        cohort['queryState'] = 'partial'
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_reconciles_failed_detail_hydration_with_not_computable_rows(self):
+        report = self._a01_report_fixture()
+        result = report['result']
+        cohort = result['cohorts'][1]
+        cohort['detailHydrations'].update({'succeeded': 1, 'failed': 1})
+        result['coverage'].update({
+            'detailHydrationsSucceeded': 2,
+            'detailHydrationsFailed': 1,
+        })
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        cohort['subjects'][1] = self._a01_subject(218708, '样本作品', 'not_computable')
+        cohort['ratingStandardDeviationCoverage'].update({
+            'missing': 0,
+            'notComputable': 1,
+        })
+        result['ratingStandardDeviation'].update({
+            'missingCounts': [0, 0],
+            'notComputableCounts': [0, 1],
+        })
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
     def test_a01_report_preserves_finite_invalid_detail_total_only_as_partial_validation(self):
         report = self._a01_report_fixture()
         result = report['result']
@@ -2407,6 +2452,15 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             lambda report: report['result']['cohorts'][0]['queryPlan']['postFilters'].clear(),
             lambda report: report['result']['cohorts'][0]['queryPlan']['hydrationRequirements'].pop(),
             lambda report: report['result']['cohorts'][1]['queryPlan'].update({'operation': 'browseSubjects'}),
+            lambda report: report['result']['cohorts'][0]['queryCoverage'].update({'totalKind': 'exact'}),
+            lambda report: report['result']['cohorts'][1]['queryCoverage'].update({'totalKind': 'unknown'}),
+            lambda report: report['result']['cohorts'][0]['queryCoverage'].update({
+                'state': 'complete', 'upstreamExhausted': False, 'requested': 0,
+            }),
+            lambda report: report['result']['cohorts'][0]['queryCoverage'].update({
+                'state': 'complete', 'budgetExceeded': True,
+            }),
+            lambda report: report['result']['cohorts'][1].update({'queryState': 'partial'}),
             lambda report: report['result']['cohorts'][1]['detailHydrations'].update({'attempted': 0}),
             lambda report: report['result'].update({'state': 'complete'}),
             lambda report: report['answerChecks'].update({'exactRows': False}),

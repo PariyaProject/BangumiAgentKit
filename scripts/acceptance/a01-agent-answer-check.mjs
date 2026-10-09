@@ -299,12 +299,50 @@ function exactTarget(cohorts) {
 }
 
 function queryPlanMatches(cohorts) {
-  return cohorts?.length === 2 && cohorts.every(
-    (cohort, index) =>
-      canonicalJson(cohort?.query) === canonicalJson(A01_EXPECTED_EFFECTIVE_QUERIES[index]) &&
-      canonicalJson(cohort?.coverage?.query?.plan) ===
-        canonicalJson(expectedA01QueryPlan(index)),
-  );
+  return cohorts?.length === 2 && cohorts.every((cohort, index) => {
+    const expectedPlan = expectedA01QueryPlan(index);
+    return canonicalJson(cohort?.query) === canonicalJson(A01_EXPECTED_EFFECTIVE_QUERIES[index]) &&
+      canonicalJson(cohort?.coverage?.query?.plan) === canonicalJson(expectedPlan) &&
+      cohort?.coverage?.query?.coverage?.totalKind === expectedPlan.totalKind;
+  });
+}
+
+function queryCoverageMatches(cohorts) {
+  return cohorts?.length === 2 && cohorts.every((cohort) => {
+    const query = cohort?.coverage?.query;
+    const coverage = query?.coverage;
+    const rows = cohort?.subjects;
+    if (
+      !coverage ||
+      !Array.isArray(rows) ||
+      !Number.isSafeInteger(coverage.matched) ||
+      !Number.isSafeInteger(coverage.returned) ||
+      !Number.isSafeInteger(coverage.hydrationsUnresolved) ||
+      coverage.hydrationsUnresolved < 0 ||
+      typeof coverage.upstreamExhausted !== 'boolean' ||
+      typeof coverage.budgetExceeded !== 'boolean' ||
+      typeof coverage.hydrationBudgetExceeded !== 'boolean' ||
+      (coverage.hydrationBudgetExceeded && !coverage.budgetExceeded) ||
+      coverage.matched < coverage.returned ||
+      coverage.returned !== rows.length
+    ) return false;
+
+    const outputTruncated = coverage.matched > coverage.returned;
+    const expectedCoverageState = coverage.budgetExceeded || outputTruncated ||
+      coverage.hydrationsUnresolved > 0
+      ? 'partial'
+      : coverage.upstreamExhausted
+        ? 'complete'
+        : 'unknown';
+    if (coverage.state !== expectedCoverageState) return false;
+
+    const expectedQueryState = expectedCoverageState === 'partial'
+      ? 'partial'
+      : rows.length === 0
+        ? 'not_found'
+        : 'ok';
+    return query.state === expectedQueryState;
+  });
 }
 
 function expectedCohortMetricState(cohort, coverage) {
@@ -521,7 +559,9 @@ function hydrationCoverageMatches(result) {
       !Array.isArray(rows) ||
       Object.values(counts).some((value) => !Number.isSafeInteger(value) || value < 0) ||
       counts.attempted !== rows.length ||
-      counts.succeeded + counts.failed !== counts.attempted
+      counts.succeeded + counts.failed !== counts.attempted ||
+      !Number.isSafeInteger(hydration?.metrics?.ratingStandardDeviation?.notComputable) ||
+      counts.failed > hydration.metrics.ratingStandardDeviation.notComputable
     ) return false;
     for (const key of Object.keys(totals)) totals[key] += counts[key];
   }
@@ -631,6 +671,7 @@ export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }) {
     resultStructuredContent: Boolean(result && Array.isArray(result.cohorts) && Array.isArray(result.metrics)),
     targetIdentity: exactTarget(cohorts),
     queryPlan: queryPlanMatches(cohorts),
+    queryCoverage: queryCoverageMatches(cohorts),
     sampleBound: result?.coverage?.maxSubjectsPerCohort === A01_MAX_SUBJECTS &&
       cohorts?.length === 2 &&
       cohorts.every(

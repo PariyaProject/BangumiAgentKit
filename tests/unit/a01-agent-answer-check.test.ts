@@ -8,7 +8,7 @@ import {
 
 const queryCoverage = {
   state: 'partial',
-  requested: 8,
+  requested: 0,
   scanned: 8,
   matched: 2,
   returned: 2,
@@ -22,6 +22,7 @@ const queryCoverage = {
   hydrationsSucceeded: 2,
   hydrationsFailed: 0,
   hydrationsUnresolved: 0,
+  hydrationBudgetExceeded: false,
 };
 
 function subject(
@@ -68,6 +69,15 @@ function cohort(label: string, query: unknown, rows: ReturnType<typeof subject>[
     const state = row.metricStates.ratingStandardDeviation as keyof typeof rowCounts;
     rowCounts[state] += 1;
   }
+  const cohortQueryCoverage = {
+    ...queryCoverage,
+    scanned: rows.length,
+    matched: rows.length,
+    returned: rows.length,
+    postFilterCount: rows.length,
+    hydrationsAttempted: rows.length,
+    hydrationsSucceeded: rows.length,
+  };
   return {
     label,
     query: resultQuery,
@@ -76,7 +86,7 @@ function cohort(label: string, query: unknown, rows: ReturnType<typeof subject>[
     coverage: {
       query: {
         state: 'partial',
-        coverage: { ...queryCoverage },
+        coverage: cohortQueryCoverage,
         plan: compileDiscoveryPlan(normalizeDiscoveryQuery(resultQuery)),
       },
       detailHydrationsAttempted: rows.length,
@@ -446,6 +456,73 @@ describe('A01 current-source answer checker', () => {
     }
   });
 
+  it('rejects exact or unknown total kinds for either fixed estimated search plan', () => {
+    const mutations = [
+      (result: ReturnType<typeof fixture>['result']) => {
+        result.cohorts[0]!.coverage.query.coverage.totalKind = 'exact';
+      },
+      (result: ReturnType<typeof fixture>['result']) => {
+        result.cohorts[1]!.coverage.query.coverage.totalKind = 'unknown';
+      },
+    ];
+    for (const mutate of mutations) {
+      const { result, answer } = fixture();
+      mutate(result);
+      const verified = verifyA01AgentAnswer({
+        answer,
+        queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+        toolResult: { structuredContent: result },
+      });
+      expect(verified.checks.queryPlan).toBe(false);
+    }
+  });
+
+  it('recomputes query coverage state and queryState from production counters', () => {
+    const invalidMutations = [
+      (result: ReturnType<typeof fixture>['result']) => {
+        const query = result.cohorts[0]!.coverage.query;
+        query.coverage.state = 'complete';
+        query.coverage.upstreamExhausted = false;
+        query.coverage.requested = 0;
+        query.coverage.budgetExceeded = false;
+        query.state = 'ok';
+      },
+      (result: ReturnType<typeof fixture>['result']) => {
+        const query = result.cohorts[0]!.coverage.query;
+        query.coverage.state = 'complete';
+        query.coverage.budgetExceeded = true;
+      },
+      (result: ReturnType<typeof fixture>['result']) => {
+        result.cohorts[1]!.coverage.query.state = 'ok';
+      },
+    ];
+    for (const mutate of invalidMutations) {
+      const { result, answer } = fixture();
+      mutate(result);
+      const verified = verifyA01AgentAnswer({
+        answer,
+        queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+        toolResult: { structuredContent: result },
+      });
+      expect(verified.checks.queryCoverage).toBe(false);
+    }
+
+    const { result, answer } = fixture();
+    for (const cohort of result.cohorts) {
+      cohort.coverage.query.state = 'ok';
+      cohort.coverage.query.coverage.state = 'unknown';
+      cohort.coverage.query.coverage.upstreamExhausted = false;
+      cohort.coverage.query.coverage.budgetExceeded = false;
+      cohort.coverage.query.coverage.requested = 0;
+    }
+    const unknownCoverage = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+    expect(unknownCoverage.checks.queryCoverage).toBe(true);
+  });
+
   it('rejects complete aggregate metrics when query or row coverage is partial', () => {
     const { result, answer } = fixture();
     const ratingMetric = result.metrics.find((metric) => metric.key === 'ratingStandardDeviation')!;
@@ -489,12 +566,46 @@ describe('A01 current-source answer checker', () => {
     expect(verified.checks.hydrationCoverage).toBe(false);
   });
 
+  it('requires every failed detail hydration to have a not-computable SD row', () => {
+    const { result, answer } = fixture();
+    const cohort = result.cohorts[1]!;
+    cohort.coverage.detailHydrationsSucceeded = 1;
+    cohort.coverage.detailHydrationsFailed = 1;
+    result.coverage.detailHydrationsSucceeded = 2;
+    result.coverage.detailHydrationsFailed = 1;
+    const noNotComputableRow = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+    expect(noNotComputableRow.checks.hydrationCoverage).toBe(false);
+
+    cohort.subjects[1] = subject(200001, '同季样本', undefined, 'not_computable');
+    Object.assign(cohort.coverage.metrics.ratingStandardDeviation, {
+      valid: 1,
+      notComputable: 1,
+    });
+    const ratingMetric = result.metrics.find((metric) => metric.key === 'ratingStandardDeviation')!;
+    Object.assign(ratingMetric, {
+      validCounts: [1, 1],
+      notComputableCounts: [0, 1],
+    });
+    const matchingNotComputableRow = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+    expect(matchingNotComputableRow.checks.hydrationCoverage).toBe(true);
+  });
+
   it('accepts complete aggregate metrics with complete cohort coverage and a matching delta', () => {
     const { result } = fixture();
     for (const cohort of result.cohorts) {
       cohort.coverage.query.state = 'ok';
       cohort.coverage.query.coverage.state = 'complete';
       cohort.coverage.query.coverage.budgetExceeded = false;
+      cohort.coverage.query.coverage.upstreamExhausted = true;
+      cohort.coverage.query.coverage.requested = cohort.coverage.query.coverage.scanned;
       cohort.coverage.metrics.ratingStandardDeviation.state = 'complete';
     }
     result.coverage.cohortsComplete = 2;
