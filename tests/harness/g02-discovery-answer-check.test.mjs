@@ -69,6 +69,7 @@ test('G02 query answer matches every current source row and keeps coverage parti
     resultState: 'ok',
     coverageState: 'unknown',
     totalKind: 'estimated',
+    requested: 10,
     scanned: 20,
     matched: 20,
     returned: 2,
@@ -147,7 +148,7 @@ test('G02 query answer rejects missing experimental warnings and complete-covera
     ),
   });
   assert.equal(unsafeWarning.answerChecks.coverageIsUnknownOrPartial, false);
-  assert.deepEqual(unsafeWarning.resultCounters.warningCodes, ['EXPERIMENTAL_SOURCE']);
+  assert.equal(unsafeWarning.resultCounters, null);
   assert.equal(JSON.stringify(unsafeWarning.resultCounters).includes(untrustedWarningText), false);
 
   const oversizedWarnings = verifyG02QueryAnswer({
@@ -160,7 +161,7 @@ test('G02 query answer rejects missing experimental warnings and complete-covera
     ),
   });
   assert.equal(oversizedWarnings.answerChecks.coverageIsUnknownOrPartial, false);
-  assert.deepEqual(oversizedWarnings.resultCounters.warningCodes, ['EXPERIMENTAL_SOURCE']);
+  assert.equal(oversizedWarnings.resultCounters, null);
 });
 
 test('G02 query answer requires plain text and explicit non-trend scope', () => {
@@ -192,6 +193,81 @@ test('G02 query answer requires plain text and explicit non-trend scope', () => 
     toolOutput: toolOutput(queryResult()),
   });
   assert.equal(missingHalfOpenDisclosure.answerChecks.exact2024DateWindow, false);
+
+  const negatedMediaDisclosure = verifyG02QueryAnswer({
+    answer: queryAnswer.replace('动画，精确概念', '非动画，精确概念'),
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(queryResult()),
+  });
+  assert.equal(negatedMediaDisclosure.answerChecks.exactAnimeAndConcept, false);
+
+  const negatedHalfOpenDisclosure = verifyG02QueryAnswer({
+    answer: queryAnswer.replace('（左闭右开）', '（不是左闭右开）'),
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(queryResult()),
+  });
+  assert.equal(negatedHalfOpenDisclosure.answerChecks.exact2024DateWindow, false);
+});
+
+test('G02 query coverage rejects impossible and over-budget counters without persisting them', () => {
+  const baseCoverage = queryResult().coverage;
+  const cases = [
+    queryResult({ coverage: { ...baseCoverage, scanned: 501, matched: 501 } }),
+    queryResult({ coverage: { ...baseCoverage, scanned: 20, matched: 21 } }),
+  ];
+
+  for (const result of cases) {
+    const checked = verifyG02QueryAnswer({
+      answer: queryAnswer,
+      queryArguments: G02_QUERY_ARGUMENTS,
+      toolOutput: toolOutput(result),
+    });
+    assert.equal(checked.answerChecks.coverageIsUnknownOrPartial, false);
+    assert.equal(checked.resultCounters, null);
+  }
+});
+
+test('G02 query and renderer scope checks reject negated media and interval claims', () => {
+  const queryCases = [
+    queryAnswer.replace('动画，精确概念', '非动画，精确概念'),
+    queryAnswer.replace('（左闭右开）', '（不是左闭右开）'),
+  ];
+  for (const answer of queryCases) {
+    const checked = verifyG02QueryAnswer({
+      answer,
+      queryArguments: G02_QUERY_ARGUMENTS,
+      toolOutput: toolOutput(queryResult()),
+    });
+    assert.equal(checked.passed, false);
+  }
+
+  const rendererAnswer =
+    '图片卡已生成。\n范围：2024-01-01至2025-01-01（左闭右开），动画异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。';
+  const rendererCases = [
+    rendererAnswer.replace('动画异世界', '非动画异世界'),
+    rendererAnswer.replace('（左闭右开）', '（不是左闭右开）'),
+  ];
+  for (const answer of rendererCases) {
+    const checked = verifyG02RendererAnswer({
+      answer,
+      queryArguments: G02_QUERY_ARGUMENTS,
+      toolResultSummary: {
+        resultState: 'artifact_returned',
+        artifact: {
+          returned: true,
+          persisted: false,
+          mimeType: 'image/png',
+          width: 720,
+          height: 1200,
+          byteLength: 34000,
+          sha256: 'a'.repeat(64),
+          pngSignatureValid: true,
+        },
+      },
+    });
+    assert.equal(checked.answerChecks.exactDateAndConceptScopeDisclosed, false);
+    assert.equal(checked.passed, false);
+  }
 });
 
 test('G02 renderer answer accepts only bounded non-persisted PNG metadata', () => {

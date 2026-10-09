@@ -917,6 +917,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {'argumentProfile': 'd04-reported-episode-count-discovery-v1'},
             {'expectedArgumentsSha256': 'f' * 64},
             {'resultCounters': {
+                'resultState': 'ok', 'coverageState': 'unknown', 'totalKind': 'estimated',
+                'scanned': 20, 'matched': 20, 'returned': 2,
+                'warningCodes': ['EXPERIMENTAL_SOURCE'], 'sourceRowsValidated': 2,
+                'answerRowsMatched': 2,
+            }},
+            {'resultCounters': {
                 'resultState': 'ok', 'coverageState': 'complete', 'totalKind': 'exact',
                 'requested': 10, 'scanned': 20, 'matched': 20, 'returned': 2,
                 'warningCodes': ['EXPERIMENTAL_SOURCE'], 'sourceRowsValidated': 2,
@@ -940,6 +946,18 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     'EXPERIMENTAL_SOURCE',
                     *sorted(GENERATOR.CODEX_G02_WARNING_CODES - {'EXPERIMENTAL_SOURCE'})[:20],
                 ],
+                'sourceRowsValidated': 2, 'answerRowsMatched': 2,
+            }},
+            {'resultCounters': {
+                'resultState': 'ok', 'coverageState': 'unknown', 'totalKind': 'estimated',
+                'requested': 10, 'scanned': 501, 'matched': 501, 'returned': 2,
+                'warningCodes': ['EXPERIMENTAL_SOURCE'],
+                'sourceRowsValidated': 2, 'answerRowsMatched': 2,
+            }},
+            {'resultCounters': {
+                'resultState': 'ok', 'coverageState': 'unknown', 'totalKind': 'estimated',
+                'requested': 10, 'scanned': 20, 'matched': 21, 'returned': 2,
+                'warningCodes': ['EXPERIMENTAL_SOURCE'],
                 'sourceRowsValidated': 2, 'answerRowsMatched': 2,
             }},
         ]

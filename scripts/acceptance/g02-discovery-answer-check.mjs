@@ -9,6 +9,7 @@ const G02_QUERY_ARGUMENTS = {
   limit: 10,
   explain: 'full',
 };
+const G02_MAX_CANDIDATES = 500;
 const G02_ALLOWED_WARNING_CODES = new Set([
   'PARTIAL_PAGE_SCAN',
   'STALE_SOURCE',
@@ -176,11 +177,21 @@ function dateRangeScopeDisclosure(scopeLine) {
   const halfOpen = /左闭右开|半开区间|half[- ]open|2025-01-01.{0,8}(?:不含|不包括)/iu.test(
     scopeLine,
   );
-  return orderedRange && halfOpen;
+  const negatedHalfOpen =
+    /(?:不是|并非|并不是|非|不属于|不算)\s*(?:左闭右开|半开区间)|\b(?:not|isn't|is not|doesn't|does not)\s+(?:a\s+)?half[- ]open\b/iu.test(
+      scopeLine,
+    );
+  return orderedRange && halfOpen && !negatedHalfOpen;
 }
 
 function animeScopeDisclosure(scopeLine) {
-  return typeof scopeLine === 'string' && /动画|anime/iu.test(scopeLine);
+  if (typeof scopeLine !== 'string') return false;
+  const media = /动画|anime/iu.test(scopeLine);
+  const negatedMedia =
+    /(?:不是|并非|并不是|非|不属于|不算)\s*(?:动画|anime)|\b(?:not|isn't|is not|doesn't|does not)\s+(?:an?\s+)?anime\b|\bnon[- ]anime\b/iu.test(
+      scopeLine,
+    );
+  return media && !negatedMedia;
 }
 
 function conceptScopeDisclosure(scopeLine) {
@@ -272,8 +283,10 @@ function resultCoverageIsSafe(result, warningCodes) {
     coverage?.totalKind === 'estimated' &&
     Number.isInteger(coverage?.scanned) &&
     coverage.scanned >= 1 &&
+    coverage.scanned <= G02_MAX_CANDIDATES &&
     Number.isInteger(coverage?.matched) &&
     coverage.matched >= 1 &&
+    coverage.matched <= coverage.scanned &&
     Number.isInteger(coverage?.returned) &&
     coverage.returned >= 1 &&
     coverage.returned <= G02_QUERY_ARGUMENTS.limit &&
@@ -299,6 +312,7 @@ export function verifyG02QueryAnswer({ answer, queryArguments, toolOutput }) {
   const rows = answerRows(typeof answer === 'string' ? answer : '');
   const scopeLine = finalScopeLine(answer);
   const warningCodes = safeWarningCodes(result);
+  const coverageIsSafe = resultCoverageIsSafe(result, warningCodes);
   const uniqueIds =
     normalizedItems.length > 0 &&
     new Set(normalizedItems.map((item) => item.id)).size === normalizedItems.length;
@@ -348,7 +362,7 @@ export function verifyG02QueryAnswer({ answer, queryArguments, toolOutput }) {
     currentCollectionHeatOrder: heatOrder,
     sourceRowsMatchAnswer: sourceAnswerMatch,
     returnedRowsWithinLimit: normalizedItems.length <= G02_QUERY_ARGUMENTS.limit,
-    coverageIsUnknownOrPartial: resultCoverageIsSafe(result, warningCodes),
+    coverageIsUnknownOrPartial: coverageIsSafe,
     experimentalSourceDisclosed: scopeDisclosure(answer, result?.coverage),
     estimatedTotalNotPresentedAsComplete: scopeDisclosure(answer, result?.coverage),
     noUnsupportedGlobalTopTenClaim: !hasUnsupportedGlobalTopTenClaim(answer),
@@ -358,19 +372,21 @@ export function verifyG02QueryAnswer({ answer, queryArguments, toolOutput }) {
   return {
     passed: Object.values(answerChecks).every(Boolean),
     answerChecks,
-    resultCounters: result
-      ? {
-          resultState: result.state,
-          coverageState: result.coverage.state,
-          totalKind: result.coverage.totalKind,
-          scanned: result.coverage.scanned,
-          matched: result.coverage.matched,
-          returned: result.coverage.returned,
-          warningCodes: warningCodes.codes,
-          sourceRowsValidated: normalizedItems.length,
-          answerRowsMatched: rows.length,
-        }
-      : null,
+    resultCounters:
+      result && coverageIsSafe
+        ? {
+            resultState: result.state,
+            coverageState: result.coverage.state,
+            totalKind: result.coverage.totalKind,
+            requested: G02_QUERY_ARGUMENTS.limit,
+            scanned: result.coverage.scanned,
+            matched: result.coverage.matched,
+            returned: result.coverage.returned,
+            warningCodes: warningCodes.codes,
+            sourceRowsValidated: normalizedItems.length,
+            answerRowsMatched: rows.length,
+          }
+        : null,
   };
 }
 

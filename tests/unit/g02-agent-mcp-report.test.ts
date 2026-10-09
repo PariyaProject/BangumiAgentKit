@@ -273,6 +273,12 @@ describe('G02 sanitized Agent/MCP report writer', () => {
         'bangumi.query_subjects',
         'bangumi.render_query_subjects',
       ]);
+      expect(reports.reports[0]?.resultCounters).toMatchObject({
+        requested: 10,
+        scanned: 20,
+        matched: 20,
+        returned: 2,
+      });
       for (const report of reports.reports) {
         const contents = readFileSync(path.join(root, report.path), 'utf8');
         expect(contents).not.toContain('作品一');

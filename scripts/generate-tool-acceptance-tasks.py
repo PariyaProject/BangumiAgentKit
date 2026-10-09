@@ -484,6 +484,7 @@ CODEX_G02_QUERY_RESULT_COUNTER_FIELDS = {
     'returned', 'warningCodes', 'sourceRowsValidated', 'answerRowsMatched',
 }
 CODEX_G02_RENDER_RESULT_COUNTER_FIELDS = {'resultState', 'artifactReturned'}
+CODEX_G02_MAX_CANDIDATES = 500
 CODEX_G02_WARNING_CODES = {
     'PARTIAL_PAGE_SCAN', 'STALE_SOURCE', 'SOURCE_DISAGREEMENT', 'EXPERIMENTAL_SOURCE',
     'FORMULA_EMPIRICALLY_VERIFIED', 'MISSING_FIELD', 'MISSING_DATE', 'AUTH_SCOPE_LIMITED',
@@ -2518,7 +2519,9 @@ def codex_mcp_evidence_is_valid(
                 or any(type(counters.get(key)) is not int or counters[key] < 0
                        for key in ('scanned', 'matched', 'returned', 'sourceRowsValidated', 'answerRowsMatched'))
                 or counters['scanned'] < 1
+                or counters['scanned'] > CODEX_G02_MAX_CANDIDATES
                 or counters['matched'] < 1
+                or counters['matched'] > counters['scanned']
                 or counters['returned'] < 1
                 or counters['returned'] > counters['requested']
                 or counters['matched'] < counters['returned']
