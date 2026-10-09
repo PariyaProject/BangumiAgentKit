@@ -137,7 +137,7 @@ export function createReadTools(
   const searchSubjects = defineTool({
     name: 'bangumi.search_subjects',
     description:
-      '搜索 Bangumi 条目（动画、书籍、音乐、游戏、三次元影视）。根据关键词返回精简候选列表。sort=heat 表示当前收藏人数，不是讨论热度或历史趋势；此工具不提供讨论榜。若已知条目 ID，请使用 bangumi.get_subject。',
+      '搜索 Bangumi 条目（动画、书籍、音乐、游戏、三次元影视）。根据关键词返回精简候选列表。若已知条目 ID，请使用 bangumi.get_subject。',
     input: z.object({
       query: z.string().describe('搜索关键词 (支持中文、日文、英文或 ID)'),
       type: z
@@ -147,9 +147,7 @@ export function createReadTools(
       sort: z
         .enum(['match', 'heat', 'rank', 'score'])
         .optional()
-        .describe(
-          '排序依据: match(匹配度), heat(当前收藏人数；不是讨论热度或历史趋势), rank(排名), score(评分)',
-        ),
+        .describe('排序依据: match(匹配度), heat(热度), rank(排名), score(评分)'),
       nsfw: z
         .enum(['exclude', 'include', 'only'])
         .optional()

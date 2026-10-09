@@ -12,6 +12,6 @@ No supported public subject-level discussion ranking contract was found in the o
 
 ## Product clarification
 
-The `bangumi.search_subjects` MCP description and its `sort` input now state that `heat` means current collection count, not discussion heat or historical trend, and that the tool does not provide a discussion leaderboard. The MCP schema test checks both descriptions.
+The supported `bangumi.query_subjects` MCP description already states that `heat` means current collection count, not discussion heat or historical trend. This Epoch adds an MCP schema regression that keeps this meaning visible. The legacy `bangumi.search_subjects` keyword tool remains unchanged and is not treated as a discussion-ranking source.
 
-This is a semantic disclosure fix only. No G10 live query or direct API evidence was produced, and no acceptance counts change. G10 remains **PARTIAL**; do not present collection heat or private `/p1` topic ranking as the requested discussion leaderboard. Reopen when Bangumi offers a supported public subject-level discussion source and its metric, time window, coverage, and pagination contract can be verified.
+This is a schema-regression and scope-disposition change only. No G10 live query or direct API evidence was produced, the generated catalog is unchanged, and no acceptance counts change. G10 remains **PARTIAL**; do not present collection heat or private `/p1` topic ranking as the requested discussion leaderboard. Reopen when Bangumi offers a supported public subject-level discussion source and its metric, time window, coverage, and pagination contract can be verified.
