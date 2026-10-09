@@ -120,9 +120,10 @@
         "scripts/acceptance/write-g02-agent-mcp-report.mjs",
         "scripts/acceptance/g02-discovery-answer-check.mjs",
         "tests/harness/g02-discovery-answer-check.test.mjs",
-        "tests/unit/g02-codex-agent-mcp-runner.test.ts"
+        "tests/unit/g02-codex-agent-mcp-runner.test.ts",
+        "docs/research/run95-g02-one-shot-disposition-2026-10-09.md"
       ],
-      "next_action": "Run 95 product implementation Candidate ab772f377 was merged to current master as 487fdfb on 2026-10-09 after exact-SHA CI 7/7 and GPT-6 Luna Max PASS. The current-source query_subjects and render_query_subjects one-shot calls have not run. The canonical runner requires an active G02 Epoch PR whose exact Candidate has current-base CI and Luna Max PASS; use the fresh Run 95 evidence Epoch, then invoke the create-once runner exactly once. If its claim becomes INCONCLUSIVE, never retry. Update acceptance coverage only from independently validated sanitized reports. Keep G02 PARTIAL: experimental search and estimated totals do not establish global top-ten coverage; QQ/TIM remains separate.",
+      "next_action": "Run 95 current-source G02 one-shot on Candidate d06704768cc258858d7310ff5c8edaee51ef7ee0 after exact CI and Luna Max review. One bangumi.query_subjects target MCP event returned server SUCCESS (allowed=1, denied=0, shell=0), but the Codex session had 3 non-MCP tool events; the runner marked the create-once claim INCONCLUSIVE and stopped before the renderer. No canonical G02 reports were written and this does not add accepted Agent/MCP coverage. Never retry query_subjects, render_query_subjects, or the claim. Disposition: docs/research/run95-g02-one-shot-disposition-2026-10-09.md. Keep G02 PARTIAL: the bounded experimental search still does not establish global coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
