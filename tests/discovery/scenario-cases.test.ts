@@ -3,6 +3,7 @@ import {
   DEFAULT_EXECUTION_BUDGET,
   normalizeDiscoveryQuery,
 } from '@bangumi-agent-kit/discovery';
+import { A05_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/a05-collection-share-answer-check.mjs';
 import {
   DISCOVERY_SCENARIOS,
   selectDiscoveryScenario,
@@ -162,6 +163,7 @@ describe('fixed discovery acceptance scenarios', () => {
       resultMode: 'top',
       explain: 'full',
     });
+    expect(DISCOVERY_SCENARIOS.A05.query).toEqual(A05_EXPECTED_QUERY_ARGUMENTS);
     expect(DISCOVERY_SCENARIOS.A05.query).not.toHaveProperty('budget');
     expect(normalizeDiscoveryQuery(DISCOVERY_SCENARIOS.A05.query).budget).toEqual(
       DEFAULT_EXECUTION_BUDGET,

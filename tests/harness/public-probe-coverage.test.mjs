@@ -19,7 +19,7 @@ const report = JSON.parse(readFileSync(path.join(root, probePath), 'utf8'));
 const ledger = JSON.parse(readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'));
 const taskTable = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
 
-test('selected pending public probes pass without promoting Agent/MCP or client rows', () => {
+test('selected public probes do not promote stale evidence to Agent/MCP or client rows', () => {
   assert.equal(report.mode, 'read_only_public_api_smoke');
   assert.equal(report.probeCount, expectedTools.length);
   assert.equal(report.httpRequests, 11);
@@ -37,7 +37,9 @@ test('selected pending public probes pass without promoting Agent/MCP or client 
     const line = taskTable.split('\n').find((row) => row.startsWith(`| \`${result.tool}\` |`));
     assert.ok(line, `missing task row for ${result.tool}`);
     const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
-    assert.match(cells[6], /^◐/u, `${result.tool} public API evidence`);
+    // The evidence-derived matrix may demote a probe when its source or the
+    // catalogued tool contract has changed since the report was produced.
+    assert.ok(cells[6] === '⬜' || cells[6].startsWith('◐'), `${result.tool} public API status`);
     assert.equal(cells[9], '⬜', `${result.tool} Agent/MCP must remain pending`);
     assert.equal(cells[10], '⬜', `${result.tool} QQ must remain pending`);
     assert.equal(cells[11], '⬜', `${result.tool} TIM must remain pending`);
