@@ -12,6 +12,7 @@ import os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import {
   G02_TOOL_PROFILES,
+  assertG02CandidateReviewGate,
   canonicalG02ClaimPath,
   buildCodexExecArgs,
   createG02OneShotClaim,
@@ -36,6 +37,72 @@ function configs(args: string[]) {
 }
 
 describe('G02 current catalog one-tool runner', () => {
+  it('requires the exact active G02 Candidate, current-base CI, and Luna Max PASS', () => {
+    const candidateSha = 'a'.repeat(40);
+    const baseSha = 'b'.repeat(40);
+    const branch = 'codex/epoch-run95-g02-current-agent-mcp';
+    const prNumber = 118;
+    const checks = [
+      'harness-control',
+      'sqlite-default',
+      'host-integration',
+      'standalone-release-smoke',
+      'postgres-compat',
+      'provider-foundation',
+      'discovery-foundation',
+    ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
+    const status = {
+      git: { status: '', head: candidateSha, branch },
+      run: {
+        state: { state: 'EPOCH_ACTIVE', active_epoch_pr: prNumber, pending_epoch: null },
+      },
+      epoch: {
+        number: prNumber,
+        github_state: 'OPEN',
+        state: {
+          epoch_id: 'run95-g02-current-agent-mcp',
+          pr_number: prNumber,
+          branch,
+          candidate_sha: candidateSha,
+          base_sha: baseSha,
+          ci: { sha: candidateSha, status: 'SUCCESS' },
+          review_pass_sha: candidateSha,
+          review_history: [
+            {
+              candidate_sha: candidateSha,
+              reviewer_id: 'run95-pr117-review1-gpt-6-luna-max',
+              verdict: 'PASS',
+            },
+          ],
+        },
+      },
+    };
+    const pr = {
+      state: 'OPEN',
+      isDraft: false,
+      baseRefName: 'master',
+      headRefOid: candidateSha,
+      headRefName: branch,
+      statusCheckRollup: checks,
+    };
+
+    expect(
+      assertG02CandidateReviewGate(status, pr, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toEqual({ prNumber, candidateSha });
+
+    const inactiveStatus = structuredClone(status);
+    Object.assign(inactiveStatus.run.state, { active_epoch_pr: null });
+    expect(() =>
+      assertG02CandidateReviewGate(inactiveStatus, pr, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
+  });
+
   it('pins query_subjects to the exact argument profile and isolated Luna Max session', () => {
     const args = buildCodexExecArgs({ ...base, toolName: 'bangumi.query_subjects' });
     const values = configs(args);
