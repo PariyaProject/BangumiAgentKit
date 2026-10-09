@@ -2209,9 +2209,15 @@
         "scripts/generate-tool-acceptance-tasks.py",
         "scripts/test_acceptance_evidence.py",
         "tests/unit/a01-agent-answer-check.test.ts",
-        "tests/unit/a01-codex-agent-mcp-runner.test.ts"
+        "tests/unit/a01-codex-agent-mcp-runner.test.ts",
+        "scripts/acceptance/a01-aggregate-subject-cohort-answer-check.mjs",
+        "scripts/acceptance/a01-aggregate-subject-cohort-answer-check.d.mts",
+        "scripts/acceptance/run-a01-aggregate-codex-agent-mcp.mjs",
+        "scripts/acceptance/run-a01-aggregate-codex-agent-mcp.d.mts",
+        "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
+        "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "Run 95 A01 one-shot was invoked exactly once on reviewed current-base Candidate 19b28658b84399a682e8cfeedd4003512f8aa87f after exact CI and GPT-6 Luna Max PASS. The sanitized Agent/MCP report docs/live-probes/pariya-agent-codex-luna-e2e-A01.json is INCONCLUSIVE: the sole target MCP event returned ERROR, the event stream had 3 non-MCP tool events, and no cohort rows were returned. The local Git-metadata claim is consumed. Never retry this query or claim; keep A01 UNASSESSED and do not advance acceptance counts. OAuth/accounts/community/QQ/TIM remain excluded. A different safe discriminator would need a separately reviewed, non-retry design.",
+      "next_action": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE; never retry it. PR #126 adds a separate anonymous read-only aggregate_subject_cohort runner and report validator, but no live query has occurred and no Agent/MCP count has advanced. Keep A01 UNASSESSED. The distinct fixed query is media=anime, year=2012, resultMode=all, maxSubjects=1; preserve metric/coverage state and do not claim full population, significance, quality, causality, recommendation, or trends. Invoke only after current-base exact-SHA CI and GPT-6 Luna Max PASS; if INCONCLUSIVE, never retry. OAuth/accounts/community/QQ/TIM remain excluded.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2227,7 +2233,10 @@
           "packages/tools/src/definitions/discovery-tools.ts",
           "packages/renderer/src/templates/SubjectCohortComparisonCard.tsx",
           "apps/mcp/src/result-presenter.ts",
-          "apps/standalone/src/presenter.ts"
+          "apps/standalone/src/presenter.ts",
+          "scripts/acceptance/a01-aggregate-subject-cohort-answer-check.mjs",
+          "scripts/acceptance/run-a01-aggregate-codex-agent-mcp.mjs",
+          "scripts/generate-tool-acceptance-tasks.py"
         ],
         "tests": [
           "tests/discovery/cohort.test.ts",
@@ -2235,9 +2244,35 @@
           "tests/integration/mcp-result-presenter.test.ts",
           "tests/integration/tool-direct-execute-discovery.test.ts",
           "tests/render/subject-cohort-comparison.test.ts",
-          "tests/standalone/subject-cohort-command.test.ts"
+          "tests/standalone/subject-cohort-command.test.ts",
+          "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
+          "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts",
+          "scripts/test_acceptance_evidence.py"
         ],
-        "acceptance_limit": "PR #124 provides engineering implementation evidence only. The single reviewed exact-Candidate anonymous Agent/MCP attempt is recorded in docs/live-probes/pariya-agent-codex-luna-e2e-A01.json as INCONCLUSIVE because the target tool errored and 3 non-MCP events appeared; no cohort rows or checked answer exist. Keep A01 UNASSESSED, do not change acceptance counts, and never retry the consumed one-shot claim."
+        "acceptance_limit": "PR #124 engineering evidence does not resolve A01 because its sole compare_subject_cohorts exact-Candidate attempt is INCONCLUSIVE; the consumed query and claim must never be retried. PR #126 adds the separate aggregate_subject_cohort runner/report path but has no live query or accepted aggregate report yet. Keep A01 UNASSESSED and do not change Agent/MCP counts until the distinct aggregate tool has a valid exact-Candidate report; even then, one cohort aggregate does not resolve the original comparative user question.",
+        "aggregate_one_tool_probe_design": {
+          "tool": "bangumi.aggregate_subject_cohort",
+          "state": "IMPLEMENTED_NOT_YET_RUN",
+          "epoch_id": "run95-a01-aggregate-subject-cohort-codex-current-evidence",
+          "pr_number": 126,
+          "arguments": {
+            "cohort": {
+              "query": {
+                "media": "anime",
+                "year": 2012,
+                "resultMode": "all"
+              }
+            },
+            "maxSubjects": 1
+          },
+          "runner": "scripts/acceptance/run-a01-aggregate-codex-agent-mcp.mjs",
+          "answer_checker": "scripts/acceptance/a01-aggregate-subject-cohort-answer-check.mjs",
+          "report": "docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json",
+          "exact_candidate_ci_required": true,
+          "gpt_6_luna_max_pass_required": true,
+          "no_retry": true,
+          "limitations": "No live report or accepted tool-row evidence exists yet; this separate tool does not resolve the original compare_subject_cohorts A01 user question."
+        }
       }
     },
     {
