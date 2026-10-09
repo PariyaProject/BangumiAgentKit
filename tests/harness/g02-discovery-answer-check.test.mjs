@@ -246,6 +246,12 @@ test('G02 query and renderer scope checks reject qualified negations of scope cl
     });
     assert.equal(checked.passed, false);
   }
+  const positiveLimitedQuery = verifyG02QueryAnswer({
+    answer: queryAnswer.replace('动画，精确概念', '非常有限的动画，精确概念'),
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(queryResult()),
+  });
+  assert.equal(positiveLimitedQuery.passed, true);
 
   const rendererAnswer =
     '图片卡已生成。\n范围：2024-01-01至2025-01-01（左闭右开），动画异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。';
@@ -259,27 +265,34 @@ test('G02 query and renderer scope checks reject qualified negations of scope cl
     rendererAnswer.replace('动画异世界', '动画不属于异世界'),
     rendererAnswer.replace('动画异世界', '动画 not isekai (异世界)'),
   ];
+  const toolResultSummary = {
+    resultState: 'artifact_returned',
+    artifact: {
+      returned: true,
+      persisted: false,
+      mimeType: 'image/png',
+      width: 720,
+      height: 1200,
+      byteLength: 34000,
+      sha256: 'a'.repeat(64),
+      pngSignatureValid: true,
+    },
+  };
   for (const answer of rendererCases) {
     const checked = verifyG02RendererAnswer({
       answer,
       queryArguments: G02_QUERY_ARGUMENTS,
-      toolResultSummary: {
-        resultState: 'artifact_returned',
-        artifact: {
-          returned: true,
-          persisted: false,
-          mimeType: 'image/png',
-          width: 720,
-          height: 1200,
-          byteLength: 34000,
-          sha256: 'a'.repeat(64),
-          pngSignatureValid: true,
-        },
-      },
+      toolResultSummary,
     });
     assert.equal(checked.answerChecks.exactDateAndConceptScopeDisclosed, false);
     assert.equal(checked.passed, false);
   }
+  const positiveLimitedRenderer = verifyG02RendererAnswer({
+    answer: rendererAnswer.replace('动画异世界', '非常有限的动画异世界'),
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolResultSummary,
+  });
+  assert.equal(positiveLimitedRenderer.passed, true);
 });
 
 test('G02 renderer answer accepts only bounded non-persisted PNG metadata', () => {

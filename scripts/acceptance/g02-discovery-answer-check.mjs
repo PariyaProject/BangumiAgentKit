@@ -170,10 +170,12 @@ function finalScopeLine(answer) {
 }
 
 function hasChineseNegatedTerm(scopeLine, terms) {
-  return new RegExp(
-    `(?:不是|并非|并不是|非|不属于|不算|不符合|不代表|不含|不包括)\\s*(?:[\\p{Script=Han}]{0,8}\\s*)?(?:${terms})`,
+  const qualifiedNegation = new RegExp(
+    `(?:不是|并非|并不是|不属于|不算|不符合|不代表|不含|不包括)\\s*(?:[\\p{Script=Han}]{0,8}\\s*)?(?:${terms})`,
     'u',
-  ).test(scopeLine);
+  );
+  const nonPrefix = new RegExp(`非(?:(?:一个|一部|一种|这类|这一类|该|此)\\s*)?(?:${terms})`, 'u');
+  return qualifiedNegation.test(scopeLine) || nonPrefix.test(scopeLine);
 }
 
 function hasEnglishNegatedTerm(scopeLine, terms) {
