@@ -58,6 +58,20 @@ const QUERY_STATES = new Set([
   'not_found',
   'upstream_error',
 ]);
+const COVERAGE_STATES = new Set(['complete', 'partial', 'unknown', 'not_applicable']);
+const SUBJECT_METRIC_STATES = new Set([
+  'available',
+  'partial',
+  'missing',
+  'conflict',
+  'not_computable',
+]);
+const METRIC_VALUE_FIELDS = {
+  score: 'score',
+  heat: 'collectionTotal',
+  episodesReported: 'episodesReported',
+  ratingStandardDeviation: 'ratingStandardDeviation',
+};
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -128,6 +142,60 @@ function summarizeMetric(metric, expectedKey) {
   };
 }
 
+function expectedMetricCoverageState(key, queryState, queryCoverageState, counts) {
+  const queryMetricState =
+    queryState === 'ok' ? null : queryState === 'not_found' ? 'not_computable' : queryState;
+  if (queryMetricState !== null && queryMetricState !== 'partial') return queryMetricState;
+  if (counts.conflicts > 0) return 'conflict';
+  if (key !== 'ratingStandardDeviation' && counts.valid === 0) return 'not_computable';
+  if (counts.valid + counts.partial === 0 && counts.notComputable > 0 && counts.missing === 0) {
+    return 'not_computable';
+  }
+  if (
+    queryMetricState === 'partial' ||
+    queryCoverageState !== 'complete' ||
+    counts.partial > 0 ||
+    counts.missing > 0 ||
+    counts.notComputable > 0
+  ) {
+    return 'partial';
+  }
+  return counts.valid === 0 ? 'not_computable' : 'complete';
+}
+
+function expectedOverallState(queryState, metricStates) {
+  const terminalQueryStates = [
+    'upstream_error',
+    'auth_required',
+    'permission_denied',
+    'unavailable',
+    'unsupported',
+    'stale',
+  ];
+  if (terminalQueryStates.includes(queryState)) return queryState;
+  if (queryState === 'not_found') return 'not_found';
+  if (metricStates.some((state) => state === 'conflict')) return 'conflict';
+  if (metricStates.every((state) => state === 'not_computable')) return 'not_computable';
+  if (queryState !== 'ok' || metricStates.some((state) => state !== 'complete')) return 'partial';
+  return 'complete';
+}
+
+function expectedMetricAverage(subjects, key) {
+  const field = METRIC_VALUE_FIELDS[key];
+  const values = [];
+  for (const subject of subjects) {
+    const state = subject.metricStates[key];
+    if (state !== 'available' && state !== 'partial') continue;
+    const value = subject[field];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      values.push(value);
+    } else if (state === 'available') {
+      return undefined;
+    }
+  }
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 export function summarizeA01AggregateResult(result) {
   if (
     !isRecord(result) ||
@@ -149,8 +217,10 @@ export function summarizeA01AggregateResult(result) {
     !isRecord(cohort) ||
     !isRecord(cohort.query) ||
     !isDeepStrictEqual(cohort.query, A01_AGGREGATE_EXPECTED_ARGUMENTS.cohort.query) ||
+    !Array.isArray(cohort.subjects) ||
+    cohort.subjects.length > 1 ||
     !isRecord(queryCoverage) ||
-    !QUERY_STATES.has(queryCoverage.state) ||
+    !COVERAGE_STATES.has(queryCoverage.state) ||
     !boundedCounter(queryCoverage.scanned, 500) ||
     !boundedCounter(queryCoverage.matched, 500) ||
     !boundedCounter(queryCoverage.returned, 500) ||
@@ -158,7 +228,9 @@ export function summarizeA01AggregateResult(result) {
     queryCoverage.returned > queryCoverage.matched ||
     !['estimated', 'exact', 'unknown'].includes(queryCoverage.totalKind) ||
     !isRecord(cohort.coverage) ||
+    !isRecord(cohort.coverage.query) ||
     !QUERY_STATES.has(cohort.coverage.query.state) ||
+    !isRecord(cohort.coverage.metrics) ||
     !Number.isSafeInteger(cohort.coverage.detailHydrationsAttempted) ||
     cohort.coverage.detailHydrationsAttempted < 0 ||
     cohort.coverage.detailHydrationsAttempted > 1 ||
@@ -196,6 +268,51 @@ export function summarizeA01AggregateResult(result) {
   ) {
     return null;
   }
+  const totalReturned = result.coverage.totalSubjectsReturned;
+  if (
+    cohort.subjects.length !== totalReturned ||
+    queryCoverage.returned !== totalReturned ||
+    cohort.coverage.detailHydrationsAttempted !== totalReturned ||
+    cohort.coverage.detailHydrationsSucceeded + cohort.coverage.detailHydrationsFailed !==
+      cohort.coverage.detailHydrationsAttempted ||
+    result.coverage.cohortsComplete !== (queryCoverage.state === 'complete' ? 1 : 0) ||
+    result.coverage.cohortsPartial !== (queryCoverage.state === 'complete' ? 0 : 1) ||
+    ((queryCoverage.state !== 'complete' || queryCoverage.budgetExceeded) &&
+      !result.coverage.truncated) ||
+    (totalReturned === 0 && cohort.coverage.query.state === 'ok')
+  ) {
+    return null;
+  }
+  const metricKeys = METRICS.map(([key]) => key);
+  if (
+    Object.keys(cohort.coverage.metrics).sort().join('\0') !== [...metricKeys].sort().join('\0')
+  ) {
+    return null;
+  }
+  const rowCounts = Object.fromEntries(
+    metricKeys.map((key) => [
+      key,
+      { valid: 0, partial: 0, missing: 0, conflicts: 0, notComputable: 0 },
+    ]),
+  );
+  for (const subject of cohort.subjects) {
+    if (
+      !isRecord(subject) ||
+      !isRecord(subject.metricStates) ||
+      Object.keys(subject.metricStates).sort().join('\0') !== [...metricKeys].sort().join('\0')
+    ) {
+      return null;
+    }
+    for (const key of metricKeys) {
+      const state = subject.metricStates[key];
+      if (!SUBJECT_METRIC_STATES.has(state)) return null;
+      if (state === 'available') rowCounts[key].valid += 1;
+      else if (state === 'partial') rowCounts[key].partial += 1;
+      else if (state === 'missing') rowCounts[key].missing += 1;
+      else if (state === 'conflict') rowCounts[key].conflicts += 1;
+      else rowCounts[key].notComputable += 1;
+    }
+  }
   const metrics = METRICS.map(([key]) =>
     summarizeMetric(
       result.metrics.find((metric) => metric?.key === key),
@@ -203,14 +320,55 @@ export function summarizeA01AggregateResult(result) {
     ),
   );
   if (metrics.some((metric) => metric === null)) return null;
+  for (let index = 0; index < metricKeys.length; index += 1) {
+    const key = metricKeys[index];
+    const metric = metrics[index];
+    const rawMetric = result.metrics.find((item) => item?.key === key);
+    const coverageMetric = cohort.coverage.metrics[key];
+    const counts = rowCounts[key];
+    const countFields = ['valid', 'partial', 'missing', 'conflicts', 'notComputable'];
+    if (
+      !isRecord(coverageMetric) ||
+      !METRIC_STATES.has(coverageMetric.state) ||
+      countFields.some(
+        (field) =>
+          !boundedCounter(coverageMetric[field]) ||
+          coverageMetric[field] !== counts[field] ||
+          coverageMetric[field] !== metric[field],
+      ) ||
+      coverageMetric.state !==
+        expectedMetricCoverageState(
+          key,
+          cohort.coverage.query.state,
+          queryCoverage.state,
+          counts,
+        ) ||
+      metric.state !== coverageMetric.state
+    ) {
+      return null;
+    }
+    const expectedAverage = expectedMetricAverage(cohort.subjects, key);
+    if (expectedAverage === undefined || metric.value !== expectedAverage) return null;
+    if (rawMetric.state === 'complete') {
+      if (rawMetric.averages[0] !== expectedAverage || rawMetric.partialAverages !== undefined) {
+        return null;
+      }
+    } else if (
+      (rawMetric.averages[0] !== null && rawMetric.averages[0] !== undefined) ||
+      (rawMetric.partialAverages?.[0] ?? null) !== expectedAverage
+    ) {
+      return null;
+    }
+  }
   if (
-    metrics.some(
-      (metric) =>
-        metric.valid + metric.partial + metric.missing + metric.conflicts + metric.notComputable !==
-        result.coverage.totalSubjectsReturned,
+    result.state !==
+    expectedOverallState(
+      cohort.coverage.query.state,
+      metrics.map((metric) => metric.state),
     )
-  )
+  ) {
     return null;
+  }
   return {
     state: result.state,
     formulaVersion: result.formulaVersion,

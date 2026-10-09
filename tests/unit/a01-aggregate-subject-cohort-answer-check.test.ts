@@ -8,18 +8,21 @@ import {
 
 const fixedQuery = A01_AGGREGATE_EXPECTED_ARGUMENTS.cohort.query;
 
-function metric(key: string, value: number, state = 'complete') {
+function metric(key: string, value: number, rowState: 'available' | 'partial') {
+  const valid = rowState === 'available' ? 1 : 0;
+  const partial = rowState === 'partial' ? 1 : 0;
   return {
     key,
     label: key,
     sourceField: key,
-    averages: [value],
-    validCounts: [1],
-    partialCounts: [0],
+    averages: [null],
+    partialAverages: [value],
+    validCounts: [valid],
+    partialCounts: [partial],
     missingCounts: [0],
     conflictCounts: [0],
     notComputableCounts: [0],
-    state,
+    state: 'partial',
   };
 }
 
@@ -31,7 +34,23 @@ function result() {
         label: '2012 anime',
         query: fixedQuery,
         querySummary: 'fixed public sample',
-        subjects: [],
+        subjects: [
+          {
+            id: 1,
+            name: 'fixture',
+            displayName: 'fixture',
+            score: 7.25,
+            collectionTotal: 123.5,
+            episodesReported: 12,
+            ratingStandardDeviation: 1.125,
+            metricStates: {
+              score: 'available',
+              heat: 'available',
+              episodesReported: 'available',
+              ratingStandardDeviation: 'available',
+            },
+          },
+        ],
         coverage: {
           query: {
             state: 'partial',
@@ -48,14 +67,48 @@ function result() {
           detailHydrationsAttempted: 1,
           detailHydrationsSucceeded: 1,
           detailHydrationsFailed: 0,
+          metrics: {
+            score: {
+              valid: 1,
+              partial: 0,
+              missing: 0,
+              conflicts: 0,
+              notComputable: 0,
+              state: 'partial',
+            },
+            heat: {
+              valid: 1,
+              partial: 0,
+              missing: 0,
+              conflicts: 0,
+              notComputable: 0,
+              state: 'partial',
+            },
+            episodesReported: {
+              valid: 1,
+              partial: 0,
+              missing: 0,
+              conflicts: 0,
+              notComputable: 0,
+              state: 'partial',
+            },
+            ratingStandardDeviation: {
+              valid: 1,
+              partial: 0,
+              missing: 0,
+              conflicts: 0,
+              notComputable: 0,
+              state: 'partial',
+            },
+          },
         },
       },
     ],
     metrics: [
-      metric('score', 7.25),
-      metric('heat', 123.5, 'partial'),
-      metric('episodesReported', 12),
-      metric('ratingStandardDeviation', 1.125),
+      metric('score', 7.25, 'available'),
+      metric('heat', 123.5, 'available'),
+      metric('episodesReported', 12, 'available'),
+      metric('ratingStandardDeviation', 1.125, 'available'),
     ],
     formulaVersion: 'subject-cohort-comparison-v1',
     coverage: {
@@ -148,5 +201,27 @@ describe('A01 aggregate_subject_cohort answer checker', () => {
         toolResult,
       }).checks.plainTextNoMarkdown,
     ).toBe(false);
+  });
+
+  it('rejects inconsistent returned rows, coverage counts, metric states, averages, and overall state', () => {
+    const noSubject = result();
+    noSubject.cohorts[0]!.subjects = [];
+    expect(summarizeA01AggregateResult(noSubject)).toBeNull();
+
+    const wrongQueryCount = result();
+    wrongQueryCount.cohorts[0]!.coverage.query.coverage.returned = 0;
+    expect(summarizeA01AggregateResult(wrongQueryCount)).toBeNull();
+
+    const wrongMetricCount = result();
+    wrongMetricCount.cohorts[0]!.coverage.metrics.score.valid = 0;
+    expect(summarizeA01AggregateResult(wrongMetricCount)).toBeNull();
+
+    const wrongMetricAverage = result();
+    wrongMetricAverage.metrics[0]!.partialAverages = [9.99];
+    expect(summarizeA01AggregateResult(wrongMetricAverage)).toBeNull();
+
+    const wrongOverallState = result();
+    wrongOverallState.state = 'complete';
+    expect(summarizeA01AggregateResult(wrongOverallState)).toBeNull();
   });
 });

@@ -300,6 +300,7 @@ CODEX_A01_AGGREGATE_ARGUMENT_PROFILE = 'a01-aggregate-2012-anime-sample-v1'
 CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH = (
     'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'
 )
+CODEX_A01_AGGREGATE_PR_NUMBER = 126
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -1026,6 +1027,9 @@ CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_a01_aggregate_result_is_valid(',
+        'def codex_a01_aggregate_report_is_valid(',
+        'def codex_a01_aggregate_report_matches_candidate_revision(',
+        'CODEX_A01_AGGREGATE_PR_NUMBER = 126',
         'CODEX_A01_AGGREGATE_ARGUMENTS',
     ),
 }
@@ -2303,6 +2307,49 @@ def codex_a01_report_matches_candidate_revision(report_path: Path, revision: obj
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
 
 
+def codex_a01_aggregate_report_matches_candidate_revision(
+    report_path: Path, revision: object,
+) -> bool:
+    """Bind aggregate evidence to its exact reviewed runtime Candidate and report commit."""
+    if not codex_a01_aggregate_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError, TypeError):
+        return False
+    if (
+        relative_path != CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH
+        or report.get('sourceRevision') != revision
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(revision)
+    ):
+        return False
+    base_sha = report.get('baseSha')
+    if (
+        not isinstance(base_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', base_sha, revision).returncode != 0
+    ):
+        return False
+
+    head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
+    if head.returncode != 0:
+        return False
+    head_sha = head.stdout.strip()
+    committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
+    if committed_in_head.returncode != 0:
+        return revision == head_sha
+    added_commit = _run_repository_git(
+        ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
+    )
+    commit_sha = added_commit.stdout.strip()
+    if added_commit.returncode != 0 or not re.fullmatch(r'[0-9a-f]{40}', commit_sha):
+        return False
+    parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
+    parent_shas = parents.stdout.strip().split()
+    return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
 def codex_g02_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
     """Require each G02 report to be added after the exact reviewed Candidate."""
     if not codex_g02_probe_revision_has_implementation(revision):
@@ -3494,7 +3541,8 @@ def codex_a01_aggregate_report_is_valid(report: dict) -> bool:
         or report.get('epochId') != 'run95-a01-aggregate-subject-cohort-codex-current-evidence'
         or report.get('state') != 'PASS'
         or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
-        or type(report.get('prNumber')) is not int or report['prNumber'] < 1
+        or type(report.get('prNumber')) is not int
+        or report['prNumber'] != CODEX_A01_AGGREGATE_PR_NUMBER
         or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
         or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
         or report.get('mcpServerNames') != ['bgk_a01_aggregate_one_tool']
@@ -3900,6 +3948,9 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 report.get('frontierId') != 'A01'
                 or path.relative_to(LIVE_PROBE_DIR.parent.parent).as_posix()
                     != CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH
+                or not codex_a01_aggregate_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
             ):
                 continue
             if report.get('frontierId') == 'G02' and (

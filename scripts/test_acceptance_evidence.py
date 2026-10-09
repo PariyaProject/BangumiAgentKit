@@ -544,6 +544,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self._git('init', '-q')
         self._git('config', 'user.name', 'Acceptance Evidence Test')
         self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
+        self._git('commit', '--allow-empty', '-qm', 'probe acceptance base fixture')
         self._git('add', *sorted(relative_paths))
         self._git('commit', '-qm', 'add one-tool probe implementation fixture')
         stale_candidate_revision = self._git('rev-parse', 'HEAD').stdout.strip()
@@ -745,6 +746,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         tool_name = 'bangumi.aggregate_subject_cohort'
         tool = next(item for item in self.catalog if item['name'] == tool_name)
         arguments = GENERATOR.CODEX_A01_AGGREGATE_ARGUMENTS
+        base_sha = self._git('rev-parse', f'{self.source_revision}^').stdout.strip()
+        bundle_sha = GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision)
+        self.assertIsNotNone(bundle_sha)
         answer_checks = {
             key: True for key in GENERATOR.CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS
         }
@@ -840,14 +844,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'runNumber': 95,
             'frontierId': 'A01',
             'epochId': 'run95-a01-aggregate-subject-cohort-codex-current-evidence',
-            'mcpBundleSha256': 'e' * 64,
-            'prNumber': 129,
-            'baseSha': 'b' * 40,
+            'mcpBundleSha256': bundle_sha,
+            'prNumber': GENERATOR.CODEX_A01_AGGREGATE_PR_NUMBER,
+            'baseSha': base_sha,
             'observedAt': '2026-10-09T00:00:00.000Z',
             'mcpServerNames': ['bgk_a01_aggregate_one_tool'],
             'candidateGate': {
                 'candidateSha': self.source_revision,
-                'baseSha': 'b' * 40,
+                'baseSha': base_sha,
                 'ciSha': self.source_revision,
                 'ciStatus': 'SUCCESS',
                 'reviewPassSha': self.source_revision,
@@ -1003,6 +1007,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {item['name']: item for item in self.catalog},
             {item['name']: item for item in self.catalog},
         ))
+        self.assertTrue(GENERATOR.codex_a01_aggregate_report_matches_candidate_revision(
+            self.report_path,
+            self.source_revision,
+        ))
         self.assertEqual(
             GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.aggregate_subject_cohort'],
             {'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'},
@@ -1013,6 +1021,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
     def test_rejects_a01_aggregate_report_with_expanded_scope_or_stale_gate(self):
         invalid = [
+            {'prNumber': GENERATOR.CODEX_A01_AGGREGATE_PR_NUMBER + 3},
             {'queryArguments': {
                 'cohort': {'query': {'media': 'anime', 'year': 2013, 'resultMode': 'all'}},
                 'maxSubjects': 1,
@@ -1044,6 +1053,29 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {item['name']: item for item in self.catalog},
             {item['name']: item for item in self.catalog},
         ))
+
+    def test_rejects_a01_aggregate_report_bound_to_an_older_candidate(self):
+        report = self.write_a01_aggregate_report()
+        stale_revision = self.stale_candidate_source_revision
+        stale_base = self._git('rev-parse', f'{stale_revision}^').stdout.strip()
+        report['sourceRevision'] = stale_revision
+        report['baseSha'] = stale_base
+        report['candidateGate'].update({
+            'candidateSha': stale_revision,
+            'baseSha': stale_base,
+            'ciSha': stale_revision,
+            'reviewPassSha': stale_revision,
+        })
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            report,
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
+        self.assertNotIn(
+            'bangumi.aggregate_subject_cohort',
+            GENERATOR.model_mcp_e2e_sources(self.catalog),
+        )
 
     def test_accepts_current_catalog_g02_reports_and_codex_prerelease_version(self):
         query_report = self.write_g02_report()
