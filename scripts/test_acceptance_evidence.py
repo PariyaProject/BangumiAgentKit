@@ -927,6 +927,21 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'requested': 10, 'scanned': 20, 'matched': 20, 'returned': 2,
                 'warningCodes': [], 'sourceRowsValidated': 2, 'answerRowsMatched': 2,
             }},
+            {'resultCounters': {
+                'resultState': 'ok', 'coverageState': 'unknown', 'totalKind': 'estimated',
+                'requested': 10, 'scanned': 20, 'matched': 20, 'returned': 2,
+                'warningCodes': ['PRIVATE_TITLE_IN_SOURCE', 'EXPERIMENTAL_SOURCE'],
+                'sourceRowsValidated': 2, 'answerRowsMatched': 2,
+            }},
+            {'resultCounters': {
+                'resultState': 'ok', 'coverageState': 'unknown', 'totalKind': 'estimated',
+                'requested': 10, 'scanned': 20, 'matched': 20, 'returned': 2,
+                'warningCodes': [
+                    'EXPERIMENTAL_SOURCE',
+                    *sorted(GENERATOR.CODEX_G02_WARNING_CODES - {'EXPERIMENTAL_SOURCE'})[:20],
+                ],
+                'sourceRowsValidated': 2, 'answerRowsMatched': 2,
+            }},
         ]
         for override in invalid_query:
             with self.subTest(override=override):

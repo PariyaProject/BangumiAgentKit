@@ -131,6 +131,36 @@ test('G02 query answer rejects missing experimental warnings and complete-covera
   });
   assert.equal(result.answerChecks.coverageIsUnknownOrPartial, false);
   assert.equal(result.passed, false);
+
+  const untrustedWarningText = 'PRIVATE_TITLE_IN_SOURCE_作品一';
+  const unsafeWarning = verifyG02QueryAnswer({
+    answer: queryAnswer,
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(
+      queryResult({
+        warningCodes: undefined,
+        warnings: [
+          { code: untrustedWarningText, message: 'Untrusted source field.' },
+          { code: 'EXPERIMENTAL_SOURCE', message: 'Expected bounded warning.' },
+        ],
+      }),
+    ),
+  });
+  assert.equal(unsafeWarning.answerChecks.coverageIsUnknownOrPartial, false);
+  assert.deepEqual(unsafeWarning.resultCounters.warningCodes, ['EXPERIMENTAL_SOURCE']);
+  assert.equal(JSON.stringify(unsafeWarning.resultCounters).includes(untrustedWarningText), false);
+
+  const oversizedWarnings = verifyG02QueryAnswer({
+    answer: queryAnswer,
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(
+      queryResult({
+        warningCodes: Array.from({ length: 21 }, () => 'EXPERIMENTAL_SOURCE'),
+      }),
+    ),
+  });
+  assert.equal(oversizedWarnings.answerChecks.coverageIsUnknownOrPartial, false);
+  assert.deepEqual(oversizedWarnings.resultCounters.warningCodes, ['EXPERIMENTAL_SOURCE']);
 });
 
 test('G02 query answer requires plain text and explicit non-trend scope', () => {
@@ -148,12 +178,26 @@ test('G02 query answer requires plain text and explicit non-trend scope', () => 
   });
   assert.equal(trend.answerChecks.noUnsupportedTrendClaim, false);
   assert.equal(trend.answerChecks.experimentalSourceDisclosed, false);
+
+  const missingMediaDisclosure = verifyG02QueryAnswer({
+    answer: queryAnswer.replace('动画，精确概念', '精确概念'),
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(queryResult()),
+  });
+  assert.equal(missingMediaDisclosure.answerChecks.exactAnimeAndConcept, false);
+
+  const missingHalfOpenDisclosure = verifyG02QueryAnswer({
+    answer: queryAnswer.replace('（左闭右开）', ''),
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolOutput: toolOutput(queryResult()),
+  });
+  assert.equal(missingHalfOpenDisclosure.answerChecks.exact2024DateWindow, false);
 });
 
 test('G02 renderer answer accepts only bounded non-persisted PNG metadata', () => {
   const result = verifyG02RendererAnswer({
     answer:
-      '图片卡已生成。\n范围：2024-01-01至2025-01-01，动画异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。',
+      '图片卡已生成。\n范围：2024-01-01至2025-01-01（左闭右开），动画异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。',
     queryArguments: G02_QUERY_ARGUMENTS,
     toolResultSummary: {
       resultState: 'artifact_returned',
@@ -179,6 +223,26 @@ test('G02 renderer answer accepts only bounded non-persisted PNG metadata', () =
     pngSignatureValid: true,
   });
   assert.equal(Object.hasOwn(result.artifactSummary, 'bytes'), false);
+
+  const missingMediaOrHalfOpen = verifyG02RendererAnswer({
+    answer:
+      '图片卡已生成。\n范围：2024-01-01至2025-01-01，异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。',
+    queryArguments: G02_QUERY_ARGUMENTS,
+    toolResultSummary: {
+      resultState: 'artifact_returned',
+      artifact: {
+        returned: true,
+        persisted: false,
+        mimeType: 'image/png',
+        width: 720,
+        height: 1200,
+        byteLength: 34000,
+        sha256: 'a'.repeat(64),
+        pngSignatureValid: true,
+      },
+    },
+  });
+  assert.equal(missingMediaOrHalfOpen.answerChecks.exactDateAndConceptScopeDisclosed, false);
 });
 
 test('G02 renderer answer rejects persisted image bytes and missing scope disclosure', () => {

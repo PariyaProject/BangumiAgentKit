@@ -484,6 +484,16 @@ CODEX_G02_QUERY_RESULT_COUNTER_FIELDS = {
     'returned', 'warningCodes', 'sourceRowsValidated', 'answerRowsMatched',
 }
 CODEX_G02_RENDER_RESULT_COUNTER_FIELDS = {'resultState', 'artifactReturned'}
+CODEX_G02_WARNING_CODES = {
+    'PARTIAL_PAGE_SCAN', 'STALE_SOURCE', 'SOURCE_DISAGREEMENT', 'EXPERIMENTAL_SOURCE',
+    'FORMULA_EMPIRICALLY_VERIFIED', 'MISSING_FIELD', 'MISSING_DATE', 'AUTH_SCOPE_LIMITED',
+    'SCHEMA_DRIFT', 'SOURCE_DISABLED', 'SOURCE_NOT_CONFIGURED', 'UPSTREAM_NOT_FOUND',
+    'UPSTREAM_TIMEOUT', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_ERROR', 'RESPONSE_TOO_LARGE',
+    'INFOBOX_MALFORMED', 'INFOBOX_TRUNCATED', 'IDENTITY_LIST_TRUNCATED', 'ALIAS_UNKNOWN',
+    'DISCOVERY_AMBIGUOUS_CONCEPT', 'DISCOVERY_UNKNOWN_CONCEPT', 'DISCOVERY_BUDGET_EXCEEDED',
+    'DISCOVERY_HYDRATION_BUDGET_EXCEEDED', 'DISCOVERY_HYDRATION_UNRESOLVED',
+    'DISCOVERY_OUTPUT_TRUNCATED', 'DISCOVERY_UNSUPPORTED_FILTER',
+}
 CODEX_G02_PRIVACY_FIELDS = set(CODEX_PRIVACY_FLAGS) | {'authProfile', 'communityRead'}
 CODEX_S02_ANSWER_COUNTER_FIELDS = {
     'sourceRows', 'answerRows', 'rowsMatched', 'missingRowsCount', 'extraRowsCount',
@@ -2515,8 +2525,10 @@ def codex_mcp_evidence_is_valid(
                 or counters['sourceRowsValidated'] != counters['returned']
                 or counters['answerRowsMatched'] != counters['returned']
                 or not isinstance(counters.get('warningCodes'), list)
+                or len(counters['warningCodes']) > 20
                 or any(not isinstance(code, str) or not re.fullmatch(r'[A-Z0-9_]{1,64}', code)
                        for code in counters['warningCodes'])
+                or any(code not in CODEX_G02_WARNING_CODES for code in counters['warningCodes'])
                 or len(set(counters['warningCodes'])) != len(counters['warningCodes'])
                 or 'EXPERIMENTAL_SOURCE' not in counters['warningCodes']
                 or result.get('resultState') != counters['resultState']

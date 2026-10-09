@@ -9,6 +9,35 @@ const G02_QUERY_ARGUMENTS = {
   limit: 10,
   explain: 'full',
 };
+const G02_ALLOWED_WARNING_CODES = new Set([
+  'PARTIAL_PAGE_SCAN',
+  'STALE_SOURCE',
+  'SOURCE_DISAGREEMENT',
+  'EXPERIMENTAL_SOURCE',
+  'FORMULA_EMPIRICALLY_VERIFIED',
+  'MISSING_FIELD',
+  'MISSING_DATE',
+  'AUTH_SCOPE_LIMITED',
+  'SCHEMA_DRIFT',
+  'SOURCE_DISABLED',
+  'SOURCE_NOT_CONFIGURED',
+  'UPSTREAM_NOT_FOUND',
+  'UPSTREAM_TIMEOUT',
+  'UPSTREAM_RATE_LIMITED',
+  'UPSTREAM_ERROR',
+  'RESPONSE_TOO_LARGE',
+  'INFOBOX_MALFORMED',
+  'INFOBOX_TRUNCATED',
+  'IDENTITY_LIST_TRUNCATED',
+  'ALIAS_UNKNOWN',
+  'DISCOVERY_AMBIGUOUS_CONCEPT',
+  'DISCOVERY_UNKNOWN_CONCEPT',
+  'DISCOVERY_BUDGET_EXCEEDED',
+  'DISCOVERY_HYDRATION_BUDGET_EXCEEDED',
+  'DISCOVERY_HYDRATION_UNRESOLVED',
+  'DISCOVERY_OUTPUT_TRUNCATED',
+  'DISCOVERY_UNSUPPORTED_FILTER',
+]);
 
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -139,12 +168,51 @@ function finalScopeLine(answer) {
   return scopeLines[0];
 }
 
+function dateRangeScopeDisclosure(scopeLine) {
+  if (typeof scopeLine !== 'string') return false;
+  const fromIndex = scopeLine.indexOf(G02_QUERY_ARGUMENTS.from);
+  const toIndex = scopeLine.indexOf(G02_QUERY_ARGUMENTS.to);
+  const orderedRange = fromIndex >= 0 && toIndex > fromIndex;
+  const halfOpen = /左闭右开|半开区间|half[- ]open|2025-01-01.{0,8}(?:不含|不包括)/iu.test(
+    scopeLine,
+  );
+  return orderedRange && halfOpen;
+}
+
+function animeScopeDisclosure(scopeLine) {
+  return typeof scopeLine === 'string' && /动画|anime/iu.test(scopeLine);
+}
+
+function conceptScopeDisclosure(scopeLine) {
+  return typeof scopeLine === 'string' && scopeLine.includes('异世界');
+}
+
+function safeWarningCodes(result) {
+  const rawCodes = Array.isArray(result?.warningCodes)
+    ? result.warningCodes
+    : Array.isArray(result?.warnings)
+      ? result.warnings.map((warning) => warning?.code)
+      : null;
+  if (!rawCodes) return { valid: false, codes: [] };
+  const codes = new Set();
+  let valid = rawCodes.length <= 20;
+  for (const code of rawCodes.slice(0, 20)) {
+    if (typeof code !== 'string' || !G02_ALLOWED_WARNING_CODES.has(code)) {
+      valid = false;
+      continue;
+    }
+    codes.add(code);
+  }
+  return { valid, codes: [...codes].sort() };
+}
+
 function scopeDisclosure(answer, coverage) {
   const scopeLine = finalScopeLine(answer);
   if (!scopeLine) return false;
+  const dateScope = dateRangeScopeDisclosure(scopeLine);
+  const animeScope = animeScopeDisclosure(scopeLine);
+  const exactConcept = conceptScopeDisclosure(scopeLine);
   const text = scopeLine.toLowerCase();
-  const dateScope = text.includes('2024-01-01') && text.includes('2025-01-01');
-  const exactConcept = text.includes('异世界');
   const currentHeatMeaning =
     text.includes('收藏人数') && (text.includes('当前') || text.includes('collection'));
   const experimental = text.includes('实验') || text.includes('experimental');
@@ -165,6 +233,7 @@ function scopeDisclosure(answer, coverage) {
   const unsupportedPositive = hasUnsupportedGlobalTopTenClaim(scopeLine);
   return (
     dateScope &&
+    animeScope &&
     exactConcept &&
     currentHeatMeaning &&
     experimental &&
@@ -181,9 +250,9 @@ function rendererScopeDisclosure(answer) {
   if (!scopeLine) return false;
   const text = scopeLine.toLowerCase();
   return (
-    text.includes('2024-01-01') &&
-    text.includes('2025-01-01') &&
-    text.includes('异世界') &&
+    dateRangeScopeDisclosure(scopeLine) &&
+    animeScopeDisclosure(scopeLine) &&
+    conceptScopeDisclosure(scopeLine) &&
     text.includes('收藏人数') &&
     text.includes('当前') &&
     (text.includes('实验') || text.includes('experimental')) &&
@@ -195,13 +264,8 @@ function rendererScopeDisclosure(answer) {
   );
 }
 
-function resultCoverageIsSafe(result) {
+function resultCoverageIsSafe(result, warningCodes) {
   const coverage = result?.coverage;
-  const warningCodes = Array.isArray(result?.warningCodes)
-    ? result.warningCodes
-    : Array.isArray(result?.warnings)
-      ? result.warnings.map((warning) => warning?.code).filter((code) => typeof code === 'string')
-      : [];
   return Boolean(
     ['unknown', 'partial'].includes(coverage?.state) &&
     coverage?.requested === G02_QUERY_ARGUMENTS.limit &&
@@ -215,7 +279,8 @@ function resultCoverageIsSafe(result) {
     coverage.returned <= G02_QUERY_ARGUMENTS.limit &&
     coverage.returned === result.items.length &&
     coverage.matched >= coverage.returned &&
-    warningCodes.includes('EXPERIMENTAL_SOURCE'),
+    warningCodes.valid &&
+    warningCodes.codes.includes('EXPERIMENTAL_SOURCE'),
   );
 }
 
@@ -232,6 +297,8 @@ export function verifyG02QueryAnswer({ answer, queryArguments, toolOutput }) {
       item?.conceptMatched === true || (Array.isArray(item?.tags) && item.tags.includes('异世界')),
   }));
   const rows = answerRows(typeof answer === 'string' ? answer : '');
+  const scopeLine = finalScopeLine(answer);
+  const warningCodes = safeWarningCodes(result);
   const uniqueIds =
     normalizedItems.length > 0 &&
     new Set(normalizedItems.map((item) => item.id)).size === normalizedItems.length;
@@ -274,13 +341,14 @@ export function verifyG02QueryAnswer({ answer, queryArguments, toolOutput }) {
     queryArgumentsMatch: canonicalJson(queryArguments) === canonicalJson(G02_QUERY_ARGUMENTS),
     exactSingleToolCall: true,
     resultReadbackAvailable: Boolean(result),
-    exact2024DateWindow: sourceRowsValid,
-    exactAnimeAndConcept: sourceRowsValid,
+    exact2024DateWindow: sourceRowsValid && dateRangeScopeDisclosure(scopeLine),
+    exactAnimeAndConcept:
+      sourceRowsValid && animeScopeDisclosure(scopeLine) && conceptScopeDisclosure(scopeLine),
     uniqueSourceRows: uniqueIds,
     currentCollectionHeatOrder: heatOrder,
     sourceRowsMatchAnswer: sourceAnswerMatch,
     returnedRowsWithinLimit: normalizedItems.length <= G02_QUERY_ARGUMENTS.limit,
-    coverageIsUnknownOrPartial: resultCoverageIsSafe(result),
+    coverageIsUnknownOrPartial: resultCoverageIsSafe(result, warningCodes),
     experimentalSourceDisclosed: scopeDisclosure(answer, result?.coverage),
     estimatedTotalNotPresentedAsComplete: scopeDisclosure(answer, result?.coverage),
     noUnsupportedGlobalTopTenClaim: !hasUnsupportedGlobalTopTenClaim(answer),
@@ -298,9 +366,7 @@ export function verifyG02QueryAnswer({ answer, queryArguments, toolOutput }) {
           scanned: result.coverage.scanned,
           matched: result.coverage.matched,
           returned: result.coverage.returned,
-          warningCodes: Array.isArray(result.warningCodes)
-            ? result.warningCodes.filter((code) => typeof code === 'string')
-            : [],
+          warningCodes: warningCodes.codes,
           sourceRowsValidated: normalizedItems.length,
           answerRowsMatched: rows.length,
         }
