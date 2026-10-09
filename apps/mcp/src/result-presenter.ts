@@ -94,7 +94,7 @@ const DISPLAY_TEXT_LIMIT = 120;
 const TEXT_VIEW_SCOPE_NOTE =
   'Only included rows are shown; partial or truncated coverage is not a complete source list, and omission is not evidence of absence.';
 const SUBJECT_COHORT_TEXT_SCOPE_NOTE =
-  'Only included rows are shown; omitted rows are not evidence of absence. Rating standard deviation is a descriptive current-snapshot metric, not statistical significance or polarization. Overlapping IDs remain in both cohort means. Full result remains in structuredContent.';
+  'Rows are truncated; omitted rows are not evidence of absence. SD is descriptive, not significance or polarization. Overlap counts in both means. Full result is structuredContent.';
 
 export function presentMcpToolResult(toolName: string, result: unknown): McpToolResultPresentation {
   const fullText = serializeFullResult(result);
@@ -1125,23 +1125,42 @@ function createSubjectCohortProjection(
   displayCharacters: number,
   facetLimit: number,
   facetCharacters: number,
+  includeRatingDiagnosticValues: boolean,
 ) {
   const cohorts = result.cohorts.map((cohort) => {
     const queryCoverage = cohort.coverage.query.coverage;
     const subjects = cohort.subjects.slice(0, rowLimit).map((subject) => {
       const name = clippedDisplayText(subject.displayName || subject.name, displayCharacters);
+      const ratingConflictSummary = subject.ratingStandardDeviationConflicts?.slice(0, 2).map(
+        (conflict) =>
+          conflict.kind === 'score_vs_histogram_mean'
+            ? `${conflict.kind}:${conflict.officialScore}/${conflict.histogramMean}`
+            : `${conflict.kind}:${conflict.discoveryRatingCount}/${conflict.detailRatingTotal}`,
+      );
+      const ratingTotalValidation = subject.ratingHistogramTotalValidation;
       return {
         id: subject.id,
         displayName: name.text,
         ...(name.clipped ? { displayNameTruncated: true } : {}),
         ...(subject.score === undefined ? {} : { score: subject.score }),
         ...(subject.ratingCount === undefined ? {} : { ratingCount: subject.ratingCount }),
+        ...(subject.ratingCountState === undefined
+          ? {}
+          : { ratingCountState: subject.ratingCountState }),
         ...(subject.ratingHistogramPopulation === undefined
           ? {}
           : { ratingHistogramPopulation: subject.ratingHistogramPopulation }),
         ...(subject.ratingStandardDeviation === undefined
           ? {}
           : { ratingStandardDeviation: subject.ratingStandardDeviation }),
+        ...(!includeRatingDiagnosticValues || ratingConflictSummary === undefined
+          ? {}
+          : { ratingStandardDeviationConflictSummary: ratingConflictSummary }),
+        ...(!includeRatingDiagnosticValues || ratingTotalValidation === undefined
+          ? {}
+          : {
+              ratingHistogramTotalCheck: `${ratingTotalValidation.state}${ratingTotalValidation.detailRatingTotal === undefined ? '' : `:detail=${ratingTotalValidation.detailRatingTotal}`}:histogram=${ratingTotalValidation.histogramPopulation}`,
+            }),
         ...(subject.collectionTotal === undefined
           ? {}
           : { collectionTotal: subject.collectionTotal }),
@@ -1311,6 +1330,21 @@ function createSubjectCohortProjection(
       structuredContentHasFullResult: true,
       textViewScope: SUBJECT_COHORT_TEXT_SCOPE_NOTE,
       limitationRecordsOmittedFromText: result.limitations.length,
+      ratingDiagnosticValuesOmittedFromText: includeRatingDiagnosticValues
+        ? 0
+        : result.cohorts.reduce(
+            (total, cohort) =>
+              total +
+              cohort.subjects.filter(
+                (subject) =>
+                  subject.ratingStandardDeviationConflicts !== undefined ||
+                  subject.ratingHistogramTotalValidation?.state !== undefined,
+              ).length,
+            0,
+          ),
+      ratingConflictReasonsOmittedFromText: result.cohorts.some((cohort) =>
+        cohort.subjects.some((subject) => (subject.ratingStandardDeviationConflicts?.length ?? 0) > 0),
+      ),
       cohortRowsReturned: result.cohorts.map((cohort) => cohort.subjects.length),
       cohortRowsIncluded: cohorts.map((cohort) => cohort.subjectRowsIncluded),
       cohortRowsOmittedFromText: cohorts.map((cohort) => cohort.subjectRowsOmittedFromText),
@@ -1324,6 +1358,7 @@ function compactSubjectCohortResult(result: SubjectCohortComparisonResult): stri
   let displayCharacters = 48;
   let facetLimit = 4;
   let facetCharacters = 32;
+  let includeRatingDiagnosticValues = true;
 
   while (true) {
     const projection = createSubjectCohortProjection(
@@ -1333,16 +1368,21 @@ function compactSubjectCohortResult(result: SubjectCohortComparisonResult): stri
       displayCharacters,
       facetLimit,
       facetCharacters,
+      includeRatingDiagnosticValues,
     );
     const text = JSON.stringify(projection);
     if (utf8Bytes(text) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) return text;
 
     if (rowLimit > 1) rowLimit -= 1;
     else if (warningLimit > 0) warningLimit -= 1;
-    else if (displayCharacters > 16) displayCharacters = Math.floor(displayCharacters / 2);
+    else if (displayCharacters > 8) displayCharacters = Math.floor(displayCharacters / 2);
     else if (facetLimit > 1) facetLimit -= 1;
-    else if (facetCharacters > 12) facetCharacters = Math.floor(facetCharacters / 2);
-    else throw new Error('Minimum cohort MCP text projection exceeded its byte limit');
+    else if (facetCharacters > 4) facetCharacters = Math.floor(facetCharacters / 2);
+    else if (includeRatingDiagnosticValues) includeRatingDiagnosticValues = false;
+    else
+      throw new Error(
+        `Minimum cohort MCP text projection exceeded its byte limit (${utf8Bytes(text)} bytes)`,
+      );
   }
 }
 

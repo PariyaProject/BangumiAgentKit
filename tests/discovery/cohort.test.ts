@@ -19,6 +19,7 @@ interface FixtureSubject {
   score: number;
   heat: number;
   episodes: number;
+  discoveryRatingCount?: number;
   ratingHistogram?: SubjectStatsData['ratingHistogram'];
   ratingHistogramPresence?: SubjectStatsData['ratingHistogramPresence'];
   ratingTotal?: number;
@@ -144,6 +145,7 @@ class CohortProvider implements SubjectDiscoveryProvider {
       platform: 'TV',
       ...(this.missingIds.has(subject.id) ? {} : { score: subject.score }),
       ratingCount:
+        subject.discoveryRatingCount ??
         subject.ratingTotal ??
         (subject.ratingHistogram
           ? Object.values(subject.ratingHistogram).reduce((sum, count) => sum + count, 0)
@@ -354,6 +356,43 @@ describe('subject cohort comparison', () => {
     expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviation).toBeUndefined();
   });
 
+  it('marks a negative discovery rating count invalid instead of counting SD as fully available', async () => {
+    const provider = new CohortProvider({
+      A: [
+        {
+          id: 23,
+          name: 'Negative discovery rating count',
+          score: 8,
+          heat: 10,
+          episodes: 12,
+          discoveryRatingCount: -1,
+          ratingHistogram: histogram({ 8: 100 }),
+        },
+      ],
+    });
+
+    const result = await compareSubjectCohorts(
+      [{ label: 'A', query: { keyword: 'A', media: 'anime' } }],
+      {},
+      provider,
+    );
+    const metric = result.metrics.find((item) => item.key === 'ratingStandardDeviation');
+    const subject = result.cohorts[0]?.subjects[0];
+
+    expect(metric).toMatchObject({
+      averages: [undefined],
+      partialAverages: [0],
+      validCounts: [0],
+      partialCounts: [1],
+      state: 'partial',
+    });
+    expect(subject).toMatchObject({ ratingCountState: 'invalid' });
+    expect(subject?.ratingCount).toBeUndefined();
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ code: 'COHORT_RATING_COUNT_INVALID', state: 'partial' }),
+    );
+  });
+
   it('keeps empty histograms not-computable and total mismatches partial', async () => {
     const empty = histogram();
     const emptyProvider = new CohortProvider({
@@ -399,8 +438,17 @@ describe('subject cohort comparison', () => {
       state: 'partial',
     });
     expect(mismatchResult.warnings).toContainEqual(
-      expect.objectContaining({ code: 'RATING_TOTAL_MISMATCH', state: 'partial' }),
+      expect.objectContaining({
+        code: 'RATING_TOTAL_MISMATCH',
+        state: 'partial',
+        message: expect.stringContaining('官方详情评分总数'),
+      }),
     );
+    expect(mismatchResult.cohorts[0]?.subjects[0]?.ratingHistogramTotalValidation).toEqual({
+      state: 'mismatch',
+      detailRatingTotal: 99,
+      histogramPopulation: 100,
+    });
   });
 
   it('excludes rating-score conflicts from the cohort standard-deviation mean', async () => {
@@ -430,6 +478,22 @@ describe('subject cohort comparison', () => {
       state: 'conflict',
     });
     expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviation).toBe(2);
+    expect(result.cohorts[0]?.subjects[0]?.ratingStandardDeviationConflicts).toEqual([
+      {
+        kind: 'score_vs_histogram_mean',
+        officialScore: 9,
+        histogramMean: 8,
+        reason: 'derived histogram mean differs materially from upstream score',
+      },
+    ]);
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'COHORT_RATING_SCORE_HISTOGRAM_CONFLICT',
+        state: 'conflict',
+        message: expect.stringContaining('score=9 histogramMean=8'),
+      }),
+    );
+    expect(result.warnings.some((warning) => warning.code === 'COHORT_METRIC_CONFLICT')).toBe(false);
     expect(result.state).toBe('conflict');
   });
 

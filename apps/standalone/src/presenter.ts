@@ -1323,9 +1323,31 @@ function presentSubjectCohortComparison(value: Record<string, unknown>): string 
       for (const [subjectIndex, rawSubject] of subjects.slice(0, 8).entries()) {
         const subject = comparisonRecord(rawSubject);
         if (!subject) continue;
+        const ratingCount =
+          subject.ratingCountState === 'invalid'
+            ? '无效'
+            : humanField(subject.ratingCount ?? '未知', 32);
         lines.push(
-          `  ${subjectIndex + 1}. ${humanField(subject.displayName || subject.name || `条目 ${subject.id || '?'}`, 180)} #${humanField(subject.id ?? '?', 32)} · 评分 ${humanField(subject.score ?? '未知', 24)} · 热度 ${humanField(subject.collectionTotal ?? '未知', 32)} · 报告话数 ${humanField(subject.episodesReported ?? '未知', 32)} · 评分人数 ${humanField(subject.ratingCount ?? '未知', 32)} · 总体标准差 ${humanField(subject.ratingStandardDeviation ?? '未知', 32)} · 直方图样本 ${humanField(subject.ratingHistogramPopulation ?? '未知', 32)}`,
+          `  ${subjectIndex + 1}. ${humanField(subject.displayName || subject.name || `条目 ${subject.id || '?'}`, 180)} #${humanField(subject.id ?? '?', 32)} · 评分 ${humanField(subject.score ?? '未知', 24)} · 热度 ${humanField(subject.collectionTotal ?? '未知', 32)} · 报告话数 ${humanField(subject.episodesReported ?? '未知', 32)} · 评分人数 ${ratingCount} · 总体标准差 ${humanField(subject.ratingStandardDeviation ?? '未知', 32)} · 直方图样本 ${humanField(subject.ratingHistogramPopulation ?? '未知', 32)}`,
         );
+        const ratingConflicts = Array.isArray(subject.ratingStandardDeviationConflicts)
+          ? subject.ratingStandardDeviationConflicts
+          : [];
+        for (const rawConflict of ratingConflicts) {
+          const conflict = comparisonRecord(rawConflict);
+          if (!conflict) continue;
+          const detail =
+            conflict.kind === 'score_vs_histogram_mean'
+              ? `官方评分 ${humanField(conflict.officialScore ?? '?', 24)} vs 直方图均值 ${humanField(conflict.histogramMean ?? '?', 24)}`
+              : `discovery 人数 ${humanField(conflict.discoveryRatingCount ?? '?', 24)} vs 详情总数 ${humanField(conflict.detailRatingTotal ?? '?', 24)}`;
+          lines.push(`    评分标准差冲突：${detail}`);
+        }
+        const totalValidation = comparisonRecord(subject.ratingHistogramTotalValidation);
+        if (totalValidation && totalValidation.state !== 'match') {
+          lines.push(
+            `    详情评分总数 ${totalValidation.state === 'invalid' ? '无效' : humanField(totalValidation.detailRatingTotal ?? '?', 24)} vs 直方图样本 ${humanField(totalValidation.histogramPopulation ?? '?', 24)}`,
+          );
+        }
       }
       if (subjects.length > 8) lines.push(`  另有 ${subjects.length - 8} 条样本未展开。`);
     }

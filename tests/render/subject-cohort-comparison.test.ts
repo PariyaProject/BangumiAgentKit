@@ -321,6 +321,63 @@ describe('subject cohort comparison renderer', () => {
     expect(html).toContain('partial observation');
   });
 
+  it('shows invalid discovery counts and score-versus-histogram conflict values', () => {
+    const diagnosticResult: SubjectCohortComparisonResult = {
+      ...result,
+      state: 'conflict',
+      cohorts: result.cohorts.map((cohort, index) => ({
+        ...cohort,
+        subjects: [
+          {
+            ...cohort.subjects[0]!,
+            ...(index === 0
+              ? {
+                  ratingCount: undefined,
+                  ratingCountState: 'invalid' as const,
+                  ratingStandardDeviationConflicts: [
+                    {
+                      kind: 'score_vs_histogram_mean' as const,
+                      officialScore: 9,
+                      histogramMean: 8,
+                      reason: 'official detail score materially differs from the histogram-derived mean',
+                    },
+                  ],
+                  ratingHistogramTotalValidation: {
+                    state: 'mismatch' as const,
+                    detailRatingTotal: 99,
+                    histogramPopulation: 100,
+                  },
+                  metricStates: {
+                    ...cohort.subjects[0]!.metricStates,
+                    ratingStandardDeviation: 'conflict' as const,
+                  },
+                }
+              : {}),
+          },
+        ],
+      })),
+      metrics: result.metrics.map((metric) =>
+        metric.key === 'ratingStandardDeviation'
+          ? {
+              ...metric,
+              averages: [undefined, undefined],
+              partialAverages: [undefined, 1.75],
+              validCounts: [0, 1],
+              conflictCounts: [1, 0],
+              delta: undefined,
+              state: 'conflict' as const,
+            }
+          : metric,
+      ),
+    };
+    const viewModel = buildSubjectCohortComparisonViewModel(diagnosticResult);
+    const html = renderHtmlTemplate(viewModel, 'bangumi-dark', {}, 720);
+
+    expect(html).toContain('评分人数 无效');
+    expect(html).toContain('官方评分 9.00 vs 直方图均值 8.00');
+    expect(html).toContain('详情评分总数 99 与直方图样本 100 不匹配');
+  });
+
   it('renders a bounded long cohort card at both supported widths', async () => {
     const longResult: SubjectCohortComparisonResult = {
       ...result,

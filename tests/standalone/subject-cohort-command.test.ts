@@ -174,9 +174,14 @@ describe('Standalone subject cohort commands', () => {
               score: 8,
               collectionTotal: 10,
               episodesReported: 12,
-              ratingCount: 100,
+              ratingCountState: 'invalid',
               ratingHistogramPopulation: 100,
               ratingStandardDeviation: 1.25,
+              ratingHistogramTotalValidation: {
+                state: 'mismatch',
+                detailRatingTotal: 99,
+                histogramPopulation: 100,
+              },
             },
           ],
         },
@@ -254,5 +259,7 @@ describe('Standalone subject cohort commands', () => {
     expect(human).toContain('bangumi.rating.population_sd.v1');
     expect(human).toContain('重叠：1');
     expect(human).toContain('不表示统计显著性');
+    expect(human).toContain('评分人数 无效');
+    expect(human).toContain('详情评分总数 99 vs 直方图样本 100');
   });
 });

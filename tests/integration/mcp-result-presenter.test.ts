@@ -1301,6 +1301,14 @@ describe('MCP tool result presentation', () => {
       notComputable: 0,
       state: 'complete' as const,
     };
+    const ratingMetricCoverage = {
+      valid: 59,
+      partial: 0,
+      missing: 0,
+      conflicts: 1,
+      notComputable: 0,
+      state: 'conflict' as const,
+    };
     const queryCoverage = {
       state: 'ok' as const,
       coverage: {
@@ -1328,16 +1336,33 @@ describe('MCP tool result presentation', () => {
         name: `${'Bangumi source name'.repeat(12)} ${index + 1}`,
         displayName: `${'超长中文动画名称'.repeat(12)} ${index + 1}`,
         score: 8,
-        ratingCount: 100,
+        ...(index === 0 ? { ratingCountState: 'invalid' as const } : { ratingCount: 100 }),
         ratingHistogramPopulation: 100,
         ratingStandardDeviation: 1.25,
+        ...(index === 0
+          ? {
+              ratingStandardDeviationConflicts: [
+                {
+                  kind: 'score_vs_histogram_mean' as const,
+                  officialScore: 8,
+                  histogramMean: 7.4,
+                  reason: 'official detail score materially differs from the histogram-derived mean',
+                },
+              ],
+              ratingHistogramTotalValidation: {
+                state: 'mismatch' as const,
+                detailRatingTotal: 99,
+                histogramPopulation: 100,
+              },
+            }
+          : {}),
         collectionTotal: 1000,
         episodesReported: 12,
         metricStates: {
           score: 'available' as const,
           heat: 'available' as const,
           episodesReported: 'available' as const,
-          ratingStandardDeviation: 'available' as const,
+          ratingStandardDeviation: index === 0 ? ('conflict' as const) : ('available' as const),
         },
       })),
       coverage: {
@@ -1349,7 +1374,7 @@ describe('MCP tool result presentation', () => {
           score: metricCoverage,
           heat: metricCoverage,
           episodesReported: metricCoverage,
-          ratingStandardDeviation: metricCoverage,
+          ratingStandardDeviation: ratingMetricCoverage,
         },
       },
     });
@@ -1361,19 +1386,19 @@ describe('MCP tool result presentation', () => {
           key: 'ratingStandardDeviation' as const,
           label: '平均评分总体标准差',
           sourceField: 'subject.rating.count[1..10]',
-          averages: [1.25, 1.1],
-          validCounts: [1, 60],
+          averages: [undefined, undefined],
+          partialAverages: [1.25, 1.1],
+          validCounts: [59, 59],
           partialCounts: [0, 0],
           missingCounts: [0, 0],
-          conflictCounts: [0, 0],
+          conflictCounts: [1, 1],
           notComputableCounts: [0, 0],
           formula: {
             id: 'bangumi.rating.population_sd.v1',
             version: 1,
             description: 'population standard deviation over the rating histogram',
           },
-          delta: -0.15,
-          state: 'complete' as const,
+          state: 'conflict' as const,
         },
       ],
       formulaVersion: 'subject-cohort-comparison-v1' as const,
@@ -1435,13 +1460,49 @@ describe('MCP tool result presentation', () => {
     expect(presentation.structuredContent).toBe(original);
     expect(parsed.metrics[0]).toMatchObject({
       key: 'ratingStandardDeviation',
-      averages: [1.25, 1.1],
+      partialAverages: [1.25, 1.1],
       formula: { id: 'bangumi.rating.population_sd.v1', version: 1 },
     });
     expect(parsed.cohorts[0].subjects.length).toBeGreaterThan(0);
+    expect(parsed.cohorts[0].subjects[0]).toMatchObject({
+      ratingCountState: 'invalid',
+    });
     expect(parsed.cohorts[0].subjectRowsOmittedFromText).toBeGreaterThan(0);
     expect(parsed.coverage.overlap).toMatchObject({ count: 60, subjectIdsOmittedFromText: 48 });
     expect(parsed.mcpTextProjection.structuredContentHasFullResult).toBe(true);
+    expect(parsed.mcpTextProjection.ratingDiagnosticValuesOmittedFromText).toBeGreaterThan(0);
+
+    const compactDiagnosticsResult = {
+      ...original,
+      cohorts: original.cohorts.map((item) => ({
+        ...item,
+        label: item.label.slice(0, 12),
+        querySummary: `${item.label} · anime`,
+        query: { media: 'anime' as const, season: '2026-autumn', resultMode: 'all' as const },
+        subjects: [item.subjects[0]!],
+      })),
+      warnings: [],
+      limitations: [],
+      coverage: {
+        ...original.coverage,
+        totalSubjectsReturned: 2,
+        overlap: { subjectIds: [1], count: 1 },
+        evidence: { ...original.coverage.evidence, retained: 0, omitted: 0, bytes: 0, truncated: false },
+      },
+    } as unknown as SubjectCohortComparisonResult;
+    const compactDiagnostics = presentMcpToolResult(
+      'bangumi.compare_subject_cohorts',
+      compactDiagnosticsResult,
+    );
+    const compactDiagnosticsText = JSON.parse(compactDiagnostics.text);
+    expect(Buffer.byteLength(compactDiagnostics.text, 'utf8')).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(compactDiagnosticsText.cohorts[0].subjects[0]).toMatchObject({
+      ratingStandardDeviationConflictSummary: ['score_vs_histogram_mean:8/7.4'],
+      ratingHistogramTotalCheck: 'mismatch:detail=99:histogram=100',
+    });
+    expect(compactDiagnosticsText.mcpTextProjection.ratingDiagnosticValuesOmittedFromText).toBe(0);
     expect(parsed.mcpTextProjection.textViewScope).toContain(
       'omitted rows are not evidence of absence',
     );

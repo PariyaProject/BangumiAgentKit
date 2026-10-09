@@ -184,12 +184,38 @@ export const SubjectCohortComparisonCard: React.FC<SubjectCohortComparisonCardPr
                       </div>
                       <div style={{ color: theme.textMuted, fontSize: '10px', lineHeight: 1.4 }}>
                         评分 {numberLabel(subject.score, 2)} · 评分人数{' '}
-                        {numberLabel(subject.ratingCount, 0)} · 热度{' '}
+                        {subject.ratingCountState === 'invalid'
+                          ? '无效'
+                          : numberLabel(subject.ratingCount, 0)}{' '}
+                        · 热度{' '}
                         {numberLabel(subject.collectionTotal, 0)}
                         {' · '}报告话数 {numberLabel(subject.episodesReported, 0)} · σ{' '}
                         {numberLabel(subject.ratingStandardDeviation, 2)}（n=
                         {numberLabel(subject.ratingHistogramPopulation, 0)}）
                       </div>
+                      {(subject.ratingStandardDeviationConflicts || []).map((conflict, index) => (
+                        <div
+                          key={`${subject.id}-rating-conflict-${index}`}
+                          style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.35 }}
+                        >
+                          评分标准差冲突：
+                          {conflict.kind === 'score_vs_histogram_mean'
+                            ? `官方评分 ${numberLabel(conflict.officialScore, 2)} vs 直方图均值 ${numberLabel(conflict.histogramMean, 2)}`
+                            : `discovery 人数 ${numberLabel(conflict.discoveryRatingCount, 0)} vs 详情总数 ${numberLabel(conflict.detailRatingTotal, 0)}`}
+                        </div>
+                      ))}
+                      {subject.ratingHistogramTotalValidation &&
+                      subject.ratingHistogramTotalValidation.state !== 'match' ? (
+                        <div
+                          style={{ color: theme.warning, fontSize: '9px', lineHeight: 1.35 }}
+                        >
+                          详情评分总数
+                          {subject.ratingHistogramTotalValidation.state === 'invalid'
+                            ? '无效'
+                            : ` ${numberLabel(subject.ratingHistogramTotalValidation.detailRatingTotal, 0)}`}
+                          {' '}与直方图样本 {numberLabel(subject.ratingHistogramTotalValidation.histogramPopulation, 0)} 不匹配。
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
