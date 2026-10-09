@@ -382,6 +382,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
             {'name': 'bangumi.auth_status', 'auth': 'none', 'risk': 'read'},
         ]
+        source_catalog = json.loads(GENERATOR.CATALOG.read_text(encoding='utf-8'))
+        self.catalog.append(next(
+            item for item in source_catalog
+            if item.get('name') == 'bangumi.compare_subject_cohorts'
+        ))
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
         self.original_root = GENERATOR.ROOT
@@ -481,6 +486,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         relative_paths = {
             *GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_A01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
@@ -1742,7 +1748,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {
                 'evidenceProvenance': {
                     **report['evidenceProvenance'],
-                    'signature': 'A' + report['evidenceProvenance']['signature'][1:],
+                    'signature': (
+                        ('B' if report['evidenceProvenance']['signature'][0] == 'A' else 'A')
+                        + report['evidenceProvenance']['signature'][1:]
+                    ),
                 },
             },
             {'privacy': {**report['privacy'], 'accountDataRead': True}},
@@ -1924,6 +1933,585 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report = self._g26_report_fixture()
                 report.update(override)
                 self.assertFalse(GENERATOR.codex_g26_report_is_valid(report))
+
+    @staticmethod
+    def _a01_subject(subject_id, name, state='available', deviation=1.2):
+        subject = {
+            'id': subject_id,
+            'name': name,
+            'displayName': name,
+            'ratingStandardDeviationState': state,
+        }
+        if state in {'available', 'partial'}:
+            subject.update({
+                'ratingCount': 100,
+                'ratingHistogramPopulation': 100,
+                'ratingStandardDeviation': deviation,
+            })
+        return subject
+
+    @staticmethod
+    def _a01_query_plan(index):
+        def plan_filter(field, operator, value, classification='PUSHDOWN'):
+            return {
+                'field': field,
+                'classification': classification,
+                'operator': operator,
+                'value': value,
+                'source': 'official_v0',
+                'operation': 'searchSubjects',
+            }
+
+        pushdown = [
+            *([plan_filter('keyword', 'eq', '少女终末旅行')] if index == 0 else []),
+            plan_filter('media', 'in', ['anime']),
+            plan_filter('dateRange', 'range', {
+                'from': '2017-10-01',
+                'to': '2018-01-01',
+            }),
+            plan_filter('nsfw', 'eq', False),
+            plan_filter('sort:relevance', 'eq', 'relevance'),
+        ]
+        post_filters = (
+            [plan_filter('categories', 'in', ['tv'], 'POST_FILTER')]
+            if index == 0 else []
+        )
+        hydration_requirements = [
+            {'reason': 'nsfw_filter', 'fields': ['nsfw'], 'source': 'candidate_or_detail'},
+            *([{'reason': 'category_filter', 'fields': ['platform'], 'source': 'candidate_or_detail'}]
+              if index == 0 else []),
+        ]
+        return {
+            'source': 'official_v0',
+            'operation': 'searchSubjects',
+            'season': '2017-autumn',
+            'sort': 'relevance',
+            'order': 'desc',
+            'totalKind': 'estimated',
+            'pushdown': pushdown,
+            'postFilters': post_filters,
+            'derivedFilters': [],
+            'unsupported': [],
+            'hydrationRequired': True,
+            'hydrationRequirements': hydration_requirements,
+            'requestedTopN': 8,
+            'resultMode': 'all',
+            'quality': 'bounded_exact',
+            'budget': {
+                'maxPages': 6,
+                'maxCandidates': 300,
+                'maxHydrations': 60,
+                'concurrency': 6,
+                'maxConceptProbes': 8,
+                'maxReturnedItems': 8,
+            },
+            'steps': [{
+                'kind': 'search',
+                'source': 'official_v0',
+                'operation': 'searchSubjects',
+                'page': 0,
+                'request': {
+                    'keyword': '少女终末旅行' if index == 0 else '',
+                    'limit': 20,
+                    'offset': 0,
+                    'sort': 'match',
+                    'filter': {
+                        'type': [2],
+                        'airDate': ['>=2017-10-01', '<2018-01-01'],
+                        'nsfw': False,
+                    },
+                },
+            }],
+            'limitations': [
+                'Enumeration is bounded by maxPages and maxCandidates.',
+                'Official subject search is experimental; estimated totals do not establish completeness of the entire Bangumi database.',
+                'all requests a complete attempt; budget exhaustion is reported as partial.',
+            ],
+        }
+
+    def _a01_cohort(self, index):
+        query = GENERATOR.CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]
+        effective_query = {
+            **query['query'],
+            'limit': GENERATOR.CODEX_A01_QUERY_ARGUMENTS['maxSubjects'],
+            'budget': GENERATOR.CODEX_A01_QUERY_BUDGET,
+        }
+        if index == 0:
+            subjects = [self._a01_subject(218707, '少女終末旅行')]
+            query_coverage_state = 'complete'
+            query_state = 'ok'
+            scanned = matched = returned = 1
+            upstream_exhausted = True
+            rating_coverage = {
+                'valid': 1, 'partial': 0, 'missing': 0, 'conflicts': 0,
+                'notComputable': 0, 'state': 'complete',
+            }
+        else:
+            subjects = [
+                self._a01_subject(218707, '少女終末旅行'),
+                self._a01_subject(218708, '样本作品', 'missing'),
+            ]
+            query_coverage_state = 'unknown'
+            query_state = 'ok'
+            scanned = matched = returned = 2
+            upstream_exhausted = False
+            rating_coverage = {
+                'valid': 1, 'partial': 0, 'missing': 1, 'conflicts': 0,
+                'notComputable': 0, 'state': 'partial',
+            }
+        query_coverage = {
+            'state': query_coverage_state,
+            'requested': scanned if upstream_exhausted else 0,
+            'scanned': scanned,
+            'matched': matched,
+            'returned': returned,
+            'pagesRequested': 1,
+            'pagesScanned': 1,
+            'upstreamExhausted': upstream_exhausted,
+            'budgetExceeded': False,
+            'postFilterCount': returned,
+            'totalKind': 'estimated',
+            'hydrationsAttempted': returned,
+            'hydrationsSucceeded': returned,
+            'hydrationsFailed': 0,
+            'hydrationsUnresolved': 0,
+            'unresolvedCandidates': 0,
+            'hydrationBudgetExceeded': False,
+        }
+        return {
+            'label': query['label'],
+            'query': effective_query,
+            'querySummary': f"{query['label']} · 2017-autumn · official-v0 bounded sample",
+            'queryPlan': self._a01_query_plan(index),
+            'queryState': query_state,
+            'queryCoverage': query_coverage,
+            'detailHydrations': {
+                'attempted': returned,
+                'succeeded': returned,
+                'failed': 0,
+            },
+            'ratingStandardDeviationCoverage': rating_coverage,
+            'subjects': subjects,
+        }
+
+    def _a01_result_fixture(self):
+        observed_at = '2026-10-09T10:00:00.000Z'
+        official_source = {
+            'class': 'official-v0',
+            'operations': ['searchSubjects', 'getSubjectById'],
+            'attemptedAt': observed_at,
+            'retrievedAt': observed_at,
+        }
+        derived_source = {
+            'class': 'derived-s7',
+            'operations': ['bangumi.rating.population_sd.v1'],
+            'attemptedAt': observed_at,
+            'retrievedAt': observed_at,
+        }
+        evidence = [
+            {
+                'source': {
+                    'class': 'official_v0',
+                    'provider': 'bangumi',
+                    'version': 'v0',
+                    'operation': 'searchSubjects',
+                    'experimental': True,
+                },
+                'retrievedAt': observed_at,
+            },
+            {
+                'source': {
+                    'class': 'official_v0',
+                    'provider': 'bangumi',
+                    'version': 'v0',
+                    'operation': 'getSubjectById',
+                },
+                'retrievedAt': observed_at,
+            },
+            {
+                'source': {
+                    'class': 'derived',
+                    'provider': 'bangumi-agent-kit',
+                    'operation': 'bangumi.rating.population_sd.v1',
+                    'version': '1',
+                },
+                'retrievedAt': observed_at,
+            },
+        ]
+        return {
+            'state': 'partial',
+            'comparisonMetrics': [
+                {'key': 'score', 'state': 'partial'},
+                {'key': 'heat', 'state': 'partial'},
+                {'key': 'episodesReported', 'state': 'partial'},
+                {'key': 'ratingStandardDeviation', 'state': 'partial'},
+            ],
+            'formulaVersion': 'subject-cohort-comparison-v1',
+            'cohorts': [self._a01_cohort(0), self._a01_cohort(1)],
+            'ratingStandardDeviation': {
+                'key': 'ratingStandardDeviation',
+                'label': '平均评分总体标准差',
+                'sourceField': 'subject.rating.count[1..10]',
+                'averages': [None, None],
+                'partialAverages': [1.2, 1.2],
+                'validCounts': [1, 1],
+                'partialCounts': [0, 0],
+                'missingCounts': [0, 1],
+                'conflictCounts': [0, 0],
+                'notComputableCounts': [0, 0],
+                'formula': {
+                    'id': 'bangumi.rating.population_sd.v1',
+                    'version': 1,
+                    'description': 'Population standard deviation from the official histogram.',
+                },
+                'state': 'partial',
+            },
+            'coverage': {
+                'maxSubjectsPerCohort': 8,
+                'totalSubjectsReturned': 3,
+                'cohortsComplete': 1,
+                'cohortsPartial': 1,
+                'detailHydrationsAttempted': 3,
+                'detailHydrationsSucceeded': 3,
+                'detailHydrationsFailed': 0,
+                'truncated': True,
+                'overlap': {'count': 1, 'subjectIds': [218707]},
+                'evidence': {
+                    'retained': 3, 'omitted': 0, 'deduplicated': 0,
+                    'omittedByBound': 0, 'bytes': 300, 'maxRefs': 256,
+                    'maxBytes': 96_000, 'truncated': False,
+                },
+                'warnings': {'retained': 1, 'omitted': 0, 'max': 12, 'truncated': False},
+            },
+            'source': {'official': official_source, 'derived': derived_source},
+            'retrievedAt': observed_at,
+            'evidence': evidence,
+            'warnings': [{
+                'code': 'COHORT_OVERLAP',
+                'state': 'partial',
+                'message': 'Overlapping rows remain in both bounded samples.',
+                'cohort': '2017-autumn 动画返回样本',
+            }],
+            'limitations': ['Current bounded returned samples only; no significance test.'],
+        }
+
+    def _a01_report_fixture(self):
+        tool = next(
+            item for item in self.catalog
+            if item['name'] == 'bangumi.compare_subject_cohorts'
+        )
+        candidate = self.source_revision
+        base = self.stale_candidate_source_revision
+        bundle_hash = GENERATOR.codex_g26_candidate_bundle_sha256(candidate)
+        self.assertIsNotNone(bundle_hash)
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_a01_agent_mcp',
+            'profile': 'codex-luna-max-one-tool-v1',
+            'scenarioId': 'A01',
+            'runNumber': 95,
+            'frontierId': 'A01',
+            'epochId': 'run95-a01-agent-mcp-acceptance',
+            'state': 'ANSWER_CHECK_PASSED',
+            'observedAt': '2026-10-09T10:00:00.000Z',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '1.2.14',
+            'sourceRevision': candidate,
+            'baseSha': base,
+            'prNumber': 125,
+            'mcpBundleSha256': bundle_hash,
+            'candidateGate': {
+                'candidateSha': candidate,
+                'baseSha': base,
+                'reviewPassSha': candidate,
+                'reviewVerdict': 'PASS',
+                'reviewerId': 'gpt-6-luna-max-run95-a01-pr125-round1',
+                'ciSha': candidate,
+                'ciStatus': 'SUCCESS',
+            },
+            'toolName': 'bangumi.compare_subject_cohorts',
+            'argumentProfile': GENERATOR.CODEX_A01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_A01_QUERY_ARGUMENTS,
+            ),
+            'queryArguments': GENERATOR.CODEX_A01_QUERY_ARGUMENTS,
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'toolDescriptionSha256': self.sha256(tool['description']),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.compare_subject_cohorts'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_a01_one_tool'],
+            'processExitCode': 0,
+            'resultCount': 1,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'resultStatus': 'SUCCESS',
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'serverSummaryMatchesCandidate': True,
+            'sameCandidateAfterCall': True,
+            'result': self._a01_result_fixture(),
+            'answerSha256': 'a' * 64,
+            'answerUtf8Bytes': 2400,
+            'answerCheckMethod': 'a01-bounded-cohort-answer-v1',
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_A01_ANSWER_CHECK_FIELDS
+            },
+            'toolCalls': [{
+                'name': 'bangumi.compare_subject_cohorts',
+                'state': 'DONE',
+                'arguments': GENERATOR.CODEX_A01_QUERY_ARGUMENTS,
+            }],
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawResultStored': False,
+                'artifactImageBytesStored': False,
+                'credentialsStored': False,
+            },
+            'acceptanceLimit': (
+                'One anonymous current-snapshot sample only; this does not establish global season coverage or statistical significance. No retry is authorized.'
+            ),
+        }
+
+    def test_a01_checked_report_counts_for_public_api_and_agent_mcp(self):
+        report = self._a01_report_fixture()
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-A01.json'
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        expected = {
+            'bangumi.compare_subject_cohorts': {
+                'docs/live-probes/pariya-agent-codex-luna-e2e-A01.json',
+            },
+        }
+        self.assertEqual(GENERATOR.public_api_smoke_sources(self.catalog), expected)
+        self.assertEqual(GENERATOR.model_mcp_e2e_sources(self.catalog), expected)
+
+    def test_a01_report_remains_countable_after_candidate_child_evidence_commit(self):
+        report = self._a01_report_fixture()
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-A01.json'
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_a01_report_matches_candidate_revision(
+            self.report_path, self.source_revision,
+        ))
+        self._git('add', 'docs/live-probes/pariya-agent-codex-luna-e2e-A01.json')
+        self._git('commit', '-qm', 'record sanitized A01 acceptance evidence')
+        self.assertTrue(GENERATOR.codex_a01_report_matches_candidate_revision(
+            self.report_path, self.source_revision,
+        ))
+        self.assertFalse(GENERATOR.codex_a01_report_matches_candidate_revision(
+            self.report_path, self.stale_candidate_source_revision,
+        ))
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.compare_subject_cohorts'],
+            {'docs/live-probes/pariya-agent-codex-luna-e2e-A01.json'},
+        )
+
+    def test_a01_report_accepts_complete_metric_only_with_complete_coverage_and_delta(self):
+        report = self._a01_report_fixture()
+        result = report['result']
+        for index, cohort in enumerate(result['cohorts']):
+            cohort['queryState'] = 'ok'
+            cohort['queryCoverage']['state'] = 'complete'
+            cohort['queryCoverage']['requested'] = cohort['queryCoverage']['scanned']
+            cohort['queryCoverage']['upstreamExhausted'] = True
+            cohort['ratingStandardDeviationCoverage'].update({
+                'valid': len(cohort['subjects']),
+                'partial': 0,
+                'missing': 0,
+                'conflicts': 0,
+                'notComputable': 0,
+                'state': 'complete',
+            })
+            if index == 1:
+                cohort['subjects'][1] = self._a01_subject(218708, '样本作品')
+
+        result['state'] = 'complete'
+        for metric in result['comparisonMetrics']:
+            metric['state'] = 'complete'
+
+        metric = result['ratingStandardDeviation']
+        metric.update({
+            'averages': [1.2, 1.2],
+            'validCounts': [1, 2],
+            'partialCounts': [0, 0],
+            'missingCounts': [0, 0],
+            'conflictCounts': [0, 0],
+            'notComputableCounts': [0, 0],
+            'delta': 0.0,
+            'state': 'complete',
+        })
+        metric.pop('partialAverages')
+        result['coverage'].update({
+            'cohortsComplete': 2,
+            'cohortsPartial': 0,
+            'truncated': False,
+        })
+
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_accepts_unknown_coverage_when_upstream_is_not_exhausted(self):
+        report = self._a01_report_fixture()
+        cohort = report['result']['cohorts'][1]
+        self.assertEqual(cohort['queryCoverage']['state'], 'unknown')
+        self.assertFalse(cohort['queryCoverage']['upstreamExhausted'])
+        self.assertEqual(cohort['queryState'], 'ok')
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_accepts_the_runner_prerelease_cli_version(self):
+        report = self._a01_report_fixture()
+        report['codexCliVersion'] = '0.162.0-alpha.2'
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        report['codexCliVersion'] = '0.162.0+build.1'
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_requires_unresolved_candidate_alias_to_match_hydration_count(self):
+        report = self._a01_report_fixture()
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        report['result']['cohorts'][0]['queryCoverage']['unresolvedCandidates'] = 1
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_accepts_partial_coverage_when_budget_is_exceeded(self):
+        report = self._a01_report_fixture()
+        cohort = report['result']['cohorts'][1]
+        cohort['queryCoverage'].update({'state': 'partial', 'budgetExceeded': True})
+        cohort['queryState'] = 'partial'
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_reconciles_failed_detail_hydration_with_not_computable_rows(self):
+        report = self._a01_report_fixture()
+        result = report['result']
+        cohort = result['cohorts'][1]
+        cohort['detailHydrations'].update({'succeeded': 1, 'failed': 1})
+        result['coverage'].update({
+            'detailHydrationsSucceeded': 2,
+            'detailHydrationsFailed': 1,
+        })
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        cohort['subjects'][1] = self._a01_subject(218708, '样本作品', 'not_computable')
+        cohort['ratingStandardDeviationCoverage'].update({
+            'missing': 0,
+            'notComputable': 1,
+        })
+        result['ratingStandardDeviation'].update({
+            'missingCounts': [0, 0],
+            'notComputableCounts': [0, 1],
+        })
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_preserves_finite_invalid_detail_total_only_as_partial_validation(self):
+        report = self._a01_report_fixture()
+        result = report['result']
+        cohort = result['cohorts'][1]
+        cohort['subjects'][0]['ratingStandardDeviationState'] = 'partial'
+        cohort['subjects'][0]['ratingHistogramTotalValidation'] = {
+            'state': 'invalid',
+            'detailRatingTotal': 1.5,
+            'histogramPopulation': 100,
+        }
+        cohort['ratingStandardDeviationCoverage'].update({
+            'valid': 0,
+            'partial': 1,
+            'state': 'partial',
+        })
+        metric = result['ratingStandardDeviation']
+        metric.update({
+            'validCounts': [1, 0],
+            'partialCounts': [0, 1],
+            'missingCounts': [0, 1],
+            'partialAverages': [1.2, 1.2],
+        })
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        cohort['subjects'][0]['ratingHistogramTotalValidation']['state'] = 'match'
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_rejects_wrong_model_query_target_or_coverage(self):
+        invalid_mutations = [
+            lambda report: report.update({'model': 'gpt-6-sol'}),
+            lambda report: report['queryArguments']['cohorts'][0]['query'].update({'season': '2018-winter'}),
+            lambda report: report['result']['cohorts'][0]['subjects'][0].update({'id': 123}),
+            lambda report: report['result']['cohorts'][1]['subjects'].pop(),
+            lambda report: report['result']['ratingStandardDeviation']['missingCounts'].__setitem__(1, 0),
+            lambda report: report['result']['cohorts'][0]['query'].update({'tags': ['extra']}),
+            lambda report: report['result']['cohorts'][0]['queryPlan']['steps'][0]['request']['filter'].update({'airDate': ['>=2018-01-01', '<2018-04-01']}),
+            lambda report: report['result']['cohorts'][0]['queryPlan']['postFilters'].clear(),
+            lambda report: report['result']['cohorts'][0]['queryPlan']['hydrationRequirements'].pop(),
+            lambda report: report['result']['cohorts'][1]['queryPlan'].update({'operation': 'browseSubjects'}),
+            lambda report: report['result']['cohorts'][0]['queryCoverage'].update({'totalKind': 'exact'}),
+            lambda report: report['result']['cohorts'][1]['queryCoverage'].update({'totalKind': 'unknown'}),
+            lambda report: report['result']['cohorts'][0]['queryCoverage'].update({
+                'state': 'complete', 'upstreamExhausted': False, 'requested': 0,
+            }),
+            lambda report: report['result']['cohorts'][0]['queryCoverage'].update({
+                'state': 'complete', 'budgetExceeded': True,
+            }),
+            lambda report: report['result']['cohorts'][1].update({'queryState': 'partial'}),
+            lambda report: report['result']['cohorts'][1]['detailHydrations'].update({'attempted': 0}),
+            lambda report: report['result'].update({'state': 'complete'}),
+            lambda report: report['answerChecks'].update({'exactRows': False}),
+            lambda report: report['privacy'].update({'accountDataRead': True}),
+            lambda report: report['toolCalls'].append({'name': 'bangumi.get_subject', 'state': 'DONE'}),
+            lambda report: report['result']['source']['official'].update({'operations': ['GET /community/topics']}),
+            lambda report: report['result']['evidence'][0]['source'].update({'provider': 'private-community'}),
+            lambda report: report['result']['ratingStandardDeviation'].update({
+                'averages': [1.2, 1.2],
+                'delta': 0.0,
+                'state': 'complete',
+            }),
+        ]
+        for mutate in invalid_mutations:
+            with self.subTest(mutation=mutate):
+                report = self._a01_report_fixture()
+                mutate(report)
+                self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+                    report, {item['name']: item for item in self.catalog},
+                ))
+
+    def test_a01_report_rejects_unexpected_raw_answer_fields(self):
+        report = self._a01_report_fixture()
+        report['answer'] = 'raw output must not be stored'
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
 
 
 class PerToolClientEvidenceTests(unittest.TestCase):

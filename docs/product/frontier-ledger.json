@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-09T04:03:21Z",
+  "updated_at": "2026-10-09T11:48:49Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2200,9 +2200,18 @@
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/integration/tool-direct-execute-discovery.test.ts",
         "tests/render/subject-cohort-comparison.test.ts",
-        "tests/standalone/subject-cohort-command.test.ts"
+        "tests/standalone/subject-cohort-command.test.ts",
+        "docs/product/g26-mcp-bundle-attestation.json",
+        "scripts/acceptance/a01-agent-answer-check.mjs",
+        "scripts/acceptance/a01-agent-answer-check.d.mts",
+        "scripts/acceptance/run-a01-codex-agent-mcp.mjs",
+        "scripts/acceptance/run-a01-codex-agent-mcp.d.mts",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "scripts/test_acceptance_evidence.py",
+        "tests/unit/a01-agent-answer-check.test.ts",
+        "tests/unit/a01-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "Run #95 PR #124 implements the anonymous bounded cohort rating-dispersion metric via bangumi.rating.population_sd.v1 and has engineering/test evidence below. No current-source Agent/MCP answer is accepted; keep A01 UNASSESSED. Only after exact Candidate CI and GPT-6 Luna Max review PASS, make at most one anonymous read-only compare_subject_cohorts attempt with explicit sample, coverage, overlap, and non-inferential caveats. Never exercise OAuth, community, QQ, or TIM for this scenario.",
+      "next_action": "Run 95 A01 one-shot was invoked exactly once on reviewed current-base Candidate 19b28658b84399a682e8cfeedd4003512f8aa87f after exact CI and GPT-6 Luna Max PASS. The sanitized Agent/MCP report docs/live-probes/pariya-agent-codex-luna-e2e-A01.json is INCONCLUSIVE: the sole target MCP event returned ERROR, the event stream had 3 non-MCP tool events, and no cohort rows were returned. The local Git-metadata claim is consumed. Never retry this query or claim; keep A01 UNASSESSED and do not advance acceptance counts. OAuth/accounts/community/QQ/TIM remain excluded. A different safe discriminator would need a separately reviewed, non-retry design.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2228,7 +2237,7 @@
           "tests/render/subject-cohort-comparison.test.ts",
           "tests/standalone/subject-cohort-command.test.ts"
         ],
-        "acceptance_limit": "Engineering implementation evidence only; no current-source Agent/MCP answer is accepted, so A01 remains UNASSESSED."
+        "acceptance_limit": "PR #124 provides engineering implementation evidence only. The single reviewed exact-Candidate anonymous Agent/MCP attempt is recorded in docs/live-probes/pariya-agent-codex-luna-e2e-A01.json as INCONCLUSIVE because the target tool errored and 3 non-MCP events appeared; no cohort rows or checked answer exist. Keep A01 UNASSESSED, do not change acceptance counts, and never retry the consumed one-shot claim."
       }
     },
     {
