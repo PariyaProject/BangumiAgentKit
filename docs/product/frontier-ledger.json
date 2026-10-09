@@ -120,9 +120,10 @@
         "scripts/acceptance/write-g02-agent-mcp-report.mjs",
         "scripts/acceptance/g02-discovery-answer-check.mjs",
         "tests/harness/g02-discovery-answer-check.test.mjs",
-        "tests/unit/g02-codex-agent-mcp-runner.test.ts"
+        "tests/unit/g02-codex-agent-mcp-runner.test.ts",
+        "docs/research/run95-g02-one-shot-disposition-2026-10-09.md"
       ],
-      "next_action": "The Run 66 direct, Agent/MCP, and renderer reports bind catalog SHA 3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831; current catalog SHA is 963b571873c1fbcab423ea3ca464588a683c46409183421462838b6d66b6798d, so those reports do not establish current-catalog Agent/MCP acceptance. Run 95 selected Epoch run95-g02-current-agent-mcp to refresh query_subjects and render_query_subjects with two isolated, anonymous, fixed-argument GPT-6 Luna Max sessions. The gated create-once runner, sanitized report writer, answer checks, and regression tests are implemented; no current-source G02 call has been made. Finish local validation, commit the product Candidate, and require Harness Candidate, exact-SHA CI, and sequential Luna Max review PASS before invoking either call. Preserve the experimental-source and unknown/estimated coverage limits; G02 remains PARTIAL and no global top-ten or trend claim is supported.",
+      "next_action": "Run 95 current-source G02 one-shot on Candidate d06704768cc258858d7310ff5c8edaee51ef7ee0 after exact CI and Luna Max review. One bangumi.query_subjects target MCP event returned server SUCCESS (allowed=1, denied=0, shell=0), but the Codex session had 3 non-MCP tool events; the runner marked the create-once claim INCONCLUSIVE and stopped before the renderer. No canonical G02 reports were written and this does not add accepted Agent/MCP coverage. Never retry query_subjects, render_query_subjects, or the claim. Disposition: docs/research/run95-g02-one-shot-disposition-2026-10-09.md. Keep G02 PARTIAL: the bounded experimental search still does not establish global coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
