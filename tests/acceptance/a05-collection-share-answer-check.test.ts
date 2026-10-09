@@ -507,6 +507,8 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
     expect(args).toContain('gpt-6-luna');
     expect(args).toContain('features.shell_tool=false');
     expect(args.join(' ')).toContain('model_reasoning_effort="max"');
+    expect(args).toContain('web_search="disabled"');
+    expect(args.join(' ')).not.toMatch(/features\.web_search(?:_cached|_request)?=/u);
     expect(args.join(' ')).toContain('enabled_tools=["bangumi.query_subjects"]');
 
     const candidateSha = 'a'.repeat(40);
