@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-10T00:59:30Z",
+  "updated_at": "2026-10-09T15:04:40Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2254,7 +2254,7 @@
           "tool": "bangumi.aggregate_subject_cohort",
           "state": "IMPLEMENTED_NOT_YET_RUN",
           "epoch_id": "run95-a01-aggregate-state-precedence-followup",
-          "pr_number": null,
+          "pr_number": 127,
           "arguments": {
             "cohort": {
               "query": {

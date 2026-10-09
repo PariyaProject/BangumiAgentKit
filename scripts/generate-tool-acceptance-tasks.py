@@ -300,7 +300,7 @@ CODEX_A01_AGGREGATE_ARGUMENT_PROFILE = 'a01-aggregate-2012-anime-sample-v1'
 CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH = (
     'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'
 )
-CODEX_A01_AGGREGATE_PR_NUMBER = 126
+CODEX_A01_AGGREGATE_PR_NUMBER = 127
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -1030,7 +1030,7 @@ CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
         'def _codex_a01_aggregate_expected_metric_state(',
         'def codex_a01_aggregate_report_is_valid(',
         'def codex_a01_aggregate_report_matches_candidate_revision(',
-        'CODEX_A01_AGGREGATE_PR_NUMBER = 126',
+        'CODEX_A01_AGGREGATE_PR_NUMBER = 127',
         "query['returned'] != coverage['totalSubjectsReturned']",
         "query['state'] == 'not_found' and coverage['totalSubjectsReturned'] != 0",
         "summary['state'] != expected_state",
