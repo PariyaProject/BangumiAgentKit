@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-08T15:23:22Z",
+  "updated_at": "2026-10-09T00:28:54Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -112,11 +112,17 @@
         "tests/integration/tool-e2e-acceptance.test.ts",
         "docs/live-probes/scenario-runs/run66-d1a5a03/agent-query-subjects-G02.json",
         "docs/live-probes/scenario-runs/run66-d1a5a03/render-query-subjects-G02.json",
+        "docs/research/run95-g02-current-catalog-evidence-refresh-2026-10-09.md",
         "packages/discovery/src/engine.ts",
         "packages/renderer/src/templates/DiscoveryResultsCard.tsx",
-        "tests/discovery/scenario-cases.test.ts"
+        "tests/discovery/scenario-cases.test.ts",
+        "scripts/acceptance/run-g02-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-g02-agent-mcp-report.mjs",
+        "scripts/acceptance/g02-discovery-answer-check.mjs",
+        "tests/harness/g02-discovery-answer-check.test.mjs",
+        "tests/unit/g02-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "Run 66 at BangumiAgentKit d1a5a03095818c090ca7f2f9ff255753e5381f7e verified 10 results and current collection totals in descending order through direct ToolRegistry, one-tool Agent/MCP, and a visually checked 360 CSS px/2x card. The official search returned 20 observed/matched candidates and 10 rows; coverage is unknown with estimated totals, and the API is experimental, so the query does not prove a global top ten. Keep PARTIAL until source coverage can support that claim.",
+      "next_action": "The Run 66 direct, Agent/MCP, and renderer reports bind catalog SHA 3b140a83270c06e71eb7a470035a5259fc1e65d421020d03c5344f86178b3831; current catalog SHA is 963b571873c1fbcab423ea3ca464588a683c46409183421462838b6d66b6798d, so those reports do not establish current-catalog Agent/MCP acceptance. Run 95 selected Epoch run95-g02-current-agent-mcp to refresh query_subjects and render_query_subjects with two isolated, anonymous, fixed-argument GPT-6 Luna Max sessions. The gated create-once runner, sanitized report writer, answer checks, and regression tests are implemented; no current-source G02 call has been made. Finish local validation, commit the product Candidate, and require Harness Candidate, exact-SHA CI, and sequential Luna Max review PASS before invoking either call. Preserve the experimental-source and unknown/estimated coverage limits; G02 remains PARTIAL and no global top-ten or trend claim is supported.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
