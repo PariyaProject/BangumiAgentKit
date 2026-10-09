@@ -34,17 +34,31 @@ describe('Run #95 weekly discussion source boundary', () => {
     expect(g21?.source_refs).toContain(reportPath);
     expect(g21?.next_action).toMatch(/claim no topic\/reply counts or Agent\/MCP coverage/iu);
 
-    const subjectDiscussionTools = catalog.filter(({ name }) =>
-      /(?:^|[._-])(?:topics?|replies|community|discussions?)(?:$|[._-])/iu.test(name),
-    );
-    expect(subjectDiscussionTools).toEqual([]);
-
-    for (const name of ['bangumi.get_episode_guide', 'bangumi.render_episode_guide']) {
+    const chapterScopedTools = new Set([
+      'bangumi.get_episode_guide',
+      'bangumi.render_episode_guide',
+    ]);
+    const heatTool = catalog.find((entry) => entry.name === 'bangumi.query_subjects');
+    expect(heatTool?.description).toContain('heat 表示当前收藏人数，不是讨论热度或历史趋势');
+    for (const name of chapterScopedTools) {
       const entry = catalog.find((candidate) => candidate.name === name);
       expect(entry?.description).toContain('章节指南');
       expect(entry?.description).toContain('讨论数');
-      expect(entry?.description).not.toMatch(/话题|回复|replyCount/iu);
+      expect(entry?.description).not.toMatch(/话题|主题|回复|replyCount/iu);
     }
+
+    const subjectDiscussionClaims = catalog.filter(({ name, description }) => {
+      if (chapterScopedTools.has(name)) return false;
+      const searchableDescription =
+        name === 'bangumi.query_subjects'
+          ? description.replace('heat 表示当前收藏人数，不是讨论热度或历史趋势', '')
+          : description;
+      const searchable = `${name} ${searchableDescription}`;
+      const hasSubjectScope = /subject|entry|work|条目|作品/iu.test(searchable);
+      const hasCommunityMetric = /topic|reply|discussion|话题|主题|回复|讨论/iu.test(searchable);
+      return hasSubjectScope && hasCommunityMetric;
+    });
+    expect(subjectDiscussionClaims).toEqual([]);
 
     expect(report).toContain(
       'No Bangumi runtime, topic, reply, community, account, OAuth, QQ, or TIM request was made.',
