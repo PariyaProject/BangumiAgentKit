@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/renderer';
 import {
   StandaloneCommandRegistry,
   type StandaloneCommandContext,
@@ -129,6 +130,7 @@ describe('Standalone discovery and raw tool playground', () => {
     const text = stdout.read()?.toString() || '';
     expect(text).toContain('collect ÷ (wish + collect + doing + on_hold + dropped)');
     expect(text).toContain('个人进度或偏好');
+    expect(text).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
     expect(text).toContain('collect 状态占比（五类状态合计）: 20.0%');
     expect(text).toContain('未解析候选=3');
     expect(text.indexOf('派生条件')).toBeLessThan(text.indexOf('公开条目'));

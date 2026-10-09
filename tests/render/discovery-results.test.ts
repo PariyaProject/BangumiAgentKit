@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { DiscoveryEngine } from '@bangumi-agent-kit/discovery';
+import {
+  COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
+  DiscoveryEngine,
+} from '@bangumi-agent-kit/discovery';
 import { ProviderRegistry } from '@bangumi-agent-kit/provider-core';
 import {
   buildDiscoveryResultsViewModel,
@@ -175,7 +178,7 @@ describe('discovery-results renderer', () => {
     ];
     result.plan.limitations = [
       'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
-      'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.',
+      COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
     ];
     result.coverage.unresolvedCandidates = 3;
     result.items[0]!.collectionCompletionRate = 0.2;
@@ -194,6 +197,7 @@ describe('discovery-results renderer', () => {
     expect(html).toContain('collect 状态占比（五类状态合计） 20.0%');
     expect(html).toContain('40.0%');
     expect(html).toContain('不是官方 API 公式、章节完成率、个人进度或偏好');
+    expect(html).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
     expect(html).toContain('未解析候选 3');
     expect(html.indexOf('条件解释')).toBeLessThan(html.indexOf('Original title 1'));
   });

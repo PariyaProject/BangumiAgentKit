@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 
 export const A05_ANSWER_CHECK_METHOD = 'a05-collection-share-agent-mcp-v1';
 export const A05_TARGET_TOOL = 'bangumi.query_subjects';
@@ -391,6 +392,8 @@ export function verifyA05CollectionShareAnswer(
       /experimental/u.test(planLimitations) &&
       /estimated/u.test(planLimitations) &&
       /bounded observed sample/u.test(planLimitations),
+    planDisclosesUnresolvedCoverage:
+      planLimitations.includes(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT),
     textReadbackHasAllUnclippedRows:
       textResult !== null && textRowsComplete && rowsEqual(validRows, textItems),
     toolTextWithinLimit:

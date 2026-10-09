@@ -15,6 +15,7 @@ import {
 } from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 import {
   COMPACT_MCP_TOOL_NAMES,
   ToolRegistry,
@@ -100,6 +101,9 @@ describe('complete Bangumi tool surface', () => {
     ]);
 
     const discoverySchema = registry.getTool('bangumi.query_subjects')!.input;
+    expect(
+      JSON.stringify(catalog.find((tool) => tool.name === 'bangumi.query_subjects')),
+    ).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
     expect(
       discoverySchema.safeParse({
         media: 'anime',

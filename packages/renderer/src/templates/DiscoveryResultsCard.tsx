@@ -1,4 +1,5 @@
 import React from 'react';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 import { DiscoveryResultsViewModel } from '../view-models/index.js';
 import { ThemeTokens } from '../themes/index.js';
 import { CardFrame } from '../components/CardFrame.js';
@@ -91,8 +92,7 @@ function limitationLabel(message: string): string {
       '评分同分时会继续检查候选，直到出现更低评分；预算内无法证明分界时标记为部分覆盖',
     'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.':
       'collect 状态占比＝collect ÷ 五类收藏状态人数之和；这是样本验证公式，不是官方 API 公式、章节完成率、个人进度或偏好。官方搜索仍处于实验阶段且总数为估计值，结果只代表本次有界观察样本',
-    'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.':
-      '收藏状态缺失/无效或分母为零时保持未解析/不可计算，不会作为已证实的不匹配排除',
+    [COLLECTION_COMPLETION_UNRESOLVED_CAVEAT]: COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   };
   return labels[message] || message;
 }
@@ -150,7 +150,7 @@ export const DiscoveryResultsCard: React.FC<DiscoveryResultsCardProps> = ({
   const stateTone = stateColor(viewModel.state, theme);
   const visibleWarnings = viewModel.warnings.slice(0, 4);
   const completionLimitations = viewModel.limitations.filter((item) =>
-    item.startsWith('collectionCompletionRate =') || item.startsWith('Missing or invalid collection buckets'),
+    item.startsWith('collectionCompletionRate =') || item === COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   );
   const otherLimitations = viewModel.limitations.filter((item) => !completionLimitations.includes(item));
   const visibleLimitations = otherLimitations.slice(0, 3);

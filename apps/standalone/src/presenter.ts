@@ -1,4 +1,5 @@
 import { inspect } from 'node:util';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/renderer';
 
 export interface OutputSink {
   stdout: NodeJS.WritableStream;
@@ -239,7 +240,8 @@ function presentDiscovery(value: Record<string, unknown>): string | undefined {
     const threshold = minimum && maximum ? `${minimum}–${maximum}` : minimum ? `≥${minimum}` : maximum ? `≤${maximum}` : '已指定';
     lines.push(`派生条件：collect 在五类收藏状态中的占比 ${threshold}`);
     lines.push('公式：collect ÷ (wish + collect + doing + on_hold + dropped)；样本验证代理，不是官方公式、章节完成率、个人进度或偏好。');
-    lines.push('范围：官方搜索为实验接口且总数估计；结果仅代表本次有界观察样本。缺失/冲突状态或零分母保持未解析，不作为不匹配依据。');
+    lines.push('范围：官方搜索为实验接口且总数估计；结果仅代表本次有界观察样本。');
+    lines.push(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
     if (coverage) {
       const unresolvedCandidates =
         typeof coverage.unresolvedCandidates === 'number'

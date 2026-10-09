@@ -14,6 +14,9 @@ import type {
 export const MEDIA_TYPES = ['anime', 'book', 'music', 'game', 'real'] as const;
 export type MediaType = (typeof MEDIA_TYPES)[number];
 
+export const COLLECTION_COMPLETION_UNRESOLVED_CAVEAT =
+  '收藏状态缺失、无效或相互冲突，或五类状态人数合计为零时，该比例保持未解析/不可计算；这些候选不作为已证实的不匹配排除。';
+
 export const DISCOVERY_CATEGORIES = ['tv', 'ova', 'movie', 'web'] as const;
 export type DiscoveryCategory = (typeof DISCOVERY_CATEGORIES)[number];
 

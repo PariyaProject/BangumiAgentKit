@@ -1,4 +1,5 @@
 export * from './errors.js';
+export { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 export * from './view-models/index.js';
 export * from './view-model-builders/index.js';
 export * from './themes/index.js';

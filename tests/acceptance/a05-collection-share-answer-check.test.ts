@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { presentMcpToolResult } from '../../apps/mcp/src/result-presenter.js';
+import { COLLECTION_COMPLETION_UNRESOLVED_CAVEAT } from '@bangumi-agent-kit/discovery';
 import {
   A05_EXPECTED_CAVEATS,
   A05_EXPECTED_QUERY_ARGUMENTS,
@@ -74,7 +75,7 @@ function makeResult() {
       ],
       limitations: [
         'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
-        'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.',
+        COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
       ],
     },
     coverage: {
@@ -273,6 +274,9 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
   it('rejects missing formula/source evidence, omitted MCP rows, and unsupported completeness claims', () => {
     const missingFormula = makeResult();
     missingFormula.items[0]!.evidence.collectionCompletionRate = [];
+    const missingUnresolvedCaveat = makeResult();
+    missingUnresolvedCaveat.plan.limitations[1] =
+      'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.';
     const omittedRow = makeResult();
     const originalPresentation = presentMcpToolResult('bangumi.query_subjects', omittedRow);
     const projectedText = JSON.parse(originalPresentation.text);
@@ -290,6 +294,7 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
     answer.caveats = ['This is the complete list of matching subjects.'];
 
     expect(verify(missingFormula).checks.everyRowHasFormulaEvidence).toBe(false);
+    expect(verify(missingUnresolvedCaveat).checks.planDisclosesUnresolvedCoverage).toBe(false);
     expect(
       verify(omittedRow, answerFor(omittedRow), { toolOutput: omittedPresentation }).checks
         .textReadbackHasAllUnclippedRows,

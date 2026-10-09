@@ -1,12 +1,13 @@
-import type {
-  ConceptCandidate,
-  DiscoveryBrowseStep,
-  DiscoveryHydrationRequirement,
-  DiscoveryPlan,
-  DiscoveryQuery,
-  DiscoverySearchStep,
-  NormalizedDiscoveryQuery,
-  PlanFilter,
+import {
+  COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
+  type ConceptCandidate,
+  type DiscoveryBrowseStep,
+  type DiscoveryHydrationRequirement,
+  type DiscoveryPlan,
+  type DiscoveryQuery,
+  type DiscoverySearchStep,
+  type NormalizedDiscoveryQuery,
+  type PlanFilter,
 } from './contracts.js';
 import { planFilter } from './capabilities.js';
 import { isNormalizedDiscoveryQuery, normalizeDiscoveryQuery } from './query.js';
@@ -288,7 +289,7 @@ export function compileDiscoveryPlan(
       ? []
       : [
           'collectionCompletionRate = collect / (wish + collect + doing + on_hold + dropped); this sample-verified ratio is not an official API formula, episode completion, personal progress, or preference. Official subject search is experimental and totals are estimated, so results describe only the bounded observed sample.',
-          'Missing or invalid collection buckets and a zero denominator remain unresolved/not-computable rather than proven non-matches.',
+          COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
         ]),
     'Enumeration is bounded by maxPages and maxCandidates.',
     ...(operation === 'searchSubjects'

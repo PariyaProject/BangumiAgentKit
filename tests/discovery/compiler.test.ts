@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COLLECTION_COMPLETION_UNRESOLVED_CAVEAT,
   compileDiscoveryPlan,
   getSourceCapabilityMatrix,
   normalizeDiscoveryQuery,
@@ -160,6 +161,7 @@ describe('discovery capability compiler', () => {
     );
     expect(plan.limitations[0]).toContain('collect / (wish + collect + doing + on_hold + dropped)');
     expect(plan.limitations[0]).toContain('estimated');
+    expect(plan.limitations).toContain(COLLECTION_COMPLETION_UNRESOLVED_CAVEAT);
   });
 
   it('carries the explicit score tie-break into the executable plan', () => {
