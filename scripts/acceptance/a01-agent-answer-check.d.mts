@@ -1,5 +1,13 @@
 export const A01_TARGET_TOOL: 'bangumi.compare_subject_cohorts';
 export const A01_MAX_SUBJECTS: 8;
+export const A01_EXPECTED_QUERY_BUDGET: Readonly<{
+  maxPages: 6;
+  maxCandidates: 300;
+  maxHydrations: 60;
+  concurrency: 6;
+  maxConceptProbes: 8;
+  maxReturnedItems: 8;
+}>;
 export const A01_EXPECTED_QUERY_ARGUMENTS: {
   cohorts: [
     {

@@ -44,15 +44,38 @@ function subject(
 }
 
 function cohort(label: string, query: unknown, rows: ReturnType<typeof subject>[]) {
+  const resultQuery = {
+    ...(query as Record<string, unknown>),
+    limit: 8,
+    budget: {
+      maxPages: 6,
+      maxCandidates: 300,
+      maxHydrations: 60,
+      concurrency: 6,
+      maxConceptProbes: 8,
+      maxReturnedItems: 8,
+    },
+  };
+  const rowCounts = {
+    available: 0,
+    partial: 0,
+    missing: 0,
+    conflict: 0,
+    not_computable: 0,
+  };
+  for (const row of rows) {
+    const state = row.metricStates.ratingStandardDeviation as keyof typeof rowCounts;
+    rowCounts[state] += 1;
+  }
   return {
     label,
-    query,
+    query: resultQuery,
     querySummary: label,
     subjects: rows,
     coverage: {
       query: {
         state: 'partial',
-        coverage: queryCoverage,
+        coverage: { ...queryCoverage },
         plan: {
           source: 'official_v0',
           operation: 'searchSubjects',
@@ -77,12 +100,12 @@ function cohort(label: string, query: unknown, rows: ReturnType<typeof subject>[
       detailHydrationsFailed: 0,
       metrics: {
         ratingStandardDeviation: {
-          valid: rows.length,
-          partial: 0,
-          missing: 0,
-          conflicts: 0,
-          notComputable: 0,
-          state: 'complete',
+          valid: rowCounts.available,
+          partial: rowCounts.partial,
+          missing: rowCounts.missing,
+          conflicts: rowCounts.conflict,
+          notComputable: rowCounts.not_computable,
+          state: 'partial',
         },
       },
     },
@@ -107,8 +130,8 @@ function fixture() {
         key: 'ratingStandardDeviation',
         label: '平均评分总体标准差',
         sourceField: 'subject.rating.count[1..10]',
-        averages: [1.23456, 1.790115],
-        delta: 0.555555,
+        averages: [undefined, undefined],
+        partialAverages: [1.23456, 1.790115],
         validCounts: [1, 2],
         partialCounts: [0, 0],
         missingCounts: [0, 0],
@@ -119,7 +142,7 @@ function fixture() {
           version: 1,
           description: 'population standard deviation',
         },
-        state: 'complete',
+        state: 'partial',
       },
     ],
     formulaVersion: 'subject-cohort-comparison-v1',
@@ -134,11 +157,12 @@ function fixture() {
       truncated: true,
       overlap: { subjectIds: [218707], count: 1 },
       evidence: { retained: 4, omitted: 0, truncated: false },
+      warnings: { truncated: false },
     },
     source: {
       official: {
         class: 'official-v0',
-        operations: ['POST /v0/search/subjects', 'GET /v0/subjects/{subject_id}'],
+        operations: ['searchSubjects', 'browseSubjects', 'getSubjectById'],
         attemptedAt: '2026-10-09T00:00:00.000Z',
         retrievedAt: '2026-10-09T00:00:01.000Z',
       },
@@ -150,7 +174,45 @@ function fixture() {
       },
     },
     retrievedAt: '2026-10-09T00:00:01.000Z',
-    evidence: [],
+    evidence: [
+      {
+        source: {
+          class: 'official_v0',
+          provider: 'bangumi',
+          version: 'v0',
+          operation: 'searchSubjects',
+          experimental: true,
+        },
+        retrievedAt: '2026-10-09T00:00:01.000Z',
+      },
+      {
+        source: {
+          class: 'official_v0',
+          provider: 'bangumi',
+          version: 'v0',
+          operation: 'browseSubjects',
+        },
+        retrievedAt: '2026-10-09T00:00:01.000Z',
+      },
+      {
+        source: {
+          class: 'official_v0',
+          provider: 'bangumi',
+          version: 'v0',
+          operation: 'getSubjectById',
+        },
+        retrievedAt: '2026-10-09T00:00:01.000Z',
+      },
+      {
+        source: {
+          class: 'derived',
+          provider: 'bangumi-agent-kit',
+          operation: 'bangumi.rating.population_sd.v1',
+          version: '1',
+        },
+        retrievedAt: '2026-10-09T00:00:01.000Z',
+      },
+    ],
     warnings: [{ code: 'QUERY_PARTIAL', state: 'partial', message: 'bounded' }],
     limitations: ['bounded current snapshot'],
   };
@@ -343,12 +405,94 @@ describe('A01 current-source answer checker', () => {
     expect(verified.checks.officialPublicOperations).toBe(false);
   });
 
+  it('requires official-v0 provider metadata on preserved evidence descriptors', () => {
+    const { result, answer } = fixture();
+    result.evidence[0]!.source.provider = 'private-community';
+    const verified = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.officialProvenance).toBe(false);
+  });
+
+  it('rejects added, removed, or changed filters after the runner projection', () => {
+    const { result, answer } = fixture();
+    Object.assign(result.cohorts[0]!.query, { tags: ['unexpected'] });
+
+    const verified = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.queryPlan).toBe(false);
+  });
+
+  it('rejects complete aggregate metrics when query or row coverage is partial', () => {
+    const { result, answer } = fixture();
+    Object.assign(result.metrics[0]!, {
+      averages: [1.23456, 1.790115],
+      delta: 0.555555,
+      state: 'complete',
+    });
+    Reflect.deleteProperty(result.metrics[0]!, 'partialAverages');
+
+    const verified = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.checks.metricCoverage).toBe(false);
+  });
+
+  it('accepts complete aggregate metrics with complete cohort coverage and a matching delta', () => {
+    const { result } = fixture();
+    for (const cohort of result.cohorts) {
+      cohort.coverage.query.state = 'ok';
+      cohort.coverage.query.coverage.state = 'complete';
+      cohort.coverage.query.coverage.budgetExceeded = false;
+      cohort.coverage.metrics.ratingStandardDeviation.state = 'complete';
+    }
+    result.coverage.cohortsComplete = 2;
+    result.coverage.cohortsPartial = 0;
+    result.coverage.truncated = false;
+    Object.assign(result.metrics[0]!, {
+      averages: [1.23456, 1.790115],
+      delta: 0.555555,
+      state: 'complete',
+    });
+    Reflect.deleteProperty(result.metrics[0]!, 'partialAverages');
+    const expected = expectedA01AnswerLines(result);
+    const answer = [
+      ...expected.rows,
+      expected.averageLine,
+      `范围：${expected.scopeTokens.join(';')}`,
+    ].join('\n');
+
+    const verified = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+
+    expect(verified.passed).toBe(true);
+    expect(verified.checks.metricCoverage).toBe(true);
+  });
+
   it('preserves missing and conflict states instead of accepting fabricated zero values', () => {
     const { result } = fixture();
     result.cohorts[1]!.subjects[1] = subject(200001, '同季样本', undefined, 'missing');
+    Object.assign(result.cohorts[1]!.coverage.metrics.ratingStandardDeviation, {
+      valid: 1,
+      missing: 1,
+      state: 'partial',
+    });
     Object.assign(result.metrics[0]!, {
-      averages: [1.23456, undefined],
-      partialAverages: [undefined, 1.23456],
+      averages: [undefined, undefined],
+      partialAverages: [1.23456, 1.23456],
       delta: undefined,
       validCounts: [1, 1],
       missingCounts: [0, 1],
@@ -369,12 +513,17 @@ describe('A01 current-source answer checker', () => {
     expect(missingExpected.rows[2]).toContain('SD=missing｜state=missing');
 
     result.cohorts[1]!.subjects[1] = subject(200001, '同季样本', undefined, 'conflict');
+    Object.assign(result.cohorts[1]!.coverage.metrics.ratingStandardDeviation, {
+      missing: 0,
+      conflicts: 1,
+      state: 'conflict',
+    });
     Object.assign(result.metrics[0]!, {
-      averages: [1.23456, undefined],
-      partialAverages: [undefined, 1.23456],
+      averages: [undefined, undefined],
+      partialAverages: [1.23456, 1.23456],
       missingCounts: [0, 0],
       conflictCounts: [0, 1],
-      state: 'partial',
+      state: 'conflict',
     });
     const conflictExpected = expectedA01AnswerLines(result);
     const conflictAnswer = [

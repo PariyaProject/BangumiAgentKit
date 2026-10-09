@@ -1949,6 +1949,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
     def _a01_cohort(self, index):
         query = GENERATOR.CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]
+        effective_query = {
+            **query['query'],
+            'limit': GENERATOR.CODEX_A01_QUERY_ARGUMENTS['maxSubjects'],
+            'budget': GENERATOR.CODEX_A01_QUERY_BUDGET,
+        }
         if index == 0:
             subjects = [self._a01_subject(218707, '少女終末旅行')]
             query_coverage_state = 'complete'
@@ -1992,7 +1997,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         }
         return {
             'label': query['label'],
-            'query': query['query'],
+            'query': effective_query,
             'querySummary': f"{query['label']} · 2017-autumn · official-v0 bounded sample",
             'queryPlan': {
                 'source': 'official_v0',
@@ -2028,7 +2033,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         observed_at = '2026-10-09T10:00:00.000Z'
         official_source = {
             'class': 'official-v0',
-            'operations': ['GET /v0/subjects'],
+            'operations': ['searchSubjects', 'browseSubjects', 'getSubjectById'],
             'attemptedAt': observed_at,
             'retrievedAt': observed_at,
         }
@@ -2040,11 +2045,40 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         }
         evidence = [
             {
-                'source': {'class': 'official_v0', 'provider': 'bangumi', 'version': 'v0'},
+                'source': {
+                    'class': 'official_v0',
+                    'provider': 'bangumi',
+                    'version': 'v0',
+                    'operation': 'searchSubjects',
+                    'experimental': True,
+                },
                 'retrievedAt': observed_at,
             },
             {
-                'source': {'class': 'derived', 'provider': 'bangumi-agent-kit'},
+                'source': {
+                    'class': 'official_v0',
+                    'provider': 'bangumi',
+                    'version': 'v0',
+                    'operation': 'browseSubjects',
+                },
+                'retrievedAt': observed_at,
+            },
+            {
+                'source': {
+                    'class': 'official_v0',
+                    'provider': 'bangumi',
+                    'version': 'v0',
+                    'operation': 'getSubjectById',
+                },
+                'retrievedAt': observed_at,
+            },
+            {
+                'source': {
+                    'class': 'derived',
+                    'provider': 'bangumi-agent-kit',
+                    'operation': 'bangumi.rating.population_sd.v1',
+                    'version': '1',
+                },
                 'retrievedAt': observed_at,
             },
         ]
@@ -2081,8 +2115,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'truncated': True,
                 'overlap': {'count': 1, 'subjectIds': [218707]},
                 'evidence': {
-                    'retained': 2, 'omitted': 0, 'deduplicated': 0,
-                    'omittedByBound': 0, 'bytes': 200, 'maxRefs': 256,
+                    'retained': 4, 'omitted': 0, 'deduplicated': 0,
+                    'omittedByBound': 0, 'bytes': 400, 'maxRefs': 256,
                     'maxBytes': 96_000, 'truncated': False,
                 },
                 'warnings': {'retained': 1, 'omitted': 0, 'max': 12, 'truncated': False},
@@ -2224,6 +2258,78 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {'docs/live-probes/pariya-agent-codex-luna-e2e-A01.json'},
         )
 
+    def test_a01_report_accepts_complete_metric_only_with_complete_coverage_and_delta(self):
+        report = self._a01_report_fixture()
+        result = report['result']
+        for index, cohort in enumerate(result['cohorts']):
+            cohort['queryState'] = 'ok'
+            cohort['queryCoverage']['state'] = 'complete'
+            cohort['queryCoverage']['requested'] = cohort['queryCoverage']['scanned']
+            cohort['queryCoverage']['upstreamExhausted'] = True
+            cohort['ratingStandardDeviationCoverage'].update({
+                'valid': len(cohort['subjects']),
+                'partial': 0,
+                'missing': 0,
+                'conflicts': 0,
+                'notComputable': 0,
+                'state': 'complete',
+            })
+            if index == 1:
+                cohort['subjects'][1] = self._a01_subject(218708, '样本作品')
+
+        metric = result['ratingStandardDeviation']
+        metric.update({
+            'averages': [1.2, 1.2],
+            'validCounts': [1, 2],
+            'partialCounts': [0, 0],
+            'missingCounts': [0, 0],
+            'conflictCounts': [0, 0],
+            'notComputableCounts': [0, 0],
+            'delta': 0.0,
+            'state': 'complete',
+        })
+        metric.pop('partialAverages')
+        result['coverage'].update({
+            'cohortsComplete': 2,
+            'cohortsPartial': 0,
+            'truncated': False,
+        })
+
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_preserves_finite_invalid_detail_total_only_as_partial_validation(self):
+        report = self._a01_report_fixture()
+        result = report['result']
+        cohort = result['cohorts'][1]
+        cohort['subjects'][0]['ratingStandardDeviationState'] = 'partial'
+        cohort['subjects'][0]['ratingHistogramTotalValidation'] = {
+            'state': 'invalid',
+            'detailRatingTotal': 1.5,
+            'histogramPopulation': 100,
+        }
+        cohort['ratingStandardDeviationCoverage'].update({
+            'valid': 0,
+            'partial': 1,
+            'state': 'partial',
+        })
+        metric = result['ratingStandardDeviation']
+        metric.update({
+            'validCounts': [1, 0],
+            'partialCounts': [0, 1],
+            'missingCounts': [0, 1],
+            'partialAverages': [1.2, 1.2],
+        })
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        cohort['subjects'][0]['ratingHistogramTotalValidation']['state'] = 'match'
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
     def test_a01_report_rejects_wrong_model_query_target_or_coverage(self):
         invalid_mutations = [
             lambda report: report.update({'model': 'gpt-6-sol'}),
@@ -2231,10 +2337,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             lambda report: report['result']['cohorts'][0]['subjects'][0].update({'id': 123}),
             lambda report: report['result']['cohorts'][1]['subjects'].pop(),
             lambda report: report['result']['ratingStandardDeviation']['missingCounts'].__setitem__(1, 0),
+            lambda report: report['result']['cohorts'][0]['query'].update({'tags': ['extra']}),
             lambda report: report['answerChecks'].update({'exactRows': False}),
             lambda report: report['privacy'].update({'accountDataRead': True}),
             lambda report: report['toolCalls'].append({'name': 'bangumi.get_subject', 'state': 'DONE'}),
             lambda report: report['result']['source']['official'].update({'operations': ['GET /community/topics']}),
+            lambda report: report['result']['evidence'][0]['source'].update({'provider': 'private-community'}),
+            lambda report: report['result']['ratingStandardDeviation'].update({
+                'averages': [1.2, 1.2],
+                'delta': 0.0,
+                'state': 'complete',
+            }),
         ]
         for mutate in invalid_mutations:
             with self.subTest(mutation=mutate):

@@ -519,7 +519,12 @@ CODEX_A01_EVIDENCE_COVERAGE_FIELDS = {
 }
 CODEX_A01_WARNING_COVERAGE_FIELDS = {'retained', 'omitted', 'max', 'truncated'}
 CODEX_A01_SOURCE_SUMMARY_FIELDS = {'class', 'operations', 'attemptedAt', 'retrievedAt'}
-CODEX_A01_EVIDENCE_SOURCE_FIELDS = {'class', 'provider', 'version'}
+CODEX_A01_EVIDENCE_SOURCE_FIELDS = {
+    'class', 'provider', 'version', 'operation', 'experimental',
+}
+CODEX_A01_OFFICIAL_OPERATIONS = {
+    'searchSubjects', 'browseSubjects', 'getSubjectById',
+}
 CODEX_A01_SUBJECT_FIELDS = {
     'id', 'name', 'displayName', 'date', 'ratingCount', 'ratingCountState',
     'ratingHistogramPopulation', 'ratingStandardDeviation',
@@ -1143,6 +1148,9 @@ def codex_a01_result_is_valid(result: object) -> bool:
     def nonnegative_int(value: object) -> bool:
         return type(value) is int and value >= 0
 
+    def nonnegative_safe_int(value: object) -> bool:
+        return nonnegative_int(value) and value <= 9_007_199_254_740_991
+
     def finite_number(value: object) -> bool:
         return type(value) in (int, float) and math.isfinite(value)
 
@@ -1151,6 +1159,44 @@ def codex_a01_result_is_valid(result: object) -> bool:
 
     def valid_time(value: object, optional: bool = False) -> bool:
         return optional and value is None or isinstance(value, str) and bool(timestamp.fullmatch(value))
+
+    def expected_cohort_metric_state(
+        coverage: dict, query_state: str, query_coverage_state: str,
+    ) -> str:
+        query_metric_state = (
+            None if query_state == 'ok'
+            else 'not_computable' if query_state == 'not_found'
+            else query_state
+        )
+        if query_metric_state is not None and query_metric_state != 'partial':
+            return query_metric_state
+        if coverage['conflicts'] > 0:
+            return 'conflict'
+        if (coverage['valid'] == 0 and coverage['partial'] == 0
+                and coverage['notComputable'] > 0 and coverage['missing'] == 0):
+            return 'not_computable'
+        if (query_metric_state == 'partial' or query_coverage_state != 'complete'
+                or coverage['partial'] > 0 or coverage['missing'] > 0
+                or coverage['notComputable'] > 0):
+            return 'partial'
+        if coverage['valid'] == 0:
+            return 'not_computable'
+        return 'complete'
+
+    def expected_aggregate_metric_state(coverages: list[dict]) -> str:
+        for state in (
+            'upstream_error', 'auth_required', 'permission_denied',
+            'unavailable', 'unsupported', 'stale',
+        ):
+            if any(coverage['state'] == state for coverage in coverages):
+                return state
+        if any(coverage['state'] == 'conflict' for coverage in coverages):
+            return 'conflict'
+        if all(coverage['state'] == 'not_computable' for coverage in coverages):
+            return 'not_computable'
+        if all(coverage['state'] == 'complete' for coverage in coverages):
+            return 'complete'
+        return 'partial'
 
     if (result.get('state') not in states
             or result.get('formulaVersion') != 'subject-cohort-comparison-v1'
@@ -1180,7 +1226,11 @@ def codex_a01_result_is_valid(result: object) -> bool:
                 or not isinstance(cohort.get('label'), str)
                 or len(cohort['label']) > 80
                 or cohort.get('label') != CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]['label']
-                or cohort.get('query') != CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]['query']
+                or cohort.get('query') != {
+                    **CODEX_A01_QUERY_ARGUMENTS['cohorts'][index]['query'],
+                    'limit': CODEX_A01_QUERY_ARGUMENTS['maxSubjects'],
+                    'budget': CODEX_A01_QUERY_BUDGET,
+                }
                 or not isinstance(cohort.get('querySummary'), str)
                 or len(cohort['querySummary']) > 500
                 or cohort.get('queryState') not in {'ok', 'partial'}
@@ -1323,8 +1373,15 @@ def codex_a01_result_is_valid(result: object) -> bool:
                         or subject['ratingStandardDeviation'] < 0
                     ))):
                 return False
+            row_state = subject['ratingStandardDeviationState']
+            if (row_state in {'available', 'partial'}
+                    and 'ratingStandardDeviation' not in subject):
+                return False
+            if (row_state in {'missing', 'not_computable'}
+                    and 'ratingStandardDeviation' in subject):
+                return False
             ids.add(subject['id'])
-            row_states[subject['ratingStandardDeviationState']] += 1
+            row_states[row_state] += 1
             conflicts = subject.get('ratingStandardDeviationConflicts', [])
             if not isinstance(conflicts, list) or len(conflicts) > 8:
                 return False
@@ -1355,17 +1412,29 @@ def codex_a01_result_is_valid(result: object) -> bool:
                         ))):
                     return False
             total_validation = subject.get('ratingHistogramTotalValidation')
-            if total_validation is not None and (
-                not isinstance(total_validation, dict)
-                or not set(total_validation).issubset({
-                    'state', 'detailRatingTotal', 'histogramPopulation',
-                })
-                or total_validation.get('state') not in {'match', 'mismatch', 'invalid'}
-                or not nonnegative_int(total_validation.get('histogramPopulation'))
-                or ('detailRatingTotal' in total_validation
-                    and not nonnegative_int(total_validation['detailRatingTotal']))
-            ):
-                return False
+            if total_validation is not None:
+                if (not isinstance(total_validation, dict)
+                        or not set(total_validation).issubset({
+                            'state', 'detailRatingTotal', 'histogramPopulation',
+                        })
+                        or total_validation.get('state') not in {'match', 'mismatch', 'invalid'}
+                        or not nonnegative_safe_int(total_validation.get('histogramPopulation'))):
+                    return False
+                validation_state = total_validation['state']
+                has_detail_total = 'detailRatingTotal' in total_validation
+                detail_total = total_validation.get('detailRatingTotal')
+                if validation_state == 'invalid':
+                    if has_detail_total and (
+                        not finite_number(detail_total)
+                        or nonnegative_safe_int(detail_total)
+                    ):
+                        return False
+                elif (not has_detail_total or not nonnegative_safe_int(detail_total)
+                      or (validation_state == 'match'
+                          and detail_total != total_validation['histogramPopulation'])
+                      or (validation_state == 'mismatch'
+                          and detail_total == total_validation['histogramPopulation'])):
+                    return False
 
         for state, count_key in (
             ('available', 'valid'), ('partial', 'partial'), ('missing', 'missing'),
@@ -1373,6 +1442,10 @@ def codex_a01_result_is_valid(result: object) -> bool:
         ):
             if row_states[state] != metric_coverage[count_key]:
                 return False
+        if metric_coverage['state'] != expected_cohort_metric_state(
+            metric_coverage, cohort['queryState'], query_coverage['state'],
+        ):
+            return False
         cohort_rating_coverage.append(metric_coverage)
         if index == 0:
             target_rows = cohort['subjects']
@@ -1423,21 +1496,30 @@ def codex_a01_result_is_valid(result: object) -> bool:
         return False
     if 'delta' in metric and not optional_number(metric['delta']):
         return False
+    if metric['state'] != expected_aggregate_metric_state(cohort_rating_coverage):
+        return False
     if metric['state'] == 'complete':
         if ('partialAverages' in metric
-                or any(not optional_number(value) for value in metric['averages'])
-                or ('delta' in metric and (
-                    not finite_number(metric['averages'][0])
-                    or not finite_number(metric['averages'][1])
-                    or not math.isclose(
-                        metric['delta'], metric['averages'][1] - metric['averages'][0],
-                        rel_tol=1e-9, abs_tol=1e-9,
-                    )
-                ))):
+                or any(not finite_number(value) or value < 0 for value in metric['averages'])
+                or 'delta' not in metric
+                or not finite_number(metric['delta'])
+                or not math.isclose(
+                    metric['delta'], metric['averages'][1] - metric['averages'][0],
+                    rel_tol=1e-9, abs_tol=1e-9,
+                )
+                or any(coverage['state'] != 'complete' or coverage['valid'] == 0
+                       or coverage['partial'] != 0 or coverage['missing'] != 0
+                       or coverage['conflicts'] != 0 or coverage['notComputable'] != 0
+                       for coverage in cohort_rating_coverage)):
             return False
     elif (metric['averages'] != [None, None]
           or 'partialAverages' not in metric
-          or 'delta' in metric):
+          or 'delta' in metric
+          or any(
+              (coverage['valid'] + coverage['partial'] > 0) != finite_number(value)
+              for coverage, value in zip(cohort_rating_coverage, metric['partialAverages'])
+          )
+          or any(finite_number(value) and value < 0 for value in metric['partialAverages'])):
         return False
     for index, coverage in enumerate(cohort_rating_coverage):
         for metric_key, coverage_key in (
@@ -1489,24 +1571,38 @@ def codex_a01_result_is_valid(result: object) -> bool:
             or evidence_coverage['truncated'] != (evidence_coverage['omittedByBound'] > 0)):
         return False
     evidence_classes: set[str] = set()
+    official_evidence_operations: set[str] = set()
     for item in result['evidence']:
         source = item.get('source') if isinstance(item, dict) else None
         if (not isinstance(item, dict)
                 or set(item) != {'source', 'retrievedAt'}
                 or not isinstance(source, dict)
+                or not isinstance(source.get('class'), str)
                 or source.get('class') not in {'official_v0', 'derived'}
                 or not valid_time(item.get('retrievedAt'))):
             return False
         if source.get('class') == 'official_v0':
-            if (set(source) != CODEX_A01_EVIDENCE_SOURCE_FIELDS
+            if (not set(source).issubset(CODEX_A01_EVIDENCE_SOURCE_FIELDS)
+                    or not {'class', 'provider', 'version', 'operation'}.issubset(source)
                     or source.get('provider') != 'bangumi'
-                    or source.get('version') != 'v0'):
+                    or source.get('version') != 'v0'
+                    or not isinstance(source.get('operation'), str)
+                    or source.get('operation') not in CODEX_A01_OFFICIAL_OPERATIONS
+                    or ('experimental' in source and type(source['experimental']) is not bool)):
                 return False
+            official_evidence_operations.add(source['operation'])
         elif (not set(source).issubset(CODEX_A01_EVIDENCE_SOURCE_FIELDS)
               or source.get('provider') != 'bangumi-agent-kit'
+              or not {'class', 'provider'}.issubset(source)
+              or ('operation' in source and (
+                  not isinstance(source['operation'], str)
+                  or not re.fullmatch(r'[A-Za-z0-9_.-]{1,160}', source['operation'])
+              ))
               or ('version' in source and (
-                  not isinstance(source['version'], str) or len(source['version']) > 40
-              ))):
+                  not isinstance(source['version'], str)
+                  or not re.fullmatch(r'[A-Za-z0-9_.-]{1,80}', source['version'])
+              ))
+              or ('experimental' in source and type(source['experimental']) is not bool)):
             return False
         evidence_classes.add(source['class'])
 
@@ -1565,10 +1661,14 @@ def codex_a01_result_is_valid(result: object) -> bool:
             return False
     official_operations = source['official']['operations']
     if (not official_operations
-            or any(not re.fullmatch(r'(?:GET|POST) /v0/[A-Za-z0-9_/{}/-]+', operation)
+            or any(not isinstance(operation, str)
+                   or operation not in CODEX_A01_OFFICIAL_OPERATIONS
                    for operation in official_operations)
             or not source['official'].get('retrievedAt')
-            or 'official_v0' not in evidence_classes):
+            or 'official_v0' not in evidence_classes
+            or not official_evidence_operations.issubset(set(official_operations))
+            or (not evidence_coverage['truncated']
+                and set(official_operations) != official_evidence_operations)):
         return False
 
     return True

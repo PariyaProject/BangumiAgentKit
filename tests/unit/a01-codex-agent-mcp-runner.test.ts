@@ -124,7 +124,7 @@ describe('A01 Codex/MCP runner gates', () => {
     expect(args.at(-1) ?? '').toContain('2017-autumn');
   });
 
-  it('records only fixed query filters and omits implementation-added limit/budget fields', () => {
+  it('preserves the bounded effective query and flags unexpected filters without leaking values', () => {
     const fixedQuery = {
       keyword: '少女终末旅行',
       media: 'anime',
@@ -133,11 +133,39 @@ describe('A01 Codex/MCP runner gates', () => {
       resultMode: 'all',
       nsfw: 'exclude',
     };
-    expect(projectA01CohortQuery({
+    const serviceQuery = {
       ...fixedQuery,
       limit: 8,
-      budget: { maxPages: 6, maxCandidates: 300, maxReturnedItems: 8 },
-    })).toEqual(fixedQuery);
+      budget: {
+        maxPages: 6,
+        maxCandidates: 300,
+        maxHydrations: 60,
+        concurrency: 6,
+        maxConceptProbes: 8,
+        maxReturnedItems: 8,
+      },
+    };
+    expect(projectA01CohortQuery(serviceQuery)).toEqual(serviceQuery);
+
+    const projectedUnexpected = projectA01CohortQuery({
+      ...serviceQuery,
+      tags: ['private-like-input-must-not-be-copied'],
+    });
+    expect(projectedUnexpected).toEqual({
+      ...serviceQuery,
+      __unexpectedA01QueryFields: true,
+    });
+    expect(JSON.stringify(projectedUnexpected)).not.toContain('private-like-input-must-not-be-copied');
+
+    const projectedUnexpectedBudget = projectA01CohortQuery({
+      ...serviceQuery,
+      budget: {
+        ...serviceQuery.budget,
+        extra: 'do-not-project',
+      },
+    });
+    expect(projectedUnexpectedBudget.__unexpectedA01QueryFields).toBe(true);
+    expect(JSON.stringify(projectedUnexpectedBudget)).not.toContain('do-not-project');
   });
 
   it('requires the active A01 epoch, current exact SHA CI, and explicit Luna Max review identity', () => {

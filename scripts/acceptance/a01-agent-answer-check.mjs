@@ -2,6 +2,14 @@ import { createHash } from 'node:crypto';
 
 export const A01_TARGET_TOOL = 'bangumi.compare_subject_cohorts';
 export const A01_MAX_SUBJECTS = 8;
+export const A01_EXPECTED_QUERY_BUDGET = Object.freeze({
+  maxPages: 6,
+  maxCandidates: 300,
+  maxHydrations: 60,
+  concurrency: 6,
+  maxConceptProbes: 8,
+  maxReturnedItems: A01_MAX_SUBJECTS,
+});
 export const A01_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
   cohorts: [
     {
@@ -27,6 +35,47 @@ export const A01_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
   ],
   maxSubjects: A01_MAX_SUBJECTS,
 });
+
+const A01_OFFICIAL_OPERATIONS = new Set([
+  'searchSubjects',
+  'browseSubjects',
+  'getSubjectById',
+]);
+const A01_EXPECTED_EFFECTIVE_QUERIES = A01_EXPECTED_QUERY_ARGUMENTS.cohorts.map(
+  ({ query }) => ({
+    ...query,
+    limit: A01_MAX_SUBJECTS,
+    budget: A01_EXPECTED_QUERY_BUDGET,
+  }),
+);
+const A01_METRIC_STATES = new Set([
+  'complete',
+  'partial',
+  'conflict',
+  'unavailable',
+  'not_computable',
+  'not_found',
+  'upstream_error',
+  'unsupported',
+  'stale',
+  'auth_required',
+  'permission_denied',
+]);
+const A01_METRIC_ROW_STATES = new Set([
+  'available',
+  'partial',
+  'missing',
+  'conflict',
+  'not_computable',
+]);
+const A01_TERMINAL_METRIC_STATES = [
+  'upstream_error',
+  'auth_required',
+  'permission_denied',
+  'unavailable',
+  'unsupported',
+  'stale',
+];
 
 export function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -170,19 +219,187 @@ function exactTarget(cohorts) {
 }
 
 function queryPlanMatches(cohorts) {
-  return (
-    cohorts?.length === 2 &&
-    cohorts[0]?.query?.keyword === '少女终末旅行' &&
-    cohorts[0]?.query?.media === 'anime' &&
-    cohorts[0]?.query?.categories === 'tv' &&
-    cohorts[0]?.query?.season === '2017-autumn' &&
-    cohorts[0]?.query?.resultMode === 'all' &&
-    cohorts[0]?.query?.nsfw === 'exclude' &&
-    cohorts[1]?.query?.media === 'anime' &&
-    cohorts[1]?.query?.season === '2017-autumn' &&
-    cohorts[1]?.query?.resultMode === 'all' &&
-    cohorts[1]?.query?.nsfw === 'exclude'
+  return cohorts?.length === 2 && cohorts.every(
+    (cohort, index) =>
+      canonicalJson(cohort?.query) === canonicalJson(A01_EXPECTED_EFFECTIVE_QUERIES[index]),
   );
+}
+
+function expectedCohortMetricState(cohort, coverage) {
+  const queryState = cohort?.coverage?.query?.state;
+  const queryCoverageState = cohort?.coverage?.query?.coverage?.state;
+  const queryMetricState = queryState === 'ok'
+    ? undefined
+    : queryState === 'not_found'
+      ? 'not_computable'
+      : queryState;
+  if (queryMetricState !== undefined && queryMetricState !== 'partial') return queryMetricState;
+  if (coverage.conflicts > 0) return 'conflict';
+  if (
+    coverage.valid === 0 &&
+    coverage.partial === 0 &&
+    coverage.notComputable > 0 &&
+    coverage.missing === 0
+  ) return 'not_computable';
+  if (
+    queryMetricState === 'partial' ||
+    queryCoverageState !== 'complete' ||
+    coverage.partial > 0 ||
+    coverage.missing > 0 ||
+    coverage.notComputable > 0
+  ) return 'partial';
+  if (coverage.valid === 0) return 'not_computable';
+  return 'complete';
+}
+
+function aggregateMetricState(coverages) {
+  for (const state of A01_TERMINAL_METRIC_STATES) {
+    if (coverages.some((coverage) => coverage.state === state)) return state;
+  }
+  if (coverages.some((coverage) => coverage.state === 'conflict')) return 'conflict';
+  if (coverages.every((coverage) => coverage.state === 'not_computable')) {
+    return 'not_computable';
+  }
+  if (coverages.every((coverage) => coverage.state === 'complete')) return 'complete';
+  return 'partial';
+}
+
+function metricCoverageMatches(result) {
+  const cohorts = result?.cohorts;
+  const metric = result?.metrics?.find((item) => item?.key === 'ratingStandardDeviation');
+  if (!Array.isArray(cohorts) || cohorts.length !== 2 || !metric) return false;
+  const coverageFields = ['valid', 'partial', 'missing', 'conflicts', 'notComputable', 'state'];
+  const countFields = [
+    ['validCounts', 'valid'],
+    ['partialCounts', 'partial'],
+    ['missingCounts', 'missing'],
+    ['conflictCounts', 'conflicts'],
+    ['notComputableCounts', 'notComputable'],
+  ];
+  const coverages = [];
+  for (const cohort of cohorts) {
+    const coverage = cohort?.coverage?.metrics?.ratingStandardDeviation;
+    const rows = cohort?.subjects;
+    if (
+      !coverage ||
+      !rows ||
+      canonicalJson(Object.keys(coverage).sort()) !== canonicalJson([...coverageFields].sort()) ||
+      !coverageFields.slice(0, -1).every(
+        (field) => Number.isSafeInteger(coverage[field]) && coverage[field] >= 0,
+      ) ||
+      !A01_METRIC_STATES.has(coverage.state)
+    ) return false;
+    const rowCounts = Object.fromEntries([...A01_METRIC_ROW_STATES].map((state) => [state, 0]));
+    for (const row of rows) {
+      const state = subjectState(row);
+      if (!A01_METRIC_ROW_STATES.has(state)) return false;
+      const deviation = row?.ratingStandardDeviation;
+      if (
+        (state === 'available' || state === 'partial') &&
+        (!Number.isFinite(deviation) || deviation < 0)
+      ) return false;
+      if (
+        (state === 'missing' || state === 'not_computable') &&
+        deviation !== undefined &&
+        deviation !== null
+      ) return false;
+      rowCounts[state] += 1;
+    }
+    if (
+      rowCounts.available !== coverage.valid ||
+      rowCounts.partial !== coverage.partial ||
+      rowCounts.missing !== coverage.missing ||
+      rowCounts.conflict !== coverage.conflicts ||
+      rowCounts.not_computable !== coverage.notComputable ||
+      coverage.state !== expectedCohortMetricState(cohort, coverage)
+    ) return false;
+    coverages.push(coverage);
+  }
+  if (
+    metric.state !== aggregateMetricState(coverages) ||
+    !A01_METRIC_STATES.has(metric.state)
+  ) return false;
+  for (const [metricField, coverageField] of countFields) {
+    const values = metric[metricField];
+    if (
+      !Array.isArray(values) ||
+      values.length !== 2 ||
+      values.some((value) => !Number.isSafeInteger(value) || value < 0) ||
+      values.some((value, index) => value !== coverages[index]?.[coverageField])
+    ) return false;
+  }
+  const resultCoverage = result?.coverage;
+  const queryCoverageStates = cohorts.map(
+    (cohort) => cohort?.coverage?.query?.coverage?.state,
+  );
+  const completeCount = queryCoverageStates.filter((state) => state === 'complete').length;
+  const expectedTruncated =
+    cohorts.some((cohort) =>
+      cohort?.coverage?.query?.coverage?.budgetExceeded ||
+      cohort?.coverage?.query?.coverage?.state !== 'complete',
+    ) ||
+    resultCoverage?.evidence?.truncated === true ||
+    resultCoverage?.warnings?.truncated === true;
+  if (
+    resultCoverage?.cohortsComplete !== completeCount ||
+    resultCoverage?.cohortsPartial !== cohorts.length - completeCount ||
+    typeof resultCoverage?.truncated !== 'boolean' ||
+    resultCoverage.truncated !== expectedTruncated ||
+    typeof resultCoverage?.evidence?.truncated !== 'boolean' ||
+    typeof resultCoverage?.warnings?.truncated !== 'boolean'
+  ) return false;
+
+  if (metric.state === 'complete') {
+    return (
+      Array.isArray(metric.averages) &&
+      metric.averages.length === 2 &&
+      metric.averages.every((value) => Number.isFinite(value) && value >= 0) &&
+      metric.partialAverages === undefined &&
+      Number.isFinite(metric.delta) &&
+      Math.abs(metric.delta - (metric.averages[1] - metric.averages[0])) <= 1e-9 &&
+      coverages.every((coverage) =>
+        coverage.state === 'complete' &&
+        coverage.valid > 0 &&
+        coverage.partial === 0 &&
+        coverage.missing === 0 &&
+        coverage.conflicts === 0 &&
+        coverage.notComputable === 0,
+      )
+    );
+  }
+
+  return (
+    Array.isArray(metric.averages) &&
+    metric.averages.length === 2 &&
+    metric.averages.every((value) => value === undefined || value === null) &&
+    Array.isArray(metric.partialAverages) &&
+    metric.partialAverages.length === 2 &&
+    metric.partialAverages.every((value, index) => {
+      if (value !== undefined && value !== null && (!Number.isFinite(value) || value < 0)) {
+        return false;
+      }
+      return (coverages[index].valid + coverages[index].partial > 0) === Number.isFinite(value);
+    }) &&
+    (metric.delta === undefined || metric.delta === null)
+  );
+}
+
+function officialEvidenceMatches(result) {
+  const operations = result?.source?.official?.operations;
+  const sources = (Array.isArray(result?.evidence) ? result.evidence : [])
+    .map((item) => item?.source)
+    .filter((source) => source?.class === 'official_v0');
+  if (!Array.isArray(operations) || sources.length === 0 || !sources.every((source) =>
+    source.provider === 'bangumi' &&
+    source.version === 'v0' &&
+    A01_OFFICIAL_OPERATIONS.has(source.operation) &&
+    (source.experimental === undefined || typeof source.experimental === 'boolean'),
+  )) return false;
+  const summaryOperations = new Set(operations);
+  const evidenceOperations = new Set(sources.map((source) => source.operation));
+  if ([...evidenceOperations].some((operation) => !summaryOperations.has(operation))) return false;
+  return result?.coverage?.evidence?.truncated === true ||
+    canonicalJson([...summaryOperations].sort()) === canonicalJson([...evidenceOperations].sort());
 }
 
 function overlapMatches(result) {
@@ -279,19 +496,15 @@ export function verifyA01AgentAnswer({ answer, queryArguments, toolResult }) {
       ),
     metricFormula: metric?.formula?.id === 'bangumi.rating.population_sd.v1' &&
       metric?.formula?.version === 1,
-    metricCoverage: [metric?.validCounts, metric?.partialCounts, metric?.missingCounts,
-      metric?.conflictCounts, metric?.notComputableCounts].every(
-      (values) => Array.isArray(values) && values.length === 2 &&
-        values.every((value) => Number.isSafeInteger(value) && value >= 0),
-    ),
+    metricCoverage: metricCoverageMatches(result),
     overlap: overlapMatches(result),
     officialProvenance: result?.source?.official?.class === 'official-v0' &&
       Array.isArray(result.source.official.operations) &&
-      result.source.official.operations.length > 0,
+      result.source.official.operations.length > 0 &&
+      officialEvidenceMatches(result),
     officialPublicOperations: Array.isArray(result?.source?.official?.operations) &&
       result.source.official.operations.every(
-        (operation) =>
-          typeof operation === 'string' && /^(?:GET|POST) \/v0\//u.test(operation),
+        (operation) => typeof operation === 'string' && A01_OFFICIAL_OPERATIONS.has(operation),
       ),
     answerPresent: typeof answer === 'string' && answer.trim().length > 0,
     exactRows,

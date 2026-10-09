@@ -450,10 +450,58 @@ function invokeCodex({ summaryPath, candidateSha, bundleSha256 }) {
 }
 
 export function projectA01CohortQuery(query) {
-  const fields = ['keyword', 'media', 'categories', 'season', 'resultMode', 'nsfw'];
-  return Object.fromEntries(
-    fields.filter((field) => query?.[field] !== undefined).map((field) => [field, query[field]]),
-  );
+  const filterFields = [
+    'keyword',
+    'media',
+    'categories',
+    'season',
+    'resultMode',
+    'nsfw',
+  ];
+  const budgetFields = [
+    'maxPages',
+    'maxCandidates',
+    'maxHydrations',
+    'concurrency',
+    'maxConceptProbes',
+    'maxReturnedItems',
+  ];
+  const fields = [...filterFields, 'limit', 'budget'];
+  const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const projection = {};
+  let unexpectedFields = !isRecord(query);
+  if (isRecord(query)) {
+    for (const field of filterFields) {
+      if (query[field] === undefined) continue;
+      if (typeof query[field] === 'string') projection[field] = query[field];
+      else unexpectedFields = true;
+    }
+    if (query.limit !== undefined) {
+      if (Number.isSafeInteger(query.limit) && query.limit >= 0) projection.limit = query.limit;
+      else unexpectedFields = true;
+    }
+    if (query.budget !== undefined) {
+      if (!isRecord(query.budget)) unexpectedFields = true;
+      else {
+        const budget = {};
+        for (const field of budgetFields) {
+          if (query.budget[field] === undefined) continue;
+          if (Number.isSafeInteger(query.budget[field]) && query.budget[field] >= 0) {
+            budget[field] = query.budget[field];
+          } else unexpectedFields = true;
+        }
+        if (Object.keys(query.budget).some((field) => !budgetFields.includes(field))) {
+          unexpectedFields = true;
+        }
+        projection.budget = budget;
+      }
+    }
+    if (Object.keys(query).some((field) => !fields.includes(field))) unexpectedFields = true;
+  }
+  if (unexpectedFields) {
+    projection.__unexpectedA01QueryFields = true;
+  }
+  return projection;
 }
 
 function publicResultProjection(result) {
