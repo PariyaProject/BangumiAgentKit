@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-09T09:53:45Z",
+  "updated_at": "2026-10-09T11:48:49Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2211,7 +2211,7 @@
         "tests/unit/a01-agent-answer-check.test.ts",
         "tests/unit/a01-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "PR #124 integrates the cohort rating-dispersion implementation. Harness Epoch run95-a01-agent-mcp-acceptance adds a fixed one-tool public Agent/MCP runner and exact runtime bundle attestation. No live A01 request has run; keep UNASSESSED. Only after exact current-base Candidate CI and GPT-6 Luna Max review PASS, invoke scripts/acceptance/run-a01-codex-agent-mcp.mjs --run 95 once. Its Git-metadata one-shot claim blocks repeats. A wrong target, incomplete event stream, or checker failure is INCONCLUSIVE and must never be retried. Keep OAuth/accounts/community/QQ/TIM outside this scenario.",
+      "next_action": "Run 95 A01 one-shot was invoked exactly once on reviewed current-base Candidate 19b28658b84399a682e8cfeedd4003512f8aa87f after exact CI and GPT-6 Luna Max PASS. The sanitized Agent/MCP report docs/live-probes/pariya-agent-codex-luna-e2e-A01.json is INCONCLUSIVE: the sole target MCP event returned ERROR, the event stream had 3 non-MCP tool events, and no cohort rows were returned. The local Git-metadata claim is consumed. Never retry this query or claim; keep A01 UNASSESSED and do not advance acceptance counts. OAuth/accounts/community/QQ/TIM remain excluded. A different safe discriminator would need a separately reviewed, non-retry design.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2237,7 +2237,7 @@
           "tests/render/subject-cohort-comparison.test.ts",
           "tests/standalone/subject-cohort-command.test.ts"
         ],
-        "acceptance_limit": "PR #124 engineering implementation evidence only; the one-shot A01 current-source Agent/MCP attempt has not run. The follow-up runner and refreshed runtime attestation are acceptance infrastructure only. Keep A01 UNASSESSED until the single reviewed exact-Candidate answer is recorded and checked."
+        "acceptance_limit": "PR #124 provides engineering implementation evidence only. The single reviewed exact-Candidate anonymous Agent/MCP attempt is recorded in docs/live-probes/pariya-agent-codex-luna-e2e-A01.json as INCONCLUSIVE because the target tool errored and 3 non-MCP events appeared; no cohort rows or checked answer exist. Keep A01 UNASSESSED, do not change acceptance counts, and never retry the consumed one-shot claim."
       }
     },
     {

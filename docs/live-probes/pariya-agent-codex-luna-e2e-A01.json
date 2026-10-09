@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "codex_cli_a01_agent_mcp",
+  "profile": "codex-luna-max-one-tool-v1",
+  "scenarioId": "A01",
+  "runNumber": 95,
+  "frontierId": "A01",
+  "epochId": "run95-a01-agent-mcp-acceptance",
+  "state": "INCONCLUSIVE",
+  "observedAt": "2026-10-09T11:45:27.815Z",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "codexCliVersion": "0.162.0-alpha.2",
+  "sourceRevision": "19b28658b84399a682e8cfeedd4003512f8aa87f",
+  "baseSha": "b10f26be02239080999190fe92f16d40b91ac6cc",
+  "prNumber": 125,
+  "mcpBundleSha256": "131f7063c53e02391833550e21e521d461e24890ab3f7510ae55e5930bece598",
+  "candidateGate": {
+    "candidateSha": "19b28658b84399a682e8cfeedd4003512f8aa87f",
+    "baseSha": "b10f26be02239080999190fe92f16d40b91ac6cc",
+    "reviewPassSha": "19b28658b84399a682e8cfeedd4003512f8aa87f",
+    "reviewVerdict": "PASS",
+    "reviewerId": "gpt-6-luna-max-run95-a01-pr125-round1",
+    "ciSha": "19b28658b84399a682e8cfeedd4003512f8aa87f",
+    "ciStatus": "SUCCESS"
+  },
+  "toolName": "bangumi.compare_subject_cohorts",
+  "argumentProfile": "a01-2017-autumn-cohort-rating-sd-v1",
+  "expectedArgumentsSha256": "cf540cbc800503c7343d43ebe31621e035c8313e3a0b829e0f794a53ab8679cc",
+  "queryArguments": null,
+  "catalogSha256": "ffbd1167b86909d7e301bea4b2dc6f862de0d5677ffd0cb4aae0eb85847e7f3a",
+  "toolDescriptionSha256": "e0a68a2fab0aab8940778a20c3a50115b377a7c5d0c93be111b29fbbe0dc3ad0",
+  "inputSchemaSha256": "b6a07703770c7485ff94643432ac0eb1e011d1b553d0d63d6097918ba1fb3781",
+  "serverToolNames": [
+    "bangumi.compare_subject_cohorts"
+  ],
+  "serverToolCount": 1,
+  "mcpServerNames": [
+    "bgk_a01_one_tool"
+  ],
+  "processExitCode": 0,
+  "resultCount": 0,
+  "eventStreamParsed": true,
+  "codexMcpToolEventCount": 1,
+  "nonMcpToolEventCount": 3,
+  "shellToolCallCount": 0,
+  "allowedCallCount": 1,
+  "deniedCallCount": 0,
+  "resultStatus": "ERROR",
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "serverSummaryMatchesCandidate": true,
+  "sameCandidateAfterCall": true,
+  "result": null,
+  "answerSha256": "b14b72f7120ee33ea58de3d53effcd330ee2e36bfc4fb7e86d1a39d045aa533c",
+  "answerUtf8Bytes": 1149,
+  "answerCheckMethod": "a01-bounded-cohort-answer-v1",
+  "answerChecks": {
+    "structuralPreflight": false,
+    "exactCandidateBundle": true
+  },
+  "toolCalls": [
+    {
+      "name": "bangumi.compare_subject_cohorts",
+      "state": "ERROR",
+      "arguments": null
+    }
+  ],
+  "privacy": {
+    "authProfile": "anonymous",
+    "oauthAttempted": false,
+    "accountDataRead": false,
+    "writesAttempted": false,
+    "qqPipelineTested": false,
+    "timClientTested": false,
+    "promptStored": false,
+    "answerStored": false,
+    "rawResultStored": false,
+    "artifactImageBytesStored": false,
+    "credentialsStored": false
+  },
+  "acceptanceLimit": "One anonymous current-snapshot sample only; this does not establish global season coverage or statistical significance. No retry is authorized."
+}
