@@ -1409,7 +1409,11 @@ def codex_a01_result_is_valid(result: object) -> bool:
                     and not query_coverage['budgetExceeded'])
                 or ('missing' in query_coverage and not nonnegative_int(query_coverage['missing']))
                 or ('unresolvedCandidates' in query_coverage
-                    and not nonnegative_int(query_coverage['unresolvedCandidates']))
+                    and (
+                        not nonnegative_int(query_coverage['unresolvedCandidates'])
+                        or query_coverage['unresolvedCandidates']
+                            != query_coverage['hydrationsUnresolved']
+                    ))
                 or ('outputCap' in query_coverage and query_coverage['outputCap'] is not None
                     and (not nonnegative_int(query_coverage['outputCap'])
                          or query_coverage['outputCap'] > 8))

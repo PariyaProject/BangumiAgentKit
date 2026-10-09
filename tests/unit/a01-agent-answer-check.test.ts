@@ -22,6 +22,7 @@ const queryCoverage = {
   hydrationsSucceeded: 2,
   hydrationsFailed: 0,
   hydrationsUnresolved: 0,
+  unresolvedCandidates: 0,
   hydrationBudgetExceeded: false,
 };
 
@@ -521,6 +522,24 @@ describe('A01 current-source answer checker', () => {
       toolResult: { structuredContent: result },
     });
     expect(unknownCoverage.checks.queryCoverage).toBe(true);
+  });
+
+  it('accepts a matching unresolved-candidate alias and rejects a mismatch', () => {
+    const { result, answer } = fixture();
+    const matching = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+    expect(matching.checks.queryCoverage).toBe(true);
+
+    result.cohorts[0]!.coverage.query.coverage.unresolvedCandidates = 1;
+    const mismatched = verifyA01AgentAnswer({
+      answer,
+      queryArguments: A01_EXPECTED_QUERY_ARGUMENTS,
+      toolResult: { structuredContent: result },
+    });
+    expect(mismatched.checks.queryCoverage).toBe(false);
   });
 
   it('rejects complete aggregate metrics when query or row coverage is partial', () => {

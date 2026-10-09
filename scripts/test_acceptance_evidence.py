@@ -2075,6 +2075,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'hydrationsSucceeded': returned,
             'hydrationsFailed': 0,
             'hydrationsUnresolved': 0,
+            'unresolvedCandidates': 0,
             'hydrationBudgetExceeded': False,
         }
         return {
@@ -2371,6 +2372,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertFalse(cohort['queryCoverage']['upstreamExhausted'])
         self.assertEqual(cohort['queryState'], 'ok')
         self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+    def test_a01_report_requires_unresolved_candidate_alias_to_match_hydration_count(self):
+        report = self._a01_report_fixture()
+        self.assertTrue(GENERATOR.codex_a01_report_is_valid(
+            report, {item['name']: item for item in self.catalog},
+        ))
+
+        report['result']['cohorts'][0]['queryCoverage']['unresolvedCandidates'] = 1
+        self.assertFalse(GENERATOR.codex_a01_report_is_valid(
             report, {item['name']: item for item in self.catalog},
         ))
 

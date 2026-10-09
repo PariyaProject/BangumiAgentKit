@@ -319,6 +319,9 @@ function queryCoverageMatches(cohorts) {
       !Number.isSafeInteger(coverage.returned) ||
       !Number.isSafeInteger(coverage.hydrationsUnresolved) ||
       coverage.hydrationsUnresolved < 0 ||
+      ('unresolvedCandidates' in coverage &&
+        (!Number.isSafeInteger(coverage.unresolvedCandidates) ||
+          coverage.unresolvedCandidates !== coverage.hydrationsUnresolved)) ||
       typeof coverage.upstreamExhausted !== 'boolean' ||
       typeof coverage.budgetExceeded !== 'boolean' ||
       typeof coverage.hydrationBudgetExceeded !== 'boolean' ||
