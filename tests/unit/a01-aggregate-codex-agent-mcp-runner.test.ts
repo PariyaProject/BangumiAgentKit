@@ -74,7 +74,7 @@ describe('A01 aggregate Codex MCP runner', () => {
       'provider-foundation',
       'discovery-foundation',
     ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
-    const branch = 'codex/epoch-run95-a01-aggregate-subject-cohort-codex-current-evidence';
+    const branch = 'codex/epoch-run95-a01-aggregate-state-precedence-followup';
     const status = {
       git: { branch, head: candidateSha, status: '' },
       run: { state: { state: 'EPOCH_ACTIVE', active_epoch_pr: 129, pending_epoch: null } },
@@ -82,7 +82,7 @@ describe('A01 aggregate Codex MCP runner', () => {
         number: 129,
         github_state: 'OPEN',
         state: {
-          epoch_id: 'run95-a01-aggregate-subject-cohort-codex-current-evidence',
+          epoch_id: 'run95-a01-aggregate-state-precedence-followup',
           pr_number: 129,
           branch,
           candidate_sha: candidateSha,

@@ -843,7 +843,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             }],
             'runNumber': 95,
             'frontierId': 'A01',
-            'epochId': 'run95-a01-aggregate-subject-cohort-codex-current-evidence',
+            'epochId': 'run95-a01-aggregate-state-precedence-followup',
             'mcpBundleSha256': bundle_sha,
             'prNumber': GENERATOR.CODEX_A01_AGGREGATE_PR_NUMBER,
             'baseSha': base_sha,
@@ -1241,6 +1241,72 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     {item['name']: item for item in self.catalog},
                     {item['name']: item for item in self.catalog},
                 ))
+
+    def test_a01_aggregate_preserves_terminal_errors_and_conflicts_over_partial_coverage(self):
+        terminal_states = (
+            'upstream_error', 'auth_required', 'permission_denied',
+            'unavailable', 'unsupported', 'stale',
+        )
+        for state in terminal_states:
+            with self.subTest(state=state):
+                report = self.write_a01_aggregate_report()
+                result = report['scenarios'][0]['result']
+                summary = result['summary']
+                result['resultState'] = state
+                summary['state'] = state
+                summary['query'].update({
+                    'state': state,
+                    'scanned': 0,
+                    'matched': 0,
+                    'returned': 0,
+                    'totalKind': 'unknown',
+                    'budgetExceeded': False,
+                    'upstreamExhausted': False,
+                })
+                summary['coverage'].update({
+                    'totalSubjectsReturned': 0,
+                    'cohortsComplete': 0,
+                    'cohortsPartial': 1,
+                    'detailHydrationsAttempted': 0,
+                    'detailHydrationsSucceeded': 0,
+                    'detailHydrationsFailed': 0,
+                    'truncated': True,
+                })
+                for metric in summary['metrics']:
+                    metric.update({
+                        'state': state,
+                        'value': None,
+                        'valid': 0,
+                        'partial': 0,
+                        'missing': 0,
+                        'conflicts': 0,
+                        'notComputable': 0,
+                    })
+
+                self.assertTrue(GENERATOR.codex_a01_aggregate_result_is_valid(result))
+
+        report = self.write_a01_aggregate_report()
+        result = report['scenarios'][0]['result']
+        summary = result['summary']
+        result['resultState'] = 'conflict'
+        summary['state'] = 'conflict'
+        for metric in summary['metrics']:
+            metric.update({
+                'state': 'not_computable',
+                'value': None,
+                'valid': 0,
+                'partial': 0,
+                'missing': 0,
+                'conflicts': 0,
+                'notComputable': 1,
+            })
+        summary['metrics'][0].update({
+            'state': 'conflict',
+            'conflicts': 1,
+            'notComputable': 0,
+        })
+
+        self.assertTrue(GENERATOR.codex_a01_aggregate_result_is_valid(result))
 
     def test_accepts_current_catalog_g02_reports_and_codex_prerelease_version(self):
         query_report = self.write_g02_report()

@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-09T11:48:49Z",
+  "updated_at": "2026-10-10T00:59:30Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2217,7 +2217,7 @@
         "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
         "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE; never retry it. PR #126 adds a separate anonymous read-only aggregate_subject_cohort runner and report validator, but no live query has occurred and no Agent/MCP count has advanced. Keep A01 UNASSESSED. The distinct fixed query is media=anime, year=2012, resultMode=all, maxSubjects=1; preserve metric/coverage state and do not claim full population, significance, quality, causality, recommendation, or trends. Invoke only after current-base exact-SHA CI and GPT-6 Luna Max PASS; if INCONCLUSIVE, never retry. OAuth/accounts/community/QQ/TIM remain excluded.",
+      "next_action": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE; never retry it. PR #126 integrated the separate aggregate_subject_cohort runner/report path through final corrective without a reviewer PASS and did not authorize a live query. The new Run #95 Epoch run95-a01-aggregate-state-precedence-followup adds raw/sanitized regressions for terminal query errors and conflicts over partial/truncated coverage. Keep A01 UNASSESSED. Only after this new exact Candidate passes mandatory CI and a normal GPT-6 Luna Max review may the fixed media=anime, year=2012, resultMode=all, maxSubjects=1 query run once; preserve any inconclusive result and never retry. No QQ/TIM/account/community interaction.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2253,8 +2253,8 @@
         "aggregate_one_tool_probe_design": {
           "tool": "bangumi.aggregate_subject_cohort",
           "state": "IMPLEMENTED_NOT_YET_RUN",
-          "epoch_id": "run95-a01-aggregate-subject-cohort-codex-current-evidence",
-          "pr_number": 126,
+          "epoch_id": "run95-a01-aggregate-state-precedence-followup",
+          "pr_number": null,
           "arguments": {
             "cohort": {
               "query": {

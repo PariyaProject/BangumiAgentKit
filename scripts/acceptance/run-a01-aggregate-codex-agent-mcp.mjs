@@ -33,7 +33,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'A01';
-const EPOCH_ID = 'run95-a01-aggregate-subject-cohort-codex-current-evidence';
+const EPOCH_ID = 'run95-a01-aggregate-state-precedence-followup';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
 const SERVER_ID = 'bgk_a01_aggregate_one_tool';
