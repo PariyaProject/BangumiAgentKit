@@ -169,6 +169,20 @@ function finalScopeLine(answer) {
   return scopeLines[0];
 }
 
+function hasChineseNegatedTerm(scopeLine, terms) {
+  return new RegExp(
+    `(?:不是|并非|并不是|非|不属于|不算|不符合|不代表|不含|不包括)\\s*(?:[\\p{Script=Han}]{0,8}\\s*)?(?:${terms})`,
+    'u',
+  ).test(scopeLine);
+}
+
+function hasEnglishNegatedTerm(scopeLine, terms) {
+  return new RegExp(
+    `\\b(?:not|isn't|is not|doesn't|does not)\\s+(?:(?:a|an|the)\\s+)?(?:[\\p{L}\\p{N}-]+\\s+){0,4}(?:${terms})\\b`,
+    'iu',
+  ).test(scopeLine);
+}
+
 function dateRangeScopeDisclosure(scopeLine) {
   if (typeof scopeLine !== 'string') return false;
   const fromIndex = scopeLine.indexOf(G02_QUERY_ARGUMENTS.from);
@@ -178,9 +192,8 @@ function dateRangeScopeDisclosure(scopeLine) {
     scopeLine,
   );
   const negatedHalfOpen =
-    /(?:不是|并非|并不是|非|不属于|不算)\s*(?:左闭右开|半开区间)|\b(?:not|isn't|is not|doesn't|does not)\s+(?:a\s+)?half[- ]open\b/iu.test(
-      scopeLine,
-    );
+    hasChineseNegatedTerm(scopeLine, '左闭右开|半开区间') ||
+    hasEnglishNegatedTerm(scopeLine, 'half[- ]open');
   return orderedRange && halfOpen && !negatedHalfOpen;
 }
 
@@ -188,14 +201,19 @@ function animeScopeDisclosure(scopeLine) {
   if (typeof scopeLine !== 'string') return false;
   const media = /动画|anime/iu.test(scopeLine);
   const negatedMedia =
-    /(?:不是|并非|并不是|非|不属于|不算)\s*(?:动画|anime)|\b(?:not|isn't|is not|doesn't|does not)\s+(?:an?\s+)?anime\b|\bnon[- ]anime\b/iu.test(
-      scopeLine,
-    );
+    hasChineseNegatedTerm(scopeLine, '动画|anime') ||
+    hasEnglishNegatedTerm(scopeLine, 'anime') ||
+    /\bnon[- ]anime\b/iu.test(scopeLine);
   return media && !negatedMedia;
 }
 
 function conceptScopeDisclosure(scopeLine) {
-  return typeof scopeLine === 'string' && scopeLine.includes('异世界');
+  return (
+    typeof scopeLine === 'string' &&
+    scopeLine.includes('异世界') &&
+    !hasChineseNegatedTerm(scopeLine, '异世界') &&
+    !hasEnglishNegatedTerm(scopeLine, 'isekai')
+  );
 }
 
 function safeWarningCodes(result) {

@@ -227,10 +227,16 @@ test('G02 query coverage rejects impossible and over-budget counters without per
   }
 });
 
-test('G02 query and renderer scope checks reject negated media and interval claims', () => {
+test('G02 query and renderer scope checks reject qualified negations of scope claims', () => {
   const queryCases = [
     queryAnswer.replace('动画，精确概念', '非动画，精确概念'),
+    queryAnswer.replace('动画，精确概念', '不是一部动画，精确概念'),
     queryAnswer.replace('（左闭右开）', '（不是左闭右开）'),
+    queryAnswer.replace('（左闭右开）', '（并非一个左闭右开的区间）'),
+    queryAnswer.replace('（左闭右开）', '(not a half-open interval)'),
+    queryAnswer.replace('动画，精确概念', 'not an anime, 精确概念'),
+    queryAnswer.replace('异世界', '不属于异世界'),
+    queryAnswer.replace('异世界', 'not isekai (异世界)'),
   ];
   for (const answer of queryCases) {
     const checked = verifyG02QueryAnswer({
@@ -245,7 +251,13 @@ test('G02 query and renderer scope checks reject negated media and interval clai
     '图片卡已生成。\n范围：2024-01-01至2025-01-01（左闭右开），动画异世界结果覆盖未知、总量为估算，来源为实验性接口；heat 是当前收藏人数，不代表全站完整榜单、不代表讨论热度或历史趋势。';
   const rendererCases = [
     rendererAnswer.replace('动画异世界', '非动画异世界'),
+    rendererAnswer.replace('动画异世界', '不是一部动画异世界'),
     rendererAnswer.replace('（左闭右开）', '（不是左闭右开）'),
+    rendererAnswer.replace('（左闭右开）', '（并非一个左闭右开的区间）'),
+    rendererAnswer.replace('（左闭右开）', '(not a half-open interval)'),
+    rendererAnswer.replace('动画异世界', 'not an anime 异世界'),
+    rendererAnswer.replace('动画异世界', '动画不属于异世界'),
+    rendererAnswer.replace('动画异世界', '动画 not isekai (异世界)'),
   ];
   for (const answer of rendererCases) {
     const checked = verifyG02RendererAnswer({

@@ -17,6 +17,7 @@ export interface G02AnswerCheckResult {
     resultState: string;
     coverageState: string;
     totalKind: string;
+    requested: number;
     scanned: number;
     matched: number;
     returned: number;

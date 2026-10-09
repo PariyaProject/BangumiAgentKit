@@ -4,7 +4,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { G02_QUERY_ARGUMENTS } from '../../scripts/acceptance/g02-discovery-answer-check.mjs';
+import {
+  G02_QUERY_ARGUMENTS,
+  type G02AnswerCheckResult,
+} from '../../scripts/acceptance/g02-discovery-answer-check.mjs';
 import { writeG02AgentMcpReports } from '../../scripts/acceptance/write-g02-agent-mcp-report.mjs';
 import { computeMcpBundleSha256 } from '../../scripts/lib/g26-mcp-bundle.mjs';
 
@@ -165,6 +168,22 @@ function makeProbe({
 }
 
 describe('G02 sanitized Agent/MCP report writer', () => {
+  it('declares the complete query counter shape', () => {
+    const counters: NonNullable<G02AnswerCheckResult['resultCounters']> = {
+      resultState: 'ok',
+      coverageState: 'unknown',
+      totalKind: 'estimated',
+      requested: 10,
+      scanned: 20,
+      matched: 20,
+      returned: 2,
+      warningCodes: ['EXPERIMENTAL_SOURCE'],
+      sourceRowsValidated: 2,
+      answerRowsMatched: 2,
+    };
+    expect(counters.requested).toBe(10);
+  });
+
   it('writes exact-candidate reports with only counters, hashes, and artifact metadata', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'g02-report-writer-'));
     try {
