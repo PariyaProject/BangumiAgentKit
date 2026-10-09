@@ -163,7 +163,7 @@ function expectedMetricCoverageState(key, queryState, queryCoverageState, counts
   return counts.valid === 0 ? 'not_computable' : 'complete';
 }
 
-function expectedOverallState(queryState, metricStates) {
+function expectedOverallState(queryState, metricStates, coverageTruncated = false) {
   const terminalQueryStates = [
     'upstream_error',
     'auth_required',
@@ -176,7 +176,12 @@ function expectedOverallState(queryState, metricStates) {
   if (queryState === 'not_found') return 'not_found';
   if (metricStates.some((state) => state === 'conflict')) return 'conflict';
   if (metricStates.every((state) => state === 'not_computable')) return 'not_computable';
-  if (queryState !== 'ok' || metricStates.some((state) => state !== 'complete')) return 'partial';
+  if (
+    queryState !== 'ok' ||
+    metricStates.some((state) => state !== 'complete') ||
+    coverageTruncated
+  )
+    return 'partial';
   return 'complete';
 }
 
@@ -269,6 +274,11 @@ export function summarizeA01AggregateResult(result) {
     return null;
   }
   const totalReturned = result.coverage.totalSubjectsReturned;
+  const queryResultState = cohort.coverage.query.state;
+  const queryLimited =
+    queryCoverage.budgetExceeded ||
+    !queryCoverage.upstreamExhausted ||
+    queryCoverage.matched > queryCoverage.returned;
   if (
     cohort.subjects.length !== totalReturned ||
     queryCoverage.returned !== totalReturned ||
@@ -279,6 +289,18 @@ export function summarizeA01AggregateResult(result) {
     result.coverage.cohortsPartial !== (queryCoverage.state === 'complete' ? 0 : 1) ||
     ((queryCoverage.state !== 'complete' || queryCoverage.budgetExceeded) &&
       !result.coverage.truncated) ||
+    (queryCoverage.state === 'complete' &&
+      (queryCoverage.budgetExceeded ||
+        !queryCoverage.upstreamExhausted ||
+        queryCoverage.matched !== queryCoverage.returned)) ||
+    (queryLimited &&
+      ['ok', 'partial', 'not_found'].includes(queryResultState) &&
+      (queryCoverage.state !== 'partial' ||
+        queryResultState !== 'partial' ||
+        result.coverage.cohortsComplete !== 0 ||
+        result.coverage.cohortsPartial !== 1 ||
+        !result.coverage.truncated ||
+        result.state === 'complete')) ||
     (totalReturned === 0 && cohort.coverage.query.state === 'ok') ||
     (totalReturned > 0 && cohort.coverage.query.state === 'not_found')
   ) {
@@ -366,6 +388,7 @@ export function summarizeA01AggregateResult(result) {
     expectedOverallState(
       cohort.coverage.query.state,
       metrics.map((metric) => metric.state),
+      result.coverage.truncated,
     )
   ) {
     return null;

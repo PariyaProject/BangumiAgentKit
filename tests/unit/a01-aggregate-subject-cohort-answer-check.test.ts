@@ -203,6 +203,44 @@ describe('A01 aggregate_subject_cohort answer checker', () => {
     ).toBe(false);
   });
 
+  it('rejects a complete claim when budgets or output truncation make coverage partial', () => {
+    const aggregate = result() as any;
+    const cohort = aggregate.cohorts[0];
+    aggregate.state = 'complete';
+    cohort.coverage.query.state = 'ok';
+    Object.assign(cohort.coverage.query.coverage, {
+      state: 'complete',
+      scanned: 20,
+      matched: 1,
+      returned: 1,
+      totalKind: 'exact',
+      budgetExceeded: false,
+      upstreamExhausted: true,
+    });
+    for (const item of aggregate.metrics) {
+      item.state = 'complete';
+      item.averages = [item.partialAverages[0]];
+      delete item.partialAverages;
+    }
+    for (const item of Object.values(cohort.coverage.metrics) as Array<any>) {
+      item.state = 'complete';
+    }
+    aggregate.coverage.cohortsComplete = 1;
+    aggregate.coverage.cohortsPartial = 0;
+    aggregate.coverage.truncated = true;
+
+    const queryCoverage = cohort.coverage.query.coverage;
+    queryCoverage.budgetExceeded = true;
+    queryCoverage.upstreamExhausted = false;
+    queryCoverage.matched = 20;
+    expect(summarizeA01AggregateResult(aggregate)).toBeNull();
+
+    queryCoverage.budgetExceeded = false;
+    queryCoverage.upstreamExhausted = true;
+    queryCoverage.matched = queryCoverage.returned;
+    expect(summarizeA01AggregateResult(aggregate)).toBeNull();
+  });
+
   it('rejects inconsistent returned rows, coverage counts, metric states, averages, and overall state', () => {
     const noSubject = result();
     noSubject.cohorts[0]!.subjects = [];

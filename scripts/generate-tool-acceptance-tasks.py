@@ -3552,6 +3552,28 @@ def codex_a01_aggregate_result_is_valid(result: object) -> bool:
         or (query['state'] == 'ok' and coverage['totalSubjectsReturned'] == 0)
         or (query['state'] == 'not_found' and coverage['totalSubjectsReturned'] != 0)
         or (query['budgetExceeded'] and not coverage['truncated'])
+        or (coverage['cohortsComplete'] == 1 and (
+            query['budgetExceeded']
+            or not query['upstreamExhausted']
+            or query['matched'] != query['returned']
+        ))
+        or (query['state'] == 'ok' and (
+            query['budgetExceeded']
+            or not query['upstreamExhausted']
+            or query['matched'] != query['returned']
+            or coverage['cohortsComplete'] != 1
+            or coverage['cohortsPartial'] != 0
+        ))
+        or (query['state'] == 'partial' and (
+            coverage['cohortsComplete'] != 0
+            or coverage['cohortsPartial'] != 1
+            or not coverage['truncated']
+        ))
+        or (query['state'] == 'not_found' and (
+            query['budgetExceeded']
+            or not query['upstreamExhausted']
+            or query['matched'] != query['returned']
+        ))
         or (coverage['cohortsPartial'] > 0 and not coverage['truncated'])
         or not isinstance(metrics, list)
         or len(metrics) != len(CODEX_A01_AGGREGATE_METRIC_KEYS)
@@ -3600,7 +3622,11 @@ def codex_a01_aggregate_result_is_valid(result: object) -> bool:
         expected_state = 'conflict'
     elif all(state == 'not_computable' for state in metric_states):
         expected_state = 'not_computable'
-    elif query_state != 'ok' or any(state != 'complete' for state in metric_states):
+    elif (
+        query_state != 'ok'
+        or any(state != 'complete' for state in metric_states)
+        or coverage['truncated']
+    ):
         expected_state = 'partial'
     else:
         expected_state = 'complete'

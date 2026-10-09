@@ -1136,10 +1136,54 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             summary['coverage']['cohortsPartial'] = 0
             summary['coverage']['truncated'] = False
 
+        def make_complete_with_budget_and_output_truncation(report):
+            result = report['scenarios'][0]['result']
+            summary = result['summary']
+            result['resultState'] = 'complete'
+            summary['state'] = 'complete'
+            summary['query'].update({
+                'state': 'ok',
+                'scanned': 20,
+                'matched': 20,
+                'returned': 1,
+                'budgetExceeded': True,
+                'upstreamExhausted': False,
+            })
+            summary['coverage'].update({
+                'cohortsComplete': 1,
+                'cohortsPartial': 0,
+                'truncated': True,
+            })
+            for metric in summary['metrics']:
+                metric['state'] = 'complete'
+
+        def make_complete_with_output_truncation(report):
+            result = report['scenarios'][0]['result']
+            summary = result['summary']
+            result['resultState'] = 'complete'
+            summary['state'] = 'complete'
+            summary['query'].update({
+                'state': 'ok',
+                'scanned': 20,
+                'matched': 1,
+                'returned': 1,
+                'budgetExceeded': False,
+                'upstreamExhausted': True,
+            })
+            summary['coverage'].update({
+                'cohortsComplete': 1,
+                'cohortsPartial': 0,
+                'truncated': True,
+            })
+            for metric in summary['metrics']:
+                metric['state'] = 'complete'
+
         invalid_summaries = [
             make_metric_complete,
             make_overall_complete,
             make_budget_exceeded_untruncated,
+            make_complete_with_budget_and_output_truncation,
+            make_complete_with_output_truncation,
             lambda report: report['scenarios'][0]['result']['summary']['query'].update(
                 {'returned': 0},
             ),
