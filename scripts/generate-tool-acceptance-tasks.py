@@ -248,6 +248,29 @@ CODEX_G23_PROBE_ARGUMENTS = {
 CODEX_G20_PROBE_ARGUMENTS = {
     'bangumi.get_subject_relations': {'subjectId': 227245, 'includeEvidence': True},
 }
+CODEX_G02_QUERY_ARGUMENTS = {
+    'media': 'anime',
+    'from': '2024-01-01',
+    'to': '2025-01-01',
+    'concepts': ['异世界'],
+    'sort': 'heat',
+    'order': 'desc',
+    'resultMode': 'top',
+    'limit': 10,
+    'explain': 'full',
+}
+CODEX_G02_PROBE_ARGUMENTS = {
+    'bangumi.query_subjects': CODEX_G02_QUERY_ARGUMENTS,
+    'bangumi.render_query_subjects': CODEX_G02_QUERY_ARGUMENTS,
+}
+CODEX_G02_ARGUMENT_PROFILES = {
+    'bangumi.query_subjects': 'g02-2024-isekai-query-v1',
+    'bangumi.render_query_subjects': 'g02-2024-isekai-render-v1',
+}
+CODEX_G02_REPORT_RELATIVE_PATHS = {
+    'bangumi.query_subjects': 'docs/live-probes/pariya-agent-codex-luna-e2e-G02-query.json',
+    'bangumi.render_query_subjects': 'docs/live-probes/pariya-agent-codex-luna-e2e-G02-render.json',
+}
 CODEX_G26_EXPECTED_ARGUMENTS = {
     'media': 'anime',
     'from': '2019-01-01',
@@ -335,7 +358,12 @@ CODEX_D04_PROBE_ARGUMENTS = {
         'explain': 'full',
     },
 }
-CODEX_PROBE_ARGUMENTS = CODEX_G23_PROBE_ARGUMENTS | CODEX_G20_PROBE_ARGUMENTS | CODEX_D04_PROBE_ARGUMENTS
+CODEX_PROBE_ARGUMENTS = (
+    CODEX_G23_PROBE_ARGUMENTS
+    | CODEX_G20_PROBE_ARGUMENTS
+    | CODEX_D04_PROBE_ARGUMENTS
+    | CODEX_G02_PROBE_ARGUMENTS
+)
 CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
     **{name: 'fixed-g20-subject-227245-include-evidence-v1' for name in CODEX_G20_PROBE_ARGUMENTS},
@@ -433,6 +461,41 @@ CODEX_S02_ANSWER_CHECK_FIELDS = {
     'careerHistoryLimitDisclosurePresent', 'noUnsupportedCareerOrHistoryClaim',
     'noMarkdownFormatting',
 }
+CODEX_G02_QUERY_ANSWER_CHECK_FIELDS = {
+    'queryArgumentsMatch', 'exactSingleToolCall', 'resultReadbackAvailable',
+    'exact2024DateWindow', 'exactAnimeAndConcept', 'uniqueSourceRows',
+    'currentCollectionHeatOrder', 'sourceRowsMatchAnswer', 'returnedRowsWithinLimit',
+    'coverageIsUnknownOrPartial', 'experimentalSourceDisclosed',
+    'estimatedTotalNotPresentedAsComplete', 'noUnsupportedGlobalTopTenClaim',
+    'noUnsupportedTrendClaim', 'plainTextNoMarkdown',
+}
+CODEX_G02_RENDERER_ANSWER_CHECK_FIELDS = {
+    'queryArgumentsMatch', 'artifactReturnedInMemory', 'artifactMentioned',
+    'exactDateAndConceptScopeDisclosed', 'currentCollectionHeatMeaningDisclosed',
+    'experimentalSourceAndEstimatedCoverageDisclosed', 'nonExhaustiveScopeDisclosed',
+    'notClaimedAsGlobalTopTen', 'noTrendClaim', 'plainTextNoMarkdown',
+}
+CODEX_G02_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
+    'runNumber', 'frontierId', 'mcpBundleSha256', 'prNumber', 'baseSha',
+    'observedAt', 'resultCounters',
+}
+CODEX_G02_QUERY_RESULT_COUNTER_FIELDS = {
+    'resultState', 'coverageState', 'totalKind', 'requested', 'scanned', 'matched',
+    'returned', 'warningCodes', 'sourceRowsValidated', 'answerRowsMatched',
+}
+CODEX_G02_RENDER_RESULT_COUNTER_FIELDS = {'resultState', 'artifactReturned'}
+CODEX_G02_MAX_CANDIDATES = 500
+CODEX_G02_WARNING_CODES = {
+    'PARTIAL_PAGE_SCAN', 'STALE_SOURCE', 'SOURCE_DISAGREEMENT', 'EXPERIMENTAL_SOURCE',
+    'FORMULA_EMPIRICALLY_VERIFIED', 'MISSING_FIELD', 'MISSING_DATE', 'AUTH_SCOPE_LIMITED',
+    'SCHEMA_DRIFT', 'SOURCE_DISABLED', 'SOURCE_NOT_CONFIGURED', 'UPSTREAM_NOT_FOUND',
+    'UPSTREAM_TIMEOUT', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_ERROR', 'RESPONSE_TOO_LARGE',
+    'INFOBOX_MALFORMED', 'INFOBOX_TRUNCATED', 'IDENTITY_LIST_TRUNCATED', 'ALIAS_UNKNOWN',
+    'DISCOVERY_AMBIGUOUS_CONCEPT', 'DISCOVERY_UNKNOWN_CONCEPT', 'DISCOVERY_BUDGET_EXCEEDED',
+    'DISCOVERY_HYDRATION_BUDGET_EXCEEDED', 'DISCOVERY_HYDRATION_UNRESOLVED',
+    'DISCOVERY_OUTPUT_TRUNCATED', 'DISCOVERY_UNSUPPORTED_FILTER',
+}
+CODEX_G02_PRIVACY_FIELDS = set(CODEX_PRIVACY_FLAGS) | {'authProfile', 'communityRead'}
 CODEX_S02_ANSWER_COUNTER_FIELDS = {
     'sourceRows', 'answerRows', 'rowsMatched', 'missingRowsCount', 'extraRowsCount',
     'duplicateAnswerRowsCount', 'coverageFieldsMatched',
@@ -625,6 +688,32 @@ CODEX_D04_PROBE_IMPLEMENTATION_MARKERS = {
         'reportedEpisodeEvidenceVisible',
         'const unsupportedCompletenessClaim',
         'mcpTextProjectionPreservesFullStructuredResult',
+    ),
+}
+CODEX_G02_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/run-g02-codex-agent-mcp.mjs': (
+        'export function assertG02CandidateReviewGate(',
+        'createG02OneShotClaim(',
+        'G02_TOOL_PROFILES',
+        "'features.shell_tool=false'",
+        "'features.web_search=false'",
+    ),
+    'scripts/acceptance/write-g02-agent-mcp-report.mjs': (
+        'export function writeG02AgentMcpReports(',
+        'G02_EXPECTED_ARGUMENTS_BY_TOOL',
+        'verifyG02QueryAnswer(',
+        'verifyG02RendererAnswer(',
+    ),
+    'scripts/acceptance/g02-discovery-answer-check.mjs': (
+        'export function verifyG02QueryAnswer(',
+        'export function verifyG02RendererAnswer(',
+        'coverageIsUnknownOrPartial',
+        'currentCollectionHeatOrder',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_g02_report_matches_candidate_revision(',
+        'CODEX_G02_REPORT_RELATIVE_PATHS',
+        "if report.get('frontierId') == 'G02' and (",
     ),
 }
 CODEX_G20_VISIBLE_ROW_FIELDS = {'id', 'name', 'nameCn', 'relation'}
@@ -1080,6 +1169,17 @@ def codex_g20_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
+def codex_g02_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_G02_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
 def codex_g26_probe_revision_has_implementation(revision: object) -> bool:
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return False
@@ -1120,6 +1220,13 @@ def codex_g20_report_matches_candidate_revision(report_path: Path, revision: obj
     parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def codex_g02_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require each G02 report to be added after the exact reviewed Candidate."""
+    if not codex_g02_probe_revision_has_implementation(revision):
+        return False
+    return codex_g20_report_matches_candidate_revision(report_path, revision)
 
 
 def codex_g26_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
@@ -2211,8 +2318,19 @@ def codex_mcp_evidence_is_valid(
     if not isinstance(report, dict):
         return False
     tool_name = report.get('toolName')
-    is_d04 = tool_name == 'bangumi.query_subjects'
-    expected_report_fields = CODEX_D04_REPORT_FIELDS if is_d04 else CODEX_REPORT_FIELDS
+    if not isinstance(tool_name, str):
+        return False
+    argument_profile = report.get('argumentProfile')
+    is_d04 = (
+        tool_name == 'bangumi.query_subjects'
+        and argument_profile == 'd04-reported-episode-count-discovery-v1'
+    )
+    is_g02 = CODEX_G02_ARGUMENT_PROFILES.get(tool_name) == argument_profile
+    expected_report_fields = (
+        CODEX_D04_REPORT_FIELDS if is_d04 else
+        CODEX_G02_REPORT_FIELDS if is_g02 else
+        CODEX_REPORT_FIELDS
+    )
     if set(report) != expected_report_fields:
         return False
     if (type(report.get('schemaVersion')) is not int
@@ -2222,11 +2340,12 @@ def codex_mcp_evidence_is_valid(
             or report.get('model') != 'gpt-6-luna'
             or report.get('reasoningEffort') != 'max'
             or not isinstance(report.get('codexCliVersion'), str)
-            or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+            or not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion'])
             or not isinstance(report.get('sourceRevision'), str)
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
             or not (codex_d04_probe_revision_has_implementation(report['sourceRevision'])
-                    if is_d04 else codex_probe_revision_has_implementation(report['sourceRevision']))
+                    if is_d04 else codex_g02_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_g02 else codex_probe_revision_has_implementation(report['sourceRevision']))
             or type(report.get('processExitCode')) is not int
             or report.get('processExitCode') != 0
             or report.get('resultStatus') != 'SUCCESS'
@@ -2261,14 +2380,31 @@ def codex_mcp_evidence_is_valid(
     ):
         return False
 
-    arguments = CODEX_D04_PROBE_ARGUMENTS.get(tool_name) if is_d04 else CODEX_PROBE_ARGUMENTS.get(tool_name)
+    if is_g02 and (
+        type(report.get('runNumber')) is not int or report['runNumber'] != 95
+        or report.get('frontierId') != 'G02'
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        or type(report.get('prNumber')) is not int or report['prNumber'] < 1
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+    ):
+        return False
+
+    arguments = (
+        CODEX_D04_PROBE_ARGUMENTS.get(tool_name) if is_d04 else
+        CODEX_G02_PROBE_ARGUMENTS.get(tool_name) if is_g02 else
+        CODEX_PROBE_ARGUMENTS.get(tool_name)
+    )
     is_g20 = tool_name in CODEX_G20_PROBE_ARGUMENTS
     expected_argument_profile = (
         'd04-reported-episode-count-discovery-v1' if is_d04
+        else CODEX_G02_ARGUMENT_PROFILES.get(tool_name) if is_g02
         else CODEX_ARGUMENT_PROFILES.get(tool_name)
     )
     expected_answer_checks = (
         CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
+        CODEX_G02_RENDERER_ANSWER_CHECK_FIELDS if is_g02 and tool_name.startswith('bangumi.render_') else
+        CODEX_G02_QUERY_ANSWER_CHECK_FIELDS if is_g02 else
         CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 else
         CODEX_RENDERER_ANSWER_CHECK_FIELDS if isinstance(tool_name, str) and tool_name.startswith('bangumi.render_') else
         CODEX_STATS_ANSWER_CHECK_FIELDS
@@ -2295,12 +2431,20 @@ def codex_mcp_evidence_is_valid(
         return False
 
     privacy = report.get('privacy')
-    expected_privacy_fields = CODEX_D04_PRIVACY_FIELDS if is_d04 else set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
+    expected_privacy_fields = (
+        CODEX_D04_PRIVACY_FIELDS if is_d04 else
+        CODEX_G02_PRIVACY_FIELDS if is_g02 else
+        set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
+    )
     if (not isinstance(privacy, dict)
             or set(privacy) != expected_privacy_fields
             or privacy.get('authProfile') != 'anonymous'):
         return False
-    privacy_false_fields = CODEX_D04_PRIVACY_FIELDS - {'authProfile'} if is_d04 else CODEX_PRIVACY_FLAGS
+    privacy_false_fields = (
+        CODEX_D04_PRIVACY_FIELDS - {'authProfile'} if is_d04 else
+        CODEX_G02_PRIVACY_FIELDS - {'authProfile'} if is_g02 else
+        CODEX_PRIVACY_FLAGS
+    )
     if any(privacy.get(flag) is not False for flag in privacy_false_fields):
         return False
 
@@ -2362,6 +2506,58 @@ def codex_mcp_evidence_is_valid(
     artifact = result.get('artifact')
     if not isinstance(artifact, dict):
         return False
+    if is_g02:
+        counters = report.get('resultCounters')
+        if tool_name == 'bangumi.query_subjects':
+            if (
+                not isinstance(counters, dict)
+                or set(counters) != CODEX_G02_QUERY_RESULT_COUNTER_FIELDS
+                or counters.get('resultState') not in {'ok', 'partial'}
+                or counters.get('coverageState') not in {'unknown', 'partial'}
+                or counters.get('totalKind') != 'estimated'
+                or type(counters.get('requested')) is not int or counters['requested'] != 10
+                or any(type(counters.get(key)) is not int or counters[key] < 0
+                       for key in ('scanned', 'matched', 'returned', 'sourceRowsValidated', 'answerRowsMatched'))
+                or counters['scanned'] < 1
+                or counters['scanned'] > CODEX_G02_MAX_CANDIDATES
+                or counters['matched'] < 1
+                or counters['matched'] > counters['scanned']
+                or counters['returned'] < 1
+                or counters['returned'] > counters['requested']
+                or counters['matched'] < counters['returned']
+                or counters['sourceRowsValidated'] != counters['returned']
+                or counters['answerRowsMatched'] != counters['returned']
+                or not isinstance(counters.get('warningCodes'), list)
+                or len(counters['warningCodes']) > 20
+                or any(not isinstance(code, str) or not re.fullmatch(r'[A-Z0-9_]{1,64}', code)
+                       for code in counters['warningCodes'])
+                or any(code not in CODEX_G02_WARNING_CODES for code in counters['warningCodes'])
+                or len(set(counters['warningCodes'])) != len(counters['warningCodes'])
+                or 'EXPERIMENTAL_SOURCE' not in counters['warningCodes']
+                or result.get('resultState') != counters['resultState']
+                or set(artifact) != {'returned', 'persisted'}
+                or artifact.get('returned') is not False
+                or artifact.get('persisted') is not False
+            ):
+                return False
+            return True
+        if (
+            not isinstance(counters, dict)
+            or set(counters) != CODEX_G02_RENDER_RESULT_COUNTER_FIELDS
+            or counters != {'resultState': 'artifact_returned', 'artifactReturned': True}
+            or result.get('resultState') != 'artifact_returned'
+            or set(artifact) != CODEX_ARTIFACT_FIELDS
+            or artifact.get('returned') is not True
+            or artifact.get('persisted') is not False
+            or artifact.get('mimeType') != 'image/png'
+            or type(artifact.get('width')) is not int or artifact['width'] <= 0
+            or type(artifact.get('height')) is not int or artifact['height'] <= 0
+            or type(artifact.get('byteLength')) is not int or artifact['byteLength'] <= 0
+            or artifact.get('pngSignatureValid') is not True
+            or not re.fullmatch(r'[0-9a-f]{64}', str(artifact.get('sha256', '')))
+        ):
+            return False
+        return True
     if tool_name.startswith('bangumi.render_'):
         if (set(artifact) != CODEX_ARTIFACT_FIELDS
                 or result.get('resultState') != 'artifact_returned'
@@ -2470,6 +2666,15 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                     and not codex_g20_report_matches_candidate_revision(
                         path, report.get('sourceRevision'),
                     )):
+                continue
+            if report.get('frontierId') == 'G02' and (
+                report.get('toolName') not in CODEX_G02_REPORT_RELATIVE_PATHS
+                or path.relative_to(LIVE_PROBE_DIR.parent.parent).as_posix()
+                    != CODEX_G02_REPORT_RELATIVE_PATHS.get(report.get('toolName'))
+                or not codex_g02_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
                 continue
         elif (report.get('schemaVersion') != 1
               or report.get('evidenceKind') != 'antigravity_cli_mcp_tool_use'
