@@ -289,6 +289,112 @@ describe('A01 aggregate_subject_cohort answer checker', () => {
     expect(summarizeA01AggregateResult(aggregate)).toBeNull();
   });
 
+  it('keeps terminal query errors ahead of partial coverage', () => {
+    const terminalStates = [
+      'upstream_error',
+      'auth_required',
+      'permission_denied',
+      'unavailable',
+      'unsupported',
+      'stale',
+    ];
+
+    for (const state of terminalStates) {
+      const aggregate = result() as any;
+      const cohort = aggregate.cohorts[0];
+      cohort.subjects = [];
+      cohort.coverage.query.state = state;
+      Object.assign(cohort.coverage.query.coverage, {
+        state: 'unknown',
+        scanned: 0,
+        matched: 0,
+        returned: 0,
+        totalKind: 'unknown',
+        budgetExceeded: false,
+        upstreamExhausted: false,
+      });
+      Object.assign(cohort.coverage, {
+        detailHydrationsAttempted: 0,
+        detailHydrationsSucceeded: 0,
+        detailHydrationsFailed: 0,
+      });
+      Object.assign(aggregate.coverage, {
+        totalSubjectsReturned: 0,
+        cohortsComplete: 0,
+        cohortsPartial: 1,
+        detailHydrationsAttempted: 0,
+        detailHydrationsSucceeded: 0,
+        detailHydrationsFailed: 0,
+        truncated: true,
+      });
+      for (const key of ['score', 'heat', 'episodesReported', 'ratingStandardDeviation']) {
+        cohort.coverage.metrics[key] = {
+          valid: 0,
+          partial: 0,
+          missing: 0,
+          conflicts: 0,
+          notComputable: 0,
+          state,
+        };
+        const metric = aggregate.metrics.find((item: any) => item.key === key);
+        metric.state = state;
+        metric.averages = [null];
+        metric.validCounts = [0];
+        metric.partialCounts = [0];
+        metric.missingCounts = [0];
+        metric.conflictCounts = [0];
+        metric.notComputableCounts = [0];
+        delete metric.partialAverages;
+      }
+      aggregate.state = state;
+
+      expect(summarizeA01AggregateResult(aggregate)?.state, state).toBe(state);
+    }
+  });
+
+  it('keeps an explicit metric conflict ahead of partial coverage and other not-computable metrics', () => {
+    const aggregate = result() as any;
+    const cohort = aggregate.cohorts[0];
+    const keys = ['score', 'heat', 'episodesReported', 'ratingStandardDeviation'];
+    for (const key of keys) {
+      cohort.subjects[0].metricStates[key] = 'not_computable';
+      cohort.coverage.metrics[key] = {
+        valid: 0,
+        partial: 0,
+        missing: 0,
+        conflicts: 0,
+        notComputable: 1,
+        state: 'not_computable',
+      };
+      const metric = aggregate.metrics.find((item: any) => item.key === key);
+      metric.state = 'not_computable';
+      metric.averages = [null];
+      metric.validCounts = [0];
+      metric.partialCounts = [0];
+      metric.missingCounts = [0];
+      metric.conflictCounts = [0];
+      metric.notComputableCounts = [1];
+      delete metric.partialAverages;
+    }
+
+    cohort.subjects[0].metricStates.score = 'conflict';
+    cohort.coverage.metrics.score = {
+      valid: 0,
+      partial: 0,
+      missing: 0,
+      conflicts: 1,
+      notComputable: 0,
+      state: 'conflict',
+    };
+    const score = aggregate.metrics.find((item: any) => item.key === 'score');
+    score.state = 'conflict';
+    score.conflictCounts = [1];
+    score.notComputableCounts = [0];
+    aggregate.state = 'conflict';
+
+    expect(summarizeA01AggregateResult(aggregate)?.state).toBe('conflict');
+  });
+
   it('rejects inconsistent returned rows, coverage counts, metric states, averages, and overall state', () => {
     const noSubject = result();
     noSubject.cohorts[0]!.subjects = [];

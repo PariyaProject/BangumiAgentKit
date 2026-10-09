@@ -300,7 +300,7 @@ CODEX_A01_AGGREGATE_ARGUMENT_PROFILE = 'a01-aggregate-2012-anime-sample-v1'
 CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH = (
     'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'
 )
-CODEX_A01_AGGREGATE_PR_NUMBER = 126
+CODEX_A01_AGGREGATE_PR_NUMBER = 127
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -1019,7 +1019,7 @@ CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
         'boundedSampleDisclosure:',
     ),
     'scripts/acceptance/run-a01-aggregate-codex-agent-mcp.mjs': (
-        "const EPOCH_ID = 'run95-a01-aggregate-subject-cohort-codex-current-evidence'",
+        "const EPOCH_ID = 'run95-a01-aggregate-state-precedence-followup'",
         'export function buildCodexExecArgs(',
         'createA01AggregateOneShotClaim(',
         'postGateMatches',
@@ -1030,7 +1030,7 @@ CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
         'def _codex_a01_aggregate_expected_metric_state(',
         'def codex_a01_aggregate_report_is_valid(',
         'def codex_a01_aggregate_report_matches_candidate_revision(',
-        'CODEX_A01_AGGREGATE_PR_NUMBER = 126',
+        'CODEX_A01_AGGREGATE_PR_NUMBER = 127',
         "query['returned'] != coverage['totalSubjectsReturned']",
         "query['state'] == 'not_found' and coverage['totalSubjectsReturned'] != 0",
         "summary['state'] != expected_state",
@@ -3641,7 +3641,7 @@ def codex_a01_aggregate_report_is_valid(report: dict) -> bool:
     if (
         type(report.get('runNumber')) is not int or report['runNumber'] != 95
         or report.get('frontierId') != 'A01'
-        or report.get('epochId') != 'run95-a01-aggregate-subject-cohort-codex-current-evidence'
+        or report.get('epochId') != 'run95-a01-aggregate-state-precedence-followup'
         or report.get('state') != 'PASS'
         or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
         or type(report.get('prNumber')) is not int
