@@ -279,7 +279,8 @@ export function summarizeA01AggregateResult(result) {
     result.coverage.cohortsPartial !== (queryCoverage.state === 'complete' ? 0 : 1) ||
     ((queryCoverage.state !== 'complete' || queryCoverage.budgetExceeded) &&
       !result.coverage.truncated) ||
-    (totalReturned === 0 && cohort.coverage.query.state === 'ok')
+    (totalReturned === 0 && cohort.coverage.query.state === 'ok') ||
+    (totalReturned > 0 && cohort.coverage.query.state === 'not_found')
   ) {
     return null;
   }

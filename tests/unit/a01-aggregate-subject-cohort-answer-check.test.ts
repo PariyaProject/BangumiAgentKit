@@ -208,6 +208,11 @@ describe('A01 aggregate_subject_cohort answer checker', () => {
     noSubject.cohorts[0]!.subjects = [];
     expect(summarizeA01AggregateResult(noSubject)).toBeNull();
 
+    const notFoundWithSubject = result();
+    notFoundWithSubject.state = 'not_found';
+    notFoundWithSubject.cohorts[0]!.coverage.query.state = 'not_found';
+    expect(summarizeA01AggregateResult(notFoundWithSubject)).toBeNull();
+
     const wrongQueryCount = result();
     wrongQueryCount.cohorts[0]!.coverage.query.coverage.returned = 0;
     expect(summarizeA01AggregateResult(wrongQueryCount)).toBeNull();
