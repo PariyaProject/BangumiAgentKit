@@ -387,6 +387,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             item for item in source_catalog
             if item.get('name') == 'bangumi.compare_subject_cohorts'
         ))
+        self.catalog.append(next(
+            item for item in source_catalog
+            if item.get('name') == 'bangumi.aggregate_subject_cohort'
+        ))
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
         self.original_root = GENERATOR.ROOT
@@ -487,6 +491,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_A01_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
@@ -736,6 +741,129 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report.update(overrides)
         self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
 
+    def write_a01_aggregate_report(self, **overrides):
+        tool_name = 'bangumi.aggregate_subject_cohort'
+        tool = next(item for item in self.catalog if item['name'] == tool_name)
+        arguments = GENERATOR.CODEX_A01_AGGREGATE_ARGUMENTS
+        answer_checks = {
+            key: True for key in GENERATOR.CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS
+        }
+        metrics = [
+            {
+                'key': key,
+                'state': 'complete',
+                'value': value,
+                'valid': 1,
+                'partial': 0,
+                'missing': 0,
+                'conflicts': 0,
+                'notComputable': 0,
+            }
+            for key, value in (
+                ('score', 7.5),
+                ('heat', 100.0),
+                ('episodesReported', 12.0),
+                ('ratingStandardDeviation', 1.2),
+            )
+        ]
+        summary = {
+            'state': 'partial',
+            'formulaVersion': 'subject-cohort-comparison-v1',
+            'query': {
+                'state': 'partial',
+                'scanned': 20,
+                'matched': 1,
+                'returned': 1,
+                'totalKind': 'estimated',
+                'budgetExceeded': False,
+                'upstreamExhausted': False,
+            },
+            'coverage': {
+                'maxSubjectsPerCohort': 1,
+                'totalSubjectsReturned': 1,
+                'cohortsComplete': 0,
+                'cohortsPartial': 1,
+                'detailHydrationsAttempted': 1,
+                'detailHydrationsSucceeded': 1,
+                'detailHydrationsFailed': 0,
+                'truncated': True,
+            },
+            'metrics': metrics,
+            'officialOperations': ['searchSubjects', 'getSubjectById'],
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_mcp_tool_use',
+            'sourceRevision': self.source_revision,
+            'codexCliVersion': '0.162.0-alpha.2',
+            'catalogSha256': hashlib.sha256(self.catalog_path.read_bytes()).hexdigest(),
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': tool_name,
+            'toolDescriptionSha256': self.sha256(tool['description']),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'argumentProfile': GENERATOR.CODEX_A01_AGGREGATE_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(arguments),
+            'serverToolNames': [tool_name],
+            'serverToolCount': 1,
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'resultCount': 1,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'privacy': ({key: False for key in GENERATOR.CODEX_A01_AGGREGATE_PRIVACY_FIELDS}
+                        | {'authProfile': 'anonymous'}),
+            'scenarios': [{
+                'id': tool_name,
+                'passed': True,
+                'exactArgumentsMatched': True,
+                'oneToolAllowlistVerified': True,
+                'resultReadbackVerified': True,
+                'answerCheckPassed': True,
+                'answerChecks': answer_checks,
+                'toolCalls': [{'name': tool_name, 'state': 'DONE'}],
+                'result': {
+                    'toolName': tool_name,
+                    'resultState': 'partial',
+                    'resultByteLength': 2048,
+                    'resultSha256': 'd' * 64,
+                    'summary': summary,
+                },
+            }],
+            'runNumber': 95,
+            'frontierId': 'A01',
+            'epochId': 'run95-a01-aggregate-subject-cohort-codex-current-evidence',
+            'mcpBundleSha256': 'e' * 64,
+            'prNumber': 129,
+            'baseSha': 'b' * 40,
+            'observedAt': '2026-10-09T00:00:00.000Z',
+            'mcpServerNames': ['bgk_a01_aggregate_one_tool'],
+            'candidateGate': {
+                'candidateSha': self.source_revision,
+                'baseSha': 'b' * 40,
+                'ciSha': self.source_revision,
+                'ciStatus': 'SUCCESS',
+                'reviewPassSha': self.source_revision,
+                'reviewVerdict': 'PASS',
+                'reviewerId': 'gpt-6-luna-max-round1',
+            },
+            'queryArguments': arguments,
+            'answerSha256': 'f' * 64,
+            'answerUtf8Bytes': 128,
+            'state': 'PASS',
+        }
+        report.update(overrides)
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-A01-aggregate.json'
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        return report
+
     def write_g02_report(self, tool_name='bangumi.query_subjects', **overrides):
         tool = next(item for item in self.catalog if item['name'] == tool_name)
         is_renderer = tool_name == 'bangumi.render_query_subjects'
@@ -864,6 +992,58 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertNotIn('answer', report)
         self.assertNotIn('prompt', report)
         self.assertNotIn('structuredContent', report['scenarios'][0]['result'])
+
+    def test_accepts_sanitized_distinct_a01_aggregate_tool_report(self):
+        report = self.write_a01_aggregate_report()
+        self.assertTrue(GENERATOR.codex_a01_aggregate_probe_revision_has_implementation(
+            self.source_revision,
+        ))
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            report,
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.aggregate_subject_cohort'],
+            {'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('structuredContent', report['scenarios'][0]['result'])
+
+    def test_rejects_a01_aggregate_report_with_expanded_scope_or_stale_gate(self):
+        invalid = [
+            {'queryArguments': {
+                'cohort': {'query': {'media': 'anime', 'year': 2013, 'resultMode': 'all'}},
+                'maxSubjects': 1,
+            }},
+            {'candidateGate': {
+                'candidateSha': self.source_revision,
+                'baseSha': 'b' * 40,
+                'ciSha': self.source_revision,
+                'ciStatus': 'SUCCESS',
+                'reviewPassSha': 'c' * 40,
+                'reviewVerdict': 'PASS',
+                'reviewerId': 'gpt-6-luna-max-round1',
+            }},
+            {'mcpServerNames': ['bgk_a01_aggregate_one_tool', 'other-server']},
+        ]
+        for override in invalid:
+            with self.subTest(override=override):
+                report = self.write_a01_aggregate_report(**override)
+                self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                    report,
+                    {item['name']: item for item in self.catalog},
+                    {item['name']: item for item in self.catalog},
+                ))
+
+        report = self.write_a01_aggregate_report()
+        report['scenarios'][0]['result']['summary']['coverage']['totalSubjectsReturned'] = 2
+        self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+            report,
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
 
     def test_accepts_current_catalog_g02_reports_and_codex_prerelease_version(self):
         query_report = self.write_g02_report()

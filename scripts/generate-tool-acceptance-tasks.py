@@ -292,6 +292,14 @@ CODEX_A01_REPORT_RELATIVE_PATH = (
     'docs/live-probes/pariya-agent-codex-luna-e2e-A01.json'
 )
 CODEX_A01_ARGUMENT_PROFILE = 'a01-2017-autumn-cohort-rating-sd-v1'
+CODEX_A01_AGGREGATE_ARGUMENTS = {
+    'cohort': {'query': {'media': 'anime', 'year': 2012, 'resultMode': 'all'}},
+    'maxSubjects': 1,
+}
+CODEX_A01_AGGREGATE_ARGUMENT_PROFILE = 'a01-aggregate-2012-anime-sample-v1'
+CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH = (
+    'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'
+)
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -406,6 +414,7 @@ CODEX_PROBE_ARGUMENTS = (
     CODEX_G23_PROBE_ARGUMENTS
     | CODEX_G20_PROBE_ARGUMENTS
     | {'bangumi.compare_subject_cohorts': CODEX_A01_QUERY_ARGUMENTS}
+    | {'bangumi.aggregate_subject_cohort': CODEX_A01_AGGREGATE_ARGUMENTS}
     | CODEX_D04_PROBE_ARGUMENTS
     | CODEX_G02_PROBE_ARGUMENTS
 )
@@ -413,6 +422,7 @@ CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-public-subject-218707-v1' for name in CODEX_G23_PROBE_ARGUMENTS},
     **{name: 'fixed-g20-subject-227245-include-evidence-v1' for name in CODEX_G20_PROBE_ARGUMENTS},
     'bangumi.compare_subject_cohorts': CODEX_A01_ARGUMENT_PROFILE,
+    'bangumi.aggregate_subject_cohort': CODEX_A01_AGGREGATE_ARGUMENT_PROFILE,
     'bangumi.query_subjects': 'd04-reported-episode-count-discovery-v1',
 }
 CODEX_PRIVACY_FLAGS = (
@@ -429,6 +439,39 @@ CODEX_REPORT_FIELDS = {
     'allowedCallCount', 'deniedCallCount', 'qqPipelineTested', 'timClientTested',
     'privacy', 'scenarios',
 }
+CODEX_A01_AGGREGATE_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
+    'runNumber', 'frontierId', 'epochId', 'mcpBundleSha256', 'prNumber', 'baseSha',
+    'observedAt', 'mcpServerNames', 'candidateGate', 'queryArguments',
+    'answerSha256', 'answerUtf8Bytes', 'state',
+}
+CODEX_A01_AGGREGATE_GATE_FIELDS = {
+    'candidateSha', 'baseSha', 'ciSha', 'ciStatus', 'reviewPassSha',
+    'reviewVerdict', 'reviewerId',
+}
+CODEX_A01_AGGREGATE_RESULT_FIELDS = {
+    'toolName', 'resultState', 'resultByteLength', 'resultSha256', 'summary',
+}
+CODEX_A01_AGGREGATE_SUMMARY_FIELDS = {
+    'state', 'formulaVersion', 'query', 'coverage', 'metrics', 'officialOperations',
+}
+CODEX_A01_AGGREGATE_QUERY_SUMMARY_FIELDS = {
+    'state', 'scanned', 'matched', 'returned', 'totalKind', 'budgetExceeded',
+    'upstreamExhausted',
+}
+CODEX_A01_AGGREGATE_COVERAGE_FIELDS = {
+    'maxSubjectsPerCohort', 'totalSubjectsReturned', 'cohortsComplete', 'cohortsPartial',
+    'detailHydrationsAttempted', 'detailHydrationsSucceeded', 'detailHydrationsFailed',
+    'truncated',
+}
+CODEX_A01_AGGREGATE_METRIC_FIELDS = {
+    'key', 'state', 'value', 'valid', 'partial', 'missing', 'conflicts', 'notComputable',
+}
+CODEX_A01_AGGREGATE_METRIC_KEYS = (
+    'score', 'heat', 'episodesReported', 'ratingStandardDeviation',
+)
+CODEX_A01_AGGREGATE_PRIVACY_FIELDS = set(CODEX_PRIVACY_FLAGS) | {
+    'authProfile', 'communityRead',
+}
 CODEX_SCENARIO_FIELDS = {
     'id', 'passed', 'exactArgumentsMatched', 'oneToolAllowlistVerified',
     'resultReadbackVerified', 'answerCheckPassed', 'answerChecks', 'toolCalls', 'result',
@@ -444,6 +487,10 @@ CODEX_STATS_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {
 }
 CODEX_RENDERER_ANSWER_CHECK_FIELDS = CODEX_BASE_ANSWER_CHECK_FIELDS | {'artifactMentioned'}
 CODEX_ANSWER_CHECK_FIELDS = CODEX_STATS_ANSWER_CHECK_FIELDS | CODEX_RENDERER_ANSWER_CHECK_FIELDS
+CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS = {
+    'fixedArguments', 'structuredResultReadback', 'exactAggregateAnswer',
+    'boundedSampleDisclosure', 'nonCausalLimitations', 'plainTextNoMarkdown',
+}
 CODEX_G20_ANSWER_CHECK_FIELDS = {
     'queryArgumentsMatch', 'exactSingleToolCall', 'resultReadbackAvailable',
     'sourceScopeVerified', 'coverageConsistent', 'textProjectionConsistent',
@@ -961,6 +1008,25 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         'CLAIM_NEGATION_PATTERNS',
         'answer.toLowerCase()',
         "'双峰'",
+    ),
+}
+CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/a01-aggregate-subject-cohort-answer-check.mjs': (
+        "export const A01_AGGREGATE_TARGET_TOOL = 'bangumi.aggregate_subject_cohort'",
+        'export function summarizeA01AggregateResult(',
+        'export function verifyA01AggregateAnswer(',
+        'boundedSampleDisclosure:',
+    ),
+    'scripts/acceptance/run-a01-aggregate-codex-agent-mcp.mjs': (
+        "const EPOCH_ID = 'run95-a01-aggregate-subject-cohort-codex-current-evidence'",
+        'export function buildCodexExecArgs(',
+        'createA01AggregateOneShotClaim(',
+        'postGateMatches',
+        "'features.shell_tool=false'",
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_a01_aggregate_result_is_valid(',
+        'CODEX_A01_AGGREGATE_ARGUMENTS',
     ),
 }
 CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
@@ -3326,6 +3392,133 @@ def codex_d04_coverage_is_valid(coverage: object) -> bool:
     )
 
 
+def codex_a01_aggregate_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_revision_has_markers(
+        str(ROOT), revision, CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS,
+    )
+
+
+def codex_a01_aggregate_result_is_valid(result: object) -> bool:
+    if not isinstance(result, dict) or set(result) != CODEX_A01_AGGREGATE_RESULT_FIELDS:
+        return False
+    if (
+        result.get('toolName') != 'bangumi.aggregate_subject_cohort'
+        or result.get('resultState') not in {
+            'complete', 'partial', 'conflict', 'unavailable', 'not_computable',
+            'not_found', 'upstream_error', 'unsupported', 'stale', 'auth_required',
+            'permission_denied',
+        }
+        or type(result.get('resultByteLength')) is not int
+        or not 1 <= result['resultByteLength'] <= 1_000_000
+        or not re.fullmatch(r'[0-9a-f]{64}', str(result.get('resultSha256', '')))
+    ):
+        return False
+    summary = result.get('summary')
+    if not isinstance(summary, dict) or set(summary) != CODEX_A01_AGGREGATE_SUMMARY_FIELDS:
+        return False
+    query = summary.get('query')
+    coverage = summary.get('coverage')
+    metrics = summary.get('metrics')
+    if (
+        summary.get('formulaVersion') != 'subject-cohort-comparison-v1'
+        or summary.get('state') != result.get('resultState')
+        or not isinstance(query, dict)
+        or set(query) != CODEX_A01_AGGREGATE_QUERY_SUMMARY_FIELDS
+        or query.get('state') not in {
+            'ok', 'partial', 'stale', 'conflict', 'auth_required', 'permission_denied',
+            'unavailable', 'not_computable', 'unsupported', 'not_found', 'upstream_error',
+        }
+        or any(type(query.get(key)) is not int or not 0 <= query[key] <= 500
+               for key in ('scanned', 'matched', 'returned'))
+        or query['matched'] > query['scanned']
+        or query['returned'] > query['matched']
+        or query.get('totalKind') not in {'estimated', 'exact', 'unknown'}
+        or type(query.get('budgetExceeded')) is not bool
+        or type(query.get('upstreamExhausted')) is not bool
+        or not isinstance(coverage, dict)
+        or set(coverage) != CODEX_A01_AGGREGATE_COVERAGE_FIELDS
+        or type(coverage.get('maxSubjectsPerCohort')) is not int
+        or coverage.get('maxSubjectsPerCohort') != 1
+        or type(coverage.get('totalSubjectsReturned')) is not int
+        or not 0 <= coverage['totalSubjectsReturned'] <= 1
+        or type(coverage.get('cohortsComplete')) is not int
+        or type(coverage.get('cohortsPartial')) is not int
+        or min(coverage['cohortsComplete'], coverage['cohortsPartial']) < 0
+        or coverage['cohortsComplete'] + coverage['cohortsPartial'] != 1
+        or any(type(coverage.get(key)) is not int or coverage[key] < 0 or coverage[key] > 1
+               for key in (
+                   'detailHydrationsAttempted', 'detailHydrationsSucceeded',
+                   'detailHydrationsFailed',
+               ))
+        or coverage['detailHydrationsSucceeded'] > coverage['detailHydrationsAttempted']
+        or coverage['detailHydrationsFailed'] > coverage['detailHydrationsAttempted']
+        or type(coverage.get('truncated')) is not bool
+        or not isinstance(metrics, list)
+        or len(metrics) != len(CODEX_A01_AGGREGATE_METRIC_KEYS)
+        or not isinstance(summary.get('officialOperations'), list)
+        or not 1 <= len(summary['officialOperations']) <= 2
+        or any(operation not in {'searchSubjects', 'getSubjectById'}
+               for operation in summary['officialOperations'])
+        or len(set(summary['officialOperations'])) != len(summary['officialOperations'])
+    ):
+        return False
+    count_fields = ('valid', 'partial', 'missing', 'conflicts', 'notComputable')
+    for expected_key, metric in zip(CODEX_A01_AGGREGATE_METRIC_KEYS, metrics):
+        if (
+            not isinstance(metric, dict)
+            or set(metric) != CODEX_A01_AGGREGATE_METRIC_FIELDS
+            or metric.get('key') != expected_key
+            or metric.get('state') not in {
+                'complete', 'partial', 'conflict', 'unavailable', 'not_computable',
+                'not_found', 'upstream_error', 'unsupported', 'stale', 'auth_required',
+                'permission_denied',
+            }
+            or (metric.get('value') is not None and (
+                type(metric.get('value')) not in (int, float) or
+                not math.isfinite(metric['value'])
+            ))
+            or any(type(metric.get(key)) is not int or not 0 <= metric[key] <= 1
+                   for key in count_fields)
+            or sum(metric[key] for key in count_fields) != coverage['totalSubjectsReturned']
+        ):
+            return False
+    return True
+
+
+def codex_a01_aggregate_report_is_valid(report: dict) -> bool:
+    if (
+        type(report.get('runNumber')) is not int or report['runNumber'] != 95
+        or report.get('frontierId') != 'A01'
+        or report.get('epochId') != 'run95-a01-aggregate-subject-cohort-codex-current-evidence'
+        or report.get('state') != 'PASS'
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        or type(report.get('prNumber')) is not int or report['prNumber'] < 1
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+        or report.get('mcpServerNames') != ['bgk_a01_aggregate_one_tool']
+        or report.get('queryArguments') != CODEX_A01_AGGREGATE_ARGUMENTS
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('answerSha256', '')))
+        or type(report.get('answerUtf8Bytes')) is not int or report['answerUtf8Bytes'] <= 0
+    ):
+        return False
+    gate = report.get('candidateGate')
+    if (
+        not isinstance(gate, dict)
+        or set(gate) != CODEX_A01_AGGREGATE_GATE_FIELDS
+        or gate.get('candidateSha') != report.get('sourceRevision')
+        or gate.get('baseSha') != report.get('baseSha')
+        or gate.get('ciSha') != report.get('sourceRevision')
+        or gate.get('ciStatus') != 'SUCCESS'
+        or gate.get('reviewPassSha') != report.get('sourceRevision')
+        or gate.get('reviewVerdict') != 'PASS'
+        or not re.search(r'gpt[-_]6[-_]luna[-_]max', str(gate.get('reviewerId', '')), re.I)
+    ):
+        return False
+    return True
+
+
 def codex_mcp_evidence_is_valid(
     report: dict, evidence_by_name: dict[str, dict], current_by_name: dict[str, dict],
 ) -> bool:
@@ -3336,12 +3529,14 @@ def codex_mcp_evidence_is_valid(
     if not isinstance(tool_name, str):
         return False
     argument_profile = report.get('argumentProfile')
+    is_a01_aggregate = tool_name == 'bangumi.aggregate_subject_cohort'
     is_d04 = (
         tool_name == 'bangumi.query_subjects'
         and argument_profile == 'd04-reported-episode-count-discovery-v1'
     )
     is_g02 = CODEX_G02_ARGUMENT_PROFILES.get(tool_name) == argument_profile
     expected_report_fields = (
+        CODEX_A01_AGGREGATE_REPORT_FIELDS if is_a01_aggregate else
         CODEX_D04_REPORT_FIELDS if is_d04 else
         CODEX_G02_REPORT_FIELDS if is_g02 else
         CODEX_REPORT_FIELDS
@@ -3358,7 +3553,8 @@ def codex_mcp_evidence_is_valid(
             or not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion'])
             or not isinstance(report.get('sourceRevision'), str)
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
-            or not (codex_d04_probe_revision_has_implementation(report['sourceRevision'])
+            or not (codex_a01_aggregate_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_a01_aggregate else codex_d04_probe_revision_has_implementation(report['sourceRevision'])
                     if is_d04 else codex_g02_probe_revision_has_implementation(report['sourceRevision'])
                     if is_g02 else codex_probe_revision_has_implementation(report['sourceRevision']))
             or type(report.get('processExitCode')) is not int
@@ -3417,6 +3613,7 @@ def codex_mcp_evidence_is_valid(
         else CODEX_ARGUMENT_PROFILES.get(tool_name)
     )
     expected_answer_checks = (
+        CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS if is_a01_aggregate else
         CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
         CODEX_G02_RENDERER_ANSWER_CHECK_FIELDS if is_g02 and tool_name.startswith('bangumi.render_') else
         CODEX_G02_QUERY_ANSWER_CHECK_FIELDS if is_g02 else
@@ -3447,6 +3644,7 @@ def codex_mcp_evidence_is_valid(
 
     privacy = report.get('privacy')
     expected_privacy_fields = (
+        CODEX_A01_AGGREGATE_PRIVACY_FIELDS if is_a01_aggregate else
         CODEX_D04_PRIVACY_FIELDS if is_d04 else
         CODEX_G02_PRIVACY_FIELDS if is_g02 else
         set(CODEX_PRIVACY_FLAGS) | {'authProfile'}
@@ -3456,6 +3654,7 @@ def codex_mcp_evidence_is_valid(
             or privacy.get('authProfile') != 'anonymous'):
         return False
     privacy_false_fields = (
+        CODEX_A01_AGGREGATE_PRIVACY_FIELDS - {'authProfile'} if is_a01_aggregate else
         CODEX_D04_PRIVACY_FIELDS - {'authProfile'} if is_d04 else
         CODEX_G02_PRIVACY_FIELDS - {'authProfile'} if is_g02 else
         CODEX_PRIVACY_FLAGS
@@ -3500,6 +3699,8 @@ def codex_mcp_evidence_is_valid(
         return False
     if is_g20:
         return codex_g20_result_is_valid(result, arguments['subjectId'])
+    if is_a01_aggregate:
+        return codex_a01_aggregate_report_is_valid(report) and codex_a01_aggregate_result_is_valid(result)
     if (not isinstance(result, dict)
             or set(result) != CODEX_RESULT_FIELDS
             or result.get('toolName') != tool_name
@@ -3694,6 +3895,12 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                     and not codex_g20_report_matches_candidate_revision(
                         path, report.get('sourceRevision'),
                     )):
+                continue
+            if report.get('toolName') == 'bangumi.aggregate_subject_cohort' and (
+                report.get('frontierId') != 'A01'
+                or path.relative_to(LIVE_PROBE_DIR.parent.parent).as_posix()
+                    != CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH
+            ):
                 continue
             if report.get('frontierId') == 'G02' and (
                 report.get('toolName') not in CODEX_G02_REPORT_RELATIVE_PATHS
