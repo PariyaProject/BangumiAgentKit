@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-11T04:37:33Z",
+  "updated_at": "2026-10-11T05:32:32Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -167,9 +167,17 @@
         "docs/research/run82-person-activity-card-readability-audit-2026-10-04.md",
         "docs/research/run82-mcp-bounded-result-view-audit-2026-10-04.md",
         "docs/live-probes/pariya-agent-full-public-qa-e2e-get-person-activity-2026-10-04.json",
-        "tests/integration/tool-e2e-acceptance.test.ts"
+        "tests/integration/tool-e2e-acceptance.test.ts",
+        "scripts/acceptance/g04-person-activity-answer-check.mjs",
+        "scripts/acceptance/run-g04-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-g04-agent-mcp-report.mjs",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "scripts/test_acceptance_evidence.py",
+        "tests/unit/g04-person-activity-answer-check.test.ts",
+        "tests/unit/g04-codex-agent-mcp-runner.test.ts",
+        "tests/unit/g04-agent-mcp-report.test.ts"
       ],
-      "next_action": "Keep PARTIAL: exact-source CLI 1.2.14 Agent/MCP result readback and answer checks now pass for get_person_activity (3451 UTF-8 bytes). The observed result is partial with 115 relations observed, 1 selected, 114 dropped, and 0 eligible/returned rows; it does not establish actual workload, labor time, historical snapshots, rolling-365-day totals, or QQ/TIM visibility.",
+      "next_action": "The prior CLI 1.2.14 result remains limited to 1 selected relation and 0 eligible rows. The bounded Run #95 GPT-6 Luna Max Codex profile uses personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Its one-shot query may run only after exact-Candidate CI, Harness candidate:check, and the assigned same-identity Luna Max PASS; only a sanitized exact-source report may add Agent/MCP tool-row evidence, and retry is prohibited after claim. Keep PARTIAL: returned relation/detail samples and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
@@ -253,6 +261,43 @@
             "rows_returned": 0
           },
           "remaining_boundary": "The configured one-row selection yields no eligible rows; this does not establish workload, labor time, historical snapshots, rolling-365-day totals, or QQ/TIM visibility."
+        },
+        "codex_agent_mcp_luna_max_run95": {
+          "tool": "bangumi.get_person_activity",
+          "model": "gpt-6-luna",
+          "reasoning_effort": "max",
+          "argument_profile": "fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1",
+          "arguments": {
+            "personId": 13684,
+            "kind": "voice",
+            "media": "tv",
+            "windowMonths": 12,
+            "maxRelations": 48,
+            "maxSubjectDetails": 16,
+            "maxRows": 8
+          },
+          "runner": "scripts/acceptance/run-g04-codex-agent-mcp.mjs",
+          "answer_checker": "scripts/acceptance/g04-person-activity-answer-check.mjs",
+          "report_writer": "scripts/acceptance/write-g04-agent-mcp-report.mjs",
+          "report": "docs/live-probes/g04-person-activity-run95.json",
+          "required_gates": [
+            "clean exact Candidate",
+            "seven required exact-SHA CI checks",
+            "Harness candidate:check",
+            "GPT-6 Luna Max (max) PASS on that Candidate"
+          ],
+          "retry_prohibited_after_claim": true,
+          "privacy_limits": {
+            "anonymous_public_read_only": true,
+            "oauth_or_account": false,
+            "community": false,
+            "qq": false,
+            "tim": false,
+            "writes": false,
+            "shell_or_other_mcp_tools": false,
+            "raw_answer_or_result_persisted": false
+          },
+          "coverage_limit": "Even a successful answer describes only the bounded current relation/detail sample assigned by official first_air_date to 12 calendar months; keep G04 PARTIAL."
         }
       }
     },

@@ -22,3 +22,11 @@ test('consumed Run 95 S03 one-shot stays partial and cannot be retried', () => {
   assert.match(record.next_action, /different safe unspent frontier/u);
   assert.doesNotMatch(record.next_action, /then make the single .* call/u);
 });
+
+test('G04 frontier keeps stable query policy without Run 95 attempt state', () => {
+  const record = ledger.records.find(({ id }) => id === 'G04');
+  assert.ok(record, 'G04 must remain in the canonical frontier');
+  const serialized = JSON.stringify(record);
+  assert.doesNotMatch(serialized, /NOT_ATTEMPTED|claim_state|acceptance_count_advanced/u);
+  assert.match(record.next_action, /assigned same-identity Luna Max PASS/u);
+});

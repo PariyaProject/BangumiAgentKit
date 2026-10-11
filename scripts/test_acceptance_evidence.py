@@ -494,6 +494,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
@@ -1928,6 +1929,118 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _g04_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+        coverage = {key: 0 for key in GENERATOR.CODEX_G04_COVERAGE_FIELDS}
+        coverage.update({
+            'relationRowsObserved': 62,
+            'relationRowsSelected': 48,
+            'relationRowsDroppedAtLimit': 14,
+            'subjectIdsObserved': 56,
+            'subjectIdsSelected': 40,
+            'subjectIdsDroppedAtRelationLimit': 16,
+            'subjectDetailIdsObserved': 40,
+            'subjectDetailRequests': 16,
+            'subjectDetailsSucceeded': 16,
+            'subjectDetailsFailed': 0,
+            'subjectDetailIdsDroppedAtLimit': 24,
+            'rowsEligible': 2,
+            'rowsReturned': 2,
+            'outputTruncated': False,
+            'uniqueSubjects': 2,
+            'uniqueCharacters': 2,
+            'maxRelations': 48,
+            'maxSubjectDetails': 16,
+            'maxRows': 8,
+            'responseLimitBytes': 1_048_576,
+            'truncated': True,
+        })
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_g04_person_activity_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'G04',
+            'scenarioId': 'G04',
+            'epochId': GENERATOR.CODEX_G04_EPOCH_ID,
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr128-round1',
+            'codexCliVersion': '1.2.14',
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'prNumber': 128,
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-08T05:00:00.000Z',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_G04_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_G04_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_person_activity'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_g04_one_tool'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': 'g04-bounded-person-activity-answer-v1',
+            'answerChecks': {
+                key: True for key in GENERATOR.CODEX_G04_ANSWER_CHECK_FIELDS
+            },
+            'answerCounters': {
+                'sourceRows': 2,
+                'answerRows': 2,
+                'rowsMatched': 2,
+                'missingRows': 0,
+                'extraRows': 0,
+                'coverageFieldsMatched': len(GENERATOR.CODEX_G04_COVERAGE_FIELDS),
+                'toolTextUtf8Bytes': 3000,
+            },
+            'toolCalls': [{'name': 'bangumi.get_person_activity', 'state': 'DONE'}],
+            'toolTextUtf8Bytes': 3000,
+            'resultSummary': {
+                'personId': 13684,
+                'kind': 'voice',
+                'media': 'tv',
+                'state': 'partial',
+                'window': {
+                    'months': 12,
+                    'start': '2025-11-01',
+                    'end': '2026-10-08',
+                    'monthKeys': ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'],
+                    'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+                },
+                'summary': {'creditRows': 2, 'uniqueSubjects': 2, 'uniqueCharacters': 2},
+                'coverage': coverage,
+                'rowCount': 2,
+                'rowDigest': 'd' * 64,
+            },
+            'resultByteLength': 4096,
+            'resultSha256': 'e' * 64,
+            'answerUtf8Bytes': 1800,
+            'answerSha256': 'f' * 64,
+            'sourceOperations': [
+                {'operation': 'GET /v0/persons/{person_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+                {'operation': 'GET /v0/persons/{person_id}/characters', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+                {'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 16, 'succeeded': 16, 'failed': 0},
+            ],
+            'privacy': {
+                'authProfile': 'anonymous',
+                **{key: False for key in GENERATOR.CODEX_G04_PRIVACY_FIELDS - {'authProfile'}},
+            },
+        }
+
     def _s03_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
@@ -2131,6 +2244,64 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_s02_report_is_valid(report))
         self.assertFalse(
             GENERATOR.codex_s02_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
+
+    def test_accepts_exact_candidate_bound_sanitized_g04_person_activity_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH).name
+        report = self._g04_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_g04_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_g04_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_g04_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('toolOutput', report)
+        self.assertNotIn('prompt', report)
+
+        self._git('add', GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized G04 one-shot evidence')
+        self.assertTrue(
+            GENERATOR.codex_g04_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_g04_report_with_wrong_model_raw_content_or_coverage(self):
+        report = self._g04_report_fixture()
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'reviewerId': 'gpt-6-luna-max-run95-pr128-round2'},
+            {'mcpBundleSha256': '0' * 64},
+            {'answerChecks': {'structuredResultReadback': False}},
+            {'answer': 'raw answer must never be retained'},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                candidate = self._g04_report_fixture()
+                candidate.update(override)
+                self.assertFalse(GENERATOR.codex_g04_report_is_valid(candidate))
+
+        report['resultSummary']['coverage']['subjectDetailRequests'] = 48
+        self.assertFalse(GENERATOR.codex_g04_report_is_valid(report))
+
+    def test_rejects_g04_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH).name
+        report = self._g04_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_g04_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_g04_report_matches_candidate_revision(
                 report_path, self.stale_candidate_source_revision,
             ),
         )
