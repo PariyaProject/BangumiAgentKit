@@ -16,6 +16,7 @@ import {
   createP01OneShotClaim,
   hasUnexpectedP01CodexToolActivity,
   persistHarnessP01OneShotResult,
+  runP01CodexAgentMcp,
   validateP01RunnerArgs,
 } from '../../scripts/acceptance/run-p01-codex-agent-mcp.mjs';
 import {
@@ -120,6 +121,10 @@ afterEach(() => {
 });
 
 describe('P01 one-tool Codex runner', () => {
+  it('requires the Harness-owned claim/result boundary before running', () => {
+    expect(() => runP01CodexAgentMcp()).toThrow(/Harness-owned execution boundary/u);
+  });
+
   it('requires the exact P01 Candidate/Base, all mandatory CI, and same-identity Luna Max PASS', () => {
     const { status, pr } = gateInput();
     expect(

@@ -41,10 +41,47 @@ export function persistHarnessP01OneShotResult(
   state: 'INCONCLUSIVE' | 'REPORT_WRITTEN',
   reportSha256?: string | null,
   options?: {
-    invoke?: (args: string[]) => unknown;
+    invoke?: (
+      args: string[],
+      request?: {
+        claim: { claimId: string; prNumber: number };
+        state: 'INCONCLUSIVE' | 'REPORT_WRITTEN';
+        reportSha256?: string | null;
+      },
+    ) => unknown;
     readStatus?: (prNumber: number) => unknown;
   },
 ): boolean;
+export function runP01CodexAgentMcp(options?: {
+  claimHarness: (gate: {
+    prNumber: number;
+    candidateSha: string;
+    baseSha: string;
+    bundleSha256: string;
+    reviewerId: string;
+    runnerReceiptPublicKey: string;
+  }) => {
+    state: 'P01_ONE_SHOT_CLAIMED';
+    claimId: string;
+    runNumber: number;
+    candidateSha: string;
+    baseSha: string;
+    ciSha: string;
+    ciStatus: 'SUCCESS';
+    bundleSha256: string;
+    runnerReceiptPublicKeySha256: string;
+    model: 'gpt-6-luna';
+    reasoningEffort: 'max';
+    reviewerId: string;
+    expectedArgumentsSha256: string;
+    prNumber: number;
+  };
+  persistResult: (
+    claim: { claimId: string; prNumber: number },
+    state: 'INCONCLUSIVE' | 'REPORT_WRITTEN',
+    reportSha256?: string | null,
+  ) => boolean;
+}): number;
 export function canonicalP01SafeEventSummary(events: unknown): {
   codexMcpToolEventCount: number;
   nonMcpToolEventCount: number;

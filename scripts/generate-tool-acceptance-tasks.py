@@ -1673,7 +1673,8 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'export function createP01OneShotClaim(',
         'REPORT_WRITTEN_ACK_PENDING',
         'export function persistHarnessP01OneShotResult(',
-        "'epoch:p01-one-shot-claim'",
+        'export function runP01CodexAgentMcp(',
+        "'epoch:p01-one-shot-run'",
         "'features.shell_tool=false'",
         "'features.multi_agent=false'",
         "const SERVER_ID = 'bgk_p01_one_tool'",
@@ -1693,7 +1694,7 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/agent-harness.mjs': (
         'p01_one_shot_disposition',
-        "'epoch:p01-one-shot-claim'",
+        "'epoch:p01-one-shot-run'",
         "'epoch:p01-one-shot-result'",
         "'runner-receipt-public-key'",
         "model !== 'gpt-6-luna'",
@@ -1707,6 +1708,7 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_p01_runner_receipt_is_valid(',
         'def codex_p01_harness_control_record_trusts_report(',
         'def codex_p01_report_matches_candidate_revision(',
+        'candidate_refresh_history',
         'CODEX_P01_EXPECTED_ARGUMENTS',
         'CODEX_P01_REPORT_RELATIVE_PATH',
     ),
@@ -4457,6 +4459,9 @@ def codex_p01_report_is_valid(report: object) -> bool:
 def codex_p01_harness_control_record_trusts_report(
     report: object,
     report_sha256: object,
+    *,
+    report_commit_sha: object = None,
+    current_head_sha: object = None,
 ) -> bool:
     """Trust P01 only when the public Harness PR body accepted these exact report bytes."""
     if (
@@ -4493,6 +4498,20 @@ def codex_p01_harness_control_record_trusts_report(
         return False
     if not isinstance(pr, dict) or pr.get('number') != pr_number:
         return False
+    pr_state = pr.get('state')
+    if pr_state not in {'open', 'closed'} or (
+        pr_state == 'closed' and pr.get('merged') is not True
+    ):
+        return False
+    pr_head = pr.get('head')
+    pr_head_sha = pr_head.get('sha') if isinstance(pr_head, dict) else None
+    if (
+        not isinstance(pr_head_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', pr_head_sha)
+        or not isinstance(current_head_sha, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', current_head_sha)
+    ):
+        return False
     body = pr.get('body')
     if not isinstance(body, str):
         return False
@@ -4515,21 +4534,13 @@ def codex_p01_harness_control_record_trusts_report(
     source_revision = report.get('sourceRevision')
     base_sha = report.get('baseSha')
     reviewer_id = report.get('reviewerId')
-    return (
+    if not (
         isinstance(epoch, dict)
         and epoch.get('schema') == 'bangumi-harness/v3'
         and epoch.get('kind') == 'epoch'
         and epoch.get('epoch_id') == CODEX_P01_EPOCH_ID
         and epoch.get('pr_number') == pr_number
-        and epoch.get('base_sha') == base_sha
-        and epoch.get('review_pass_sha') == source_revision
         and isinstance(reviews, list)
-        and bool(reviews)
-        and isinstance(reviews[-1], dict)
-        and reviews[-1].get('candidate_sha') == source_revision
-        and reviews[-1].get('reviewed_base_sha') == base_sha
-        and reviews[-1].get('reviewer_id') == reviewer_id
-        and reviews[-1].get('verdict') == 'PASS'
         and isinstance(disposition, dict)
         and disposition.get('state') == 'REPORT_WRITTEN'
         and disposition.get('reportWritten') is True
@@ -4553,7 +4564,75 @@ def codex_p01_harness_control_record_trusts_report(
         and disposition.get('runnerReceiptPublicKeySha256') == receipt.get('publicKeySha256')
         and disposition.get('reportPath') == CODEX_P01_REPORT_RELATIVE_PATH
         and disposition.get('reportSha256') == report_sha256
+    ):
+        return False
+
+    historical_pass = any(
+        isinstance(review, dict)
+        and review.get('candidate_sha') == source_revision
+        and review.get('reviewed_base_sha') == base_sha
+        and review.get('reviewer_id') == reviewer_id
+        and review.get('verdict') == 'PASS'
+        for review in reviews
     )
+    if not historical_pass:
+        return False
+
+    current_candidate = epoch.get('candidate_sha')
+    if current_candidate == source_revision:
+        # Before Harness refreshes the PR after the report commit, the original
+        # PASS remains current. The report itself may be uncommitted in a local
+        # validation fixture or be the PR's just-added child commit.
+        return (
+            epoch.get('review_pass_sha') == source_revision
+            and epoch.get('state') == 'REVIEW_PASSED'
+            and pr_head_sha in {source_revision, report_commit_sha}
+        )
+
+    # Once the report commit is Candidate-refreshed, require the durable exact
+    # refresh edge that Harness writes for the post-PASS evidence commit. Later
+    # Candidate reviews may advance the PR; they do not erase this historical
+    # acceptance as long as the PR head remains the control-plane Candidate and
+    # descends from the exact report commit.
+    if report_commit_sha is None:
+        return False
+    if isinstance(current_candidate, str) and re.fullmatch(r'[0-9a-f]{40}', current_candidate):
+        if current_candidate != pr_head_sha:
+            return False
+        controlled_head_sha = current_candidate
+    else:
+        # A corrective review can clear candidate_sha while keeping the exact
+        # reviewed PR head in review_history. Require that latest review to name
+        # the live head so an unreviewed branch update cannot inherit evidence.
+        latest_review = reviews[-1] if reviews and isinstance(reviews[-1], dict) else None
+        if (
+            not isinstance(latest_review, dict)
+            or latest_review.get('candidate_sha') != pr_head_sha
+            or latest_review.get('verdict') not in {'PASS', 'CORRECTIVE_REQUIRED'}
+        ):
+            return False
+        controlled_head_sha = pr_head_sha
+    refresh_history = epoch.get('candidate_refresh_history')
+    if not isinstance(refresh_history, list):
+        return False
+    exact_report_refresh = any(
+        isinstance(refresh, dict)
+        and refresh.get('previous_candidate_sha') == source_revision
+        and refresh.get('candidate_sha') == report_commit_sha
+        and refresh.get('reviewed_base_sha') == base_sha
+        and isinstance(refresh.get('review_number'), int)
+        and not isinstance(refresh.get('review_number'), bool)
+        and refresh.get('review_number') >= 1
+        and isinstance(refresh.get('reason'), str)
+        and len(refresh['reason'].strip()) >= 12
+        for refresh in refresh_history
+    )
+    if not exact_report_refresh:
+        return False
+    ancestry = _run_repository_git(
+        ROOT, 'merge-base', '--is-ancestor', report_commit_sha, controlled_head_sha,
+    )
+    return ancestry.returncode == 0
 
 
 def codex_p01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
@@ -4572,15 +4651,20 @@ def codex_p01_report_matches_candidate_revision(report_path: Path, revision: obj
     except (OSError, ValueError, UnicodeDecodeError):
         return False
     report_sha256 = hashlib.sha256(report_bytes).hexdigest()
-    if not codex_p01_harness_control_record_trusts_report(report, report_sha256):
-        return False
     head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
     if head.returncode != 0:
         return False
     head_sha = head.stdout.strip()
     committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
     if committed_in_head.returncode != 0:
-        return revision == head_sha
+        return (
+            revision == head_sha
+            and codex_p01_harness_control_record_trusts_report(
+                report,
+                report_sha256,
+                current_head_sha=head_sha,
+            )
+        )
     added_commit = _run_repository_git(
         ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
     )
@@ -4589,7 +4673,14 @@ def codex_p01_report_matches_candidate_revision(report_path: Path, revision: obj
         return False
     parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
-    return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+    if parents.returncode != 0 or len(parent_shas) < 2 or parent_shas[1] != revision:
+        return False
+    return codex_p01_harness_control_record_trusts_report(
+        report,
+        report_sha256,
+        report_commit_sha=commit_sha,
+        current_head_sha=head_sha,
+    )
 
 
 def codex_g05_report_is_valid(report: object) -> bool:

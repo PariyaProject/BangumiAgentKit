@@ -19,6 +19,10 @@ import {
 } from '../../scripts/lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from '../../scripts/lib/frontier-ledger.mjs';
 import {
+  P01_ARGUMENT_PROFILE,
+  P01_EXPECTED_QUERY_ARGUMENTS,
+} from '../../scripts/acceptance/p01-person-position-answer-check.mjs';
+import {
   generateP01RunnerReceiptKeyPair,
   p01RunnerPublicKeySha256,
 } from '../../scripts/acceptance/p01-runner-receipt.mjs';
@@ -1176,7 +1180,7 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
   }
 });
 
-test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neutral', () => {
+test('CLI rejects caller-key P01 claims and fabricated all-true REPORT_WRITTEN evidence', () => {
   const { run, epoch } = passedCandidateFixture();
   const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
   run.state = 'EPOCH_ACTIVE';
@@ -1217,7 +1221,7 @@ test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neu
     draft: false,
   });
   const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
-  const claimArgs = [
+  const callerClaimArgs = [
     'epoch:p01-one-shot-claim', '--run', '95', '--pr', '42',
     '--candidate', sha('b'), '--base', sha('a'), '--bundle-sha256', 'c'.repeat(64),
     '--model', 'gpt-6-luna', '--reasoning-effort', 'max',
@@ -1226,16 +1230,11 @@ test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neu
   ];
   try {
     const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
-    const wrongRunArgs = [...claimArgs];
-    wrongRunArgs[wrongRunArgs.indexOf('95')] = '1';
-    const wrongRun = environment.execute(wrongRunArgs);
+    const wrongRun = environment.execute(['epoch:p01-one-shot-run', '--run', '1']);
     assert.equal(wrongRun.status, 2);
-    assert.match(wrongRun.stderr, /^P01_ONESHOT_CLAIM_GATE_FAILED:/u);
-    const wrongModelArgs = [...claimArgs];
-    wrongModelArgs[wrongModelArgs.indexOf('gpt-6-luna')] = 'gpt-6-sol';
-    const wrongModel = environment.execute(wrongModelArgs);
-    assert.equal(wrongModel.status, 2);
-    assert.match(wrongModel.stderr, /^P01_ONESHOT_CLAIM_GATE_FAILED:/u);
+    assert.match(wrongRun.stderr, /^P01_ONESHOT_RUN_INVALID:/u);
+    const callerClaim = environment.execute(callerClaimArgs);
+    assert.notEqual(callerClaim.status, 0, 'the public CLI must not accept caller-selected claim keys');
     assert.equal(
       Object.hasOwn(
         parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight,
@@ -1243,62 +1242,30 @@ test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neu
       ),
       false,
     );
-    const claimed = environment.execute(claimArgs);
-    assert.equal(claimed.status, 0, claimed.stderr);
-    const claim = JSON.parse(claimed.stdout);
-    assert.equal(claim.state, 'P01_ONE_SHOT_CLAIMED');
-    assert.equal(claim.runNumber, 95);
-    assert.equal(claim.reviewerId, reviewerId);
-    assert.equal(claim.bundleSha256, 'c'.repeat(64));
-    assert.match(claim.expectedArgumentsSha256, /^[0-9a-f]{64}$/u);
-    let stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.state, 'CLAIMED');
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.frontierId, 'P01');
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.epochId, 'run95-p01-person-role-agent-mcp');
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.runNumber, 95);
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.toolName, 'bangumi.get_person_activity');
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.expectedArgumentsSha256, claim.expectedArgumentsSha256);
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.ciSha, sha('b'));
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.ciStatus, 'SUCCESS');
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.model, 'gpt-6-luna');
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.reasoningEffort, 'max');
-    assert.equal(
-      stored.adversarial_preflight.p01_one_shot_disposition.runnerReceiptPublicKeySha256,
-      p01RunnerPublicKeySha256(runnerReceiptKeyPair.publicKeyBase64),
-    );
-    assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.retryAllowed, false);
-
-    const duplicateClaim = environment.execute(claimArgs);
-    assert.equal(duplicateClaim.status, 2);
-    assert.match(duplicateClaim.stderr, /^P01_ONESHOT_ALREADY_CLAIMED:/u);
-
-    const resultArgs = [
+    const fabricatedClaimId = `p01-run-95-pr-42-${sha('b').slice(0, 12)}-123`;
+    const fabricated = makeP01Report({
+      claimId: fabricatedClaimId,
+      runnerReceiptKeyPair,
+      prNumber: 42,
+      reviewerId,
+    });
+    assert.ok(Object.values(fabricated.answerChecks).every((check) => check === true));
+    const reportPath = path.join(environment.directory, 'caller-fabricated-p01-report.json');
+    fs.writeFileSync(reportPath, `${JSON.stringify(fabricated)}\n`);
+    const result = environment.execute([
       'epoch:p01-one-shot-result', '--run', '95', '--pr', '42',
-      '--claim-id', claim.claimId, '--state', 'INCONCLUSIVE',
-    ];
-    const wrongRunResultArgs = [...resultArgs];
-    wrongRunResultArgs[wrongRunResultArgs.indexOf('95')] = '1';
-    const wrongRunResult = environment.execute(wrongRunResultArgs);
-    assert.equal(wrongRunResult.status, 2);
-    assert.match(wrongRunResult.stderr, /^P01_ONESHOT_RUN_INVALID:/u);
-    const finished = environment.execute(resultArgs);
-    assert.equal(finished.status, 0, finished.stderr);
-    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
-    assert.deepEqual(
-      {
-        state: stored.adversarial_preflight.p01_one_shot_disposition.state,
-        reportWritten: stored.adversarial_preflight.p01_one_shot_disposition.reportWritten,
-        retryAllowed: stored.adversarial_preflight.p01_one_shot_disposition.retryAllowed,
-      },
-      { state: 'INCONCLUSIVE', reportWritten: false, retryAllowed: false },
+      '--claim-id', fabricatedClaimId, '--state', 'REPORT_WRITTEN',
+    ], { HARNESS_P01_REPORT_PATH: reportPath });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^P01_ONESHOT_CLAIM_MISMATCH:/u);
+    assert.equal(
+      Object.hasOwn(
+        parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight,
+        'p01_one_shot_disposition',
+      ),
+      false,
+      'caller-controlled receipt keys cannot create a durable Harness trust anchor',
     );
-
-    const retry = environment.execute(claimArgs);
-    assert.equal(retry.status, 2);
-    assert.match(retry.stderr, /^P01_ONESHOT_ALREADY_CLAIMED:/u);
-    const idempotentFinish = environment.execute(resultArgs);
-    assert.equal(idempotentFinish.status, 0, idempotentFinish.stderr);
-    assert.match(idempotentFinish.stdout, /P01_ONE_SHOT_RESULT_ALREADY_RECORDED/u);
     const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
     assert.equal(after, before, 'one-shot state persistence must not spend Product budget');
   } finally {
@@ -1328,7 +1295,36 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     why_not_extend_further: 'The bounded public role sample is one-shot.',
     related_work_remaining: false,
   };
-  epoch.adversarial_preflight = { completed: true, summary: 'P01 exact one-tool preflight passed.' };
+  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
+  const claimId = `p01-run-95-pr-42-${sha('b').slice(0, 12)}-123`;
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'P01 exact one-tool preflight passed.',
+    p01_one_shot_disposition: {
+      claimId,
+      frontierId: 'P01',
+      epochId: 'run95-p01-person-role-agent-mcp',
+      runNumber: 95,
+      toolName: 'bangumi.get_person_activity',
+      argumentProfile: P01_ARGUMENT_PROFILE,
+      expectedArgumentsSha256: canonicalHash(P01_EXPECTED_QUERY_ARGUMENTS),
+      state: 'CLAIMED',
+      sourceCandidateSha: sha('b'),
+      baseSha: sha('a'),
+      ciSha: sha('b'),
+      ciStatus: 'SUCCESS',
+      bundleSha256: 'c'.repeat(64),
+      prNumber: 42,
+      reviewerId,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      runnerReceiptPublicKey: runnerReceiptKeyPair.publicKeyBase64,
+      runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(runnerReceiptKeyPair.publicKeyBase64),
+      reportWritten: false,
+      retryAllowed: false,
+      claimedAt: '2026-10-11T08:00:00.000Z',
+    },
+  };
   epoch.review_history = [{
     review_number: 1,
     reviewer_id: reviewerId,
@@ -1347,17 +1343,8 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     draft: false,
   });
   const reportPath = path.join(environment.directory, 'p01-report.json');
-  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
-  const claimArgs = [
-    'epoch:p01-one-shot-claim', '--run', '95', '--pr', '42',
-    '--candidate', sha('b'), '--base', sha('a'), '--bundle-sha256', 'c'.repeat(64),
-    '--model', 'gpt-6-luna', '--reasoning-effort', 'max', '--reviewer-id', reviewerId,
-    '--runner-receipt-public-key', runnerReceiptKeyPair.publicKeyBase64,
-  ];
   try {
-    const claimed = environment.execute(claimArgs);
-    assert.equal(claimed.status, 0, claimed.stderr);
-    const claim = JSON.parse(claimed.stdout);
+    const claim = { claimId };
     const resultArgs = [
       'epoch:p01-one-shot-result', '--run', '95', '--pr', '42',
       '--claim-id', claim.claimId, '--state', 'REPORT_WRITTEN',

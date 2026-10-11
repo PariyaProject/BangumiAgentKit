@@ -56,6 +56,10 @@ import {
 } from './acceptance/p01-person-position-answer-check.mjs';
 import { validateP01SanitizedReportFile } from './acceptance/write-p01-agent-mcp-report.mjs';
 import { p01RunnerPublicKeySha256 } from './acceptance/p01-runner-receipt.mjs';
+import {
+  persistHarnessP01OneShotResult,
+  runP01CodexAgentMcp,
+} from './acceptance/run-p01-codex-agent-mcp.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const frontierLedgerPath =
@@ -397,7 +401,7 @@ Usage: pnpm harness <command> [options]
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
   epoch:g19-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --reviewer-id <id>
   epoch:g19-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
-  epoch:p01-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --bundle-sha256 <sha> --runner-receipt-public-key <spki-base64> --model gpt-6-luna --reasoning-effort max --reviewer-id <id>
+  epoch:p01-one-shot-run --run <issue>
   epoch:p01-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
   frontier:review-reserve --run <issue> [--evidence <json>] [--runtime-recovery]
   frontier:review-started --run <issue> --reviewer-id <id> [--runtime-recovery]
@@ -1378,7 +1382,7 @@ function assertP01OneShotClaimReadiness({
   }
 }
 
-function commandEpochP01OneShotClaim(options) {
+function commandEpochP01OneShotClaim(options, { printOutput = true } = {}) {
   ensureControlPlane();
   ensureCleanWorkingTree();
   const runNumber = required(options, 'run');
@@ -1444,7 +1448,7 @@ function commandEpochP01OneShotClaim(options) {
     },
   };
   updatePr(prNumber, nextEpoch);
-  print({
+  const result = {
     state: 'P01_ONE_SHOT_CLAIMED',
     claimId,
     runNumber: Number(runNumber),
@@ -1459,10 +1463,50 @@ function commandEpochP01OneShotClaim(options) {
     model,
     reasoningEffort,
     runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(runnerReceiptPublicKey),
+  };
+  if (printOutput) print(result);
+  return result;
+}
+
+function commandEpochP01OneShotRun(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  if (Number(runNumber) !== 95) {
+    throw new HarnessInvariantError('P01_ONESHOT_RUN_INVALID', 'P01 one-shot runs are limited to Run 95.');
+  }
+  process.exitCode = runP01CodexAgentMcp({
+    claimHarness: (gate) => commandEpochP01OneShotClaim(
+      {
+        run: String(runNumber),
+        pr: String(gate.prNumber),
+        candidate: gate.candidateSha,
+        base: gate.baseSha,
+        'bundle-sha256': gate.bundleSha256,
+        'runner-receipt-public-key': gate.runnerReceiptPublicKey,
+        model: 'gpt-6-luna',
+        'reasoning-effort': 'max',
+        'reviewer-id': gate.reviewerId,
+      },
+      { printOutput: false },
+    ),
+    persistResult: (claim, state, reportSha256) =>
+      persistHarnessP01OneShotResult(claim, state, reportSha256, {
+        invoke: () => commandEpochP01OneShotResult(
+          {
+            run: String(runNumber),
+            pr: String(claim.prNumber),
+            'claim-id': claim.claimId,
+            state,
+          },
+          { printOutput: false },
+        ),
+        readStatus: (prNumber) => ({ epoch: epochState(prNumber) }),
+      }),
   });
 }
 
-function commandEpochP01OneShotResult(options) {
+function commandEpochP01OneShotResult(options, { printOutput = true } = {}) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
   const prNumber = required(options, 'pr');
@@ -1517,13 +1561,14 @@ function commandEpochP01OneShotResult(options) {
         );
       }
     }
-    print({
+    const response = {
       state: 'P01_ONE_SHOT_RESULT_ALREADY_RECORDED',
       claimId,
       resultState,
       ...(resultState === 'REPORT_WRITTEN' ? { reportSha256: current.reportSha256 } : {}),
-    });
-    return;
+    };
+    if (printOutput) print(response);
+    return response;
   }
   if (current.state !== 'CLAIMED') {
     throw new HarnessInvariantError(
@@ -1582,13 +1627,15 @@ function commandEpochP01OneShotResult(options) {
     finishedAt: new Date().toISOString(),
   };
   updatePr(prNumber, nextEpoch);
-  print({
+  const response = {
     state: 'P01_ONE_SHOT_RESULT_RECORDED',
     claimId,
     resultState,
     reportWritten: resultState === 'REPORT_WRITTEN',
     ...(acceptedReport ? { reportSha256: acceptedReport.reportSha256 } : {}),
-  });
+  };
+  if (printOutput) print(response);
+  return response;
 }
 
 function commandFrontierReviewReserve(options) {
@@ -2220,7 +2267,7 @@ const commands = {
   'review:result': commandReviewResult,
   'epoch:g19-one-shot-claim': commandEpochG19OneShotClaim,
   'epoch:g19-one-shot-result': commandEpochG19OneShotResult,
-  'epoch:p01-one-shot-claim': commandEpochP01OneShotClaim,
+  'epoch:p01-one-shot-run': commandEpochP01OneShotRun,
   'epoch:p01-one-shot-result': commandEpochP01OneShotResult,
   'frontier:review-reserve': commandFrontierReviewReserve,
   'frontier:review-started': commandFrontierReviewStarted,

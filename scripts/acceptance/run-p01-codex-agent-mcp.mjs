@@ -467,28 +467,7 @@ function invokeHarnessCommand(args) {
   }
 }
 
-function claimHarnessP01OneShot(gate) {
-  const result = invokeHarnessCommand([
-    'epoch:p01-one-shot-claim',
-    '--run',
-    String(RUN_NUMBER),
-    '--pr',
-    String(gate.prNumber),
-    '--candidate',
-    gate.candidateSha,
-    '--base',
-    gate.baseSha,
-    '--bundle-sha256',
-    gate.bundleSha256,
-    '--runner-receipt-public-key',
-    gate.runnerReceiptPublicKey,
-    '--model',
-    MODEL,
-    '--reasoning-effort',
-    REASONING_EFFORT,
-    '--reviewer-id',
-    gate.reviewerId,
-  ]);
+function validateP01HarnessClaim(result, gate) {
   if (
     result.state !== 'P01_ONE_SHOT_CLAIMED' ||
     typeof result.claimId !== 'string' ||
@@ -529,17 +508,20 @@ export function persistHarnessP01OneShotResult(
 ) {
   let response;
   try {
-    response = invoke([
-      'epoch:p01-one-shot-result',
-      '--run',
-      String(RUN_NUMBER),
-      '--pr',
-      String(claim.prNumber),
-      '--claim-id',
-      claim.claimId,
-      '--state',
-      state,
-    ]);
+    response = invoke(
+      [
+        'epoch:p01-one-shot-result',
+        '--run',
+        String(RUN_NUMBER),
+        '--pr',
+        String(claim.prNumber),
+        '--claim-id',
+        claim.claimId,
+        '--state',
+        state,
+      ],
+      { claim, state, reportSha256 },
+    );
   } catch {
     /* The PR update may have applied before its response was lost. */
   }
@@ -769,7 +751,10 @@ function invokeReportWriter(input) {
   return { exitCode: result.status ?? 1, output };
 }
 
-function run() {
+export function runP01CodexAgentMcp({ claimHarness, persistResult } = {}) {
+  if (typeof claimHarness !== 'function' || typeof persistResult !== 'function') {
+    throw new Error('P01 runner must be invoked by the Harness-owned execution boundary.');
+  }
   const sourceRevision = cleanCandidate();
   const claimPath = canonicalP01ClaimPath();
   const initialGate = assertCurrentReviewGate(sourceRevision);
@@ -790,7 +775,8 @@ function run() {
   const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
   const runnerReceiptPublicKey = runnerReceiptKeyPair.publicKeyBase64;
   const durableGate = { ...currentGate, bundleSha256, runnerReceiptPublicKey };
-  const remoteClaim = claimHarnessP01OneShot(durableGate);
+  const remoteClaim = claimHarness(durableGate);
+  validateP01HarnessClaim(remoteClaim, durableGate);
   let claim;
   try {
     claim = createP01OneShotClaim(claimPath, {
@@ -800,7 +786,7 @@ function run() {
       claimId: remoteClaim.claimId,
     });
   } catch {
-    persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+    persistResult(remoteClaim, 'INCONCLUSIVE');
     throw new Error(
       'P01 local create-once claim failed after the durable Harness claim; the frontier is terminal.',
     );
@@ -878,7 +864,7 @@ function run() {
       serverSummary?.serverResultStatus !== 'SUCCESS'
     ) {
       markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-      persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+      persistResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(
         `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`,
       );
@@ -895,7 +881,7 @@ function run() {
       postGate.reviewerId !== currentGate.reviewerId
     ) {
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
-      persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+      persistResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(
         `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`,
       );
@@ -914,7 +900,7 @@ function run() {
         ...safe,
         answerChecks: answerResult.answerChecks,
       });
-      persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+      persistResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(
         `${JSON.stringify({
           passed: false,
@@ -973,7 +959,7 @@ function run() {
     if (writer.exitCode !== 0 || writer.output?.passed !== true) {
       const answerChecks = writer.output?.answerChecks ?? null;
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
-      persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+      persistResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(
         `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`,
       );
@@ -987,7 +973,7 @@ function run() {
       answerCounters: output.answerCounters,
       resultSummary: output.resultSummary,
     });
-    if (!persistHarnessP01OneShotResult(remoteClaim, 'REPORT_WRITTEN', reportSha256)) {
+    if (!persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256)) {
       markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
         ...safe,
         reportSha256,
@@ -1031,7 +1017,7 @@ function run() {
         reportSha256,
         reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
       });
-      persistHarnessP01OneShotResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
+      persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
       process.stdout.write(
         `${JSON.stringify({
           passed: false,
@@ -1045,7 +1031,7 @@ function run() {
       return 1;
     }
     markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-    persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+    persistResult(remoteClaim, 'INCONCLUSIVE');
     process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
     return 1;
   } finally {
@@ -1056,8 +1042,23 @@ function run() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     if (validateP01RunnerArgs(process.argv.slice(2)) === 'help') {
-      process.stdout.write('Usage: node scripts/acceptance/run-p01-codex-agent-mcp.mjs --run 95\n');
-    } else process.exitCode = run();
+      process.stdout.write('Usage: pnpm harness epoch:p01-one-shot-run --run 95\n');
+    } else {
+      const result = spawnSync(
+        process.execPath,
+        [HARNESS_SCRIPT, 'epoch:p01-one-shot-run', '--run', String(RUN_NUMBER)],
+        {
+          cwd: ROOT,
+          env: environment(process.env, true),
+          encoding: 'utf8',
+          maxBuffer: MAX_STDOUT_BYTES,
+          timeout: CODEX_TIMEOUT_MS + BUILD_TIMEOUT_MS + 60_000,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        },
+      );
+      if (result.stdout) process.stdout.write(result.stdout);
+      process.exitCode = Number.isInteger(result.status) ? result.status : 1;
+    }
   } catch (error) {
     process.stderr.write(
       `${error instanceof Error ? error.message : 'P01 one-tool runner failed.'}\n`,

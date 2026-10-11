@@ -416,6 +416,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.p01_control_pr_number = None
         self.p01_control_body = None
         self.p01_control_available = True
+        self.p01_pr_state = 'open'
+        self.p01_pr_merged = False
+        self.p01_pr_head_sha = None
         GENERATOR.urllib.request.urlopen = self._fake_s03_control_urlopen
 
     def _fake_s03_control_urlopen(self, request, timeout=10):
@@ -427,6 +430,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 raise GENERATOR.urllib.error.URLError('P01 fixture control plane unavailable')
             payload = json.dumps({
                 'number': self.p01_control_pr_number,
+                'state': self.p01_pr_state,
+                'merged': self.p01_pr_merged,
+                'head': {'sha': self.p01_pr_head_sha},
                 'body': self.p01_control_body,
             }).encode('utf-8')
 
@@ -487,12 +493,39 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
         return Response()
 
-    def _set_p01_control_record(self, report, report_bytes, report_sha_override=None):
+    def _set_p01_control_record(
+        self,
+        report,
+        report_bytes,
+        report_sha_override=None,
+        *,
+        current_candidate='source',
+        current_review_pass='source',
+        epoch_state='REVIEW_PASSED',
+        refresh_history=None,
+        review_history=None,
+        pr_head_sha=None,
+        pr_state='open',
+        pr_merged=False,
+    ):
         self.p01_control_pr_number = report['prNumber']
         reviewer_id = report['reviewerId']
         source_revision = report['sourceRevision']
         base_sha = report['baseSha']
         receipt = report['runnerReceipt']
+        current_candidate = source_revision if current_candidate == 'source' else current_candidate
+        current_review_pass = source_revision if current_review_pass == 'source' else current_review_pass
+        if review_history is None:
+            review_history = [{
+                'review_number': 1,
+                'candidate_sha': source_revision,
+                'reviewed_base_sha': base_sha,
+                'reviewer_id': reviewer_id,
+                'verdict': 'PASS',
+            }]
+        self.p01_pr_head_sha = pr_head_sha or current_candidate
+        self.p01_pr_state = pr_state
+        self.p01_pr_merged = pr_merged
         disposition = {
             'claimId': report['claimId'],
             'frontierId': 'P01',
@@ -524,18 +557,16 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'kind': 'epoch',
             'epoch_id': GENERATOR.CODEX_P01_EPOCH_ID,
             'pr_number': self.p01_control_pr_number,
+            'state': epoch_state,
             'base_sha': base_sha,
-            'review_pass_sha': source_revision,
+            'candidate_sha': current_candidate,
+            'review_pass_sha': current_review_pass,
+            'candidate_refresh_history': refresh_history or [],
             'adversarial_preflight': {
                 'completed': True,
                 'p01_one_shot_disposition': disposition,
             },
-            'review_history': [{
-                'candidate_sha': source_revision,
-                'reviewed_base_sha': base_sha,
-                'reviewer_id': reviewer_id,
-                'verdict': 'PASS',
-            }],
+            'review_history': review_history,
         }
         fence = chr(96) * 3
         self.p01_control_body = (
@@ -2952,8 +2983,226 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
         self._git('add', GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH)
         self._git('commit', '-qm', 'add sanitized P01 one-shot evidence')
+        report_commit = self._git('rev-parse', 'HEAD').stdout.strip()
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=self.source_revision,
+            current_review_pass=self.source_revision,
+            epoch_state='REVIEW_PASSED',
+            pr_head_sha=report_commit,
+        )
         self.assertTrue(
             GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+
+        report_refresh = {
+            'review_number': 1,
+            'previous_candidate_sha': self.source_revision,
+            'candidate_sha': report_commit,
+            'reviewed_base_sha': report['baseSha'],
+            'reason': 'Attach the accepted sanitized P01 report and refresh the exact Candidate.',
+            'at': '2026-10-11T08:30:00.000Z',
+        }
+        # Harness refresh clears the original current-pass authority. The exact
+        # historical PASS plus immutable disposition and refresh edge preserve
+        # this report while the refreshed Candidate awaits its new review.
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=report_commit,
+            current_review_pass=None,
+            epoch_state='REVIEW_READY',
+            refresh_history=[report_refresh],
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH},
+        )
+
+        # A new PASS on the refreshed Candidate must not hide the report's
+        # original, exact Candidate/Base/reviewer PASS.
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=report_commit,
+            current_review_pass=report_commit,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 2,
+                    'candidate_sha': report_commit,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+            ],
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+
+        (self.root / 'later-candidate-note.txt').write_text('later corrective Candidate\n', encoding='utf-8')
+        self._git('add', 'later-candidate-note.txt')
+        self._git('commit', '-qm', 'advance beyond the report refresh Candidate')
+        later_candidate = self._git('rev-parse', 'HEAD').stdout.strip()
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 2,
+                    'candidate_sha': report_commit,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 3,
+                    'candidate_sha': later_candidate,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+            ],
+            pr_head_sha=later_candidate,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'the historical report stays bound to its direct refresh while the live PR advances',
+        )
+
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': 'f' * 40,
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 3,
+                    'candidate_sha': later_candidate,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+            ],
+            pr_head_sha=later_candidate,
+        )
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a later PASS cannot substitute for the report Candidate/Base/reviewer PASS',
+        )
+
+        # A corrective review clears candidate_sha, but its latest immutable
+        # review record still identifies the live PR head and must preserve the
+        # already accepted one-shot evidence.
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=None,
+            current_review_pass=None,
+            epoch_state='CORRECTIVE_REQUIRED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 2,
+                    'candidate_sha': report_commit,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'CORRECTIVE_REQUIRED',
+                },
+            ],
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a later corrective verdict must not erase the historical exact PASS',
+        )
+
+        invalid_refresh = dict(report_refresh, previous_candidate_sha=self.stale_candidate_source_revision)
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[invalid_refresh],
+            pr_head_sha=later_candidate,
+        )
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a current PASS cannot replace the exact report Candidate refresh lineage',
+        )
+
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            pr_head_sha=later_candidate,
+            pr_state='closed',
+            pr_merged=False,
+        )
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a closed, unmerged PR must not authorize acceptance evidence',
+        )
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            pr_head_sha=later_candidate,
+            pr_state='closed',
+            pr_merged=True,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a merged PR retains its accepted immutable report',
         )
 
         # An otherwise valid, self-consistent edit must not bypass the exact digest
