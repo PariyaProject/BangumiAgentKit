@@ -249,4 +249,17 @@ describe('G16 bounded director person-activity Agent/MCP answer checker', () => 
     expect(checked.passed).toBe(false);
     expect(checked.answerChecks.caveatDisclosurePresent).toBe(false);
   });
+
+  it('rejects an unsupported absence claim appended to an otherwise approved caveat', () => {
+    const result = makeResult();
+    const answer = JSON.parse(answerFor(result));
+    answer.caveat = `${ENGLISH_G16_CAVEAT} There are no other director works.`;
+    const checked = verifyG16PersonActivityAnswer(
+      JSON.stringify(answer), G16_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result }, calls(), 3000,
+    );
+
+    expect(checked.passed).toBe(false);
+    expect(checked.answerChecks.caveatDisclosurePresent).toBe(false);
+  });
 });

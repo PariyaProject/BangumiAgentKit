@@ -39,19 +39,10 @@ const UNSUPPORTED_SCOPE = [
   /\b(?:complete|full|entire)\s+(?:director\s+)?(?:career|filmography)\b/iu,
   /\b(?:lifetime|historical)\s+(?:director\s+)?(?:total|filmography|credits|works)\b/iu,
 ];
-const REQUIRED_CAVEAT_PHRASE_SETS = [
-  [
-    '本次有界观察', '首播日期', '36个日历月', '不是滚动三年',
-    '未返回作品不等于不存在', '未知职位标签', '不匹配职位不是不存在',
-    '不是完整导演履历', '没有历史快照',
-  ],
-  [
-    'bounded current-response observation', 'first_air_date', '36 calendar months',
-    'not a rolling three years', 'unreturned works do not prove absence',
-    'missing or nonmatching role labels do not prove there are no director works',
-    'not a complete director filmography', 'no historical snapshot exists',
-  ],
-];
+const APPROVED_CAVEAT_TEXTS = Object.freeze([
+  '本次有界观察只表示当前官方关系和已成功读取作品详情的样本，不代表全部作品；按作品首播日期归入36个日历月，不是滚动三年。未返回作品不等于不存在；未知职位标签会保留为未知，不匹配职位不是不存在，也不是完整导演履历。没有历史快照。',
+  'This is a bounded current-response observation; the window uses first_air_date and 36 calendar months, not a rolling three years; unreturned works do not prove absence; missing or nonmatching role labels do not prove there are no director works; this is not a complete director filmography; no historical snapshot exists.',
+]);
 const NEGATION_BEFORE = /(?:不是|并非|不代表|不等于|不能证明|不能说明|无法计算|未能证明|不会表示|不说明|不构成|不意味着|并不代表|没有历史快照)\s*$|\b(?:not|never|no|cannot|can't|does\s+not|doesn't|do\s+not|don't|is\s+not|isn't|not\s+yet)\b(?:\s+(?:a|an|the|complete|full|entire|actual|lifetime|historical|director|directing|career|filmography|evidence|to|support|show|prove|establish)){0,4}\s*$/iu;
 const NEGATION_AFTER = /^\s*(?:(?:is|are|was|were)\s+)?(?:not\s+(?:supported|established|proven|evidenced)|unsupported|unproven|unknown|unavailable|不能证明|无法计算|未能证明|不说明|不构成|不意味着|没有依据)\b/iu;
 const ENGLISH_NEGATION = /\b(?:not|never|no|cannot|can't|doesn't|don't|isn't|not\s+yet)\b/giu;
@@ -298,8 +289,7 @@ export function verifyG16PersonActivityAnswer(answer, queryArguments, toolOutput
   const answerRows = Array.isArray(parsed?.rows) ? parsed.rows : [];
   const expectedRows = rows.map(rowProjection);
   const caveat = parsed?.caveat;
-  const caveatValid = typeof caveat === 'string' &&
-    REQUIRED_CAVEAT_PHRASE_SETS.some((phrases) => phrases.every((phrase) => caveat.includes(phrase)));
+  const caveatValid = typeof caveat === 'string' && APPROVED_CAVEAT_TEXTS.includes(caveat.trim());
   const expectedSummary = result?.summary ? {
     creditRows: result.summary.creditRows,
     uniqueSubjects: result.summary.uniqueSubjects,
