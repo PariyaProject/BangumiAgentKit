@@ -55,7 +55,7 @@ function makeResult() {
     kind: 'staff',
     staffRole: 'director',
     media: 'tv',
-    window,
+    window: structuredClone(window),
     rows: [
       {
         subjectId: 3001,
@@ -85,7 +85,7 @@ function makeResult() {
       },
     ],
     summary: { creditRows: 2, uniqueSubjects: 2, uniqueCharacters: 0 },
-    coverage,
+    coverage: structuredClone(coverage),
     sourceOperations: [
       { operation: 'GET /v0/persons/{person_id}', attempted: 1, succeeded: 1, failed: 0 },
       { operation: 'GET /v0/persons/{person_id}/subjects', attempted: 1, succeeded: 1, failed: 0 },
@@ -95,14 +95,14 @@ function makeResult() {
 }
 
 function answerFor(result: ReturnType<typeof makeResult>) {
-  const answerCoverage = { ...coverage };
+  const answerCoverage = { ...result.coverage };
   delete (answerCoverage as Partial<typeof answerCoverage>).retrievedAt;
   return JSON.stringify({
     personId: result.personId,
     kind: result.kind,
     staffRole: result.staffRole,
     media: result.media,
-    window,
+    window: result.window,
     state: result.state,
     observedUniqueWorks: result.summary.uniqueSubjects,
     summary: result.summary,
@@ -119,6 +119,8 @@ function answerFor(result: ReturnType<typeof makeResult>) {
     caveat: '本次有界观察只表示当前官方关系和已成功读取作品详情的样本，不代表全部作品；按作品首播日期归入36个日历月，不是滚动三年。未返回作品不等于不存在；未知职位标签会保留为未知，不匹配职位不是不存在，也不是完整导演履历。没有历史快照。',
   });
 }
+
+const ENGLISH_G16_CAVEAT = 'This is a bounded current-response observation; the window uses first_air_date and 36 calendar months, not a rolling three years; unreturned works do not prove absence; missing or nonmatching role labels do not prove there are no director works; this is not a complete director filmography; no historical snapshot exists.';
 
 function calls(arguments_ = G16_EXPECTED_QUERY_ARGUMENTS) {
   return [{ name: toolName, state: 'DONE', arguments: arguments_ }];
@@ -220,5 +222,31 @@ describe('G16 bounded director person-activity Agent/MCP answer checker', () => 
     expect(checked.passed).toBe(false);
     expect(checked.answerChecks.structuredResultReadback).toBe(false);
     expect(checked.answerChecks.plainJsonWithoutMarkdown).toBe(false);
+  });
+
+  it('accepts the complete bounded caveat in English as well as Chinese', () => {
+    const result = makeResult();
+    const answer = JSON.parse(answerFor(result));
+    answer.caveat = ENGLISH_G16_CAVEAT;
+    const checked = verifyG16PersonActivityAnswer(
+      JSON.stringify(answer), G16_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result }, calls(), 3000,
+    );
+
+    expect(checked.passed).toBe(true);
+    expect(checked.answerChecks.caveatDisclosurePresent).toBe(true);
+  });
+
+  it('still rejects an English caveat that omits any required uncertainty boundary', () => {
+    const result = makeResult();
+    const answer = JSON.parse(answerFor(result));
+    answer.caveat = ENGLISH_G16_CAVEAT.replace('unreturned works do not prove absence; ', '');
+    const checked = verifyG16PersonActivityAnswer(
+      JSON.stringify(answer), G16_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result }, calls(), 3000,
+    );
+
+    expect(checked.passed).toBe(false);
+    expect(checked.answerChecks.caveatDisclosurePresent).toBe(false);
   });
 });

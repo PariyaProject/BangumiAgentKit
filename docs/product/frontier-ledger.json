@@ -942,7 +942,7 @@
         "tests/standalone/discovery-command.test.ts",
         "tests/standalone/person-activity-presenter.test.ts"
       ],
-      "next_action": "Run #95 selected Epoch run95-g16-director-tv-36m-luna-agent-mcp on synchronized master 6311344d65f0f4da81f9399c580dc015e87cadcb. Official public GET /v0/subjects/218707/persons returned 157 rows and the exact director relation for public personId=6154; see docs/research/run95-g16-director-public-identity-contract-2026-10-11.md. No G16 claim/report exists and no Agent/MCP query has run. Finish the gated create-once runner, exact answer checker and sanitized acceptance report; invoke at most once only after exact-SHA CI, Harness candidate:check, and the same-identity GPT-6 Luna Max PASS. Preserve G16 as PARTIAL and do not claim complete director coverage.",
+      "next_action": "For any bounded director observation, verify identity through an official public relation, use exact source role labels and first_air_date-based calendar windows, expose relation/detail/output coverage, and preserve a PARTIAL result when those limits cannot establish a complete career. Never infer absence from unreturned rows or claim complete director coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "closure_reason": "Delivered a bounded exact-label director-role observation over current official person-subject relations and first_air_date windows, with 36-month support, raw-role evidence, and explicit unknown/exclusion/cap coverage; this is not a complete historical career result.",
