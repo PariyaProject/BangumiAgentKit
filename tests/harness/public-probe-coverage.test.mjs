@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const probePath = 'docs/live-probes/public-tools-2026-10-08-234356643-30762.json';
+const g19ProbePath = 'docs/live-probes/public-tools-2026-10-11-103934803-2116.json';
 const expectedTools = [
   'bangumi.get_person_activity',
   'bangumi.get_series_watch_order',
@@ -16,6 +17,7 @@ const expectedTools = [
   'bangumi.render_series_watch_order',
 ].sort();
 const report = JSON.parse(readFileSync(path.join(root, probePath), 'utf8'));
+const g19Report = JSON.parse(readFileSync(path.join(root, g19ProbePath), 'utf8'));
 const ledger = JSON.parse(readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'));
 const taskTable = readFileSync(path.join(root, 'docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md'), 'utf8');
 
@@ -55,4 +57,43 @@ test('S03 keeps the spent one-shot separate from the direct public API smoke', (
   assert.match(record.next_action, /INCONCLUSIVE/u);
   assert.match(record.next_action, /Never retry/u);
   assert.match(record.next_action, /no accepted report/u);
+});
+
+test('G19 public probe is current, bounded, summary-only, and leaves the scenario partial', () => {
+  const record = ledger.records.find(({ id }) => id === 'G19');
+  assert.ok(record, 'G19 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+  assert.ok(record.source_refs.includes(g19ProbePath));
+  assert.match(record.next_action, /not_observed and unknown as insufficient evidence/u);
+
+  assert.equal(g19Report.evidenceKind, 'bangumi_public_api_tool_registry_smoke');
+  assert.equal(g19Report.mode, 'read_only_public_api_smoke');
+  assert.equal(g19Report.probeCount, 1);
+  assert.deepEqual(g19Report.selectedTools, ['bangumi.get_person_activity']);
+  assert.ok(g19Report.httpRequests > 0);
+  assert.equal(g19Report.results.length, 1);
+  const [result] = g19Report.results;
+  assert.deepEqual(result.input, {
+    personId: 3474,
+    windowMonths: 3,
+    maxRelations: 1,
+    maxSubjectDetails: 1,
+    maxRows: 1,
+  });
+  assert.ok(result.httpRequests > 0);
+  assert.equal(result.assertions.passed, true);
+  assert.deepEqual(
+    Object.keys(result).sort(),
+    ['assertions', 'httpRequests', 'input', 'result', 'tool'],
+  );
+  assert.ok(!Object.hasOwn(result, 'rows'));
+  assert.ok(!Object.hasOwn(result, 'answer'));
+
+  const line = taskTable.split('\n').find((row) => row.startsWith('| `bangumi.get_person_activity` |'));
+  assert.ok(line, 'missing task row for bangumi.get_person_activity');
+  const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
+  assert.ok(cells[6].startsWith('◐'));
+  assert.equal(cells[9], '⬜', 'public smoke must not count as Agent/MCP');
+  assert.equal(cells[10], '⬜', 'public smoke must not count as QQ');
+  assert.equal(cells[11], '⬜', 'public smoke must not count as TIM');
 });
