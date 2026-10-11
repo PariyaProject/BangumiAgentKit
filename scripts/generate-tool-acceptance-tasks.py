@@ -8,6 +8,7 @@ import json
 import math
 import os
 import re
+from datetime import date
 from pathlib import Path
 import subprocess
 import sys
@@ -344,6 +345,62 @@ CODEX_S02_EXPECTED_ARGUMENTS = {
 }
 CODEX_S02_REPORT_RELATIVE_PATH = 'docs/live-probes/s02-top-rated-main-voice-run95.json'
 CODEX_S02_BUNDLE_ATTESTATION_RELATIVE_PATH = 'docs/product/s02-mcp-bundle-attestation.json'
+CODEX_G04_EXPECTED_ARGUMENTS = {
+    'personId': 13684,
+    'kind': 'voice',
+    'media': 'tv',
+    'windowMonths': 12,
+    'maxRelations': 48,
+    'maxSubjectDetails': 16,
+    'maxRows': 8,
+}
+CODEX_G04_REPORT_RELATIVE_PATH = 'docs/live-probes/g04-person-activity-run95.json'
+CODEX_G04_EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence'
+CODEX_G04_ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1'
+CODEX_G04_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profile', 'model', 'reasoningEffort', 'codexCliVersion', 'sourceRevision', 'baseSha',
+    'prNumber', 'mcpBundleSha256', 'observedAt', 'toolName', 'argumentProfile',
+    'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'answerCheckMethod', 'answerChecks', 'answerCounters',
+    'toolCalls', 'toolTextUtf8Bytes', 'resultSummary', 'resultByteLength', 'resultSha256',
+    'answerUtf8Bytes', 'answerSha256', 'sourceOperations', 'privacy',
+}
+CODEX_G04_COVERAGE_FIELDS = {
+    'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+    'subjectIdsObserved', 'subjectIdsSelected', 'subjectIdsDroppedAtRelationLimit',
+    'subjectDetailIdsObserved', 'subjectDetailRequests', 'subjectDetailsSucceeded',
+    'subjectDetailsFailed', 'subjectDetailIdsDroppedAtLimit', 'rowsEligible', 'rowsReturned',
+    'outputTruncated', 'uniqueSubjects', 'uniqueCharacters', 'missingSubjectIdRows',
+    'missingDateRows', 'invalidDateRows', 'outsideWindowRows', 'mediaExcludedRows',
+    'mediaUnknownRows', 'maxRelations', 'maxSubjectDetails', 'maxRows', 'responseLimitBytes',
+    'truncated',
+}
+CODEX_G04_ANSWER_CHECK_FIELDS = {
+    'exactQueryArguments', 'exactSingleToolCall', 'structuredResultReadback',
+    'targetIdentityAndScope', 'calendarWindowValid', 'successfulOfficialSources',
+    'boundedCoverageConsistent', 'sourceRowsValid', 'sourceRowsDistinct', 'answerShapeValid',
+    'answerIdentityAndStateMatch', 'observedCountMatches', 'answerSummaryMatches',
+    'answerCoverageMatches', 'answerRowsMatch', 'caveatDisclosurePresent',
+    'noUnsupportedPositiveClaim', 'plainJsonWithoutMarkdown', 'boundedAnswerBytes',
+    'boundedMcpTextView',
+}
+CODEX_G04_ANSWER_COUNTER_FIELDS = {
+    'sourceRows', 'answerRows', 'rowsMatched', 'missingRows', 'extraRows',
+    'coverageFieldsMatched', 'toolTextUtf8Bytes',
+}
+CODEX_G04_RESULT_SUMMARY_FIELDS = {
+    'personId', 'kind', 'media', 'state', 'window', 'summary', 'coverage', 'rowCount', 'rowDigest',
+}
+CODEX_G04_WINDOW_FIELDS = {'months', 'start', 'end', 'monthKeys', 'asOfSemantics'}
+CODEX_G04_SUMMARY_FIELDS = {'creditRows', 'uniqueSubjects', 'uniqueCharacters'}
+CODEX_G04_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored',
+    'rawResultStored', 'artifactImageBytesStored', 'credentialsStored',
+}
 CODEX_S03_EXPECTED_ARGUMENTS = {
     'subjectId': 329906,
     'depth': 0,
@@ -1208,6 +1265,34 @@ CODEX_S02_PROBE_IMPLEMENTATION_MARKERS = {
         'export function writeS02McpBundleAttestation(',
         'computeMcpBundleSha256(root)',
         "'pnpm', ['build']",
+    ),
+}
+CODEX_G04_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/g04-person-activity-answer-check.mjs': (
+        'export const G04_EXPECTED_QUERY_ARGUMENTS',
+        'export function verifyG04PersonActivityAnswer(',
+        'calendarWindowValid:',
+        'noUnsupportedPositiveClaim:',
+    ),
+    'scripts/acceptance/run-g04-codex-agent-mcp.mjs': (
+        "const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence'",
+        'export function assertG04CandidateReviewGate(',
+        'export function createG04OneShotClaim(',
+        "'features.shell_tool=false'",
+        "'features.multi_agent=false'",
+        "const SERVER_ID = 'bgk_g04_one_tool'",
+    ),
+    'scripts/acceptance/write-g04-agent-mcp-report.mjs': (
+        'export function buildG04AgentMcpReport(',
+        'verifyG04PersonActivityAnswer(',
+        "openSync(REPORT_PATH, 'wx', 0o600)",
+        "'codex_cli_g04_person_activity_agent_mcp'",
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_g04_report_is_valid(',
+        'def codex_g04_report_matches_candidate_revision(',
+        'CODEX_G04_EXPECTED_ARGUMENTS',
+        'CODEX_G04_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_D05_PROBE_IMPLEMENTATION_MARKERS = {
@@ -2467,6 +2552,18 @@ def codex_s02_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
+def codex_g04_probe_revision_has_implementation(revision: object) -> bool:
+    """Bind G04's one-shot read to its exact runner, checker, and sanitized-report policy."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
 def codex_s02_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
     """Bind S02's one-shot evidence to the exact Candidate that authorized it."""
     if not codex_s02_probe_revision_has_implementation(revision):
@@ -2476,6 +2573,19 @@ def codex_s02_report_matches_candidate_revision(report_path: Path, revision: obj
     except ValueError:
         return False
     if relative_path != CODEX_S02_REPORT_RELATIVE_PATH:
+        return False
+    return codex_g20_report_matches_candidate_revision(report_path, revision)
+
+
+def codex_g04_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind the sanitized G04 evidence to the exact reviewed pre-query Candidate."""
+    if not codex_g04_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    if relative_path != CODEX_G04_REPORT_RELATIVE_PATH:
         return False
     return codex_g20_report_matches_candidate_revision(report_path, revision)
 
@@ -2667,6 +2777,280 @@ def codex_s02_report_is_valid(report: object) -> bool:
         and set(privacy) == CODEX_S02_PRIVACY_FIELDS
         and privacy.get('authProfile') == 'anonymous'
         and all(privacy.get(key) is False for key in CODEX_S02_PRIVACY_FIELDS - {'authProfile'})
+        and not _contains_forbidden_codex_content(report)
+    )
+
+
+def codex_g04_report_is_valid(report: object) -> bool:
+    """Validate G04's exact-Candidate Luna Max query and closed, sanitized evidence schema."""
+    if not isinstance(report, dict) or set(report) != CODEX_G04_REPORT_FIELDS:
+        return False
+    source_revision = report.get('sourceRevision')
+    if (
+        type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_cli_g04_person_activity_agent_mcp'
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'G04'
+        or report.get('scenarioId') != 'G04'
+        or report.get('epochId') != CODEX_G04_EPOCH_ID
+        or report.get('profile') != 'codex-luna-max-one-tool-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+        or report.get('toolName') != 'bangumi.get_person_activity'
+        or report.get('argumentProfile') != CODEX_G04_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(CODEX_G04_EXPECTED_ARGUMENTS)
+        or type(report.get('processExitCode')) is not int
+        or report.get('processExitCode') != 0
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('eventStreamParsed') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int
+        or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('nonMcpToolEventCount')) is not int
+        or report.get('nonMcpToolEventCount') != 0
+        or type(report.get('shellToolCallCount')) is not int
+        or report.get('shellToolCallCount') != 0
+        or type(report.get('allowedCallCount')) is not int
+        or report.get('allowedCallCount') != 1
+        or type(report.get('deniedCallCount')) is not int
+        or report.get('deniedCallCount') != 0
+        or type(report.get('serverToolCount')) is not int
+        or report.get('serverToolCount') != 1
+        or report.get('serverToolNames') != ['bangumi.get_person_activity']
+        or report.get('mcpServerNames') != ['bgk_g04_one_tool']
+        or report.get('answerCheckMethod') != 'g04-bounded-person-activity-answer-v1'
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not isinstance(report.get('baseSha'), str)
+        or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], source_revision).returncode != 0
+        or type(report.get('prNumber')) is not int
+        or report['prNumber'] < 1
+        or not isinstance(report.get('mcpBundleSha256'), str)
+        or codex_g26_candidate_bundle_sha256(source_revision) != report.get('mcpBundleSha256')
+        or not codex_g04_probe_revision_has_implementation(source_revision)
+    ):
+        return False
+
+    observed_at = report.get('observedAt')
+    if (
+        not isinstance(observed_at, str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at)
+    ):
+        return False
+
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    current_tool = next(
+        (item for item in catalog if isinstance(item, dict)
+         and item.get('name') == 'bangumi.get_person_activity'),
+        None,
+    )
+    if (
+        not isinstance(current_tool, dict)
+        or current_tool.get('auth') != 'none'
+        or current_tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(
+            current_tool.get('description', '').encode('utf-8'),
+        ).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(current_tool.get('inputSchema'))
+    ):
+        return False
+
+    if report.get('toolCalls') != [
+        {'name': 'bangumi.get_person_activity', 'state': 'DONE'},
+    ]:
+        return False
+    checks = report.get('answerChecks')
+    if (
+        not isinstance(checks, dict)
+        or set(checks) != CODEX_G04_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in checks.values())
+    ):
+        return False
+
+    summary = report.get('resultSummary')
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != CODEX_G04_RESULT_SUMMARY_FIELDS
+        or type(summary.get('personId')) is not int
+        or summary.get('personId') != 13684
+        or summary.get('kind') != 'voice'
+        or summary.get('media') != 'tv'
+        or summary.get('state') not in {'complete', 'partial'}
+        or type(summary.get('rowCount')) is not int
+        or not 0 <= summary['rowCount'] <= 8
+        or not isinstance(summary.get('rowDigest'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', summary['rowDigest'])
+    ):
+        return False
+    window = summary.get('window')
+    if (
+        not isinstance(window, dict)
+        or set(window) != CODEX_G04_WINDOW_FIELDS
+        or type(window.get('months')) is not int
+        or window['months'] != 12
+        or window.get('asOfSemantics') != 'calendar_months_ending_on_as_of_date'
+        or not isinstance(window.get('start'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['start'])
+        or not isinstance(window.get('end'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['end'])
+    ):
+        return False
+    try:
+        end_date = date.fromisoformat(window['end'])
+        observed_date = date.fromisoformat(observed_at[:10])
+        expected_month_index = end_date.year * 12 + end_date.month - 1 - 11
+        start_year, start_month_zero_based = divmod(expected_month_index, 12)
+        expected_start = f'{start_year:04d}-{start_month_zero_based + 1:02d}-01'
+        expected_month_keys = []
+        for offset in range(12):
+            year, month_zero_based = divmod(expected_month_index + offset, 12)
+            expected_month_keys.append(f'{year:04d}-{month_zero_based + 1:02d}')
+    except ValueError:
+        return False
+    if (
+        window['start'] != expected_start
+        or window['monthKeys'] != expected_month_keys
+        or not 0 <= (observed_date - end_date).days <= 1
+    ):
+        return False
+
+    summary_counts = summary.get('summary')
+    if (
+        not isinstance(summary_counts, dict)
+        or set(summary_counts) != CODEX_G04_SUMMARY_FIELDS
+        or any(type(value) is not int or value < 0 for value in summary_counts.values())
+    ):
+        return False
+    coverage = summary.get('coverage')
+    if (
+        not isinstance(coverage, dict)
+        or set(coverage) != CODEX_G04_COVERAGE_FIELDS
+        or any(type(value) is not int or value < 0 for key, value in coverage.items()
+               if key not in {'outputTruncated', 'truncated'})
+        or type(coverage.get('outputTruncated')) is not bool
+        or type(coverage.get('truncated')) is not bool
+        or coverage['relationRowsSelected'] > coverage['relationRowsObserved']
+        or coverage['relationRowsDroppedAtLimit'] != coverage['relationRowsObserved'] - coverage['relationRowsSelected']
+        or coverage['relationRowsSelected'] > 48
+        or coverage['subjectIdsSelected'] > coverage['subjectIdsObserved']
+        or coverage['subjectIdsDroppedAtRelationLimit'] != coverage['subjectIdsObserved'] - coverage['subjectIdsSelected']
+        or coverage['subjectDetailIdsObserved'] != coverage['subjectIdsSelected']
+        or coverage['subjectDetailRequests'] > 16
+        or coverage['subjectDetailsSucceeded'] + coverage['subjectDetailsFailed'] != coverage['subjectDetailRequests']
+        or coverage['subjectDetailIdsDroppedAtLimit'] != max(
+            0, coverage['subjectIdsSelected'] - coverage['subjectDetailRequests'],
+        )
+        or coverage['rowsReturned'] != summary['rowCount']
+        or coverage['rowsReturned'] > 8
+        or coverage['rowsEligible'] < coverage['rowsReturned']
+        or coverage['outputTruncated'] != (coverage['rowsEligible'] > coverage['rowsReturned'])
+        or coverage['uniqueSubjects'] != summary_counts['uniqueSubjects']
+        or coverage['uniqueCharacters'] != summary_counts['uniqueCharacters']
+        or summary_counts['creditRows'] != coverage['rowsEligible']
+        or summary_counts['uniqueSubjects'] > summary_counts['creditRows']
+        or summary_counts['uniqueCharacters'] > summary_counts['creditRows']
+        or coverage['maxRelations'] != 48
+        or coverage['maxSubjectDetails'] != 16
+        or coverage['maxRows'] != 8
+        or coverage['responseLimitBytes'] != 1_048_576
+        or coverage['truncated'] != (
+            coverage['relationRowsDroppedAtLimit'] > 0
+            or coverage['subjectDetailIdsDroppedAtLimit'] > 0
+            or coverage['outputTruncated']
+        )
+    ):
+        return False
+    if summary['state'] == 'complete' and (
+        coverage['truncated'] is not False
+        or coverage['subjectDetailsFailed'] != 0
+        or coverage['missingSubjectIdRows'] != 0
+        or coverage['missingDateRows'] != 0
+        or coverage['invalidDateRows'] != 0
+        or coverage['mediaUnknownRows'] != 0
+    ):
+        return False
+
+    counters = report.get('answerCounters')
+    if (
+        not isinstance(counters, dict)
+        or set(counters) != CODEX_G04_ANSWER_COUNTER_FIELDS
+        or any(type(value) is not int or value < 0 for value in counters.values())
+        or counters['sourceRows'] != summary['rowCount']
+        or counters['answerRows'] != counters['sourceRows']
+        or counters['rowsMatched'] != counters['sourceRows']
+        or counters['missingRows'] != 0
+        or counters['extraRows'] != 0
+        or counters['coverageFieldsMatched'] != len(CODEX_G04_COVERAGE_FIELDS)
+        or counters['toolTextUtf8Bytes'] != report.get('toolTextUtf8Bytes')
+        or not 0 < counters['toolTextUtf8Bytes'] <= 3600
+    ):
+        return False
+
+    source_operations = report.get('sourceOperations')
+    expected_operations = {
+        'GET /v0/persons/{person_id}',
+        'GET /v0/persons/{person_id}/characters',
+        'GET /v0/subjects/{subject_id}',
+    }
+    if not isinstance(source_operations, list) or len(source_operations) != 3:
+        return False
+    operations = {}
+    for operation in source_operations:
+        if (
+            not isinstance(operation, dict)
+            or set(operation) != {'operation', 'attempted', 'succeeded', 'failed'}
+            or operation.get('operation') not in expected_operations
+            or any(type(operation.get(key)) is not int or operation[key] < 0
+                   for key in ('attempted', 'succeeded', 'failed'))
+            or operation['succeeded'] + operation['failed'] != operation['attempted']
+        ):
+            return False
+        operations[operation['operation']] = operation
+    if (
+        set(operations) != expected_operations
+        or operations['GET /v0/persons/{person_id}'] != {
+            'operation': 'GET /v0/persons/{person_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0,
+        }
+        or operations['GET /v0/persons/{person_id}/characters'] != {
+            'operation': 'GET /v0/persons/{person_id}/characters', 'attempted': 1, 'succeeded': 1, 'failed': 0,
+        }
+        or operations['GET /v0/subjects/{subject_id}'] != {
+            'operation': 'GET /v0/subjects/{subject_id}',
+            'attempted': coverage['subjectDetailRequests'],
+            'succeeded': coverage['subjectDetailsSucceeded'],
+            'failed': coverage['subjectDetailsFailed'],
+        }
+    ):
+        return False
+
+    if (
+        type(report.get('toolTextUtf8Bytes')) is not int
+        or not 0 < report['toolTextUtf8Bytes'] <= 3600
+        or type(report.get('resultByteLength')) is not int
+        or report['resultByteLength'] <= 0
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= 16_384
+        or not isinstance(report.get('resultSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['resultSha256'])
+        or not isinstance(report.get('answerSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['answerSha256'])
+    ):
+        return False
+    privacy = report.get('privacy')
+    return (
+        isinstance(privacy, dict)
+        and set(privacy) == CODEX_G04_PRIVACY_FIELDS
+        and privacy.get('authProfile') == 'anonymous'
+        and all(privacy.get(key) is False for key in CODEX_G04_PRIVACY_FIELDS - {'authProfile'})
         and not _contains_forbidden_codex_content(report)
     )
 
@@ -3994,6 +4378,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     }
     report_paths = list(LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'))
     report_paths.append(LIVE_PROBE_DIR / CODEX_S02_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_G04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
     for path in report_paths:
         try:
@@ -4031,6 +4416,17 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 path.name != Path(CODEX_S02_REPORT_RELATIVE_PATH).name
                 or not codex_s02_report_is_valid(report)
                 or not codex_s02_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault('bangumi.get_person_activity', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == 'codex_cli_g04_person_activity_agent_mcp':
+            if (
+                path.name != Path(CODEX_G04_REPORT_RELATIVE_PATH).name
+                or not codex_g04_report_is_valid(report)
+                or not codex_g04_report_matches_candidate_revision(
                     path, report.get('sourceRevision'),
                 )
             ):

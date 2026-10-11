@@ -1,0 +1,382 @@
+import { createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
+
+export const G04_ANSWER_CHECK_METHOD = 'g04-bounded-person-activity-answer-v1';
+
+export const G04_EXPECTED_QUERY_ARGUMENTS = Object.freeze({
+  personId: 13684,
+  kind: 'voice',
+  media: 'tv',
+  windowMonths: 12,
+  maxRelations: 48,
+  maxSubjectDetails: 16,
+  maxRows: 8,
+});
+
+const COVERAGE_FIELDS = [
+  'relationRowsObserved',
+  'relationRowsSelected',
+  'relationRowsDroppedAtLimit',
+  'subjectIdsObserved',
+  'subjectIdsSelected',
+  'subjectIdsDroppedAtRelationLimit',
+  'subjectDetailIdsObserved',
+  'subjectDetailRequests',
+  'subjectDetailsSucceeded',
+  'subjectDetailsFailed',
+  'subjectDetailIdsDroppedAtLimit',
+  'rowsEligible',
+  'rowsReturned',
+  'outputTruncated',
+  'uniqueSubjects',
+  'uniqueCharacters',
+  'missingSubjectIdRows',
+  'missingDateRows',
+  'invalidDateRows',
+  'outsideWindowRows',
+  'mediaExcludedRows',
+  'mediaUnknownRows',
+  'maxRelations',
+  'maxSubjectDetails',
+  'maxRows',
+  'responseLimitBytes',
+  'truncated',
+];
+const ANSWER_KEYS = [
+  'personId',
+  'kind',
+  'media',
+  'window',
+  'state',
+  'observedUniqueWorks',
+  'summary',
+  'coverage',
+  'rows',
+  'caveat',
+];
+const ANSWER_COVERAGE_KEYS = new Set(COVERAGE_FIELDS);
+const UNSUPPORTED_CLAIM = /(?:完整履历|全部作品|完整(?:作品)?总数|生涯总数|实际配音时间|实际工作量|工作时长|滚动\s*365\s*天|历史(?:总数|趋势|工作量))/u;
+const CLAIM_NEGATION = /(?:不是|并非|不代表|不等于|不能证明|无法计算|未能证明|不会表示|不说明|不构成|不意味着|并不代表|没有历史快照)/u;
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (isRecord(value)) {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
+  }
+  return value;
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
+}
+
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function parseObject(value) {
+  if (isRecord(value)) return value;
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function findPersonActivity(value, seen = new Set(), depth = 0) {
+  if (typeof value === 'string') {
+    try {
+      return findPersonActivity(JSON.parse(value), seen, depth + 1);
+    } catch {
+      return null;
+    }
+  }
+  if (!isRecord(value) || depth > 12 || seen.has(value)) return null;
+  seen.add(value);
+  if (
+    value.personId === G04_EXPECTED_QUERY_ARGUMENTS.personId &&
+    value.kind === 'voice' &&
+    value.media === 'tv' &&
+    isRecord(value.window) &&
+    isRecord(value.coverage) &&
+    isRecord(value.summary) &&
+    Array.isArray(value.rows)
+  ) return value;
+  if (Array.isArray(value)) {
+    for (const child of value.slice(0, 100)) {
+      const found = findPersonActivity(child, seen, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  for (const key of ['structuredContent', 'data', 'result', 'output', 'content', 'text']) {
+    if (!(key in value)) continue;
+    const found = findPersonActivity(value[key], seen, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseAnswer(answer) {
+  return parseObject(answer);
+}
+
+function projectCoverage(coverage) {
+  if (!isRecord(coverage)) return null;
+  const output = {};
+  for (const field of COVERAGE_FIELDS) {
+    const value = coverage[field];
+    if (field === 'outputTruncated' || field === 'truncated') {
+      if (typeof value !== 'boolean') return null;
+    } else if (!Number.isInteger(value) || value < 0) {
+      return null;
+    }
+    output[field] = value;
+  }
+  return output;
+}
+
+function projectWindow(window) {
+  if (!isRecord(window)) return null;
+  return {
+    months: window.months,
+    start: window.start,
+    end: window.end,
+    monthKeys: window.monthKeys,
+    asOfSemantics: window.asOfSemantics,
+  };
+}
+
+function rowProjection(row) {
+  return {
+    subjectId: row.subjectId,
+    title: row.subjectNameCn || row.subjectName,
+    firstAirDate: row.firstAirDate,
+    month: row.month,
+    relationId: row.relationId ?? null,
+    characterName: row.characterName ?? null,
+    rawRole: row.rawRole ?? null,
+    roleFamily: row.roleFamily,
+  };
+}
+
+function validRow(row, window) {
+  return isRecord(row) &&
+    Number.isInteger(row.subjectId) && row.subjectId > 0 &&
+    typeof (row.subjectNameCn || row.subjectName) === 'string' &&
+    typeof row.firstAirDate === 'string' && /^\d{4}-\d{2}-\d{2}$/u.test(row.firstAirDate) &&
+    row.firstAirDate >= window.start && row.firstAirDate <= window.end &&
+    row.month === row.firstAirDate.slice(0, 7) &&
+    row.relationKind === 'voice' &&
+    (row.relationId === undefined || (Number.isInteger(row.relationId) && row.relationId > 0)) &&
+    (row.characterName === undefined || typeof row.characterName === 'string') &&
+    (row.rawRole === undefined || typeof row.rawRole === 'string') &&
+    ['main', 'support', 'unknown'].includes(row.roleFamily);
+}
+
+function validCalendarWindow(window) {
+  if (
+    !isRecord(window) ||
+    window.months !== 12 ||
+    window.asOfSemantics !== 'calendar_months_ending_on_as_of_date' ||
+    typeof window.start !== 'string' ||
+    typeof window.end !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/u.test(window.start) ||
+    !/^\d{4}-\d{2}-\d{2}$/u.test(window.end) ||
+    !Array.isArray(window.monthKeys)
+  ) return false;
+  const end = new Date(`${window.end}T00:00:00.000Z`);
+  if (!Number.isFinite(end.getTime()) || end.toISOString().slice(0, 10) !== window.end) return false;
+  const expectedStart = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 11, 1))
+    .toISOString().slice(0, 10);
+  const expectedMonthKeys = Array.from({ length: 12 }, (_, index) => {
+    const month = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 11 + index, 1));
+    return month.toISOString().slice(0, 7);
+  });
+  return window.start === expectedStart && sameJson(window.monthKeys, expectedMonthKeys);
+}
+
+function coverageIsConsistent(coverage, result, rows) {
+  return coverage.relationRowsSelected <= coverage.relationRowsObserved &&
+    coverage.relationRowsDroppedAtLimit ===
+      coverage.relationRowsObserved - coverage.relationRowsSelected &&
+    coverage.relationRowsSelected <= G04_EXPECTED_QUERY_ARGUMENTS.maxRelations &&
+    coverage.subjectIdsSelected <= coverage.subjectIdsObserved &&
+    coverage.subjectIdsDroppedAtRelationLimit ===
+      coverage.subjectIdsObserved - coverage.subjectIdsSelected &&
+    coverage.subjectDetailIdsObserved === coverage.subjectIdsSelected &&
+    coverage.subjectDetailRequests <= G04_EXPECTED_QUERY_ARGUMENTS.maxSubjectDetails &&
+    coverage.subjectDetailsSucceeded + coverage.subjectDetailsFailed === coverage.subjectDetailRequests &&
+    coverage.subjectDetailIdsDroppedAtLimit ===
+      Math.max(0, coverage.subjectIdsSelected - coverage.subjectDetailRequests) &&
+    coverage.rowsEligible >= coverage.rowsReturned &&
+    coverage.rowsReturned === rows.length &&
+    coverage.rowsReturned <= G04_EXPECTED_QUERY_ARGUMENTS.maxRows &&
+    coverage.outputTruncated === (coverage.rowsEligible > coverage.rowsReturned) &&
+    coverage.uniqueSubjects === result.summary.uniqueSubjects &&
+    coverage.uniqueCharacters === result.summary.uniqueCharacters &&
+    coverage.maxRelations === G04_EXPECTED_QUERY_ARGUMENTS.maxRelations &&
+    coverage.maxSubjectDetails === G04_EXPECTED_QUERY_ARGUMENTS.maxSubjectDetails &&
+    coverage.maxRows === G04_EXPECTED_QUERY_ARGUMENTS.maxRows &&
+    coverage.responseLimitBytes === 1_048_576 &&
+    coverage.truncated === (
+      coverage.relationRowsDroppedAtLimit > 0 ||
+      coverage.subjectDetailIdsDroppedAtLimit > 0 ||
+      coverage.outputTruncated
+    );
+}
+
+function sourceOperationsAreConsistent(result, coverage) {
+  if (!Array.isArray(result.sourceOperations) || result.sourceOperations.length !== 3) return false;
+  const byPath = new Map(result.sourceOperations.map((entry) => [entry.operation, entry]));
+  if (byPath.size !== 3) return false;
+  const person = byPath.get('GET /v0/persons/{person_id}');
+  const relations = byPath.get('GET /v0/persons/{person_id}/characters');
+  const details = byPath.get('GET /v0/subjects/{subject_id}');
+  return byPath.size === 3 && person?.attempted === 1 && person.succeeded === 1 && person.failed === 0 &&
+    relations?.attempted === 1 && relations.succeeded === 1 && relations.failed === 0 &&
+    details?.attempted === coverage.subjectDetailRequests &&
+    details.succeeded === coverage.subjectDetailsSucceeded &&
+    details.failed === coverage.subjectDetailsFailed;
+}
+
+function hasUnsupportedPositiveClaim(value) {
+  if (typeof value === 'string') {
+    return value.split(/[。！？!?；;\n]/u).some((clause) =>
+      UNSUPPORTED_CLAIM.test(clause) && !CLAIM_NEGATION.test(clause));
+  }
+  if (Array.isArray(value)) return value.some(hasUnsupportedPositiveClaim);
+  if (isRecord(value)) return Object.values(value).some(hasUnsupportedPositiveClaim);
+  return false;
+}
+
+function answerRowMatches(answerRow, resultRow, window) {
+  if (!isRecord(answerRow)) return false;
+  const expected = rowProjection(resultRow);
+  const allowedKeys = new Set(Object.keys(expected));
+  return Object.keys(answerRow).every((key) => allowedKeys.has(key)) &&
+    sameJson(answerRow, expected) && validRow(resultRow, window);
+}
+
+export function summarizeG04PersonActivityResult(result) {
+  const coverage = projectCoverage(result?.coverage);
+  const window = projectWindow(result?.window);
+  if (!coverage || !window || !isRecord(result?.summary) || !Array.isArray(result?.rows)) return null;
+  return {
+    personId: result.personId,
+    kind: result.kind,
+    media: result.media,
+    state: result.state,
+    window,
+    summary: {
+      creditRows: result.summary.creditRows,
+      uniqueSubjects: result.summary.uniqueSubjects,
+      uniqueCharacters: result.summary.uniqueCharacters,
+    },
+    coverage,
+    rowCount: result.rows.length,
+    rowDigest: sha256(JSON.stringify(result.rows.map(rowProjection))),
+  };
+}
+
+export function verifyG04PersonActivityAnswer(answer, queryArguments, toolOutput, toolCalls, toolTextUtf8Bytes) {
+  const parsed = parseAnswer(answer);
+  const structuredResult = isRecord(toolOutput?.structuredContent)
+    ? findPersonActivity(toolOutput.structuredContent)
+    : null;
+  const result = structuredResult ?? findPersonActivity(toolOutput);
+  const coverage = projectCoverage(result?.coverage);
+  const window = projectWindow(result?.window);
+  const rows = Array.isArray(result?.rows) ? result.rows : [];
+  const exactSingleToolCall = Array.isArray(toolCalls) &&
+    toolCalls.length === 1 &&
+    toolCalls[0]?.name === 'bangumi.get_person_activity' &&
+    toolCalls[0]?.state === 'DONE' &&
+    sameJson(toolCalls[0]?.arguments, G04_EXPECTED_QUERY_ARGUMENTS);
+  const rowValidity = rows.length <= G04_EXPECTED_QUERY_ARGUMENTS.maxRows &&
+    rows.every((row) => validRow(row, result?.window));
+  const distinctRows = new Set(rows.map((row) => `${row.subjectId}:${row.relationId ?? ''}`)).size === rows.length;
+  const summaryValid = isRecord(result?.summary) &&
+    Number.isInteger(result.summary.creditRows) && result.summary.creditRows >= 0 &&
+    Number.isInteger(result.summary.uniqueSubjects) && result.summary.uniqueSubjects >= 0 &&
+    Number.isInteger(result.summary.uniqueCharacters) && result.summary.uniqueCharacters >= 0 &&
+    result.summary.creditRows === coverage?.rowsEligible &&
+    result.summary.uniqueSubjects <= result.summary.creditRows &&
+    result.summary.uniqueCharacters <= result.summary.creditRows;
+  const stateValid = ['complete', 'partial'].includes(result?.state);
+  const caveat = parsed?.caveat;
+  const caveatValid = typeof caveat === 'string' &&
+    caveat.includes('本次有界观察') &&
+    caveat.includes('首播日期') &&
+    caveat.includes('12个日历月') &&
+    caveat.includes('不是滚动365天') &&
+    caveat.includes('未返回作品不等于不存在') &&
+    caveat.includes('不是实际配音时间') &&
+    caveat.includes('没有历史快照');
+  const expectedCoverage = coverage;
+  const expectedRows = rows.map(rowProjection);
+  const answerRows = Array.isArray(parsed?.rows) ? parsed.rows : [];
+  const checks = {
+    exactQueryArguments: sameJson(queryArguments, G04_EXPECTED_QUERY_ARGUMENTS),
+    exactSingleToolCall,
+    structuredResultReadback: Boolean(structuredResult),
+    targetIdentityAndScope: result?.personId === G04_EXPECTED_QUERY_ARGUMENTS.personId &&
+      result.kind === 'voice' && result.media === 'tv',
+    calendarWindowValid: validCalendarWindow(result?.window) &&
+      isRecord(parsed?.window) && sameJson(parsed.window, window),
+    successfulOfficialSources: stateValid && sourceOperationsAreConsistent(result, coverage ?? {}),
+    boundedCoverageConsistent: Boolean(coverage && summaryValid && coverageIsConsistent(coverage, result, rows)),
+    sourceRowsValid: rowValidity,
+    sourceRowsDistinct: distinctRows,
+    answerShapeValid: isRecord(parsed) && Object.keys(parsed).length === ANSWER_KEYS.length &&
+      ANSWER_KEYS.every((key) => Object.hasOwn(parsed, key)),
+    answerIdentityAndStateMatch: parsed?.personId === result?.personId &&
+      parsed?.kind === result?.kind && parsed?.media === result?.media && parsed?.state === result?.state,
+    observedCountMatches: parsed?.observedUniqueWorks === result?.summary?.uniqueSubjects,
+    answerSummaryMatches: sameJson(parsed?.summary, {
+      creditRows: result?.summary?.creditRows,
+      uniqueSubjects: result?.summary?.uniqueSubjects,
+      uniqueCharacters: result?.summary?.uniqueCharacters,
+    }),
+    answerCoverageMatches: Boolean(expectedCoverage && isRecord(parsed?.coverage) &&
+      Object.keys(parsed.coverage).length === ANSWER_COVERAGE_KEYS.size &&
+      Object.keys(parsed.coverage).every((key) => ANSWER_COVERAGE_KEYS.has(key)) &&
+      sameJson(parsed.coverage, expectedCoverage)),
+    answerRowsMatch: answerRows.length === expectedRows.length &&
+      expectedRows.every((expected, index) => answerRowMatches(answerRows[index], rows[index], result.window)),
+    caveatDisclosurePresent: caveatValid,
+    noUnsupportedPositiveClaim: !hasUnsupportedPositiveClaim(parsed),
+    plainJsonWithoutMarkdown: typeof answer === 'string' && parsed !== null &&
+      !/^\s*```/u.test(answer) && !/^\s*#/mu.test(answer),
+    boundedAnswerBytes: typeof answer === 'string' && Buffer.byteLength(answer, 'utf8') <= 16_384,
+    boundedMcpTextView: Number.isInteger(toolTextUtf8Bytes) &&
+      toolTextUtf8Bytes > 0 && toolTextUtf8Bytes <= 3600,
+  };
+  const passed = Object.values(checks).every(Boolean);
+  const answerCounters = {
+    sourceRows: rows.length,
+    answerRows: answerRows.length,
+    rowsMatched: expectedRows.filter((expected, index) =>
+      answerRowMatches(answerRows[index], rows[index], result?.window)).length,
+    missingRows: Math.max(0, rows.length - answerRows.length),
+    extraRows: Math.max(0, answerRows.length - rows.length),
+    coverageFieldsMatched: expectedCoverage ? Object.keys(expectedCoverage).length : 0,
+    toolTextUtf8Bytes: Number.isInteger(toolTextUtf8Bytes) ? toolTextUtf8Bytes : 0,
+  };
+  return {
+    passed,
+    answerChecks: checks,
+    answerCounters,
+    resultSummary: result ? summarizeG04PersonActivityResult(result) : null,
+    resultSha256: result ? sha256(JSON.stringify(result)) : null,
+    resultByteLength: result ? Buffer.byteLength(JSON.stringify(result), 'utf8') : 0,
+    answerSha256: typeof answer === 'string' ? sha256(answer) : null,
+    answerUtf8Bytes: typeof answer === 'string' ? Buffer.byteLength(answer, 'utf8') : 0,
+  };
+}
