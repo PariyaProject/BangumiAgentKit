@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "codex_cli_mcp_tool_use",
+  "sourceRevision": "6cd66e72a9a92ee13dc0049cd677145fc5a1ad80",
+  "codexCliVersion": "0.162.0-alpha.17.2",
+  "catalogSha256": "ffbd1167b86909d7e301bea4b2dc6f862de0d5677ffd0cb4aae0eb85847e7f3a",
+  "profile": "codex-luna-max-one-tool-v1",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "toolName": "bangumi.aggregate_subject_cohort",
+  "toolDescriptionSha256": "2bd20d9339dc1f7f725d03aa5ad8c951ac68e0ae672a7ce61127e980cb459be8",
+  "inputSchemaSha256": "c1e55be64e65c881f806b0451eb54248a479fc443055d71848088b9ebdef13e7",
+  "argumentProfile": "a01-aggregate-2012-anime-sample-v1",
+  "expectedArgumentsSha256": "702ccab9ad044487b17ed3a0e3329dafa33f76352f90fb836a65d1e79b105d7b",
+  "serverToolNames": [
+    "bangumi.aggregate_subject_cohort"
+  ],
+  "mcpServerNames": [
+    "bgk_a01_aggregate_one_tool"
+  ],
+  "serverToolCount": 1,
+  "processExitCode": 0,
+  "resultStatus": "SUCCESS",
+  "resultCount": 1,
+  "eventStreamParsed": true,
+  "codexMcpToolEventCount": 1,
+  "nonMcpToolEventCount": 3,
+  "shellToolCallCount": 0,
+  "allowedCallCount": 1,
+  "deniedCallCount": 0,
+  "qqPipelineTested": false,
+  "timClientTested": false,
+  "privacy": {
+    "authProfile": "anonymous",
+    "oauthAttempted": false,
+    "accountDataRead": false,
+    "writesAttempted": false,
+    "qqPipelineTested": false,
+    "timClientTested": false,
+    "promptStored": false,
+    "answerStored": false,
+    "rawResultStored": false,
+    "artifactImageBytesStored": false,
+    "credentialsStored": false,
+    "communityRead": false
+  },
+  "scenarios": [
+    {
+      "id": "bangumi.aggregate_subject_cohort",
+      "passed": false,
+      "exactArgumentsMatched": true,
+      "oneToolAllowlistVerified": true,
+      "resultReadbackVerified": false,
+      "answerCheckPassed": false,
+      "answerChecks": {
+        "fixedArguments": true,
+        "structuredResultReadback": false,
+        "exactAggregateAnswer": false,
+        "boundedSampleDisclosure": false,
+        "nonCausalLimitations": false,
+        "plainTextNoMarkdown": false
+      },
+      "toolCalls": [
+        {
+          "name": "bangumi.aggregate_subject_cohort",
+          "state": "DONE"
+        }
+      ],
+      "result": {
+        "toolName": "bangumi.aggregate_subject_cohort",
+        "resultState": "unavailable",
+        "resultByteLength": 0,
+        "resultSha256": null,
+        "summary": null
+      }
+    }
+  ],
+  "runNumber": 95,
+  "frontierId": "A01",
+  "epochId": "run95-a01-aggregate-state-precedence-followup",
+  "mcpBundleSha256": "131f7063c53e02391833550e21e521d461e24890ab3f7510ae55e5930bece598",
+  "prNumber": 127,
+  "baseSha": "ee05068484b8192f737c4b9437913f80e068680e",
+  "observedAt": "2026-10-11T04:33:07.712Z",
+  "candidateGate": {
+    "candidateSha": "6cd66e72a9a92ee13dc0049cd677145fc5a1ad80",
+    "baseSha": "ee05068484b8192f737c4b9437913f80e068680e",
+    "ciSha": "6cd66e72a9a92ee13dc0049cd677145fc5a1ad80",
+    "ciStatus": "SUCCESS",
+    "reviewPassSha": "6cd66e72a9a92ee13dc0049cd677145fc5a1ad80",
+    "reviewVerdict": "PASS",
+    "reviewerId": "gpt-6-luna-max-run95-pr127-round1"
+  },
+  "queryArguments": {
+    "cohort": {
+      "query": {
+        "media": "anime",
+        "year": 2012,
+        "resultMode": "all"
+      }
+    },
+    "maxSubjects": 1
+  },
+  "answerSha256": "1d40b03e0d1a190166c071fd9d557925f74148628442cc7700841a2e3cdd7e30",
+  "answerUtf8Bytes": 1159,
+  "state": "INCONCLUSIVE"
+}

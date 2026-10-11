@@ -1539,6 +1539,25 @@ describe('MCP tool result presentation', () => {
       MCP_TOOL_TEXT_MAX_UTF8_BYTES,
     );
     expect(aggregationPresentation.structuredContent).toBe(aggregationResult);
+
+    const smallAggregationResult = {
+      state: 'partial',
+      cohorts: [{ label: '2012 anime', subjects: [], coverage: { metrics: {} } }],
+      metrics: [],
+      coverage: { overlap: {} },
+      warnings: [],
+      limitations: [],
+    } as unknown as SubjectCohortComparisonResult;
+    const smallAggregationPresentation = presentMcpToolResult(
+      'bangumi.aggregate_subject_cohort',
+      smallAggregationResult,
+    );
+    expect(
+      Buffer.byteLength(JSON.stringify(smallAggregationResult, null, 2), 'utf8'),
+    ).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(smallAggregationPresentation.structuredContent).toBe(smallAggregationResult);
   });
 
   it('bounds large discovery text while preserving decision-critical scope and full structuredContent', () => {

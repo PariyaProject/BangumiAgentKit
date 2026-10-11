@@ -109,22 +109,24 @@ export function presentMcpToolResult(toolName: string, result: unknown): McpTool
     };
   }
 
+  const isSubjectCohortTool =
+    toolName === SUBJECT_COHORT_COMPARISON_TOOL || toolName === SUBJECT_COHORT_AGGREGATION_TOOL;
+  if (isSubjectCohortTool && isJsonObject(result) && isSubjectCohortComparisonResult(result)) {
+    if (utf8Bytes(fullText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
+      return { text: fullText, structuredContent: result };
+    }
+    return {
+      text: compactSubjectCohortResult(result),
+      structuredContent: result,
+    };
+  }
+
   if (utf8Bytes(fullText) <= MCP_TOOL_TEXT_MAX_UTF8_BYTES) {
     return { text: fullText };
   }
 
   if (!isJsonObject(result)) {
     return { text: fullText };
-  }
-
-  if (
-    (toolName === SUBJECT_COHORT_COMPARISON_TOOL || toolName === SUBJECT_COHORT_AGGREGATION_TOOL) &&
-    isSubjectCohortComparisonResult(result)
-  ) {
-    return {
-      text: compactSubjectCohortResult(result),
-      structuredContent: result,
-    };
   }
 
   if (toolName === QUERY_SUBJECTS_TOOL && isDiscoveryResult(result)) {
