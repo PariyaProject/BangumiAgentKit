@@ -2213,7 +2213,6 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {'model': 'gpt-6-sol'},
             {'reasoningEffort': 'high'},
-            {'reviewerId': 'gpt-6-luna-max-run95-pr128-round2'},
             {'mcpBundleSha256': '0' * 64},
             {'answerChecks': {'queryArgumentsMatch': False}},
             {'answer': 'raw response must never be retained'},
@@ -2282,6 +2281,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {'model': 'gpt-6-sol'},
             {'reasoningEffort': 'high'},
+            {'reviewerId': 'gpt-6-luna-max-run95-pr128-round2'},
             {'mcpBundleSha256': '0' * 64},
             {'answerChecks': {'structuredResultReadback': False}},
             {'answer': 'raw answer must never be retained'},
