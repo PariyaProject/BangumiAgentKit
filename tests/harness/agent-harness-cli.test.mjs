@@ -1084,6 +1084,92 @@ function passedCandidateFixture() {
   return { run, epoch };
 }
 
+test('CLI G19 one-shot claim and terminal result persist in the durable Epoch control body', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 42;
+  run.pending_epoch = null;
+  epoch.epoch_id = 'run95-g19-person-origin-agent-mcp-evidence';
+  epoch.pr_number = 42;
+  epoch.branch = 'codex/epoch-cli';
+  epoch.base_branch = 'master';
+  epoch.base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.review_pass_sha = sha('b');
+  epoch.advances_frontier_ids = ['G19'];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The one-shot gates are complete.',
+    why_not_extend_further: 'The bounded read is the only query in this Epoch.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = { completed: true, summary: 'Exact one-tool read-only preflight passed.' };
+  epoch.review_history = [{
+    review_number: 1,
+    reviewer_id: reviewerId,
+    candidate_sha: sha('b'),
+    reviewed_base_sha: sha('a'),
+    verdict: 'PASS',
+    findings: [],
+  }];
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: sha('b'),
+    baseSha: sha('a'),
+    draft: false,
+  });
+  const claimArgs = [
+    'epoch:g19-one-shot-claim', '--run', '1', '--pr', '42',
+    '--candidate', sha('b'), '--base', sha('a'), '--reviewer-id', reviewerId,
+  ];
+  try {
+    const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
+    const claimed = environment.execute(claimArgs);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+    assert.equal(claim.state, 'G19_ONE_SHOT_CLAIMED');
+    let stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.adversarial_preflight.g19_one_shot_disposition.state, 'CLAIMED');
+
+    const duplicateClaim = environment.execute(claimArgs);
+    assert.equal(duplicateClaim.status, 2);
+    assert.match(duplicateClaim.stderr, /^G19_ONESHOT_ALREADY_CLAIMED:/u);
+
+    const resultArgs = [
+      'epoch:g19-one-shot-result', '--run', '1', '--pr', '42',
+      '--claim-id', claim.claimId, '--state', 'INCONCLUSIVE',
+    ];
+    const finished = environment.execute(resultArgs);
+    assert.equal(finished.status, 0, finished.stderr);
+    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.deepEqual(
+      {
+        state: stored.adversarial_preflight.g19_one_shot_disposition.state,
+        reportWritten: stored.adversarial_preflight.g19_one_shot_disposition.reportWritten,
+        retryAllowed: stored.adversarial_preflight.g19_one_shot_disposition.retryAllowed,
+      },
+      { state: 'INCONCLUSIVE', reportWritten: false, retryAllowed: false },
+    );
+
+    const retry = environment.execute(claimArgs);
+    assert.equal(retry.status, 2);
+    assert.match(retry.stderr, /^G19_ONESHOT_ALREADY_CLAIMED:/u);
+    const idempotentFinish = environment.execute(resultArgs);
+    assert.equal(idempotentFinish.status, 0, idempotentFinish.stderr);
+    assert.match(idempotentFinish.stdout, /G19_ONE_SHOT_RESULT_ALREADY_RECORDED/u);
+    const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
+    assert.equal(after, before, 'one-shot state persistence must not spend Product budget');
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI Candidate gate revokes prior PASS authority for an audited post-PASS evidence commit', () => {
   const { run, epoch } = passedCandidateFixture();
   const environment = createMockEnvironment({
@@ -1138,6 +1224,48 @@ test('CLI Candidate gate revokes prior PASS authority for an audited post-PASS e
     assert.equal(next.state, 'REVIEW_RESERVED');
     assert.equal(next.review.consumed, 1);
     assert.equal(next.review.reserved, 1);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot clear the durable G19 one-shot disposition', () => {
+  const { run, epoch } = passedCandidateFixture();
+  epoch.adversarial_preflight.g19_one_shot_disposition = {
+    frontierId: 'G19',
+    state: 'INCONCLUSIVE',
+    sourceCandidateSha: sha('b'),
+    reportWritten: false,
+    retryAllowed: false,
+  };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason: 'Preserve the G19 consumed one-shot disposition.',
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G19_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.deepEqual(stored.adversarial_preflight.g19_one_shot_disposition, {
+      frontierId: 'G19',
+      state: 'INCONCLUSIVE',
+      sourceCandidateSha: sha('b'),
+      reportWritten: false,
+      retryAllowed: false,
+    });
   } finally {
     environment.cleanup();
   }

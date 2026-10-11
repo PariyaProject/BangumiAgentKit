@@ -497,6 +497,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G16_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_G19_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
@@ -2321,6 +2322,146 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _g19_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+        origin_coverage = {key: 0 for key in GENERATOR.CODEX_G19_ORIGIN_COVERAGE_FIELDS}
+        origin_coverage.update({
+            'explicitOriginalSubjects': 1,
+            'subjectsObserved': 1,
+            'subjectsWithMetaTags': 1,
+            'tagsObserved': 2,
+            'tagsValid': 2,
+            'tagsReturned': 2,
+            'maxTagsPerSubject': 32,
+            'maxTagCharacters': 96,
+            'responseLimitBytes': 1_048_576,
+            'truncated': False,
+        })
+        coverage = {key: 0 for key in GENERATOR.CODEX_G19_COVERAGE_FIELDS}
+        coverage.update({
+            'relationRowsObserved': 1,
+            'relationRowsSelected': 1,
+            'relationSelectionStrategy': 'all',
+            'sampled': False,
+            'subjectIdsObserved': 1,
+            'subjectIdsSelected': 1,
+            'subjectDetailIdsObserved': 1,
+            'subjectDetailRequests': 1,
+            'subjectDetailsSucceeded': 1,
+            'rowsEligible': 1,
+            'rowsReturned': 1,
+            'outputTruncated': False,
+            'uniqueSubjects': 1,
+            'uniqueCharacters': 1,
+            'maxRelations': 48,
+            'maxSubjectDetails': 16,
+            'maxRows': 8,
+            'detailConcurrency': 4,
+            'responseLimitBytes': 1_048_576,
+            'truncated': False,
+            'origin': origin_coverage,
+        })
+        source_operations = [
+            {'operation': 'GET /v0/persons/{person_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/persons/{person_id}/subjects', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/persons/{person_id}/characters', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+        ]
+        result_summary = {
+            'personId': 3474,
+            'kind': 'all',
+            'media': 'anime',
+            'state': 'complete',
+            'window': {
+                'months': 3,
+                'start': '2026-08-01',
+                'end': '2026-10-11',
+                'monthKeys': ['2026-08', '2026-09', '2026-10'],
+                'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+            },
+            'summary': {
+                'creditRows': 1,
+                'uniqueSubjects': 1,
+                'uniqueCharacters': 1,
+                'origin': {'explicitOriginalSubjects': 1, 'notObservedSubjects': 0, 'unknownSubjects': 0},
+            },
+            'coverage': coverage,
+            'rowCount': 1,
+            'rowDigest': 'd' * 64,
+            'sourceOperations': source_operations,
+        }
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_g19_person_origin_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'G19',
+            'scenarioId': 'G19',
+            'epochId': GENERATOR.CODEX_G19_EPOCH_ID,
+            'profile': GENERATOR.CODEX_G19_ARGUMENT_PROFILE,
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr143-round1',
+            'codexCliVersion': '0.162.0',
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'prNumber': 143,
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-11T08:00:00.000Z',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_G19_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_G19_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_person_activity'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_g19_one_tool'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': 'g19-bounded-person-origin-answer-v1',
+            'answerChecks': {key: True for key in GENERATOR.CODEX_G19_ANSWER_CHECK_FIELDS},
+            'answerCounters': {
+                'sourceRows': 1,
+                'answerRows': 1,
+                'rowsMatched': 1,
+                'missingRows': 0,
+                'extraRows': 0,
+                'coverageFieldsMatched': len(GENERATOR.CODEX_G19_COVERAGE_FIELDS)
+                    + len(GENERATOR.CODEX_G19_ORIGIN_COVERAGE_FIELDS),
+                'toolTextUtf8Bytes': 2400,
+            },
+            'toolCalls': [{
+                'name': 'bangumi.get_person_activity',
+                'state': 'DONE',
+                'argumentsSha256': GENERATOR._canonical_json_sha256(GENERATOR.CODEX_G19_EXPECTED_ARGUMENTS),
+            }],
+            'toolTextUtf8Bytes': 2400,
+            'resultSummary': result_summary,
+            'resultByteLength': 1100,
+            'resultSha256': 'e' * 64,
+            'answerUtf8Bytes': 800,
+            'answerSha256': 'f' * 64,
+            'sourceOperations': source_operations,
+            'privacy': {
+                'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+                'writesAttempted': False, 'qqPipelineTested': False, 'timClientTested': False,
+                'promptStored': False, 'answerStored': False, 'rawResultStored': False,
+                'artifactImageBytesStored': False, 'credentialsStored': False, 'communityRead': False,
+            },
+        }
+
     def _s03_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
@@ -2770,6 +2911,90 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_g16_report_is_valid(report))
         self.assertFalse(
             GENERATOR.codex_g16_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
+
+    def test_accepts_exact_candidate_bound_sanitized_g19_person_origin_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH).name
+        report = self._g19_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_g19_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_g19_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_g19_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH},
+        )
+        for forbidden in ('answer', 'toolOutput', 'prompt', 'rows', 'subjectName', 'rawRole', 'metaTags'):
+            self.assertNotIn(forbidden, report)
+
+        self._git('add', GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized G19 person origin evidence')
+        self.assertTrue(
+            GENERATOR.codex_g19_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_g19_wrong_profile_or_impossible_origin_coverage(self):
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'reviewerId': 'gpt-6-luna-max-run95-pr142-round1'},
+            {'nonMcpToolTypes': ['error']},
+            {'answerChecks': {'answerGroupsMatch': False}},
+            {'answer': 'raw answer must never be retained'},
+            {'toolCalls': [{'name': 'bangumi.get_person_activity', 'state': 'DONE'}]},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                candidate = self._g19_report_fixture()
+                candidate.update(override)
+                self.assertFalse(GENERATOR.codex_g19_report_is_valid(candidate))
+
+        report = self._g19_report_fixture()
+        report['resultSummary']['coverage']['origin']['unknownSubjects'] = 1
+        self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
+
+        report = self._g19_report_fixture()
+        report['resultSummary']['coverage']['origin']['tagsOmitted'] = 1
+        self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
+
+        partial_origin_updates = [
+            {'subjectsPartial': 1},
+            {'malformedTagValues': 1, 'tagsObserved': 3, 'tagsValid': 2, 'tagsReturned': 2},
+            {'textTruncatedTags': 1, 'truncated': True},
+        ]
+        for updates in partial_origin_updates:
+            with self.subTest(updates=updates):
+                report = self._g19_report_fixture()
+                report['resultSummary']['coverage']['origin'].update(updates)
+                self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
+
+        partial_origin_updates = [
+            {'subjectsPartial': 1},
+            {'malformedTagValues': 1, 'tagsObserved': 3, 'tagsValid': 2, 'tagsReturned': 2},
+            {'textTruncatedTags': 1, 'truncated': True},
+        ]
+        for updates in partial_origin_updates:
+            with self.subTest(updates=updates):
+                report = self._g19_report_fixture()
+                report['resultSummary']['coverage']['origin'].update(updates)
+                self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
+
+    def test_rejects_g19_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH).name
+        report = self._g19_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_g19_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_g19_report_matches_candidate_revision(
                 report_path, self.stale_candidate_source_revision,
             ),
         )
