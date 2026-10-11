@@ -1771,9 +1771,18 @@
       "user_question": "这位人物最常担任哪些职位？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
-      "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "scripts/acceptance/p01-person-position-answer-check.mjs",
+        "scripts/acceptance/run-p01-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-p01-agent-mcp-report.mjs",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "tests/unit/p01-person-position-answer-check.test.ts",
+        "tests/unit/p01-codex-agent-mcp-runner.test.ts",
+        "tests/unit/p01-agent-mcp-report.test.ts"
+      ],
+      "next_action": "A bounded anonymous Agent/MCP observation path and exact raw-role answer checker are implemented, but no direct answer evidence is recorded. After exact Candidate CI and same-identity GPT-6 Luna Max PASS, invoke the one-shot once; set PARTIAL only if the sanitized answer report passes, otherwise retain UNASSESSED and do not retry.",
+      "reopen_when": "Accepted direct P01 answer evidence, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
     {
