@@ -182,7 +182,10 @@ function projectSummary(value, window) {
     seen.add(item.month);
     byMonth.push(projected);
   }
+  if (seen.size !== window.monthKeys.length ||
+      window.monthKeys.some((month) => !seen.has(month))) return null;
   byMonth.sort((a, b) => a.month.localeCompare(b.month));
+  if (byMonth.reduce((total, item) => total + item.creditRows, 0) !== summary.creditRows) return null;
   summary.byMonth = byMonth;
   return summary;
 }
@@ -312,13 +315,17 @@ function coverageIsConsistent(coverage, summary, rowCount) {
   return coverage.relationRowsSelected <= coverage.relationRowsObserved &&
     coverage.relationRowsDroppedAtLimit === coverage.relationRowsObserved - coverage.relationRowsSelected &&
     coverage.relationRowsSelected <= G05_EXPECTED_QUERY_ARGUMENTS.maxRelations &&
+    coverage.subjectIdsObserved <= coverage.relationRowsObserved &&
+    coverage.subjectIdsSelected <= coverage.relationRowsSelected &&
     coverage.subjectIdsSelected <= coverage.subjectIdsObserved &&
     coverage.subjectIdsDroppedAtRelationLimit === coverage.subjectIdsObserved - coverage.subjectIdsSelected &&
     coverage.subjectDetailIdsObserved === coverage.subjectIdsSelected &&
+    coverage.subjectDetailRequests <= coverage.subjectIdsSelected &&
     coverage.subjectDetailRequests <= G05_EXPECTED_QUERY_ARGUMENTS.maxSubjectDetails &&
     coverage.subjectDetailsSucceeded + coverage.subjectDetailsFailed === coverage.subjectDetailRequests &&
     coverage.subjectDetailIdsDroppedAtLimit === Math.max(0, coverage.subjectIdsSelected - coverage.subjectDetailRequests) &&
-    coverage.rowsEligible >= coverage.rowsReturned && coverage.rowsReturned <= G05_EXPECTED_QUERY_ARGUMENTS.maxRows &&
+    coverage.rowsEligible >= coverage.rowsReturned && coverage.rowsEligible <= coverage.relationRowsSelected &&
+    coverage.rowsReturned <= G05_EXPECTED_QUERY_ARGUMENTS.maxRows &&
     coverage.rowsReturned === rowCount && coverage.outputTruncated === (coverage.rowsEligible > coverage.rowsReturned) &&
     coverage.uniqueSubjects === summary.uniqueSubjects && coverage.uniqueCharacters === summary.uniqueCharacters &&
     summary.creditRows === coverage.rowsEligible && summary.uniqueSubjects <= summary.creditRows &&

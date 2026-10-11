@@ -58,6 +58,10 @@ function month(month: string, subjects: number) {
   };
 }
 
+function sixMonthBuckets(window: ReturnType<typeof sixMonthWindow>, activeMonth: string, subjects: number) {
+  return window.monthKeys.map((monthKey) => month(monthKey, monthKey === activeMonth ? subjects : 0));
+}
+
 function windowSummary(creditRows: number, byMonth: ReturnType<typeof month>[]) {
   return {
     creditRows,
@@ -80,8 +84,8 @@ function fixture() {
   const previousWindow = sixMonthWindow('2026-04-30');
   const recentCoverage = coverage(1, 1, 1);
   const previousCoverage = coverage(2, 2, 2);
-  const recentSummary = windowSummary(1, [month('2026-05', 1)]);
-  const previousSummary = windowSummary(2, [month('2026-04', 2)]);
+  const recentSummary = windowSummary(1, sixMonthBuckets(recentWindow, '2026-05', 1));
+  const previousSummary = windowSummary(2, sixMonthBuckets(previousWindow, '2026-04', 2));
   const row = {
     subjectId: 123,
     subjectNameCn: '测试动画',
@@ -224,5 +228,58 @@ describe('G05 bounded person activity comparison answer checker', () => {
     overCap.comparison.recent.coverage = overCap.coverage;
     overCap.comparison.sourceOperations.recent = sourceOperations(13);
     expect(verify(overCap, answer).answerChecks.boundedCoverageConsistent).toBe(false);
+  });
+
+  it('rejects incomplete monthly buckets and monthly credit totals that disagree with the period', () => {
+    const { result, answer } = fixture();
+    const missingMonth = structuredClone(result);
+    missingMonth.comparison.recent.summary.byMonth.pop();
+    expect(verify(missingMonth, answer).answerChecks.comparisonInternallyConsistent).toBe(false);
+
+    const wrongMonthlyTotal = structuredClone(result);
+    const recentBuckets = wrongMonthlyTotal.comparison.recent.summary.byMonth;
+    const activeMonth = recentBuckets.find((item) => item.month === '2026-05');
+    if (!activeMonth) throw new Error('Expected the fixture activity month.');
+    activeMonth.creditRows = 0;
+    expect(verify(wrongMonthlyTotal, answer).answerChecks.comparisonInternallyConsistent).toBe(false);
+  });
+
+  it('rejects impossible subject, detail-request, and eligible-row coverage counts', () => {
+    const { result, answer } = fixture();
+
+    const tooManySubjects = structuredClone(result);
+    tooManySubjects.coverage.subjectIdsObserved = 2;
+    tooManySubjects.coverage.subjectIdsDroppedAtRelationLimit = 1;
+    expect(verify(tooManySubjects, answer).answerChecks.boundedCoverageConsistent).toBe(false);
+
+    const tooManySelectedSubjects = structuredClone(result);
+    tooManySelectedSubjects.coverage.relationRowsObserved = 2;
+    tooManySelectedSubjects.coverage.relationRowsDroppedAtLimit = 1;
+    tooManySelectedSubjects.coverage.subjectIdsObserved = 2;
+    tooManySelectedSubjects.coverage.subjectIdsSelected = 2;
+    tooManySelectedSubjects.coverage.subjectDetailIdsObserved = 2;
+    tooManySelectedSubjects.coverage.subjectDetailRequests = 2;
+    tooManySelectedSubjects.coverage.subjectDetailsSucceeded = 2;
+    tooManySelectedSubjects.sourceOperations = sourceOperations(2);
+    tooManySelectedSubjects.comparison.sourceOperations.recent = sourceOperations(2);
+    expect(verify(tooManySelectedSubjects, answer).answerChecks.boundedCoverageConsistent).toBe(false);
+
+    const tooManyDetailRequests = structuredClone(result);
+    tooManyDetailRequests.coverage.subjectDetailRequests = 2;
+    tooManyDetailRequests.coverage.subjectDetailsSucceeded = 2;
+    tooManyDetailRequests.sourceOperations = sourceOperations(2);
+    tooManyDetailRequests.comparison.sourceOperations.recent = sourceOperations(2);
+    expect(verify(tooManyDetailRequests, answer).answerChecks.boundedCoverageConsistent).toBe(false);
+
+    const tooManyEligibleRows = structuredClone(result);
+    tooManyEligibleRows.coverage.rowsEligible = 2;
+    tooManyEligibleRows.coverage.outputTruncated = true;
+    tooManyEligibleRows.coverage.truncated = true;
+    tooManyEligibleRows.summary.creditRows = 2;
+    const activeMonth = tooManyEligibleRows.summary.byMonth.find((item) => item.month === '2026-05');
+    if (!activeMonth) throw new Error('Expected the fixture activity month.');
+    activeMonth.creditRows = 2;
+    tooManyEligibleRows.comparison.delta.creditRows = 0;
+    expect(verify(tooManyEligibleRows, answer).answerChecks.boundedCoverageConsistent).toBe(false);
   });
 });

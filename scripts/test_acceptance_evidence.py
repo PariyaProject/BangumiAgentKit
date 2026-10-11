@@ -2080,17 +2080,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             })
             return value
 
-        def summary(rows, month_key):
+        def summary(rows, month_key, month_keys):
             return {
                 'creditRows': rows,
                 'uniqueSubjects': rows,
                 'uniqueCharacters': rows,
                 'byMonth': [{
-                    'month': month_key,
-                    'creditRows': rows,
-                    'uniqueSubjects': rows,
-                    'uniqueCharacters': rows,
-                }],
+                    'month': key,
+                    'creditRows': rows if key == month_key else 0,
+                    'uniqueSubjects': rows if key == month_key else 0,
+                    'uniqueCharacters': rows if key == month_key else 0,
+                } for key in month_keys],
             }
 
         def operations(details):
@@ -2108,8 +2108,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         ])
         recent_coverage = coverage(1, 1)
         previous_coverage = coverage(2, 2)
-        recent_summary = summary(1, '2026-05')
-        previous_summary = summary(2, '2026-04')
+        recent_summary = summary(1, '2026-05', recent_window['monthKeys'])
+        previous_summary = summary(2, '2026-04', previous_window['monthKeys'])
         source_operations = {'recent': operations(1), 'previous': operations(2)}
         result_summary = {
             'personId': 13684,
@@ -2506,6 +2506,59 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
         report = self._g05_report_fixture()
         report['resultSummary']['previous']['window']['end'] = '2026-04-29'
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+    def test_rejects_g05_incomplete_months_and_inconsistent_monthly_credit_totals(self):
+        report = self._g05_report_fixture()
+        report['resultSummary']['recent']['summary']['byMonth'].pop()
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+        report = self._g05_report_fixture()
+        active_month = next(
+            item for item in report['resultSummary']['recent']['summary']['byMonth']
+            if item['month'] == '2026-05'
+        )
+        active_month['creditRows'] = 0
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+    def test_rejects_g05_impossible_coverage_count_relationships(self):
+        report = self._g05_report_fixture()
+        coverage = report['resultSummary']['recent']['coverage']
+        coverage['subjectIdsObserved'] = 2
+        coverage['subjectIdsDroppedAtRelationLimit'] = 1
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+        report = self._g05_report_fixture()
+        coverage = report['resultSummary']['recent']['coverage']
+        coverage.update({
+            'relationRowsObserved': 2,
+            'relationRowsDroppedAtLimit': 1,
+            'subjectIdsObserved': 2,
+            'subjectIdsSelected': 2,
+            'subjectDetailIdsObserved': 2,
+            'subjectDetailRequests': 2,
+            'subjectDetailsSucceeded': 2,
+        })
+        details_operation = report['sourceOperations']['recent']['GET /v0/subjects/{subject_id}']
+        details_operation.update({'attempted': 2, 'succeeded': 2})
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+        report = self._g05_report_fixture()
+        coverage = report['resultSummary']['recent']['coverage']
+        coverage['subjectDetailRequests'] = 2
+        coverage['subjectDetailsSucceeded'] = 2
+        details_operation = report['sourceOperations']['recent']['GET /v0/subjects/{subject_id}']
+        details_operation.update({'attempted': 2, 'succeeded': 2})
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+        report = self._g05_report_fixture()
+        coverage = report['resultSummary']['recent']['coverage']
+        coverage.update({'rowsEligible': 2, 'outputTruncated': True, 'truncated': True})
+        recent_summary = report['resultSummary']['recent']['summary']
+        recent_summary['creditRows'] = 2
+        active_month = next(item for item in recent_summary['byMonth'] if item['month'] == '2026-05')
+        active_month['creditRows'] = 2
+        report['resultSummary']['delta']['creditRows'] = 0
         self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
 
     def test_rejects_g05_report_from_a_stale_candidate(self):

@@ -3366,19 +3366,27 @@ def codex_g05_report_is_valid(report: object) -> bool:
             ):
                 return False
             seen_months.add(item['month'])
+        if seen_months != set(month_keys):
+            return False
+        if sum(item['creditRows'] for item in values['byMonth']) != values['creditRows']:
+            return False
         if values['byMonth'] != sorted(values['byMonth'], key=lambda item: item['month']):
             return False
         return (
             coverage['relationRowsSelected'] <= coverage['relationRowsObserved']
             and coverage['relationRowsDroppedAtLimit'] == coverage['relationRowsObserved'] - coverage['relationRowsSelected']
             and coverage['relationRowsSelected'] <= 48
+            and coverage['subjectIdsObserved'] <= coverage['relationRowsObserved']
+            and coverage['subjectIdsSelected'] <= coverage['relationRowsSelected']
             and coverage['subjectIdsSelected'] <= coverage['subjectIdsObserved']
             and coverage['subjectIdsDroppedAtRelationLimit'] == coverage['subjectIdsObserved'] - coverage['subjectIdsSelected']
             and coverage['subjectDetailIdsObserved'] == coverage['subjectIdsSelected']
+            and coverage['subjectDetailRequests'] <= coverage['subjectIdsSelected']
             and coverage['subjectDetailRequests'] <= 12
             and coverage['subjectDetailsSucceeded'] + coverage['subjectDetailsFailed'] == coverage['subjectDetailRequests']
             and coverage['subjectDetailIdsDroppedAtLimit'] == max(0, coverage['subjectIdsSelected'] - coverage['subjectDetailRequests'])
             and coverage['rowsEligible'] >= coverage['rowsReturned']
+            and coverage['rowsEligible'] <= coverage['relationRowsSelected']
             and coverage['rowsReturned'] <= 20
             and coverage['outputTruncated'] == (coverage['rowsEligible'] > coverage['rowsReturned'])
             and coverage['uniqueSubjects'] == values['uniqueSubjects']
