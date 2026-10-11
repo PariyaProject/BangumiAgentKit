@@ -69,6 +69,9 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
   assert.ok(record, 'G19 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
   assert.ok(record.source_refs.includes(g19ProbePath));
+  assert.match(record.next_action, /Run #95 G19 Agent\/MCP one-shot was consumed INCONCLUSIVE/u);
+  assert.match(record.next_action, /no sanitized Agent\/MCP report was written/iu);
+  assert.match(record.next_action, /Never retry G19/u);
   assert.match(record.next_action, /not_observed and unknown are insufficient/u);
 
   assert.equal(g19Report.evidenceKind, 'bangumi_public_api_tool_registry_smoke');
@@ -107,7 +110,7 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
     assert.ok(!Object.hasOwn(agentReport, 'answer'));
     assert.ok(!Object.hasOwn(agentReport.resultSummary, 'rows'));
   } else {
-    assert.equal(cells[9], '⬜', 'public smoke alone must not count as Agent/MCP');
+    assert.equal(cells[9], '⬜', 'INCONCLUSIVE one-shot without a report must leave Agent/MCP unchecked');
   }
   assert.equal(cells[10], '⬜', 'public smoke must not count as QQ');
   assert.equal(cells[11], '⬜', 'public smoke must not count as TIM');
