@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-11T05:32:32Z",
+  "updated_at": "2026-10-11T07:17:59Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1934,9 +1934,13 @@
         "tests/integration/mcp-result-presenter.test.ts",
         "tests/render/subject-cast-g06.test.ts",
         "tests/standalone/subject-cast-presenter.test.ts",
-        "scripts/acceptance/run-s04-codex-agent-mcp.mjs"
+        "scripts/acceptance/run-s04-codex-agent-mcp.mjs",
+        "scripts/acceptance/run-g26-codex-agent-mcp.mjs",
+        "scripts/acceptance/run-g04-codex-agent-mcp.mjs",
+        "tests/unit/g26-codex-agent-mcp-runner.test.ts",
+        "tests/unit/g04-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The sole S04 Run #95 Agent/MCP attempt ran on merged PR #111 at Candidate b024928f253e2f4f8e6e965756de18a9d142a3ed / Base d744835fb5207081e255132e20107296a754fd36. The local canonical claim is INCONCLUSIVE: one target MCP call and server SUCCESS, three non-MCP events, zero shell calls; coverageValid=false and answerCoverageMatches=false; no report. The claim is consumed. Never retry; keep S04 PARTIAL. The current unpaged response and 100-row cap do not establish complete credits or main-role status. Shared runner hardening may continue, but it must not rerun S04.",
+      "next_action": "The sole S04 Run #95 Agent/MCP attempt on merged PR #111 remains INCONCLUSIVE and consumed; never retry it. The selected Run #95 diagnostics Epoch adds shared Codex event summaries that retain only sorted, deduplicated allowlisted non-MCP item-type labels; regressions verify that payload text is excluded and the zero-non-MCP/shell gate remains fail-closed. This change improves triage only: it does not add S04 Agent/MCP evidence or alter the claim. Keep S04 PARTIAL because the current unpaged response and 100-row cap do not establish complete credits or main-role status, and QQ/TIM remain unverified.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["S01"]
     },

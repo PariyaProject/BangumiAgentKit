@@ -12,7 +12,11 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseCodexJsonl, summarizeCodexEvents } from './run-g26-codex-agent-mcp.mjs';
+import {
+  parseCodexJsonl,
+  safeCodexNonMcpEventSummary,
+  summarizeCodexEvents,
+} from './run-g26-codex-agent-mcp.mjs';
 import {
   A05_EXPECTED_CAVEATS,
   A05_EXPECTED_QUERY_ARGUMENTS,
@@ -453,6 +457,7 @@ function run() {
     eventStreamParsed: false,
     codexMcpToolEventCount: 0,
     nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
     shellToolCallCount: 0,
     allowedCallCount: 0,
     deniedCallCount: 0,
@@ -470,7 +475,7 @@ function run() {
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
       codexMcpToolEventCount: events.codexMcpToolEventCount,
       targetServerMatch: canonicalJson(events.mcpServerNames) === canonicalJson([SERVER_ID]),
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
+      ...safeCodexNonMcpEventSummary(events),
       shellToolCallCount: events.shellToolCallCount,
       allowedCallCount: Number.isInteger(serverSummary?.allowedCallCount) ? serverSummary.allowedCallCount : 0,
       deniedCallCount: Number.isInteger(serverSummary?.deniedCallCount) ? serverSummary.deniedCallCount : null,

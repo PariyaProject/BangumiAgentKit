@@ -16,7 +16,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { assertG20CandidateReviewGate } from './run-g20-codex-agent-mcp.mjs';
-import { parseCodexJsonl, summarizeCodexEvents } from './run-g26-codex-agent-mcp.mjs';
+import {
+  parseCodexJsonl,
+  safeCodexNonMcpEventSummary,
+  summarizeCodexEvents,
+} from './run-g26-codex-agent-mcp.mjs';
 import {
   A01_EXPECTED_QUERY_ARGUMENTS,
   A01_TARGET_TOOL,
@@ -762,7 +766,7 @@ function run() {
       processExitCode: execution.exitCode,
       eventStreamComplete: parsed.parsed && events.eventStreamComplete,
       mcpToolEventCount: events.codexMcpToolEventCount,
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
+      ...safeCodexNonMcpEventSummary(events),
       shellToolCallCount: events.shellToolCallCount,
       allowedCallCount: serverSummary?.allowedCallCount ?? 0,
       deniedCallCount: serverSummary?.deniedCallCount ?? null,
@@ -779,7 +783,7 @@ function run() {
       codexCliVersion,
       resultStatus: serverSummary?.serverResultStatus ?? 'unavailable',
       mcpToolEventCount: events.codexMcpToolEventCount,
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
+      ...safeCodexNonMcpEventSummary(events),
       shellToolCallCount: events.shellToolCallCount,
       cohortRows: result?.cohorts?.map((cohort) => cohort.subjects?.length ?? 0) ?? [],
       answerChecks: answerCheck.checks,

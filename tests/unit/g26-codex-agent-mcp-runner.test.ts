@@ -22,6 +22,7 @@ import {
   createOneShotClaim,
   createOneShotClaims,
   parseCodexJsonl,
+  safeCodexNonMcpEventSummary,
   sanitizeCodexEnvironment,
   serverSummaryMatchesCandidate,
   summarizeCodexEvents,
@@ -212,6 +213,29 @@ describe('G26 Codex one-tool runner', () => {
     expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('private');
     expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('query');
     expect(JSON.stringify(summary.nonMcpToolTypes)).not.toContain('/private/file');
+  });
+
+  it('keeps only normalized event counts and allowlisted type labels in durable diagnostics', () => {
+    const safe = safeCodexNonMcpEventSummary({
+      nonMcpToolEventCount: 4,
+      nonMcpToolTypes: [
+        'web_search_call',
+        'private query / user input',
+        'web_search_call',
+        'file_search_call',
+      ],
+      answer: 'private answer text',
+      arguments: { query: 'private query' },
+    });
+
+    expect(safe).toEqual({
+      nonMcpToolEventCount: 4,
+      nonMcpToolTypes: ['file_search_call', 'unknown_tool_type', 'web_search_call'],
+    });
+    expect(JSON.stringify(safe)).not.toContain('private');
+    expect(JSON.stringify(safe)).not.toContain('answer');
+    expect(safeCodexNonMcpEventSummary({ nonMcpToolEventCount: -1, nonMcpToolTypes: ['valid'] }))
+      .toEqual({ nonMcpToolEventCount: 0, nonMcpToolTypes: ['valid'] });
   });
 
   it('fails closed on malformed JSONL or a shell event', () => {

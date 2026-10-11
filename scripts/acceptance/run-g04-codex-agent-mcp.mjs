@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   parseCodexJsonl,
+  safeCodexNonMcpEventSummary,
   summarizeCodexEvents,
 } from './run-g26-codex-agent-mcp.mjs';
 import {
@@ -129,6 +130,24 @@ export function validateRunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
   if (args.length === 2 && args[0] === '--run' && args[1] === String(RUN_NUMBER)) return 'run';
   throw new Error('Pass --run 95 only after exact-Candidate CI, Harness candidate, and Luna Max PASS gates.');
+}
+
+export function buildG04SafeEventSummary(events) {
+  return {
+    codexMcpToolEventCount:
+      Number.isSafeInteger(events?.codexMcpToolEventCount) && events.codexMcpToolEventCount >= 0
+        ? events.codexMcpToolEventCount
+        : 0,
+    ...safeCodexNonMcpEventSummary(events),
+    shellToolCallCount:
+      Number.isSafeInteger(events?.shellToolCallCount) && events.shellToolCallCount >= 0
+        ? events.shellToolCallCount
+        : 0,
+  };
+}
+
+export function hasUnexpectedG04CodexToolActivity(events) {
+  return events?.nonMcpToolEventCount !== 0 || events?.shellToolCallCount !== 0;
 }
 
 function gitText(...args) {
@@ -473,6 +492,7 @@ function run() {
     eventStreamParsed: false,
     codexMcpToolEventCount: 0,
     nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
     shellToolCallCount: 0,
     allowedCallCount: 0,
   };
@@ -488,10 +508,8 @@ function run() {
       ...safe,
       codexExitCode: execution.exitCode,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
-      codexMcpToolEventCount: events.codexMcpToolEventCount,
+      ...buildG04SafeEventSummary(events),
       targetServerMatch: events.mcpServerNames.length === 1 && events.mcpServerNames[0] === SERVER_ID,
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
-      shellToolCallCount: events.shellToolCallCount,
       allowedCallCount: Number.isInteger(serverSummary?.allowedCallCount) ? serverSummary.allowedCallCount : 0,
       deniedCallCount: Number.isInteger(serverSummary?.deniedCallCount) ? serverSummary.deniedCallCount : null,
       resultStatus: typeof serverSummary?.serverResultStatus === 'string' ? serverSummary.serverResultStatus : 'unavailable',
@@ -502,7 +520,7 @@ function run() {
         events.mcpServerNames.length !== 1 || events.mcpServerNames[0] !== SERVER_ID ||
         events.completedMcpCalls.length !== 1 || events.completedMcpCalls[0]?.tool !== TOOL_NAME ||
         events.toolCalls.length !== 1 || events.toolCalls[0]?.state !== 'DONE' ||
-        events.nonMcpToolEventCount !== 0 || events.shellToolCallCount !== 0 ||
+        hasUnexpectedG04CodexToolActivity(events) ||
         serverSummary?.allowedCallCount !== 1 || serverSummary?.deniedCallCount !== 0 ||
         serverSummary?.serverResultStatus !== 'SUCCESS') {
       markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
