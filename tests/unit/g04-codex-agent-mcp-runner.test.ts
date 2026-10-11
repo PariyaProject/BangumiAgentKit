@@ -3,13 +3,14 @@ import {
   assertG04CandidateReviewGate,
   buildCodexExecArgs,
   canonicalG04ClaimPath,
+  createG04OneShotClaim,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
 
 const candidate = 'a'.repeat(40);
 const base = 'b'.repeat(40);
 const branch = 'codex/epoch-run95-g04-person-activity';
-const prNumber = 142;
+const prNumber = 128;
 const requiredChecks = [
   'harness-control',
   'sqlite-default',
@@ -43,7 +44,7 @@ function gateInput() {
             candidate_sha: candidate,
             reviewed_base_sha: base,
             verdict: 'PASS',
-            reviewer_id: 'gpt-6-luna-max-run95-pr142-round1',
+            reviewer_id: 'gpt-6-luna-max-run95-pr128-round1',
           }],
           scope_closure: { related_work_remaining: false },
           adversarial_preflight: { completed: true },
@@ -84,7 +85,7 @@ describe('G04 one-tool Codex runner preflight', () => {
   it('requires the exact reviewed G04 candidate, Luna Max reviewer, current base, and all CI checks', () => {
     const { status, pr } = gateInput();
     expect(assertG04CandidateReviewGate(status, pr, { sourceRevision: candidate, currentBaseSha: base }))
-      .toEqual({ prNumber, candidateSha: candidate, reviewerId: 'gpt-6-luna-max-run95-pr142-round1' });
+      .toEqual({ prNumber, candidateSha: candidate, reviewerId: 'gpt-6-luna-max-run95-pr128-round1' });
 
     const wrongReviewer = structuredClone(status);
     const review = wrongReviewer.epoch.state.review_history[0];
@@ -100,12 +101,19 @@ describe('G04 one-tool Codex runner preflight', () => {
     expect(() => assertG04CandidateReviewGate(wrongLunaIdentity, pr, { sourceRevision: candidate, currentBaseSha: base }))
       .toThrow(/exact-identity GPT-6 Luna Max/u);
 
+    const wrongRound = structuredClone(status);
+    const laterRoundReviewer = wrongRound.epoch.state.review_history[0];
+    if (!laterRoundReviewer) throw new Error('Expected the fixture review record.');
+    laterRoundReviewer.reviewer_id = 'gpt-6-luna-max-run95-pr128-round2';
+    expect(() => assertG04CandidateReviewGate(wrongRound, pr, { sourceRevision: candidate, currentBaseSha: base }))
+      .toThrow(/exact-identity GPT-6 Luna Max/u);
+
     const stalePass = structuredClone(status);
     stalePass.epoch.state.review_history.push({
       candidate_sha: 'f'.repeat(40),
       reviewed_base_sha: base,
       verdict: 'PASS',
-      reviewer_id: 'gpt-6-luna-max-run95-pr142-round2',
+      reviewer_id: 'gpt-6-luna-max-run95-pr128-round2',
     });
     expect(() => assertG04CandidateReviewGate(stalePass, pr, { sourceRevision: candidate, currentBaseSha: base }))
       .toThrow(/exact-identity GPT-6 Luna Max/u);
@@ -123,5 +131,14 @@ describe('G04 one-tool Codex runner preflight', () => {
     expect(validateRunnerArgs(['--run', '95'])).toBe('run');
     expect(() => validateRunnerArgs(['--run', '96'])).toThrow(/--run 95/u);
     expect(canonicalG04ClaimPath()).toMatch(/[\\/]\.git[\\/]pariya-agent-state[\\/]g04-run95-one-shot-claim\.json$/u);
+  });
+
+  it('refuses to create a claim under a different reviewer round identity', () => {
+    expect(() => createG04OneShotClaim(
+      '/tmp/unused-g04-claim.json',
+      candidate,
+      'c'.repeat(64),
+      'gpt-6-luna-max-run95-pr128-round2',
+    )).toThrow(/Harness reviewer identity/u);
   });
 });

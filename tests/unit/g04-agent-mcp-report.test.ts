@@ -108,7 +108,7 @@ function fixture() {
     candidate_sha: candidate,
     reviewed_base_sha: base,
     verdict: 'PASS',
-    reviewer_id: 'gpt-6-luna-max-run95-pr142-round1',
+    reviewer_id: 'gpt-6-luna-max-run95-pr128-round1',
   };
   return {
     input: {
@@ -140,14 +140,14 @@ function fixture() {
       toolTextUtf8Bytes: 2200,
       sourceRevision: candidate,
       bundleSha256: bundle,
-      prNumber: 142,
+      prNumber: 128,
       reviewerId: review.reviewer_id,
     },
     liveStatus: {
       epoch: {
         state: {
           epoch_id: epochId,
-          pr_number: 142,
+          pr_number: 128,
           base_sha: base,
           candidate_sha: candidate,
           state: 'REVIEW_PASSED',
@@ -175,7 +175,7 @@ describe('G04 sanitized Agent/MCP report builder', () => {
       baseSha: base,
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
-      reviewerId: 'gpt-6-luna-max-run95-pr142-round1',
+      reviewerId: 'gpt-6-luna-max-run95-pr128-round1',
       frontierId: 'G04',
       resultSummary: { personId: 13684, state: 'partial', rowCount: 1 },
     });
@@ -206,7 +206,9 @@ describe('G04 sanitized Agent/MCP report builder', () => {
 
   it('requires the exact latest Harness reviewer identity for the candidate and base', () => {
     const { input, liveStatus } = fixture();
-    expect(buildG04AgentMcpReport({ ...input, reviewerId: 'gpt-6-luna-max-run95-pr142-round2' }, { liveStatus }).passed)
+    const wrongRound = structuredClone(liveStatus);
+    wrongRound.epoch.state.review_history[0]!.reviewer_id = 'gpt-6-luna-max-run95-pr128-round2';
+    expect(buildG04AgentMcpReport({ ...input, reviewerId: 'gpt-6-luna-max-run95-pr128-round2' }, { liveStatus: wrongRound }).passed)
       .toBe(false);
 
     const stalePass = structuredClone(liveStatus);
@@ -214,7 +216,7 @@ describe('G04 sanitized Agent/MCP report builder', () => {
       candidate_sha: 'f'.repeat(40),
       reviewed_base_sha: base,
       verdict: 'PASS',
-      reviewer_id: 'gpt-6-luna-max-run95-pr142-round2',
+      reviewer_id: 'gpt-6-luna-max-run95-pr128-round2',
     });
     expect(buildG04AgentMcpReport(input, { liveStatus: stalePass }).passed).toBe(false);
   });

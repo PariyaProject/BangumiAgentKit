@@ -177,7 +177,7 @@
         "tests/unit/g04-codex-agent-mcp-runner.test.ts",
         "tests/unit/g04-agent-mcp-report.test.ts"
       ],
-      "next_action": "The prior CLI 1.2.14 result remains limited to 1 selected relation and 0 eligible rows. A distinct GPT-6 Luna Max Run #95 Codex profile is implemented but NOT ATTEMPTED: personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Run it once only after exact-Candidate CI, Harness candidate:check, and same-identity Luna Max PASS; only a sanitized exact-source report may add Agent/MCP tool-row evidence. Do not retry after claim. Keep PARTIAL: returned relation/detail samples and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
+      "next_action": "The prior CLI 1.2.14 result remains limited to 1 selected relation and 0 eligible rows. The bounded Run #95 GPT-6 Luna Max Codex profile uses personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Its one-shot query may run only after exact-Candidate CI, Harness candidate:check, and the assigned same-identity Luna Max PASS; only a sanitized exact-source report may add Agent/MCP tool-row evidence, and retry is prohibited after claim. Keep PARTIAL: returned relation/detail samples and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {

@@ -33,6 +33,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'G04';
 const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
+const HARNESS_REVIEWER_ID = 'gpt-6-luna-max-run95-pr128-round1';
 const TOOL_NAME = 'bangumi.get_person_activity';
 const SERVER_ID = 'bgk_g04_one_tool';
 const MCP_SERVER_SCRIPT = path.join(ROOT, 'apps/mcp/codex-one-tool-mcp-server.mjs');
@@ -151,7 +152,7 @@ function assertLocalClaimPath(claimPath) {
 
 export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, reviewerId) {
   if (!/^[0-9a-f]{40}$/u.test(sourceRevision) || !/^[0-9a-f]{64}$/u.test(bundleSha256) ||
-      !/^gpt-6-luna-max-run95-pr\d+-round\d+$/u.test(reviewerId ?? '')) {
+      reviewerId !== HARNESS_REVIEWER_ID) {
     throw new Error('G04 one-shot claim must bind an exact Candidate, MCP bundle, and Harness reviewer identity.');
   }
   const absolute = assertLocalClaimPath(claimPath);
@@ -243,10 +244,9 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
   const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
   const latestReview = reviewHistory[reviewHistory.length - 1];
   const reviewerId = latestReview?.reviewer_id;
-  const reviewerIdPattern = new RegExp(`^gpt-6-luna-max-run95-pr${epochView?.number}-round\\d+$`, 'u');
   const matchingPass = latestReview?.candidate_sha === sourceRevision &&
     latestReview?.reviewed_base_sha === currentBaseSha && latestReview?.verdict === 'PASS' &&
-    typeof reviewerId === 'string' && reviewerIdPattern.test(reviewerId);
+    reviewerId === HARNESS_REVIEWER_ID;
   const checks = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
@@ -257,6 +257,7 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
     runState?.pending_epoch == null,
     epochView?.github_state === 'OPEN',
     epoch?.epoch_id === EPOCH_ID,
+    epochView?.number === 128,
     epoch?.pr_number === epochView?.number,
     epoch?.base_branch === 'master',
     epoch?.base_sha === currentBaseSha,

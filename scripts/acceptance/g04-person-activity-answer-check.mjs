@@ -66,6 +66,7 @@ const UNSUPPORTED_CLAIM_PATTERNS = [
 ];
 const CLAIM_NEGATION_BEFORE = /(?:不是|并非|不代表|不等于|不能证明|不能说明|无法计算|未能证明|不会表示|不说明|不构成|不意味着|并不代表|没有历史快照)\s*$|\b(?:not|never|no|cannot|can't|does\s+not|doesn't|do\s+not|don't|did\s+not|didn't|is\s+not|isn't|are\s+not|aren't|was\s+not|wasn't|were\s+not|weren't|not\s+yet)\b(?:\s+(?:a|an|the|complete|full|entire|actual|rolling|lifetime|career|professional|historical|evidence|to|support|show|prove|establish)){0,4}\s*$/iu;
 const CLAIM_NEGATION_AFTER = /^\s*(?:(?:is|are|was|were)\s+)?(?:not\s+(?:supported|established|proven|evidenced)|unsupported|unproven|unknown|unavailable|不能证明|无法计算|未能证明|不说明|不构成|不意味着|没有依据)\b/iu;
+const ENGLISH_NEGATION = /\b(?:not|never|no|cannot|can't|doesn't|don't|didn't|isn't|aren't|wasn't|weren't|does\s+not|do\s+not|did\s+not|is\s+not|are\s+not|was\s+not|were\s+not)\b/giu;
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -264,7 +265,9 @@ function hasUnsupportedPositiveClaim(value) {
           const end = start + match[0].length;
           const before = clause.slice(Math.max(0, start - 48), start);
           const after = clause.slice(end, end + 48);
-          if (!CLAIM_NEGATION_BEFORE.test(before) && !CLAIM_NEGATION_AFTER.test(after)) return true;
+          const locallyNegated = CLAIM_NEGATION_BEFORE.test(before) || CLAIM_NEGATION_AFTER.test(after);
+          const doubleNegated = [...before.matchAll(ENGLISH_NEGATION)].length > 1;
+          if (!locallyNegated || doubleNegated) return true;
         }
         return false;
       }));

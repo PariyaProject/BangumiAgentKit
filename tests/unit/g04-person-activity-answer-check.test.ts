@@ -222,6 +222,21 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
     expect(report.passed).toBe(true);
   });
 
+  it('rejects English double negation that still asserts an unsupported claim', () => {
+    const result = makeResult();
+    const answer = JSON.parse(answerFor(result));
+    answer.caveat += ' It isn\'t not a complete career history.';
+    const report = verifyG04PersonActivityAnswer(
+      JSON.stringify(answer),
+      G04_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result },
+      calls(),
+      2400,
+    );
+    expect(report.passed).toBe(false);
+    expect(report.answerChecks.noUnsupportedPositiveClaim).toBe(false);
+  });
+
   it('rejects absent structured readback, an incorrect calendar window, and text over the cap', () => {
     const result = makeResult();
     const wrongWindow = { ...result, window: { ...window, start: '2025-10-01' } };

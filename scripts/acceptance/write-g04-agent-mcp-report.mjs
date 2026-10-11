@@ -19,6 +19,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const TOOL_NAME = 'bangumi.get_person_activity';
 const SERVER_ID = 'bgk_g04_one_tool';
+const HARNESS_REVIEWER_ID = 'gpt-6-luna-max-run95-pr128-round1';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
 const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
@@ -177,12 +178,11 @@ export function buildG04AgentMcpReport(
   const baseSha = epoch?.base_sha;
   const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
   const latestReview = reviewHistory[reviewHistory.length - 1];
-  const reviewerIdPattern = new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round\\d+$`, 'u');
   const exactPassingReview = latestReview?.candidate_sha === sourceRevision &&
     latestReview?.reviewed_base_sha === baseSha && latestReview?.verdict === 'PASS' &&
-    typeof input.reviewerId === 'string' && latestReview?.reviewer_id === input.reviewerId &&
-    reviewerIdPattern.test(input.reviewerId);
+    input.reviewerId === HARNESS_REVIEWER_ID && latestReview?.reviewer_id === HARNESS_REVIEWER_ID;
   if (epoch?.epoch_id !== EPOCH_ID || epoch?.pr_number !== input.prNumber ||
+      input.prNumber !== 128 ||
       epoch?.candidate_sha !== sourceRevision || epoch?.state !== 'REVIEW_PASSED' ||
       epoch?.ci?.sha !== sourceRevision || epoch?.ci?.status !== 'SUCCESS' ||
       epoch?.review_pass_sha !== sourceRevision ||

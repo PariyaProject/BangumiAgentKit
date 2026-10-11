@@ -356,6 +356,7 @@ CODEX_G04_EXPECTED_ARGUMENTS = {
 }
 CODEX_G04_REPORT_RELATIVE_PATH = 'docs/live-probes/g04-person-activity-run95.json'
 CODEX_G04_EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence'
+CODEX_G04_REVIEWER_ID = 'gpt-6-luna-max-run95-pr128-round1'
 CODEX_G04_ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1'
 CODEX_G04_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
@@ -2799,11 +2800,8 @@ def codex_g04_report_is_valid(report: object) -> bool:
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
         or type(report.get('prNumber')) is not int
-        or not isinstance(report.get('reviewerId'), str)
-        or not re.fullmatch(
-            rf'gpt-6-luna-max-run95-pr{report["prNumber"]}-round\d+',
-            report['reviewerId'],
-        )
+        or report.get('prNumber') != 128
+        or report.get('reviewerId') != CODEX_G04_REVIEWER_ID
         or not isinstance(report.get('codexCliVersion'), str)
         or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
         or report.get('toolName') != 'bangumi.get_person_activity'
