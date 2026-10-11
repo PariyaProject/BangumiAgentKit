@@ -495,6 +495,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
@@ -2041,6 +2042,160 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _g05_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+
+        def window(start, end, month_keys):
+            return {
+                'months': 6,
+                'start': start,
+                'end': end,
+                'monthKeys': month_keys,
+                'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+            }
+
+        def coverage(rows, unique_subjects):
+            value = {key: 0 for key in GENERATOR.CODEX_G05_COVERAGE_FIELDS}
+            value.update({
+                'relationRowsObserved': rows,
+                'relationRowsSelected': rows,
+                'subjectIdsObserved': rows,
+                'subjectIdsSelected': rows,
+                'subjectDetailIdsObserved': rows,
+                'subjectDetailRequests': rows,
+                'subjectDetailsSucceeded': rows,
+                'rowsEligible': rows,
+                'rowsReturned': rows,
+                'uniqueSubjects': unique_subjects,
+                'uniqueCharacters': unique_subjects,
+                'maxRelations': 48,
+                'maxSubjectDetails': 12,
+                'maxRows': 20,
+                'responseLimitBytes': 1_048_576,
+                'outputTruncated': False,
+                'truncated': False,
+            })
+            return value
+
+        def summary(rows, month_key):
+            return {
+                'creditRows': rows,
+                'uniqueSubjects': rows,
+                'uniqueCharacters': rows,
+                'byMonth': [{
+                    'month': month_key,
+                    'creditRows': rows,
+                    'uniqueSubjects': rows,
+                    'uniqueCharacters': rows,
+                }],
+            }
+
+        def operations(details):
+            return {
+                'GET /v0/persons/{person_id}': {'attempted': 1, 'succeeded': 1, 'failed': 0},
+                'GET /v0/persons/{person_id}/characters': {'attempted': 1, 'succeeded': 1, 'failed': 0},
+                'GET /v0/subjects/{subject_id}': {'attempted': details, 'succeeded': details, 'failed': 0},
+            }
+
+        recent_window = window('2026-05-01', '2026-10-11', [
+            '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10',
+        ])
+        previous_window = window('2025-11-01', '2026-04-30', [
+            '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04',
+        ])
+        recent_coverage = coverage(1, 1)
+        previous_coverage = coverage(2, 2)
+        recent_summary = summary(1, '2026-05')
+        previous_summary = summary(2, '2026-04')
+        source_operations = {'recent': operations(1), 'previous': operations(2)}
+        result_summary = {
+            'personId': 13684,
+            'kind': 'voice',
+            'media': 'tv',
+            'state': 'partial',
+            'comparisonState': 'partial',
+            'window': recent_window,
+            'recent': {
+                'state': 'partial', 'window': recent_window,
+                'summary': recent_summary, 'coverage': recent_coverage,
+            },
+            'previous': {
+                'state': 'partial', 'window': previous_window,
+                'summary': previous_summary, 'coverage': previous_coverage,
+            },
+            'delta': {'state': 'partial', 'creditRows': -1, 'uniqueSubjects': -1, 'uniqueCharacters': -1},
+            'peak': {
+                'metric': 'uniqueSubjects', 'state': 'partial',
+                'months': [{
+                    'period': 'previous', 'month': '2026-04',
+                    'creditRows': 2, 'uniqueSubjects': 2, 'uniqueCharacters': 2,
+                }],
+            },
+            'rowCount': 1,
+            'rowDigest': 'd' * 64,
+            'sourceOperations': source_operations,
+        }
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_g05_person_activity_comparison_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'G05',
+            'scenarioId': 'G05',
+            'epochId': GENERATOR.CODEX_G05_EPOCH_ID,
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr130-round1',
+            'codexCliVersion': '0.162.0',
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'prNumber': 130,
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-11T08:00:00.000Z',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_G05_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_G05_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_person_activity'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_g05_one_tool'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': 'g05-bounded-person-activity-comparison-v1',
+            'answerChecks': {key: True for key in GENERATOR.CODEX_G05_ANSWER_CHECK_FIELDS},
+            'answerCounters': {
+                'sourceRows': 1, 'answerRows': 1, 'rowsMatched': 1, 'missingRows': 0,
+                'extraRows': 0, 'coverageFieldsMatched': len(GENERATOR.CODEX_G05_COVERAGE_FIELDS),
+                'toolTextUtf8Bytes': 3218,
+            },
+            'toolCalls': [{'name': 'bangumi.get_person_activity', 'state': 'DONE'}],
+            'toolTextUtf8Bytes': 3218,
+            'resultSummary': result_summary,
+            'resultByteLength': 2048,
+            'resultSha256': 'e' * 64,
+            'answerUtf8Bytes': 1024,
+            'answerSha256': 'f' * 64,
+            'sourceOperations': source_operations,
+            'privacy': {
+                'authProfile': 'anonymous',
+                **{key: False for key in GENERATOR.CODEX_G05_PRIVACY_FIELDS - {'authProfile'}},
+            },
+        }
+
     def _s03_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
@@ -2302,6 +2457,64 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_g04_report_is_valid(report))
         self.assertFalse(
             GENERATOR.codex_g04_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
+
+    def test_accepts_exact_candidate_bound_sanitized_g05_comparison_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G05_REPORT_RELATIVE_PATH).name
+        report = self._g05_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_g05_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_g05_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_g05_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_G05_REPORT_RELATIVE_PATH},
+        )
+        for forbidden in ('answer', 'toolOutput', 'prompt', 'rows', 'subjectName', 'rawRole'):
+            self.assertNotIn(forbidden, report)
+
+        self._git('add', GENERATOR.CODEX_G05_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized G05 comparison evidence')
+        self.assertTrue(
+            GENERATOR.codex_g05_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_g05_report_with_wrong_model_raw_content_or_comparison(self):
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'reviewerId': 'gpt-6-luna-max-run95-pr129-round1'},
+            {'mcpBundleSha256': '0' * 64},
+            {'nonMcpToolTypes': ['file_change']},
+            {'answerChecks': {'exactSingleToolCall': False}},
+            {'answer': 'raw answer must never be retained'},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                candidate = self._g05_report_fixture()
+                candidate.update(override)
+                self.assertFalse(GENERATOR.codex_g05_report_is_valid(candidate))
+
+        report = self._g05_report_fixture()
+        report['resultSummary']['previous']['window']['end'] = '2026-04-29'
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+    def test_rejects_g05_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G05_REPORT_RELATIVE_PATH).name
+        report = self._g05_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_g05_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_g05_report_matches_candidate_revision(
                 report_path, self.stale_candidate_source_revision,
             ),
         )

@@ -310,9 +310,15 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
-        "docs/research/run86-current-person-activity-comparison-2026-10-04.md"
+        "docs/research/run86-current-person-activity-comparison-2026-10-04.md",
+        "scripts/acceptance/run-g05-person-activity-comparison-codex-agent-mcp.mjs",
+        "scripts/acceptance/g05-person-activity-comparison-answer-check.mjs",
+        "scripts/acceptance/write-g05-person-activity-comparison-report.mjs",
+        "tests/unit/g05-person-activity-comparison-answer-check.test.ts",
+        "tests/unit/g05-codex-agent-mcp-runner.test.ts",
+        "tests/unit/g05-agent-mcp-report.test.ts"
       ],
-      "next_action": "Keep PARTIAL: the exact-candidate Agent/MCP call demonstrates a bounded release-date comparison only. Actual workload, labor time, complete career totals, and historical change remain unsupported.",
+      "next_action": "Run #86’s prior G05 report used Gemini on Candidate c4acc246551d31ddfc91b54d1031d4454365a7fc and does not satisfy the current GPT-6 Luna Max/current-source matrix row. Run #95 selected the G05 refresh Epoch run95-g05-current-source-luna-agent-mcp-refresh on Base acad7bdfe130120b54a3121d89b478d793a7a47e. The new G05-specific create-once runner/checker/report path is implemented and locally validated for the fixed public read profile personId=13684, kind=voice, media=tv, windowMonths=6, maxRelations=48, maxSubjectDetails=12, maxRows=20, comparePreviousWindow=true. Execute exactly once only after a clean exact Candidate/Base, all seven exact-SHA checks, Harness candidate:check, and same-Candidate GPT-6 Luna Max PASS. Do not reuse or retry the consumed G04 claim; no G05 query has run yet. Keep PARTIAL: these are bounded first_air_date observations, not actual workload, complete career totals, historical trends, or QQ/TIM evidence.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "closure_reason": "Delivered a bounded recent-versus-previous calendar-window comparison over current official-v0 person relations and subject first_air_date, with explicit deltas and partial coverage; actual workload and historical snapshots remain unsupported.",
