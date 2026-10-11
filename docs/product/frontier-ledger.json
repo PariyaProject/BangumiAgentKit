@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-09T11:48:49Z",
+  "updated_at": "2026-10-11T04:37:33Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2217,7 +2217,7 @@
         "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
         "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE; never retry it. PR #126 adds a separate anonymous read-only aggregate_subject_cohort runner and report validator, but no live query has occurred and no Agent/MCP count has advanced. Keep A01 UNASSESSED. The distinct fixed query is media=anime, year=2012, resultMode=all, maxSubjects=1; preserve metric/coverage state and do not claim full population, significance, quality, causality, recommendation, or trends. Invoke only after current-base exact-SHA CI and GPT-6 Luna Max PASS; if INCONCLUSIVE, never retry. OAuth/accounts/community/QQ/TIM remain excluded.",
+      "next_action": "The distinct aggregate_subject_cohort one-shot was invoked once on the exact reviewed Candidate and is consumed INCONCLUSIVE: one target MCP event DONE/server SUCCESS, but structured result readback and answer checks failed. Preserve the sanitized report; never retry or count it. A source-level issue was reproduced offline: the MCP presenter returned only full text for a small valid cohort result because its <=3600-byte fast path preceded the cohort structuredContent branch. The presenter now includes structuredContent for small cohort results while preserving full text; the regression was red before the fix and the presenter suite passes 30/30. Keep A01 UNASSESSED and do not advance Agent/MCP counts. Validate and review the corrected Candidate; no further A01 query is permitted.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2249,12 +2249,23 @@
           "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts",
           "scripts/test_acceptance_evidence.py"
         ],
-        "acceptance_limit": "PR #124 engineering evidence does not resolve A01 because its sole compare_subject_cohorts exact-Candidate attempt is INCONCLUSIVE; the consumed query and claim must never be retried. PR #126 adds the separate aggregate_subject_cohort runner/report path but has no live query or accepted aggregate report yet. Keep A01 UNASSESSED and do not change Agent/MCP counts until the distinct aggregate tool has a valid exact-Candidate report; even then, one cohort aggregate does not resolve the original comparative user question.",
+        "acceptance_limit": "The consumed compare_subject_cohorts A01 claim remains INCONCLUSIVE and must never be retried. The distinct aggregate_subject_cohort one-shot was invoked once after exact-Candidate CI and normal Luna Max PASS, but is INCONCLUSIVE because the target call returned DONE/SUCCESS without structured result readback; its sanitized report records no raw answer and does not count as accepted tool evidence. The report is retained and the attempt is no-retry. An offline small-result regression reproduced the presenter branch that omits structuredContent below 3600 UTF-8 bytes; the fix preserves structuredContent. Keep A01 UNASSESSED and Agent/MCP count unchanged. Neither aggregate sample resolves the original comparative question.",
         "aggregate_one_tool_probe_design": {
           "tool": "bangumi.aggregate_subject_cohort",
-          "state": "IMPLEMENTED_NOT_YET_RUN",
-          "epoch_id": "run95-a01-aggregate-subject-cohort-codex-current-evidence",
-          "pr_number": 126,
+          "state": "INCONCLUSIVE_CONSUMED_NO_RETRY",
+          "attempt": {
+            "source_revision": "6cd66e72a9a92ee13dc0049cd677145fc5a1ad80",
+            "base_sha": "ee05068484b8192f737c4b9437913f80e068680e",
+            "claim_state": "INCONCLUSIVE",
+            "result_status": "SUCCESS",
+            "target_mcp_event_count": 1,
+            "target_event_state": "DONE",
+            "structured_result_readback": false,
+            "acceptance_count_advanced": false,
+            "retry_prohibited": true
+          },
+          "epoch_id": "run95-a01-aggregate-state-precedence-followup",
+          "pr_number": 127,
           "arguments": {
             "cohort": {
               "query": {
@@ -2271,7 +2282,7 @@
           "exact_candidate_ci_required": true,
           "gpt_6_luna_max_pass_required": true,
           "no_retry": true,
-          "limitations": "No live report or accepted tool-row evidence exists yet; this separate tool does not resolve the original compare_subject_cohorts A01 user question."
+          "limitations": "Exactly one attempt was consumed and is INCONCLUSIVE; no raw answer, raw result, subject names/IDs, or credentials were retained. The sanitized report remains bound to Candidate 6cd66e72a9a92ee13dc0049cd677145fc5a1ad80 and Base ee05068484b8192f737c4b9437913f80e068680e. Do not rerun. This does not resolve the original compare_subject_cohorts question or establish population completeness, significance, causality, quality, or trends."
         }
       }
     },

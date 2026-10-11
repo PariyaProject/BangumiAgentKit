@@ -1539,6 +1539,135 @@ describe('MCP tool result presentation', () => {
       MCP_TOOL_TEXT_MAX_UTF8_BYTES,
     );
     expect(aggregationPresentation.structuredContent).toBe(aggregationResult);
+
+    const notComputableMetricCoverage = {
+      valid: 0,
+      partial: 0,
+      missing: 0,
+      conflicts: 0,
+      notComputable: 1,
+      state: 'not_computable' as const,
+    };
+    const smallPlan = {
+      source: 'official_v0' as const,
+      operation: 'searchSubjects' as const,
+      totalKind: 'estimated' as const,
+      pushdown: [],
+      postFilters: [],
+      derivedFilters: [],
+      unsupported: [],
+      hydrationRequired: false,
+      hydrationRequirements: [],
+      requestedTopN: 1,
+      resultMode: 'all' as const,
+      quality: 'exact' as const,
+      budget: {
+        maxPages: 1,
+        maxCandidates: 1,
+        maxHydrations: 0,
+        concurrency: 1,
+        maxConceptProbes: 0,
+        maxReturnedItems: 1,
+      },
+      steps: [],
+      limitations: [],
+    };
+    // Keep every required result field while using an empty no-row scope below the text cap.
+    const smallAggregationResult: SubjectCohortComparisonResult = {
+      state: 'partial',
+      cohorts: [
+        {
+          label: 'A',
+          query: { resultMode: 'all' },
+          querySummary: 'A',
+          subjects: [],
+          coverage: {
+            query: {
+              state: 'ok',
+              coverage: {
+                state: 'complete',
+                requested: 1,
+                scanned: 0,
+                matched: 0,
+                returned: 0,
+                pagesRequested: 1,
+                pagesScanned: 0,
+                upstreamExhausted: true,
+                budgetExceeded: false,
+                postFilterCount: 0,
+                totalKind: 'estimated',
+                hydrationsAttempted: 0,
+                hydrationsSucceeded: 0,
+                hydrationsFailed: 0,
+                hydrationsUnresolved: 0,
+                hydrationBudgetExceeded: false,
+              },
+              plan: smallPlan,
+            },
+            detailHydrationsAttempted: 0,
+            detailHydrationsSucceeded: 0,
+            detailHydrationsFailed: 0,
+            metrics: {
+              score: notComputableMetricCoverage,
+              heat: notComputableMetricCoverage,
+              episodesReported: notComputableMetricCoverage,
+              ratingStandardDeviation: notComputableMetricCoverage,
+            },
+          },
+        },
+      ],
+      metrics: [],
+      formulaVersion: 'subject-cohort-comparison-v1',
+      coverage: {
+        maxSubjectsPerCohort: 1,
+        totalSubjectsReturned: 0,
+        cohortsComplete: 0,
+        cohortsPartial: 1,
+        detailHydrationsAttempted: 0,
+        detailHydrationsSucceeded: 0,
+        detailHydrationsFailed: 0,
+        truncated: false,
+        overlap: { subjectIds: [], count: 0 },
+        evidence: {
+          retained: 0,
+          omitted: 0,
+          deduplicated: 0,
+          omittedByBound: 0,
+          bytes: 0,
+          maxRefs: 256,
+          maxBytes: 96000,
+          truncated: false,
+        },
+        warnings: { retained: 0, omitted: 0, max: 12, truncated: false },
+      },
+      source: {
+        official: {
+          class: 'official-v0',
+          operations: [],
+          attemptedAt: '',
+        },
+        derived: {
+          class: 'derived-s7',
+          operations: [],
+          attemptedAt: '',
+        },
+      },
+      evidence: [],
+      warnings: [],
+      limitations: [],
+    };
+    const smallAggregationPresentation = presentMcpToolResult(
+      'bangumi.aggregate_subject_cohort',
+      smallAggregationResult,
+    );
+    const smallAggregationFullText = JSON.stringify(smallAggregationResult, null, 2);
+    expect(
+      Buffer.byteLength(smallAggregationFullText, 'utf8'),
+    ).toBeLessThanOrEqual(
+      MCP_TOOL_TEXT_MAX_UTF8_BYTES,
+    );
+    expect(smallAggregationPresentation.text).toBe(smallAggregationFullText);
+    expect(smallAggregationPresentation.structuredContent).toBe(smallAggregationResult);
   });
 
   it('bounds large discovery text while preserving decision-critical scope and full structuredContent', () => {

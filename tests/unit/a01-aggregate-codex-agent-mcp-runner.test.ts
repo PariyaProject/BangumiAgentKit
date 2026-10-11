@@ -74,16 +74,16 @@ describe('A01 aggregate Codex MCP runner', () => {
       'provider-foundation',
       'discovery-foundation',
     ].map((name) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' }));
-    const branch = 'codex/epoch-run95-a01-aggregate-subject-cohort-codex-current-evidence';
+    const branch = 'codex/epoch-run95-a01-aggregate-state-precedence-followup';
     const status = {
       git: { branch, head: candidateSha, status: '' },
-      run: { state: { state: 'EPOCH_ACTIVE', active_epoch_pr: 129, pending_epoch: null } },
+      run: { state: { state: 'EPOCH_ACTIVE', active_epoch_pr: 127, pending_epoch: null } },
       epoch: {
-        number: 129,
+        number: 127,
         github_state: 'OPEN',
         state: {
-          epoch_id: 'run95-a01-aggregate-subject-cohort-codex-current-evidence',
-          pr_number: 129,
+          epoch_id: 'run95-a01-aggregate-state-precedence-followup',
+          pr_number: 127,
           branch,
           candidate_sha: candidateSha,
           ci: { sha: candidateSha, status: 'SUCCESS' },
@@ -114,7 +114,18 @@ describe('A01 aggregate Codex MCP runner', () => {
         candidateSha,
         currentBaseSha: baseSha,
       }),
-    ).toMatchObject({ prNumber: 129, candidateSha, baseSha });
+    ).toMatchObject({ prNumber: 127, candidateSha, baseSha });
+
+    const wrongPrStatus = structuredClone(status);
+    wrongPrStatus.run.state.active_epoch_pr = 129;
+    wrongPrStatus.epoch.number = 129;
+    wrongPrStatus.epoch.state.pr_number = 129;
+    expect(() =>
+      assertA01AggregateCandidateGate(wrongPrStatus, pr, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/PR #127/u);
 
     const nonLunaStatus = structuredClone(status);
     nonLunaStatus.epoch.state.review_history[0]!.reviewer_id = 'gpt-6-sol-round1';
@@ -135,7 +146,7 @@ describe('A01 aggregate Codex MCP runner', () => {
       {
         sourceRevision: 'a'.repeat(40),
         baseSha: 'b'.repeat(40),
-        prNumber: 129,
+        prNumber: 127,
         bundleSha256: 'c'.repeat(64),
       },
       root,
@@ -153,7 +164,7 @@ describe('A01 aggregate Codex MCP runner', () => {
         {
           sourceRevision: 'a'.repeat(40),
           baseSha: 'b'.repeat(40),
-          prNumber: 129,
+          prNumber: 127,
           bundleSha256: 'c'.repeat(64),
         },
         root,
