@@ -31,7 +31,14 @@ import {
   P01_ARGUMENT_PROFILE,
   P01_COVERAGE_FIELDS,
   P01_EXPECTED_QUERY_ARGUMENTS,
+  verifyP01PersonPositionAnswer,
 } from './p01-person-position-answer-check.mjs';
+import {
+  buildP01RunnerReceiptPayload,
+  createP01RunnerReceipt,
+  generateP01RunnerReceiptKeyPair,
+  p01RunnerPublicKeySha256,
+} from './p01-runner-receipt.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
@@ -112,6 +119,8 @@ export function createP01OneShotClaim(
     prNumber,
     bundleSha256,
     reviewerId,
+    claimId,
+    runnerReceiptPublicKey,
     model = MODEL,
     reasoningEffort = REASONING_EFFORT,
     ciSha = sourceRevision,
@@ -125,6 +134,12 @@ export function createP01OneShotClaim(
     !/^[0-9a-f]{64}$/u.test(bundleSha256) ||
     !Number.isSafeInteger(prNumber) ||
     prNumber < 1 ||
+    typeof claimId !== 'string' ||
+    !new RegExp(
+      `^p01-run-${RUN_NUMBER}-pr-${prNumber}-${sourceRevision.slice(0, 12)}-\\d+$`,
+      'u',
+    ).test(claimId) ||
+    !/^[0-9a-f]{64}$/u.test(p01RunnerPublicKeySha256(runnerReceiptPublicKey)) ||
     model !== MODEL ||
     reasoningEffort !== REASONING_EFFORT ||
     ciSha !== sourceRevision ||
@@ -158,6 +173,7 @@ export function createP01OneShotClaim(
     baseSha,
     ciSha,
     ciStatus,
+    claimId,
     prNumber,
     reviewerId,
     model,
@@ -165,6 +181,8 @@ export function createP01OneShotClaim(
     toolName: TOOL_NAME,
     argumentProfile: P01_ARGUMENT_PROFILE,
     bundleSha256,
+    runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(runnerReceiptPublicKey),
     expectedArgumentsSha256: sha256(canonicalJson(P01_EXPECTED_QUERY_ARGUMENTS)),
     claimedAt,
   };
@@ -277,7 +295,7 @@ export function validateP01RunnerArgs(args) {
 export function assertP01CandidateReviewGate(
   status,
   pr,
-  { sourceRevision, currentBaseSha, bundleSha256, allowClaimed = false },
+  { sourceRevision, currentBaseSha, bundleSha256, runnerReceiptPublicKey, allowClaimed = false },
 ) {
   const epochView = status?.epoch;
   const epoch = epochView?.state;
@@ -302,6 +320,8 @@ export function assertP01CandidateReviewGate(
     disposition.ciSha === sourceRevision &&
     disposition.ciStatus === 'SUCCESS' &&
     disposition.bundleSha256 === bundleSha256 &&
+    disposition.runnerReceiptPublicKey === runnerReceiptPublicKey &&
+    disposition.runnerReceiptPublicKeySha256 === p01RunnerPublicKeySha256(runnerReceiptPublicKey) &&
     disposition.toolName === TOOL_NAME &&
     disposition.argumentProfile === P01_ARGUMENT_PROFILE &&
     disposition.expectedArgumentsSha256 === sha256(canonicalJson(P01_EXPECTED_QUERY_ARGUMENTS)) &&
@@ -381,19 +401,17 @@ function mandatoryChecksSuccessful(checks) {
   });
 }
 
-function readHarnessStatus() {
-  const result = spawnSync(
-    process.execPath,
-    [HARNESS_SCRIPT, 'status', '--run', String(RUN_NUMBER)],
-    {
-      cwd: ROOT,
-      env: environment(process.env, true),
-      encoding: 'utf8',
-      maxBuffer: 2 * 1024 * 1024,
-      timeout: 30_000,
-      stdio: ['ignore', 'pipe', 'ignore'],
-    },
-  );
+function readHarnessStatus(prNumber) {
+  const args = [HARNESS_SCRIPT, 'status', '--run', String(RUN_NUMBER)];
+  if (Number.isSafeInteger(prNumber)) args.push('--pr', String(prNumber));
+  const result = spawnSync(process.execPath, args, {
+    cwd: ROOT,
+    env: environment(process.env, true),
+    encoding: 'utf8',
+    maxBuffer: 2 * 1024 * 1024,
+    timeout: 30_000,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
   if (result.error || result.status !== 0)
     throw new Error('Unable to revalidate live Run 95 Harness state.');
   try {
@@ -462,6 +480,8 @@ function claimHarnessP01OneShot(gate) {
     gate.baseSha,
     '--bundle-sha256',
     gate.bundleSha256,
+    '--runner-receipt-public-key',
+    gate.runnerReceiptPublicKey,
     '--model',
     MODEL,
     '--reasoning-effort',
@@ -478,6 +498,7 @@ function claimHarnessP01OneShot(gate) {
     result.ciSha !== gate.candidateSha ||
     result.ciStatus !== 'SUCCESS' ||
     result.bundleSha256 !== gate.bundleSha256 ||
+    result.runnerReceiptPublicKeySha256 !== p01RunnerPublicKeySha256(gate.runnerReceiptPublicKey) ||
     result.model !== MODEL ||
     result.reasoningEffort !== REASONING_EFFORT ||
     result.reviewerId !== gate.reviewerId ||
@@ -488,9 +509,27 @@ function claimHarnessP01OneShot(gate) {
   return result;
 }
 
-function persistHarnessP01OneShotResult(claim, state) {
+function p01DispositionAcknowledges(disposition, claim, state, reportSha256) {
+  return (
+    disposition?.claimId === claim.claimId &&
+    disposition.runNumber === RUN_NUMBER &&
+    disposition.prNumber === claim.prNumber &&
+    disposition.state === state &&
+    disposition.reportWritten === (state === 'REPORT_WRITTEN') &&
+    disposition.retryAllowed === false &&
+    (state !== 'REPORT_WRITTEN' || disposition.reportSha256 === reportSha256)
+  );
+}
+
+export function persistHarnessP01OneShotResult(
+  claim,
+  state,
+  reportSha256,
+  { invoke = invokeHarnessCommand, readStatus = readHarnessStatus } = {},
+) {
+  let response;
   try {
-    const result = invokeHarnessCommand([
+    response = invoke([
       'epoch:p01-one-shot-result',
       '--run',
       String(RUN_NUMBER),
@@ -501,10 +540,22 @@ function persistHarnessP01OneShotResult(claim, state) {
       '--state',
       state,
     ]);
-    return (
-      result.state === 'P01_ONE_SHOT_RESULT_RECORDED' ||
-      result.state === 'P01_ONE_SHOT_RESULT_ALREADY_RECORDED'
-    );
+  } catch {
+    /* The PR update may have applied before its response was lost. */
+  }
+  if (
+    ['P01_ONE_SHOT_RESULT_RECORDED', 'P01_ONE_SHOT_RESULT_ALREADY_RECORDED'].includes(
+      response?.state,
+    ) &&
+    response?.claimId === claim.claimId &&
+    response.resultState === state
+  ) {
+    if (state !== 'REPORT_WRITTEN' || response.reportSha256 === reportSha256) return true;
+  }
+  try {
+    const status = readStatus(claim.prNumber);
+    const disposition = status?.epoch?.state?.adversarial_preflight?.p01_one_shot_disposition;
+    return p01DispositionAcknowledges(disposition, claim, state, reportSha256);
   } catch {
     return false;
   }
@@ -515,7 +566,10 @@ function fetchCurrentMaster() {
   return gitText('rev-parse', 'origin/master');
 }
 
-function assertCurrentReviewGate(sourceRevision, { allowClaimed = false, bundleSha256 } = {}) {
+function assertCurrentReviewGate(
+  sourceRevision,
+  { allowClaimed = false, bundleSha256, runnerReceiptPublicKey } = {},
+) {
   const currentBaseSha = fetchCurrentMaster();
   const status = readHarnessStatus();
   const prNumber = status?.run?.state?.active_epoch_pr;
@@ -537,6 +591,7 @@ function assertCurrentReviewGate(sourceRevision, { allowClaimed = false, bundleS
     sourceRevision,
     currentBaseSha,
     bundleSha256,
+    runnerReceiptPublicKey,
     allowClaimed,
   });
 }
@@ -732,11 +787,18 @@ function run() {
       'Active P01 Epoch, Base, Candidate, or Luna Max reviewer changed during preflight.',
     );
   }
-  const durableGate = { ...currentGate, bundleSha256 };
+  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
+  const runnerReceiptPublicKey = runnerReceiptKeyPair.publicKeyBase64;
+  const durableGate = { ...currentGate, bundleSha256, runnerReceiptPublicKey };
   const remoteClaim = claimHarnessP01OneShot(durableGate);
   let claim;
   try {
-    claim = createP01OneShotClaim(claimPath, { ...durableGate, sourceRevision, bundleSha256 });
+    claim = createP01OneShotClaim(claimPath, {
+      ...durableGate,
+      sourceRevision,
+      bundleSha256,
+      claimId: remoteClaim.claimId,
+    });
   } catch {
     persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
     throw new Error(
@@ -744,6 +806,7 @@ function run() {
     );
   }
   let temporaryDirectory;
+  let reportSha256 = null;
   let safe = {
     codexCliVersion: cliVersion,
     sourceRevision,
@@ -821,7 +884,11 @@ function run() {
       );
       return 1;
     }
-    const postGate = assertCurrentReviewGate(sourceRevision, { allowClaimed: true, bundleSha256 });
+    const postGate = assertCurrentReviewGate(sourceRevision, {
+      allowClaimed: true,
+      bundleSha256,
+      runnerReceiptPublicKey,
+    });
     if (
       postGate.prNumber !== currentGate.prNumber ||
       postGate.baseSha !== currentGate.baseSha ||
@@ -835,10 +902,37 @@ function run() {
       return 1;
     }
     const call = events.completedMcpCalls[0];
-    const writer = invokeReportWriter({
+    const answerResult = verifyP01PersonPositionAnswer(
+      events.answer,
+      call?.arguments,
+      call?.result,
+      events.toolCalls,
+      textResultBytes(call?.result),
+    );
+    if (!answerResult.passed) {
+      markClaim(claimPath, claim, 'INCONCLUSIVE', {
+        ...safe,
+        answerChecks: answerResult.answerChecks,
+      });
+      persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'INCONCLUSIVE',
+          ...safe,
+          answerChecks: answerResult.answerChecks,
+        })}\n`,
+      );
+      return 1;
+    }
+    const writerInput = {
       model: MODEL,
       reasoningEffort: REASONING_EFFORT,
       codexCliVersion: cliVersion,
+      claimId: remoteClaim.claimId,
+      runnerReceiptPublicKey,
+      runnerEventStreamSha256: sha256(execution.stdout),
+      runnerServerSummarySha256: sha256(readFileSync(summaryPath)),
       processExitCode: execution.exitCode,
       resultStatus: serverSummary.serverResultStatus,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
@@ -872,7 +966,10 @@ function run() {
       bundleSha256,
       prNumber: currentGate.prNumber,
       reviewerId: currentGate.reviewerId,
-    });
+    };
+    const receiptPayload = buildP01RunnerReceiptPayload(writerInput, answerResult);
+    writerInput.runnerReceipt = createP01RunnerReceipt(receiptPayload, runnerReceiptKeyPair);
+    const writer = invokeReportWriter(writerInput);
     if (writer.exitCode !== 0 || writer.output?.passed !== true) {
       const answerChecks = writer.output?.answerChecks ?? null;
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
@@ -883,22 +980,37 @@ function run() {
       return 1;
     }
     const output = writer.output;
-    markClaim(claimPath, claim, 'REPORT_WRITTEN', {
+    reportSha256 = sha256(readFileSync(REPORT_PATH));
+    markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
       ...safe,
+      reportSha256,
       answerCounters: output.answerCounters,
       resultSummary: output.resultSummary,
     });
-    if (!persistHarnessP01OneShotResult(remoteClaim, 'REPORT_WRITTEN')) {
-      rmSync(REPORT_PATH, { force: true });
-      markClaim(claimPath, claim, 'INCONCLUSIVE', {
+    if (!persistHarnessP01OneShotResult(remoteClaim, 'REPORT_WRITTEN', reportSha256)) {
+      markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
         ...safe,
-        reason: 'durable_harness_result_write_failed',
+        reportSha256,
+        reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
       });
       process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'durable_harness_result_write_failed' })}\n`,
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...safe,
+          reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
+        })}\n`,
       );
       return 1;
     }
+    markClaim(claimPath, claim, 'REPORT_WRITTEN', {
+      ...safe,
+      reportSha256,
+      answerCounters: output.answerCounters,
+      resultSummary: output.resultSummary,
+    });
     process.stdout.write(
       `${JSON.stringify({
         passed: true,
@@ -906,12 +1018,32 @@ function run() {
         sourceRevision,
         baseSha: currentGate.baseSha,
         bundleSha256,
+        reportSha256,
         answerCounters: output.answerCounters,
         resultSummary: output.resultSummary,
       })}\n`,
     );
     return 0;
   } catch {
+    if (reportSha256) {
+      markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+        ...safe,
+        reportSha256,
+        reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+      });
+      persistHarnessP01OneShotResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...safe,
+          reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+        })}\n`,
+      );
+      return 1;
+    }
     markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
     persistHarnessP01OneShotResult(remoteClaim, 'INCONCLUSIVE');
     process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);

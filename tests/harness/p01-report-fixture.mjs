@@ -8,6 +8,11 @@ import {
   buildP01SanitizedReport,
   p01CatalogHashes,
 } from '../../scripts/acceptance/write-p01-agent-mcp-report.mjs';
+import {
+  buildP01RunnerReceiptPayload,
+  createP01RunnerReceipt,
+  generateP01RunnerReceiptKeyPair,
+} from '../../scripts/acceptance/p01-runner-receipt.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const toolName = 'bangumi.get_person_activity';
@@ -56,6 +61,7 @@ export function makeP01Report({
   baseSha = 'a'.repeat(40),
   bundleSha256 = 'c'.repeat(64),
   claimId,
+  runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair(),
   prNumber = 42,
   reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`,
 } = {}) {
@@ -115,9 +121,25 @@ export function makeP01Report({
     baseSha,
     bundleSha256,
     claimId: resolvedClaimId,
+    runnerReceiptPublicKey: runnerReceiptKeyPair.publicKeyBase64,
+    runnerEventStreamSha256: '7'.repeat(64),
+    runnerServerSummarySha256: '8'.repeat(64),
     prNumber,
     reviewerId,
     codexCliVersion: '0.162.0',
+    processExitCode: 0,
+    resultStatus: 'SUCCESS',
+    eventStreamParsed: true,
+    serverToolNames: [toolName],
+    serverToolCount: 1,
+    codexMcpToolEventCount: 1,
+    mcpServerNames: ['bgk_p01_one_tool'],
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
+    shellToolCallCount: 0,
+    allowedCallCount: 1,
+    deniedCallCount: 0,
+    queryArguments: P01_EXPECTED_QUERY_ARGUMENTS,
     toolTextUtf8Bytes: 1200,
     candidateGate: {
       candidateSha,
@@ -151,6 +173,10 @@ export function makeP01Report({
     answerUtf8Bytes: 900,
     answerSha256: 'f'.repeat(64),
   };
+  input.runnerReceipt = createP01RunnerReceipt(
+    buildP01RunnerReceiptPayload(input, answerResult),
+    runnerReceiptKeyPair,
+  );
   const result = buildP01SanitizedReport(
     input,
     answerResult,

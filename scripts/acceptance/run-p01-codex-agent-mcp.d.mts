@@ -7,6 +7,8 @@ export function createP01OneShotClaim(
     prNumber: number;
     bundleSha256: string;
     reviewerId: string;
+    claimId: string;
+    runnerReceiptPublicKey: string;
     model?: string;
     reasoningEffort?: string;
     ciSha?: string;
@@ -30,9 +32,19 @@ export function assertP01CandidateReviewGate(
     sourceRevision: string;
     currentBaseSha: string;
     bundleSha256?: string;
+    runnerReceiptPublicKey?: string;
     allowClaimed?: boolean;
   },
 ): { prNumber: number; candidateSha: string; baseSha: string; reviewerId: string };
+export function persistHarnessP01OneShotResult(
+  claim: { claimId: string; prNumber: number },
+  state: 'INCONCLUSIVE' | 'REPORT_WRITTEN',
+  reportSha256?: string | null,
+  options?: {
+    invoke?: (args: string[]) => unknown;
+    readStatus?: (prNumber: number) => unknown;
+  },
+): boolean;
 export function canonicalP01SafeEventSummary(events: unknown): {
   codexMcpToolEventCount: number;
   nonMcpToolEventCount: number;

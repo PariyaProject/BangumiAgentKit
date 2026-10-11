@@ -8,6 +8,12 @@ import {
   p01CatalogHashes,
   validateP01SanitizedReport,
 } from '../../scripts/acceptance/write-p01-agent-mcp-report.mjs';
+import {
+  buildP01RunnerReceiptPayload,
+  createP01RunnerReceipt,
+  generateP01RunnerReceiptKeyPair,
+  p01RunnerPublicKeySha256,
+} from '../../scripts/acceptance/p01-runner-receipt.mjs';
 
 const reviewerId = 'gpt-6-luna-max-run95-pr147-round1';
 const candidateSha = 'a'.repeat(40);
@@ -15,6 +21,7 @@ const baseSha = 'b'.repeat(40);
 const bundleSha256 = 'c'.repeat(64);
 const toolName = 'bangumi.get_person_activity';
 const root = process.cwd();
+const receiptKeyPair = generateP01RunnerReceiptKeyPair();
 const sourceOperations = [
   { operation: 'GET /v0/persons/{person_id}', attempted: 1, succeeded: 1, failed: 0 },
   { operation: 'GET /v0/persons/{person_id}/subjects', attempted: 1, succeeded: 1, failed: 0 },
@@ -34,16 +41,32 @@ const window = {
 };
 
 function input() {
-  return {
+  const value: Record<string, unknown> = {
     model: 'gpt-6-luna',
     reasoningEffort: 'max',
     sourceRevision: candidateSha,
     baseSha,
     bundleSha256,
     claimId: `p01-run-95-pr-147-${candidateSha.slice(0, 12)}-123`,
+    runnerReceiptPublicKey: receiptKeyPair.publicKeyBase64,
+    runnerEventStreamSha256: '7'.repeat(64),
+    runnerServerSummarySha256: '8'.repeat(64),
     prNumber: 147,
     reviewerId,
     codexCliVersion: '0.162.0',
+    processExitCode: 0,
+    resultStatus: 'SUCCESS',
+    eventStreamParsed: true,
+    serverToolNames: [toolName],
+    serverToolCount: 1,
+    codexMcpToolEventCount: 1,
+    mcpServerNames: ['bgk_p01_one_tool'],
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
+    shellToolCallCount: 0,
+    allowedCallCount: 1,
+    deniedCallCount: 0,
+    queryArguments: P01_EXPECTED_QUERY_ARGUMENTS,
     toolTextUtf8Bytes: 1200,
     candidateGate: {
       candidateSha,
@@ -62,6 +85,11 @@ function input() {
       resultByteLength: 4096,
     },
   };
+  value.runnerReceipt = createP01RunnerReceipt(
+    buildP01RunnerReceiptPayload(value, answerResult()),
+    receiptKeyPair,
+  );
+  return value;
 }
 
 function answerResult() {
@@ -191,7 +219,7 @@ describe('P01 sanitized Agent/MCP report', () => {
     expect(buildP01SanitizedReport(wrongModel, answerResult(), hashes).passed).toBe(false);
 
     const wrongReview = input();
-    wrongReview.candidateGate.reviewPassSha = baseSha;
+    (wrongReview.candidateGate as Record<string, unknown>).reviewPassSha = baseSha;
     expect(buildP01SanitizedReport(wrongReview, answerResult(), hashes).passed).toBe(false);
 
     const wrongCount = answerResult();
@@ -234,6 +262,8 @@ describe('P01 sanitized Agent/MCP report', () => {
       bundleSha256,
       prNumber: 147,
       reviewerId,
+      runnerReceiptPublicKey: receiptKeyPair.publicKeyBase64,
+      runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(receiptKeyPair.publicKeyBase64),
       expectedArgumentsSha256: reportResult.report.expectedArgumentsSha256,
     };
     expect(validateP01SanitizedReport(reportResult.report, expected, root).passed).toBe(true);
@@ -245,6 +275,10 @@ describe('P01 sanitized Agent/MCP report', () => {
     const failedCheck = structuredClone(reportResult.report);
     (failedCheck.answerChecks as Record<string, boolean>).answerRowsMatch = false;
     expect(validateP01SanitizedReport(failedCheck, expected, root).passed).toBe(false);
+
+    const failedReceipt = structuredClone(reportResult.report);
+    (failedReceipt.runnerReceipt as Record<string, unknown>).signature = 'A'.repeat(88);
+    expect(validateP01SanitizedReport(failedReceipt, expected, root).passed).toBe(false);
 
     const inconsistentCoverage = structuredClone(reportResult.report);
     const inconsistentSummary = inconsistentCoverage.resultSummary as Record<string, unknown>;

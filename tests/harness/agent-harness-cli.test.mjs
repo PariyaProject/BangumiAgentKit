@@ -18,6 +18,10 @@ import {
   renderRunBody,
 } from '../../scripts/lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from '../../scripts/lib/frontier-ledger.mjs';
+import {
+  generateP01RunnerReceiptKeyPair,
+  p01RunnerPublicKeySha256,
+} from '../../scripts/acceptance/p01-runner-receipt.mjs';
 import { makeP01Report } from './p01-report-fixture.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -1212,11 +1216,13 @@ test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neu
     baseSha: sha('a'),
     draft: false,
   });
+  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
   const claimArgs = [
     'epoch:p01-one-shot-claim', '--run', '95', '--pr', '42',
     '--candidate', sha('b'), '--base', sha('a'), '--bundle-sha256', 'c'.repeat(64),
     '--model', 'gpt-6-luna', '--reasoning-effort', 'max',
     '--reviewer-id', reviewerId,
+    '--runner-receipt-public-key', runnerReceiptKeyPair.publicKeyBase64,
   ];
   try {
     const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
@@ -1256,6 +1262,10 @@ test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neu
     assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.ciStatus, 'SUCCESS');
     assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.model, 'gpt-6-luna');
     assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.reasoningEffort, 'max');
+    assert.equal(
+      stored.adversarial_preflight.p01_one_shot_disposition.runnerReceiptPublicKeySha256,
+      p01RunnerPublicKeySha256(runnerReceiptKeyPair.publicKeyBase64),
+    );
     assert.equal(stored.adversarial_preflight.p01_one_shot_disposition.retryAllowed, false);
 
     const duplicateClaim = environment.execute(claimArgs);
@@ -1337,10 +1347,12 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     draft: false,
   });
   const reportPath = path.join(environment.directory, 'p01-report.json');
+  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
   const claimArgs = [
     'epoch:p01-one-shot-claim', '--run', '95', '--pr', '42',
     '--candidate', sha('b'), '--base', sha('a'), '--bundle-sha256', 'c'.repeat(64),
     '--model', 'gpt-6-luna', '--reasoning-effort', 'max', '--reviewer-id', reviewerId,
+    '--runner-receipt-public-key', runnerReceiptKeyPair.publicKeyBase64,
   ];
   try {
     const claimed = environment.execute(claimArgs);
@@ -1366,6 +1378,24 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     assert.equal(missing.status, 2);
     assert.match(missing.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
 
+    const fabricated = makeP01Report({
+      claimId: claim.claimId,
+      runnerReceiptKeyPair,
+      prNumber: 42,
+      reviewerId,
+    });
+    delete fabricated.runnerReceipt;
+    fs.writeFileSync(reportPath, `${JSON.stringify(fabricated, null, 2)}\n`);
+    const fabricatedAllTrue = environment.execute(resultArgs, resultEnv);
+    assert.equal(fabricatedAllTrue.status, 2);
+    assert.match(fabricatedAllTrue.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+        .adversarial_preflight.p01_one_shot_disposition.state,
+      'CLAIMED',
+      'self-asserted all-true answer fields without a runner receipt must not terminalize the claim',
+    );
+
     fs.writeFileSync(reportPath, '{ invalid json');
     const malformed = environment.execute(resultArgs, resultEnv);
     assert.equal(malformed.status, 2);
@@ -1374,6 +1404,7 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     const mismatched = makeP01Report({
       baseSha: sha('f'),
       claimId: claim.claimId,
+      runnerReceiptKeyPair,
       prNumber: 42,
       reviewerId,
     });
@@ -1382,7 +1413,12 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     assert.equal(wrongBase.status, 2);
     assert.match(wrongBase.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
 
-    const failedCheck = makeP01Report({ claimId: claim.claimId, prNumber: 42, reviewerId });
+    const failedCheck = makeP01Report({
+      claimId: claim.claimId,
+      runnerReceiptKeyPair,
+      prNumber: 42,
+      reviewerId,
+    });
     failedCheck.answerChecks.answerRowsMatch = false;
     fs.writeFileSync(reportPath, `${JSON.stringify(failedCheck, null, 2)}\n`);
     const invalidChecks = environment.execute(resultArgs, resultEnv);
@@ -1395,7 +1431,12 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
       'invalid report attempts must not make the durable one-shot terminal',
     );
 
-    const report = makeP01Report({ claimId: claim.claimId, prNumber: 42, reviewerId });
+    const report = makeP01Report({
+      claimId: claim.claimId,
+      runnerReceiptKeyPair,
+      prNumber: 42,
+      reviewerId,
+    });
     const serialized = `${JSON.stringify(report, null, 2)}\n`;
     fs.writeFileSync(reportPath, serialized);
     const finished = environment.execute(resultArgs, resultEnv);

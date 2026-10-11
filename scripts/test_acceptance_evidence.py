@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Negative tests for catalog-bound public API acceptance evidence."""
 
+import base64
 import hashlib
 import importlib.util
 import json
@@ -412,9 +413,34 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             self.s03_test_attestation_public_key.encode('utf-8'),
         ).hexdigest()
         self.s03_control_available = True
+        self.p01_control_pr_number = None
+        self.p01_control_body = None
+        self.p01_control_available = True
         GENERATOR.urllib.request.urlopen = self._fake_s03_control_urlopen
 
     def _fake_s03_control_urlopen(self, request, timeout=10):
+        if (
+            self.p01_control_pr_number is not None
+            and request.full_url.endswith(f'/pulls/{self.p01_control_pr_number}')
+        ):
+            if not self.p01_control_available or not isinstance(self.p01_control_body, str):
+                raise GENERATOR.urllib.error.URLError('P01 fixture control plane unavailable')
+            payload = json.dumps({
+                'number': self.p01_control_pr_number,
+                'body': self.p01_control_body,
+            }).encode('utf-8')
+
+            class P01Response:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exception_type, exception, traceback):
+                    return False
+
+                def read(self, size=-1):
+                    return payload if size < 0 else payload[:size]
+
+            return P01Response()
         if not self.s03_control_available:
             raise GENERATOR.urllib.error.URLError('fixture control plane unavailable')
 
@@ -460,6 +486,65 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 return payload if size < 0 else payload[:size]
 
         return Response()
+
+    def _set_p01_control_record(self, report, report_bytes, report_sha_override=None):
+        self.p01_control_pr_number = report['prNumber']
+        reviewer_id = report['reviewerId']
+        source_revision = report['sourceRevision']
+        base_sha = report['baseSha']
+        receipt = report['runnerReceipt']
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'P01',
+            'epochId': GENERATOR.CODEX_P01_EPOCH_ID,
+            'runNumber': 95,
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_P01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_P01_EXPECTED_ARGUMENTS,
+            ),
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': source_revision,
+            'baseSha': base_sha,
+            'ciSha': source_revision,
+            'ciStatus': 'SUCCESS',
+            'bundleSha256': report['mcpBundleSha256'],
+            'prNumber': self.p01_control_pr_number,
+            'reviewerId': reviewer_id,
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'reportWritten': True,
+            'retryAllowed': False,
+            'reportPath': GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha_override or hashlib.sha256(report_bytes).hexdigest(),
+        }
+        epoch = {
+            'schema': 'bangumi-harness/v3',
+            'kind': 'epoch',
+            'epoch_id': GENERATOR.CODEX_P01_EPOCH_ID,
+            'pr_number': self.p01_control_pr_number,
+            'base_sha': base_sha,
+            'review_pass_sha': source_revision,
+            'adversarial_preflight': {
+                'completed': True,
+                'p01_one_shot_disposition': disposition,
+            },
+            'review_history': [{
+                'candidate_sha': source_revision,
+                'reviewed_base_sha': base_sha,
+                'reviewer_id': reviewer_id,
+                'verdict': 'PASS',
+            }],
+        }
+        fence = chr(96) * 3
+        self.p01_control_body = (
+            '<!-- bangumi-harness:v3:epoch:start -->\n'
+            + fence + 'json\n'
+            + json.dumps(epoch)
+            + '\n' + fence
+            + '\n<!-- bangumi-harness:v3:epoch:end -->'
+        )
 
     def _git(self, *args):
         return subprocess.run(
@@ -1973,7 +2058,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
         ]
         reviewer_id = 'gpt-6-luna-max-run95-pr147-round1'
-        return {
+        report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_p01_person_position_agent_mcp',
             'runNumber': 95,
@@ -2081,6 +2166,65 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'credentialsStored': False,
             },
         }
+        public_der = bytes.fromhex('302a300506032b6570032100') + b'k' * 32
+        event_stream_sha256 = '7' * 64
+        server_summary_sha256 = '8' * 64
+        receipt_payload = {
+            'schemaVersion': 1,
+            'kind': GENERATOR.CODEX_P01_RUNNER_RECEIPT_KIND,
+            'claimId': report['claimId'],
+            'runNumber': 95,
+            'frontierId': 'P01',
+            'epochId': GENERATOR.CODEX_P01_EPOCH_ID,
+            'prNumber': report['prNumber'],
+            'sourceRevision': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_P01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'codexCliVersion': report['codexCliVersion'],
+            'processExitCode': report['processExitCode'],
+            'resultStatus': report['resultStatus'],
+            'eventStreamParsed': report['eventStreamParsed'],
+            'serverToolNames': report['serverToolNames'],
+            'serverToolCount': report['serverToolCount'],
+            'mcpServerNames': report['mcpServerNames'],
+            'codexMcpToolEventCount': report['codexMcpToolEventCount'],
+            'nonMcpToolEventCount': report['nonMcpToolEventCount'],
+            'nonMcpToolTypes': report['nonMcpToolTypes'],
+            'shellToolCallCount': report['shellToolCallCount'],
+            'allowedCallCount': report['allowedCallCount'],
+            'deniedCallCount': report['deniedCallCount'],
+            'eventStreamSha256': event_stream_sha256,
+            'serverSummarySha256': server_summary_sha256,
+            'toolArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_P01_EXPECTED_ARGUMENTS,
+            ),
+            'toolTextUtf8Bytes': report['toolTextUtf8Bytes'],
+            'resultByteLength': report['resultByteLength'],
+            'resultSha256': report['resultSha256'],
+            'answerUtf8Bytes': report['answerUtf8Bytes'],
+            'answerSha256': report['answerSha256'],
+            'answerChecksSha256': GENERATOR._canonical_json_sha256(report['answerChecks']),
+            'answerCountersSha256': GENERATOR._canonical_json_sha256(report['answerCounters']),
+            'resultSummarySha256': GENERATOR._canonical_json_sha256(report['resultSummary']),
+        }
+        public_der_base64 = base64.b64encode(public_der).decode('ascii')
+        report['runnerReceipt'] = {
+            'schemaVersion': 1,
+            'kind': GENERATOR.CODEX_P01_RUNNER_RECEIPT_KIND,
+            'publicKeyBase64': public_der_base64,
+            'publicKeySha256': hashlib.sha256(public_der).hexdigest(),
+            'payload': receipt_payload,
+            'signature': base64.b64encode(b's' * 64).decode('ascii'),
+        }
+        return report
 
     def _g04_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
@@ -2789,7 +2933,12 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         wrong_claim = dict(report)
         wrong_claim['claimId'] = 'p01-run-95-pr-147-000000000000-123'
         self.assertFalse(GENERATOR.codex_p01_report_is_valid(wrong_claim))
-        report_path.write_text(json.dumps(report), encoding='utf-8')
+        no_runner_receipt = dict(report)
+        no_runner_receipt.pop('runnerReceipt')
+        self.assertFalse(GENERATOR.codex_p01_report_is_valid(no_runner_receipt))
+        report_bytes = json.dumps(report).encode('utf-8')
+        report_path.write_bytes(report_bytes)
+        self._set_p01_control_record(report, report_bytes)
         self.assertTrue(
             GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
         )
@@ -2807,6 +2956,23 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
         )
 
+        # An otherwise valid, self-consistent edit must not bypass the exact digest
+        # Harness accepted before this evidence was committed.
+        report_path.write_bytes(report_path.read_bytes() + b'\n')
+        edited_report = json.loads(report_path.read_bytes())
+        self.assertTrue(GENERATOR.codex_p01_report_is_valid(edited_report))
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertNotIn(
+            GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH,
+            GENERATOR.model_mcp_e2e_sources(self.catalog).get(
+                'bangumi.get_person_activity', set(),
+            ),
+        )
+
         stale_report = self._p01_report_fixture(self.stale_candidate_source_revision)
         self.assertTrue(GENERATOR.codex_p01_report_is_valid(stale_report))
         self.assertFalse(
@@ -2821,6 +2987,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             lambda report: report.update(reasoningEffort='high'),
             lambda report: report['candidateGate'].update(reviewPassSha='0' * 40),
             lambda report: report['toolCalls'].append(report['toolCalls'][0]),
+            lambda report: report['runnerReceipt']['payload'].update(eventStreamParsed=False),
+            lambda report: report['runnerReceipt'].update(publicKeySha256='0' * 64),
+            lambda report: report['runnerReceipt'].update(publicKeyBase64='☃'),
             lambda report: report['resultSummary']['coverage'].update(truncated=True),
             lambda report: report['resultSummary'].update(rawRole='must not be retained'),
             lambda report: report['privacy'].update(communityRead=True),

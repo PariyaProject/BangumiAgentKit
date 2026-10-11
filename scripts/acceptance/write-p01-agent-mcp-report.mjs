@@ -15,6 +15,11 @@ import {
   gitRepositoryText,
   readG26McpBundleAttestation,
 } from '../lib/g26-mcp-bundle.mjs';
+import {
+  buildP01RunnerReceiptPayload,
+  p01RunnerPublicKeySha256,
+  verifyP01RunnerReceipt,
+} from './p01-runner-receipt.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
@@ -77,6 +82,7 @@ const REPORT_FIELDS = [
   'reasoningEffort',
   'reviewerId',
   'claimId',
+  'runnerReceipt',
   'codexCliVersion',
   'sourceRevision',
   'baseSha',
@@ -205,6 +211,9 @@ function readClaim(input, root) {
     claim.reviewerId !== input.reviewerId ||
     claim.ciSha !== input.sourceRevision ||
     claim.ciStatus !== 'SUCCESS' ||
+    claim.claimId !== input.claimId ||
+    claim.runnerReceiptPublicKey !== input.runnerReceiptPublicKey ||
+    claim.runnerReceiptPublicKeySha256 !== p01RunnerPublicKeySha256(input.runnerReceiptPublicKey) ||
     claim.model !== MODEL ||
     claim.reasoningEffort !== REASONING_EFFORT ||
     claim.toolName !== TOOL_NAME ||
@@ -579,6 +588,34 @@ export function buildP01SanitizedReport(
       passed: false,
       reason: 'P01 answer, source, or report fields failed sanitized-evidence validation.',
     };
+  let expectedReceiptPayload;
+  try {
+    if (
+      !isRecord(input.runnerReceipt) ||
+      input.runnerReceipt.publicKeyBase64 !== input.runnerReceiptPublicKey ||
+      input.runnerReceipt.publicKeySha256 !==
+        p01RunnerPublicKeySha256(input.runnerReceiptPublicKey) ||
+      !/^[0-9a-f]{64}$/u.test(input.runnerEventStreamSha256 ?? '') ||
+      !/^[0-9a-f]{64}$/u.test(input.runnerServerSummarySha256 ?? '')
+    ) {
+      throw new Error('Runner receipt keys or event digests are invalid.');
+    }
+    expectedReceiptPayload = buildP01RunnerReceiptPayload(input, answerResult);
+  } catch {
+    return { passed: false, reason: 'P01 signed runner receipt is missing or malformed.' };
+  }
+  if (
+    !verifyP01RunnerReceipt(
+      input.runnerReceipt,
+      input.runnerReceiptPublicKey,
+      expectedReceiptPayload,
+    )
+  ) {
+    return {
+      passed: false,
+      reason: 'P01 signed runner receipt does not attest the exact successful one-tool answer.',
+    };
+  }
   const sourceOperations = safeSourceOperations(input.serverResultSummary?.sourceOperations);
   if (
     input.serverResultSummary?.toolName !== TOOL_NAME ||
@@ -607,6 +644,7 @@ export function buildP01SanitizedReport(
     reasoningEffort: REASONING_EFFORT,
     reviewerId: input.reviewerId,
     claimId: input.claimId,
+    runnerReceipt: structuredClone(input.runnerReceipt),
     codexCliVersion: input.codexCliVersion,
     sourceRevision: input.sourceRevision,
     baseSha: input.baseSha,
@@ -656,6 +694,14 @@ export function buildP01SanitizedReport(
 }
 
 export function validateP01SanitizedReport(report, expected, root = ROOT) {
+  let expectedRunnerReceiptPublicKeySha256;
+  try {
+    expectedRunnerReceiptPublicKeySha256 = p01RunnerPublicKeySha256(
+      expected?.runnerReceiptPublicKey,
+    );
+  } catch {
+    expectedRunnerReceiptPublicKeySha256 = null;
+  }
   if (
     !isRecord(expected) ||
     typeof expected.claimId !== 'string' ||
@@ -673,6 +719,8 @@ export function validateP01SanitizedReport(report, expected, root = ROOT) {
     !/^[0-9a-f]{64}$/u.test(expected.bundleSha256 ?? '') ||
     !Number.isSafeInteger(expected.prNumber) ||
     typeof expected.reviewerId !== 'string' ||
+    !/^[A-Za-z0-9+/]+={0,2}$/u.test(expected.runnerReceiptPublicKey ?? '') ||
+    expected.runnerReceiptPublicKeySha256 !== expectedRunnerReceiptPublicKeySha256 ||
     !/^[0-9a-f]{64}$/u.test(expected.expectedArgumentsSha256 ?? '')
   ) {
     return { passed: false, reason: 'P01 active Harness claim is malformed.' };
@@ -692,6 +740,8 @@ export function validateP01SanitizedReport(report, expected, root = ROOT) {
     report.prNumber !== expected.prNumber ||
     report.mcpBundleSha256 !== expected.bundleSha256 ||
     report.reviewerId !== expected.reviewerId ||
+    report.runnerReceipt?.publicKeyBase64 !== expected.runnerReceiptPublicKey ||
+    report.runnerReceipt?.publicKeySha256 !== expected.runnerReceiptPublicKeySha256 ||
     report.expectedArgumentsSha256 !== expected.expectedArgumentsSha256
   ) {
     return {
@@ -715,7 +765,24 @@ export function validateP01SanitizedReport(report, expected, root = ROOT) {
     prNumber: report.prNumber,
     reviewerId: report.reviewerId,
     claimId: report.claimId,
+    runnerReceiptPublicKey: expected.runnerReceiptPublicKey,
+    runnerReceipt: report.runnerReceipt,
+    runnerEventStreamSha256: report.runnerReceipt?.payload?.eventStreamSha256,
+    runnerServerSummarySha256: report.runnerReceipt?.payload?.serverSummarySha256,
     codexCliVersion: report.codexCliVersion,
+    processExitCode: report.processExitCode,
+    resultStatus: report.resultStatus,
+    eventStreamParsed: report.eventStreamParsed,
+    serverToolNames: report.serverToolNames,
+    serverToolCount: report.serverToolCount,
+    codexMcpToolEventCount: report.codexMcpToolEventCount,
+    mcpServerNames: report.mcpServerNames,
+    nonMcpToolEventCount: report.nonMcpToolEventCount,
+    nonMcpToolTypes: report.nonMcpToolTypes,
+    shellToolCallCount: report.shellToolCallCount,
+    allowedCallCount: report.allowedCallCount,
+    deniedCallCount: report.deniedCallCount,
+    queryArguments: P01_EXPECTED_QUERY_ARGUMENTS,
     candidateGate: report.candidateGate,
     toolTextUtf8Bytes: report.toolTextUtf8Bytes,
     serverResultSummary: {

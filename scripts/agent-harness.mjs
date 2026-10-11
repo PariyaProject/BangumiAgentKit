@@ -55,6 +55,7 @@ import {
   P01_EXPECTED_QUERY_ARGUMENTS,
 } from './acceptance/p01-person-position-answer-check.mjs';
 import { validateP01SanitizedReportFile } from './acceptance/write-p01-agent-mcp-report.mjs';
+import { p01RunnerPublicKeySha256 } from './acceptance/p01-runner-receipt.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const frontierLedgerPath =
@@ -396,7 +397,7 @@ Usage: pnpm harness <command> [options]
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
   epoch:g19-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --reviewer-id <id>
   epoch:g19-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
-  epoch:p01-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --bundle-sha256 <sha> --model gpt-6-luna --reasoning-effort max --reviewer-id <id>
+  epoch:p01-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --bundle-sha256 <sha> --runner-receipt-public-key <spki-base64> --model gpt-6-luna --reasoning-effort max --reviewer-id <id>
   epoch:p01-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
   frontier:review-reserve --run <issue> [--evidence <json>] [--runtime-recovery]
   frontier:review-started --run <issue> --reviewer-id <id> [--runtime-recovery]
@@ -1335,12 +1336,18 @@ function commandEpochG19OneShotResult(options) {
 
 function assertP01OneShotClaimReadiness({
   run, epoch, pr, runNumber, prNumber, candidateSha, baseSha, bundleSha256,
-  model, reasoningEffort, reviewerId,
+  model, reasoningEffort, reviewerId, runnerReceiptPublicKey,
 }) {
   const currentBaseSha = remoteBaseSha(epoch.base_branch);
   const latestReview = epoch.review_history?.at(-1);
   const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round\\d+$`, 'u');
   const preflight = epoch.adversarial_preflight ?? {};
+  let runnerReceiptPublicKeySha256;
+  try {
+    runnerReceiptPublicKeySha256 = p01RunnerPublicKeySha256(runnerReceiptPublicKey);
+  } catch {
+    runnerReceiptPublicKeySha256 = null;
+  }
   if (
     Number(runNumber) !== 95 ||
     run.state !== 'EPOCH_ACTIVE' || run.active_epoch_pr !== Number(prNumber) ||
@@ -1358,6 +1365,7 @@ function assertP01OneShotClaimReadiness({
     model !== 'gpt-6-luna' || reasoningEffort !== 'max' ||
     !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
     !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKeySha256 ?? '') ||
     latestReview?.candidate_sha !== candidateSha || latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' || latestReview.reviewer_id !== reviewerId ||
     !reviewerPattern.test(reviewerId)
@@ -1381,6 +1389,7 @@ function commandEpochP01OneShotClaim(options) {
   const model = required(options, 'model');
   const reasoningEffort = required(options, 'reasoning-effort');
   const reviewerId = required(options, 'reviewer-id');
+  const runnerReceiptPublicKey = required(options, 'runner-receipt-public-key');
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
   if (Object.hasOwn(epochResult.state.adversarial_preflight ?? {}, 'p01_one_shot_disposition')) {
@@ -1401,6 +1410,7 @@ function commandEpochP01OneShotClaim(options) {
     model,
     reasoningEffort,
     reviewerId,
+    runnerReceiptPublicKey,
   });
   const claimedAt = new Date().toISOString();
   const argumentsSha256 = canonicalHash(P01_EXPECTED_QUERY_ARGUMENTS);
@@ -1426,6 +1436,8 @@ function commandEpochP01OneShotClaim(options) {
       reviewerId,
       model,
       reasoningEffort,
+      runnerReceiptPublicKey,
+      runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(runnerReceiptPublicKey),
       reportWritten: false,
       retryAllowed: false,
       claimedAt,
@@ -1446,6 +1458,7 @@ function commandEpochP01OneShotClaim(options) {
     expectedArgumentsSha256: argumentsSha256,
     model,
     reasoningEffort,
+    runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(runnerReceiptPublicKey),
   });
 }
 
@@ -1467,6 +1480,14 @@ function commandEpochP01OneShotResult(options) {
     throw new HarnessInvariantError('P01_ONESHOT_EPOCH_INACTIVE', 'P01 result must belong to the active Epoch.');
   }
   const current = epochResult.state.adversarial_preflight?.p01_one_shot_disposition;
+  let runnerReceiptPublicKeyValid = false;
+  try {
+    runnerReceiptPublicKeyValid =
+      p01RunnerPublicKeySha256(current?.runnerReceiptPublicKey) ===
+      current?.runnerReceiptPublicKeySha256;
+  } catch {
+    runnerReceiptPublicKeyValid = false;
+  }
   if (!current || current.claimId !== claimId || current.runNumber !== Number(runNumber) ||
       current.prNumber !== Number(prNumber) ||
       current.epochId !== 'run95-p01-person-role-agent-mcp' ||
@@ -1475,6 +1496,7 @@ function commandEpochP01OneShotResult(options) {
       current.model !== 'gpt-6-luna' || current.reasoningEffort !== 'max' ||
       current.ciSha !== current.sourceCandidateSha || current.ciStatus !== 'SUCCESS' ||
       !/^[0-9a-f]{64}$/u.test(current.bundleSha256 ?? '') ||
+      !runnerReceiptPublicKeyValid ||
       current.expectedArgumentsSha256 !== canonicalHash(P01_EXPECTED_QUERY_ARGUMENTS)) {
     throw new HarnessInvariantError(
       'P01_ONESHOT_CLAIM_MISMATCH',
@@ -1495,7 +1517,12 @@ function commandEpochP01OneShotResult(options) {
         );
       }
     }
-    print({ state: 'P01_ONE_SHOT_RESULT_ALREADY_RECORDED', claimId, resultState });
+    print({
+      state: 'P01_ONE_SHOT_RESULT_ALREADY_RECORDED',
+      claimId,
+      resultState,
+      ...(resultState === 'REPORT_WRITTEN' ? { reportSha256: current.reportSha256 } : {}),
+    });
     return;
   }
   if (current.state !== 'CLAIMED') {
@@ -1560,6 +1587,7 @@ function commandEpochP01OneShotResult(options) {
     claimId,
     resultState,
     reportWritten: resultState === 'REPORT_WRITTEN',
+    ...(acceptedReport ? { reportSha256: acceptedReport.reportSha256 } : {}),
   });
 }
 

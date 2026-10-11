@@ -15,8 +15,13 @@ import {
   canonicalP01SafeEventSummary,
   createP01OneShotClaim,
   hasUnexpectedP01CodexToolActivity,
+  persistHarnessP01OneShotResult,
   validateP01RunnerArgs,
 } from '../../scripts/acceptance/run-p01-codex-agent-mcp.mjs';
+import {
+  generateP01RunnerReceiptKeyPair,
+  p01RunnerPublicKeySha256,
+} from '../../scripts/acceptance/p01-runner-receipt.mjs';
 
 const temporaryRoots: string[] = [];
 const candidate = 'a'.repeat(40);
@@ -147,6 +152,7 @@ describe('P01 one-tool Codex runner', () => {
     ).toThrow(/durable Harness control plane/u);
 
     const ownClaim = structuredClone(status);
+    const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
     ownClaim.epoch.state.adversarial_preflight['p01_one_shot_disposition'] = {
       frontierId: 'P01',
       epochId: 'run95-p01-person-role-agent-mcp',
@@ -154,7 +160,10 @@ describe('P01 one-tool Codex runner', () => {
       toolName: 'bangumi.get_person_activity',
       argumentProfile: P01_ARGUMENT_PROFILE,
       expectedArgumentsSha256: canonicalHash(P01_EXPECTED_QUERY_ARGUMENTS),
+      claimId: `p01-run-95-pr-${prNumber}-${candidate.slice(0, 12)}-123`,
       bundleSha256: bundle,
+      runnerReceiptPublicKey: runnerReceiptKeyPair.publicKeyBase64,
+      runnerReceiptPublicKeySha256: p01RunnerPublicKeySha256(runnerReceiptKeyPair.publicKeyBase64),
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
       ciSha: candidate,
@@ -170,6 +179,7 @@ describe('P01 one-tool Codex runner', () => {
         sourceRevision: candidate,
         currentBaseSha: base,
         bundleSha256: bundle,
+        runnerReceiptPublicKey: runnerReceiptKeyPair.publicKeyBase64,
         allowClaimed: true,
       }),
     ).toMatchObject({ candidateSha: candidate, baseSha: base });
@@ -178,6 +188,7 @@ describe('P01 one-tool Codex runner', () => {
         sourceRevision: candidate,
         currentBaseSha: base,
         bundleSha256: 'e'.repeat(64),
+        runnerReceiptPublicKey: runnerReceiptKeyPair.publicKeyBase64,
         allowClaimed: true,
       }),
     ).toThrow();
@@ -210,12 +221,15 @@ describe('P01 one-tool Codex runner', () => {
   it('creates a mode-0600 local claim exactly once and binds Candidate, arguments, and reviewer', () => {
     const root = temporaryGitRepository();
     const claimPath = canonicalP01ClaimPath(root);
+    const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
     const input = {
       sourceRevision: candidate,
       baseSha: base,
       prNumber,
       bundleSha256: bundle,
       reviewerId,
+      claimId: `p01-run-95-pr-${prNumber}-${candidate.slice(0, 12)}-123`,
+      runnerReceiptPublicKey: runnerReceiptKeyPair.publicKeyBase64,
     };
     const claim = createP01OneShotClaim(claimPath, input, {
       root,
@@ -244,6 +258,51 @@ describe('P01 one-tool Codex runner', () => {
     expect(() =>
       createP01OneShotClaim(path.join(root, 'outside-claim.json'), input, { root }),
     ).toThrow(/canonical/u);
+  });
+
+  it('reconciles a lost result response from the durable Harness disposition and fails closed without readback', () => {
+    const claim = {
+      prNumber,
+      claimId: `p01-run-95-pr-${prNumber}-${candidate.slice(0, 12)}-123`,
+    };
+    const reportSha256 = 'd'.repeat(64);
+    const disposition = {
+      claimId: claim.claimId,
+      runNumber: 95,
+      prNumber,
+      state: 'REPORT_WRITTEN',
+      reportWritten: true,
+      retryAllowed: false,
+      reportSha256,
+    };
+    expect(
+      persistHarnessP01OneShotResult(claim, 'REPORT_WRITTEN', reportSha256, {
+        invoke: () => {
+          throw new Error('response lost after remote update');
+        },
+        readStatus: (requestedPr) => {
+          expect(requestedPr).toBe(prNumber);
+          return {
+            epoch: {
+              state: { adversarial_preflight: { p01_one_shot_disposition: disposition } },
+            },
+          };
+        },
+      }),
+    ).toBe(true);
+    expect(
+      persistHarnessP01OneShotResult(claim, 'REPORT_WRITTEN', reportSha256, {
+        invoke: () => ({
+          state: 'ERROR',
+          claimId: claim.claimId,
+          resultState: 'REPORT_WRITTEN',
+          reportSha256,
+        }),
+        readStatus: () => {
+          throw new Error('control plane unavailable');
+        },
+      }),
+    ).toBe(false);
   });
 
   it('retains only safe event counts/types and fails closed on extra activity', () => {

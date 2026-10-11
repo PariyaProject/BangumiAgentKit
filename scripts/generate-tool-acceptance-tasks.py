@@ -554,7 +554,23 @@ CODEX_P01_REPORT_FIELDS = {
     'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
     'answerChecks', 'answerCounters', 'toolCalls', 'toolTextUtf8Bytes', 'resultSummary',
     'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256', 'sourceOperations',
+    'runnerReceipt',
     'privacy',
+}
+CODEX_P01_RUNNER_RECEIPT_KIND = 'p01-runner-acceptance-receipt-v1'
+CODEX_P01_RUNNER_RECEIPT_FIELDS = {
+    'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
+}
+CODEX_P01_RUNNER_RECEIPT_PAYLOAD_FIELDS = {
+    'schemaVersion', 'kind', 'claimId', 'runNumber', 'frontierId', 'epochId', 'prNumber',
+    'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'reviewerId', 'bundleSha256', 'model',
+    'reasoningEffort', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'codexCliVersion', 'processExitCode', 'resultStatus', 'eventStreamParsed',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'codexMcpToolEventCount',
+    'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount',
+    'deniedCallCount', 'eventStreamSha256', 'serverSummarySha256', 'toolArgumentsSha256',
+    'toolTextUtf8Bytes', 'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256',
+    'answerChecksSha256', 'answerCountersSha256', 'resultSummarySha256',
 }
 CODEX_P01_COVERAGE_FIELDS = {
     'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
@@ -1655,10 +1671,18 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         "const EPOCH_ID = 'run95-p01-person-role-agent-mcp'",
         'export function assertP01CandidateReviewGate(',
         'export function createP01OneShotClaim(',
+        'REPORT_WRITTEN_ACK_PENDING',
+        'export function persistHarnessP01OneShotResult(',
         "'epoch:p01-one-shot-claim'",
         "'features.shell_tool=false'",
         "'features.multi_agent=false'",
         "const SERVER_ID = 'bgk_p01_one_tool'",
+    ),
+    'scripts/acceptance/p01-runner-receipt.mjs': (
+        'export function generateP01RunnerReceiptKeyPair()',
+        'export function buildP01RunnerReceiptPayload(',
+        'export function verifyP01RunnerReceipt(',
+        "const RECEIPT_KIND = 'p01-runner-acceptance-receipt-v1'",
     ),
     'scripts/acceptance/write-p01-agent-mcp-report.mjs': (
         'export function buildP01SanitizedReport(',
@@ -1671,6 +1695,7 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'p01_one_shot_disposition',
         "'epoch:p01-one-shot-claim'",
         "'epoch:p01-one-shot-result'",
+        "'runner-receipt-public-key'",
         "model !== 'gpt-6-luna'",
         "reasoningEffort !== 'max'",
         'Number(runNumber) !== 95',
@@ -1679,6 +1704,8 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p01_report_is_valid(',
+        'def codex_p01_runner_receipt_is_valid(',
+        'def codex_p01_harness_control_record_trusts_report(',
         'def codex_p01_report_matches_candidate_revision(',
         'CODEX_P01_EXPECTED_ARGUMENTS',
         'CODEX_P01_REPORT_RELATIVE_PATH',
@@ -4095,9 +4122,95 @@ def codex_g19_report_is_valid(report: object) -> bool:
     return True
 
 
+def codex_p01_runner_receipt_is_valid(report: object) -> bool:
+    """Check the receipt shape and its report bindings; Harness owns signature verification."""
+    if not isinstance(report, dict):
+        return False
+    receipt = report.get('runnerReceipt')
+    if not isinstance(receipt, dict) or set(receipt) != CODEX_P01_RUNNER_RECEIPT_FIELDS:
+        return False
+    public_key = receipt.get('publicKeyBase64')
+    signature_text = receipt.get('signature')
+    payload = receipt.get('payload')
+    if (
+        type(receipt.get('schemaVersion')) is not int
+        or receipt.get('schemaVersion') != 1
+        or receipt.get('kind') != CODEX_P01_RUNNER_RECEIPT_KIND
+        or not isinstance(public_key, str)
+        or not isinstance(signature_text, str)
+        or not isinstance(payload, dict)
+        or set(payload) != CODEX_P01_RUNNER_RECEIPT_PAYLOAD_FIELDS
+    ):
+        return False
+    try:
+        public_der = base64.b64decode(public_key, validate=True)
+        signature = base64.b64decode(signature_text, validate=True)
+    except (ValueError, TypeError, UnicodeError):
+        return False
+    if (
+        base64.b64encode(public_der).decode('ascii') != public_key
+        or len(public_der) != 44
+        or public_der[:12] != bytes.fromhex('302a300506032b6570032100')
+        or hashlib.sha256(public_der).hexdigest() != receipt.get('publicKeySha256')
+        or len(signature) != 64
+        or base64.b64encode(signature).decode('ascii') != signature_text
+    ):
+        return False
+    bindings = {
+        'schemaVersion': 1,
+        'kind': CODEX_P01_RUNNER_RECEIPT_KIND,
+        'claimId': report.get('claimId'),
+        'runNumber': 95,
+        'frontierId': 'P01',
+        'epochId': CODEX_P01_EPOCH_ID,
+        'prNumber': report.get('prNumber'),
+        'sourceRevision': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'model': 'gpt-6-luna',
+        'reasoningEffort': 'max',
+        'toolName': 'bangumi.get_person_activity',
+        'argumentProfile': CODEX_P01_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': _canonical_json_sha256(CODEX_P01_EXPECTED_ARGUMENTS),
+        'codexCliVersion': report.get('codexCliVersion'),
+        'processExitCode': report.get('processExitCode'),
+        'resultStatus': report.get('resultStatus'),
+        'eventStreamParsed': report.get('eventStreamParsed'),
+        'serverToolNames': report.get('serverToolNames'),
+        'serverToolCount': report.get('serverToolCount'),
+        'mcpServerNames': report.get('mcpServerNames'),
+        'codexMcpToolEventCount': report.get('codexMcpToolEventCount'),
+        'nonMcpToolEventCount': report.get('nonMcpToolEventCount'),
+        'nonMcpToolTypes': report.get('nonMcpToolTypes'),
+        'shellToolCallCount': report.get('shellToolCallCount'),
+        'allowedCallCount': report.get('allowedCallCount'),
+        'deniedCallCount': report.get('deniedCallCount'),
+        'toolArgumentsSha256': _canonical_json_sha256(CODEX_P01_EXPECTED_ARGUMENTS),
+        'toolTextUtf8Bytes': report.get('toolTextUtf8Bytes'),
+        'resultByteLength': report.get('resultByteLength'),
+        'resultSha256': report.get('resultSha256'),
+        'answerUtf8Bytes': report.get('answerUtf8Bytes'),
+        'answerSha256': report.get('answerSha256'),
+        'answerChecksSha256': _canonical_json_sha256(report.get('answerChecks')),
+        'answerCountersSha256': _canonical_json_sha256(report.get('answerCounters')),
+        'resultSummarySha256': _canonical_json_sha256(report.get('resultSummary')),
+    }
+    if any(payload.get(field) != value for field, value in bindings.items()):
+        return False
+    return all(
+        isinstance(payload.get(field), str) and re.fullmatch(r'[0-9a-f]{64}', payload[field])
+        for field in ('eventStreamSha256', 'serverSummarySha256')
+    )
+
+
 def codex_p01_report_is_valid(report: object) -> bool:
     """Validate one exact-Candidate, sanitized P01 person-role Agent/MCP observation."""
     if not isinstance(report, dict) or set(report) != CODEX_P01_REPORT_FIELDS:
+        return False
+    if not codex_p01_runner_receipt_is_valid(report):
         return False
     source_revision = report.get('sourceRevision')
     base_sha = report.get('baseSha')
@@ -4341,6 +4454,108 @@ def codex_p01_report_is_valid(report: object) -> bool:
     return not _contains_forbidden_codex_content(report)
 
 
+def codex_p01_harness_control_record_trusts_report(
+    report: object,
+    report_sha256: object,
+) -> bool:
+    """Trust P01 only when the public Harness PR body accepted these exact report bytes."""
+    if (
+        not isinstance(report, dict)
+        or type(report.get('prNumber')) is not int
+        or report['prNumber'] <= 0
+        or not isinstance(report_sha256, str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+        or not codex_p01_runner_receipt_is_valid(report)
+    ):
+        return False
+    pr_number = report['prNumber']
+    request = urllib.request.Request(
+        f'https://api.github.com/repos/PariyaProject/BangumiAgentKit/pulls/{pr_number}',
+        headers={
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'PariyaAgent-acceptance-evidence',
+            'X-GitHub-Api-Version': '2022-11-28',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload_bytes = response.read(1_000_001)
+        if len(payload_bytes) > 1_000_000:
+            return False
+        pr = json.loads(payload_bytes)
+    except (
+        OSError,
+        TimeoutError,
+        UnicodeDecodeError,
+        urllib.error.URLError,
+        json.JSONDecodeError,
+    ):
+        return False
+    if not isinstance(pr, dict) or pr.get('number') != pr_number:
+        return False
+    body = pr.get('body')
+    if not isinstance(body, str):
+        return False
+    start_marker = '<!-- bangumi-harness:v3:epoch:start -->'
+    end_marker = '<!-- bangumi-harness:v3:epoch:end -->'
+    start = body.find(start_marker)
+    end = body.find(end_marker)
+    if start < 0 or end <= start:
+        return False
+    content = body[start + len(start_marker):end].strip()
+    content = re.sub(r'^\x60{3}json\s*|\s*\x60{3}$', '', content)
+    try:
+        epoch = json.loads(content)
+    except json.JSONDecodeError:
+        return False
+    preflight = epoch.get('adversarial_preflight') if isinstance(epoch, dict) else None
+    reviews = epoch.get('review_history') if isinstance(epoch, dict) else None
+    disposition = preflight.get('p01_one_shot_disposition') if isinstance(preflight, dict) else None
+    receipt = report['runnerReceipt']
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    reviewer_id = report.get('reviewerId')
+    return (
+        isinstance(epoch, dict)
+        and epoch.get('schema') == 'bangumi-harness/v3'
+        and epoch.get('kind') == 'epoch'
+        and epoch.get('epoch_id') == CODEX_P01_EPOCH_ID
+        and epoch.get('pr_number') == pr_number
+        and epoch.get('base_sha') == base_sha
+        and epoch.get('review_pass_sha') == source_revision
+        and isinstance(reviews, list)
+        and bool(reviews)
+        and isinstance(reviews[-1], dict)
+        and reviews[-1].get('candidate_sha') == source_revision
+        and reviews[-1].get('reviewed_base_sha') == base_sha
+        and reviews[-1].get('reviewer_id') == reviewer_id
+        and reviews[-1].get('verdict') == 'PASS'
+        and isinstance(disposition, dict)
+        and disposition.get('state') == 'REPORT_WRITTEN'
+        and disposition.get('reportWritten') is True
+        and disposition.get('retryAllowed') is False
+        and disposition.get('claimId') == report.get('claimId')
+        and disposition.get('runNumber') == 95
+        and disposition.get('frontierId') == 'P01'
+        and disposition.get('epochId') == CODEX_P01_EPOCH_ID
+        and disposition.get('prNumber') == pr_number
+        and disposition.get('sourceCandidateSha') == source_revision
+        and disposition.get('baseSha') == base_sha
+        and disposition.get('ciSha') == source_revision
+        and disposition.get('ciStatus') == 'SUCCESS'
+        and disposition.get('reviewerId') == reviewer_id
+        and disposition.get('model') == 'gpt-6-luna'
+        and disposition.get('reasoningEffort') == 'max'
+        and disposition.get('toolName') == 'bangumi.get_person_activity'
+        and disposition.get('argumentProfile') == CODEX_P01_ARGUMENT_PROFILE
+        and disposition.get('expectedArgumentsSha256') == _canonical_json_sha256(CODEX_P01_EXPECTED_ARGUMENTS)
+        and disposition.get('bundleSha256') == report.get('mcpBundleSha256')
+        and disposition.get('runnerReceiptPublicKeySha256') == receipt.get('publicKeySha256')
+        and disposition.get('reportPath') == CODEX_P01_REPORT_RELATIVE_PATH
+        and disposition.get('reportSha256') == report_sha256
+    )
+
+
 def codex_p01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
     """Require the sanitized P01 report to be added immediately after its reviewed Candidate."""
     if not codex_p01_probe_revision_has_implementation(revision):
@@ -4349,7 +4564,15 @@ def codex_p01_report_matches_candidate_revision(report_path: Path, revision: obj
         relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
     except ValueError:
         return False
-    if relative_path != CODEX_P01_REPORT_RELATIVE_PATH:
+    if relative_path != CODEX_P01_REPORT_RELATIVE_PATH or report_path.is_symlink() or not report_path.is_file():
+        return False
+    try:
+        report_bytes = report_path.read_bytes()
+        report = json.loads(report_bytes)
+    except (OSError, ValueError, UnicodeDecodeError):
+        return False
+    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    if not codex_p01_harness_control_record_trusts_report(report, report_sha256):
         return False
     head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
     if head.returncode != 0:
