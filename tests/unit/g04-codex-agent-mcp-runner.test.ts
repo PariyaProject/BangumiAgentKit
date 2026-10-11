@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   assertG04CandidateReviewGate,
+  buildG04SafeEventSummary,
   buildCodexExecArgs,
+  hasUnexpectedG04CodexToolActivity,
   canonicalG04ClaimPath,
   createG04OneShotClaim,
   validateRunnerArgs,
@@ -63,6 +65,33 @@ function gateInput() {
 }
 
 describe('G04 one-tool Codex runner preflight', () => {
+  it('retains only sanitized non-MCP event types in an inconclusive claim summary', () => {
+    const summary = buildG04SafeEventSummary({
+      codexMcpToolEventCount: 1,
+      nonMcpToolEventCount: 2,
+      nonMcpToolTypes: ['web_search_call', 'private query text', 'web_search_call'],
+      shellToolCallCount: 0,
+      answer: 'private model answer',
+      rawResult: { query: 'private query text' },
+    });
+
+    expect(summary).toEqual({
+      codexMcpToolEventCount: 1,
+      nonMcpToolEventCount: 2,
+      nonMcpToolTypes: ['unknown_tool_type', 'web_search_call'],
+      shellToolCallCount: 0,
+    });
+    expect(JSON.stringify(summary)).not.toContain('private');
+    expect(JSON.stringify(summary)).not.toContain('answer');
+  });
+
+  it('keeps the exact-run gate closed for every non-MCP or shell tool event', () => {
+    expect(hasUnexpectedG04CodexToolActivity({ nonMcpToolEventCount: 0, shellToolCallCount: 0 })).toBe(false);
+    expect(hasUnexpectedG04CodexToolActivity({ nonMcpToolEventCount: 1, shellToolCallCount: 0 })).toBe(true);
+    expect(hasUnexpectedG04CodexToolActivity({ nonMcpToolEventCount: 0, shellToolCallCount: 1 })).toBe(true);
+    expect(hasUnexpectedG04CodexToolActivity(undefined)).toBe(true);
+  });
+
   it('builds an isolated Luna Max command with only the fixed read-only G04 tool', () => {
     const args = buildCodexExecArgs({
       root: '/repo',

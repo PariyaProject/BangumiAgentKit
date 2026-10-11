@@ -73,3 +73,12 @@ export declare function summarizeCodexEvents(events: readonly unknown[]): {
   }>;
   answer: string | null;
 };
+
+export declare function safeCodexNonMcpEventSummary(summary: {
+  [key: string]: unknown;
+  nonMcpToolEventCount?: unknown;
+  nonMcpToolTypes?: unknown;
+} | null | undefined): {
+  nonMcpToolEventCount: number;
+  nonMcpToolTypes: string[];
+};

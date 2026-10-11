@@ -16,7 +16,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { assertG20CandidateReviewGate } from './run-g20-codex-agent-mcp.mjs';
-import { parseCodexJsonl, summarizeCodexEvents } from './run-g26-codex-agent-mcp.mjs';
+import {
+  parseCodexJsonl,
+  safeCodexNonMcpEventSummary,
+  summarizeCodexEvents,
+} from './run-g26-codex-agent-mcp.mjs';
 import {
   G02_QUERY_ARGUMENTS,
   verifyG02QueryAnswer,
@@ -582,7 +586,7 @@ function verifyProbeOutput({
       mcpToolEventCount: eventsSummary.codexMcpToolEventCount,
       targetServerMatch:
         JSON.stringify(eventsSummary.mcpServerNames) === JSON.stringify([SERVER_ID]),
-      nonMcpToolEventCount: eventsSummary.nonMcpToolEventCount,
+      ...safeCodexNonMcpEventSummary(eventsSummary),
       shellToolCallCount: eventsSummary.shellToolCallCount,
       allowedCallCount: Number.isInteger(serverSummary?.allowedCallCount)
         ? serverSummary.allowedCallCount

@@ -66,6 +66,23 @@ const SHELL_ITEM_TYPES = new Set([
   'unified_exec',
 ]);
 
+export function safeCodexNonMcpEventSummary(summary) {
+  const count = summary?.nonMcpToolEventCount;
+  const types = Array.isArray(summary?.nonMcpToolTypes) ? summary.nonMcpToolTypes : [];
+  return {
+    nonMcpToolEventCount: Number.isSafeInteger(count) && count >= 0 ? count : 0,
+    nonMcpToolTypes: [
+      ...new Set(
+        types.map((type) =>
+          typeof type === 'string' && /^[a-z][a-z0-9_]{0,63}$/u.test(type)
+            ? type
+            : 'unknown_tool_type',
+        ),
+      ),
+    ].sort(),
+  };
+}
+
 function tomlString(value) {
   return JSON.stringify(value);
 }
@@ -220,14 +237,10 @@ export function summarizeCodexEvents(events) {
       threadStarted && turnStarted && turnCompleted && !turnFailed && unexpectedEventTypes === 0,
     codexMcpToolEventCount: mcpCalls.length,
     mcpServerNames: mcpCalls.map((item) => item.server),
-    nonMcpToolEventCount: nonMcpTypes.length,
-    nonMcpToolTypes: [
-      ...new Set(
-        nonMcpTypes.map((type) =>
-          /^[a-z][a-z0-9_]{0,63}$/u.test(type) ? type : 'unknown_tool_type',
-        ),
-      ),
-    ].sort(),
+    ...safeCodexNonMcpEventSummary({
+      nonMcpToolEventCount: nonMcpTypes.length,
+      nonMcpToolTypes: nonMcpTypes,
+    }),
     shellToolCallCount,
     toolCalls: mcpCalls.map((item) => ({
       name: item.tool,

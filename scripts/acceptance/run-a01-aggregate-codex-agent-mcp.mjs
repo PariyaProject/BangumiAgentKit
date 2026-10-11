@@ -16,7 +16,11 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { assertG20CandidateReviewGate } from './run-g20-codex-agent-mcp.mjs';
-import { parseCodexJsonl, summarizeCodexEvents } from './run-g26-codex-agent-mcp.mjs';
+import {
+  parseCodexJsonl,
+  safeCodexNonMcpEventSummary,
+  summarizeCodexEvents,
+} from './run-g26-codex-agent-mcp.mjs';
 import {
   A01_AGGREGATE_ARGUMENT_PROFILE,
   A01_AGGREGATE_EXPECTED_ARGUMENTS,
@@ -703,6 +707,7 @@ function run() {
     eventStreamParsed: false,
     codexMcpToolEventCount: 0,
     nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
     shellToolCallCount: 0,
   };
   mkdirSync(temporaryDirectory, { recursive: true, mode: 0o700 });
@@ -744,7 +749,7 @@ function run() {
       codexExitCode: execution.exitCode,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
       codexMcpToolEventCount: events.codexMcpToolEventCount,
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
+      ...safeCodexNonMcpEventSummary(events),
       shellToolCallCount: events.shellToolCallCount,
       resultStatus: serverSummary?.serverResultStatus ?? 'unavailable',
       passed: report.state === 'PASS',
