@@ -92,6 +92,17 @@ describe('G19 one-tool Codex runner', () => {
     expect(() => assertG19CandidateReviewGate(wrongRole, pr, { sourceRevision: candidate, currentBaseSha: base })).toThrow();
     const missingCheck = { ...pr, statusCheckRollup: pr.statusCheckRollup.slice(1) };
     expect(() => assertG19CandidateReviewGate(status, missingCheck, { sourceRevision: candidate, currentBaseSha: base })).toThrow();
+
+    const spentOneShot = structuredClone(status);
+    Object.assign(spentOneShot.epoch.state.adversarial_preflight, {
+      g19_one_shot_disposition: {
+        frontierId: 'G19', state: 'INCONCLUSIVE', sourceRevision: candidate,
+        reportWritten: false, retryAllowed: false,
+      },
+    });
+    expect(() => assertG19CandidateReviewGate(
+      spentOneShot, pr, { sourceRevision: candidate, currentBaseSha: base },
+    )).toThrow(/durable Harness control plane/u);
   });
 
   it('builds isolated GPT-6 Luna Max read-only execution with exactly the fixed get_person_activity profile', () => {

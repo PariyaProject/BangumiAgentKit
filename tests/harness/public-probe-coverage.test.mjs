@@ -43,10 +43,10 @@ test('selected public probes do not promote stale evidence to Agent/MCP or clien
     // The evidence-derived matrix may demote a probe when its source or the
     // catalogued tool contract has changed since the report was produced.
     assert.ok(cells[6] === '⬜' || cells[6].startsWith('◐'), `${result.tool} public API status`);
-    if (result.tool === 'bangumi.get_person_activity' && existsSync(path.join(root, g19AgentReportPath))) {
-      assert.ok(cells[9].startsWith('✅'), 'accepted G19 Agent/MCP report should credit this tool row');
+    if (result.tool === 'bangumi.get_person_activity' && cells[9].startsWith('✅')) {
+      assert.ok(existsSync(path.join(root, g19AgentReportPath)), 'matrix credit requires an accepted G19 Agent/MCP report');
     } else {
-      assert.equal(cells[9], '⬜', `${result.tool} Agent/MCP must remain pending`);
+      assert.equal(cells[9], '⬜', `${result.tool} Agent/MCP must remain unchecked when no current report is accepted`);
     }
     assert.equal(cells[10], '⬜', `${result.tool} QQ must remain pending`);
     assert.equal(cells[11], '⬜', `${result.tool} TIM must remain pending`);
@@ -69,10 +69,8 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
   assert.ok(record, 'G19 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
   assert.ok(record.source_refs.includes(g19ProbePath));
-  assert.match(record.next_action, /Run #95 G19 Agent\/MCP one-shot was consumed INCONCLUSIVE/u);
-  assert.match(record.next_action, /no sanitized Agent\/MCP report was written/iu);
-  assert.match(record.next_action, /Never retry G19/u);
-  assert.match(record.next_action, /not_observed and unknown are insufficient/u);
+  assert.match(record.next_action, /not_observed and unknown remain insufficient/u);
+  assert.doesNotMatch(record.next_action, /Run #95|Candidate [0-9a-f]{7,}|one-shot|INCONCLUSIVE|quota|claim/iu);
 
   assert.equal(g19Report.evidenceKind, 'bangumi_public_api_tool_registry_smoke');
   assert.equal(g19Report.mode, 'read_only_public_api_smoke');
@@ -101,8 +99,8 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
   assert.ok(line, 'missing task row for bangumi.get_person_activity');
   const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
   assert.ok(cells[6].startsWith('◐'));
-  if (existsSync(path.join(root, g19AgentReportPath))) {
-    assert.ok(cells[9].startsWith('✅'), 'separate accepted G19 report may credit Agent/MCP');
+  if (cells[9].startsWith('✅')) {
+    assert.ok(existsSync(path.join(root, g19AgentReportPath)), 'matrix credit requires an accepted G19 Agent/MCP report');
     const agentReport = JSON.parse(readFileSync(path.join(root, g19AgentReportPath), 'utf8'));
     assert.equal(agentReport.evidenceKind, 'codex_g19_person_origin_agent_mcp');
     assert.equal(agentReport.resultSummary.personId, 3474);
@@ -110,7 +108,7 @@ test('G19 public probe is current, bounded, summary-only, and leaves the scenari
     assert.ok(!Object.hasOwn(agentReport, 'answer'));
     assert.ok(!Object.hasOwn(agentReport.resultSummary, 'rows'));
   } else {
-    assert.equal(cells[9], '⬜', 'INCONCLUSIVE one-shot without a report must leave Agent/MCP unchecked');
+    assert.equal(cells[9], '⬜', 'stale, invalid, or absent reports must remain unchecked after evidence generation');
   }
   assert.equal(cells[10], '⬜', 'public smoke must not count as QQ');
   assert.equal(cells[11], '⬜', 'public smoke must not count as TIM');

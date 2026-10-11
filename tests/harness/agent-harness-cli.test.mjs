@@ -1143,6 +1143,48 @@ test('CLI Candidate gate revokes prior PASS authority for an audited post-PASS e
   }
 });
 
+test('CLI Candidate refresh cannot clear the durable G19 one-shot disposition', () => {
+  const { run, epoch } = passedCandidateFixture();
+  epoch.adversarial_preflight.g19_one_shot_disposition = {
+    frontierId: 'G19',
+    state: 'INCONCLUSIVE',
+    sourceCandidateSha: sha('b'),
+    reportWritten: false,
+    retryAllowed: false,
+  };
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason: 'Preserve the G19 consumed one-shot disposition.',
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G19_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.deepEqual(stored.adversarial_preflight.g19_one_shot_disposition, {
+      frontierId: 'G19',
+      state: 'INCONCLUSIVE',
+      sourceCandidateSha: sha('b'),
+      reportWritten: false,
+      retryAllowed: false,
+    });
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI Candidate gate rejects an unchanged or unaudited post-PASS refresh', () => {
   const unchangedFixture = passedCandidateFixture();
   const unchangedEnvironment = createMockEnvironment({

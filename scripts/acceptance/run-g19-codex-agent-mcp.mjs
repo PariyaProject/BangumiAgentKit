@@ -165,6 +165,9 @@ export function assertG19CandidateReviewGate(status, pr, { sourceRevision, curre
   const epoch = epochView?.state;
   const runState = status?.run?.state;
   const history = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
+  if (Object.hasOwn(epoch?.adversarial_preflight ?? {}, 'g19_one_shot_disposition')) {
+    throw new Error('G19 one-shot is already claimed or consumed in the durable Harness control plane; refusing retry.');
+  }
   const latestReview = history.at(-1);
   const reviewerId = latestReview?.reviewer_id;
   const reviewerPattern = Number.isSafeInteger(epochView?.number)

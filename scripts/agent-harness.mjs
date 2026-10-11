@@ -938,6 +938,16 @@ function commandCandidateCheck(options) {
   } else {
     epoch.candidate_sha = head;
   }
+  const priorG19Disposition = epoch.adversarial_preflight?.g19_one_shot_disposition;
+  const nextG19Disposition = evidence.adversarial_preflight?.g19_one_shot_disposition;
+  if (priorG19Disposition !== undefined &&
+      (nextG19Disposition === undefined ||
+        canonicalHash(priorG19Disposition) !== canonicalHash(nextG19Disposition))) {
+    throw new HarnessInvariantError(
+      'G19_ONESHOT_DISPOSITION_IMMUTABLE',
+      'A durable G19 one-shot disposition must be preserved across Candidate refreshes',
+    );
+  }
   epoch.validation = evidence.validation ?? epoch.validation;
   epoch.scope_closure = evidence.scope_closure;
   epoch.adversarial_preflight = evidence.adversarial_preflight;

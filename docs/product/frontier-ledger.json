@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-11T11:36:39Z",
+  "updated_at": "2026-10-11T12:14:30Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1158,7 +1158,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-11-103934803-2116.json"],
-      "next_action": "Run #95 G19 Agent/MCP one-shot was consumed INCONCLUSIVE on Candidate c3d19a951d553b15d177290634e92f9b6429bab1: one target MCP call succeeded with zero shell and denied calls, but the Codex event stream contained three non-MCP error events. No sanitized Agent/MCP report was written; keep Agent/MCP at 85/96, direct public at 55/65, QQ/TIM at 0/96, and G19 PARTIAL. Never retry G19 or recreate its claim. The separate direct public ToolRegistry smoke remains current. Only exact official subject.meta_tags 原创 is explicit-original; not_observed and unknown are insufficient, not adaptation. OAuth/account/community/QQ/TIM remain passive; continue with an independent safe frontier.",
+      "next_action": "Keep G19 PARTIAL. Only exact official subject.meta_tags value 原创 is positive explicit-original evidence; not_observed and unknown remain insufficient, not adaptation. Current relations, bounded detail/row/window caps, and absent infobox/concept/history sources cannot establish exhaustive origin classification, complete career history, or complete adaptation status. Reassess only if the official source contract or bounded origin fields materially change.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "closure_reason": "Delivered a bounded current person-work origin observation over official v0 subject details. It reports exact 原创 tags, preserves raw meta_tags, and distinguishes absent fields from tags without claiming that either state means 改编; infobox, concept, and historical origin evidence remain unsupported.",
