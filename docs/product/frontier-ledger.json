@@ -1157,7 +1157,7 @@
       "user_question": "这个人物最近参与的作品中，哪些是原创、哪些是改编？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-11-103934803-2116.json"],
       "next_action": "Use bangumi.get_person_activity for a bounded current window and group only exact official subject.meta_tags observations; treat not_observed and unknown as insufficient evidence, not adaptation.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
