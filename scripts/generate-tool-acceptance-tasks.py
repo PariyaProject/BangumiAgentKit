@@ -546,7 +546,7 @@ CODEX_P01_EPOCH_ID = 'run95-p01-person-role-agent-mcp'
 CODEX_P01_ARGUMENT_PROFILE = 'fixed-p01-person-1040-staff-anime-36m-48r-16d-8rows-v1'
 CODEX_P01_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId', 'profile',
-    'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion', 'sourceRevision', 'baseSha', 'prNumber',
+    'model', 'reasoningEffort', 'reviewerId', 'claimId', 'codexCliVersion', 'sourceRevision', 'baseSha', 'prNumber',
     'mcpBundleSha256', 'observedAt', 'candidateGate', 'toolName', 'argumentProfile',
     'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
     'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
@@ -4102,6 +4102,7 @@ def codex_p01_report_is_valid(report: object) -> bool:
     source_revision = report.get('sourceRevision')
     base_sha = report.get('baseSha')
     pr_number = report.get('prNumber')
+    candidate_prefix = source_revision[:12] if isinstance(source_revision, str) else ''
     if (
         type(report.get('schemaVersion')) is not int
         or report.get('schemaVersion') != 1
@@ -4113,6 +4114,7 @@ def codex_p01_report_is_valid(report: object) -> bool:
         or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
         or type(pr_number) is not int or pr_number < 1
         or not re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round\d+', str(report.get('reviewerId', '')))
+        or not re.fullmatch(rf'p01-run-95-pr-{pr_number}-{candidate_prefix}-\d+', str(report.get('claimId', '')))
         or not isinstance(report.get('codexCliVersion'), str)
         or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
         or report.get('toolName') != 'bangumi.get_person_activity'

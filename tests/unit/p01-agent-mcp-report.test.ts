@@ -3,13 +3,18 @@ import {
   P01_COVERAGE_FIELDS,
   P01_EXPECTED_QUERY_ARGUMENTS,
 } from '../../scripts/acceptance/p01-person-position-answer-check.mjs';
-import { buildP01SanitizedReport } from '../../scripts/acceptance/write-p01-agent-mcp-report.mjs';
+import {
+  buildP01SanitizedReport,
+  p01CatalogHashes,
+  validateP01SanitizedReport,
+} from '../../scripts/acceptance/write-p01-agent-mcp-report.mjs';
 
 const reviewerId = 'gpt-6-luna-max-run95-pr147-round1';
 const candidateSha = 'a'.repeat(40);
 const baseSha = 'b'.repeat(40);
 const bundleSha256 = 'c'.repeat(64);
 const toolName = 'bangumi.get_person_activity';
+const root = process.cwd();
 const sourceOperations = [
   { operation: 'GET /v0/persons/{person_id}', attempted: 1, succeeded: 1, failed: 0 },
   { operation: 'GET /v0/persons/{person_id}/subjects', attempted: 1, succeeded: 1, failed: 0 },
@@ -35,6 +40,7 @@ function input() {
     sourceRevision: candidateSha,
     baseSha,
     bundleSha256,
+    claimId: `p01-run-95-pr-147-${candidateSha.slice(0, 12)}-123`,
     prNumber: 147,
     reviewerId,
     codexCliVersion: '0.162.0',
@@ -201,5 +207,52 @@ describe('P01 sanitized Agent/MCP report', () => {
     completeWithUnknownRole.answerCounters.knownRoleRows = 0;
     completeWithUnknownRole.answerCounters.unknownRoleRows = 1;
     expect(buildP01SanitizedReport(input(), completeWithUnknownRole, hashes).passed).toBe(false);
+  });
+
+  it('validates the complete sanitized report against the active claim and current catalog', () => {
+    const reportResult = buildP01SanitizedReport(
+      input(),
+      answerResult(),
+      p01CatalogHashes(root),
+      '2026-10-11T08:00:00.000Z',
+    );
+    expect(reportResult.passed).toBe(true);
+    if (!reportResult.passed) return;
+    const expected = {
+      claimId: input().claimId,
+      runNumber: 95,
+      frontierId: 'P01',
+      epochId: 'run95-p01-person-role-agent-mcp',
+      toolName,
+      argumentProfile: 'fixed-p01-person-1040-staff-anime-36m-48r-16d-8rows-v1',
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      sourceCandidateSha: candidateSha,
+      baseSha,
+      ciSha: candidateSha,
+      ciStatus: 'SUCCESS',
+      bundleSha256,
+      prNumber: 147,
+      reviewerId,
+      expectedArgumentsSha256: reportResult.report.expectedArgumentsSha256,
+    };
+    expect(validateP01SanitizedReport(reportResult.report, expected, root).passed).toBe(true);
+
+    expect(
+      validateP01SanitizedReport(reportResult.report, { ...expected, baseSha: candidateSha }, root)
+        .passed,
+    ).toBe(false);
+    const failedCheck = structuredClone(reportResult.report);
+    (failedCheck.answerChecks as Record<string, boolean>).answerRowsMatch = false;
+    expect(validateP01SanitizedReport(failedCheck, expected, root).passed).toBe(false);
+
+    const inconsistentCoverage = structuredClone(reportResult.report);
+    const inconsistentSummary = inconsistentCoverage.resultSummary as Record<string, unknown>;
+    (inconsistentSummary.coverage as Record<string, unknown>).rowsReturned = 0;
+    expect(validateP01SanitizedReport(inconsistentCoverage, expected, root).passed).toBe(false);
+
+    const inconsistentCounters = structuredClone(reportResult.report);
+    (inconsistentCounters.answerCounters as Record<string, number>).knownRoleRows = 0;
+    expect(validateP01SanitizedReport(inconsistentCounters, expected, root).passed).toBe(false);
   });
 });

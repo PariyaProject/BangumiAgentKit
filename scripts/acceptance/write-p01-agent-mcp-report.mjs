@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { closeSync, existsSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -25,6 +25,7 @@ const SERVER_ID = 'bgk_p01_one_tool';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
 const REPORT_PATH = path.join(ROOT, 'docs/live-probes/p01-person-position-agent-mcp-run95.json');
+const REPORT_RELATIVE_PATH = 'docs/live-probes/p01-person-position-agent-mcp-run95.json';
 const SERVER_PRIVACY = {
   authProfile: 'anonymous',
   oauthAttempted: false,
@@ -75,6 +76,7 @@ const REPORT_FIELDS = [
   'model',
   'reasoningEffort',
   'reviewerId',
+  'claimId',
   'codexCliVersion',
   'sourceRevision',
   'baseSha',
@@ -211,9 +213,10 @@ function readClaim(input, root) {
     claim.expectedArgumentsSha256 !== sha256(canonicalJson(P01_EXPECTED_QUERY_ARGUMENTS))
   )
     throw new Error('P01 report input does not match its local create-once claim.');
+  return claim;
 }
 
-function catalogHashes(root) {
+export function p01CatalogHashes(root = ROOT) {
   const bytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(bytes.toString('utf8'));
   const tool = catalog.find((entry) => entry?.name === TOOL_NAME);
@@ -264,6 +267,80 @@ function summaryContainsForbiddenKey(value) {
   );
 }
 
+function validDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? date : null;
+}
+
+function windowIsConsistent(window, retrievedAt) {
+  const start = validDateOnly(window.start);
+  const end = validDateOnly(window.end);
+  const retrieved = new Date(retrievedAt);
+  if (!start || !end || !Number.isFinite(retrieved.getTime())) return false;
+  const monthIndex = end.getUTCFullYear() * 12 + end.getUTCMonth() - 35;
+  const startYear = Math.floor(monthIndex / 12);
+  const startMonth = (monthIndex % 12) + 1;
+  const expectedStart = `${startYear}-${String(startMonth).padStart(2, '0')}-01`;
+  const expectedMonthKeys = Array.from({ length: 36 }, (_, index) => {
+    const absoluteMonth = monthIndex + index;
+    const year = Math.floor(absoluteMonth / 12);
+    const month = (absoluteMonth % 12) + 1;
+    return `${year}-${String(month).padStart(2, '0')}`;
+  });
+  const retrievedDay = Date.UTC(
+    retrieved.getUTCFullYear(),
+    retrieved.getUTCMonth(),
+    retrieved.getUTCDate(),
+  );
+  const endDay = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  return (
+    window.start === expectedStart &&
+    window.monthKeys.every((month, index) => month === expectedMonthKeys[index]) &&
+    Math.abs(retrievedDay - endDay) <= 86_400_000
+  );
+}
+
+function coverageIsConsistent(summary, coverage) {
+  const relationSampled = coverage.relationRowsDroppedAtLimit > 0;
+  const outputTruncated = coverage.rowsEligible > coverage.rowsReturned;
+  const truncated =
+    relationSampled || coverage.subjectDetailIdsDroppedAtLimit > 0 || outputTruncated;
+  const checks = {
+    relationLimit: coverage.relationRowsSelected <= P01_EXPECTED_QUERY_ARGUMENTS.maxRelations,
+    relationObserved:
+      coverage.relationRowsObserved ===
+      coverage.relationRowsSelected + coverage.relationRowsDroppedAtLimit,
+    selection:
+      coverage.relationSelectionStrategy ===
+      (coverage.relationRowsDroppedAtLimit > 0 ? 'deterministic_even_spread' : 'all'),
+    sampled: coverage.sampled === relationSampled,
+    idsSelected: coverage.subjectIdsSelected <= coverage.subjectIdsObserved,
+    idsObserved: coverage.subjectIdsObserved <= coverage.relationRowsObserved,
+    idsDropped:
+      coverage.subjectIdsDroppedAtRelationLimit ===
+      coverage.subjectIdsObserved - coverage.subjectIdsSelected,
+    detailIds: coverage.subjectDetailIdsObserved === coverage.subjectIdsSelected,
+    detailLimit: coverage.subjectDetailRequests <= P01_EXPECTED_QUERY_ARGUMENTS.maxSubjectDetails,
+    detailOutcome:
+      coverage.subjectDetailsSucceeded + coverage.subjectDetailsFailed ===
+      coverage.subjectDetailRequests,
+    detailsDropped:
+      coverage.subjectDetailIdsDroppedAtLimit ===
+      coverage.subjectIdsSelected - coverage.subjectDetailRequests,
+    rowsEligible: coverage.rowsEligible === summary.summary.creditRows,
+    rowsReturned: coverage.rowsReturned === summary.rowCount,
+    rowsLimit: coverage.rowsReturned <= P01_EXPECTED_QUERY_ARGUMENTS.maxRows,
+    rowsEligibleEnough: coverage.rowsEligible >= coverage.rowsReturned,
+    outputTruncated: coverage.outputTruncated === outputTruncated,
+    uniqueSubjects: coverage.uniqueSubjects === summary.summary.uniqueSubjects,
+    uniqueCharacters: coverage.uniqueCharacters === 0,
+    responseLimit: coverage.responseLimitBytes === 1_048_576,
+    truncated: coverage.truncated === truncated,
+  };
+  return Object.values(checks).every(Boolean);
+}
+
 function sanitizedResultSummary(value) {
   if (
     !exactKeys(value, RESULT_SUMMARY_FIELDS) ||
@@ -307,6 +384,7 @@ function sanitizedResultSummary(value) {
     ) ||
     !['all', 'deterministic_even_spread'].includes(value.coverage.relationSelectionStrategy) ||
     typeof value.coverage.retrievedAt !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value.coverage.retrievedAt) ||
     !Number.isFinite(Date.parse(value.coverage.retrievedAt)) ||
     value.coverage.rowsReturned !== value.rowCount ||
     value.coverage.rowsEligible < value.rowCount ||
@@ -316,6 +394,12 @@ function sanitizedResultSummary(value) {
   )
     return null;
   const coverage = value.coverage;
+  if (
+    !windowIsConsistent(value.window, coverage.retrievedAt) ||
+    !coverageIsConsistent(value, coverage) ||
+    value.roleLabelCount + value.unknownRoleRows > value.rowCount
+  )
+    return null;
   const sourceIsIncomplete =
     value.unknownRoleRows > 0 ||
     coverage.truncated ||
@@ -328,6 +412,25 @@ function sanitizedResultSummary(value) {
   if (sourceIsIncomplete && value.state !== 'partial') return null;
   const sourceOperations = safeSourceOperations(value.sourceOperations);
   if (!sourceOperations) return null;
+  const operationsByName = new Map(sourceOperations.map((item) => [item.operation, item]));
+  if (
+    ['GET /v0/persons/{person_id}', 'GET /v0/persons/{person_id}/subjects'].some(
+      (operation) =>
+        !sameJson(operationsByName.get(operation), {
+          operation,
+          attempted: 1,
+          succeeded: 1,
+          failed: 0,
+        }),
+    ) ||
+    !sameJson(operationsByName.get('GET /v0/subjects/{subject_id}'), {
+      operation: 'GET /v0/subjects/{subject_id}',
+      attempted: coverage.subjectDetailRequests,
+      succeeded: coverage.subjectDetailsSucceeded,
+      failed: coverage.subjectDetailsFailed,
+    })
+  )
+    return null;
   const safe = {
     personId: P01_EXPECTED_QUERY_ARGUMENTS.personId,
     kind: 'staff',
@@ -399,7 +502,7 @@ function validateInput(input, root) {
     throw new Error(
       'P01 report must bind to the unchanged clean Candidate and attested MCP bundle.',
     );
-  readClaim(input, root);
+  return readClaim(input, root);
 }
 
 export function buildP01SanitizedReport(
@@ -409,6 +512,9 @@ export function buildP01SanitizedReport(
   observedAt = new Date().toISOString(),
 ) {
   const resultSummary = sanitizedResultSummary(answerResult?.resultSummary);
+  if (!resultSummary) {
+    return { passed: false, reason: 'P01 result summary failed coverage and source validation.' };
+  }
   if (
     !isRecord(input) ||
     input.model !== MODEL ||
@@ -420,12 +526,16 @@ export function buildP01SanitizedReport(
     !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round\\d+$`, 'u').test(
       input.reviewerId ?? '',
     ) ||
+    typeof input.claimId !== 'string' ||
+    !new RegExp(
+      `^p01-run-${RUN_NUMBER}-pr-${input.prNumber}-${input.sourceRevision.slice(0, 12)}-\\d+$`,
+      'u',
+    ).test(input.claimId) ||
     !/^\d+\.\d+\.\d+$/u.test(input.codexCliVersion ?? '') ||
     !Number.isSafeInteger(input.toolTextUtf8Bytes) ||
     input.toolTextUtf8Bytes <= 0 ||
     input.toolTextUtf8Bytes > 3600 ||
     answerResult?.passed !== true ||
-    !resultSummary ||
     !isRecord(hashes) ||
     !exactKeys(hashes, ['catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256']) ||
     Object.values(hashes).some(
@@ -449,7 +559,11 @@ export function buildP01SanitizedReport(
     answerResult.answerCounters.answerRows !== resultSummary.rowCount ||
     answerResult.answerCounters.rowsMatched !== resultSummary.rowCount ||
     answerResult.answerCounters.sourceRoleLabels !== resultSummary.roleLabelCount ||
+    answerResult.answerCounters.answerRoleLabels !== resultSummary.roleLabelCount ||
+    answerResult.answerCounters.knownRoleRows + answerResult.answerCounters.unknownRoleRows !==
+      answerResult.answerCounters.sourceRows ||
     answerResult.answerCounters.unknownRoleRows !== resultSummary.unknownRoleRows ||
+    answerResult.answerCounters.coverageFieldsMatched !== P01_COVERAGE_FIELDS.length ||
     answerResult.answerCounters.toolTextUtf8Bytes !== input.toolTextUtf8Bytes ||
     !Number.isSafeInteger(answerResult.resultByteLength) ||
     answerResult.resultByteLength <= 0 ||
@@ -492,6 +606,7 @@ export function buildP01SanitizedReport(
     model: MODEL,
     reasoningEffort: REASONING_EFFORT,
     reviewerId: input.reviewerId,
+    claimId: input.claimId,
     codexCliVersion: input.codexCliVersion,
     sourceRevision: input.sourceRevision,
     baseSha: input.baseSha,
@@ -540,6 +655,140 @@ export function buildP01SanitizedReport(
   return { passed: true, report };
 }
 
+export function validateP01SanitizedReport(report, expected, root = ROOT) {
+  if (
+    !isRecord(expected) ||
+    typeof expected.claimId !== 'string' ||
+    expected.runNumber !== RUN_NUMBER ||
+    expected.frontierId !== FRONTIER_ID ||
+    expected.epochId !== EPOCH_ID ||
+    expected.toolName !== TOOL_NAME ||
+    expected.argumentProfile !== P01_ARGUMENT_PROFILE ||
+    expected.model !== MODEL ||
+    expected.reasoningEffort !== REASONING_EFFORT ||
+    !/^[0-9a-f]{40}$/u.test(expected.sourceCandidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(expected.baseSha ?? '') ||
+    expected.ciSha !== expected.sourceCandidateSha ||
+    expected.ciStatus !== 'SUCCESS' ||
+    !/^[0-9a-f]{64}$/u.test(expected.bundleSha256 ?? '') ||
+    !Number.isSafeInteger(expected.prNumber) ||
+    typeof expected.reviewerId !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(expected.expectedArgumentsSha256 ?? '')
+  ) {
+    return { passed: false, reason: 'P01 active Harness claim is malformed.' };
+  }
+  if (
+    !isRecord(report) ||
+    report.claimId !== expected.claimId ||
+    report.runNumber !== expected.runNumber ||
+    report.frontierId !== expected.frontierId ||
+    report.epochId !== expected.epochId ||
+    report.toolName !== expected.toolName ||
+    report.argumentProfile !== expected.argumentProfile ||
+    report.model !== expected.model ||
+    report.reasoningEffort !== expected.reasoningEffort ||
+    report.sourceRevision !== expected.sourceCandidateSha ||
+    report.baseSha !== expected.baseSha ||
+    report.prNumber !== expected.prNumber ||
+    report.mcpBundleSha256 !== expected.bundleSha256 ||
+    report.reviewerId !== expected.reviewerId ||
+    report.expectedArgumentsSha256 !== expected.expectedArgumentsSha256
+  ) {
+    return {
+      passed: false,
+      reason: 'P01 sanitized report does not match the active Harness claim.',
+    };
+  }
+
+  let hashes;
+  try {
+    hashes = p01CatalogHashes(root);
+  } catch {
+    return { passed: false, reason: 'P01 current catalog binding could not be verified.' };
+  }
+  const input = {
+    model: report.model,
+    reasoningEffort: report.reasoningEffort,
+    sourceRevision: report.sourceRevision,
+    baseSha: report.baseSha,
+    bundleSha256: report.mcpBundleSha256,
+    prNumber: report.prNumber,
+    reviewerId: report.reviewerId,
+    claimId: report.claimId,
+    codexCliVersion: report.codexCliVersion,
+    candidateGate: report.candidateGate,
+    toolTextUtf8Bytes: report.toolTextUtf8Bytes,
+    serverResultSummary: {
+      toolName: report.toolName,
+      resultState: report.resultSummary?.state,
+      sourceOperations: report.sourceOperations,
+      resultSha256: report.resultSha256,
+      resultByteLength: report.resultByteLength,
+    },
+  };
+  const answerResult = {
+    passed: true,
+    answerChecks: report.answerChecks,
+    answerCounters: report.answerCounters,
+    resultSummary: report.resultSummary,
+    resultByteLength: report.resultByteLength,
+    resultSha256: report.resultSha256,
+    answerUtf8Bytes: report.answerUtf8Bytes,
+    answerSha256: report.answerSha256,
+  };
+  const rebuilt = buildP01SanitizedReport(input, answerResult, hashes, report.observedAt);
+  if (!rebuilt.passed || !sameJson(rebuilt.report, report)) {
+    return {
+      passed: false,
+      reason: rebuilt.passed
+        ? 'P01 sanitized report differs from the validated report contract.'
+        : rebuilt.reason,
+    };
+  }
+  return { passed: true };
+}
+
+export function validateP01SanitizedReportFile(expected, root = ROOT, reportPath = REPORT_PATH) {
+  try {
+    const stat = lstatSync(reportPath);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      return { passed: false, reason: 'P01 sanitized report must be a regular file.' };
+    }
+    const bytes = readFileSync(reportPath);
+    const serialized = bytes.toString('utf8');
+    const report = JSON.parse(serialized);
+    if (serialized !== `${JSON.stringify(report, null, 2)}\n`) {
+      return { passed: false, reason: 'P01 sanitized report is not canonical JSON.' };
+    }
+    if (path.resolve(reportPath) === path.resolve(REPORT_PATH)) {
+      const status = gitText(root, 'status', '--porcelain');
+      if (
+        gitText(root, 'rev-parse', 'HEAD') !== expected.sourceCandidateSha ||
+        (status !== '' && status !== `?? ${REPORT_RELATIVE_PATH}`) ||
+        computeMcpBundleSha256(root) !== expected.bundleSha256 ||
+        readG26McpBundleAttestation(root) !== expected.bundleSha256
+      ) {
+        return {
+          passed: false,
+          reason: 'P01 live Candidate, worktree, or MCP bundle no longer matches the active claim.',
+        };
+      }
+    }
+    const validation = validateP01SanitizedReport(report, expected, root);
+    if (!validation.passed) return validation;
+    return {
+      passed: true,
+      reportPath: REPORT_RELATIVE_PATH,
+      reportSha256: sha256(bytes),
+    };
+  } catch {
+    return {
+      passed: false,
+      reason: 'P01 sanitized report is absent, unreadable, or invalid JSON.',
+    };
+  }
+}
+
 function writeReport(report) {
   if (existsSync(REPORT_PATH))
     throw new Error('P01 sanitized report already exists; refusing overwrite.');
@@ -566,7 +815,7 @@ export function acceptP01AgentMcpEvidence(
   root = ROOT,
   observedAt = new Date().toISOString(),
 ) {
-  validateInput(input, root);
+  const claim = validateInput(input, root);
   const answerResult = verifyP01PersonPositionAnswer(
     input.answer,
     input.queryArguments,
@@ -574,13 +823,18 @@ export function acceptP01AgentMcpEvidence(
     input.toolCalls,
     input.toolTextUtf8Bytes,
   );
-  const result = buildP01SanitizedReport(input, answerResult, catalogHashes(root), observedAt);
+  const result = buildP01SanitizedReport(
+    { ...input, claimId: claim.claimId },
+    answerResult,
+    p01CatalogHashes(root),
+    observedAt,
+  );
   if (!result.passed) return result;
   try {
     writeReport(result.report);
     return {
       passed: true,
-      reportPath: 'docs/live-probes/p01-person-position-agent-mcp-run95.json',
+      reportPath: REPORT_RELATIVE_PATH,
       answerChecks: answerResult.answerChecks,
       answerCounters: answerResult.answerCounters,
       resultSummary: answerResult.resultSummary,

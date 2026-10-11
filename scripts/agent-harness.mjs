@@ -54,6 +54,7 @@ import {
   P01_ARGUMENT_PROFILE,
   P01_EXPECTED_QUERY_ARGUMENTS,
 } from './acceptance/p01-person-position-answer-check.mjs';
+import { validateP01SanitizedReportFile } from './acceptance/write-p01-agent-mcp-report.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const frontierLedgerPath =
@@ -1482,6 +1483,18 @@ function commandEpochP01OneShotResult(options) {
     );
   }
   if (current.state === resultState) {
+    if (resultState === 'REPORT_WRITTEN') {
+      const reportPath = process.env.HARNESS_MOCK_STATE && process.env.HARNESS_P01_REPORT_PATH
+        ? path.resolve(process.env.HARNESS_P01_REPORT_PATH)
+        : path.join(root, 'docs/live-probes/p01-person-position-agent-mcp-run95.json');
+      const report = validateP01SanitizedReportFile(current, root, reportPath);
+      if (!report.passed || report.reportSha256 !== current.reportSha256) {
+        throw new HarnessInvariantError(
+          'P01_ONESHOT_REPORT_INVALID',
+          report.reason ?? 'The recorded P01 report hash no longer matches its durable result.',
+        );
+      }
+    }
     print({ state: 'P01_ONE_SHOT_RESULT_ALREADY_RECORDED', claimId, resultState });
     return;
   }
@@ -1492,11 +1505,52 @@ function commandEpochP01OneShotResult(options) {
       { existingState: current.state, requestedState: resultState },
     );
   }
+  let acceptedReport;
+  if (resultState === 'REPORT_WRITTEN') {
+    const activeEpoch = epochResult.state;
+    const pr = epochResult.view;
+    const latestReview = activeEpoch.review_history?.at(-1);
+    const liveCandidateMatches = activeEpoch.state === 'REVIEW_PASSED' &&
+      activeEpoch.epoch_id === current.epochId &&
+      activeEpoch.pr_number === Number(prNumber) &&
+      activeEpoch.branch === currentBranch() &&
+      currentHead() === current.sourceCandidateSha &&
+      pr.state === 'OPEN' && !pr.isDraft && pr.baseRefName === 'master' &&
+      pr.headRefName === activeEpoch.branch &&
+      pr.headRefOid === current.sourceCandidateSha &&
+      activeEpoch.base_branch === 'master' && activeEpoch.base_sha === current.baseSha &&
+      activeEpoch.reviewed_base_sha === current.baseSha &&
+      remoteBaseSha('master') === current.baseSha &&
+      activeEpoch.candidate_sha === current.sourceCandidateSha &&
+      activeEpoch.review_pass_sha === current.sourceCandidateSha &&
+      activeEpoch.ci?.sha === current.ciSha && activeEpoch.ci?.status === 'SUCCESS' &&
+      latestReview?.candidate_sha === current.sourceCandidateSha &&
+      latestReview.reviewed_base_sha === current.baseSha &&
+      latestReview.reviewer_id === current.reviewerId && latestReview.verdict === 'PASS' &&
+      mandatoryChecksSuccessful(pr.statusCheckRollup);
+    if (!liveCandidateMatches) {
+      throw new HarnessInvariantError(
+        'P01_ONESHOT_REPORT_STALE',
+        'P01 REPORT_WRITTEN requires the claim Candidate, Base, CI, reviewer PASS, and open ready PR to remain current.',
+      );
+    }
+    const reportPath = process.env.HARNESS_MOCK_STATE && process.env.HARNESS_P01_REPORT_PATH
+      ? path.resolve(process.env.HARNESS_P01_REPORT_PATH)
+      : path.join(root, 'docs/live-probes/p01-person-position-agent-mcp-run95.json');
+    acceptedReport = validateP01SanitizedReportFile(current, root, reportPath);
+    if (!acceptedReport.passed) {
+      throw new HarnessInvariantError(
+        'P01_ONESHOT_REPORT_INVALID',
+        acceptedReport.reason ?? 'The P01 sanitized report failed validation.',
+      );
+    }
+  }
   const nextEpoch = structuredClone(epochResult.state);
   nextEpoch.adversarial_preflight.p01_one_shot_disposition = {
     ...current,
     state: resultState,
     reportWritten: resultState === 'REPORT_WRITTEN',
+    ...(acceptedReport ? { reportPath: acceptedReport.reportPath, reportSha256: acceptedReport.reportSha256 } : {}),
     retryAllowed: false,
     finishedAt: new Date().toISOString(),
   };

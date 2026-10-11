@@ -1984,6 +1984,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
             'reviewerId': reviewer_id,
+            'claimId': f'p01-run-95-pr-147-{revision[:12]}-123',
             'codexCliVersion': '0.162.0',
             'sourceRevision': revision,
             'baseSha': base_sha,
@@ -2785,6 +2786,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
         self.assertTrue(GENERATOR.codex_p01_probe_revision_has_implementation(self.source_revision))
         self.assertTrue(GENERATOR.codex_p01_report_is_valid(report))
+        wrong_claim = dict(report)
+        wrong_claim['claimId'] = 'p01-run-95-pr-147-000000000000-123'
+        self.assertFalse(GENERATOR.codex_p01_report_is_valid(wrong_claim))
         report_path.write_text(json.dumps(report), encoding='utf-8')
         self.assertTrue(
             GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,6 +18,7 @@ import {
   renderRunBody,
 } from '../../scripts/lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from '../../scripts/lib/frontier-ledger.mjs';
+import { makeP01Report } from './p01-report-fixture.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(root, 'scripts/agent-harness.mjs');
@@ -1289,6 +1291,147 @@ test('CLI P01 one-shot claim is durable, argument-bound, terminal and budget-neu
     assert.match(idempotentFinish.stdout, /P01_ONE_SHOT_RESULT_ALREADY_RECORDED/u);
     const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
     assert.equal(after, before, 'one-shot state persistence must not spend Product budget');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 42;
+  run.pending_epoch = null;
+  epoch.epoch_id = 'run95-p01-person-role-agent-mcp';
+  epoch.pr_number = 42;
+  epoch.branch = 'codex/epoch-cli';
+  epoch.base_branch = 'master';
+  epoch.base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.review_pass_sha = sha('b');
+  epoch.advances_frontier_ids = ['P01'];
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The P01 exact Candidate gates are complete.',
+    why_not_extend_further: 'The bounded public role sample is one-shot.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = { completed: true, summary: 'P01 exact one-tool preflight passed.' };
+  epoch.review_history = [{
+    review_number: 1,
+    reviewer_id: reviewerId,
+    candidate_sha: sha('b'),
+    reviewed_base_sha: sha('a'),
+    verdict: 'PASS',
+    findings: [],
+  }];
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: sha('b'),
+    baseSha: sha('a'),
+    draft: false,
+  });
+  const reportPath = path.join(environment.directory, 'p01-report.json');
+  const claimArgs = [
+    'epoch:p01-one-shot-claim', '--run', '95', '--pr', '42',
+    '--candidate', sha('b'), '--base', sha('a'), '--bundle-sha256', 'c'.repeat(64),
+    '--model', 'gpt-6-luna', '--reasoning-effort', 'max', '--reviewer-id', reviewerId,
+  ];
+  try {
+    const claimed = environment.execute(claimArgs);
+    assert.equal(claimed.status, 0, claimed.stderr);
+    const claim = JSON.parse(claimed.stdout);
+    const resultArgs = [
+      'epoch:p01-one-shot-result', '--run', '95', '--pr', '42',
+      '--claim-id', claim.claimId, '--state', 'REPORT_WRITTEN',
+    ];
+    const resultEnv = { HARNESS_P01_REPORT_PATH: reportPath };
+    const claimedState = environment.readState();
+    const driftedState = structuredClone(claimedState);
+    const driftedEpoch = parseControlBlock(driftedState.prBody, EPOCH_MARKER);
+    driftedEpoch.candidate_sha = sha('d');
+    driftedState.prBody = renderEpochBody(driftedEpoch);
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(driftedState, null, 2)}\n`);
+    const staleCandidate = environment.execute(resultArgs, resultEnv);
+    assert.equal(staleCandidate.status, 2);
+    assert.match(staleCandidate.stderr, /^P01_ONESHOT_REPORT_STALE:/u);
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(claimedState, null, 2)}\n`);
+
+    const missing = environment.execute(resultArgs, resultEnv);
+    assert.equal(missing.status, 2);
+    assert.match(missing.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
+
+    fs.writeFileSync(reportPath, '{ invalid json');
+    const malformed = environment.execute(resultArgs, resultEnv);
+    assert.equal(malformed.status, 2);
+    assert.match(malformed.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
+
+    const mismatched = makeP01Report({
+      baseSha: sha('f'),
+      claimId: claim.claimId,
+      prNumber: 42,
+      reviewerId,
+    });
+    fs.writeFileSync(reportPath, `${JSON.stringify(mismatched, null, 2)}\n`);
+    const wrongBase = environment.execute(resultArgs, resultEnv);
+    assert.equal(wrongBase.status, 2);
+    assert.match(wrongBase.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
+
+    const failedCheck = makeP01Report({ claimId: claim.claimId, prNumber: 42, reviewerId });
+    failedCheck.answerChecks.answerRowsMatch = false;
+    fs.writeFileSync(reportPath, `${JSON.stringify(failedCheck, null, 2)}\n`);
+    const invalidChecks = environment.execute(resultArgs, resultEnv);
+    assert.equal(invalidChecks.status, 2);
+    assert.match(invalidChecks.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+        .adversarial_preflight.p01_one_shot_disposition.state,
+      'CLAIMED',
+      'invalid report attempts must not make the durable one-shot terminal',
+    );
+
+    const report = makeP01Report({ claimId: claim.claimId, prNumber: 42, reviewerId });
+    const serialized = `${JSON.stringify(report, null, 2)}\n`;
+    fs.writeFileSync(reportPath, serialized);
+    const finished = environment.execute(resultArgs, resultEnv);
+    assert.equal(finished.status, 0, finished.stderr);
+    let stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.p01_one_shot_disposition;
+    assert.deepEqual(
+      {
+        state: stored.state,
+        reportWritten: stored.reportWritten,
+        retryAllowed: stored.retryAllowed,
+        reportPath: stored.reportPath,
+        reportSha256: stored.reportSha256,
+      },
+      {
+        state: 'REPORT_WRITTEN',
+        reportWritten: true,
+        retryAllowed: false,
+        reportPath: 'docs/live-probes/p01-person-position-agent-mcp-run95.json',
+        reportSha256: createHash('sha256').update(serialized).digest('hex'),
+      },
+    );
+
+    const idempotent = environment.execute(resultArgs, resultEnv);
+    assert.equal(idempotent.status, 0, idempotent.stderr);
+    assert.match(idempotent.stdout, /P01_ONE_SHOT_RESULT_ALREADY_RECORDED/u);
+
+    report.answerChecks.answerRowsMatch = false;
+    fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+    const tampered = environment.execute(resultArgs, resultEnv);
+    assert.equal(tampered.status, 2);
+    assert.match(tampered.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
+    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.p01_one_shot_disposition;
+    assert.equal(stored.state, 'REPORT_WRITTEN');
+    assert.equal(stored.reportSha256, createHash('sha256').update(serialized).digest('hex'));
   } finally {
     environment.cleanup();
   }
