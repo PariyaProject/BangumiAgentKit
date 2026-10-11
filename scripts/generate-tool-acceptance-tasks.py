@@ -8,7 +8,7 @@ import json
 import math
 import os
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import subprocess
 import sys
@@ -401,6 +401,74 @@ CODEX_G04_PRIVACY_FIELDS = {
     'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted',
     'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored',
     'rawResultStored', 'artifactImageBytesStored', 'credentialsStored',
+}
+CODEX_G05_EXPECTED_ARGUMENTS = {
+    'personId': 13684,
+    'kind': 'voice',
+    'media': 'tv',
+    'windowMonths': 6,
+    'maxRelations': 48,
+    'maxSubjectDetails': 12,
+    'maxRows': 20,
+    'comparePreviousWindow': True,
+}
+CODEX_G05_REPORT_RELATIVE_PATH = 'docs/live-probes/g05-person-activity-comparison-run95.json'
+CODEX_G05_EPOCH_ID = 'run95-g05-current-source-luna-agent-mcp-refresh'
+CODEX_G05_ARGUMENT_PROFILE = 'fixed-g05-person-13684-voice-tv-6m-48r-12d-20rows-compare-v1'
+CODEX_G05_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion', 'sourceRevision',
+    'baseSha', 'prNumber', 'mcpBundleSha256', 'observedAt', 'toolName', 'argumentProfile',
+    'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount', 'nonMcpToolTypes',
+    'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
+    'answerChecks', 'answerCounters', 'toolCalls', 'toolTextUtf8Bytes', 'resultSummary',
+    'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256', 'sourceOperations', 'privacy',
+}
+CODEX_G05_COVERAGE_FIELDS = {
+    'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+    'subjectIdsObserved', 'subjectIdsSelected', 'subjectIdsDroppedAtRelationLimit',
+    'subjectDetailIdsObserved', 'subjectDetailRequests', 'subjectDetailsSucceeded',
+    'subjectDetailsFailed', 'subjectDetailIdsDroppedAtLimit', 'rowsEligible', 'rowsReturned',
+    'outputTruncated', 'uniqueSubjects', 'uniqueCharacters', 'missingSubjectIdRows',
+    'missingDateRows', 'invalidDateRows', 'outsideWindowRows', 'mediaExcludedRows',
+    'mediaUnknownRows', 'maxRelations', 'maxSubjectDetails', 'maxRows', 'responseLimitBytes', 'truncated',
+}
+CODEX_G05_ANSWER_CHECK_FIELDS = {
+    'exactQueryArguments', 'exactSingleToolCall', 'structuredResultReadback',
+    'targetIdentityAndScope', 'sixMonthWindowsContiguous', 'successfulOfficialSources',
+    'boundedCoverageConsistent', 'sourceRowsValid', 'sourceRowsDistinct',
+    'comparisonInternallyConsistent', 'answerShapeValid', 'answerIdentityAndStateMatch',
+    'answerWindowsAndSummariesMatch', 'answerRowsMatch', 'answerComparisonMatches',
+    'caveatDisclosurePresent', 'noUnsupportedPositiveClaim', 'plainJsonWithoutMarkdown',
+    'boundedAnswerBytes', 'boundedMcpTextView',
+}
+CODEX_G05_ANSWER_COUNTER_FIELDS = {
+    'sourceRows', 'answerRows', 'rowsMatched', 'missingRows', 'extraRows',
+    'coverageFieldsMatched', 'toolTextUtf8Bytes',
+}
+CODEX_G05_RESULT_SUMMARY_FIELDS = {
+    'personId', 'kind', 'media', 'state', 'comparisonState', 'window', 'recent', 'previous',
+    'delta', 'peak', 'rowCount', 'rowDigest', 'sourceOperations',
+}
+CODEX_G05_WINDOW_FIELDS = {'months', 'start', 'end', 'monthKeys', 'asOfSemantics'}
+CODEX_G05_PERIOD_FIELDS = {'state', 'window', 'summary', 'coverage'}
+CODEX_G05_SUMMARY_FIELDS = {'creditRows', 'uniqueSubjects', 'uniqueCharacters', 'byMonth'}
+CODEX_G05_MONTH_FIELDS = {'month', 'creditRows', 'uniqueSubjects', 'uniqueCharacters'}
+CODEX_G05_DELTA_FIELDS = {'state', 'creditRows', 'uniqueSubjects', 'uniqueCharacters'}
+CODEX_G05_PEAK_FIELDS = {'metric', 'state', 'months'}
+CODEX_G05_PEAK_MONTH_FIELDS = {'period', 'month', 'creditRows', 'uniqueSubjects', 'uniqueCharacters'}
+CODEX_G05_SOURCE_OPERATION_NAMES = {
+    'GET /v0/persons/{person_id}',
+    'GET /v0/persons/{person_id}/characters',
+    'GET /v0/subjects/{subject_id}',
+}
+CODEX_G05_OPERATION_FIELDS = {'attempted', 'succeeded', 'failed'}
+CODEX_G05_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted', 'communityRead',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
+    'artifactImageBytesStored', 'credentialsStored',
 }
 CODEX_S03_EXPECTED_ARGUMENTS = {
     'subjectId': 329906,
@@ -1294,6 +1362,34 @@ CODEX_G04_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_g04_report_matches_candidate_revision(',
         'CODEX_G04_EXPECTED_ARGUMENTS',
         'CODEX_G04_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_G05_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/g05-person-activity-comparison-answer-check.mjs': (
+        'export const G05_EXPECTED_QUERY_ARGUMENTS',
+        'export function verifyG05PersonActivityComparisonAnswer(',
+        'sixMonthWindowsContiguous:',
+        'comparisonInternallyConsistent:',
+    ),
+    'scripts/acceptance/run-g05-person-activity-comparison-codex-agent-mcp.mjs': (
+        "const EPOCH_ID = 'run95-g05-current-source-luna-agent-mcp-refresh'",
+        'export function assertG05CandidateReviewGate(',
+        'export function createG05OneShotClaim(',
+        "'features.shell_tool=false'",
+        "'features.multi_agent=false'",
+        "const SERVER_ID = 'bgk_g05_one_tool'",
+    ),
+    'scripts/acceptance/write-g05-person-activity-comparison-report.mjs': (
+        'export function buildG05PersonActivityComparisonReport(',
+        'verifyG05PersonActivityComparisonAnswer(',
+        "openSync(REPORT_PATH, 'wx', 0o600)",
+        "'codex_cli_g05_person_activity_comparison_agent_mcp'",
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_g05_report_is_valid(',
+        'def codex_g05_report_matches_candidate_revision(',
+        'CODEX_G05_EXPECTED_ARGUMENTS',
+        'CODEX_G05_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_D05_PROBE_IMPLEMENTATION_MARKERS = {
@@ -2591,6 +2687,32 @@ def codex_g04_report_matches_candidate_revision(report_path: Path, revision: obj
     return codex_g20_report_matches_candidate_revision(report_path, revision)
 
 
+def codex_g05_probe_revision_has_implementation(revision: object) -> bool:
+    """Bind G05 evidence to its Luna Max runner, comparison checker, and sanitized report path."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_g05_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind the G05 sanitized report to the exact pre-query reviewed Candidate."""
+    if not codex_g05_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    return (
+        relative_path == CODEX_G05_REPORT_RELATIVE_PATH
+        and codex_g20_report_matches_candidate_revision(report_path, revision)
+    )
+
+
 def codex_s02_report_is_valid(report: object) -> bool:
     """Validate sanitized S02 Agent/MCP evidence for the exact Luna Max one-tool run."""
     if not isinstance(report, dict) or set(report) != CODEX_S02_REPORT_FIELDS:
@@ -2909,7 +3031,10 @@ def codex_g04_report_is_valid(report: object) -> bool:
         return False
     try:
         end_date = date.fromisoformat(window['end'])
-        observed_date = date.fromisoformat(observed_at[:10])
+        observed_date = (
+            datetime.fromisoformat(observed_at.replace('Z', '+00:00'))
+            + timedelta(hours=9)
+        ).date()
         expected_month_index = end_date.year * 12 + end_date.month - 1 - 11
         start_year, start_month_zero_based = divmod(expected_month_index, 12)
         expected_start = f'{start_year:04d}-{start_month_zero_based + 1:02d}-01'
@@ -3054,6 +3179,390 @@ def codex_g04_report_is_valid(report: object) -> bool:
         and set(privacy) == CODEX_G04_PRIVACY_FIELDS
         and privacy.get('authProfile') == 'anonymous'
         and all(privacy.get(key) is False for key in CODEX_G04_PRIVACY_FIELDS - {'authProfile'})
+        and not _contains_forbidden_codex_content(report)
+    )
+
+
+def codex_g05_report_is_valid(report: object) -> bool:
+    """Validate G05's exact-Candidate Luna Max two-window comparison evidence."""
+    if not isinstance(report, dict) or set(report) != CODEX_G05_REPORT_FIELDS:
+        return False
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    if (
+        type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_cli_g05_person_activity_comparison_agent_mcp'
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'G05'
+        or report.get('scenarioId') != 'G05'
+        or report.get('epochId') != CODEX_G05_EPOCH_ID
+        or report.get('profile') != 'codex-luna-max-one-tool-v1'
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or type(pr_number) is not int
+        or pr_number < 1
+        or not isinstance(report.get('reviewerId'), str)
+        or not re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round\d+', report['reviewerId'])
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+        or report.get('toolName') != 'bangumi.get_person_activity'
+        or report.get('argumentProfile') != CODEX_G05_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(CODEX_G05_EXPECTED_ARGUMENTS)
+        or type(report.get('processExitCode')) is not int
+        or report.get('processExitCode') != 0
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('eventStreamParsed') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int
+        or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('nonMcpToolEventCount')) is not int
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or type(report.get('shellToolCallCount')) is not int
+        or report.get('shellToolCallCount') != 0
+        or type(report.get('allowedCallCount')) is not int
+        or report.get('allowedCallCount') != 1
+        or type(report.get('deniedCallCount')) is not int
+        or report.get('deniedCallCount') != 0
+        or type(report.get('serverToolCount')) is not int
+        or report.get('serverToolCount') != 1
+        or report.get('serverToolNames') != ['bangumi.get_person_activity']
+        or report.get('mcpServerNames') != ['bgk_g05_one_tool']
+        or report.get('answerCheckMethod') != 'g05-bounded-person-activity-comparison-v1'
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not isinstance(report.get('baseSha'), str)
+        or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], source_revision).returncode != 0
+        or codex_g26_candidate_bundle_sha256(source_revision) != report.get('mcpBundleSha256')
+        or not codex_g05_probe_revision_has_implementation(source_revision)
+    ):
+        return False
+
+    observed_at = report.get('observedAt')
+    if (
+        not isinstance(observed_at, str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at)
+    ):
+        return False
+
+    try:
+        observed_date = date.fromisoformat(observed_at[:10])
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    current_tool = next(
+        (item for item in catalog if isinstance(item, dict)
+         and item.get('name') == 'bangumi.get_person_activity'),
+        None,
+    )
+    if (
+        not isinstance(current_tool, dict)
+        or current_tool.get('auth') != 'none'
+        or current_tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(
+            current_tool.get('description', '').encode('utf-8'),
+        ).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(current_tool.get('inputSchema'))
+    ):
+        return False
+
+    if report.get('toolCalls') != [{'name': 'bangumi.get_person_activity', 'state': 'DONE'}]:
+        return False
+    checks = report.get('answerChecks')
+    if (
+        not isinstance(checks, dict)
+        or set(checks) != CODEX_G05_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in checks.values())
+    ):
+        return False
+
+    summary = report.get('resultSummary')
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != CODEX_G05_RESULT_SUMMARY_FIELDS
+        or type(summary.get('personId')) is not int
+        or summary.get('personId') != CODEX_G05_EXPECTED_ARGUMENTS['personId']
+        or summary.get('kind') != 'voice'
+        or summary.get('media') != 'tv'
+        or summary.get('state') not in {'complete', 'partial', 'unavailable', 'not_computable'}
+        or summary.get('comparisonState') != summary.get('state')
+        or type(summary.get('rowCount')) is not int
+        or not 0 <= summary['rowCount'] <= CODEX_G05_EXPECTED_ARGUMENTS['maxRows']
+        or not isinstance(summary.get('rowDigest'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', summary['rowDigest'])
+    ):
+        return False
+
+    def valid_window(window: object) -> bool:
+        if (
+            not isinstance(window, dict)
+            or set(window) != CODEX_G05_WINDOW_FIELDS
+            or type(window.get('months')) is not int
+            or window.get('months') != 6
+            or window.get('asOfSemantics') != 'calendar_months_ending_on_as_of_date'
+            or not isinstance(window.get('start'), str)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['start'])
+            or not isinstance(window.get('end'), str)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['end'])
+        ):
+            return False
+        try:
+            end_date = date.fromisoformat(window['end'])
+            date.fromisoformat(window['start'])
+        except ValueError:
+            return False
+        month_index = end_date.year * 12 + end_date.month - 1 - 5
+        start_year, start_month_zero_based = divmod(month_index, 12)
+        expected_start = f'{start_year:04d}-{start_month_zero_based + 1:02d}-01'
+        expected_month_keys = []
+        for offset in range(6):
+            year, month_zero_based = divmod(month_index + offset, 12)
+            expected_month_keys.append(f'{year:04d}-{month_zero_based + 1:02d}')
+        return (
+            window['start'] == expected_start
+            and window['monthKeys'] == expected_month_keys
+            and window['start'] <= window['end']
+        )
+
+    def valid_period(period: object) -> bool:
+        if (
+            not isinstance(period, dict)
+            or set(period) != CODEX_G05_PERIOD_FIELDS
+            or period.get('state') not in {'complete', 'partial', 'unavailable', 'not_computable'}
+            or not valid_window(period.get('window'))
+        ):
+            return False
+        values = period.get('summary')
+        coverage = period.get('coverage')
+        if (
+            not isinstance(values, dict)
+            or set(values) != CODEX_G05_SUMMARY_FIELDS
+            or any(type(values.get(key)) is not int or values[key] < 0
+                   for key in ('creditRows', 'uniqueSubjects', 'uniqueCharacters'))
+            or not isinstance(values.get('byMonth'), list)
+            or not isinstance(coverage, dict)
+            or set(coverage) != CODEX_G05_COVERAGE_FIELDS
+            or any(type(value) is not int or value < 0 for key, value in coverage.items()
+                   if key not in {'outputTruncated', 'truncated'})
+            or type(coverage.get('outputTruncated')) is not bool
+            or type(coverage.get('truncated')) is not bool
+        ):
+            return False
+        month_keys = period['window']['monthKeys']
+        seen_months: set[str] = set()
+        for item in values['byMonth']:
+            if (
+                not isinstance(item, dict)
+                or set(item) != CODEX_G05_MONTH_FIELDS
+                or not isinstance(item.get('month'), str)
+                or item['month'] not in month_keys
+                or item['month'] in seen_months
+                or any(type(item.get(key)) is not int or item[key] < 0
+                       for key in ('creditRows', 'uniqueSubjects', 'uniqueCharacters'))
+            ):
+                return False
+            seen_months.add(item['month'])
+        if seen_months != set(month_keys):
+            return False
+        if sum(item['creditRows'] for item in values['byMonth']) != values['creditRows']:
+            return False
+        if any(item['uniqueSubjects'] > item['creditRows'] for item in values['byMonth']):
+            return False
+        if sum(item['uniqueSubjects'] for item in values['byMonth']) != values['uniqueSubjects']:
+            return False
+        if values['byMonth'] != sorted(values['byMonth'], key=lambda item: item['month']):
+            return False
+        return (
+            coverage['relationRowsSelected'] <= coverage['relationRowsObserved']
+            and coverage['relationRowsDroppedAtLimit'] == coverage['relationRowsObserved'] - coverage['relationRowsSelected']
+            and coverage['relationRowsSelected'] <= 48
+            and coverage['subjectIdsObserved'] <= coverage['relationRowsObserved']
+            and coverage['subjectIdsSelected'] <= coverage['relationRowsSelected']
+            and coverage['subjectIdsSelected'] <= coverage['subjectIdsObserved']
+            and coverage['subjectIdsDroppedAtRelationLimit'] == coverage['subjectIdsObserved'] - coverage['subjectIdsSelected']
+            and coverage['subjectDetailIdsObserved'] == coverage['subjectIdsSelected']
+            and coverage['subjectDetailRequests'] <= coverage['subjectIdsSelected']
+            and coverage['subjectDetailRequests'] <= 12
+            and coverage['subjectDetailsSucceeded'] + coverage['subjectDetailsFailed'] == coverage['subjectDetailRequests']
+            and coverage['subjectDetailIdsDroppedAtLimit'] == max(0, coverage['subjectIdsSelected'] - coverage['subjectDetailRequests'])
+            and coverage['rowsEligible'] >= coverage['rowsReturned']
+            and coverage['rowsEligible'] <= coverage['relationRowsSelected']
+            and coverage['rowsReturned'] <= 20
+            and coverage['outputTruncated'] == (coverage['rowsEligible'] > coverage['rowsReturned'])
+            and coverage['uniqueSubjects'] == values['uniqueSubjects']
+            and coverage['uniqueCharacters'] == values['uniqueCharacters']
+            and coverage['rowsEligible'] == values['creditRows']
+            and values['uniqueSubjects'] <= values['creditRows']
+            and values['uniqueCharacters'] <= values['creditRows']
+            and coverage['maxRelations'] == 48
+            and coverage['maxSubjectDetails'] == 12
+            and coverage['maxRows'] == 20
+            and coverage['responseLimitBytes'] == 1_048_576
+            and coverage['truncated'] == (
+                coverage['relationRowsDroppedAtLimit'] > 0
+                or coverage['subjectDetailIdsDroppedAtLimit'] > 0
+                or coverage['outputTruncated']
+            )
+            and (period['state'] != 'complete' or (
+                coverage['truncated'] is False
+                and coverage['subjectDetailsFailed'] == 0
+                and coverage['missingSubjectIdRows'] == 0
+                and coverage['missingDateRows'] == 0
+                and coverage['invalidDateRows'] == 0
+                and coverage['mediaUnknownRows'] == 0
+            ))
+        )
+
+    if not valid_window(summary.get('window')) or not valid_period(summary.get('recent')) or not valid_period(summary.get('previous')):
+        return False
+    if summary['window'] != summary['recent']['window']:
+        return False
+    try:
+        recent_end = date.fromisoformat(summary['recent']['window']['end'])
+        if not 0 <= (observed_date - recent_end).days <= 1:
+            return False
+    except ValueError:
+        return False
+    if summary['recent']['window']['end'] < summary['recent']['window']['start']:
+        return False
+    recent_start = date.fromisoformat(summary['recent']['window']['start'])
+    expected_previous_end = recent_start.fromordinal(recent_start.toordinal() - 1).isoformat()
+    if summary['previous']['window']['end'] != expected_previous_end:
+        return False
+
+    recent_state = summary['recent']['state']
+    previous_state = summary['previous']['state']
+    comparison_state = (
+        'unavailable' if recent_state == previous_state == 'unavailable'
+        else 'not_computable' if recent_state == previous_state == 'not_computable'
+        else 'complete' if recent_state == previous_state == 'complete'
+        else 'partial'
+    )
+    if summary['state'] != comparison_state or summary['comparisonState'] != comparison_state:
+        return False
+    delta = summary.get('delta')
+    if not isinstance(delta, dict) or set(delta) not in (
+        {'state'}, CODEX_G05_DELTA_FIELDS,
+    ) or delta.get('state') != comparison_state:
+        return False
+    recent_period = summary['recent']
+    previous_period = summary['previous']
+    has_recent = recent_state == 'complete' or (
+        recent_state == 'partial' and recent_period['coverage']['rowsEligible'] > 0
+    )
+    has_previous = previous_state == 'complete' or (
+        previous_state == 'partial' and previous_period['coverage']['rowsEligible'] > 0
+    )
+    if has_recent and has_previous:
+        expected_delta = {
+            'state': comparison_state,
+            **{
+                key: recent_period['summary'][key] - previous_period['summary'][key]
+                for key in ('creditRows', 'uniqueSubjects', 'uniqueCharacters')
+            },
+        }
+        if delta != expected_delta:
+            return False
+    elif set(delta) != {'state'}:
+        return False
+
+    peak = summary.get('peak')
+    if not isinstance(peak, dict) or set(peak) != CODEX_G05_PEAK_FIELDS or peak.get('metric') != 'uniqueSubjects':
+        return False
+    months = [
+        {'period': 'recent', **item} for item in recent_period['summary']['byMonth']
+    ] + [
+        {'period': 'previous', **item} for item in previous_period['summary']['byMonth']
+    ]
+    maximum = max((item['uniqueSubjects'] for item in months), default=0)
+    if comparison_state in {'unavailable', 'not_computable'}:
+        expected_peak = {'metric': 'uniqueSubjects', 'state': comparison_state, 'months': []}
+    elif maximum == 0:
+        expected_peak = {
+            'metric': 'uniqueSubjects',
+            'state': 'not_computable' if comparison_state == 'complete' else comparison_state,
+            'months': [],
+        }
+    else:
+        expected_peak = {
+            'metric': 'uniqueSubjects', 'state': comparison_state,
+            'months': [item for item in months if item['uniqueSubjects'] == maximum],
+        }
+    if peak != expected_peak or any(set(item) != CODEX_G05_PEAK_MONTH_FIELDS for item in peak['months']):
+        return False
+    if (
+        type(summary.get('rowCount')) is not int
+        or not 0 <= summary['rowCount'] <= 20
+        or summary['recent']['coverage']['rowsReturned'] != summary['rowCount']
+        or not isinstance(summary.get('rowDigest'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', summary['rowDigest'])
+    ):
+        return False
+
+    operations = report.get('sourceOperations')
+    if not isinstance(operations, dict) or set(operations) != {'recent', 'previous'} or operations != summary.get('sourceOperations'):
+        return False
+    for period_name in ('recent', 'previous'):
+        per_period = operations.get(period_name)
+        if not isinstance(per_period, dict) or set(per_period) != CODEX_G05_SOURCE_OPERATION_NAMES:
+            return False
+        coverage = summary[period_name]['coverage']
+        for operation, counts in per_period.items():
+            if (
+                not isinstance(counts, dict)
+                or set(counts) != CODEX_G05_OPERATION_FIELDS
+                or any(type(counts.get(key)) is not int or counts[key] < 0 for key in CODEX_G05_OPERATION_FIELDS)
+                or counts['succeeded'] + counts['failed'] != counts['attempted']
+            ):
+                return False
+        if (
+            per_period['GET /v0/persons/{person_id}'] != {'attempted': 1, 'succeeded': 1, 'failed': 0}
+            or per_period['GET /v0/persons/{person_id}/characters'] != {'attempted': 1, 'succeeded': 1, 'failed': 0}
+            or per_period['GET /v0/subjects/{subject_id}'] != {
+                'attempted': coverage['subjectDetailRequests'],
+                'succeeded': coverage['subjectDetailsSucceeded'],
+                'failed': coverage['subjectDetailsFailed'],
+            }
+        ):
+            return False
+
+    counters = report.get('answerCounters')
+    if (
+        not isinstance(counters, dict)
+        or set(counters) != CODEX_G05_ANSWER_COUNTER_FIELDS
+        or any(type(value) is not int or value < 0 for value in counters.values())
+        or counters['sourceRows'] != summary['rowCount']
+        or counters['answerRows'] != summary['rowCount']
+        or counters['rowsMatched'] != summary['rowCount']
+        or counters['missingRows'] != 0
+        or counters['extraRows'] != 0
+        or counters['coverageFieldsMatched'] != len(CODEX_G05_COVERAGE_FIELDS)
+        or counters['toolTextUtf8Bytes'] != report.get('toolTextUtf8Bytes')
+    ):
+        return False
+    if (
+        type(report.get('toolTextUtf8Bytes')) is not int
+        or not 0 < report['toolTextUtf8Bytes'] <= 3600
+        or type(report.get('resultByteLength')) is not int
+        or report['resultByteLength'] <= 0
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= 16_384
+        or not isinstance(report.get('resultSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['resultSha256'])
+        or not isinstance(report.get('answerSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['answerSha256'])
+    ):
+        return False
+    privacy = report.get('privacy')
+    return (
+        isinstance(privacy, dict)
+        and set(privacy) == CODEX_G05_PRIVACY_FIELDS
+        and privacy.get('authProfile') == 'anonymous'
+        and all(privacy.get(key) is False for key in CODEX_G05_PRIVACY_FIELDS - {'authProfile'})
         and not _contains_forbidden_codex_content(report)
     )
 
@@ -4382,6 +4891,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths = list(LIVE_PROBE_DIR.glob('pariya-agent-*-e2e-*.json'))
     report_paths.append(LIVE_PROBE_DIR / CODEX_S02_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G04_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_G05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
     for path in report_paths:
         try:
@@ -4430,6 +4940,17 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 path.name != Path(CODEX_G04_REPORT_RELATIVE_PATH).name
                 or not codex_g04_report_is_valid(report)
                 or not codex_g04_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault('bangumi.get_person_activity', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == 'codex_cli_g05_person_activity_comparison_agent_mcp':
+            if (
+                path.name != Path(CODEX_G05_REPORT_RELATIVE_PATH).name
+                or not codex_g05_report_is_valid(report)
+                or not codex_g05_report_matches_candidate_revision(
                     path, report.get('sourceRevision'),
                 )
             ):

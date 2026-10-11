@@ -310,9 +310,15 @@
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/live-probes/person-activity-comparison-run86-c4acc24.json",
-        "docs/research/run86-current-person-activity-comparison-2026-10-04.md"
+        "docs/research/run86-current-person-activity-comparison-2026-10-04.md",
+        "scripts/acceptance/run-g05-person-activity-comparison-codex-agent-mcp.mjs",
+        "scripts/acceptance/g05-person-activity-comparison-answer-check.mjs",
+        "scripts/acceptance/write-g05-person-activity-comparison-report.mjs",
+        "tests/unit/g05-person-activity-comparison-answer-check.test.ts",
+        "tests/unit/g05-codex-agent-mcp-runner.test.ts",
+        "tests/unit/g05-agent-mcp-report.test.ts"
       ],
-      "next_action": "Keep PARTIAL: the exact-candidate Agent/MCP call demonstrates a bounded release-date comparison only. Actual workload, labor time, complete career totals, and historical change remain unsupported.",
+      "next_action": "Run #95 executed the exact gated G05 current-source profile once on Candidate ed5900e541e246413175f9e51ac12c00b240cf61 / Base acad7bdfe130120b54a3121d89b478d793a7a47e after the same-identity Luna Max PASS. The runner failed closed as INCONCLUSIVE: one Codex MCP event, three non-MCP error events, zero shell calls, server SUCCESS, and no accepted report. This one-shot is consumed and must never be retried. Keep G05 PARTIAL and current Agent/MCP evidence unchanged; the Run #86 Gemini report remains non-current. Do not claim complete career/workload/history or QQ/TIM evidence. Continue Run #95 with another independent unconsumed frontier.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "closure_reason": "Delivered a bounded recent-versus-previous calendar-window comparison over current official-v0 person relations and subject first_air_date, with explicit deltas and partial coverage; actual workload and historical snapshots remain unsupported.",
