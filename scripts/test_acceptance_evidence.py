@@ -2966,6 +2966,28 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report['resultSummary']['coverage']['origin']['tagsOmitted'] = 1
         self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
 
+        partial_origin_updates = [
+            {'subjectsPartial': 1},
+            {'malformedTagValues': 1, 'tagsObserved': 3, 'tagsValid': 2, 'tagsReturned': 2},
+            {'textTruncatedTags': 1, 'truncated': True},
+        ]
+        for updates in partial_origin_updates:
+            with self.subTest(updates=updates):
+                report = self._g19_report_fixture()
+                report['resultSummary']['coverage']['origin'].update(updates)
+                self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
+
+        partial_origin_updates = [
+            {'subjectsPartial': 1},
+            {'malformedTagValues': 1, 'tagsObserved': 3, 'tagsValid': 2, 'tagsReturned': 2},
+            {'textTruncatedTags': 1, 'truncated': True},
+        ]
+        for updates in partial_origin_updates:
+            with self.subTest(updates=updates):
+                report = self._g19_report_fixture()
+                report['resultSummary']['coverage']['origin'].update(updates)
+                self.assertFalse(GENERATOR.codex_g19_report_is_valid(report))
+
     def test_rejects_g19_report_from_a_stale_candidate(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH).name
         report = self._g19_report_fixture(self.stale_candidate_source_revision)

@@ -160,15 +160,22 @@ export function validateG19RunnerArgs(args) {
   throw new Error('Pass --run 95 only after exact-Candidate CI, Harness candidate:check, and Luna Max PASS gates.');
 }
 
-export function assertG19CandidateReviewGate(status, pr, { sourceRevision, currentBaseSha }) {
+export function assertG19CandidateReviewGate(status, pr, { sourceRevision, currentBaseSha, allowClaimed = false }) {
   const epochView = status?.epoch;
   const epoch = epochView?.state;
   const runState = status?.run?.state;
   const history = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
-  if (Object.hasOwn(epoch?.adversarial_preflight ?? {}, 'g19_one_shot_disposition')) {
+  const preflight = epoch?.adversarial_preflight ?? {};
+  const hasDisposition = Object.hasOwn(preflight, 'g19_one_shot_disposition');
+  const disposition = preflight.g19_one_shot_disposition;
+  const latestReview = history.at(-1);
+  const ownClaimMatches = allowClaimed && disposition?.state === 'CLAIMED' &&
+    disposition.frontierId === FRONTIER_ID && disposition.sourceCandidateSha === sourceRevision &&
+    disposition.baseSha === currentBaseSha && disposition.prNumber === epochView?.number &&
+    disposition.reviewerId === latestReview?.reviewer_id;
+  if ((hasDisposition && !ownClaimMatches) || (allowClaimed && !hasDisposition)) {
     throw new Error('G19 one-shot is already claimed or consumed in the durable Harness control plane; refusing retry.');
   }
-  const latestReview = history.at(-1);
   const reviewerId = latestReview?.reviewer_id;
   const reviewerPattern = Number.isSafeInteger(epochView?.number)
     ? new RegExp(`^gpt-6-luna-max-run95-pr${epochView.number}-round\\d+$`, 'u') : /^$/u;
@@ -231,12 +238,45 @@ function readOpenPr(prNumber) {
   try { return JSON.parse(result.stdout ?? ''); } catch { throw new Error('GitHub PR state was not valid JSON.'); }
 }
 
+function invokeHarnessCommand(args) {
+  const result = spawnSync(process.execPath, [HARNESS_SCRIPT, ...args], {
+    cwd: ROOT, env: environment(process.env, true), encoding: 'utf8', maxBuffer: 64 * 1024,
+    timeout: 30_000, stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  if (result.error || result.status !== 0) throw new Error('Durable G19 Harness control update failed.');
+  try { return JSON.parse(result.stdout ?? ''); } catch { throw new Error('G19 Harness control response was not valid JSON.'); }
+}
+
+function claimHarnessG19OneShot(gate) {
+  const result = invokeHarnessCommand([
+    'epoch:g19-one-shot-claim', '--run', String(RUN_NUMBER), '--pr', String(gate.prNumber),
+    '--candidate', gate.candidateSha, '--base', gate.baseSha, '--reviewer-id', gate.reviewerId,
+  ]);
+  if (result.state !== 'G19_ONE_SHOT_CLAIMED' || typeof result.claimId !== 'string') {
+    throw new Error('Durable G19 Harness claim was not confirmed.');
+  }
+  return result;
+}
+
+function persistHarnessG19OneShotResult(claim, state) {
+  try {
+    const result = invokeHarnessCommand([
+      'epoch:g19-one-shot-result', '--run', String(RUN_NUMBER), '--pr', String(claim.prNumber),
+      '--claim-id', claim.claimId, '--state', state,
+    ]);
+    return result.state === 'G19_ONE_SHOT_RESULT_RECORDED' ||
+      result.state === 'G19_ONE_SHOT_RESULT_ALREADY_RECORDED';
+  } catch {
+    return false;
+  }
+}
+
 function fetchCurrentMaster() {
   gitText('fetch', '--no-tags', 'origin', 'master');
   return gitText('rev-parse', 'origin/master');
 }
 
-function assertCurrentReviewGate(sourceRevision) {
+function assertCurrentReviewGate(sourceRevision, { allowClaimed = false } = {}) {
   const currentBaseSha = fetchCurrentMaster();
   const status = readHarnessStatus();
   const prNumber = status?.run?.state?.active_epoch_pr;
@@ -246,7 +286,7 @@ function assertCurrentReviewGate(sourceRevision) {
     cwd: ROOT, env: environment(), stdio: 'ignore', timeout: 10_000,
   });
   if (ancestor.error || ancestor.status !== 0) throw new Error('G19 Candidate is not based on current master.');
-  return assertG19CandidateReviewGate(status, pr, { sourceRevision, currentBaseSha });
+  return assertG19CandidateReviewGate(status, pr, { sourceRevision, currentBaseSha, allowClaimed });
 }
 
 export function canonicalG19SafeEventSummary(events) {
@@ -373,6 +413,7 @@ function run() {
       currentGate.baseSha !== initialGate.baseSha) {
     throw new Error('Active G19 Epoch, Base, Candidate, or Luna Max reviewer changed during preflight.');
   }
+  const remoteClaim = claimHarnessG19OneShot(currentGate);
   const claim = createG19OneShotClaim(claimPath, { ...currentGate, sourceRevision, bundleSha256 });
   let temporaryDirectory;
   let safe = {
@@ -407,13 +448,15 @@ function run() {
         hasUnexpectedG19CodexToolActivity(events) || serverSummary?.allowedCallCount !== 1 ||
         serverSummary?.deniedCallCount !== 0 || serverSummary?.serverResultStatus !== 'SUCCESS') {
       markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
+      persistHarnessG19OneShotResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
       return 1;
     }
-    const postGate = assertCurrentReviewGate(sourceRevision);
+    const postGate = assertCurrentReviewGate(sourceRevision, { allowClaimed: true });
     if (postGate.prNumber !== currentGate.prNumber || postGate.baseSha !== currentGate.baseSha ||
         postGate.reviewerId !== currentGate.reviewerId) {
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
+      persistHarnessG19OneShotResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`);
       return 1;
     }
@@ -436,17 +479,25 @@ function run() {
     if (writer.exitCode !== 0 || writer.output?.passed !== true) {
       const answerChecks = writer.output?.answerChecks ?? null;
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
+      persistHarnessG19OneShotResult(remoteClaim, 'INCONCLUSIVE');
       process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`);
       return 1;
     }
     const output = writer.output;
     markClaim(claimPath, claim, 'REPORT_WRITTEN', { ...safe, answerCounters: output.answerCounters, resultSummary: output.resultSummary });
+    if (!persistHarnessG19OneShotResult(remoteClaim, 'REPORT_WRITTEN')) {
+      rmSync(REPORT_PATH, { force: true });
+      markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'durable_harness_result_write_failed' });
+      process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'durable_harness_result_write_failed' })}\n`);
+      return 1;
+    }
     process.stdout.write(`${JSON.stringify({ passed: true, state: 'REPORT_WRITTEN', sourceRevision,
       baseSha: currentGate.baseSha, bundleSha256, answerCounters: output.answerCounters,
       resultSummary: output.resultSummary })}\n`);
     return 0;
   } catch {
     markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
+    persistHarnessG19OneShotResult(remoteClaim, 'INCONCLUSIVE');
     process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
     return 1;
   } finally {

@@ -352,6 +352,19 @@ function officialSourcesValid(result, coverage) {
     details.succeeded === coverage.subjectDetailsSucceeded && details.failed === coverage.subjectDetailsFailed;
 }
 
+function fullTextResultReadbackMatches(toolOutput, result, toolTextUtf8Bytes) {
+  const content = toolOutput?.content;
+  if (!Array.isArray(content) || content.length !== 1 || content[0]?.type !== 'text' ||
+      typeof content[0].text !== 'string' || !Number.isSafeInteger(toolTextUtf8Bytes) ||
+      toolTextUtf8Bytes <= 0 || toolTextUtf8Bytes > 3_600) return false;
+  try {
+    const fromText = findG19Activity(JSON.parse(content[0].text));
+    return Boolean(fromText && sameJson(fromText, result));
+  } catch {
+    return false;
+  }
+}
+
 export function summarizeG19PersonActivityResult(result) {
   const window = projectWindow(result?.window, result?.coverage?.retrievedAt);
   const coverage = projectCoverage(result?.coverage);
@@ -383,6 +396,7 @@ export function verifyG19PersonOriginAnswer(answer, queryArguments, toolOutput, 
     ? findG19Activity(toolOutput.structuredContent)
     : null;
   const result = structured ?? findG19Activity(toolOutput);
+  const fullTextReadback = !structured && fullTextResultReadbackMatches(toolOutput, result, toolTextUtf8Bytes);
   const window = projectWindow(result?.window, result?.coverage?.retrievedAt);
   const coverage = projectCoverage(result?.coverage);
   const summary = projectSummary(result?.summary);
@@ -400,7 +414,7 @@ export function verifyG19PersonOriginAnswer(answer, queryArguments, toolOutput, 
   const checks = {
     exactQueryArguments: sameJson(queryArguments, G19_EXPECTED_QUERY_ARGUMENTS),
     exactSingleToolCall,
-    structuredResultReadback: Boolean(structured),
+    structuredResultReadback: Boolean(structured || fullTextReadback),
     targetIdentityAndScope: result?.personId === G19_EXPECTED_QUERY_ARGUMENTS.personId &&
       result.kind === 'all' && result.media === 'anime',
     calendarWindowValid: Boolean(window && result?.coverage?.retrievedAt),

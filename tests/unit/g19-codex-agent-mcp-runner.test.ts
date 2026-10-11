@@ -103,6 +103,19 @@ describe('G19 one-tool Codex runner', () => {
     expect(() => assertG19CandidateReviewGate(
       spentOneShot, pr, { sourceRevision: candidate, currentBaseSha: base },
     )).toThrow(/durable Harness control plane/u);
+
+    const ownClaim = structuredClone(status);
+    Object.assign(ownClaim.epoch.state.adversarial_preflight, {
+      g19_one_shot_disposition: {
+        claimId: 'g19-claim', frontierId: 'G19', state: 'CLAIMED',
+        sourceCandidateSha: candidate, baseSha: base, prNumber,
+        reviewerId: `gpt-6-luna-max-run95-pr${prNumber}-round1`,
+        reportWritten: false, retryAllowed: false,
+      },
+    });
+    expect(assertG19CandidateReviewGate(
+      ownClaim, pr, { sourceRevision: candidate, currentBaseSha: base, allowClaimed: true },
+    )).toMatchObject({ candidateSha: candidate, baseSha: base });
   });
 
   it('builds isolated GPT-6 Luna Max read-only execution with exactly the fixed get_person_activity profile', () => {

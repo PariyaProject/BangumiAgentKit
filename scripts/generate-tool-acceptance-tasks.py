@@ -3966,6 +3966,9 @@ def codex_g19_report_is_valid(report: object) -> bool:
         coverage['truncated'] or coverage['subjectDetailsFailed'] != 0
         or coverage['missingSubjectIdRows'] != 0 or coverage['missingDateRows'] != 0
         or coverage['invalidDateRows'] != 0 or coverage['mediaUnknownRows'] != 0
+        or coverage['origin']['subjectsPartial'] != 0
+        or coverage['origin']['malformedTagValues'] != 0
+        or coverage['origin']['truncated']
     ):
         return False
     return True

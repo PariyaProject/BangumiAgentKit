@@ -194,6 +194,20 @@ describe('G19 bounded person-origin Agent/MCP answer checker', () => {
     expect(JSON.stringify(checked)).not.toContain('漫画');
   });
 
+  it('accepts the complete bounded JSON MCP text when structuredContent is absent', () => {
+    const result = makeResult();
+    const text = JSON.stringify(result);
+    const textBytes = Buffer.byteLength(text, 'utf8');
+    expect(textBytes).toBeLessThanOrEqual(3600);
+    const checked = verifyG19PersonOriginAnswer(
+      answerFor(result), G19_EXPECTED_QUERY_ARGUMENTS,
+      { content: [{ type: 'text', text }] }, calls(), textBytes,
+    );
+
+    expect(checked.passed).toBe(true);
+    expect(checked.answerChecks.structuredResultReadback).toBe(true);
+  });
+
   it('rejects adaptation grouping, raw-origin mismatch, extra rows, widened arguments, and caveat removal', () => {
     const result = makeResult();
     const answer = JSON.parse(answerFor(result));

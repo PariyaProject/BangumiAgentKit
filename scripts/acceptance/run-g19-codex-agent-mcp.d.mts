@@ -16,7 +16,7 @@ export function validateG19RunnerArgs(args: string[]): 'help' | 'run';
 export function assertG19CandidateReviewGate(
   status: unknown,
   pr: unknown,
-  input: { sourceRevision: string; currentBaseSha: string },
+  input: { sourceRevision: string; currentBaseSha: string; allowClaimed?: boolean },
 ): { prNumber: number; candidateSha: string; baseSha: string; reviewerId: string };
 export function canonicalG19SafeEventSummary(events: unknown): Record<string, unknown>;
 export function hasUnexpectedG19CodexToolActivity(events: unknown): boolean;

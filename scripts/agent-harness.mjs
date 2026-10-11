@@ -389,6 +389,8 @@ Usage: pnpm harness <command> [options]
   review:runtime --run <issue> --pr <number> --reviewer-id <id> --runtime-state <ACTIVE|INTERRUPTED|UNAVAILABLE> [--reason <text>]
   review:wait --run <issue> --pr <number> --reviewer-id <id> --runtime-state ACTIVE
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
+  epoch:g19-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --reviewer-id <id>
+  epoch:g19-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
   frontier:review-reserve --run <issue> [--evidence <json>] [--runtime-recovery]
   frontier:review-started --run <issue> --reviewer-id <id> [--runtime-recovery]
   frontier:review-reconcile --run <issue> [--definitely-not-started] [--runtime-recovery]
@@ -1193,6 +1195,127 @@ function commandReviewResult(options) {
   print({ state: result.epoch.state, outer_state: result.run.state });
 }
 
+function assertG19OneShotClaimReadiness({ run, epoch, pr, runNumber, prNumber, candidateSha, baseSha, reviewerId }) {
+  const currentBaseSha = remoteBaseSha(epoch.base_branch);
+  const latestReview = epoch.review_history?.at(-1);
+  const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round\\d+$`, 'u');
+  const preflight = epoch.adversarial_preflight ?? {};
+  if (
+    run.state !== 'EPOCH_ACTIVE' || run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null || run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    epoch.state !== 'REVIEW_PASSED' || epoch.epoch_id !== 'run95-g19-person-origin-agent-mcp-evidence' ||
+    epoch.pr_number !== Number(prNumber) || !epoch.advances_frontier_ids?.includes('G19') ||
+    Object.hasOwn(preflight, 'g19_one_shot_disposition') ||
+    epoch.branch !== currentBranch() || currentHead() !== candidateSha ||
+    pr.state !== 'OPEN' || pr.isDraft || pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch || pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' || epoch.base_sha !== baseSha ||
+    epoch.reviewed_base_sha !== baseSha || currentBaseSha !== baseSha ||
+    epoch.candidate_sha !== candidateSha || epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha || epoch.ci?.status !== 'SUCCESS' ||
+    !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    latestReview?.candidate_sha !== candidateSha || latestReview.reviewed_base_sha !== baseSha ||
+    latestReview.verdict !== 'PASS' || latestReview.reviewer_id !== reviewerId ||
+    !reviewerPattern.test(reviewerId)
+  ) {
+    throw new HarnessInvariantError(
+      'G19_ONESHOT_CLAIM_GATE_FAILED',
+      'G19 one-shot claim requires the clean active exact Candidate, current Base, seven-check CI, and latest exact-identity Luna Max PASS.',
+      { runNumber, prNumber, candidateSha, baseSha },
+    );
+  }
+}
+
+function commandEpochG19OneShotClaim(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const candidateSha = required(options, 'candidate');
+  const baseSha = required(options, 'base');
+  const reviewerId = required(options, 'reviewer-id');
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  if (Object.hasOwn(epochResult.state.adversarial_preflight ?? {}, 'g19_one_shot_disposition')) {
+    throw new HarnessInvariantError(
+      'G19_ONESHOT_ALREADY_CLAIMED',
+      'A durable G19 one-shot claim or result already exists; refusing a duplicate claim.',
+    );
+  }
+  assertG19OneShotClaimReadiness({
+    run: runResult.state,
+    epoch: epochResult.state,
+    pr: epochResult.view,
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    reviewerId,
+  });
+  const claimedAt = new Date().toISOString();
+  const claimId = `g19-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`;
+  const nextEpoch = structuredClone(epochResult.state);
+  nextEpoch.adversarial_preflight = {
+    ...nextEpoch.adversarial_preflight,
+    g19_one_shot_disposition: {
+      claimId,
+      frontierId: 'G19',
+      state: 'CLAIMED',
+      sourceCandidateSha: candidateSha,
+      baseSha,
+      prNumber: Number(prNumber),
+      reviewerId,
+      reportWritten: false,
+      retryAllowed: false,
+      claimedAt,
+    },
+  };
+  updatePr(prNumber, nextEpoch);
+  print({ state: 'G19_ONE_SHOT_CLAIMED', claimId, candidateSha, baseSha, prNumber: Number(prNumber) });
+}
+
+function commandEpochG19OneShotResult(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const claimId = required(options, 'claim-id');
+  const resultState = required(options, 'state');
+  if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState)) {
+    throw new HarnessInvariantError('G19_ONESHOT_RESULT_INVALID', 'Only terminal one-shot states are supported.');
+  }
+  const epochResult = epochState(prNumber);
+  const current = epochResult.state.adversarial_preflight?.g19_one_shot_disposition;
+  if (!current || current.claimId !== claimId || current.prNumber !== Number(prNumber) ||
+      current.frontierId !== 'G19') {
+    throw new HarnessInvariantError(
+      'G19_ONESHOT_CLAIM_MISMATCH',
+      'The durable Harness control plane has no matching G19 one-shot claim.',
+      { runNumber, prNumber },
+    );
+  }
+  if (current.state === resultState) {
+    print({ state: 'G19_ONE_SHOT_RESULT_ALREADY_RECORDED', claimId, resultState });
+    return;
+  }
+  if (current.state !== 'CLAIMED') {
+    throw new HarnessInvariantError(
+      'G19_ONESHOT_ALREADY_TERMINAL',
+      'A terminal G19 one-shot result cannot be replaced.',
+      { existingState: current.state, requestedState: resultState },
+    );
+  }
+  const nextEpoch = structuredClone(epochResult.state);
+  nextEpoch.adversarial_preflight.g19_one_shot_disposition = {
+    ...current,
+    state: resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    retryAllowed: false,
+    finishedAt: new Date().toISOString(),
+  };
+  updatePr(prNumber, nextEpoch);
+  print({ state: 'G19_ONE_SHOT_RESULT_RECORDED', claimId, resultState, reportWritten: resultState === 'REPORT_WRITTEN' });
+}
+
 function commandFrontierReviewReserve(options) {
   ensureControlPlane();
   ensureCleanWorkingTree();
@@ -1820,6 +1943,8 @@ const commands = {
   'review:runtime': commandReviewRuntime,
   'review:wait': commandReviewWait,
   'review:result': commandReviewResult,
+  'epoch:g19-one-shot-claim': commandEpochG19OneShotClaim,
+  'epoch:g19-one-shot-result': commandEpochG19OneShotResult,
   'frontier:review-reserve': commandFrontierReviewReserve,
   'frontier:review-started': commandFrontierReviewStarted,
   'frontier:review-reconcile': commandFrontierReviewReconcile,
