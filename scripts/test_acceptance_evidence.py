@@ -496,6 +496,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_G16_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
@@ -2196,6 +2197,130 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _g16_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+        month_keys = []
+        year, month = 2023, 11
+        for _ in range(36):
+            month_keys.append(f'{year:04d}-{month:02d}')
+            month += 1
+            if month == 13:
+                year += 1
+                month = 1
+        coverage = {key: 0 for key in GENERATOR.CODEX_G16_COVERAGE_FIELDS}
+        coverage.update({
+            'relationRowsObserved': 60,
+            'relationRowsSelected': 48,
+            'relationRowsDroppedAtLimit': 4,
+            'subjectIdsObserved': 52,
+            'subjectIdsSelected': 48,
+            'subjectIdsDroppedAtRelationLimit': 4,
+            'subjectDetailIdsObserved': 48,
+            'subjectDetailRequests': 16,
+            'subjectDetailsSucceeded': 16,
+            'subjectDetailIdsDroppedAtLimit': 32,
+            'rowsEligible': 2,
+            'rowsReturned': 2,
+            'outputTruncated': False,
+            'uniqueSubjects': 2,
+            'uniqueCharacters': 0,
+            'missingDateRows': 1,
+            'outsideWindowRows': 32,
+            'mediaExcludedRows': 7,
+            'mediaUnknownRows': 1,
+            'staffRoleExcludedRows': 8,
+            'staffRoleUnknownRows': 2,
+            'maxRelations': 48,
+            'maxSubjectDetails': 16,
+            'maxRows': 20,
+            'responseLimitBytes': 1_048_576,
+            'truncated': True,
+        })
+        source_operations = [
+            {'operation': 'GET /v0/persons/{person_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/persons/{person_id}/subjects', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 16, 'succeeded': 16, 'failed': 0},
+        ]
+        result_summary = {
+            'personId': 6154,
+            'kind': 'staff',
+            'staffRole': 'director',
+            'media': 'tv',
+            'state': 'partial',
+            'window': {
+                'months': 36,
+                'start': '2023-11-01',
+                'end': '2026-10-11',
+                'monthKeys': month_keys,
+                'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+            },
+            'summary': {'creditRows': 2, 'uniqueSubjects': 2, 'uniqueCharacters': 0},
+            'coverage': coverage,
+            'rowCount': 2,
+            'rowDigest': 'd' * 64,
+            'sourceOperations': source_operations,
+        }
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_g16_director_person_activity_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'G16',
+            'scenarioId': 'G16',
+            'epochId': GENERATOR.CODEX_G16_EPOCH_ID,
+            'profile': 'codex-luna-max-one-tool-v1',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr141-round1',
+            'codexCliVersion': '0.162.0',
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'prNumber': 141,
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-11T08:00:00.000Z',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_G16_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_G16_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_person_activity'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_g16_one_tool'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': 'g16-bounded-director-person-activity-answer-v1',
+            'answerChecks': {key: True for key in GENERATOR.CODEX_G16_ANSWER_CHECK_FIELDS},
+            'answerCounters': {
+                'sourceRows': 2, 'answerRows': 2, 'rowsMatched': 2, 'missingRows': 0,
+                'extraRows': 0, 'coverageFieldsMatched': len(GENERATOR.CODEX_G16_COVERAGE_FIELDS),
+                'toolTextUtf8Bytes': 2400,
+            },
+            'toolCalls': [{'name': 'bangumi.get_person_activity', 'state': 'DONE'}],
+            'toolTextUtf8Bytes': 2400,
+            'resultSummary': result_summary,
+            'resultByteLength': 4096,
+            'resultSha256': 'e' * 64,
+            'answerUtf8Bytes': 1800,
+            'answerSha256': 'f' * 64,
+            'sourceOperations': source_operations,
+            'privacy': {
+                'authProfile': 'anonymous',
+                **{key: False for key in GENERATOR.CODEX_G16_PRIVACY_FIELDS - {'authProfile'}},
+            },
+        }
+
     def _s03_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_series_watch_order')
@@ -2584,6 +2709,67 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.assertTrue(GENERATOR.codex_g05_report_is_valid(report))
         self.assertFalse(
             GENERATOR.codex_g05_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
+
+    def test_accepts_exact_candidate_bound_sanitized_g16_director_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH).name
+        report = self._g16_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+
+        self.assertTrue(GENERATOR.codex_g16_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_g16_report_is_valid(report))
+        self.assertTrue(
+            GENERATOR.codex_g16_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH},
+        )
+        for forbidden in ('answer', 'toolOutput', 'prompt', 'rows', 'subjectName', 'rawRole'):
+            self.assertNotIn(forbidden, report)
+
+        self._git('add', GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized G16 director evidence')
+        self.assertTrue(
+            GENERATOR.codex_g16_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+
+    def test_rejects_g16_report_with_wrong_profile_or_impossible_role_coverage(self):
+        invalid_reports = [
+            {'model': 'gpt-6-sol'},
+            {'reasoningEffort': 'high'},
+            {'reviewerId': 'gpt-6-luna-max-run95-pr142-round1'},
+            {'nonMcpToolTypes': ['error']},
+            {'answerChecks': {'answerRowsMatch': False}},
+            {'answer': 'raw answer must never be retained'},
+        ]
+        for override in invalid_reports:
+            with self.subTest(override=override):
+                candidate = self._g16_report_fixture()
+                candidate.update(override)
+                self.assertFalse(GENERATOR.codex_g16_report_is_valid(candidate))
+
+        report = self._g16_report_fixture()
+        report['resultSummary']['coverage']['staffRoleUnknownRows'] = 20
+        self.assertFalse(GENERATOR.codex_g16_report_is_valid(report))
+
+        report = self._g16_report_fixture()
+        report['resultSummary']['window']['monthKeys'].pop()
+        self.assertFalse(GENERATOR.codex_g16_report_is_valid(report))
+
+    def test_rejects_g16_report_from_a_stale_candidate(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH).name
+        report = self._g16_report_fixture(self.stale_candidate_source_revision)
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        self.assertTrue(GENERATOR.codex_g16_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_g16_report_matches_candidate_revision(
                 report_path, self.stale_candidate_source_revision,
             ),
         )
