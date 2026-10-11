@@ -237,6 +237,7 @@ describe('G19 bounded person-origin Agent/MCP answer checker', () => {
 
   it('keeps a partial meta_tags read without the exact 原创 tag in unknown, not adaptation', () => {
     const result = makeResult();
+    result.state = 'partial';
     result.rows[1]!.origin = {
       state: 'unknown',
       metaTags: ['漫画'],
@@ -264,5 +265,56 @@ describe('G19 bounded person-origin Agent/MCP answer checker', () => {
     expect(checked.passed).toBe(true);
     expect(checked.answerChecks.answerGroupsMatch).toBe(true);
     expect(checked.answerChecks.adaptationNotInferred).toBe(true);
+
+    const contradictory = structuredClone(result);
+    contradictory.state = 'complete';
+    const rejected = verifyG19PersonOriginAnswer(
+      answerFor(contradictory), G19_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: contradictory }, calls(), 2800,
+    );
+
+    expect(rejected.passed).toBe(false);
+    expect(rejected.answerChecks.boundedCoverageConsistent).toBe(false);
+  });
+
+  it('keeps distinct voice and staff rows when their numeric relation ids collide', () => {
+    const result = makeResult();
+    const voice = result.rows[0]!;
+    voice.relationId = voice.subjectId;
+    result.rows[1] = {
+      ...voice,
+      relationKind: 'staff',
+      roleFamily: 'staff',
+      rawRole: '脚本',
+    };
+    result.summary.uniqueSubjects = 1;
+    result.summary.origin = { explicitOriginalSubjects: 1, notObservedSubjects: 0, unknownSubjects: 0 };
+    result.coverage.subjectIdsObserved = 1;
+    result.coverage.subjectIdsSelected = 1;
+    result.coverage.subjectDetailIdsObserved = 1;
+    result.coverage.subjectDetailRequests = 1;
+    result.coverage.subjectDetailsSucceeded = 1;
+    result.coverage.uniqueSubjects = 1;
+    result.coverage.origin.explicitOriginalSubjects = 1;
+    result.coverage.origin.notObservedSubjects = 0;
+    result.coverage.origin.unknownSubjects = 0;
+    result.coverage.origin.subjectsObserved = 1;
+    result.coverage.origin.subjectsWithMetaTags = 1;
+    result.coverage.origin.tagsObserved = 2;
+    result.coverage.origin.tagsValid = 2;
+    result.coverage.origin.tagsReturned = 2;
+    result.coverage.origin.tagsOmitted = 0;
+    result.coverage.origin.malformedTagValues = 0;
+    result.sourceOperations[3]!.attempted = 1;
+    result.sourceOperations[3]!.succeeded = 1;
+
+    const checked = verifyG19PersonOriginAnswer(
+      answerFor(result), G19_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result }, calls(), 2800,
+    );
+
+    expect(checked.passed).toBe(true);
+    expect(checked.answerChecks.sourceRowsDistinct).toBe(true);
+    expect(checked.answerChecks.answerRowsMatch).toBe(true);
   });
 });

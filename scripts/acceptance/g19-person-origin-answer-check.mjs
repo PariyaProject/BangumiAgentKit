@@ -313,6 +313,14 @@ function coverageConsistent(result, coverage, summary, rows) {
     result.personId === G19_EXPECTED_QUERY_ARGUMENTS.personId;
 }
 
+function activityStateMatchesOriginCoverage(result, coverage) {
+  const origin = coverage?.origin;
+  const originCoverageIsPartial = Boolean(origin && (
+    origin.subjectsPartial > 0 || origin.malformedTagValues > 0 || origin.truncated
+  ));
+  return !originCoverageIsPartial || result?.state === 'partial';
+}
+
 function answerRowMatches(answerRow, sourceRow) {
   return isRecord(answerRow) && sameJson(answerRow, sourceRow);
 }
@@ -387,7 +395,8 @@ export function verifyG19PersonOriginAnswer(answer, queryArguments, toolOutput, 
   const stateValid = ['complete', 'partial'].includes(result?.state);
   const sourceRowsValid = rows.length === (Array.isArray(result?.rows) ? result.rows.length : -1) &&
     rows.length <= G19_EXPECTED_QUERY_ARGUMENTS.maxRows && rows.every(Boolean);
-  const sourceRowsDistinct = new Set(rows.filter(Boolean).map((row) => `${row.subjectId}:${row.relationId ?? 'none'}`)).size === rows.length;
+  const sourceRowsDistinct = new Set(rows.filter(Boolean).map((row) =>
+    `${row.subjectId}:${row.relationKind}:${row.relationId ?? 'none'}`)).size === rows.length;
   const checks = {
     exactQueryArguments: sameJson(queryArguments, G19_EXPECTED_QUERY_ARGUMENTS),
     exactSingleToolCall,
@@ -397,7 +406,8 @@ export function verifyG19PersonOriginAnswer(answer, queryArguments, toolOutput, 
     calendarWindowValid: Boolean(window && result?.coverage?.retrievedAt),
     successfulOfficialSources: stateValid && Boolean(coverage && summary && officialSourcesValid(result, coverage)),
     boundedCoverageConsistent: Boolean(coverage && summary && sourceRowsValid &&
-      coverageConsistent(result, coverage, summary, rows.filter(Boolean))),
+      coverageConsistent(result, coverage, summary, rows.filter(Boolean)) &&
+      activityStateMatchesOriginCoverage(result, coverage)),
     sourceRowsValid,
     sourceRowsDistinct,
     answerShapeValid: isRecord(parsed) && sameJson(Object.keys(parsed).sort(), [...ANSWER_KEYS].sort()),
