@@ -33,6 +33,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'A01';
+const A01_AGGREGATE_PR_NUMBER = 127;
 const EPOCH_ID = 'run95-a01-aggregate-state-precedence-followup';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
@@ -264,9 +265,11 @@ export function assertA01AggregateCandidateGate(status, pr, { candidateSha, curr
   assertG20CandidateReviewGate(status, pr, { sourceRevision: candidateSha, currentBaseSha });
   if (
     run?.state !== 'EPOCH_ACTIVE' ||
+    epochView?.number !== A01_AGGREGATE_PR_NUMBER ||
     run?.active_epoch_pr !== epochView?.number ||
     run?.pending_epoch != null ||
     epoch?.epoch_id !== EPOCH_ID ||
+    epoch?.pr_number !== A01_AGGREGATE_PR_NUMBER ||
     epoch?.candidate_sha !== candidateSha ||
     epoch?.ci?.sha !== candidateSha ||
     epoch?.ci?.status !== 'SUCCESS' ||
@@ -277,7 +280,7 @@ export function assertA01AggregateCandidateGate(status, pr, { candidateSha, curr
     !mandatoryChecksSuccessful(pr?.statusCheckRollup)
   ) {
     throw new Error(
-      'A01 aggregate query requires its active exact Candidate, current-base CI, and Luna Max PASS.',
+      'A01 aggregate query requires active PR #127 with its exact Candidate, current-base CI, and Luna Max PASS.',
     );
   }
   return {
