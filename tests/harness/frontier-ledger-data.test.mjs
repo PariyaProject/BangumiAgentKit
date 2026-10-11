@@ -30,3 +30,14 @@ test('G04 frontier keeps stable query policy without Run 95 attempt state', () =
   assert.doesNotMatch(serialized, /NOT_ATTEMPTED|claim_state|acceptance_count_advanced/u);
   assert.match(record.next_action, /assigned same-identity Luna Max PASS/u);
 });
+
+test('G16 frontier guidance stays independent of transient Run execution state', () => {
+  const record = ledger.records.find(({ id }) => id === 'G16');
+  assert.ok(record, 'G16 must remain in the canonical frontier');
+  assert.match(record.next_action, /official public relation/u);
+  assert.match(record.next_action, /PARTIAL/u);
+  assert.doesNotMatch(record.next_action, /\bRun #\d+\b/iu);
+  assert.doesNotMatch(record.next_action, /\b[0-9a-f]{40}\b/iu);
+  assert.doesNotMatch(record.next_action, /\bclaim\/report\b/iu);
+  assert.doesNotMatch(record.next_action, /\bquery has (?:not )?run\b/iu);
+});
