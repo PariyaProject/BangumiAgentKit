@@ -1968,6 +1968,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'profile': 'codex-luna-max-one-tool-v1',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
+            'reviewerId': 'gpt-6-luna-max-run95-pr142-round1',
             'codexCliVersion': '1.2.14',
             'sourceRevision': revision,
             'baseSha': base_sha,
@@ -2212,6 +2213,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {'model': 'gpt-6-sol'},
             {'reasoningEffort': 'high'},
+            {'reviewerId': 'gpt-6-luna-max-other-run'},
             {'mcpBundleSha256': '0' * 64},
             {'answerChecks': {'queryArgumentsMatch': False}},
             {'answer': 'raw response must never be retained'},

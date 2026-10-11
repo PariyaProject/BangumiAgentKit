@@ -187,6 +187,41 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
     expect(report.answerChecks.noUnsupportedPositiveClaim).toBe(false);
   });
 
+  it('rejects unsupported English scope claims alongside the required Chinese caveats', () => {
+    for (const claim of [
+      'This is a complete career history.',
+      'This is the lifetime total.',
+      'The result proves actual workload.',
+      'This is a rolling 365-day total.',
+    ]) {
+      const result = makeResult();
+      const answer = JSON.parse(answerFor(result));
+      answer.caveat += ` ${claim}`;
+      const report = verifyG04PersonActivityAnswer(
+        JSON.stringify(answer),
+        G04_EXPECTED_QUERY_ARGUMENTS,
+        { structuredContent: result },
+        calls(),
+        2400,
+      );
+      expect(report.passed, claim).toBe(false);
+    }
+  });
+
+  it('allows an explicit English negation near an unsupported-scope phrase', () => {
+    const result = makeResult();
+    const answer = JSON.parse(answerFor(result));
+    answer.caveat += ' This is not a complete career history.';
+    const report = verifyG04PersonActivityAnswer(
+      JSON.stringify(answer),
+      G04_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result },
+      calls(),
+      2400,
+    );
+    expect(report.passed).toBe(true);
+  });
+
   it('rejects absent structured readback, an incorrect calendar window, and text over the cap', () => {
     const result = makeResult();
     const wrongWindow = { ...result, window: { ...window, start: '2025-10-01' } };

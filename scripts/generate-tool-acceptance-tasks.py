@@ -359,7 +359,7 @@ CODEX_G04_EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence'
 CODEX_G04_ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1'
 CODEX_G04_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
-    'profile', 'model', 'reasoningEffort', 'codexCliVersion', 'sourceRevision', 'baseSha',
+    'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion', 'sourceRevision', 'baseSha',
     'prNumber', 'mcpBundleSha256', 'observedAt', 'toolName', 'argumentProfile',
     'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
     'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
@@ -2798,6 +2798,12 @@ def codex_g04_report_is_valid(report: object) -> bool:
         or report.get('profile') != 'codex-luna-max-one-tool-v1'
         or report.get('model') != 'gpt-6-luna'
         or report.get('reasoningEffort') != 'max'
+        or type(report.get('prNumber')) is not int
+        or not isinstance(report.get('reviewerId'), str)
+        or not re.fullmatch(
+            rf'gpt-6-luna-max-run95-pr{report["prNumber"]}-round\d+',
+            report['reviewerId'],
+        )
         or not isinstance(report.get('codexCliVersion'), str)
         or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
         or report.get('toolName') != 'bangumi.get_person_activity'
@@ -2827,7 +2833,6 @@ def codex_g04_report_is_valid(report: object) -> bool:
         or not isinstance(report.get('baseSha'), str)
         or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
         or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], source_revision).returncode != 0
-        or type(report.get('prNumber')) is not int
         or report['prNumber'] < 1
         or not isinstance(report.get('mcpBundleSha256'), str)
         or codex_g26_candidate_bundle_sha256(source_revision) != report.get('mcpBundleSha256')

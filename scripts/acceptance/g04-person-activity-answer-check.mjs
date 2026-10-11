@@ -55,8 +55,17 @@ const ANSWER_KEYS = [
   'caveat',
 ];
 const ANSWER_COVERAGE_KEYS = new Set(COVERAGE_FIELDS);
-const UNSUPPORTED_CLAIM = /(?:完整履历|全部作品|完整(?:作品)?总数|生涯总数|实际配音时间|实际工作量|工作时长|滚动\s*365\s*天|历史(?:总数|趋势|工作量))/u;
-const CLAIM_NEGATION = /(?:不是|并非|不代表|不等于|不能证明|无法计算|未能证明|不会表示|不说明|不构成|不意味着|并不代表|没有历史快照)/u;
+const UNSUPPORTED_CLAIM_PATTERNS = [
+  /(?:完整履历|全部作品|完整(?:作品)?总数|生涯总数|实际配音时间|实际工作量|工作时长|滚动\s*365\s*天|历史(?:总数|趋势|工作量))/u,
+  /\b(?:complete|full|entire|all)\s+(?:(?:career|professional)\s+)?(?:career\s+)?(?:history|filmography|list|total|credits|works)\b/iu,
+  /\b(?:career|professional|lifetime)\s+(?:history|filmography|list|total|count|credits|works)\b/iu,
+  /\brolling\s*365[\s-]*days?\b/iu,
+  /\b(?:actual|real)\s+(?:voice[- ]?acting|dubbing|workload|working\s+time|hours?)\b/iu,
+  /\bworkload\b/iu,
+  /\b(?:historical|lifetime)\s+(?:total|trend|workload)\b/iu,
+];
+const CLAIM_NEGATION_BEFORE = /(?:不是|并非|不代表|不等于|不能证明|不能说明|无法计算|未能证明|不会表示|不说明|不构成|不意味着|并不代表|没有历史快照)\s*$|\b(?:not|never|no|cannot|can't|does\s+not|doesn't|do\s+not|don't|did\s+not|didn't|is\s+not|isn't|are\s+not|aren't|was\s+not|wasn't|were\s+not|weren't|not\s+yet)\b(?:\s+(?:a|an|the|complete|full|entire|actual|rolling|lifetime|career|professional|historical|evidence|to|support|show|prove|establish)){0,4}\s*$/iu;
+const CLAIM_NEGATION_AFTER = /^\s*(?:(?:is|are|was|were)\s+)?(?:not\s+(?:supported|established|proven|evidenced)|unsupported|unproven|unknown|unavailable|不能证明|无法计算|未能证明|不说明|不构成|不意味着|没有依据)\b/iu;
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -249,7 +258,16 @@ function sourceOperationsAreConsistent(result, coverage) {
 function hasUnsupportedPositiveClaim(value) {
   if (typeof value === 'string') {
     return value.split(/[。！？!?；;\n]/u).some((clause) =>
-      UNSUPPORTED_CLAIM.test(clause) && !CLAIM_NEGATION.test(clause));
+      UNSUPPORTED_CLAIM_PATTERNS.some((pattern) => {
+        for (const match of clause.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
+          const start = match.index ?? 0;
+          const end = start + match[0].length;
+          const before = clause.slice(Math.max(0, start - 48), start);
+          const after = clause.slice(end, end + 48);
+          if (!CLAIM_NEGATION_BEFORE.test(before) && !CLAIM_NEGATION_AFTER.test(after)) return true;
+        }
+        return false;
+      }));
   }
   if (Array.isArray(value)) return value.some(hasUnsupportedPositiveClaim);
   if (isRecord(value)) return Object.values(value).some(hasUnsupportedPositiveClaim);

@@ -149,9 +149,10 @@ function assertLocalClaimPath(claimPath) {
   return absolute;
 }
 
-export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256) {
-  if (!/^[0-9a-f]{40}$/u.test(sourceRevision) || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
-    throw new Error('G04 one-shot claim must bind an exact Candidate and MCP bundle.');
+export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, reviewerId) {
+  if (!/^[0-9a-f]{40}$/u.test(sourceRevision) || !/^[0-9a-f]{64}$/u.test(bundleSha256) ||
+      !/^gpt-6-luna-max-run95-pr\d+-round\d+$/u.test(reviewerId ?? '')) {
+    throw new Error('G04 one-shot claim must bind an exact Candidate, MCP bundle, and Harness reviewer identity.');
   }
   const absolute = assertLocalClaimPath(claimPath);
   mkdirSync(path.dirname(absolute), { recursive: true, mode: 0o700 });
@@ -162,6 +163,7 @@ export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256) {
     epochId: EPOCH_ID,
     state: 'CLAIMED',
     sourceRevision,
+    reviewerId,
     bundleSha256,
     expectedArgumentsSha256: sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)),
     claimedAt: new Date().toISOString(),
@@ -238,9 +240,13 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
   const epochView = status?.epoch;
   const epoch = epochView?.state;
   const runState = status?.run?.state;
-  const matchingPass = Array.isArray(epoch?.review_history) && epoch.review_history.some((review) =>
-    review?.candidate_sha === sourceRevision && review?.verdict === 'PASS' &&
-    /^gpt-6-luna-max(?:-|$)/u.test(review?.reviewer_id ?? ''));
+  const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
+  const latestReview = reviewHistory[reviewHistory.length - 1];
+  const reviewerId = latestReview?.reviewer_id;
+  const reviewerIdPattern = new RegExp(`^gpt-6-luna-max-run95-pr${epochView?.number}-round\\d+$`, 'u');
+  const matchingPass = latestReview?.candidate_sha === sourceRevision &&
+    latestReview?.reviewed_base_sha === currentBaseSha && latestReview?.verdict === 'PASS' &&
+    typeof reviewerId === 'string' && reviewerIdPattern.test(reviewerId);
   const checks = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
@@ -271,9 +277,9 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
     mandatoryChecksSuccessful(pr?.statusCheckRollup),
   ];
   if (checks.some((passed) => !passed)) {
-    throw new Error('G04 query requires the clean active exact Candidate, current-base CI, and recorded GPT-6 Luna Max PASS.');
+    throw new Error('G04 query requires the clean active exact Candidate, current-base CI, and latest exact-identity GPT-6 Luna Max PASS.');
   }
-  return { prNumber: epochView.number, candidateSha: sourceRevision };
+  return { prNumber: epochView.number, candidateSha: sourceRevision, reviewerId };
 }
 
 function readHarnessStatus() {
@@ -417,34 +423,12 @@ function textResultBytes(result) {
 }
 
 function invokeCodex({ nodePath, summaryPath, sourceRevision, bundleSha256 }) {
-  const serverArgs = [
-    MCP_SERVER_SCRIPT, '--tool', TOOL_NAME,
-    '--arguments-json', JSON.stringify(G04_EXPECTED_QUERY_ARGUMENTS),
-    '--summary-file', summaryPath, '--candidate-sha', sourceRevision,
-    '--bundle-sha256', bundleSha256,
-  ];
-  const config = [
-    `model_reasoning_effort=${JSON.stringify(REASONING_EFFORT)}`,
-    'history.persistence="none"', 'check_for_update_on_startup=false',
-    'web_search="disabled"', 'features.apps=false', 'features.browser_use=false',
-    'features.computer_use=false', 'features.goals=false', 'features.multi_agent=false',
-    'features.remote_plugin=false', 'features.shell_tool=false',
-    'features.skill_mcp_dependency_install=false', 'features.web_search=false',
-    'features.web_search_cached=false', 'features.web_search_request=false',
-    `mcp_servers.${SERVER_ID}.command=${JSON.stringify(nodePath)}`,
-    `mcp_servers.${SERVER_ID}.args=${tomlStringArray(serverArgs)}`,
-    `mcp_servers.${SERVER_ID}.cwd=${JSON.stringify(ROOT)}`,
-    `mcp_servers.${SERVER_ID}.enabled=true`, `mcp_servers.${SERVER_ID}.required=true`,
-    `mcp_servers.${SERVER_ID}.enabled_tools=${tomlStringArray([TOOL_NAME])}`,
-    `mcp_servers.${SERVER_ID}.default_tools_approval_mode="auto"`,
-    `mcp_servers.${SERVER_ID}.startup_timeout_sec=20`,
-    `mcp_servers.${SERVER_ID}.tool_timeout_sec=180`,
-  ];
-  const result = spawnSync('codex', [
-    'exec', '--ignore-user-config', '--strict-config', '--ephemeral', '--json',
-    '--model', MODEL, '--sandbox', 'read-only', '--cd', ROOT,
-    ...config.flatMap((entry) => ['--config', entry]), PROMPT,
-  ], {
+  const result = spawnSync('codex', buildCodexExecArgs({
+    nodePath,
+    summaryPath,
+    sourceRevision,
+    bundleSha256,
+  }), {
     cwd: ROOT, env: sanitizeEnvironment(), encoding: 'utf8', maxBuffer: MAX_STDOUT_BYTES,
     timeout: CODEX_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'],
   });
@@ -473,9 +457,11 @@ function run() {
   const bundleSha256 = buildExactCandidateBundle(sourceRevision);
   if (!currentBundleMatches(sourceRevision, bundleSha256)) throw new Error('G04 Candidate bundle changed before claim creation.');
   const currentGate = assertCurrentReviewGate(sourceRevision);
-  if (currentGate.prNumber !== initialGate.prNumber) throw new Error('Active Harness Epoch changed during G04 preflight.');
+  if (currentGate.prNumber !== initialGate.prNumber || currentGate.reviewerId !== initialGate.reviewerId) {
+    throw new Error('Active Harness Epoch or exact reviewer identity changed during G04 preflight.');
+  }
 
-  const claim = createG04OneShotClaim(claimPath, sourceRevision, bundleSha256);
+  const claim = createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, currentGate.reviewerId);
   let temporaryDirectory;
   let summaryPath;
   let safe = {
@@ -523,7 +509,7 @@ function run() {
       return 1;
     }
     const postGate = assertCurrentReviewGate(sourceRevision);
-    if (postGate.prNumber !== currentGate.prNumber) {
+    if (postGate.prNumber !== currentGate.prNumber || postGate.reviewerId !== currentGate.reviewerId) {
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
       process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`);
       return 1;
@@ -554,6 +540,7 @@ function run() {
       sourceRevision,
       bundleSha256,
       prNumber: currentGate.prNumber,
+      reviewerId: currentGate.reviewerId,
     });
     if (writerResult.exitCode !== 0 || writerResult.output?.passed !== true) {
       const answerChecks = writerResult.output?.answerChecks ?? null;

@@ -106,6 +106,7 @@ function fixture() {
   };
   const review = {
     candidate_sha: candidate,
+    reviewed_base_sha: base,
     verdict: 'PASS',
     reviewer_id: 'gpt-6-luna-max-run95-pr142-round1',
   };
@@ -140,6 +141,7 @@ function fixture() {
       sourceRevision: candidate,
       bundleSha256: bundle,
       prNumber: 142,
+      reviewerId: review.reviewer_id,
     },
     liveStatus: {
       epoch: {
@@ -173,6 +175,7 @@ describe('G04 sanitized Agent/MCP report builder', () => {
       baseSha: base,
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
+      reviewerId: 'gpt-6-luna-max-run95-pr142-round1',
       frontierId: 'G04',
       resultSummary: { personId: 13684, state: 'partial', rowCount: 1 },
     });
@@ -199,5 +202,20 @@ describe('G04 sanitized Agent/MCP report builder', () => {
     const oversizedAnswer = structuredClone(input);
     oversizedAnswer.answer = `${oversizedAnswer.answer}${'x'.repeat(16_385)}`;
     expect(buildG04AgentMcpReport(oversizedAnswer, { liveStatus }).passed).toBe(false);
+  });
+
+  it('requires the exact latest Harness reviewer identity for the candidate and base', () => {
+    const { input, liveStatus } = fixture();
+    expect(buildG04AgentMcpReport({ ...input, reviewerId: 'gpt-6-luna-max-run95-pr142-round2' }, { liveStatus }).passed)
+      .toBe(false);
+
+    const stalePass = structuredClone(liveStatus);
+    stalePass.epoch.state.review_history.push({
+      candidate_sha: 'f'.repeat(40),
+      reviewed_base_sha: base,
+      verdict: 'PASS',
+      reviewer_id: 'gpt-6-luna-max-run95-pr142-round2',
+    });
+    expect(buildG04AgentMcpReport(input, { liveStatus: stalePass }).passed).toBe(false);
   });
 });

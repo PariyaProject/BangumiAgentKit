@@ -263,7 +263,6 @@
           "remaining_boundary": "The configured one-row selection yields no eligible rows; this does not establish workload, labor time, historical snapshots, rolling-365-day totals, or QQ/TIM visibility."
         },
         "codex_agent_mcp_luna_max_run95": {
-          "state": "NOT_ATTEMPTED",
           "tool": "bangumi.get_person_activity",
           "model": "gpt-6-luna",
           "reasoning_effort": "max",
@@ -287,9 +286,7 @@
             "Harness candidate:check",
             "GPT-6 Luna Max (max) PASS on that Candidate"
           ],
-          "claim_state": "not_created",
           "retry_prohibited_after_claim": true,
-          "acceptance_count_advanced": false,
           "privacy_limits": {
             "anonymous_public_read_only": true,
             "oauth_or_account": false,

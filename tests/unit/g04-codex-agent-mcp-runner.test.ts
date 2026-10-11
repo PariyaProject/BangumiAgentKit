@@ -39,7 +39,12 @@ function gateInput() {
           ci: { sha: candidate, status: 'SUCCESS' },
           state: 'REVIEW_PASSED',
           review_pass_sha: candidate,
-          review_history: [{ candidate_sha: candidate, verdict: 'PASS', reviewer_id: 'gpt-6-luna-max-run95-pr142-round1' }],
+          review_history: [{
+            candidate_sha: candidate,
+            reviewed_base_sha: base,
+            verdict: 'PASS',
+            reviewer_id: 'gpt-6-luna-max-run95-pr142-round1',
+          }],
           scope_closure: { related_work_remaining: false },
           adversarial_preflight: { completed: true },
         },
@@ -79,14 +84,31 @@ describe('G04 one-tool Codex runner preflight', () => {
   it('requires the exact reviewed G04 candidate, Luna Max reviewer, current base, and all CI checks', () => {
     const { status, pr } = gateInput();
     expect(assertG04CandidateReviewGate(status, pr, { sourceRevision: candidate, currentBaseSha: base }))
-      .toEqual({ prNumber, candidateSha: candidate });
+      .toEqual({ prNumber, candidateSha: candidate, reviewerId: 'gpt-6-luna-max-run95-pr142-round1' });
 
     const wrongReviewer = structuredClone(status);
     const review = wrongReviewer.epoch.state.review_history[0];
     if (!review) throw new Error('Expected the fixture review record.');
     review.reviewer_id = 'gpt-6-sol-run95';
     expect(() => assertG04CandidateReviewGate(wrongReviewer, pr, { sourceRevision: candidate, currentBaseSha: base }))
-      .toThrow(/GPT-6 Luna Max/u);
+      .toThrow(/exact-identity GPT-6 Luna Max/u);
+
+    const wrongLunaIdentity = structuredClone(status);
+    const differentLunaReviewer = wrongLunaIdentity.epoch.state.review_history[0];
+    if (!differentLunaReviewer) throw new Error('Expected the fixture review record.');
+    differentLunaReviewer.reviewer_id = 'gpt-6-luna-max-run95-pr999-round1';
+    expect(() => assertG04CandidateReviewGate(wrongLunaIdentity, pr, { sourceRevision: candidate, currentBaseSha: base }))
+      .toThrow(/exact-identity GPT-6 Luna Max/u);
+
+    const stalePass = structuredClone(status);
+    stalePass.epoch.state.review_history.push({
+      candidate_sha: 'f'.repeat(40),
+      reviewed_base_sha: base,
+      verdict: 'PASS',
+      reviewer_id: 'gpt-6-luna-max-run95-pr142-round2',
+    });
+    expect(() => assertG04CandidateReviewGate(stalePass, pr, { sourceRevision: candidate, currentBaseSha: base }))
+      .toThrow(/exact-identity GPT-6 Luna Max/u);
 
     const failedCheck = structuredClone(pr);
     const check = failedCheck.statusCheckRollup[0];

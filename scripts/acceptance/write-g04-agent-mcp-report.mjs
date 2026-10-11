@@ -70,7 +70,8 @@ function readClaim(input) {
   const claim = JSON.parse(readFileSync(CLAIM_PATH, 'utf8'));
   if (claim?.schemaVersion !== 1 || claim.runNumber !== 95 || claim.frontierId !== 'G04' ||
       claim.epochId !== EPOCH_ID || claim.state !== 'CLAIMED' ||
-      claim.sourceRevision !== input.sourceRevision || claim.bundleSha256 !== input.bundleSha256 ||
+      claim.sourceRevision !== input.sourceRevision || claim.reviewerId !== input.reviewerId ||
+      claim.bundleSha256 !== input.bundleSha256 ||
       claim.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))) {
     throw new Error('G04 report does not match the local create-once claim.');
   }
@@ -174,13 +175,18 @@ export function buildG04AgentMcpReport(
   const epoch = currentStatus?.epoch?.state;
   const sourceRevision = input.sourceRevision;
   const baseSha = epoch?.base_sha;
+  const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
+  const latestReview = reviewHistory[reviewHistory.length - 1];
+  const reviewerIdPattern = new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round\\d+$`, 'u');
+  const exactPassingReview = latestReview?.candidate_sha === sourceRevision &&
+    latestReview?.reviewed_base_sha === baseSha && latestReview?.verdict === 'PASS' &&
+    typeof input.reviewerId === 'string' && latestReview?.reviewer_id === input.reviewerId &&
+    reviewerIdPattern.test(input.reviewerId);
   if (epoch?.epoch_id !== EPOCH_ID || epoch?.pr_number !== input.prNumber ||
       epoch?.candidate_sha !== sourceRevision || epoch?.state !== 'REVIEW_PASSED' ||
       epoch?.ci?.sha !== sourceRevision || epoch?.ci?.status !== 'SUCCESS' ||
       epoch?.review_pass_sha !== sourceRevision ||
-      !Array.isArray(epoch?.review_history) || !epoch.review_history.some((review) =>
-        review?.candidate_sha === sourceRevision && review?.verdict === 'PASS' &&
-        /^gpt-6-luna-max(?:-|$)/u.test(review?.reviewer_id ?? '')) ||
+      !exactPassingReview ||
       typeof baseSha !== 'string' || !/^[0-9a-f]{40}$/u.test(baseSha)) {
     return { passed: false, answerChecks: answerResult.answerChecks };
   }
@@ -194,6 +200,7 @@ export function buildG04AgentMcpReport(
     profile: 'codex-luna-max-one-tool-v1',
     model: MODEL,
     reasoningEffort: REASONING_EFFORT,
+    reviewerId: input.reviewerId,
     codexCliVersion: input.codexCliVersion,
     sourceRevision,
     baseSha,
