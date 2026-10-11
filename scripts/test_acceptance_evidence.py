@@ -2508,7 +2508,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report['resultSummary']['previous']['window']['end'] = '2026-04-29'
         self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
 
-    def test_rejects_g05_incomplete_months_and_inconsistent_monthly_credit_totals(self):
+    def test_rejects_g05_incomplete_months_and_inconsistent_monthly_summary_counts(self):
         report = self._g05_report_fixture()
         report['resultSummary']['recent']['summary']['byMonth'].pop()
         self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
@@ -2519,6 +2519,22 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             if item['month'] == '2026-05'
         )
         active_month['creditRows'] = 0
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+        report = self._g05_report_fixture()
+        active_month = next(
+            item for item in report['resultSummary']['recent']['summary']['byMonth']
+            if item['month'] == '2026-05'
+        )
+        active_month['uniqueSubjects'] = 2
+        self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
+
+        report = self._g05_report_fixture()
+        active_month = next(
+            item for item in report['resultSummary']['recent']['summary']['byMonth']
+            if item['month'] == '2026-05'
+        )
+        active_month['uniqueSubjects'] = 0
         self.assertFalse(GENERATOR.codex_g05_report_is_valid(report))
 
     def test_rejects_g05_impossible_coverage_count_relationships(self):

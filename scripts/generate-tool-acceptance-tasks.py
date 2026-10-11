@@ -3370,6 +3370,10 @@ def codex_g05_report_is_valid(report: object) -> bool:
             return False
         if sum(item['creditRows'] for item in values['byMonth']) != values['creditRows']:
             return False
+        if any(item['uniqueSubjects'] > item['creditRows'] for item in values['byMonth']):
+            return False
+        if sum(item['uniqueSubjects'] for item in values['byMonth']) != values['uniqueSubjects']:
+            return False
         if values['byMonth'] != sorted(values['byMonth'], key=lambda item: item['month']):
             return False
         return (

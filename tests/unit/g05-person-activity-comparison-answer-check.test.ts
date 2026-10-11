@@ -230,7 +230,7 @@ describe('G05 bounded person activity comparison answer checker', () => {
     expect(verify(overCap, answer).answerChecks.boundedCoverageConsistent).toBe(false);
   });
 
-  it('rejects incomplete monthly buckets and monthly credit totals that disagree with the period', () => {
+  it('rejects incomplete monthly buckets and inconsistent monthly summary counts', () => {
     const { result, answer } = fixture();
     const missingMonth = structuredClone(result);
     missingMonth.comparison.recent.summary.byMonth.pop();
@@ -242,6 +242,20 @@ describe('G05 bounded person activity comparison answer checker', () => {
     if (!activeMonth) throw new Error('Expected the fixture activity month.');
     activeMonth.creditRows = 0;
     expect(verify(wrongMonthlyTotal, answer).answerChecks.comparisonInternallyConsistent).toBe(false);
+
+    const monthlySubjectsExceedRows = structuredClone(result);
+    const activeSubjectMonth = monthlySubjectsExceedRows.comparison.recent.summary.byMonth
+      .find((item) => item.month === '2026-05');
+    if (!activeSubjectMonth) throw new Error('Expected the fixture activity month.');
+    activeSubjectMonth.uniqueSubjects = 2;
+    expect(verify(monthlySubjectsExceedRows, answer).answerChecks.comparisonInternallyConsistent).toBe(false);
+
+    const monthlySubjectsDisagreeWithPeriod = structuredClone(result);
+    const activePeriodMonth = monthlySubjectsDisagreeWithPeriod.comparison.recent.summary.byMonth
+      .find((item) => item.month === '2026-05');
+    if (!activePeriodMonth) throw new Error('Expected the fixture activity month.');
+    activePeriodMonth.uniqueSubjects = 0;
+    expect(verify(monthlySubjectsDisagreeWithPeriod, answer).answerChecks.comparisonInternallyConsistent).toBe(false);
   });
 
   it('rejects impossible subject, detail-request, and eligible-row coverage counts', () => {

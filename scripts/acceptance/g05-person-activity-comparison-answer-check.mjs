@@ -185,7 +185,9 @@ function projectSummary(value, window) {
   if (seen.size !== window.monthKeys.length ||
       window.monthKeys.some((month) => !seen.has(month))) return null;
   byMonth.sort((a, b) => a.month.localeCompare(b.month));
-  if (byMonth.reduce((total, item) => total + item.creditRows, 0) !== summary.creditRows) return null;
+  if (byMonth.reduce((total, item) => total + item.creditRows, 0) !== summary.creditRows ||
+      byMonth.some((item) => item.uniqueSubjects > item.creditRows) ||
+      byMonth.reduce((total, item) => total + item.uniqueSubjects, 0) !== summary.uniqueSubjects) return null;
   summary.byMonth = byMonth;
   return summary;
 }
