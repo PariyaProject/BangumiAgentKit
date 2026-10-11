@@ -523,6 +523,73 @@ CODEX_G16_RESULT_SUMMARY_FIELDS = {
     'rowCount', 'rowDigest', 'sourceOperations',
 }
 CODEX_G16_WINDOW_FIELDS = {'months', 'start', 'end', 'monthKeys', 'asOfSemantics'}
+CODEX_G19_EXPECTED_ARGUMENTS = {
+    'personId': 3474,
+    'kind': 'all',
+    'media': 'anime',
+    'windowMonths': 3,
+    'maxRelations': 48,
+    'maxSubjectDetails': 16,
+    'maxRows': 8,
+}
+CODEX_G19_REPORT_RELATIVE_PATH = 'docs/live-probes/g19-person-origin-agent-mcp-run95.json'
+CODEX_G19_EPOCH_ID = 'run95-g19-person-origin-agent-mcp-evidence'
+CODEX_G19_ARGUMENT_PROFILE = 'fixed-g19-person-3474-all-anime-3m-48r-16d-8rows-v1'
+CODEX_G19_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion', 'sourceRevision',
+    'baseSha', 'prNumber', 'mcpBundleSha256', 'observedAt', 'toolName', 'argumentProfile',
+    'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount', 'nonMcpToolTypes',
+    'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
+    'answerChecks', 'answerCounters', 'toolCalls', 'toolTextUtf8Bytes', 'resultSummary',
+    'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256', 'sourceOperations',
+    'privacy',
+}
+CODEX_G19_COVERAGE_FIELDS = {
+    'relationRowsObserved', 'relationRowsSelected', 'relationRowsDroppedAtLimit',
+    'relationSelectionStrategy', 'sampled', 'subjectIdsObserved', 'subjectIdsSelected',
+    'subjectIdsDroppedAtRelationLimit', 'subjectDetailIdsObserved', 'subjectDetailRequests',
+    'subjectDetailsSucceeded', 'subjectDetailsFailed', 'subjectDetailIdsDroppedAtLimit',
+    'rowsEligible', 'rowsReturned', 'outputTruncated', 'uniqueSubjects', 'uniqueCharacters',
+    'missingSubjectIdRows', 'missingDateRows', 'invalidDateRows', 'outsideWindowRows',
+    'mediaExcludedRows', 'mediaUnknownRows', 'staffRoleExcludedRows', 'staffRoleUnknownRows',
+    'maxRelations', 'maxSubjectDetails', 'maxRows', 'detailConcurrency', 'responseLimitBytes',
+    'truncated', 'origin',
+}
+CODEX_G19_ORIGIN_COVERAGE_FIELDS = {
+    'explicitOriginalSubjects', 'notObservedSubjects', 'unknownSubjects', 'subjectsObserved',
+    'subjectsWithMetaTags', 'subjectsPartial', 'subjectsUnknown', 'tagsObserved', 'tagsValid',
+    'tagsReturned', 'tagsOmitted', 'malformedTagValues', 'textTruncatedTags', 'truncatedSubjects',
+    'truncated', 'maxTagsPerSubject', 'maxTagCharacters', 'responseLimitBytes',
+}
+CODEX_G19_ANSWER_CHECK_FIELDS = {
+    'exactQueryArguments', 'exactSingleToolCall', 'structuredResultReadback',
+    'targetIdentityAndScope', 'calendarWindowValid', 'successfulOfficialSources',
+    'boundedCoverageConsistent', 'sourceRowsValid', 'sourceRowsDistinct', 'answerShapeValid',
+    'answerIdentityAndStateMatch', 'answerWindowMatches', 'answerSummaryMatches',
+    'answerCoverageMatches', 'answerRowsMatch', 'answerGroupsMatch', 'adaptationNotInferred',
+    'caveatDisclosurePresent', 'plainJsonWithoutMarkdown', 'boundedAnswerBytes',
+    'boundedMcpTextView',
+}
+CODEX_G19_ANSWER_COUNTER_FIELDS = {
+    'sourceRows', 'answerRows', 'rowsMatched', 'missingRows', 'extraRows',
+    'coverageFieldsMatched', 'toolTextUtf8Bytes',
+}
+CODEX_G19_RESULT_SUMMARY_FIELDS = {
+    'personId', 'kind', 'media', 'state', 'window', 'summary', 'coverage',
+    'rowCount', 'rowDigest', 'sourceOperations',
+}
+CODEX_G19_WINDOW_FIELDS = {'months', 'start', 'end', 'monthKeys', 'asOfSemantics'}
+CODEX_G19_SUMMARY_FIELDS = {'creditRows', 'uniqueSubjects', 'uniqueCharacters', 'origin'}
+CODEX_G19_ORIGIN_SUMMARY_FIELDS = {'explicitOriginalSubjects', 'notObservedSubjects', 'unknownSubjects'}
+CODEX_G19_SOURCE_OPERATION_PATHS = {
+    'GET /v0/persons/{person_id}',
+    'GET /v0/persons/{person_id}/subjects',
+    'GET /v0/persons/{person_id}/characters',
+    'GET /v0/subjects/{subject_id}',
+}
 CODEX_G16_SUMMARY_FIELDS = {'creditRows', 'uniqueSubjects', 'uniqueCharacters'}
 CODEX_G16_SOURCE_OPERATION_NAMES = {
     'GET /v0/persons/{person_id}',
@@ -1482,6 +1549,33 @@ CODEX_G16_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_g16_report_matches_candidate_revision(',
         'CODEX_G16_EXPECTED_ARGUMENTS',
         'CODEX_G16_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_G19_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/g19-person-origin-answer-check.mjs': (
+        'export const G19_EXPECTED_QUERY_ARGUMENTS',
+        'export function verifyG19PersonOriginAnswer(',
+        'adaptationNotInferred:',
+        'answerGroupsMatch:',
+    ),
+    'scripts/acceptance/run-g19-codex-agent-mcp.mjs': (
+        "const EPOCH_ID = 'run95-g19-person-origin-agent-mcp-evidence'",
+        'export function assertG19CandidateReviewGate(',
+        'export function createG19OneShotClaim(',
+        "'features.shell_tool=false'",
+        "'features.multi_agent=false'",
+        "const SERVER_ID = 'bgk_g19_one_tool'",
+    ),
+    'scripts/acceptance/write-g19-agent-mcp-report.mjs': (
+        'export function buildG19SanitizedReport(',
+        "openSync(REPORT_PATH, 'wx', 0o600)",
+        "'codex_g19_person_origin_agent_mcp'",
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_g19_report_is_valid(',
+        'def codex_g19_report_matches_candidate_revision(',
+        'CODEX_G19_EXPECTED_ARGUMENTS',
+        'CODEX_G19_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_D05_PROBE_IMPLEMENTATION_MARKERS = {
@@ -3557,6 +3651,326 @@ def codex_g16_report_is_valid(report: object) -> bool:
     )
 
 
+def codex_g19_probe_revision_has_implementation(revision: object) -> bool:
+    """Bind the G19 report to its exact Luna Max runner, origin checker, and writer."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(str(ROOT), revision, CODEX_G19_PROBE_IMPLEMENTATION_MARKERS)
+    )
+
+
+def codex_g19_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require the sanitized G19 report to be added immediately after its reviewed Candidate."""
+    if not codex_g19_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    if relative_path != CODEX_G19_REPORT_RELATIVE_PATH:
+        return False
+    head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
+    if head.returncode != 0:
+        return False
+    head_sha = head.stdout.strip()
+    committed_in_head = _run_repository_git(ROOT, 'cat-file', '-e', f'{head_sha}:{relative_path}')
+    if committed_in_head.returncode != 0:
+        return revision == head_sha
+    added_commit = _run_repository_git(
+        ROOT, 'log', '--follow', '--diff-filter=A', '--format=%H', '-1', '--', relative_path,
+    )
+    commit_sha = added_commit.stdout.strip()
+    if added_commit.returncode != 0 or not re.fullmatch(r'[0-9a-f]{40}', commit_sha):
+        return False
+    parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
+    parent_shas = parents.stdout.strip().split()
+    return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def codex_g19_report_is_valid(report: object) -> bool:
+    """Validate one exact-Candidate, bounded G19 public Agent/MCP observation."""
+    if not isinstance(report, dict) or set(report) != CODEX_G19_REPORT_FIELDS:
+        return False
+    source_revision = report.get('sourceRevision')
+    pr_number = report.get('prNumber')
+    if (
+        type(report.get('schemaVersion')) is not int
+        or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_g19_person_origin_agent_mcp'
+        or type(report.get('runNumber')) is not int
+        or report.get('runNumber') != 95
+        or report.get('frontierId') != 'G19'
+        or report.get('scenarioId') != 'G19'
+        or report.get('epochId') != CODEX_G19_EPOCH_ID
+        or report.get('profile') != CODEX_G19_ARGUMENT_PROFILE
+        or report.get('model') != 'gpt-6-luna'
+        or report.get('reasoningEffort') != 'max'
+        or type(pr_number) is not int
+        or pr_number < 1
+        or not re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round\d+', str(report.get('reviewerId', '')))
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+        or report.get('toolName') != 'bangumi.get_person_activity'
+        or report.get('argumentProfile') != CODEX_G19_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(CODEX_G19_EXPECTED_ARGUMENTS)
+        or type(report.get('processExitCode')) is not int
+        or report.get('processExitCode') != 0
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('eventStreamParsed') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int
+        or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('nonMcpToolEventCount')) is not int
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or type(report.get('shellToolCallCount')) is not int
+        or report.get('shellToolCallCount') != 0
+        or type(report.get('allowedCallCount')) is not int
+        or report.get('allowedCallCount') != 1
+        or type(report.get('deniedCallCount')) is not int
+        or report.get('deniedCallCount') != 0
+        or type(report.get('serverToolCount')) is not int
+        or report.get('serverToolCount') != 1
+        or report.get('serverToolNames') != ['bangumi.get_person_activity']
+        or report.get('mcpServerNames') != ['bgk_g19_one_tool']
+        or report.get('answerCheckMethod') != 'g19-bounded-person-origin-answer-v1'
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not isinstance(report.get('baseSha'), str)
+        or not re.fullmatch(r'[0-9a-f]{40}', report['baseSha'])
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], source_revision).returncode != 0
+        or not isinstance(report.get('mcpBundleSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256'])
+        or codex_g26_candidate_bundle_sha256(source_revision) != report.get('mcpBundleSha256')
+        or not codex_g19_probe_revision_has_implementation(source_revision)
+    ):
+        return False
+
+    observed_at = report.get('observedAt')
+    if not isinstance(observed_at, str) or not re.fullmatch(
+        r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at,
+    ):
+        return False
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    tool = next((item for item in catalog if isinstance(item, dict)
+                 and item.get('name') == 'bangumi.get_person_activity'), None)
+    if (
+        not isinstance(tool, dict)
+        or tool.get('auth') != 'none'
+        or tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(tool.get('description', '').encode('utf-8')).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(tool.get('inputSchema'))
+    ):
+        return False
+    if report.get('toolCalls') != [{
+        'name': 'bangumi.get_person_activity', 'state': 'DONE',
+        'argumentsSha256': _canonical_json_sha256(CODEX_G19_EXPECTED_ARGUMENTS),
+    }]:
+        return False
+
+    checks = report.get('answerChecks')
+    counters = report.get('answerCounters')
+    if (
+        not isinstance(checks, dict)
+        or set(checks) != CODEX_G19_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in checks.values())
+        or not isinstance(counters, dict)
+        or set(counters) != CODEX_G19_ANSWER_COUNTER_FIELDS
+        or any(type(value) is not int or value < 0 for value in counters.values())
+    ):
+        return False
+
+    summary = report.get('resultSummary')
+    if (
+        not isinstance(summary, dict)
+        or set(summary) != CODEX_G19_RESULT_SUMMARY_FIELDS
+        or type(summary.get('personId')) is not int
+        or summary.get('personId') != 3474
+        or summary.get('kind') != 'all'
+        or summary.get('media') != 'anime'
+        or summary.get('state') not in {'complete', 'partial'}
+        or type(summary.get('rowCount')) is not int
+        or not 0 <= summary['rowCount'] <= CODEX_G19_EXPECTED_ARGUMENTS['maxRows']
+        or not isinstance(summary.get('rowDigest'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', summary['rowDigest'])
+    ):
+        return False
+    window = summary.get('window')
+    if (
+        not isinstance(window, dict)
+        or set(window) != CODEX_G19_WINDOW_FIELDS
+        or type(window.get('months')) is not int
+        or window['months'] != 3
+        or window.get('asOfSemantics') != 'calendar_months_ending_on_as_of_date'
+        or not isinstance(window.get('start'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['start'])
+        or not isinstance(window.get('end'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', window['end'])
+        or not isinstance(window.get('monthKeys'), list)
+        or len(window['monthKeys']) != 3
+    ):
+        return False
+    try:
+        end_date = date.fromisoformat(window['end'])
+        start_date = date.fromisoformat(window['start'])
+        observed_date = (datetime.fromisoformat(observed_at.replace('Z', '+00:00')) + timedelta(hours=9)).date()
+        start_month_index = end_date.year * 12 + end_date.month - 1 - 2
+        start_year, start_month_zero_based = divmod(start_month_index, 12)
+        expected_start = f'{start_year:04d}-{start_month_zero_based + 1:02d}-01'
+        expected_month_keys = []
+        for offset in range(3):
+            year, month_zero_based = divmod(start_month_index + offset, 12)
+            expected_month_keys.append(f'{year:04d}-{month_zero_based + 1:02d}')
+    except ValueError:
+        return False
+    if (
+        window['start'] != expected_start
+        or start_date.day != 1
+        or window['monthKeys'] != expected_month_keys
+        or not 0 <= (observed_date - end_date).days <= 1
+    ):
+        return False
+
+    summary_counts = summary.get('summary')
+    if (
+        not isinstance(summary_counts, dict)
+        or set(summary_counts) != CODEX_G19_SUMMARY_FIELDS
+        or any(type(value) is not int or value < 0 for key, value in summary_counts.items() if key != 'origin')
+        or summary_counts['uniqueSubjects'] > summary_counts['creditRows']
+        or summary_counts['uniqueCharacters'] > summary_counts['creditRows']
+    ):
+        return False
+    origin_summary = summary_counts.get('origin')
+    if (
+        not isinstance(origin_summary, dict)
+        or set(origin_summary) != CODEX_G19_ORIGIN_SUMMARY_FIELDS
+        or any(type(value) is not int or value < 0 for value in origin_summary.values())
+        or sum(origin_summary.values()) != summary_counts['uniqueSubjects']
+    ):
+        return False
+
+    coverage = summary.get('coverage')
+    if (
+        not isinstance(coverage, dict)
+        or set(coverage) != CODEX_G19_COVERAGE_FIELDS
+        or any(type(value) is not int or value < 0 for key, value in coverage.items()
+               if key not in {'relationSelectionStrategy', 'sampled', 'outputTruncated', 'truncated', 'origin'})
+        or coverage.get('relationSelectionStrategy') not in {'all', 'deterministic_even_spread'}
+        or type(coverage.get('sampled')) is not bool
+        or type(coverage.get('outputTruncated')) is not bool
+        or type(coverage.get('truncated')) is not bool
+        or coverage['relationRowsSelected'] > coverage['maxRelations']
+        or coverage['relationRowsObserved'] != coverage['relationRowsSelected'] + coverage['relationRowsDroppedAtLimit']
+        or coverage['relationSelectionStrategy'] != (
+            'deterministic_even_spread' if coverage['relationRowsDroppedAtLimit'] > 0 else 'all'
+        )
+        or coverage['sampled'] != (coverage['relationRowsDroppedAtLimit'] > 0)
+        or coverage['subjectIdsSelected'] > coverage['subjectIdsObserved']
+        or coverage['subjectIdsObserved'] > coverage['relationRowsObserved']
+        or coverage['subjectIdsDroppedAtRelationLimit'] != coverage['subjectIdsObserved'] - coverage['subjectIdsSelected']
+        or coverage['subjectDetailIdsObserved'] != coverage['subjectIdsSelected']
+        or coverage['subjectDetailRequests'] > CODEX_G19_EXPECTED_ARGUMENTS['maxSubjectDetails']
+        or coverage['subjectDetailsSucceeded'] + coverage['subjectDetailsFailed'] != coverage['subjectDetailRequests']
+        or coverage['subjectDetailIdsDroppedAtLimit'] != max(0, coverage['subjectIdsSelected'] - coverage['subjectDetailRequests'])
+        or coverage['rowsEligible'] != summary_counts['creditRows']
+        or coverage['rowsReturned'] != summary['rowCount']
+        or coverage['rowsReturned'] > CODEX_G19_EXPECTED_ARGUMENTS['maxRows']
+        or coverage['rowsEligible'] < coverage['rowsReturned']
+        or coverage['outputTruncated'] != (coverage['rowsEligible'] > coverage['rowsReturned'])
+        or coverage['uniqueSubjects'] != summary_counts['uniqueSubjects']
+        or coverage['uniqueCharacters'] != summary_counts['uniqueCharacters']
+        or coverage['maxRelations'] != CODEX_G19_EXPECTED_ARGUMENTS['maxRelations']
+        or coverage['maxSubjectDetails'] != CODEX_G19_EXPECTED_ARGUMENTS['maxSubjectDetails']
+        or coverage['maxRows'] != CODEX_G19_EXPECTED_ARGUMENTS['maxRows']
+        or coverage['responseLimitBytes'] != 1_048_576
+        or coverage['truncated'] != (coverage['relationRowsDroppedAtLimit'] > 0
+            or coverage['subjectDetailIdsDroppedAtLimit'] > 0 or coverage['outputTruncated'])
+    ):
+        return False
+    origin_coverage = coverage.get('origin')
+    if (
+        not isinstance(origin_coverage, dict)
+        or set(origin_coverage) != CODEX_G19_ORIGIN_COVERAGE_FIELDS
+        or any(type(value) is not int or value < 0 for key, value in origin_coverage.items() if key != 'truncated')
+        or type(origin_coverage.get('truncated')) is not bool
+        or {key: origin_coverage[key] for key in CODEX_G19_ORIGIN_SUMMARY_FIELDS} != origin_summary
+        or origin_coverage['subjectsObserved'] != summary_counts['uniqueSubjects']
+        or origin_coverage['subjectsWithMetaTags'] + origin_coverage['subjectsUnknown'] != origin_coverage['subjectsObserved']
+        or origin_coverage['subjectsPartial'] > origin_coverage['subjectsWithMetaTags']
+        or origin_coverage['tagsValid'] + origin_coverage['malformedTagValues'] != origin_coverage['tagsObserved']
+        or origin_coverage['tagsReturned'] + origin_coverage['tagsOmitted'] != origin_coverage['tagsValid']
+        or origin_coverage['textTruncatedTags'] > origin_coverage['tagsReturned']
+        or origin_coverage['truncatedSubjects'] > origin_coverage['subjectsObserved']
+        or origin_coverage['truncated'] != (origin_coverage['tagsOmitted'] > 0
+            or origin_coverage['textTruncatedTags'] > 0 or origin_coverage['truncatedSubjects'] > 0)
+        or origin_coverage['maxTagsPerSubject'] != 32
+        or origin_coverage['maxTagCharacters'] != 96
+        or origin_coverage['responseLimitBytes'] != 1_048_576
+    ):
+        return False
+
+    operations = report.get('sourceOperations')
+    if not isinstance(operations, list) or len(operations) != len(CODEX_G19_SOURCE_OPERATION_PATHS):
+        return False
+    by_operation = {item.get('operation'): item for item in operations if isinstance(item, dict)}
+    if set(by_operation) != CODEX_G19_SOURCE_OPERATION_PATHS or len(by_operation) != len(operations):
+        return False
+    for operation in CODEX_G19_SOURCE_OPERATION_PATHS - {'GET /v0/subjects/{subject_id}'}:
+        item = by_operation[operation]
+        if item != {'operation': operation, 'attempted': 1, 'succeeded': 1, 'failed': 0}:
+            return False
+    detail_operation = by_operation['GET /v0/subjects/{subject_id}']
+    if detail_operation != {
+        'operation': 'GET /v0/subjects/{subject_id}',
+        'attempted': coverage['subjectDetailRequests'],
+        'succeeded': coverage['subjectDetailsSucceeded'],
+        'failed': coverage['subjectDetailsFailed'],
+    }:
+        return False
+
+    privacy = report.get('privacy')
+    if privacy != {
+        'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+        'writesAttempted': False, 'qqPipelineTested': False, 'timClientTested': False,
+        'promptStored': False, 'answerStored': False, 'rawResultStored': False,
+        'artifactImageBytesStored': False, 'credentialsStored': False, 'communityRead': False,
+    }:
+        return False
+    if (
+        counters['sourceRows'] != summary['rowCount']
+        or counters['answerRows'] != counters['sourceRows']
+        or counters['rowsMatched'] != counters['sourceRows']
+        or counters['missingRows'] != 0
+        or counters['extraRows'] != 0
+        or counters['coverageFieldsMatched'] != len(CODEX_G19_COVERAGE_FIELDS) + len(CODEX_G19_ORIGIN_COVERAGE_FIELDS)
+        or counters['toolTextUtf8Bytes'] != report.get('toolTextUtf8Bytes')
+        or type(report.get('toolTextUtf8Bytes')) is not int
+        or not 0 < report['toolTextUtf8Bytes'] <= 3600
+        or type(report.get('resultByteLength')) is not int
+        or report['resultByteLength'] <= 0
+        or type(report.get('answerUtf8Bytes')) is not int
+        or not 0 < report['answerUtf8Bytes'] <= 16_384
+        or not isinstance(report.get('resultSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['resultSha256'])
+        or not isinstance(report.get('answerSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['answerSha256'])
+    ):
+        return False
+    if summary['state'] == 'complete' and (
+        coverage['truncated'] or coverage['subjectDetailsFailed'] != 0
+        or coverage['missingSubjectIdRows'] != 0 or coverage['missingDateRows'] != 0
+        or coverage['invalidDateRows'] != 0 or coverage['mediaUnknownRows'] != 0
+    ):
+        return False
+    return True
+
+
 def codex_g05_report_is_valid(report: object) -> bool:
     """Validate G05's exact-Candidate Luna Max two-window comparison evidence."""
     if not isinstance(report, dict) or set(report) != CODEX_G05_REPORT_FIELDS:
@@ -5267,6 +5681,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G04_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G16_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
     for path in report_paths:
         try:
@@ -5337,6 +5752,17 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                 path.name != Path(CODEX_G16_REPORT_RELATIVE_PATH).name
                 or not codex_g16_report_is_valid(report)
                 or not codex_g16_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault('bangumi.get_person_activity', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == 'codex_g19_person_origin_agent_mcp':
+            if (
+                path.name != Path(CODEX_G19_REPORT_RELATIVE_PATH).name
+                or not codex_g19_report_is_valid(report)
+                or not codex_g19_report_matches_candidate_revision(
                     path, report.get('sourceRevision'),
                 )
             ):

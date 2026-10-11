@@ -1158,7 +1158,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-11-103934803-2116.json"],
-      "next_action": "Use bangumi.get_person_activity for a bounded current window and group only exact official subject.meta_tags observations; treat not_observed and unknown as insufficient evidence, not adaptation.",
+      "next_action": "The separate direct public ToolRegistry row is current from docs/live-probes/public-tools-2026-10-11-103934803-2116.json (55/65 public overall). Run #95 has selected run95-g19-person-origin-agent-mcp-evidence for one exact-profile anonymous Agent/MCP answer; create its local one-shot claim only after exact Candidate/Base, seven-check CI, candidate:check, and same-identity GPT-6 Luna Max PASS. If accepted, credit at most this Agent/MCP tool row with the sanitized report; if inconclusive, retain no report and never retry. Keep G19 PARTIAL: only exact official subject.meta_tags 原创 is explicit-original; not_observed and unknown are insufficient, not adaptation. OAuth/account/community/QQ/TIM remain passive.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "closure_reason": "Delivered a bounded current person-work origin observation over official v0 subject details. It reports exact 原创 tags, preserves raw meta_tags, and distinguishes absent fields from tags without claiming that either state means 改编; infobox, concept, and historical origin evidence remain unsupported.",
