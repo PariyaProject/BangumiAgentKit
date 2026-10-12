@@ -155,6 +155,123 @@ function toolContractMatchesCurrent(report: any, name: string): boolean {
   );
 }
 
+function isCurrentC07RendererReport(report: any): boolean {
+  const scenario = report?.scenarios?.[0];
+  const result = scenario?.result;
+  const artifact = result?.artifact;
+  const checks = scenario?.answerChecks;
+  const candidateGate = report?.candidateGate;
+  const fixture = report?.offlineFixture;
+  return Boolean(
+    report?.evidenceKind === 'codex_cli_mcp_tool_use' &&
+    report?.profile === 'codex-luna-max-one-tool-v1' &&
+    report?.runNumber === 95 &&
+    report?.frontierId === 'C07' &&
+    report?.epochId === 'run95-c07-cohort-comparison-renderer-luna-mcp' &&
+    report?.model === 'gpt-6-luna' &&
+    report?.reasoningEffort === 'max' &&
+    report?.toolName === 'bangumi.render_subject_cohort_comparison' &&
+    report?.argumentProfile === 'run95-c07-cohort-comparison-renderer-offline-v1' &&
+    /^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '') &&
+    /^[0-9a-f]{40}$/u.test(report?.baseSha ?? '') &&
+    /^[0-9a-f]{64}$/u.test(report?.mcpBundleSha256 ?? '') &&
+    Number.isInteger(report?.prNumber) &&
+    report.prNumber > 0 &&
+    report?.processExitCode === 0 &&
+    report?.resultStatus === 'SUCCESS' &&
+    report?.eventStreamParsed === true &&
+    report?.codexMcpToolEventCount === 1 &&
+    report?.nonMcpToolEventCount === 0 &&
+    report?.shellToolCallCount === 0 &&
+    report?.allowedCallCount === 1 &&
+    report?.deniedCallCount === 0 &&
+    report?.serverToolCount === 1 &&
+    report?.serverToolNames?.length === 1 &&
+    report.serverToolNames[0] === 'bangumi.render_subject_cohort_comparison' &&
+    report?.mcpServerNames?.length === 1 &&
+    report.mcpServerNames[0] === 'bgk_c07_cohort_renderer_one_tool' &&
+    report?.serverSummaryMatchesCandidate === true &&
+    report?.sameCandidateAfterCall === true &&
+    candidateGate?.candidateSha === report.sourceRevision &&
+    candidateGate?.baseSha === report.baseSha &&
+    candidateGate?.ciSha === report.sourceRevision &&
+    candidateGate?.ciStatus === 'SUCCESS' &&
+    candidateGate?.ciCheckCount === 7 &&
+    candidateGate?.reviewPassSha === report.sourceRevision &&
+    candidateGate?.reviewVerdict === 'PASS' &&
+    /^gpt[-_]6[-_]luna[-_]max/u.test(candidateGate?.reviewerId ?? '') &&
+    scenario?.id === 'bangumi.render_subject_cohort_comparison' &&
+    scenario?.passed === true &&
+    scenario?.exactArgumentsMatched === true &&
+    scenario?.oneToolAllowlistVerified === true &&
+    scenario?.resultReadbackVerified === true &&
+    scenario?.answerCheckPassed === true &&
+    scenario?.toolCalls?.length === 1 &&
+    scenario.toolCalls[0]?.name === 'bangumi.render_subject_cohort_comparison' &&
+    scenario.toolCalls[0]?.state === 'DONE' &&
+    Object.values(checks ?? {}).length > 0 &&
+    Object.keys(checks ?? {})
+      .sort()
+      .join(',') ===
+      [
+        'artifactReadback',
+        'currentCandidateBundle',
+        'decodedDimensionsMatch',
+        'decodedPng',
+        'fixedArguments',
+        'noAdditionalTools',
+        'offlineFixtureOnly',
+        'oneToolOnly',
+        'privacyPreserved',
+        'safeFinalAnswer',
+        'successfulServerCall',
+        'visualReadability',
+      ]
+        .sort()
+        .join(',') &&
+    Object.values(checks ?? {}).every((value) => value === true) &&
+    result?.sourceOperations?.length === 0 &&
+    result?.resultState === 'artifact_returned' &&
+    fixture?.profile === 'run95-c07-cohort-render-v1' &&
+    fixture?.localStubRequests === 4 &&
+    fixture?.searchResponses === 2 &&
+    fixture?.subjectDetailResponses === 2 &&
+    fixture?.unexpectedRequests === 0 &&
+    fixture?.authorizationHeaders === 0 &&
+    fixture?.liveBangumiRequests === 0 &&
+    fixture?.rawFixturePayloadStored === false &&
+    report?.artifactValidation?.decoded === true &&
+    report?.artifactValidation?.dimensionsMatch === true &&
+    report?.artifactValidation?.visualReadabilityVerified === true &&
+    artifact?.mimeType === 'image/png' &&
+    Number.isInteger(artifact?.width) &&
+    artifact.width > 0 &&
+    artifact.width <= 3000 &&
+    Number.isInteger(artifact?.height) &&
+    artifact.height > 0 &&
+    artifact.height <= 5000 &&
+    artifact.width * artifact.height <= 10_000_000 &&
+    Number.isInteger(artifact?.byteLength) &&
+    artifact.byteLength > 0 &&
+    artifact.byteLength <= 5_000_000 &&
+    /^[0-9a-f]{64}$/u.test(artifact?.sha256 ?? '') &&
+    artifact?.pngSignatureValid === true &&
+    artifact?.persisted === false &&
+    report?.privacy?.authProfile === 'anonymous' &&
+    report?.privacy?.oauthAttempted === false &&
+    report?.privacy?.accountDataRead === false &&
+    report?.privacy?.writesAttempted === false &&
+    report?.privacy?.qqPipelineTested === false &&
+    report?.privacy?.timClientTested === false &&
+    report?.privacy?.promptStored === false &&
+    report?.privacy?.answerStored === false &&
+    report?.privacy?.rawResultStored === false &&
+    report?.privacy?.artifactImageBytesStored === false &&
+    report?.privacy?.credentialsStored === false &&
+    toolContractMatchesCurrent(report, 'bangumi.render_subject_cohort_comparison'),
+  );
+}
+
 function isCurrentD05Report(report: any): boolean {
   const checks = report?.answerChecks;
   return Boolean(
@@ -227,6 +344,7 @@ function isCurrentS04Report(report: any): boolean {
 
 const CURRENT_D05_REPORT = isCurrentD05Report(D05_REPORT) ? D05_REPORT : null;
 const CURRENT_S04_REPORT = isCurrentS04Report(S04_REPORT) ? S04_REPORT : null;
+const CURRENT_C07_RENDERER_REPORT = CODEX_LUNA_EVIDENCE.find(isCurrentC07RendererReport) ?? null;
 
 // Preserve prior reports as history, but count only the newest current-contract
 // report for each tool in the current-source acceptance matrix.
@@ -577,7 +695,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.get_person_activity',
         'bangumi.get_series_watch_order',
         'bangumi.render_subject_cohort_aggregation',
-        'bangumi.render_subject_cohort_comparison',
+        ...(CURRENT_C07_RENDERER_REPORT ? [] : ['bangumi.render_subject_cohort_comparison']),
         'bangumi.render_query_subjects',
         'bangumi.render_series_watch_order',
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
@@ -664,6 +782,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.render_search',
         'bangumi.render_subject_card',
         'bangumi.render_subject_comparison',
+        ...(CURRENT_C07_RENDERER_REPORT ? ['bangumi.render_subject_cohort_comparison'] : []),
         'bangumi.render_subject_identity',
         'bangumi.render_subject_index_membership',
         'bangumi.render_subject_overlap',

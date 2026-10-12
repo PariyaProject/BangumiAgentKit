@@ -393,6 +393,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             item for item in source_catalog
             if item.get('name') == 'bangumi.aggregate_subject_cohort'
         ))
+        self.catalog.append(next(
+            item for item in source_catalog
+            if item.get('name') == 'bangumi.render_subject_cohort_comparison'
+        ))
         self.catalog_path = self.root / 'docs/tool-catalog.json'
         self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
         self.original_root = GENERATOR.ROOT
@@ -620,6 +624,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G02_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS,
         }
         for relative_path in relative_paths:
             if relative_path in {
@@ -1082,6 +1087,113 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self.report_path = self.live_probe_dir / filename
         self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
         return report
+
+    def write_c07_renderer_report(self):
+        self.write_report(tool_name='bangumi.render_subject_cohort_comparison')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        scenario = report['scenarios'][0]
+        scenario['answerChecks'] = {
+            key: True for key in GENERATOR.CODEX_C07_RENDERER_ANSWER_CHECK_FIELDS
+        }
+        scenario['result'].update({
+            'resultState': 'artifact_returned',
+            'resultByteLength': 180_000,
+            'resultSha256': 'd' * 64,
+            'sourceOperations': [],
+            'artifact': {
+                'returned': True,
+                'persisted': False,
+                'mimeType': 'image/png',
+                'width': 720,
+                'height': 1240,
+                'byteLength': 180_000,
+                'sha256': 'c' * 64,
+                'pngSignatureValid': True,
+            },
+        })
+        report.update({
+            'frontierId': 'C07',
+            'runNumber': 95,
+            'epochId': 'run95-c07-cohort-comparison-renderer-luna-mcp',
+            'observedAt': '2026-10-12T12:00:00.000Z',
+            'baseSha': 'b' * 40,
+            'prNumber': 150,
+            'mcpBundleSha256': 'e' * 64,
+            'mcpServerNames': ['bgk_c07_cohort_renderer_one_tool'],
+            'candidateGate': {
+                'candidateSha': self.source_revision,
+                'baseSha': 'b' * 40,
+                'ciSha': self.source_revision,
+                'ciStatus': 'SUCCESS',
+                'ciCheckCount': 7,
+                'reviewPassSha': self.source_revision,
+                'reviewVerdict': 'PASS',
+                'reviewerId': 'gpt-6-luna-max-run95-c07-round1',
+            },
+            'offlineFixture': {
+                'profile': GENERATOR.CODEX_C07_RENDER_OFFLINE_FIXTURE_PROFILE,
+                'localStubRequests': 4,
+                'searchResponses': 2,
+                'subjectDetailResponses': 2,
+                'unexpectedRequests': 0,
+                'authorizationHeaders': 0,
+                'liveBangumiRequests': 0,
+                'rawFixturePayloadStored': False,
+            },
+            'artifactValidation': {
+                'decoded': True,
+                'dimensionsMatch': True,
+                'visualReadabilityVerified': True,
+            },
+            'serverSummaryMatchesCandidate': True,
+            'sameCandidateAfterCall': True,
+        })
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        frontier_path.write_text(json.dumps({
+            'records': [
+                {'id': 'C07', 'status': 'UNASSESSED'},
+                {'id': 'A01', 'status': 'UNASSESSED'},
+            ],
+        }), encoding='utf-8')
+        return report
+
+    def test_accepts_only_bounded_renderer_report_without_changing_frontier_status(self):
+        report = self.write_c07_renderer_report()
+        current_by_name = {item['name']: item for item in self.catalog}
+        self.assertTrue(
+            GENERATOR.codex_c07_renderer_probe_revision_has_implementation(self.source_revision),
+        )
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            report, current_by_name, current_by_name,
+        ))
+
+        invalid_reports = []
+        invalid_fixture = json.loads(json.dumps(report))
+        invalid_fixture['offlineFixture']['liveBangumiRequests'] = 1
+        invalid_reports.append(invalid_fixture)
+        persisted_artifact = json.loads(json.dumps(report))
+        persisted_artifact['scenarios'][0]['result']['artifact']['persisted'] = True
+        invalid_reports.append(persisted_artifact)
+        changed_candidate = json.loads(json.dumps(report))
+        changed_candidate['candidateGate']['reviewPassSha'] = 'f' * 40
+        invalid_reports.append(changed_candidate)
+        bad_renderability = json.loads(json.dumps(report))
+        bad_renderability['artifactValidation']['visualReadabilityVerified'] = False
+        invalid_reports.append(bad_renderability)
+        for invalid in invalid_reports:
+            self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+                invalid, current_by_name, current_by_name,
+            ))
+
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier = json.loads(frontier_path.read_text(encoding='utf-8'))
+        frontier['records'][0]['status'] = 'PARTIAL'
+        frontier_path.write_text(json.dumps(frontier), encoding='utf-8')
+        self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+            report, current_by_name, current_by_name,
+        ))
 
     def test_accepts_both_exact_catalog_bound_luna_max_one_tool_reports(self):
         self.write_report()

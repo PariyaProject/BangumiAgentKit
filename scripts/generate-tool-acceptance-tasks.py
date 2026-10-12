@@ -784,11 +784,37 @@ CODEX_D04_PROBE_ARGUMENTS = {
         'explain': 'full',
     },
 }
+CODEX_C07_RENDER_ARGUMENTS = {
+    'cohorts': [
+        {
+            'label': '合成样本 A',
+            'query': {
+                'keyword': 'run95 synthetic cohort a',
+                'media': 'anime',
+                'resultMode': 'all',
+                'limit': 1,
+            },
+        },
+        {
+            'label': '合成样本 B',
+            'query': {
+                'keyword': 'run95 synthetic cohort b',
+                'media': 'anime',
+                'resultMode': 'all',
+                'limit': 1,
+            },
+        },
+    ],
+    'maxSubjects': 1,
+}
+CODEX_C07_RENDER_ARGUMENT_PROFILE = 'run95-c07-cohort-comparison-renderer-offline-v1'
+CODEX_C07_RENDER_OFFLINE_FIXTURE_PROFILE = 'run95-c07-cohort-render-v1'
 CODEX_PROBE_ARGUMENTS = (
     CODEX_G23_PROBE_ARGUMENTS
     | CODEX_G20_PROBE_ARGUMENTS
     | {'bangumi.compare_subject_cohorts': CODEX_A01_QUERY_ARGUMENTS}
     | {'bangumi.aggregate_subject_cohort': CODEX_A01_AGGREGATE_ARGUMENTS}
+    | {'bangumi.render_subject_cohort_comparison': CODEX_C07_RENDER_ARGUMENTS}
     | CODEX_D04_PROBE_ARGUMENTS
     | CODEX_G02_PROBE_ARGUMENTS
 )
@@ -797,6 +823,7 @@ CODEX_ARGUMENT_PROFILES = {
     **{name: 'fixed-g20-subject-227245-include-evidence-v1' for name in CODEX_G20_PROBE_ARGUMENTS},
     'bangumi.compare_subject_cohorts': CODEX_A01_ARGUMENT_PROFILE,
     'bangumi.aggregate_subject_cohort': CODEX_A01_AGGREGATE_ARGUMENT_PROFILE,
+    'bangumi.render_subject_cohort_comparison': CODEX_C07_RENDER_ARGUMENT_PROFILE,
     'bangumi.query_subjects': 'd04-reported-episode-count-discovery-v1',
 }
 CODEX_PRIVACY_FLAGS = (
@@ -812,6 +839,29 @@ CODEX_REPORT_FIELDS = {
     'codexMcpToolEventCount', 'nonMcpToolEventCount', 'shellToolCallCount',
     'allowedCallCount', 'deniedCallCount', 'qqPipelineTested', 'timClientTested',
     'privacy', 'scenarios',
+}
+CODEX_C07_RENDERER_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
+    'frontierId', 'runNumber', 'epochId', 'observedAt', 'baseSha', 'prNumber',
+    'mcpBundleSha256', 'mcpServerNames', 'candidateGate', 'offlineFixture',
+    'artifactValidation', 'serverSummaryMatchesCandidate', 'sameCandidateAfterCall',
+}
+CODEX_C07_RENDERER_CANDIDATE_GATE_FIELDS = {
+    'candidateSha', 'baseSha', 'ciSha', 'ciStatus', 'reviewPassSha',
+    'reviewVerdict', 'reviewerId', 'ciCheckCount',
+}
+CODEX_C07_RENDERER_OFFLINE_FIXTURE_FIELDS = {
+    'profile', 'localStubRequests', 'searchResponses', 'subjectDetailResponses',
+    'unexpectedRequests', 'authorizationHeaders', 'liveBangumiRequests',
+    'rawFixturePayloadStored',
+}
+CODEX_C07_RENDERER_ANSWER_CHECK_FIELDS = {
+    'oneToolOnly', 'fixedArguments', 'currentCandidateBundle', 'offlineFixtureOnly',
+    'noAdditionalTools', 'successfulServerCall', 'artifactReadback', 'decodedPng',
+    'decodedDimensionsMatch', 'visualReadability',
+    'safeFinalAnswer', 'privacyPreserved',
+}
+CODEX_C07_RENDERER_ARTIFACT_VALIDATION_FIELDS = {
+    'decoded', 'dimensionsMatch', 'visualReadabilityVerified',
 }
 CODEX_A01_AGGREGATE_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
     'runNumber', 'frontierId', 'epochId', 'mcpBundleSha256', 'prNumber', 'baseSha',
@@ -1382,6 +1432,36 @@ CODEX_PROBE_IMPLEMENTATION_MARKERS = {
         'CLAIM_NEGATION_PATTERNS',
         'answer.toLowerCase()',
         "'双峰'",
+    ),
+}
+CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
+    'apps/mcp/codex-one-tool-mcp-server.mjs': (
+        'assertC07CohortRenderOfflineProfile(',
+        'fetchFn: offlineFixture.fetchFn',
+        'inspectC07PngArtifact(item.buffer, item.width, item.height)',
+        "serverResultStatus: 'SUCCESS'",
+    ),
+    'scripts/lib/c07-cohort-render-offline-fixture.mjs': (
+        "export const C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE = 'run95-c07-cohort-render-v1'",
+        'export function createC07CohortRenderOfflineFixtureFetch()',
+        'counters.unexpectedRequestCount += 1',
+    ),
+    'scripts/lib/c07-png-artifact-validation.mjs': (
+        'export function inspectC07PngArtifact(',
+        'inflateSync(compressedImage',
+        'visualReadabilityVerified:',
+    ),
+    'tests/render/subject-cohort-comparison.test.ts': (
+        "it('decodes the offline C07 comparison card and verifies readable pixels'",
+        'inspectC07PngArtifact(rendered.buffer, rendered.width, rendered.height)',
+    ),
+    'scripts/acceptance/run-c07-cohort-renderer-codex-agent-mcp.mjs': (
+        "const EPOCH_ID = 'run95-c07-cohort-comparison-renderer-luna-mcp'",
+        'function assertCurrentGate(sourceRevision)',
+        "'features.shell_tool=false'",
+        "'features.web_search=false'",
+        'function verifyObservation({',
+        "'codex_cli_mcp_tool_use'",
     ),
 }
 CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS = {
@@ -2812,6 +2892,17 @@ def codex_g02_probe_revision_has_implementation(revision: object) -> bool:
         codex_probe_revision_has_implementation(revision)
         and _codex_revision_has_markers(
             str(ROOT), revision, CODEX_G02_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_c07_renderer_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS,
         )
     )
 
@@ -6632,6 +6723,85 @@ def codex_a01_aggregate_report_is_valid(report: dict) -> bool:
     return True
 
 
+def codex_c07_renderer_report_is_valid(report: dict, result: dict) -> bool:
+    frontier_path = ROOT / 'docs/product/frontier-ledger.json'
+    try:
+        frontier_records = json.loads(frontier_path.read_text(encoding='utf-8')).get('records', [])
+    except (OSError, ValueError):
+        return False
+    frontier_statuses = {
+        item.get('id'): item.get('status')
+        for item in frontier_records
+        if isinstance(item, dict)
+    }
+    candidate_gate = report.get('candidateGate')
+    fixture = report.get('offlineFixture')
+    artifact_validation = report.get('artifactValidation')
+    expected_fixture = {
+        'profile': CODEX_C07_RENDER_OFFLINE_FIXTURE_PROFILE,
+        'localStubRequests': 4,
+        'searchResponses': 2,
+        'subjectDetailResponses': 2,
+        'unexpectedRequests': 0,
+        'authorizationHeaders': 0,
+        'liveBangumiRequests': 0,
+        'rawFixturePayloadStored': False,
+    }
+    artifact = result.get('artifact') if isinstance(result, dict) else None
+    return bool(
+        type(report.get('runNumber')) is int
+        and report['runNumber'] == 95
+        and report.get('frontierId') == 'C07'
+        and report.get('epochId') == 'run95-c07-cohort-comparison-renderer-luna-mcp'
+        and type(report.get('prNumber')) is int
+        and report['prNumber'] > 0
+        and re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        and re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+        and report.get('mcpServerNames') == ['bgk_c07_cohort_renderer_one_tool']
+        and report.get('serverSummaryMatchesCandidate') is True
+        and report.get('sameCandidateAfterCall') is True
+        and isinstance(artifact_validation, dict)
+        and set(artifact_validation) == CODEX_C07_RENDERER_ARTIFACT_VALIDATION_FIELDS
+        and artifact_validation == {
+            'decoded': True,
+            'dimensionsMatch': True,
+            'visualReadabilityVerified': True,
+        }
+        and isinstance(candidate_gate, dict)
+        and set(candidate_gate) == CODEX_C07_RENDERER_CANDIDATE_GATE_FIELDS
+        and candidate_gate.get('candidateSha') == report.get('sourceRevision')
+        and candidate_gate.get('baseSha') == report.get('baseSha')
+        and candidate_gate.get('ciSha') == report.get('sourceRevision')
+        and candidate_gate.get('ciStatus') == 'SUCCESS'
+        and type(candidate_gate.get('ciCheckCount')) is int
+        and candidate_gate['ciCheckCount'] == 7
+        and candidate_gate.get('reviewPassSha') == report.get('sourceRevision')
+        and candidate_gate.get('reviewVerdict') == 'PASS'
+        and re.search(r'gpt[-_]6[-_]luna[-_]max', str(candidate_gate.get('reviewerId', '')), re.I)
+        and isinstance(fixture, dict)
+        and set(fixture) == CODEX_C07_RENDERER_OFFLINE_FIXTURE_FIELDS
+        and fixture == expected_fixture
+        and isinstance(result, dict)
+        and result.get('sourceOperations') == []
+        and result.get('resultState') == 'artifact_returned'
+        and isinstance(artifact, dict)
+        and artifact.get('returned') is True
+        and artifact.get('persisted') is False
+        and artifact.get('mimeType') == 'image/png'
+        and type(artifact.get('width')) is int
+        and 0 < artifact['width'] <= 3000
+        and type(artifact.get('height')) is int
+        and 0 < artifact['height'] <= 5000
+        and artifact['width'] * artifact['height'] <= 10_000_000
+        and type(artifact.get('byteLength')) is int
+        and 0 < artifact['byteLength'] <= 5_000_000
+        and artifact.get('pngSignatureValid') is True
+        and frontier_statuses.get('C07') == 'UNASSESSED'
+        and frontier_statuses.get('A01') == 'UNASSESSED'
+    )
+
+
 def codex_mcp_evidence_is_valid(
     report: dict, evidence_by_name: dict[str, dict], current_by_name: dict[str, dict],
 ) -> bool:
@@ -6643,6 +6813,12 @@ def codex_mcp_evidence_is_valid(
         return False
     argument_profile = report.get('argumentProfile')
     is_a01_aggregate = tool_name == 'bangumi.aggregate_subject_cohort'
+    is_c07_renderer = (
+        tool_name == 'bangumi.render_subject_cohort_comparison'
+        and argument_profile == CODEX_C07_RENDER_ARGUMENT_PROFILE
+    )
+    if tool_name == 'bangumi.render_subject_cohort_comparison' and not is_c07_renderer:
+        return False
     is_d04 = (
         tool_name == 'bangumi.query_subjects'
         and argument_profile == 'd04-reported-episode-count-discovery-v1'
@@ -6650,6 +6826,7 @@ def codex_mcp_evidence_is_valid(
     is_g02 = CODEX_G02_ARGUMENT_PROFILES.get(tool_name) == argument_profile
     expected_report_fields = (
         CODEX_A01_AGGREGATE_REPORT_FIELDS if is_a01_aggregate else
+        CODEX_C07_RENDERER_REPORT_FIELDS if is_c07_renderer else
         CODEX_D04_REPORT_FIELDS if is_d04 else
         CODEX_G02_REPORT_FIELDS if is_g02 else
         CODEX_REPORT_FIELDS
@@ -6667,7 +6844,8 @@ def codex_mcp_evidence_is_valid(
             or not isinstance(report.get('sourceRevision'), str)
             or not re.fullmatch(r'[0-9a-f]{40}', report['sourceRevision'])
             or not (codex_a01_aggregate_probe_revision_has_implementation(report['sourceRevision'])
-                    if is_a01_aggregate else codex_d04_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_a01_aggregate else codex_c07_renderer_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_c07_renderer else codex_d04_probe_revision_has_implementation(report['sourceRevision'])
                     if is_d04 else codex_g02_probe_revision_has_implementation(report['sourceRevision'])
                     if is_g02 else codex_probe_revision_has_implementation(report['sourceRevision']))
             or type(report.get('processExitCode')) is not int
@@ -6727,6 +6905,7 @@ def codex_mcp_evidence_is_valid(
     )
     expected_answer_checks = (
         CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS if is_a01_aggregate else
+        CODEX_C07_RENDERER_ANSWER_CHECK_FIELDS if is_c07_renderer else
         CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
         CODEX_G02_RENDERER_ANSWER_CHECK_FIELDS if is_g02 and tool_name.startswith('bangumi.render_') else
         CODEX_G02_QUERY_ANSWER_CHECK_FIELDS if is_g02 else
@@ -6907,6 +7086,8 @@ def codex_mcp_evidence_is_valid(
                 or artifact.get('returned') is not False or artifact.get('persisted') is not False
                 or 'width' in artifact or 'height' in artifact or 'sha256' in artifact):
             return False
+    if is_c07_renderer:
+        return codex_c07_renderer_report_is_valid(report, result)
     return True
 
 

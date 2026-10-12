@@ -6,6 +6,10 @@ import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { RenderService } from '@bangumi-agent-kit/renderer';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import { BangumiMcpServer } from '../../apps/mcp/src/server.js';
+import {
+  C07_COHORT_RENDER_EXPECTED_ARGUMENTS,
+  createC07CohortRenderOfflineFixtureFetch,
+} from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
 
 const subjectFixture = {
   id: 123,
@@ -301,5 +305,31 @@ describe('MCP renderer target', () => {
       await renderService.close();
       await dependencies.storage.close();
     }
+  });
+
+  it('renders the C07 comparison fixture through exactly bounded local v0-shaped requests', async () => {
+    const fixture = createC07CohortRenderOfflineFixtureFetch();
+    const fetchFn = vi.fn(fixture.fetchFn);
+    const { response, renderService, artifactStore } = await callMcpRender({
+      toolName: 'bangumi.render_subject_cohort_comparison',
+      arguments: C07_COHORT_RENDER_EXPECTED_ARGUMENTS,
+      fetchFn,
+    });
+
+    expect(response.isError).toBeUndefined();
+    expect(fetchFn).toHaveBeenCalledTimes(4);
+    expect(fixture.snapshot()).toMatchObject({
+      searchRequestCount: 2,
+      detailRequestCount: 2,
+      unexpectedRequestCount: 0,
+      authorizationHeaderCount: 0,
+      expectedOperationsComplete: true,
+    });
+    expect(renderService.renderCard).toHaveBeenCalledWith(
+      expect.objectContaining({ template: 'subject-cohort-comparison', state: 'complete' }),
+      { width: 360, deviceScaleFactor: 2 },
+    );
+    expect(artifactStore.saveArtifact).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(fixture.snapshot())).not.toContain('Synthetic Cohort');
   });
 });

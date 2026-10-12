@@ -20,6 +20,12 @@ import {
   gitRepositoryText,
   readG26McpBundleAttestation,
 } from '../../scripts/lib/g26-mcp-bundle.mjs';
+import {
+  C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE,
+  assertC07CohortRenderOfflineProfile,
+  createC07CohortRenderOfflineFixtureFetch,
+} from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
+import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -80,10 +86,10 @@ class MemoryArtifactStore {
     return 0;
   }
 
-  summarize(id) {
+  summarize(id, { verifyPng = false } = {}) {
     const item = this.artifacts.get(id);
     if (!item) return { returned: false, persisted: false };
-    return {
+    const summary = {
       returned: true,
       persisted: false,
       mimeType: item.mimeType,
@@ -95,6 +101,10 @@ class MemoryArtifactStore {
         item.mimeType === 'image/png' &&
         item.buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE),
     };
+    if (verifyPng) {
+      Object.assign(summary, inspectC07PngArtifact(item.buffer, item.width, item.height));
+    }
+    return summary;
   }
 }
 
@@ -123,6 +133,7 @@ function parseArguments(argv) {
         '--summary-file',
         '--candidate-sha',
         '--bundle-sha256',
+        '--network-mode',
       ].includes(key)
     ) {
       throw new Error(`Unknown argument: ${key}`);
@@ -136,6 +147,7 @@ function parseArguments(argv) {
   const summaryPath = values.get('--summary-file');
   const candidateSha = values.get('--candidate-sha');
   const bundleSha256 = values.get('--bundle-sha256');
+  const networkMode = values.get('--network-mode');
   if (!toolName || !/^bangumi\.[a-z][a-z0-9_]*$/u.test(toolName)) {
     throw new Error('A single exact Bangumi tool name is required.');
   }
@@ -155,7 +167,8 @@ function parseArguments(argv) {
   ) {
     throw new Error('Fixed arguments must be a JSON object.');
   }
-  return { toolName, expectedArguments, summaryPath, candidateSha, bundleSha256 };
+  assertC07CohortRenderOfflineProfile({ networkMode, toolName, expectedArguments });
+  return { toolName, expectedArguments, summaryPath, candidateSha, bundleSha256, networkMode };
 }
 
 function runtimeCandidateMatches(sourceRevision, bundleSha256) {
@@ -203,7 +216,15 @@ async function main(argv = process.argv.slice(2)) {
   const storage = new MemoryStorage();
   const artifactStore = new MemoryArtifactStore();
   const identityProvider = new StdioMcpExecutionIdentityProvider(storage);
-  const publicHttpClient = new HttpClient({ baseUrl: 'https://api.bgm.tv', timeoutMs: 10000 });
+  const offlineFixture =
+    config.networkMode === C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE
+      ? createC07CohortRenderOfflineFixtureFetch()
+      : null;
+  const publicHttpClient = new HttpClient({
+    baseUrl: 'https://api.bgm.tv',
+    timeoutMs: 10000,
+    ...(offlineFixture ? { fetchFn: offlineFixture.fetchFn } : {}),
+  });
   const dependencies = createRuntimeDependenciesWithStorage(storage, {
     publicHttpClient,
     artifactStore,
@@ -243,6 +264,7 @@ async function main(argv = process.argv.slice(2)) {
     deniedCallCount: 0,
     argumentMatch: false,
     result: null,
+    ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
     privacy: {
       authProfile: 'anonymous',
       oauthAttempted: false,
@@ -322,12 +344,13 @@ async function main(argv = process.argv.slice(2)) {
       const resultSummary = summarizeToolResult(
         config.toolName,
         result,
-        artifactStore.summarize(result?.artifact?.id),
+        artifactStore.summarize(result?.artifact?.id, { verifyPng: Boolean(offlineFixture) }),
       );
       summary = {
         ...summary,
         serverResultStatus: 'SUCCESS',
         result: resultSummary,
+        ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
       };
       writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
       const presentation = presentMcpToolResult(config.toolName, result);
@@ -343,6 +366,7 @@ async function main(argv = process.argv.slice(2)) {
         ...summary,
         serverResultStatus: 'ERROR',
         errorCode: typeof publicError.code === 'string' ? publicError.code : 'UNKNOWN_ERROR',
+        ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
       };
       writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
       return {
