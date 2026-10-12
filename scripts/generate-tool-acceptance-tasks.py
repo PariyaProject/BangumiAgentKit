@@ -843,6 +843,7 @@ CODEX_REPORT_FIELDS = {
 }
 CODEX_C07_RENDERER_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
     'frontierId', 'runNumber', 'epochId', 'observedAt', 'baseSha', 'prNumber',
+    'eventStreamComplete',
     'mcpBundleSha256', 'mcpServerNames', 'candidateGate', 'offlineFixture',
     'artifactValidation', 'serverSummaryMatchesCandidate', 'sameCandidateAfterCall',
 }
@@ -859,7 +860,7 @@ CODEX_C07_RENDERER_ANSWER_CHECK_FIELDS = {
     'oneToolOnly', 'fixedArguments', 'currentCandidateBundle', 'offlineFixtureOnly',
     'noAdditionalTools', 'successfulServerCall', 'artifactReadback', 'decodedPng',
     'decodedDimensionsMatch', 'nonblankPixelSignal',
-    'safeFinalAnswer', 'privacyPreserved',
+    'cliFinalMessageVerified', 'privacyPreserved',
 }
 CODEX_C07_RENDERER_ARTIFACT_VALIDATION_FIELDS = {
     'decoded', 'dimensionsMatch', 'nonblankPixelSignalVerified',
@@ -1460,6 +1461,8 @@ CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
         "const EPOCH_ID = 'run95-c07-cohort-comparison-renderer-luna-mcp'",
         'const PR_NUMBER = 140;',
         'export function assertC07EpochIdentity(',
+        "'--output-last-message'",
+        'function readFinalMessage(lastMessagePath)',
         'function assertCurrentGate(sourceRevision)',
         "'features.shell_tool=false'",
         "'features.web_search=false'",
@@ -6758,6 +6761,17 @@ def codex_c07_renderer_report_is_valid(report: dict, result: dict) -> bool:
         and report.get('epochId') == 'run95-c07-cohort-comparison-renderer-luna-mcp'
         and type(report.get('prNumber')) is int
         and report['prNumber'] == CODEX_C07_RENDERER_PR_NUMBER
+        and type(report.get('eventStreamComplete')) is bool
+        and (
+            report['eventStreamComplete'] is True
+            or (
+                isinstance(report.get('scenarios'), list)
+                and len(report['scenarios']) == 1
+                and isinstance(report['scenarios'][0], dict)
+                and isinstance(report['scenarios'][0].get('answerChecks'), dict)
+                and report['scenarios'][0]['answerChecks'].get('cliFinalMessageVerified') is True
+            )
+        )
         and re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
         and re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))

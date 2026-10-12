@@ -1118,6 +1118,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'observedAt': '2026-10-12T12:00:00.000Z',
             'baseSha': 'b' * 40,
             'prNumber': 140,
+            'eventStreamComplete': True,
             'mcpBundleSha256': 'e' * 64,
             'mcpServerNames': ['bgk_c07_cohort_renderer_one_tool'],
             'candidateGate': {
@@ -1167,6 +1168,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         )
         self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
             report, current_by_name, current_by_name,
+        ))
+
+        output_file_completion = json.loads(json.dumps(report))
+        output_file_completion['eventStreamComplete'] = False
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            output_file_completion, current_by_name, current_by_name,
+        ))
+        unverified_output_file = json.loads(json.dumps(output_file_completion))
+        unverified_output_file['scenarios'][0]['answerChecks']['cliFinalMessageVerified'] = False
+        self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
+            unverified_output_file, current_by_name, current_by_name,
         ))
 
         invalid_reports = []

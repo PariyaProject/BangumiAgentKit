@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,6 +43,7 @@ const MANDATORY_CI_CHECKS = [
   'discovery-foundation',
 ];
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
+const MAX_FINAL_MESSAGE_BYTES = 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -73,6 +74,7 @@ export function buildCodexExecArgs({
   nodePath,
   serverScript = MCP_SERVER_SCRIPT,
   summaryPath,
+  lastMessagePath,
   sourceRevision,
   bundleSha256,
 }) {
@@ -123,6 +125,8 @@ export function buildCodexExecArgs({
     '--strict-config',
     '--ephemeral',
     '--json',
+    '--output-last-message',
+    lastMessagePath,
     '--model',
     MODEL,
     '--sandbox',
@@ -359,12 +363,13 @@ function codexVersion() {
   return match[1];
 }
 
-function invokeCodex({ nodePath, summaryPath, sourceRevision, bundleSha256 }) {
+function invokeCodex({ nodePath, summaryPath, lastMessagePath, sourceRevision, bundleSha256 }) {
   const result = spawnSync(
     'codex',
     buildCodexExecArgs({
       nodePath,
       summaryPath,
+      lastMessagePath,
       sourceRevision,
       bundleSha256,
     }),
@@ -387,6 +392,17 @@ function invokeCodex({ nodePath, summaryPath, sourceRevision, bundleSha256 }) {
 function readServerSummary(summaryPath) {
   try {
     return JSON.parse(readFileSync(summaryPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function readFinalMessage(lastMessagePath) {
+  try {
+    const byteLength = statSync(lastMessagePath).size;
+    if (byteLength <= 0 || byteLength > MAX_FINAL_MESSAGE_BYTES) return null;
+    const message = readFileSync(lastMessagePath, 'utf8');
+    return Buffer.byteLength(message, 'utf8') <= MAX_FINAL_MESSAGE_BYTES ? message : null;
   } catch {
     return null;
   }
@@ -436,6 +452,7 @@ export function verifyObservation({
   parsed,
   eventsSummary,
   serverSummary,
+  finalMessage,
   sourceRevision,
   bundleSha256,
   candidateStable,
@@ -444,6 +461,26 @@ export function verifyObservation({
   const expectedArgumentsSha256 = sha256(canonicalJson(C07_COHORT_RENDER_EXPECTED_ARGUMENTS));
   const expectedFixture = serverSummary?.offlineFixture;
   const toolCall = eventsSummary.completedMcpCalls?.[0];
+  const expectedAcknowledgement = /^合成对照图卡已生成。?$/u;
+  const finalMessageMatches =
+    typeof finalMessage === 'string' && expectedAcknowledgement.test(finalMessage.trim());
+  const eventAnswerMatches =
+    eventsSummary.answer === null ||
+    eventsSummary.answer === undefined ||
+    (typeof eventsSummary.answer === 'string' &&
+      expectedAcknowledgement.test(eventsSummary.answer.trim()));
+  // Codex writes this bounded file only after producing its final answer. It
+  // can attest a completed turn when JSONL omits turn.completed, but only for
+  // the exact acknowledgement and a clean parsed event stream.
+  const outputFileCompletionAttested =
+    execution.exitCode === 0 &&
+    !execution.failed &&
+    eventsSummary.threadStarted === true &&
+    eventsSummary.turnStarted === true &&
+    eventsSummary.turnFailed === false &&
+    eventsSummary.unexpectedEventTypes === 0 &&
+    finalMessageMatches &&
+    eventAnswerMatches;
   const checks = {
     sameCandidate: candidateStable ?? currentBundleMatches(sourceRevision, bundleSha256),
     exactOneToolServer:
@@ -471,8 +508,10 @@ export function verifyObservation({
       eventsSummary.toolCalls?.length === 1 &&
       eventsSummary.toolCalls[0]?.name === TARGET_TOOL &&
       eventsSummary.toolCalls[0]?.state === 'DONE',
-    completeCodexStream:
-      parsed.parsed && eventsSummary.eventStreamComplete && eventsSummary.codexErrorItemCount === 0,
+    codexExecutionCompleted:
+      parsed.parsed &&
+      (eventsSummary.eventStreamComplete || outputFileCompletionAttested) &&
+      eventsSummary.codexErrorItemCount === 0,
     noAdditionalTools:
       eventsSummary.nonMcpToolEventCount === 0 && eventsSummary.shellToolCallCount === 0,
     successfulServerCall:
@@ -504,11 +543,15 @@ export function verifyObservation({
       serverSummary.privacy.rawResultStored === false &&
       serverSummary.privacy.artifactImageBytesStored === false &&
       serverSummary.privacy.credentialsStored === false,
-    answerPresentButNotRetained:
-      typeof eventsSummary.answer === 'string' &&
-      /^合成对照图卡已生成。?$/u.test(eventsSummary.answer.trim()),
+    cliFinalMessageVerified: finalMessageMatches && eventAnswerMatches,
   };
-  return { checks, passed: Object.values(checks).every(Boolean), digests, expectedArgumentsSha256 };
+  return {
+    checks,
+    passed: Object.values(checks).every(Boolean),
+    digests,
+    expectedArgumentsSha256,
+    eventStreamComplete: eventsSummary.eventStreamComplete === true,
+  };
 }
 
 export function buildReport({
@@ -553,7 +596,7 @@ export function buildReport({
     decodedPng: serverSummary.result.artifact.decoded === true,
     decodedDimensionsMatch: serverSummary.result.artifact.dimensionsMatch === true,
     nonblankPixelSignal: serverSummary.result.artifact.nonblankPixelSignalVerified === true,
-    safeFinalAnswer: observation.checks.answerPresentButNotRetained,
+    cliFinalMessageVerified: observation.checks.cliFinalMessageVerified,
     privacyPreserved: observation.checks.privacy,
   };
   return {
@@ -583,6 +626,7 @@ export function buildReport({
     processExitCode: 0,
     resultCount: 1,
     eventStreamParsed: true,
+    eventStreamComplete: observation.eventStreamComplete,
     codexMcpToolEventCount: 1,
     nonMcpToolEventCount: 0,
     shellToolCallCount: 0,
@@ -670,10 +714,12 @@ function run() {
     path.join(path.resolve(os.tmpdir()), `bgk-c07-render-run95-${process.pid}-${randomUUID()}-`),
   );
   const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
+  const lastMessagePath = path.join(temporaryDirectory, 'codex-final-message.txt');
   try {
     const execution = invokeCodex({
       nodePath: process.execPath,
       summaryPath,
+      lastMessagePath,
       sourceRevision,
       bundleSha256,
     });
@@ -685,12 +731,28 @@ function run() {
       parsed,
       eventsSummary,
       serverSummary,
+      finalMessage: readFinalMessage(lastMessagePath),
       sourceRevision,
       bundleSha256,
     });
     if (!observation.passed) {
       process.stdout.write(
-        `${JSON.stringify({ state: 'INCONCLUSIVE', checks: observation.checks })}\n`,
+        `${JSON.stringify({
+          state: 'INCONCLUSIVE',
+          checks: observation.checks,
+          diagnostics: {
+            parsed: parsed.parsed,
+            malformedLinesCount: parsed.malformedLinesCount,
+            eventCount: parsed.events.length,
+            eventStreamComplete: eventsSummary.eventStreamComplete,
+            threadStarted: eventsSummary.threadStarted,
+            turnStarted: eventsSummary.turnStarted,
+            turnCompleted: eventsSummary.turnCompleted,
+            turnFailed: eventsSummary.turnFailed,
+            codexErrorItemCount: eventsSummary.codexErrorItemCount,
+            finalMessageAvailable: existsSync(lastMessagePath),
+          },
+        })}\n`,
       );
       return 1;
     }

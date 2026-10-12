@@ -176,6 +176,8 @@ function isCurrentC07RendererReport(report: any): boolean {
     /^[0-9a-f]{40}$/u.test(report?.baseSha ?? '') &&
     /^[0-9a-f]{64}$/u.test(report?.mcpBundleSha256 ?? '') &&
     report?.prNumber === 140 &&
+    typeof report?.eventStreamComplete === 'boolean' &&
+    (report.eventStreamComplete === true || checks?.cliFinalMessageVerified === true) &&
     report?.processExitCode === 0 &&
     report?.resultStatus === 'SUCCESS' &&
     report?.eventStreamParsed === true &&
@@ -222,7 +224,7 @@ function isCurrentC07RendererReport(report: any): boolean {
         'offlineFixtureOnly',
         'oneToolOnly',
         'privacyPreserved',
-        'safeFinalAnswer',
+        'cliFinalMessageVerified',
         'successfulServerCall',
         'nonblankPixelSignal',
       ]

@@ -85,6 +85,11 @@ function fixtureObservation() {
   };
   const eventsSummary = {
     eventStreamComplete: true,
+    threadStarted: true,
+    turnStarted: true,
+    turnCompleted: true,
+    turnFailed: false,
+    unexpectedEventTypes: 0,
     codexErrorItemCount: 0,
     codexMcpToolEventCount: 1,
     mcpServerNames: [SERVER_ID],
@@ -101,6 +106,7 @@ function fixtureObservation() {
     parsed: { parsed: true },
     eventsSummary,
     serverSummary,
+    finalMessage: '合成对照图卡已生成。',
     sourceRevision: serverSummary.sourceRevision,
     bundleSha256: serverSummary.bundleSha256,
     candidateStable: true,
@@ -155,21 +161,26 @@ test('C07 Codex config uses Luna Max and exposes only the fixed offline renderer
     nodePath: '/node',
     serverScript: '/repo/apps/mcp/codex-one-tool-mcp-server.mjs',
     summaryPath: '/tmp/server-summary.json',
+    lastMessagePath: '/tmp/final-message.txt',
     sourceRevision: 'a'.repeat(40),
     bundleSha256: 'b'.repeat(64),
   });
-  assert.deepEqual(args.slice(0, 7), [
+  assert.deepEqual(args.slice(0, 9), [
     'exec',
     '--ignore-user-config',
     '--strict-config',
     '--ephemeral',
     '--json',
+    '--output-last-message',
+    '/tmp/final-message.txt',
     '--model',
     'gpt-6-luna',
   ]);
   assert.ok(args.includes('--sandbox'));
   assert.ok(args.includes('read-only'));
   assert.ok(args.includes('model_reasoning_effort="max"'));
+  assert.ok(args.includes('--output-last-message'));
+  assert.ok(args.includes('/tmp/final-message.txt'));
   assert.ok(
     args.includes(
       `mcp_servers.bgk_c07_cohort_renderer_one_tool.enabled_tools=["bangumi.render_subject_cohort_comparison"]`,
@@ -214,7 +225,29 @@ test('C07 observation validator accepts only one exact offline fixture renderer 
 
   const malformedStream = structuredClone(observation);
   malformedStream.parsed.parsed = false;
-  assert.equal(verifyObservation(malformedStream).checks.completeCodexStream, false);
+  assert.equal(verifyObservation(malformedStream).checks.codexExecutionCompleted, false);
+
+  const outputFileCompletion = structuredClone(observation);
+  outputFileCompletion.eventsSummary.eventStreamComplete = false;
+  outputFileCompletion.eventsSummary.turnCompleted = false;
+  outputFileCompletion.eventsSummary.answer = null;
+  const attested = verifyObservation(outputFileCompletion);
+  assert.equal(attested.checks.codexExecutionCompleted, true);
+  assert.equal(attested.checks.cliFinalMessageVerified, true);
+  assert.equal(attested.eventStreamComplete, false);
+
+  const missingFinalMessage = structuredClone(outputFileCompletion);
+  missingFinalMessage.finalMessage = null;
+  assert.equal(verifyObservation(missingFinalMessage).checks.codexExecutionCompleted, false);
+  assert.equal(verifyObservation(missingFinalMessage).checks.cliFinalMessageVerified, false);
+
+  const mismatchedFinalMessage = structuredClone(outputFileCompletion);
+  mismatchedFinalMessage.finalMessage = 'The card contains synthetic cohort names.';
+  assert.equal(verifyObservation(mismatchedFinalMessage).checks.cliFinalMessageVerified, false);
+
+  const mismatchedEventAnswer = structuredClone(outputFileCompletion);
+  mismatchedEventAnswer.eventsSummary.answer = 'The card contains synthetic cohort names.';
+  assert.equal(verifyObservation(mismatchedEventAnswer).checks.cliFinalMessageVerified, false);
 
   const unsafeArtifact = structuredClone(observation);
   unsafeArtifact.serverSummary.result.artifact.byteLength = 6_000_000;
@@ -250,6 +283,8 @@ test('C07 sanitized report retains only artifact facts and evidence booleans', (
   });
   const serialized = JSON.stringify(report);
   assert.equal(report.scenarios[0].passed, true);
+  assert.equal(report.eventStreamComplete, true);
+  assert.equal(report.scenarios[0].answerChecks.cliFinalMessageVerified, true);
   assert.equal(report.candidateGate.ciCheckCount, 7);
   assert.equal(serialized.includes('Synthetic Cohort'), false);
   assert.equal(serialized.includes('run95 synthetic cohort'), false);
