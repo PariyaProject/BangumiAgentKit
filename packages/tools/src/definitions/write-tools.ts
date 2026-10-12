@@ -320,7 +320,7 @@ export function createWriteTools(
       }),
     ]),
     auth: 'required',
-    scopes: ['write:index'],
+    scopes: ['write:indices'],
     risk: 'write',
     resolvePolicy: (input): ResolvedToolPolicy => {
       const risk = input.action === 'remove_subject' ? 'destructive' : 'write';
@@ -334,7 +334,7 @@ export function createWriteTools(
 
       return {
         auth: 'required',
-        requiredCapabilities: ['write:index'],
+        requiredCapabilities: ['write:indices'],
         risk,
         actionType: 'manageIndex',
         summary,
@@ -344,7 +344,7 @@ export function createWriteTools(
       const activeProvider: BangumiClientProvider = deps?.clientProvider || provider;
       const client =
         deps?.executionSession?.client ||
-        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:index']))
+        (await activeProvider.requireAuthenticatedClient(context.principalId, ['write:indices']))
           .client;
       const indexWriteService = new IndexWriteService(client);
 

@@ -25,14 +25,14 @@ describe('F. Capability Policy Test', () => {
 
     await storage.replaceActiveBinding(principal.id, account.id);
 
-    // Save credential with reportedScopes: ['read:collection'] (missing 'write:collection')
+    // Official reported provider scopes contain only write:indices; write:collection is absent.
     await storage.upsertCredential({
       id: 'c-cap-1',
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('access-token-123', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
       requestedCapabilities: ['read:collection', 'write:collection'],
-      reportedScopes: ['read:collection'],
+      reportedScopes: ['write:indices'],
       scopeEvidence: 'reported',
       keyVersion: 'v1',
       createdAt: new Date(),
@@ -41,6 +41,41 @@ describe('F. Capability Policy Test', () => {
 
     await expect(
       broker.requireAuthenticatedClient(principal.id, ['write:collection']),
+    ).rejects.toThrow('PERMISSION_DENIED');
+  });
+
+  it('does not treat the local read:collection capability as a provider OAuth scope', async () => {
+    const storage = new MemoryStorage();
+    const broker = new TokenBroker(storage, { secretKey }, new HttpClient());
+    const principal = await storage.findOrCreatePrincipal({
+      provider: 'test',
+      botInstanceId: 'bot-1',
+      externalUserId: 'usr-3',
+    });
+    const account = await storage.upsertBangumiAccount({
+      id: 'bgm-cap-3',
+      bangumiUserId: 1003,
+      username: 'read_scope_user',
+      nickname: 'Read Scope User',
+    });
+    await storage.replaceActiveBinding(principal.id, account.id);
+    await storage.upsertCredential({
+      id: 'c-cap-3',
+      bangumiAccountId: account.id,
+      encryptedAccessToken: encryptToken('access-token-789', secretKey, 'v1'),
+      expiresAt: new Date(Date.now() + 3600000),
+      requestedCapabilities: ['read:collection'],
+      reportedScopes: [],
+      scopeEvidence: 'reported',
+      keyVersion: 'v1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const authed = await broker.requireAuthenticatedClient(principal.id, ['read:collection']);
+    expect(authed.account.id).toBe(account.id);
+    await expect(
+      broker.requireAuthenticatedClient(principal.id, ['write:indices']),
     ).rejects.toThrow('PERMISSION_DENIED');
   });
 

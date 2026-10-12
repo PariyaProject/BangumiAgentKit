@@ -348,12 +348,29 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
       httpClient,
     );
 
-    const { state } = await oauthService.createAuthorizationUrl('qq_principal_1');
+    const authorization = await oauthService.createAuthorizationUrl(
+      'qq_principal_1',
+      undefined,
+      undefined,
+      ['read:collection', 'write:collection'],
+    );
+    const authorizeUrl = new URL(authorization.url);
+    const state = authorization.state;
     expect(state).toBeDefined();
+    // Bangumi's current OAuth guide says the authorize scope parameter is not implemented.
+    expect(authorizeUrl.searchParams.has('scope')).toBe(false);
 
     const authorized = await oauthService.handleCallback('valid_oauth_code', state);
     expect(authorized.username).toBe('bgm_test_user');
     expect(authorized.principalId).toBe('qq_principal_1');
+
+    const authStatus = await new TokenBroker(
+      storage,
+      { secretKey: SECRET_KEY },
+      httpClient,
+    ).getAuthStatus('qq_principal_1');
+    expect(authStatus.bound).toBe(true);
+    expect(authStatus.accountCount).toBe(1);
 
     // Verify token was stored encrypted in Storage
     const cred = await storage.getCredential(authorized.accountId);
@@ -363,7 +380,7 @@ describe('Phase 5: DB, OAuth & Token Security Tests', () => {
     // Regression check: requestedCapabilities != reportedScopes
     expect(cred?.reportedScopes).toBeNull();
     expect(cred?.scopeEvidence).toBe('unknown');
-    expect(cred?.requestedCapabilities).toEqual(['write:collection']);
+    expect(cred?.requestedCapabilities).toEqual(['read:collection', 'write:collection']);
   });
 
   it('OAuth callback handler suppresses raw internal errors and returns safe generic message', async () => {

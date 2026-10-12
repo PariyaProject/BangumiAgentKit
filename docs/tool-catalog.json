@@ -290,7 +290,7 @@
       "type": "object",
       "properties": {
         "capabilities": {
-          "description": "申请的能力/权限范围列表 (如 [\"write:collection\"])",
+          "description": "仅本地记录的能力标签；Bangumi OAuth 当前未实现 scope 请求，不能据此声称 provider 已授予权限 (如 [\"read:collection\",\"write:collection\"])",
           "type": "array",
           "items": {
             "type": "string"
@@ -2249,7 +2249,7 @@
     "description": "创建、编辑或为目录添加/移除条目。删除目录或移除条目需要二次确认。",
     "auth": "required",
     "risk": "write",
-    "scopes": ["write:index"],
+    "scopes": ["write:indices"],
     "policyMode": "dynamic",
     "policyDescription": "Tool policies (auth, risk, confirmation) are resolved dynamically based on input parameters.",
     "inputSchema": {
