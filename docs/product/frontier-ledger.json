@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-12T15:09:52Z",
+  "updated_at": "2026-10-12T15:30:38Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2480,7 +2480,7 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-a05-collection-completion-source-contract-2026-10-09.md"
       ],
-      "next_action": "A05 remains UNASSESSED. The one-shot runner and answer checker now expose a sanitized Codex error-item count and reject any nonzero or unknown count before report acceptance; regression coverage proves completed streams with error items fail closed. The local create-once claim remains absent. Run exactly one anonymous A05 Agent/MCP query only after exact Candidate/Base CI and GPT-6 Luna Max PASS; if claimed and inconclusive, never retry. Preserve experimental search, estimated-total, bounded-sample, formula, and unresolved-coverage limits.",
+      "next_action": "A05 remains UNASSESSED. The one-shot runner and answer checker expose a sanitized Codex error-item count and reject any nonzero or unknown count before report acceptance; regression coverage proves completed streams with error items fail closed. Run exactly one anonymous A05 Agent/MCP query only after exact Candidate/Base CI and GPT-6 Luna Max PASS; any failed or inconclusive execution must never be retried. Preserve experimental search, estimated-total, bounded-sample, formula, and unresolved-coverage limits.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

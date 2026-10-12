@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -159,6 +167,19 @@ function verify(
 }
 
 describe('A05 sanitized Agent/MCP answer checker', () => {
+  it('keeps live one-shot claim state out of the stable frontier ledger', () => {
+    const ledger = JSON.parse(
+      readFileSync(path.join(process.cwd(), 'docs/product/frontier-ledger.json'), 'utf8'),
+    ) as { records: Array<{ id: string; next_action: string }> };
+    const a05 = ledger.records.find((record) => record.id === 'A05');
+
+    expect(a05).toBeDefined();
+    expect(a05?.next_action).not.toMatch(
+      /(?:local|current).*claim.*(?:absent|present|taken|used)|claim.*remains.*(?:absent|present)/iu,
+    );
+    expect(a05?.next_action).toMatch(/must never be retried/u);
+  });
+
   it('rejects completed streams with Codex error items or an unknown error count', () => {
     const parsed = { parsed: true };
     const cleanEvents = { eventStreamComplete: true, codexErrorItemCount: 0 };
