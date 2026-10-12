@@ -37,6 +37,13 @@ export function hasUnexpectedG04CodexToolActivity(
     | undefined,
 ): boolean;
 export function canonicalG04ClaimPath(root?: string): string;
+export function resolveG04ReportWriterOutcome(
+  writerResult: { exitCode?: number | null; output?: { passed?: boolean } | null } | null,
+  report: { reportExists: boolean; reportValid: boolean },
+): {
+  state: 'REPORT_WRITTEN' | 'INCONCLUSIVE' | 'REPORT_ARTIFACT_CONFLICT_PENDING';
+  recovered: boolean;
+};
 export function assertG04CandidateReviewGate(
   status: Record<string, unknown>,
   pr: Record<string, unknown>,

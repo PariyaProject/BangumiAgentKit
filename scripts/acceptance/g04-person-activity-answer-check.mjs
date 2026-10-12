@@ -70,6 +70,19 @@ const ORIGIN_SUMMARY_FIELDS = [
   'notObservedSubjects',
   'unknownSubjects',
 ];
+const ORIGIN_OBSERVATION_FIELDS = ['state', 'metaTags', 'metaTagsCoverage'];
+const ORIGIN_META_TAG_COVERAGE_FIELDS = [
+  'state',
+  'observed',
+  'valid',
+  'returned',
+  'omitted',
+  'malformed',
+  'textTruncated',
+  'truncated',
+  'maxItems',
+  'maxCharacters',
+];
 const ANSWER_KEYS = [
   'personId',
   'kind',
@@ -332,39 +345,150 @@ function completeOriginCoverageIsConsistent(result) {
     return false;
   }
 
-  const originCounts = ORIGIN_COVERAGE_FIELDS.filter((field) => field !== 'truncated');
+  const expected = deriveCompleteOriginEvidence(result.rows);
+  return Boolean(
+    expected &&
+    origin.subjectsObserved === result.summary.uniqueSubjects &&
+    sameJson(summaryOrigin, expected.summary) &&
+    sameJson(origin, expected.coverage),
+  );
+}
+
+function isValidMetaTagsCoverage(value) {
+  const requiredFields = ORIGIN_META_TAG_COVERAGE_FIELDS.filter(
+    (field) => !['maxItems', 'maxCharacters'].includes(field),
+  );
   if (
-    originCounts.some((field) => !Number.isSafeInteger(origin[field]) || origin[field] < 0) ||
-    typeof origin.truncated !== 'boolean' ||
-    Object.values(summaryOrigin).some((value) => !Number.isSafeInteger(value) || value < 0)
+    !isRecord(value) ||
+    !requiredFields.every((field) => Object.hasOwn(value, field)) ||
+    Object.keys(value).some((field) => !ORIGIN_META_TAG_COVERAGE_FIELDS.includes(field)) ||
+    !['complete', 'partial', 'unknown'].includes(value.state) ||
+    typeof value.truncated !== 'boolean'
+  ) {
+    return false;
+  }
+
+  const countFields = ['observed', 'valid', 'returned', 'omitted', 'malformed', 'textTruncated'];
+  if (
+    countFields.some((field) => !Number.isSafeInteger(value[field]) || value[field] < 0) ||
+    ['maxItems', 'maxCharacters'].some(
+      (field) =>
+        Object.hasOwn(value, field) && (!Number.isSafeInteger(value[field]) || value[field] < 0),
+    )
   ) {
     return false;
   }
 
   return (
-    origin.explicitOriginalSubjects + origin.notObservedSubjects + origin.unknownSubjects ===
-      origin.subjectsObserved &&
-    sameJson(
-      {
-        explicitOriginalSubjects: origin.explicitOriginalSubjects,
-        notObservedSubjects: origin.notObservedSubjects,
-        unknownSubjects: origin.unknownSubjects,
-      },
-      summaryOrigin,
-    ) &&
-    origin.subjectsObserved === result.summary.uniqueSubjects &&
-    origin.subjectsWithMetaTags + origin.subjectsUnknown === origin.subjectsObserved &&
-    origin.subjectsPartial <= origin.subjectsWithMetaTags &&
-    origin.tagsValid + origin.malformedTagValues === origin.tagsObserved &&
-    origin.tagsReturned + origin.tagsOmitted === origin.tagsValid &&
-    origin.textTruncatedTags <= origin.tagsReturned &&
-    origin.truncatedSubjects <= origin.subjectsObserved &&
-    origin.truncated ===
-      (origin.tagsOmitted > 0 || origin.textTruncatedTags > 0 || origin.truncatedSubjects > 0) &&
-    origin.maxTagsPerSubject === 32 &&
-    origin.maxTagCharacters === 96 &&
-    origin.responseLimitBytes === 1_048_576
+    value.valid + value.malformed === value.observed &&
+    value.returned + value.omitted === value.valid &&
+    value.textTruncated <= value.returned &&
+    value.truncated === (value.omitted > 0 || value.textTruncated > 0)
   );
+}
+
+function isValidOriginObservation(value) {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((field) => !ORIGIN_OBSERVATION_FIELDS.includes(field)) ||
+    !['explicit_original', 'not_observed', 'unknown'].includes(value.state) ||
+    (Object.hasOwn(value, 'metaTags') &&
+      (!Array.isArray(value.metaTags) || value.metaTags.some((tag) => typeof tag !== 'string'))) ||
+    (Object.hasOwn(value, 'metaTagsCoverage') && !isValidMetaTagsCoverage(value.metaTagsCoverage))
+  ) {
+    return false;
+  }
+
+  const tagsCoverage = value.metaTagsCoverage;
+  const expectedState = !Array.isArray(value.metaTags)
+    ? 'unknown'
+    : tagsCoverage?.state !== 'unknown' && value.metaTags.includes('原创')
+      ? 'explicit_original'
+      : !tagsCoverage || tagsCoverage.state === 'complete'
+        ? 'not_observed'
+        : 'unknown';
+  return value.state === expectedState;
+}
+
+function deriveCompleteOriginEvidence(rows) {
+  const bySubject = new Map();
+  for (const row of rows) {
+    if (!isRecord(row) || !isValidOriginObservation(row.origin)) return null;
+    const existing = bySubject.get(row.subjectId);
+    if (existing === undefined) {
+      bySubject.set(row.subjectId, row.origin);
+    } else if (existing.state !== row.origin.state) {
+      bySubject.set(row.subjectId, {
+        state: 'unknown',
+        ...(existing.metaTagsCoverage === undefined
+          ? {}
+          : { metaTagsCoverage: existing.metaTagsCoverage }),
+      });
+    }
+  }
+
+  const summary = {
+    explicitOriginalSubjects: 0,
+    notObservedSubjects: 0,
+    unknownSubjects: 0,
+  };
+  const coverage = {
+    ...summary,
+    subjectsObserved: bySubject.size,
+    subjectsWithMetaTags: 0,
+    subjectsPartial: 0,
+    subjectsUnknown: 0,
+    tagsObserved: 0,
+    tagsValid: 0,
+    tagsReturned: 0,
+    tagsOmitted: 0,
+    malformedTagValues: 0,
+    textTruncatedTags: 0,
+    truncatedSubjects: 0,
+    truncated: false,
+    maxTagsPerSubject: 32,
+    maxTagCharacters: 96,
+    responseLimitBytes: 1_048_576,
+  };
+
+  for (const observation of bySubject.values()) {
+    if (observation.state === 'explicit_original') summary.explicitOriginalSubjects += 1;
+    else if (observation.state === 'not_observed') summary.notObservedSubjects += 1;
+    else summary.unknownSubjects += 1;
+
+    const tagsCoverage = observation.metaTagsCoverage;
+    if (!tagsCoverage) {
+      if (Array.isArray(observation.metaTags)) {
+        coverage.subjectsWithMetaTags += 1;
+        coverage.tagsObserved += observation.metaTags.length;
+        coverage.tagsValid += observation.metaTags.length;
+        coverage.tagsReturned += observation.metaTags.length;
+      } else {
+        coverage.subjectsUnknown += 1;
+      }
+      continue;
+    }
+
+    if (tagsCoverage.state === 'unknown') coverage.subjectsUnknown += 1;
+    else {
+      coverage.subjectsWithMetaTags += 1;
+      if (tagsCoverage.state === 'partial') coverage.subjectsPartial += 1;
+    }
+    coverage.tagsObserved += tagsCoverage.observed;
+    coverage.tagsValid += tagsCoverage.valid;
+    coverage.tagsReturned += tagsCoverage.returned;
+    coverage.tagsOmitted += tagsCoverage.omitted;
+    coverage.malformedTagValues += tagsCoverage.malformed;
+    coverage.textTruncatedTags += tagsCoverage.textTruncated;
+    if (tagsCoverage.truncated) coverage.truncatedSubjects += 1;
+  }
+
+  coverage.explicitOriginalSubjects = summary.explicitOriginalSubjects;
+  coverage.notObservedSubjects = summary.notObservedSubjects;
+  coverage.unknownSubjects = summary.unknownSubjects;
+  coverage.truncated =
+    coverage.tagsOmitted > 0 || coverage.textTruncatedTags > 0 || coverage.truncatedSubjects > 0;
+  return { summary, coverage };
 }
 
 function sourceOperationsAreConsistent(result, coverage) {

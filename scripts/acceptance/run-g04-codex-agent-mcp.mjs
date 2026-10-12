@@ -31,6 +31,7 @@ import {
   G04_REQUIRED_CAVEAT,
   verifyG04PersonActivityAnswer,
 } from './g04-person-activity-answer-check.mjs';
+import { validateG04SanitizedReportFile } from './write-g04-agent-mcp-report.mjs';
 import {
   buildG04RunnerReceiptPayload,
   createG04RunnerReceipt,
@@ -686,6 +687,13 @@ function invokeReportWriter(input) {
   return { exitCode: result.status ?? 1, output };
 }
 
+export function resolveG04ReportWriterOutcome(writerResult, { reportExists, reportValid }) {
+  const writerSucceeded = writerResult?.exitCode === 0 && writerResult.output?.passed === true;
+  if (!reportExists) return { state: 'INCONCLUSIVE', recovered: false };
+  if (!reportValid) return { state: 'REPORT_ARTIFACT_CONFLICT_PENDING', recovered: false };
+  return { state: 'REPORT_WRITTEN', recovered: !writerSucceeded };
+}
+
 function validateG04HarnessClaim(claim, gate) {
   if (
     !claim ||
@@ -800,7 +808,105 @@ export function runG04CodexAgentMcp({ claimHarness, persistResult } = {}) {
     shellToolCallCount: 0,
     allowedCallCount: 0,
   };
+  const claimedReportDisposition = {
+    state: 'CLAIMED',
+    retryAllowed: false,
+    claimId: remoteClaim.claimId,
+    prNumber: remoteClaim.prNumber,
+    sourceCandidateSha: remoteClaim.candidateSha,
+    baseSha: remoteClaim.baseSha,
+    reviewerId: remoteClaim.reviewerId,
+    bundleSha256: remoteClaim.bundleSha256,
+    runnerReceiptPublicKey: remoteClaim.runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256: remoteClaim.runnerReceiptPublicKeySha256,
+  };
+  const inspectExistingReport = () => {
+    if (!existsSync(REPORT_PATH)) return { reportExists: false, reportValidation: null };
+    return {
+      reportExists: true,
+      reportValidation: validateG04SanitizedReportFile(claimedReportDisposition),
+    };
+  };
+  const finishReportArtifactConflict = (details = safe) => {
+    const conflictDetails = {
+      ...details,
+      reason:
+        'canonical_report_exists_but_did_not_validate; preserve artifact and do not retry query',
+    };
+    markClaim(claimPath, claim, 'REPORT_ARTIFACT_CONFLICT_PENDING', conflictDetails);
+    process.stdout.write(
+      `${JSON.stringify({
+        passed: false,
+        state: 'REPORT_ARTIFACT_CONFLICT_PENDING',
+        claimId: remoteClaim.claimId,
+        ...conflictDetails,
+      })}\n`,
+    );
+    return 1;
+  };
+  const finishReportWritten = (reportValidation, details = safe) => {
+    if (reportValidation?.passed !== true) return finishReportArtifactConflict(details);
+    const reportSha256 = reportValidation.reportSha256;
+    const answerCounters = reportValidation.report.answerCounters;
+    const resultSummary = reportValidation.report.resultSummary;
+    const writtenDetails = { ...details, reportSha256, answerCounters, resultSummary };
+    markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', writtenDetails);
+    let acknowledged = false;
+    try {
+      acknowledged = persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256) === true;
+    } catch {
+      acknowledged = false;
+    }
+    if (!acknowledged) {
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...details,
+          reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
+        })}\n`,
+      );
+      return 1;
+    }
+    markClaim(claimPath, claim, 'REPORT_WRITTEN', writtenDetails);
+    process.stdout.write(
+      `${JSON.stringify({
+        passed: true,
+        state: 'REPORT_WRITTEN',
+        claimId: remoteClaim.claimId,
+        sourceRevision,
+        baseSha: currentGate.baseSha,
+        prNumber: currentGate.prNumber,
+        reviewerId: currentGate.reviewerId,
+        bundleSha256,
+        reportSha256,
+        answerCounters,
+        resultSummary,
+        ...(typeof details.reason === 'string' ? { reason: details.reason } : {}),
+      })}\n`,
+    );
+    return 0;
+  };
   const finishInconclusive = (details = safe) => {
+    const existing = inspectExistingReport();
+    const outcome = resolveG04ReportWriterOutcome(
+      { exitCode: 1, output: null },
+      {
+        reportExists: existing.reportExists,
+        reportValid: existing.reportValidation?.passed === true,
+      },
+    );
+    if (outcome.state === 'REPORT_WRITTEN') {
+      return finishReportWritten(existing.reportValidation, {
+        ...details,
+        reason: 'validated_canonical_report_reconciled_instead_of_inconclusive',
+      });
+    }
+    if (outcome.state === 'REPORT_ARTIFACT_CONFLICT_PENDING') {
+      return finishReportArtifactConflict(details);
+    }
     markClaim(claimPath, claim, 'INCONCLUSIVE', details);
     try {
       persistResult(remoteClaim, 'INCONCLUSIVE');
@@ -946,88 +1052,38 @@ export function runG04CodexAgentMcp({ claimHarness, persistResult } = {}) {
       runnerReceiptKeyPair,
     );
     const writerResult = invokeReportWriter(writerInput);
-    if (writerResult.exitCode !== 0 || writerResult.output?.passed !== true) {
+    const existing = inspectExistingReport();
+    const writerOutcome = resolveG04ReportWriterOutcome(writerResult, {
+      reportExists: existing.reportExists,
+      reportValid: existing.reportValidation?.passed === true,
+    });
+    if (writerOutcome.state === 'INCONCLUSIVE') {
       return finishInconclusive({
         ...safe,
         answerChecks: writerResult.output?.answerChecks ?? answerResult.answerChecks,
       });
     }
-
-    const output = writerResult.output;
-    const reportSha256 = sha256(readFileSync(REPORT_PATH));
-    markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
-      ...safe,
-      reportSha256,
-      answerCounters: output.answerCounters,
-      resultSummary: output.resultSummary,
-    });
-    let acknowledged = false;
-    try {
-      acknowledged = persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256) === true;
-    } catch {
-      acknowledged = false;
-    }
-    if (!acknowledged) {
-      process.stdout.write(
-        `${JSON.stringify({
-          passed: false,
-          state: 'REPORT_WRITTEN_ACK_PENDING',
-          claimId: remoteClaim.claimId,
-          reportSha256,
-          ...safe,
-          reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
-        })}\n`,
-      );
-      return 1;
-    }
-    markClaim(claimPath, claim, 'REPORT_WRITTEN', {
-      ...safe,
-      reportSha256,
-      answerCounters: output.answerCounters,
-      resultSummary: output.resultSummary,
-    });
-    process.stdout.write(
-      `${JSON.stringify({
-        passed: true,
-        state: 'REPORT_WRITTEN',
-        claimId: remoteClaim.claimId,
-        sourceRevision,
-        baseSha: currentGate.baseSha,
-        prNumber: currentGate.prNumber,
-        reviewerId: currentGate.reviewerId,
-        bundleSha256,
-        reportSha256,
-        answerCounters: output.answerCounters,
-        resultSummary: output.resultSummary,
-      })}\n`,
-    );
-    return 0;
-  } catch {
-    if (existsSync(REPORT_PATH)) {
-      const reportSha256 = sha256(readFileSync(REPORT_PATH));
-      markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+    if (writerOutcome.state === 'REPORT_ARTIFACT_CONFLICT_PENDING') {
+      return finishReportArtifactConflict({
         ...safe,
-        reportSha256,
-        reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+        answerChecks: writerResult.output?.answerChecks ?? answerResult.answerChecks,
       });
-      try {
-        persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
-      } catch {
-        /* Leave the durable/local claim terminal and preserve the report. */
-      }
-      process.stdout.write(
-        `${JSON.stringify({
-          passed: false,
-          state: 'REPORT_WRITTEN_ACK_PENDING',
-          claimId: remoteClaim.claimId,
-          reportSha256,
-          ...safe,
-          reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
-        })}\n`,
-      );
-      return 1;
     }
-    return finishInconclusive();
+    return finishReportWritten(
+      existing.reportValidation,
+      writerOutcome.recovered
+        ? {
+            ...safe,
+            reason:
+              'nonzero_writer_exit_reconciled_from_valid_report; preserve report and do not retry query',
+          }
+        : safe,
+    );
+  } catch {
+    return finishInconclusive({
+      ...safe,
+      reason: 'runner_interrupted; reconcile any existing canonical report and do not retry query',
+    });
   } finally {
     if (temporaryDirectory) rmSync(temporaryDirectory, { recursive: true, force: true });
   }

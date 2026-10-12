@@ -20,6 +20,7 @@ import {
   assertCandidateInvariant,
   assertCorrectiveClosure,
   assertDiscoveryExhaustionEvidence,
+  assertG04OneShotResultArtifactState,
   assertMergeReadiness,
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
@@ -1079,6 +1080,19 @@ test('G04 ambiguous result acknowledgement matches the complete claim and report
     }),
     false,
     'an inconclusive readback cannot carry report fields',
+  );
+});
+
+test('G04 Harness refuses INCONCLUSIVE when the canonical report artifact exists', () => {
+  assert.equal(assertG04OneShotResultArtifactState('INCONCLUSIVE', false), true);
+  assert.equal(assertG04OneShotResultArtifactState('REPORT_WRITTEN', true), true);
+  assert.throws(
+    () => assertG04OneShotResultArtifactState('INCONCLUSIVE', true),
+    (error) => error.code === 'G04_ONESHOT_REPORT_EXISTS',
+  );
+  assert.throws(
+    () => assertG04OneShotResultArtifactState('INCONCLUSIVE', null),
+    (error) => error.code === 'G04_ONESHOT_REPORT_STATE_INVALID',
   );
 });
 

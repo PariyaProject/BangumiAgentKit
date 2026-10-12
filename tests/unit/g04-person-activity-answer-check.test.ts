@@ -194,6 +194,13 @@ function makeCompleteResult() {
       responseLimitBytes: 1_048_576,
     },
   };
+  const firstRow = result.rows[0];
+  const secondRow = result.rows[1];
+  if (!firstRow || !secondRow) throw new Error('Expected complete source rows.');
+  Object.assign(firstRow, {
+    origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
+  });
+  Object.assign(secondRow, { origin: { state: 'not_observed', metaTags: [] } });
   const detailOperation = result.sourceOperations[2];
   if (!detailOperation) throw new Error('Expected the subject detail source operation.');
   detailOperation.attempted = 2;
@@ -351,6 +358,47 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
         },
       ],
       [
+        'a complete row is missing its origin observation',
+        (result) => {
+          const row = result.rows[0];
+          if (!row) throw new Error('Expected a person activity row.');
+          Reflect.deleteProperty(row, 'origin');
+        },
+      ],
+      [
+        'a row origin observation contradicts its tags',
+        (result) => {
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          if (!row || typeof row.origin !== 'object' || row.origin === null) {
+            throw new Error('Expected a row origin observation.');
+          }
+          Reflect.set(row.origin, 'state', 'not_observed');
+        },
+      ],
+      [
+        'row-derived origin counts contradict both aggregates',
+        (result) => {
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          if (!row || typeof row.origin !== 'object' || row.origin === null) {
+            throw new Error('Expected a row origin observation.');
+          }
+          Reflect.set(row.origin, 'metaTags', ['奇幻']);
+          Reflect.set(row.origin, 'state', 'not_observed');
+        },
+      ],
+      [
+        'the summary origin aggregate is missing',
+        (result) => {
+          Reflect.deleteProperty(result.summary, 'origin');
+        },
+      ],
+      [
+        'the summary origin aggregate is malformed',
+        (result) => {
+          Reflect.set(result.summary, 'origin', { explicitOriginalSubjects: '1' });
+        },
+      ],
+      [
         'warnings are missing',
         (result) => {
           Reflect.deleteProperty(result, 'warnings');
@@ -382,6 +430,33 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
       );
       expect(report.answerChecks.boundedCoverageConsistent, label).toBe(false);
     }
+  });
+
+  it('derives complete origin totals by unique subject rather than credit row', () => {
+    const result = makeCompleteResult();
+    const sourceRow = result.rows[0];
+    if (!sourceRow) throw new Error('Expected a person activity row.');
+    const duplicateSubjectRow = {
+      ...sourceRow,
+      relationId: 7003,
+      characterName: 'Character C',
+      origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
+    };
+    result.rows.push(duplicateSubjectRow);
+    result.coverage.rowsEligible = 3;
+    result.coverage.rowsReturned = 3;
+    result.coverage.uniqueCharacters = 3;
+    result.summary.creditRows = 3;
+    result.summary.uniqueCharacters = 3;
+
+    const report = verifyG04PersonActivityAnswer(
+      answerFor(result),
+      G04_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result },
+      calls(),
+      3000,
+    );
+    expect(report.passed).toBe(true);
   });
 
   it('rejects changed arguments, duplicate/wrong rows, and omitted limits', () => {

@@ -33,6 +33,7 @@ import {
   createRunState,
   extendEpochReviewBudget,
   extendRunProductReviewBudget,
+  assertG04OneShotResultArtifactState,
   g04DispositionAcknowledges,
   isTerminalRunState,
   markReviewStarted,
@@ -1610,6 +1611,7 @@ function commandEpochG04OneShotResult(
       'Only terminal G04 one-shot states are supported.',
     );
   }
+  assertG04OneShotResultArtifactState(resultState, fs.existsSync(G04_REPORT_PATH));
   const runResult = issueState(claim.runNumber);
   const epochResult = epochState(claim.prNumber);
   const current = epochResult.state.adversarial_preflight?.g04_one_shot_disposition;

@@ -330,9 +330,35 @@ describe('G04 sanitized Agent/MCP report builder', () => {
     result.state = 'complete';
     const coverage = result.coverage as Record<string, unknown>;
     coverage.missingDateRows = 1;
+    const summaryOrigin = {
+      explicitOriginalSubjects: 1,
+      notObservedSubjects: 0,
+      unknownSubjects: 0,
+    };
+    coverage.origin = {
+      ...summaryOrigin,
+      subjectsObserved: 1,
+      subjectsWithMetaTags: 1,
+      subjectsPartial: 0,
+      subjectsUnknown: 0,
+      tagsObserved: 2,
+      tagsValid: 2,
+      tagsReturned: 2,
+      tagsOmitted: 0,
+      malformedTagValues: 0,
+      textTruncatedTags: 0,
+      truncatedSubjects: 0,
+      truncated: false,
+      maxTagsPerSubject: 32,
+      maxTagCharacters: 96,
+      responseLimitBytes: 1_048_576,
+    };
+    Object.assign(result.summary as Record<string, unknown>, { origin: summaryOrigin });
+    Object.assign(result, { warnings: [] });
     const sourceRow = (result.rows as Array<Record<string, unknown>>)[0];
     if (!sourceRow) throw new Error('Expected the report fixture row.');
     sourceRow.roleFamily = 'main';
+    sourceRow.origin = { state: 'explicit_original', metaTags: ['原创', '奇幻'] };
 
     const answer = JSON.parse(input.answer) as Record<string, unknown>;
     answer.state = 'complete';

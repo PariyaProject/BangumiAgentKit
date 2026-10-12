@@ -1,11 +1,15 @@
-import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
 import {
   assertG04CandidateReviewGate,
   buildG04SafeEventSummary,
   buildCodexExecArgs,
   hasUnexpectedG04CodexToolActivity,
   canonicalG04ClaimPath,
+  resolveG04ReportWriterOutcome,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
 import * as g04Runner from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
@@ -312,5 +316,51 @@ describe('G04 one-tool Codex runner preflight', () => {
       /[\\/]\.git[\\/]pariya-agent-state[\\/]g04-run95-one-shot-claim\.json$/u,
     );
     expect(Object.hasOwn(g04Runner, 'createG04OneShotClaim')).toBe(false);
+  });
+});
+
+describe('G04 report-writer outcome recovery', () => {
+  it('reconciles a validated report created before the writer exits unsuccessfully', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'g04-writer-outcome-'));
+    const reportPath = join(directory, 'report.json');
+    try {
+      writeFileSync(reportPath, '{"sanitized":true}\n', 'utf8');
+      const outcome = resolveG04ReportWriterOutcome(
+        { exitCode: 1, output: null },
+        { reportExists: existsSync(reportPath), reportValid: true },
+      );
+      expect(outcome).toEqual({ state: 'REPORT_WRITTEN', recovered: true });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not record inconclusive while any unvalidated report artifact exists', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'g04-writer-conflict-'));
+    const reportPath = join(directory, 'report.json');
+    try {
+      writeFileSync(reportPath, '{"partial":', 'utf8');
+      const outcome = resolveG04ReportWriterOutcome(
+        { exitCode: 1, output: null },
+        { reportExists: existsSync(reportPath), reportValid: false },
+      );
+      expect(outcome).toEqual({ state: 'REPORT_ARTIFACT_CONFLICT_PENDING', recovered: false });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('records an inconclusive writer result only when no report artifact exists', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'g04-writer-empty-'));
+    const reportPath = join(directory, 'report.json');
+    try {
+      const outcome = resolveG04ReportWriterOutcome(
+        { exitCode: 1, output: null },
+        { reportExists: existsSync(reportPath), reportValid: false },
+      );
+      expect(outcome).toEqual({ state: 'INCONCLUSIVE', recovered: false });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });

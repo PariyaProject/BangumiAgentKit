@@ -1018,6 +1018,28 @@ export function assertCorrectiveClosure(epoch, closure = epoch?.corrective_closu
   return true;
 }
 
+export function assertG04OneShotResultArtifactState(resultState, reportExists) {
+  if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState)) {
+    throw new HarnessInvariantError(
+      'G04_ONESHOT_RESULT_INVALID',
+      'Only terminal G04 one-shot states are supported.',
+    );
+  }
+  if (typeof reportExists !== 'boolean') {
+    throw new HarnessInvariantError(
+      'G04_ONESHOT_REPORT_STATE_INVALID',
+      'Canonical G04 report presence must be checked before recording a one-shot result.',
+    );
+  }
+  if (resultState === 'INCONCLUSIVE' && reportExists) {
+    throw new HarnessInvariantError(
+      'G04_ONESHOT_REPORT_EXISTS',
+      'Cannot record INCONCLUSIVE while the canonical G04 report exists; validate and reconcile the report first.',
+    );
+  }
+  return true;
+}
+
 export function g04DispositionAcknowledges(disposition, claim, expected) {
   if (
     !disposition ||
