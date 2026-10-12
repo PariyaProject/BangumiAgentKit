@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { selectPublicProbeNames } from '../../scripts/public-probe-selection.js';
 
 describe('selectPublicProbeNames', () => {
-  const available = ['bangumi.get_user', 'bangumi.get_collection', 'bangumi.get_subject'];
+  const available = [
+    'bangumi.get_user',
+    'bangumi.get_collection',
+    'bangumi.get_subject',
+    'bangumi.get_subject_relations',
+  ];
+
+  it('isolates the R01 relation probe to its exact public read tool', () => {
+    expect(selectPublicProbeNames([
+      '--live', '--', '--tool', 'bangumi.get_subject_relations',
+    ], available)).toEqual(['bangumi.get_subject_relations']);
+  });
 
   it('accepts the pnpm argument separator and only returns selected tools', () => {
     expect(selectPublicProbeNames([
