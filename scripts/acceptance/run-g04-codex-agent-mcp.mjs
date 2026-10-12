@@ -442,6 +442,7 @@ export function assertG04CandidateReviewGate(
     );
   }
   return {
+    runNumber: RUN_NUMBER,
     prNumber,
     candidateSha: sourceRevision,
     baseSha: currentBaseSha,

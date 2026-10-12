@@ -189,6 +189,7 @@ describe('G04 one-tool Codex runner preflight', () => {
     expect(
       assertG04CandidateReviewGate(status, pr, { sourceRevision: candidate, currentBaseSha: base }),
     ).toEqual({
+      runNumber: 95,
       prNumber,
       candidateSha: candidate,
       baseSha: base,
