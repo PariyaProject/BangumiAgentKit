@@ -330,6 +330,11 @@ one exists. A still-`CLAIMED` attempt with no accepted report becomes
 `INCONCLUSIVE` with `retryAllowed=false`; a valid report created before a lost
 Harness acknowledgement can be recorded as `REPORT_WRITTEN`. Invalid or stale
 reports are terminally unaccepted and identified only by a digest and status.
+The acceptance generator credits an R01 report only after read-only Harness and
+GitHub checks confirm the exact durable `REPORT_WRITTEN` disposition, permanent
+claim and terminal labels, Candidate/Base/CI/reviewer/bundle binding, and the
+digest of the canonical report bytes. Missing, inconclusive, conflicting, or
+unreadable control-plane state leaves the tool uncredited.
 
 The runner re-reads the durable claim immediately before invoking Codex and
 again before writing a report. Runner completion and recovery compete for one

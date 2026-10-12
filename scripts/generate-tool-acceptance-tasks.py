@@ -269,6 +269,12 @@ CODEX_R01_PROBE_ARGUMENTS = {
 }
 CODEX_R01_ARGUMENT_PROFILE = 'fixed-r01-subject-41529-include-evidence-v1'
 CODEX_R01_REPORT_RELATIVE_PATH = 'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'
+CODEX_R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp'
+CODEX_R01_CLAIM_LATCH_NAME = 'harness-r95-r01-subject-relations-claimed'
+CODEX_R01_CLAIM_LATCH_DESCRIPTION = (
+    'Run 95 R01 bangumi.get_subject_relations one-shot latch; permanent; never remove or recreate.'
+)
+CODEX_R01_TERMINAL_LATCH_NAME = 'harness-r95-r01-subject-relations-terminal'
 CODEX_A01_QUERY_ARGUMENTS = {
     'cohorts': [
         {
@@ -1553,6 +1559,11 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
 CODEX_R01_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_r01_report_matches_candidate_revision(',
+        'def codex_r01_harness_status(',
+        'def codex_r01_harness_latches(',
+        'def codex_r01_harness_disposition_matches_report(',
+        'current_latches = codex_r01_harness_latches()',
+        'R01-REPORT_WRITTEN:sha256=',
         'def codex_r01_result_is_valid(',
         'CODEX_R01_RESULT_FIELDS',
     ),
@@ -4349,6 +4360,152 @@ def codex_g16_harness_disposition_matches_report(
         not isinstance(report_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
         or any(disposition.get(key) != value for key, value in expected.items())
     ):
+        return None
+    return disposition
+
+
+def codex_r01_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the durable Run/Epoch R01 disposition through the Harness status command."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    harness_script = ROOT / 'scripts/agent-harness.mjs'
+    try:
+        result = subprocess.run(
+            ['node', str(harness_script), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_r01_github_label(name: str) -> dict[str, object] | None:
+    """Read one repository-scoped R01 latch; API or parse failures fail closed."""
+    try:
+        result = subprocess.run(
+            ['gh', 'api', f'repos/{{owner}}/{{repo}}/labels/{name}'],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        label = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return label if isinstance(label, dict) else None
+
+
+def codex_r01_harness_latches() -> dict[str, object] | None:
+    """Read the immutable claim and result labels that arbitrate the R01 one-shot."""
+    claim = codex_r01_github_label(CODEX_R01_CLAIM_LATCH_NAME)
+    terminal = codex_r01_github_label(CODEX_R01_TERMINAL_LATCH_NAME)
+    if claim is None:
+        return None
+    return {'claim': claim, 'terminal': terminal}
+
+
+def codex_r01_harness_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+    latches: object,
+) -> dict[str, object] | None:
+    """Require the exact durable REPORT_WRITTEN claim, terminal latch, and report digest."""
+    if not isinstance(harness_status, dict) or not isinstance(latches, dict):
+        return None
+    run = harness_status.get('run')
+    epoch_view = harness_status.get('epoch')
+    run_state = run.get('state') if isinstance(run, dict) else None
+    epoch = epoch_view.get('state') if isinstance(epoch_view, dict) else None
+    pr_number = report.get('prNumber')
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    reviewer_id = report.get('reviewerId')
+    bundle_sha256 = report.get('mcpBundleSha256')
+    if (
+        not isinstance(report_sha256, str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+        or type(pr_number) is not int
+        or not isinstance(source_revision, str)
+        or not isinstance(base_sha, str)
+        or not isinstance(reviewer_id, str)
+        or not isinstance(bundle_sha256, str)
+        or not isinstance(run, dict)
+        or run.get('number') != 95
+        or not isinstance(run_state, dict)
+        or run_state.get('profile') != 'AUTONOMOUS_EVOLUTION'
+        or not isinstance(epoch_view, dict)
+        or epoch_view.get('number') != pr_number
+        or epoch_view.get('github_state') not in {'OPEN', 'MERGED'}
+        or (epoch_view.get('github_state') == 'OPEN'
+            and run_state.get('active_epoch_pr') != pr_number)
+        or epoch_view.get('pr_head_sha') != source_revision
+        or not isinstance(epoch, dict)
+        or epoch.get('epoch_id') != CODEX_R01_EPOCH_ID
+        or epoch.get('pr_number') != pr_number
+        or epoch.get('base_branch') != 'master'
+        or epoch.get('base_sha') != base_sha
+        or epoch.get('reviewed_base_sha') != base_sha
+        or epoch.get('candidate_sha') != source_revision
+        or epoch.get('review_pass_sha') != source_revision
+        or not isinstance(epoch.get('ci'), dict)
+        or epoch['ci'].get('sha') != source_revision
+        or epoch['ci'].get('status') != 'SUCCESS'
+    ):
+        return None
+
+    review_history = epoch.get('review_history')
+    latest_review = review_history[-1] if isinstance(review_history, list) and review_history else None
+    if (
+        not isinstance(latest_review, dict)
+        or latest_review.get('candidate_sha') != source_revision
+        or latest_review.get('reviewed_base_sha') != base_sha
+        or latest_review.get('verdict') != 'PASS'
+        or latest_review.get('reviewer_id') != reviewer_id
+    ):
+        return None
+
+    preflight = epoch.get('adversarial_preflight')
+    disposition = preflight.get('r01_one_shot_disposition') if isinstance(preflight, dict) else None
+    claim_latch = latches.get('claim')
+    terminal_latch = latches.get('terminal')
+    if (
+        not isinstance(disposition, dict)
+        or not isinstance(claim_latch, dict)
+        or claim_latch.get('name') != CODEX_R01_CLAIM_LATCH_NAME
+        or claim_latch.get('description') != CODEX_R01_CLAIM_LATCH_DESCRIPTION
+        or not isinstance(terminal_latch, dict)
+        or terminal_latch.get('name') != CODEX_R01_TERMINAL_LATCH_NAME
+        or terminal_latch.get('description') != f'R01-REPORT_WRITTEN:sha256={report_sha256}'
+    ):
+        return None
+
+    expected = {
+        'claimId': report.get('claimId'),
+        'frontierId': 'R01',
+        'epochId': CODEX_R01_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': pr_number,
+        'toolName': 'bangumi.get_subject_relations',
+        'argumentProfile': CODEX_R01_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': _canonical_json_sha256(
+            CODEX_R01_PROBE_ARGUMENTS['bangumi.get_subject_relations'],
+        ),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': source_revision,
+        'baseSha': base_sha,
+        'ciSha': source_revision,
+        'ciStatus': 'SUCCESS',
+        'reviewerId': reviewer_id,
+        'bundleSha256': bundle_sha256,
+        'model': 'gpt-6-luna',
+        'reasoningEffort': 'max',
+        'reportWritten': True,
+        'reportPath': CODEX_R01_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
         return None
     return disposition
 
@@ -7495,6 +7652,19 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
                             path, report.get('sourceRevision'),
                         )
                     ):
+                        continue
+                    try:
+                        report_bytes = path.read_bytes()
+                    except OSError:
+                        continue
+                    current_status = codex_r01_harness_status(report.get('prNumber'))
+                    current_latches = codex_r01_harness_latches()
+                    if codex_r01_harness_disposition_matches_report(
+                        report,
+                        current_status,
+                        hashlib.sha256(report_bytes).hexdigest(),
+                        current_latches,
+                    ) is None:
                         continue
                 elif not codex_g20_report_matches_candidate_revision(
                     path, report.get('sourceRevision'),

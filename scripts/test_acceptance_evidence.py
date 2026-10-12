@@ -1718,14 +1718,56 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 self.report_path, self.source_revision,
             )
         )
-        self.assertEqual(
-            GENERATOR.model_mcp_e2e_names(self.catalog),
-            {'bangumi.get_subject_relations'},
-        )
-        self.assertEqual(
-            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_subject_relations'],
-            {'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'},
-        )
+        report_bytes = self.report_path.read_bytes()
+        harness_status, latches = self._r01_harness_status_fixture(report, report_bytes)
+        self.assertIsNotNone(GENERATOR.codex_r01_harness_disposition_matches_report(
+            report,
+            harness_status,
+            hashlib.sha256(report_bytes).hexdigest(),
+            latches,
+        ))
+        with patch.object(GENERATOR, 'codex_r01_harness_status', return_value=harness_status), \
+                patch.object(GENERATOR, 'codex_r01_harness_latches', return_value=latches):
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_names(self.catalog),
+                {'bangumi.get_subject_relations'},
+            )
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_subject_relations'],
+                {'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'},
+            )
+
+    def test_r01_valid_looking_report_is_not_credited_after_inconclusive_terminal_latch(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations', frontier_id='R01')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report_bytes = self.report_path.read_bytes()
+        harness_status, latches = self._r01_harness_status_fixture(report, report_bytes)
+        disposition = harness_status['epoch']['state']['adversarial_preflight'][
+            'r01_one_shot_disposition'
+        ]
+        disposition.update({'state': 'INCONCLUSIVE', 'reportWritten': False})
+        disposition.pop('reportPath')
+        disposition.pop('reportSha256')
+        latches['terminal']['description'] = 'R01-INCONCLUSIVE:report=none'
+
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            report,
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
+        self.assertIsNone(GENERATOR.codex_r01_harness_disposition_matches_report(
+            report,
+            harness_status,
+            hashlib.sha256(report_bytes).hexdigest(),
+            latches,
+        ))
+        with patch.object(GENERATOR, 'codex_r01_harness_status', return_value=harness_status), \
+                patch.object(GENERATOR, 'codex_r01_harness_latches', return_value=latches):
+            self.assertNotIn(
+                'bangumi.get_subject_relations',
+                GENERATOR.model_mcp_e2e_sources(self.catalog),
+            )
 
     def test_r01_report_cannot_be_rebound_to_another_subject_candidate_or_path(self):
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
@@ -3015,6 +3057,76 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 },
             },
         }
+
+    def _r01_harness_status_fixture(self, report, report_bytes):
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'R01',
+            'epochId': GENERATOR.CODEX_R01_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'toolName': 'bangumi.get_subject_relations',
+            'argumentProfile': GENERATOR.CODEX_R01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_R01_PROBE_ARGUMENTS['bangumi.get_subject_relations'],
+            ),
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_R01_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+        }
+        status = {
+            'run': {
+                'number': 95,
+                'state': {
+                    'profile': 'AUTONOMOUS_EVOLUTION',
+                    'active_epoch_pr': report['prNumber'],
+                },
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': 'OPEN',
+                'pr_head_sha': report['sourceRevision'],
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R01_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'base_branch': 'master',
+                    'base_sha': report['baseSha'],
+                    'reviewed_base_sha': report['baseSha'],
+                    'candidate_sha': report['sourceRevision'],
+                    'review_pass_sha': report['sourceRevision'],
+                    'ci': {'sha': report['sourceRevision'], 'status': 'SUCCESS'},
+                    'review_history': [{
+                        'candidate_sha': report['sourceRevision'],
+                        'reviewed_base_sha': report['baseSha'],
+                        'verdict': 'PASS',
+                        'reviewer_id': report['reviewerId'],
+                    }],
+                    'adversarial_preflight': {'r01_one_shot_disposition': disposition},
+                },
+            },
+        }
+        latches = {
+            'claim': {
+                'name': GENERATOR.CODEX_R01_CLAIM_LATCH_NAME,
+                'description': GENERATOR.CODEX_R01_CLAIM_LATCH_DESCRIPTION,
+            },
+            'terminal': {
+                'name': GENERATOR.CODEX_R01_TERMINAL_LATCH_NAME,
+                'description': f'R01-REPORT_WRITTEN:sha256={report_sha256}',
+            },
+        }
+        return status, latches
 
     def _g16_is_valid(self, report, report_bytes=None, harness_status=None):
         bytes_value = report_bytes or json.dumps(report).encode('utf-8')
