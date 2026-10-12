@@ -9,10 +9,7 @@ import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { encryptToken } from '@bangumi-agent-kit/auth';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
-import {
-  L04_SYNTHETIC_COLLECTION_FACTS,
-  L04_SYNTHETIC_COLLECTION_INPUT,
-} from '../../scripts/acceptance/l04-collection-intelligence-answer-check.mjs';
+import { L04_SYNTHETIC_COLLECTION_INPUT } from '../../scripts/acceptance/l04-collection-intelligence-answer-check.mjs';
 
 const TOOL_NAME = 'bangumi.get_collection_intelligence';
 const SECRET_KEY = 'l04-synthetic-fixture-key-2026-only';
@@ -31,22 +28,43 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
-function syntheticRows() {
-  return Array.from({ length: L04_SYNTHETIC_COLLECTION_FACTS.observedRows }, (_, index) => ({
+function readScenario(scenarioPath) {
+  const absolute = path.resolve(scenarioPath);
+  const tmpRoot = path.resolve(os.tmpdir()) + path.sep;
+  if (!absolute.startsWith(tmpRoot))
+    throw new Error('Synthetic scenario must stay in an OS temporary directory.');
+  const scenario = JSON.parse(fs.readFileSync(absolute, 'utf8'));
+  const facts = scenario?.facts;
+  if (
+    typeof facts?.topTag !== 'string' ||
+    !Number.isInteger(facts.topTagCount) ||
+    !Number.isInteger(facts.observedRows) ||
+    !Number.isInteger(facts.sourceTotal) ||
+    facts.topTagCount < 7 ||
+    facts.topTagCount >= facts.observedRows ||
+    facts.observedRows < 15 ||
+    facts.observedRows > L04_SYNTHETIC_COLLECTION_INPUT.maxItems ||
+    facts.sourceTotal <= facts.observedRows ||
+    !Array.isArray(scenario.otherTags) ||
+    scenario.otherTags.length < 5 ||
+    scenario.otherTags.includes(facts.topTag)
+  ) {
+    throw new Error('Synthetic scenario failed its structural bounds.');
+  }
+  return scenario;
+}
+
+function syntheticRows(scenario) {
+  const { facts, otherTags } = scenario;
+  return Array.from({ length: facts.observedRows }, (_, index) => ({
     subject_id: 990_000 + index,
     type: 3,
     rate: index % 10,
     comment: undefined,
     tags: [
-      index < 7
-        ? L04_SYNTHETIC_COLLECTION_FACTS.topTag
-        : index < 11
-          ? '奇幻'
-          : index < 15
-            ? '科幻'
-            : index < 18
-              ? '友情'
-              : '运动',
+      index < facts.topTagCount
+        ? facts.topTag
+        : otherTags[(index - facts.topTagCount) % otherTags.length],
     ],
     ep_status: index % 13,
     updated_at: `2026-09-${String((index % 28) + 1).padStart(2, '0')}T00:00:00Z`,
@@ -81,13 +99,15 @@ function removeSensitiveEnvironment() {
 }
 
 async function main(argv) {
-  if (argv.length !== 2 || argv[0] !== '--summary-file')
-    throw new Error('Expected --summary-file <temporary-path>.');
+  if (argv.length !== 4 || argv[0] !== '--summary-file' || argv[2] !== '--scenario-file')
+    throw new Error('Expected --summary-file <temporary-path> --scenario-file <temporary-path>.');
   const summaryPath = argv[1];
+  const scenario = readScenario(argv[3]);
+  const { facts } = scenario;
   removeSensitiveEnvironment();
 
   const sourceRequests = [];
-  const rows = syntheticRows();
+  const rows = syntheticRows(scenario);
   const fetchFn = async (input, init = {}) => {
     const url = new URL(typeof input === 'string' ? input : input.url);
     const method = init.method || 'GET';
@@ -112,7 +132,7 @@ async function main(argv) {
     }
     return new Response(
       JSON.stringify({
-        total: L04_SYNTHETIC_COLLECTION_FACTS.sourceTotal,
+        total: facts.sourceTotal,
         limit: 20,
         offset: 0,
         data: rows,
@@ -167,6 +187,7 @@ async function main(argv) {
     sourceRequestMatched: false,
     bearerPresented: false,
     sourceState: null,
+    topTag: null,
     observedRows: null,
     sourceTotal: null,
     truncated: null,
@@ -232,6 +253,7 @@ async function main(argv) {
         observedRows: result.coverage.observedRows,
         sourceTotal: result.coverage.sourceTotal,
         truncated: result.coverage.truncated,
+        topTag: result.data.tags.top[0]?.tag ?? null,
         topTagCount: result.data.tags.top[0]?.count ?? null,
         writeRequests: sourceRequests.filter((item) => item.method !== 'GET').length,
       };

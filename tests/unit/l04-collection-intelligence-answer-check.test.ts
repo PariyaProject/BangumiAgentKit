@@ -114,6 +114,35 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(answer.checks.topObservedTagCountPresent).toBe(true);
   });
 
+  it('rejects a ranking continuation that names a different top tag', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次，最多的标签是科幻；本次观察了 20 条，源报告共 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(answer.accepted).toBe(false);
+    expect(answer.checks.topObservedTagCountPresent).toBe(false);
+  });
+
+  it('requires positive exact assertions for both coverage denominators', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次，是本次出现最多的标签；本次不是 20 条，源报告也不是 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(answer.accepted).toBe(false);
+    expect(answer.checks.observedDenominatorPresent).toBe(false);
+    expect(answer.checks.sourceTotalPresent).toBe(false);
+  });
+
+  it('rejects enthusiasm claims that infer a user preference', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次，是本次出现最多的标签；你肯定会爱上航海，但不能据此判断偏好。本次观察了 20 条，源报告共 30 条，覆盖部分收藏。',
+    );
+
+    expect(answer.accepted).toBe(false);
+    expect(answer.checks.noPreferenceInference).toBe(false);
+    expect(answer.checks.noUnsupportedPreferenceClaim).toBe(false);
+  });
+
   it('rejects a direct preference claim even when a later clause adds a disclaimer', () => {
     const inferred = checkL04CollectionIntelligenceAnswer(
       '合成样例中，你喜欢航海；这不能说明偏好。本次观察了 20 条，源报告共 30 条，覆盖部分收藏，航海标签出现 7 次。',
@@ -170,6 +199,15 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(overclaim.checks.noFullCollectionClaim).toBe(false);
   });
 
+  it('does not let an uncovered-sample phrase negate a later full-collection claim after 而', () => {
+    const overclaim = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次，是本次出现最多的标签；样本未覆盖全量而你的完整收藏中航海标签出现 7 次；本次观察了 20 条，源报告共 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(overclaim.accepted).toBe(false);
+    expect(overclaim.checks.noFullCollectionClaim).toBe(false);
+  });
+
   it('rejects a negated synthetic disclosure and real-user provenance claims', () => {
     const negatedSynthetic = checkL04CollectionIntelligenceAnswer(
       '合成样例中，这不是合成样例，而是你的真实收藏：航海标签出现 7 次；观察 20 条，源报告 30 条，结果部分，不能据此判断偏好。',
@@ -185,6 +223,24 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(realProvenance.checks.noRealUserProvenanceClaim).toBe(false);
   });
 
+  it('rejects a synthetic disclosure explicitly denied with 不能算作', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '这个输出不能算作合成样例；航海标签出现 7 次，是本次出现最多的标签；本次观察了 20 条，源报告共 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(answer.accepted).toBe(false);
+    expect(answer.checks.syntheticContextDisclosed).toBe(false);
+  });
+
+  it('accepts an explicit caveat that the synthetic sample is not the real user collection', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '这是合成测试样本，不代表你的真实收藏。航海标签出现 7 次，是本次出现最多的标签；本次观察 20 条，源报告总数为 30 条，覆盖部分收藏；这些频次不能说明你的个人偏好。',
+    );
+
+    expect(answer.accepted).toBe(true);
+    expect(answer.checks.noRealUserProvenanceClaim).toBe(true);
+  });
+
   it('accepts clear synthetic-sample and non-inference wording variants', () => {
     const answer = checkL04CollectionIntelligenceAnswer(
       '这是合成测试样本：航海标签出现 7 次，是本次出现最多的标签；本次观察 20 条，源报告 30 条，覆盖部分收藏。这些标签频次不足以说明你的个人喜好或偏好。',
@@ -194,6 +250,26 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(answer.checks.syntheticContextDisclosed).toBe(true);
     expect(answer.checks.nonInferenceCaveatPresent).toBe(true);
     expect(answer.checks.noPreferenceInference).toBe(true);
+  });
+
+  it('checks the actual randomized fixture facts rather than only the default fixture', () => {
+    const facts = {
+      topTag: '历史',
+      topTagCount: 8,
+      observedRows: 16,
+      sourceTotal: 39,
+      state: 'partial',
+    };
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '这是合成测试样本。历史标签出现 8 次，是本次出现最多的标签；本次观察 16 条，上游报告总量 39 条，覆盖部分收藏；这些标签频次不足以说明你的个人偏好。',
+      facts,
+    );
+
+    expect(answer.accepted).toBe(true);
+    expect(answer.checks.topObservedTagPresent).toBe(true);
+    expect(answer.checks.topObservedTagCountPresent).toBe(true);
+    expect(answer.checks.observedDenominatorPresent).toBe(true);
+    expect(answer.checks.sourceTotalPresent).toBe(true);
   });
 
   it('allows “your collection” wording when the answer clearly identifies a synthetic sample', () => {
