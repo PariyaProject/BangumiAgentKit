@@ -33,7 +33,8 @@ const REASONING_EFFORT = 'max';
 const RUN_NUMBER = 95;
 export const R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp';
 export const R01_ARGUMENT_PROFILE = 'fixed-r01-subject-41529-include-evidence-v1';
-export const R01_REPORT_RELATIVE_PATH = 'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json';
+export const R01_REPORT_RELATIVE_PATH =
+  'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json';
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const BUILD_TIMEOUT_MS = 5 * 60 * 1000;
@@ -667,9 +668,29 @@ function printSanitized(value) {
   process.stdout.write(`${JSON.stringify(value)}\n`);
 }
 
-export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
-  if (typeof claimHarness !== 'function' || typeof persistResult !== 'function') {
-    throw new Error('R01 one-shot execution must be invoked through the durable Harness claim route.');
+/**
+ * @param {{
+ *   claimHarness?: (gate: Record<string, unknown>) => Record<string, unknown>,
+ *   persistResult?: (claim: Record<string, unknown>, state: 'INCONCLUSIVE' | 'REPORT_WRITTEN', reportSha256?: string | null) => boolean,
+ *   assertClaimStillClaimed?: (claim: Record<string, unknown>) => boolean,
+ *   discardUnacceptedReport?: (reportSha256: string) => boolean,
+ * }} options
+ */
+export function runR01CodexAgentMcp({
+  claimHarness,
+  persistResult,
+  assertClaimStillClaimed,
+  discardUnacceptedReport,
+} = {}) {
+  if (
+    typeof claimHarness !== 'function' ||
+    typeof persistResult !== 'function' ||
+    typeof assertClaimStillClaimed !== 'function' ||
+    typeof discardUnacceptedReport !== 'function'
+  ) {
+    throw new Error(
+      'R01 one-shot execution must be invoked through the durable Harness claim route.',
+    );
   }
   const sourceRevision = assertCleanCandidate();
   const canonicalClaim = canonicalR01ClaimPath();
@@ -709,6 +730,8 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
   let claimPaths = [];
   let claim = null;
   let terminalAttempted = false;
+  let terminalResultPersistedState = null;
+  let terminalPersistenceUncertain = false;
   try {
     mkdirSync(temporaryDirectory, { mode: 0o700 });
     durableClaim = claimHarness({
@@ -733,7 +756,9 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
       durableClaim.reviewerId !== currentGate.reviewerId ||
       durableClaim.retryAllowed !== false
     ) {
-      throw new Error('R01 global claim/readback did not return the exact current Harness disposition.');
+      throw new Error(
+        'R01 global claim/readback did not return the exact current Harness disposition.',
+      );
     }
     const claimPair = createOneShotClaims({
       canonicalClaimPath: canonicalClaim,
@@ -745,10 +770,22 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
     claimPaths = claimPair.paths;
     claim = claimPair.claim;
 
+    if (assertClaimStillClaimed(durableClaim) !== true) {
+      throw new Error('The durable R01 claim is no longer active; refusing to invoke Codex.');
+    }
+
     const finish = (state, safeSummary, reportSha256 = null) => {
       terminalAttempted = true;
       markClaims(claimPaths, claim, state, safeSummary);
-      return persistResult(durableClaim, state, reportSha256) === true;
+      try {
+        const persisted = persistResult(durableClaim, state, reportSha256) === true;
+        if (persisted) terminalResultPersistedState = state;
+        else terminalPersistenceUncertain = true;
+        return persisted;
+      } catch (error) {
+        terminalPersistenceUncertain = true;
+        throw error;
+      }
     };
 
     const execution = invokeCodex({
@@ -771,7 +808,8 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
       eventStreamParsed: parsed.parsed && eventsSummary.eventStreamComplete,
       codexMcpToolEventCount: eventsSummary.codexMcpToolEventCount,
       codexErrorItemCount:
-        Number.isSafeInteger(eventsSummary.codexErrorItemCount) && eventsSummary.codexErrorItemCount >= 0
+        Number.isSafeInteger(eventsSummary.codexErrorItemCount) &&
+        eventsSummary.codexErrorItemCount >= 0
           ? eventsSummary.codexErrorItemCount
           : null,
       targetServerMatch:
@@ -842,6 +880,9 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
       });
       return 1;
     }
+    if (assertClaimStillClaimed(durableClaim) !== true) {
+      throw new Error('The durable R01 claim is no longer active; refusing to write a report.');
+    }
     const writerResult = invokeReportWriter(
       buildWriterInput({
         sourceRevision,
@@ -865,12 +906,20 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
       return 1;
     }
     const output = writerResult.output;
-    const persisted = finish('REPORT_WRITTEN', {
-      ...safeClaimSummary,
-      resultCounters: output.resultCounters,
-      warningCodes: output.warningCodes,
-    }, output.reportSha256);
+    const persisted = finish(
+      'REPORT_WRITTEN',
+      {
+        ...safeClaimSummary,
+        resultCounters: output.resultCounters,
+        warningCodes: output.warningCodes,
+      },
+      output.reportSha256,
+    );
     if (!persisted) {
+      if (discardUnacceptedReport(output.reportSha256) === true && existsSync(REPORT_PATH)) {
+        const reportSha256 = sha256(readFileSync(REPORT_PATH));
+        if (reportSha256 === output.reportSha256) rmSync(REPORT_PATH, { force: true });
+      }
       printSanitized({ passed: false, state: 'RESULT_PERSISTENCE_UNCERTAIN', ...safe });
       return 1;
     }
@@ -890,14 +939,20 @@ export function runR01CodexAgentMcp({ claimHarness, persistResult } = {}) {
       terminalAttempted = true;
       if (claim) markClaims(claimPaths, claim, 'INCONCLUSIVE', safeClaimSummary);
       try {
-        persistResult(durableClaim, 'INCONCLUSIVE', null);
+        const persisted = persistResult(durableClaim, 'INCONCLUSIVE', null) === true;
+        if (persisted) terminalResultPersistedState = 'INCONCLUSIVE';
+        else terminalPersistenceUncertain = true;
       } catch {
+        terminalPersistenceUncertain = true;
         /* The global label remains consumed; an uncertain result never authorizes retry. */
       }
     }
     printSanitized({
       passed: false,
-      state: terminalAttempted ? 'INCONCLUSIVE' : 'CLAIM_NOT_AUTHORIZED',
+      state:
+        terminalPersistenceUncertain
+          ? 'RESULT_PERSISTENCE_UNCERTAIN'
+          : terminalResultPersistedState ?? (terminalAttempted ? 'INCONCLUSIVE' : 'CLAIM_NOT_AUTHORIZED'),
       ...safeClaimSummary,
     });
     return 1;

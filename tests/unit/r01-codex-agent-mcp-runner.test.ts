@@ -14,6 +14,7 @@ import {
   canonicalR01ClaimPath,
   createOneShotClaims,
   r01EventStreamIsClean,
+  runR01CodexAgentMcp,
   sanitizeCodexEnvironment,
   serverSummaryMatchesCandidate,
   validateRunnerArgs,
@@ -272,6 +273,24 @@ describe('R01 Codex one-tool runner', () => {
       /only after exact-Candidate CI/u,
     );
     expect(() => validateRunnerArgs(['--run', '96'])).toThrow(/only after exact-Candidate CI/u);
+  });
+
+  it('requires durable claim rechecks and terminal-result arbitration before runner setup', () => {
+    const claimHarness = () => ({ claimId: 'claim' });
+    const persistResult = () => true;
+    const assertClaimStillClaimed = () => true;
+    const runWithCallbacks = runR01CodexAgentMcp as unknown as (options: {
+      claimHarness: typeof claimHarness;
+      persistResult: typeof persistResult;
+      assertClaimStillClaimed?: typeof assertClaimStillClaimed;
+      discardUnacceptedReport?: (reportSha256: string) => boolean;
+    }) => number;
+    expect(() => runWithCallbacks({ claimHarness, persistResult })).toThrow(
+      /durable Harness claim route/u,
+    );
+    expect(() =>
+      runWithCallbacks({ claimHarness, persistResult, assertClaimStillClaimed }),
+    ).toThrow(/durable Harness claim route/u);
   });
 
   it('accepts only the active exact Candidate with exact-head CI and a recorded review PASS', () => {

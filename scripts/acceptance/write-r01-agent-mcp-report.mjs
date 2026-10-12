@@ -70,6 +70,13 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function r01ReportFilePath(root = ROOT) {
+  if (process.env.HARNESS_MOCK_STATE && process.env.HARNESS_R01_REPORT_PATH) {
+    return path.resolve(process.env.HARNESS_R01_REPORT_PATH);
+  }
+  return path.join(root, REPORT_RELATIVE_PATH);
+}
+
 function readToolCatalog(root) {
   const bytes = readFileSync(path.join(root, 'docs/tool-catalog.json'));
   const catalog = JSON.parse(bytes.toString('utf8'));
@@ -470,7 +477,7 @@ export function buildR01AgentMcpReport(input, root = ROOT) {
 export function writeR01AgentMcpReport(input, root = ROOT) {
   const built = buildR01AgentMcpReport(input, root);
   if (!built.passed) return { passed: false, answerChecks: built.answerChecks };
-  const reportPath = path.join(root, REPORT_RELATIVE_PATH);
+  const reportPath = r01ReportFilePath(root);
   mkdirSync(path.dirname(reportPath), { recursive: true });
   let descriptor;
   try {
@@ -496,7 +503,7 @@ export function writeR01AgentMcpReport(input, root = ROOT) {
 }
 
 export function validateR01SanitizedReportFile(disposition, root = ROOT) {
-  const reportPath = path.join(root, REPORT_RELATIVE_PATH);
+  const reportPath = r01ReportFilePath(root);
   try {
     const stat = lstatSync(reportPath);
     if (!stat.isFile() || stat.isSymbolicLink())

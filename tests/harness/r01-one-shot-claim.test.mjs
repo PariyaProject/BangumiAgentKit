@@ -5,9 +5,14 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   acquireR01OneShotGitHubLatch,
+  acquireR01OneShotTerminalGitHubLatch,
   claimR01OneShotAtomically,
+  readR01OneShotTerminalGitHubLatch,
   r01OneShotLatchLabelDescription,
   r01OneShotLatchLabelName,
+  r01OneShotTerminalLabelDescription,
+  r01OneShotTerminalLabelName,
+  verifyR01OneShotGitHubLatch,
 } from '../../scripts/lib/r01-one-shot-claim.mjs';
 
 const moduleUrl = pathToFileURL(
@@ -94,8 +99,16 @@ test('independent clones and replacement PRs share one repository Run/tool latch
   const state = new Int32Array(sharedState);
   const results = await Promise.all([startClone(1, sharedState), startClone(2, sharedState)]);
   assert.equal(results.filter((result) => result.won).length, 1, JSON.stringify(results));
-  assert.equal(results.filter((result) => !result.won && result.errorCode === 'R01_ONESHOT_ALREADY_CLAIMED').length, 1);
-  assert.equal(Atomics.load(state, 3), 1, 'only the durable claim readback winner receives query authority');
+  assert.equal(
+    results.filter((result) => !result.won && result.errorCode === 'R01_ONESHOT_ALREADY_CLAIMED')
+      .length,
+    1,
+  );
+  assert.equal(
+    Atomics.load(state, 3),
+    1,
+    'only the durable claim readback winner receives query authority',
+  );
   assert.equal(Atomics.load(state, 2), results.find((result) => result.won).id);
 });
 
@@ -122,11 +135,20 @@ test('the global label is permanent and duplicate, conflicting, or uncertain acq
   );
   assert.equal(name, 'harness-r95-r01-subject-relations-claimed');
   assert.equal(acquireR01OneShotGitHubLatch(fakeGh), true);
-  assert.throws(() => acquireR01OneShotGitHubLatch(fakeGh), (error) => error.code === 'R01_ONESHOT_ALREADY_CLAIMED');
-  labels.set(name, { name, description: 'unexpected' });
-  assert.throws(() => acquireR01OneShotGitHubLatch(fakeGh), (error) => error.code === 'R01_ONESHOT_LATCH_CONFLICT');
   assert.throws(
-    () => acquireR01OneShotGitHubLatch(() => { throw new Error('network unavailable'); }),
+    () => acquireR01OneShotGitHubLatch(fakeGh),
+    (error) => error.code === 'R01_ONESHOT_ALREADY_CLAIMED',
+  );
+  labels.set(name, { name, description: 'unexpected' });
+  assert.throws(
+    () => acquireR01OneShotGitHubLatch(fakeGh),
+    (error) => error.code === 'R01_ONESHOT_LATCH_CONFLICT',
+  );
+  assert.throws(
+    () =>
+      acquireR01OneShotGitHubLatch(() => {
+        throw new Error('network unavailable');
+      }),
     (error) => error.code === 'R01_ONESHOT_LATCH_UNCERTAIN',
   );
 });
@@ -136,23 +158,131 @@ test('claim persistence failure or mismatched PR readback never grants query aut
     let queryAuthority = 0;
     let persisted = null;
     const claim = { claimId: 'claim-1', prNumber: 143, candidate: 'candidate-1' };
-    assert.throws(() => {
-      const accepted = claimR01OneShotAtomically({
-        claim,
-        assertReady() {},
-        acquireGlobalLatch: () => true,
-        persistClaim(value) {
-          if (mode === 'persistence-failure') throw new Error('PR update failed');
-          persisted = value;
-        },
-        readClaim() {
-          return mode === 'readback-mismatch' ? { ...persisted, claimId: 'other-claim' } : persisted;
-        },
-        verifyClaim(observed, expected) { return JSON.stringify(observed) === JSON.stringify(expected); },
-      });
-      queryAuthority += 1;
-      return accepted;
-    }, mode === 'persistence-failure' ? /PR update failed/u : (error) => error.code === 'R01_ONESHOT_CLAIM_READBACK_MISMATCH');
+    assert.throws(
+      () => {
+        const accepted = claimR01OneShotAtomically({
+          claim,
+          assertReady() {},
+          acquireGlobalLatch: () => true,
+          persistClaim(value) {
+            if (mode === 'persistence-failure') throw new Error('PR update failed');
+            persisted = value;
+          },
+          readClaim() {
+            return mode === 'readback-mismatch'
+              ? { ...persisted, claimId: 'other-claim' }
+              : persisted;
+          },
+          verifyClaim(observed, expected) {
+            return JSON.stringify(observed) === JSON.stringify(expected);
+          },
+        });
+        queryAuthority += 1;
+        return accepted;
+      },
+      mode === 'persistence-failure'
+        ? /PR update failed/u
+        : (error) => error.code === 'R01_ONESHOT_CLAIM_READBACK_MISMATCH',
+    );
     assert.equal(queryAuthority, 0, `${mode} must not authorize the Product query`);
   }
+});
+
+test('reconciliation verifies the original latch by read only and terminal results are create once', () => {
+  const labels = new Map([
+    [
+      r01OneShotLatchLabelName(),
+      {
+        name: r01OneShotLatchLabelName(),
+        description: r01OneShotLatchLabelDescription(),
+      },
+    ],
+  ]);
+  const calls = [];
+  const fakeGh = (...args) => {
+    calls.push(args.slice(0, 3));
+    const route = args[1];
+    if (args[0] !== 'api') throw new Error('unexpected GitHub command');
+    if (route === 'repos/{owner}/{repo}/labels' && args.includes('--method')) {
+      const label = JSON.parse(args.at(-1).input);
+      if (labels.has(label.name))
+        throw new Error('HTTP 422 Validation Failed: label already exists');
+      labels.set(label.name, label);
+      return JSON.stringify(label);
+    }
+    if (route.startsWith('repos/{owner}/{repo}/labels/')) {
+      const name = decodeURIComponent(route.split('/').at(-1));
+      const label = labels.get(name);
+      if (!label) throw new Error('HTTP 404 Not Found');
+      return JSON.stringify(label);
+    }
+    throw new Error(`unexpected route ${route}`);
+  };
+
+  assert.equal(verifyR01OneShotGitHubLatch(fakeGh), true);
+  assert.equal(calls.length, 1, 'claim-latch verification must be read-only');
+  assert.equal(
+    calls[0][1],
+    `repos/{owner}/{repo}/labels/${encodeURIComponent(r01OneShotLatchLabelName())}`,
+  );
+
+  const first = acquireR01OneShotTerminalGitHubLatch(fakeGh, 'INCONCLUSIVE');
+  assert.deepEqual(first, { state: 'INCONCLUSIVE', reportSha256: null, created: true });
+  assert.deepEqual(readR01OneShotTerminalGitHubLatch(fakeGh), {
+    state: 'INCONCLUSIVE',
+    reportSha256: null,
+  });
+  assert.deepEqual(acquireR01OneShotTerminalGitHubLatch(fakeGh, 'INCONCLUSIVE'), {
+    state: 'INCONCLUSIVE',
+    reportSha256: null,
+    created: false,
+  });
+  assert.throws(
+    () => acquireR01OneShotTerminalGitHubLatch(fakeGh, 'REPORT_WRITTEN', 'a'.repeat(64)),
+    (error) => error.code === 'R01_ONESHOT_ALREADY_TERMINAL',
+  );
+  assert.equal(
+    labels.get(r01OneShotTerminalLabelName()).description,
+    'R01-INCONCLUSIVE:report=none',
+  );
+});
+
+test('terminal report latch binds its digest and rejects uncertain or conflicting metadata', () => {
+  const labels = new Map();
+  const fakeGh = (...args) => {
+    const route = args[1];
+    if (route === 'repos/{owner}/{repo}/labels' && args.includes('--method')) {
+      const label = JSON.parse(args.at(-1).input);
+      if (labels.has(label.name))
+        throw new Error('HTTP 422 Validation Failed: label already exists');
+      labels.set(label.name, label);
+      return JSON.stringify(label);
+    }
+    const name = decodeURIComponent(route.split('/').at(-1));
+    const label = labels.get(name);
+    if (!label) throw new Error('HTTP 404 Not Found');
+    return JSON.stringify(label);
+  };
+  const digest = 'b'.repeat(64);
+  assert.equal(
+    r01OneShotTerminalLabelDescription('REPORT_WRITTEN', digest),
+    `R01-REPORT_WRITTEN:sha256=${digest}`,
+  );
+  assert.deepEqual(acquireR01OneShotTerminalGitHubLatch(fakeGh, 'REPORT_WRITTEN', digest), {
+    state: 'REPORT_WRITTEN',
+    reportSha256: digest,
+    created: true,
+  });
+  assert.throws(
+    () => acquireR01OneShotTerminalGitHubLatch(fakeGh, 'REPORT_WRITTEN', 'c'.repeat(64)),
+    (error) => error.code === 'R01_ONESHOT_ALREADY_TERMINAL',
+  );
+  labels.set(r01OneShotTerminalLabelName(), {
+    name: r01OneShotTerminalLabelName(),
+    description: 'unexpected mutable result',
+  });
+  assert.throws(
+    () => readR01OneShotTerminalGitHubLatch(fakeGh),
+    (error) => error.code === 'R01_ONESHOT_TERMINAL_CONFLICT',
+  );
 });
