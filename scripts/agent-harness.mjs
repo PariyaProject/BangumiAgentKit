@@ -1070,6 +1070,18 @@ function commandCandidateCheck(options) {
       'A durable G04 one-shot disposition must be preserved exactly across Candidate refreshes',
     );
   }
+  const priorG16Disposition = epoch.adversarial_preflight?.g16_one_shot_disposition;
+  const nextG16Disposition = evidence.adversarial_preflight?.g16_one_shot_disposition;
+  if (
+    (priorG16Disposition === undefined) !== (nextG16Disposition === undefined) ||
+    (priorG16Disposition !== undefined &&
+      canonicalHash(priorG16Disposition) !== canonicalHash(nextG16Disposition))
+  ) {
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_DISPOSITION_IMMUTABLE',
+      'A durable G16 one-shot disposition must be preserved exactly across Candidate refreshes',
+    );
+  }
   epoch.validation = evidence.validation ?? epoch.validation;
   epoch.scope_closure = evidence.scope_closure;
   epoch.adversarial_preflight = evidence.adversarial_preflight;
