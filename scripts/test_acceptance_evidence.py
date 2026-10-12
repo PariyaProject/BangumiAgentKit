@@ -1090,10 +1090,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report.update({
             'frontierId': 'C07',
             'runNumber': 95,
-            'epochId': 'run95-c07-cohort-comparison-renderer-luna-mcp',
+            'epochId': GENERATOR.CODEX_C07_RENDERER_EPOCH_ID,
             'observedAt': '2026-10-12T12:00:00.000Z',
             'baseSha': 'b' * 40,
-            'prNumber': 140,
+            'prNumber': GENERATOR.CODEX_C07_RENDERER_PR_NUMBER,
             'eventStreamComplete': True,
             'mcpBundleSha256': 'e' * 64,
             'mcpServerNames': ['bgk_c07_cohort_renderer_one_tool'],
@@ -1105,7 +1105,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'ciCheckCount': 7,
                 'reviewPassSha': self.source_revision,
                 'reviewVerdict': 'PASS',
-                'reviewerId': 'gpt-6-luna-max-run95-c07-round1',
+                'reviewerId': 'gpt-6-luna-max-run95-pr144-round1',
             },
             'offlineFixture': {
                 'profile': GENERATOR.CODEX_C07_RENDER_OFFLINE_FIXTURE_PROFILE,
@@ -1184,6 +1184,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         wrong_pr = json.loads(json.dumps(report))
         wrong_pr['prNumber'] = 150
         invalid_reports.append(wrong_pr)
+        mismatched_base_gate = json.loads(json.dumps(report))
+        mismatched_base_gate['candidateGate']['baseSha'] = 'd' * 40
+        invalid_reports.append(mismatched_base_gate)
+        retired_pr_140 = json.loads(json.dumps(report))
+        retired_pr_140['epochId'] = 'run95-c07-cohort-comparison-renderer-luna-mcp'
+        retired_pr_140['prNumber'] = 140
+        retired_pr_140['candidateGate']['reviewerId'] = 'gpt-6-luna-max-run95-pr140-round1'
+        invalid_reports.append(retired_pr_140)
         for invalid in invalid_reports:
             self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
                 invalid, current_by_name, current_by_name,

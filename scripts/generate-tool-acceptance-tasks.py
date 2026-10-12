@@ -313,7 +313,8 @@ CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH = (
     'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'
 )
 CODEX_A01_AGGREGATE_PR_NUMBER = 127
-CODEX_C07_RENDERER_PR_NUMBER = 140
+CODEX_C07_RENDERER_EPOCH_ID = 'run95-c07-renderer-dynamic-active-pr'
+CODEX_C07_RENDERER_PR_NUMBER = 144
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -7100,7 +7101,7 @@ def codex_c07_renderer_report_is_valid(report: dict, result: dict) -> bool:
         type(report.get('runNumber')) is int
         and report['runNumber'] == 95
         and report.get('frontierId') == 'C07'
-        and report.get('epochId') == 'run95-c07-cohort-comparison-renderer-luna-mcp'
+        and report.get('epochId') == CODEX_C07_RENDERER_EPOCH_ID
         and type(report.get('prNumber')) is int
         and report['prNumber'] == CODEX_C07_RENDERER_PR_NUMBER
         and type(report.get('eventStreamComplete')) is bool
@@ -7137,7 +7138,10 @@ def codex_c07_renderer_report_is_valid(report: dict, result: dict) -> bool:
         and candidate_gate['ciCheckCount'] == 7
         and candidate_gate.get('reviewPassSha') == report.get('sourceRevision')
         and candidate_gate.get('reviewVerdict') == 'PASS'
-        and re.search(r'gpt[-_]6[-_]luna[-_]max', str(candidate_gate.get('reviewerId', '')), re.I)
+        and re.fullmatch(
+            rf'gpt-6-luna-max-run95-pr{CODEX_C07_RENDERER_PR_NUMBER}-round\d+',
+            str(candidate_gate.get('reviewerId', '')),
+        )
         and isinstance(fixture, dict)
         and set(fixture) == CODEX_C07_RENDERER_OFFLINE_FIXTURE_FIELDS
         and fixture == expected_fixture
