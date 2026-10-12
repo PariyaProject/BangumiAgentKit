@@ -20,6 +20,7 @@ import {
   assertCandidateInvariant,
   assertCorrectiveClosure,
   assertDiscoveryExhaustionEvidence,
+  assertG04OneShotResultArtifactState,
   assertMergeReadiness,
   assertNoLegacyRuntimeChanges,
   assertProductCommitHygiene,
@@ -33,6 +34,7 @@ import {
   createRunState,
   extendEpochReviewBudget,
   extendRunProductReviewBudget,
+  g04DispositionAcknowledges,
   markReviewStarted,
   markFrontierReviewStarted,
   parseControlBlock,
@@ -930,6 +932,7 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(renderer): bound character rows',
     'fix(g26): isolate candidate history checks from git overrides',
     'fix(g26): update candidate history verifier',
+    'docs(frontier): record G04 evidence provenance',
   ]);
   assert.throws(
     () => assertNoLegacyRuntimeChanges(['docs/product/loop-status.md']),
@@ -957,6 +960,14 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(harness): set frontier closure state to PASS',
     'fix(harness): set epoch.review.runtime.state to review_runtime_recovery_required for PR #103',
     'fix(harness): record frontier closure runtime history outcome as UNAVAILABLE',
+    'docs(frontier): record frontier closure runtime history outcome as UNAVAILABLE',
+    'docs(frontier): record G04 one-shot disposition as CLAIMED for PR #136',
+    'docs(frontier): RECORD g04 one-shot disposition AS claimed for PR #136',
+    'docs(frontier): record G04 one-shot attempt as INCONCLUSIVE for PR #136',
+    'docs(frontier): record G04 one-shot result as INCONCLUSIVE for PR #136',
+    'docs(frontier): record P01 result as REPORT_WRITTEN_ACK_PENDING for PR #135',
+    'docs(frontier): record G04 one-shot report as REPORT_WRITTEN for PR #136',
+    'docs(frontier): set P01 one-shot claim state to REPORT_WRITTEN for PR #135',
     'fix(harness): record epoch review runtime history verdict as CORRECTIVE_REQUIRED',
     'fix(harness): advance run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
     'fix(harness): interrupt epoch review runtime state to INTERRUPTED_RESUMABLE',
@@ -969,6 +980,120 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
         error instanceof HarnessInvariantError && error.code === 'RUNTIME_ONLY_COMMIT_REJECTED',
     );
   }
+});
+
+test('G04 ambiguous result acknowledgement matches the complete claim and report binding', () => {
+  const digest = (character) => character.repeat(64);
+  const claim = {
+    claimId: 'g04-run-95-pr-136-aaaaaaaaaaaa-123',
+    runNumber: 95,
+    prNumber: 136,
+    candidateSha: sha('a'),
+    baseSha: sha('b'),
+    ciSha: sha('a'),
+    ciStatus: 'SUCCESS',
+    reviewerId: 'gpt-6-luna-max-run95-pr136-round1',
+    bundleSha256: digest('c'),
+    expectedArgumentsSha256: digest('d'),
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    runnerReceiptPublicKey: 'trusted-runner-key',
+    runnerReceiptPublicKeySha256: digest('e'),
+  };
+  const expected = {
+    resultState: 'REPORT_WRITTEN',
+    epochId: 'run95-g04-person-activity-codex-current-evidence',
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1',
+    expectedArgumentsSha256: claim.expectedArgumentsSha256,
+    reportPath: 'docs/live-probes/g04-person-activity-run95.json',
+    reportSha256: digest('f'),
+  };
+  const disposition = {
+    claimId: claim.claimId,
+    runNumber: claim.runNumber,
+    prNumber: claim.prNumber,
+    frontierId: 'G04',
+    epochId: expected.epochId,
+    state: expected.resultState,
+    retryAllowed: false,
+    sourceCandidateSha: claim.candidateSha,
+    baseSha: claim.baseSha,
+    ciSha: claim.ciSha,
+    ciStatus: claim.ciStatus,
+    reviewerId: claim.reviewerId,
+    bundleSha256: claim.bundleSha256,
+    model: claim.model,
+    reasoningEffort: claim.reasoningEffort,
+    toolName: expected.toolName,
+    argumentProfile: expected.argumentProfile,
+    expectedArgumentsSha256: expected.expectedArgumentsSha256,
+    runnerReceiptPublicKey: claim.runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256: claim.runnerReceiptPublicKeySha256,
+    reportWritten: true,
+    reportPath: expected.reportPath,
+    reportSha256: expected.reportSha256,
+  };
+  assert.equal(g04DispositionAcknowledges(disposition, claim, expected), true);
+
+  for (const [field, value] of [
+    ['sourceCandidateSha', sha('g')],
+    ['baseSha', sha('h')],
+    ['ciSha', sha('g')],
+    ['reviewerId', 'gpt-6-luna-max-run95-pr136-round2'],
+    ['bundleSha256', digest('i')],
+    ['expectedArgumentsSha256', digest('j')],
+    ['runnerReceiptPublicKey', 'caller-selected-key'],
+    ['runnerReceiptPublicKeySha256', digest('k')],
+    ['state', 'INCONCLUSIVE'],
+    ['reportWritten', false],
+    ['reportPath', 'docs/live-probes/other-report.json'],
+    ['reportSha256', digest('l')],
+  ]) {
+    assert.equal(
+      g04DispositionAcknowledges({ ...disposition, [field]: value }, claim, expected),
+      false,
+      `readback must reject changed ${field}`,
+    );
+  }
+
+  const inconclusive = {
+    ...disposition,
+    state: 'INCONCLUSIVE',
+    reportWritten: false,
+  };
+  delete inconclusive.reportPath;
+  delete inconclusive.reportSha256;
+  assert.equal(
+    g04DispositionAcknowledges(inconclusive, claim, {
+      ...expected,
+      resultState: 'INCONCLUSIVE',
+      reportSha256: null,
+    }),
+    true,
+  );
+  assert.equal(
+    g04DispositionAcknowledges({ ...inconclusive, reportPath: expected.reportPath }, claim, {
+      ...expected,
+      resultState: 'INCONCLUSIVE',
+      reportSha256: null,
+    }),
+    false,
+    'an inconclusive readback cannot carry report fields',
+  );
+});
+
+test('G04 Harness refuses INCONCLUSIVE when the canonical report artifact exists', () => {
+  assert.equal(assertG04OneShotResultArtifactState('INCONCLUSIVE', false), true);
+  assert.equal(assertG04OneShotResultArtifactState('REPORT_WRITTEN', true), true);
+  assert.throws(
+    () => assertG04OneShotResultArtifactState('INCONCLUSIVE', true),
+    (error) => error.code === 'G04_ONESHOT_REPORT_EXISTS',
+  );
+  assert.throws(
+    () => assertG04OneShotResultArtifactState('INCONCLUSIVE', null),
+    (error) => error.code === 'G04_ONESHOT_REPORT_STATE_INVALID',
+  );
 });
 
 test('hard review ceilings reject caller and control-block overrides', () => {

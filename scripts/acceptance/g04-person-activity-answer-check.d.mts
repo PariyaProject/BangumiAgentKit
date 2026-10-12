@@ -1,4 +1,5 @@
 export const G04_ANSWER_CHECK_METHOD: string;
+export const G04_REQUIRED_CAVEAT: string;
 export const G04_EXPECTED_QUERY_ARGUMENTS: Readonly<{
   personId: number;
   kind: string;

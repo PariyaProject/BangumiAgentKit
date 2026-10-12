@@ -353,15 +353,17 @@ describe('P01 one-tool Codex runner', () => {
   it('retains only safe event counts/types and fails closed on extra activity', () => {
     const summary = canonicalP01SafeEventSummary({
       codexMcpToolEventCount: 1,
-      nonMcpToolEventCount: 2,
-      nonMcpToolTypes: ['error', 'private query text', 'error'],
+      codexErrorItemCount: 3,
+      nonMcpToolEventCount: 1,
+      nonMcpToolTypes: ['private query text'],
       shellToolCallCount: 0,
       answer: 'private answer',
     });
     expect(summary).toEqual({
       codexMcpToolEventCount: 1,
-      nonMcpToolEventCount: 2,
-      nonMcpToolTypes: ['error', 'unknown_tool_type'],
+      codexErrorItemCount: 3,
+      nonMcpToolEventCount: 1,
+      nonMcpToolTypes: ['unknown_tool_type'],
       shellToolCallCount: 0,
     });
     expect(JSON.stringify(summary)).not.toContain('private');

@@ -507,14 +507,21 @@ export function assertProductCommitHygiene(subjects) {
     `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:${runtimeStatePath})(?:\\[\\d*\\])?[\\s._-]+(?:state|status|outcome|verdict)\\s+(?:(?:to|as|is)\\s+${runtimeStateValue}|from\\s+${runtimeStateValue}\\s+to\\s+${runtimeStateValue})${runtimeStateIdentifier}$`,
     'iu',
   );
+  const oneShotRuntimeStateTransition = new RegExp(
+    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:(?:g|p)\\d{2}\\s+)?(?:(?:one|single)[\\s._-]*shot\\s+)?(?:claim|disposition|attempt|retry|result|report)(?:[\\s._-]+(?:state|status|outcome|verdict))?\\s+(?:(?:to|as|is)\\s+)?(?:claimed|unclaimed|inconclusive|report_written(?:_ack_pending)?|consumed|spent|retry_allowed|retry_prohibited|allowed|prohibited|terminal)(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?$`,
+  );
   const durableEngineering =
-    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|frontier|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
   const engineeringPrefix =
-    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+/u;
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs\((?:product|frontier|capability|api|renderer|standalone|agent-ux)\):\s+/u;
   const runtimeOnly = subjects.filter((subject) => {
     if (!durableEngineering.test(subject)) return true;
     const message = subject.replace(engineeringPrefix, '').trim();
-    return runtimeTransition.test(message) || runtimeStateEnumTransition.test(message);
+    return (
+      runtimeTransition.test(message) ||
+      runtimeStateEnumTransition.test(message) ||
+      oneShotRuntimeStateTransition.test(message.toLowerCase())
+    );
   });
   if (runtimeOnly.length > 0) {
     throw new HarnessInvariantError(
@@ -1009,6 +1016,106 @@ export function assertCorrectiveClosure(epoch, closure = epoch?.corrective_closu
     );
   }
   return true;
+}
+
+export function assertG04OneShotResultArtifactState(resultState, reportExists) {
+  if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState)) {
+    throw new HarnessInvariantError(
+      'G04_ONESHOT_RESULT_INVALID',
+      'Only terminal G04 one-shot states are supported.',
+    );
+  }
+  if (typeof reportExists !== 'boolean') {
+    throw new HarnessInvariantError(
+      'G04_ONESHOT_REPORT_STATE_INVALID',
+      'Canonical G04 report presence must be checked before recording a one-shot result.',
+    );
+  }
+  if (resultState === 'INCONCLUSIVE' && reportExists) {
+    throw new HarnessInvariantError(
+      'G04_ONESHOT_REPORT_EXISTS',
+      'Cannot record INCONCLUSIVE while the canonical G04 report exists; validate and reconcile the report first.',
+    );
+  }
+  return true;
+}
+
+export function g04DispositionAcknowledges(disposition, claim, expected) {
+  if (
+    !disposition ||
+    typeof disposition !== 'object' ||
+    Array.isArray(disposition) ||
+    !claim ||
+    typeof claim !== 'object' ||
+    Array.isArray(claim) ||
+    !expected ||
+    typeof expected !== 'object' ||
+    Array.isArray(expected)
+  )
+    return false;
+
+  const resultState = expected.resultState;
+  const isReportWritten = resultState === 'REPORT_WRITTEN';
+  if (
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState) ||
+    claim.runNumber !== 95 ||
+    !Number.isSafeInteger(claim.prNumber) ||
+    claim.prNumber < 1 ||
+    typeof claim.claimId !== 'string' ||
+    !/^[0-9a-f]{40}$/u.test(claim.candidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(claim.baseSha ?? '') ||
+    claim.ciSha !== claim.candidateSha ||
+    claim.ciStatus !== 'SUCCESS' ||
+    typeof claim.reviewerId !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(claim.bundleSha256 ?? '') ||
+    claim.model !== 'gpt-6-luna' ||
+    claim.reasoningEffort !== 'max' ||
+    typeof claim.runnerReceiptPublicKey !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(claim.runnerReceiptPublicKeySha256 ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(claim.expectedArgumentsSha256 ?? '') ||
+    expected.expectedArgumentsSha256 !== claim.expectedArgumentsSha256 ||
+    typeof expected.epochId !== 'string' ||
+    typeof expected.toolName !== 'string' ||
+    typeof expected.argumentProfile !== 'string' ||
+    typeof expected.reportPath !== 'string' ||
+    (isReportWritten
+      ? !/^[0-9a-f]{64}$/u.test(expected.reportSha256 ?? '')
+      : expected.reportSha256 !== undefined && expected.reportSha256 !== null)
+  )
+    return false;
+
+  const bindings = [
+    ['claimId', claim.claimId],
+    ['runNumber', claim.runNumber],
+    ['prNumber', claim.prNumber],
+    ['frontierId', 'G04'],
+    ['epochId', expected.epochId],
+    ['state', resultState],
+    ['retryAllowed', false],
+    ['sourceCandidateSha', claim.candidateSha],
+    ['baseSha', claim.baseSha],
+    ['ciSha', claim.ciSha],
+    ['ciStatus', claim.ciStatus],
+    ['reviewerId', claim.reviewerId],
+    ['bundleSha256', claim.bundleSha256],
+    ['model', claim.model],
+    ['reasoningEffort', claim.reasoningEffort],
+    ['toolName', expected.toolName],
+    ['argumentProfile', expected.argumentProfile],
+    ['expectedArgumentsSha256', expected.expectedArgumentsSha256],
+    ['runnerReceiptPublicKey', claim.runnerReceiptPublicKey],
+    ['runnerReceiptPublicKeySha256', claim.runnerReceiptPublicKeySha256],
+    ['reportWritten', isReportWritten],
+  ];
+  if (bindings.some(([key, value]) => disposition[key] !== value)) return false;
+
+  if (!isReportWritten) {
+    return disposition.reportPath === undefined && disposition.reportSha256 === undefined;
+  }
+  return (
+    disposition.reportPath === expected.reportPath &&
+    disposition.reportSha256 === expected.reportSha256
+  );
 }
 
 export function assertCandidateInvariant({ candidateSha, branchHeadSha, prHeadSha }) {

@@ -183,6 +183,56 @@ describe('G26 Codex one-tool runner', () => {
     expect(summary.answer).toContain('Public sample');
   });
 
+  it('keeps completed item-level errors out of tool-activity counts and records only their count', () => {
+    const summary = summarizeCodexEvents([
+      { type: 'thread.started', thread_id: 'thread-1' },
+      { type: 'turn.started', turn_id: 'turn-1' },
+      {
+        type: 'item.started',
+        item: { id: 'error-1', type: 'error', message: 'private diagnostic one' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'error-1', type: 'error', message: 'private diagnostic one' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'error-2', type: 'error', message: 'private diagnostic two' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'error-3', type: 'error', message: 'private diagnostic three' },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'message-1', type: 'agent_message', text: 'diagnostic-ok' },
+      },
+      { type: 'turn.completed', turn_id: 'turn-1' },
+    ]);
+
+    expect(summary.eventStreamComplete).toBe(true);
+    expect(summary.codexMcpToolEventCount).toBe(0);
+    expect(summary.codexErrorItemCount).toBe(3);
+    expect(summary.nonMcpToolEventCount).toBe(0);
+    expect(summary.shellToolCallCount).toBe(0);
+    expect(summary.answer).toBe('diagnostic-ok');
+    expect(JSON.stringify(summary)).not.toContain('private diagnostic');
+  });
+
+  it('still marks a top-level Codex error event as an incomplete failed turn', () => {
+    const summary = summarizeCodexEvents([
+      { type: 'thread.started', thread_id: 'thread-1' },
+      { type: 'turn.started', turn_id: 'turn-1' },
+      { type: 'error', error: { code: 'safe_fixture_code', message: 'private top-level error' } },
+      { type: 'turn.completed', turn_id: 'turn-1' },
+    ]);
+
+    expect(summary.eventStreamComplete).toBe(false);
+    expect(summary.codexErrorItemCount).toBe(0);
+    expect(summary.nonMcpToolEventCount).toBe(0);
+    expect(JSON.stringify(summary)).not.toContain('private top-level error');
+  });
+
   it('reports only sorted unique non-MCP item type labels for safe diagnostics', () => {
     const summary = summarizeCodexEvents([
       ...codexEvents(),
@@ -234,8 +284,9 @@ describe('G26 Codex one-tool runner', () => {
     });
     expect(JSON.stringify(safe)).not.toContain('private');
     expect(JSON.stringify(safe)).not.toContain('answer');
-    expect(safeCodexNonMcpEventSummary({ nonMcpToolEventCount: -1, nonMcpToolTypes: ['valid'] }))
-      .toEqual({ nonMcpToolEventCount: 0, nonMcpToolTypes: ['valid'] });
+    expect(
+      safeCodexNonMcpEventSummary({ nonMcpToolEventCount: -1, nonMcpToolTypes: ['valid'] }),
+    ).toEqual({ nonMcpToolEventCount: 0, nonMcpToolTypes: ['valid'] });
   });
 
   it('fails closed on malformed JSONL or a shell event', () => {
