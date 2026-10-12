@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-12T08:20:00Z",
+  "updated_at": "2026-10-12T08:25:50Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -953,7 +953,7 @@
         "tests/unit/g16-agent-mcp-report.test.ts",
         "tests/harness/agent-harness-cli.test.mjs"
       ],
-      "next_action": "A bounded anonymous read-only director-activity Agent/MCP attempt for the exact profile may run only after the current Candidate, exact seven-check CI, Harness candidate gate, and same-identity GPT-6 Luna Max review all pass. The acceptance runner enforces a create-once claim and signed sanitized report; until one valid report is reconciled, retain PARTIAL and do not claim a complete career, absence, or unreturned works.",
+      "next_action": "For a bounded director observation, verify identity through an official public relation, use exact source role labels and first_air_date-based calendar windows, and expose relation/detail/output coverage. The Candidate-bound Agent/MCP runner, create-once Harness gate, signed sanitized report, and restart recovery make the one-tool evidence auditable; they do not establish a complete current-source result. Preserve PARTIAL where source limits remain. Never infer absence from unreturned rows or claim a complete director career or complete director coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "closure_reason": "Delivered a bounded exact-label director-role observation over current official person-subject relations and first_air_date windows, with 36-month support, raw-role evidence, and explicit unknown/exclusion/cap coverage; this is not a complete historical career result.",
