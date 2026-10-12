@@ -133,6 +133,20 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(answer.checks.sourceTotalPresent).toBe(false);
   });
 
+  it('does not find a positive denominator by matching after a negated prefix', () => {
+    const negatedObserved = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次，是本次出现最多的标签；本次未观察到 20 条记录，源报告共 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+    const negatedSourceTotal = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次，是本次出现最多的标签；本次观察到 20 条记录，源报告未报告总数为 30 条记录，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(negatedObserved.accepted).toBe(false);
+    expect(negatedObserved.checks.observedDenominatorPresent).toBe(false);
+    expect(negatedSourceTotal.accepted).toBe(false);
+    expect(negatedSourceTotal.checks.sourceTotalPresent).toBe(false);
+  });
+
   it('rejects enthusiasm claims that infer a user preference', () => {
     const answer = checkL04CollectionIntelligenceAnswer(
       '合成样例中，航海标签出现 7 次，是本次出现最多的标签；你肯定会爱上航海，但不能据此判断偏好。本次观察了 20 条，源报告共 30 条，覆盖部分收藏。',

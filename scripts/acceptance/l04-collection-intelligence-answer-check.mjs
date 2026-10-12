@@ -61,7 +61,7 @@ function exactNumberSource(value) {
 
 function hasPositiveExactCount(text, value, prefix) {
   const assertion = new RegExp(
-    `${prefix.source}\\s*${exactNumberSource(value)}\\s*${COUNT_UNITS}`,
+    `^\\s*${prefix.source}\\s*${exactNumberSource(value)}\\s*${COUNT_UNITS}`,
     'iu',
   );
   return text.split(CLAIM_CLAUSE_BREAK).some((clause) => assertion.test(clause));
