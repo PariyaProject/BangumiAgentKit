@@ -436,6 +436,43 @@ export function extendEpochReviewBudget(epoch, { additional, reason, at } = {}) 
   return nextEpoch;
 }
 
+export function resumeCorrectiveAfterReviewBudgetExtension(run, epoch) {
+  const nextRun = cloneState(run);
+  const nextEpoch = cloneState(epoch);
+  assertOuterLedger(nextRun.outer_sol);
+  assertLedger(nextEpoch.review, 'epoch.review', MAX_EPOCH_REVIEWS);
+  const latestExtension = nextEpoch.review.budget_extension_history?.at(-1);
+  if (
+    nextEpoch.state !== 'FINAL_CORRECTIVE_REQUIRED' ||
+    nextEpoch.final_corrective_reason !== 'REVIEW_LIMIT_FINDINGS' ||
+    latestExtension?.to_max !== nextEpoch.review.max ||
+    nextEpoch.review.consumed >= nextEpoch.review.max ||
+    nextEpoch.review.reserved !== 0 ||
+    (nextEpoch.review.runtime_recovery?.reserved ?? 0) !== 0 ||
+    !Array.isArray(nextEpoch.findings) ||
+    nextEpoch.findings.length === 0 ||
+    nextRun.state !== 'EPOCH_ACTIVE' ||
+    nextRun.active_epoch_pr !== nextEpoch.pr_number ||
+    nextRun.pending_epoch != null ||
+    nextRun.outer_sol.reserved !== 0 ||
+    (nextRun.outer_sol.runtime_recovery?.reserved ?? 0) !== 0 ||
+    nextRun.outer_sol.product.reserved !== 0
+  ) {
+    throw new HarnessInvariantError(
+      'CORRECTIVE_BUDGET_RESUME_NOT_APPLICABLE',
+      'Ordinary corrective work can resume only after a recorded review extension with active findings and no outstanding paired reservation',
+    );
+  }
+  nextEpoch.state = 'CORRECTIVE_REQUIRED';
+  nextEpoch.next_action = 'LUNA_FIX_ALL_P0_P1';
+  nextEpoch.corrective_closure = [];
+  nextEpoch.final_corrective_sha = null;
+  nextEpoch.final_corrective_base_sha = null;
+  nextEpoch.final_corrective_reason = null;
+  nextRun.next_action = `RESUME_PR_${nextEpoch.pr_number}`;
+  return { run: nextRun, epoch: nextEpoch };
+}
+
 export function isLegacyRuntimePath(filePath) {
   const normalized = filePath.replaceAll('\\', '/').replace(/^\.\//u, '');
   return LEGACY_RUNTIME_PATHS.some((entry) =>

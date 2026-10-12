@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Negative tests for catalog-bound public API acceptance evidence."""
 
+import base64
 import hashlib
 import importlib.util
 import json
@@ -412,9 +413,40 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             self.s03_test_attestation_public_key.encode('utf-8'),
         ).hexdigest()
         self.s03_control_available = True
+        self.p01_control_pr_number = None
+        self.p01_control_body = None
+        self.p01_control_available = True
+        self.p01_pr_state = 'open'
+        self.p01_pr_merged = False
+        self.p01_pr_head_sha = None
         GENERATOR.urllib.request.urlopen = self._fake_s03_control_urlopen
 
     def _fake_s03_control_urlopen(self, request, timeout=10):
+        if (
+            self.p01_control_pr_number is not None
+            and request.full_url.endswith(f'/pulls/{self.p01_control_pr_number}')
+        ):
+            if not self.p01_control_available or not isinstance(self.p01_control_body, str):
+                raise GENERATOR.urllib.error.URLError('P01 fixture control plane unavailable')
+            payload = json.dumps({
+                'number': self.p01_control_pr_number,
+                'state': self.p01_pr_state,
+                'merged': self.p01_pr_merged,
+                'head': {'sha': self.p01_pr_head_sha},
+                'body': self.p01_control_body,
+            }).encode('utf-8')
+
+            class P01Response:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exception_type, exception, traceback):
+                    return False
+
+                def read(self, size=-1):
+                    return payload if size < 0 else payload[:size]
+
+            return P01Response()
         if not self.s03_control_available:
             raise GENERATOR.urllib.error.URLError('fixture control plane unavailable')
 
@@ -461,6 +493,90 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
 
         return Response()
 
+    def _set_p01_control_record(
+        self,
+        report,
+        report_bytes,
+        report_sha_override=None,
+        *,
+        current_candidate='source',
+        current_review_pass='source',
+        epoch_state='REVIEW_PASSED',
+        refresh_history=None,
+        review_history=None,
+        pr_head_sha=None,
+        pr_state='open',
+        pr_merged=False,
+    ):
+        self.p01_control_pr_number = report['prNumber']
+        reviewer_id = report['reviewerId']
+        source_revision = report['sourceRevision']
+        base_sha = report['baseSha']
+        receipt = report['runnerReceipt']
+        current_candidate = source_revision if current_candidate == 'source' else current_candidate
+        current_review_pass = source_revision if current_review_pass == 'source' else current_review_pass
+        if review_history is None:
+            review_history = [{
+                'review_number': 1,
+                'candidate_sha': source_revision,
+                'reviewed_base_sha': base_sha,
+                'reviewer_id': reviewer_id,
+                'verdict': 'PASS',
+            }]
+        self.p01_pr_head_sha = pr_head_sha or current_candidate
+        self.p01_pr_state = pr_state
+        self.p01_pr_merged = pr_merged
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'P01',
+            'epochId': GENERATOR.CODEX_P01_EPOCH_ID,
+            'runNumber': 95,
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_P01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_P01_EXPECTED_ARGUMENTS,
+            ),
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': source_revision,
+            'baseSha': base_sha,
+            'ciSha': source_revision,
+            'ciStatus': 'SUCCESS',
+            'bundleSha256': report['mcpBundleSha256'],
+            'prNumber': self.p01_control_pr_number,
+            'reviewerId': reviewer_id,
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'reportWritten': True,
+            'retryAllowed': False,
+            'reportPath': GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha_override or hashlib.sha256(report_bytes).hexdigest(),
+        }
+        epoch = {
+            'schema': 'bangumi-harness/v3',
+            'kind': 'epoch',
+            'epoch_id': GENERATOR.CODEX_P01_EPOCH_ID,
+            'pr_number': self.p01_control_pr_number,
+            'state': epoch_state,
+            'base_sha': base_sha,
+            'candidate_sha': current_candidate,
+            'review_pass_sha': current_review_pass,
+            'candidate_refresh_history': refresh_history or [],
+            'adversarial_preflight': {
+                'completed': True,
+                'p01_one_shot_disposition': disposition,
+            },
+            'review_history': review_history,
+        }
+        fence = chr(96) * 3
+        self.p01_control_body = (
+            '<!-- bangumi-harness:v3:epoch:start -->\n'
+            + fence + 'json\n'
+            + json.dumps(epoch)
+            + '\n' + fence
+            + '\n<!-- bangumi-harness:v3:epoch:end -->'
+        )
+
     def _git(self, *args):
         return subprocess.run(
             ['git', *args], cwd=self.root, check=True, capture_output=True, text=True,
@@ -498,6 +614,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G16_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G19_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_P01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_D04_PROBE_IMPLEMENTATION_MARKERS,
@@ -1932,6 +2049,214 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _p01_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+        month_index = 2026 * 12 + 10 - 1 - 35
+        month_keys = []
+        for offset in range(36):
+            year, month_zero_based = divmod(month_index + offset, 12)
+            month_keys.append(f'{year:04d}-{month_zero_based + 1:02d}')
+        coverage = {key: 0 for key in GENERATOR.CODEX_P01_COVERAGE_FIELDS}
+        coverage.update({
+            'relationRowsObserved': 1,
+            'relationRowsSelected': 1,
+            'relationSelectionStrategy': 'all',
+            'sampled': False,
+            'subjectIdsObserved': 1,
+            'subjectIdsSelected': 1,
+            'subjectDetailIdsObserved': 1,
+            'subjectDetailRequests': 1,
+            'subjectDetailsSucceeded': 1,
+            'rowsEligible': 1,
+            'rowsReturned': 1,
+            'outputTruncated': False,
+            'uniqueSubjects': 1,
+            'uniqueCharacters': 0,
+            'maxRelations': 48,
+            'maxSubjectDetails': 16,
+            'maxRows': 8,
+            'detailConcurrency': 4,
+            'responseLimitBytes': 1_048_576,
+            'truncated': False,
+            'retrievedAt': '2026-10-11T08:00:00.000Z',
+        })
+        source_operations = [
+            {'operation': 'GET /v0/persons/{person_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/persons/{person_id}/subjects', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+            {'operation': 'GET /v0/subjects/{subject_id}', 'attempted': 1, 'succeeded': 1, 'failed': 0},
+        ]
+        reviewer_id = 'gpt-6-luna-max-run95-pr147-round1'
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_p01_person_position_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'P01',
+            'scenarioId': 'P01',
+            'epochId': GENERATOR.CODEX_P01_EPOCH_ID,
+            'profile': GENERATOR.CODEX_P01_ARGUMENT_PROFILE,
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reviewerId': reviewer_id,
+            'claimId': f'p01-run-95-pr-147-{revision[:12]}-123',
+            'codexCliVersion': '0.162.0',
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'prNumber': 147,
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-11T08:00:00.000Z',
+            'candidateGate': {
+                'candidateSha': revision,
+                'baseSha': base_sha,
+                'ciSha': revision,
+                'ciStatus': 'SUCCESS',
+                'reviewPassSha': revision,
+                'reviewVerdict': 'PASS',
+                'reviewerId': reviewer_id,
+            },
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_P01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_P01_EXPECTED_ARGUMENTS,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.get_person_activity'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_p01_one_tool'],
+            'processExitCode': 0,
+            'resultStatus': 'SUCCESS',
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': 'p01-bounded-person-role-frequency-answer-v1',
+            'answerChecks': {key: True for key in GENERATOR.CODEX_P01_ANSWER_CHECK_FIELDS},
+            'answerCounters': {
+                'sourceRows': 1,
+                'answerRows': 1,
+                'rowsMatched': 1,
+                'sourceRoleLabels': 1,
+                'answerRoleLabels': 1,
+                'knownRoleRows': 1,
+                'unknownRoleRows': 0,
+                'toolTextUtf8Bytes': 2400,
+                'coverageFieldsMatched': len(GENERATOR.CODEX_P01_COVERAGE_FIELDS),
+            },
+            'toolCalls': [{
+                'name': 'bangumi.get_person_activity',
+                'state': 'DONE',
+                'argumentsSha256': GENERATOR._canonical_json_sha256(
+                    GENERATOR.CODEX_P01_EXPECTED_ARGUMENTS,
+                ),
+            }],
+            'toolTextUtf8Bytes': 2400,
+            'resultSummary': {
+                'personId': 1040,
+                'kind': 'staff',
+                'media': 'anime',
+                'state': 'partial',
+                'window': {
+                    'months': 36,
+                    'start': '2023-11-01',
+                    'end': '2026-10-11',
+                    'monthKeys': month_keys,
+                    'asOfSemantics': 'calendar_months_ending_on_as_of_date',
+                },
+                'summary': {'creditRows': 1, 'uniqueSubjects': 1, 'uniqueCharacters': 0},
+                'coverage': coverage,
+                'rowCount': 1,
+                'roleLabelCount': 1,
+                'unknownRoleRows': 0,
+                'sourceRowDigest': 'd' * 64,
+                'sourceOperations': source_operations,
+            },
+            'resultByteLength': 4096,
+            'resultSha256': 'e' * 64,
+            'answerUtf8Bytes': 1200,
+            'answerSha256': 'f' * 64,
+            'sourceOperations': source_operations,
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawResultStored': False,
+                'artifactImageBytesStored': False,
+                'credentialsStored': False,
+            },
+        }
+        public_der = bytes.fromhex('302a300506032b6570032100') + b'k' * 32
+        event_stream_sha256 = '7' * 64
+        server_summary_sha256 = '8' * 64
+        receipt_payload = {
+            'schemaVersion': 1,
+            'kind': GENERATOR.CODEX_P01_RUNNER_RECEIPT_KIND,
+            'claimId': report['claimId'],
+            'runNumber': 95,
+            'frontierId': 'P01',
+            'epochId': GENERATOR.CODEX_P01_EPOCH_ID,
+            'prNumber': report['prNumber'],
+            'sourceRevision': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'toolName': 'bangumi.get_person_activity',
+            'argumentProfile': GENERATOR.CODEX_P01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'codexCliVersion': report['codexCliVersion'],
+            'processExitCode': report['processExitCode'],
+            'resultStatus': report['resultStatus'],
+            'eventStreamParsed': report['eventStreamParsed'],
+            'serverToolNames': report['serverToolNames'],
+            'serverToolCount': report['serverToolCount'],
+            'mcpServerNames': report['mcpServerNames'],
+            'codexMcpToolEventCount': report['codexMcpToolEventCount'],
+            'nonMcpToolEventCount': report['nonMcpToolEventCount'],
+            'nonMcpToolTypes': report['nonMcpToolTypes'],
+            'shellToolCallCount': report['shellToolCallCount'],
+            'allowedCallCount': report['allowedCallCount'],
+            'deniedCallCount': report['deniedCallCount'],
+            'eventStreamSha256': event_stream_sha256,
+            'serverSummarySha256': server_summary_sha256,
+            'toolArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_P01_EXPECTED_ARGUMENTS,
+            ),
+            'toolTextUtf8Bytes': report['toolTextUtf8Bytes'],
+            'resultByteLength': report['resultByteLength'],
+            'resultSha256': report['resultSha256'],
+            'answerUtf8Bytes': report['answerUtf8Bytes'],
+            'answerSha256': report['answerSha256'],
+            'answerChecksSha256': GENERATOR._canonical_json_sha256(report['answerChecks']),
+            'answerCountersSha256': GENERATOR._canonical_json_sha256(report['answerCounters']),
+            'resultSummarySha256': GENERATOR._canonical_json_sha256(report['resultSummary']),
+        }
+        public_der_base64 = base64.b64encode(public_der).decode('ascii')
+        report['runnerReceipt'] = {
+            'schemaVersion': 1,
+            'kind': GENERATOR.CODEX_P01_RUNNER_RECEIPT_KIND,
+            'publicKeyBase64': public_der_base64,
+            'publicKeySha256': hashlib.sha256(public_der).hexdigest(),
+            'payload': receipt_payload,
+            'signature': base64.b64encode(b's' * 64).decode('ascii'),
+        }
+        return report
+
     def _g04_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
@@ -2629,6 +2954,312 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report_path, self.source_revision,
             ),
         )
+
+    def test_accepts_only_exact_candidate_bound_sanitized_p01_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH).name
+        report = self._p01_report_fixture()
+
+        self.assertTrue(GENERATOR.codex_p01_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_p01_report_is_valid(report))
+        wrong_claim = dict(report)
+        wrong_claim['claimId'] = 'p01-run-95-pr-147-000000000000-123'
+        self.assertFalse(GENERATOR.codex_p01_report_is_valid(wrong_claim))
+        no_runner_receipt = dict(report)
+        no_runner_receipt.pop('runnerReceipt')
+        self.assertFalse(GENERATOR.codex_p01_report_is_valid(no_runner_receipt))
+        report_bytes = json.dumps(report).encode('utf-8')
+        report_path.write_bytes(report_bytes)
+        self._set_p01_control_record(report, report_bytes)
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH},
+        )
+        self.assertNotIn('answer', report)
+        self.assertNotIn('prompt', report)
+        self.assertNotIn('rawRole', json.dumps(report))
+
+        self._git('add', GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized P01 one-shot evidence')
+        report_commit = self._git('rev-parse', 'HEAD').stdout.strip()
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=self.source_revision,
+            current_review_pass=self.source_revision,
+            epoch_state='REVIEW_PASSED',
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+
+        report_refresh = {
+            'review_number': 1,
+            'previous_candidate_sha': self.source_revision,
+            'candidate_sha': report_commit,
+            'reviewed_base_sha': report['baseSha'],
+            'reason': 'Attach the accepted sanitized P01 report and refresh the exact Candidate.',
+            'at': '2026-10-11T08:30:00.000Z',
+        }
+        # Harness refresh clears the original current-pass authority. The exact
+        # historical PASS plus immutable disposition and refresh edge preserve
+        # this report while the refreshed Candidate awaits its new review.
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=report_commit,
+            current_review_pass=None,
+            epoch_state='REVIEW_READY',
+            refresh_history=[report_refresh],
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+        self.assertEqual(
+            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            {GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH},
+        )
+
+        # A new PASS on the refreshed Candidate must not hide the report's
+        # original, exact Candidate/Base/reviewer PASS.
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=report_commit,
+            current_review_pass=report_commit,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 2,
+                    'candidate_sha': report_commit,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+            ],
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+        )
+
+        (self.root / 'later-candidate-note.txt').write_text('later corrective Candidate\n', encoding='utf-8')
+        self._git('add', 'later-candidate-note.txt')
+        self._git('commit', '-qm', 'advance beyond the report refresh Candidate')
+        later_candidate = self._git('rev-parse', 'HEAD').stdout.strip()
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 2,
+                    'candidate_sha': report_commit,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 3,
+                    'candidate_sha': later_candidate,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+            ],
+            pr_head_sha=later_candidate,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'the historical report stays bound to its direct refresh while the live PR advances',
+        )
+
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': 'f' * 40,
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 3,
+                    'candidate_sha': later_candidate,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+            ],
+            pr_head_sha=later_candidate,
+        )
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a later PASS cannot substitute for the report Candidate/Base/reviewer PASS',
+        )
+
+        # A corrective review clears candidate_sha, but its latest immutable
+        # review record still identifies the live PR head and must preserve the
+        # already accepted one-shot evidence.
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=None,
+            current_review_pass=None,
+            epoch_state='CORRECTIVE_REQUIRED',
+            refresh_history=[report_refresh],
+            review_history=[
+                {
+                    'review_number': 1,
+                    'candidate_sha': self.source_revision,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'PASS',
+                },
+                {
+                    'review_number': 2,
+                    'candidate_sha': report_commit,
+                    'reviewed_base_sha': report['baseSha'],
+                    'reviewer_id': report['reviewerId'],
+                    'verdict': 'CORRECTIVE_REQUIRED',
+                },
+            ],
+            pr_head_sha=report_commit,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a later corrective verdict must not erase the historical exact PASS',
+        )
+
+        invalid_refresh = dict(report_refresh, previous_candidate_sha=self.stale_candidate_source_revision)
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[invalid_refresh],
+            pr_head_sha=later_candidate,
+        )
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a current PASS cannot replace the exact report Candidate refresh lineage',
+        )
+
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            pr_head_sha=later_candidate,
+            pr_state='closed',
+            pr_merged=False,
+        )
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a closed, unmerged PR must not authorize acceptance evidence',
+        )
+        self._set_p01_control_record(
+            report,
+            report_bytes,
+            current_candidate=later_candidate,
+            current_review_pass=later_candidate,
+            epoch_state='REVIEW_PASSED',
+            refresh_history=[report_refresh],
+            pr_head_sha=later_candidate,
+            pr_state='closed',
+            pr_merged=True,
+        )
+        self.assertTrue(
+            GENERATOR.codex_p01_report_matches_candidate_revision(report_path, self.source_revision),
+            'a merged PR retains its accepted immutable report',
+        )
+
+        # An otherwise valid, self-consistent edit must not bypass the exact digest
+        # Harness accepted before this evidence was committed.
+        report_path.write_bytes(report_path.read_bytes() + b'\n')
+        edited_report = json.loads(report_path.read_bytes())
+        self.assertTrue(GENERATOR.codex_p01_report_is_valid(edited_report))
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        self.assertNotIn(
+            GENERATOR.CODEX_P01_REPORT_RELATIVE_PATH,
+            GENERATOR.model_mcp_e2e_sources(self.catalog).get(
+                'bangumi.get_person_activity', set(),
+            ),
+        )
+
+        stale_report = self._p01_report_fixture(self.stale_candidate_source_revision)
+        self.assertTrue(GENERATOR.codex_p01_report_is_valid(stale_report))
+        self.assertFalse(
+            GENERATOR.codex_p01_report_matches_candidate_revision(
+                report_path, self.stale_candidate_source_revision,
+            ),
+        )
+
+    def test_rejects_p01_report_with_stale_gates_privacy_or_false_coverage(self):
+        invalid_mutations = [
+            lambda report: report.update(model='gpt-6-sol'),
+            lambda report: report.update(reasoningEffort='high'),
+            lambda report: report['candidateGate'].update(reviewPassSha='0' * 40),
+            lambda report: report['toolCalls'].append(report['toolCalls'][0]),
+            lambda report: report['runnerReceipt']['payload'].update(eventStreamParsed=False),
+            lambda report: report['runnerReceipt'].update(publicKeySha256='0' * 64),
+            lambda report: report['runnerReceipt'].update(publicKeyBase64='☃'),
+            lambda report: report['resultSummary']['coverage'].update(truncated=True),
+            lambda report: report['resultSummary'].update(rawRole='must not be retained'),
+            lambda report: report['privacy'].update(communityRead=True),
+        ]
+        for mutate in invalid_mutations:
+            with self.subTest(mutate=mutate):
+                report = self._p01_report_fixture()
+                mutate(report)
+                self.assertFalse(GENERATOR.codex_p01_report_is_valid(report))
+
+        complete_with_unknown_role = self._p01_report_fixture()
+        complete_with_unknown_role['resultSummary']['state'] = 'complete'
+        complete_with_unknown_role['resultSummary']['unknownRoleRows'] = 1
+        complete_with_unknown_role['resultSummary']['roleLabelCount'] = 0
+        complete_with_unknown_role['answerCounters'].update({
+            'sourceRoleLabels': 0,
+            'answerRoleLabels': 0,
+            'knownRoleRows': 0,
+            'unknownRoleRows': 1,
+        })
+        self.assertFalse(GENERATOR.codex_p01_report_is_valid(complete_with_unknown_role))
 
     def test_rejects_s02_evidence_with_wrong_rank_order_scope_or_raw_content(self):
         invalid_reports = [
