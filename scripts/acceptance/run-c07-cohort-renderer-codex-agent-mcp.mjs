@@ -197,6 +197,14 @@ export function assertC07EpochIdentity({ run, epoch, epochNumber }) {
     .filter((value) => typeof value === 'string')
     .join(' ')
     .toLowerCase();
+  const nonScopeText = (Array.isArray(epoch?.non_scope) ? epoch.non_scope : [])
+    .map((value) =>
+      typeof value === 'string'
+        ? value
+        : `${value?.description ?? ''} ${value?.mapping?.reason ?? ''}`,
+    )
+    .join(' ')
+    .toLowerCase();
   const isC07RendererOnlyEpoch =
     typeof epoch?.epoch_id === 'string' &&
     /^run95-c07-[a-z0-9-]+$/u.test(epoch.epoch_id) &&
@@ -204,10 +212,15 @@ export function assertC07EpochIdentity({ run, epoch, epochNumber }) {
     epoch.advances_frontier_ids.includes(FRONTIER_ID) &&
     objective.includes(TARGET_TOOL) &&
     objective.includes('renderer-only') &&
-    objective.includes('synthetic fixture') &&
+    objective.includes('fixed local synthetic fixture') &&
     workPackageText.includes('synthetic') &&
     workPackageText.includes('fixture') &&
-    acceptanceText.includes('offline fixture') &&
+    acceptanceText.includes('synthetic') &&
+    acceptanceText.includes('fixture') &&
+    acceptanceText.includes('authorization headers') &&
+    ['api', 'oauth', 'private user data', 'community', 'qq', 'tim', 'write'].every((term) =>
+      nonScopeText.includes(term),
+    ) &&
     !/\blive\s+bangumi\s+api\b/u.test(workPackageText);
   if (
     run?.state !== 'EPOCH_ACTIVE' ||

@@ -139,9 +139,23 @@ test('C07 gate derives and validates the currently active renderer-only Epoch an
       epoch_id: TEST_EPOCH_ID,
       pr_number: TEST_PR_NUMBER,
       advances_frontier_ids: ['C07'],
-      objective: `Recover one renderer-only synthetic fixture observation for ${TARGET_TOOL} offline.`,
-      work_packages: ['Run one offline synthetic renderer-only tool call using the fixed fixture.'],
-      acceptance_criteria: ['Verify the offline fixture and synthetic artifact.'],
+      objective: `Recover one renderer-only observation for ${TARGET_TOOL} using only the fixed local synthetic fixture.`,
+      work_packages: [
+        'Preserve the fixed local fixture profile, synthetic responses, no external data, no account, and no write path.',
+      ],
+      non_scope: [
+        {
+          description:
+            'Bangumi public HTTP/API requests, OAuth/consent, private user data, community, QQ, TIM, or any write.',
+          mapping: {
+            reason:
+              'This Epoch is limited to an isolated local synthetic fixture with external and account/channel paths excluded.',
+          },
+        },
+      ],
+      acceptance_criteria: [
+        'The MCP synthetic fixture rejects authorization headers and every unexpected request.',
+      ],
     },
     epochNumber: TEST_PR_NUMBER,
   };
@@ -165,6 +179,19 @@ test('C07 gate derives and validates the currently active renderer-only Epoch an
     assertC07EpochIdentity({
       ...valid,
       epoch: { ...valid.epoch, work_packages: ['Use the live Bangumi API.'] },
+    }),
+  );
+  assert.throws(() =>
+    assertC07EpochIdentity({
+      ...valid,
+      epoch: {
+        ...valid.epoch,
+        non_scope: valid.epoch.non_scope.map((entry) => ({
+          ...entry,
+          description: 'Improve the renderer card with public metadata.',
+          mapping: { reason: 'No explicit OAuth, account, community, client, or write exclusion.' },
+        })),
+      },
     }),
   );
   assert.throws(() => assertC07EpochIdentity({ ...valid, epochNumber: 150 }));
