@@ -507,14 +507,21 @@ export function assertProductCommitHygiene(subjects) {
     `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:${runtimeStatePath})(?:\\[\\d*\\])?[\\s._-]+(?:state|status|outcome|verdict)\\s+(?:(?:to|as|is)\\s+${runtimeStateValue}|from\\s+${runtimeStateValue}\\s+to\\s+${runtimeStateValue})${runtimeStateIdentifier}$`,
     'iu',
   );
+  const oneShotRuntimeStateTransition = new RegExp(
+    `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:(?:g|p)\\d{2}\\s+)?(?:(?:one|single)[\\s._-]*shot\\s+)?(?:claim|disposition|attempt|retry|result|report)(?:[\\s._-]+(?:state|status|outcome|verdict))?\\s+(?:(?:to|as|is)\\s+)?(?:claimed|unclaimed|inconclusive|report_written(?:_ack_pending)?|consumed|spent|retry_allowed|retry_prohibited|allowed|prohibited|terminal)(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?$`,
+  );
   const durableEngineering =
-    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|frontier|capability|api|renderer|standalone|agent-ux)\):\s+\S/u;
   const engineeringPrefix =
-    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs\((?:product|capability|api|renderer|standalone|agent-ux)\):\s+/u;
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs\((?:product|frontier|capability|api|renderer|standalone|agent-ux)\):\s+/u;
   const runtimeOnly = subjects.filter((subject) => {
     if (!durableEngineering.test(subject)) return true;
     const message = subject.replace(engineeringPrefix, '').trim();
-    return runtimeTransition.test(message) || runtimeStateEnumTransition.test(message);
+    return (
+      runtimeTransition.test(message) ||
+      runtimeStateEnumTransition.test(message) ||
+      oneShotRuntimeStateTransition.test(message.toLowerCase())
+    );
   });
   if (runtimeOnly.length > 0) {
     throw new HarnessInvariantError(

@@ -930,6 +930,7 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(renderer): bound character rows',
     'fix(g26): isolate candidate history checks from git overrides',
     'fix(g26): update candidate history verifier',
+    'docs(frontier): record G04 evidence provenance',
   ]);
   assert.throws(
     () => assertNoLegacyRuntimeChanges(['docs/product/loop-status.md']),
@@ -957,6 +958,14 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(harness): set frontier closure state to PASS',
     'fix(harness): set epoch.review.runtime.state to review_runtime_recovery_required for PR #103',
     'fix(harness): record frontier closure runtime history outcome as UNAVAILABLE',
+    'docs(frontier): record frontier closure runtime history outcome as UNAVAILABLE',
+    'docs(frontier): record G04 one-shot disposition as CLAIMED for PR #136',
+    'docs(frontier): RECORD g04 one-shot disposition AS claimed for PR #136',
+    'docs(frontier): record G04 one-shot attempt as INCONCLUSIVE for PR #136',
+    'docs(frontier): record G04 one-shot result as INCONCLUSIVE for PR #136',
+    'docs(frontier): record P01 result as REPORT_WRITTEN_ACK_PENDING for PR #135',
+    'docs(frontier): record G04 one-shot report as REPORT_WRITTEN for PR #136',
+    'docs(frontier): set P01 one-shot claim state to REPORT_WRITTEN for PR #135',
     'fix(harness): record epoch review runtime history verdict as CORRECTIVE_REQUIRED',
     'fix(harness): advance run state to STOPPED_RUN_BUDGET_EXHAUSTED_RESUMABLE',
     'fix(harness): interrupt epoch review runtime state to INTERRUPTED_RESUMABLE',
