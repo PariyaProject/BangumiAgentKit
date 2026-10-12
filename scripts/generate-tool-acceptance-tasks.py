@@ -302,6 +302,7 @@ CODEX_A01_AGGREGATE_REPORT_RELATIVE_PATH = (
     'docs/live-probes/pariya-agent-codex-luna-e2e-A01-aggregate.json'
 )
 CODEX_A01_AGGREGATE_PR_NUMBER = 127
+CODEX_C07_RENDERER_PR_NUMBER = 140
 CODEX_G02_QUERY_ARGUMENTS = {
     'media': 'anime',
     'from': '2024-01-01',
@@ -857,11 +858,11 @@ CODEX_C07_RENDERER_OFFLINE_FIXTURE_FIELDS = {
 CODEX_C07_RENDERER_ANSWER_CHECK_FIELDS = {
     'oneToolOnly', 'fixedArguments', 'currentCandidateBundle', 'offlineFixtureOnly',
     'noAdditionalTools', 'successfulServerCall', 'artifactReadback', 'decodedPng',
-    'decodedDimensionsMatch', 'visualReadability',
+    'decodedDimensionsMatch', 'nonblankPixelSignal',
     'safeFinalAnswer', 'privacyPreserved',
 }
 CODEX_C07_RENDERER_ARTIFACT_VALIDATION_FIELDS = {
-    'decoded', 'dimensionsMatch', 'visualReadabilityVerified',
+    'decoded', 'dimensionsMatch', 'nonblankPixelSignalVerified',
 }
 CODEX_A01_AGGREGATE_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
     'runNumber', 'frontierId', 'epochId', 'mcpBundleSha256', 'prNumber', 'baseSha',
@@ -1449,14 +1450,16 @@ CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/lib/c07-png-artifact-validation.mjs': (
         'export function inspectC07PngArtifact(',
         'inflateSync(compressedImage',
-        'visualReadabilityVerified:',
+        'nonblankPixelSignalVerified:',
     ),
     'tests/render/subject-cohort-comparison.test.ts': (
-        "it('decodes the offline C07 comparison card and verifies readable pixels'",
+        "it('decodes the offline C07 comparison card and verifies its nonblank pixel signal'",
         'inspectC07PngArtifact(rendered.buffer, rendered.width, rendered.height)',
     ),
     'scripts/acceptance/run-c07-cohort-renderer-codex-agent-mcp.mjs': (
         "const EPOCH_ID = 'run95-c07-cohort-comparison-renderer-luna-mcp'",
+        'const PR_NUMBER = 140;',
+        'export function assertC07EpochIdentity(',
         'function assertCurrentGate(sourceRevision)',
         "'features.shell_tool=false'",
         "'features.web_search=false'",
@@ -6754,7 +6757,7 @@ def codex_c07_renderer_report_is_valid(report: dict, result: dict) -> bool:
         and report.get('frontierId') == 'C07'
         and report.get('epochId') == 'run95-c07-cohort-comparison-renderer-luna-mcp'
         and type(report.get('prNumber')) is int
-        and report['prNumber'] > 0
+        and report['prNumber'] == CODEX_C07_RENDERER_PR_NUMBER
         and re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
         and re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
         and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
@@ -6766,7 +6769,7 @@ def codex_c07_renderer_report_is_valid(report: dict, result: dict) -> bool:
         and artifact_validation == {
             'decoded': True,
             'dimensionsMatch': True,
-            'visualReadabilityVerified': True,
+            'nonblankPixelSignalVerified': True,
         }
         and isinstance(candidate_gate, dict)
         and set(candidate_gate) == CODEX_C07_RENDERER_CANDIDATE_GATE_FIELDS

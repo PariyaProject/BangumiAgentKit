@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
+  assertC07EpochIdentity,
   buildCodexExecArgs,
   buildReport,
   verifyObservation,
@@ -34,7 +35,7 @@ function fixtureObservation() {
     pngSignatureValid: true,
     decoded: true,
     dimensionsMatch: true,
-    visualReadabilityVerified: true,
+    nonblankPixelSignalVerified: true,
   };
   const serverSummary = {
     serverProfile: 'one-tool-anonymous-public-v1',
@@ -106,7 +107,7 @@ function fixtureObservation() {
     gate: {
       runNumber: 95,
       epochId: 'run95-c07-cohort-comparison-renderer-luna-mcp',
-      prNumber: 150,
+      prNumber: 140,
       candidateSha: serverSummary.sourceRevision,
       baseSha: 'd'.repeat(40),
       reviewerId: 'gpt-6-luna-max-run95-c07-round1',
@@ -121,6 +122,31 @@ test('C07 runner accepts only the already governed Run #95 invocation', () => {
   assert.equal(validateRunnerArgs(['--help']), 'help');
   assert.throws(() => validateRunnerArgs(['--run', '94']));
   assert.throws(() => validateRunnerArgs(['--run', '95', '--force']));
+});
+
+test('C07 gate binds the active Harness epoch identity and PR #140', () => {
+  const valid = {
+    run: { state: 'EPOCH_ACTIVE', active_epoch_pr: 140 },
+    epoch: {
+      epoch_id: 'run95-c07-cohort-comparison-renderer-luna-mcp',
+      pr_number: 140,
+    },
+    epochNumber: 140,
+  };
+  assert.deepEqual(assertC07EpochIdentity(valid), {
+    epochId: 'run95-c07-cohort-comparison-renderer-luna-mcp',
+    prNumber: 140,
+  });
+  assert.throws(() =>
+    assertC07EpochIdentity({ ...valid, epoch: { ...valid.epoch, epoch_id: 'other-epoch' } }),
+  );
+  assert.throws(() =>
+    assertC07EpochIdentity({ ...valid, epoch: { ...valid.epoch, pr_number: 150 } }),
+  );
+  assert.throws(() => assertC07EpochIdentity({ ...valid, epochNumber: 150 }));
+  assert.throws(() =>
+    assertC07EpochIdentity({ ...valid, run: { ...valid.run, active_epoch_pr: 150 } }),
+  );
 });
 
 test('C07 Codex config uses Luna Max and exposes only the fixed offline renderer', () => {
@@ -199,7 +225,7 @@ test('C07 observation validator accepts only one exact offline fixture renderer 
   assert.equal(verifyObservation(undecodableArtifact).checks.artifactReturned, false);
 
   const blankArtifact = structuredClone(observation);
-  blankArtifact.serverSummary.result.artifact.visualReadabilityVerified = false;
+  blankArtifact.serverSummary.result.artifact.nonblankPixelSignalVerified = false;
   assert.equal(verifyObservation(blankArtifact).checks.artifactReturned, false);
 
   const networkAttempt = structuredClone(observation);
@@ -232,4 +258,26 @@ test('C07 sanitized report retains only artifact facts and evidence booleans', (
   assert.equal(report.privacy.rawResultStored, false);
   assert.equal(report.privacy.artifactImageBytesStored, false);
   assert.equal(report.scenarios[0].result.artifact.persisted, false);
+  assert.equal(report.epochId, 'run95-c07-cohort-comparison-renderer-luna-mcp');
+  assert.equal(report.prNumber, 140);
+  assert.throws(() =>
+    buildReport({
+      sourceRevision: observation.sourceRevision,
+      bundleSha256: observation.bundleSha256,
+      codexCliVersion: '1.2.3',
+      gate: { ...observation.gate, epochId: 'another-epoch' },
+      serverSummary: observation.serverSummary,
+      observation: verified,
+    }),
+  );
+  assert.throws(() =>
+    buildReport({
+      sourceRevision: observation.sourceRevision,
+      bundleSha256: observation.bundleSha256,
+      codexCliVersion: '1.2.3',
+      gate: { ...observation.gate, prNumber: 150 },
+      serverSummary: observation.serverSummary,
+      observation: verified,
+    }),
+  );
 });

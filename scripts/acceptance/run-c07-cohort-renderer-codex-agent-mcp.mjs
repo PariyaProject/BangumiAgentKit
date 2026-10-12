@@ -19,6 +19,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
+const PR_NUMBER = 140;
 const EPOCH_ID = 'run95-c07-cohort-comparison-renderer-luna-mcp';
 const FRONTIER_ID = 'C07';
 const TARGET_TOOL = 'bangumi.render_subject_cohort_comparison';
@@ -181,6 +182,19 @@ function readPr(prNumber) {
   );
 }
 
+export function assertC07EpochIdentity({ run, epoch, epochNumber }) {
+  if (
+    run?.state !== 'EPOCH_ACTIVE' ||
+    run.active_epoch_pr !== PR_NUMBER ||
+    epochNumber !== PR_NUMBER ||
+    epoch?.pr_number !== PR_NUMBER ||
+    epoch?.epoch_id !== EPOCH_ID
+  ) {
+    throw new Error('Run #95 active PR must be the selected C07 renderer Epoch #140.');
+  }
+  return { epochId: EPOCH_ID, prNumber: PR_NUMBER };
+}
+
 function remoteSha(ref) {
   const output = runCommand('git', ['ls-remote', 'origin', ref]);
   const sha = output.trim().split(/\s+/u)[0];
@@ -230,10 +244,8 @@ function assertCurrentGate(sourceRevision) {
   const run = status?.run?.state;
   const epochView = status?.epoch;
   const epoch = epochView?.state;
-  const prNumber = run?.active_epoch_pr;
-  if (!Number.isInteger(prNumber) || !epoch || epochView.number !== prNumber) {
-    throw new Error('Run #95 has no matching active Epoch PR.');
-  }
+  const identity = assertC07EpochIdentity({ run, epoch, epochNumber: epochView?.number });
+  const prNumber = identity.prNumber;
   const currentBaseSha = remoteSha('refs/heads/master');
   const remoteHeadSha = remoteSha(`refs/heads/${epoch.branch}`);
   const pr = readPr(prNumber);
@@ -248,6 +260,8 @@ function assertCurrentGate(sourceRevision) {
     epoch.base_sha === currentBaseSha &&
     epoch.reviewed_base_sha === currentBaseSha &&
     epoch.review_pass_sha === sourceRevision &&
+    epoch.epoch_id === identity.epochId &&
+    epoch.pr_number === prNumber &&
     remoteHeadSha === sourceRevision &&
     pr.state === 'OPEN' &&
     pr.isDraft === false &&
@@ -268,7 +282,7 @@ function assertCurrentGate(sourceRevision) {
   }
   return {
     runNumber: RUN_NUMBER,
-    epochId: epoch.epoch_id,
+    epochId: identity.epochId,
     prNumber,
     candidateSha: sourceRevision,
     baseSha: currentBaseSha,
@@ -413,7 +427,7 @@ function artifactIsBounded(artifact) {
     artifact.pngSignatureValid === true &&
     artifact.decoded === true &&
     artifact.dimensionsMatch === true &&
-    artifact.visualReadabilityVerified === true,
+    artifact.nonblankPixelSignalVerified === true,
   );
 }
 
@@ -505,6 +519,9 @@ export function buildReport({
   serverSummary,
   observation,
 }) {
+  if (gate?.epochId !== EPOCH_ID || gate?.prNumber !== PR_NUMBER) {
+    throw new Error('C07 report requires the verified Run #95 PR #140 Epoch identity.');
+  }
   const artifact = serverSummary.result.artifact;
   const passed = observation.passed && Object.values(observation.checks).every(Boolean);
   const result = {
@@ -535,7 +552,7 @@ export function buildReport({
     artifactReadback: observation.checks.artifactReturned,
     decodedPng: serverSummary.result.artifact.decoded === true,
     decodedDimensionsMatch: serverSummary.result.artifact.dimensionsMatch === true,
-    visualReadability: serverSummary.result.artifact.visualReadabilityVerified === true,
+    nonblankPixelSignal: serverSummary.result.artifact.nonblankPixelSignalVerified === true,
     safeFinalAnswer: observation.checks.answerPresentButNotRetained,
     privacyPreserved: observation.checks.privacy,
   };
@@ -545,7 +562,7 @@ export function buildReport({
     profile: 'codex-luna-max-one-tool-v1',
     frontierId: FRONTIER_ID,
     runNumber: RUN_NUMBER,
-    epochId: EPOCH_ID,
+    epochId: gate.epochId,
     observedAt: new Date().toISOString(),
     model: MODEL,
     reasoningEffort: REASONING_EFFORT,
@@ -599,7 +616,7 @@ export function buildReport({
     artifactValidation: {
       decoded: artifact.decoded === true,
       dimensionsMatch: artifact.dimensionsMatch === true,
-      visualReadabilityVerified: artifact.visualReadabilityVerified === true,
+      nonblankPixelSignalVerified: artifact.nonblankPixelSignalVerified === true,
     },
     scenarios: [
       {
@@ -641,7 +658,11 @@ function run() {
     throw new Error('Candidate or runtime bundle changed before the C07 renderer observation.');
   }
   const gate = assertCurrentGate(sourceRevision);
-  if (gate.prNumber !== initialGate.prNumber || gate.reviewerId !== initialGate.reviewerId) {
+  if (
+    gate.epochId !== initialGate.epochId ||
+    gate.prNumber !== initialGate.prNumber ||
+    gate.reviewerId !== initialGate.reviewerId
+  ) {
     throw new Error('Run #95 changed active Epoch or reviewer during the C07 preflight.');
   }
 
@@ -676,6 +697,7 @@ function run() {
     const postCallGate = assertCurrentGate(sourceRevision);
     if (
       postCallGate.prNumber !== gate.prNumber ||
+      postCallGate.epochId !== gate.epochId ||
       postCallGate.reviewerId !== gate.reviewerId ||
       !currentBundleMatches(sourceRevision, bundleSha256)
     ) {

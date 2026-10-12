@@ -1117,7 +1117,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'epochId': 'run95-c07-cohort-comparison-renderer-luna-mcp',
             'observedAt': '2026-10-12T12:00:00.000Z',
             'baseSha': 'b' * 40,
-            'prNumber': 150,
+            'prNumber': 140,
             'mcpBundleSha256': 'e' * 64,
             'mcpServerNames': ['bgk_c07_cohort_renderer_one_tool'],
             'candidateGate': {
@@ -1143,7 +1143,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'artifactValidation': {
                 'decoded': True,
                 'dimensionsMatch': True,
-                'visualReadabilityVerified': True,
+                'nonblankPixelSignalVerified': True,
             },
             'serverSummaryMatchesCandidate': True,
             'sameCandidateAfterCall': True,
@@ -1180,8 +1180,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         changed_candidate['candidateGate']['reviewPassSha'] = 'f' * 40
         invalid_reports.append(changed_candidate)
         bad_renderability = json.loads(json.dumps(report))
-        bad_renderability['artifactValidation']['visualReadabilityVerified'] = False
+        bad_renderability['artifactValidation']['nonblankPixelSignalVerified'] = False
         invalid_reports.append(bad_renderability)
+        wrong_epoch = json.loads(json.dumps(report))
+        wrong_epoch['epochId'] = 'another-epoch'
+        invalid_reports.append(wrong_epoch)
+        wrong_pr = json.loads(json.dumps(report))
+        wrong_pr['prNumber'] = 150
+        invalid_reports.append(wrong_pr)
         for invalid in invalid_reports:
             self.assertFalse(GENERATOR.codex_mcp_evidence_is_valid(
                 invalid, current_by_name, current_by_name,

@@ -303,7 +303,7 @@ describe('subject cohort comparison renderer', () => {
     expect(html).toContain('B − A');
   });
 
-  it('decodes the offline C07 comparison card and verifies readable pixels', async () => {
+  it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
     const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
     const service = new RenderService();
     try {
@@ -315,7 +315,7 @@ describe('subject cohort comparison renderer', () => {
       expect(inspectC07PngArtifact(rendered.buffer, rendered.width, rendered.height)).toEqual({
         decoded: true,
         dimensionsMatch: true,
-        visualReadabilityVerified: true,
+        nonblankPixelSignalVerified: true,
       });
     } finally {
       await service.close();

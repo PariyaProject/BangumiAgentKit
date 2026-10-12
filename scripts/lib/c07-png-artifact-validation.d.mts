@@ -7,5 +7,5 @@ export function inspectC07PngArtifact(
 ): {
   decoded: boolean;
   dimensionsMatch: boolean;
-  visualReadabilityVerified: boolean;
+  nonblankPixelSignalVerified: boolean;
 };

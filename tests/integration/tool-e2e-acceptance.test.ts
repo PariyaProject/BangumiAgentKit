@@ -175,8 +175,7 @@ function isCurrentC07RendererReport(report: any): boolean {
     /^[0-9a-f]{40}$/u.test(report?.sourceRevision ?? '') &&
     /^[0-9a-f]{40}$/u.test(report?.baseSha ?? '') &&
     /^[0-9a-f]{64}$/u.test(report?.mcpBundleSha256 ?? '') &&
-    Number.isInteger(report?.prNumber) &&
-    report.prNumber > 0 &&
+    report?.prNumber === 140 &&
     report?.processExitCode === 0 &&
     report?.resultStatus === 'SUCCESS' &&
     report?.eventStreamParsed === true &&
@@ -225,7 +224,7 @@ function isCurrentC07RendererReport(report: any): boolean {
         'privacyPreserved',
         'safeFinalAnswer',
         'successfulServerCall',
-        'visualReadability',
+        'nonblankPixelSignal',
       ]
         .sort()
         .join(',') &&
@@ -242,7 +241,7 @@ function isCurrentC07RendererReport(report: any): boolean {
     fixture?.rawFixturePayloadStored === false &&
     report?.artifactValidation?.decoded === true &&
     report?.artifactValidation?.dimensionsMatch === true &&
-    report?.artifactValidation?.visualReadabilityVerified === true &&
+    report?.artifactValidation?.nonblankPixelSignalVerified === true &&
     artifact?.mimeType === 'image/png' &&
     Number.isInteger(artifact?.width) &&
     artifact.width > 0 &&

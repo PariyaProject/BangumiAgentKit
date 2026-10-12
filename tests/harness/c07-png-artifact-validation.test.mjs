@@ -93,7 +93,7 @@ test('C07 PNG validation decodes filtered rows and matches metadata dimensions',
   assert.deepEqual(inspectC07PngArtifact(png, 16, 10), {
     decoded: true,
     dimensionsMatch: true,
-    visualReadabilityVerified: true,
+    nonblankPixelSignalVerified: true,
   });
   assert.equal(inspectC07PngArtifact(createPng({ includePalette: true }), 16, 10).decoded, true);
   assert.equal(inspectC07PngArtifact(png, 15, 10).dimensionsMatch, false);
@@ -102,7 +102,7 @@ test('C07 PNG validation decodes filtered rows and matches metadata dimensions',
 test('C07 PNG validation rejects blank, corrupted, and oversized artifacts', () => {
   const blank = inspectC07PngArtifact(createPng({ blank: true }), 16, 10);
   assert.equal(blank.decoded, true);
-  assert.equal(blank.visualReadabilityVerified, false);
+  assert.equal(blank.nonblankPixelSignalVerified, false);
 
   const corrupted = createPng();
   corrupted[corrupted.length - 5] ^= 0xff;

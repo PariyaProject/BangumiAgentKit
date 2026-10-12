@@ -168,7 +168,9 @@ function decodeTrueColorRows(header, compressedImage, expectedWidth, expectedHei
   return {
     width,
     height,
-    visualReadabilityVerified:
+    // This bounded sample detects blank/transparent output only; it does not
+    // establish that text or chart labels are human-readable.
+    nonblankPixelSignalVerified:
       sampledColors.size >= 8 && sampledPixels > 0 && visiblePixels / sampledPixels >= 0.8,
   };
 }
@@ -177,7 +179,7 @@ export function inspectC07PngArtifact(buffer, expectedWidth, expectedHeight) {
   const failed = {
     decoded: false,
     dimensionsMatch: false,
-    visualReadabilityVerified: false,
+    nonblankPixelSignalVerified: false,
   };
   if (
     !Buffer.isBuffer(buffer) ||
@@ -195,7 +197,7 @@ export function inspectC07PngArtifact(buffer, expectedWidth, expectedHeight) {
     return {
       decoded: true,
       dimensionsMatch: decoded.width === expectedWidth && decoded.height === expectedHeight,
-      visualReadabilityVerified: decoded.visualReadabilityVerified,
+      nonblankPixelSignalVerified: decoded.nonblankPixelSignalVerified,
     };
   } catch {
     return failed;
