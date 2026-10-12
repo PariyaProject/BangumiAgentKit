@@ -1142,6 +1142,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         ]
         self.assertIn('epoch.advances_frontier_ids.includes(FRONTIER_ID)', markers)
         self.assertIn('epochNumber !== activePrNumber', markers)
+        self.assertIn("objective.includes('fixed local synthetic fixture')", markers)
+        self.assertNotIn("acceptanceText.includes('offline fixture')", markers)
         self.assertNotIn('const PR_NUMBER = 140;', markers)
 
     def test_accepts_only_bounded_renderer_report_without_changing_frontier_status(self):

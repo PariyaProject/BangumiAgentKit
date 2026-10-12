@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-12T18:07:24Z",
+  "updated_at": "2026-10-12T23:39:16Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1808,7 +1808,7 @@
         "tests/integration/tool-e2e-acceptance.test.ts",
         "tests/render/subject-cohort-comparison.test.ts"
       ],
-      "next_action": "PR #140 merged without an accepted current-source report; its closed-PR-bound runner cannot complete the observation. The current renderer-only Epoch updates the runner to validate the live active Run #95 C07 PR/epoch. After its exact Candidate/Base/CI and same-identity GPT-6 Luna Max PASS, run exactly one fixed local synthetic fixture call to render_subject_cohort_comparison and persist only the bounded sanitized report. This proves the renderer Agent/MCP tool path only; keep C07 UNASSESSED, do not infer a correct user-facing comparison answer, and select a separate scenario-answer Epoch afterward. No public Bangumi request, OAuth/account, community, QQ/TIM, or writes.",
+      "next_action": "PR #144 merged at 82d32ca after exact Candidate/Base/CI and GPT-6 Luna Max review PASS. The final allowed renderer fixture invocation on Candidate 97a36b2 returned INCONCLUSIVE: synthetic tool/artifact/privacy checks and exact acknowledgement passed, but three Codex error items made execution incomplete; no sanitized report or matrix increment was written. Do not invoke the renderer runner again. Follow-up Epoch run95-c07-acceptance-validator-ci aligns the stale acceptance marker with the runner phrase fixed local synthetic fixture and adds acceptance:check to required CI. Keep C07 UNASSESSED until a valid report exists; this validator repair does not accept the user-facing comparison answer.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
