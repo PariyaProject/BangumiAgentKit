@@ -1808,7 +1808,7 @@
         "tests/integration/tool-e2e-acceptance.test.ts",
         "tests/render/subject-cohort-comparison.test.ts"
       ],
-      "next_action": "Complete the current-source GPT-6 Luna Max renderer-only Agent/MCP Epoch using the fixed local synthetic fixture. This tool-only observation must not assess the C07 answer scenario or change its UNASSESSED status. After the sanitized renderer report is accepted, select a separate safe scenario-evidence Epoch; keep consumed A01 claims no-retry.",
+      "next_action": "PR #140 merged without an accepted current-source report; its closed-PR-bound runner cannot complete the observation. The current renderer-only Epoch updates the runner to validate the live active Run #95 C07 PR/epoch. After its exact Candidate/Base/CI and same-identity GPT-6 Luna Max PASS, run exactly one fixed local synthetic fixture call to render_subject_cohort_comparison and persist only the bounded sanitized report. This proves the renderer Agent/MCP tool path only; keep C07 UNASSESSED, do not infer a correct user-facing comparison answer, and select a separate scenario-answer Epoch afterward. No public Bangumi request, OAuth/account, community, QQ/TIM, or writes.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
