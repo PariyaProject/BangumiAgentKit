@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-12T08:25:50Z",
+  "updated_at": "2026-10-12T10:23:28.403Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2659,9 +2659,9 @@
       "kind": "scenario",
       "user_question": "某作品的所有前传、续作和外传是什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-12-102328403-99452.json", "docs/tool-catalog.json", "scripts/smoke-public-tools-online.ts", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md"],
+      "next_action": "A single current-source ToolRegistry observation of bangumi.get_subject_relations for subjectId=41529 completed with one official HTTP request and passing bounded result/consistency assertions; the sanitized report and exact catalog/probe-script hashes are recorded in docs/live-probes/public-tools-2026-10-12-102328403-99452.json. This verifies only the direct public response path. The v0 route has no paging/total or reverse/transitive completeness and does not define viewing order; no complete franchise graph, absence, or Agent/MCP acceptance is claimed. Keep PARTIAL.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
