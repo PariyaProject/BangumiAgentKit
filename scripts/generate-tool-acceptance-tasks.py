@@ -264,6 +264,11 @@ CODEX_G23_PROBE_ARGUMENTS = {
 CODEX_G20_PROBE_ARGUMENTS = {
     'bangumi.get_subject_relations': {'subjectId': 227245, 'includeEvidence': True},
 }
+CODEX_R01_PROBE_ARGUMENTS = {
+    'bangumi.get_subject_relations': {'subjectId': 41529, 'includeEvidence': True},
+}
+CODEX_R01_ARGUMENT_PROFILE = 'fixed-r01-subject-41529-include-evidence-v1'
+CODEX_R01_REPORT_RELATIVE_PATH = 'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'
 CODEX_A01_QUERY_ARGUMENTS = {
     'cohorts': [
         {
@@ -920,8 +925,10 @@ CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS = {
 CODEX_G20_ANSWER_CHECK_FIELDS = {
     'queryArgumentsMatch', 'exactSingleToolCall', 'resultReadbackAvailable',
     'sourceScopeVerified', 'coverageConsistent', 'textProjectionConsistent',
-    'textBudgetVerified', 'boundedSourceDisclosurePresent',
-    'responseCountsDisclosurePresent', 'omissionNotAbsenceDisclosurePresent',
+    'textBudgetVerified', 'finalScopeLineVerified', 'sourceSubjectDisclosurePresent',
+    'boundedSourceDisclosurePresent', 'responseCountsDisclosurePresent',
+    'projectionRowsOmittedDisclosurePresent', 'omissionNotAbsenceDisclosurePresent',
+    'reverseTransitiveDisclosurePresent',
     'nonCanonicalOrderDisclosurePresent', 'schemaDriftDisclosurePresent',
     'noUnsupportedCompletenessClaim', 'noUnsupportedCanonicalOrderClaim',
     'noUnsupportedAbsenceClaim', 'noUnsupportedReverseClaim', 'noMarkdownFormatting',
@@ -1299,6 +1306,9 @@ CODEX_G20_RESULT_FIELDS = {
     'artifact', 'sourceSubjectId', 'source', 'coverage', 'limitationsCount', 'visibleRows',
     'textProjection', 'answerCounters',
 }
+CODEX_R01_RESULT_FIELDS = (
+    CODEX_G20_RESULT_FIELDS - {'visibleRows'}
+) | {'visibleRowCount', 'visibleRowsSha256'}
 CODEX_G20_SOURCE_FIELDS = {'api', 'operation', 'direction', 'scope', 'retrievedAt'}
 CODEX_G20_COVERAGE_FIELDS = {
     'responseRowsObserved', 'rowsReturned', 'schemaDriftRows', 'truncated',
@@ -1532,6 +1542,36 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-g20-agent-mcp-report.mjs': (
         "const TOOL_NAME = 'bangumi.get_subject_relations'",
         'verifyG20DirectRelationsAnswer(',
+        'input.sourceRevision !== sourceRevision',
+        "openSync(reportPath, 'wx', 0o600)",
+    ),
+}
+CODEX_R01_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_r01_report_matches_candidate_revision(',
+        'def codex_r01_result_is_valid(',
+        'CODEX_R01_RESULT_FIELDS',
+    ),
+    'scripts/acceptance/r01-direct-relations-answer-check.mjs': (
+        'export function verifyR01DirectRelationsAnswer(',
+        'const FIXED_R01_SUBJECT_ID = 41529;',
+        'exactQueryArguments(toolCalls[0]?.arguments, FIXED_R01_SUBJECT_ID)',
+        'resultRowsReadbackAvailable',
+        'unsupportedCanonicalOrderClaim',
+    ),
+    'scripts/acceptance/run-r01-codex-agent-mcp.mjs': (
+        'export function buildCodexExecArgs(',
+        'export function validateRunnerArgs(',
+        'export function createOneShotClaim(',
+        'function buildExactCandidateBundle(',
+        'assertR01CandidateReviewGate(status, pr',
+        "'features.shell_tool=false'",
+    ),
+    'scripts/acceptance/write-r01-agent-mcp-report.mjs': (
+        "const TOOL_NAME = 'bangumi.get_subject_relations'",
+        'verifyR01DirectRelationsAnswer(',
+        'visibleRowCount: rows.length',
+        'visibleRowsSha256',
         'input.sourceRevision !== sourceRevision',
         "openSync(reportPath, 'wx', 0o600)",
     ),
@@ -2791,6 +2831,112 @@ def codex_g20_result_is_valid(result: object, expected_subject_id: int) -> bool:
     return artifact == {'returned': False, 'persisted': False}
 
 
+def codex_r01_result_is_valid(result: object, expected_subject_id: int) -> bool:
+    """Validate the R01 result summary without persisting source relation rows."""
+    if not isinstance(result, dict) or set(result) != CODEX_R01_RESULT_FIELDS:
+        return False
+    if (
+        result.get('toolName') != 'bangumi.get_subject_relations'
+        or result.get('resultState') not in {'observed', 'partial'}
+        or type(result.get('sourceSubjectId')) is not int
+        or result['sourceSubjectId'] != expected_subject_id
+        or type(result.get('resultByteLength')) is not int
+        or result['resultByteLength'] <= 0
+        or not re.fullmatch(r'[0-9a-f]{64}', str(result.get('resultSha256', '')))
+        or type(result.get('limitationsCount')) is not int
+        or result['limitationsCount'] <= 0
+        or type(result.get('visibleRowCount')) is not int
+        or result['visibleRowCount'] <= 0
+        or not re.fullmatch(r'[0-9a-f]{64}', str(result.get('visibleRowsSha256', '')))
+    ):
+        return False
+
+    source = result.get('source')
+    if (
+        not isinstance(source, dict)
+        or set(source) != CODEX_G20_SOURCE_FIELDS
+        or source.get('api') != 'Bangumi official v0'
+        or source.get('operation') != 'GET /v0/subjects/{subject_id}/subjects'
+        or source.get('direction') != 'source_subject_to_returned_target'
+        or source.get('scope') != 'visible_direct_rows_returned_for_source_subject'
+        or not isinstance(source.get('retrievedAt'), str)
+        or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z',
+            source['retrievedAt'],
+        )
+    ):
+        return False
+
+    coverage = result.get('coverage')
+    if (
+        not isinstance(coverage, dict)
+        or set(coverage) != CODEX_G20_COVERAGE_FIELDS
+        or any(
+            type(coverage.get(key)) is not int or coverage[key] < 0
+            for key in ('responseRowsObserved', 'rowsReturned', 'schemaDriftRows')
+        )
+        or type(coverage.get('truncated')) is not bool
+        or coverage.get('paginationAvailable') is not False
+        or coverage.get('totalCountAvailable') is not False
+        or coverage.get('completeness') != 'not_provided_by_source'
+        or coverage['responseRowsObserved'] != (
+            coverage['rowsReturned'] + coverage['schemaDriftRows']
+        )
+        or coverage['truncated'] != (coverage['schemaDriftRows'] > 0)
+        or coverage['rowsReturned'] != result['visibleRowCount']
+    ):
+        return False
+    if result['resultState'] != ('partial' if coverage['truncated'] else 'observed'):
+        return False
+
+    text_projection = result.get('textProjection')
+    if (
+        not isinstance(text_projection, dict)
+        or set(text_projection) != CODEX_G20_TEXT_PROJECTION_FIELDS
+        or type(text_projection.get('textUtf8Bytes')) is not int
+        or not 0 < text_projection['textUtf8Bytes'] <= 3600
+        or any(
+            type(text_projection.get(key)) is not int or text_projection[key] < 0
+            for key in (
+                'rowsIncluded', 'rowsOmitted', 'displayNamesClipped',
+                'relationLabelsClipped', 'limitationsClipped', 'imageFieldsOmitted',
+            )
+        )
+        or type(text_projection.get('fullStructuredContentAvailable')) is not bool
+        or text_projection['fullStructuredContentAvailable'] is not True
+        or text_projection['rowsIncluded'] + text_projection['rowsOmitted'] != (
+            result['visibleRowCount']
+        )
+    ):
+        return False
+
+    answer_counters = result.get('answerCounters')
+    if (
+        not isinstance(answer_counters, dict)
+        or set(answer_counters) != CODEX_G20_ANSWER_COUNTER_FIELDS
+        or any(type(value) is not int or value < 0 for value in answer_counters.values())
+        or answer_counters['visibleSourceRows'] != result['visibleRowCount']
+        or answer_counters['invalidSourceRowsCount'] != 0
+        or answer_counters['duplicateSourceRowsCount'] != 0
+        or answer_counters['answerRowsParsed'] != result['visibleRowCount']
+        or answer_counters['rowsMatched'] != result['visibleRowCount']
+        or any(
+            answer_counters[key] != 0
+            for key in (
+                'missingRowsCount', 'mismatchedRowsCount', 'unmatchedRowsCount',
+                'duplicateAnswerRowsCount', 'unstructuredAnswerLinesCount',
+            )
+        )
+        or answer_counters['toolTextUtf8Bytes'] != text_projection['textUtf8Bytes']
+    ):
+        return False
+
+    operations = result.get('sourceOperations')
+    if not isinstance(operations, list) or operations:
+        return False
+    return result.get('artifact') == {'returned': False, 'persisted': False}
+
+
 _GIT_REPOSITORY_OVERRIDE_KEYS = {
     'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
     'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
@@ -2924,13 +3070,18 @@ def codex_g26_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
-def codex_g20_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
-    """Require G20 evidence to originate from the exact pre-query candidate."""
+def _codex_relations_report_matches_candidate_revision(
+    report_path: Path,
+    revision: object,
+    expected_relative_path: str | None = None,
+) -> bool:
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return False
     try:
         relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
     except ValueError:
+        return False
+    if expected_relative_path is not None and relative_path != expected_relative_path:
         return False
 
     head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
@@ -2953,6 +3104,31 @@ def codex_g20_report_matches_candidate_revision(report_path: Path, revision: obj
     parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def codex_g20_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require G20 evidence to originate from the exact pre-query candidate."""
+    return _codex_relations_report_matches_candidate_revision(report_path, revision)
+
+
+def codex_r01_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_R01_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_r01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind R01 evidence to its fixed report path and exact pre-query Candidate."""
+    if not codex_r01_probe_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_R01_REPORT_RELATIVE_PATH,
+    )
 
 
 def codex_a01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
@@ -6830,6 +7006,10 @@ def codex_mcp_evidence_is_valid(
         return False
     argument_profile = report.get('argumentProfile')
     is_a01_aggregate = tool_name == 'bangumi.aggregate_subject_cohort'
+    is_r01 = (
+        tool_name in CODEX_R01_PROBE_ARGUMENTS
+        and argument_profile == CODEX_R01_ARGUMENT_PROFILE
+    )
     is_c07_renderer = (
         tool_name == 'bangumi.render_subject_cohort_comparison'
         and argument_profile == CODEX_C07_RENDER_ARGUMENT_PROFILE
@@ -6864,7 +7044,8 @@ def codex_mcp_evidence_is_valid(
                     if is_a01_aggregate else codex_c07_renderer_probe_revision_has_implementation(report['sourceRevision'])
                     if is_c07_renderer else codex_d04_probe_revision_has_implementation(report['sourceRevision'])
                     if is_d04 else codex_g02_probe_revision_has_implementation(report['sourceRevision'])
-                    if is_g02 else codex_probe_revision_has_implementation(report['sourceRevision']))
+                    if is_g02 else codex_r01_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_r01 else codex_probe_revision_has_implementation(report['sourceRevision']))
             or type(report.get('processExitCode')) is not int
             or report.get('processExitCode') != 0
             or report.get('resultStatus') != 'SUCCESS'
@@ -6912,12 +7093,14 @@ def codex_mcp_evidence_is_valid(
     arguments = (
         CODEX_D04_PROBE_ARGUMENTS.get(tool_name) if is_d04 else
         CODEX_G02_PROBE_ARGUMENTS.get(tool_name) if is_g02 else
+        CODEX_R01_PROBE_ARGUMENTS.get(tool_name) if is_r01 else
         CODEX_PROBE_ARGUMENTS.get(tool_name)
     )
-    is_g20 = tool_name in CODEX_G20_PROBE_ARGUMENTS
+    is_g20 = tool_name in CODEX_G20_PROBE_ARGUMENTS and not is_r01
     expected_argument_profile = (
         'd04-reported-episode-count-discovery-v1' if is_d04
         else CODEX_G02_ARGUMENT_PROFILES.get(tool_name) if is_g02
+        else CODEX_R01_ARGUMENT_PROFILE if is_r01
         else CODEX_ARGUMENT_PROFILES.get(tool_name)
     )
     expected_answer_checks = (
@@ -6926,7 +7109,7 @@ def codex_mcp_evidence_is_valid(
         CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
         CODEX_G02_RENDERER_ANSWER_CHECK_FIELDS if is_g02 and tool_name.startswith('bangumi.render_') else
         CODEX_G02_QUERY_ANSWER_CHECK_FIELDS if is_g02 else
-        CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 else
+        CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 or is_r01 else
         CODEX_RENDERER_ANSWER_CHECK_FIELDS if isinstance(tool_name, str) and tool_name.startswith('bangumi.render_') else
         CODEX_STATS_ANSWER_CHECK_FIELDS
     )
@@ -6949,6 +7132,8 @@ def codex_mcp_evidence_is_valid(
             )):
         return False
     if is_g20 and not codex_g20_probe_revision_has_implementation(report.get('sourceRevision')):
+        return False
+    if is_r01 and not codex_r01_probe_revision_has_implementation(report.get('sourceRevision')):
         return False
 
     privacy = report.get('privacy')
@@ -7006,6 +7191,8 @@ def codex_mcp_evidence_is_valid(
         or report.get('resultByteLength') != result.get('resultByteLength')
     ):
         return False
+    if is_r01:
+        return codex_r01_result_is_valid(result, arguments['subjectId'])
     if is_g20:
         return codex_g20_result_is_valid(result, arguments['subjectId'])
     if is_a01_aggregate:
@@ -7268,11 +7455,22 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         if report.get('evidenceKind') == 'codex_cli_mcp_tool_use':
             if not codex_mcp_evidence_is_valid(report, evidence_by_name, current_by_name):
                 continue
-            if (report.get('toolName') == 'bangumi.get_subject_relations'
-                    and not codex_g20_report_matches_candidate_revision(
-                        path, report.get('sourceRevision'),
-                    )):
-                continue
+            if report.get('toolName') == 'bangumi.get_subject_relations':
+                report_relative_path = path.relative_to(
+                    LIVE_PROBE_DIR.parent.parent,
+                ).as_posix()
+                if report.get('argumentProfile') == CODEX_R01_ARGUMENT_PROFILE:
+                    if (
+                        report_relative_path != CODEX_R01_REPORT_RELATIVE_PATH
+                        or not codex_r01_report_matches_candidate_revision(
+                            path, report.get('sourceRevision'),
+                        )
+                    ):
+                        continue
+                elif not codex_g20_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                ):
+                    continue
             if report.get('toolName') == 'bangumi.aggregate_subject_cohort' and (
                 report.get('frontierId') != 'A01'
                 or path.relative_to(LIVE_PROBE_DIR.parent.parent).as_posix()
