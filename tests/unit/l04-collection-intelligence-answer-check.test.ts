@@ -82,6 +82,15 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(inferred.checks.noPreferenceInference).toBe(false);
   });
 
+  it('does not let a same-clause caveat erase a direct preference claim', () => {
+    const inferred = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，你喜欢航海且不能据此判断偏好；本次观察了 20 条，源报告共 30 条，覆盖部分收藏，航海标签出现 7 次。',
+    );
+
+    expect(inferred.accepted).toBe(false);
+    expect(inferred.checks.noPreferenceInference).toBe(false);
+  });
+
   it('does not let an unrelated sample qualifier negate a later full-collection claim', () => {
     const overclaim = checkL04CollectionIntelligenceAnswer(
       '合成样例中，我们只观察了 20 条，但你的完整收藏中航海标签出现 7 次，源报告共 30 条，覆盖部分收藏；不能据此判断你的偏好。',

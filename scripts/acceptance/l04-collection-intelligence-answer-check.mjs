@@ -9,7 +9,8 @@ export const L04_SYNTHETIC_COLLECTION_FACTS = {
 };
 
 const NON_INFERENCE_CAVEAT =
-  /(?:不能|不足以|不代表|不能直接|不可据此)[^。！？!?;；,，\n]{0,32}(?:偏好|口味|喜欢|爱好)/u;
+  /(?:不能|不足以|不代表|不能直接|不可据此)[^。！？!?;；,，\n]{0,32}?(?:偏好|口味|喜欢|爱好)/u;
+const NON_INFERENCE_CAVEATS = new RegExp(NON_INFERENCE_CAVEAT.source, 'gu');
 const POSITIVE_PREFERENCE_CLAIMS = [
   /(?:你|用户)(?:目前|最|更)?(?:偏好|喜欢|偏爱|爱好)(?:是|为|就是|在于)?/u,
   /[^。！？!?;；,，\n]{0,12}(?:是你|是用户)(?:目前|最|更)?(?:偏好|喜欢|偏爱|爱好)(?:的)?/u,
@@ -36,11 +37,11 @@ function hasExactTagCount(text) {
 }
 
 function hasPositivePreferenceClaim(text) {
-  return text
-    .split(CLAIM_CLAUSE_BREAK)
-    .map((clause) => clause.trim())
-    .filter((clause) => clause.length > 0 && !NON_INFERENCE_CAVEAT.test(clause))
-    .some((clause) => POSITIVE_PREFERENCE_CLAIMS.some((pattern) => pattern.test(clause)));
+  return text.split(CLAIM_CLAUSE_BREAK).some((clause) => {
+    NON_INFERENCE_CAVEATS.lastIndex = 0;
+    const withoutCaveats = clause.replace(NON_INFERENCE_CAVEATS, ' ').trim();
+    return POSITIVE_PREFERENCE_CLAIMS.some((pattern) => pattern.test(withoutCaveats));
+  });
 }
 
 function hasPositiveFullScopeClaim(text) {
