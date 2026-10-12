@@ -1018,6 +1018,84 @@ export function assertCorrectiveClosure(epoch, closure = epoch?.corrective_closu
   return true;
 }
 
+export function g04DispositionAcknowledges(disposition, claim, expected) {
+  if (
+    !disposition ||
+    typeof disposition !== 'object' ||
+    Array.isArray(disposition) ||
+    !claim ||
+    typeof claim !== 'object' ||
+    Array.isArray(claim) ||
+    !expected ||
+    typeof expected !== 'object' ||
+    Array.isArray(expected)
+  )
+    return false;
+
+  const resultState = expected.resultState;
+  const isReportWritten = resultState === 'REPORT_WRITTEN';
+  if (
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState) ||
+    claim.runNumber !== 95 ||
+    !Number.isSafeInteger(claim.prNumber) ||
+    claim.prNumber < 1 ||
+    typeof claim.claimId !== 'string' ||
+    !/^[0-9a-f]{40}$/u.test(claim.candidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(claim.baseSha ?? '') ||
+    claim.ciSha !== claim.candidateSha ||
+    claim.ciStatus !== 'SUCCESS' ||
+    typeof claim.reviewerId !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(claim.bundleSha256 ?? '') ||
+    claim.model !== 'gpt-6-luna' ||
+    claim.reasoningEffort !== 'max' ||
+    typeof claim.runnerReceiptPublicKey !== 'string' ||
+    !/^[0-9a-f]{64}$/u.test(claim.runnerReceiptPublicKeySha256 ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(claim.expectedArgumentsSha256 ?? '') ||
+    expected.expectedArgumentsSha256 !== claim.expectedArgumentsSha256 ||
+    typeof expected.epochId !== 'string' ||
+    typeof expected.toolName !== 'string' ||
+    typeof expected.argumentProfile !== 'string' ||
+    typeof expected.reportPath !== 'string' ||
+    (isReportWritten
+      ? !/^[0-9a-f]{64}$/u.test(expected.reportSha256 ?? '')
+      : expected.reportSha256 !== undefined && expected.reportSha256 !== null)
+  )
+    return false;
+
+  const bindings = [
+    ['claimId', claim.claimId],
+    ['runNumber', claim.runNumber],
+    ['prNumber', claim.prNumber],
+    ['frontierId', 'G04'],
+    ['epochId', expected.epochId],
+    ['state', resultState],
+    ['retryAllowed', false],
+    ['sourceCandidateSha', claim.candidateSha],
+    ['baseSha', claim.baseSha],
+    ['ciSha', claim.ciSha],
+    ['ciStatus', claim.ciStatus],
+    ['reviewerId', claim.reviewerId],
+    ['bundleSha256', claim.bundleSha256],
+    ['model', claim.model],
+    ['reasoningEffort', claim.reasoningEffort],
+    ['toolName', expected.toolName],
+    ['argumentProfile', expected.argumentProfile],
+    ['expectedArgumentsSha256', expected.expectedArgumentsSha256],
+    ['runnerReceiptPublicKey', claim.runnerReceiptPublicKey],
+    ['runnerReceiptPublicKeySha256', claim.runnerReceiptPublicKeySha256],
+    ['reportWritten', isReportWritten],
+  ];
+  if (bindings.some(([key, value]) => disposition[key] !== value)) return false;
+
+  if (!isReportWritten) {
+    return disposition.reportPath === undefined && disposition.reportSha256 === undefined;
+  }
+  return (
+    disposition.reportPath === expected.reportPath &&
+    disposition.reportSha256 === expected.reportSha256
+  );
+}
+
 export function assertCandidateInvariant({ candidateSha, branchHeadSha, prHeadSha }) {
   requireText(candidateSha, 'CANDIDATE_INVARIANT_FAILED', 'candidate_sha');
   if (candidateSha !== branchHeadSha || candidateSha !== prHeadSha) {

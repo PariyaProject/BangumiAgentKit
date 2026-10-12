@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   G04_EXPECTED_QUERY_ARGUMENTS,
+  G04_REQUIRED_CAVEAT,
   verifyG04PersonActivityAnswer,
 } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
 import {
@@ -160,8 +161,7 @@ function fixture() {
         roleFamily: 'unknown',
       },
     ],
-    caveat:
-      '本次有界观察只反映当前官方响应，不代表全部作品；时间按作品首播日期归入12个日历月，不是滚动365天。未返回作品不等于不存在；不是实际配音时间或工作量；没有历史快照。',
+    caveat: G04_REQUIRED_CAVEAT,
   });
   const sourceOperations = personActivity.sourceOperations;
   const toolResultSummary = {
@@ -322,6 +322,37 @@ describe('G04 sanitized Agent/MCP report builder', () => {
     expect(saved).not.toMatch(/验收夹具标题|Fixture character|主役|本次有界观察/u);
     expect(saved).not.toMatch(/"answer"|"toolOutput"|"prompt"/u);
     expect(saved).toContain('answerSha256');
+  });
+
+  it('does not write a complete report with missing-date coverage', () => {
+    const { input, liveStatus } = fixture();
+    const result = input.toolOutput.structuredContent;
+    result.state = 'complete';
+    const coverage = result.coverage as Record<string, unknown>;
+    coverage.missingDateRows = 1;
+    const sourceRow = (result.rows as Array<Record<string, unknown>>)[0];
+    if (!sourceRow) throw new Error('Expected the report fixture row.');
+    sourceRow.roleFamily = 'main';
+
+    const answer = JSON.parse(input.answer) as Record<string, unknown>;
+    answer.state = 'complete';
+    const answerCoverage = answer.coverage as Record<string, unknown>;
+    answerCoverage.missingDateRows = 1;
+    const answerRow = (answer.rows as Array<Record<string, unknown>>)[0];
+    if (!answerRow) throw new Error('Expected the answer fixture row.');
+    answerRow.roleFamily = 'main';
+    input.answer = JSON.stringify(answer);
+
+    const verification = verifyG04PersonActivityAnswer(
+      input.answer,
+      input.queryArguments,
+      input.toolOutput,
+      input.toolCalls,
+      input.toolTextUtf8Bytes,
+    );
+    expect(verification.answerChecks.boundedCoverageConsistent).toBe(false);
+    expect(verification.passed).toBe(false);
+    expect(buildG04AgentMcpReport(input, { liveStatus }).passed).toBe(false);
   });
 
   it('rejects a Sol model role and contaminated event counts', () => {

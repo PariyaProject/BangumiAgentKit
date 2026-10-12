@@ -33,6 +33,7 @@ import {
   createRunState,
   extendEpochReviewBudget,
   extendRunProductReviewBudget,
+  g04DispositionAcknowledges,
   markReviewStarted,
   markFrontierReviewStarted,
   parseControlBlock,
@@ -978,6 +979,107 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
         error instanceof HarnessInvariantError && error.code === 'RUNTIME_ONLY_COMMIT_REJECTED',
     );
   }
+});
+
+test('G04 ambiguous result acknowledgement matches the complete claim and report binding', () => {
+  const digest = (character) => character.repeat(64);
+  const claim = {
+    claimId: 'g04-run-95-pr-136-aaaaaaaaaaaa-123',
+    runNumber: 95,
+    prNumber: 136,
+    candidateSha: sha('a'),
+    baseSha: sha('b'),
+    ciSha: sha('a'),
+    ciStatus: 'SUCCESS',
+    reviewerId: 'gpt-6-luna-max-run95-pr136-round1',
+    bundleSha256: digest('c'),
+    expectedArgumentsSha256: digest('d'),
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    runnerReceiptPublicKey: 'trusted-runner-key',
+    runnerReceiptPublicKeySha256: digest('e'),
+  };
+  const expected = {
+    resultState: 'REPORT_WRITTEN',
+    epochId: 'run95-g04-person-activity-codex-current-evidence',
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1',
+    expectedArgumentsSha256: claim.expectedArgumentsSha256,
+    reportPath: 'docs/live-probes/g04-person-activity-run95.json',
+    reportSha256: digest('f'),
+  };
+  const disposition = {
+    claimId: claim.claimId,
+    runNumber: claim.runNumber,
+    prNumber: claim.prNumber,
+    frontierId: 'G04',
+    epochId: expected.epochId,
+    state: expected.resultState,
+    retryAllowed: false,
+    sourceCandidateSha: claim.candidateSha,
+    baseSha: claim.baseSha,
+    ciSha: claim.ciSha,
+    ciStatus: claim.ciStatus,
+    reviewerId: claim.reviewerId,
+    bundleSha256: claim.bundleSha256,
+    model: claim.model,
+    reasoningEffort: claim.reasoningEffort,
+    toolName: expected.toolName,
+    argumentProfile: expected.argumentProfile,
+    expectedArgumentsSha256: expected.expectedArgumentsSha256,
+    runnerReceiptPublicKey: claim.runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256: claim.runnerReceiptPublicKeySha256,
+    reportWritten: true,
+    reportPath: expected.reportPath,
+    reportSha256: expected.reportSha256,
+  };
+  assert.equal(g04DispositionAcknowledges(disposition, claim, expected), true);
+
+  for (const [field, value] of [
+    ['sourceCandidateSha', sha('g')],
+    ['baseSha', sha('h')],
+    ['ciSha', sha('g')],
+    ['reviewerId', 'gpt-6-luna-max-run95-pr136-round2'],
+    ['bundleSha256', digest('i')],
+    ['expectedArgumentsSha256', digest('j')],
+    ['runnerReceiptPublicKey', 'caller-selected-key'],
+    ['runnerReceiptPublicKeySha256', digest('k')],
+    ['state', 'INCONCLUSIVE'],
+    ['reportWritten', false],
+    ['reportPath', 'docs/live-probes/other-report.json'],
+    ['reportSha256', digest('l')],
+  ]) {
+    assert.equal(
+      g04DispositionAcknowledges({ ...disposition, [field]: value }, claim, expected),
+      false,
+      `readback must reject changed ${field}`,
+    );
+  }
+
+  const inconclusive = {
+    ...disposition,
+    state: 'INCONCLUSIVE',
+    reportWritten: false,
+  };
+  delete inconclusive.reportPath;
+  delete inconclusive.reportSha256;
+  assert.equal(
+    g04DispositionAcknowledges(inconclusive, claim, {
+      ...expected,
+      resultState: 'INCONCLUSIVE',
+      reportSha256: null,
+    }),
+    true,
+  );
+  assert.equal(
+    g04DispositionAcknowledges({ ...inconclusive, reportPath: expected.reportPath }, claim, {
+      ...expected,
+      resultState: 'INCONCLUSIVE',
+      reportSha256: null,
+    }),
+    false,
+    'an inconclusive readback cannot carry report fields',
+  );
 });
 
 test('hard review ceilings reject caller and control-block overrides', () => {

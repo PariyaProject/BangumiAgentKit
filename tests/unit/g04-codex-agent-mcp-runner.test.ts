@@ -9,7 +9,10 @@ import {
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
 import * as g04Runner from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
-import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
+import {
+  G04_EXPECTED_QUERY_ARGUMENTS,
+  G04_REQUIRED_CAVEAT,
+} from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
 import {
   generateG04RunnerReceiptKeyPair,
   g04RunnerPublicKeySha256,
@@ -169,6 +172,7 @@ describe('G04 one-tool Codex runner preflight', () => {
     expect(args).toContain('read-only');
     expect(args).toContain('features.shell_tool=false');
     expect(args).toContain('features.web_search=false');
+    expect(args.some((value) => value.includes(G04_REQUIRED_CAVEAT))).toBe(true);
     expect(
       args.some((value) => value.includes('enabled_tools=["bangumi.get_person_activity"]')),
     ).toBe(true);

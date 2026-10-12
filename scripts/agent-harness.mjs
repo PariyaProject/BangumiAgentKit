@@ -33,6 +33,7 @@ import {
   createRunState,
   extendEpochReviewBudget,
   extendRunProductReviewBudget,
+  g04DispositionAcknowledges,
   isTerminalRunState,
   markReviewStarted,
   markFrontierReviewStarted,
@@ -103,6 +104,7 @@ const G04_MODEL = 'gpt-6-luna';
 const G04_REASONING_EFFORT = 'max';
 const G04_ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1';
 const G04_REPORT_PATH = path.join(root, 'docs/live-probes/g04-person-activity-run95.json');
+const G04_REPORT_RELATIVE_PATH = path.relative(root, G04_REPORT_PATH);
 const P01_MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 const P01_CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const frontierLedgerPath =
@@ -1595,19 +1597,6 @@ function commandEpochG04OneShotClaim(gate, { printOutput = true } = {}) {
   return result;
 }
 
-function g04DispositionAcknowledges(disposition, claim, state, reportSha256) {
-  return (
-    disposition?.claimId === claim?.claimId &&
-    disposition.runNumber === 95 &&
-    disposition.prNumber === claim?.prNumber &&
-    disposition.frontierId === 'G04' &&
-    disposition.epochId === 'run95-g04-person-activity-codex-current-evidence' &&
-    disposition.state === state &&
-    disposition.retryAllowed === false &&
-    (state !== 'REPORT_WRITTEN' || disposition.reportSha256 === reportSha256)
-  );
-}
-
 function commandEpochG04OneShotResult(
   claim,
   resultState,
@@ -1772,7 +1761,15 @@ function persistHarnessG04OneShotResult(claim, state, reportSha256) {
   try {
     const status = epochState(claim.prNumber).state;
     const disposition = status.adversarial_preflight?.g04_one_shot_disposition;
-    return g04DispositionAcknowledges(disposition, claim, state, reportSha256);
+    return g04DispositionAcknowledges(disposition, claim, {
+      resultState: state,
+      epochId: 'run95-g04-person-activity-codex-current-evidence',
+      toolName: 'bangumi.get_person_activity',
+      argumentProfile: G04_ARGUMENT_PROFILE,
+      expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
+      reportPath: G04_REPORT_RELATIVE_PATH,
+      reportSha256,
+    });
   } catch {
     return false;
   }
