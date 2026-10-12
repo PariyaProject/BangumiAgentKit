@@ -12,6 +12,9 @@ describe('L04 synthetic collection-intelligence answer check', () => {
       checks: {
         nonEmpty: true,
         syntheticContextDisclosed: true,
+        noRealUserProvenanceClaim: true,
+        nonInferenceCaveatPresent: true,
+        noUnsupportedPreferenceClaim: true,
         topObservedTagPresent: true,
         topObservedTagCountPresent: true,
         observedDenominatorPresent: true,
@@ -34,6 +37,7 @@ describe('L04 synthetic collection-intelligence answer check', () => {
 
     expect(guessed.accepted).toBe(false);
     expect(guessed.checks.noPreferenceInference).toBe(false);
+    expect(guessed.checks.noUnsupportedPreferenceClaim).toBe(false);
     expect(missingCoverage.accepted).toBe(false);
     expect(overclaim.accepted).toBe(false);
     expect(overclaim.checks.noFullCollectionClaim).toBe(false);
@@ -53,9 +57,38 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(wrongCount.checks.topObservedTagCountPresent).toBe(false);
   });
 
+  it('does not attach another tag’s count to the named top tag', () => {
+    const wrongAttribution = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海并非最多的标签，科幻出现 7 次；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+    const wrongPositiveAttribution = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海是最多的标签，科幻出现 7 次；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+    const unrankedCount = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(wrongAttribution.accepted).toBe(false);
+    expect(wrongAttribution.checks.topObservedTagCountPresent).toBe(false);
+    expect(wrongPositiveAttribution.accepted).toBe(false);
+    expect(wrongPositiveAttribution.checks.topObservedTagCountPresent).toBe(false);
+    expect(unrankedCount.accepted).toBe(false);
+    expect(unrankedCount.checks.topObservedTagCountPresent).toBe(false);
+  });
+
+  it('requires exact whole-number coverage denominators', () => {
+    const wrongDenominators = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，航海标签出现 7 次；本次观察 120 条，源报告 300 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(wrongDenominators.accepted).toBe(false);
+    expect(wrongDenominators.checks.observedDenominatorPresent).toBe(false);
+    expect(wrongDenominators.checks.sourceTotalPresent).toBe(false);
+  });
+
   it('accepts the exact count in Chinese numerals without matching a larger number', () => {
     const exactChineseCount = checkL04CollectionIntelligenceAnswer(
-      '合成样例中，航海标签出现七次；本次观察了 20 条，源报告共 30 条，所以只覆盖部分收藏。这只是样本频次，不能据此判断你的偏好。',
+      '合成样例中，航海标签出现七次，是本次出现最多的标签；本次观察了 20 条，源报告共 30 条，所以只覆盖部分收藏。这只是样本频次，不能据此判断你的偏好。',
     );
     const largerChineseCount = checkL04CollectionIntelligenceAnswer(
       '合成样例中，航海标签出现十七次；本次观察了 20 条，源报告共 30 条，所以只覆盖部分收藏。这只是样本频次，不能据此判断你的偏好。',
@@ -73,6 +106,14 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(answer.checks.topObservedTagCountPresent).toBe(true);
   });
 
+  it('associates a spaced count unit with a positive top-tag claim', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，出现最多的是航海，7 次；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(answer.checks.topObservedTagCountPresent).toBe(true);
+  });
+
   it('rejects a direct preference claim even when a later clause adds a disclaimer', () => {
     const inferred = checkL04CollectionIntelligenceAnswer(
       '合成样例中，你喜欢航海；这不能说明偏好。本次观察了 20 条，源报告共 30 条，覆盖部分收藏，航海标签出现 7 次。',
@@ -80,6 +121,8 @@ describe('L04 synthetic collection-intelligence answer check', () => {
 
     expect(inferred.accepted).toBe(false);
     expect(inferred.checks.noPreferenceInference).toBe(false);
+    expect(inferred.checks.nonInferenceCaveatPresent).toBe(true);
+    expect(inferred.checks.noUnsupportedPreferenceClaim).toBe(false);
   });
 
   it('does not let a same-clause caveat erase a direct preference claim', () => {
@@ -91,6 +134,24 @@ describe('L04 synthetic collection-intelligence answer check', () => {
     expect(inferred.checks.noPreferenceInference).toBe(false);
   });
 
+  it('rejects possessive and uncertain preference wording followed by a caveat', () => {
+    const inferred = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，你的偏好可能是航海；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(inferred.accepted).toBe(false);
+    expect(inferred.checks.noPreferenceInference).toBe(false);
+  });
+
+  it('rejects personalized recommendations even when followed by a preference disclaimer', () => {
+    const recommendation = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，建议你看航海类作品；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(recommendation.accepted).toBe(false);
+    expect(recommendation.checks.noPreferenceInference).toBe(false);
+  });
+
   it('does not let an unrelated sample qualifier negate a later full-collection claim', () => {
     const overclaim = checkL04CollectionIntelligenceAnswer(
       '合成样例中，我们只观察了 20 条，但你的完整收藏中航海标签出现 7 次，源报告共 30 条，覆盖部分收藏；不能据此判断你的偏好。',
@@ -98,5 +159,49 @@ describe('L04 synthetic collection-intelligence answer check', () => {
 
     expect(overclaim.accepted).toBe(false);
     expect(overclaim.checks.noFullCollectionClaim).toBe(false);
+  });
+
+  it('does not let “incomplete sample” negate a full-collection claim after a contrast', () => {
+    const overclaim = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，样本不完整却显示你的完整收藏里航海标签出现 7 次；本次观察 20 条，源报告 30 条，覆盖部分收藏，不能据此判断偏好。',
+    );
+
+    expect(overclaim.accepted).toBe(false);
+    expect(overclaim.checks.noFullCollectionClaim).toBe(false);
+  });
+
+  it('rejects a negated synthetic disclosure and real-user provenance claims', () => {
+    const negatedSynthetic = checkL04CollectionIntelligenceAnswer(
+      '合成样例中，这不是合成样例，而是你的真实收藏：航海标签出现 7 次；观察 20 条，源报告 30 条，结果部分，不能据此判断偏好。',
+    );
+    const realProvenance = checkL04CollectionIntelligenceAnswer(
+      '合成样例的答案实际来自你的真实收藏：航海标签出现 7 次；观察 20 条，源报告 30 条，结果部分，不能据此判断偏好。',
+    );
+
+    expect(negatedSynthetic.accepted).toBe(false);
+    expect(negatedSynthetic.checks.syntheticContextDisclosed).toBe(false);
+    expect(realProvenance.accepted).toBe(false);
+    expect(realProvenance.checks.syntheticContextDisclosed).toBe(true);
+    expect(realProvenance.checks.noRealUserProvenanceClaim).toBe(false);
+  });
+
+  it('accepts clear synthetic-sample and non-inference wording variants', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '这是合成测试样本：航海标签出现 7 次，是本次出现最多的标签；本次观察 20 条，源报告 30 条，覆盖部分收藏。这些标签频次不足以说明你的个人喜好或偏好。',
+    );
+
+    expect(answer.accepted).toBe(true);
+    expect(answer.checks.syntheticContextDisclosed).toBe(true);
+    expect(answer.checks.nonInferenceCaveatPresent).toBe(true);
+    expect(answer.checks.noPreferenceInference).toBe(true);
+  });
+
+  it('allows “your collection” wording when the answer clearly identifies a synthetic sample', () => {
+    const answer = checkL04CollectionIntelligenceAnswer(
+      '这是合成测试样本。你的收藏中航海标签出现 7 次，是本次出现最多的标签；观察 20 条，源报告 30 条，覆盖部分收藏；这些标签频次不足以说明你的个人喜好或偏好。',
+    );
+
+    expect(answer.accepted).toBe(true);
+    expect(answer.checks.noRealUserProvenanceClaim).toBe(true);
   });
 });

@@ -10,18 +10,36 @@ from real-account evidence.
 | Journey | Evidence | Limit |
 | --- | --- | --- |
 | OAuth start/callback/status | `tests/unit/auth.test.ts` exercises the authorization-code callback with a fake token endpoint and `/v0/me`. It checks the state-linked principal, encrypted token storage, local requested-capability labels, no unsupported `scope` query parameter, and truthful `scopeEvidence=unknown` for a null provider scope. Other auth tests cover one-use hashed state, missing-credential fail-closed behavior, safe callback errors, bound-account status, and multi-account isolation. | No real Bangumi app credentials, consent, callback, token, or account was used. A fixture callback is not real OAuth acceptance. |
-| Personalized collection answer | The corrected GPT-6 Luna Max Agent/MCP fixture calls only `bangumi.get_collection_intelligence` for a synthetic bound account. The sanitized report records one successful tool call, 20 observed rows of a source-reported 30, `partial` coverage, and the leading synthetic tag count (7). The corrected answer checker requires the top-tag/count relationship and both denominators, synthetic-context and partial-coverage disclosure, and rejects unsupported preference inference or a full-collection claim. See `run95-l04-collection-intelligence-agent-mcp-synthetic-final-2026-10-13.json`. | This proves an answer grounded in a synthetic result only. It does not prove a reply based on the user's real collection or external client display. The collection read remains account-bound and bounded. |
+| Personalized collection answer | The GPT-6 Luna Max Agent/MCP fixture calls only `bangumi.get_collection_intelligence` for a synthetic bound account. The current sanitized report records one successful tool call, 20 observed rows of a source-reported 30, `partial` coverage, and the leading synthetic tag count (7). The checker requires a positive top-tag assertion bound to its exact count, exact denominators, synthetic disclosure without real-user provenance, partial-coverage disclosure, a non-inference caveat without unsupported preference/recommendation claims, and no full-collection claim. See `run95-l04-collection-intelligence-agent-mcp-synthetic-final-2026-10-13-v8.json`. Five same-day replies remain as sanitized INCONCLUSIVE reports; two earlier replies are interim passes under prior checker versions. No raw answer text was saved. | This proves an answer grounded in a synthetic result only. It does not prove a reply based on the user's real collection or external client display. The collection read remains account-bound and bounded. |
 | User-owned collection update | `tests/unit/writes.test.ts` executes `bangumi.update_collection` for a synthetic principal/account, checks the exact `POST /v0/users/-/collections/{subject_id}` payload and bearer, verifies the canonical collection `GET` readback and audit event. A second case verifies that a successful POST followed by failed canonical refresh returns `updated_but_refresh_failed`, not a verified final state. | Fake HTTP only. No real collection was changed. A live write still needs an explicitly selected owned entry, exact field/value authorization, and a separate live readback. |
 | Cross-principal isolation | `tests/unit/collection-intelligence.test.ts` verifies that another principal cannot invoke a private collection read and that rejection occurs before any HTTP request. Existing multi-account tests also reject switching to an account not bound to the principal. | Local storage and fake dependencies only. |
 | Reported provider scopes | Capability and index tests model explicit provider-reported scopes: `read:collection` is a local capability label, not an official provider scope; a reported collection write requires `write:collection`; index writes require `write:indices`. Missing write scope denies before the request. Unknown scope evidence remains delegated to the upstream API. | Scope tests do not establish which scopes a live authorization grants. Bangumi's OAuth guide says the authorization `scope` parameter is not implemented and its example token response returns `scope: null`. |
 
-The earlier 2026-10-12 synthetic report is retained as history but is no longer
-credited: review found that its answer checker accepted a count embedded in a
-larger number, missed a direct preference assertion, and let an unrelated
-nearby negation hide a later full-collection claim. Those cases and a
-same-clause disclaimer regression now have coverage, and the final 2026-10-13
-Luna Max run passes the updated checker. Its report stores only sanitized
-counters and check results, not the answer text.
+The final offline regression run on 2026-10-13 passed 19 files / 97 tests:
+OAuth service/client and callback, one-use state and expiry, encrypted-token
+rotation and refresh concurrency, account/principal isolation, scope policy,
+auth-before-write, account-bound auditing, bounded collection intelligence,
+the generated-answer checker, exact collection update/readback, direct MCP
+account tools, and the no-account/auth-boundary contract. The full local gates
+also passed: Harness 163/163, acceptance 99/99, typecheck, lint, build, OpenAPI
+validation, and the 121-record frontier ledger check. These are local,
+synthetic or no-account checks; they do not change BGK-004 or BGK-005 real
+account status.
+
+The earlier 2026-10-12 and pre-correction 2026-10-13 reports are retained as
+history but are not credited. Review found count-attribution and whole-number
+boundary errors, missed preference/recommendation assertions, unrelated
+negation hiding a later full-collection claim, and a synthetic disclosure that
+could be contradicted by claiming real-user provenance. New adversarial tests
+cover those cases, coordinated caveats, and truthful synthetic disclosure.
+Five 2026-10-13 model replies failed sanitized answer checks; their reports
+record only which checks failed, not raw answer text. Two interim replies
+passed under earlier checker versions. The current checker additionally
+requires a positive top-tag assertion to bind to the exact count and rejects
+unranked counts or a nearby count belonging to another tag. The latest reply
+passes the current checker. Its report stores only sanitized tool/coverage
+counters and Boolean checks, not the answer, rows, account identifier, or
+credentials.
 
 ## What “update my information” can mean here
 
