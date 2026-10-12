@@ -17,6 +17,8 @@ import { canonicalJson } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 
 const TARGET_TOOL = 'bangumi.render_subject_cohort_comparison';
 const SERVER_ID = 'bgk_c07_cohort_renderer_one_tool';
+const TEST_EPOCH_ID = 'run95-c07-renderer-dynamic-active-pr';
+const TEST_PR_NUMBER = 144;
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 
 function fixtureObservation() {
@@ -112,8 +114,8 @@ function fixtureObservation() {
     candidateStable: true,
     gate: {
       runNumber: 95,
-      epochId: 'run95-c07-cohort-comparison-renderer-luna-mcp',
-      prNumber: 140,
+      epochId: TEST_EPOCH_ID,
+      prNumber: TEST_PR_NUMBER,
       candidateSha: serverSummary.sourceRevision,
       baseSha: 'd'.repeat(40),
       reviewerId: 'gpt-6-luna-max-run95-c07-round1',
@@ -130,28 +132,47 @@ test('C07 runner accepts only the already governed Run #95 invocation', () => {
   assert.throws(() => validateRunnerArgs(['--run', '95', '--force']));
 });
 
-test('C07 gate binds the active Harness epoch identity and PR #140', () => {
+test('C07 gate derives and validates the currently active renderer-only Epoch and PR', () => {
   const valid = {
-    run: { state: 'EPOCH_ACTIVE', active_epoch_pr: 140 },
+    run: { state: 'EPOCH_ACTIVE', active_epoch_pr: TEST_PR_NUMBER },
     epoch: {
-      epoch_id: 'run95-c07-cohort-comparison-renderer-luna-mcp',
-      pr_number: 140,
+      epoch_id: TEST_EPOCH_ID,
+      pr_number: TEST_PR_NUMBER,
+      advances_frontier_ids: ['C07'],
+      objective: `Recover one renderer-only synthetic fixture observation for ${TARGET_TOOL} offline.`,
+      work_packages: ['Run one offline synthetic renderer-only tool call using the fixed fixture.'],
+      acceptance_criteria: ['Verify the offline fixture and synthetic artifact.'],
     },
-    epochNumber: 140,
+    epochNumber: TEST_PR_NUMBER,
   };
   assert.deepEqual(assertC07EpochIdentity(valid), {
-    epochId: 'run95-c07-cohort-comparison-renderer-luna-mcp',
-    prNumber: 140,
+    epochId: TEST_EPOCH_ID,
+    prNumber: TEST_PR_NUMBER,
   });
   assert.throws(() =>
-    assertC07EpochIdentity({ ...valid, epoch: { ...valid.epoch, epoch_id: 'other-epoch' } }),
+    assertC07EpochIdentity({
+      ...valid,
+      epoch: { ...valid.epoch, advances_frontier_ids: ['A01'] },
+    }),
   );
   assert.throws(() =>
-    assertC07EpochIdentity({ ...valid, epoch: { ...valid.epoch, pr_number: 150 } }),
+    assertC07EpochIdentity({
+      ...valid,
+      epoch: { ...valid.epoch, objective: 'Assess the C07 user-facing comparison answer.' },
+    }),
+  );
+  assert.throws(() =>
+    assertC07EpochIdentity({
+      ...valid,
+      epoch: { ...valid.epoch, work_packages: ['Use the live Bangumi API.'] },
+    }),
   );
   assert.throws(() => assertC07EpochIdentity({ ...valid, epochNumber: 150 }));
   assert.throws(() =>
-    assertC07EpochIdentity({ ...valid, run: { ...valid.run, active_epoch_pr: 150 } }),
+    assertC07EpochIdentity({
+      ...valid,
+      run: { ...valid.run, active_epoch_pr: 150 },
+    }),
   );
 });
 
@@ -317,8 +338,8 @@ test('C07 sanitized report retains only artifact facts and evidence booleans', (
   assert.equal(report.privacy.rawResultStored, false);
   assert.equal(report.privacy.artifactImageBytesStored, false);
   assert.equal(report.scenarios[0].result.artifact.persisted, false);
-  assert.equal(report.epochId, 'run95-c07-cohort-comparison-renderer-luna-mcp');
-  assert.equal(report.prNumber, 140);
+  assert.equal(report.epochId, TEST_EPOCH_ID);
+  assert.equal(report.prNumber, TEST_PR_NUMBER);
   assert.throws(() =>
     buildReport({
       sourceRevision: observation.sourceRevision,
@@ -329,14 +350,14 @@ test('C07 sanitized report retains only artifact facts and evidence booleans', (
       observation: verified,
     }),
   );
-  assert.throws(() =>
-    buildReport({
-      sourceRevision: observation.sourceRevision,
-      bundleSha256: observation.bundleSha256,
-      codexCliVersion: '1.2.3',
-      gate: { ...observation.gate, prNumber: 150 },
-      serverSummary: observation.serverSummary,
-      observation: verified,
-    }),
-  );
+  const laterEpochReport = buildReport({
+    sourceRevision: observation.sourceRevision,
+    bundleSha256: observation.bundleSha256,
+    codexCliVersion: '1.2.3',
+    gate: { ...observation.gate, epochId: 'run95-c07-renderer-followup', prNumber: 150 },
+    serverSummary: observation.serverSummary,
+    observation: verified,
+  });
+  assert.equal(laterEpochReport.epochId, 'run95-c07-renderer-followup');
+  assert.equal(laterEpochReport.prNumber, 150);
 });

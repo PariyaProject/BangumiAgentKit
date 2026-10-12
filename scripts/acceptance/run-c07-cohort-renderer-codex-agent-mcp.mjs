@@ -19,8 +19,6 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
-const PR_NUMBER = 140;
-const EPOCH_ID = 'run95-c07-cohort-comparison-renderer-luna-mcp';
 const FRONTIER_ID = 'C07';
 const TARGET_TOOL = 'bangumi.render_subject_cohort_comparison';
 const SERVER_ID = 'bgk_c07_cohort_renderer_one_tool';
@@ -187,16 +185,43 @@ function readPr(prNumber) {
 }
 
 export function assertC07EpochIdentity({ run, epoch, epochNumber }) {
+  const activePrNumber = run?.active_epoch_pr;
+  const objective = typeof epoch?.objective === 'string' ? epoch.objective.toLowerCase() : '';
+  const workPackageText = (Array.isArray(epoch?.work_packages) ? epoch.work_packages : [])
+    .filter((value) => typeof value === 'string')
+    .join(' ')
+    .toLowerCase();
+  const acceptanceText = (
+    Array.isArray(epoch?.acceptance_criteria) ? epoch.acceptance_criteria : []
+  )
+    .filter((value) => typeof value === 'string')
+    .join(' ')
+    .toLowerCase();
+  const isC07RendererOnlyEpoch =
+    typeof epoch?.epoch_id === 'string' &&
+    /^run95-c07-[a-z0-9-]+$/u.test(epoch.epoch_id) &&
+    Array.isArray(epoch.advances_frontier_ids) &&
+    epoch.advances_frontier_ids.includes(FRONTIER_ID) &&
+    objective.includes(TARGET_TOOL) &&
+    objective.includes('renderer-only') &&
+    objective.includes('synthetic fixture') &&
+    workPackageText.includes('synthetic') &&
+    workPackageText.includes('fixture') &&
+    acceptanceText.includes('offline fixture') &&
+    !/\blive\s+bangumi\s+api\b/u.test(workPackageText);
   if (
     run?.state !== 'EPOCH_ACTIVE' ||
-    run.active_epoch_pr !== PR_NUMBER ||
-    epochNumber !== PR_NUMBER ||
-    epoch?.pr_number !== PR_NUMBER ||
-    epoch?.epoch_id !== EPOCH_ID
+    !Number.isSafeInteger(activePrNumber) ||
+    activePrNumber < 1 ||
+    epochNumber !== activePrNumber ||
+    epoch?.pr_number !== activePrNumber ||
+    !isC07RendererOnlyEpoch
   ) {
-    throw new Error('Run #95 active PR must be the selected C07 renderer Epoch #140.');
+    throw new Error(
+      'Run #95 active PR must be the selected C07 renderer-only offline fixture Epoch.',
+    );
   }
-  return { epochId: EPOCH_ID, prNumber: PR_NUMBER };
+  return { epochId: epoch.epoch_id, prNumber: activePrNumber };
 }
 
 function remoteSha(ref) {
@@ -562,8 +587,14 @@ export function buildReport({
   serverSummary,
   observation,
 }) {
-  if (gate?.epochId !== EPOCH_ID || gate?.prNumber !== PR_NUMBER) {
-    throw new Error('C07 report requires the verified Run #95 PR #140 Epoch identity.');
+  if (
+    gate?.runNumber !== RUN_NUMBER ||
+    typeof gate?.epochId !== 'string' ||
+    !/^run95-c07-[a-z0-9-]+$/u.test(gate.epochId) ||
+    !Number.isSafeInteger(gate?.prNumber) ||
+    gate.prNumber < 1
+  ) {
+    throw new Error('C07 report requires the verified active Run #95 C07 renderer Epoch identity.');
   }
   const artifact = serverSummary.result.artifact;
   const passed = observation.passed && Object.values(observation.checks).every(Boolean);

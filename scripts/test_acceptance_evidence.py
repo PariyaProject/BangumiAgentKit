@@ -1136,6 +1136,14 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         }), encoding='utf-8')
         return report
 
+    def test_c07_probe_revision_requires_dynamic_active_epoch_binding(self):
+        markers = GENERATOR.CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS[
+            'scripts/acceptance/run-c07-cohort-renderer-codex-agent-mcp.mjs'
+        ]
+        self.assertIn('epoch.advances_frontier_ids.includes(FRONTIER_ID)', markers)
+        self.assertIn('epochNumber !== activePrNumber', markers)
+        self.assertNotIn('const PR_NUMBER = 140;', markers)
+
     def test_accepts_only_bounded_renderer_report_without_changing_frontier_status(self):
         report = self.write_c07_renderer_report()
         current_by_name = {item['name']: item for item in self.catalog}
