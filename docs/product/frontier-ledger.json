@@ -947,11 +947,14 @@
         "scripts/acceptance/g16-agent-mcp-runner-receipt.mjs",
         "scripts/acceptance/write-g16-agent-mcp-report.mjs",
         "scripts/agent-harness.mjs",
+        "scripts/lib/g16-one-shot-claim.mjs",
+        "docs/agent/HARNESS.md",
         "scripts/generate-tool-acceptance-tasks.py",
         "scripts/test_acceptance_evidence.py",
         "tests/unit/g16-codex-agent-mcp-runner.test.ts",
         "tests/unit/g16-agent-mcp-report.test.ts",
-        "tests/harness/agent-harness-cli.test.mjs"
+        "tests/harness/agent-harness-cli.test.mjs",
+        "tests/harness/g16-one-shot-claim.test.mjs"
       ],
       "next_action": "For a bounded director observation, verify identity through an official public relation, use exact source role labels and first_air_date-based calendar windows, and expose relation/detail/output coverage. The Candidate-bound Agent/MCP runner, create-once Harness gate, signed sanitized report, and restart recovery make the one-tool evidence auditable; they do not establish a complete current-source result. Preserve PARTIAL where source limits remain. Never infer absence from unreturned rows or claim a complete director career or complete director coverage.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
@@ -986,10 +989,11 @@
           "scripts/acceptance/g16-agent-mcp-runner-receipt.mjs",
           "scripts/acceptance/write-g16-agent-mcp-report.mjs",
           "scripts/agent-harness.mjs",
+          "scripts/lib/g16-one-shot-claim.mjs",
           "scripts/generate-tool-acceptance-tasks.py",
           "scripts/test_acceptance_evidence.py"
         ],
-        "source_contract": "Official v0 person-subject relations are filtered by an exact normalized director-label allow-list before bounded subject hydration. Subject first_air_date assigns rows to calendar months ending on as_of; TV classification remains conservative. Missing role labels are unknown, while non-matching labels are excluded without being presented as proof of no directing work. Existing relation/detail/row/concurrency/response caps and current-source limitations remain visible. Run #95 acceptance plumbing now includes a one-tool Candidate-bound Agent/MCP runner, Harness create-once claim/result reconciliation, signed sanitized receipt, independent report validation, and crash recovery that never reruns Codex. This is implementation/readback support only; no G16 one-shot query has been performed and the scenario remains PARTIAL until valid current-source evidence exists.",
+        "source_contract": "Official v0 person-subject relations are filtered by an exact normalized director-label allow-list before bounded subject hydration. Subject first_air_date assigns rows to calendar months ending on as_of; TV classification remains conservative. Missing role labels are unknown, while non-matching labels are excluded without being presented as proof of no directing work. Existing relation/detail/row/concurrency/response caps and current-source limitations remain visible. Run #95 acceptance plumbing now includes a one-tool Candidate-bound Agent/MCP runner, a repository-global create-only Run/tool latch shared across clones and replacement PRs, canonical Harness claim/result reconciliation, signed sanitized receipt, independent report validation, and crash recovery that never reruns Codex. This is implementation/readback support only; no G16 one-shot query has been performed and the scenario remains PARTIAL until valid current-source evidence exists.",
         "formula_version": "person-activity-window-v1",
         "run95_public_identity_source": {
           "endpoint": "GET /v0/subjects/{subject_id}/persons",

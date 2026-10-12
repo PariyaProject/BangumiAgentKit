@@ -55,6 +55,11 @@ import {
   waitForSameReviewer,
 } from './lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
+import {
+  acquireG16OneShotGitHubLatch,
+  claimG16OneShotAtomically,
+  G16OneShotClaimError,
+} from './lib/g16-one-shot-claim.mjs';
 import { parseCodexJsonl, summarizeCodexEvents } from './acceptance/run-g26-codex-agent-mcp.mjs';
 import { runG04CodexAgentMcp } from './acceptance/run-g04-codex-agent-mcp.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from './acceptance/g04-person-activity-answer-check.mjs';
@@ -1862,39 +1867,61 @@ function commandEpochG16OneShotClaim(gate, { printOutput = true } = {}) {
     runNumber, prNumber, candidateSha, baseSha, bundleSha256,
     model, reasoningEffort, reviewerId, runnerReceiptPublicKey,
   } = gate;
-  assertG16OneShotClaimReadiness(gate);
   const claimId = `g16-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`;
   const runnerReceiptPublicKeySha256 = g16RunnerPublicKeySha256(runnerReceiptPublicKey);
-  const epochResult = epochState(prNumber);
-  const nextEpoch = structuredClone(epochResult.state);
-  nextEpoch.adversarial_preflight = {
-    ...nextEpoch.adversarial_preflight,
-    g16_one_shot_disposition: {
-      claimId,
-      frontierId: 'G16',
-      epochId: G16_EPOCH_ID,
-      runNumber: Number(runNumber),
-      toolName: 'bangumi.get_person_activity',
-      argumentProfile: G16_ARGUMENT_PROFILE,
-      expectedArgumentsSha256: canonicalHash(G16_EXPECTED_QUERY_ARGUMENTS),
-      state: 'CLAIMED',
-      sourceCandidateSha: candidateSha,
-      baseSha,
-      ciSha: candidateSha,
-      ciStatus: 'SUCCESS',
-      bundleSha256,
-      prNumber: Number(prNumber),
-      reviewerId,
-      model,
-      reasoningEffort,
-      runnerReceiptPublicKey,
-      runnerReceiptPublicKeySha256,
-      reportWritten: false,
-      retryAllowed: false,
-      claimedAt: new Date().toISOString(),
-    },
+  const claimDisposition = {
+    claimId,
+    frontierId: 'G16',
+    epochId: G16_EPOCH_ID,
+    runNumber: Number(runNumber),
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: G16_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(G16_EXPECTED_QUERY_ARGUMENTS),
+    state: 'CLAIMED',
+    sourceCandidateSha: candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    bundleSha256,
+    prNumber: Number(prNumber),
+    reviewerId,
+    model,
+    reasoningEffort,
+    runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256,
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: new Date().toISOString(),
   };
-  updatePr(prNumber, nextEpoch);
+  try {
+    claimG16OneShotAtomically({
+      claim: claimDisposition,
+      assertReady: () => assertG16OneShotClaimReadiness(gate),
+      acquireGlobalLatch: () => acquireG16OneShotGitHubLatch(gh),
+      persistClaim: (claim) => {
+        const latest = epochState(prNumber);
+        if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'g16_one_shot_disposition')) {
+          throw new HarnessInvariantError(
+            'G16_ONESHOT_ALREADY_CLAIMED',
+            'A durable G16 one-shot disposition already exists; refusing to overwrite it.',
+          );
+        }
+        const nextEpoch = structuredClone(latest.state);
+        nextEpoch.adversarial_preflight = {
+          ...nextEpoch.adversarial_preflight,
+          g16_one_shot_disposition: claim,
+        };
+        updatePr(prNumber, nextEpoch);
+      },
+      readClaim: () => epochState(prNumber).state.adversarial_preflight?.g16_one_shot_disposition ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof G16OneShotClaimError) {
+      throw new HarnessInvariantError(error.code, error.message);
+    }
+    throw error;
+  }
   const result = {
     state: 'G16_ONE_SHOT_CLAIMED', claimId, runNumber: Number(runNumber),
     frontierId: 'G16', epochId: G16_EPOCH_ID, prNumber: Number(prNumber),
