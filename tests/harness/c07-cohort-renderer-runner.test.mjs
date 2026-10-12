@@ -236,6 +236,30 @@ test('C07 observation validator accepts only one exact offline fixture renderer 
   assert.equal(attested.checks.cliFinalMessageVerified, true);
   assert.equal(attested.eventStreamComplete, false);
 
+  const disqualifiedFallbacks = [
+    ['unparsed JSONL', (candidate) => (candidate.parsed.parsed = false)],
+    ['Codex error item', (candidate) => (candidate.eventsSummary.codexErrorItemCount = 1)],
+    ['failed turn', (candidate) => (candidate.eventsSummary.turnFailed = true)],
+    ['unexpected event', (candidate) => (candidate.eventsSummary.unexpectedEventTypes = 1)],
+  ];
+  for (const [reason, disqualify] of disqualifiedFallbacks) {
+    const candidate = structuredClone(outputFileCompletion);
+    disqualify(candidate);
+    const rejected = verifyObservation(candidate);
+    assert.equal(rejected.checks.codexExecutionCompleted, false, reason);
+    assert.equal(rejected.passed, false, reason);
+    const rejectedReport = buildReport({
+      sourceRevision: candidate.sourceRevision,
+      bundleSha256: candidate.bundleSha256,
+      codexCliVersion: '1.2.3',
+      gate: candidate.gate,
+      serverSummary: candidate.serverSummary,
+      observation: rejected,
+    });
+    assert.equal(rejectedReport.scenarios[0].passed, false, reason);
+    assert.equal(rejectedReport.scenarios[0].answerCheckPassed, false, reason);
+  }
+
   const missingFinalMessage = structuredClone(outputFileCompletion);
   missingFinalMessage.finalMessage = null;
   assert.equal(verifyObservation(missingFinalMessage).checks.codexExecutionCompleted, false);
