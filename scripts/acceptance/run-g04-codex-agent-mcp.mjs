@@ -26,16 +26,14 @@ import {
   readG26McpBundleAttestation,
   sanitizeGitRepositoryEnvironment,
 } from '../lib/g26-mcp-bundle.mjs';
-import {
-  G04_EXPECTED_QUERY_ARGUMENTS,
-} from './g04-person-activity-answer-check.mjs';
+import { G04_EXPECTED_QUERY_ARGUMENTS } from './g04-person-activity-answer-check.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'G04';
 const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
-const HARNESS_REVIEWER_ID = 'gpt-6-luna-max-run95-pr128-round1';
 const TOOL_NAME = 'bangumi.get_person_activity';
+const ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1';
 const SERVER_ID = 'bgk_g04_one_tool';
 const MCP_SERVER_SCRIPT = path.join(ROOT, 'apps/mcp/codex-one-tool-mcp-server.mjs');
 const REPORT_WRITER = path.join(ROOT, 'scripts/acceptance/write-g04-agent-mcp-report.mjs');
@@ -63,7 +61,7 @@ Return one plain JSON object with exactly these keys: personId, kind, media, win
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value && typeof value === 'object') {
-    const entries = Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(',')}}`;
   }
   return JSON.stringify(value);
@@ -86,11 +84,16 @@ export function buildCodexExecArgs({
 }) {
   const serverArgs = [
     serverScript,
-    '--tool', TOOL_NAME,
-    '--arguments-json', JSON.stringify(G04_EXPECTED_QUERY_ARGUMENTS),
-    '--summary-file', summaryPath,
-    '--candidate-sha', sourceRevision,
-    '--bundle-sha256', bundleSha256,
+    '--tool',
+    TOOL_NAME,
+    '--arguments-json',
+    JSON.stringify(G04_EXPECTED_QUERY_ARGUMENTS),
+    '--summary-file',
+    summaryPath,
+    '--candidate-sha',
+    sourceRevision,
+    '--bundle-sha256',
+    bundleSha256,
   ];
   const config = [
     `model_reasoning_effort=${tomlString(REASONING_EFFORT)}`,
@@ -119,8 +122,17 @@ export function buildCodexExecArgs({
     `mcp_servers.${SERVER_ID}.tool_timeout_sec=180`,
   ];
   return [
-    'exec', '--ignore-user-config', '--strict-config', '--ephemeral', '--json',
-    '--model', MODEL, '--sandbox', 'read-only', '--cd', root,
+    'exec',
+    '--ignore-user-config',
+    '--strict-config',
+    '--ephemeral',
+    '--json',
+    '--model',
+    MODEL,
+    '--sandbox',
+    'read-only',
+    '--cd',
+    root,
     ...config.flatMap((entry) => ['--config', entry]),
     PROMPT,
   ];
@@ -129,7 +141,9 @@ export function buildCodexExecArgs({
 export function validateRunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
   if (args.length === 2 && args[0] === '--run' && args[1] === String(RUN_NUMBER)) return 'run';
-  throw new Error('Pass --run 95 only after exact-Candidate CI, Harness candidate, and Luna Max PASS gates.');
+  throw new Error(
+    'Pass --run 95 only after exact-Candidate CI, Harness candidate, and Luna Max PASS gates.',
+  );
 }
 
 export function buildG04SafeEventSummary(events) {
@@ -138,6 +152,10 @@ export function buildG04SafeEventSummary(events) {
       Number.isSafeInteger(events?.codexMcpToolEventCount) && events.codexMcpToolEventCount >= 0
         ? events.codexMcpToolEventCount
         : 0,
+    codexErrorItemCount:
+      Number.isSafeInteger(events?.codexErrorItemCount) && events.codexErrorItemCount >= 0
+        ? events.codexErrorItemCount
+        : null,
     ...safeCodexNonMcpEventSummary(events),
     shellToolCallCount:
       Number.isSafeInteger(events?.shellToolCallCount) && events.shellToolCallCount >= 0
@@ -147,7 +165,12 @@ export function buildG04SafeEventSummary(events) {
 }
 
 export function hasUnexpectedG04CodexToolActivity(events) {
-  return events?.nonMcpToolEventCount !== 0 || events?.shellToolCallCount !== 0;
+  return (
+    !Number.isSafeInteger(events?.codexErrorItemCount) ||
+    events.codexErrorItemCount < 0 ||
+    events?.nonMcpToolEventCount !== 0 ||
+    events?.shellToolCallCount !== 0
+  );
 }
 
 function gitText(...args) {
@@ -157,7 +180,11 @@ function gitText(...args) {
 export function canonicalG04ClaimPath(root = ROOT) {
   const gitCommon = gitRepositoryText(root, ['rev-parse', '--git-common-dir']);
   if (!gitCommon) throw new Error('G04 one-shot state requires a Git common directory.');
-  return path.join(path.resolve(root, gitCommon), 'pariya-agent-state', 'g04-run95-one-shot-claim.json');
+  return path.join(
+    path.resolve(root, gitCommon),
+    'pariya-agent-state',
+    'g04-run95-one-shot-claim.json',
+  );
 }
 
 function assertLocalClaimPath(claimPath) {
@@ -169,10 +196,38 @@ function assertLocalClaimPath(claimPath) {
   return absolute;
 }
 
-export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, reviewerId) {
-  if (!/^[0-9a-f]{40}$/u.test(sourceRevision) || !/^[0-9a-f]{64}$/u.test(bundleSha256) ||
-      reviewerId !== HARNESS_REVIEWER_ID) {
-    throw new Error('G04 one-shot claim must bind an exact Candidate, MCP bundle, and Harness reviewer identity.');
+function isG04ReviewerIdentity(reviewerId, prNumber) {
+  return (
+    Number.isSafeInteger(prNumber) &&
+    prNumber > 0 &&
+    typeof reviewerId === 'string' &&
+    new RegExp('^gpt-6-luna-max-run95-pr' + prNumber + '-round[1-9][0-9]*$', 'u').test(reviewerId)
+  );
+}
+
+export function createG04OneShotClaim(claimPath, gate) {
+  const {
+    sourceRevision,
+    baseSha,
+    prNumber,
+    bundleSha256,
+    reviewerId,
+    model = MODEL,
+    reasoningEffort = REASONING_EFFORT,
+  } = gate ?? {};
+  if (
+    !/^[0-9a-f]{40}$/u.test(sourceRevision ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
+    !Number.isSafeInteger(prNumber) ||
+    prNumber < 1 ||
+    !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
+    !isG04ReviewerIdentity(reviewerId, prNumber) ||
+    model !== MODEL ||
+    reasoningEffort !== REASONING_EFFORT
+  ) {
+    throw new Error(
+      'G04 one-shot claim must bind the exact Candidate/Base/PR/bundle and Harness Luna Max reviewer identity.',
+    );
   }
   const absolute = assertLocalClaimPath(claimPath);
   mkdirSync(path.dirname(absolute), { recursive: true, mode: 0o700 });
@@ -183,9 +238,18 @@ export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, r
     epochId: EPOCH_ID,
     state: 'CLAIMED',
     sourceRevision,
+    baseSha,
+    ciSha: sourceRevision,
+    ciStatus: 'SUCCESS',
+    prNumber,
+    model,
+    reasoningEffort,
+    toolName: TOOL_NAME,
+    argumentProfile: ARGUMENT_PROFILE,
     reviewerId,
     bundleSha256,
     expectedArgumentsSha256: sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)),
+    retryAllowed: false,
     claimedAt: new Date().toISOString(),
   };
   let descriptor;
@@ -195,7 +259,11 @@ export function createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, r
     closeSync(descriptor);
   } catch {
     if (descriptor !== undefined) {
-      try { closeSync(descriptor); } catch { /* Keep the create-new failure. */ }
+      try {
+        closeSync(descriptor);
+      } catch {
+        /* Keep the create-new failure. */
+      }
     }
     throw new Error('G04 one-shot claim already exists; refusing to invoke Codex again.');
   }
@@ -221,7 +289,11 @@ function markClaim(claimPath, claim, state, summary) {
 function sanitizeEnvironment(source = process.env) {
   const environment = sanitizeGitRepositoryEnvironment(source);
   for (const key of Object.keys(environment)) {
-    if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY|BASE[_-]?URL|MODEL[_-]?CATALOG|MODEL[_-]?PROVIDER|CODEX_PROFILE|CODEX_MODEL|CODEX_PROVIDER|ANTHROPIC|GEMINI|GOOGLE|VERTEX|AZURE|MISTRAL|OLLAMA|LMSTUDIO)/iu.test(key)) {
+    if (
+      /(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY|BASE[_-]?URL|MODEL[_-]?CATALOG|MODEL[_-]?PROVIDER|CODEX_PROFILE|CODEX_MODEL|CODEX_PROVIDER|ANTHROPIC|GEMINI|GOOGLE|VERTEX|AZURE|MISTRAL|OLLAMA|LMSTUDIO)/iu.test(
+        key,
+      )
+    ) {
       delete environment[key];
     }
   }
@@ -252,7 +324,9 @@ function mandatoryChecksSuccessful(checks) {
   }
   return MANDATORY_CI_CHECKS.every((name) => {
     const rows = byName.get(name);
-    return rows?.length === 1 && rows[0]?.status === 'COMPLETED' && rows[0]?.conclusion === 'SUCCESS';
+    return (
+      rows?.length === 1 && rows[0]?.status === 'COMPLETED' && rows[0]?.conclusion === 'SUCCESS'
+    );
   });
 }
 
@@ -263,9 +337,12 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
   const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
   const latestReview = reviewHistory[reviewHistory.length - 1];
   const reviewerId = latestReview?.reviewer_id;
-  const matchingPass = latestReview?.candidate_sha === sourceRevision &&
-    latestReview?.reviewed_base_sha === currentBaseSha && latestReview?.verdict === 'PASS' &&
-    reviewerId === HARNESS_REVIEWER_ID;
+  const prNumber = epochView?.number;
+  const matchingPass =
+    latestReview?.candidate_sha === sourceRevision &&
+    latestReview?.reviewed_base_sha === currentBaseSha &&
+    latestReview?.verdict === 'PASS' &&
+    isG04ReviewerIdentity(reviewerId, prNumber);
   const checks = [
     status?.git?.status === '',
     status?.git?.head === sourceRevision,
@@ -276,7 +353,7 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
     runState?.pending_epoch == null,
     epochView?.github_state === 'OPEN',
     epoch?.epoch_id === EPOCH_ID,
-    epochView?.number === 128,
+    Number.isSafeInteger(prNumber) && prNumber > 0,
     epoch?.pr_number === epochView?.number,
     epoch?.base_branch === 'master',
     epoch?.base_sha === currentBaseSha,
@@ -297,38 +374,70 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
     mandatoryChecksSuccessful(pr?.statusCheckRollup),
   ];
   if (checks.some((passed) => !passed)) {
-    throw new Error('G04 query requires the clean active exact Candidate, current-base CI, and latest exact-identity GPT-6 Luna Max PASS.');
+    throw new Error(
+      'G04 query requires the clean active exact Candidate, current-base CI, and latest exact-identity GPT-6 Luna Max PASS.',
+    );
   }
-  return { prNumber: epochView.number, candidateSha: sourceRevision, reviewerId };
+  return {
+    prNumber,
+    candidateSha: sourceRevision,
+    baseSha: currentBaseSha,
+    ciSha: sourceRevision,
+    ciStatus: 'SUCCESS',
+    reviewerId,
+    model: MODEL,
+    reasoningEffort: REASONING_EFFORT,
+  };
 }
 
 function readHarnessStatus() {
-  const result = spawnSync(process.execPath, [HARNESS_SCRIPT, 'status', '--run', String(RUN_NUMBER)], {
-    cwd: ROOT,
-    env: sanitizeHarnessEnvironment(),
-    encoding: 'utf8',
-    maxBuffer: 2 * 1024 * 1024,
-    timeout: 30_000,
-    stdio: ['ignore', 'pipe', 'ignore'],
-  });
-  if (result.error || result.status !== 0) throw new Error('Unable to read live Run 95 Harness status.');
-  try { return JSON.parse(result.stdout ?? ''); } catch { throw new Error('Live Harness status was not valid JSON.'); }
+  const result = spawnSync(
+    process.execPath,
+    [HARNESS_SCRIPT, 'status', '--run', String(RUN_NUMBER)],
+    {
+      cwd: ROOT,
+      env: sanitizeHarnessEnvironment(),
+      encoding: 'utf8',
+      maxBuffer: 2 * 1024 * 1024,
+      timeout: 30_000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    },
+  );
+  if (result.error || result.status !== 0)
+    throw new Error('Unable to read live Run 95 Harness status.');
+  try {
+    return JSON.parse(result.stdout ?? '');
+  } catch {
+    throw new Error('Live Harness status was not valid JSON.');
+  }
 }
 
 function readOpenPr(prNumber) {
-  const result = spawnSync('gh', [
-    'pr', 'view', String(prNumber), '--json',
-    'state,isDraft,baseRefName,headRefName,headRefOid,statusCheckRollup',
-  ], {
-    cwd: ROOT,
-    env: sanitizeHarnessEnvironment(),
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024,
-    timeout: 30_000,
-    stdio: ['ignore', 'pipe', 'ignore'],
-  });
-  if (result.error || result.status !== 0) throw new Error('Unable to verify the active G04 Epoch PR.');
-  try { return JSON.parse(result.stdout ?? ''); } catch { throw new Error('GitHub PR state was not valid JSON.'); }
+  const result = spawnSync(
+    'gh',
+    [
+      'pr',
+      'view',
+      String(prNumber),
+      '--json',
+      'state,isDraft,baseRefName,headRefName,headRefOid,statusCheckRollup',
+    ],
+    {
+      cwd: ROOT,
+      env: sanitizeHarnessEnvironment(),
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024,
+      timeout: 30_000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    },
+  );
+  if (result.error || result.status !== 0)
+    throw new Error('Unable to verify the active G04 Epoch PR.');
+  try {
+    return JSON.parse(result.stdout ?? '');
+  } catch {
+    throw new Error('GitHub PR state was not valid JSON.');
+  }
 }
 
 function fetchCurrentMaster() {
@@ -343,7 +452,8 @@ function assertCandidateBase(baseSha, candidateSha) {
     stdio: 'ignore',
     timeout: 10_000,
   });
-  if (result.error || result.status !== 0) throw new Error('G04 Candidate is not based on current master.');
+  if (result.error || result.status !== 0)
+    throw new Error('G04 Candidate is not based on current master.');
 }
 
 function assertCurrentReviewGate(sourceRevision) {
@@ -357,18 +467,25 @@ function assertCurrentReviewGate(sourceRevision) {
 }
 
 function assertCleanCandidate() {
-  if (gitText('status', '--porcelain')) throw new Error('G04 query requires a clean exact Candidate.');
+  if (gitText('status', '--porcelain'))
+    throw new Error('G04 query requires a clean exact Candidate.');
   const revision = gitText('rev-parse', 'HEAD');
   if (!/^[0-9a-f]{40}$/u.test(revision)) throw new Error('Invalid G04 Candidate revision.');
   const branch = gitText('branch', '--show-current');
-  if (!/^codex\/epoch(?:-|\/)/u.test(branch)) throw new Error('G04 query must run from the active Harness Epoch branch.');
+  if (!/^codex\/epoch(?:-|\/)/u.test(branch))
+    throw new Error('G04 query must run from the active Harness Epoch branch.');
   const configPath = path.join(ROOT, '.codex/config.toml');
-  if (existsSync(configPath) && /^\s*\[mcp_servers(?:\.|\s|\])/mu.test(readFileSync(configPath, 'utf8'))) {
+  if (
+    existsSync(configPath) &&
+    /^\s*\[mcp_servers(?:\.|\s|\])/mu.test(readFileSync(configPath, 'utf8'))
+  ) {
     throw new Error('Project Codex config has MCP servers outside the G04 one-tool allowlist.');
   }
-  if (existsSync(REPORT_PATH)) throw new Error('A G04 report already exists; refusing to run again.');
+  if (existsSync(REPORT_PATH))
+    throw new Error('A G04 report already exists; refusing to run again.');
   const claim = canonicalG04ClaimPath();
-  if (existsSync(claim)) throw new Error('A G04 one-shot claim already exists; refusing to run or retry.');
+  if (existsSync(claim))
+    throw new Error('A G04 one-shot claim already exists; refusing to run or retry.');
   return revision;
 }
 
@@ -382,7 +499,8 @@ function buildExactCandidateBundle(sourceRevision) {
     stdio: 'ignore',
     timeout: BUILD_TIMEOUT_MS,
   });
-  if (build.error || build.status !== 0) throw new Error('Unable to build the G04 exact Candidate bundle.');
+  if (build.error || build.status !== 0)
+    throw new Error('Unable to build the G04 exact Candidate bundle.');
   if (gitText('rev-parse', 'HEAD') !== sourceRevision || gitText('status', '--porcelain')) {
     throw new Error('G04 Candidate changed or became dirty during the runtime build.');
   }
@@ -395,16 +513,23 @@ function buildExactCandidateBundle(sourceRevision) {
 
 function currentBundleMatches(sourceRevision, bundleSha256) {
   try {
-    return gitText('status', '--porcelain') === '' &&
+    return (
+      gitText('status', '--porcelain') === '' &&
       gitText('rev-parse', 'HEAD') === sourceRevision &&
       computeMcpBundleSha256(ROOT) === bundleSha256 &&
-      readG26McpBundleAttestation(ROOT) === bundleSha256;
-  } catch { return false; }
+      readG26McpBundleAttestation(ROOT) === bundleSha256
+    );
+  } catch {
+    return false;
+  }
 }
 
 function codexCliVersion() {
   const result = spawnSync('codex', ['--version'], {
-    cwd: ROOT, env: sanitizeEnvironment(), encoding: 'utf8', timeout: 5000,
+    cwd: ROOT,
+    env: sanitizeEnvironment(),
+    encoding: 'utf8',
+    timeout: 5000,
     stdio: ['ignore', 'pipe', 'ignore'],
   });
   if (result.error || result.status !== 0) throw new Error('Codex CLI version check failed.');
@@ -414,44 +539,70 @@ function codexCliVersion() {
 }
 
 function readServerSummary(summaryPath) {
-  try { return JSON.parse(readFileSync(summaryPath, 'utf8')); } catch { return null; }
+  try {
+    return JSON.parse(readFileSync(summaryPath, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
-  if (!summary || summary.serverProfile !== 'one-tool-anonymous-public-v1' ||
-      summary.sourceRevision !== sourceRevision || summary.bundleSha256 !== bundleSha256 ||
-      summary.toolName !== TOOL_NAME || summary.serverToolCount !== 1 ||
-      JSON.stringify(summary.serverToolNames) !== JSON.stringify([TOOL_NAME]) ||
-      summary.argumentMatch !== true ||
-      summary.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))) return false;
+  if (
+    !summary ||
+    summary.serverProfile !== 'one-tool-anonymous-public-v1' ||
+    summary.sourceRevision !== sourceRevision ||
+    summary.bundleSha256 !== bundleSha256 ||
+    summary.toolName !== TOOL_NAME ||
+    summary.serverToolCount !== 1 ||
+    JSON.stringify(summary.serverToolNames) !== JSON.stringify([TOOL_NAME]) ||
+    summary.argumentMatch !== true ||
+    summary.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))
+  )
+    return false;
   try {
     const catalogBytes = readFileSync(path.join(ROOT, 'docs/tool-catalog.json'));
     const catalog = JSON.parse(catalogBytes.toString('utf8'));
     const tool = catalog.find((entry) => entry?.name === TOOL_NAME);
-    return Boolean(tool && tool.auth === 'none' && tool.risk === 'read' &&
+    return Boolean(
+      tool &&
+      tool.auth === 'none' &&
+      tool.risk === 'read' &&
       summary.catalogSha256 === sha256(catalogBytes) &&
       summary.toolDescriptionSha256 === sha256(tool.description) &&
-      summary.inputSchemaSha256 === sha256(canonicalJson(tool.inputSchema)));
-  } catch { return false; }
+      summary.inputSchemaSha256 === sha256(canonicalJson(tool.inputSchema)),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function textResultBytes(result) {
   if (!Array.isArray(result?.content)) return null;
-  const text = result.content.filter((item) => item?.type === 'text' && typeof item.text === 'string')
-    .map((item) => item.text).join('\n');
+  const text = result.content
+    .filter((item) => item?.type === 'text' && typeof item.text === 'string')
+    .map((item) => item.text)
+    .join('\n');
   return text.length ? Buffer.byteLength(text, 'utf8') : null;
 }
 
 function invokeCodex({ nodePath, summaryPath, sourceRevision, bundleSha256 }) {
-  const result = spawnSync('codex', buildCodexExecArgs({
-    nodePath,
-    summaryPath,
-    sourceRevision,
-    bundleSha256,
-  }), {
-    cwd: ROOT, env: sanitizeEnvironment(), encoding: 'utf8', maxBuffer: MAX_STDOUT_BYTES,
-    timeout: CODEX_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'],
-  });
+  const result = spawnSync(
+    'codex',
+    buildCodexExecArgs({
+      nodePath,
+      summaryPath,
+      sourceRevision,
+      bundleSha256,
+    }),
+    {
+      cwd: ROOT,
+      env: sanitizeEnvironment(),
+      encoding: 'utf8',
+      maxBuffer: MAX_STDOUT_BYTES,
+      timeout: CODEX_TIMEOUT_MS,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    },
+  );
   return {
     exitCode: Number.isInteger(result.status) ? result.status : 1,
     stdout: typeof result.stdout === 'string' ? result.stdout : '',
@@ -461,11 +612,19 @@ function invokeCodex({ nodePath, summaryPath, sourceRevision, bundleSha256 }) {
 
 function invokeReportWriter(input) {
   const result = spawnSync(process.execPath, [REPORT_WRITER], {
-    cwd: ROOT, input: JSON.stringify(input), encoding: 'utf8', maxBuffer: 64 * 1024,
-    timeout: 15_000, stdio: ['pipe', 'pipe', 'ignore'],
+    cwd: ROOT,
+    input: JSON.stringify(input),
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024,
+    timeout: 15_000,
+    stdio: ['pipe', 'pipe', 'ignore'],
   });
   let output = null;
-  try { output = JSON.parse(result.stdout ?? ''); } catch { /* Writer output is sanitized only. */ }
+  try {
+    output = JSON.parse(result.stdout ?? '');
+  } catch {
+    /* Writer output is sanitized only. */
+  }
   return { exitCode: result.status ?? 1, output };
 }
 
@@ -475,13 +634,25 @@ function run() {
   const initialGate = assertCurrentReviewGate(sourceRevision);
   const cliVersion = codexCliVersion();
   const bundleSha256 = buildExactCandidateBundle(sourceRevision);
-  if (!currentBundleMatches(sourceRevision, bundleSha256)) throw new Error('G04 Candidate bundle changed before claim creation.');
+  if (!currentBundleMatches(sourceRevision, bundleSha256))
+    throw new Error('G04 Candidate bundle changed before claim creation.');
   const currentGate = assertCurrentReviewGate(sourceRevision);
-  if (currentGate.prNumber !== initialGate.prNumber || currentGate.reviewerId !== initialGate.reviewerId) {
-    throw new Error('Active Harness Epoch or exact reviewer identity changed during G04 preflight.');
+  if (
+    currentGate.prNumber !== initialGate.prNumber ||
+    currentGate.candidateSha !== initialGate.candidateSha ||
+    currentGate.baseSha !== initialGate.baseSha ||
+    currentGate.reviewerId !== initialGate.reviewerId
+  ) {
+    throw new Error(
+      'Active Harness Epoch or exact reviewer identity changed during G04 preflight.',
+    );
   }
 
-  const claim = createG04OneShotClaim(claimPath, sourceRevision, bundleSha256, currentGate.reviewerId);
+  const claim = createG04OneShotClaim(claimPath, {
+    ...currentGate,
+    sourceRevision,
+    bundleSha256,
+  });
   let temporaryDirectory;
   let summaryPath;
   let safe = {
@@ -491,6 +662,7 @@ function run() {
     codexExitCode: null,
     eventStreamParsed: false,
     codexMcpToolEventCount: 0,
+    codexErrorItemCount: 0,
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
@@ -499,38 +671,72 @@ function run() {
   try {
     temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-g04-run95-'));
     summaryPath = path.join(temporaryDirectory, 'server-summary.json');
-    const execution = invokeCodex({ nodePath: process.execPath, summaryPath, sourceRevision, bundleSha256 });
+    const execution = invokeCodex({
+      nodePath: process.execPath,
+      summaryPath,
+      sourceRevision,
+      bundleSha256,
+    });
     const parsed = parseCodexJsonl(execution.stdout);
     const events = summarizeCodexEvents(parsed.events);
     const serverSummary = readServerSummary(summaryPath);
-    const summaryMatches = serverSummaryMatchesCandidate(serverSummary, sourceRevision, bundleSha256);
+    const summaryMatches = serverSummaryMatchesCandidate(
+      serverSummary,
+      sourceRevision,
+      bundleSha256,
+    );
     safe = {
       ...safe,
       codexExitCode: execution.exitCode,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
       ...buildG04SafeEventSummary(events),
-      targetServerMatch: events.mcpServerNames.length === 1 && events.mcpServerNames[0] === SERVER_ID,
-      allowedCallCount: Number.isInteger(serverSummary?.allowedCallCount) ? serverSummary.allowedCallCount : 0,
-      deniedCallCount: Number.isInteger(serverSummary?.deniedCallCount) ? serverSummary.deniedCallCount : null,
-      resultStatus: typeof serverSummary?.serverResultStatus === 'string' ? serverSummary.serverResultStatus : 'unavailable',
+      targetServerMatch:
+        events.mcpServerNames.length === 1 && events.mcpServerNames[0] === SERVER_ID,
+      allowedCallCount: Number.isInteger(serverSummary?.allowedCallCount)
+        ? serverSummary.allowedCallCount
+        : 0,
+      deniedCallCount: Number.isInteger(serverSummary?.deniedCallCount)
+        ? serverSummary.deniedCallCount
+        : null,
+      resultStatus:
+        typeof serverSummary?.serverResultStatus === 'string'
+          ? serverSummary.serverResultStatus
+          : 'unavailable',
       serverSummaryMatchesCandidate: summaryMatches,
     };
-    if (execution.failed || !summaryMatches || !currentBundleMatches(sourceRevision, bundleSha256) ||
-        !parsed.parsed || !events.eventStreamComplete || events.codexMcpToolEventCount !== 1 ||
-        events.mcpServerNames.length !== 1 || events.mcpServerNames[0] !== SERVER_ID ||
-        events.completedMcpCalls.length !== 1 || events.completedMcpCalls[0]?.tool !== TOOL_NAME ||
-        events.toolCalls.length !== 1 || events.toolCalls[0]?.state !== 'DONE' ||
-        hasUnexpectedG04CodexToolActivity(events) ||
-        serverSummary?.allowedCallCount !== 1 || serverSummary?.deniedCallCount !== 0 ||
-        serverSummary?.serverResultStatus !== 'SUCCESS') {
+    if (
+      execution.failed ||
+      !summaryMatches ||
+      !currentBundleMatches(sourceRevision, bundleSha256) ||
+      !parsed.parsed ||
+      !events.eventStreamComplete ||
+      events.codexMcpToolEventCount !== 1 ||
+      events.mcpServerNames.length !== 1 ||
+      events.mcpServerNames[0] !== SERVER_ID ||
+      events.completedMcpCalls.length !== 1 ||
+      events.completedMcpCalls[0]?.tool !== TOOL_NAME ||
+      events.toolCalls.length !== 1 ||
+      events.toolCalls[0]?.state !== 'DONE' ||
+      hasUnexpectedG04CodexToolActivity(events) ||
+      serverSummary?.allowedCallCount !== 1 ||
+      serverSummary?.deniedCallCount !== 0 ||
+      serverSummary?.serverResultStatus !== 'SUCCESS'
+    ) {
       markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-      process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`,
+      );
       return 1;
     }
     const postGate = assertCurrentReviewGate(sourceRevision);
-    if (postGate.prNumber !== currentGate.prNumber || postGate.reviewerId !== currentGate.reviewerId) {
+    if (
+      postGate.prNumber !== currentGate.prNumber ||
+      postGate.reviewerId !== currentGate.reviewerId
+    ) {
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
-      process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`,
+      );
       return 1;
     }
     const call = events.completedMcpCalls[0];
@@ -544,6 +750,7 @@ function run() {
       serverToolNames: serverSummary.serverToolNames,
       serverToolCount: serverSummary.serverToolCount,
       codexMcpToolEventCount: events.codexMcpToolEventCount,
+      codexErrorItemCount: events.codexErrorItemCount,
       mcpServerNames: events.mcpServerNames,
       nonMcpToolEventCount: events.nonMcpToolEventCount,
       shellToolCallCount: events.shellToolCallCount,
@@ -557,6 +764,7 @@ function run() {
       toolCalls: events.toolCalls,
       toolTextUtf8Bytes: textResultBytes(call?.result),
       sourceRevision,
+      baseSha: currentGate.baseSha,
       bundleSha256,
       prNumber: currentGate.prNumber,
       reviewerId: currentGate.reviewerId,
@@ -564,7 +772,9 @@ function run() {
     if (writerResult.exitCode !== 0 || writerResult.output?.passed !== true) {
       const answerChecks = writerResult.output?.answerChecks ?? null;
       markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
-      process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`,
+      );
       return 1;
     }
     const output = writerResult.output;
@@ -573,14 +783,16 @@ function run() {
       answerCounters: output.answerCounters,
       resultSummary: output.resultSummary,
     });
-    process.stdout.write(`${JSON.stringify({
-      passed: true,
-      state: 'REPORT_WRITTEN',
-      sourceRevision,
-      bundleSha256,
-      answerCounters: output.answerCounters,
-      resultSummary: output.resultSummary,
-    })}\n`);
+    process.stdout.write(
+      `${JSON.stringify({
+        passed: true,
+        state: 'REPORT_WRITTEN',
+        sourceRevision,
+        bundleSha256,
+        answerCounters: output.answerCounters,
+        resultSummary: output.resultSummary,
+      })}\n`,
+    );
     return 0;
   } catch {
     markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
@@ -599,7 +811,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       process.exitCode = run();
     }
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : 'G04 query runner failed.'}\n`);
+    process.stderr.write(
+      `${error instanceof Error ? error.message : 'G04 query runner failed.'}\n`,
+    );
     process.exitCode = 1;
   }
 }

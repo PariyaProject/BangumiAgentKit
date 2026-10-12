@@ -19,7 +19,6 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const TOOL_NAME = 'bangumi.get_person_activity';
 const SERVER_ID = 'bgk_g04_one_tool';
-const HARNESS_REVIEWER_ID = 'gpt-6-luna-max-run95-pr128-round1';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
 const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
@@ -31,24 +30,48 @@ const CLAIM_PATH = path.join(
   'pariya-agent-state/g04-run95-one-shot-claim.json',
 );
 const PRIVACY_FIELDS = [
-  'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted',
-  'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored',
-  'rawResultStored', 'artifactImageBytesStored', 'credentialsStored',
+  'authProfile',
+  'oauthAttempted',
+  'accountDataRead',
+  'writesAttempted',
+  'qqPipelineTested',
+  'timClientTested',
+  'promptStored',
+  'answerStored',
+  'rawResultStored',
+  'artifactImageBytesStored',
+  'credentialsStored',
 ];
 const ANSWER_CHECK_FIELDS = [
-  'exactQueryArguments', 'exactSingleToolCall', 'structuredResultReadback',
-  'targetIdentityAndScope', 'calendarWindowValid', 'successfulOfficialSources',
-  'boundedCoverageConsistent', 'sourceRowsValid', 'sourceRowsDistinct',
-  'answerShapeValid', 'answerIdentityAndStateMatch', 'observedCountMatches',
-  'answerSummaryMatches', 'answerCoverageMatches', 'answerRowsMatch',
-  'caveatDisclosurePresent', 'noUnsupportedPositiveClaim',
-  'plainJsonWithoutMarkdown', 'boundedAnswerBytes', 'boundedMcpTextView',
+  'exactQueryArguments',
+  'exactSingleToolCall',
+  'structuredResultReadback',
+  'targetIdentityAndScope',
+  'calendarWindowValid',
+  'successfulOfficialSources',
+  'boundedCoverageConsistent',
+  'sourceRowsValid',
+  'sourceRowsDistinct',
+  'answerShapeValid',
+  'answerIdentityAndStateMatch',
+  'observedCountMatches',
+  'answerSummaryMatches',
+  'answerCoverageMatches',
+  'answerRowsMatch',
+  'caveatDisclosurePresent',
+  'noUnsupportedPositiveClaim',
+  'plainJsonWithoutMarkdown',
+  'boundedAnswerBytes',
+  'boundedMcpTextView',
 ];
 
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value && typeof value === 'object') {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(',')}}`;
   }
   return JSON.stringify(value);
 }
@@ -69,13 +92,37 @@ async function readInput() {
 
 function readClaim(input) {
   const claim = JSON.parse(readFileSync(CLAIM_PATH, 'utf8'));
-  if (claim?.schemaVersion !== 1 || claim.runNumber !== 95 || claim.frontierId !== 'G04' ||
-      claim.epochId !== EPOCH_ID || claim.state !== 'CLAIMED' ||
-      claim.sourceRevision !== input.sourceRevision || claim.reviewerId !== input.reviewerId ||
-      claim.bundleSha256 !== input.bundleSha256 ||
-      claim.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))) {
+  if (
+    claim?.schemaVersion !== 1 ||
+    claim.runNumber !== 95 ||
+    claim.frontierId !== 'G04' ||
+    claim.epochId !== EPOCH_ID ||
+    claim.state !== 'CLAIMED' ||
+    claim.sourceRevision !== input.sourceRevision ||
+    claim.reviewerId !== input.reviewerId ||
+    claim.baseSha !== input.baseSha ||
+    claim.prNumber !== input.prNumber ||
+    claim.ciSha !== input.sourceRevision ||
+    claim.ciStatus !== 'SUCCESS' ||
+    claim.model !== MODEL ||
+    claim.reasoningEffort !== REASONING_EFFORT ||
+    claim.toolName !== TOOL_NAME ||
+    claim.argumentProfile !== ARGUMENT_PROFILE ||
+    claim.retryAllowed !== false ||
+    claim.bundleSha256 !== input.bundleSha256 ||
+    claim.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))
+  ) {
     throw new Error('G04 report does not match the local create-once claim.');
   }
+}
+
+function isG04ReviewerIdentity(reviewerId, prNumber) {
+  return (
+    Number.isSafeInteger(prNumber) &&
+    prNumber > 0 &&
+    typeof reviewerId === 'string' &&
+    new RegExp('^gpt-6-luna-max-run95-pr' + prNumber + '-round[1-9][0-9]*$', 'u').test(reviewerId)
+  );
 }
 
 function currentCatalogSnapshot(root = ROOT) {
@@ -100,44 +147,77 @@ function safeSourceOperations(value) {
     'GET /v0/subjects/{subject_id}',
   ]);
   const selected = value.filter((entry) => allowed.has(entry?.operation));
-  if (selected.length !== value.length || selected.some((entry) =>
-    !Number.isInteger(entry.attempted) || entry.attempted < 0 ||
-    !Number.isInteger(entry.succeeded) || entry.succeeded < 0 ||
-    !Number.isInteger(entry.failed) || entry.failed < 0 ||
-    entry.succeeded + entry.failed !== entry.attempted)) return null;
+  if (
+    selected.length !== value.length ||
+    selected.some(
+      (entry) =>
+        !Number.isInteger(entry.attempted) ||
+        entry.attempted < 0 ||
+        !Number.isInteger(entry.succeeded) ||
+        entry.succeeded < 0 ||
+        !Number.isInteger(entry.failed) ||
+        entry.failed < 0 ||
+        entry.succeeded + entry.failed !== entry.attempted,
+    )
+  )
+    return null;
   if (new Set(selected.map((entry) => entry.operation)).size !== 3) return null;
-  return selected.map((entry) => ({
-    operation: entry.operation,
-    attempted: entry.attempted,
-    succeeded: entry.succeeded,
-    failed: entry.failed,
-  })).sort((a, b) => a.operation.localeCompare(b.operation));
+  return selected
+    .map((entry) => ({
+      operation: entry.operation,
+      attempted: entry.attempted,
+      succeeded: entry.succeeded,
+      failed: entry.failed,
+    }))
+    .sort((a, b) => a.operation.localeCompare(b.operation));
 }
 
 function assertSafeInput(input) {
-  if (!isRecord(input) || input.model !== MODEL || input.reasoningEffort !== REASONING_EFFORT ||
-      typeof input.codexCliVersion !== 'string' || !/^\d+\.\d+\.\d+$/u.test(input.codexCliVersion) ||
-      input.processExitCode !== 0 || input.resultStatus !== 'SUCCESS' ||
-      input.eventStreamParsed !== true || JSON.stringify(input.serverToolNames) !== JSON.stringify([TOOL_NAME]) ||
-      input.serverToolCount !== 1 || input.codexMcpToolEventCount !== 1 ||
-      JSON.stringify(input.mcpServerNames) !== JSON.stringify([SERVER_ID]) ||
-      input.nonMcpToolEventCount !== 0 || input.shellToolCallCount !== 0 ||
-      input.allowedCallCount !== 1 || input.deniedCallCount !== 0 ||
-      !/^[0-9a-f]{40}$/u.test(input.sourceRevision ?? '') ||
-      !/^[0-9a-f]{64}$/u.test(input.bundleSha256 ?? '') ||
-      !Number.isInteger(input.prNumber) || input.prNumber < 1) {
+  if (
+    !isRecord(input) ||
+    input.model !== MODEL ||
+    input.reasoningEffort !== REASONING_EFFORT ||
+    typeof input.codexCliVersion !== 'string' ||
+    !/^\d+\.\d+\.\d+$/u.test(input.codexCliVersion) ||
+    input.processExitCode !== 0 ||
+    input.resultStatus !== 'SUCCESS' ||
+    input.eventStreamParsed !== true ||
+    JSON.stringify(input.serverToolNames) !== JSON.stringify([TOOL_NAME]) ||
+    input.serverToolCount !== 1 ||
+    input.codexMcpToolEventCount !== 1 ||
+    !Number.isSafeInteger(input.codexErrorItemCount) ||
+    input.codexErrorItemCount < 0 ||
+    JSON.stringify(input.mcpServerNames) !== JSON.stringify([SERVER_ID]) ||
+    input.nonMcpToolEventCount !== 0 ||
+    input.shellToolCallCount !== 0 ||
+    input.allowedCallCount !== 1 ||
+    input.deniedCallCount !== 0 ||
+    !/^[0-9a-f]{40}$/u.test(input.sourceRevision ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(input.baseSha ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(input.bundleSha256 ?? '') ||
+    !Number.isSafeInteger(input.prNumber) ||
+    input.prNumber < 1 ||
+    !isG04ReviewerIdentity(input.reviewerId, input.prNumber)
+  ) {
     throw new Error('G04 probe did not complete exactly one isolated target MCP call.');
   }
-  if (!isRecord(input.privacy) || Object.keys(input.privacy).length !== PRIVACY_FIELDS.length ||
-      PRIVACY_FIELDS.some((key) => !Object.hasOwn(input.privacy, key)) ||
-      input.privacy.authProfile !== 'anonymous' ||
-      PRIVACY_FIELDS.filter((key) => key !== 'authProfile').some((key) => input.privacy[key] !== false)) {
+  if (
+    !isRecord(input.privacy) ||
+    Object.keys(input.privacy).length !== PRIVACY_FIELDS.length ||
+    PRIVACY_FIELDS.some((key) => !Object.hasOwn(input.privacy, key)) ||
+    input.privacy.authProfile !== 'anonymous' ||
+    PRIVACY_FIELDS.filter((key) => key !== 'authProfile').some(
+      (key) => input.privacy[key] !== false,
+    )
+  ) {
     throw new Error('G04 requires a passive anonymous public read-only execution.');
   }
-  if (gitRepositoryText(ROOT, ['rev-parse', 'HEAD']) !== input.sourceRevision ||
-      gitRepositoryText(ROOT, ['status', '--porcelain']) !== '' ||
-      computeMcpBundleSha256(ROOT) !== input.bundleSha256 ||
-      readG26McpBundleAttestation(ROOT) !== input.bundleSha256) {
+  if (
+    gitRepositoryText(ROOT, ['rev-parse', 'HEAD']) !== input.sourceRevision ||
+    gitRepositoryText(ROOT, ['status', '--porcelain']) !== '' ||
+    computeMcpBundleSha256(ROOT) !== input.bundleSha256 ||
+    readG26McpBundleAttestation(ROOT) !== input.bundleSha256
+  ) {
     throw new Error('G04 report must bind to the unchanged exact Candidate and MCP bundle.');
   }
   readClaim(input);
@@ -154,18 +234,33 @@ export function buildG04AgentMcpReport(
     input.toolCalls,
     input.toolTextUtf8Bytes,
   );
-  if (!answerResult.passed || !answerResult.resultSummary ||
-      Object.keys(answerResult.answerChecks).sort().join(',') !== [...ANSWER_CHECK_FIELDS].sort().join(',') ||
-      Object.values(answerResult.answerChecks).some((value) => value !== true)) {
+  if (
+    !answerResult.passed ||
+    !answerResult.resultSummary ||
+    Object.keys(answerResult.answerChecks).sort().join(',') !==
+      [...ANSWER_CHECK_FIELDS].sort().join(',') ||
+    Object.values(answerResult.answerChecks).some((value) => value !== true)
+  ) {
     return { passed: false, answerChecks: answerResult.answerChecks };
   }
-  if (input.model !== MODEL || input.reasoningEffort !== REASONING_EFFORT ||
-      !Number.isInteger(input.processExitCode) || input.processExitCode !== 0 ||
-      input.resultStatus !== 'SUCCESS' || input.eventStreamParsed !== true ||
-      JSON.stringify(input.serverToolNames) !== JSON.stringify([TOOL_NAME]) || input.serverToolCount !== 1 ||
-      input.codexMcpToolEventCount !== 1 || JSON.stringify(input.mcpServerNames) !== JSON.stringify([SERVER_ID]) ||
-      input.nonMcpToolEventCount !== 0 || input.shellToolCallCount !== 0 ||
-      input.allowedCallCount !== 1 || input.deniedCallCount !== 0) {
+  if (
+    input.model !== MODEL ||
+    input.reasoningEffort !== REASONING_EFFORT ||
+    !Number.isInteger(input.processExitCode) ||
+    input.processExitCode !== 0 ||
+    input.resultStatus !== 'SUCCESS' ||
+    input.eventStreamParsed !== true ||
+    JSON.stringify(input.serverToolNames) !== JSON.stringify([TOOL_NAME]) ||
+    input.serverToolCount !== 1 ||
+    input.codexMcpToolEventCount !== 1 ||
+    !Number.isSafeInteger(input.codexErrorItemCount) ||
+    input.codexErrorItemCount < 0 ||
+    JSON.stringify(input.mcpServerNames) !== JSON.stringify([SERVER_ID]) ||
+    input.nonMcpToolEventCount !== 0 ||
+    input.shellToolCallCount !== 0 ||
+    input.allowedCallCount !== 1 ||
+    input.deniedCallCount !== 0
+  ) {
     return { passed: false, answerChecks: answerResult.answerChecks };
   }
   const resultSourceOperations = safeSourceOperations(input.toolResultSummary?.sourceOperations);
@@ -173,21 +268,37 @@ export function buildG04AgentMcpReport(
   const rootPath = path.resolve(root);
   const catalog = currentCatalogSnapshot(rootPath);
   const currentStatus = liveStatus ?? JSON.parse(readHarnessStatus(rootPath));
+  const run = currentStatus?.run?.state;
+  const epochView = currentStatus?.epoch;
   const epoch = currentStatus?.epoch?.state;
   const sourceRevision = input.sourceRevision;
   const baseSha = epoch?.base_sha;
   const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
   const latestReview = reviewHistory[reviewHistory.length - 1];
-  const exactPassingReview = latestReview?.candidate_sha === sourceRevision &&
-    latestReview?.reviewed_base_sha === baseSha && latestReview?.verdict === 'PASS' &&
-    input.reviewerId === HARNESS_REVIEWER_ID && latestReview?.reviewer_id === HARNESS_REVIEWER_ID;
-  if (epoch?.epoch_id !== EPOCH_ID || epoch?.pr_number !== input.prNumber ||
-      input.prNumber !== 128 ||
-      epoch?.candidate_sha !== sourceRevision || epoch?.state !== 'REVIEW_PASSED' ||
-      epoch?.ci?.sha !== sourceRevision || epoch?.ci?.status !== 'SUCCESS' ||
-      epoch?.review_pass_sha !== sourceRevision ||
-      !exactPassingReview ||
-      typeof baseSha !== 'string' || !/^[0-9a-f]{40}$/u.test(baseSha)) {
+  const exactPassingReview =
+    latestReview?.candidate_sha === sourceRevision &&
+    latestReview?.reviewed_base_sha === baseSha &&
+    latestReview?.verdict === 'PASS' &&
+    input.reviewerId === latestReview?.reviewer_id &&
+    isG04ReviewerIdentity(input.reviewerId, input.prNumber);
+  if (
+    epoch?.epoch_id !== EPOCH_ID ||
+    epoch?.pr_number !== input.prNumber ||
+    epochView?.number !== input.prNumber ||
+    epochView?.github_state !== 'OPEN' ||
+    run?.state !== 'EPOCH_ACTIVE' ||
+    run.active_epoch_pr !== input.prNumber ||
+    epoch?.candidate_sha !== sourceRevision ||
+    epoch?.state !== 'REVIEW_PASSED' ||
+    input.baseSha !== baseSha ||
+    epoch?.reviewed_base_sha !== baseSha ||
+    epoch?.ci?.sha !== sourceRevision ||
+    epoch?.ci?.status !== 'SUCCESS' ||
+    epoch?.review_pass_sha !== sourceRevision ||
+    !exactPassingReview ||
+    typeof baseSha !== 'string' ||
+    !/^[0-9a-f]{40}$/u.test(baseSha)
+  ) {
     return { passed: false, answerChecks: answerResult.answerChecks };
   }
   const report = {
@@ -218,6 +329,7 @@ export function buildG04AgentMcpReport(
     resultStatus: 'SUCCESS',
     eventStreamParsed: true,
     codexMcpToolEventCount: 1,
+    codexErrorItemCount: input.codexErrorItemCount,
     nonMcpToolEventCount: 0,
     shellToolCallCount: 0,
     allowedCallCount: 1,
@@ -247,7 +359,13 @@ export function buildG04AgentMcpReport(
       credentialsStored: false,
     },
   };
-  return { passed: true, report, answerChecks: answerResult.answerChecks, answerCounters: answerResult.answerCounters, resultSummary: answerResult.resultSummary };
+  return {
+    passed: true,
+    report,
+    answerChecks: answerResult.answerChecks,
+    answerCounters: answerResult.answerCounters,
+    resultSummary: answerResult.resultSummary,
+  };
 }
 
 function readHarnessStatus(root) {
@@ -260,16 +378,25 @@ function readHarnessStatus(root) {
     }
   }
   const result = spawnSync(process.execPath, [script, 'status', '--run', '95'], {
-    cwd: root, env: environment, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 30_000,
+    cwd: root,
+    env: environment,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    timeout: 30_000,
     maxBuffer: 2 * 1024 * 1024,
   });
-  if (result.error || result.status !== 0) throw new Error('Unable to verify live Run 95 Harness state.');
+  if (result.error || result.status !== 0)
+    throw new Error('Unable to verify live Run 95 Harness state.');
   return result.stdout ?? '';
 }
 
-export function writeG04AgentMcpReport(input, { root = ROOT, observedAt = new Date().toISOString() } = {}) {
+export function writeG04AgentMcpReport(
+  input,
+  { root = ROOT, observedAt = new Date().toISOString() } = {},
+) {
   assertSafeInput(input);
-  if (existsSync(REPORT_PATH)) throw new Error('G04 report already exists; refusing to overwrite or retry.');
+  if (existsSync(REPORT_PATH))
+    throw new Error('G04 report already exists; refusing to overwrite or retry.');
   const result = buildG04AgentMcpReport(input, { root, observedAt });
   if (!result.passed || !result.report) return result;
   const relativePath = path.relative(ROOT, REPORT_PATH).split(path.sep).join('/');
@@ -283,11 +410,20 @@ export function writeG04AgentMcpReport(input, { root = ROOT, observedAt = new Da
     closeSync(descriptor);
   } catch {
     if (descriptor !== undefined) {
-      try { closeSync(descriptor); } catch { /* Preserve the report create-new failure. */ }
+      try {
+        closeSync(descriptor);
+      } catch {
+        /* Preserve the report create-new failure. */
+      }
     }
     throw new Error('G04 report already exists or cannot be safely created.');
   }
-  return { passed: true, answerChecks: result.answerChecks, answerCounters: result.answerCounters, resultSummary: result.resultSummary };
+  return {
+    passed: true,
+    answerChecks: result.answerChecks,
+    answerCounters: result.answerCounters,
+    resultSummary: result.resultSummary,
+  };
 }
 
 async function main() {
@@ -302,4 +438,5 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) void main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  void main();

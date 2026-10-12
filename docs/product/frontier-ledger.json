@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-11T12:14:30Z",
+  "updated_at": "2026-10-12T02:54:57Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -177,7 +177,7 @@
         "tests/unit/g04-codex-agent-mcp-runner.test.ts",
         "tests/unit/g04-agent-mcp-report.test.ts"
       ],
-      "next_action": "The prior CLI 1.2.14 result remains limited to 1 selected relation and 0 eligible rows. The bounded Run #95 GPT-6 Luna Max Codex profile uses personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Its one-shot query may run only after exact-Candidate CI, Harness candidate:check, and the assigned same-identity Luna Max PASS; only a sanitized exact-source report may add Agent/MCP tool-row evidence, and retry is prohibited after claim. Keep PARTIAL: returned relation/detail samples and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
+      "next_action": "G04 remains PARTIAL and its distinct Run #95 one-shot is still unclaimed. The prior implementation/report path was tied to merged PR #128 and its old reviewer identity; the selected Epoch `run95-g04-person-activity-codex-current-evidence` updates those checks to bind the active PR, exact Candidate/Base/CI, and latest same-identity Luna Max reviewer dynamically. The shared Codex JSONL summarizer now reports item.type=error diagnostics separately from actual MCP/shell/other-tool activity and retains only a sanitized count; top-level error/failed/incomplete streams remain rejected. A tool-free Luna Max diagnostic showed these items can occur in an otherwise completed turn without any tool calls. After exact Candidate, seven successful exact-head CI jobs, and current-PR same-identity Luna Max PASS, invoke the G04 fixed profile once: personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Accept only a sanitized exact-source report; if inconclusive, never retry. Keep PARTIAL because current relations/details and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
@@ -1781,7 +1781,7 @@
         "tests/unit/p01-codex-agent-mcp-runner.test.ts",
         "tests/unit/p01-agent-mcp-report.test.ts"
       ],
-      "next_action": "An additional checker regression now confirms tied official raw-role labels remain distinct and are ordered lexically; this is unit evidence only and does not count as direct Agent/MCP answer acceptance. P01 remains UNASSESSED. The prior implementation PR was integrated without invoking the one-shot, so Run 95 is opening a fresh bounded P01 evidence Epoch. After exact Candidate CI and same-identity GPT-6 Luna Max PASS, invoke the fixed anonymous read-only query once; set PARTIAL only if the sanitized claim-bound report passes, otherwise retain UNASSESSED and never retry.",
+      "next_action": "P01 remains UNASSESSED. Run #95 PR #135 merged the raw-role tie-order regression; its single permitted direct invocation then ended terminal INCONCLUSIVE with one target MCP event and three item.type=error diagnostics. No accepted answer/report exists; the durable Harness/local claim has retryAllowed=false. Preserve the claim and disposition. Never invoke P01 again; the shared G04 event-classification correction does not reopen or backfill P01.",
       "reopen_when": "Accepted direct P01 answer evidence, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

@@ -193,6 +193,8 @@ export function summarizeCodexEvents(events) {
   const anonymousCalls = [];
   const nonMcpCalls = new Map();
   const anonymousNonMcpCalls = [];
+  const errorItems = new Set();
+  let anonymousErrorItemCount = 0;
   const finalMessages = [];
   let unexpectedEventTypes = 0;
   let threadStarted = false;
@@ -223,6 +225,11 @@ export function summarizeCodexEvents(events) {
       }
       continue;
     }
+    if (item.type === 'error') {
+      if (id) errorItems.add(id);
+      else anonymousErrorItemCount += 1;
+      continue;
+    }
     if (NON_TOOL_ITEM_TYPES.has(item.type)) continue;
     const key = id ?? `${item.type}:${anonymousNonMcpCalls.length}`;
     if (id) nonMcpCalls.set(key, item.type);
@@ -236,6 +243,7 @@ export function summarizeCodexEvents(events) {
     eventStreamComplete:
       threadStarted && turnStarted && turnCompleted && !turnFailed && unexpectedEventTypes === 0,
     codexMcpToolEventCount: mcpCalls.length,
+    codexErrorItemCount: errorItems.size + anonymousErrorItemCount,
     mcpServerNames: mcpCalls.map((item) => item.server),
     ...safeCodexNonMcpEventSummary({
       nonMcpToolEventCount: nonMcpTypes.length,
@@ -283,10 +291,7 @@ function currentCandidateBundleMatches(sourceRevision, bundleSha256) {
     ) {
       return false;
     }
-    assertG26McpBundleAttestationMatches(
-      bundleSha256,
-      readG26McpBundleAttestation(ROOT),
-    );
+    assertG26McpBundleAttestationMatches(bundleSha256, readG26McpBundleAttestation(ROOT));
     return true;
   } catch {
     return false;

@@ -553,6 +553,10 @@ export function canonicalP01SafeEventSummary(events) {
       Number.isSafeInteger(events?.codexMcpToolEventCount) && events.codexMcpToolEventCount >= 0
         ? events.codexMcpToolEventCount
         : 0,
+    codexErrorItemCount:
+      Number.isSafeInteger(events?.codexErrorItemCount) && events.codexErrorItemCount >= 0
+        ? events.codexErrorItemCount
+        : 0,
     ...safeCodexNonMcpEventSummary(events),
     shellToolCallCount:
       Number.isSafeInteger(events?.shellToolCallCount) && events.shellToolCallCount >= 0

@@ -9,7 +9,20 @@ const window = {
   months: 12,
   start: '2025-11-01',
   end: '2026-10-11',
-  monthKeys: ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'],
+  monthKeys: [
+    '2025-11',
+    '2025-12',
+    '2026-01',
+    '2026-02',
+    '2026-03',
+    '2026-04',
+    '2026-05',
+    '2026-06',
+    '2026-07',
+    '2026-08',
+    '2026-09',
+    '2026-10',
+  ],
   asOfSemantics: 'calendar_months_ending_on_as_of_date',
 };
 const coverage = {
@@ -225,7 +238,7 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
   it('rejects English double negation that still asserts an unsupported claim', () => {
     const result = makeResult();
     const answer = JSON.parse(answerFor(result));
-    answer.caveat += ' It isn\'t not a complete career history.';
+    answer.caveat += " It isn't not a complete career history.";
     const report = verifyG04PersonActivityAnswer(
       JSON.stringify(answer),
       G04_EXPECTED_QUERY_ARGUMENTS,
@@ -294,7 +307,13 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
     const result = makeResult();
     result.rows = [];
     result.summary = { creditRows: 0, uniqueSubjects: 0, uniqueCharacters: 0 };
-    result.coverage = { ...coverage, rowsEligible: 0, rowsReturned: 0, uniqueSubjects: 0, uniqueCharacters: 0 };
+    result.coverage = {
+      ...coverage,
+      rowsEligible: 0,
+      rowsReturned: 0,
+      uniqueSubjects: 0,
+      uniqueCharacters: 0,
+    };
     const answer = JSON.parse(answerFor(makeResult()));
     answer.observedUniqueWorks = 0;
     answer.summary = result.summary;
