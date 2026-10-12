@@ -540,6 +540,61 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
     expect(report.passed).toBe(true);
   });
 
+  it('rejects duplicate rows whose later malformed origin coverage would be discarded', () => {
+    const result = makeCompleteResult();
+    const sourceRow = result.rows[0];
+    if (!sourceRow) throw new Error('Expected a complete source row.');
+    const duplicateSubjectRow = {
+      ...sourceRow,
+      relationId: 7004,
+      characterName: 'Character C',
+      origin: {
+        state: 'unknown',
+        metaTags: [],
+        metaTagsCoverage: {
+          state: 'unknown',
+          observed: 1,
+          valid: 0,
+          returned: 0,
+          omitted: 0,
+          malformed: 1,
+          textTruncated: 0,
+          truncated: false,
+          maxItems: 32,
+          maxCharacters: 96,
+        },
+      },
+    };
+    result.rows.push(duplicateSubjectRow);
+    result.coverage.rowsEligible = 3;
+    result.coverage.rowsReturned = 3;
+    result.coverage.uniqueCharacters = 3;
+    result.summary.creditRows = 3;
+    result.summary.uniqueCharacters = 3;
+    // Match the old lossy merge's aggregates: it kept the first row's complete
+    // tag coverage while changing only the unique-subject origin state.
+    Object.assign(result.summary.origin, {
+      explicitOriginalSubjects: 0,
+      notObservedSubjects: 1,
+      unknownSubjects: 1,
+    });
+    Object.assign(result.coverage.origin, {
+      explicitOriginalSubjects: 0,
+      notObservedSubjects: 1,
+      unknownSubjects: 1,
+    });
+
+    const report = verifyG04PersonActivityAnswer(
+      answerFor(result),
+      G04_EXPECTED_QUERY_ARGUMENTS,
+      { structuredContent: result },
+      calls(),
+      3000,
+    );
+    expect(report.answerChecks.boundedCoverageConsistent).toBe(false);
+    expect(report.passed).toBe(false);
+  });
+
   it('rejects changed arguments, duplicate/wrong rows, and omitted limits', () => {
     const result = makeResult();
     const answer = JSON.parse(answerFor(result));

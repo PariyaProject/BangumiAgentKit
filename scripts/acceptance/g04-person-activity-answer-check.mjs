@@ -453,13 +453,10 @@ function deriveCompleteOriginEvidence(rows) {
     const existing = bySubject.get(row.subjectId);
     if (existing === undefined) {
       bySubject.set(row.subjectId, row.origin);
-    } else if (existing.state !== row.origin.state) {
-      bySubject.set(row.subjectId, {
-        state: 'unknown',
-        ...(existing.metaTagsCoverage === undefined
-          ? {}
-          : { metaTagsCoverage: existing.metaTagsCoverage }),
-      });
+    } else if (!sameJson(existing, row.origin)) {
+      // One detail projection supplies every credit row for a subject. Conflicting
+      // copies cannot be conservatively reduced without losing coverage evidence.
+      return null;
     }
   }
 
