@@ -53,7 +53,26 @@ if (tool === 'gh') {
   if (group === '--version') output('gh version mock');
   else if (group === 'auth' && action === 'status') output('authenticated');
   else if (group === 'repo' && action === 'view') output({ nameWithOwner: 'mock/repo' });
-  else if (group === 'api' && flagValue('--method') === 'PATCH' && flagValue('--input') === '-') {
+  else if (
+    group === 'api' &&
+    action === 'repos/{owner}/{repo}/labels' &&
+    flagValue('--method') === 'POST' &&
+    flagValue('--input') === '-'
+  ) {
+    const label = JSON.parse(stdin());
+    state.repositoryLabels ??= {};
+    if (state.repositoryLabels[label.name])
+      fail('HTTP 422 Validation Failed: label already exists');
+    else {
+      state.repositoryLabels[label.name] = label;
+      output(label);
+    }
+  } else if (group === 'api' && /^repos\/\{owner\}\/\{repo\}\/labels\//u.test(action)) {
+    const name = decodeURIComponent(action.split('/').at(-1));
+    const label = state.repositoryLabels?.[name];
+    if (!label) fail('HTTP 404 Not Found');
+    else output(label);
+  } else if (group === 'api' && flagValue('--method') === 'PATCH' && flagValue('--input') === '-') {
     const payload = JSON.parse(stdin());
     if (/^repos\/\{owner\}\/\{repo\}\/issues\/\d+$/u.test(action)) {
       state.runBody = payload.body;

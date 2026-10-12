@@ -498,15 +498,32 @@ CODEX_G16_EXPECTED_ARGUMENTS = {
     'maxRows': 20,
 }
 CODEX_G16_REPORT_RELATIVE_PATH = 'docs/live-probes/g16-director-person-activity-run95.json'
-CODEX_G16_EPOCH_ID = 'run95-g16-director-tv-36m-luna-agent-mcp'
+CODEX_G16_EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp'
 CODEX_G16_ARGUMENT_PROFILE = 'fixed-g16-person-6154-director-tv-36m-48r-16d-20rows-v1'
+CODEX_G16_RUNNER_RECEIPT_KIND = 'g16-runner-acceptance-receipt-v1'
+CODEX_G16_RUNNER_RECEIPT_FIELDS = {
+    'schemaVersion', 'kind', 'publicKeyBase64', 'publicKeySha256', 'payload', 'signature',
+}
+CODEX_G16_RUNNER_RECEIPT_PAYLOAD_FIELDS = {
+    'schemaVersion', 'kind', 'claimId', 'runNumber', 'frontierId', 'epochId', 'prNumber',
+    'sourceRevision', 'baseSha', 'ciSha', 'ciStatus', 'reviewerId', 'bundleSha256', 'model',
+    'reasoningEffort', 'toolName', 'argumentProfile', 'expectedArgumentsSha256', 'codexCliVersion',
+    'processExitCode', 'resultStatus', 'eventStreamParsed', 'serverToolNames', 'serverToolCount',
+    'mcpServerNames', 'codexMcpToolEventCount', 'codexErrorItemCount', 'nonMcpToolEventCount',
+    'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
+    'eventStreamSha256', 'serverSummarySha256', 'toolArgumentsSha256', 'toolTextUtf8Bytes',
+    'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256', 'answerChecksSha256',
+    'answerCountersSha256', 'resultSummarySha256',
+}
 CODEX_G16_REPORT_FIELDS = {
     'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
     'profile', 'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion', 'sourceRevision',
-    'baseSha', 'prNumber', 'mcpBundleSha256', 'observedAt', 'toolName', 'argumentProfile',
+    'baseSha', 'prNumber', 'claimId', 'mcpBundleSha256', 'runnerEventStreamSha256',
+    'runnerServerSummarySha256', 'runnerReceipt', 'observedAt', 'toolName', 'argumentProfile',
     'expectedArgumentsSha256', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
     'serverToolNames', 'serverToolCount', 'mcpServerNames', 'processExitCode', 'resultStatus',
-    'eventStreamParsed', 'codexMcpToolEventCount', 'nonMcpToolEventCount', 'nonMcpToolTypes',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'codexErrorItemCount',
+    'nonMcpToolEventCount', 'nonMcpToolTypes',
     'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
     'answerChecks', 'answerCounters', 'toolCalls', 'toolTextUtf8Bytes', 'resultSummary',
     'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256', 'sourceOperations',
@@ -1643,22 +1660,40 @@ CODEX_G16_PROBE_IMPLEMENTATION_MARKERS = {
         'noUnsupportedPositiveClaim:',
     ),
     'scripts/acceptance/run-g16-codex-agent-mcp.mjs': (
-        "const EPOCH_ID = 'run95-g16-director-tv-36m-luna-agent-mcp'",
+        "const EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp'",
         'export function assertG16CandidateReviewGate(',
         'export function createG16OneShotClaim(',
+        'export function validateG16HarnessClaim(',
+        'export function runG16CodexAgentMcp(',
+        'export function recoverG16PreexistingAttempt(',
         "'features.shell_tool=false'",
         "'features.multi_agent=false'",
         "const SERVER_ID = 'bgk_g16_one_tool'",
     ),
+    'scripts/acceptance/g16-agent-mcp-runner-receipt.mjs': (
+        "const RECEIPT_KIND = 'g16-runner-acceptance-receipt-v1'",
+        'export function buildG16RunnerReceiptPayload(',
+        'export function createG16RunnerReceipt(',
+        'export function verifyG16RunnerReceipt(',
+    ),
     'scripts/acceptance/write-g16-agent-mcp-report.mjs': (
         'export function buildG16AgentMcpReport(',
         'export function buildG16SanitizedReport(',
+        'export function validateG16SanitizedReportFile(',
         "openSync(REPORT_PATH, 'wx', 0o600)",
         "'codex_cli_g16_director_person_activity_agent_mcp'",
+    ),
+    'scripts/agent-harness.mjs': (
+        'function assertG16OneShotClaimReadiness(',
+        'function commandEpochG16OneShotClaim(',
+        'function commandEpochG16OneShotResult(',
+        "'epoch:g16-one-shot-run': commandEpochG16OneShotRun",
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_g16_report_is_valid(',
         'def codex_g16_report_matches_candidate_revision(',
+        'def codex_g16_runner_receipt_is_well_formed(',
+        'def codex_g16_harness_disposition_matches_report(',
         'CODEX_G16_EXPECTED_ARGUMENTS',
         'CODEX_G16_REPORT_RELATIVE_PATH',
     ),
@@ -3847,7 +3882,213 @@ def codex_g04_report_is_valid(
     )
 
 
-def codex_g16_report_is_valid(report: object) -> bool:
+def codex_g16_runner_receipt_payload(report: dict[str, object]) -> dict[str, object]:
+    """Project the exact sanitized G16 evidence fields signed by its one-shot runner."""
+    return {
+        'schemaVersion': 1,
+        'kind': CODEX_G16_RUNNER_RECEIPT_KIND,
+        'claimId': report.get('claimId'),
+        'runNumber': report.get('runNumber'),
+        'frontierId': report.get('frontierId'),
+        'epochId': report.get('epochId'),
+        'prNumber': report.get('prNumber'),
+        'sourceRevision': report.get('sourceRevision'),
+        'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'),
+        'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'),
+        'bundleSha256': report.get('mcpBundleSha256'),
+        'model': report.get('model'),
+        'reasoningEffort': report.get('reasoningEffort'),
+        'toolName': report.get('toolName'),
+        'argumentProfile': report.get('argumentProfile'),
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'codexCliVersion': report.get('codexCliVersion'),
+        'processExitCode': report.get('processExitCode'),
+        'resultStatus': report.get('resultStatus'),
+        'eventStreamParsed': report.get('eventStreamParsed'),
+        'serverToolNames': report.get('serverToolNames'),
+        'serverToolCount': report.get('serverToolCount'),
+        'mcpServerNames': report.get('mcpServerNames'),
+        'codexMcpToolEventCount': report.get('codexMcpToolEventCount'),
+        'codexErrorItemCount': report.get('codexErrorItemCount'),
+        'nonMcpToolEventCount': report.get('nonMcpToolEventCount'),
+        'nonMcpToolTypes': report.get('nonMcpToolTypes'),
+        'shellToolCallCount': report.get('shellToolCallCount'),
+        'allowedCallCount': report.get('allowedCallCount'),
+        'deniedCallCount': report.get('deniedCallCount'),
+        'eventStreamSha256': report.get('runnerEventStreamSha256'),
+        'serverSummarySha256': report.get('runnerServerSummarySha256'),
+        'toolArgumentsSha256': _canonical_json_sha256(CODEX_G16_EXPECTED_ARGUMENTS),
+        'toolTextUtf8Bytes': report.get('toolTextUtf8Bytes'),
+        'resultByteLength': report.get('resultByteLength'),
+        'resultSha256': report.get('resultSha256'),
+        'answerUtf8Bytes': report.get('answerUtf8Bytes'),
+        'answerSha256': report.get('answerSha256'),
+        'answerChecksSha256': _canonical_json_sha256(report.get('answerChecks')),
+        'answerCountersSha256': _canonical_json_sha256(report.get('answerCounters')),
+        'resultSummarySha256': _canonical_json_sha256(report.get('resultSummary')),
+    }
+
+
+def codex_g16_verify_runner_receipt_signature(
+    receipt: dict[str, object], trusted_public_key: str, expected_payload: dict[str, object],
+) -> bool:
+    """Use the runner's Node verifier so acceptance checks the Ed25519 signature itself."""
+    verifier = (
+        'import { pathToFileURL } from "node:url"; '
+        'import { readFileSync } from "node:fs"; '
+        'const input = JSON.parse(readFileSync(0,"utf8")); '
+        'const moduleUrl = pathToFileURL(process.cwd() + "/scripts/acceptance/g16-agent-mcp-runner-receipt.mjs"); '
+        'const { verifyG16RunnerReceipt } = await import(moduleUrl); '
+        'try { process.stdout.write(verifyG16RunnerReceipt(input.receipt, '
+        'input.trustedPublicKey, input.expectedPayload) ? "PASS" : "FAIL"); } '
+        'catch { process.stdout.write("FAIL"); }'
+    )
+    try:
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', verifier],
+            cwd=ROOT,
+            input=json.dumps({
+                'receipt': receipt,
+                'trustedPublicKey': trusted_public_key,
+                'expectedPayload': expected_payload,
+            }),
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == 'PASS'
+
+
+def codex_g16_runner_receipt_is_well_formed(
+    report: dict[str, object], trusted_public_key: object,
+) -> bool:
+    """Bind the receipt envelope and signature to the durable Harness claim key."""
+    receipt = report.get('runnerReceipt')
+    if not isinstance(receipt, dict) or set(receipt) != CODEX_G16_RUNNER_RECEIPT_FIELDS:
+        return False
+    public_key_text = receipt.get('publicKeyBase64')
+    signature_text = receipt.get('signature')
+    if not isinstance(public_key_text, str) or not isinstance(signature_text, str):
+        return False
+    try:
+        public_key_der = base64.b64decode(public_key_text, validate=True)
+        signature = base64.b64decode(signature_text, validate=True)
+    except (TypeError, ValueError):
+        return False
+    if (
+        type(receipt.get('schemaVersion')) is not int
+        or receipt.get('schemaVersion') != 1
+        or receipt.get('kind') != CODEX_G16_RUNNER_RECEIPT_KIND
+        or base64.b64encode(public_key_der).decode('ascii') != public_key_text
+        or len(public_key_der) != 44
+        or public_key_der[:12] != bytes.fromhex('302a300506032b6570032100')
+        or receipt.get('publicKeySha256') != hashlib.sha256(public_key_der).hexdigest()
+        or len(signature) != 64
+        or base64.b64encode(signature).decode('ascii') != signature_text
+        or not isinstance(trusted_public_key, str)
+        or public_key_text != trusted_public_key
+    ):
+        return False
+    payload = receipt.get('payload')
+    expected = codex_g16_runner_receipt_payload(report)
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != CODEX_G16_RUNNER_RECEIPT_PAYLOAD_FIELDS
+        or any(payload.get(key) != value for key, value in expected.items())
+        or any(
+            not isinstance(payload.get(key), str) or not re.fullmatch(r'[0-9a-f]{64}', payload[key])
+            for key in ('eventStreamSha256', 'serverSummarySha256')
+        )
+    ):
+        return False
+    return codex_g16_verify_runner_receipt_signature(receipt, trusted_public_key, expected)
+
+
+def codex_g16_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the durable Run/Epoch G16 disposition through Harness status."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    harness_script = ROOT / 'scripts/agent-harness.mjs'
+    try:
+        result = subprocess.run(
+            ['node', str(harness_script), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_g16_harness_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require the exact durable G16 REPORT_WRITTEN claim and signed receipt key."""
+    if not isinstance(harness_status, dict):
+        return None
+    run = harness_status.get('run')
+    epoch_view = harness_status.get('epoch')
+    run_state = run.get('state') if isinstance(run, dict) else None
+    epoch = epoch_view.get('state') if isinstance(epoch_view, dict) else None
+    if (
+        not isinstance(run, dict) or run.get('number') != 95
+        or not isinstance(run_state, dict) or run_state.get('profile') != 'AUTONOMOUS_EVOLUTION'
+        or not isinstance(epoch_view, dict) or epoch_view.get('number') != report.get('prNumber')
+        or epoch_view.get('github_state') not in {'OPEN', 'MERGED'}
+        or (epoch_view.get('github_state') == 'OPEN'
+            and run_state.get('active_epoch_pr') != report.get('prNumber'))
+        or not isinstance(epoch, dict) or epoch.get('epoch_id') != CODEX_G16_EPOCH_ID
+        or epoch.get('pr_number') != report.get('prNumber')
+    ):
+        return None
+    preflight = epoch.get('adversarial_preflight')
+    disposition = preflight.get('g16_one_shot_disposition') if isinstance(preflight, dict) else None
+    receipt = report.get('runnerReceipt')
+    if not isinstance(disposition, dict) or not isinstance(receipt, dict):
+        return None
+    expected = {
+        'claimId': report.get('claimId'), 'frontierId': 'G16', 'epochId': CODEX_G16_EPOCH_ID,
+        'runNumber': 95, 'prNumber': report.get('prNumber'), 'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': report.get('sourceRevision'), 'baseSha': report.get('baseSha'),
+        'ciSha': report.get('sourceRevision'), 'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'), 'bundleSha256': report.get('mcpBundleSha256'),
+        'model': 'gpt-6-luna', 'reasoningEffort': 'max', 'toolName': 'bangumi.get_person_activity',
+        'argumentProfile': CODEX_G16_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': _canonical_json_sha256(CODEX_G16_EXPECTED_ARGUMENTS),
+        'reportWritten': True, 'reportPath': CODEX_G16_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256, 'retryAllowed': False,
+        'runnerReceiptPublicKey': receipt.get('publicKeyBase64'),
+        'runnerReceiptPublicKeySha256': receipt.get('publicKeySha256'),
+        'runnerReceiptSha256': _canonical_json_sha256(receipt),
+    }
+    if (
+        not isinstance(report_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+        or any(disposition.get(key) != value for key, value in expected.items())
+    ):
+        return None
+    return disposition
+
+
+def codex_g16_reviewer_id_is_valid(reviewer_id: object, pr_number: object) -> bool:
+    """Accept the current Run 95 G16 reviewer shape or the Harness stable identity shape."""
+    if not isinstance(reviewer_id, str) or type(pr_number) is not int or pr_number < 1:
+        return False
+    return (
+        re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', reviewer_id) is not None
+        or re.fullmatch(r'run95-g16-review[1-9]\d*-gpt-6-luna-max-[0-9a-f]{7,40}', reviewer_id) is not None
+    )
+
+
+def codex_g16_report_is_valid(
+    report: object, harness_status: object = None, report_sha256: object = None,
+) -> bool:
     """Validate the exact-Candidate GPT-6 Luna Max bounded G16 director observation."""
     if not isinstance(report, dict) or set(report) != CODEX_G16_REPORT_FIELDS:
         return False
@@ -3867,7 +4108,10 @@ def codex_g16_report_is_valid(report: object) -> bool:
         or report.get('reasoningEffort') != 'max'
         or type(pr_number) is not int
         or pr_number < 1
-        or not re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round\d+', str(report.get('reviewerId', '')))
+        or not codex_g16_reviewer_id_is_valid(report.get('reviewerId'), pr_number)
+        or not isinstance(report.get('claimId'), str)
+        or not isinstance(source_revision, str)
+        or not re.fullmatch(rf'g16-run-95-pr-{pr_number}-{source_revision[:12]}-\d+', report['claimId'])
         or not isinstance(report.get('codexCliVersion'), str)
         or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
         or report.get('toolName') != 'bangumi.get_person_activity'
@@ -3879,6 +4123,8 @@ def codex_g16_report_is_valid(report: object) -> bool:
         or report.get('eventStreamParsed') is not True
         or type(report.get('codexMcpToolEventCount')) is not int
         or report.get('codexMcpToolEventCount') != 1
+        or type(report.get('codexErrorItemCount')) is not int
+        or report.get('codexErrorItemCount') != 0
         or type(report.get('nonMcpToolEventCount')) is not int
         or report.get('nonMcpToolEventCount') != 0
         or report.get('nonMcpToolTypes') != []
@@ -3900,6 +4146,10 @@ def codex_g16_report_is_valid(report: object) -> bool:
         or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], source_revision).returncode != 0
         or not isinstance(report.get('mcpBundleSha256'), str)
         or not re.fullmatch(r'[0-9a-f]{64}', report['mcpBundleSha256'])
+        or not isinstance(report.get('runnerEventStreamSha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['runnerEventStreamSha256'])
+        or not isinstance(report.get('runnerServerSummarySha256'), str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report['runnerServerSummarySha256'])
         or codex_g26_candidate_bundle_sha256(source_revision) != report.get('mcpBundleSha256')
         or not codex_g16_probe_revision_has_implementation(source_revision)
     ):
@@ -4094,8 +4344,14 @@ def codex_g16_report_is_valid(report: object) -> bool:
     if report.get('sourceOperations') != summary.get('sourceOperations'):
         return False
     privacy = report.get('privacy')
+    current_status = harness_status
+    if current_status is None:
+        current_status = codex_g16_harness_status(pr_number)
+    disposition = codex_g16_harness_disposition_matches_report(report, current_status, report_sha256)
     return (
-        isinstance(privacy, dict)
+        disposition is not None
+        and codex_g16_runner_receipt_is_well_formed(report, disposition.get('runnerReceiptPublicKey'))
+        and isinstance(privacy, dict)
         and set(privacy) == CODEX_G16_PRIVACY_FIELDS
         and privacy.get('authProfile') == 'anonymous'
         and all(privacy.get(key) is False for key in CODEX_G16_PRIVACY_FIELDS - {'authProfile'})
@@ -6769,9 +7025,16 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             sources.setdefault('bangumi.get_person_activity', set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_cli_g16_director_person_activity_agent_mcp':
+            try:
+                report_bytes = path.read_bytes()
+            except OSError:
+                continue
+            current_status = codex_g16_harness_status(report.get('prNumber'))
             if (
                 path.name != Path(CODEX_G16_REPORT_RELATIVE_PATH).name
-                or not codex_g16_report_is_valid(report)
+                or not codex_g16_report_is_valid(
+                    report, current_status, hashlib.sha256(report_bytes).hexdigest(),
+                )
                 or not codex_g16_report_matches_candidate_revision(
                     path, report.get('sourceRevision'),
                 )

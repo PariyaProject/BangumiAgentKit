@@ -1271,7 +1271,7 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
   }
 });
 
-test('CLI keeps G04 claim and result mutations private to the Harness-owned runner', () => {
+test('CLI keeps one-shot claim and result mutations private to Harness-owned runners', () => {
   const environment = createMockEnvironment();
   const before = environment.readState();
   try {
@@ -1279,6 +1279,18 @@ test('CLI keeps G04 claim and result mutations private to the Harness-owned runn
       ['epoch:g04-one-shot-claim', '--run', '95', '--pr', '136'],
       [
         'epoch:g04-one-shot-result',
+        '--run',
+        '95',
+        '--pr',
+        '136',
+        '--claim-id',
+        'caller-forged',
+        '--state',
+        'REPORT_WRITTEN',
+      ],
+      ['epoch:g16-one-shot-claim', '--run', '95', '--pr', '136'],
+      [
+        'epoch:g16-one-shot-result',
         '--run',
         '95',
         '--pr',
@@ -1296,9 +1308,28 @@ test('CLI keeps G04 claim and result mutations private to the Harness-owned runn
       assert.deepEqual(
         environment.readState(),
         before,
-        'private G04 mutations must not change durable Harness state',
+        'private one-shot mutations must not change durable Harness state',
       );
     }
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI rejects a wrong-run G16 one-shot before touching Harness state', () => {
+  const environment = createMockEnvironment();
+  const before = environment.readState();
+  try {
+    const result = environment.execute(['epoch:g16-one-shot-run', '--run', '1']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G16_ONESHOT_RUN_INVALID:/u);
+    const after = environment.readState();
+    assert.equal(after.runBody, before.runBody);
+    assert.equal(after.prBody, before.prBody);
+    assert.equal(
+      parseControlBlock(after.runBody, RUN_MARKER).outer_sol.product.consumed,
+      parseControlBlock(before.runBody, RUN_MARKER).outer_sol.product.consumed,
+    );
   } finally {
     environment.cleanup();
   }
@@ -1779,6 +1810,69 @@ test('CLI Candidate refresh cannot clear or replace the durable P01 one-shot dis
     const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
     assert.equal(stored.state, 'REVIEW_PASSED');
     assert.deepEqual(stored.adversarial_preflight.p01_one_shot_disposition, disposition);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot clear or replace the durable G16 one-shot disposition', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const disposition = {
+    claimId: 'g16-claim',
+    frontierId: 'G16',
+    epochId: 'run95-g16-director-person-activity-agent-mcp',
+    runNumber: 95,
+    toolName: 'bangumi.get_person_activity',
+    state: 'REPORT_WRITTEN',
+    sourceCandidateSha: sha('b'),
+    baseSha: sha('a'),
+    ciSha: sha('b'),
+    ciStatus: 'SUCCESS',
+    prNumber: 42,
+    reviewerId: 'run95-g16-review1-gpt-6-luna-max-98df510',
+    bundleSha256: 'a'.repeat(64),
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    reportWritten: true,
+    reportPath: 'docs/live-probes/g16-report.json',
+    reportSha256: 'b'.repeat(64),
+    retryAllowed: false,
+  };
+  epoch.adversarial_preflight.g16_one_shot_disposition = structuredClone(disposition);
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const evidenceOverrides = [
+      {
+        candidate_refresh_reason: 'Attempt to delete the consumed G16 disposition.',
+      },
+      {
+        candidate_refresh_reason: 'Attempt to replace the consumed G16 disposition.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Attempted disposition replacement.',
+          g16_one_shot_disposition: { ...disposition, reportSha256: 'c'.repeat(64) },
+        },
+      },
+    ];
+    for (const overrides of evidenceOverrides) {
+      const result = environment.execute([
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('d'), ...overrides }),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /^G16_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+      const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.equal(stored.state, 'REVIEW_PASSED');
+      assert.deepEqual(stored.adversarial_preflight.g16_one_shot_disposition, disposition);
+    }
   } finally {
     environment.cleanup();
   }

@@ -301,6 +301,28 @@ The preflight creates no standalone report commit. Luna finds, fixes, validates,
 and repeats inside the same engineering history. The PR control block records
 only that the consolidated preflight completed and its validation summary.
 
+### Create-once Product query claims
+
+Before a one-shot Product query, Harness must acquire a repository-scoped,
+create-only GitHub label keyed to the Run and one-shot tool, independent of
+Epoch or PR number. This label is a global mutual-exclusion latch across clones
+and replacement PRs; the active Epoch PR body remains the canonical record of
+the full claim, Candidate/Base/CI/reviewer binding, and terminal result. Only
+the caller that receives and verifies the successful label-create response may
+write the PR claim. It must then read back the exact claim before granting
+query authority.
+
+The label name and description must be deterministic, contain no secrets, and
+remain permanently reserved after any successful or ambiguous create attempt.
+Never delete, rename, or recreate a consumed latch. A failed create is not proof
+of contention by itself: read the exact label and verify its expected metadata;
+if the control plane cannot prove either ownership or a prior claim, fail
+closed without a query. Losing or uncertain callers must not patch the PR body.
+If the latch was created but PR claim persistence/readback is uncertain, no
+query may run and the consumed latch cannot be released. Recovery may only
+reconcile the existing latch, PR state, and any sanitized artifact to a
+terminal result; it never retries the Product query.
+
 ## 7. Candidate and CI invariants
 
 The normal V3 invariant is:

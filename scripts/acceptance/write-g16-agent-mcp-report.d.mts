@@ -14,3 +14,14 @@ export function buildG16AgentMcpReport(
     currentBaseSha?: string | null;
   },
 ): Record<string, unknown>;
+export function validateG16SanitizedReportFile(
+  disposition: Record<string, unknown>,
+  root?: string,
+  reportPath?: string,
+): {
+  passed: boolean;
+  reason?: string;
+  report?: Record<string, unknown>;
+  reportPath?: string;
+  reportSha256?: string;
+};

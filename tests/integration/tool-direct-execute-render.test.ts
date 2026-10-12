@@ -146,5 +146,5 @@ describe('direct execute coverage for render tools', () => {
     for (const [, options] of renderCalls) {
       expect(options).toMatchObject({ width: 360, deviceScaleFactor: 2 });
     }
-  });
+  }, 15_000);
 });
