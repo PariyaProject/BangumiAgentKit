@@ -1002,7 +1002,7 @@ test('G04 ambiguous result acknowledgement matches the complete claim and report
   };
   const expected = {
     resultState: 'REPORT_WRITTEN',
-    epochId: 'run95-g04-person-activity-codex-current-evidence',
+    epochId: 'run95-g04-person-activity-global-one-shot-latch',
     toolName: 'bangumi.get_person_activity',
     argumentProfile: 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1',
     expectedArgumentsSha256: claim.expectedArgumentsSha256,

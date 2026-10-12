@@ -60,6 +60,11 @@ import {
   claimG16OneShotAtomically,
   G16OneShotClaimError,
 } from './lib/g16-one-shot-claim.mjs';
+import {
+  acquireG04OneShotGitHubLatch,
+  claimG04OneShotAtomically,
+  G04OneShotClaimError,
+} from './lib/g04-one-shot-claim.mjs';
 import { isG16LunaMaxReviewerId } from './lib/g16-reviewer-id.mjs';
 import { parseCodexJsonl, summarizeCodexEvents } from './acceptance/run-g26-codex-agent-mcp.mjs';
 import { runG04CodexAgentMcp } from './acceptance/run-g04-codex-agent-mcp.mjs';
@@ -1523,7 +1528,7 @@ function assertG04OneShotClaimReadiness(gate) {
     run.active_epoch_pr !== Number(prNumber) ||
     run.pending_epoch != null ||
     epoch.state !== 'REVIEW_PASSED' ||
-    epoch.epoch_id !== 'run95-g04-person-activity-codex-current-evidence' ||
+    epoch.epoch_id !== 'run95-g04-person-activity-global-one-shot-latch' ||
     epoch.pr_number !== Number(prNumber) ||
     !epoch.advances_frontier_ids?.includes('G04') ||
     Object.hasOwn(epoch.adversarial_preflight ?? {}, 'g04_one_shot_disposition') ||
@@ -1580,36 +1585,65 @@ function commandEpochG04OneShotClaim(gate, { printOutput = true } = {}) {
   assertG04OneShotClaimReadiness(gate);
   const claimId = `g04-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`;
   const runnerReceiptPublicKeySha256 = g04RunnerPublicKeySha256(runnerReceiptPublicKey);
-  const epochResult = epochState(prNumber);
-  const nextEpoch = structuredClone(epochResult.state);
-  nextEpoch.adversarial_preflight = {
-    ...nextEpoch.adversarial_preflight,
-    g04_one_shot_disposition: {
-      claimId,
-      frontierId: 'G04',
-      epochId: 'run95-g04-person-activity-codex-current-evidence',
-      runNumber: Number(runNumber),
-      toolName: 'bangumi.get_person_activity',
-      argumentProfile: G04_ARGUMENT_PROFILE,
-      expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
-      state: 'CLAIMED',
-      sourceCandidateSha: candidateSha,
-      baseSha,
-      ciSha: candidateSha,
-      ciStatus: 'SUCCESS',
-      bundleSha256,
-      prNumber: Number(prNumber),
-      reviewerId,
-      model,
-      reasoningEffort,
-      runnerReceiptPublicKey,
-      runnerReceiptPublicKeySha256,
-      reportWritten: false,
-      retryAllowed: false,
-      claimedAt: new Date().toISOString(),
-    },
+  const claimDisposition = {
+    claimId,
+    frontierId: 'G04',
+    epochId: 'run95-g04-person-activity-global-one-shot-latch',
+    runNumber: Number(runNumber),
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: G04_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
+    state: 'CLAIMED',
+    sourceCandidateSha: candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    bundleSha256,
+    prNumber: Number(prNumber),
+    reviewerId,
+    model,
+    reasoningEffort,
+    runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256,
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: new Date().toISOString(),
   };
-  updatePr(prNumber, nextEpoch);
+  try {
+    claimG04OneShotAtomically({
+      claim: claimDisposition,
+      assertReady: () => assertG04OneShotClaimReadiness(gate),
+      acquireGlobalLatch: () => acquireG04OneShotGitHubLatch(gh),
+      persistClaim: (claim) => {
+        const latest = epochState(prNumber);
+        if (
+          Object.hasOwn(
+            latest.state.adversarial_preflight ?? {},
+            'g04_one_shot_disposition',
+          )
+        ) {
+          throw new HarnessInvariantError(
+            'G04_ONESHOT_ALREADY_CLAIMED',
+            'A durable G04 one-shot disposition already exists; refusing to overwrite it.',
+          );
+        }
+        const nextEpoch = structuredClone(latest.state);
+        nextEpoch.adversarial_preflight = {
+          ...nextEpoch.adversarial_preflight,
+          g04_one_shot_disposition: claim,
+        };
+        updatePr(prNumber, nextEpoch);
+      },
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.g04_one_shot_disposition ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof G04OneShotClaimError) {
+      throw new HarnessInvariantError(error.code, error.message);
+    }
+    throw error;
+  }
   const result = {
     state: 'G04_ONE_SHOT_CLAIMED',
     claimId,
@@ -1662,7 +1696,7 @@ function commandEpochG04OneShotResult(
     current.runNumber !== 95 ||
     current.prNumber !== Number(claim.prNumber) ||
     current.frontierId !== 'G04' ||
-    current.epochId !== 'run95-g04-person-activity-codex-current-evidence' ||
+    current.epochId !== 'run95-g04-person-activity-global-one-shot-latch' ||
     current.sourceCandidateSha !== claim.candidateSha ||
     current.baseSha !== claim.baseSha ||
     current.ciSha !== claim.candidateSha ||
@@ -1798,7 +1832,7 @@ function persistHarnessG04OneShotResult(claim, state, reportSha256) {
     const disposition = status.adversarial_preflight?.g04_one_shot_disposition;
     return g04DispositionAcknowledges(disposition, claim, {
       resultState: state,
-      epochId: 'run95-g04-person-activity-codex-current-evidence',
+      epochId: 'run95-g04-person-activity-global-one-shot-latch',
       toolName: 'bangumi.get_person_activity',
       argumentProfile: G04_ARGUMENT_PROFILE,
       expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),

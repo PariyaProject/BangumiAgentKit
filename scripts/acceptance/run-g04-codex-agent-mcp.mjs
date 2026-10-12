@@ -42,7 +42,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'G04';
-const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
+const EPOCH_ID = 'run95-g04-person-activity-global-one-shot-latch';
 const TOOL_NAME = 'bangumi.get_person_activity';
 const ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1';
 const SERVER_ID = 'bgk_g04_one_tool';
