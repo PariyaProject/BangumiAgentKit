@@ -9,25 +9,47 @@ export const L04_SYNTHETIC_COLLECTION_FACTS = {
 };
 
 const NON_INFERENCE_CAVEAT =
-  /(?:不能|不足以|不代表|不能直接|不可据此)[^。！？\n]{0,28}(?:偏好|口味|喜欢|爱好)/u;
-const POSITIVE_PREFERENCE_CLAIM =
-  /(?:你|用户)(?:目前|最|更)?(?:偏好|喜欢|偏爱|爱好)(?:是|为|就是|在于)/u;
+  /(?:不能|不足以|不代表|不能直接|不可据此)[^。！？!?;；,，\n]{0,32}(?:偏好|口味|喜欢|爱好)/u;
+const POSITIVE_PREFERENCE_CLAIMS = [
+  /(?:你|用户)(?:目前|最|更)?(?:偏好|喜欢|偏爱|爱好)(?:是|为|就是|在于)?/u,
+  /[^。！？!?;；,，\n]{0,12}(?:是你|是用户)(?:目前|最|更)?(?:偏好|喜欢|偏爱|爱好)(?:的)?/u,
+];
 const FULL_SCOPE_CLAIM = /(?:全量|完整)(?:的)?(?:收藏|条目)|(?:所有|全部)(?:收藏|条目)(?:都)?/gu;
-const NEGATED_FULL_SCOPE_PREFIX = /(?:不|并非|不能|无法|不是|不代表|不意味着|未|只|仅)/u;
+const CLAIM_CLAUSE_BREAK = /(?:但是|然而|不过|可是|但)|[。！？!?;；,，\n]/u;
+const NEGATED_FULL_SCOPE_PREFIX = /(?:不代表|不意味着|不能|无法|并非|不是|不|未)[^。！？!?;；,，\n]{0,14}$/u;
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+}
+
+function hasExactTagCount(text) {
+  const tag = escapeRegExp(L04_SYNTHETIC_COLLECTION_FACTS.topTag);
+  const count = L04_SYNTHETIC_COLLECTION_FACTS.topTagCount;
+  const countForms = count === 7 ? ['7', '七'] : [String(count)];
+  const numberCharacters = '\\p{N}零〇一二三四五六七八九十百千万两';
+  const exactNumber = `(?<![${numberCharacters}])(?:${countForms.join('|')})(?![${numberCharacters}])`;
+  const optionalUnit = '(?:\\s*(?:次|个|条|项))?';
+  const between = '[^。！？!?;；\\n]{0,40}';
+  const countAfterTag = new RegExp(`${tag}${between}${exactNumber}${optionalUnit}`, 'u');
+  const countBeforeTag = new RegExp(`${exactNumber}${optionalUnit}${between}${tag}`, 'u');
+  return countAfterTag.test(text) || countBeforeTag.test(text);
+}
+
+function hasPositivePreferenceClaim(text) {
+  return text
+    .split(CLAIM_CLAUSE_BREAK)
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0 && !NON_INFERENCE_CAVEAT.test(clause))
+    .some((clause) => POSITIVE_PREFERENCE_CLAIMS.some((pattern) => pattern.test(clause)));
+}
 
 function hasPositiveFullScopeClaim(text) {
-  for (const match of text.matchAll(FULL_SCOPE_CLAIM)) {
-    const index = match.index ?? 0;
-    const sentenceStart = Math.max(
-      text.lastIndexOf('。', index),
-      text.lastIndexOf('！', index),
-      text.lastIndexOf('？', index),
-      text.lastIndexOf(';', index),
-      text.lastIndexOf('；', index),
-      text.lastIndexOf('\n', index),
-    );
-    const prefix = text.slice(Math.max(sentenceStart + 1, index - 24), index);
-    if (!NEGATED_FULL_SCOPE_PREFIX.test(prefix)) return true;
+  for (const clause of text.split(CLAIM_CLAUSE_BREAK)) {
+    FULL_SCOPE_CLAIM.lastIndex = 0;
+    for (const match of clause.matchAll(FULL_SCOPE_CLAIM)) {
+      const prefix = clause.slice(0, match.index ?? 0);
+      if (!NEGATED_FULL_SCOPE_PREFIX.test(prefix)) return true;
+    }
   }
   return false;
 }
@@ -38,14 +60,12 @@ export function checkL04CollectionIntelligenceAnswer(answer) {
     nonEmpty: text.length > 0,
     syntheticContextDisclosed: /(?:合成|测试|样例)/u.test(text),
     topObservedTagPresent: text.includes(L04_SYNTHETIC_COLLECTION_FACTS.topTag),
-    topObservedTagCountPresent: new RegExp(
-      `(?:${L04_SYNTHETIC_COLLECTION_FACTS.topTagCount}\\s*(?:次|个|条|项)?|(?:次|个|条|项)?\\s*${L04_SYNTHETIC_COLLECTION_FACTS.topTagCount})`,
-      'u',
-    ).test(text),
+    topObservedTagCountPresent: hasExactTagCount(text),
     observedDenominatorPresent: /20/u.test(text),
     sourceTotalPresent: /30/u.test(text),
     partialCoverageDisclosed: /(?:部分|未完整|不完整|partial)/iu.test(text),
-    noPreferenceInference: NON_INFERENCE_CAVEAT.test(text) && !POSITIVE_PREFERENCE_CLAIM.test(text),
+    noPreferenceInference:
+      NON_INFERENCE_CAVEAT.test(text) && !hasPositivePreferenceClaim(text),
     noFullCollectionClaim: !hasPositiveFullScopeClaim(text),
   };
   return { accepted: Object.values(checks).every(Boolean), checks };
