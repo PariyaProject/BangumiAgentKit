@@ -191,6 +191,24 @@ describe('P01 person-position answer checker', () => {
     expect(verification.resultSummary?.sourceRowDigest).toMatch(/^[0-9a-f]{64}$/u);
   });
 
+  it('keeps tied raw role labels separate and lexically ordered', () => {
+    const result = makeResult();
+    result.rows[0]!.rawRole = '演出';
+    result.rows[1]!.rawRole = '脚本';
+    result.rows[2]!.rawRole = '原案';
+    const answer = answerFor(result);
+
+    expect(answer.roleFrequency).toEqual([
+      { rawRole: '原案', count: 1 },
+      { rawRole: '演出', count: 1 },
+      { rawRole: '脚本', count: 1 },
+    ]);
+    expect(verify(result, answer).answerChecks.answerRoleFrequencyMatches).toBe(true);
+
+    answer.roleFrequency.reverse();
+    expect(verify(result, answer).answerChecks.answerRoleFrequencyMatches).toBe(false);
+  });
+
   it('rejects a role frequency that is not computed from the returned rows', () => {
     const result = makeResult();
     const answer = answerFor(result);

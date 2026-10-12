@@ -1781,7 +1781,7 @@
         "tests/unit/p01-codex-agent-mcp-runner.test.ts",
         "tests/unit/p01-agent-mcp-report.test.ts"
       ],
-      "next_action": "A bounded anonymous Agent/MCP observation path and exact raw-role answer checker are implemented, but no direct answer evidence is recorded. After exact Candidate CI and same-identity GPT-6 Luna Max PASS, invoke the one-shot once; set PARTIAL only if the sanitized answer report passes, otherwise retain UNASSESSED and do not retry.",
+      "next_action": "An additional checker regression now confirms tied official raw-role labels remain distinct and are ordered lexically; this is unit evidence only and does not count as direct Agent/MCP answer acceptance. P01 remains UNASSESSED. The prior implementation PR was integrated without invoking the one-shot, so Run 95 is opening a fresh bounded P01 evidence Epoch. After exact Candidate CI and same-identity GPT-6 Luna Max PASS, invoke the fixed anonymous read-only query once; set PARTIAL only if the sanitized claim-bound report passes, otherwise retain UNASSESSED and never retry.",
       "reopen_when": "Accepted direct P01 answer evidence, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
