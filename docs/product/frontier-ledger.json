@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-12T02:54:57Z",
+  "updated_at": "2026-10-12T03:04:43Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -177,7 +177,7 @@
         "tests/unit/g04-codex-agent-mcp-runner.test.ts",
         "tests/unit/g04-agent-mcp-report.test.ts"
       ],
-      "next_action": "G04 remains PARTIAL and its distinct Run #95 one-shot is still unclaimed. The prior implementation/report path was tied to merged PR #128 and its old reviewer identity; the selected Epoch `run95-g04-person-activity-codex-current-evidence` updates those checks to bind the active PR, exact Candidate/Base/CI, and latest same-identity Luna Max reviewer dynamically. The shared Codex JSONL summarizer now reports item.type=error diagnostics separately from actual MCP/shell/other-tool activity and retains only a sanitized count; top-level error/failed/incomplete streams remain rejected. A tool-free Luna Max diagnostic showed these items can occur in an otherwise completed turn without any tool calls. After exact Candidate, seven successful exact-head CI jobs, and current-PR same-identity Luna Max PASS, invoke the G04 fixed profile once: personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Accept only a sanitized exact-source report; if inconclusive, never retry. Keep PARTIAL because current relations/details and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
+      "next_action": "G04 remains PARTIAL and its distinct Run #95 one-shot is still unclaimed. The prior implementation/report path was tied to merged PR #128 and its old reviewer identity; the selected Epoch `run95-g04-person-activity-codex-current-evidence` updates those checks to bind the active PR, exact Candidate/Base/CI, and latest same-identity Luna Max reviewer dynamically. The shared Codex JSONL summarizer now reports item.type=error diagnostics separately from actual MCP/shell/other-tool activity and retains only a sanitized count; top-level error/failed/incomplete streams remain rejected. A tool-free Luna Max diagnostic showed these items can occur in an otherwise completed turn without any tool calls. After exact Candidate, seven successful exact-head CI jobs, and the assigned same-identity Luna Max PASS for the current PR, invoke the G04 fixed profile once: personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Accept only a sanitized exact-source report; if inconclusive, never retry. Keep PARTIAL because current relations/details and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
