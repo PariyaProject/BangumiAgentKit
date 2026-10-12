@@ -18,6 +18,11 @@ import {
   renderRunBody,
 } from '../../scripts/lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from '../../scripts/lib/frontier-ledger.mjs';
+import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
+import {
+  generateG04RunnerReceiptKeyPair,
+  g04RunnerPublicKeySha256,
+} from '../../scripts/acceptance/g04-runner-receipt.mjs';
 import {
   P01_ARGUMENT_PROFILE,
   P01_EXPECTED_QUERY_ARGUMENTS,
@@ -120,6 +125,7 @@ function createMockEnvironment(overrides = {}) {
           PATH: `${binDirectory}:${process.env.PATH}`,
           HARNESS_MOCK_STATE: statePath,
           HARNESS_FRONTIER_LEDGER_PATH: frontierLedgerPath,
+          HARNESS_G04_BUNDLE_SHA256: 'c'.repeat(64),
           ...envOverrides,
         },
       });
@@ -131,6 +137,162 @@ function createMockEnvironment(overrides = {}) {
       fs.rmSync(directory, { recursive: true, force: true });
     },
   };
+}
+
+function g04LegacyReconciliationFixture({ dispositionOverrides = {} } = {}) {
+  const run = createRunState({ runId: 'run-95-g04-legacy-claim' });
+  run.state = 'EPOCH_ACTIVE';
+  run.active_epoch_pr = 139;
+  run.outer_sol.max = 139;
+  run.outer_sol.consumed = 138;
+  run.outer_sol.product.max = 138;
+  run.outer_sol.product.consumed = 138;
+  run.next_action = 'RESUME_PR_139';
+
+  const currentCandidate = sha('b');
+  const currentBase = sha('a');
+  const currentBranch = 'codex/epoch-run95-g04-legacy-reconcile';
+  const currentEpoch = createEpochState({
+    epochId: 'run95-g04-person-activity-global-one-shot-latch',
+    baseSha: currentBase,
+    objective: 'Reconcile the already-spent Run 95 G04 query without retrying it.',
+    questions: ['Can the terminal legacy claim be made global without another query?'],
+    workPackages: ['Validate the old claim', 'Acquire the global no-retry latch'],
+    nonScope: ['No additional G04 query'],
+    acceptanceCriteria: ['No second G04 query is invoked.'],
+  });
+  currentEpoch.branch = currentBranch;
+  currentEpoch.base_branch = 'master';
+  currentEpoch.pr_number = 139;
+  currentEpoch.state = 'REVIEW_PASSED';
+  currentEpoch.candidate_sha = currentCandidate;
+  currentEpoch.reviewed_base_sha = currentBase;
+  currentEpoch.review_pass_sha = currentCandidate;
+  currentEpoch.advances_frontier_ids = ['G04'];
+  currentEpoch.ci = {
+    sha: currentCandidate,
+    status: 'SUCCESS',
+    url: 'https://example.test/actions/139',
+  };
+  currentEpoch.scope_closure = {
+    why_not_review_earlier: 'The legacy terminal claim must be reconciled first.',
+    why_not_extend_further: 'A second G04 query is prohibited.',
+    related_work_remaining: false,
+  };
+  currentEpoch.adversarial_preflight = {
+    completed: true,
+    summary: 'No query retry is permitted.',
+  };
+  currentEpoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: 'gpt-6-luna-max-run95-pr139-round1',
+      candidate_sha: currentCandidate,
+      reviewed_base_sha: currentBase,
+      verdict: 'PASS',
+    },
+  ];
+
+  const sourceCandidate = sha('d');
+  const sourceBase = sha('c');
+  const sourceBranch = 'codex/epoch-run95-g04-pr136';
+  const sourceEpoch = createEpochState({
+    epochId: 'run95-g04-person-activity-codex-current-evidence',
+    baseSha: sourceBase,
+    objective: 'Historical G04 claim source.',
+    questions: ['Was the earlier one-shot terminal?'],
+    workPackages: ['Preserve the claim'],
+    nonScope: ['No retry'],
+    acceptanceCriteria: ['The claim is INCONCLUSIVE.'],
+  });
+  sourceEpoch.branch = sourceBranch;
+  sourceEpoch.base_branch = 'master';
+  sourceEpoch.pr_number = 136;
+  sourceEpoch.state = 'MERGED';
+  sourceEpoch.candidate_sha = sourceCandidate;
+  sourceEpoch.reviewed_base_sha = sourceBase;
+  sourceEpoch.review_pass_sha = sourceCandidate;
+  sourceEpoch.ci = {
+    sha: sourceCandidate,
+    status: 'SUCCESS',
+    url: 'https://example.test/actions/136',
+  };
+  sourceEpoch.review_history = [
+    {
+      review_number: 7,
+      reviewer_id: 'gpt-6-luna-max-run95-pr136-round1',
+      candidate_sha: sourceCandidate,
+      reviewed_base_sha: sourceBase,
+      verdict: 'PASS',
+    },
+  ];
+  const keyPair = generateG04RunnerReceiptKeyPair();
+  const sourceDisposition = {
+    claimId: `g04-run-95-pr-136-${sourceCandidate.slice(0, 12)}-123`,
+    frontierId: 'G04',
+    epochId: sourceEpoch.epoch_id,
+    runNumber: 95,
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1',
+    expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
+    state: 'INCONCLUSIVE',
+    sourceCandidateSha: sourceCandidate,
+    baseSha: sourceBase,
+    ciSha: sourceCandidate,
+    ciStatus: 'SUCCESS',
+    bundleSha256: 'f'.repeat(64),
+    prNumber: 136,
+    reviewerId: 'gpt-6-luna-max-run95-pr136-round1',
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    runnerReceiptPublicKey: keyPair.publicKeyBase64,
+    runnerReceiptPublicKeySha256: g04RunnerPublicKeySha256(keyPair.publicKeyBase64),
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: '2026-10-12T07:16:01.157Z',
+    finishedAt: '2026-10-12T07:16:54.835Z',
+    ...dispositionOverrides,
+  };
+  sourceEpoch.adversarial_preflight = {
+    completed: true,
+    summary: 'The exact fixed-profile claim ended INCONCLUSIVE and cannot be retried.',
+    g04_one_shot_disposition: sourceDisposition,
+  };
+
+  const successfulChecks = mandatoryChecks.map((name) => ({ name, conclusion: 'SUCCESS' }));
+  const state = {
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    runIssueState: 'OPEN',
+    branch: currentBranch,
+    baseBranch: 'master',
+    featureBranch: currentBranch,
+    baseSha: currentBase,
+    featureHeadSha: currentCandidate,
+    dirty: '',
+    checks: successfulChecks,
+    prs: {
+      139: {
+        body: renderEpochBody(currentEpoch),
+        state: 'OPEN',
+        draft: false,
+        headRefName: currentBranch,
+        headRefOid: currentCandidate,
+        baseRefName: 'master',
+        checks: successfulChecks,
+      },
+      136: {
+        body: renderEpochBody(sourceEpoch),
+        state: 'MERGED',
+        draft: false,
+        headRefName: sourceBranch,
+        headRefOid: sourceCandidate,
+        baseRefName: 'master',
+        checks: successfulChecks,
+      },
+    },
+  };
+  return { ...state, currentEpoch, sourceEpoch, sourceDisposition };
 }
 
 function candidateEvidence(environment, overrides = {}) {
@@ -1316,6 +1478,127 @@ test('CLI keeps one-shot claim and result mutations private to Harness-owned run
   }
 });
 
+test('CLI globally reconciles a prior G04 terminal claim without invoking Codex or retrying', () => {
+  const environment = createMockEnvironment(g04LegacyReconciliationFixture());
+  const args = [
+    'epoch:g04-legacy-claim-reconcile',
+    '--run',
+    '95',
+    '--pr',
+    '139',
+    '--source-pr',
+    '136',
+  ];
+  try {
+    const result = environment.execute(args);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.deepEqual(
+      {
+        state: output.state,
+        source_pr: output.source_pr,
+        active_pr: output.active_pr,
+        query_invoked: output.query_invoked,
+        report_written: output.report_written,
+        retry_allowed: output.retry_allowed,
+      },
+      {
+        state: 'G04_LEGACY_CLAIM_RECONCILED',
+        source_pr: 136,
+        active_pr: 139,
+        query_invoked: false,
+        report_written: false,
+        retry_allowed: false,
+      },
+    );
+    let stored = environment.readState();
+    const epoch = parseControlBlock(stored.prs['139'].body, EPOCH_MARKER);
+    const run = parseControlBlock(stored.runBody, RUN_MARKER);
+    const reconciliation = epoch.adversarial_preflight.g04_legacy_claim_reconciliation;
+    assert.deepEqual(
+      {
+        state: reconciliation.state,
+        sourceClaimState: reconciliation.sourceClaim.state,
+        sourceClaimPr: reconciliation.sourceClaim.prNumber,
+        currentCandidate: reconciliation.reconciledAgainst.candidateSha,
+        queryInvoked: reconciliation.queryInvoked,
+        reportWritten: reconciliation.reportWritten,
+        retryAllowed: reconciliation.retryAllowed,
+      },
+      {
+        state: 'LEGACY_TERMINAL_RECONCILED',
+        sourceClaimState: 'INCONCLUSIVE',
+        sourceClaimPr: 136,
+        currentCandidate: sha('b'),
+        queryInvoked: false,
+        reportWritten: false,
+        retryAllowed: false,
+      },
+    );
+    assert.deepEqual(run.g04_one_shot_legacy_reconciliation, reconciliation);
+    const latch = stored.repositoryLabels?.['harness-r95-g04-person-activity-claimed'];
+    assert.equal(latch?.description, reconciliation.globalLatch.description);
+    assert.equal(
+      stored.calls.filter(
+        (call) =>
+          call.tool === 'gh' &&
+          call.args.includes('repos/{owner}/{repo}/labels') &&
+          call.args.includes('--method'),
+      ).length,
+      1,
+      'the repo-wide create-only latch is acquired once',
+    );
+    assert.equal(
+      stored.calls.some((call) => call.tool === 'codex'),
+      false,
+      'legacy reconciliation never invokes the query runner',
+    );
+
+    const repeated = environment.execute(args);
+    assert.equal(repeated.status, 0, repeated.stderr);
+    assert.match(repeated.stdout, /G04_LEGACY_RECONCILIATION_ALREADY_RECORDED/u);
+    stored = environment.readState();
+    assert.equal(
+      stored.calls.filter(
+        (call) =>
+          call.tool === 'gh' &&
+          call.args.includes('repos/{owner}/{repo}/labels') &&
+          call.args.includes('--method'),
+      ).length,
+      1,
+      'idempotent reconciliation does not recreate the permanent latch',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI rejects a nonterminal or retryable legacy G04 source before creating any latch', () => {
+  const environment = createMockEnvironment(
+    g04LegacyReconciliationFixture({ dispositionOverrides: { retryAllowed: true } }),
+  );
+  try {
+    const before = environment.readState();
+    const result = environment.execute([
+      'epoch:g04-legacy-claim-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '139',
+      '--source-pr',
+      '136',
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G04_LEGACY_CLAIM_INVALID:/u);
+    const after = environment.readState();
+    assert.deepEqual(after.repositoryLabels ?? {}, {});
+    assert.equal(after.prs['139'].body, before.prs['139'].body);
+    assert.equal(after.runBody, before.runBody);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI rejects a wrong-run G16 one-shot before touching Harness state', () => {
   const environment = createMockEnvironment();
   const before = environment.readState();
@@ -1872,6 +2155,73 @@ test('CLI Candidate refresh cannot clear or replace the durable G16 one-shot dis
       const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
       assert.equal(stored.state, 'REVIEW_PASSED');
       assert.deepEqual(stored.adversarial_preflight.g16_one_shot_disposition, disposition);
+    }
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot clear or replace a G04 legacy no-retry reconciliation', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const reconciliation = {
+    schemaVersion: 1,
+    state: 'LEGACY_TERMINAL_RECONCILED',
+    runNumber: 95,
+    frontierId: 'G04',
+    sourceClaim: {
+      claimId: 'g04-run-95-pr-136-aaaaaaaaaaaa-123',
+      state: 'INCONCLUSIVE',
+      retryAllowed: false,
+    },
+    reconciledAgainst: { prNumber: 139, candidateSha: sha('b') },
+    queryInvoked: false,
+    reportWritten: false,
+    retryAllowed: false,
+    globalLatch: {
+      name: 'harness-r95-g04-person-activity-claimed',
+      description:
+        'Run 95 G04 bangumi.get_person_activity one-shot latch; permanent; never remove or recreate.',
+    },
+    reconciledAt: '2026-10-12T11:00:00.000Z',
+  };
+  epoch.adversarial_preflight.g04_legacy_claim_reconciliation = structuredClone(reconciliation);
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const evidenceOverrides = [
+      { candidate_refresh_reason: 'Preserve the G04 terminal no-retry reconciliation.' },
+      {
+        candidate_refresh_reason: 'Attempt to replace the G04 terminal reconciliation.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Attempted G04 reconciliation replacement.',
+          g04_legacy_claim_reconciliation: {
+            ...reconciliation,
+            sourceClaim: { ...reconciliation.sourceClaim, claimId: 'forged' },
+          },
+        },
+      },
+    ];
+    for (const overrides of evidenceOverrides) {
+      const result = environment.execute([
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('d'), ...overrides }),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /^G04_LEGACY_RECONCILIATION_IMMUTABLE:/u);
+      const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.equal(stored.state, 'REVIEW_PASSED');
+      assert.deepEqual(
+        stored.adversarial_preflight.g04_legacy_claim_reconciliation,
+        reconciliation,
+      );
     }
   } finally {
     environment.cleanup();

@@ -10,6 +10,10 @@ export function g04OneShotLatchLabelName() {
   return 'harness-r95-g04-person-activity-claimed';
 }
 
+export function g04OneShotLatchLabelDescription() {
+  return 'Run 95 G04 bangumi.get_person_activity one-shot latch; permanent; never remove or recreate.';
+}
+
 export function acquireG04OneShotGitHubLatch(gh) {
   if (typeof gh !== 'function') {
     throw new G04OneShotClaimError(
@@ -18,8 +22,7 @@ export function acquireG04OneShotGitHubLatch(gh) {
     );
   }
   const name = g04OneShotLatchLabelName();
-  const description =
-    'Run 95 G04 bangumi.get_person_activity one-shot latch; permanent; never remove or recreate.';
+  const description = g04OneShotLatchLabelDescription();
   let created;
   try {
     created = JSON.parse(
