@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,6 +21,7 @@ import {
 } from '../../scripts/acceptance/a05-collection-share-answer-check.mjs';
 import { buildA05AgentMcpReport } from '../../scripts/acceptance/write-a05-agent-mcp-report.mjs';
 import {
+  a05CodexCompletionIsClean,
   assertA05CandidateReviewGate,
   buildA05CodexExecArgs,
   sanitizeA05CodexEnvironment,
@@ -158,6 +167,38 @@ function verify(
 }
 
 describe('A05 sanitized Agent/MCP answer checker', () => {
+  it('keeps live one-shot claim state out of the stable frontier ledger', () => {
+    const ledger = JSON.parse(
+      readFileSync(path.join(process.cwd(), 'docs/product/frontier-ledger.json'), 'utf8'),
+    ) as { records: Array<{ id: string; next_action: string }> };
+    const a05 = ledger.records.find((record) => record.id === 'A05');
+
+    expect(a05).toBeDefined();
+    expect(a05?.next_action).not.toMatch(
+      /(?:local|current).*claim.*(?:absent|present|taken|used)|claim.*remains.*(?:absent|present)/iu,
+    );
+    expect(a05?.next_action).toMatch(/must never be retried/u);
+  });
+
+  it('rejects completed streams with Codex error items or an unknown error count', () => {
+    const parsed = { parsed: true };
+    const cleanEvents = { eventStreamComplete: true, codexErrorItemCount: 0 };
+    expect(a05CodexCompletionIsClean(parsed, cleanEvents)).toBe(true);
+    expect(
+      a05CodexCompletionIsClean(parsed, { ...cleanEvents, codexErrorItemCount: 3 }),
+    ).toBe(false);
+    expect(
+      a05CodexCompletionIsClean(parsed, {
+        ...cleanEvents,
+        codexErrorItemCount: null as unknown as number,
+      }),
+    ).toBe(false);
+    expect(
+      a05CodexCompletionIsClean(parsed, { ...cleanEvents, eventStreamComplete: false }),
+    ).toBe(false);
+    expect(a05CodexCompletionIsClean({ parsed: false }, cleanEvents)).toBe(false);
+  });
+
   it('loads the one-shot runner from a clean checkout before package dist exists', () => {
     const sourceRoot = process.cwd();
     const temporaryRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'a05-clean-runner-')));
@@ -370,6 +411,7 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
       codexCliVersion: '1.2.3',
       processExitCode: 0,
       eventStreamParsed: true,
+      codexErrorItemCount: 0,
       resultStatus: 'SUCCESS',
       serverToolNames: ['bangumi.query_subjects'],
       mcpServerNames: ['bgk_a05_one_tool'],
@@ -413,7 +455,7 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
         credentialsStored: false,
       },
     };
-    const built = buildA05AgentMcpReport(input, {
+    const context = {
       sourceRevision,
       bundleSha256,
       scriptHashes,
@@ -430,9 +472,11 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
           inputSchema: { type: 'object' },
         },
       ],
-    });
+    };
+    const built = buildA05AgentMcpReport(input, context);
 
     expect(built.passed).toBe(true);
+    expect(built.report?.codexErrorItemCount).toBe(0);
     const reportText = JSON.stringify(built.report);
     expect(reportText).not.toContain('Public title one');
     expect(reportText).not.toContain('Public title two');
@@ -444,6 +488,10 @@ describe('A05 sanitized Agent/MCP answer checker', () => {
     expect(reportText).not.toContain('EXPERIMENTAL_SOURCE');
     expect(reportText).toContain('rawAnswerPersisted');
     expect(reportText).toContain('subjectIdsPersisted');
+
+    const errored = buildA05AgentMcpReport({ ...input, codexErrorItemCount: 3 }, context);
+    expect(errored.passed).toBe(false);
+    expect(errored.checks?.reportableRunShape).toBe(false);
   });
 
   it('keeps the MCP server event summary free of row identifiers and titles', () => {

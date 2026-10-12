@@ -95,6 +95,15 @@ function git(args) {
   return gitRepositoryText(ROOT, args);
 }
 
+export function a05CodexCompletionIsClean(parsed, events) {
+  return (
+    parsed?.parsed === true &&
+    events?.eventStreamComplete === true &&
+    Number.isSafeInteger(events?.codexErrorItemCount) &&
+    events.codexErrorItemCount === 0
+  );
+}
+
 export function sanitizeA05CodexEnvironment(source = process.env) {
   const environment = { ...source };
   for (const key of Object.keys(environment)) {
@@ -473,6 +482,10 @@ function run() {
       ...safe,
       codexExitCode: execution.exitCode,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
+      codexErrorItemCount:
+        Number.isSafeInteger(events.codexErrorItemCount) && events.codexErrorItemCount >= 0
+          ? events.codexErrorItemCount
+          : null,
       codexMcpToolEventCount: events.codexMcpToolEventCount,
       targetServerMatch: canonicalJson(events.mcpServerNames) === canonicalJson([SERVER_ID]),
       ...safeCodexNonMcpEventSummary(events),
@@ -494,7 +507,7 @@ function run() {
       safeResult.currentCandidateBundleMatches &&
       afterGate.prNumber === currentGate.prNumber &&
       afterGate.baseSha === currentGate.baseSha &&
-      parsed.parsed && events.eventStreamComplete &&
+      a05CodexCompletionIsClean(parsed, events) &&
       events.codexMcpToolEventCount === 1 &&
       canonicalJson(events.mcpServerNames) === canonicalJson([SERVER_ID]) &&
       events.completedMcpCalls.length === 1 &&
@@ -518,6 +531,7 @@ function run() {
       codexCliVersion,
       processExitCode: execution.exitCode,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
+      codexErrorItemCount: safeResult.codexErrorItemCount,
       resultStatus: safeResult.resultStatus,
       serverToolNames: serverSummary.serverToolNames,
       mcpServerNames: events.mcpServerNames,
