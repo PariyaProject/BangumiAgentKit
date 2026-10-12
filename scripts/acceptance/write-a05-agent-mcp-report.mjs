@@ -115,6 +115,7 @@ function reportableRunShape(input) {
     /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(input?.codexCliVersion ?? '') &&
     input?.processExitCode === 0 &&
     input?.eventStreamParsed === true &&
+    input?.codexErrorItemCount === 0 &&
     input?.resultStatus === 'SUCCESS' &&
     Array.isArray(input?.serverToolNames) &&
     canonicalJson(input.serverToolNames) === canonicalJson([A05_TARGET_TOOL]) &&
@@ -229,6 +230,7 @@ export function buildA05AgentMcpReport(input, context) {
     serverToolCount: 1,
     processExitCode: 0,
     eventStreamParsed: true,
+    codexErrorItemCount: input.codexErrorItemCount,
     codexMcpToolEventCount: 1,
     nonMcpToolEventCount: 0,
     shellToolCallCount: 0,

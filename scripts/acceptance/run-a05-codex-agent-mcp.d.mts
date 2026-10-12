@@ -7,6 +7,10 @@ export function buildA05CodexExecArgs(input: {
   bundleSha256: string;
 }): string[];
 export function validateA05RunnerArgs(args: string[]): 'help' | 'run';
+export function a05CodexCompletionIsClean(
+  parsed: { parsed: boolean } | null | undefined,
+  events: { eventStreamComplete: boolean; codexErrorItemCount: number } | null | undefined,
+): boolean;
 export function assertA05CandidateReviewGate(
   status: unknown,
   pr: unknown,
