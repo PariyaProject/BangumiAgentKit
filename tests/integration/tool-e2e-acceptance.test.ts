@@ -699,6 +699,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         ...(CURRENT_C07_RENDERER_REPORT ? [] : ['bangumi.render_subject_cohort_comparison']),
         'bangumi.render_query_subjects',
         'bangumi.render_series_watch_order',
+        'bangumi.auth_start',
+        'bangumi.manage_index',
         ...(currentG20Evidence ? [] : ['bangumi.get_subject_relations']),
       ].sort(),
     );
@@ -753,13 +755,11 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         'bangumi.list_person_collections',
         'bangumi.list_revisions',
         'bangumi.manage_character_collection',
-        'bangumi.manage_index',
         'bangumi.manage_person_collection',
         'bangumi.resolve_subject_concept',
         'bangumi.search_characters',
         'bangumi.search_persons',
         'bangumi.search_subjects',
-        'bangumi.auth_start',
         'bangumi.auth_switch_account',
         ...(currentG20Evidence ? ['bangumi.get_subject_relations'] : []),
         'bangumi.call_operation',
@@ -1132,7 +1132,7 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
     }
   });
 
-  it('accepts only synthetic OAuth-start evidence with state redacted before the model', () => {
+  it('keeps prior synthetic OAuth-start evidence uncredited after its tool description changes', () => {
     expect(FULL_AUTH_START_QA_EVIDENCE.map((report: any) => report.scenarios[0].id)).toEqual([
       'bangumi.auth_start',
     ]);
@@ -1157,7 +1157,8 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         toolCalls: [{ name: 'bangumi.auth_start', state: 'DONE' }],
       });
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
-      expect(toolContractMatchesCurrent(report, 'bangumi.auth_start')).toBe(true);
+      expect(toolContractMatchesCurrent(report, 'bangumi.auth_start')).toBe(false);
+      expect(statusMark(rowsByTool().get('bangumi.auth_start')?.[9])).toBe('⬜');
       expect(report.scenarios[0]).not.toHaveProperty('prompt');
       expect(report.scenarios[0]).not.toHaveProperty('arguments');
     }
@@ -1203,6 +1204,12 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
       expect(catalogTool?.auth).toBe('required');
       expect(['read', 'write', 'destructive']).toContain(catalogTool?.risk);
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      if (scenario.id === 'bangumi.manage_index') {
+        expect(toolContractMatchesCurrent(report, scenario.id)).toBe(false);
+        expect(rows.get(scenario.id)?.[7]).toBe('⬜');
+        expect(rows.get(scenario.id)?.[9]).toBe('⬜');
+        continue;
+      }
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
@@ -1394,6 +1401,11 @@ print(json.dumps(sorted(module.model_mcp_e2e_names(catalog))))
         },
       });
       expect(catalogForHash(report.catalogSha256)).toBeDefined();
+      if (scenario.id === 'bangumi.manage_index') {
+        expect(toolContractMatchesCurrent(report, scenario.id)).toBe(false);
+        expect(rowsByTool().get(scenario.id)?.[9]).toBe('⬜');
+        continue;
+      }
       expect(toolContractMatchesCurrent(report, scenario.id)).toBe(true);
       expect(scenario).not.toHaveProperty('prompt');
       expect(scenario).not.toHaveProperty('arguments');
