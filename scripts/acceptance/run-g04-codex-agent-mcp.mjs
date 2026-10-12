@@ -26,7 +26,16 @@ import {
   readG26McpBundleAttestation,
   sanitizeGitRepositoryEnvironment,
 } from '../lib/g26-mcp-bundle.mjs';
-import { G04_EXPECTED_QUERY_ARGUMENTS } from './g04-person-activity-answer-check.mjs';
+import {
+  G04_EXPECTED_QUERY_ARGUMENTS,
+  verifyG04PersonActivityAnswer,
+} from './g04-person-activity-answer-check.mjs';
+import {
+  buildG04RunnerReceiptPayload,
+  createG04RunnerReceipt,
+  generateG04RunnerReceiptKeyPair,
+  g04RunnerPublicKeySha256,
+} from './g04-runner-receipt.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
@@ -140,10 +149,7 @@ export function buildCodexExecArgs({
 
 export function validateRunnerArgs(args) {
   if (args.length === 1 && args[0] === '--help') return 'help';
-  if (args.length === 2 && args[0] === '--run' && args[1] === String(RUN_NUMBER)) return 'run';
-  throw new Error(
-    'Pass --run 95 only after exact-Candidate CI, Harness candidate, and Luna Max PASS gates.',
-  );
+  throw new Error('Run G04 only through the Harness-owned epoch:g04-one-shot-run command.');
 }
 
 export function buildG04SafeEventSummary(events) {
@@ -205,13 +211,15 @@ function isG04ReviewerIdentity(reviewerId, prNumber) {
   );
 }
 
-export function createG04OneShotClaim(claimPath, gate) {
+function createG04OneShotClaim(claimPath, gate) {
   const {
     sourceRevision,
     baseSha,
     prNumber,
     bundleSha256,
     reviewerId,
+    claimId,
+    runnerReceiptPublicKey,
     model = MODEL,
     reasoningEffort = REASONING_EFFORT,
   } = gate ?? {};
@@ -220,8 +228,11 @@ export function createG04OneShotClaim(claimPath, gate) {
     !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
     !Number.isSafeInteger(prNumber) ||
     prNumber < 1 ||
+    typeof claimId !== 'string' ||
+    !/^g04-run-95-pr-[0-9]+-[0-9a-f]{12}-[0-9]+$/u.test(claimId) ||
     !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
     !isG04ReviewerIdentity(reviewerId, prNumber) ||
+    typeof runnerReceiptPublicKey !== 'string' ||
     model !== MODEL ||
     reasoningEffort !== REASONING_EFFORT
   ) {
@@ -237,6 +248,7 @@ export function createG04OneShotClaim(claimPath, gate) {
     frontierId: FRONTIER_ID,
     epochId: EPOCH_ID,
     state: 'CLAIMED',
+    claimId,
     sourceRevision,
     baseSha,
     ciSha: sourceRevision,
@@ -248,6 +260,8 @@ export function createG04OneShotClaim(claimPath, gate) {
     argumentProfile: ARGUMENT_PROFILE,
     reviewerId,
     bundleSha256,
+    runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256: g04RunnerPublicKeySha256(runnerReceiptPublicKey),
     expectedArgumentsSha256: sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)),
     retryAllowed: false,
     claimedAt: new Date().toISOString(),
@@ -330,7 +344,18 @@ function mandatoryChecksSuccessful(checks) {
   });
 }
 
-export function assertG04CandidateReviewGate(status, pr, { sourceRevision, currentBaseSha }) {
+export function assertG04CandidateReviewGate(
+  status,
+  pr,
+  {
+    sourceRevision,
+    currentBaseSha,
+    allowClaimedDisposition = false,
+    expectedClaimId,
+    runnerReceiptPublicKey,
+    bundleSha256,
+  },
+) {
   const epochView = status?.epoch;
   const epoch = epochView?.state;
   const runState = status?.run?.state;
@@ -338,6 +363,41 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
   const latestReview = reviewHistory[reviewHistory.length - 1];
   const reviewerId = latestReview?.reviewer_id;
   const prNumber = epochView?.number;
+  const disposition = epoch?.adversarial_preflight?.g04_one_shot_disposition;
+  let receiptKeyMatches = false;
+  try {
+    receiptKeyMatches =
+      typeof runnerReceiptPublicKey === 'string' &&
+      disposition?.runnerReceiptPublicKey === runnerReceiptPublicKey &&
+      disposition?.runnerReceiptPublicKeySha256 ===
+        g04RunnerPublicKeySha256(runnerReceiptPublicKey);
+  } catch {
+    receiptKeyMatches = false;
+  }
+  const dispositionMatches =
+    disposition == null
+      ? !allowClaimedDisposition
+      : allowClaimedDisposition &&
+        disposition.state === 'CLAIMED' &&
+        disposition.claimId === expectedClaimId &&
+        disposition.runNumber === RUN_NUMBER &&
+        disposition.frontierId === FRONTIER_ID &&
+        disposition.epochId === EPOCH_ID &&
+        disposition.prNumber === prNumber &&
+        disposition.sourceCandidateSha === sourceRevision &&
+        disposition.baseSha === currentBaseSha &&
+        disposition.ciSha === sourceRevision &&
+        disposition.ciStatus === 'SUCCESS' &&
+        disposition.reviewerId === reviewerId &&
+        disposition.bundleSha256 === bundleSha256 &&
+        disposition.expectedArgumentsSha256 ===
+          sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)) &&
+        disposition.model === MODEL &&
+        disposition.reasoningEffort === REASONING_EFFORT &&
+        disposition.toolName === TOOL_NAME &&
+        disposition.argumentProfile === ARGUMENT_PROFILE &&
+        disposition.retryAllowed === false &&
+        receiptKeyMatches;
   const matchingPass =
     latestReview?.candidate_sha === sourceRevision &&
     latestReview?.reviewed_base_sha === currentBaseSha &&
@@ -366,6 +426,7 @@ export function assertG04CandidateReviewGate(status, pr, { sourceRevision, curre
     matchingPass,
     epoch?.scope_closure?.related_work_remaining === false,
     epoch?.adversarial_preflight?.completed === true,
+    dispositionMatches,
     pr?.state === 'OPEN',
     pr?.isDraft === false,
     pr?.baseRefName === 'master',
@@ -456,14 +517,18 @@ function assertCandidateBase(baseSha, candidateSha) {
     throw new Error('G04 Candidate is not based on current master.');
 }
 
-function assertCurrentReviewGate(sourceRevision) {
+function assertCurrentReviewGate(sourceRevision, options = {}) {
   const currentBaseSha = fetchCurrentMaster();
   const status = readHarnessStatus();
   const prNumber = status?.run?.state?.active_epoch_pr;
   if (!Number.isInteger(prNumber)) throw new Error('Run 95 has no active G04 Epoch PR.');
   const pr = readOpenPr(prNumber);
   assertCandidateBase(currentBaseSha, sourceRevision);
-  return assertG04CandidateReviewGate(status, pr, { sourceRevision, currentBaseSha });
+  return assertG04CandidateReviewGate(status, pr, {
+    sourceRevision,
+    currentBaseSha,
+    ...options,
+  });
 }
 
 function assertCleanCandidate() {
@@ -536,14 +601,6 @@ function codexCliVersion() {
   const match = /\b(\d+\.\d+\.\d+)\b/u.exec(result.stdout ?? '');
   if (!match) throw new Error('Unable to identify the Codex CLI version.');
   return match[1];
-}
-
-function readServerSummary(summaryPath) {
-  try {
-    return JSON.parse(readFileSync(summaryPath, 'utf8'));
-  } catch {
-    return null;
-  }
 }
 
 function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
@@ -628,7 +685,35 @@ function invokeReportWriter(input) {
   return { exitCode: result.status ?? 1, output };
 }
 
-function run() {
+function validateG04HarnessClaim(claim, gate) {
+  if (
+    !claim ||
+    claim.state !== 'G04_ONE_SHOT_CLAIMED' ||
+    typeof claim.claimId !== 'string' ||
+    !/^g04-run-95-pr-[0-9]+-[0-9a-f]{12}-[0-9]+$/u.test(claim.claimId) ||
+    claim.runNumber !== RUN_NUMBER ||
+    claim.prNumber !== gate.prNumber ||
+    claim.candidateSha !== gate.sourceRevision ||
+    claim.baseSha !== gate.baseSha ||
+    claim.ciSha !== gate.sourceRevision ||
+    claim.ciStatus !== 'SUCCESS' ||
+    claim.reviewerId !== gate.reviewerId ||
+    claim.bundleSha256 !== gate.bundleSha256 ||
+    claim.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)) ||
+    claim.model !== MODEL ||
+    claim.reasoningEffort !== REASONING_EFFORT ||
+    claim.runnerReceiptPublicKey !== gate.runnerReceiptPublicKey ||
+    claim.runnerReceiptPublicKeySha256 !== g04RunnerPublicKeySha256(gate.runnerReceiptPublicKey)
+  ) {
+    throw new Error('G04 durable Harness claim does not match the live Candidate gate.');
+  }
+  return claim;
+}
+
+export function runG04CodexAgentMcp({ claimHarness, persistResult } = {}) {
+  if (typeof claimHarness !== 'function' || typeof persistResult !== 'function') {
+    throw new Error('G04 one-shot execution requires Harness-owned claim and result callbacks.');
+  }
   const sourceRevision = assertCleanCandidate();
   const claimPath = canonicalG04ClaimPath();
   const initialGate = assertCurrentReviewGate(sourceRevision);
@@ -648,16 +733,62 @@ function run() {
     );
   }
 
-  const claim = createG04OneShotClaim(claimPath, {
+  const runnerReceiptKeyPair = generateG04RunnerReceiptKeyPair();
+  const runnerReceiptPublicKey = runnerReceiptKeyPair.publicKeyBase64;
+  const durableGate = {
     ...currentGate,
     sourceRevision,
     bundleSha256,
-  });
+    model: MODEL,
+    reasoningEffort: REASONING_EFFORT,
+    runnerReceiptPublicKey,
+  };
+  const remoteClaim = validateG04HarnessClaim(claimHarness(durableGate), durableGate);
+  try {
+    const claimedGate = assertCurrentReviewGate(sourceRevision, {
+      allowClaimedDisposition: true,
+      expectedClaimId: remoteClaim.claimId,
+      runnerReceiptPublicKey,
+      bundleSha256,
+    });
+    if (
+      claimedGate.prNumber !== currentGate.prNumber ||
+      claimedGate.candidateSha !== currentGate.candidateSha ||
+      claimedGate.baseSha !== currentGate.baseSha ||
+      claimedGate.reviewerId !== currentGate.reviewerId
+    ) {
+      throw new Error('G04 durable claim is not bound to the preflight Candidate.');
+    }
+  } catch {
+    try {
+      persistResult(remoteClaim, 'INCONCLUSIVE');
+    } catch {
+      /* A fabricated callback must not turn a missing durable claim into a query. */
+    }
+    throw new Error('G04 durable Harness claim was not confirmed before query execution.');
+  }
+
+  let claim;
+  try {
+    claim = createG04OneShotClaim(claimPath, {
+      ...durableGate,
+      claimId: remoteClaim.claimId,
+    });
+  } catch {
+    persistResult(remoteClaim, 'INCONCLUSIVE');
+    throw new Error(
+      'G04 local create-once claim failed after the durable Harness claim; the frontier is terminal.',
+    );
+  }
+
   let temporaryDirectory;
-  let summaryPath;
   let safe = {
+    claimId: remoteClaim.claimId,
     codexCliVersion: cliVersion,
     sourceRevision,
+    baseSha: currentGate.baseSha,
+    prNumber: currentGate.prNumber,
+    reviewerId: currentGate.reviewerId,
     bundleSha256,
     codexExitCode: null,
     eventStreamParsed: false,
@@ -668,9 +799,22 @@ function run() {
     shellToolCallCount: 0,
     allowedCallCount: 0,
   };
+  const finishInconclusive = (details = safe) => {
+    markClaim(claimPath, claim, 'INCONCLUSIVE', details);
+    try {
+      persistResult(remoteClaim, 'INCONCLUSIVE');
+    } catch {
+      /* The local create-once claim remains terminal if the durable acknowledgement is unavailable. */
+    }
+    process.stdout.write(
+      `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...details })}\n`,
+    );
+    return 1;
+  };
+
   try {
     temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-g04-run95-'));
-    summaryPath = path.join(temporaryDirectory, 'server-summary.json');
+    const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
     const execution = invokeCodex({
       nodePath: process.execPath,
       summaryPath,
@@ -679,7 +823,8 @@ function run() {
     });
     const parsed = parseCodexJsonl(execution.stdout);
     const events = summarizeCodexEvents(parsed.events);
-    const serverSummary = readServerSummary(summaryPath);
+    const serverSummaryBytes = readFileSync(summaryPath, { flag: 'r' });
+    const serverSummary = JSON.parse(serverSummaryBytes.toString('utf8'));
     const summaryMatches = serverSummaryMatchesCandidate(
       serverSummary,
       sourceRevision,
@@ -722,28 +867,44 @@ function run() {
       serverSummary?.deniedCallCount !== 0 ||
       serverSummary?.serverResultStatus !== 'SUCCESS'
     ) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-      process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`,
-      );
-      return 1;
+      return finishInconclusive();
     }
-    const postGate = assertCurrentReviewGate(sourceRevision);
+
+    const postGate = assertCurrentReviewGate(sourceRevision, {
+      allowClaimedDisposition: true,
+      expectedClaimId: remoteClaim.claimId,
+      runnerReceiptPublicKey,
+      bundleSha256,
+    });
     if (
       postGate.prNumber !== currentGate.prNumber ||
+      postGate.baseSha !== currentGate.baseSha ||
       postGate.reviewerId !== currentGate.reviewerId
     ) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
-      process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`,
-      );
-      return 1;
+      return finishInconclusive({ ...safe, reason: 'active_epoch_changed' });
     }
+
     const call = events.completedMcpCalls[0];
-    const writerResult = invokeReportWriter({
+    const toolTextUtf8Bytes = textResultBytes(call?.result);
+    const answerResult = verifyG04PersonActivityAnswer(
+      events.answer,
+      call?.arguments,
+      call?.result,
+      events.toolCalls,
+      toolTextUtf8Bytes,
+    );
+    if (!answerResult.passed) {
+      return finishInconclusive({ ...safe, answerChecks: answerResult.answerChecks });
+    }
+
+    const writerInput = {
       model: MODEL,
       reasoningEffort: REASONING_EFFORT,
       codexCliVersion: cliVersion,
+      claimId: remoteClaim.claimId,
+      runnerReceiptPublicKey,
+      runnerEventStreamSha256: sha256(execution.stdout),
+      runnerServerSummarySha256: sha256(serverSummaryBytes),
       processExitCode: execution.exitCode,
       resultStatus: serverSummary.serverResultStatus,
       eventStreamParsed: parsed.parsed && events.eventStreamComplete,
@@ -753,6 +914,7 @@ function run() {
       codexErrorItemCount: events.codexErrorItemCount,
       mcpServerNames: events.mcpServerNames,
       nonMcpToolEventCount: events.nonMcpToolEventCount,
+      nonMcpToolTypes: safe.nonMcpToolTypes,
       shellToolCallCount: events.shellToolCallCount,
       allowedCallCount: serverSummary.allowedCallCount,
       deniedCallCount: serverSummary.deniedCallCount,
@@ -762,24 +924,64 @@ function run() {
       answer: events.answer,
       toolOutput: call?.result,
       toolCalls: events.toolCalls,
-      toolTextUtf8Bytes: textResultBytes(call?.result),
+      toolTextUtf8Bytes,
       sourceRevision,
       baseSha: currentGate.baseSha,
       bundleSha256,
       prNumber: currentGate.prNumber,
       reviewerId: currentGate.reviewerId,
-    });
+      candidateGate: {
+        candidateSha: currentGate.candidateSha,
+        baseSha: currentGate.baseSha,
+        ciSha: currentGate.ciSha,
+        ciStatus: currentGate.ciStatus,
+        reviewPassSha: currentGate.candidateSha,
+        reviewVerdict: 'PASS',
+        reviewerId: currentGate.reviewerId,
+      },
+    };
+    writerInput.runnerReceipt = createG04RunnerReceipt(
+      buildG04RunnerReceiptPayload(writerInput, answerResult),
+      runnerReceiptKeyPair,
+    );
+    const writerResult = invokeReportWriter(writerInput);
     if (writerResult.exitCode !== 0 || writerResult.output?.passed !== true) {
-      const answerChecks = writerResult.output?.answerChecks ?? null;
-      markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
+      return finishInconclusive({
+        ...safe,
+        answerChecks: writerResult.output?.answerChecks ?? answerResult.answerChecks,
+      });
+    }
+
+    const output = writerResult.output;
+    const reportSha256 = sha256(readFileSync(REPORT_PATH));
+    markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+      ...safe,
+      reportSha256,
+      answerCounters: output.answerCounters,
+      resultSummary: output.resultSummary,
+    });
+    let acknowledged = false;
+    try {
+      acknowledged = persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256) === true;
+    } catch {
+      acknowledged = false;
+    }
+    if (!acknowledged) {
       process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`,
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...safe,
+          reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
+        })}\n`,
       );
       return 1;
     }
-    const output = writerResult.output;
     markClaim(claimPath, claim, 'REPORT_WRITTEN', {
       ...safe,
+      reportSha256,
       answerCounters: output.answerCounters,
       resultSummary: output.resultSummary,
     });
@@ -787,17 +989,44 @@ function run() {
       `${JSON.stringify({
         passed: true,
         state: 'REPORT_WRITTEN',
+        claimId: remoteClaim.claimId,
         sourceRevision,
+        baseSha: currentGate.baseSha,
+        prNumber: currentGate.prNumber,
+        reviewerId: currentGate.reviewerId,
         bundleSha256,
+        reportSha256,
         answerCounters: output.answerCounters,
         resultSummary: output.resultSummary,
       })}\n`,
     );
     return 0;
   } catch {
-    markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-    process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
-    return 1;
+    if (existsSync(REPORT_PATH)) {
+      const reportSha256 = sha256(readFileSync(REPORT_PATH));
+      markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+        ...safe,
+        reportSha256,
+        reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+      });
+      try {
+        persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
+      } catch {
+        /* Leave the durable/local claim terminal and preserve the report. */
+      }
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...safe,
+          reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+        })}\n`,
+      );
+      return 1;
+    }
+    return finishInconclusive();
   } finally {
     if (temporaryDirectory) rmSync(temporaryDirectory, { recursive: true, force: true });
   }
@@ -806,9 +1035,7 @@ function run() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     if (validateRunnerArgs(process.argv.slice(2)) === 'help') {
-      process.stdout.write('Usage: node scripts/acceptance/run-g04-codex-agent-mcp.mjs --run 95\n');
-    } else {
-      process.exitCode = run();
+      process.stdout.write('Use: pnpm harness epoch:g04-one-shot-run --run 95\n');
     }
   } catch (error) {
     process.stderr.write(

@@ -6,7 +6,7 @@ export function buildCodexExecArgs(input: {
   sourceRevision: string;
   bundleSha256: string;
 }): string[];
-export function validateRunnerArgs(args: string[]): 'help' | 'run';
+export function validateRunnerArgs(args: string[]): 'help';
 export function buildG04SafeEventSummary(
   events:
     | {
@@ -37,22 +37,15 @@ export function hasUnexpectedG04CodexToolActivity(
     | undefined,
 ): boolean;
 export function canonicalG04ClaimPath(root?: string): string;
-export function createG04OneShotClaim(
-  claimPath: string,
-  gate: {
-    sourceRevision: string;
-    baseSha: string;
-    prNumber: number;
-    bundleSha256: string;
-    reviewerId: string;
-    model?: string;
-    reasoningEffort?: string;
-  },
-): Record<string, unknown>;
 export function assertG04CandidateReviewGate(
   status: Record<string, unknown>,
   pr: Record<string, unknown>,
-  input: { sourceRevision: string; currentBaseSha: string },
+  input: {
+    sourceRevision: string;
+    currentBaseSha: string;
+    allowClaimedDisposition?: boolean;
+    expectedClaimId?: string;
+  },
 ): {
   prNumber: number;
   candidateSha: string;
@@ -63,3 +56,11 @@ export function assertG04CandidateReviewGate(
   model: string;
   reasoningEffort: string;
 };
+export function runG04CodexAgentMcp(input: {
+  claimHarness: (gate: Record<string, unknown>) => Record<string, unknown>;
+  persistResult: (
+    claim: Record<string, unknown>,
+    state: 'INCONCLUSIVE' | 'REPORT_WRITTEN',
+    reportSha256?: string,
+  ) => boolean;
+}): number;

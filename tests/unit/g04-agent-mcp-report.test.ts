@@ -1,5 +1,15 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
+import {
+  G04_EXPECTED_QUERY_ARGUMENTS,
+  verifyG04PersonActivityAnswer,
+} from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
+import {
+  buildG04RunnerReceiptPayload,
+  createG04RunnerReceipt,
+  generateG04RunnerReceiptKeyPair,
+  g04RunnerPublicKeySha256,
+} from '../../scripts/acceptance/g04-runner-receipt.mjs';
 import { buildG04AgentMcpReport } from '../../scripts/acceptance/write-g04-agent-mcp-report.mjs';
 
 const candidate = 'a'.repeat(40);
@@ -9,6 +19,40 @@ const toolName = 'bangumi.get_person_activity';
 const epochId = 'run95-g04-person-activity-codex-current-evidence';
 const prNumber = 136;
 const reviewerId = 'gpt-6-luna-max-run95-pr136-round1';
+const receiptKeyPair = generateG04RunnerReceiptKeyPair();
+const claimId = 'g04-run-95-pr-136-aaaaaaaaaaaa-123';
+const canonicalJson = (value: unknown): string =>
+  Array.isArray(value)
+    ? `[${value.map(canonicalJson).join(',')}]`
+    : value && typeof value === 'object'
+      ? `{${Object.keys(value as Record<string, unknown>)
+          .sort()
+          .map(
+            (key) =>
+              `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+          )
+          .join(',')}}`
+      : JSON.stringify(value);
+const expectedArgumentsSha256 = createHash('sha256')
+  .update(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))
+  .digest('hex');
+
+type G04ReportInput = Record<string, unknown> & {
+  claimId: string;
+  runnerReceiptPublicKey: string;
+  answer: string;
+  queryArguments: typeof G04_EXPECTED_QUERY_ARGUMENTS;
+  toolOutput: { structuredContent: Record<string, unknown> };
+  toolCalls: Array<{
+    name: string;
+    state: string;
+    arguments: typeof G04_EXPECTED_QUERY_ARGUMENTS;
+  }>;
+  toolTextUtf8Bytes: number;
+  reviewerId: string;
+  runnerReceipt?: ReturnType<typeof createG04RunnerReceipt>;
+  candidateGate: Record<string, unknown> & { reviewerId: string };
+};
 
 function fixture() {
   const window = {
@@ -135,9 +179,13 @@ function fixture() {
     verdict: 'PASS',
     reviewer_id: reviewerId,
   };
-  return {
+  const fixtureValue = {
     run: { state: { state: 'EPOCH_ACTIVE', active_epoch_pr: prNumber } },
     input: {
+      claimId,
+      runnerReceiptPublicKey: receiptKeyPair.publicKeyBase64,
+      runnerEventStreamSha256: 'e'.repeat(64),
+      runnerServerSummarySha256: 'f'.repeat(64),
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
       codexCliVersion: '1.2.3',
@@ -177,7 +225,16 @@ function fixture() {
       bundleSha256: bundle,
       prNumber,
       reviewerId: review.reviewer_id,
-    },
+      candidateGate: {
+        candidateSha: candidate,
+        baseSha: base,
+        ciSha: candidate,
+        ciStatus: 'SUCCESS',
+        reviewPassSha: candidate,
+        reviewVerdict: 'PASS',
+        reviewerId,
+      },
+    } as G04ReportInput,
     liveStatus: {
       run: { state: { state: 'EPOCH_ACTIVE', active_epoch_pr: prNumber } },
       epoch: {
@@ -193,10 +250,48 @@ function fixture() {
           ci: { sha: candidate, status: 'SUCCESS' },
           review_pass_sha: candidate,
           review_history: [review],
+          adversarial_preflight: {
+            g04_one_shot_disposition: {
+              claimId,
+              frontierId: 'G04',
+              epochId,
+              runNumber: 95,
+              state: 'CLAIMED',
+              sourceCandidateSha: candidate,
+              baseSha: base,
+              ciSha: candidate,
+              ciStatus: 'SUCCESS',
+              bundleSha256: bundle,
+              prNumber,
+              reviewerId,
+              model: 'gpt-6-luna',
+              reasoningEffort: 'max',
+              toolName,
+              argumentProfile: 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1',
+              expectedArgumentsSha256,
+              runnerReceiptPublicKey: receiptKeyPair.publicKeyBase64,
+              runnerReceiptPublicKeySha256: g04RunnerPublicKeySha256(
+                receiptKeyPair.publicKeyBase64,
+              ),
+              retryAllowed: false,
+            },
+          },
         },
       },
     },
   };
+  const answerResult = verifyG04PersonActivityAnswer(
+    fixtureValue.input.answer,
+    fixtureValue.input.queryArguments,
+    fixtureValue.input.toolOutput,
+    fixtureValue.input.toolCalls,
+    fixtureValue.input.toolTextUtf8Bytes,
+  );
+  fixtureValue.input.runnerReceipt = createG04RunnerReceipt(
+    buildG04RunnerReceiptPayload(fixtureValue.input, answerResult),
+    receiptKeyPair,
+  );
+  return fixtureValue;
 }
 
 describe('G04 sanitized Agent/MCP report builder', () => {
@@ -216,8 +311,12 @@ describe('G04 sanitized Agent/MCP report builder', () => {
       reasoningEffort: 'max',
       reviewerId,
       frontierId: 'G04',
+      claimId,
       codexErrorItemCount: 3,
+      runnerEventStreamSha256: 'e'.repeat(64),
+      runnerServerSummarySha256: 'f'.repeat(64),
       resultSummary: { personId: 13684, state: 'partial', rowCount: 1 },
+      runnerReceipt: { kind: 'g04-runner-acceptance-receipt-v1' },
     });
     const saved = JSON.stringify(output.report);
     expect(saved).not.toMatch(/验收夹具标题|Fixture character|主役|本次有界观察/u);
@@ -246,6 +345,40 @@ describe('G04 sanitized Agent/MCP report builder', () => {
     );
     expect(invalidErrorCount.passed).toBe(false);
 
+    const missingReceipt = structuredClone(input) as Record<string, unknown>;
+    delete missingReceipt.runnerReceipt;
+    expect(buildG04AgentMcpReport(missingReceipt, { liveStatus }).passed).toBe(false);
+
+    const malformedKeyStatus = structuredClone(liveStatus);
+    malformedKeyStatus.epoch.state.adversarial_preflight.g04_one_shot_disposition.runnerReceiptPublicKey =
+      '%%%';
+    const malformedKeyInput = structuredClone(input);
+    malformedKeyInput.runnerReceiptPublicKey = '%%%';
+    expect(() =>
+      buildG04AgentMcpReport(malformedKeyInput, { liveStatus: malformedKeyStatus }),
+    ).not.toThrow();
+    expect(
+      buildG04AgentMcpReport(malformedKeyInput, { liveStatus: malformedKeyStatus }).passed,
+    ).toBe(false);
+
+    const callerKey = generateG04RunnerReceiptKeyPair();
+    const callerForged = {
+      ...input,
+      runnerReceiptPublicKey: callerKey.publicKeyBase64,
+    };
+    const callerAnswerResult = verifyG04PersonActivityAnswer(
+      callerForged.answer,
+      callerForged.queryArguments,
+      callerForged.toolOutput,
+      callerForged.toolCalls,
+      callerForged.toolTextUtf8Bytes,
+    );
+    callerForged.runnerReceipt = createG04RunnerReceipt(
+      buildG04RunnerReceiptPayload(callerForged, callerAnswerResult),
+      callerKey,
+    );
+    expect(buildG04AgentMcpReport(callerForged, { liveStatus }).passed).toBe(false);
+
     const unexpectedOperation = structuredClone(input);
     (
       unexpectedOperation.toolResultSummary as { sourceOperations: unknown[] }
@@ -270,13 +403,25 @@ describe('G04 sanitized Agent/MCP report builder', () => {
     expect(buildG04AgentMcpReport(input, { liveStatus: mismatchedRound }).passed).toBe(false);
 
     const currentRound = structuredClone(liveStatus);
-    currentRound.epoch.state.review_history[0]!.reviewer_id = 'gpt-6-luna-max-run95-pr136-round2';
-    expect(
-      buildG04AgentMcpReport(
-        { ...input, reviewerId: 'gpt-6-luna-max-run95-pr136-round2' },
-        { liveStatus: currentRound },
-      ).passed,
-    ).toBe(true);
+    const currentReviewerId = 'gpt-6-luna-max-run95-pr136-round2';
+    currentRound.epoch.state.review_history[0]!.reviewer_id = currentReviewerId;
+    currentRound.epoch.state.adversarial_preflight.g04_one_shot_disposition.reviewerId =
+      currentReviewerId;
+    const currentInput = structuredClone(input);
+    currentInput.reviewerId = currentReviewerId;
+    currentInput.candidateGate.reviewerId = currentReviewerId;
+    const answerResult = verifyG04PersonActivityAnswer(
+      currentInput.answer,
+      currentInput.queryArguments,
+      currentInput.toolOutput,
+      currentInput.toolCalls,
+      currentInput.toolTextUtf8Bytes,
+    );
+    currentInput.runnerReceipt = createG04RunnerReceipt(
+      buildG04RunnerReceiptPayload(currentInput, answerResult),
+      receiptKeyPair,
+    );
+    expect(buildG04AgentMcpReport(currentInput, { liveStatus: currentRound }).passed).toBe(true);
 
     expect(buildG04AgentMcpReport({ ...input, prNumber: 128 }, { liveStatus }).passed).toBe(false);
 

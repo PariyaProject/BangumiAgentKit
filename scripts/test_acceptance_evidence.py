@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).with_name('generate-tool-acceptance-tasks.py')
@@ -2286,7 +2287,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'responseLimitBytes': 1_048_576,
             'truncated': True,
         })
-        return {
+        report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_g04_person_activity_agent_mcp',
             'runNumber': 95,
@@ -2296,12 +2297,15 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'profile': 'codex-luna-max-one-tool-v1',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
-            'reviewerId': 'gpt-6-luna-max-run95-pr128-round1',
+            'reviewerId': 'gpt-6-luna-max-run95-pr136-round1',
             'codexCliVersion': '1.2.14',
             'sourceRevision': revision,
             'baseSha': base_sha,
-            'prNumber': 128,
+            'prNumber': 136,
+            'claimId': 'g04-run-95-pr-136-aaaaaaaaaaaa-123',
             'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'runnerEventStreamSha256': '1' * 64,
+            'runnerServerSummarySha256': '2' * 64,
             'observedAt': '2026-10-08T05:00:00.000Z',
             'toolName': 'bangumi.get_person_activity',
             'argumentProfile': GENERATOR.CODEX_G04_ARGUMENT_PROFILE,
@@ -2318,6 +2322,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
             'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 3,
             'nonMcpToolEventCount': 0,
             'shellToolCallCount': 0,
             'allowedCallCount': 1,
@@ -2366,6 +2371,80 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'privacy': {
                 'authProfile': 'anonymous',
                 **{key: False for key in GENERATOR.CODEX_G04_PRIVACY_FIELDS - {'authProfile'}},
+            },
+        }
+        report['runnerReceipt'] = self._sign_g04_runner_receipt(
+            GENERATOR.codex_g04_runner_receipt_payload(report),
+        )
+        return report
+
+    def _sign_g04_runner_receipt(self, payload):
+        signer_script = (
+            'import { pathToFileURL } from "node:url"; '
+            'import { readFileSync } from "node:fs"; '
+            'const moduleUrl = pathToFileURL(process.cwd() + "/scripts/acceptance/g04-runner-receipt.mjs"); '
+            'const module = await import(moduleUrl); '
+            'const input = JSON.parse(readFileSync(0,"utf8")); '
+            'const keyPair = module.generateG04RunnerReceiptKeyPair(); '
+            'process.stdout.write(JSON.stringify(module.createG04RunnerReceipt(input.payload,keyPair)));'
+        )
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', signer_script],
+            cwd=self.root,
+            input=json.dumps({'payload': payload}),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return json.loads(result.stdout)
+
+    def _g04_harness_status_fixture(
+        self, report, report_bytes=None, *, active_pr=None, github_state='OPEN',
+    ):
+        receipt = report['runnerReceipt']
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'G04',
+            'epochId': GENERATOR.CODEX_G04_EPOCH_ID,
+            'runNumber': 95,
+            'toolName': report['toolName'],
+            'argumentProfile': report['argumentProfile'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'bundleSha256': report['mcpBundleSha256'],
+            'prNumber': report['prNumber'],
+            'reviewerId': report['reviewerId'],
+            'model': report['model'],
+            'reasoningEffort': report['reasoningEffort'],
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH,
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest() if report_bytes else 'a' * 64,
+            'retryAllowed': False,
+        }
+        return {
+            'run': {
+                'number': 95,
+                'state': {
+                    'profile': 'AUTONOMOUS_EVOLUTION',
+                    'active_epoch_pr': (
+                        report['prNumber'] if active_pr is None else active_pr
+                    ),
+                },
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': github_state,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_G04_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'adversarial_preflight': {'g04_one_shot_disposition': disposition},
+                },
             },
         }
 
@@ -3304,16 +3383,38 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH).name
         report = self._g04_report_fixture()
         report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+        harness_status = self._g04_harness_status_fixture(report, report_bytes)
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
 
         self.assertTrue(GENERATOR.codex_g04_probe_revision_has_implementation(self.source_revision))
-        self.assertTrue(GENERATOR.codex_g04_report_is_valid(report))
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(report),
+            'a report without the durable Harness claim is not evidence',
+        )
+        self.assertTrue(GENERATOR.codex_g04_report_is_valid(report, harness_status, report_sha256))
+        wrong_digest_status = json.loads(json.dumps(harness_status))
+        wrong_digest_disposition = wrong_digest_status['epoch']['state']['adversarial_preflight']
+        wrong_digest_disposition['g04_one_shot_disposition']['reportSha256'] = 'b' * 64
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(
+                report, wrong_digest_status, report_sha256,
+            ),
+            'the tracked report bytes must match the durable Harness report digest',
+        )
         self.assertTrue(
             GENERATOR.codex_g04_report_matches_candidate_revision(
-                report_path, self.source_revision,
+                report_path, self.source_revision, harness_status,
             ),
         )
+        with patch.object(
+            GENERATOR,
+            'codex_g04_harness_status',
+            return_value=harness_status,
+        ):
+            sources = GENERATOR.model_mcp_e2e_sources(self.catalog)
         self.assertEqual(
-            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+            sources['bangumi.get_person_activity'],
             {GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH},
         )
         self.assertNotIn('answer', report)
@@ -3324,16 +3425,19 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         self._git('commit', '-qm', 'add sanitized G04 one-shot evidence')
         self.assertTrue(
             GENERATOR.codex_g04_report_matches_candidate_revision(
-                report_path, self.source_revision,
+                report_path, self.source_revision, harness_status,
             ),
         )
 
     def test_rejects_g04_report_with_wrong_model_raw_content_or_coverage(self):
         report = self._g04_report_fixture()
+        harness_status = self._g04_harness_status_fixture(report)
         invalid_reports = [
             {'model': 'gpt-6-sol'},
             {'reasoningEffort': 'high'},
-            {'reviewerId': 'gpt-6-luna-max-run95-pr128-round2'},
+            {'reviewerId': 'gpt-6-luna-max-run95-pr128-round1'},
+            {'prNumber': 128},
+            {'codexErrorItemCount': -1},
             {'mcpBundleSha256': '0' * 64},
             {'answerChecks': {'structuredResultReadback': False}},
             {'answer': 'raw answer must never be retained'},
@@ -3342,20 +3446,102 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             with self.subTest(override=override):
                 candidate = self._g04_report_fixture()
                 candidate.update(override)
-                self.assertFalse(GENERATOR.codex_g04_report_is_valid(candidate))
+                self.assertFalse(
+                    GENERATOR.codex_g04_report_is_valid(candidate, harness_status, 'a' * 64),
+                )
+
+        missing_error_count = self._g04_report_fixture()
+        del missing_error_count['codexErrorItemCount']
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(missing_error_count, harness_status, 'a' * 64),
+        )
 
         report['resultSummary']['coverage']['subjectDetailRequests'] = 48
-        self.assertFalse(GENERATOR.codex_g04_report_is_valid(report))
+        self.assertFalse(GENERATOR.codex_g04_report_is_valid(report, harness_status, 'a' * 64))
 
     def test_rejects_g04_report_from_a_stale_candidate(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G04_REPORT_RELATIVE_PATH).name
         report = self._g04_report_fixture(self.stale_candidate_source_revision)
         report_path.write_text(json.dumps(report), encoding='utf-8')
-        self.assertTrue(GENERATOR.codex_g04_report_is_valid(report))
+        report_bytes = report_path.read_bytes()
+        harness_status = self._g04_harness_status_fixture(report, report_bytes)
+        self.assertTrue(
+            GENERATOR.codex_g04_report_is_valid(
+                report, harness_status, hashlib.sha256(report_bytes).hexdigest(),
+            ),
+        )
         self.assertFalse(
             GENERATOR.codex_g04_report_matches_candidate_revision(
-                report_path, self.stale_candidate_source_revision,
+                report_path, self.stale_candidate_source_revision, harness_status,
             ),
+        )
+
+    def test_rejects_self_signed_g04_report_without_current_epoch_trust(self):
+        active_report = self._g04_report_fixture()
+        active_status = self._g04_harness_status_fixture(active_report)
+
+        stale_pr_report = self._g04_report_fixture()
+        stale_pr_report['prNumber'] = 128
+        stale_pr_report['reviewerId'] = 'gpt-6-luna-max-run95-pr128-round1'
+        stale_pr_report['claimId'] = 'g04-run-95-pr-128-aaaaaaaaaaaa-123'
+        stale_pr_report['runnerReceipt'] = self._sign_g04_runner_receipt(
+            GENERATOR.codex_g04_runner_receipt_payload(stale_pr_report),
+        )
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(
+                stale_pr_report, active_status, 'a' * 64,
+            ),
+            'a valid signature for a stale PR/reviewer pair cannot replace the active Epoch claim',
+        )
+
+        stale_pr_status = self._g04_harness_status_fixture(stale_pr_report)
+        self.assertTrue(
+            GENERATOR.codex_g04_report_is_valid(
+                stale_pr_report, stale_pr_status, 'a' * 64,
+            ),
+            'the report and its own durable claim form a valid historical pair',
+        )
+        stale_pr_status['run']['state']['active_epoch_pr'] = 136
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(
+                stale_pr_report, stale_pr_status, 'a' * 64,
+            ),
+            'an open PR claim is invalid when the Run names a different active Epoch PR',
+        )
+
+        merged_history_status = self._g04_harness_status_fixture(
+            stale_pr_report, active_pr=136, github_state='MERGED',
+        )
+        self.assertTrue(
+            GENERATOR.codex_g04_report_is_valid(
+                stale_pr_report, merged_history_status, 'a' * 64,
+            ),
+            'a merged historical report remains valid after a later Epoch becomes active',
+        )
+
+        untrusted_report = self._g04_report_fixture()
+        self.assertNotEqual(
+            untrusted_report['runnerReceipt']['publicKeyBase64'],
+            active_status['epoch']['state']['adversarial_preflight']
+            ['g04_one_shot_disposition']['runnerReceiptPublicKey'],
+        )
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(
+                untrusted_report, active_status, 'a' * 64,
+            ),
+            'a self-signed receipt is invalid unless its key matches the durable Harness trust anchor',
+        )
+
+        tampered_report = self._g04_report_fixture()
+        signature = bytearray(base64.b64decode(tampered_report['runnerReceipt']['signature']))
+        signature[0] ^= 1
+        tampered_report['runnerReceipt']['signature'] = base64.b64encode(signature).decode('ascii')
+        tampered_status = self._g04_harness_status_fixture(tampered_report)
+        self.assertFalse(
+            GENERATOR.codex_g04_report_is_valid(
+                tampered_report, tampered_status, 'a' * 64,
+            ),
+            'well-shaped but invalid Ed25519 signatures must be rejected',
         )
 
     def test_accepts_exact_candidate_bound_sanitized_g05_comparison_report(self):

@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import {
   assertG04CandidateReviewGate,
   buildG04SafeEventSummary,
   buildCodexExecArgs,
   hasUnexpectedG04CodexToolActivity,
   canonicalG04ClaimPath,
-  createG04OneShotClaim,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
+import * as g04Runner from '../../scripts/acceptance/run-g04-codex-agent-mcp.mjs';
+import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
+import {
+  generateG04RunnerReceiptKeyPair,
+  g04RunnerPublicKeySha256,
+} from '../../scripts/acceptance/g04-runner-receipt.mjs';
 
 const candidate = 'a'.repeat(40);
 const base = 'b'.repeat(40);
@@ -23,6 +29,26 @@ const requiredChecks = [
   'provider-foundation',
   'discovery-foundation',
 ];
+
+function canonicalJson(value: unknown): string {
+  const canonical = (item: unknown): unknown => {
+    if (Array.isArray(item)) return item.map(canonical);
+    if (item !== null && typeof item === 'object') {
+      const record = item as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.keys(record)
+          .sort()
+          .map((key) => [key, canonical(record[key])]),
+      );
+    }
+    return item;
+  };
+  return JSON.stringify(canonical(value));
+}
+
+function canonicalSha256(value: unknown): string {
+  return createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
 
 function gateInput() {
   return {
@@ -213,6 +239,56 @@ describe('G04 one-tool Codex runner preflight', () => {
     ).toThrow(/GPT-6 Luna Max/u);
   });
 
+  it('requires a durable Harness CLAIMED disposition before the runner can execute the query', () => {
+    const { status, pr } = gateInput();
+    const claimId = 'g04-run-95-pr-136-aaaaaaaaaaaa-1';
+    const bundleSha256 = 'c'.repeat(64);
+    const keyPair = generateG04RunnerReceiptKeyPair();
+    const gateOptions = {
+      sourceRevision: candidate,
+      currentBaseSha: base,
+      allowClaimedDisposition: true,
+      expectedClaimId: claimId,
+      runnerReceiptPublicKey: keyPair.publicKeyBase64,
+      bundleSha256,
+    };
+
+    expect(() => assertG04CandidateReviewGate(status, pr, gateOptions)).toThrow(
+      /GPT-6 Luna Max PASS/u,
+    );
+
+    Object.assign(status.epoch.state.adversarial_preflight, {
+      g04_one_shot_disposition: {
+        state: 'CLAIMED',
+        claimId,
+        runNumber: 95,
+        frontierId: 'G04',
+        epochId: 'run95-g04-person-activity-codex-current-evidence',
+        prNumber,
+        sourceCandidateSha: candidate,
+        baseSha: base,
+        ciSha: candidate,
+        ciStatus: 'SUCCESS',
+        reviewerId,
+        bundleSha256,
+        expectedArgumentsSha256: canonicalSha256(G04_EXPECTED_QUERY_ARGUMENTS),
+        model: 'gpt-6-luna',
+        reasoningEffort: 'max',
+        toolName: 'bangumi.get_person_activity',
+        argumentProfile: 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1',
+        retryAllowed: false,
+        runnerReceiptPublicKey: keyPair.publicKeyBase64,
+        runnerReceiptPublicKeySha256: g04RunnerPublicKeySha256(keyPair.publicKeyBase64),
+      },
+    });
+    expect(assertG04CandidateReviewGate(status, pr, gateOptions)).toMatchObject({
+      prNumber,
+      candidateSha: candidate,
+      baseSha: base,
+      reviewerId,
+    });
+  });
+
   it('rejects a previously merged G04 PR even when its old reviewer identity is valid for that PR', () => {
     const { status, pr } = gateInput();
     status.run.state.active_epoch_pr = 128;
@@ -227,32 +303,10 @@ describe('G04 one-tool Codex runner preflight', () => {
 
   it('only accepts the one supported invocation and keeps its claim under local Git metadata', () => {
     expect(validateRunnerArgs(['--help'])).toBe('help');
-    expect(validateRunnerArgs(['--run', '95'])).toBe('run');
-    expect(() => validateRunnerArgs(['--run', '96'])).toThrow(/--run 95/u);
+    expect(() => validateRunnerArgs(['--run', '95'])).toThrow(/Harness-owned/u);
     expect(canonicalG04ClaimPath()).toMatch(
       /[\\/]\.git[\\/]pariya-agent-state[\\/]g04-run95-one-shot-claim\.json$/u,
     );
-  });
-
-  it('binds a one-shot claim to the active PR/base and reviewer identity', () => {
-    expect(() =>
-      createG04OneShotClaim('/tmp/unused-g04-claim.json', {
-        sourceRevision: candidate,
-        baseSha: base,
-        prNumber,
-        bundleSha256: 'c'.repeat(64),
-        reviewerId: 'gpt-6-luna-max-run95-pr128-round1',
-      }),
-    ).toThrow(/Harness Luna Max reviewer identity/u);
-
-    expect(() =>
-      createG04OneShotClaim('/tmp/unused-g04-claim.json', {
-        sourceRevision: candidate,
-        baseSha: base,
-        prNumber,
-        bundleSha256: 'c'.repeat(64),
-        reviewerId,
-      }),
-    ).toThrow(/stay under local Git metadata/u);
+    expect(Object.hasOwn(g04Runner, 'createG04OneShotClaim')).toBe(false);
   });
 });

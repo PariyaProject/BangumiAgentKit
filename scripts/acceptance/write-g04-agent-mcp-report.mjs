@@ -15,6 +15,11 @@ import {
   readG26McpBundleAttestation,
   sanitizeGitRepositoryEnvironment,
 } from '../lib/g26-mcp-bundle.mjs';
+import {
+  buildG04RunnerReceiptPayload,
+  g04RunnerPublicKeySha256,
+  verifyG04RunnerReceipt,
+} from './g04-runner-receipt.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const TOOL_NAME = 'bangumi.get_person_activity';
@@ -24,11 +29,6 @@ const REASONING_EFFORT = 'max';
 const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
 const ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1';
 const REPORT_PATH = path.join(ROOT, 'docs/live-probes/g04-person-activity-run95.json');
-const CLAIM_PATH = path.join(
-  ROOT,
-  gitRepositoryText(ROOT, ['rev-parse', '--git-common-dir']),
-  'pariya-agent-state/g04-run95-one-shot-claim.json',
-);
 const PRIVACY_FIELDS = [
   'authProfile',
   'oauthAttempted',
@@ -64,6 +64,58 @@ const ANSWER_CHECK_FIELDS = [
   'boundedAnswerBytes',
   'boundedMcpTextView',
 ];
+const REPORT_FIELDS = [
+  'schemaVersion',
+  'evidenceKind',
+  'runNumber',
+  'frontierId',
+  'scenarioId',
+  'epochId',
+  'profile',
+  'model',
+  'reasoningEffort',
+  'reviewerId',
+  'claimId',
+  'codexCliVersion',
+  'sourceRevision',
+  'baseSha',
+  'prNumber',
+  'mcpBundleSha256',
+  'runnerEventStreamSha256',
+  'runnerServerSummarySha256',
+  'runnerReceipt',
+  'observedAt',
+  'toolName',
+  'argumentProfile',
+  'expectedArgumentsSha256',
+  'catalogSha256',
+  'toolDescriptionSha256',
+  'inputSchemaSha256',
+  'serverToolNames',
+  'serverToolCount',
+  'mcpServerNames',
+  'processExitCode',
+  'resultStatus',
+  'eventStreamParsed',
+  'codexMcpToolEventCount',
+  'codexErrorItemCount',
+  'nonMcpToolEventCount',
+  'shellToolCallCount',
+  'allowedCallCount',
+  'deniedCallCount',
+  'answerCheckMethod',
+  'answerChecks',
+  'answerCounters',
+  'toolCalls',
+  'toolTextUtf8Bytes',
+  'resultSummary',
+  'resultByteLength',
+  'resultSha256',
+  'answerUtf8Bytes',
+  'answerSha256',
+  'sourceOperations',
+  'privacy',
+];
 
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -90,14 +142,23 @@ async function readInput() {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-function readClaim(input) {
-  const claim = JSON.parse(readFileSync(CLAIM_PATH, 'utf8'));
+function localClaimPath(root = ROOT) {
+  const absoluteRoot = path.resolve(root);
+  const gitCommon = gitRepositoryText(absoluteRoot, ['rev-parse', '--git-common-dir']);
+  if (!gitCommon) throw new Error('G04 local claim requires a Git common directory.');
+  return path.join(absoluteRoot, gitCommon, 'pariya-agent-state/g04-run95-one-shot-claim.json');
+}
+
+function readClaim(input, liveStatus, root = ROOT) {
+  const claim = JSON.parse(readFileSync(localClaimPath(root), 'utf8'));
+  const disposition = liveStatus?.epoch?.state?.adversarial_preflight?.g04_one_shot_disposition;
   if (
     claim?.schemaVersion !== 1 ||
     claim.runNumber !== 95 ||
     claim.frontierId !== 'G04' ||
     claim.epochId !== EPOCH_ID ||
     claim.state !== 'CLAIMED' ||
+    claim.claimId !== input.claimId ||
     claim.sourceRevision !== input.sourceRevision ||
     claim.reviewerId !== input.reviewerId ||
     claim.baseSha !== input.baseSha ||
@@ -110,10 +171,31 @@ function readClaim(input) {
     claim.argumentProfile !== ARGUMENT_PROFILE ||
     claim.retryAllowed !== false ||
     claim.bundleSha256 !== input.bundleSha256 ||
-    claim.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS))
+    claim.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)) ||
+    claim.runnerReceiptPublicKey !== input.runnerReceiptPublicKey ||
+    claim.runnerReceiptPublicKeySha256 !== g04RunnerPublicKeySha256(input.runnerReceiptPublicKey) ||
+    !disposition ||
+    disposition.state !== 'CLAIMED' ||
+    disposition.claimId !== input.claimId ||
+    disposition.frontierId !== 'G04' ||
+    disposition.epochId !== EPOCH_ID ||
+    disposition.runNumber !== 95 ||
+    disposition.prNumber !== input.prNumber ||
+    disposition.sourceCandidateSha !== input.sourceRevision ||
+    disposition.baseSha !== input.baseSha ||
+    disposition.ciSha !== input.sourceRevision ||
+    disposition.ciStatus !== 'SUCCESS' ||
+    disposition.reviewerId !== input.reviewerId ||
+    disposition.bundleSha256 !== input.bundleSha256 ||
+    disposition.model !== MODEL ||
+    disposition.reasoningEffort !== REASONING_EFFORT ||
+    disposition.runnerReceiptPublicKey !== input.runnerReceiptPublicKey ||
+    disposition.runnerReceiptPublicKeySha256 !== claim.runnerReceiptPublicKeySha256 ||
+    disposition.retryAllowed !== false
   ) {
-    throw new Error('G04 report does not match the local create-once claim.');
+    throw new Error('G04 report does not match the local and durable Harness one-shot claim.');
   }
+  return claim;
 }
 
 function isG04ReviewerIdentity(reviewerId, prNumber) {
@@ -172,9 +254,15 @@ function safeSourceOperations(value) {
     .sort((a, b) => a.operation.localeCompare(b.operation));
 }
 
-function assertSafeInput(input) {
+function assertSafeInput(input, liveStatus, root = ROOT) {
   if (
     !isRecord(input) ||
+    typeof input.claimId !== 'string' ||
+    !input.claimId ||
+    typeof input.runnerReceiptPublicKey !== 'string' ||
+    !isRecord(input.runnerReceipt) ||
+    !/^[0-9a-f]{64}$/u.test(input.runnerEventStreamSha256 ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(input.runnerServerSummarySha256 ?? '') ||
     input.model !== MODEL ||
     input.reasoningEffort !== REASONING_EFFORT ||
     typeof input.codexCliVersion !== 'string' ||
@@ -213,14 +301,32 @@ function assertSafeInput(input) {
     throw new Error('G04 requires a passive anonymous public read-only execution.');
   }
   if (
-    gitRepositoryText(ROOT, ['rev-parse', 'HEAD']) !== input.sourceRevision ||
-    gitRepositoryText(ROOT, ['status', '--porcelain']) !== '' ||
-    computeMcpBundleSha256(ROOT) !== input.bundleSha256 ||
-    readG26McpBundleAttestation(ROOT) !== input.bundleSha256
+    gitRepositoryText(root, ['rev-parse', 'HEAD']) !== input.sourceRevision ||
+    gitRepositoryText(root, ['status', '--porcelain']) !== '' ||
+    computeMcpBundleSha256(root) !== input.bundleSha256 ||
+    readG26McpBundleAttestation(root) !== input.bundleSha256
   ) {
     throw new Error('G04 report must bind to the unchanged exact Candidate and MCP bundle.');
   }
-  readClaim(input);
+  readClaim(input, liveStatus, root);
+}
+
+function receiptMatchesDurableClaim(input, answerResult, disposition) {
+  try {
+    return (
+      typeof disposition?.runnerReceiptPublicKey === 'string' &&
+      disposition.runnerReceiptPublicKey === input.runnerReceiptPublicKey &&
+      disposition.runnerReceiptPublicKeySha256 ===
+        g04RunnerPublicKeySha256(input.runnerReceiptPublicKey) &&
+      verifyG04RunnerReceipt(
+        input.runnerReceipt,
+        disposition.runnerReceiptPublicKey,
+        buildG04RunnerReceiptPayload(input, answerResult),
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function buildG04AgentMcpReport(
@@ -271,6 +377,7 @@ export function buildG04AgentMcpReport(
   const run = currentStatus?.run?.state;
   const epochView = currentStatus?.epoch;
   const epoch = currentStatus?.epoch?.state;
+  const disposition = epoch?.adversarial_preflight?.g04_one_shot_disposition;
   const sourceRevision = input.sourceRevision;
   const baseSha = epoch?.base_sha;
   const reviewHistory = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
@@ -296,6 +403,26 @@ export function buildG04AgentMcpReport(
     epoch?.ci?.status !== 'SUCCESS' ||
     epoch?.review_pass_sha !== sourceRevision ||
     !exactPassingReview ||
+    !disposition ||
+    disposition.state !== 'CLAIMED' ||
+    disposition.claimId !== input.claimId ||
+    disposition.frontierId !== 'G04' ||
+    disposition.epochId !== EPOCH_ID ||
+    disposition.runNumber !== 95 ||
+    disposition.prNumber !== input.prNumber ||
+    disposition.sourceCandidateSha !== sourceRevision ||
+    disposition.baseSha !== baseSha ||
+    disposition.ciSha !== sourceRevision ||
+    disposition.ciStatus !== 'SUCCESS' ||
+    disposition.reviewerId !== input.reviewerId ||
+    disposition.bundleSha256 !== input.bundleSha256 ||
+    disposition.model !== MODEL ||
+    disposition.reasoningEffort !== REASONING_EFFORT ||
+    disposition.toolName !== TOOL_NAME ||
+    disposition.argumentProfile !== ARGUMENT_PROFILE ||
+    disposition.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)) ||
+    disposition.retryAllowed !== false ||
+    !receiptMatchesDurableClaim(input, answerResult, disposition) ||
     typeof baseSha !== 'string' ||
     !/^[0-9a-f]{40}$/u.test(baseSha)
   ) {
@@ -312,11 +439,15 @@ export function buildG04AgentMcpReport(
     model: MODEL,
     reasoningEffort: REASONING_EFFORT,
     reviewerId: input.reviewerId,
+    claimId: input.claimId,
     codexCliVersion: input.codexCliVersion,
     sourceRevision,
     baseSha,
     prNumber: input.prNumber,
     mcpBundleSha256: input.bundleSha256,
+    runnerEventStreamSha256: input.runnerEventStreamSha256,
+    runnerServerSummarySha256: input.runnerServerSummarySha256,
+    runnerReceipt: structuredClone(input.runnerReceipt),
     observedAt,
     toolName: TOOL_NAME,
     argumentProfile: ARGUMENT_PROFILE,
@@ -390,14 +521,176 @@ function readHarnessStatus(root) {
   return result.stdout ?? '';
 }
 
+function g04ReceiptPayloadFromReport(report) {
+  return {
+    schemaVersion: 1,
+    kind: 'g04-runner-acceptance-receipt-v1',
+    claimId: report.claimId,
+    runNumber: report.runNumber,
+    frontierId: report.frontierId,
+    epochId: report.epochId,
+    prNumber: report.prNumber,
+    sourceRevision: report.sourceRevision,
+    baseSha: report.baseSha,
+    ciSha: report.sourceRevision,
+    ciStatus: 'SUCCESS',
+    reviewerId: report.reviewerId,
+    bundleSha256: report.mcpBundleSha256,
+    model: report.model,
+    reasoningEffort: report.reasoningEffort,
+    toolName: report.toolName,
+    argumentProfile: report.argumentProfile,
+    expectedArgumentsSha256: report.expectedArgumentsSha256,
+    codexCliVersion: report.codexCliVersion,
+    processExitCode: report.processExitCode,
+    resultStatus: report.resultStatus,
+    eventStreamParsed: report.eventStreamParsed,
+    serverToolNames: report.serverToolNames,
+    serverToolCount: report.serverToolCount,
+    mcpServerNames: report.mcpServerNames,
+    codexMcpToolEventCount: report.codexMcpToolEventCount,
+    codexErrorItemCount: report.codexErrorItemCount,
+    nonMcpToolEventCount: report.nonMcpToolEventCount,
+    nonMcpToolTypes: [],
+    shellToolCallCount: report.shellToolCallCount,
+    allowedCallCount: report.allowedCallCount,
+    deniedCallCount: report.deniedCallCount,
+    eventStreamSha256: report.runnerEventStreamSha256,
+    serverSummarySha256: report.runnerServerSummarySha256,
+    toolArgumentsSha256: sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)),
+    toolTextUtf8Bytes: report.toolTextUtf8Bytes,
+    resultByteLength: report.resultByteLength,
+    resultSha256: report.resultSha256,
+    answerUtf8Bytes: report.answerUtf8Bytes,
+    answerSha256: report.answerSha256,
+    answerChecksSha256: sha256(canonicalJson(report.answerChecks)),
+    answerCountersSha256: sha256(canonicalJson(report.answerCounters)),
+    resultSummarySha256: sha256(canonicalJson(report.resultSummary)),
+  };
+}
+
+export function validateG04SanitizedReportFile(disposition, root = ROOT, reportPath = REPORT_PATH) {
+  const rootPath = path.resolve(root);
+  const absoluteReportPath = path.resolve(reportPath);
+  const relativePath = path.relative(rootPath, absoluteReportPath).split(path.sep).join('/');
+  if (relativePath !== 'docs/live-probes/g04-person-activity-run95.json') {
+    return { passed: false, reason: 'G04 report path is not canonical.' };
+  }
+  let bytes;
+  let report;
+  try {
+    bytes = readFileSync(absoluteReportPath);
+    report = JSON.parse(bytes.toString('utf8'));
+  } catch {
+    return { passed: false, reason: 'G04 sanitized report is missing or malformed.' };
+  }
+  if (
+    !isRecord(report) ||
+    canonicalJson(Object.keys(report).sort()) !== canonicalJson([...REPORT_FIELDS].sort()) ||
+    report.schemaVersion !== 1 ||
+    report.evidenceKind !== 'codex_cli_g04_person_activity_agent_mcp' ||
+    report.runNumber !== 95 ||
+    report.frontierId !== 'G04' ||
+    report.scenarioId !== 'G04' ||
+    report.epochId !== EPOCH_ID ||
+    report.profile !== 'codex-luna-max-one-tool-v1' ||
+    report.model !== MODEL ||
+    report.reasoningEffort !== REASONING_EFFORT ||
+    report.claimId !== disposition?.claimId ||
+    report.prNumber !== disposition?.prNumber ||
+    report.sourceRevision !== disposition?.sourceCandidateSha ||
+    report.baseSha !== disposition?.baseSha ||
+    report.reviewerId !== disposition?.reviewerId ||
+    report.mcpBundleSha256 !== disposition?.bundleSha256 ||
+    report.argumentProfile !== ARGUMENT_PROFILE ||
+    report.toolName !== TOOL_NAME ||
+    report.expectedArgumentsSha256 !== sha256(canonicalJson(G04_EXPECTED_QUERY_ARGUMENTS)) ||
+    (disposition?.state !== 'CLAIMED' && disposition?.state !== 'REPORT_WRITTEN') ||
+    disposition?.retryAllowed !== false ||
+    report.processExitCode !== 0 ||
+    report.resultStatus !== 'SUCCESS' ||
+    report.eventStreamParsed !== true ||
+    report.serverToolNames?.length !== 1 ||
+    report.serverToolNames[0] !== TOOL_NAME ||
+    report.serverToolCount !== 1 ||
+    report.mcpServerNames?.length !== 1 ||
+    report.mcpServerNames[0] !== SERVER_ID ||
+    report.codexMcpToolEventCount !== 1 ||
+    !Number.isSafeInteger(report.codexErrorItemCount) ||
+    report.codexErrorItemCount < 0 ||
+    report.nonMcpToolEventCount !== 0 ||
+    report.shellToolCallCount !== 0 ||
+    report.allowedCallCount !== 1 ||
+    report.deniedCallCount !== 0 ||
+    !Number.isSafeInteger(report.resultByteLength) ||
+    !/^[0-9a-f]{64}$/u.test(report.resultSha256 ?? '') ||
+    !Number.isSafeInteger(report.answerUtf8Bytes) ||
+    !/^[0-9a-f]{64}$/u.test(report.answerSha256 ?? '') ||
+    !Number.isSafeInteger(report.toolTextUtf8Bytes) ||
+    !/^[0-9a-f]{64}$/u.test(report.runnerEventStreamSha256 ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(report.runnerServerSummarySha256 ?? '') ||
+    !isRecord(report.answerChecks) ||
+    Object.keys(report.answerChecks).sort().join(',') !==
+      [...ANSWER_CHECK_FIELDS].sort().join(',') ||
+    Object.values(report.answerChecks).some((value) => value !== true) ||
+    !isRecord(report.privacy) ||
+    Object.keys(report.privacy).length !== PRIVACY_FIELDS.length ||
+    PRIVACY_FIELDS.some((key) => !Object.hasOwn(report.privacy, key)) ||
+    report.privacy.authProfile !== 'anonymous' ||
+    PRIVACY_FIELDS.filter((key) => key !== 'authProfile').some(
+      (key) => report.privacy[key] !== false,
+    )
+  ) {
+    return { passed: false, reason: 'G04 report fields do not match the durable one-shot claim.' };
+  }
+  try {
+    const currentCatalog = currentCatalogSnapshot(rootPath);
+    if (
+      report.catalogSha256 !== currentCatalog.catalogSha256 ||
+      report.toolDescriptionSha256 !== currentCatalog.toolDescriptionSha256 ||
+      report.inputSchemaSha256 !== currentCatalog.inputSchemaSha256 ||
+      computeMcpBundleSha256(rootPath) !== report.mcpBundleSha256 ||
+      readG26McpBundleAttestation(rootPath) !== report.mcpBundleSha256
+    ) {
+      return { passed: false, reason: 'G04 report catalog or exact MCP bundle binding is stale.' };
+    }
+  } catch {
+    return { passed: false, reason: 'G04 report source or bundle could not be verified.' };
+  }
+  const expectedPublicKey = disposition?.runnerReceiptPublicKey;
+  if (
+    typeof expectedPublicKey !== 'string' ||
+    disposition.runnerReceiptPublicKeySha256 !== g04RunnerPublicKeySha256(expectedPublicKey) ||
+    report.runnerReceipt?.publicKeyBase64 !== expectedPublicKey ||
+    report.runnerReceipt?.publicKeySha256 !== disposition.runnerReceiptPublicKeySha256 ||
+    !verifyG04RunnerReceipt(
+      report.runnerReceipt,
+      expectedPublicKey,
+      g04ReceiptPayloadFromReport(report),
+    )
+  ) {
+    return {
+      passed: false,
+      reason: 'G04 report has no valid receipt from the claimed runner key.',
+    };
+  }
+  return {
+    passed: true,
+    reportPath: relativePath,
+    reportSha256: sha256(bytes),
+    report,
+  };
+}
+
 export function writeG04AgentMcpReport(
   input,
   { root = ROOT, observedAt = new Date().toISOString() } = {},
 ) {
-  assertSafeInput(input);
+  const liveStatus = JSON.parse(readHarnessStatus(root));
+  assertSafeInput(input, liveStatus, root);
   if (existsSync(REPORT_PATH))
     throw new Error('G04 report already exists; refusing to overwrite or retry.');
-  const result = buildG04AgentMcpReport(input, { root, observedAt });
+  const result = buildG04AgentMcpReport(input, { root, observedAt, liveStatus });
   if (!result.passed || !result.report) return result;
   const relativePath = path.relative(ROOT, REPORT_PATH).split(path.sep).join('/');
   if (root !== ROOT || relativePath !== 'docs/live-probes/g04-person-activity-run95.json') {
@@ -423,6 +716,7 @@ export function writeG04AgentMcpReport(
     answerChecks: result.answerChecks,
     answerCounters: result.answerCounters,
     resultSummary: result.resultSummary,
+    reportSha256: sha256(readFileSync(REPORT_PATH)),
   };
 }
 

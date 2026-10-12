@@ -1184,15 +1184,20 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
     why_not_extend_further: 'The bounded read is the only query in this Epoch.',
     related_work_remaining: false,
   };
-  epoch.adversarial_preflight = { completed: true, summary: 'Exact one-tool read-only preflight passed.' };
-  epoch.review_history = [{
-    review_number: 1,
-    reviewer_id: reviewerId,
-    candidate_sha: sha('b'),
-    reviewed_base_sha: sha('a'),
-    verdict: 'PASS',
-    findings: [],
-  }];
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Exact one-tool read-only preflight passed.',
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
   const environment = createMockEnvironment({
     runBody: renderRunBody(run),
     prBody: renderEpochBody(epoch),
@@ -1203,11 +1208,21 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
     draft: false,
   });
   const claimArgs = [
-    'epoch:g19-one-shot-claim', '--run', '1', '--pr', '42',
-    '--candidate', sha('b'), '--base', sha('a'), '--reviewer-id', reviewerId,
+    'epoch:g19-one-shot-claim',
+    '--run',
+    '1',
+    '--pr',
+    '42',
+    '--candidate',
+    sha('b'),
+    '--base',
+    sha('a'),
+    '--reviewer-id',
+    reviewerId,
   ];
   try {
-    const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
+    const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product
+      .consumed;
     const claimed = environment.execute(claimArgs);
     assert.equal(claimed.status, 0, claimed.stderr);
     const claim = JSON.parse(claimed.stdout);
@@ -1220,8 +1235,15 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
     assert.match(duplicateClaim.stderr, /^G19_ONESHOT_ALREADY_CLAIMED:/u);
 
     const resultArgs = [
-      'epoch:g19-one-shot-result', '--run', '1', '--pr', '42',
-      '--claim-id', claim.claimId, '--state', 'INCONCLUSIVE',
+      'epoch:g19-one-shot-result',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'INCONCLUSIVE',
     ];
     const finished = environment.execute(resultArgs);
     assert.equal(finished.status, 0, finished.stderr);
@@ -1241,8 +1263,42 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
     const idempotentFinish = environment.execute(resultArgs);
     assert.equal(idempotentFinish.status, 0, idempotentFinish.stderr);
     assert.match(idempotentFinish.stdout, /G19_ONE_SHOT_RESULT_ALREADY_RECORDED/u);
-    const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
+    const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product
+      .consumed;
     assert.equal(after, before, 'one-shot state persistence must not spend Product budget');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI keeps G04 claim and result mutations private to the Harness-owned runner', () => {
+  const environment = createMockEnvironment();
+  const before = environment.readState();
+  try {
+    const privateCommands = [
+      ['epoch:g04-one-shot-claim', '--run', '95', '--pr', '136'],
+      [
+        'epoch:g04-one-shot-result',
+        '--run',
+        '95',
+        '--pr',
+        '136',
+        '--claim-id',
+        'caller-forged',
+        '--state',
+        'REPORT_WRITTEN',
+      ],
+    ];
+    for (const args of privateCommands) {
+      const result = environment.execute(args);
+      assert.equal(result.status, 2, result.stderr);
+      assert.match(result.stderr, /^UNKNOWN_COMMAND: Unknown command:/u);
+      assert.deepEqual(
+        environment.readState(),
+        before,
+        'private G04 mutations must not change durable Harness state',
+      );
+    }
   } finally {
     environment.cleanup();
   }
@@ -1270,15 +1326,20 @@ test('CLI rejects caller-key P01 claims and fabricated all-true REPORT_WRITTEN e
     why_not_extend_further: 'The bounded public role sample is one-shot.',
     related_work_remaining: false,
   };
-  epoch.adversarial_preflight = { completed: true, summary: 'P01 exact one-tool preflight passed.' };
-  epoch.review_history = [{
-    review_number: 1,
-    reviewer_id: reviewerId,
-    candidate_sha: sha('b'),
-    reviewed_base_sha: sha('a'),
-    verdict: 'PASS',
-    findings: [],
-  }];
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'P01 exact one-tool preflight passed.',
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
   const environment = createMockEnvironment({
     runBody: renderRunBody(run),
     prBody: renderEpochBody(epoch),
@@ -1290,19 +1351,38 @@ test('CLI rejects caller-key P01 claims and fabricated all-true REPORT_WRITTEN e
   });
   const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
   const callerClaimArgs = [
-    'epoch:p01-one-shot-claim', '--run', '95', '--pr', '42',
-    '--candidate', sha('b'), '--base', sha('a'), '--bundle-sha256', 'c'.repeat(64),
-    '--model', 'gpt-6-luna', '--reasoning-effort', 'max',
-    '--reviewer-id', reviewerId,
-    '--runner-receipt-public-key', runnerReceiptKeyPair.publicKeyBase64,
+    'epoch:p01-one-shot-claim',
+    '--run',
+    '95',
+    '--pr',
+    '42',
+    '--candidate',
+    sha('b'),
+    '--base',
+    sha('a'),
+    '--bundle-sha256',
+    'c'.repeat(64),
+    '--model',
+    'gpt-6-luna',
+    '--reasoning-effort',
+    'max',
+    '--reviewer-id',
+    reviewerId,
+    '--runner-receipt-public-key',
+    runnerReceiptKeyPair.publicKeyBase64,
   ];
   try {
-    const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
+    const before = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product
+      .consumed;
     const wrongRun = environment.execute(['epoch:p01-one-shot-run', '--run', '1']);
     assert.equal(wrongRun.status, 2);
     assert.match(wrongRun.stderr, /^P01_ONESHOT_RUN_INVALID:/u);
     const callerClaim = environment.execute(callerClaimArgs);
-    assert.notEqual(callerClaim.status, 0, 'the public CLI must not accept caller-selected claim keys');
+    assert.notEqual(
+      callerClaim.status,
+      0,
+      'the public CLI must not accept caller-selected claim keys',
+    );
     assert.equal(
       Object.hasOwn(
         parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight,
@@ -1320,10 +1400,20 @@ test('CLI rejects caller-key P01 claims and fabricated all-true REPORT_WRITTEN e
     assert.ok(Object.values(fabricated.answerChecks).every((check) => check === true));
     const reportPath = path.join(environment.directory, 'caller-fabricated-p01-report.json');
     fs.writeFileSync(reportPath, `${JSON.stringify(fabricated)}\n`);
-    const result = environment.execute([
-      'epoch:p01-one-shot-result', '--run', '95', '--pr', '42',
-      '--claim-id', fabricatedClaimId, '--state', 'REPORT_WRITTEN',
-    ], { HARNESS_P01_REPORT_PATH: reportPath });
+    const result = environment.execute(
+      [
+        'epoch:p01-one-shot-result',
+        '--run',
+        '95',
+        '--pr',
+        '42',
+        '--claim-id',
+        fabricatedClaimId,
+        '--state',
+        'REPORT_WRITTEN',
+      ],
+      { HARNESS_P01_REPORT_PATH: reportPath },
+    );
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^P01_ONESHOT_CLAIM_MISMATCH:/u);
     assert.equal(
@@ -1334,7 +1424,8 @@ test('CLI rejects caller-key P01 claims and fabricated all-true REPORT_WRITTEN e
       false,
       'caller-controlled receipt keys cannot create a durable Harness trust anchor',
     );
-    const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product.consumed;
+    const after = parseControlBlock(environment.readState().runBody, RUN_MARKER).outer_sol.product
+      .consumed;
     assert.equal(after, before, 'one-shot state persistence must not spend Product budget');
   } finally {
     environment.cleanup();
@@ -1393,14 +1484,16 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
       claimedAt: '2026-10-11T08:00:00.000Z',
     },
   };
-  epoch.review_history = [{
-    review_number: 1,
-    reviewer_id: reviewerId,
-    candidate_sha: sha('b'),
-    reviewed_base_sha: sha('a'),
-    verdict: 'PASS',
-    findings: [],
-  }];
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
   const environment = createMockEnvironment({
     runBody: renderRunBody(run),
     prBody: renderEpochBody(epoch),
@@ -1414,8 +1507,15 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
   try {
     const claim = { claimId };
     const resultArgs = [
-      'epoch:p01-one-shot-result', '--run', '95', '--pr', '42',
-      '--claim-id', claim.claimId, '--state', 'REPORT_WRITTEN',
+      'epoch:p01-one-shot-result',
+      '--run',
+      '95',
+      '--pr',
+      '42',
+      '--claim-id',
+      claim.claimId,
+      '--state',
+      'REPORT_WRITTEN',
     ];
     const resultEnv = { HARNESS_P01_REPORT_PATH: reportPath };
     const claimedState = environment.readState();
@@ -1445,8 +1545,8 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     assert.equal(fabricatedAllTrue.status, 2);
     assert.match(fabricatedAllTrue.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
     assert.equal(
-      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
-        .adversarial_preflight.p01_one_shot_disposition.state,
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight
+        .p01_one_shot_disposition.state,
       'CLAIMED',
       'self-asserted all-true answer fields without a runner receipt must not terminalize the claim',
     );
@@ -1480,8 +1580,8 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     assert.equal(invalidChecks.status, 2);
     assert.match(invalidChecks.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
     assert.equal(
-      parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
-        .adversarial_preflight.p01_one_shot_disposition.state,
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight
+        .p01_one_shot_disposition.state,
       'CLAIMED',
       'invalid report attempts must not make the durable one-shot terminal',
     );
@@ -1524,8 +1624,8 @@ test('CLI P01 REPORT_WRITTEN requires a matching validated sanitized report', ()
     const tampered = environment.execute(resultArgs, resultEnv);
     assert.equal(tampered.status, 2);
     assert.match(tampered.stderr, /^P01_ONESHOT_REPORT_INVALID:/u);
-    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
-      .adversarial_preflight.p01_one_shot_disposition;
+    stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER).adversarial_preflight
+      .p01_one_shot_disposition;
     assert.equal(stored.state, 'REPORT_WRITTEN');
     assert.equal(stored.reportSha256, createHash('sha256').update(serialized).digest('hex'));
   } finally {
