@@ -60,9 +60,20 @@ import {
   claimG16OneShotAtomically,
   G16OneShotClaimError,
 } from './lib/g16-one-shot-claim.mjs';
+import {
+  acquireG04OneShotGitHubLatch,
+  claimG04OneShotAtomically,
+  G04OneShotClaimError,
+  g04OneShotLatchLabelDescription,
+  g04OneShotLatchLabelName,
+} from './lib/g04-one-shot-claim.mjs';
 import { isG16LunaMaxReviewerId } from './lib/g16-reviewer-id.mjs';
 import { parseCodexJsonl, summarizeCodexEvents } from './acceptance/run-g26-codex-agent-mcp.mjs';
-import { runG04CodexAgentMcp } from './acceptance/run-g04-codex-agent-mcp.mjs';
+import {
+  buildExactCandidateBundle as buildExactG04CandidateBundle,
+  currentBundleMatches as g04CurrentBundleMatches,
+  runG04CodexAgentMcp,
+} from './acceptance/run-g04-codex-agent-mcp.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from './acceptance/g04-person-activity-answer-check.mjs';
 import { g04RunnerPublicKeySha256 } from './acceptance/g04-runner-receipt.mjs';
 import { validateG04SanitizedReportFile } from './acceptance/write-g04-agent-mcp-report.mjs';
@@ -121,6 +132,7 @@ const G04_REASONING_EFFORT = 'max';
 const G04_ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1';
 const G04_REPORT_PATH = path.join(root, 'docs/live-probes/g04-person-activity-run95.json');
 const G04_REPORT_RELATIVE_PATH = path.relative(root, G04_REPORT_PATH);
+const HARNESS_MOCK_G04_BUNDLE_ENV = 'HARNESS_G04_BUNDLE_SHA256';
 const G16_MODEL = 'gpt-6-luna';
 const G16_REASONING_EFFORT = 'max';
 const G16_EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp';
@@ -244,6 +256,31 @@ function ensureCleanWorkingTree() {
       { status: status.split('\n') },
     );
   }
+}
+
+function buildG04BundleForReconciliation(candidateSha) {
+  if (process.env.HARNESS_MOCK_STATE) {
+    const mocked = process.env[HARNESS_MOCK_G04_BUNDLE_ENV];
+    if (!/^[0-9a-f]{64}$/u.test(mocked ?? '')) {
+      throw new HarnessInvariantError(
+        'G04_LEGACY_RECONCILIATION_BUNDLE_MISMATCH',
+        'Harness mock mode requires a valid exact-candidate G04 bundle digest.',
+      );
+    }
+    return mocked;
+  }
+  return buildExactG04CandidateBundle(candidateSha);
+}
+
+function g04BundleMatchesForReconciliation(candidateSha, bundleSha256) {
+  if (process.env.HARNESS_MOCK_STATE) {
+    return (
+      bundleSha256 === process.env[HARNESS_MOCK_G04_BUNDLE_ENV] &&
+      currentHead() === candidateSha &&
+      git('status', '--porcelain') === ''
+    );
+  }
+  return g04CurrentBundleMatches(candidateSha, bundleSha256);
 }
 
 function ensureControlPlane() {
@@ -468,6 +505,7 @@ Usage: pnpm harness <command> [options]
   epoch:g19-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --reviewer-id <id>
   epoch:g19-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
   epoch:g04-one-shot-run --run <issue>
+  epoch:g04-legacy-claim-reconcile --run <issue> --pr <number> --source-pr <number>
   epoch:g16-one-shot-run --run <issue>
   epoch:p01-one-shot-run --run <issue>
   epoch:p01-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
@@ -1070,6 +1108,19 @@ function commandCandidateCheck(options) {
       'A durable G04 one-shot disposition must be preserved exactly across Candidate refreshes',
     );
   }
+  const priorG04LegacyReconciliation = epoch.adversarial_preflight?.g04_legacy_claim_reconciliation;
+  const nextG04LegacyReconciliation =
+    evidence.adversarial_preflight?.g04_legacy_claim_reconciliation;
+  if (
+    (priorG04LegacyReconciliation === undefined) !== (nextG04LegacyReconciliation === undefined) ||
+    (priorG04LegacyReconciliation !== undefined &&
+      canonicalHash(priorG04LegacyReconciliation) !== canonicalHash(nextG04LegacyReconciliation))
+  ) {
+    throw new HarnessInvariantError(
+      'G04_LEGACY_RECONCILIATION_IMMUTABLE',
+      'A verified G04 legacy terminal reconciliation must be preserved exactly across Candidate refreshes',
+    );
+  }
   const priorG16Disposition = epoch.adversarial_preflight?.g16_one_shot_disposition;
   const nextG16Disposition = evidence.adversarial_preflight?.g16_one_shot_disposition;
   if (
@@ -1489,6 +1540,376 @@ function commandEpochG19OneShotResult(options) {
   });
 }
 
+function verifiedG04LegacyTerminalClaim(sourcePrNumber) {
+  const source = epochState(sourcePrNumber);
+  const epoch = source.state;
+  const disposition = epoch.adversarial_preflight?.g04_one_shot_disposition;
+  const latestReview = epoch.review_history?.at(-1);
+  const reviewerPattern = new RegExp(
+    `^gpt-6-luna-max-run95-pr${sourcePrNumber}-round[1-9][0-9]*$`,
+    'u',
+  );
+  let receiptKeyValid = false;
+  try {
+    receiptKeyValid =
+      typeof disposition?.runnerReceiptPublicKey === 'string' &&
+      g04RunnerPublicKeySha256(disposition.runnerReceiptPublicKey) ===
+        disposition.runnerReceiptPublicKeySha256;
+  } catch {
+    receiptKeyValid = false;
+  }
+  const candidate = disposition?.sourceCandidateSha;
+  const claimPattern =
+    typeof candidate === 'string'
+      ? new RegExp(`^g04-run-95-pr-${sourcePrNumber}-${candidate.slice(0, 12)}-\\d+$`, 'u')
+      : /^$/u;
+  const valid =
+    Number.isSafeInteger(sourcePrNumber) &&
+    sourcePrNumber > 0 &&
+    sourcePrNumber !== 139 &&
+    source.view.state === 'MERGED' &&
+    epoch.state === 'MERGED' &&
+    epoch.pr_number === sourcePrNumber &&
+    epoch.base_branch === 'master' &&
+    epoch.candidate_sha === candidate &&
+    epoch.review_pass_sha === candidate &&
+    epoch.reviewed_base_sha === disposition?.baseSha &&
+    epoch.base_sha === disposition?.baseSha &&
+    epoch.ci?.sha === candidate &&
+    epoch.ci?.status === 'SUCCESS' &&
+    source.view.headRefOid === candidate &&
+    source.view.headRefName === epoch.branch &&
+    source.view.baseRefName === 'master' &&
+    mandatoryChecksSuccessful(source.view.statusCheckRollup) &&
+    latestReview?.candidate_sha === candidate &&
+    latestReview?.reviewed_base_sha === disposition?.baseSha &&
+    latestReview?.verdict === 'PASS' &&
+    latestReview?.reviewer_id === disposition?.reviewerId &&
+    reviewerPattern.test(disposition?.reviewerId ?? '') &&
+    claimPattern.test(disposition?.claimId ?? '') &&
+    disposition?.runNumber === 95 &&
+    disposition?.prNumber === sourcePrNumber &&
+    disposition?.frontierId === 'G04' &&
+    disposition?.epochId === epoch.epoch_id &&
+    disposition?.ciSha === candidate &&
+    disposition?.ciStatus === 'SUCCESS' &&
+    disposition?.expectedArgumentsSha256 === canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS) &&
+    disposition?.toolName === 'bangumi.get_person_activity' &&
+    disposition?.argumentProfile === G04_ARGUMENT_PROFILE &&
+    disposition?.model === G04_MODEL &&
+    disposition?.reasoningEffort === G04_REASONING_EFFORT &&
+    disposition?.state === 'INCONCLUSIVE' &&
+    disposition?.reportWritten === false &&
+    disposition?.retryAllowed === false &&
+    disposition?.reportPath === undefined &&
+    disposition?.reportSha256 === undefined &&
+    typeof disposition?.bundleSha256 === 'string' &&
+    /^[0-9a-f]{64}$/u.test(disposition.bundleSha256) &&
+    receiptKeyValid &&
+    typeof disposition?.claimedAt === 'string' &&
+    typeof disposition?.finishedAt === 'string' &&
+    !fs.existsSync(G04_REPORT_PATH);
+  if (!valid) {
+    throw new HarnessInvariantError(
+      'G04_LEGACY_CLAIM_INVALID',
+      'The source PR does not prove an exact merged Run 95 G04 INCONCLUSIVE/no-report/no-retry claim.',
+      { sourcePrNumber },
+    );
+  }
+  return {
+    claimId: disposition.claimId,
+    prNumber: sourcePrNumber,
+    epochId: epoch.epoch_id,
+    candidateSha: candidate,
+    baseSha: disposition.baseSha,
+    ciSha: disposition.ciSha,
+    ciStatus: disposition.ciStatus,
+    reviewerId: disposition.reviewerId,
+    bundleSha256: disposition.bundleSha256,
+    model: disposition.model,
+    reasoningEffort: disposition.reasoningEffort,
+    argumentProfile: disposition.argumentProfile,
+    expectedArgumentsSha256: disposition.expectedArgumentsSha256,
+    state: disposition.state,
+    reportWritten: disposition.reportWritten,
+    retryAllowed: disposition.retryAllowed,
+    claimedAt: disposition.claimedAt,
+    finishedAt: disposition.finishedAt,
+  };
+}
+
+function assertG04LegacyReconciliationReadiness({ runNumber, prNumber, sourcePrNumber }) {
+  const sourceClaim = verifiedG04LegacyTerminalClaim(sourcePrNumber);
+  const run = issueState(runNumber).state;
+  const epochResult = epochState(prNumber);
+  const epoch = epochResult.state;
+  const pr = epochResult.view;
+  const candidateSha = currentHead();
+  const currentBaseSha = remoteBaseSha('master');
+  const latestReview = epoch.review_history?.at(-1);
+  const reviewerId = latestReview?.reviewer_id;
+  const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round[1-9][0-9]*$`, 'u');
+  if (
+    Number(runNumber) !== 95 ||
+    Number(prNumber) !== 139 ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    run.g04_one_shot_legacy_reconciliation != null ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.epoch_id !== 'run95-g04-person-activity-global-one-shot-latch' ||
+    epoch.pr_number !== Number(prNumber) ||
+    !epoch.advances_frontier_ids?.includes('G04') ||
+    epoch.branch !== currentBranch() ||
+    candidateSha !== epoch.candidate_sha ||
+    git('status', '--porcelain') !== '' ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft ||
+    pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch ||
+    pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' ||
+    epoch.base_sha !== currentBaseSha ||
+    epoch.reviewed_base_sha !== currentBaseSha ||
+    epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha ||
+    epoch.ci?.status !== 'SUCCESS' ||
+    !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    latestReview?.candidate_sha !== candidateSha ||
+    latestReview?.reviewed_base_sha !== currentBaseSha ||
+    latestReview?.verdict !== 'PASS' ||
+    !reviewerPattern.test(reviewerId ?? '') ||
+    epoch.scope_closure?.related_work_remaining !== false ||
+    epoch.adversarial_preflight?.completed !== true ||
+    Object.hasOwn(epoch.adversarial_preflight ?? {}, 'g04_one_shot_disposition') ||
+    Object.hasOwn(epoch.adversarial_preflight ?? {}, 'g04_legacy_claim_reconciliation') ||
+    fs.existsSync(G04_REPORT_PATH)
+  ) {
+    throw new HarnessInvariantError(
+      'G04_LEGACY_RECONCILIATION_GATE_FAILED',
+      'Legacy G04 reconciliation requires the clean active PR #139 exact Candidate/Base/seven-check CI/Luna Max PASS and no existing disposition.',
+      { runNumber, prNumber, sourcePrNumber, candidateSha, currentBaseSha },
+    );
+  }
+  return { run, epoch, sourceClaim, candidateSha, baseSha: currentBaseSha, reviewerId };
+}
+
+function g04LegacyReconciliationMatches(record, sourceClaim, prNumber) {
+  return (
+    record?.schemaVersion === 1 &&
+    record?.state === 'LEGACY_TERMINAL_RECONCILED' &&
+    record?.runNumber === 95 &&
+    record?.frontierId === 'G04' &&
+    record?.toolName === 'bangumi.get_person_activity' &&
+    record?.argumentProfile === G04_ARGUMENT_PROFILE &&
+    record?.expectedArgumentsSha256 === canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS) &&
+    canonicalHash(record?.sourceClaim) === canonicalHash(sourceClaim) &&
+    record?.reconciledAgainst?.prNumber === Number(prNumber) &&
+    record?.globalLatch?.name === g04OneShotLatchLabelName() &&
+    record?.globalLatch?.description === g04OneShotLatchLabelDescription() &&
+    record?.queryInvoked === false &&
+    record?.reportWritten === false &&
+    record?.retryAllowed === false &&
+    typeof record?.reconciledAt === 'string'
+  );
+}
+
+function commandEpochG04LegacyClaimReconcile(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = Number(required(options, 'run'));
+  const prNumber = Number(required(options, 'pr'));
+  const sourcePrNumber = Number(required(options, 'source-pr'));
+  const sourceClaim = verifiedG04LegacyTerminalClaim(sourcePrNumber);
+  const initialRun = issueState(runNumber).state;
+  const initialEpoch = epochState(prNumber).state;
+  const existingPrRecord = initialEpoch.adversarial_preflight?.g04_legacy_claim_reconciliation;
+  const existingRunRecord = initialRun.g04_one_shot_legacy_reconciliation;
+  if (existingRunRecord != null && existingPrRecord == null) {
+    throw new HarnessInvariantError(
+      'G04_LEGACY_RECONCILIATION_MISMATCH',
+      'The Run issue has a G04 legacy tombstone but the Epoch PR does not; refusing to infer missing PR state.',
+    );
+  }
+  if (existingPrRecord != null) {
+    if (!g04LegacyReconciliationMatches(existingPrRecord, sourceClaim, prNumber)) {
+      throw new HarnessInvariantError(
+        'G04_LEGACY_RECONCILIATION_MISMATCH',
+        'The Epoch PR reconciliation does not match the verified legacy claim.',
+      );
+    }
+    if (
+      existingRunRecord != null &&
+      canonicalHash(existingRunRecord) !== canonicalHash(existingPrRecord)
+    ) {
+      throw new HarnessInvariantError(
+        'G04_LEGACY_RECONCILIATION_MISMATCH',
+        'The Run issue and Epoch PR disagree about the terminal G04 claim.',
+      );
+    }
+    if (existingRunRecord == null) {
+      const nextRun = structuredClone(initialRun);
+      nextRun.g04_one_shot_legacy_reconciliation = existingPrRecord;
+      nextRun.next_action = `RESUME_PR_${prNumber}_G04_LEGACY_RECONCILIATION_RECOVERY`;
+      updateIssue(runNumber, nextRun);
+      const readback = issueState(runNumber).state.g04_one_shot_legacy_reconciliation;
+      if (canonicalHash(readback) !== canonicalHash(existingPrRecord)) {
+        throw new HarnessInvariantError(
+          'G04_LEGACY_RECONCILIATION_READBACK_MISMATCH',
+          'The recovered Run issue tombstone did not read back exactly.',
+        );
+      }
+      print({
+        state: 'G04_LEGACY_RECONCILIATION_RECOVERED',
+        source_pr: sourcePrNumber,
+        active_pr: prNumber,
+        query_invoked: false,
+        retry_allowed: false,
+      });
+      return;
+    }
+    print({
+      state: 'G04_LEGACY_RECONCILIATION_ALREADY_RECORDED',
+      source_pr: sourcePrNumber,
+      active_pr: prNumber,
+      query_invoked: false,
+      retry_allowed: false,
+    });
+    return;
+  }
+  if (existingRunRecord != null) {
+    throw new HarnessInvariantError(
+      'G04_LEGACY_RECONCILIATION_MISMATCH',
+      'A Run-level G04 tombstone exists without its matching Epoch PR record.',
+    );
+  }
+
+  const first = assertG04LegacyReconciliationReadiness({
+    runNumber,
+    prNumber,
+    sourcePrNumber,
+  });
+  const bundleSha256 = buildG04BundleForReconciliation(first.candidateSha);
+  if (!g04BundleMatchesForReconciliation(first.candidateSha, bundleSha256)) {
+    throw new HarnessInvariantError(
+      'G04_LEGACY_RECONCILIATION_BUNDLE_MISMATCH',
+      'The exact PR #139 Candidate bundle did not match its build attestation.',
+    );
+  }
+  const claim = {
+    schemaVersion: 1,
+    state: 'LEGACY_TERMINAL_RECONCILED',
+    runNumber: 95,
+    frontierId: 'G04',
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: G04_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
+    sourceClaim,
+    reconciledAgainst: {
+      prNumber,
+      epochId: first.epoch.epoch_id,
+      candidateSha: first.candidateSha,
+      baseSha: first.baseSha,
+      ciSha: first.candidateSha,
+      ciStatus: 'SUCCESS',
+      reviewerId: first.reviewerId,
+      bundleSha256,
+      model: G04_MODEL,
+      reasoningEffort: G04_REASONING_EFFORT,
+    },
+    globalLatch: {
+      name: g04OneShotLatchLabelName(),
+      description: g04OneShotLatchLabelDescription(),
+    },
+    queryInvoked: false,
+    reportWritten: false,
+    retryAllowed: false,
+    reconciledAt: new Date().toISOString(),
+  };
+  const assertReady = () => {
+    const current = assertG04LegacyReconciliationReadiness({
+      runNumber,
+      prNumber,
+      sourcePrNumber,
+    });
+    if (
+      current.candidateSha !== claim.reconciledAgainst.candidateSha ||
+      current.baseSha !== claim.reconciledAgainst.baseSha ||
+      current.reviewerId !== claim.reconciledAgainst.reviewerId ||
+      !g04BundleMatchesForReconciliation(current.candidateSha, bundleSha256)
+    ) {
+      throw new HarnessInvariantError(
+        'G04_LEGACY_RECONCILIATION_GATE_CHANGED',
+        'The exact Candidate/Base/reviewer/bundle changed during legacy reconciliation.',
+      );
+    }
+  };
+  try {
+    claimG04OneShotAtomically({
+      claim,
+      assertReady,
+      acquireGlobalLatch: () => acquireG04OneShotGitHubLatch(gh),
+      persistClaim: (value) => {
+        const latestEpoch = epochState(prNumber).state;
+        const latestRun = issueState(runNumber).state;
+        if (
+          Object.hasOwn(latestEpoch.adversarial_preflight ?? {}, 'g04_one_shot_disposition') ||
+          Object.hasOwn(
+            latestEpoch.adversarial_preflight ?? {},
+            'g04_legacy_claim_reconciliation',
+          ) ||
+          latestRun.g04_one_shot_legacy_reconciliation != null
+        ) {
+          throw new HarnessInvariantError(
+            'G04_LEGACY_RECONCILIATION_ALREADY_RECORDED',
+            'A concurrent G04 claim or reconciliation changed the control plane.',
+          );
+        }
+        const nextEpoch = structuredClone(latestEpoch);
+        nextEpoch.adversarial_preflight = {
+          ...nextEpoch.adversarial_preflight,
+          summary:
+            'Run #95 G04 was already terminal INCONCLUSIVE without a report on merged PR #136. The exact legacy claim is reconciled to the repository-global latch after PR #139 Candidate/Base/CI/Luna Max PASS; no query ran on PR #139, and retries remain prohibited.',
+          g04_legacy_claim_reconciliation: value,
+        };
+        nextEpoch.next_action = 'AUTO_MERGE_AFTER_G04_LEGACY_TERMINAL_RECONCILIATION';
+        updatePr(prNumber, nextEpoch);
+        const nextRun = structuredClone(latestRun);
+        nextRun.g04_one_shot_legacy_reconciliation = value;
+        nextRun.next_action = `RESUME_PR_${prNumber}_G04_LEGACY_TERMINAL_RECONCILIATION`;
+        updateIssue(runNumber, nextRun);
+      },
+      readClaim: () => ({
+        epoch:
+          epochState(prNumber).state.adversarial_preflight?.g04_legacy_claim_reconciliation ?? null,
+        run: issueState(runNumber).state.g04_one_shot_legacy_reconciliation ?? null,
+      }),
+      verifyClaim: (observed, expected) =>
+        canonicalHash(observed?.epoch) === canonicalHash(expected) &&
+        canonicalHash(observed?.run) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof G04OneShotClaimError) {
+      throw new HarnessInvariantError(error.code, error.message);
+    }
+    throw error;
+  }
+  print({
+    state: 'G04_LEGACY_CLAIM_RECONCILED',
+    source_pr: sourcePrNumber,
+    source_claim_id: sourceClaim.claimId,
+    active_pr: prNumber,
+    candidate_sha: claim.reconciledAgainst.candidateSha,
+    base_sha: claim.reconciledAgainst.baseSha,
+    reviewer_id: claim.reconciledAgainst.reviewerId,
+    global_latch: claim.globalLatch.name,
+    query_invoked: false,
+    report_written: false,
+    retry_allowed: false,
+  });
+}
+
 function assertG04OneShotClaimReadiness(gate) {
   const {
     runNumber,
@@ -1522,11 +1943,13 @@ function assertG04OneShotClaimReadiness(gate) {
     run.profile !== 'AUTONOMOUS_EVOLUTION' ||
     run.active_epoch_pr !== Number(prNumber) ||
     run.pending_epoch != null ||
+    run.g04_one_shot_legacy_reconciliation != null ||
     epoch.state !== 'REVIEW_PASSED' ||
-    epoch.epoch_id !== 'run95-g04-person-activity-codex-current-evidence' ||
+    epoch.epoch_id !== 'run95-g04-person-activity-global-one-shot-latch' ||
     epoch.pr_number !== Number(prNumber) ||
     !epoch.advances_frontier_ids?.includes('G04') ||
     Object.hasOwn(epoch.adversarial_preflight ?? {}, 'g04_one_shot_disposition') ||
+    Object.hasOwn(epoch.adversarial_preflight ?? {}, 'g04_legacy_claim_reconciliation') ||
     epoch.branch !== currentBranch() ||
     currentHead() !== candidateSha ||
     git('status', '--porcelain') !== '' ||
@@ -1580,36 +2003,65 @@ function commandEpochG04OneShotClaim(gate, { printOutput = true } = {}) {
   assertG04OneShotClaimReadiness(gate);
   const claimId = `g04-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`;
   const runnerReceiptPublicKeySha256 = g04RunnerPublicKeySha256(runnerReceiptPublicKey);
-  const epochResult = epochState(prNumber);
-  const nextEpoch = structuredClone(epochResult.state);
-  nextEpoch.adversarial_preflight = {
-    ...nextEpoch.adversarial_preflight,
-    g04_one_shot_disposition: {
-      claimId,
-      frontierId: 'G04',
-      epochId: 'run95-g04-person-activity-codex-current-evidence',
-      runNumber: Number(runNumber),
-      toolName: 'bangumi.get_person_activity',
-      argumentProfile: G04_ARGUMENT_PROFILE,
-      expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
-      state: 'CLAIMED',
-      sourceCandidateSha: candidateSha,
-      baseSha,
-      ciSha: candidateSha,
-      ciStatus: 'SUCCESS',
-      bundleSha256,
-      prNumber: Number(prNumber),
-      reviewerId,
-      model,
-      reasoningEffort,
-      runnerReceiptPublicKey,
-      runnerReceiptPublicKeySha256,
-      reportWritten: false,
-      retryAllowed: false,
-      claimedAt: new Date().toISOString(),
-    },
+  const claimDisposition = {
+    claimId,
+    frontierId: 'G04',
+    epochId: 'run95-g04-person-activity-global-one-shot-latch',
+    runNumber: Number(runNumber),
+    toolName: 'bangumi.get_person_activity',
+    argumentProfile: G04_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
+    state: 'CLAIMED',
+    sourceCandidateSha: candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    bundleSha256,
+    prNumber: Number(prNumber),
+    reviewerId,
+    model,
+    reasoningEffort,
+    runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256,
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: new Date().toISOString(),
   };
-  updatePr(prNumber, nextEpoch);
+  try {
+    claimG04OneShotAtomically({
+      claim: claimDisposition,
+      assertReady: () => assertG04OneShotClaimReadiness(gate),
+      acquireGlobalLatch: () => acquireG04OneShotGitHubLatch(gh),
+      persistClaim: (claim) => {
+        const latest = epochState(prNumber);
+        if (
+          Object.hasOwn(
+            latest.state.adversarial_preflight ?? {},
+            'g04_one_shot_disposition',
+          )
+        ) {
+          throw new HarnessInvariantError(
+            'G04_ONESHOT_ALREADY_CLAIMED',
+            'A durable G04 one-shot disposition already exists; refusing to overwrite it.',
+          );
+        }
+        const nextEpoch = structuredClone(latest.state);
+        nextEpoch.adversarial_preflight = {
+          ...nextEpoch.adversarial_preflight,
+          g04_one_shot_disposition: claim,
+        };
+        updatePr(prNumber, nextEpoch);
+      },
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.g04_one_shot_disposition ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof G04OneShotClaimError) {
+      throw new HarnessInvariantError(error.code, error.message);
+    }
+    throw error;
+  }
   const result = {
     state: 'G04_ONE_SHOT_CLAIMED',
     claimId,
@@ -1662,7 +2114,7 @@ function commandEpochG04OneShotResult(
     current.runNumber !== 95 ||
     current.prNumber !== Number(claim.prNumber) ||
     current.frontierId !== 'G04' ||
-    current.epochId !== 'run95-g04-person-activity-codex-current-evidence' ||
+    current.epochId !== 'run95-g04-person-activity-global-one-shot-latch' ||
     current.sourceCandidateSha !== claim.candidateSha ||
     current.baseSha !== claim.baseSha ||
     current.ciSha !== claim.candidateSha ||
@@ -1798,7 +2250,7 @@ function persistHarnessG04OneShotResult(claim, state, reportSha256) {
     const disposition = status.adversarial_preflight?.g04_one_shot_disposition;
     return g04DispositionAcknowledges(disposition, claim, {
       resultState: state,
-      epochId: 'run95-g04-person-activity-codex-current-evidence',
+      epochId: 'run95-g04-person-activity-global-one-shot-latch',
       toolName: 'bangumi.get_person_activity',
       argumentProfile: G04_ARGUMENT_PROFILE,
       expectedArgumentsSha256: canonicalHash(G04_EXPECTED_QUERY_ARGUMENTS),
@@ -3425,6 +3877,7 @@ const commands = {
   'epoch:g19-one-shot-claim': commandEpochG19OneShotClaim,
   'epoch:g19-one-shot-result': commandEpochG19OneShotResult,
   'epoch:g04-one-shot-run': commandEpochG04OneShotRun,
+  'epoch:g04-legacy-claim-reconcile': commandEpochG04LegacyClaimReconcile,
   'epoch:g16-one-shot-run': commandEpochG16OneShotRun,
   'epoch:p01-one-shot-run': commandEpochP01OneShotRun,
   'epoch:p01-one-shot-result': commandEpochP01OneShotResult,

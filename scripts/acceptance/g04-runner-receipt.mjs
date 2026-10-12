@@ -4,7 +4,7 @@ import { G04_EXPECTED_QUERY_ARGUMENTS } from './g04-person-activity-answer-check
 
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'G04';
-const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
+const EPOCH_ID = 'run95-g04-person-activity-global-one-shot-latch';
 const TOOL_NAME = 'bangumi.get_person_activity';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';

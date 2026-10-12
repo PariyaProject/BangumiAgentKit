@@ -24,7 +24,7 @@ import {
 
 const candidate = 'a'.repeat(40);
 const base = 'b'.repeat(40);
-const branch = 'codex/epoch-run95-g04-person-activity-codex-current-evidence';
+const branch = 'codex/epoch-run95-g04-person-activity-global-one-shot-latch';
 const prNumber = 136;
 const reviewerId = 'gpt-6-luna-max-run95-pr136-round1';
 const requiredChecks = [
@@ -73,7 +73,7 @@ function gateInput() {
         number: prNumber,
         github_state: 'OPEN',
         state: {
-          epoch_id: 'run95-g04-person-activity-codex-current-evidence',
+          epoch_id: 'run95-g04-person-activity-global-one-shot-latch',
           pr_number: prNumber,
           branch,
           base_branch: 'master',
@@ -272,7 +272,7 @@ describe('G04 one-tool Codex runner preflight', () => {
         claimId,
         runNumber: 95,
         frontierId: 'G04',
-        epochId: 'run95-g04-person-activity-codex-current-evidence',
+        epochId: 'run95-g04-person-activity-global-one-shot-latch',
         prNumber,
         sourceCandidateSha: candidate,
         baseSha: base,
@@ -296,6 +296,33 @@ describe('G04 one-tool Codex runner preflight', () => {
       baseSha: base,
       reviewerId,
     });
+  });
+
+  it('refuses the fixed G04 query after a legacy terminal claim is reconciled', () => {
+    for (const location of ['run', 'epoch'] as const) {
+      const { status, pr } = gateInput();
+      const tombstone = {
+        state: 'LEGACY_TERMINAL_RECONCILED',
+        sourceClaim: { state: 'INCONCLUSIVE', retryAllowed: false },
+        queryInvoked: false,
+        retryAllowed: false,
+      };
+      if (location === 'run') {
+        Reflect.set(status.run.state, 'g04_one_shot_legacy_reconciliation', tombstone);
+      } else {
+        Reflect.set(
+          status.epoch.state.adversarial_preflight,
+          'g04_legacy_claim_reconciliation',
+          tombstone,
+        );
+      }
+      expect(() =>
+        assertG04CandidateReviewGate(status, pr, {
+          sourceRevision: candidate,
+          currentBaseSha: base,
+        }),
+      ).toThrow(/G04 query requires the clean active exact Candidate/u);
+    }
   });
 
   it('rejects a previously merged G04 PR even when its old reviewer identity is valid for that PR', () => {

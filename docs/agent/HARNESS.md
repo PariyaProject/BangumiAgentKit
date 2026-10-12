@@ -323,6 +323,16 @@ query may run and the consumed latch cannot be released. Recovery may only
 reconcile the existing latch, PR state, and any sanitized artifact to a
 terminal result; it never retries the Product query.
 
+When an exact terminal one-shot claim predates the repository label, the
+Harness may reconcile that legacy disposition only after verifying its merged
+source PR, exact Candidate/Base/CI/reviewer binding, terminal result, and
+absence of a report. The active Epoch must independently pass its exact
+Candidate/Base/seven-check CI/Luna Max review gates before the Harness creates
+the same permanent label and records an exact no-retry tombstone in the Run
+Issue and Epoch PR. This reconciliation grants no query authority. If a label
+or persisted control state is ambiguous, fail closed; never rerun the query or
+remove/recreate the latch.
+
 ## 7. Candidate and CI invariants
 
 The normal V3 invariant is:

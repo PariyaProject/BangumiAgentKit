@@ -42,7 +42,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'G04';
-const EPOCH_ID = 'run95-g04-person-activity-codex-current-evidence';
+const EPOCH_ID = 'run95-g04-person-activity-global-one-shot-latch';
 const TOOL_NAME = 'bangumi.get_person_activity';
 const ARGUMENT_PROFILE = 'fixed-g04-person-13684-voice-tv-12m-48r-16d-8rows-v1';
 const SERVER_ID = 'bgk_g04_one_tool';
@@ -366,6 +366,8 @@ export function assertG04CandidateReviewGate(
   const reviewerId = latestReview?.reviewer_id;
   const prNumber = epochView?.number;
   const disposition = epoch?.adversarial_preflight?.g04_one_shot_disposition;
+  const legacyReconciliation = epoch?.adversarial_preflight?.g04_legacy_claim_reconciliation;
+  const runLegacyReconciliation = runState?.g04_one_shot_legacy_reconciliation;
   let receiptKeyMatches = false;
   try {
     receiptKeyMatches =
@@ -428,6 +430,8 @@ export function assertG04CandidateReviewGate(
     matchingPass,
     epoch?.scope_closure?.related_work_remaining === false,
     epoch?.adversarial_preflight?.completed === true,
+    legacyReconciliation == null,
+    runLegacyReconciliation == null,
     dispositionMatches,
     pr?.state === 'OPEN',
     pr?.isDraft === false,
@@ -557,7 +561,7 @@ function assertCleanCandidate() {
   return revision;
 }
 
-function buildExactCandidateBundle(sourceRevision) {
+export function buildExactCandidateBundle(sourceRevision) {
   if (gitText('rev-parse', 'HEAD') !== sourceRevision || gitText('status', '--porcelain')) {
     throw new Error('G04 build requires the unchanged clean Candidate.');
   }
@@ -579,7 +583,7 @@ function buildExactCandidateBundle(sourceRevision) {
   return bundleSha256;
 }
 
-function currentBundleMatches(sourceRevision, bundleSha256) {
+export function currentBundleMatches(sourceRevision, bundleSha256) {
   try {
     return (
       gitText('status', '--porcelain') === '' &&

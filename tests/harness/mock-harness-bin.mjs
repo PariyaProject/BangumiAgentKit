@@ -78,7 +78,9 @@ if (tool === 'gh') {
       state.runBody = payload.body;
       output('updated');
     } else if (/^repos\/\{owner\}\/\{repo\}\/pulls\/\d+$/u.test(action)) {
-      state.prBody = payload.body;
+      const pullNumber = action.match(/\/(\d+)$/u)?.[1];
+      if (state.prs?.[pullNumber]) state.prs[pullNumber].body = payload.body;
+      else state.prBody = payload.body;
       output('updated');
     } else fail(`unsupported GitHub API mutation: ${action}`);
   } else if (group === 'issue' && action === 'list') {
@@ -117,18 +119,20 @@ if (tool === 'gh') {
     state.runIssueState = 'CLOSED';
     output('closed');
   } else if (group === 'pr' && action === 'view') {
+    const pullNumber = String(Number(args[2]));
+    const pr = state.prs?.[pullNumber];
     output({
-      number: Number(args[2]),
+      number: Number(pullNumber),
       title: 'Mock Epoch',
-      body: state.prBody,
-      state: state.prState ?? 'OPEN',
-      isDraft: state.draft ?? false,
+      body: pr?.body ?? state.prBody,
+      state: pr?.state ?? state.prState ?? 'OPEN',
+      isDraft: pr?.draft ?? state.draft ?? false,
       url: 'https://example.test/pull/42',
-      headRefName: state.featureBranch,
-      headRefOid: state.featureHeadSha,
-      baseRefName: state.baseBranch,
+      headRefName: pr?.headRefName ?? state.featureBranch,
+      headRefOid: pr?.headRefOid ?? state.featureHeadSha,
+      baseRefName: pr?.baseRefName ?? state.baseBranch,
       mergeStateStatus: 'CLEAN',
-      statusCheckRollup: state.checks ?? [],
+      statusCheckRollup: pr?.checks ?? state.checks ?? [],
       mergeCommit: state.mergeCommit ? { oid: state.mergeCommit } : null,
     });
   } else if (group === 'pr' && action === 'list') {
