@@ -249,6 +249,13 @@ test('C07 Codex config uses Luna Max and exposes only the fixed offline renderer
   assert.ok(encodedArgs.includes(C07_COHORT_RENDER_OFFLINE_FIXTURE_PROFILE));
   assert.ok(encodedArgs.includes('run95 synthetic cohort a'));
   assert.ok(encodedArgs.includes('run95 synthetic cohort b'));
+  assert.ok(
+    args
+      .at(-1)
+      .includes(
+        'respond only with this exact plain-text sentence and no quotes or markdown: 合成对照图卡已生成。',
+      ),
+  );
   assert.equal(
     args.some((item) => item === 'sol' || item.includes('gpt-6-sol')),
     false,
