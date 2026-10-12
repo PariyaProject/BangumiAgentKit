@@ -373,6 +373,14 @@ reason and old/new limits in the durable control block. Use these transitions
 before a default limit would move actionable work into a final-corrective or
 budget-stopped state.
 
+If an Epoch reached `FINAL_CORRECTIVE_REQUIRED` only because unresolved findings
+exhausted its review allowance, a supported `review:budget-extend` resumes it
+as `CORRECTIVE_REQUIRED` after recording the extension, provided the active Run
+and Epoch have no outstanding paired reservation. The transition preserves
+review consumption, review history, and findings; it clears only final-corrective
+authority and does not establish a Candidate or authorize a launch. The ordinary
+Candidate, exact-SHA CI, and paired review reservation gates still apply.
+
 The historical limits (Epoch 2, Outer Product 3, Outer total 4) remain the
 unextended V3 baseline for old control blocks. A valid extension history may
 raise an allowance up to the safe persisted integer range; counts are never

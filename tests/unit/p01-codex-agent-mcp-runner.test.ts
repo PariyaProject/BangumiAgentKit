@@ -16,9 +16,9 @@ import {
   createP01OneShotClaim,
   hasUnexpectedP01CodexToolActivity,
   persistHarnessP01OneShotResult,
-  runP01CodexAgentMcp,
   validateP01RunnerArgs,
 } from '../../scripts/acceptance/run-p01-codex-agent-mcp.mjs';
+import * as p01RunnerModule from '../../scripts/acceptance/run-p01-codex-agent-mcp.mjs';
 import {
   generateP01RunnerReceiptKeyPair,
   p01RunnerPublicKeySha256,
@@ -121,7 +121,7 @@ afterEach(() => {
 });
 
 describe('P01 one-tool Codex runner', () => {
-  it('rejects caller-supplied claim/result callbacks outside the Harness-owned command', () => {
+  it('does not export a callback-injectable runner even when argv and stack are spoofed', () => {
     const claimHarness = vi.fn(() => ({
       state: 'P01_ONE_SHOT_CLAIMED',
       claimId: 'fabricated-claim',
@@ -131,10 +131,32 @@ describe('P01 one-tool Codex runner', () => {
     const claimBefore = existsSync(claimPath) ? readFileSync(claimPath) : null;
     const reportPath = path.resolve('docs/live-probes/p01-person-position-agent-mcp-run95.json');
     const reportBefore = existsSync(reportPath) ? readFileSync(reportPath) : null;
+    const originalArgv = process.argv;
+    const originalPrepareStackTrace = Error.prepareStackTrace;
 
-    expect(() =>
-      Reflect.apply(runP01CodexAgentMcp, undefined, [{ claimHarness, persistResult }]),
-    ).toThrow(/Harness-owned execution boundary/u);
+    try {
+      process.argv = [
+        process.execPath,
+        path.resolve('scripts/agent-harness.mjs'),
+        'epoch:p01-one-shot-run',
+        '--run',
+        '95',
+      ];
+      Error.prepareStackTrace = () =>
+        `at commandEpochP01OneShotRun (${path.resolve('scripts/agent-harness.mjs')}:1:1)`;
+      const exportedRunner = (p01RunnerModule as unknown as Record<string, unknown>)
+        .runP01CodexAgentMcp;
+      expect(exportedRunner).toBeUndefined();
+      if (exportedRunner !== undefined) return;
+      expect(() =>
+        Reflect.apply(exportedRunner as unknown as (...args: never[]) => unknown, undefined, [
+          { claimHarness, persistResult },
+        ]),
+      ).toThrow(TypeError);
+    } finally {
+      process.argv = originalArgv;
+      Error.prepareStackTrace = originalPrepareStackTrace;
+    }
     expect(claimHarness).not.toHaveBeenCalled();
     expect(persistResult).not.toHaveBeenCalled();
     expect(existsSync(claimPath)).toBe(claimBefore !== null);

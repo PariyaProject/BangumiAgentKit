@@ -1673,7 +1673,8 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'export function createP01OneShotClaim(',
         'REPORT_WRITTEN_ACK_PENDING',
         'export function persistHarnessP01OneShotResult(',
-        'export function runP01CodexAgentMcp(',
+        'export function validateP01HarnessClaim(',
+        'export function assertCurrentReviewGate(',
         "'epoch:p01-one-shot-run'",
         "'features.shell_tool=false'",
         "'features.multi_agent=false'",
@@ -1702,6 +1703,7 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'Number(runNumber) !== 95',
         'runNumber: Number(runNumber)',
         "epochId: 'run95-p01-person-role-agent-mcp'",
+        'function runP01CodexAgentMcp({ claimHarness, persistResult })',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p01_report_is_valid(',
@@ -1712,13 +1714,22 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'CODEX_P01_EXPECTED_ARGUMENTS',
         'CODEX_P01_REPORT_RELATIVE_PATH',
     ),
+    'scripts/lib/agent-harness-core.mjs': (
+        'export function resumeCorrectiveAfterReviewBudgetExtension(',
+        "nextEpoch.state = 'CORRECTIVE_REQUIRED'",
+        "nextEpoch.next_action = 'LUNA_FIX_ALL_P0_P1'",
+    ),
     'tests/unit/p01-person-position-answer-check.test.ts': (
         'describe(\'P01 person-position answer checker\'',
         'allows a detail fetch to finish just after UTC midnight',
     ),
     'tests/unit/p01-codex-agent-mcp-runner.test.ts': (
         'describe(\'P01 one-tool Codex runner\'',
+        'does not export a callback-injectable runner even when argv and stack are spoofed',
         'creates a mode-0600 local claim exactly once',
+    ),
+    'tests/harness/agent-harness-cli.test.mjs': (
+        'CLI review:budget-extend resumes actionable review-limit findings without refunding launches',
     ),
 }
 CODEX_D05_PROBE_IMPLEMENTATION_MARKERS = {

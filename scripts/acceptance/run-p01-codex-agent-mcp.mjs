@@ -4,23 +4,15 @@ import {
   closeSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   openSync,
   readFileSync,
   realpathSync,
-  renameSync,
-  rmSync,
   writeFileSync,
 } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import {
-  parseCodexJsonl,
-  safeCodexNonMcpEventSummary,
-  summarizeCodexEvents,
-} from './run-g26-codex-agent-mcp.mjs';
+import { safeCodexNonMcpEventSummary } from './run-g26-codex-agent-mcp.mjs';
 import {
   computeMcpBundleSha256,
   gitRepositoryText,
@@ -31,14 +23,8 @@ import {
   P01_ARGUMENT_PROFILE,
   P01_COVERAGE_FIELDS,
   P01_EXPECTED_QUERY_ARGUMENTS,
-  verifyP01PersonPositionAnswer,
 } from './p01-person-position-answer-check.mjs';
-import {
-  buildP01RunnerReceiptPayload,
-  createP01RunnerReceipt,
-  generateP01RunnerReceiptKeyPair,
-  p01RunnerPublicKeySha256,
-} from './p01-runner-receipt.mjs';
+import { p01RunnerPublicKeySha256 } from './p01-runner-receipt.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
@@ -49,7 +35,6 @@ const SERVER_ID = 'bgk_p01_one_tool';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
 const MCP_SERVER_SCRIPT = path.join(ROOT, 'apps/mcp/codex-one-tool-mcp-server.mjs');
-const REPORT_WRITER = path.join(ROOT, 'scripts/acceptance/write-p01-agent-mcp-report.mjs');
 const REPORT_PATH = path.join(ROOT, 'docs/live-probes/p01-person-position-agent-mcp-run95.json');
 const HARNESS_SCRIPT = path.join(ROOT, 'scripts/agent-harness.mjs');
 const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
@@ -202,22 +187,6 @@ export function createP01OneShotClaim(
     throw new Error('P01 one-shot claim already exists; refusing to invoke Codex again.');
   }
   return claim;
-}
-
-function markClaim(claimPath, claim, state, summary) {
-  try {
-    const next = {
-      ...claim,
-      state,
-      finishedAt: new Date().toISOString(),
-      ...(summary ? { summary } : {}),
-    };
-    const temporary = `${claimPath}.${process.pid}.tmp`;
-    writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
-    renameSync(temporary, claimPath);
-  } catch {
-    /* Keep the original create-once claim if replacement fails. */
-  }
 }
 
 export function buildCodexExecArgs({
@@ -467,7 +436,7 @@ function invokeHarnessCommand(args) {
   }
 }
 
-function validateP01HarnessClaim(result, gate) {
+export function validateP01HarnessClaim(result, gate) {
   if (
     result.state !== 'P01_ONE_SHOT_CLAIMED' ||
     typeof result.claimId !== 'string' ||
@@ -548,7 +517,7 @@ function fetchCurrentMaster() {
   return gitText('rev-parse', 'origin/master');
 }
 
-function assertCurrentReviewGate(
+export function assertCurrentReviewGate(
   sourceRevision,
   { allowClaimed = false, bundleSha256, runnerReceiptPublicKey } = {},
 ) {
@@ -596,7 +565,7 @@ export function hasUnexpectedP01CodexToolActivity(events) {
   return events?.nonMcpToolEventCount !== 0 || events?.shellToolCallCount !== 0;
 }
 
-function cleanCandidate() {
+export function cleanCandidate() {
   if (gitText('status', '--porcelain'))
     throw new Error('P01 query requires a clean exact Candidate.');
   const revision = gitText('rev-parse', 'HEAD');
@@ -621,7 +590,7 @@ function cleanCandidate() {
   return revision;
 }
 
-function buildExactCandidateBundle(sourceRevision) {
+export function buildExactCandidateBundle(sourceRevision) {
   if (gitText('rev-parse', 'HEAD') !== sourceRevision || gitText('status', '--porcelain')) {
     throw new Error('P01 build requires the unchanged clean Candidate.');
   }
@@ -642,7 +611,7 @@ function buildExactCandidateBundle(sourceRevision) {
   return bundleSha256;
 }
 
-function currentBundleMatches(sourceRevision, bundleSha256) {
+export function currentBundleMatches(sourceRevision, bundleSha256) {
   try {
     return (
       gitText('status', '--porcelain') === '' &&
@@ -655,7 +624,7 @@ function currentBundleMatches(sourceRevision, bundleSha256) {
   }
 }
 
-function codexCliVersion() {
+export function codexCliVersion() {
   const result = spawnSync('codex', ['--version'], {
     cwd: ROOT,
     env: environment(),
@@ -669,7 +638,7 @@ function codexCliVersion() {
   return match[1];
 }
 
-function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
+export function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
   if (
     !summary ||
     summary.serverProfile !== 'one-tool-anonymous-public-v1' ||
@@ -699,7 +668,7 @@ function serverSummaryMatchesCandidate(summary, sourceRevision, bundleSha256) {
   }
 }
 
-function readServerSummary(file) {
+export function readServerSummary(file) {
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
   } catch {
@@ -707,359 +676,13 @@ function readServerSummary(file) {
   }
 }
 
-function textResultBytes(result) {
+export function textResultBytes(result) {
   if (!Array.isArray(result?.content)) return null;
   const text = result.content
     .filter((item) => item?.type === 'text' && typeof item.text === 'string')
     .map((item) => item.text)
     .join('\n');
   return text ? Buffer.byteLength(text, 'utf8') : null;
-}
-
-function invokeCodex(options) {
-  const result = spawnSync('codex', buildCodexExecArgs(options), {
-    cwd: ROOT,
-    env: environment(),
-    encoding: 'utf8',
-    maxBuffer: MAX_STDOUT_BYTES,
-    timeout: CODEX_TIMEOUT_MS,
-    stdio: ['ignore', 'pipe', 'ignore'],
-  });
-  return {
-    exitCode: Number.isInteger(result.status) ? result.status : 1,
-    stdout: typeof result.stdout === 'string' ? result.stdout : '',
-    failed: Boolean(result.error) || result.status !== 0,
-  };
-}
-
-function invokeReportWriter(input) {
-  const result = spawnSync(process.execPath, [REPORT_WRITER], {
-    cwd: ROOT,
-    env: environment(),
-    input: JSON.stringify(input),
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024,
-    timeout: 15_000,
-    stdio: ['pipe', 'pipe', 'ignore'],
-  });
-  let output = null;
-  try {
-    output = JSON.parse(result.stdout ?? '');
-  } catch {
-    /* Writer stdout is sanitized. */
-  }
-  return { exitCode: result.status ?? 1, output };
-}
-
-function assertHarnessOwnedP01Invocation() {
-  const entryPoint = process.argv[1] ? path.resolve(process.argv[1]) : null;
-  const args = process.argv.slice(2);
-  const callerFrame = new Error().stack?.split('\n')[3] ?? '';
-  const runOptionIndex = args.findIndex((value) => value === '--run' || value.startsWith('--run='));
-  const runNumber =
-    runOptionIndex < 0
-      ? null
-      : args[runOptionIndex] === '--run'
-        ? args[runOptionIndex + 1]
-        : args[runOptionIndex].slice('--run='.length);
-  if (
-    entryPoint !== HARNESS_SCRIPT ||
-    args[0] !== 'epoch:p01-one-shot-run' ||
-    runNumber !== String(RUN_NUMBER) ||
-    !callerFrame.includes(HARNESS_SCRIPT) ||
-    !callerFrame.includes('commandEpochP01OneShotRun')
-  ) {
-    throw new Error('P01 runner must be invoked by the Harness-owned execution boundary.');
-  }
-}
-
-export function runP01CodexAgentMcp({ claimHarness, persistResult } = {}) {
-  assertHarnessOwnedP01Invocation();
-  if (typeof claimHarness !== 'function' || typeof persistResult !== 'function') {
-    throw new Error('P01 runner requires the Harness-owned claim/result boundary.');
-  }
-  const sourceRevision = cleanCandidate();
-  const claimPath = canonicalP01ClaimPath();
-  const initialGate = assertCurrentReviewGate(sourceRevision);
-  const cliVersion = codexCliVersion();
-  const bundleSha256 = buildExactCandidateBundle(sourceRevision);
-  if (!currentBundleMatches(sourceRevision, bundleSha256))
-    throw new Error('P01 MCP bundle changed before claim creation.');
-  const currentGate = assertCurrentReviewGate(sourceRevision);
-  if (
-    currentGate.prNumber !== initialGate.prNumber ||
-    currentGate.reviewerId !== initialGate.reviewerId ||
-    currentGate.baseSha !== initialGate.baseSha
-  ) {
-    throw new Error(
-      'Active P01 Epoch, Base, Candidate, or Luna Max reviewer changed during preflight.',
-    );
-  }
-  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
-  const runnerReceiptPublicKey = runnerReceiptKeyPair.publicKeyBase64;
-  const durableGate = { ...currentGate, bundleSha256, runnerReceiptPublicKey };
-  const remoteClaim = claimHarness(durableGate);
-  validateP01HarnessClaim(remoteClaim, durableGate);
-  let claim;
-  try {
-    claim = createP01OneShotClaim(claimPath, {
-      ...durableGate,
-      sourceRevision,
-      bundleSha256,
-      claimId: remoteClaim.claimId,
-    });
-  } catch {
-    persistResult(remoteClaim, 'INCONCLUSIVE');
-    throw new Error(
-      'P01 local create-once claim failed after the durable Harness claim; the frontier is terminal.',
-    );
-  }
-  let temporaryDirectory;
-  let reportSha256 = null;
-  let safe = {
-    codexCliVersion: cliVersion,
-    sourceRevision,
-    baseSha: currentGate.baseSha,
-    prNumber: currentGate.prNumber,
-    reviewerId: currentGate.reviewerId,
-    bundleSha256,
-    codexExitCode: null,
-    eventStreamParsed: false,
-    codexMcpToolEventCount: 0,
-    nonMcpToolEventCount: 0,
-    nonMcpToolTypes: [],
-    shellToolCallCount: 0,
-    allowedCallCount: 0,
-  };
-  try {
-    temporaryDirectory = mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-p01-run95-'));
-    const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
-    const execution = invokeCodex({
-      nodePath: process.execPath,
-      summaryPath,
-      sourceRevision,
-      bundleSha256,
-    });
-    const parsed = parseCodexJsonl(execution.stdout);
-    const events = summarizeCodexEvents(parsed.events);
-    const serverSummary = readServerSummary(summaryPath);
-    const summaryMatches = serverSummaryMatchesCandidate(
-      serverSummary,
-      sourceRevision,
-      bundleSha256,
-    );
-    const eventSummary = canonicalP01SafeEventSummary(events);
-    safe = {
-      ...safe,
-      codexExitCode: execution.exitCode,
-      eventStreamParsed: parsed.parsed && events.eventStreamComplete,
-      ...eventSummary,
-      targetServerMatch:
-        events.mcpServerNames.length === 1 && events.mcpServerNames[0] === SERVER_ID,
-      allowedCallCount: Number.isSafeInteger(serverSummary?.allowedCallCount)
-        ? serverSummary.allowedCallCount
-        : 0,
-      deniedCallCount: Number.isSafeInteger(serverSummary?.deniedCallCount)
-        ? serverSummary.deniedCallCount
-        : null,
-      resultStatus:
-        typeof serverSummary?.serverResultStatus === 'string'
-          ? serverSummary.serverResultStatus
-          : 'unavailable',
-      serverSummaryMatchesCandidate: summaryMatches,
-    };
-    if (
-      execution.failed ||
-      !summaryMatches ||
-      !currentBundleMatches(sourceRevision, bundleSha256) ||
-      !parsed.parsed ||
-      !events.eventStreamComplete ||
-      events.codexMcpToolEventCount !== 1 ||
-      events.mcpServerNames.length !== 1 ||
-      events.mcpServerNames[0] !== SERVER_ID ||
-      events.completedMcpCalls.length !== 1 ||
-      events.completedMcpCalls[0]?.tool !== TOOL_NAME ||
-      events.toolCalls.length !== 1 ||
-      events.toolCalls[0]?.state !== 'DONE' ||
-      hasUnexpectedP01CodexToolActivity(events) ||
-      serverSummary?.allowedCallCount !== 1 ||
-      serverSummary?.deniedCallCount !== 0 ||
-      serverSummary?.serverResultStatus !== 'SUCCESS'
-    ) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-      persistResult(remoteClaim, 'INCONCLUSIVE');
-      process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`,
-      );
-      return 1;
-    }
-    const postGate = assertCurrentReviewGate(sourceRevision, {
-      allowClaimed: true,
-      bundleSha256,
-      runnerReceiptPublicKey,
-    });
-    if (
-      postGate.prNumber !== currentGate.prNumber ||
-      postGate.baseSha !== currentGate.baseSha ||
-      postGate.reviewerId !== currentGate.reviewerId
-    ) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
-      persistResult(remoteClaim, 'INCONCLUSIVE');
-      process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`,
-      );
-      return 1;
-    }
-    const call = events.completedMcpCalls[0];
-    const answerResult = verifyP01PersonPositionAnswer(
-      events.answer,
-      call?.arguments,
-      call?.result,
-      events.toolCalls,
-      textResultBytes(call?.result),
-    );
-    if (!answerResult.passed) {
-      markClaim(claimPath, claim, 'INCONCLUSIVE', {
-        ...safe,
-        answerChecks: answerResult.answerChecks,
-      });
-      persistResult(remoteClaim, 'INCONCLUSIVE');
-      process.stdout.write(
-        `${JSON.stringify({
-          passed: false,
-          state: 'INCONCLUSIVE',
-          ...safe,
-          answerChecks: answerResult.answerChecks,
-        })}\n`,
-      );
-      return 1;
-    }
-    const writerInput = {
-      model: MODEL,
-      reasoningEffort: REASONING_EFFORT,
-      codexCliVersion: cliVersion,
-      claimId: remoteClaim.claimId,
-      runnerReceiptPublicKey,
-      runnerEventStreamSha256: sha256(execution.stdout),
-      runnerServerSummarySha256: sha256(readFileSync(summaryPath)),
-      processExitCode: execution.exitCode,
-      resultStatus: serverSummary.serverResultStatus,
-      eventStreamParsed: parsed.parsed && events.eventStreamComplete,
-      serverToolNames: serverSummary.serverToolNames,
-      serverToolCount: serverSummary.serverToolCount,
-      codexMcpToolEventCount: events.codexMcpToolEventCount,
-      mcpServerNames: events.mcpServerNames,
-      nonMcpToolEventCount: events.nonMcpToolEventCount,
-      nonMcpToolTypes: eventSummary.nonMcpToolTypes,
-      shellToolCallCount: events.shellToolCallCount,
-      allowedCallCount: serverSummary.allowedCallCount,
-      deniedCallCount: serverSummary.deniedCallCount,
-      privacy: serverSummary.privacy,
-      serverResultSummary: serverSummary.result,
-      candidateGate: {
-        candidateSha: sourceRevision,
-        baseSha: currentGate.baseSha,
-        ciSha: sourceRevision,
-        ciStatus: 'SUCCESS',
-        reviewPassSha: sourceRevision,
-        reviewVerdict: 'PASS',
-        reviewerId: currentGate.reviewerId,
-      },
-      queryArguments: call?.arguments,
-      answer: events.answer,
-      toolOutput: call?.result,
-      toolCalls: events.toolCalls,
-      toolTextUtf8Bytes: textResultBytes(call?.result),
-      sourceRevision,
-      baseSha: currentGate.baseSha,
-      bundleSha256,
-      prNumber: currentGate.prNumber,
-      reviewerId: currentGate.reviewerId,
-    };
-    const receiptPayload = buildP01RunnerReceiptPayload(writerInput, answerResult);
-    writerInput.runnerReceipt = createP01RunnerReceipt(receiptPayload, runnerReceiptKeyPair);
-    const writer = invokeReportWriter(writerInput);
-    if (writer.exitCode !== 0 || writer.output?.passed !== true) {
-      const answerChecks = writer.output?.answerChecks ?? null;
-      markClaim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
-      persistResult(remoteClaim, 'INCONCLUSIVE');
-      process.stdout.write(
-        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`,
-      );
-      return 1;
-    }
-    const output = writer.output;
-    reportSha256 = sha256(readFileSync(REPORT_PATH));
-    markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
-      ...safe,
-      reportSha256,
-      answerCounters: output.answerCounters,
-      resultSummary: output.resultSummary,
-    });
-    if (!persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256)) {
-      markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
-        ...safe,
-        reportSha256,
-        reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
-      });
-      process.stdout.write(
-        `${JSON.stringify({
-          passed: false,
-          state: 'REPORT_WRITTEN_ACK_PENDING',
-          claimId: remoteClaim.claimId,
-          reportSha256,
-          ...safe,
-          reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
-        })}\n`,
-      );
-      return 1;
-    }
-    markClaim(claimPath, claim, 'REPORT_WRITTEN', {
-      ...safe,
-      reportSha256,
-      answerCounters: output.answerCounters,
-      resultSummary: output.resultSummary,
-    });
-    process.stdout.write(
-      `${JSON.stringify({
-        passed: true,
-        state: 'REPORT_WRITTEN',
-        sourceRevision,
-        baseSha: currentGate.baseSha,
-        bundleSha256,
-        reportSha256,
-        answerCounters: output.answerCounters,
-        resultSummary: output.resultSummary,
-      })}\n`,
-    );
-    return 0;
-  } catch {
-    if (reportSha256) {
-      markClaim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
-        ...safe,
-        reportSha256,
-        reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
-      });
-      persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
-      process.stdout.write(
-        `${JSON.stringify({
-          passed: false,
-          state: 'REPORT_WRITTEN_ACK_PENDING',
-          claimId: remoteClaim.claimId,
-          reportSha256,
-          ...safe,
-          reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
-        })}\n`,
-      );
-      return 1;
-    }
-    markClaim(claimPath, claim, 'INCONCLUSIVE', safe);
-    persistResult(remoteClaim, 'INCONCLUSIVE');
-    process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
-    return 1;
-  } finally {
-    if (temporaryDirectory) rmSync(temporaryDirectory, { recursive: true, force: true });
-  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

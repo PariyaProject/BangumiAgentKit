@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
+import { createHash } from 'node:crypto';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import {
   DISCOVERY_POLICY_VERSION,
@@ -39,6 +41,7 @@ import {
   reconcileFrontierReviewReservation,
   reconcileReviewReservation,
   refreshPassedCandidate,
+  resumeCorrectiveAfterReviewBudgetExtension,
   restoreIntegrationAuthority,
   resumeDiscoveryAfterFrontierRejection,
   resumeReviewLimitForFinalCorrective,
@@ -50,18 +53,50 @@ import {
   waitForSameReviewer,
 } from './lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
+import { parseCodexJsonl, summarizeCodexEvents } from './acceptance/run-g26-codex-agent-mcp.mjs';
 import {
   P01_ARGUMENT_PROFILE,
   P01_EXPECTED_QUERY_ARGUMENTS,
+  verifyP01PersonPositionAnswer,
 } from './acceptance/p01-person-position-answer-check.mjs';
 import { validateP01SanitizedReportFile } from './acceptance/write-p01-agent-mcp-report.mjs';
-import { p01RunnerPublicKeySha256 } from './acceptance/p01-runner-receipt.mjs';
 import {
+  buildP01RunnerReceiptPayload,
+  createP01RunnerReceipt,
+  generateP01RunnerReceiptKeyPair,
+  p01RunnerPublicKeySha256,
+} from './acceptance/p01-runner-receipt.mjs';
+import {
+  assertCurrentReviewGate,
+  buildCodexExecArgs,
+  buildExactCandidateBundle,
+  canonicalP01ClaimPath,
+  canonicalP01SafeEventSummary,
+  cleanCandidate,
+  codexCliVersion,
+  createP01OneShotClaim,
+  currentBundleMatches,
+  hasUnexpectedP01CodexToolActivity,
   persistHarnessP01OneShotResult,
-  runP01CodexAgentMcp,
+  readServerSummary,
+  serverSummaryMatchesCandidate,
+  textResultBytes,
+  validateP01HarnessClaim,
 } from './acceptance/run-p01-codex-agent-mcp.mjs';
+import { sanitizeGitRepositoryEnvironment as sanitizeP01GitEnvironment } from './lib/g26-mcp-bundle.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const P01_MODEL = 'gpt-6-luna';
+const P01_REASONING_EFFORT = 'max';
+const P01_TOOL_NAME = 'bangumi.get_person_activity';
+const P01_SERVER_ID = 'bgk_p01_one_tool';
+const P01_REPORT_WRITER = path.join(root, 'scripts/acceptance/write-p01-agent-mcp-report.mjs');
+const P01_REPORT_PATH = path.join(
+  root,
+  'docs/live-probes/p01-person-position-agent-mcp-run95.json',
+);
+const P01_MAX_STDOUT_BYTES = 8 * 1024 * 1024;
+const P01_CODEX_TIMEOUT_MS = 10 * 60 * 1000;
 const frontierLedgerPath =
   process.env.HARNESS_MOCK_STATE && process.env.HARNESS_FRONTIER_LEDGER_PATH
     ? path.resolve(process.env.HARNESS_FRONTIER_LEDGER_PATH)
@@ -711,18 +746,32 @@ function commandEpochReviewBudgetExtend(options) {
       'Only an open Epoch PR can receive more review slots',
     );
   }
-  const updated = extendEpochReviewBudget(epochResult.state, {
+  let updated = extendEpochReviewBudget(epochResult.state, {
     additional,
     reason,
     at: new Date().toISOString(),
   });
+  let updatedRun = runResult.state;
+  let resumedCorrective = false;
+  if (
+    updated.state === 'FINAL_CORRECTIVE_REQUIRED' &&
+    updated.final_corrective_reason === 'REVIEW_LIMIT_FINDINGS'
+  ) {
+    const resumed = resumeCorrectiveAfterReviewBudgetExtension(runResult.state, updated);
+    updated = resumed.epoch;
+    updatedRun = resumed.run;
+    resumedCorrective = true;
+  }
   updatePr(prNumber, updated);
+  if (resumedCorrective) updateIssue(runNumber, updatedRun);
   print({
     state: 'EPOCH_REVIEW_BUDGET_EXTENDED',
     issue: runResult.view.number,
     pr: epochResult.view.number,
     url: epochResult.view.url,
     review_budget: updated.review,
+    epoch_state: updated.state,
+    resumed_corrective: resumedCorrective,
   });
 }
 
@@ -1466,6 +1515,363 @@ function commandEpochP01OneShotClaim(options, { printOutput = true } = {}) {
   };
   if (printOutput) print(result);
   return result;
+}
+
+function p01ExecutionEnvironment(source = process.env) {
+  const environment = sanitizeP01GitEnvironment(source);
+  for (const key of Object.keys(environment)) {
+    if (
+      /(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY|BASE[_-]?URL|MODEL[_-]?CATALOG|MODEL[_-]?PROVIDER|CODEX_PROFILE|CODEX_MODEL|CODEX_PROVIDER|ANTHROPIC|GEMINI|GOOGLE|VERTEX|AZURE|MISTRAL|OLLAMA|LMSTUDIO)/iu.test(
+        key,
+      )
+    ) {
+      delete environment[key];
+    }
+  }
+  return environment;
+}
+
+function p01Sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function markP01Claim(claimPath, claim, state, summary) {
+  try {
+    const next = {
+      ...claim,
+      state,
+      finishedAt: new Date().toISOString(),
+      ...(summary ? { summary } : {}),
+    };
+    const temporary = `${claimPath}.${process.pid}.tmp`;
+    fs.writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, {
+      mode: 0o600,
+      flag: 'wx',
+    });
+    fs.renameSync(temporary, claimPath);
+  } catch {
+    /* Keep the original create-once claim if replacement fails. */
+  }
+}
+
+function invokeP01Codex(options) {
+  const result = spawnSync('codex', buildCodexExecArgs(options), {
+    cwd: root,
+    env: p01ExecutionEnvironment(),
+    encoding: 'utf8',
+    maxBuffer: P01_MAX_STDOUT_BYTES,
+    timeout: P01_CODEX_TIMEOUT_MS,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  return {
+    exitCode: Number.isInteger(result.status) ? result.status : 1,
+    stdout: typeof result.stdout === 'string' ? result.stdout : '',
+    failed: Boolean(result.error) || result.status !== 0,
+  };
+}
+
+function invokeP01ReportWriter(input) {
+  const result = spawnSync(process.execPath, [P01_REPORT_WRITER], {
+    cwd: root,
+    env: p01ExecutionEnvironment(),
+    input: JSON.stringify(input),
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024,
+    timeout: 15_000,
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
+  let output = null;
+  try {
+    output = JSON.parse(result.stdout ?? '');
+  } catch {
+    /* Writer stdout is sanitized. */
+  }
+  return { exitCode: result.status ?? 1, output };
+}
+
+function runP01CodexAgentMcp({ claimHarness, persistResult }) {
+  const sourceRevision = cleanCandidate();
+  const claimPath = canonicalP01ClaimPath();
+  const initialGate = assertCurrentReviewGate(sourceRevision);
+  const cliVersion = codexCliVersion();
+  const bundleSha256 = buildExactCandidateBundle(sourceRevision);
+  if (!currentBundleMatches(sourceRevision, bundleSha256))
+    throw new Error('P01 MCP bundle changed before claim creation.');
+  const currentGate = assertCurrentReviewGate(sourceRevision);
+  if (
+    currentGate.prNumber !== initialGate.prNumber ||
+    currentGate.reviewerId !== initialGate.reviewerId ||
+    currentGate.baseSha !== initialGate.baseSha
+  ) {
+    throw new Error(
+      'Active P01 Epoch, Base, Candidate, or Luna Max reviewer changed during preflight.',
+    );
+  }
+  const runnerReceiptKeyPair = generateP01RunnerReceiptKeyPair();
+  const runnerReceiptPublicKey = runnerReceiptKeyPair.publicKeyBase64;
+  const durableGate = { ...currentGate, bundleSha256, runnerReceiptPublicKey };
+  const remoteClaim = claimHarness(durableGate);
+  validateP01HarnessClaim(remoteClaim, durableGate);
+  let claim;
+  try {
+    claim = createP01OneShotClaim(claimPath, {
+      ...durableGate,
+      sourceRevision,
+      bundleSha256,
+      claimId: remoteClaim.claimId,
+    });
+  } catch {
+    persistResult(remoteClaim, 'INCONCLUSIVE');
+    throw new Error(
+      'P01 local create-once claim failed after the durable Harness claim; the frontier is terminal.',
+    );
+  }
+  let temporaryDirectory;
+  let reportSha256 = null;
+  let safe = {
+    codexCliVersion: cliVersion,
+    sourceRevision,
+    baseSha: currentGate.baseSha,
+    prNumber: currentGate.prNumber,
+    reviewerId: currentGate.reviewerId,
+    bundleSha256,
+    codexExitCode: null,
+    eventStreamParsed: false,
+    codexMcpToolEventCount: 0,
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
+    shellToolCallCount: 0,
+    allowedCallCount: 0,
+  };
+  try {
+    temporaryDirectory = fs.mkdtempSync(path.join(path.resolve(os.tmpdir()), 'bgk-p01-run95-'));
+    const summaryPath = path.join(temporaryDirectory, 'server-summary.json');
+    const execution = invokeP01Codex({
+      nodePath: process.execPath,
+      summaryPath,
+      sourceRevision,
+      bundleSha256,
+    });
+    const parsed = parseCodexJsonl(execution.stdout);
+    const events = summarizeCodexEvents(parsed.events);
+    const serverSummary = readServerSummary(summaryPath);
+    const summaryMatches = serverSummaryMatchesCandidate(
+      serverSummary,
+      sourceRevision,
+      bundleSha256,
+    );
+    const eventSummary = canonicalP01SafeEventSummary(events);
+    safe = {
+      ...safe,
+      codexExitCode: execution.exitCode,
+      eventStreamParsed: parsed.parsed && events.eventStreamComplete,
+      ...eventSummary,
+      targetServerMatch:
+        events.mcpServerNames.length === 1 && events.mcpServerNames[0] === P01_SERVER_ID,
+      allowedCallCount: Number.isSafeInteger(serverSummary?.allowedCallCount)
+        ? serverSummary.allowedCallCount
+        : 0,
+      deniedCallCount: Number.isSafeInteger(serverSummary?.deniedCallCount)
+        ? serverSummary.deniedCallCount
+        : null,
+      resultStatus:
+        typeof serverSummary?.serverResultStatus === 'string'
+          ? serverSummary.serverResultStatus
+          : 'unavailable',
+      serverSummaryMatchesCandidate: summaryMatches,
+    };
+    if (
+      execution.failed ||
+      !summaryMatches ||
+      !currentBundleMatches(sourceRevision, bundleSha256) ||
+      !parsed.parsed ||
+      !events.eventStreamComplete ||
+      events.codexMcpToolEventCount !== 1 ||
+      events.mcpServerNames.length !== 1 ||
+      events.mcpServerNames[0] !== P01_SERVER_ID ||
+      events.completedMcpCalls.length !== 1 ||
+      events.completedMcpCalls[0]?.tool !== P01_TOOL_NAME ||
+      events.toolCalls.length !== 1 ||
+      events.toolCalls[0]?.state !== 'DONE' ||
+      hasUnexpectedP01CodexToolActivity(events) ||
+      serverSummary?.allowedCallCount !== 1 ||
+      serverSummary?.deniedCallCount !== 0 ||
+      serverSummary?.serverResultStatus !== 'SUCCESS'
+    ) {
+      markP01Claim(claimPath, claim, 'INCONCLUSIVE', safe);
+      persistResult(remoteClaim, 'INCONCLUSIVE');
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`,
+      );
+      return 1;
+    }
+    const postGate = assertCurrentReviewGate(sourceRevision, {
+      allowClaimed: true,
+      bundleSha256,
+      runnerReceiptPublicKey,
+    });
+    if (
+      postGate.prNumber !== currentGate.prNumber ||
+      postGate.baseSha !== currentGate.baseSha ||
+      postGate.reviewerId !== currentGate.reviewerId
+    ) {
+      markP01Claim(claimPath, claim, 'INCONCLUSIVE', { ...safe, reason: 'active_epoch_changed' });
+      persistResult(remoteClaim, 'INCONCLUSIVE');
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, reason: 'active_epoch_changed' })}\n`,
+      );
+      return 1;
+    }
+    const call = events.completedMcpCalls[0];
+    const answerResult = verifyP01PersonPositionAnswer(
+      events.answer,
+      call?.arguments,
+      call?.result,
+      events.toolCalls,
+      textResultBytes(call?.result),
+    );
+    if (!answerResult.passed) {
+      markP01Claim(claimPath, claim, 'INCONCLUSIVE', {
+        ...safe,
+        answerChecks: answerResult.answerChecks,
+      });
+      persistResult(remoteClaim, 'INCONCLUSIVE');
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'INCONCLUSIVE',
+          ...safe,
+          answerChecks: answerResult.answerChecks,
+        })}\n`,
+      );
+      return 1;
+    }
+    const writerInput = {
+      model: P01_MODEL,
+      reasoningEffort: P01_REASONING_EFFORT,
+      codexCliVersion: cliVersion,
+      claimId: remoteClaim.claimId,
+      runnerReceiptPublicKey,
+      runnerEventStreamSha256: p01Sha256(execution.stdout),
+      runnerServerSummarySha256: p01Sha256(fs.readFileSync(summaryPath)),
+      processExitCode: execution.exitCode,
+      resultStatus: serverSummary.serverResultStatus,
+      eventStreamParsed: parsed.parsed && events.eventStreamComplete,
+      serverToolNames: serverSummary.serverToolNames,
+      serverToolCount: serverSummary.serverToolCount,
+      codexMcpToolEventCount: events.codexMcpToolEventCount,
+      mcpServerNames: events.mcpServerNames,
+      nonMcpToolEventCount: events.nonMcpToolEventCount,
+      nonMcpToolTypes: eventSummary.nonMcpToolTypes,
+      shellToolCallCount: events.shellToolCallCount,
+      allowedCallCount: serverSummary.allowedCallCount,
+      deniedCallCount: serverSummary.deniedCallCount,
+      privacy: serverSummary.privacy,
+      serverResultSummary: serverSummary.result,
+      candidateGate: {
+        candidateSha: sourceRevision,
+        baseSha: currentGate.baseSha,
+        ciSha: sourceRevision,
+        ciStatus: 'SUCCESS',
+        reviewPassSha: sourceRevision,
+        reviewVerdict: 'PASS',
+        reviewerId: currentGate.reviewerId,
+      },
+      queryArguments: call?.arguments,
+      answer: events.answer,
+      toolOutput: call?.result,
+      toolCalls: events.toolCalls,
+      toolTextUtf8Bytes: textResultBytes(call?.result),
+      sourceRevision,
+      baseSha: currentGate.baseSha,
+      bundleSha256,
+      prNumber: currentGate.prNumber,
+      reviewerId: currentGate.reviewerId,
+    };
+    const receiptPayload = buildP01RunnerReceiptPayload(writerInput, answerResult);
+    writerInput.runnerReceipt = createP01RunnerReceipt(receiptPayload, runnerReceiptKeyPair);
+    const writer = invokeP01ReportWriter(writerInput);
+    if (writer.exitCode !== 0 || writer.output?.passed !== true) {
+      const answerChecks = writer.output?.answerChecks ?? null;
+      markP01Claim(claimPath, claim, 'INCONCLUSIVE', { ...safe, answerChecks });
+      persistResult(remoteClaim, 'INCONCLUSIVE');
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe, answerChecks })}\n`,
+      );
+      return 1;
+    }
+    const output = writer.output;
+    reportSha256 = p01Sha256(fs.readFileSync(P01_REPORT_PATH));
+    markP01Claim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+      ...safe,
+      reportSha256,
+      answerCounters: output.answerCounters,
+      resultSummary: output.resultSummary,
+    });
+    if (!persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256)) {
+      markP01Claim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+        ...safe,
+        reportSha256,
+        reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
+      });
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...safe,
+          reason: 'durable_harness_result_ack_unconfirmed; preserve report and do not retry query',
+        })}\n`,
+      );
+      return 1;
+    }
+    markP01Claim(claimPath, claim, 'REPORT_WRITTEN', {
+      ...safe,
+      reportSha256,
+      answerCounters: output.answerCounters,
+      resultSummary: output.resultSummary,
+    });
+    process.stdout.write(
+      `${JSON.stringify({
+        passed: true,
+        state: 'REPORT_WRITTEN',
+        sourceRevision,
+        baseSha: currentGate.baseSha,
+        bundleSha256,
+        reportSha256,
+        answerCounters: output.answerCounters,
+        resultSummary: output.resultSummary,
+      })}\n`,
+    );
+    return 0;
+  } catch {
+    if (reportSha256) {
+      markP01Claim(claimPath, claim, 'REPORT_WRITTEN_ACK_PENDING', {
+        ...safe,
+        reportSha256,
+        reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+      });
+      persistResult(remoteClaim, 'REPORT_WRITTEN', reportSha256);
+      process.stdout.write(
+        `${JSON.stringify({
+          passed: false,
+          state: 'REPORT_WRITTEN_ACK_PENDING',
+          claimId: remoteClaim.claimId,
+          reportSha256,
+          ...safe,
+          reason: 'runner_interrupted_after_report_write; preserve report and do not retry query',
+        })}\n`,
+      );
+      return 1;
+    }
+    markP01Claim(claimPath, claim, 'INCONCLUSIVE', safe);
+    persistResult(remoteClaim, 'INCONCLUSIVE');
+    process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE', ...safe })}\n`);
+    return 1;
+  } finally {
+    if (temporaryDirectory) fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
 }
 
 function commandEpochP01OneShotRun(options) {

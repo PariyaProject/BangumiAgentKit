@@ -52,36 +52,26 @@ export function persistHarnessP01OneShotResult(
     readStatus?: (prNumber: number) => unknown;
   },
 ): boolean;
-export function runP01CodexAgentMcp(options?: {
-  claimHarness: (gate: {
-    prNumber: number;
-    candidateSha: string;
-    baseSha: string;
-    bundleSha256: string;
-    reviewerId: string;
-    runnerReceiptPublicKey: string;
-  }) => {
-    state: 'P01_ONE_SHOT_CLAIMED';
-    claimId: string;
-    runNumber: number;
-    candidateSha: string;
-    baseSha: string;
-    ciSha: string;
-    ciStatus: 'SUCCESS';
-    bundleSha256: string;
-    runnerReceiptPublicKeySha256: string;
-    model: 'gpt-6-luna';
-    reasoningEffort: 'max';
-    reviewerId: string;
-    expectedArgumentsSha256: string;
-    prNumber: number;
-  };
-  persistResult: (
-    claim: { claimId: string; prNumber: number },
-    state: 'INCONCLUSIVE' | 'REPORT_WRITTEN',
-    reportSha256?: string | null,
-  ) => boolean;
-}): number;
+export function validateP01HarnessClaim(result: unknown, gate: unknown): Record<string, unknown>;
+export function assertCurrentReviewGate(
+  sourceRevision: string,
+  options?: {
+    allowClaimed?: boolean;
+    bundleSha256?: string;
+    runnerReceiptPublicKey?: string;
+  },
+): { prNumber: number; candidateSha: string; baseSha: string; reviewerId: string };
+export function cleanCandidate(): string;
+export function buildExactCandidateBundle(sourceRevision: string): string;
+export function currentBundleMatches(sourceRevision: string, bundleSha256: string): boolean;
+export function codexCliVersion(): string;
+export function serverSummaryMatchesCandidate(
+  summary: unknown,
+  sourceRevision: string,
+  bundleSha256: string,
+): boolean;
+export function readServerSummary(file: string): unknown;
+export function textResultBytes(result: unknown): number | null;
 export function canonicalP01SafeEventSummary(events: unknown): {
   codexMcpToolEventCount: number;
   nonMcpToolEventCount: number;

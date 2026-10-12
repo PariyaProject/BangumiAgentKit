@@ -390,6 +390,74 @@ test('CLI review:budget-extend updates only the active Epoch review ledger', () 
   }
 });
 
+test('CLI review:budget-extend resumes actionable review-limit findings without refunding launches', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'FINAL_CORRECTIVE_REQUIRED';
+  epoch.final_corrective_reason = 'REVIEW_LIMIT_FINDINGS';
+  epoch.review.max = 6;
+  epoch.review.consumed = 6;
+  epoch.review.budget_extension_history = [
+    {
+      from_max: 2,
+      to_max: 6,
+      added: 4,
+      reason: 'Prior authorized Luna Max continuation',
+      at: '2026-10-11T00:00:00.000Z',
+    },
+  ];
+  epoch.findings = [
+    {
+      id: 'P01-RESULT-CLAIM-001',
+      severity: 'P1',
+      title: 'Runner import bypass',
+      summary: 'Caller can bypass durable Harness disposition.',
+      recommendation: 'Keep execution private to the Harness command.',
+    },
+  ];
+  epoch.candidate_sha = null;
+  epoch.review_pass_sha = null;
+  epoch.ci = { sha: null, status: 'NOT_RUN', url: null };
+  const productConsumed = run.outer_sol.product.consumed;
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: sha('b'),
+  });
+  try {
+    const result = environment.execute([
+      'review:budget-extend',
+      '--run',
+      '1',
+      '--pr',
+      '42',
+      '--add',
+      '1',
+      '--reason',
+      'The final Luna Max review found an actionable P1; another exact-Candidate review adds useful evidence.',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const state = environment.readState();
+    const resumedRun = parseControlBlock(state.runBody, RUN_MARKER);
+    const resumedEpoch = parseControlBlock(state.prBody, EPOCH_MARKER);
+    assert.equal(resumedEpoch.state, 'CORRECTIVE_REQUIRED');
+    assert.equal(resumedEpoch.final_corrective_reason, null);
+    assert.equal(resumedEpoch.review.max, 7);
+    assert.equal(resumedEpoch.review.consumed, 6);
+    assert.equal(resumedEpoch.review.reserved, 0);
+    assert.equal(resumedEpoch.findings[0].id, 'P01-RESULT-CLAIM-001');
+    assert.equal(resumedEpoch.candidate_sha, null);
+    assert.equal(resumedEpoch.ci.status, 'NOT_RUN');
+    assert.equal(resumedRun.state, 'EPOCH_ACTIVE');
+    assert.equal(resumedRun.active_epoch_pr, 42);
+    assert.equal(resumedRun.outer_sol.product.consumed, productConsumed);
+    assert.equal(resumedRun.next_action, 'RESUME_PR_42');
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI run:start closes stale terminal Runs and normalizes the new Issue title', () => {
   const run = createRunState({ runId: 'terminal-run' });
   run.state = NO_OPPORTUNITY_STOP;
