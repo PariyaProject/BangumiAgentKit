@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { CollectionService } from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import {
   ToolRegistry,
@@ -35,8 +36,20 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
     ).rejects.toThrow('AUTH_REQUIRED');
   });
 
-  it('updates collection and records audit event when authenticated', async () => {
-    const mockFetch = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+  it('updates the bound user collection with an exact current-user payload, reads it back, and records audit', async () => {
+    const requests: Array<{
+      url: string;
+      method: string;
+      body?: unknown;
+      authorization: string | null;
+    }> = [];
+    const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
+      requests.push({
+        url,
+        method: init?.method || 'GET',
+        body: init?.body ? JSON.parse(init.body as string) : undefined,
+        authorization: new Headers(init?.headers).get('authorization'),
+      });
       if (init?.method === 'POST') {
         return new Response(null, { status: 204 });
       }
@@ -44,7 +57,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
         JSON.stringify({
           subject_id: 226998,
           type: 3,
-          rate: 9,
+          rate: 8,
           comment: '神作收藏',
           updated_at: '2026-08-06T23:00:00Z',
           subject: { name: '少女終末旅行', type: 2 },
@@ -92,7 +105,7 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
 
     const res = (await registry.executeTool(
       'bangumi.update_collection',
-      { subjectId: 226998, status: 'doing', rating: 9, comment: '神作收藏' },
+      { subjectId: 226998, status: 'doing', rating: 8, comment: '神作收藏' },
       {
         principalId: principal.id,
         botInstanceId: 'bot_1',
@@ -102,7 +115,19 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
 
     expect(res.collection.subjectId).toBe(226998);
     expect(res.collection.status).toBe('doing');
-    expect(res.collection.rating).toBe(9);
+    expect(res.collection.rating).toBe(8);
+    expect(requests).toHaveLength(2);
+    expect(new URL(requests[0]!.url).pathname).toBe('/v0/users/-/collections/226998');
+    expect(requests[0]).toMatchObject({
+      method: 'POST',
+      body: { type: 3, rate: 8, comment: '神作收藏' },
+      authorization: 'Bearer valid_access_token',
+    });
+    expect(new URL(requests[1]!.url).pathname).toBe('/v0/users/test_user/collections/226998');
+    expect(requests[1]).toMatchObject({
+      method: 'GET',
+      authorization: 'Bearer valid_access_token',
+    });
 
     // Verify Audit Event was recorded in Storage
     const events = storage.getAuditEvents();
@@ -110,6 +135,33 @@ describe('Phase 6: Write Operations, Confirmation Policy & Audit Tests', () => {
     expect(events[0]?.operationId).toBe('bangumi.update_collection');
     expect(events[0]?.riskLevel).toBe('write');
     expect(events[0]?.principalId).toBe(principal.id);
+  });
+
+  it('reports a successful write as unverified when canonical collection refresh fails', async () => {
+    const requests: Array<{ url: string; method: string }> = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      const url = new URL(String(input));
+      requests.push({ url: `${url.origin}${url.pathname}`, method: init?.method || 'GET' });
+      if (init?.method === 'POST') return new Response(null, { status: 204 });
+      return new Response('{}', { status: 503 });
+    };
+    const service = new CollectionService(new HttpClient({ fetchFn }));
+
+    const result = await service.updateCollection(
+      { subjectId: 226998, status: 'doing', rating: 8 },
+      'synthetic-owner',
+      async () => {
+        throw new Error('synthetic canonical read failure');
+      },
+    );
+
+    expect(result).toMatchObject({
+      success: true,
+      status: 'updated_but_refresh_failed',
+      applied: { subjectId: 226998, status: 'doing', rating: 8 },
+    });
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0]!.url).pathname).toBe('/v0/users/-/collections/226998');
   });
 
   it('requires confirmation for bulk episode updates (>20 episodes)', async () => {

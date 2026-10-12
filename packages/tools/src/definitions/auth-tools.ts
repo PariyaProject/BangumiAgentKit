@@ -22,7 +22,9 @@ export function createAuthTools(tokenBroker: TokenBroker, oauthService: OAuthSer
       capabilities: z
         .array(z.string())
         .optional()
-        .describe('申请的能力/权限范围列表 (如 ["write:collection"])'),
+        .describe(
+          '仅本地记录的能力标签；Bangumi OAuth 当前未实现 scope 请求，不能据此声称 provider 已授予权限 (如 ["read:collection","write:collection"])',
+        ),
     }),
     auth: 'none',
     scopes: [],

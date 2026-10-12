@@ -5,7 +5,7 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createWriteTools } from '@bangumi-agent-kit/tools';
 
 describe('Manage Index 6 Actions Unit Tests', () => {
-  async function setupTestEnvironment() {
+  async function setupTestEnvironment(reportedScopes = ['write:indices']) {
     const capturedRequests: { url: string; method: string; body: any }[] = [];
 
     const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
@@ -40,8 +40,8 @@ describe('Manage Index 6 Actions Unit Tests', () => {
       bangumiAccountId: account.id,
       encryptedAccessToken: encryptToken('test-access-token', secretKey, 'v1'),
       expiresAt: new Date(Date.now() + 3600000),
-      requestedCapabilities: ['write:index', 'write:indices', 'write:collection'],
-      reportedScopes: ['write:index', 'write:indices', 'write:collection'],
+      requestedCapabilities: ['write:indices'],
+      reportedScopes,
       scopeEvidence: 'reported',
       keyVersion: 'v1',
       createdAt: new Date(),
@@ -61,6 +61,20 @@ describe('Manage Index 6 Actions Unit Tests', () => {
       capturedRequests,
     };
   }
+
+  it('uses and enforces the official write:indices provider scope', async () => {
+    const { manageIndexTool, context, tokenBroker, capturedRequests } = await setupTestEnvironment([
+      'write:collection',
+    ]);
+
+    expect(manageIndexTool.scopes).toEqual(['write:indices']);
+    await expect(
+      (manageIndexTool.execute as any)({ action: 'create', title: 'Top Anime' }, context, {
+        clientProvider: tokenBroker,
+      } as any),
+    ).rejects.toMatchObject({ code: 'PERMISSION_DENIED' });
+    expect(capturedRequests).toHaveLength(0);
+  });
 
   it('handles action="create"', async () => {
     const { manageIndexTool, context, tokenBroker, capturedRequests } =

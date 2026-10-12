@@ -2533,9 +2533,9 @@
       "kind": "scenario",
       "user_question": "某用户收藏最多的标签是什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md", "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-12.json", "tests/unit/collection-intelligence.test.ts", "tests/unit/l04-collection-intelligence-answer-check.test.ts"],
+      "next_action": "Keep PARTIAL: one GPT-6 Luna Max Agent/MCP answer is grounded in a synthetic 20/30 account-bound collection fixture and passes coverage/no-taste-inference checks. Real OAuth, current-user collection read, and a real personalized answer remain unverified; resume only after owner-local credentials and official consent. See the source-contract report.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -3277,8 +3277,8 @@
       "user_question": "Can BangumiAgentKit deliver the bounded user value described by Collection Intelligence?",
       "lane": "recorded_product_opportunities",
       "status": "PARTIAL",
-      "source_refs": ["docs/product/opportunity-log.md"],
-      "next_action": "Reconcile the opportunity against shipped capabilities and assess remaining user value.",
+      "source_refs": ["docs/product/opportunity-log.md", "docs/research/run95-oauth-personalization-user-collection-contract-2026-10-13.md", "docs/research/run95-l04-collection-intelligence-agent-mcp-synthetic-2026-10-12.json", "tests/unit/writes.test.ts", "tests/unit/capability-policy.test.ts", "tests/unit/manage-index-actions.test.ts"],
+      "next_action": "Keep PARTIAL: bounded collection intelligence and current-user collection update/readback now have synthetic test evidence, including honest refresh-failure and reported-scope behavior. Real OAuth/account grounding remains blocked by absent local client credentials and consent; profile metadata edits have no public v0 route. See the source-contract report.",
       "reopen_when": "Product capability, source contracts, evidence, or opportunity status changes.",
       "related_ids": []
     },

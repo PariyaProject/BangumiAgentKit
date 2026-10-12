@@ -10,6 +10,25 @@ import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openap
 import { BangumiOAuthClient } from './oauth-client.js';
 import { BangumiClientProvider } from './client-provider.js';
 
+// Local tool capabilities are not always OAuth provider scopes. The current
+// official v0 contract uses OptionalHTTPBearer for private collection reads,
+// while writes declare provider scopes. Keep that distinction explicit when a
+// token reports scopes; an unknown scope response remains handled separately.
+const PROVIDER_SCOPE_BY_CAPABILITY: Record<string, string | null> = {
+  'read:collection': null,
+  'write:collection': 'write:collection',
+  'write:index': 'write:indices',
+  'write:indices': 'write:indices',
+};
+
+function missingReportedScopes(requiredCapabilities: string[], reportedScopes: string[]): string[] {
+  return requiredCapabilities.filter((capability) => {
+    const providerScope = PROVIDER_SCOPE_BY_CAPABILITY[capability];
+    if (providerScope === null) return false;
+    return !reportedScopes.includes(providerScope ?? capability);
+  });
+}
+
 export interface TokenBrokerConfig {
   tokenEncryption?: TokenEncryptionConfig;
   secretKey?: string;
@@ -217,7 +236,7 @@ export class TokenBroker implements BangumiClientProvider {
 
     if (cred.scopeEvidence === 'reported') {
       const reported = cred.reportedScopes || [];
-      const missing = requiredCapabilities.filter((cap) => !reported.includes(cap));
+      const missing = missingReportedScopes(requiredCapabilities, reported);
       if (missing.length > 0) {
         throw new BangumiError(
           'PERMISSION_DENIED',

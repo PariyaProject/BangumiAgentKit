@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "state": "PASS_SYNTHETIC_ONLY",
+  "model": "gpt-6-luna",
+  "reasoningEffort": "max",
+  "codexCli": "codex-cli 0.162.0-alpha.17.2",
+  "eventStreamComplete": true,
+  "codexErrorItemCount": 0,
+  "nonMcpToolEventCount": 0,
+  "shellToolCallCount": 0,
+  "targetTool": "bangumi.get_collection_intelligence",
+  "targetToolCallCount": 1,
+  "targetNameMatched": true,
+  "toolCallState": "DONE",
+  "toolCallReportedError": false,
+  "toolServerIdMatched": true,
+  "argumentsMatched": true,
+  "syntheticFixture": {
+    "serverToolCount": 1,
+    "allowedCalls": 1,
+    "deniedCalls": 0,
+    "sourceRequestCount": 1,
+    "bearerPresented": true,
+    "sourceState": "partial",
+    "observedRows": 20,
+    "sourceTotal": 30,
+    "truncated": true,
+    "topTagCount": 7,
+    "writeRequests": 0
+  },
+  "answerChecks": {
+    "nonEmpty": true,
+    "syntheticContextDisclosed": true,
+    "topObservedTagPresent": true,
+    "topObservedTagCountPresent": true,
+    "observedDenominatorPresent": true,
+    "sourceTotalPresent": true,
+    "partialCoverageDisclosed": true,
+    "noPreferenceInference": true,
+    "noFullCollectionClaim": true
+  },
+  "privacy": {
+    "allUserDataSynthetic": true,
+    "realOAuthAttempted": false,
+    "realAccountRead": false,
+    "externalWriteAttempted": false,
+    "rawCollectionRowsSaved": false,
+    "rawAnswerSaved": false,
+    "credentialSaved": false
+  }
+}

@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { MemoryStorage } from '@bangumi-agent-kit/db';
+import { encryptToken } from '@bangumi-agent-kit/auth';
 import { GeneratedBangumiOpenApiClient } from '@bangumi-agent-kit/bangumi-openapi';
 import {
   CollectionIntelligenceService,
   buildCollectionIntelligence,
 } from '@bangumi-agent-kit/bangumi-core';
 import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
+import { createRuntimeDependencies, ToolRegistry } from '@bangumi-agent-kit/tools';
 
 function collectionRow(
   subjectId: number,
@@ -34,6 +37,57 @@ function buildClient(fetchFn: typeof fetch): GeneratedBangumiOpenApiClient {
 }
 
 describe('CollectionIntelligenceService', () => {
+  it('does not read an account collection when the caller is not bound to that account', async () => {
+    const storage = new MemoryStorage();
+    const secretKey = 'l04-binding-test-secret-key-123456';
+    const owner = await storage.findOrCreatePrincipal({
+      provider: 'test',
+      botInstanceId: 'fixture-bot',
+      externalUserId: 'collection-owner',
+    });
+    const other = await storage.findOrCreatePrincipal({
+      provider: 'test',
+      botInstanceId: 'fixture-bot',
+      externalUserId: 'different-user',
+    });
+    const account = await storage.upsertBangumiAccount({
+      id: 'l04-bound-account',
+      bangumiUserId: 10004,
+      username: 'bound_collection_owner',
+      nickname: 'Bound Collection Owner',
+    });
+    await storage.replaceActiveBinding(owner.id, account.id);
+    await storage.upsertCredential({
+      id: 'l04-bound-credential',
+      bangumiAccountId: account.id,
+      encryptedAccessToken: encryptToken('synthetic-bound-token', secretKey),
+      expiresAt: new Date(Date.now() + 60_000),
+      requestedCapabilities: ['read:collection'],
+      reportedScopes: null,
+      scopeEvidence: 'unknown',
+      keyVersion: 'v1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 200 }));
+    const registry = new ToolRegistry(
+      createRuntimeDependencies({
+        storage,
+        publicHttpClient: new HttpClient({ fetchFn }),
+        secretKey,
+      }),
+    );
+
+    await expect(
+      registry.executeTool(
+        'bangumi.get_collection_intelligence',
+        { maxItems: 20 },
+        { principalId: other.id, botInstanceId: 'fixture-bot', conversationId: 'fixture-chat' },
+      ),
+    ).rejects.toThrow('AUTH_REQUIRED');
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   it('paginates a bounded current-account collection and derives truthful metrics', async () => {
     const fetchFn: typeof fetch = async (input) => {
       const url = new URL(String(input));
