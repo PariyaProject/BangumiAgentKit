@@ -6,6 +6,7 @@ import {
   RenderService,
   renderHtmlTemplate,
 } from '@bangumi-agent-kit/renderer';
+import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
 
 const coverage = {
   state: 'complete' as const,
@@ -302,6 +303,25 @@ describe('subject cohort comparison renderer', () => {
     expect(html).toContain('B − A');
   });
 
+  it('decodes the offline C07 comparison card and verifies its nonblank pixel signal', async () => {
+    const viewModel = buildSubjectCohortComparisonViewModel(result, { maxSubjectsPerCohort: 1 });
+    const service = new RenderService();
+    try {
+      const rendered = await service.renderCard(viewModel, {
+        width: 360,
+        deviceScaleFactor: 2,
+        cache: false,
+      });
+      expect(inspectC07PngArtifact(rendered.buffer, rendered.width, rendered.height)).toEqual({
+        decoded: true,
+        dimensionsMatch: true,
+        nonblankPixelSignalVerified: true,
+      });
+    } finally {
+      await service.close();
+    }
+  });
+
   it('labels partial observations separately from accepted averages', () => {
     const partial = buildSubjectCohortComparisonViewModel({
       ...result,
@@ -339,7 +359,8 @@ describe('subject cohort comparison renderer', () => {
                       kind: 'score_vs_histogram_mean' as const,
                       officialScore: 9,
                       histogramMean: 8,
-                      reason: 'official detail score materially differs from the histogram-derived mean',
+                      reason:
+                        'official detail score materially differs from the histogram-derived mean',
                     },
                   ],
                   ratingHistogramTotalValidation: {

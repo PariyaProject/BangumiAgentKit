@@ -242,6 +242,11 @@ export function summarizeCodexEvents(events) {
   return {
     eventStreamComplete:
       threadStarted && turnStarted && turnCompleted && !turnFailed && unexpectedEventTypes === 0,
+    threadStarted,
+    turnStarted,
+    turnCompleted,
+    turnFailed,
+    unexpectedEventTypes,
     codexMcpToolEventCount: mcpCalls.length,
     codexErrorItemCount: errorItems.size + anonymousErrorItemCount,
     mcpServerNames: mcpCalls.map((item) => item.server),
