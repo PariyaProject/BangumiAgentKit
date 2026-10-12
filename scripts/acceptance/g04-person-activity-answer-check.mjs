@@ -354,13 +354,10 @@ function completeOriginCoverageIsConsistent(result) {
   );
 }
 
-function isValidMetaTagsCoverage(value) {
-  const requiredFields = ORIGIN_META_TAG_COVERAGE_FIELDS.filter(
-    (field) => !['maxItems', 'maxCharacters'].includes(field),
-  );
+function isValidMetaTagsCoverage(value, hasMetaTags) {
   if (
     !isRecord(value) ||
-    !requiredFields.every((field) => Object.hasOwn(value, field)) ||
+    !ORIGIN_META_TAG_COVERAGE_FIELDS.every((field) => Object.hasOwn(value, field)) ||
     Object.keys(value).some((field) => !ORIGIN_META_TAG_COVERAGE_FIELDS.includes(field)) ||
     !['complete', 'partial', 'unknown'].includes(value.state) ||
     typeof value.truncated !== 'boolean'
@@ -371,17 +368,26 @@ function isValidMetaTagsCoverage(value) {
   const countFields = ['observed', 'valid', 'returned', 'omitted', 'malformed', 'textTruncated'];
   if (
     countFields.some((field) => !Number.isSafeInteger(value[field]) || value[field] < 0) ||
-    ['maxItems', 'maxCharacters'].some(
-      (field) =>
-        Object.hasOwn(value, field) && (!Number.isSafeInteger(value[field]) || value[field] < 0),
-    )
+    value.maxItems !== 32 ||
+    value.maxCharacters !== 96
   ) {
     return false;
   }
 
+  const malformedNonArrayField =
+    !hasMetaTags &&
+    value.state === 'unknown' &&
+    value.observed === 0 &&
+    value.valid === 0 &&
+    value.returned === 0 &&
+    value.omitted === 0 &&
+    value.malformed === 1 &&
+    value.textTruncated === 0;
+
   return (
-    value.valid + value.malformed === value.observed &&
+    (value.valid + value.malformed === value.observed || malformedNonArrayField) &&
     value.returned + value.omitted === value.valid &&
+    value.returned <= value.maxItems &&
     value.textTruncated <= value.returned &&
     value.truncated === (value.omitted > 0 || value.textTruncated > 0)
   );
@@ -392,19 +398,49 @@ function isValidOriginObservation(value) {
     !isRecord(value) ||
     Object.keys(value).some((field) => !ORIGIN_OBSERVATION_FIELDS.includes(field)) ||
     !['explicit_original', 'not_observed', 'unknown'].includes(value.state) ||
+    !Object.hasOwn(value, 'metaTagsCoverage') ||
     (Object.hasOwn(value, 'metaTags') &&
       (!Array.isArray(value.metaTags) || value.metaTags.some((tag) => typeof tag !== 'string'))) ||
-    (Object.hasOwn(value, 'metaTagsCoverage') && !isValidMetaTagsCoverage(value.metaTagsCoverage))
+    !isValidMetaTagsCoverage(value.metaTagsCoverage, Object.hasOwn(value, 'metaTags'))
   ) {
     return false;
   }
 
   const tagsCoverage = value.metaTagsCoverage;
-  const expectedState = !Array.isArray(value.metaTags)
-    ? 'unknown'
-    : tagsCoverage?.state !== 'unknown' && value.metaTags.includes('原创')
+  if (!Array.isArray(value.metaTags)) {
+    return (
+      tagsCoverage.state === 'unknown' &&
+      tagsCoverage.observed === 0 &&
+      tagsCoverage.valid === 0 &&
+      tagsCoverage.returned === 0 &&
+      tagsCoverage.omitted === 0 &&
+      tagsCoverage.malformed <= 1 &&
+      tagsCoverage.textTruncated === 0 &&
+      value.state === 'unknown'
+    );
+  }
+
+  if (
+    value.metaTags.length !== tagsCoverage.returned ||
+    value.metaTags.some((tag) => Array.from(tag).length > tagsCoverage.maxCharacters)
+  ) {
+    return false;
+  }
+
+  const expectedCoverageState =
+    tagsCoverage.malformed > 0
+      ? tagsCoverage.valid > 0
+        ? 'partial'
+        : 'unknown'
+      : tagsCoverage.omitted > 0 || tagsCoverage.textTruncated > 0
+        ? 'partial'
+        : 'complete';
+  if (tagsCoverage.state !== expectedCoverageState) return false;
+
+  const expectedState =
+    tagsCoverage.state !== 'unknown' && value.metaTags.includes('原创')
       ? 'explicit_original'
-      : !tagsCoverage || tagsCoverage.state === 'complete'
+      : tagsCoverage.state === 'complete'
         ? 'not_observed'
         : 'unknown';
   return value.state === expectedState;
@@ -457,17 +493,6 @@ function deriveCompleteOriginEvidence(rows) {
     else summary.unknownSubjects += 1;
 
     const tagsCoverage = observation.metaTagsCoverage;
-    if (!tagsCoverage) {
-      if (Array.isArray(observation.metaTags)) {
-        coverage.subjectsWithMetaTags += 1;
-        coverage.tagsObserved += observation.metaTags.length;
-        coverage.tagsValid += observation.metaTags.length;
-        coverage.tagsReturned += observation.metaTags.length;
-      } else {
-        coverage.subjectsUnknown += 1;
-      }
-      continue;
-    }
 
     if (tagsCoverage.state === 'unknown') coverage.subjectsUnknown += 1;
     else {

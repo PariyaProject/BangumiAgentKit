@@ -358,7 +358,22 @@ describe('G04 sanitized Agent/MCP report builder', () => {
     const sourceRow = (result.rows as Array<Record<string, unknown>>)[0];
     if (!sourceRow) throw new Error('Expected the report fixture row.');
     sourceRow.roleFamily = 'main';
-    sourceRow.origin = { state: 'explicit_original', metaTags: ['原创', '奇幻'] };
+    sourceRow.origin = {
+      state: 'explicit_original',
+      metaTags: ['原创', '奇幻'],
+      metaTagsCoverage: {
+        state: 'complete',
+        observed: 2,
+        valid: 2,
+        returned: 2,
+        omitted: 0,
+        malformed: 0,
+        textTruncated: 0,
+        truncated: false,
+        maxItems: 32,
+        maxCharacters: 96,
+      },
+    };
 
     const answer = JSON.parse(input.answer) as Record<string, unknown>;
     answer.state = 'complete';

@@ -144,6 +144,21 @@ function answerFor(result: ReturnType<typeof makeResult>) {
   });
 }
 
+function completeMetaTagsCoverage(metaTags: string[]) {
+  return {
+    state: 'complete',
+    observed: metaTags.length,
+    valid: metaTags.length,
+    returned: metaTags.length,
+    omitted: 0,
+    malformed: 0,
+    textTruncated: 0,
+    truncated: false,
+    maxItems: 32,
+    maxCharacters: 96,
+  };
+}
+
 function makeCompleteResult() {
   const result = makeResult();
   result.state = 'complete';
@@ -198,9 +213,19 @@ function makeCompleteResult() {
   const secondRow = result.rows[1];
   if (!firstRow || !secondRow) throw new Error('Expected complete source rows.');
   Object.assign(firstRow, {
-    origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
+    origin: {
+      state: 'explicit_original',
+      metaTags: ['原创', '奇幻'],
+      metaTagsCoverage: completeMetaTagsCoverage(['原创', '奇幻']),
+    },
   });
-  Object.assign(secondRow, { origin: { state: 'not_observed', metaTags: [] } });
+  Object.assign(secondRow, {
+    origin: {
+      state: 'not_observed',
+      metaTags: [],
+      metaTagsCoverage: completeMetaTagsCoverage([]),
+    },
+  });
   const detailOperation = result.sourceOperations[2];
   if (!detailOperation) throw new Error('Expected the subject detail source operation.');
   detailOperation.attempted = 2;
@@ -366,6 +391,58 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
         },
       ],
       [
+        'a complete row is missing bounded meta-tag coverage',
+        (result) => {
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          if (!row || typeof row.origin !== 'object' || row.origin === null) {
+            throw new Error('Expected a row origin observation.');
+          }
+          Reflect.deleteProperty(row.origin, 'metaTagsCoverage');
+        },
+      ],
+      [
+        'a complete row uses a different bounded item limit',
+        (result) => {
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          if (!row || typeof row.origin !== 'object' || row.origin === null) {
+            throw new Error('Expected a row origin observation.');
+          }
+          const coverage = (row.origin as Record<string, unknown>).metaTagsCoverage;
+          if (typeof coverage !== 'object' || coverage === null) {
+            throw new Error('Expected bounded meta-tag coverage.');
+          }
+          Reflect.set(coverage, 'maxItems', 31);
+        },
+      ],
+      [
+        'a complete row uses a different bounded character limit',
+        (result) => {
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          if (!row || typeof row.origin !== 'object' || row.origin === null) {
+            throw new Error('Expected a row origin observation.');
+          }
+          const coverage = (row.origin as Record<string, unknown>).metaTagsCoverage;
+          if (typeof coverage !== 'object' || coverage === null) {
+            throw new Error('Expected bounded meta-tag coverage.');
+          }
+          Reflect.set(coverage, 'maxCharacters', 95);
+        },
+      ],
+      [
+        'a complete row returned counter disagrees with the projected tags',
+        (result) => {
+          const row = result.rows[0] as Record<string, unknown> | undefined;
+          if (!row || typeof row.origin !== 'object' || row.origin === null) {
+            throw new Error('Expected a row origin observation.');
+          }
+          const coverage = (row.origin as Record<string, unknown>).metaTagsCoverage;
+          if (typeof coverage !== 'object' || coverage === null) {
+            throw new Error('Expected bounded meta-tag coverage.');
+          }
+          Reflect.set(coverage, 'returned', 1);
+        },
+      ],
+      [
         'a row origin observation contradicts its tags',
         (result) => {
           const row = result.rows[0] as Record<string, unknown> | undefined;
@@ -440,7 +517,11 @@ describe('G04 bounded person-activity Agent/MCP answer checker', () => {
       ...sourceRow,
       relationId: 7003,
       characterName: 'Character C',
-      origin: { state: 'explicit_original', metaTags: ['原创', '奇幻'] },
+      origin: {
+        state: 'explicit_original',
+        metaTags: ['原创', '奇幻'],
+        metaTagsCoverage: completeMetaTagsCoverage(['原创', '奇幻']),
+      },
     };
     result.rows.push(duplicateSubjectRow);
     result.coverage.rowsEligible = 3;
