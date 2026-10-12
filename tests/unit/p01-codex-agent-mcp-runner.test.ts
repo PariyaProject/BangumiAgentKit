@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   P01_ARGUMENT_PROFILE,
   P01_EXPECTED_QUERY_ARGUMENTS,
@@ -121,8 +121,26 @@ afterEach(() => {
 });
 
 describe('P01 one-tool Codex runner', () => {
-  it('requires the Harness-owned claim/result boundary before running', () => {
-    expect(() => runP01CodexAgentMcp()).toThrow(/Harness-owned execution boundary/u);
+  it('rejects caller-supplied claim/result callbacks outside the Harness-owned command', () => {
+    const claimHarness = vi.fn(() => ({
+      state: 'P01_ONE_SHOT_CLAIMED',
+      claimId: 'fabricated-claim',
+    }));
+    const persistResult = vi.fn(() => true);
+    const claimPath = canonicalP01ClaimPath();
+    const claimBefore = existsSync(claimPath) ? readFileSync(claimPath) : null;
+    const reportPath = path.resolve('docs/live-probes/p01-person-position-agent-mcp-run95.json');
+    const reportBefore = existsSync(reportPath) ? readFileSync(reportPath) : null;
+
+    expect(() =>
+      Reflect.apply(runP01CodexAgentMcp, undefined, [{ claimHarness, persistResult }]),
+    ).toThrow(/Harness-owned execution boundary/u);
+    expect(claimHarness).not.toHaveBeenCalled();
+    expect(persistResult).not.toHaveBeenCalled();
+    expect(existsSync(claimPath)).toBe(claimBefore !== null);
+    if (claimBefore !== null) expect(readFileSync(claimPath)).toEqual(claimBefore);
+    expect(existsSync(reportPath)).toBe(reportBefore !== null);
+    if (reportBefore !== null) expect(readFileSync(reportPath)).toEqual(reportBefore);
   });
 
   it('requires the exact P01 Candidate/Base, all mandatory CI, and same-identity Luna Max PASS', () => {

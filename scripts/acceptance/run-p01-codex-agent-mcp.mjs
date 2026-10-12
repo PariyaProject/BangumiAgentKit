@@ -751,9 +751,32 @@ function invokeReportWriter(input) {
   return { exitCode: result.status ?? 1, output };
 }
 
-export function runP01CodexAgentMcp({ claimHarness, persistResult } = {}) {
-  if (typeof claimHarness !== 'function' || typeof persistResult !== 'function') {
+function assertHarnessOwnedP01Invocation() {
+  const entryPoint = process.argv[1] ? path.resolve(process.argv[1]) : null;
+  const args = process.argv.slice(2);
+  const callerFrame = new Error().stack?.split('\n')[3] ?? '';
+  const runOptionIndex = args.findIndex((value) => value === '--run' || value.startsWith('--run='));
+  const runNumber =
+    runOptionIndex < 0
+      ? null
+      : args[runOptionIndex] === '--run'
+        ? args[runOptionIndex + 1]
+        : args[runOptionIndex].slice('--run='.length);
+  if (
+    entryPoint !== HARNESS_SCRIPT ||
+    args[0] !== 'epoch:p01-one-shot-run' ||
+    runNumber !== String(RUN_NUMBER) ||
+    !callerFrame.includes(HARNESS_SCRIPT) ||
+    !callerFrame.includes('commandEpochP01OneShotRun')
+  ) {
     throw new Error('P01 runner must be invoked by the Harness-owned execution boundary.');
+  }
+}
+
+export function runP01CodexAgentMcp({ claimHarness, persistResult } = {}) {
+  assertHarnessOwnedP01Invocation();
+  if (typeof claimHarness !== 'function' || typeof persistResult !== 'function') {
+    throw new Error('P01 runner requires the Harness-owned claim/result boundary.');
   }
   const sourceRevision = cleanCandidate();
   const claimPath = canonicalP01ClaimPath();
