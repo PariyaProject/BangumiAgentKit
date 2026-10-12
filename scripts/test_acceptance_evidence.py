@@ -670,6 +670,8 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         smoke_script.parent.mkdir(parents=True, exist_ok=True)
         smoke_script.write_text('// public probe report validator fixture\n', encoding='utf-8')
         self._git('init', '-q')
+        self._git('config', 'gc.auto', '0')
+        self._git('config', 'maintenance.auto', 'false')
         self._git('config', 'user.name', 'Acceptance Evidence Test')
         self._git('config', 'user.email', 'acceptance-evidence@example.invalid')
         self._git('commit', '--allow-empty', '-qm', 'probe acceptance base fixture')
