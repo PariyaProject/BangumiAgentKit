@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-12T10:55:40Z",
+  "updated_at": "2026-10-12T10:59:02Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -182,7 +182,7 @@
         "scripts/agent-harness.mjs",
         "tests/harness/g04-one-shot-claim.test.mjs"
       ],
-      "next_action": "The bounded Run #95 GPT-6 Luna Max Codex profile uses personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Its one-shot query may run only after exact-Candidate CI, Harness candidate:check, and the assigned same-identity Luna Max PASS; the repository-scoped create-only GitHub latch must be acquired, the exact gate revalidated, and the durable claim read back before any Codex call. Duplicate, ambiguous, or mismatched latch/claim states fail closed and permanently prohibit retry. Only a sanitized exact-source report may add Agent/MCP tool-row evidence. Keep PARTIAL: returned relation/detail samples and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
+      "next_action": "The bounded Run #95 GPT-6 Luna Max Codex profile uses personId=13684, kind=voice, media=tv, windowMonths=12, maxRelations=48, maxSubjectDetails=16, maxRows=8. Its one-shot query may run only while its Epoch PR is active/open and after exact-Candidate CI, Harness candidate:check, and the assigned same-identity Luna Max PASS. The repository-scoped create-only GitHub latch must be acquired, the exact gate revalidated, and the durable claim read back before any Codex call. Run the fixed query after the first review PASS but before merge because the runner requires the active PR; if a sanitized report is written, update the report-bound evidence, refresh Candidate, repeat exact CI/review, and only then integrate through Harness. Duplicate, ambiguous, or mismatched latch/claim states fail closed and permanently prohibit retry. Keep PARTIAL: returned relation/detail samples and first-air calendar months do not establish complete career history, rolling-365-day totals, actual dubbing/workload, historical snapshots, or QQ/TIM visibility.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": ["OP-001"],
       "evidence": {
