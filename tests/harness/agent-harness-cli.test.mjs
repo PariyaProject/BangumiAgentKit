@@ -28,6 +28,18 @@ import {
   P01_EXPECTED_QUERY_ARGUMENTS,
 } from '../../scripts/acceptance/p01-person-position-answer-check.mjs';
 import {
+  R01_ARGUMENT_PROFILE,
+  R01_EPOCH_ID,
+  R01_EXPECTED_QUERY_ARGUMENTS,
+} from '../../scripts/acceptance/run-r01-codex-agent-mcp.mjs';
+import {
+  r01OneShotLatchLabelDescription,
+  r01OneShotLatchLabelName,
+  r01OneShotTerminalLabelDescription,
+  r01OneShotTerminalLabelName,
+} from '../../scripts/lib/r01-one-shot-claim.mjs';
+import { validateR01SanitizedReportFile } from '../../scripts/acceptance/write-r01-agent-mcp-report.mjs';
+import {
   generateP01RunnerReceiptKeyPair,
   p01RunnerPublicKeySha256,
 } from '../../scripts/acceptance/p01-runner-receipt.mjs';
@@ -1324,6 +1336,330 @@ function passedCandidateFixture() {
   return { run, epoch };
 }
 
+function run95R01ClaimFixture({ claimState = 'CLAIMED', reconciliation } = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const candidateSha = sha('b');
+  const baseSha = sha('a');
+  const reviewerId = 'gpt-6-luna-max-run95-pr143-round1';
+  const claimId = `r01-run-95-pr-143-${candidateSha.slice(0, 12)}-test`;
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 143;
+  run.pending_epoch = null;
+  run.next_action = 'RESUME_PR_143';
+  epoch.epoch_id = R01_EPOCH_ID;
+  epoch.pr_number = 143;
+  epoch.branch = 'codex/epoch-run95-r01-subject-relations-agent-mcp';
+  epoch.base_branch = 'master';
+  epoch.base_sha = baseSha;
+  epoch.candidate_sha = candidateSha;
+  epoch.reviewed_base_sha = baseSha;
+  epoch.review_pass_sha = candidateSha;
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = ['R01'];
+  epoch.ci = { sha: candidateSha, status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The R01 one-shot attempt is the current bounded work package.',
+    why_not_extend_further: 'Other frontiers remain separate.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'Exact R01 source, answer, and one-shot gates are covered.',
+    r01_one_shot_disposition: {
+      claimId,
+      frontierId: 'R01',
+      epochId: R01_EPOCH_ID,
+      runNumber: 95,
+      toolName: 'bangumi.get_subject_relations',
+      argumentProfile: R01_ARGUMENT_PROFILE,
+      expectedArgumentsSha256: canonicalHash(R01_EXPECTED_QUERY_ARGUMENTS),
+      state: claimState,
+      sourceCandidateSha: candidateSha,
+      baseSha,
+      ciSha: candidateSha,
+      ciStatus: 'SUCCESS',
+      bundleSha256: 'c'.repeat(64),
+      prNumber: 143,
+      reviewerId,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      reportWritten: claimState === 'REPORT_WRITTEN',
+      retryAllowed: false,
+      claimedAt: '2026-10-13T00:00:00.000Z',
+      ...(claimState === 'REPORT_WRITTEN'
+        ? {
+            reportPath: 'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json',
+            reportSha256: 'd'.repeat(64),
+          }
+        : {}),
+      ...(reconciliation ? { reconciliation } : {}),
+    },
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: candidateSha,
+      reviewed_base_sha: baseSha,
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  return { run, epoch };
+}
+
+function r01HarnessEnvironment(run, epoch, overrides = {}) {
+  return createMockEnvironment({
+    runIssueNumber: 95,
+    runIssueTitle: 'Run 95 R01 reconciliation fixture',
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: epoch.candidate_sha,
+    baseSha: epoch.base_sha,
+    draft: false,
+    repositoryLabels: {
+      [r01OneShotLatchLabelName()]: {
+        name: r01OneShotLatchLabelName(),
+        color: 'b60205',
+        description: r01OneShotLatchLabelDescription(),
+      },
+    },
+    ...overrides,
+  });
+}
+
+test('CLI reconciles a durable CLAIMED R01 attempt without invoking Codex or authorizing retry', () => {
+  const { run, epoch } = run95R01ClaimFixture();
+  const environment = r01HarnessEnvironment(run, epoch);
+  try {
+    const result = environment.execute([
+      'epoch:r01-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '143',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /R01_ONE_SHOT_RECONCILED/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.r01_one_shot_disposition;
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.reportWritten, false);
+    assert.equal(stored.retryAllowed, false);
+    assert.deepEqual(stored.reconciliation, {
+      method: 'harness-r01-read-only-reconcile-v1',
+      reportValidation: 'ABSENT',
+      reconciledAt: stored.reconciliation.reconciledAt,
+    });
+    const state = environment.readState();
+    assert.equal(
+      state.repositoryLabels[r01OneShotTerminalLabelName()].description,
+      r01OneShotTerminalLabelDescription('INCONCLUSIVE'),
+    );
+    assert.ok(
+      state.calls.some(
+        (call) =>
+          call.tool === 'gh' &&
+          call.args[0] === 'api' &&
+          call.args[1] ===
+            `repos/{owner}/{repo}/labels/${encodeURIComponent(r01OneShotLatchLabelName())}`,
+      ),
+      'reconciliation must read back the original create-once latch',
+    );
+    assert.ok(
+      !state.calls.some(
+        (call) => call.tool === 'codex' || call.args.some((arg) => String(arg).includes('codex')),
+      ),
+      'reconciliation must never invoke the model runner',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI reconciliation fails closed when the permanent R01 claim latch is missing', () => {
+  const { run, epoch } = run95R01ClaimFixture();
+  const environment = r01HarnessEnvironment(run, epoch, { repositoryLabels: {} });
+  try {
+    const result = environment.execute([
+      'epoch:r01-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '143',
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^R01_ONESHOT_LATCH_MISSING:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.r01_one_shot_disposition;
+    assert.equal(stored.state, 'CLAIMED');
+    assert.equal(
+      environment.readState().repositoryLabels[r01OneShotTerminalLabelName()],
+      undefined,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI recovers a lost PR-body write from the immutable terminal latch without changing its result', () => {
+  const { run, epoch } = run95R01ClaimFixture();
+  const environment = r01HarnessEnvironment(run, epoch, {
+    repositoryLabels: {
+      [r01OneShotLatchLabelName()]: {
+        name: r01OneShotLatchLabelName(),
+        color: 'b60205',
+        description: r01OneShotLatchLabelDescription(),
+      },
+      [r01OneShotTerminalLabelName()]: {
+        name: r01OneShotTerminalLabelName(),
+        color: '6e7781',
+        description: r01OneShotTerminalLabelDescription('INCONCLUSIVE'),
+      },
+    },
+  });
+  try {
+    const result = environment.execute([
+      'epoch:r01-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '143',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.r01_one_shot_disposition;
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(
+      environment.readState().repositoryLabels[r01OneShotTerminalLabelName()].description,
+      r01OneShotTerminalLabelDescription('INCONCLUSIVE'),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI reconciles an already-written sanitized R01 report by exact claim and digest', () => {
+  const { run, epoch } = run95R01ClaimFixture();
+  const environment = r01HarnessEnvironment(run, epoch);
+  const reportPath = path.join(environment.directory, 'r01-sanitized-report.json');
+  const disposition = epoch.adversarial_preflight.r01_one_shot_disposition;
+  const serialized = `${JSON.stringify(
+    {
+      runNumber: 95,
+      frontierId: 'R01',
+      epochId: R01_EPOCH_ID,
+      claimId: disposition.claimId,
+      prNumber: 143,
+      sourceRevision: disposition.sourceCandidateSha,
+      baseSha: disposition.baseSha,
+      reviewerId: disposition.reviewerId,
+      mcpBundleSha256: disposition.bundleSha256,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      codexErrorItemCount: 0,
+      eventStreamParsed: true,
+      resultStatus: 'SUCCESS',
+    },
+    null,
+    2,
+  )}\n`;
+  fs.writeFileSync(reportPath, serialized, { mode: 0o600 });
+  try {
+    const priorMockState = process.env.HARNESS_MOCK_STATE;
+    const priorReportPath = process.env.HARNESS_R01_REPORT_PATH;
+    process.env.HARNESS_MOCK_STATE = 'report-validator-fixture';
+    process.env.HARNESS_R01_REPORT_PATH = reportPath;
+    let validation;
+    try {
+      validation = validateR01SanitizedReportFile(disposition, process.cwd());
+    } finally {
+      if (priorMockState === undefined) delete process.env.HARNESS_MOCK_STATE;
+      else process.env.HARNESS_MOCK_STATE = priorMockState;
+      if (priorReportPath === undefined) delete process.env.HARNESS_R01_REPORT_PATH;
+      else process.env.HARNESS_R01_REPORT_PATH = priorReportPath;
+    }
+    assert.equal(validation.passed, true, validation.reason);
+    const result = environment.execute(
+      ['epoch:r01-one-shot-reconcile', '--run', '95', '--pr', '143'],
+      { HARNESS_R01_REPORT_PATH: reportPath },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.r01_one_shot_disposition;
+    const digest = createHash('sha256').update(serialized).digest('hex');
+    assert.equal(stored.state, 'REPORT_WRITTEN', JSON.stringify(stored));
+    assert.equal(stored.reportWritten, true);
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(
+      stored.reportPath,
+      'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json',
+    );
+    assert.equal(stored.reportSha256, digest);
+    assert.equal(stored.reconciliation.reportValidation, 'VALID');
+    assert.equal(
+      environment.readState().repositoryLabels[r01OneShotTerminalLabelName()].description,
+      r01OneShotTerminalLabelDescription('REPORT_WRITTEN', digest),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI terminalizes an invalid claim-bound R01 report as unaccepted and non-retryable', () => {
+  const { run, epoch } = run95R01ClaimFixture();
+  const environment = r01HarnessEnvironment(run, epoch);
+  const reportPath = path.join(environment.directory, 'r01-invalid-report.json');
+  const disposition = epoch.adversarial_preflight.r01_one_shot_disposition;
+  const serialized = `${JSON.stringify(
+    {
+      runNumber: 95,
+      frontierId: 'R01',
+      epochId: R01_EPOCH_ID,
+      claimId: disposition.claimId,
+      prNumber: 143,
+      sourceRevision: disposition.sourceCandidateSha,
+      baseSha: disposition.baseSha,
+      reviewerId: disposition.reviewerId,
+      mcpBundleSha256: disposition.bundleSha256,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      codexErrorItemCount: 1,
+      eventStreamParsed: true,
+      resultStatus: 'SUCCESS',
+    },
+    null,
+    2,
+  )}\n`;
+  fs.writeFileSync(reportPath, serialized, { mode: 0o600 });
+  try {
+    const result = environment.execute(
+      ['epoch:r01-one-shot-reconcile', '--run', '95', '--pr', '143'],
+      { HARNESS_R01_REPORT_PATH: reportPath },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.r01_one_shot_disposition;
+    const digest = createHash('sha256').update(serialized).digest('hex');
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.reportWritten, false);
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(stored.reconciliation.reportValidation, 'INVALID');
+    assert.equal(stored.reconciliation.observedReportSha256, digest);
+    assert.equal(
+      environment.readState().repositoryLabels[r01OneShotTerminalLabelName()].description,
+      r01OneShotTerminalLabelDescription('INCONCLUSIVE', digest),
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI G19 one-shot claim and terminal result persist in the durable Epoch control body', () => {
   const { run, epoch } = passedCandidateFixture();
   const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
@@ -2156,6 +2492,131 @@ test('CLI Candidate refresh cannot clear or replace the durable G16 one-shot dis
       assert.equal(stored.state, 'REVIEW_PASSED');
       assert.deepEqual(stored.adversarial_preflight.g16_one_shot_disposition, disposition);
     }
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh preserves the durable R01 one-shot disposition exactly', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const disposition = {
+    claimId: 'r01-run-95-pr-42-bbbbbbbbbbbb-test',
+    frontierId: 'R01',
+    epochId: R01_EPOCH_ID,
+    runNumber: 95,
+    toolName: 'bangumi.get_subject_relations',
+    argumentProfile: R01_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(R01_EXPECTED_QUERY_ARGUMENTS),
+    state: 'INCONCLUSIVE',
+    sourceCandidateSha: sha('b'),
+    baseSha: sha('a'),
+    ciSha: sha('b'),
+    ciStatus: 'SUCCESS',
+    bundleSha256: 'c'.repeat(64),
+    prNumber: 42,
+    reviewerId: 'gpt-6-luna-max-run95-pr42-round1',
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    reportWritten: false,
+    retryAllowed: false,
+  };
+  epoch.adversarial_preflight.r01_one_shot_disposition = structuredClone(disposition);
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const invalidEvidence = [
+      { candidate_refresh_reason: 'Attempt to remove the R01 one-shot result.' },
+      {
+        candidate_refresh_reason: 'Attempt to replace the R01 one-shot result.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Attempted R01 result replacement.',
+          r01_one_shot_disposition: {
+            ...disposition,
+            state: 'REPORT_WRITTEN',
+            reportWritten: true,
+          },
+        },
+      },
+    ];
+    for (const overrides of invalidEvidence) {
+      const result = environment.execute([
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('d'), ...overrides }),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /^R01_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+      const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.equal(stored.state, 'REVIEW_PASSED');
+      assert.deepEqual(stored.adversarial_preflight.r01_one_shot_disposition, disposition);
+    }
+
+    const accepted = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason:
+          'Preserve the durable R01 no-retry result while refreshing evidence.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve all durable R01 one-shot evidence.',
+          r01_one_shot_disposition: disposition,
+        },
+      }),
+    ]);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    const refreshed = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(refreshed.state, 'REVIEW_READY');
+    assert.deepEqual(refreshed.adversarial_preflight.r01_one_shot_disposition, disposition);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot introduce an R01 claim through Candidate evidence', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason: 'Candidate evidence cannot create a one-shot claim.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Attempt to inject a forged terminal R01 disposition.',
+          r01_one_shot_disposition: {
+            claimId: 'forged',
+            frontierId: 'R01',
+            state: 'INCONCLUSIVE',
+            retryAllowed: false,
+          },
+        },
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^R01_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_PASSED');
+    assert.equal(stored.adversarial_preflight.r01_one_shot_disposition, undefined);
   } finally {
     environment.cleanup();
   }

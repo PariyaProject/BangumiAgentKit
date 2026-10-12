@@ -323,6 +323,29 @@ query may run and the consumed latch cannot be released. Recovery may only
 reconcile the existing latch, PR state, and any sanitized artifact to a
 terminal result; it never retries the Product query.
 
+For Run 95 R01, `pnpm harness epoch:r01-one-shot-reconcile --run 95 --pr <pr>`
+is the no-Codex recovery route. It verifies the original claim label by GET,
+checks the exact durable claim, and validates a claim-bound sanitized report if
+one exists. A still-`CLAIMED` attempt with no accepted report becomes
+`INCONCLUSIVE` with `retryAllowed=false`; a valid report created before a lost
+Harness acknowledgement can be recorded as `REPORT_WRITTEN`. Invalid or stale
+reports are terminally unaccepted and identified only by a digest and status.
+The acceptance generator credits an R01 report only after read-only Harness and
+GitHub checks confirm the exact durable `REPORT_WRITTEN` disposition, permanent
+claim and terminal labels, Candidate/Base/CI/reviewer/bundle binding, and the
+digest of the canonical report bytes. Missing, inconclusive, conflicting, or
+unreadable control-plane state leaves the tool uncredited.
+
+The runner re-reads the durable claim immediately before invoking Codex and
+again before writing a report. Runner completion and recovery compete for one
+second permanent, create-only terminal label whose description binds the
+immutable result and (for a report) its SHA-256. This label arbitrates a
+reconciliation that races an in-flight process: the losing process cannot
+replace the terminal result, and an unaccepted report is discarded only when
+its exact digest matches the file created by that runner attempt. Candidate
+refreshes must preserve the complete R01 disposition exactly; arbitrary
+Candidate evidence cannot create, clear, or replace it.
+
 When an exact terminal one-shot claim predates the repository label, the
 Harness may reconcile that legacy disposition only after verifying its merged
 source PR, exact Candidate/Base/CI/reviewer binding, terminal result, and

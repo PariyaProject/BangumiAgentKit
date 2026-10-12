@@ -611,6 +611,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         relative_paths = {
             *GENERATOR.CODEX_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G20_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_R01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_A01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
@@ -697,68 +698,23 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
     def sha256(value):
         return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
-    def write_report(self, tool_name='bangumi.get_subject_stats_intelligence', **overrides):
+    def write_report(
+        self, tool_name='bangumi.get_subject_stats_intelligence', *, frontier_id=None, **overrides,
+    ):
         tool = next(item for item in self.catalog if item['name'] == tool_name)
-        is_g20 = tool_name in GENERATOR.CODEX_G20_PROBE_ARGUMENTS
+        is_r01 = (
+            frontier_id == 'R01'
+            and tool_name in GENERATOR.CODEX_R01_PROBE_ARGUMENTS
+        )
+        is_g20 = tool_name in GENERATOR.CODEX_G20_PROBE_ARGUMENTS and not is_r01
         is_d04 = tool_name == 'bangumi.query_subjects'
         is_renderer = tool_name.startswith('bangumi.render_')
         arguments = (GENERATOR.CODEX_D04_PROBE_ARGUMENTS[tool_name] if is_d04
+                     else GENERATOR.CODEX_R01_PROBE_ARGUMENTS[tool_name] if is_r01
                      else GENERATOR.CODEX_PROBE_ARGUMENTS[tool_name])
-        if is_g20:
+        if is_g20 or is_r01:
             answer_checks = {key: True for key in GENERATOR.CODEX_G20_ANSWER_CHECK_FIELDS}
-            result = {
-                'toolName': tool_name,
-                'resultState': 'observed',
-                'resultByteLength': 1024,
-                'resultSha256': 'd' * 64,
-                'sourceOperations': [],
-                'artifact': {'returned': False, 'persisted': False},
-                'sourceSubjectId': 227245,
-                'source': {
-                    'api': 'Bangumi official v0',
-                    'operation': 'GET /v0/subjects/{subject_id}/subjects',
-                    'direction': 'source_subject_to_returned_target',
-                    'scope': 'visible_direct_rows_returned_for_source_subject',
-                    'retrievedAt': '2026-10-07T10:30:00.000Z',
-                },
-                'coverage': {
-                    'responseRowsObserved': 2,
-                    'rowsReturned': 2,
-                    'schemaDriftRows': 0,
-                    'truncated': False,
-                    'paginationAvailable': False,
-                    'totalCountAvailable': False,
-                    'completeness': 'not_provided_by_source',
-                },
-                'limitationsCount': 4,
-                'visibleRows': [
-                    {'id': 218707, 'name': 'Fixture root', 'nameCn': '测试主线', 'relation': '主线故事'},
-                    {'id': 227246, 'name': 'Fixture extra', 'relation': '外传'},
-                ],
-                'textProjection': {
-                    'textUtf8Bytes': 1180,
-                    'rowsIncluded': 2,
-                    'rowsOmitted': 0,
-                    'displayNamesClipped': 0,
-                    'relationLabelsClipped': 0,
-                    'limitationsClipped': 0,
-                    'imageFieldsOmitted': 2,
-                    'fullStructuredContentAvailable': True,
-                },
-                'answerCounters': {
-                    'visibleSourceRows': 2,
-                    'invalidSourceRowsCount': 0,
-                    'duplicateSourceRowsCount': 0,
-                    'answerRowsParsed': 2,
-                    'rowsMatched': 2,
-                    'missingRowsCount': 0,
-                    'mismatchedRowsCount': 0,
-                    'unmatchedRowsCount': 0,
-                    'duplicateAnswerRowsCount': 0,
-                    'unstructuredAnswerLinesCount': 0,
-                    'toolTextUtf8Bytes': 1180,
-                },
-            }
+            result = self._g20_result_fixture(source_subject_id=arguments['subjectId'])
         elif is_d04:
             answer_checks = {key: True for key in GENERATOR.CODEX_D04_ANSWER_CHECK_FIELDS}
             result = {
@@ -787,6 +743,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                               'sha256': 'c' * 64, 'pngSignatureValid': True}
                              if is_renderer else {'returned': False, 'persisted': False}),
             }
+        if is_r01:
+            visible_rows = result.pop('visibleRows')
+            result['visibleRowCount'] = len(visible_rows)
+            result['visibleRowsSha256'] = GENERATOR._canonical_json_sha256(visible_rows)
         report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_mcp_tool_use',
@@ -799,7 +759,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'toolName': tool_name,
             'toolDescriptionSha256': self.sha256(tool['description']),
             'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
-            'argumentProfile': GENERATOR.CODEX_ARGUMENT_PROFILES[tool_name],
+            'argumentProfile': (
+                GENERATOR.CODEX_R01_ARGUMENT_PROFILE if is_r01
+                else GENERATOR.CODEX_ARGUMENT_PROFILES[tool_name]
+            ),
             'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(arguments),
             'serverToolNames': [tool_name],
             'serverToolCount': 1,
@@ -808,6 +771,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'resultCount': 1,
             'eventStreamParsed': True,
             'codexMcpToolEventCount': 1,
+            **({'codexErrorItemCount': 0} if is_r01 else {}),
             'nonMcpToolEventCount': 0,
             'shellToolCallCount': 0,
             'allowedCallCount': 1,
@@ -829,6 +793,18 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'result': result,
             }],
         }
+        if is_r01:
+            report.update({
+                'runNumber': 95,
+                'frontierId': 'R01',
+                'epochId': 'run95-r01-subject-relations-agent-mcp',
+                'reviewerId': 'gpt-6-luna-max-run95-pr143-round1',
+                'baseSha': self._git('rev-parse', f'{self.source_revision}^').stdout.strip(),
+                'prNumber': 143,
+                'claimId': f"r01-run-95-pr-143-{self.source_revision[:12]}-1791765972000",
+                'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision),
+                'observedAt': '2026-10-13T00:00:00.000Z',
+            })
         if is_d04:
             report.update({
                 'runNumber': 95,
@@ -1720,6 +1696,153 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             {'docs/live-probes/pariya-agent-codex-luna-e2e-G20-relations.json'},
         )
 
+    def test_accepts_catalog_bound_r01_report_for_its_distinct_fixed_subject(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations', frontier_id='R01')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        self.assertEqual(report['argumentProfile'], GENERATOR.CODEX_R01_ARGUMENT_PROFILE)
+        self.assertEqual(
+            report['expectedArgumentsSha256'],
+            GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_R01_PROBE_ARGUMENTS['bangumi.get_subject_relations']
+            ),
+        )
+        self.assertEqual(report['scenarios'][0]['result']['sourceSubjectId'], 41529)
+        self.assertNotIn('visibleRows', report['scenarios'][0]['result'])
+        self.assertNotIn('Fixture root', json.dumps(report, ensure_ascii=False))
+        self.assertTrue(
+            GENERATOR.codex_r01_probe_revision_has_implementation(self.source_revision)
+        )
+        self.assertTrue(
+            GENERATOR.codex_r01_report_matches_candidate_revision(
+                self.report_path, self.source_revision,
+            )
+        )
+        report_bytes = self.report_path.read_bytes()
+        harness_status, latches = self._r01_harness_status_fixture(report, report_bytes)
+        self.assertIsNotNone(GENERATOR.codex_r01_harness_disposition_matches_report(
+            report,
+            harness_status,
+            hashlib.sha256(report_bytes).hexdigest(),
+            latches,
+        ))
+        with patch.object(GENERATOR, 'codex_r01_harness_status', return_value=harness_status), \
+                patch.object(GENERATOR, 'codex_r01_harness_latches', return_value=latches):
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_names(self.catalog),
+                {'bangumi.get_subject_relations'},
+            )
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_subject_relations'],
+                {'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'},
+            )
+
+    def test_r01_valid_looking_report_is_not_credited_after_inconclusive_terminal_latch(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations', frontier_id='R01')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report_bytes = self.report_path.read_bytes()
+        harness_status, latches = self._r01_harness_status_fixture(report, report_bytes)
+        disposition = harness_status['epoch']['state']['adversarial_preflight'][
+            'r01_one_shot_disposition'
+        ]
+        disposition.update({'state': 'INCONCLUSIVE', 'reportWritten': False})
+        disposition.pop('reportPath')
+        disposition.pop('reportSha256')
+        latches['terminal']['description'] = 'R01-INCONCLUSIVE:report=none'
+
+        self.assertTrue(GENERATOR.codex_mcp_evidence_is_valid(
+            report,
+            {item['name']: item for item in self.catalog},
+            {item['name']: item for item in self.catalog},
+        ))
+        self.assertIsNone(GENERATOR.codex_r01_harness_disposition_matches_report(
+            report,
+            harness_status,
+            hashlib.sha256(report_bytes).hexdigest(),
+            latches,
+        ))
+        with patch.object(GENERATOR, 'codex_r01_harness_status', return_value=harness_status), \
+                patch.object(GENERATOR, 'codex_r01_harness_latches', return_value=latches):
+            self.assertNotIn(
+                'bangumi.get_subject_relations',
+                GENERATOR.model_mcp_e2e_sources(self.catalog),
+            )
+
+    def test_r01_report_cannot_be_rebound_to_another_subject_candidate_or_path(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations', frontier_id='R01')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['scenarios'][0]['result']['sourceSubjectId'] = 227245
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
+        report['scenarios'][0]['result']['sourceSubjectId'] = 41529
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        self.assertTrue(
+            GENERATOR.codex_r01_probe_revision_has_implementation(
+                self.stale_candidate_source_revision,
+            )
+        )
+        self.assertFalse(
+            GENERATOR.codex_r01_report_matches_candidate_revision(
+                self.report_path, self.stale_candidate_source_revision,
+            )
+        )
+        report['sourceRevision'] = self.stale_candidate_source_revision
+        self.report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        alternate_path = self.live_probe_dir / 'another-r01-report.json'
+        alternate_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        self.assertFalse(
+            GENERATOR.codex_r01_report_matches_candidate_revision(
+                alternate_path, self.source_revision,
+            )
+        )
+        self.assertEqual(GENERATOR.model_mcp_e2e_names(self.catalog), set())
+
+    def test_r01_rejects_codex_error_items_even_when_the_event_stream_is_complete(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(
+            tool_name='bangumi.get_subject_relations',
+            frontier_id='R01',
+            codexErrorItemCount=1,
+        )
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['eventStreamParsed'] = True
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
+
+    def test_r01_rejects_claim_ids_not_bound_to_the_candidate_and_pr(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations', frontier_id='R01')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['claimId'] = 143
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
+        del report['codexErrorItemCount']
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
+
     def test_rejects_g20_report_from_older_revision_with_same_implementation_markers(self):
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'
         self.write_report(
@@ -1789,7 +1912,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 )
 
     @staticmethod
-    def _g20_result_fixture():
+    def _g20_result_fixture(source_subject_id=227245):
         return {
             'toolName': 'bangumi.get_subject_relations',
             'resultState': 'observed',
@@ -1797,7 +1920,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'resultSha256': 'd' * 64,
             'sourceOperations': [],
             'artifact': {'returned': False, 'persisted': False},
-            'sourceSubjectId': 227245,
+            'sourceSubjectId': source_subject_id,
             'source': {
                 'api': 'Bangumi official v0',
                 'operation': 'GET /v0/subjects/{subject_id}/subjects',
@@ -2934,6 +3057,76 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 },
             },
         }
+
+    def _r01_harness_status_fixture(self, report, report_bytes):
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'R01',
+            'epochId': GENERATOR.CODEX_R01_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'toolName': 'bangumi.get_subject_relations',
+            'argumentProfile': GENERATOR.CODEX_R01_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_R01_PROBE_ARGUMENTS['bangumi.get_subject_relations'],
+            ),
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['mcpBundleSha256'],
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_R01_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+        }
+        status = {
+            'run': {
+                'number': 95,
+                'state': {
+                    'profile': 'AUTONOMOUS_EVOLUTION',
+                    'active_epoch_pr': report['prNumber'],
+                },
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': 'OPEN',
+                'pr_head_sha': report['sourceRevision'],
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_R01_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'base_branch': 'master',
+                    'base_sha': report['baseSha'],
+                    'reviewed_base_sha': report['baseSha'],
+                    'candidate_sha': report['sourceRevision'],
+                    'review_pass_sha': report['sourceRevision'],
+                    'ci': {'sha': report['sourceRevision'], 'status': 'SUCCESS'},
+                    'review_history': [{
+                        'candidate_sha': report['sourceRevision'],
+                        'reviewed_base_sha': report['baseSha'],
+                        'verdict': 'PASS',
+                        'reviewer_id': report['reviewerId'],
+                    }],
+                    'adversarial_preflight': {'r01_one_shot_disposition': disposition},
+                },
+            },
+        }
+        latches = {
+            'claim': {
+                'name': GENERATOR.CODEX_R01_CLAIM_LATCH_NAME,
+                'description': GENERATOR.CODEX_R01_CLAIM_LATCH_DESCRIPTION,
+            },
+            'terminal': {
+                'name': GENERATOR.CODEX_R01_TERMINAL_LATCH_NAME,
+                'description': f'R01-REPORT_WRITTEN:sha256={report_sha256}',
+            },
+        }
+        return status, latches
 
     def _g16_is_valid(self, report, report_bytes=None, harness_status=None):
         bytes_value = report_bytes or json.dumps(report).encode('utf-8')

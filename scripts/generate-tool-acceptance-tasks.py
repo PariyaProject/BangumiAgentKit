@@ -264,6 +264,17 @@ CODEX_G23_PROBE_ARGUMENTS = {
 CODEX_G20_PROBE_ARGUMENTS = {
     'bangumi.get_subject_relations': {'subjectId': 227245, 'includeEvidence': True},
 }
+CODEX_R01_PROBE_ARGUMENTS = {
+    'bangumi.get_subject_relations': {'subjectId': 41529, 'includeEvidence': True},
+}
+CODEX_R01_ARGUMENT_PROFILE = 'fixed-r01-subject-41529-include-evidence-v1'
+CODEX_R01_REPORT_RELATIVE_PATH = 'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'
+CODEX_R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp'
+CODEX_R01_CLAIM_LATCH_NAME = 'harness-r95-r01-subject-relations-claimed'
+CODEX_R01_CLAIM_LATCH_DESCRIPTION = (
+    'Run 95 R01 bangumi.get_subject_relations one-shot latch; permanent; never remove or recreate.'
+)
+CODEX_R01_TERMINAL_LATCH_NAME = 'harness-r95-r01-subject-relations-terminal'
 CODEX_A01_QUERY_ARGUMENTS = {
     'cohorts': [
         {
@@ -841,6 +852,10 @@ CODEX_REPORT_FIELDS = {
     'allowedCallCount', 'deniedCallCount', 'qqPipelineTested', 'timClientTested',
     'privacy', 'scenarios',
 }
+CODEX_R01_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
+    'runNumber', 'frontierId', 'epochId', 'reviewerId', 'baseSha', 'prNumber',
+    'claimId', 'mcpBundleSha256', 'observedAt', 'codexErrorItemCount',
+}
 CODEX_C07_RENDERER_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
     'frontierId', 'runNumber', 'epochId', 'observedAt', 'baseSha', 'prNumber',
     'eventStreamComplete',
@@ -920,8 +935,10 @@ CODEX_A01_AGGREGATE_ANSWER_CHECK_FIELDS = {
 CODEX_G20_ANSWER_CHECK_FIELDS = {
     'queryArgumentsMatch', 'exactSingleToolCall', 'resultReadbackAvailable',
     'sourceScopeVerified', 'coverageConsistent', 'textProjectionConsistent',
-    'textBudgetVerified', 'boundedSourceDisclosurePresent',
-    'responseCountsDisclosurePresent', 'omissionNotAbsenceDisclosurePresent',
+    'textBudgetVerified', 'finalScopeLineVerified', 'sourceSubjectDisclosurePresent',
+    'boundedSourceDisclosurePresent', 'responseCountsDisclosurePresent',
+    'projectionRowsOmittedDisclosurePresent', 'omissionNotAbsenceDisclosurePresent',
+    'reverseTransitiveDisclosurePresent',
     'nonCanonicalOrderDisclosurePresent', 'schemaDriftDisclosurePresent',
     'noUnsupportedCompletenessClaim', 'noUnsupportedCanonicalOrderClaim',
     'noUnsupportedAbsenceClaim', 'noUnsupportedReverseClaim', 'noMarkdownFormatting',
@@ -1299,6 +1316,9 @@ CODEX_G20_RESULT_FIELDS = {
     'artifact', 'sourceSubjectId', 'source', 'coverage', 'limitationsCount', 'visibleRows',
     'textProjection', 'answerCounters',
 }
+CODEX_R01_RESULT_FIELDS = (
+    CODEX_G20_RESULT_FIELDS - {'visibleRows'}
+) | {'visibleRowCount', 'visibleRowsSha256'}
 CODEX_G20_SOURCE_FIELDS = {'api', 'operation', 'direction', 'scope', 'retrievedAt'}
 CODEX_G20_COVERAGE_FIELDS = {
     'responseRowsObserved', 'rowsReturned', 'schemaDriftRows', 'truncated',
@@ -1532,6 +1552,41 @@ CODEX_G20_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/write-g20-agent-mcp-report.mjs': (
         "const TOOL_NAME = 'bangumi.get_subject_relations'",
         'verifyG20DirectRelationsAnswer(',
+        'input.sourceRevision !== sourceRevision',
+        "openSync(reportPath, 'wx', 0o600)",
+    ),
+}
+CODEX_R01_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_r01_report_matches_candidate_revision(',
+        'def codex_r01_harness_status(',
+        'def codex_r01_harness_latches(',
+        'def codex_r01_harness_disposition_matches_report(',
+        'current_latches = codex_r01_harness_latches()',
+        'R01-REPORT_WRITTEN:sha256=',
+        'def codex_r01_result_is_valid(',
+        'CODEX_R01_RESULT_FIELDS',
+    ),
+    'scripts/acceptance/r01-direct-relations-answer-check.mjs': (
+        'export function verifyR01DirectRelationsAnswer(',
+        'const FIXED_R01_SUBJECT_ID = 41529;',
+        'exactQueryArguments(toolCalls[0]?.arguments, FIXED_R01_SUBJECT_ID)',
+        'resultRowsReadbackAvailable',
+        'unsupportedCanonicalOrderClaim',
+    ),
+    'scripts/acceptance/run-r01-codex-agent-mcp.mjs': (
+        'export function buildCodexExecArgs(',
+        'export function validateRunnerArgs(',
+        'export function createOneShotClaim(',
+        'function buildExactCandidateBundle(',
+        'assertR01CandidateReviewGate(status, pr',
+        "'features.shell_tool=false'",
+    ),
+    'scripts/acceptance/write-r01-agent-mcp-report.mjs': (
+        "const TOOL_NAME = 'bangumi.get_subject_relations'",
+        'verifyR01DirectRelationsAnswer(',
+        'visibleRowCount: rows.length',
+        'visibleRowsSha256',
         'input.sourceRevision !== sourceRevision',
         "openSync(reportPath, 'wx', 0o600)",
     ),
@@ -2791,6 +2846,112 @@ def codex_g20_result_is_valid(result: object, expected_subject_id: int) -> bool:
     return artifact == {'returned': False, 'persisted': False}
 
 
+def codex_r01_result_is_valid(result: object, expected_subject_id: int) -> bool:
+    """Validate the R01 result summary without persisting source relation rows."""
+    if not isinstance(result, dict) or set(result) != CODEX_R01_RESULT_FIELDS:
+        return False
+    if (
+        result.get('toolName') != 'bangumi.get_subject_relations'
+        or result.get('resultState') not in {'observed', 'partial'}
+        or type(result.get('sourceSubjectId')) is not int
+        or result['sourceSubjectId'] != expected_subject_id
+        or type(result.get('resultByteLength')) is not int
+        or result['resultByteLength'] <= 0
+        or not re.fullmatch(r'[0-9a-f]{64}', str(result.get('resultSha256', '')))
+        or type(result.get('limitationsCount')) is not int
+        or result['limitationsCount'] <= 0
+        or type(result.get('visibleRowCount')) is not int
+        or result['visibleRowCount'] <= 0
+        or not re.fullmatch(r'[0-9a-f]{64}', str(result.get('visibleRowsSha256', '')))
+    ):
+        return False
+
+    source = result.get('source')
+    if (
+        not isinstance(source, dict)
+        or set(source) != CODEX_G20_SOURCE_FIELDS
+        or source.get('api') != 'Bangumi official v0'
+        or source.get('operation') != 'GET /v0/subjects/{subject_id}/subjects'
+        or source.get('direction') != 'source_subject_to_returned_target'
+        or source.get('scope') != 'visible_direct_rows_returned_for_source_subject'
+        or not isinstance(source.get('retrievedAt'), str)
+        or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z',
+            source['retrievedAt'],
+        )
+    ):
+        return False
+
+    coverage = result.get('coverage')
+    if (
+        not isinstance(coverage, dict)
+        or set(coverage) != CODEX_G20_COVERAGE_FIELDS
+        or any(
+            type(coverage.get(key)) is not int or coverage[key] < 0
+            for key in ('responseRowsObserved', 'rowsReturned', 'schemaDriftRows')
+        )
+        or type(coverage.get('truncated')) is not bool
+        or coverage.get('paginationAvailable') is not False
+        or coverage.get('totalCountAvailable') is not False
+        or coverage.get('completeness') != 'not_provided_by_source'
+        or coverage['responseRowsObserved'] != (
+            coverage['rowsReturned'] + coverage['schemaDriftRows']
+        )
+        or coverage['truncated'] != (coverage['schemaDriftRows'] > 0)
+        or coverage['rowsReturned'] != result['visibleRowCount']
+    ):
+        return False
+    if result['resultState'] != ('partial' if coverage['truncated'] else 'observed'):
+        return False
+
+    text_projection = result.get('textProjection')
+    if (
+        not isinstance(text_projection, dict)
+        or set(text_projection) != CODEX_G20_TEXT_PROJECTION_FIELDS
+        or type(text_projection.get('textUtf8Bytes')) is not int
+        or not 0 < text_projection['textUtf8Bytes'] <= 3600
+        or any(
+            type(text_projection.get(key)) is not int or text_projection[key] < 0
+            for key in (
+                'rowsIncluded', 'rowsOmitted', 'displayNamesClipped',
+                'relationLabelsClipped', 'limitationsClipped', 'imageFieldsOmitted',
+            )
+        )
+        or type(text_projection.get('fullStructuredContentAvailable')) is not bool
+        or text_projection['fullStructuredContentAvailable'] is not True
+        or text_projection['rowsIncluded'] + text_projection['rowsOmitted'] != (
+            result['visibleRowCount']
+        )
+    ):
+        return False
+
+    answer_counters = result.get('answerCounters')
+    if (
+        not isinstance(answer_counters, dict)
+        or set(answer_counters) != CODEX_G20_ANSWER_COUNTER_FIELDS
+        or any(type(value) is not int or value < 0 for value in answer_counters.values())
+        or answer_counters['visibleSourceRows'] != result['visibleRowCount']
+        or answer_counters['invalidSourceRowsCount'] != 0
+        or answer_counters['duplicateSourceRowsCount'] != 0
+        or answer_counters['answerRowsParsed'] != result['visibleRowCount']
+        or answer_counters['rowsMatched'] != result['visibleRowCount']
+        or any(
+            answer_counters[key] != 0
+            for key in (
+                'missingRowsCount', 'mismatchedRowsCount', 'unmatchedRowsCount',
+                'duplicateAnswerRowsCount', 'unstructuredAnswerLinesCount',
+            )
+        )
+        or answer_counters['toolTextUtf8Bytes'] != text_projection['textUtf8Bytes']
+    ):
+        return False
+
+    operations = result.get('sourceOperations')
+    if not isinstance(operations, list) or operations:
+        return False
+    return result.get('artifact') == {'returned': False, 'persisted': False}
+
+
 _GIT_REPOSITORY_OVERRIDE_KEYS = {
     'GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
     'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES',
@@ -2924,13 +3085,18 @@ def codex_g26_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
-def codex_g20_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
-    """Require G20 evidence to originate from the exact pre-query candidate."""
+def _codex_relations_report_matches_candidate_revision(
+    report_path: Path,
+    revision: object,
+    expected_relative_path: str | None = None,
+) -> bool:
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
         return False
     try:
         relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
     except ValueError:
+        return False
+    if expected_relative_path is not None and relative_path != expected_relative_path:
         return False
 
     head = _run_repository_git(ROOT, 'rev-parse', 'HEAD')
@@ -2953,6 +3119,31 @@ def codex_g20_report_matches_candidate_revision(report_path: Path, revision: obj
     parents = _run_repository_git(ROOT, 'rev-list', '--parents', '-n', '1', commit_sha)
     parent_shas = parents.stdout.strip().split()
     return parents.returncode == 0 and len(parent_shas) >= 2 and parent_shas[1] == revision
+
+
+def codex_g20_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require G20 evidence to originate from the exact pre-query candidate."""
+    return _codex_relations_report_matches_candidate_revision(report_path, revision)
+
+
+def codex_r01_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(
+            str(ROOT), revision, CODEX_R01_PROBE_IMPLEMENTATION_MARKERS,
+        )
+    )
+
+
+def codex_r01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind R01 evidence to its fixed report path and exact pre-query Candidate."""
+    if not codex_r01_probe_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_R01_REPORT_RELATIVE_PATH,
+    )
 
 
 def codex_a01_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
@@ -4169,6 +4360,152 @@ def codex_g16_harness_disposition_matches_report(
         not isinstance(report_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
         or any(disposition.get(key) != value for key, value in expected.items())
     ):
+        return None
+    return disposition
+
+
+def codex_r01_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the durable Run/Epoch R01 disposition through the Harness status command."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    harness_script = ROOT / 'scripts/agent-harness.mjs'
+    try:
+        result = subprocess.run(
+            ['node', str(harness_script), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_r01_github_label(name: str) -> dict[str, object] | None:
+    """Read one repository-scoped R01 latch; API or parse failures fail closed."""
+    try:
+        result = subprocess.run(
+            ['gh', 'api', f'repos/{{owner}}/{{repo}}/labels/{name}'],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        label = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return label if isinstance(label, dict) else None
+
+
+def codex_r01_harness_latches() -> dict[str, object] | None:
+    """Read the immutable claim and result labels that arbitrate the R01 one-shot."""
+    claim = codex_r01_github_label(CODEX_R01_CLAIM_LATCH_NAME)
+    terminal = codex_r01_github_label(CODEX_R01_TERMINAL_LATCH_NAME)
+    if claim is None:
+        return None
+    return {'claim': claim, 'terminal': terminal}
+
+
+def codex_r01_harness_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+    latches: object,
+) -> dict[str, object] | None:
+    """Require the exact durable REPORT_WRITTEN claim, terminal latch, and report digest."""
+    if not isinstance(harness_status, dict) or not isinstance(latches, dict):
+        return None
+    run = harness_status.get('run')
+    epoch_view = harness_status.get('epoch')
+    run_state = run.get('state') if isinstance(run, dict) else None
+    epoch = epoch_view.get('state') if isinstance(epoch_view, dict) else None
+    pr_number = report.get('prNumber')
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    reviewer_id = report.get('reviewerId')
+    bundle_sha256 = report.get('mcpBundleSha256')
+    if (
+        not isinstance(report_sha256, str)
+        or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+        or type(pr_number) is not int
+        or not isinstance(source_revision, str)
+        or not isinstance(base_sha, str)
+        or not isinstance(reviewer_id, str)
+        or not isinstance(bundle_sha256, str)
+        or not isinstance(run, dict)
+        or run.get('number') != 95
+        or not isinstance(run_state, dict)
+        or run_state.get('profile') != 'AUTONOMOUS_EVOLUTION'
+        or not isinstance(epoch_view, dict)
+        or epoch_view.get('number') != pr_number
+        or epoch_view.get('github_state') not in {'OPEN', 'MERGED'}
+        or (epoch_view.get('github_state') == 'OPEN'
+            and run_state.get('active_epoch_pr') != pr_number)
+        or epoch_view.get('pr_head_sha') != source_revision
+        or not isinstance(epoch, dict)
+        or epoch.get('epoch_id') != CODEX_R01_EPOCH_ID
+        or epoch.get('pr_number') != pr_number
+        or epoch.get('base_branch') != 'master'
+        or epoch.get('base_sha') != base_sha
+        or epoch.get('reviewed_base_sha') != base_sha
+        or epoch.get('candidate_sha') != source_revision
+        or epoch.get('review_pass_sha') != source_revision
+        or not isinstance(epoch.get('ci'), dict)
+        or epoch['ci'].get('sha') != source_revision
+        or epoch['ci'].get('status') != 'SUCCESS'
+    ):
+        return None
+
+    review_history = epoch.get('review_history')
+    latest_review = review_history[-1] if isinstance(review_history, list) and review_history else None
+    if (
+        not isinstance(latest_review, dict)
+        or latest_review.get('candidate_sha') != source_revision
+        or latest_review.get('reviewed_base_sha') != base_sha
+        or latest_review.get('verdict') != 'PASS'
+        or latest_review.get('reviewer_id') != reviewer_id
+    ):
+        return None
+
+    preflight = epoch.get('adversarial_preflight')
+    disposition = preflight.get('r01_one_shot_disposition') if isinstance(preflight, dict) else None
+    claim_latch = latches.get('claim')
+    terminal_latch = latches.get('terminal')
+    if (
+        not isinstance(disposition, dict)
+        or not isinstance(claim_latch, dict)
+        or claim_latch.get('name') != CODEX_R01_CLAIM_LATCH_NAME
+        or claim_latch.get('description') != CODEX_R01_CLAIM_LATCH_DESCRIPTION
+        or not isinstance(terminal_latch, dict)
+        or terminal_latch.get('name') != CODEX_R01_TERMINAL_LATCH_NAME
+        or terminal_latch.get('description') != f'R01-REPORT_WRITTEN:sha256={report_sha256}'
+    ):
+        return None
+
+    expected = {
+        'claimId': report.get('claimId'),
+        'frontierId': 'R01',
+        'epochId': CODEX_R01_EPOCH_ID,
+        'runNumber': 95,
+        'prNumber': pr_number,
+        'toolName': 'bangumi.get_subject_relations',
+        'argumentProfile': CODEX_R01_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': _canonical_json_sha256(
+            CODEX_R01_PROBE_ARGUMENTS['bangumi.get_subject_relations'],
+        ),
+        'state': 'REPORT_WRITTEN',
+        'sourceCandidateSha': source_revision,
+        'baseSha': base_sha,
+        'ciSha': source_revision,
+        'ciStatus': 'SUCCESS',
+        'reviewerId': reviewer_id,
+        'bundleSha256': bundle_sha256,
+        'model': 'gpt-6-luna',
+        'reasoningEffort': 'max',
+        'reportWritten': True,
+        'reportPath': CODEX_R01_REPORT_RELATIVE_PATH,
+        'reportSha256': report_sha256,
+        'retryAllowed': False,
+    }
+    if any(disposition.get(key) != value for key, value in expected.items()):
         return None
     return disposition
 
@@ -6830,6 +7167,10 @@ def codex_mcp_evidence_is_valid(
         return False
     argument_profile = report.get('argumentProfile')
     is_a01_aggregate = tool_name == 'bangumi.aggregate_subject_cohort'
+    is_r01 = (
+        tool_name in CODEX_R01_PROBE_ARGUMENTS
+        and argument_profile == CODEX_R01_ARGUMENT_PROFILE
+    )
     is_c07_renderer = (
         tool_name == 'bangumi.render_subject_cohort_comparison'
         and argument_profile == CODEX_C07_RENDER_ARGUMENT_PROFILE
@@ -6846,6 +7187,7 @@ def codex_mcp_evidence_is_valid(
         CODEX_C07_RENDERER_REPORT_FIELDS if is_c07_renderer else
         CODEX_D04_REPORT_FIELDS if is_d04 else
         CODEX_G02_REPORT_FIELDS if is_g02 else
+        CODEX_R01_REPORT_FIELDS if is_r01 else
         CODEX_REPORT_FIELDS
     )
     if set(report) != expected_report_fields:
@@ -6864,7 +7206,8 @@ def codex_mcp_evidence_is_valid(
                     if is_a01_aggregate else codex_c07_renderer_probe_revision_has_implementation(report['sourceRevision'])
                     if is_c07_renderer else codex_d04_probe_revision_has_implementation(report['sourceRevision'])
                     if is_d04 else codex_g02_probe_revision_has_implementation(report['sourceRevision'])
-                    if is_g02 else codex_probe_revision_has_implementation(report['sourceRevision']))
+                    if is_g02 else codex_r01_probe_revision_has_implementation(report['sourceRevision'])
+                    if is_r01 else codex_probe_revision_has_implementation(report['sourceRevision']))
             or type(report.get('processExitCode')) is not int
             or report.get('processExitCode') != 0
             or report.get('resultStatus') != 'SUCCESS'
@@ -6909,15 +7252,41 @@ def codex_mcp_evidence_is_valid(
     ):
         return False
 
+    if is_r01 and (
+        type(report.get('runNumber')) is not int or report['runNumber'] != 95
+        or report.get('frontierId') != 'R01'
+        or report.get('epochId') != 'run95-r01-subject-relations-agent-mcp'
+        or type(report.get('prNumber')) is not int or report['prNumber'] < 1
+        or not isinstance(report.get('claimId'), str)
+        or not report['claimId'].startswith(
+            f"r01-run-95-pr-{report['prNumber']}-{report['sourceRevision'][:12]}-"
+        )
+        or not re.fullmatch(
+            rf"r01-run-95-pr-{report['prNumber']}-{report['sourceRevision'][:12]}-\d+",
+            report['claimId'],
+        )
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], report['sourceRevision']).returncode != 0
+        or not re.fullmatch(rf"gpt-6-luna-max-run95-pr{report['prNumber']}-round\d+", str(report.get('reviewerId', '')))
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        or codex_g26_candidate_bundle_sha256(report['sourceRevision']) != report.get('mcpBundleSha256')
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+        or type(report.get('codexErrorItemCount')) is not int
+        or report['codexErrorItemCount'] != 0
+    ):
+        return False
+
     arguments = (
         CODEX_D04_PROBE_ARGUMENTS.get(tool_name) if is_d04 else
         CODEX_G02_PROBE_ARGUMENTS.get(tool_name) if is_g02 else
+        CODEX_R01_PROBE_ARGUMENTS.get(tool_name) if is_r01 else
         CODEX_PROBE_ARGUMENTS.get(tool_name)
     )
-    is_g20 = tool_name in CODEX_G20_PROBE_ARGUMENTS
+    is_g20 = tool_name in CODEX_G20_PROBE_ARGUMENTS and not is_r01
     expected_argument_profile = (
         'd04-reported-episode-count-discovery-v1' if is_d04
         else CODEX_G02_ARGUMENT_PROFILES.get(tool_name) if is_g02
+        else CODEX_R01_ARGUMENT_PROFILE if is_r01
         else CODEX_ARGUMENT_PROFILES.get(tool_name)
     )
     expected_answer_checks = (
@@ -6926,7 +7295,7 @@ def codex_mcp_evidence_is_valid(
         CODEX_D04_ANSWER_CHECK_FIELDS if is_d04 else
         CODEX_G02_RENDERER_ANSWER_CHECK_FIELDS if is_g02 and tool_name.startswith('bangumi.render_') else
         CODEX_G02_QUERY_ANSWER_CHECK_FIELDS if is_g02 else
-        CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 else
+        CODEX_G20_ANSWER_CHECK_FIELDS if is_g20 or is_r01 else
         CODEX_RENDERER_ANSWER_CHECK_FIELDS if isinstance(tool_name, str) and tool_name.startswith('bangumi.render_') else
         CODEX_STATS_ANSWER_CHECK_FIELDS
     )
@@ -6949,6 +7318,8 @@ def codex_mcp_evidence_is_valid(
             )):
         return False
     if is_g20 and not codex_g20_probe_revision_has_implementation(report.get('sourceRevision')):
+        return False
+    if is_r01 and not codex_r01_probe_revision_has_implementation(report.get('sourceRevision')):
         return False
 
     privacy = report.get('privacy')
@@ -7006,6 +7377,8 @@ def codex_mcp_evidence_is_valid(
         or report.get('resultByteLength') != result.get('resultByteLength')
     ):
         return False
+    if is_r01:
+        return codex_r01_result_is_valid(result, arguments['subjectId'])
     if is_g20:
         return codex_g20_result_is_valid(result, arguments['subjectId'])
     if is_a01_aggregate:
@@ -7268,11 +7641,35 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
         if report.get('evidenceKind') == 'codex_cli_mcp_tool_use':
             if not codex_mcp_evidence_is_valid(report, evidence_by_name, current_by_name):
                 continue
-            if (report.get('toolName') == 'bangumi.get_subject_relations'
-                    and not codex_g20_report_matches_candidate_revision(
-                        path, report.get('sourceRevision'),
-                    )):
-                continue
+            if report.get('toolName') == 'bangumi.get_subject_relations':
+                report_relative_path = path.relative_to(
+                    LIVE_PROBE_DIR.parent.parent,
+                ).as_posix()
+                if report.get('argumentProfile') == CODEX_R01_ARGUMENT_PROFILE:
+                    if (
+                        report_relative_path != CODEX_R01_REPORT_RELATIVE_PATH
+                        or not codex_r01_report_matches_candidate_revision(
+                            path, report.get('sourceRevision'),
+                        )
+                    ):
+                        continue
+                    try:
+                        report_bytes = path.read_bytes()
+                    except OSError:
+                        continue
+                    current_status = codex_r01_harness_status(report.get('prNumber'))
+                    current_latches = codex_r01_harness_latches()
+                    if codex_r01_harness_disposition_matches_report(
+                        report,
+                        current_status,
+                        hashlib.sha256(report_bytes).hexdigest(),
+                        current_latches,
+                    ) is None:
+                        continue
+                elif not codex_g20_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                ):
+                    continue
             if report.get('toolName') == 'bangumi.aggregate_subject_cohort' and (
                 report.get('frontierId') != 'A01'
                 or path.relative_to(LIVE_PROBE_DIR.parent.parent).as_posix()
