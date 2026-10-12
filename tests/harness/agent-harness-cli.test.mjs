@@ -1271,7 +1271,7 @@ test('CLI G19 one-shot claim and terminal result persist in the durable Epoch co
   }
 });
 
-test('CLI keeps G04 claim and result mutations private to the Harness-owned runner', () => {
+test('CLI keeps one-shot claim and result mutations private to Harness-owned runners', () => {
   const environment = createMockEnvironment();
   const before = environment.readState();
   try {
@@ -1279,6 +1279,18 @@ test('CLI keeps G04 claim and result mutations private to the Harness-owned runn
       ['epoch:g04-one-shot-claim', '--run', '95', '--pr', '136'],
       [
         'epoch:g04-one-shot-result',
+        '--run',
+        '95',
+        '--pr',
+        '136',
+        '--claim-id',
+        'caller-forged',
+        '--state',
+        'REPORT_WRITTEN',
+      ],
+      ['epoch:g16-one-shot-claim', '--run', '95', '--pr', '136'],
+      [
+        'epoch:g16-one-shot-result',
         '--run',
         '95',
         '--pr',
@@ -1296,9 +1308,28 @@ test('CLI keeps G04 claim and result mutations private to the Harness-owned runn
       assert.deepEqual(
         environment.readState(),
         before,
-        'private G04 mutations must not change durable Harness state',
+        'private one-shot mutations must not change durable Harness state',
       );
     }
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI rejects a wrong-run G16 one-shot before touching Harness state', () => {
+  const environment = createMockEnvironment();
+  const before = environment.readState();
+  try {
+    const result = environment.execute(['epoch:g16-one-shot-run', '--run', '1']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G16_ONESHOT_RUN_INVALID:/u);
+    const after = environment.readState();
+    assert.equal(after.runBody, before.runBody);
+    assert.equal(after.prBody, before.prBody);
+    assert.equal(
+      parseControlBlock(after.runBody, RUN_MARKER).outer_sol.product.consumed,
+      parseControlBlock(before.runBody, RUN_MARKER).outer_sol.product.consumed,
+    );
   } finally {
     environment.cleanup();
   }

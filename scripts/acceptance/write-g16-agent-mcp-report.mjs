@@ -16,6 +16,11 @@ import {
   canonicalG16ClaimPath,
 } from './run-g16-codex-agent-mcp.mjs';
 import {
+  g16RunnerPublicKeySha256,
+  g16RunnerReceiptPayloadFromReport,
+  verifyG16RunnerReceipt,
+} from './g16-agent-mcp-runner-receipt.mjs';
+import {
   computeMcpBundleSha256,
   gitRepositoryText,
   readG26McpBundleAttestation,
@@ -25,7 +30,7 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const FRONTIER_ID = 'G16';
-const EPOCH_ID = 'run95-g16-director-tv-36m-luna-agent-mcp';
+const EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp';
 const TOOL_NAME = 'bangumi.get_person_activity';
 const SERVER_ID = 'bgk_g16_one_tool';
 const MODEL = 'gpt-6-luna';
@@ -40,9 +45,11 @@ const REPORT_PRIVACY = { ...SERVER_PRIVACY, communityRead: false };
 const REPORT_FIELDS = [
   'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId', 'profile',
   'model', 'reasoningEffort', 'reviewerId', 'codexCliVersion', 'sourceRevision', 'baseSha', 'prNumber',
-  'mcpBundleSha256', 'observedAt', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+  'claimId', 'mcpBundleSha256', 'runnerEventStreamSha256', 'runnerServerSummarySha256',
+  'runnerReceipt', 'observedAt', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
   'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256', 'serverToolNames', 'serverToolCount',
   'mcpServerNames', 'processExitCode', 'resultStatus', 'eventStreamParsed', 'codexMcpToolEventCount',
+  'codexErrorItemCount',
   'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount', 'deniedCallCount',
   'answerCheckMethod', 'answerChecks', 'answerCounters', 'toolCalls', 'toolTextUtf8Bytes',
   'resultSummary', 'resultByteLength', 'resultSha256', 'answerUtf8Bytes', 'answerSha256',
@@ -95,10 +102,15 @@ function readClaim(input, root) {
   if (claim?.schemaVersion !== 1 || claim.runNumber !== RUN_NUMBER || claim.frontierId !== FRONTIER_ID ||
       claim.epochId !== EPOCH_ID || claim.state !== 'CLAIMED' || claim.sourceRevision !== input.sourceRevision ||
       claim.baseSha !== input.baseSha || claim.prNumber !== input.prNumber || claim.reviewerId !== input.reviewerId ||
+      claim.claimId !== input.claimId || claim.runnerReceiptPublicKey !== input.runnerReceiptPublicKey ||
+      claim.runnerReceiptPublicKeySha256 !== g16RunnerPublicKeySha256(input.runnerReceiptPublicKey) ||
+      claim.ciSha !== input.sourceRevision || claim.ciStatus !== 'SUCCESS' || claim.retryAllowed !== false ||
+      claim.model !== MODEL || claim.reasoningEffort !== REASONING_EFFORT ||
       claim.bundleSha256 !== input.bundleSha256 ||
       claim.expectedArgumentsSha256 !== sha256(canonicalJson(G16_EXPECTED_QUERY_ARGUMENTS))) {
     throw new Error('G16 report input does not match its local create-once claim.');
   }
+  return claim;
 }
 
 function catalogHashes(root) {
@@ -146,7 +158,12 @@ function validateInput(input, root) {
   }
   if (!/^[0-9a-f]{40}$/u.test(input.sourceRevision ?? '') || !/^[0-9a-f]{40}$/u.test(input.baseSha ?? '') ||
       !/^[0-9a-f]{64}$/u.test(input.bundleSha256 ?? '') || !Number.isSafeInteger(input.prNumber) || input.prNumber < 1 ||
-      !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round\\d+$`, 'u').test(input.reviewerId ?? '')) {
+      !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round[1-9]\\d*$`, 'u').test(input.reviewerId ?? '') ||
+      typeof input.claimId !== 'string' || !/^g16-run-95-pr-[0-9]+-[0-9a-f]{12}-[0-9]+$/u.test(input.claimId) ||
+      typeof input.runnerReceiptPublicKey !== 'string' ||
+      !/^[0-9a-f]{64}$/u.test(input.runnerEventStreamSha256 ?? '') ||
+      !/^[0-9a-f]{64}$/u.test(input.runnerServerSummarySha256 ?? '') ||
+      input.codexErrorItemCount !== 0) {
     throw new Error('G16 report requires an exact reviewed Candidate/Base/PR/reviewer identity.');
   }
   if (gitText(root, 'rev-parse', 'HEAD') !== input.sourceRevision || gitText(root, 'status', '--porcelain') !== '' ||
@@ -218,7 +235,12 @@ export function buildG16SanitizedReport(input, answerResult, hashes, observedAt 
   if (!isRecord(input) || input.model !== MODEL || input.reasoningEffort !== REASONING_EFFORT ||
       !/^[0-9a-f]{40}$/u.test(input.sourceRevision ?? '') || !/^[0-9a-f]{40}$/u.test(input.baseSha ?? '') ||
       !/^[0-9a-f]{64}$/u.test(input.bundleSha256 ?? '') || !Number.isSafeInteger(input.prNumber) ||
-      !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round\\d+$`, 'u').test(input.reviewerId ?? '') ||
+      !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round[1-9]\\d*$`, 'u').test(input.reviewerId ?? '') ||
+      typeof input.claimId !== 'string' || !/^g16-run-95-pr-[0-9]+-[0-9a-f]{12}-[0-9]+$/u.test(input.claimId) ||
+      !/^[0-9a-f]{64}$/u.test(input.runnerEventStreamSha256 ?? '') ||
+      !/^[0-9a-f]{64}$/u.test(input.runnerServerSummarySha256 ?? '') ||
+      input.codexErrorItemCount !== 0 || typeof input.runnerReceiptPublicKey !== 'string' ||
+      !input.runnerReceipt || typeof input.runnerReceipt !== 'object' || Array.isArray(input.runnerReceipt) ||
       !/^\d+\.\d+\.\d+$/u.test(input.codexCliVersion ?? '') ||
       !Number.isSafeInteger(input.toolTextUtf8Bytes) || input.toolTextUtf8Bytes <= 0 || input.toolTextUtf8Bytes > 3600 ||
       !answerResult?.passed || !safeSummary || !isRecord(hashes) ||
@@ -256,7 +278,11 @@ export function buildG16SanitizedReport(input, answerResult, hashes, observedAt 
     sourceRevision: input.sourceRevision,
     baseSha: input.baseSha,
     prNumber: input.prNumber,
+    claimId: input.claimId,
     mcpBundleSha256: input.bundleSha256,
+    runnerEventStreamSha256: input.runnerEventStreamSha256,
+    runnerServerSummarySha256: input.runnerServerSummarySha256,
+    runnerReceipt: input.runnerReceipt,
     observedAt,
     toolName: TOOL_NAME,
     argumentProfile: G16_ARGUMENT_PROFILE,
@@ -269,6 +295,7 @@ export function buildG16SanitizedReport(input, answerResult, hashes, observedAt 
     resultStatus: 'SUCCESS',
     eventStreamParsed: true,
     codexMcpToolEventCount: 1,
+    codexErrorItemCount: 0,
     nonMcpToolEventCount: 0,
     nonMcpToolTypes: [],
     shellToolCallCount: 0,
@@ -287,8 +314,75 @@ export function buildG16SanitizedReport(input, answerResult, hashes, observedAt 
     sourceOperations: safeSummary.sourceOperations,
     privacy: { ...REPORT_PRIVACY },
   };
+  const payload = g16RunnerReceiptPayloadFromReport(report);
+  if (!verifyG16RunnerReceipt(report.runnerReceipt, input.runnerReceiptPublicKey, payload)) {
+    throw new Error('G16 runner receipt does not sign the exact sanitized Candidate evidence.');
+  }
   if (!assertExactKeys(report, REPORT_FIELDS)) throw new Error('G16 report schema construction drifted.');
   return report;
+}
+
+export function validateG16SanitizedReportFile(disposition, root = ROOT, reportPath = REPORT_PATH) {
+  try {
+    const bytes = readFileSync(reportPath);
+    const report = JSON.parse(bytes.toString('utf8'));
+    if (!assertExactKeys(report, REPORT_FIELDS) ||
+        !['CLAIMED', 'REPORT_WRITTEN'].includes(disposition?.state) || disposition.retryAllowed !== false ||
+        report.claimId !== disposition.claimId || report.runNumber !== RUN_NUMBER ||
+        report.frontierId !== FRONTIER_ID || report.epochId !== EPOCH_ID ||
+        report.prNumber !== disposition.prNumber || report.sourceRevision !== disposition.sourceCandidateSha ||
+        report.baseSha !== disposition.baseSha || report.reviewerId !== disposition.reviewerId ||
+        report.mcpBundleSha256 !== disposition.bundleSha256 ||
+        disposition.runnerReceiptPublicKey !== report.runnerReceipt?.publicKeyBase64 ||
+        disposition.runnerReceiptPublicKeySha256 !== report.runnerReceipt?.publicKeySha256 ||
+        (disposition.state === 'REPORT_WRITTEN' &&
+          disposition.runnerReceiptSha256 !== sha256(canonicalJson(report.runnerReceipt))) ||
+        g16RunnerPublicKeySha256(disposition.runnerReceiptPublicKey) !== disposition.runnerReceiptPublicKeySha256 ||
+        !verifyG16RunnerReceipt(report.runnerReceipt, disposition.runnerReceiptPublicKey,
+          g16RunnerReceiptPayloadFromReport(report)) ||
+        summaryHasForbiddenKey(report)) {
+      return { passed: false, reason: 'The G16 report or signed receipt does not match its durable one-shot claim.' };
+    }
+    const rebuilt = buildG16SanitizedReport({
+      model: report.model,
+      reasoningEffort: report.reasoningEffort,
+      codexCliVersion: report.codexCliVersion,
+      reviewerId: report.reviewerId,
+      sourceRevision: report.sourceRevision,
+      baseSha: report.baseSha,
+      prNumber: report.prNumber,
+      claimId: report.claimId,
+      bundleSha256: report.mcpBundleSha256,
+      runnerEventStreamSha256: report.runnerEventStreamSha256,
+      runnerServerSummarySha256: report.runnerServerSummarySha256,
+      runnerReceiptPublicKey: disposition.runnerReceiptPublicKey,
+      codexErrorItemCount: report.codexErrorItemCount,
+      toolTextUtf8Bytes: report.toolTextUtf8Bytes,
+      runnerReceipt: report.runnerReceipt,
+    }, {
+      passed: true,
+      answerChecks: report.answerChecks,
+      answerCounters: report.answerCounters,
+      resultSummary: report.resultSummary,
+      resultByteLength: report.resultByteLength,
+      resultSha256: report.resultSha256,
+      answerUtf8Bytes: report.answerUtf8Bytes,
+      answerSha256: report.answerSha256,
+    }, {
+      catalogSha256: report.catalogSha256,
+      toolDescriptionSha256: report.toolDescriptionSha256,
+      inputSchemaSha256: report.inputSchemaSha256,
+    }, report.observedAt);
+    if (!sameJson(report, rebuilt)) return { passed: false, reason: 'G16 report schema or sanitized fields changed.' };
+    return {
+      passed: true,
+      report,
+      reportPath: path.relative(root, reportPath).split(path.sep).join('/'),
+      reportSha256: sha256(bytes),
+    };
+  } catch {
+    return { passed: false, reason: 'G16 report could not be revalidated.' };
+  }
 }
 
 function readHarnessStatus(root) {
@@ -331,7 +425,14 @@ export function buildG16AgentMcpReport(
   const baseSha = currentBaseSha ?? fetchCurrentMaster(root);
   const status = liveStatus ?? readHarnessStatus(root);
   const pr = pullRequest ?? readOpenPr(input.prNumber, root);
-  const gate = assertG16CandidateReviewGate(status, pr, { sourceRevision: input.sourceRevision, currentBaseSha: baseSha });
+  const gate = assertG16CandidateReviewGate(status, pr, {
+    sourceRevision: input.sourceRevision,
+    currentBaseSha: baseSha,
+    allowClaimedDisposition: true,
+    expectedClaimId: input.claimId,
+    runnerReceiptPublicKey: input.runnerReceiptPublicKey,
+    bundleSha256: input.bundleSha256,
+  });
   if (gate.prNumber !== input.prNumber || gate.baseSha !== input.baseSha || gate.reviewerId !== input.reviewerId) {
     throw new Error('G16 report Candidate, Base, PR, or Luna Max reviewer changed after the query.');
   }
@@ -375,8 +476,9 @@ async function main() {
       throw new Error('G16 report path is fixed to the canonical acceptance artifact.');
     }
     writeReport(result.report);
+    const reportSha256 = sha256(readFileSync(REPORT_PATH));
     process.stdout.write(`${JSON.stringify({ passed: true, answerChecks: result.answerChecks,
-      answerCounters: result.answerCounters, resultSummary: result.resultSummary })}\n`);
+      answerCounters: result.answerCounters, resultSummary: result.resultSummary, reportSha256 })}\n`);
   } catch {
     process.stdout.write(`${JSON.stringify({ passed: false, state: 'INCONCLUSIVE' })}\n`);
     process.exitCode = 1;

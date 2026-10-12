@@ -2668,7 +2668,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'rowDigest': 'd' * 64,
             'sourceOperations': source_operations,
         }
-        return {
+        report = {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_g16_director_person_activity_agent_mcp',
             'runNumber': 95,
@@ -2683,7 +2683,10 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'sourceRevision': revision,
             'baseSha': base_sha,
             'prNumber': 141,
+            'claimId': f'g16-run-95-pr-141-{revision[:12]}-123',
             'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'runnerEventStreamSha256': '1' * 64,
+            'runnerServerSummarySha256': '2' * 64,
             'observedAt': '2026-10-11T08:00:00.000Z',
             'toolName': 'bangumi.get_person_activity',
             'argumentProfile': GENERATOR.CODEX_G16_ARGUMENT_PROFILE,
@@ -2700,6 +2703,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'resultStatus': 'SUCCESS',
             'eventStreamParsed': True,
             'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
             'nonMcpToolEventCount': 0,
             'nonMcpToolTypes': [],
             'shellToolCallCount': 0,
@@ -2725,6 +2729,86 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 **{key: False for key in GENERATOR.CODEX_G16_PRIVACY_FIELDS - {'authProfile'}},
             },
         }
+        report['runnerReceipt'] = self._sign_g16_runner_receipt(
+            GENERATOR.codex_g16_runner_receipt_payload(report),
+        )
+        return report
+
+    def _sign_g16_runner_receipt(self, payload):
+        signer_script = (
+            'import { pathToFileURL } from "node:url"; '
+            'import { readFileSync } from "node:fs"; '
+            'const moduleUrl = pathToFileURL(process.cwd() + "/scripts/acceptance/g16-agent-mcp-runner-receipt.mjs"); '
+            'const module = await import(moduleUrl); '
+            'const input = JSON.parse(readFileSync(0,"utf8")); '
+            'const keyPair = module.generateG16RunnerReceiptKeyPair(); '
+            'process.stdout.write(JSON.stringify(module.createG16RunnerReceipt(input.payload,keyPair)));'
+        )
+        result = subprocess.run(
+            ['node', '--input-type=module', '-e', signer_script],
+            cwd=self.root,
+            input=json.dumps({'payload': payload}),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return json.loads(result.stdout)
+
+    def _g16_harness_status_fixture(
+        self, report, report_bytes=None, *, active_pr=None, github_state='OPEN',
+    ):
+        receipt = report['runnerReceipt']
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'G16',
+            'epochId': GENERATOR.CODEX_G16_EPOCH_ID,
+            'runNumber': 95,
+            'toolName': report['toolName'],
+            'argumentProfile': report['argumentProfile'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'bundleSha256': report['mcpBundleSha256'],
+            'prNumber': report['prNumber'],
+            'reviewerId': report['reviewerId'],
+            'model': report['model'],
+            'reasoningEffort': report['reasoningEffort'],
+            'runnerReceiptPublicKey': receipt['publicKeyBase64'],
+            'runnerReceiptPublicKeySha256': receipt['publicKeySha256'],
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH,
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest() if report_bytes else 'a' * 64,
+            'runnerReceiptSha256': GENERATOR._canonical_json_sha256(receipt),
+            'retryAllowed': False,
+        }
+        return {
+            'run': {
+                'number': 95,
+                'state': {
+                    'profile': 'AUTONOMOUS_EVOLUTION',
+                    'active_epoch_pr': report['prNumber'] if active_pr is None else active_pr,
+                },
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': github_state,
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_G16_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'adversarial_preflight': {'g16_one_shot_disposition': disposition},
+                },
+            },
+        }
+
+    def _g16_is_valid(self, report, report_bytes=None, harness_status=None):
+        bytes_value = report_bytes or json.dumps(report).encode('utf-8')
+        status = harness_status or self._g16_harness_status_fixture(report, bytes_value)
+        return GENERATOR.codex_g16_report_is_valid(
+            report, status, hashlib.sha256(bytes_value).hexdigest(),
+        )
 
     def _g19_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
@@ -3675,18 +3759,22 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH).name
         report = self._g16_report_fixture()
         report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        harness_status = self._g16_harness_status_fixture(report, report_bytes)
 
         self.assertTrue(GENERATOR.codex_g16_probe_revision_has_implementation(self.source_revision))
-        self.assertTrue(GENERATOR.codex_g16_report_is_valid(report))
+        self.assertTrue(GENERATOR.codex_g16_report_is_valid(report, harness_status, report_sha256))
         self.assertTrue(
             GENERATOR.codex_g16_report_matches_candidate_revision(
                 report_path, self.source_revision,
             ),
         )
-        self.assertEqual(
-            GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
-            {GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH},
-        )
+        with patch.object(GENERATOR, 'codex_g16_harness_status', return_value=harness_status):
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_person_activity'],
+                {GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH},
+            )
         for forbidden in ('answer', 'toolOutput', 'prompt', 'rows', 'subjectName', 'rawRole'):
             self.assertNotIn(forbidden, report)
 
@@ -3711,21 +3799,37 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             with self.subTest(override=override):
                 candidate = self._g16_report_fixture()
                 candidate.update(override)
-                self.assertFalse(GENERATOR.codex_g16_report_is_valid(candidate))
+                self.assertFalse(self._g16_is_valid(candidate))
 
         report = self._g16_report_fixture()
         report['resultSummary']['coverage']['staffRoleUnknownRows'] = 20
-        self.assertFalse(GENERATOR.codex_g16_report_is_valid(report))
+        self.assertFalse(self._g16_is_valid(report))
 
         report = self._g16_report_fixture()
         report['resultSummary']['window']['monthKeys'].pop()
-        self.assertFalse(GENERATOR.codex_g16_report_is_valid(report))
+        self.assertFalse(self._g16_is_valid(report))
+
+        report = self._g16_report_fixture()
+        report['runnerReceipt']['signature'] = 'A' * 88
+        self.assertFalse(self._g16_is_valid(report))
+
+        report = self._g16_report_fixture()
+        report_bytes = json.dumps(report).encode('utf-8')
+        wrong_status = self._g16_harness_status_fixture(report, report_bytes)
+        wrong_status['epoch']['state']['adversarial_preflight']['g16_one_shot_disposition']['reportSha256'] = 'b' * 64
+        self.assertFalse(GENERATOR.codex_g16_report_is_valid(
+            report, wrong_status, hashlib.sha256(report_bytes).hexdigest(),
+        ))
 
     def test_rejects_g16_report_from_a_stale_candidate(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G16_REPORT_RELATIVE_PATH).name
         report = self._g16_report_fixture(self.stale_candidate_source_revision)
         report_path.write_text(json.dumps(report), encoding='utf-8')
-        self.assertTrue(GENERATOR.codex_g16_report_is_valid(report))
+        report_bytes = report_path.read_bytes()
+        status = self._g16_harness_status_fixture(report, report_bytes)
+        self.assertTrue(GENERATOR.codex_g16_report_is_valid(
+            report, status, hashlib.sha256(report_bytes).hexdigest(),
+        ))
         self.assertFalse(
             GENERATOR.codex_g16_report_matches_candidate_revision(
                 report_path, self.stale_candidate_source_revision,
