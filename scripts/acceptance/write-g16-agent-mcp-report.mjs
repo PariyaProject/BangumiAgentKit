@@ -11,6 +11,7 @@ import {
   G16_EXPECTED_QUERY_ARGUMENTS,
   verifyG16PersonActivityAnswer,
 } from './g16-person-activity-answer-check.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import {
   assertG16CandidateReviewGate,
   canonicalG16ClaimPath,
@@ -158,7 +159,7 @@ function validateInput(input, root) {
   }
   if (!/^[0-9a-f]{40}$/u.test(input.sourceRevision ?? '') || !/^[0-9a-f]{40}$/u.test(input.baseSha ?? '') ||
       !/^[0-9a-f]{64}$/u.test(input.bundleSha256 ?? '') || !Number.isSafeInteger(input.prNumber) || input.prNumber < 1 ||
-      !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round[1-9]\\d*$`, 'u').test(input.reviewerId ?? '') ||
+      !isG16LunaMaxReviewerId(input.reviewerId, input.prNumber) ||
       typeof input.claimId !== 'string' || !/^g16-run-95-pr-[0-9]+-[0-9a-f]{12}-[0-9]+$/u.test(input.claimId) ||
       typeof input.runnerReceiptPublicKey !== 'string' ||
       !/^[0-9a-f]{64}$/u.test(input.runnerEventStreamSha256 ?? '') ||
@@ -235,7 +236,7 @@ export function buildG16SanitizedReport(input, answerResult, hashes, observedAt 
   if (!isRecord(input) || input.model !== MODEL || input.reasoningEffort !== REASONING_EFFORT ||
       !/^[0-9a-f]{40}$/u.test(input.sourceRevision ?? '') || !/^[0-9a-f]{40}$/u.test(input.baseSha ?? '') ||
       !/^[0-9a-f]{64}$/u.test(input.bundleSha256 ?? '') || !Number.isSafeInteger(input.prNumber) ||
-      !new RegExp(`^gpt-6-luna-max-run95-pr${input.prNumber}-round[1-9]\\d*$`, 'u').test(input.reviewerId ?? '') ||
+      !isG16LunaMaxReviewerId(input.reviewerId, input.prNumber) ||
       typeof input.claimId !== 'string' || !/^g16-run-95-pr-[0-9]+-[0-9a-f]{12}-[0-9]+$/u.test(input.claimId) ||
       !/^[0-9a-f]{64}$/u.test(input.runnerEventStreamSha256 ?? '') ||
       !/^[0-9a-f]{64}$/u.test(input.runnerServerSummarySha256 ?? '') ||

@@ -169,8 +169,35 @@ const hashes = {
   toolDescriptionSha256: '2'.repeat(64),
   inputSchemaSha256: '3'.repeat(64),
 };
+const stableHarnessReviewerId = 'run95-g16-review1-gpt-6-luna-max-98df510';
+
+function reportForReviewer(reviewerId: string) {
+  const reviewerReceiptInput = {
+    ...receiptInput,
+    reviewerId,
+    candidateGate: {
+      ...receiptInput.candidateGate,
+      reviewerId,
+    },
+  };
+  const runnerReceipt = createG16RunnerReceipt(
+    buildG16RunnerReceiptPayload(reviewerReceiptInput, answerResult),
+    receiptKeys,
+  );
+  return buildG16SanitizedReport(
+    { ...input, reviewerId, runnerReceipt },
+    answerResult,
+    hashes,
+  );
+}
 
 describe('G16 sanitized current-source Agent/MCP report', () => {
+  it('accepts the exact stable Harness reviewer identity and rejects a non-Luna role', () => {
+    const report = reportForReviewer(stableHarnessReviewerId);
+    expect(report.reviewerId).toBe(stableHarnessReviewerId);
+    expect(() => reportForReviewer('run95-g16-review1-gpt-5-sol-98df510')).toThrow();
+  });
+
   it('binds only safe counts and hashes to the Luna Max Candidate without raw titles or rows', () => {
     const report = buildG16SanitizedReport(input, answerResult, hashes, '2026-10-11T09:30:00.000Z');
     expect(
@@ -229,7 +256,7 @@ describe('G16 sanitized current-source Agent/MCP report', () => {
   });
 
   it('rebuilds the closed report schema and receipt before Harness result acknowledgement', () => {
-    const report = buildG16SanitizedReport(input, answerResult, hashes, '2026-10-11T09:30:00.000Z');
+    const report = reportForReviewer(stableHarnessReviewerId);
     const root = mkdtempSync(path.join(os.tmpdir(), 'bgk-g16-report-validation-'));
     temporaryRoots.push(root);
     const reportPath = path.join(root, 'docs/live-probes/g16-report.json');

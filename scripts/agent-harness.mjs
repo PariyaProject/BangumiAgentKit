@@ -60,6 +60,7 @@ import {
   claimG16OneShotAtomically,
   G16OneShotClaimError,
 } from './lib/g16-one-shot-claim.mjs';
+import { isG16LunaMaxReviewerId } from './lib/g16-reviewer-id.mjs';
 import { parseCodexJsonl, summarizeCodexEvents } from './acceptance/run-g26-codex-agent-mcp.mjs';
 import { runG04CodexAgentMcp } from './acceptance/run-g04-codex-agent-mcp.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from './acceptance/g04-person-activity-answer-check.mjs';
@@ -1826,7 +1827,6 @@ function assertG16OneShotClaimReadiness(gate) {
   const pr = epochResult.view;
   const currentBaseSha = remoteBaseSha('master');
   const latestReview = epoch.review_history?.at(-1);
-  const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round[1-9]\\d*$`, 'u');
   let runnerReceiptPublicKeySha256;
   try { runnerReceiptPublicKeySha256 = g16RunnerPublicKeySha256(runnerReceiptPublicKey); }
   catch { runnerReceiptPublicKeySha256 = null; }
@@ -1850,7 +1850,7 @@ function assertG16OneShotClaimReadiness(gate) {
     !/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKeySha256 ?? '') ||
     latestReview?.candidate_sha !== candidateSha || latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' || latestReview.reviewer_id !== reviewerId ||
-    !reviewerPattern.test(reviewerId ?? '') || preflight.completed !== true
+    !isG16LunaMaxReviewerId(reviewerId, Number(prNumber)) || preflight.completed !== true
   ) {
     throw new HarnessInvariantError(
       'G16_ONESHOT_CLAIM_GATE_FAILED',

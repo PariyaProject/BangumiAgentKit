@@ -4076,6 +4076,16 @@ def codex_g16_harness_disposition_matches_report(
     return disposition
 
 
+def codex_g16_reviewer_id_is_valid(reviewer_id: object, pr_number: object) -> bool:
+    """Accept the current Run 95 G16 reviewer shape or the Harness stable identity shape."""
+    if not isinstance(reviewer_id, str) or type(pr_number) is not int or pr_number < 1:
+        return False
+    return (
+        re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', reviewer_id) is not None
+        or re.fullmatch(r'run95-g16-review[1-9]\d*-gpt-6-luna-max-[0-9a-f]{7,40}', reviewer_id) is not None
+    )
+
+
 def codex_g16_report_is_valid(
     report: object, harness_status: object = None, report_sha256: object = None,
 ) -> bool:
@@ -4098,7 +4108,7 @@ def codex_g16_report_is_valid(
         or report.get('reasoningEffort') != 'max'
         or type(pr_number) is not int
         or pr_number < 1
-        or not re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round[1-9]\d*', str(report.get('reviewerId', '')))
+        or not codex_g16_reviewer_id_is_valid(report.get('reviewerId'), pr_number)
         or not isinstance(report.get('claimId'), str)
         or not isinstance(source_revision, str)
         or not re.fullmatch(rf'g16-run-95-pr-{pr_number}-{source_revision[:12]}-\d+', report['claimId'])

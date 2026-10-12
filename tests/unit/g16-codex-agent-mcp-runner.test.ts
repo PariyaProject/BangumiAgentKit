@@ -46,8 +46,7 @@ const expectedArgumentsSha256 = createHash('sha256')
   )
   .digest('hex');
 
-function gateInput() {
-  const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
+function gateInput(reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`) {
   return {
     status: {
       git: { status: '', head: candidate, branch },
@@ -108,9 +107,11 @@ function temporaryGitRepository() {
   return root;
 }
 
-function oneShotDisposition(root: string) {
+function oneShotDisposition(
+  root: string,
+  reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`,
+) {
   const keyPair = generateG16RunnerReceiptKeyPair();
-  const reviewerId = `gpt-6-luna-max-run95-pr${prNumber}-round1`;
   const bundleSha256 = 'e'.repeat(64);
   const claimId = `g16-run-95-pr-${prNumber}-${candidate.slice(0, 12)}-123`;
   const gate = {
@@ -182,6 +183,46 @@ describe('G16 one-tool Codex runner', () => {
         currentBaseSha: base,
       }),
     ).toThrow();
+  });
+
+  it('preserves the stable GPT-6 Luna Max reviewer identity issued by Harness', () => {
+    const reviewerId = 'run95-g16-review1-gpt-6-luna-max-98df510';
+    const { status, pr } = gateInput(reviewerId);
+    expect(
+      assertG16CandidateReviewGate(status, pr, { sourceRevision: candidate, currentBaseSha: base }),
+    ).toMatchObject({ reviewerId });
+
+    const wrongStableRole = structuredClone(status);
+    wrongStableRole.epoch.state.review_history[0]!.reviewer_id =
+      'run95-g16-review1-gpt-5-sol-98df510';
+    expect(() =>
+      assertG16CandidateReviewGate(wrongStableRole, pr, {
+        sourceRevision: candidate,
+        currentBaseSha: base,
+      }),
+    ).toThrow();
+
+    const root = temporaryGitRepository();
+    const { localClaim } = oneShotDisposition(root, reviewerId);
+    expect(localClaim.reviewerId).toBe(reviewerId);
+    const harnessClaim = {
+      ...localClaim,
+      state: 'G16_ONE_SHOT_CLAIMED',
+      candidateSha: candidate,
+    };
+    const durableGate = {
+      prNumber,
+      sourceRevision: candidate,
+      baseSha: base,
+      bundleSha256: 'e'.repeat(64),
+      reviewerId,
+      runnerReceiptPublicKey: String(localClaim.runnerReceiptPublicKey),
+    };
+    expect(validateG16HarnessClaim(harnessClaim, durableGate)).toEqual(harnessClaim);
+    expect(() => validateG16HarnessClaim(harnessClaim, {
+      ...durableGate,
+      reviewerId: 'run95-g16-review1-gpt-6-luna-max-deadbee',
+    })).toThrow();
   });
 
   it('requires a durable Harness claim before execution and binds its exact receipt key', () => {

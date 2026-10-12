@@ -2602,7 +2602,9 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
-    def _g16_report_fixture(self, source_revision=None):
+    def _g16_report_fixture(
+        self, source_revision=None, reviewer_id='gpt-6-luna-max-run95-pr141-round1',
+    ):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
         revision = source_revision or self.source_revision
@@ -2678,7 +2680,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'profile': 'codex-luna-max-one-tool-v1',
             'model': 'gpt-6-luna',
             'reasoningEffort': 'max',
-            'reviewerId': 'gpt-6-luna-max-run95-pr141-round1',
+            'reviewerId': reviewer_id,
             'codexCliVersion': '0.162.0',
             'sourceRevision': revision,
             'baseSha': base_sha,
@@ -3785,6 +3787,31 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report_path, self.source_revision,
             ),
         )
+
+    def test_accepts_g16_report_with_exact_stable_harness_reviewer_identity(self):
+        reviewer_id = 'run95-g16-review1-gpt-6-luna-max-98df510'
+        report = self._g16_report_fixture(reviewer_id=reviewer_id)
+        report_bytes = json.dumps(report).encode('utf-8')
+        status = self._g16_harness_status_fixture(report, report_bytes)
+        self.assertTrue(GENERATOR.codex_g16_report_is_valid(
+            report, status, hashlib.sha256(report_bytes).hexdigest(),
+        ))
+        mismatched_status = self._g16_harness_status_fixture(report, report_bytes)
+        mismatched_status['epoch']['state']['adversarial_preflight']['g16_one_shot_disposition'][
+            'reviewerId'
+        ] = 'run95-g16-review2-gpt-6-luna-max-deadbee'
+        self.assertFalse(GENERATOR.codex_g16_report_is_valid(
+            report, mismatched_status, hashlib.sha256(report_bytes).hexdigest(),
+        ))
+
+        wrong_role = self._g16_report_fixture(
+            reviewer_id='run95-g16-review1-gpt-5-sol-98df510',
+        )
+        wrong_role_bytes = json.dumps(wrong_role).encode('utf-8')
+        wrong_role_status = self._g16_harness_status_fixture(wrong_role, wrong_role_bytes)
+        self.assertFalse(GENERATOR.codex_g16_report_is_valid(
+            wrong_role, wrong_role_status, hashlib.sha256(wrong_role_bytes).hexdigest(),
+        ))
 
     def test_rejects_g16_report_with_wrong_profile_or_impossible_role_coverage(self):
         invalid_reports = [

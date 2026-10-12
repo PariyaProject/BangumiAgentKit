@@ -23,6 +23,7 @@ import {
   G16_EXPECTED_QUERY_ARGUMENTS,
   verifyG16PersonActivityAnswer,
 } from './g16-person-activity-answer-check.mjs';
+import { isG16LunaMaxReviewerId } from '../lib/g16-reviewer-id.mjs';
 import {
   buildG16RunnerReceiptPayload,
   createG16RunnerReceipt,
@@ -95,7 +96,7 @@ export function createG16OneShotClaim(
       ciSha !== sourceRevision || ciStatus !== 'SUCCESS' ||
       !/^[0-9a-f]{64}$/u.test(bundleSha256) || !Number.isSafeInteger(prNumber) || prNumber < 1 ||
       typeof claimId !== 'string' || !new RegExp(`^g16-run-95-pr-${prNumber}-[0-9a-f]{12}-[0-9]+$`, 'u').test(claimId) ||
-      !new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round[1-9]\\d*$`, 'u').test(reviewerId ?? '') ||
+      !isG16LunaMaxReviewerId(reviewerId, prNumber) ||
       model !== MODEL || reasoningEffort !== REASONING_EFFORT || typeof runnerReceiptPublicKey !== 'string') {
     throw new Error('G16 one-shot claim must bind exact Candidate/Base, bundle, PR, and Luna Max reviewer identity.');
   }
@@ -209,11 +210,9 @@ export function assertG16CandidateReviewGate(status, pr, {
   const history = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
   const latestReview = history.at(-1);
   const reviewerId = latestReview?.reviewer_id;
-  const reviewerPattern = Number.isSafeInteger(epochView?.number)
-    ? new RegExp(`^gpt-6-luna-max-run95-pr${epochView.number}-round[1-9]\\d*$`, 'u') : /^$/u;
   const reviewMatches = latestReview?.candidate_sha === sourceRevision &&
     latestReview?.reviewed_base_sha === currentBaseSha && latestReview?.verdict === 'PASS' &&
-    reviewerPattern.test(reviewerId ?? '');
+    isG16LunaMaxReviewerId(reviewerId, epochView?.number);
   const disposition = epoch?.adversarial_preflight?.g16_one_shot_disposition;
   let publicKeyMatches = false;
   try {
