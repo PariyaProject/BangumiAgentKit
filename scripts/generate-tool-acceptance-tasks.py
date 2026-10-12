@@ -1671,7 +1671,6 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         "const EPOCH_ID = 'run95-p01-person-role-agent-mcp'",
         'export function assertP01CandidateReviewGate(',
         'export function createP01OneShotClaim(',
-        'REPORT_WRITTEN_ACK_PENDING',
         'export function persistHarnessP01OneShotResult(',
         'export function validateP01HarnessClaim(',
         'export function assertCurrentReviewGate(',
@@ -1704,6 +1703,7 @@ CODEX_P01_PROBE_IMPLEMENTATION_MARKERS = {
         'runNumber: Number(runNumber)',
         "epochId: 'run95-p01-person-role-agent-mcp'",
         'function runP01CodexAgentMcp({ claimHarness, persistResult })',
+        'REPORT_WRITTEN_ACK_PENDING',
     ),
     'scripts/generate-tool-acceptance-tasks.py': (
         'def codex_p01_report_is_valid(',
