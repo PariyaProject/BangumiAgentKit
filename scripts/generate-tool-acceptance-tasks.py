@@ -846,6 +846,10 @@ CODEX_REPORT_FIELDS = {
     'allowedCallCount', 'deniedCallCount', 'qqPipelineTested', 'timClientTested',
     'privacy', 'scenarios',
 }
+CODEX_R01_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
+    'runNumber', 'frontierId', 'epochId', 'reviewerId', 'baseSha', 'prNumber',
+    'claimId', 'mcpBundleSha256', 'observedAt', 'codexErrorItemCount',
+}
 CODEX_C07_RENDERER_REPORT_FIELDS = CODEX_REPORT_FIELDS | {
     'frontierId', 'runNumber', 'epochId', 'observedAt', 'baseSha', 'prNumber',
     'eventStreamComplete',
@@ -7026,6 +7030,7 @@ def codex_mcp_evidence_is_valid(
         CODEX_C07_RENDERER_REPORT_FIELDS if is_c07_renderer else
         CODEX_D04_REPORT_FIELDS if is_d04 else
         CODEX_G02_REPORT_FIELDS if is_g02 else
+        CODEX_R01_REPORT_FIELDS if is_r01 else
         CODEX_REPORT_FIELDS
     )
     if set(report) != expected_report_fields:
@@ -7087,6 +7092,30 @@ def codex_mcp_evidence_is_valid(
         or type(report.get('prNumber')) is not int or report['prNumber'] < 1
         or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
         or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+    ):
+        return False
+
+    if is_r01 and (
+        type(report.get('runNumber')) is not int or report['runNumber'] != 95
+        or report.get('frontierId') != 'R01'
+        or report.get('epochId') != 'run95-r01-subject-relations-agent-mcp'
+        or type(report.get('prNumber')) is not int or report['prNumber'] < 1
+        or not isinstance(report.get('claimId'), str)
+        or not report['claimId'].startswith(
+            f"r01-run-95-pr-{report['prNumber']}-{report['sourceRevision'][:12]}-"
+        )
+        or not re.fullmatch(
+            rf"r01-run-95-pr-{report['prNumber']}-{report['sourceRevision'][:12]}-\d+",
+            report['claimId'],
+        )
+        or not re.fullmatch(r'[0-9a-f]{40}', str(report.get('baseSha', '')))
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', report['baseSha'], report['sourceRevision']).returncode != 0
+        or not re.fullmatch(rf"gpt-6-luna-max-run95-pr{report['prNumber']}-round\d+", str(report.get('reviewerId', '')))
+        or not re.fullmatch(r'[0-9a-f]{64}', str(report.get('mcpBundleSha256', '')))
+        or codex_g26_candidate_bundle_sha256(report['sourceRevision']) != report.get('mcpBundleSha256')
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', str(report.get('observedAt', '')))
+        or type(report.get('codexErrorItemCount')) is not int
+        or report['codexErrorItemCount'] != 0
     ):
         return False
 

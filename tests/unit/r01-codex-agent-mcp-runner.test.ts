@@ -13,12 +13,14 @@ import {
   createOneShotClaim,
   canonicalR01ClaimPath,
   createOneShotClaims,
+  r01EventStreamIsClean,
   sanitizeCodexEnvironment,
   serverSummaryMatchesCandidate,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-r01-codex-agent-mcp.mjs';
 import {
   buildR01AgentMcpReport,
+  validateR01SanitizedReportFile,
   writeR01AgentMcpReport,
 } from '../../scripts/acceptance/write-r01-agent-mcp-report.mjs';
 import { computeMcpBundleSha256 } from '../../scripts/lib/g26-mcp-bundle.mjs';
@@ -150,6 +152,8 @@ function completeCandidateRepo() {
 
 function writeR01CanonicalClaim(root: string, sourceRevision: string, bundleSha256: string) {
   const claimPath = path.join(root, '.git/pariya-agent-state/r01-run95-one-shot-claim.json');
+  const baseSha = sourceRevision;
+  const claimId = `r01-run-95-pr-143-${sourceRevision.slice(0, 12)}-1791765972000`;
   mkdirSync(path.dirname(claimPath), { recursive: true });
   writeFileSync(
     claimPath,
@@ -157,12 +161,18 @@ function writeR01CanonicalClaim(root: string, sourceRevision: string, bundleSha2
       schemaVersion: 1,
       runNumber: 95,
       frontierId: 'R01',
+      epochId: 'run95-r01-subject-relations-agent-mcp',
       state: 'CLAIMED',
       sourceRevision,
       bundleSha256,
       expectedArgumentsSha256: sha256(canonicalJson(R01_EXPECTED_QUERY_ARGUMENTS)),
+      claimId,
+      prNumber: 143,
+      baseSha,
+      reviewerId: 'gpt-6-luna-max-run95-pr143-round1',
     })}\n`,
   );
+  return { claimId, prNumber: 143, baseSha, reviewerId: 'gpt-6-luna-max-run95-pr143-round1' };
 }
 
 function writerInput(bundleSha256: string, sourceRevision: string) {
@@ -180,6 +190,7 @@ function writerInput(bundleSha256: string, sourceRevision: string) {
     serverToolNames: [TARGET_TOOL],
     serverToolCount: 1,
     codexMcpToolEventCount: 1,
+    codexErrorItemCount: 0,
     mcpServerNames: [SERVER_ID],
     nonMcpToolEventCount: 0,
     shellToolCallCount: 0,
@@ -205,6 +216,11 @@ function writerInput(bundleSha256: string, sourceRevision: string) {
     toolTextUtf8Bytes: Buffer.byteLength(text, 'utf8'),
     sourceRevision,
     bundleSha256,
+    claimId: `r01-run-95-pr-143-${sourceRevision.slice(0, 12)}-1791765972000`,
+    prNumber: 143,
+    baseSha: sourceRevision,
+    reviewerId: 'gpt-6-luna-max-run95-pr143-round1',
+    epochId: 'run95-r01-subject-relations-agent-mcp',
     toolResultSummary: {
       toolName: TARGET_TOOL,
       resultState: result.state,
@@ -276,7 +292,12 @@ describe('R01 Codex one-tool runner', () => {
           candidate_sha: candidateSha,
           ci: { sha: candidateSha, status: 'SUCCESS' },
           review_pass_sha: candidateSha,
-          review_history: [{ candidate_sha: candidateSha, verdict: 'PASS' }],
+          review_history: [{
+            candidate_sha: candidateSha,
+            reviewed_base_sha: baseSha,
+            reviewer_id: 'gpt-6-luna-max-run95-pr104-round1',
+            verdict: 'PASS',
+          }],
         },
       },
     };
@@ -306,6 +327,8 @@ describe('R01 Codex one-tool runner', () => {
     ).toEqual({
       prNumber: 104,
       candidateSha,
+      baseSha,
+      reviewerId: 'gpt-6-luna-max-run95-pr104-round1',
     });
     expect(() =>
       assertR01CandidateReviewGate(status, pr, {
@@ -502,6 +525,8 @@ describe('R01 Codex one-tool runner', () => {
     expect(parsed.parsed).toBe(true);
     expect(summary.eventStreamComplete).toBe(true);
     expect(summary.codexMcpToolEventCount).toBe(1);
+    expect(summary.codexErrorItemCount).toBe(0);
+    expect(r01EventStreamIsClean(summary)).toBe(true);
     expect(summary.mcpServerNames).toEqual([SERVER_ID]);
     expect(summary.nonMcpToolEventCount).toBe(0);
     expect(summary.toolCalls).toEqual([
@@ -513,6 +538,14 @@ describe('R01 Codex one-tool runner', () => {
     ]);
     expect(extra.nonMcpToolEventCount).toBe(1);
     expect(extra.shellToolCallCount).toBe(1);
+    const completedWithError = summarizeCodexEvents([
+      ...parsed.events,
+      { type: 'item.completed', item: { id: 'error-1', type: 'error', message: 'redacted' } },
+    ]);
+    expect(completedWithError.eventStreamComplete).toBe(true);
+    expect(completedWithError.codexErrorItemCount).toBe(1);
+    expect(r01EventStreamIsClean(completedWithError)).toBe(false);
+    expect(r01EventStreamIsClean({ eventStreamComplete: true, codexErrorItemCount: null })).toBe(false);
     expect(parseCodexJsonl('{"type":"thread.started"}\nnot-json').parsed).toBe(false);
   });
 
@@ -558,6 +591,11 @@ describe('R01 Codex one-tool runner', () => {
     try {
       writeR01CanonicalClaim(fixture.root, fixture.head, fixture.bundleSha256);
       const input = writerInput(fixture.bundleSha256, fixture.head);
+      expect(input.claimId).toMatch(/^r01-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u);
+      expect(input.prNumber).toBe(143);
+      expect(input.baseSha).toMatch(/^[0-9a-f]{40}$/u);
+      expect(input.reviewerId).toMatch(/^gpt-6-luna-max-run95-pr\d+-round\d+$/u);
+      expect(input.epochId).toBe('run95-r01-subject-relations-agent-mcp');
       const check = verifyR01DirectRelationsAnswer(
         input.answer,
         input.queryArguments,
@@ -576,16 +614,24 @@ describe('R01 Codex one-tool runner', () => {
         [
           'allowedCallCount',
           'argumentProfile',
+          'baseSha',
           'catalogSha256',
+          'claimId',
           'codexCliVersion',
+          'codexErrorItemCount',
           'codexMcpToolEventCount',
           'deniedCallCount',
+          'epochId',
           'eventStreamParsed',
           'evidenceKind',
           'expectedArgumentsSha256',
+          'frontierId',
           'inputSchemaSha256',
+          'mcpBundleSha256',
           'model',
           'nonMcpToolEventCount',
+          'observedAt',
+          'prNumber',
           'privacy',
           'processExitCode',
           'profile',
@@ -593,6 +639,8 @@ describe('R01 Codex one-tool runner', () => {
           'reasoningEffort',
           'resultCount',
           'resultStatus',
+          'reviewerId',
+          'runNumber',
           'schemaVersion',
           'scenarios',
           'serverToolCount',
@@ -654,6 +702,10 @@ describe('R01 Codex one-tool runner', () => {
       expect(Object.hasOwn(scenario.result, 'visibleRows')).toBe(false);
       expect(built.report).toMatchObject({
         evidenceKind: 'codex_cli_mcp_tool_use',
+        runNumber: 95,
+        frontierId: 'R01',
+        claimId: `r01-run-95-pr-143-${fixture.head.slice(0, 12)}-1791765972000`,
+        codexErrorItemCount: 0,
         resultCount: 1,
         model: 'gpt-6-luna',
         reasoningEffort: 'max',
@@ -697,11 +749,31 @@ describe('R01 Codex one-tool runner', () => {
       const written = writeR01AgentMcpReport(input, fixture.root) as {
         passed: boolean;
         reportPath: string;
+        reportSha256: string;
       };
       expect(written.passed).toBe(true);
       const report = JSON.parse(readFileSync(written.reportPath, 'utf8')) as Record<string, any>;
       expect(report.scenarios[0].answerChecks.noMarkdownFormatting).toBe(true);
       expect(report.scenarios[0].result.answerCounters.rowsMatched).toBe(2);
+      const disposition = {
+        claimId: input.claimId,
+        prNumber: input.prNumber,
+        sourceCandidateSha: input.sourceRevision,
+        baseSha: input.baseSha,
+        reviewerId: input.reviewerId,
+        bundleSha256: input.bundleSha256,
+      };
+      const validated = validateR01SanitizedReportFile(disposition, fixture.root) as {
+        passed: boolean;
+        reportSha256: string;
+      };
+      expect(validated.passed).toBe(true);
+      expect(validated.reportSha256).toBe(written.reportSha256);
+      report.codexErrorItemCount = 1;
+      writeFileSync(written.reportPath, JSON.stringify(report));
+      expect(validateR01SanitizedReportFile(disposition, fixture.root)).toMatchObject({
+        passed: false,
+      });
       expect(() => writeR01AgentMcpReport(input, fixture.root)).toThrow(
         /clean exact Candidate|must not be repeated/u,
       );
@@ -717,12 +789,17 @@ describe('R01 Codex one-tool runner', () => {
       const valid = writerInput(fixture.bundleSha256, fixture.head);
       const wrongArguments = { ...valid, queryArguments: { subjectId: 41529 } };
       const extraCall = { ...valid, codexMcpToolEventCount: 2 };
+      const errorItem = { ...valid, codexErrorItemCount: 1 };
+      const missingErrorCount = { ...valid } as Record<string, unknown>;
+      delete missingErrorCount.codexErrorItemCount;
       const privateRead = { ...valid, privacy: { ...valid.privacy, accountDataRead: true } };
       const noReadback = { ...valid, toolOutput: { content: [] } };
       expect(
         (buildR01AgentMcpReport(wrongArguments, fixture.root) as { passed: boolean }).passed,
       ).toBe(false);
       expect(() => buildR01AgentMcpReport(extraCall, fixture.root)).toThrow(/exactly one/u);
+      expect(() => buildR01AgentMcpReport(errorItem, fixture.root)).toThrow(/exactly one|error item/u);
+      expect(() => buildR01AgentMcpReport(missingErrorCount, fixture.root)).toThrow(/exactly one|error item/u);
       expect(() => buildR01AgentMcpReport(privateRead, fixture.root)).toThrow(
         /anonymous public read-only/u,
       );

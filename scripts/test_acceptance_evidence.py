@@ -771,6 +771,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'resultCount': 1,
             'eventStreamParsed': True,
             'codexMcpToolEventCount': 1,
+            **({'codexErrorItemCount': 0} if is_r01 else {}),
             'nonMcpToolEventCount': 0,
             'shellToolCallCount': 0,
             'allowedCallCount': 1,
@@ -792,6 +793,18 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'result': result,
             }],
         }
+        if is_r01:
+            report.update({
+                'runNumber': 95,
+                'frontierId': 'R01',
+                'epochId': 'run95-r01-subject-relations-agent-mcp',
+                'reviewerId': 'gpt-6-luna-max-run95-pr143-round1',
+                'baseSha': self._git('rev-parse', f'{self.source_revision}^').stdout.strip(),
+                'prNumber': 143,
+                'claimId': f"r01-run-95-pr-143-{self.source_revision[:12]}-1791765972000",
+                'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision),
+                'observedAt': '2026-10-13T00:00:00.000Z',
+            })
         if is_d04:
             report.update({
                 'runNumber': 95,
@@ -1749,6 +1762,44 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             )
         )
         self.assertEqual(GENERATOR.model_mcp_e2e_names(self.catalog), set())
+
+    def test_r01_rejects_codex_error_items_even_when_the_event_stream_is_complete(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(
+            tool_name='bangumi.get_subject_relations',
+            frontier_id='R01',
+            codexErrorItemCount=1,
+        )
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['eventStreamParsed'] = True
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
+
+    def test_r01_rejects_claim_ids_not_bound_to_the_candidate_and_pr(self):
+        self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-R01-relations.json'
+        self.write_report(tool_name='bangumi.get_subject_relations', frontier_id='R01')
+        report = json.loads(self.report_path.read_text(encoding='utf-8'))
+        report['claimId'] = 143
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
+        del report['codexErrorItemCount']
+        self.assertFalse(
+            GENERATOR.codex_mcp_evidence_is_valid(
+                report,
+                {item['name']: item for item in self.catalog},
+                {item['name']: item for item in self.catalog},
+            )
+        )
 
     def test_rejects_g20_report_from_older_revision_with_same_implementation_markers(self):
         self.report_path = self.live_probe_dir / 'pariya-agent-codex-luna-e2e-G20-relations.json'

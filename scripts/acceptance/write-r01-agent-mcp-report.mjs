@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { closeSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, lstatSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyR01DirectRelationsAnswer } from './r01-direct-relations-answer-check.mjs';
@@ -134,7 +134,7 @@ function safeRelationResult(value, { requireTextProjection = false } = {}) {
   return null;
 }
 
-function readCanonicalClaim(root, sourceRevision, bundleSha256) {
+function readCanonicalClaim(root, input) {
   const gitCommonDirectory = gitRepositoryText(root, ['rev-parse', '--git-common-dir']);
   const claimPath = path.join(
     path.resolve(root, gitCommonDirectory),
@@ -152,11 +152,16 @@ function readCanonicalClaim(root, sourceRevision, bundleSha256) {
     claim.runNumber !== 95 ||
     claim.frontierId !== 'R01' ||
     claim.state !== 'CLAIMED' ||
-    claim.sourceRevision !== sourceRevision ||
-    claim.bundleSha256 !== bundleSha256 ||
-    claim.expectedArgumentsSha256 !== EXPECTED_ARGUMENTS_SHA256
+    claim.sourceRevision !== input.sourceRevision ||
+    claim.bundleSha256 !== input.bundleSha256 ||
+    claim.expectedArgumentsSha256 !== EXPECTED_ARGUMENTS_SHA256 ||
+    claim.claimId !== input.claimId ||
+    claim.epochId !== input.epochId ||
+    claim.prNumber !== input.prNumber ||
+    claim.baseSha !== input.baseSha ||
+    claim.reviewerId !== input.reviewerId
   )
-    throw new Error('R01 report Candidate does not match the active one-shot claim.');
+    throw new Error('R01 report Candidate does not match the durable Harness one-shot claim.');
 }
 
 function assertSafeInvocation(input, root) {
@@ -170,9 +175,23 @@ function assertSafeInvocation(input, root) {
     throw new Error('R01 report requires a recognized Codex CLI version.');
   }
   if (
+    input.epochId !== 'run95-r01-subject-relations-agent-mcp' ||
+    typeof input.claimId !== 'string' ||
+    !/^r01-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(input.claimId) ||
+    !Number.isSafeInteger(input.prNumber) ||
+    input.prNumber < 1 ||
+    !/^[0-9a-f]{40}$/u.test(input.baseSha ?? '') ||
+    typeof input.reviewerId !== 'string' ||
+    !/^gpt-6-luna-max-run95-pr\d+-round\d+$/u.test(input.reviewerId)
+  ) {
+    throw new Error('R01 report requires exact durable Harness claim provenance.');
+  }
+  if (
     input.processExitCode !== 0 ||
     input.resultStatus !== 'SUCCESS' ||
     input.eventStreamParsed !== true ||
+    !Number.isSafeInteger(input.codexErrorItemCount) ||
+    input.codexErrorItemCount !== 0 ||
     JSON.stringify(input.serverToolNames) !== JSON.stringify([TOOL_NAME]) ||
     input.serverToolCount !== 1 ||
     input.codexMcpToolEventCount !== 1 ||
@@ -214,7 +233,7 @@ function assertSafeInvocation(input, root) {
     input.bundleSha256 !== readG26McpBundleAttestation(root)
   )
     throw new Error('R01 report does not match the exact executed MCP bundle.');
-  readCanonicalClaim(root, sourceRevision, input.bundleSha256);
+  readCanonicalClaim(root, input);
   return { sourceRevision, bundleSha256: input.bundleSha256 };
 }
 
@@ -398,6 +417,15 @@ export function buildR01AgentMcpReport(input, root = ROOT) {
   const report = {
     schemaVersion: 1,
     evidenceKind: 'codex_cli_mcp_tool_use',
+    runNumber: 95,
+    frontierId: 'R01',
+    epochId: input.epochId,
+    reviewerId: input.reviewerId,
+    baseSha: input.baseSha,
+    prNumber: input.prNumber,
+    claimId: input.claimId,
+    mcpBundleSha256: input.bundleSha256,
+    observedAt: new Date().toISOString(),
     sourceRevision,
     codexCliVersion: input.codexCliVersion,
     ...readToolCatalog(root),
@@ -414,6 +442,7 @@ export function buildR01AgentMcpReport(input, root = ROOT) {
     resultCount: 1,
     eventStreamParsed: true,
     codexMcpToolEventCount: 1,
+    codexErrorItemCount: input.codexErrorItemCount,
     nonMcpToolEventCount: 0,
     shellToolCallCount: 0,
     allowedCallCount: 1,
@@ -451,8 +480,9 @@ export function writeR01AgentMcpReport(input, root = ROOT) {
       'A R01 report already exists; the one-shot query must not be repeated or overwritten.',
     );
   }
+  const serialized = `${JSON.stringify(built.report, null, 2)}\n`;
   try {
-    writeFileSync(descriptor, `${JSON.stringify(built.report, null, 2)}\n`, 'utf8');
+    writeFileSync(descriptor, serialized, 'utf8');
   } finally {
     closeSync(descriptor);
   }
@@ -460,8 +490,41 @@ export function writeR01AgentMcpReport(input, root = ROOT) {
     passed: true,
     reportPath,
     sourceRevision: built.report.sourceRevision,
+    reportSha256: sha256(serialized),
     resultCounters: built.resultCounters,
   };
+}
+
+export function validateR01SanitizedReportFile(disposition, root = ROOT) {
+  const reportPath = path.join(root, REPORT_RELATIVE_PATH);
+  try {
+    const stat = lstatSync(reportPath);
+    if (!stat.isFile() || stat.isSymbolicLink())
+      return { passed: false, reason: 'R01 report must be a regular non-symlink file.' };
+    const bytes = readFileSync(reportPath);
+    const report = JSON.parse(bytes.toString('utf8'));
+    const reportSha256 = sha256(bytes);
+    if (
+      report?.runNumber !== 95 ||
+      report?.frontierId !== 'R01' ||
+      report?.epochId !== 'run95-r01-subject-relations-agent-mcp' ||
+      report?.claimId !== disposition?.claimId ||
+      report?.prNumber !== disposition?.prNumber ||
+      report?.sourceRevision !== disposition?.sourceCandidateSha ||
+      report?.baseSha !== disposition?.baseSha ||
+      report?.reviewerId !== disposition?.reviewerId ||
+      report?.mcpBundleSha256 !== disposition?.bundleSha256 ||
+      report?.model !== MODEL ||
+      report?.reasoningEffort !== REASONING_EFFORT ||
+      report?.codexErrorItemCount !== 0 ||
+      report?.eventStreamParsed !== true ||
+      report?.resultStatus !== 'SUCCESS'
+    )
+      return { passed: false, reason: 'R01 report does not match its durable Harness claim.' };
+    return { passed: true, reportPath: REPORT_RELATIVE_PATH, reportSha256, report };
+  } catch {
+    return { passed: false, reason: 'R01 report is missing or invalid.' };
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
