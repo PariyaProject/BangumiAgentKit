@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-13T06:51:19Z",
+  "updated_at": "2026-10-13T10:10:10Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -805,6 +805,7 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run75-frontier-delta-2026-10-03.md",
         "docs/live-probes/g09-series-watch-order-2026-10-03-165502090-96642.json",
+        "docs/live-probes/public-tools-2026-10-13-100900784-55053.json",
         "scripts/smoke-series-watch-order-g09-online.ts",
         "tests/render/series-watch-order-g09.test.ts",
         "packages/bangumi-core/src/services/series-service.ts",
@@ -819,7 +820,7 @@
         "scripts/acceptance/g09-series-watch-order-answer-check.mjs",
         "tests/unit/g09-series-watch-order-answer-check.test.ts"
       ],
-      "next_action": "Use the exact-current-source G09 Agent/MCP outcome recorded in the Run #95 control plane before claiming answer acceptance; do not retry the one-shot canary. Keep PARTIAL because the bounded relation graph is not exhaustive, Bangumi publishes no unique official order, and QQ/TIM display remains unverified.",
+      "next_action": "Run #95 added one separate direct-public ToolRegistry observation for bangumi.get_series_watch_order with the fixed smoke profile subjectId=41529, depth=0, maxNodes=1; see docs/live-probes/public-tools-2026-10-13-100900784-55053.json. It used 2 bounded anonymous public HTTP requests and summary-only result assertions. This is direct-public tool evidence only: it is not Agent/MCP answer acceptance, does not replay the spent G09 one-shot/canary or the subjectId=218707 scenario profile, and does not establish an exhaustive franchise graph or a unique official order. Keep G09 PARTIAL and never retry its consumed one-shot.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -847,6 +848,18 @@
           "status_boundary": "The bounded SubjectOverview relations section is not an exhaustive graph or official order."
         },
         "live_subject_overview_probe": "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "direct_public_api_probe_2026_10_13": {
+          "report": "docs/live-probes/public-tools-2026-10-13-100900784-55053.json",
+          "tool": "bangumi.get_series_watch_order",
+          "input": {"subjectId": 41529, "depth": 0, "maxNodes": 1},
+          "mode": "read_only_public_api_smoke",
+          "request_count": 2,
+          "result_summary": {"state": "complete", "subjectId": 41529, "warningsCount": 2},
+          "assertions_passed": true,
+          "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
+          "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+          "acceptance_boundary": "Direct public API evidence only. State=complete is limited to depth=0/maxNodes=1; not Agent/MCP answer acceptance, full graph coverage, or an official order."
+        },
         "mcp_text_projection_run95": {
           "implementation": "apps/mcp/src/result-presenter.ts",
           "tests": [
