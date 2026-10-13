@@ -4,7 +4,7 @@ Verified 2026-10-13T06:08:19Z on BangumiAgentKit Candidate base `f124ba2a619dee7
 
 ## Source contract
 
-The official `POST /v0/search/subjects` contract requires a keyword. Its documented filters are type, tag, air date, rating, rating count, rank, and NSFW. Pagination is by limit/offset. The operation is explicitly experimental. It declares no filter for `name` or `name_cn` being blank, and no title-language filter.
+The official `POST /v0/search/subjects` contract requires a keyword. Its declared filters are type, tag, meta tag, air date, rating, rating count, rank, and NSFW (`filter.meta_tags` is part of the schema even though the prose description does not enumerate it). Pagination is by limit/offset. The operation is explicitly experimental. It declares no filter for `name` or `name_cn` being blank, and no title-language filter.
 
 The official Subject model returns `name` and `name_cn` as strings. It does not label either field with a language identifier or expose a separate Japanese-title field. The current AgentKit discovery candidate carries `name` and optional `nameCn`, along with its bounded evidence fields; the `query_subjects` input has no title-language or missing-name predicate.
 
@@ -30,7 +30,7 @@ Reassess if public-v0 adds structured title-language metadata or a supported, co
 
 ## Sources
 
-- [Official Bangumi API v0 OpenAPI: subject search](https://github.com/bangumi/api/blob/master/open-api/v0.yaml#L14-L60)
+- [Official Bangumi API v0 OpenAPI: subject search and filters](https://github.com/bangumi/api/blob/master/open-api/v0.yaml#L14-L85)
 - [Official Bangumi API v0 OpenAPI: Subject fields](https://github.com/bangumi/api/blob/master/open-api/v0.yaml#L3556-L3594)
 - `packages/tools/src/definitions/discovery-tools.ts` (`discoveryQueryInput` and `bangumi.query_subjects`)
 - `packages/provider-core/src/providers.ts` (`SubjectDiscoveryCandidate`)
