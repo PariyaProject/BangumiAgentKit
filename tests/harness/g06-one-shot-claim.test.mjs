@@ -6,12 +6,14 @@ import {
   claimG06OneShotAtomically,
   g06OneShotLatchLabelDescription,
   g06OneShotLatchLabelName,
+  g06MergeWorkingTreeIsSafe,
   g06OneShotTerminalLabelDescription,
   g06OneShotTerminalLabelName,
   G06OneShotClaimError,
   readG06OneShotTerminalGitHubLatch,
   verifyG06OneShotGitHubLatch,
 } from '../../scripts/lib/g06-one-shot-claim.mjs';
+import { G06_REPORT_RELATIVE_PATH } from '../../scripts/acceptance/g06-subject-cast-answer-check.mjs';
 import { createG06RunnerReceiptKeyPair } from '../../scripts/acceptance/g06-runner-receipt.mjs';
 
 function mockGitHubApi({ createError = false, labels = new Map() } = {}) {
@@ -38,6 +40,22 @@ function mockGitHubApi({ createError = false, labels = new Map() } = {}) {
   };
   return { gh, calls, labels };
 }
+
+test('G06 merge permits only the exact validated report as sole untracked worktree content', () => {
+  assert.equal(g06MergeWorkingTreeIsSafe('', false), true);
+  assert.equal(g06MergeWorkingTreeIsSafe(`?? ${G06_REPORT_RELATIVE_PATH}`, true), true);
+  assert.equal(g06MergeWorkingTreeIsSafe(`?? ${G06_REPORT_RELATIVE_PATH}`, false), false);
+  assert.equal(g06MergeWorkingTreeIsSafe(` M ${G06_REPORT_RELATIVE_PATH}`, true), false);
+  assert.equal(g06MergeWorkingTreeIsSafe(`A  ${G06_REPORT_RELATIVE_PATH}`, true), false);
+  assert.equal(g06MergeWorkingTreeIsSafe('?? docs/live-probes/other.json', true), false);
+  assert.equal(
+    g06MergeWorkingTreeIsSafe(
+      `?? ${G06_REPORT_RELATIVE_PATH}\n?? docs/live-probes/other.json`,
+      true,
+    ),
+    false,
+  );
+});
 
 test('G06 repository-wide one-shot latch is create-once and verifies exact metadata', () => {
   const { gh, labels } = mockGitHubApi();

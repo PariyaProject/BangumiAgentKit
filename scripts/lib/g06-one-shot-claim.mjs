@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
 import { isG06RunnerReceiptPublicKey } from '../acceptance/g06-runner-receipt.mjs';
+import { G06_REPORT_RELATIVE_PATH } from '../acceptance/g06-subject-cast-answer-check.mjs';
+
+export function g06MergeWorkingTreeIsSafe(status, reportValidated) {
+  if (status === '') return true;
+  return reportValidated === true && status === `?? ${G06_REPORT_RELATIVE_PATH}`;
+}
 
 export class G06OneShotClaimError extends Error {
   constructor(code, message) {
