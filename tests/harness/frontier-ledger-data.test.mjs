@@ -40,6 +40,12 @@ test('G16 frontier records its terminal Run 95 one-shot without retry guidance',
   assert.match(record.next_action, /retryAllowed=false/u);
   assert.match(record.next_action, /Never rerun/u);
   assert.match(record.next_action, /complete director-filmography claim/u);
+  assert.match(record.evidence.source_contract, /G16 query was invoked once through PR #137/u);
+  assert.match(
+    record.evidence.source_contract,
+    /INCONCLUSIVE with no report and retryAllowed=false/u,
+  );
+  assert.doesNotMatch(record.evidence.source_contract, /no G16 one-shot query has been performed/u);
 });
 
 test('R01 frontier records the consumed terminal attempt without inviting a follow-up', () => {
