@@ -54,3 +54,26 @@ test('R01 can resume in a distinct follow-up Epoch without reusing its one-shot 
   assert.match(record.next_action, /inconclusive result is no-credit and never retried/u);
   assert.doesNotMatch(record.next_action, /run95-r01-subject-relations-agent-mcp-followup/u);
 });
+
+test('community source closure is evidence-bound and keeps discussion scenarios unresolved', () => {
+  const source = ledger.records.find(({ id }) => id === 'SOURCE-COMMUNITY-STRUCTURED-WEB');
+  assert.ok(source, 'the community source frontier must remain in the canonical ledger');
+  assert.equal(source.status, 'CLOSED_NO_SAFE_SOURCE');
+  assert.ok(
+    source.source_refs.includes(
+      'docs/research/run95-community-public-source-contract-2026-10-13.md',
+    ),
+  );
+  assert.ok(
+    source.research_closure.evidence_refs.includes(
+      'docs/research/run95-community-public-source-contract-2026-10-13.md',
+    ),
+  );
+  assert.match(source.closure_reason, /current explicit allowlist/u);
+  assert.match(source.reopen_when, /official public API/u);
+
+  for (const id of ['G10', 'G11', 'G21']) {
+    assert.equal(ledger.records.find(({ id: current }) => current === id)?.status, 'PARTIAL');
+  }
+  assert.equal(ledger.records.find(({ id }) => id === 'OP-003')?.status, 'RESEARCH_READY');
+});
