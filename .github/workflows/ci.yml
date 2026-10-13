@@ -25,6 +25,9 @@ jobs:
       - name: Run Harness V3 simulations
         run: pnpm harness:test
 
+      - name: Validate tool acceptance evidence and matrix
+        run: pnpm acceptance:check
+
       - name: Reject legacy runtime-state changes in V3 Product PRs
         if: github.event_name == 'pull_request'
         env:

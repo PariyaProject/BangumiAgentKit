@@ -1486,7 +1486,7 @@ CODEX_C07_RENDERER_PROBE_IMPLEMENTATION_MARKERS = {
         'epoch?.pr_number !== activePrNumber',
         'objective.includes(TARGET_TOOL)',
         "objective.includes('renderer-only')",
-        "acceptanceText.includes('offline fixture')",
+        "objective.includes('fixed local synthetic fixture')",
         "'--output-last-message'",
         'function readFinalMessage(lastMessagePath)',
         'function assertCurrentGate(sourceRevision)',

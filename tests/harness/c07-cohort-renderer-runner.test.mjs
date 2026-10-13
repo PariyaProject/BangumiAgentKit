@@ -395,3 +395,16 @@ test('C07 sanitized report retains only artifact facts and evidence booleans', (
   assert.equal(laterEpochReport.epochId, 'run95-c07-renderer-followup');
   assert.equal(laterEpochReport.prNumber, 150);
 });
+
+test('C07 source-revision marker follows the active renderer epoch objective wording', () => {
+  const generator = readFileSync('scripts/generate-tool-acceptance-tasks.py', 'utf8');
+  const runner = readFileSync(
+    'scripts/acceptance/run-c07-cohort-renderer-codex-agent-mcp.mjs',
+    'utf8',
+  );
+  const activeScopeMarker = "objective.includes('fixed local synthetic fixture')";
+
+  assert.ok(generator.includes(activeScopeMarker));
+  assert.ok(runner.includes(activeScopeMarker));
+  assert.equal(generator.includes("acceptanceText.includes('offline fixture')"), false);
+});
