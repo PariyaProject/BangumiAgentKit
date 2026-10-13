@@ -45,9 +45,9 @@ test('G09 direct-public watch-order evidence stays separate from its consumed Ag
     true,
   );
   assert.match(g09.next_action, /never retry its consumed one-shot/);
-  assert.match(g09.next_action, /does not replay the spent G09 one-shot\/canary/);
+  assert.match(g09.next_action, /do not replay the spent G09 one-shot\/canary/);
   assert.ok(toolRow?.includes(reportPath));
   assert.ok(toolRow?.includes('◐'));
-  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：58\/65/);
+  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：59\/65/);
   assert.match(acceptance, /Agent→MCP 模型调用证据：83\/96/);
 });
