@@ -15,7 +15,7 @@
     "@bangumi-agent-kit/config": "workspace:*",
     "@bangumi-agent-kit/db": "workspace:*",
     "@bangumi-agent-kit/tools": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "zod": "^3.22.0 || ^4.0.0",
     "zod-to-json-schema": "^3.22.0"
   }
