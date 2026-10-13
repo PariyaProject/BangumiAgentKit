@@ -454,9 +454,11 @@
         "scripts/acceptance/g06-runner-receipt.d.mts",
         "scripts/acceptance/verify-g06-runner-receipt.mjs",
         "tests/harness/codex-one-tool-evidence.test.mjs",
-        "tests/fixtures/sign-g06-runner-report.mjs"
+        "tests/fixtures/sign-g06-runner-report.mjs",
+        "scripts/agent-harness.mjs",
+        "tests/harness/agent-harness-cli.test.mjs"
       ],
-      "next_action": "Round 1 on Candidate 2bcce5a found two P1 and one P2. Commit b15978d fixed the emitted communityRead privacy field, added a durable-claim-pinned Ed25519 runtime receipt verified at report/reconciliation/acceptance boundaries, and required unknown-truncation disclosure. Exact CI run 38344676039 failed because tests/harness/codex-one-tool-evidence.test.mjs imported the full MCP server and required @modelcontextprotocol/sdk in the dependency-free Harness job. The privacy contract now lives in scripts/lib/g06-privacy-summary.mjs, shared by server, report validator, and test. The single failing test reproduced under a missing-SDK loader and then passed; full no-SDK Harness suite 188/188 and acceptance validator 108/108 pass locally. Next commit/push this test-boundary fix to the same PR, require fresh exact-head CI 7/7, refresh Candidate/Base evidence with all three round-1 closure mappings, then continue the same Luna Max reviewer identity for round 2 before any one-shot activity.",
+      "next_action": "Run the G06 one-shot only after exact current-Candidate CI and same-identity PASS, then reconcile the terminal result before merge. Update acceptance and frontier only from verified current-source evidence; preserve unknown coverage and never retry an inconclusive claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -590,6 +592,17 @@
           "reportWritten": false,
           "retryAllowed": false,
           "currentAcceptanceCredit": "none until a sanitized current-source report is accepted"
+        },
+        "g06_one_shot_merge_order": {
+          "behavior": "A G06 review PASS directs the caller to run the one-shot and reconcile before merge. G06 merge revalidates the exact candidate-bound terminal disposition, permanent claim/terminal latches, reconciliation readback, and signed sanitized report when present. Other Epoch merges keep the default auto-merge path.",
+          "implementation": [
+            "scripts/agent-harness.mjs"
+          ],
+          "tests": [
+            "tests/harness/agent-harness-cli.test.mjs"
+          ],
+          "offline_validation": "Harness CLI regressions cover G06 PASS next-action, pre-reconciliation merge refusal, verified terminal INCONCLUSIVE merge, and refusal of self-asserted REPORT_WRITTEN without a valid sanitized artifact.",
+          "status_boundary": "G06 remains PARTIAL until current-source direct/Agent-MCP evidence is accepted. This control-plane change does not assert that a query ran or cast coverage is complete."
         }
       }
     },

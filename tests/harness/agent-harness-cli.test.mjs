@@ -23,14 +23,23 @@ import {
   G06_EPOCH_ID,
   G06_EXPECTED_QUERY_ARGUMENTS,
   G06_TOOL_NAME,
+  canonicalG06ArgumentsSha256,
 } from '../../scripts/acceptance/g06-subject-cast-answer-check.mjs';
+import {
+  buildG06AgentMcpReport,
+  writeG06AgentMcpReport,
+} from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
+import { G06_PRIVACY } from '../../scripts/lib/g06-privacy-summary.mjs';
 import {
   g06OneShotLatchLabelDescription,
   g06OneShotLatchLabelName,
   g06OneShotTerminalLabelDescription,
   g06OneShotTerminalLabelName,
 } from '../../scripts/lib/g06-one-shot-claim.mjs';
-import { createG06RunnerReceiptKeyPair } from '../../scripts/acceptance/g06-runner-receipt.mjs';
+import {
+  createG06RunnerReceipt,
+  createG06RunnerReceiptKeyPair,
+} from '../../scripts/acceptance/g06-runner-receipt.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
 import {
   generateG04RunnerReceiptKeyPair,
@@ -1349,6 +1358,70 @@ function passedCandidateFixture() {
   return { run, epoch };
 }
 
+test('CLI directs a passed G06 review to reconcile its one-shot before merge', () => {
+  const { run, epoch } = controlFixture();
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 170;
+  run.pending_epoch = null;
+  epoch.epoch_id = G06_EPOCH_ID;
+  epoch.pr_number = 170;
+  epoch.branch = 'codex/epoch-run95-g06-review-order';
+  epoch.base_branch = 'master';
+  epoch.base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.state = 'REVIEW_RUNNING';
+  epoch.review.consumed = 1;
+  epoch.review.reviewer_id = 'gpt-6-luna-max-run95-pr170-round1';
+  epoch.review.runtime = { state: 'ACTIVE', reason: null, allocation: 'NORMAL' };
+  epoch.advances_frontier_ids = ['G06'];
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The G06 merge ordering is the active safety gap.',
+    why_not_extend_further: 'Other frontiers remain separate.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'The review and one-shot gates were adversarially checked.',
+  };
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: epoch.candidate_sha,
+    baseSha: epoch.base_sha,
+    draft: false,
+  });
+  try {
+    const result = environment.execute([
+      'review:result',
+      '--run',
+      '95',
+      '--pr',
+      '170',
+      '--verdict',
+      'PASS',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const state = environment.readState();
+    assert.equal(
+      parseControlBlock(state.prBody, EPOCH_MARKER).next_action,
+      'RUN_G06_ONE_SHOT_AND_RECONCILE_BEFORE_MERGE',
+    );
+    assert.equal(
+      parseControlBlock(state.runBody, RUN_MARKER).next_action,
+      'RUN_G06_ONE_SHOT_BEFORE_MERGE',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
 function run95R01ClaimFixture({ claimState = 'CLAIMED', reconciliation } = {}) {
   const { run, epoch } = passedCandidateFixture();
   const candidateSha = sha('b');
@@ -1445,12 +1518,14 @@ function r01HarnessEnvironment(run, epoch, overrides = {}) {
   });
 }
 
-function run95G06ClaimFixture({ claimState = 'CLAIMED' } = {}) {
+function run95G06ClaimFixture({
+  claimState = 'CLAIMED',
+  receiptPublicKey = createG06RunnerReceiptKeyPair().receiptPublicKey,
+} = {}) {
   const { run, epoch } = passedCandidateFixture();
   const candidateSha = sha('b');
   const baseSha = sha('a');
   const reviewerId = 'gpt-6-luna-max-run95-pr170-round1';
-  const receiptPublicKey = createG06RunnerReceiptKeyPair().receiptPublicKey;
   const claimId = `g06-run-95-pr-170-${candidateSha.slice(0, 12)}-test`;
   run.profile = 'AUTONOMOUS_EVOLUTION';
   run.active_epoch_pr = 170;
@@ -1512,6 +1587,105 @@ function run95G06ClaimFixture({ claimState = 'CLAIMED' } = {}) {
   run.outer_sol.consumed = 1;
   run.outer_sol.product.consumed = 1;
   return { run, epoch };
+}
+
+function writeValidG06Report(reportRoot, disposition, keyPair) {
+  const sourceRevision = disposition.sourceCandidateSha;
+  const baseSha = disposition.baseSha;
+  const bundleSha256 = disposition.bundleSha256;
+  const answer = [
+    '主角｜合成角色｜合成声优',
+    '范围：来源条目 218707；观察到 1 行，返回 1 条；没有分页参数，也没有总数；本次有限返回不保证完整；未返回或遗漏不代表不存在；不能推断主角、配角或重要性分类。',
+  ].join('\n');
+  const castRow = {
+    character: { id: 1, name: '合成角色' },
+    relation: '主角',
+    actors: [{ id: 2, name: '合成声优' }],
+    actorCount: 1,
+    actorsOmittedFromText: 0,
+  };
+  const projection = {
+    status: 'ok',
+    subjectId: 218707,
+    observed: 1,
+    returned: 1,
+    truncated: false,
+    schemaDriftRows: 0,
+    invalidActorIdRows: 0,
+    mcpTextProjection: { castRowsOmittedFromText: 0, actorRowsOmittedFromText: 0 },
+    cast: [castRow],
+  };
+  const toolOutput = {
+    content: [{ type: 'text', text: JSON.stringify(projection) }],
+    structuredContent: projection,
+    isError: false,
+  };
+  const toolCalls = [
+    {
+      name: G06_TOOL_NAME,
+      state: 'DONE',
+      arguments: G06_EXPECTED_QUERY_ARGUMENTS,
+      result: toolOutput,
+    },
+  ];
+  const serverSummary = {
+    sourceRevision,
+    bundleSha256,
+    catalogSha256: '1'.repeat(64),
+    toolDescriptionSha256: '2'.repeat(64),
+    inputSchemaSha256: '3'.repeat(64),
+    argumentMatch: true,
+    expectedArgumentsSha256: canonicalG06ArgumentsSha256(),
+    allowedCallCount: 1,
+    deniedCallCount: 0,
+    serverResultStatus: 'SUCCESS',
+    privacy: { ...G06_PRIVACY },
+  };
+  const input = {
+    claimId: disposition.claimId,
+    prNumber: disposition.prNumber,
+    sourceRevision,
+    baseSha,
+    reviewerId: disposition.reviewerId,
+    bundleSha256,
+    observedAt: '2026-10-13T03:00:00.000Z',
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    codexCliVersion: 'test-fixture',
+    processExitCode: 0,
+    eventStreamParsed: true,
+    codexMcpToolEventCount: 1,
+    codexErrorItemCount: 0,
+    mcpServerNames: ['bgk_g06_one_tool'],
+    nonMcpToolEventCount: 0,
+    nonMcpToolTypes: [],
+    shellToolCallCount: 0,
+    runtimeCandidateMatches: true,
+    serverSummaryMatchesCandidate: true,
+    serverPrivacyMatchesCandidate: true,
+    serverSummary,
+    toolCalls,
+    answer,
+    toolTextUtf8Bytes: Buffer.byteLength(toolOutput.content[0].text, 'utf8'),
+  };
+  const built = buildG06AgentMcpReport(input);
+  assert.equal(built.passed, true);
+  const runnerReceipt = createG06RunnerReceipt(built.report, keyPair.privateKey);
+  const reportPath = path.join(
+    reportRoot,
+    'docs/live-probes/g06-subject-cast-agent-mcp-run95.json',
+  );
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  const report = writeG06AgentMcpReport(
+    {
+      ...input,
+      runnerReceipt,
+      receiptPublicKey: keyPair.receiptPublicKey,
+    },
+    reportPath,
+  );
+  assert.equal(report.passed, true);
+  return report;
 }
 
 function g06HarnessEnvironment(run, epoch, overrides = {}) {
@@ -1631,6 +1805,19 @@ test('CLI reconciles a durable G06 claim to terminal INCONCLUSIVE without invoki
     assert.equal(stored.state, 'INCONCLUSIVE');
     assert.equal(stored.reportWritten, false);
     assert.equal(stored.retryAllowed, false);
+    assert.deepEqual(stored.reconciliation, {
+      terminalLatch: 'INCONCLUSIVE',
+      reportValidation: 'ABSENT',
+      reconciledAt: stored.reconciliation.reconciledAt,
+    });
+    assert.equal(
+      parseControlBlock(environment.readState().prBody, EPOCH_MARKER).next_action,
+      'AUTO_MERGE_AFTER_G06_RECONCILIATION',
+    );
+    assert.equal(
+      parseControlBlock(environment.readState().runBody, RUN_MARKER).next_action,
+      'MERGE_AFTER_G06_RECONCILIATION',
+    );
     assert.equal(
       environment.readState().repositoryLabels[g06OneShotTerminalLabelName()].description,
       g06OneShotTerminalLabelDescription('INCONCLUSIVE'),
@@ -1640,6 +1827,210 @@ test('CLI reconciles a durable G06 claim to terminal INCONCLUSIVE without invoki
       false,
       'one-shot reconciliation must not run Codex',
     );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI reconciliation re-reads an existing G06 INCONCLUSIVE latch with complete report metadata', () => {
+  const { run, epoch } = run95G06ClaimFixture({ claimState: 'INCONCLUSIVE' });
+  const disposition = epoch.adversarial_preflight.g06_one_shot_disposition;
+  const environment = g06HarnessEnvironment(run, epoch, {
+    repositoryLabels: {
+      [g06OneShotLatchLabelName()]: {
+        name: g06OneShotLatchLabelName(),
+        color: 'b60205',
+        description: g06OneShotLatchLabelDescription(disposition.receiptPublicKey),
+      },
+      [g06OneShotTerminalLabelName()]: {
+        name: g06OneShotTerminalLabelName(),
+        color: '6e7781',
+        description: g06OneShotTerminalLabelDescription('INCONCLUSIVE'),
+      },
+    },
+  });
+  try {
+    const result = environment.execute([
+      'epoch:g06-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '170',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.g06_one_shot_disposition;
+    assert.deepEqual(stored.reconciliation, {
+      terminalLatch: 'INCONCLUSIVE',
+      reportValidation: 'ABSENT',
+      reconciledAt: stored.reconciliation.reconciledAt,
+    });
+    assert.equal(
+      parseControlBlock(environment.readState().runBody, RUN_MARKER).next_action,
+      'MERGE_AFTER_G06_RECONCILIATION',
+    );
+    assert.equal(
+      environment.readState().calls.some((call) => call.tool === 'codex'),
+      false,
+      'reconciliation must not invoke Codex',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI reconciles and merges an exact validated G06 report as the sole untracked file', () => {
+  const keyPair = createG06RunnerReceiptKeyPair();
+  const { run, epoch } = run95G06ClaimFixture({
+    receiptPublicKey: keyPair.receiptPublicKey,
+  });
+  const disposition = epoch.adversarial_preflight.g06_one_shot_disposition;
+  const environment = g06HarnessEnvironment(run, epoch, {
+    dirty: '?? docs/live-probes/g06-subject-cast-agent-mcp-run95.json',
+  });
+  const reportRoot = path.join(environment.directory, 'g06-report-root');
+  try {
+    const report = writeValidG06Report(reportRoot, disposition, keyPair);
+    disposition.state = 'REPORT_WRITTEN';
+    disposition.reportWritten = true;
+    disposition.reportPath = 'docs/live-probes/g06-subject-cast-agent-mcp-run95.json';
+    disposition.reportSha256 = report.reportSha256;
+    const state = environment.readState();
+    state.prBody = renderEpochBody(epoch);
+    state.repositoryLabels = {
+      [g06OneShotLatchLabelName()]: {
+        name: g06OneShotLatchLabelName(),
+        color: 'b60205',
+        description: g06OneShotLatchLabelDescription(disposition.receiptPublicKey),
+      },
+      [g06OneShotTerminalLabelName()]: {
+        name: g06OneShotTerminalLabelName(),
+        color: '6e7781',
+        description: g06OneShotTerminalLabelDescription('REPORT_WRITTEN', report.reportSha256),
+      },
+    };
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const reportRootEnv = { HARNESS_G06_REPORT_ROOT: reportRoot };
+    const reconciled = environment.execute(
+      ['epoch:g06-one-shot-reconcile', '--run', '95', '--pr', '170'],
+      reportRootEnv,
+    );
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    const reconciledDisposition = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.g06_one_shot_disposition;
+    assert.equal(reconciledDisposition.reconciliation.reportValidation, 'VALID');
+    assert.equal(reconciledDisposition.reconciliation.observedReportSha256, report.reportSha256);
+
+    const unrelatedDirtyState = environment.readState();
+    unrelatedDirtyState.dirty += '\n?? docs/live-probes/unrelated.json';
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(unrelatedDirtyState, null, 2)}\n`);
+    const rejected = environment.execute(
+      ['epoch:merge', '--run', '95', '--pr', '170'],
+      reportRootEnv,
+    );
+    assert.equal(rejected.status, 2);
+    assert.match(rejected.stderr, /^UNSAFE_DIRTY_WORKTREE:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
+
+    const reportOnlyState = environment.readState();
+    reportOnlyState.dirty = '?? docs/live-probes/g06-subject-cast-agent-mcp-run95.json';
+    fs.writeFileSync(environment.statePath, `${JSON.stringify(reportOnlyState, null, 2)}\n`);
+    const merged = environment.execute(
+      ['epoch:merge', '--run', '95', '--pr', '170'],
+      reportRootEnv,
+    );
+    assert.equal(merged.status, 0, merged.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI refuses to merge a G06 Epoch before terminal one-shot reconciliation', () => {
+  const { run, epoch } = run95G06ClaimFixture();
+  const environment = g06HarnessEnvironment(run, epoch);
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '170']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_ONESHOT_RECONCILIATION_REQUIRED:/u);
+    const state = environment.readState();
+    assert.equal(state.prState, 'OPEN');
+    assert.equal(
+      state.calls.some(
+        (call) => call.tool === 'gh' && call.args[0] === 'pr' && call.args[1] === 'merge',
+      ),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI only merges G06 after the terminal latch and reconciliation marker agree', () => {
+  const { run, epoch } = run95G06ClaimFixture({ claimState: 'INCONCLUSIVE' });
+  const disposition = epoch.adversarial_preflight.g06_one_shot_disposition;
+  disposition.reconciliation = {
+    terminalLatch: 'INCONCLUSIVE',
+    reportValidation: 'ABSENT',
+    reconciledAt: '2026-10-13T00:00:01.000Z',
+  };
+  const claimName = g06OneShotLatchLabelName();
+  const terminalName = g06OneShotTerminalLabelName();
+  const environment = g06HarnessEnvironment(run, epoch, {
+    repositoryLabels: {
+      [claimName]: {
+        name: claimName,
+        color: 'b60205',
+        description: g06OneShotLatchLabelDescription(disposition.receiptPublicKey),
+      },
+      [terminalName]: {
+        name: terminalName,
+        color: '6e7781',
+        description: g06OneShotTerminalLabelDescription('INCONCLUSIVE'),
+      },
+    },
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '170']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(parseControlBlock(environment.readState().prBody, EPOCH_MARKER).state, 'MERGED');
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI rejects a self-asserted G06 report without a validated sanitized artifact', () => {
+  const { run, epoch } = run95G06ClaimFixture({ claimState: 'REPORT_WRITTEN' });
+  const disposition = epoch.adversarial_preflight.g06_one_shot_disposition;
+  disposition.reportSha256 = 'd'.repeat(64);
+  disposition.reconciliation = {
+    terminalLatch: 'REPORT_WRITTEN',
+    reportValidation: 'VALID',
+    observedReportSha256: disposition.reportSha256,
+    reconciledAt: '2026-10-13T00:00:01.000Z',
+  };
+  const claimName = g06OneShotLatchLabelName();
+  const terminalName = g06OneShotTerminalLabelName();
+  const environment = g06HarnessEnvironment(run, epoch, {
+    repositoryLabels: {
+      [claimName]: {
+        name: claimName,
+        color: 'b60205',
+        description: g06OneShotLatchLabelDescription(disposition.receiptPublicKey),
+      },
+      [terminalName]: {
+        name: terminalName,
+        color: '6e7781',
+        description: g06OneShotTerminalLabelDescription('REPORT_WRITTEN', disposition.reportSha256),
+      },
+    },
+  });
+  try {
+    const result = environment.execute(['epoch:merge', '--run', '95', '--pr', '170']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_ONESHOT_REPORT_INVALID:/u);
+    assert.equal(environment.readState().prState, 'OPEN');
   } finally {
     environment.cleanup();
   }
