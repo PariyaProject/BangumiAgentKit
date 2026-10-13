@@ -424,6 +424,7 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run75-frontier-delta-after-pr76-2026-10-03.md",
         "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
+        "docs/live-probes/public-tools-2026-10-13-094144522-15089.json",
         "apps/mcp/src/result-presenter.ts",
         "tests/integration/mcp-result-presenter.test.ts",
         "scripts/acceptance/subject-cast-answer-check.mjs",
@@ -458,7 +459,7 @@
         "scripts/agent-harness.mjs",
         "tests/harness/agent-harness-cli.test.mjs"
       ],
-      "next_action": "Run the G06 one-shot only after exact current-Candidate CI and same-identity PASS, then reconcile the terminal result before merge. Update acceptance and frontier only from verified current-source evidence; preserve unknown coverage and never retry an inconclusive claim.",
+      "next_action": "Run #95 G06 Agent/MCP one-shot on PR #149 was terminal INCONCLUSIVE: one target MCP call returned server SUCCESS, but Codex error items prevented an accepted report; retryAllowed=false. Never rerun the G06 profile {subjectId:218707,limit:100}. A separate direct-public ToolRegistry refresh is recorded in docs/live-probes/public-tools-2026-10-13-094144522-15089.json: one anonymous request with subjectId=41529, limit=2, current catalog/script hashes, and passing bounded identity/shape assertions. It supports only the bangumi.get_subject_cast direct public API matrix cell; it does not count as Agent/MCP answer acceptance. The endpoint has no documented pagination or total, and the result is locally capped, so keep G06 PARTIAL and do not claim a complete cast/CV list. No OAuth/account/community/QQ/TIM access was used.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
