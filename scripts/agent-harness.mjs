@@ -1452,6 +1452,14 @@ function commandReviewResult(options) {
     });
   }
   const result = applyReviewResult(runResult.state, epochResult.state, { verdict, findings });
+  if (
+    verdict === 'PASS' &&
+    result.epoch.epoch_id === G06_EPOCH_ID &&
+    !Object.hasOwn(result.epoch.adversarial_preflight ?? {}, 'g06_one_shot_disposition')
+  ) {
+    result.epoch.next_action = 'RUN_G06_ONE_SHOT_AND_RECONCILE_BEFORE_MERGE';
+    result.run.next_action = 'RUN_G06_ONE_SHOT_BEFORE_MERGE';
+  }
   updatePr(prNumber, result.epoch);
   updateIssue(runNumber, result.run);
   print({ state: result.epoch.state, outer_state: result.run.state });
@@ -3396,6 +3404,49 @@ function assertG06PassedCandidateStillCurrent(claim, run, epoch, pr) {
   }
 }
 
+function persistG06ReconciliationMetadata(runNumber, prNumber, reconciliation) {
+  const latestEpoch = epochState(prNumber);
+  const nextEpoch = structuredClone(latestEpoch.state);
+  const disposition = nextEpoch.adversarial_preflight?.g06_one_shot_disposition;
+  if (!disposition) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RECONCILIATION_CLAIM_MISSING',
+      'Cannot record G06 reconciliation without its durable claim.',
+    );
+  }
+  const priorReconciliation = disposition.reconciliation ?? {};
+  disposition.reconciliation = {
+    ...priorReconciliation,
+    ...reconciliation,
+    reconciledAt:
+      priorReconciliation.reconciledAt ??
+      reconciliation.reconciledAt ??
+      new Date().toISOString(),
+  };
+  nextEpoch.next_action = 'AUTO_MERGE_AFTER_G06_RECONCILIATION';
+  updatePr(prNumber, nextEpoch);
+
+  const observed = epochState(prNumber).state.adversarial_preflight?.g06_one_shot_disposition;
+  if (
+    observed?.claimId !== disposition.claimId ||
+    observed.state !== disposition.state ||
+    observed.reconciliation?.terminalLatch !== disposition.state ||
+    typeof observed.reconciliation?.reconciledAt !== 'string'
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RECONCILIATION_READBACK_MISMATCH',
+      'The terminal G06 reconciliation did not read back exactly.',
+    );
+  }
+
+  const latestRun = issueState(runNumber);
+  const nextRun = structuredClone(latestRun.state);
+  if (nextRun.active_epoch_pr === Number(prNumber)) {
+    nextRun.next_action = 'MERGE_AFTER_G06_RECONCILIATION';
+    updateIssue(runNumber, nextRun);
+  }
+}
+
 function commandEpochG06OneShotResult(
   claim,
   resultState,
@@ -3466,6 +3517,9 @@ function commandEpochG06OneShotResult(
           report.reason ?? 'Recorded G06 report is invalid.',
         );
       }
+    }
+    if (reconciliation) {
+      persistG06ReconciliationMetadata(claim.runNumber, claim.prNumber, reconciliation);
     }
     const response = {
       state: 'G06_ONE_SHOT_RESULT_ALREADY_RECORDED',
@@ -3553,6 +3607,9 @@ function commandEpochG06OneShotResult(
     finishedAt: new Date().toISOString(),
   };
   updatePr(claim.prNumber, next);
+  if (reconciliation) {
+    persistG06ReconciliationMetadata(claim.runNumber, claim.prNumber, reconciliation);
+  }
   const observed = epochState(claim.prNumber).state.adversarial_preflight?.g06_one_shot_disposition;
   if (
     observed?.claimId !== claim.claimId ||
@@ -3711,6 +3768,7 @@ function commandEpochG06OneShotReconcile(options) {
     reportIsValid ? reportSha256 : null,
     {
       reconciliation: {
+        terminalLatch: resultState,
         reportValidation: reportIsValid ? 'VALID' : reportSha256 ? 'INVALID' : 'ABSENT',
         ...(reportSha256 ? { observedReportSha256: reportSha256 } : {}),
       },
@@ -4764,6 +4822,78 @@ function completeMergedIntegration({ runNumber, prNumber, runState, epoch, merge
   });
 }
 
+function assertG06OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
+  const disposition = epoch.adversarial_preflight?.g06_one_shot_disposition;
+  const reconciliation = disposition?.reconciliation;
+  const latestReview = epoch.review_history?.at(-1);
+  const terminalState = disposition?.state;
+  const reportWritten = terminalState === 'REPORT_WRITTEN';
+  if (
+    epoch.epoch_id !== G06_EPOCH_ID ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.pr_number !== Number(prNumber) ||
+    !disposition ||
+    disposition.runNumber !== Number(runNumber) ||
+    disposition.prNumber !== Number(prNumber) ||
+    disposition.epochId !== G06_EPOCH_ID ||
+    disposition.frontierId !== 'G06' ||
+    disposition.toolName !== G06_TOOL_NAME ||
+    disposition.argumentProfile !== G06_ARGUMENT_PROFILE ||
+    disposition.expectedArgumentsSha256 !== canonicalHash(G06_EXPECTED_QUERY_ARGUMENTS) ||
+    disposition.sourceCandidateSha !== epoch.candidate_sha ||
+    disposition.baseSha !== epoch.base_sha ||
+    disposition.ciSha !== epoch.candidate_sha ||
+    disposition.ciStatus !== 'SUCCESS' ||
+    epoch.review_pass_sha !== epoch.candidate_sha ||
+    disposition.reviewerId !== latestReview?.reviewer_id ||
+    latestReview?.candidate_sha !== epoch.candidate_sha ||
+    latestReview?.reviewed_base_sha !== epoch.base_sha ||
+    latestReview?.verdict !== 'PASS' ||
+    disposition.model !== G06_MODEL ||
+    disposition.reasoningEffort !== G06_REASONING_EFFORT ||
+    disposition.retryAllowed !== false ||
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(terminalState) ||
+    disposition.reportWritten !== reportWritten ||
+    reconciliation?.terminalLatch !== terminalState ||
+    typeof reconciliation?.reconciledAt !== 'string' ||
+    reconciliation.reconciledAt.length === 0 ||
+    (reportWritten && reconciliation.reportValidation !== 'VALID') ||
+    (reportWritten && reconciliation.observedReportSha256 !== disposition.reportSha256) ||
+    (!reportWritten && !['ABSENT', 'INVALID'].includes(reconciliation.reportValidation))
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RECONCILIATION_REQUIRED',
+      'A G06 Epoch cannot merge before its exact one-shot claim has a terminal, reconciled result.',
+    );
+  }
+
+  verifyG06OneShotGitHubLatch(gh, disposition.receiptPublicKey);
+  const terminal = g06TerminalState(readG06OneShotTerminalGitHubLatch(gh));
+  if (
+    terminal?.state !== terminalState ||
+    (reportWritten && terminal.reportSha256 !== disposition.reportSha256) ||
+    (!reportWritten && terminal.reportSha256 !== null)
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RECONCILIATION_REQUIRED',
+      'The permanent G06 terminal latch does not match the reconciled Epoch disposition.',
+    );
+  }
+  if (reportWritten) {
+    const report = validateG06SanitizedReportFile(
+      disposition,
+      root,
+      G06_EPOCH_REPORT_PATH,
+    );
+    if (!report.passed || report.reportSha256 !== disposition.reportSha256) {
+      throw new HarnessInvariantError(
+        'G06_ONESHOT_REPORT_INVALID',
+        report.reason ?? 'The reconciled G06 report is no longer valid.',
+      );
+    }
+  }
+}
+
 function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   ensureControlPlane();
   ensureCleanWorkingTree();
@@ -4789,6 +4919,9 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       'ACTIVE_EPOCH_MISMATCH',
       'The Run Issue does not identify this PR as its active Epoch',
     );
+  }
+  if (epoch.epoch_id === G06_EPOCH_ID) {
+    assertG06OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
   }
   if (
     resumeBlocked &&
