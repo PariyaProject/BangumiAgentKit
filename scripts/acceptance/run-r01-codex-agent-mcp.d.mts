@@ -2,7 +2,7 @@ export declare const R01_EXPECTED_QUERY_ARGUMENTS: {
   subjectId: 41529;
   includeEvidence: true;
 };
-export declare const R01_EPOCH_ID: 'run95-r01-subject-relations-agent-mcp';
+export declare const R01_EPOCH_ID: 'run95-r01-subject-relations-agent-mcp-followup';
 export declare const R01_ARGUMENT_PROFILE: 'fixed-r01-subject-41529-include-evidence-v1';
 export declare const R01_REPORT_RELATIVE_PATH: string;
 export declare function r01EventStreamIsClean(eventsSummary: unknown): boolean;

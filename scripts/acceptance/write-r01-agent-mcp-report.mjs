@@ -182,7 +182,7 @@ function assertSafeInvocation(input, root) {
     throw new Error('R01 report requires a recognized Codex CLI version.');
   }
   if (
-    input.epochId !== 'run95-r01-subject-relations-agent-mcp' ||
+    input.epochId !== 'run95-r01-subject-relations-agent-mcp-followup' ||
     typeof input.claimId !== 'string' ||
     !/^r01-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u.test(input.claimId) ||
     !Number.isSafeInteger(input.prNumber) ||
@@ -514,7 +514,7 @@ export function validateR01SanitizedReportFile(disposition, root = ROOT) {
     if (
       report?.runNumber !== 95 ||
       report?.frontierId !== 'R01' ||
-      report?.epochId !== 'run95-r01-subject-relations-agent-mcp' ||
+      report?.epochId !== 'run95-r01-subject-relations-agent-mcp-followup' ||
       report?.claimId !== disposition?.claimId ||
       report?.prNumber !== disposition?.prNumber ||
       report?.sourceRevision !== disposition?.sourceCandidateSha ||

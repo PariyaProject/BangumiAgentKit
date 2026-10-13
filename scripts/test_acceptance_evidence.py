@@ -799,11 +799,11 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             report.update({
                 'runNumber': 95,
                 'frontierId': 'R01',
-                'epochId': 'run95-r01-subject-relations-agent-mcp',
-                'reviewerId': 'gpt-6-luna-max-run95-pr143-round1',
+                'epochId': 'run95-r01-subject-relations-agent-mcp-followup',
+                'reviewerId': 'gpt-6-luna-max-run95-pr147-round1',
                 'baseSha': self._git('rev-parse', f'{self.source_revision}^').stdout.strip(),
-                'prNumber': 143,
-                'claimId': f"r01-run-95-pr-143-{self.source_revision[:12]}-1791765972000",
+                'prNumber': 147,
+                'claimId': f"r01-run-95-pr-147-{self.source_revision[:12]}-1791765972000",
                 'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision),
                 'observedAt': '2026-10-13T00:00:00.000Z',
             })
