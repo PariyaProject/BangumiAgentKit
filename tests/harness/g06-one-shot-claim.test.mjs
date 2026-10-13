@@ -12,6 +12,7 @@ import {
   readG06OneShotTerminalGitHubLatch,
   verifyG06OneShotGitHubLatch,
 } from '../../scripts/lib/g06-one-shot-claim.mjs';
+import { createG06RunnerReceiptKeyPair } from '../../scripts/acceptance/g06-runner-receipt.mjs';
 
 function mockGitHubApi({ createError = false, labels = new Map() } = {}) {
   const calls = [];
@@ -40,20 +41,28 @@ function mockGitHubApi({ createError = false, labels = new Map() } = {}) {
 
 test('G06 repository-wide one-shot latch is create-once and verifies exact metadata', () => {
   const { gh, labels } = mockGitHubApi();
+  const receiptPublicKey = createG06RunnerReceiptKeyPair().receiptPublicKey;
   assert.equal(g06OneShotLatchLabelName(), 'harness-r95-g06-subject-cast-claimed');
-  assert.equal(acquireG06OneShotGitHubLatch(gh), true);
-  assert.equal(verifyG06OneShotGitHubLatch(gh).description, g06OneShotLatchLabelDescription());
+  assert.equal(acquireG06OneShotGitHubLatch(gh, receiptPublicKey), true);
+  assert.equal(
+    verifyG06OneShotGitHubLatch(gh, receiptPublicKey).description,
+    g06OneShotLatchLabelDescription(receiptPublicKey),
+  );
   assert.throws(
-    () => acquireG06OneShotGitHubLatch(gh),
+    () => acquireG06OneShotGitHubLatch(gh, receiptPublicKey),
     (error) =>
       error instanceof G06OneShotClaimError && error.code === 'G06_ONESHOT_ALREADY_CLAIMED',
+  );
+  assert.throws(
+    () => verifyG06OneShotGitHubLatch(gh, createG06RunnerReceiptKeyPair().receiptPublicKey),
+    (error) => error instanceof G06OneShotClaimError && error.code === 'G06_ONESHOT_LATCH_MISSING_OR_CONFLICTING',
   );
   labels.set(g06OneShotLatchLabelName(), {
     name: g06OneShotLatchLabelName(),
     description: 'wrong',
   });
   assert.throws(
-    () => verifyG06OneShotGitHubLatch(gh),
+    () => verifyG06OneShotGitHubLatch(gh, receiptPublicKey),
     (error) =>
       error instanceof G06OneShotClaimError &&
       error.code === 'G06_ONESHOT_LATCH_MISSING_OR_CONFLICTING',

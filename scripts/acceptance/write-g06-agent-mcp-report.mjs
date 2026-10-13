@@ -14,6 +14,7 @@ import {
   summarizeG06ToolResult,
   verifyG06SubjectCastObservation,
 } from './g06-subject-cast-answer-check.mjs';
+import { verifyG06RunnerReceipt } from './g06-runner-receipt.mjs';
 
 export const G06_REPORT_EVIDENCE_KIND = 'codex_cli_g06_subject_cast_agent_mcp';
 export const G06_MODEL = 'gpt-6-luna';
@@ -69,6 +70,7 @@ export const G06_REPORT_FIELDS = new Set([
   'answerUtf8Bytes',
   'answerSha256',
   'privacy',
+  'runnerReceipt',
 ]);
 
 export const G06_ANSWER_CHECKS = new Set([
@@ -289,7 +291,16 @@ export function writeG06AgentMcpReport(input, reportPath = REPORT_PATH) {
   if (!built.passed) {
     return { passed: false, reason: 'G06 answer/source/runtime checks did not all pass.' };
   }
-  const report = built.report;
+  if (
+    !verifyG06RunnerReceipt(
+      built.report,
+      input.runnerReceipt,
+      input.receiptPublicKey,
+    )
+  ) {
+    return { passed: false, reason: 'G06 authenticated runtime receipt is missing or invalid.' };
+  }
+  const report = { ...built.report, runnerReceipt: input.runnerReceipt };
   const bytes = Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf8');
   mkdirSync(path.dirname(reportPath), { recursive: true, mode: 0o700 });
   writeFileSync(reportPath, bytes, { flag: 'wx', mode: 0o600 });
@@ -375,6 +386,7 @@ export function validateG06SanitizedReportFile(
       report.deniedCallCount === 0 &&
       report.privacy?.authProfile === 'anonymous' &&
       Object.entries(G06_PRIVACY).every(([key, value]) => report.privacy?.[key] === value) &&
+      verifyG06RunnerReceipt(report, report.runnerReceipt, disposition?.receiptPublicKey) &&
       report.passed !== false &&
       !Object.hasOwn(report, 'answer') &&
       !Object.hasOwn(report, 'toolOutput') &&

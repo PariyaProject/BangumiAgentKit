@@ -16,6 +16,10 @@ import {
   validateG06SanitizedReportFile,
   writeG06AgentMcpReport,
 } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
+import {
+  createG06RunnerReceipt,
+  createG06RunnerReceiptKeyPair,
+} from '../../scripts/acceptance/g06-runner-receipt.mjs';
 
 const temporaryRoots: string[] = [];
 const sourceRevision = 'a'.repeat(40);
@@ -85,7 +89,7 @@ function makeInput(overrides = {}) {
     serverResultStatus: 'SUCCESS',
     privacy: { ...G06_PRIVACY },
   };
-  return {
+  const input = {
     claimId: 'g06-run-95-pr-170-abcdef123456-1791860000000',
     prNumber: 170,
     sourceRevision,
@@ -112,6 +116,13 @@ function makeInput(overrides = {}) {
     answer,
     toolTextUtf8Bytes: Buffer.byteLength(toolOutput.content[0]!.text!, 'utf8'),
     ...overrides,
+  };
+  const keyPair = createG06RunnerReceiptKeyPair();
+  const built = buildG06AgentMcpReport(input);
+  return {
+    ...input,
+    receiptPublicKey: keyPair.receiptPublicKey,
+    runnerReceipt: createG06RunnerReceipt(built.report, keyPair.privateKey),
   };
 }
 
@@ -147,6 +158,35 @@ describe('G06 subject-cast one-shot report boundary', () => {
       castRowsMatchedCount: 1,
       rawRelationLabelsMatchedCount: 1,
     });
+  });
+
+  it('requires an explicit unknown-truncation disclosure when the source omits that field', () => {
+    const projected = JSON.parse(toolOutput.content[0]!.text!) as Record<string, unknown>;
+    projected.truncated = null;
+    const unknownTruncation = {
+      ...toolOutput,
+      content: [{ type: 'text' as const, text: JSON.stringify(projected) }],
+      structuredContent: { ...toolOutput.structuredContent, truncated: null },
+    };
+    const withoutDisclosure = verifyG06SubjectCastObservation({
+      queryArguments: G06_EXPECTED_QUERY_ARGUMENTS,
+      toolOutput: unknownTruncation,
+      toolCalls: [{ ...toolCalls[0]!, result: unknownTruncation }],
+      answer,
+      toolTextUtf8Bytes: Buffer.byteLength(unknownTruncation.content[0]!.text!, 'utf8'),
+    });
+    const disclosed = answer.replace('本次有限返回', '截断状态未知；本次有限返回');
+    const withDisclosure = verifyG06SubjectCastObservation({
+      queryArguments: G06_EXPECTED_QUERY_ARGUMENTS,
+      toolOutput: unknownTruncation,
+      toolCalls: [{ ...toolCalls[0]!, result: unknownTruncation }],
+      answer: disclosed,
+      toolTextUtf8Bytes: Buffer.byteLength(unknownTruncation.content[0]!.text!, 'utf8'),
+    });
+
+    expect(withoutDisclosure.passed).toBe(false);
+    expect(withoutDisclosure.checks.truncationDisclosure).toBe(false);
+    expect(withDisclosure.checks.truncationDisclosure).toBe(true);
   });
 
   it('rejects stale arguments and an answer that changes a source relation', () => {
@@ -228,8 +268,9 @@ describe('G06 subject-cast one-shot report boundary', () => {
   it('writes create-once mode-0600 evidence containing only sanitized hashes and counters', () => {
     const root = temporaryRoot();
     const reportPath = path.join(root, G06_REPORT_RELATIVE_PATH);
-    const built = buildG06AgentMcpReport(makeInput());
-    const result = writeG06AgentMcpReport(makeInput(), reportPath);
+    const input = makeInput();
+    const built = buildG06AgentMcpReport(input);
+    const result = writeG06AgentMcpReport(input, reportPath);
     const bytes = readFileSync(reportPath);
     const report = JSON.parse(bytes.toString('utf8'));
 
@@ -253,10 +294,27 @@ describe('G06 subject-cast one-shot report boundary', () => {
       ciStatus: report.ciStatus,
       reviewerId: report.reviewerId,
       bundleSha256: report.bundleSha256,
+      receiptPublicKey: input.receiptPublicKey,
       reportSha256: result.reportSha256,
     };
     expect(validateG06SanitizedReportFile(disposition, root).passed).toBe(true);
+    expect(
+      validateG06SanitizedReportFile(
+        { ...disposition, receiptPublicKey: createG06RunnerReceiptKeyPair().receiptPublicKey },
+        root,
+      ).passed,
+    ).toBe(false);
     expect(() => writeG06AgentMcpReport(makeInput(), reportPath)).toThrow();
+  });
+
+  it('rejects a fabricated report without the runner receipt', () => {
+    const root = temporaryRoot();
+    const reportPath = path.join(root, G06_REPORT_RELATIVE_PATH);
+    const input = makeInput();
+    const rejected = writeG06AgentMcpReport({ ...input, runnerReceipt: undefined }, reportPath);
+
+    expect(rejected.passed).toBe(false);
+    expect(() => readFileSync(reportPath)).toThrow();
   });
 
   it('does not write a report when any runner or source-boundary check fails', () => {

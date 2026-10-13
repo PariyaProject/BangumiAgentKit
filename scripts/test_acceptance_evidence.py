@@ -3155,6 +3155,23 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             report, status, hashlib.sha256(bytes_value).hexdigest(),
         )
 
+    def _sign_g06_runner_report(self, report):
+        result = subprocess.run(
+            [
+                'node',
+                str(Path(__file__).resolve().parents[1] / 'tests/fixtures/sign-g06-runner-report.mjs'),
+            ],
+            cwd=Path(__file__).resolve().parents[1],
+            input=json.dumps(report),
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        proof = json.loads(result.stdout)
+        return proof['receiptPublicKey'], proof['runnerReceipt']
+
     def _g06_report_fixture(self, source_revision=None):
         tool = next((item for item in self.catalog if item['name'] == 'bangumi.get_subject_cast'), None)
         if tool is None:
@@ -3268,6 +3285,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'answerSha256': 'a' * 64,
             'privacy': privacy,
         }
+        self.g06_receipt_public_key, report['runnerReceipt'] = self._sign_g06_runner_report(report)
         return report
 
     def _g06_harness_status_fixture(self, report, report_bytes):
@@ -3292,6 +3310,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             'reportWritten': True,
             'reportPath': GENERATOR.CODEX_G06_REPORT_RELATIVE_PATH,
             'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+            'receiptPublicKey': self.g06_receipt_public_key,
             'retryAllowed': False,
         }
         return {
@@ -4436,6 +4455,25 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'reportSha256'
             ] = 'b' * 64
             self.assertFalse(self._g06_is_valid(report, report_bytes, wrong_digest_status))
+
+    def test_reconciliation_evidence_requires_a_runner_signature_bound_to_the_durable_claim(self):
+        report = self._g06_report_fixture()
+        durable_public_key = self.g06_receipt_public_key
+        report_without_receipt = {key: value for key, value in report.items() if key != 'runnerReceipt'}
+        other_public_key, other_receipt = self._sign_g06_runner_report(report_without_receipt)
+        self.assertNotEqual(other_public_key, durable_public_key)
+        report_without_receipt['runnerReceipt'] = other_receipt
+        report_bytes = json.dumps(report_without_receipt).encode('utf-8')
+        self.g06_receipt_public_key = durable_public_key
+        status = self._g06_harness_status_fixture(report_without_receipt, report_bytes)
+
+        self.assertFalse(self._g06_is_valid(report_without_receipt, report_bytes, status))
+
+        forged = {key: value for key, value in report.items() if key != 'runnerReceipt'}
+        forged_bytes = json.dumps(forged).encode('utf-8')
+        self.g06_receipt_public_key = durable_public_key
+        forged_status = self._g06_harness_status_fixture(forged, forged_bytes)
+        self.assertFalse(self._g06_is_valid(forged, forged_bytes, forged_status))
 
     def test_accepts_exact_candidate_bound_sanitized_g19_person_origin_report(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH).name

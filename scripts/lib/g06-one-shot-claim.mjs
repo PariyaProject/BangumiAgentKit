@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { isG06RunnerReceiptPublicKey } from '../acceptance/g06-runner-receipt.mjs';
+
 export class G06OneShotClaimError extends Error {
   constructor(code, message) {
     super(message);
@@ -10,8 +13,15 @@ export function g06OneShotLatchLabelName() {
   return 'harness-r95-g06-subject-cast-claimed';
 }
 
-export function g06OneShotLatchLabelDescription() {
-  return 'Run 95 G06 bangumi.get_subject_cast one-shot latch; permanent; never remove or recreate.';
+export function g06OneShotLatchLabelDescription(receiptPublicKey) {
+  if (!isG06RunnerReceiptPublicKey(receiptPublicKey)) {
+    throw new G06OneShotClaimError(
+      'G06_ONESHOT_RECEIPT_KEY_INVALID',
+      'The permanent G06 claim latch must bind a valid Ed25519 receipt public key.',
+    );
+  }
+  const keyDigest = createHash('sha256').update(receiptPublicKey).digest('hex');
+  return `G06 receipt-key sha256=${keyDigest}`;
 }
 
 export function g06OneShotTerminalLabelName() {
@@ -47,15 +57,16 @@ function readLabel(gh, name, uncertainCode, message) {
   }
 }
 
-export function verifyG06OneShotGitHubLatch(gh) {
+export function verifyG06OneShotGitHubLatch(gh, receiptPublicKey) {
   const name = g06OneShotLatchLabelName();
+  const description = g06OneShotLatchLabelDescription(receiptPublicKey);
   const label = readLabel(
     gh,
     name,
     'G06_ONESHOT_LATCH_UNCERTAIN',
     'Unable to verify the permanent repository-wide G06 latch; fail closed.',
   );
-  if (label?.name !== name || label?.description !== g06OneShotLatchLabelDescription()) {
+  if (label?.name !== name || label?.description !== description) {
     throw new G06OneShotClaimError(
       'G06_ONESHOT_LATCH_MISSING_OR_CONFLICTING',
       'The permanent G06 latch is missing or has conflicting metadata; fail closed.',
@@ -64,9 +75,9 @@ export function verifyG06OneShotGitHubLatch(gh) {
   return label;
 }
 
-export function acquireG06OneShotGitHubLatch(gh) {
+export function acquireG06OneShotGitHubLatch(gh, receiptPublicKey) {
   const name = g06OneShotLatchLabelName();
-  const description = g06OneShotLatchLabelDescription();
+  const description = g06OneShotLatchLabelDescription(receiptPublicKey);
   let created;
   try {
     created = JSON.parse(

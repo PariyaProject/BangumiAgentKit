@@ -119,7 +119,11 @@ function scopeDisclosures(answer, sourceSubjectId, counts) {
     ? omissions === 0 || new RegExp(`MCP文本视图省略\\s*${omissions}\\s*行`, 'u').test(scope)
     : false;
   const truncation =
-    counts.truncated === true ? /(?:截断|覆盖不完整|本次响应有限)/u.test(scope) : true;
+    counts.truncated === true
+      ? /(?:截断|覆盖不完整|本次响应有限)/u.test(scope)
+      : counts.truncated === false
+        ? true
+        : /(?:截断状态未知|是否截断未知|截断情况未知|未能确认是否截断)/u.test(scope);
   const noCompletenessClaim = /(?:不保证完整|不能保证完整|不代表完整|非完整|不构成完整名单)/u.test(
     scope,
   );

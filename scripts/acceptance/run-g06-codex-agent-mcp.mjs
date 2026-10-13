@@ -17,10 +17,16 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseCodexJsonl, summarizeCodexEvents } from './run-g26-codex-agent-mcp.mjs';
 import {
+  buildG06AgentMcpReport,
   G06_MODEL,
   G06_REASONING_EFFORT,
   g06ServerPrivacyMatches,
 } from './write-g06-agent-mcp-report.mjs';
+import {
+  createG06RunnerReceipt,
+  createG06RunnerReceiptKeyPair,
+  isG06RunnerReceiptPublicKey,
+} from './g06-runner-receipt.mjs';
 import {
   canonicalG06ArgumentsSha256,
   G06_ARGUMENT_PROFILE,
@@ -289,7 +295,8 @@ export function createG06OneShotClaim(claimPath, durableClaim, { root = ROOT } =
       durableClaim.reviewerId ?? '',
     ) ||
     durableClaim.model !== G06_MODEL ||
-    durableClaim.reasoningEffort !== G06_REASONING_EFFORT
+    durableClaim.reasoningEffort !== G06_REASONING_EFFORT ||
+    !isG06RunnerReceiptPublicKey(durableClaim.receiptPublicKey)
   ) {
     throw new Error('G06 local claim must mirror the exact durable Run #95 Luna Max claim.');
   }
@@ -626,6 +633,7 @@ function buildWriterInput({
     claimId: claim.claimId,
     prNumber: claim.prNumber,
     reviewerId: claim.reviewerId,
+    receiptPublicKey: claim.receiptPublicKey,
     observedAt: new Date().toISOString(),
   };
 }
@@ -646,6 +654,7 @@ export function localG06ClaimMatchesHarnessClaim(local, durable) {
     local.prNumber === durable.prNumber &&
     local.reviewerId === durable.reviewerId &&
     local.bundleSha256 === durable.bundleSha256 &&
+    local.receiptPublicKey === durable.receiptPublicKey &&
     local.expectedArgumentsSha256 === canonicalG06ArgumentsSha256() &&
     local.model === G06_MODEL &&
     local.reasoningEffort === G06_REASONING_EFFORT &&
@@ -679,6 +688,7 @@ export function runG06CodexAgentMcp({ claimHarness, persistResult, assertClaimSt
     );
   }
 
+  const receiptKeyPair = createG06RunnerReceiptKeyPair();
   const durableClaim = claimHarness({
     runNumber: RUN_NUMBER,
     prNumber: currentGate.prNumber,
@@ -688,6 +698,7 @@ export function runG06CodexAgentMcp({ claimHarness, persistResult, assertClaimSt
     model: G06_MODEL,
     reasoningEffort: G06_REASONING_EFFORT,
     reviewerId: currentGate.reviewerId,
+    receiptPublicKey: receiptKeyPair.receiptPublicKey,
   });
   if (
     !durableClaim ||
@@ -697,6 +708,7 @@ export function runG06CodexAgentMcp({ claimHarness, persistResult, assertClaimSt
     durableClaim.baseSha !== currentGate.baseSha ||
     durableClaim.bundleSha256 !== bundleSha256 ||
     durableClaim.reviewerId !== currentGate.reviewerId ||
+    durableClaim.receiptPublicKey !== receiptKeyPair.receiptPublicKey ||
     durableClaim.retryAllowed !== false
   ) {
     throw new Error('G06 global one-shot claim did not read back the exact reviewed Candidate.');
@@ -847,7 +859,16 @@ export function runG06CodexAgentMcp({ claimHarness, persistResult, assertClaimSt
       parsed,
       execution,
     });
-    const writer = invokeReportWriter(input);
+    const built = buildG06AgentMcpReport(input);
+    if (!built.passed) {
+      const persisted = finish('INCONCLUSIVE', { ...safe, reportValidationPassed: false });
+      process.stdout.write(
+        `${JSON.stringify({ passed: false, state: persisted ? 'INCONCLUSIVE' : 'INCONCLUSIVE_ACK_PENDING', ...safe })}\n`,
+      );
+      return 1;
+    }
+    const runnerReceipt = createG06RunnerReceipt(built.report, receiptKeyPair.privateKey);
+    const writer = invokeReportWriter({ ...input, runnerReceipt });
     if (
       writer.exitCode !== 0 ||
       writer.output?.passed !== true ||

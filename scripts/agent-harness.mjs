@@ -119,6 +119,7 @@ import {
   G06_REASONING_EFFORT,
   validateG06SanitizedReportFile,
 } from './acceptance/write-g06-agent-mcp-report.mjs';
+import { isG06RunnerReceiptPublicKey } from './acceptance/g06-runner-receipt.mjs';
 import {
   R01_ARGUMENT_PROFILE,
   R01_EPOCH_ID,
@@ -3208,6 +3209,7 @@ function assertG06OneShotClaimReadiness(gate) {
     model,
     reasoningEffort,
     reviewerId,
+    receiptPublicKey,
   } = gate;
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
@@ -3255,6 +3257,7 @@ function assertG06OneShotClaimReadiness(gate) {
     !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
     model !== G06_MODEL ||
     reasoningEffort !== G06_REASONING_EFFORT ||
+    !isG06RunnerReceiptPublicKey(receiptPublicKey) ||
     latestReview?.candidate_sha !== candidateSha ||
     latestReview.reviewed_base_sha !== baseSha ||
     latestReview.verdict !== 'PASS' ||
@@ -3281,6 +3284,7 @@ function commandEpochG06OneShotClaim(gate, { printOutput = true } = {}) {
     model,
     reasoningEffort,
     reviewerId,
+    receiptPublicKey,
   } = gate;
   assertG06OneShotClaimReadiness(gate);
   const claim = {
@@ -3302,6 +3306,7 @@ function commandEpochG06OneShotClaim(gate, { printOutput = true } = {}) {
     model,
     reasoningEffort,
     reportWritten: false,
+    receiptPublicKey,
     retryAllowed: false,
     claimedAt: new Date().toISOString(),
   };
@@ -3309,7 +3314,8 @@ function commandEpochG06OneShotClaim(gate, { printOutput = true } = {}) {
     claimG06OneShotAtomically({
       claim,
       assertReady: () => assertG06OneShotClaimReadiness(gate),
-      acquireGlobalLatch: () => acquireG06OneShotGitHubLatch(gh),
+      acquireGlobalLatch: (value) =>
+        acquireG06OneShotGitHubLatch(gh, value.receiptPublicKey),
       persistClaim: (value) => {
         const latest = epochState(prNumber);
         if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'g06_one_shot_disposition')) {
@@ -3424,6 +3430,7 @@ function commandEpochG06OneShotResult(
     current.bundleSha256 !== claim.bundleSha256 ||
     current.model !== G06_MODEL ||
     current.reasoningEffort !== G06_REASONING_EFFORT ||
+    current.receiptPublicKey !== claim.receiptPublicKey ||
     current.retryAllowed !== false
   ) {
     throw new HarnessInvariantError(
@@ -3630,6 +3637,7 @@ function commandEpochG06OneShotReconcile(options) {
     claim.frontierId !== 'G06' ||
     claim.toolName !== G06_TOOL_NAME ||
     claim.argumentProfile !== G06_ARGUMENT_PROFILE ||
+    !isG06RunnerReceiptPublicKey(claim.receiptPublicKey) ||
     claim.retryAllowed !== false
   ) {
     throw new HarnessInvariantError(
@@ -3656,7 +3664,7 @@ function commandEpochG06OneShotReconcile(options) {
     }
   }
   try {
-    verifyG06OneShotGitHubLatch(gh);
+    verifyG06OneShotGitHubLatch(gh, claim.receiptPublicKey);
   } catch (error) {
     if (error instanceof G06OneShotClaimError)
       throw new HarnessInvariantError(error.code, error.message);
@@ -3747,7 +3755,7 @@ function commandEpochG06OneShotRun(options) {
           'G06_ONESHOT_ALREADY_TERMINAL',
           'A permanent G06 terminal result already exists.',
         );
-      return verifyG06OneShotGitHubLatch(gh) != null;
+      return verifyG06OneShotGitHubLatch(gh, claim.receiptPublicKey) != null;
     },
     persistResult: (claim, state, reportSha256) =>
       persistHarnessG06OneShotResult(claim, state, reportSha256),

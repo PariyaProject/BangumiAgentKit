@@ -122,6 +122,23 @@ function writeSanitizedSummary(summaryPath, summary, serverInstanceId) {
   fs.renameSync(temporary, absolute);
 }
 
+export function buildG06PrivacySummary() {
+  return {
+    authProfile: 'anonymous',
+    oauthAttempted: false,
+    accountDataRead: false,
+    writesAttempted: false,
+    communityRead: false,
+    qqPipelineTested: false,
+    timClientTested: false,
+    promptStored: false,
+    answerStored: false,
+    rawResultStored: false,
+    artifactImageBytesStored: false,
+    credentialsStored: false,
+  };
+}
+
 function parseArguments(argv) {
   const values = new Map();
   for (let index = 0; index < argv.length; index += 1) {
@@ -265,19 +282,7 @@ async function main(argv = process.argv.slice(2)) {
     argumentMatch: false,
     result: null,
     ...(offlineFixture ? { offlineFixture: offlineFixture.snapshot() } : {}),
-    privacy: {
-      authProfile: 'anonymous',
-      oauthAttempted: false,
-      accountDataRead: false,
-      writesAttempted: false,
-      qqPipelineTested: false,
-      timClientTested: false,
-      promptStored: false,
-      answerStored: false,
-      rawResultStored: false,
-      artifactImageBytesStored: false,
-      credentialsStored: false,
-    },
+    privacy: buildG06PrivacySummary(),
   };
   writeSanitizedSummary(config.summaryPath, summary, serverInstanceId);
 

@@ -524,7 +524,7 @@ CODEX_G06_REPORT_FIELDS = {
     'codexErrorItemCount', 'mcpServerNames', 'nonMcpToolEventCount', 'nonMcpToolTypes',
     'shellToolCallCount', 'allowedCallCount', 'deniedCallCount', 'answerCheckMethod',
     'answerChecks', 'answerCounters', 'toolResultSummary', 'toolTextUtf8Bytes', 'answerUtf8Bytes',
-    'answerSha256', 'privacy',
+    'answerSha256', 'privacy', 'runnerReceipt',
 }
 CODEX_G06_ANSWER_CHECK_FIELDS = {
     'exactArguments', 'exactSingleCall', 'sourceStatusSuccess', 'resultNotError', 'contentAvailable',
@@ -4970,6 +4970,34 @@ def codex_g06_harness_disposition_matches_report(
     return disposition
 
 
+def codex_g06_runner_receipt_is_valid(
+    report: dict[str, object], disposition: dict[str, object],
+) -> bool:
+    """Verify the report's Ed25519 runtime receipt against the public key pinned in its claim."""
+    receipt_public_key = disposition.get('receiptPublicKey')
+    if not isinstance(receipt_public_key, str) or not isinstance(report.get('runnerReceipt'), dict):
+        return False
+    try:
+        result = subprocess.run(
+            [
+                'node',
+                str(Path(__file__).resolve().parents[1] / 'scripts/acceptance/verify-g06-runner-receipt.mjs'),
+            ],
+            cwd=Path(__file__).resolve().parents[1],
+            input=json.dumps({'report': report, 'receiptPublicKey': receipt_public_key}),
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if result.returncode != 0:
+            return False
+        response = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return False
+    return isinstance(response, dict) and response.get('passed') is True
+
+
 def codex_g06_report_is_valid(
     report: object, harness_status: object = None, report_sha256: object = None,
 ) -> bool:
@@ -5068,11 +5096,13 @@ def codex_g06_report_is_valid(
 
     privacy = report.get('privacy')
     harness = harness_status if harness_status is not None else codex_g06_harness_status(pr_number)
+    disposition = codex_g06_harness_disposition_matches_report(report, harness, report_sha256)
+    if disposition is None or not codex_g06_runner_receipt_is_valid(report, disposition):
+        return False
     return (
         isinstance(privacy, dict) and set(privacy) == CODEX_G06_PRIVACY_FIELDS
         and privacy.get('authProfile') == 'anonymous'
         and all(privacy.get(key) is False for key in CODEX_G06_PRIVACY_FIELDS - {'authProfile'})
-        and codex_g06_harness_disposition_matches_report(report, harness, report_sha256) is not None
         and not _contains_forbidden_codex_content(report)
     )
 

@@ -30,6 +30,7 @@ import {
   g06OneShotTerminalLabelDescription,
   g06OneShotTerminalLabelName,
 } from '../../scripts/lib/g06-one-shot-claim.mjs';
+import { createG06RunnerReceiptKeyPair } from '../../scripts/acceptance/g06-runner-receipt.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
 import {
   generateG04RunnerReceiptKeyPair,
@@ -1449,6 +1450,7 @@ function run95G06ClaimFixture({ claimState = 'CLAIMED' } = {}) {
   const candidateSha = sha('b');
   const baseSha = sha('a');
   const reviewerId = 'gpt-6-luna-max-run95-pr170-round1';
+  const receiptPublicKey = createG06RunnerReceiptKeyPair().receiptPublicKey;
   const claimId = `g06-run-95-pr-170-${candidateSha.slice(0, 12)}-test`;
   run.profile = 'AUTONOMOUS_EVOLUTION';
   run.active_epoch_pr = 170;
@@ -1489,6 +1491,7 @@ function run95G06ClaimFixture({ claimState = 'CLAIMED' } = {}) {
       bundleSha256: 'c'.repeat(64),
       prNumber: 170,
       reviewerId,
+      receiptPublicKey,
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
       reportWritten: claimState === 'REPORT_WRITTEN',
@@ -1527,7 +1530,9 @@ function g06HarnessEnvironment(run, epoch, overrides = {}) {
       [labelName]: {
         name: labelName,
         color: 'b60205',
-        description: g06OneShotLatchLabelDescription(),
+        description: g06OneShotLatchLabelDescription(
+          epoch.adversarial_preflight.g06_one_shot_disposition.receiptPublicKey,
+        ),
       },
     },
     ...overrides,

@@ -16,12 +16,14 @@ import {
   G06_EXPECTED_QUERY_ARGUMENTS,
   G06_TOOL_NAME,
 } from '../../scripts/acceptance/g06-subject-cast-answer-check.mjs';
+import { createG06RunnerReceiptKeyPair } from '../../scripts/acceptance/g06-runner-receipt.mjs';
 
 const roots: string[] = [];
 const candidateSha = 'a'.repeat(40);
 const baseSha = 'b'.repeat(40);
 const bundleSha256 = 'c'.repeat(64);
 const reviewerId = 'gpt-6-luna-max-run95-pr170-round1';
+const receiptPublicKey = createG06RunnerReceiptKeyPair().receiptPublicKey;
 
 function temporaryRoot() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'bgk-g06-runner-'));
@@ -108,6 +110,7 @@ function durableClaim() {
     bundleSha256,
     prNumber: 170,
     reviewerId,
+    receiptPublicKey,
     model: 'gpt-6-luna',
     reasoningEffort: 'max',
     retryAllowed: false,
