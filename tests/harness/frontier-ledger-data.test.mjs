@@ -31,28 +31,65 @@ test('G04 frontier keeps stable query policy without Run 95 attempt state', () =
   assert.match(record.next_action, /assigned same-identity Luna Max PASS/u);
 });
 
-test('G16 frontier guidance stays independent of transient Run execution state', () => {
+test('G16 frontier records its terminal Run 95 one-shot without retry guidance', () => {
   const record = ledger.records.find(({ id }) => id === 'G16');
   assert.ok(record, 'G16 must remain in the canonical frontier');
-  assert.match(record.next_action, /official public relation/u);
   assert.match(record.next_action, /PARTIAL/u);
-  assert.doesNotMatch(record.next_action, /\bRun #\d+\b/iu);
-  assert.doesNotMatch(record.next_action, /\b[0-9a-f]{40}\b/iu);
-  assert.doesNotMatch(record.next_action, /\bclaim\/report\b/iu);
-  assert.doesNotMatch(record.next_action, /\bquery has (?:not )?run\b/iu);
+  assert.match(record.next_action, /PR #137/u);
+  assert.match(record.next_action, /INCONCLUSIVE/u);
+  assert.match(record.next_action, /retryAllowed=false/u);
+  assert.match(record.next_action, /Never rerun/u);
+  assert.match(record.next_action, /complete director-filmography claim/u);
 });
 
-test('R01 can resume in a distinct follow-up Epoch without reusing its one-shot claim', () => {
+test('R01 frontier records the consumed terminal attempt without inviting a follow-up', () => {
   const record = ledger.records.find(({ id }) => id === 'R01');
   assert.ok(record, 'R01 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
-  assert.match(record.next_action, /still-unspent one-shot/u);
-  assert.match(record.next_action, /fresh Base-bound follow-up Epoch ID/u);
-  assert.match(record.next_action, /never reuse a merged\/stale Candidate/u);
-  assert.match(record.next_action, /repository-wide permanent latch/u);
+  assert.match(record.next_action, /PR #147/u);
+  assert.match(record.next_action, /INCONCLUSIVE\/no-report\/retryAllowed=false/u);
+  assert.match(record.next_action, /Never rerun/u);
   assert.match(record.next_action, /fixed subjectId=41529\/includeEvidence=true profile/u);
-  assert.match(record.next_action, /inconclusive result is no-credit and never retried/u);
-  assert.doesNotMatch(record.next_action, /run95-r01-subject-relations-agent-mcp-followup/u);
+  assert.doesNotMatch(
+    record.next_action,
+    /still-unspent one-shot|fresh Base-bound follow-up Epoch ID/u,
+  );
+});
+
+test('spent D07, P01, and A01 one-shots stay terminal in frontier guidance', () => {
+  const expected = [
+    {
+      id: 'D07',
+      status: 'UNASSESSED',
+      attempt: /PR #158/u,
+      terminal: /INCONCLUSIVE\/no-report\/retryAllowed=false/u,
+      noRetry: /Never rerun/u,
+    },
+    {
+      id: 'P01',
+      status: 'UNASSESSED',
+      attempt: /PR #135/u,
+      terminal: /INCONCLUSIVE\/no-report\/retryAllowed=false/u,
+      noRetry: /Never rerun/u,
+    },
+    {
+      id: 'A01',
+      status: 'UNASSESSED',
+      attempt: /one-shot was invoked once/u,
+      terminal: /consumed INCONCLUSIVE:/u,
+      noRetry: /never retry or count it/u,
+    },
+  ];
+
+  for (const item of expected) {
+    const record = ledger.records.find(({ id }) => id === item.id);
+    assert.ok(record, `${item.id} must remain in the canonical frontier`);
+    assert.equal(record.status, item.status);
+    assert.match(record.next_action, item.attempt);
+    assert.match(record.next_action, item.terminal);
+    assert.match(record.next_action, item.noRetry);
+    assert.doesNotMatch(record.next_action, /still-unspent one-shot|one-shot query may run/u);
+  }
 });
 
 test('community source closure is evidence-bound and keeps discussion scenarios unresolved', () => {
