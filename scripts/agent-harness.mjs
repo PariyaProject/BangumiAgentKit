@@ -56,6 +56,14 @@ import {
 } from './lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from './lib/frontier-ledger.mjs';
 import {
+  acquireG06OneShotGitHubLatch,
+  acquireG06OneShotTerminalGitHubLatch,
+  claimG06OneShotAtomically,
+  G06OneShotClaimError,
+  readG06OneShotTerminalGitHubLatch,
+  verifyG06OneShotGitHubLatch,
+} from './lib/g06-one-shot-claim.mjs';
+import {
   acquireG16OneShotGitHubLatch,
   claimG16OneShotAtomically,
   G16OneShotClaimError,
@@ -87,6 +95,18 @@ import { g04RunnerPublicKeySha256 } from './acceptance/g04-runner-receipt.mjs';
 import { validateG04SanitizedReportFile } from './acceptance/write-g04-agent-mcp-report.mjs';
 import { runG16CodexAgentMcp } from './acceptance/run-g16-codex-agent-mcp.mjs';
 import {
+  G06_ARGUMENT_PROFILE,
+  G06_EPOCH_ID,
+  G06_EXPECTED_QUERY_ARGUMENTS,
+  G06_REPORT_RELATIVE_PATH,
+  G06_TOOL_NAME,
+} from './acceptance/g06-subject-cast-answer-check.mjs';
+import {
+  canonicalG06ClaimPath,
+  localG06ClaimMatchesHarnessClaim,
+  runG06CodexAgentMcp,
+} from './acceptance/run-g06-codex-agent-mcp.mjs';
+import {
   G16_ARGUMENT_PROFILE,
   G16_EXPECTED_QUERY_ARGUMENTS,
 } from './acceptance/g16-person-activity-answer-check.mjs';
@@ -94,6 +114,11 @@ import {
   g16RunnerPublicKeySha256,
 } from './acceptance/g16-agent-mcp-runner-receipt.mjs';
 import { validateG16SanitizedReportFile } from './acceptance/write-g16-agent-mcp-report.mjs';
+import {
+  G06_MODEL,
+  G06_REASONING_EFFORT,
+  validateG06SanitizedReportFile,
+} from './acceptance/write-g06-agent-mcp-report.mjs';
 import {
   R01_ARGUMENT_PROFILE,
   R01_EPOCH_ID,
@@ -153,6 +178,7 @@ const G16_REASONING_EFFORT = 'max';
 const G16_EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp';
 const G16_REPORT_PATH = path.join(root, 'docs/live-probes/g16-director-person-activity-run95.json');
 const G16_REPORT_RELATIVE_PATH = path.relative(root, G16_REPORT_PATH);
+const G06_EPOCH_REPORT_PATH = path.join(root, G06_REPORT_RELATIVE_PATH);
 const R01_MODEL = 'gpt-6-luna';
 const R01_REASONING_EFFORT = 'max';
 const R01_TOOL_NAME = 'bangumi.get_subject_relations';
@@ -533,6 +559,8 @@ Usage: pnpm harness <command> [options]
   epoch:g16-one-shot-run --run <issue>
   epoch:r01-one-shot-run --run <issue>
   epoch:r01-one-shot-reconcile --run <issue> --pr <number>
+  epoch:g06-one-shot-run --run <issue>
+  epoch:g06-one-shot-reconcile --run <issue> --pr <number>
   epoch:p01-one-shot-run --run <issue>
   epoch:p01-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
   frontier:review-reserve --run <issue> [--evidence <json>] [--runtime-recovery]
@@ -1169,6 +1197,18 @@ function commandCandidateCheck(options) {
     throw new HarnessInvariantError(
       'R01_ONESHOT_DISPOSITION_IMMUTABLE',
       'A durable R01 one-shot disposition must be preserved exactly across Candidate refreshes',
+    );
+  }
+  const priorG06Disposition = epoch.adversarial_preflight?.g06_one_shot_disposition;
+  const nextG06Disposition = evidence.adversarial_preflight?.g06_one_shot_disposition;
+  if (
+    (priorG06Disposition === undefined) !== (nextG06Disposition === undefined) ||
+    (priorG06Disposition !== undefined &&
+      canonicalHash(priorG06Disposition) !== canonicalHash(nextG06Disposition))
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_DISPOSITION_IMMUTABLE',
+      'A durable G06 one-shot disposition must be preserved exactly across Candidate refreshes',
     );
   }
   epoch.validation = evidence.validation ?? epoch.validation;
@@ -3158,6 +3198,562 @@ function commandEpochR01OneShotRun(options) {
   });
 }
 
+function assertG06OneShotClaimReadiness(gate) {
+  const {
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    model,
+    reasoningEffort,
+    reviewerId,
+  } = gate;
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = runResult.state;
+  const epoch = epochResult.state;
+  const pr = epochResult.view;
+  const latestReview = epoch.review_history?.at(-1);
+  const currentBaseSha = remoteBaseSha('master');
+  const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round\\d+$`, 'u');
+  const preflight = epoch.adversarial_preflight ?? {};
+  if (
+    Number(runNumber) !== 95 ||
+    !Number.isSafeInteger(Number(prNumber)) ||
+    Number(prNumber) < 1 ||
+    !/^[0-9a-f]{40}$/u.test(candidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.epoch_id !== G06_EPOCH_ID ||
+    epoch.pr_number !== Number(prNumber) ||
+    !epoch.advances_frontier_ids?.includes('G06') ||
+    epoch.scope_closure?.related_work_remaining !== false ||
+    preflight.completed !== true ||
+    Object.hasOwn(preflight, 'g06_one_shot_disposition') ||
+    epoch.branch !== currentBranch() ||
+    currentHead() !== candidateSha ||
+    git('status', '--porcelain') !== '' ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft ||
+    pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch ||
+    pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' ||
+    epoch.base_sha !== baseSha ||
+    epoch.reviewed_base_sha !== baseSha ||
+    currentBaseSha !== baseSha ||
+    epoch.candidate_sha !== candidateSha ||
+    epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha ||
+    epoch.ci?.status !== 'SUCCESS' ||
+    !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    model !== G06_MODEL ||
+    reasoningEffort !== G06_REASONING_EFFORT ||
+    latestReview?.candidate_sha !== candidateSha ||
+    latestReview.reviewed_base_sha !== baseSha ||
+    latestReview.verdict !== 'PASS' ||
+    latestReview.reviewer_id !== reviewerId ||
+    !reviewerPattern.test(reviewerId ?? '')
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_CLAIM_GATE_FAILED',
+      'G06 one-shot claim requires the clean active exact Candidate, current Base, seven-check CI, and latest exact-identity Luna Max PASS.',
+      { runNumber, prNumber, candidateSha, baseSha },
+    );
+  }
+}
+
+function commandEpochG06OneShotClaim(gate, { printOutput = true } = {}) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const {
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    model,
+    reasoningEffort,
+    reviewerId,
+  } = gate;
+  assertG06OneShotClaimReadiness(gate);
+  const claim = {
+    claimId: `g06-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`,
+    frontierId: 'G06',
+    epochId: G06_EPOCH_ID,
+    runNumber: Number(runNumber),
+    toolName: G06_TOOL_NAME,
+    argumentProfile: G06_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(G06_EXPECTED_QUERY_ARGUMENTS),
+    state: 'CLAIMED',
+    sourceCandidateSha: candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    bundleSha256,
+    prNumber: Number(prNumber),
+    reviewerId,
+    model,
+    reasoningEffort,
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: new Date().toISOString(),
+  };
+  try {
+    claimG06OneShotAtomically({
+      claim,
+      assertReady: () => assertG06OneShotClaimReadiness(gate),
+      acquireGlobalLatch: () => acquireG06OneShotGitHubLatch(gh),
+      persistClaim: (value) => {
+        const latest = epochState(prNumber);
+        if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'g06_one_shot_disposition')) {
+          throw new HarnessInvariantError(
+            'G06_ONESHOT_ALREADY_CLAIMED',
+            'A durable G06 one-shot disposition already exists; refusing to overwrite it.',
+          );
+        }
+        const next = structuredClone(latest.state);
+        next.adversarial_preflight = {
+          ...next.adversarial_preflight,
+          g06_one_shot_disposition: value,
+        };
+        updatePr(prNumber, next);
+      },
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.g06_one_shot_disposition ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof G06OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  const result = {
+    state: 'G06_ONE_SHOT_CLAIMED',
+    ...claim,
+  };
+  if (printOutput) print(result);
+  return claim;
+}
+
+function g06TerminalState(label) {
+  const description = label?.description ?? '';
+  if (description === 'G06-INCONCLUSIVE:report=none')
+    return { state: 'INCONCLUSIVE', reportSha256: null };
+  const match = /^G06-REPORT_WRITTEN:sha256=([0-9a-f]{64})$/u.exec(description);
+  return match ? { state: 'REPORT_WRITTEN', reportSha256: match[1] } : null;
+}
+
+function assertG06PassedCandidateStillCurrent(claim, run, epoch, pr) {
+  const latestReview = epoch.review_history?.at(-1);
+  const currentBaseSha = remoteBaseSha('master');
+  const current =
+    run.state === 'EPOCH_ACTIVE' &&
+    run.profile === 'AUTONOMOUS_EVOLUTION' &&
+    run.active_epoch_pr === Number(claim.prNumber) &&
+    run.pending_epoch == null &&
+    epoch.state === 'REVIEW_PASSED' &&
+    epoch.epoch_id === G06_EPOCH_ID &&
+    epoch.pr_number === Number(claim.prNumber) &&
+    epoch.advances_frontier_ids?.includes('G06') === true &&
+    epoch.scope_closure?.related_work_remaining === false &&
+    epoch.adversarial_preflight?.completed === true &&
+    epoch.base_branch === 'master' &&
+    epoch.base_sha === claim.baseSha &&
+    epoch.reviewed_base_sha === claim.baseSha &&
+    currentBaseSha === claim.baseSha &&
+    epoch.candidate_sha === claim.sourceCandidateSha &&
+    epoch.review_pass_sha === claim.sourceCandidateSha &&
+    epoch.ci?.sha === claim.ciSha &&
+    epoch.ci?.status === 'SUCCESS' &&
+    latestReview?.candidate_sha === claim.sourceCandidateSha &&
+    latestReview.reviewed_base_sha === claim.baseSha &&
+    latestReview.reviewer_id === claim.reviewerId &&
+    latestReview.verdict === 'PASS' &&
+    pr.state === 'OPEN' &&
+    !pr.isDraft &&
+    pr.baseRefName === 'master' &&
+    pr.headRefName === epoch.branch &&
+    pr.headRefOid === claim.sourceCandidateSha &&
+    mandatoryChecksSuccessful(pr.statusCheckRollup);
+  if (!current) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_REPORT_STALE',
+      'G06 REPORT_WRITTEN requires the claimed Candidate, current Base, exact CI, reviewer PASS, and ready PR to remain current.',
+    );
+  }
+}
+
+function commandEpochG06OneShotResult(
+  claim,
+  resultState,
+  reportSha256 = null,
+  { printOutput = true, reconciliation = null } = {},
+) {
+  ensureControlPlane();
+  if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState)) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RESULT_INVALID',
+      'Only terminal G06 one-shot states are supported.',
+    );
+  }
+  const runResult = issueState(claim.runNumber);
+  const epochResult = epochState(claim.prNumber);
+  const current = epochResult.state.adversarial_preflight?.g06_one_shot_disposition;
+  if (
+    !current ||
+    current.claimId !== claim.claimId ||
+    current.runNumber !== 95 ||
+    current.prNumber !== Number(claim.prNumber) ||
+    current.frontierId !== 'G06' ||
+    current.epochId !== G06_EPOCH_ID ||
+    current.toolName !== G06_TOOL_NAME ||
+    current.argumentProfile !== G06_ARGUMENT_PROFILE ||
+    current.expectedArgumentsSha256 !== canonicalHash(G06_EXPECTED_QUERY_ARGUMENTS) ||
+    current.sourceCandidateSha !== claim.sourceCandidateSha ||
+    current.baseSha !== claim.baseSha ||
+    current.ciSha !== claim.sourceCandidateSha ||
+    current.ciStatus !== 'SUCCESS' ||
+    current.reviewerId !== claim.reviewerId ||
+    current.bundleSha256 !== claim.bundleSha256 ||
+    current.model !== G06_MODEL ||
+    current.reasoningEffort !== G06_REASONING_EFFORT ||
+    current.retryAllowed !== false
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_CLAIM_MISMATCH',
+      'Harness has no matching durable G06 one-shot claim.',
+    );
+  }
+
+  let terminal;
+  try {
+    terminal = g06TerminalState(readG06OneShotTerminalGitHubLatch(gh));
+  } catch (error) {
+    if (error instanceof G06OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  if (current.state === resultState) {
+    if (
+      !terminal ||
+      terminal.state !== resultState ||
+      (resultState === 'REPORT_WRITTEN' && terminal.reportSha256 !== current.reportSha256)
+    ) {
+      throw new HarnessInvariantError(
+        'G06_ONESHOT_TERMINAL_MISMATCH',
+        'G06 Harness disposition and permanent terminal latch disagree.',
+      );
+    }
+    if (resultState === 'REPORT_WRITTEN') {
+      const report = validateG06SanitizedReportFile(current, root, G06_EPOCH_REPORT_PATH);
+      if (!report.passed || report.reportSha256 !== current.reportSha256) {
+        throw new HarnessInvariantError(
+          'G06_ONESHOT_REPORT_INVALID',
+          report.reason ?? 'Recorded G06 report is invalid.',
+        );
+      }
+    }
+    const response = {
+      state: 'G06_ONE_SHOT_RESULT_ALREADY_RECORDED',
+      claimId: current.claimId,
+      resultState,
+      ...(resultState === 'REPORT_WRITTEN' ? { reportSha256: current.reportSha256 } : {}),
+    };
+    if (printOutput) print(response);
+    return response;
+  }
+  if (current.state !== 'CLAIMED') {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_ALREADY_TERMINAL',
+      'A terminal G06 one-shot result cannot be replaced.',
+    );
+  }
+  if (
+    runResult.state.active_epoch_pr !== Number(claim.prNumber) &&
+    !runResult.state.parked_epoch_prs?.includes(Number(claim.prNumber))
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_CLAIM_MISMATCH',
+      'G06 claim is no longer active or parked on Run #95.',
+    );
+  }
+
+  let report = null;
+  if (resultState === 'REPORT_WRITTEN') {
+    assertG06PassedCandidateStillCurrent(
+      claim,
+      runResult.state,
+      epochResult.state,
+      epochResult.view,
+    );
+    report = validateG06SanitizedReportFile(
+      { ...current, reportSha256 },
+      root,
+      G06_EPOCH_REPORT_PATH,
+    );
+    if (
+      !report.passed ||
+      report.reportSha256 !== reportSha256 ||
+      report.reportPath !== G06_REPORT_RELATIVE_PATH
+    ) {
+      throw new HarnessInvariantError(
+        'G06_ONESHOT_REPORT_INVALID',
+        report.reason ?? 'G06 report does not bind the claim.',
+      );
+    }
+    if (
+      terminal &&
+      (terminal.state !== 'REPORT_WRITTEN' || terminal.reportSha256 !== reportSha256)
+    ) {
+      throw new HarnessInvariantError(
+        'G06_ONESHOT_TERMINAL_CONFLICT',
+        'A different permanent G06 terminal result already exists.',
+      );
+    }
+  } else if (terminal && terminal.state !== 'INCONCLUSIVE') {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_TERMINAL_CONFLICT',
+      'The permanent G06 result is REPORT_WRITTEN.',
+    );
+  }
+
+  try {
+    acquireG06OneShotTerminalGitHubLatch(
+      gh,
+      resultState,
+      resultState === 'REPORT_WRITTEN' ? reportSha256 : null,
+    );
+  } catch (error) {
+    if (error instanceof G06OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  const next = structuredClone(epochResult.state);
+  next.adversarial_preflight.g06_one_shot_disposition = {
+    ...current,
+    state: resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    ...(report ? { reportPath: report.reportPath, reportSha256: report.reportSha256 } : {}),
+    ...(reconciliation ? { reconciliation } : {}),
+    retryAllowed: false,
+    finishedAt: new Date().toISOString(),
+  };
+  updatePr(claim.prNumber, next);
+  const observed = epochState(claim.prNumber).state.adversarial_preflight?.g06_one_shot_disposition;
+  if (
+    observed?.claimId !== claim.claimId ||
+    observed.state !== resultState ||
+    observed.retryAllowed !== false
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RESULT_READBACK_MISMATCH',
+      'The terminal G06 result did not read back exactly.',
+    );
+  }
+  const response = {
+    state: 'G06_ONE_SHOT_RESULT_RECORDED',
+    claimId: claim.claimId,
+    resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    ...(report ? { reportSha256: report.reportSha256 } : {}),
+  };
+  if (printOutput) print(response);
+  return response;
+}
+
+function persistHarnessG06OneShotResult(claim, state, reportSha256) {
+  let response;
+  try {
+    response = commandEpochG06OneShotResult(claim, state, reportSha256, { printOutput: false });
+  } catch {
+    /* A GitHub write may have applied before its response was lost. */
+  }
+  if (
+    ['G06_ONE_SHOT_RESULT_RECORDED', 'G06_ONE_SHOT_RESULT_ALREADY_RECORDED'].includes(
+      response?.state,
+    ) &&
+    response.claimId === claim.claimId &&
+    response.resultState === state &&
+    (state !== 'REPORT_WRITTEN' || response.reportSha256 === reportSha256)
+  )
+    return true;
+  try {
+    const disposition = epochState(claim.prNumber).state.adversarial_preflight
+      ?.g06_one_shot_disposition;
+    const terminal = g06TerminalState(readG06OneShotTerminalGitHubLatch(gh));
+    if (
+      !disposition ||
+      disposition.claimId !== claim.claimId ||
+      disposition.state !== state ||
+      disposition.retryAllowed !== false ||
+      terminal?.state !== state ||
+      (state === 'REPORT_WRITTEN' && terminal.reportSha256 !== reportSha256)
+    )
+      return false;
+    if (state === 'INCONCLUSIVE') return true;
+    const report = validateG06SanitizedReportFile(disposition, root, G06_EPOCH_REPORT_PATH);
+    return report.passed && report.reportSha256 === reportSha256;
+  } catch {
+    return false;
+  }
+}
+
+function commandEpochG06OneShotReconcile(options) {
+  ensureControlPlane();
+  const runNumber = Number(required(options, 'run'));
+  const prNumber = Number(required(options, 'pr'));
+  if (runNumber !== 95 || !Number.isSafeInteger(prNumber) || prNumber < 1) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RECONCILE_TARGET_INVALID',
+      'G06 reconciliation is limited to Run #95 and a valid PR.',
+    );
+  }
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const claim = epochResult.state.adversarial_preflight?.g06_one_shot_disposition;
+  if (
+    epochResult.state.epoch_id !== G06_EPOCH_ID ||
+    epochResult.state.pr_number !== prNumber ||
+    (runResult.state.active_epoch_pr !== prNumber &&
+      !runResult.state.parked_epoch_prs?.includes(prNumber)) ||
+    !claim ||
+    claim.runNumber !== runNumber ||
+    claim.prNumber !== prNumber ||
+    claim.epochId !== G06_EPOCH_ID ||
+    claim.frontierId !== 'G06' ||
+    claim.toolName !== G06_TOOL_NAME ||
+    claim.argumentProfile !== G06_ARGUMENT_PROFILE ||
+    claim.retryAllowed !== false
+  ) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RECONCILE_CLAIM_INVALID',
+      'The requested Run #95 G06 Epoch has no matching durable claim.',
+    );
+  }
+  const localClaimPath = canonicalG06ClaimPath();
+  if (fs.existsSync(localClaimPath)) {
+    let localClaim;
+    try {
+      localClaim = readJsonFile(localClaimPath);
+    } catch {
+      throw new HarnessInvariantError(
+        'G06_ONESHOT_LOCAL_CLAIM_INVALID',
+        'Local G06 one-shot claim is unreadable; preserve it and never retry.',
+      );
+    }
+    if (!localG06ClaimMatchesHarnessClaim(localClaim, claim)) {
+      throw new HarnessInvariantError(
+        'G06_ONESHOT_LOCAL_CLAIM_MISMATCH',
+        'Local and durable G06 one-shot claims disagree; preserve both and never retry.',
+      );
+    }
+  }
+  try {
+    verifyG06OneShotGitHubLatch(gh);
+  } catch (error) {
+    if (error instanceof G06OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  let terminal;
+  try {
+    terminal = g06TerminalState(readG06OneShotTerminalGitHubLatch(gh));
+  } catch (error) {
+    if (error instanceof G06OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  if (terminal) {
+    const result = commandEpochG06OneShotResult(claim, terminal.state, terminal.reportSha256, {
+      reconciliation: { terminalLatch: terminal.state },
+    });
+    print({
+      state: 'G06_ONE_SHOT_RECONCILED',
+      result: result.resultState,
+      claimId: claim.claimId,
+      retryAllowed: false,
+    });
+    return;
+  }
+
+  let reportSha256 = null;
+  let reportIsValid = false;
+  if (fs.existsSync(G06_EPOCH_REPORT_PATH)) {
+    reportSha256 = createHash('sha256')
+      .update(fs.readFileSync(G06_EPOCH_REPORT_PATH))
+      .digest('hex');
+    const checked = validateG06SanitizedReportFile(
+      { ...claim, reportSha256 },
+      root,
+      G06_EPOCH_REPORT_PATH,
+    );
+    reportIsValid = checked.passed && checked.reportSha256 === reportSha256;
+  }
+  const resultState = reportIsValid ? 'REPORT_WRITTEN' : 'INCONCLUSIVE';
+  const result = commandEpochG06OneShotResult(
+    claim,
+    resultState,
+    reportIsValid ? reportSha256 : null,
+    {
+      reconciliation: {
+        reportValidation: reportIsValid ? 'VALID' : reportSha256 ? 'INVALID' : 'ABSENT',
+        ...(reportSha256 ? { observedReportSha256: reportSha256 } : {}),
+      },
+    },
+  );
+  print({
+    state: 'G06_ONE_SHOT_RECONCILED',
+    result: result.resultState,
+    claimId: claim.claimId,
+    retryAllowed: false,
+  });
+}
+
+function commandEpochG06OneShotRun(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = Number(required(options, 'run'));
+  if (runNumber !== 95) {
+    throw new HarnessInvariantError(
+      'G06_ONESHOT_RUN_INVALID',
+      'G06 one-shot runs are limited to Run #95.',
+    );
+  }
+  process.exitCode = runG06CodexAgentMcp({
+    claimHarness: (gate) => commandEpochG06OneShotClaim(gate, { printOutput: false }),
+    assertClaimStillClaimed: (claim) => {
+      const current = epochState(claim.prNumber).state.adversarial_preflight
+        ?.g06_one_shot_disposition;
+      if (
+        !current ||
+        current.state !== 'CLAIMED' ||
+        canonicalHash(current) !== canonicalHash(claim)
+      ) {
+        throw new HarnessInvariantError(
+          'G06_ONESHOT_CLAIM_NO_LONGER_ACTIVE',
+          'The exact durable G06 claim is no longer active.',
+        );
+      }
+      const terminal = readG06OneShotTerminalGitHubLatch(gh);
+      if (terminal)
+        throw new HarnessInvariantError(
+          'G06_ONESHOT_ALREADY_TERMINAL',
+          'A permanent G06 terminal result already exists.',
+        );
+      return verifyG06OneShotGitHubLatch(gh) != null;
+    },
+    persistResult: (claim, state, reportSha256) =>
+      persistHarnessG06OneShotResult(claim, state, reportSha256),
+  });
+}
+
 function assertP01OneShotClaimReadiness({
   run,
   epoch,
@@ -4508,6 +5104,8 @@ const commands = {
   'epoch:g16-one-shot-run': commandEpochG16OneShotRun,
   'epoch:r01-one-shot-run': commandEpochR01OneShotRun,
   'epoch:r01-one-shot-reconcile': commandEpochR01OneShotReconcile,
+  'epoch:g06-one-shot-run': commandEpochG06OneShotRun,
+  'epoch:g06-one-shot-reconcile': commandEpochG06OneShotReconcile,
   'epoch:p01-one-shot-run': commandEpochP01OneShotRun,
   'epoch:p01-one-shot-result': commandEpochP01OneShotResult,
   'frontier:review-reserve': commandFrontierReviewReserve,

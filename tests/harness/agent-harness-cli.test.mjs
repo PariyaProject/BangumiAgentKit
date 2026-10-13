@@ -18,6 +18,18 @@ import {
   renderRunBody,
 } from '../../scripts/lib/agent-harness-core.mjs';
 import { canonicalHash, inspectFrontierLedger } from '../../scripts/lib/frontier-ledger.mjs';
+import {
+  G06_ARGUMENT_PROFILE,
+  G06_EPOCH_ID,
+  G06_EXPECTED_QUERY_ARGUMENTS,
+  G06_TOOL_NAME,
+} from '../../scripts/acceptance/g06-subject-cast-answer-check.mjs';
+import {
+  g06OneShotLatchLabelDescription,
+  g06OneShotLatchLabelName,
+  g06OneShotTerminalLabelDescription,
+  g06OneShotTerminalLabelName,
+} from '../../scripts/lib/g06-one-shot-claim.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
 import {
   generateG04RunnerReceiptKeyPair,
@@ -1432,6 +1444,96 @@ function r01HarnessEnvironment(run, epoch, overrides = {}) {
   });
 }
 
+function run95G06ClaimFixture({ claimState = 'CLAIMED' } = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const candidateSha = sha('b');
+  const baseSha = sha('a');
+  const reviewerId = 'gpt-6-luna-max-run95-pr170-round1';
+  const claimId = `g06-run-95-pr-170-${candidateSha.slice(0, 12)}-test`;
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 170;
+  run.pending_epoch = null;
+  run.next_action = 'RESUME_PR_170';
+  epoch.epoch_id = G06_EPOCH_ID;
+  epoch.pr_number = 170;
+  epoch.branch = 'codex/epoch-run95-g06-subject-cast-current-source';
+  epoch.base_branch = 'master';
+  epoch.base_sha = baseSha;
+  epoch.candidate_sha = candidateSha;
+  epoch.reviewed_base_sha = baseSha;
+  epoch.review_pass_sha = candidateSha;
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = ['G06'];
+  epoch.ci = { sha: candidateSha, status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The bounded G06 cast observation is the current work package.',
+    why_not_extend_further: 'Full cast coverage is outside the one-response source contract.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'G06 fixed-source answer and privacy boundaries are covered.',
+    g06_one_shot_disposition: {
+      claimId,
+      frontierId: 'G06',
+      epochId: G06_EPOCH_ID,
+      runNumber: 95,
+      toolName: G06_TOOL_NAME,
+      argumentProfile: G06_ARGUMENT_PROFILE,
+      expectedArgumentsSha256: canonicalHash(G06_EXPECTED_QUERY_ARGUMENTS),
+      state: claimState,
+      sourceCandidateSha: candidateSha,
+      baseSha,
+      ciSha: candidateSha,
+      ciStatus: 'SUCCESS',
+      bundleSha256: 'c'.repeat(64),
+      prNumber: 170,
+      reviewerId,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      reportWritten: claimState === 'REPORT_WRITTEN',
+      retryAllowed: false,
+      claimedAt: '2026-10-13T00:00:00.000Z',
+    },
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: candidateSha,
+      reviewed_base_sha: baseSha,
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  run.outer_sol.consumed = 1;
+  run.outer_sol.product.consumed = 1;
+  return { run, epoch };
+}
+
+function g06HarnessEnvironment(run, epoch, overrides = {}) {
+  const labelName = g06OneShotLatchLabelName();
+  return createMockEnvironment({
+    runIssueNumber: 95,
+    runIssueTitle: 'Run 95 G06 reconciliation fixture',
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: epoch.candidate_sha,
+    baseSha: epoch.base_sha,
+    draft: false,
+    repositoryLabels: {
+      [labelName]: {
+        name: labelName,
+        color: 'b60205',
+        description: g06OneShotLatchLabelDescription(),
+      },
+    },
+    ...overrides,
+  });
+}
+
 test('CLI reconciles a durable CLAIMED R01 attempt without invoking Codex or authorizing retry', () => {
   const { run, epoch } = run95R01ClaimFixture();
   const environment = r01HarnessEnvironment(run, epoch);
@@ -1499,6 +1601,63 @@ test('CLI reconciliation fails closed when the permanent R01 claim latch is miss
     assert.equal(stored.state, 'CLAIMED');
     assert.equal(
       environment.readState().repositoryLabels[r01OneShotTerminalLabelName()],
+      undefined,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI reconciles a durable G06 claim to terminal INCONCLUSIVE without invoking a query', () => {
+  const { run, epoch } = run95G06ClaimFixture();
+  const environment = g06HarnessEnvironment(run, epoch);
+  try {
+    const result = environment.execute([
+      'epoch:g06-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '170',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /G06_ONE_SHOT_RECONCILED/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.g06_one_shot_disposition;
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.reportWritten, false);
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(
+      environment.readState().repositoryLabels[g06OneShotTerminalLabelName()].description,
+      g06OneShotTerminalLabelDescription('INCONCLUSIVE'),
+    );
+    assert.equal(
+      environment.readState().calls.some((call) => call.tool === 'codex'),
+      false,
+      'one-shot reconciliation must not run Codex',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI G06 reconciliation fails closed when the permanent global claim latch is missing', () => {
+  const { run, epoch } = run95G06ClaimFixture();
+  const environment = g06HarnessEnvironment(run, epoch, { repositoryLabels: {} });
+  try {
+    const result = environment.execute([
+      'epoch:g06-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '170',
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^G06_ONESHOT_LATCH_MISSING_OR_CONFLICTING:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.g06_one_shot_disposition;
+    assert.equal(stored.state, 'CLAIMED');
+    assert.equal(
+      environment.readState().repositoryLabels[g06OneShotTerminalLabelName()],
       undefined,
     );
   } finally {
@@ -2578,6 +2737,70 @@ test('CLI Candidate refresh preserves the durable R01 one-shot disposition exact
     const refreshed = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
     assert.equal(refreshed.state, 'REVIEW_READY');
     assert.deepEqual(refreshed.adversarial_preflight.r01_one_shot_disposition, disposition);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot clear or replace the durable G06 one-shot disposition', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const disposition = {
+    claimId: `g06-run-95-pr-42-${sha('b').slice(0, 12)}-test`,
+    frontierId: 'G06',
+    epochId: G06_EPOCH_ID,
+    runNumber: 95,
+    toolName: G06_TOOL_NAME,
+    argumentProfile: G06_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(G06_EXPECTED_QUERY_ARGUMENTS),
+    state: 'INCONCLUSIVE',
+    sourceCandidateSha: sha('b'),
+    baseSha: sha('a'),
+    ciSha: sha('b'),
+    ciStatus: 'SUCCESS',
+    bundleSha256: 'c'.repeat(64),
+    prNumber: 42,
+    reviewerId: 'gpt-6-luna-max-run95-pr42-round1',
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    reportWritten: false,
+    retryAllowed: false,
+  };
+  epoch.adversarial_preflight.g06_one_shot_disposition = structuredClone(disposition);
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const invalid = [
+      { candidate_refresh_reason: 'Attempt to remove the G06 terminal disposition.' },
+      {
+        candidate_refresh_reason: 'Attempt to replace the G06 terminal disposition.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Attempted G06 result replacement.',
+          g06_one_shot_disposition: {
+            ...disposition,
+            state: 'REPORT_WRITTEN',
+            reportWritten: true,
+          },
+        },
+      },
+    ];
+    for (const overrides of invalid) {
+      const result = environment.execute([
+        'candidate:check',
+        '--pr',
+        '42',
+        '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('d'), ...overrides }),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /^G06_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+      const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.deepEqual(stored.adversarial_preflight.g06_one_shot_disposition, disposition);
+    }
   } finally {
     environment.cleanup();
   }
