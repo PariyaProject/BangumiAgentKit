@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-13T10:31:01Z",
+  "updated_at": "2026-10-13T11:05:42Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -94,11 +94,36 @@
         "scripts/acceptance/g01-agent-answer-check.mjs",
         "tests/unit/g01-agent-answer-check.test.ts",
         "tests/unit/g01-agent-canary-report.test.ts",
-        "docs/research/run95-g01-agent-mcp-canary-2026-10-05.json"
+        "docs/research/run95-g01-agent-mcp-canary-2026-10-05.json",
+        "docs/live-probes/public-tools-2026-10-13-110542656-20614.json"
       ],
-      "next_action": "Run #95 / PR #96 performed one exact-Candidate current-source Agent/MCP query with checker v4 after exact-SHA CI and Harness gates. The tool call succeeded with one bangumi.query_subjects call, 14 visible rows in 3,523 UTF-8 bytes, zero text omissions, experimental-source warning, and estimated total. All 14 answer rows matched visible source rows and order, with no missing/mismatched/duplicate rows. Checker v4 rejected acceptance because nonExhaustiveDisclosurePresent=false and unsupportedScopeClausesCount=4. The sanitized report retains counters only; raw answer/result were not retained, so a missing caveat cannot be distinguished from a checker parsing mismatch. Do not retry this query in Run #95. Keep G01 PARTIAL because the answer was rejected and totals are estimated; continue another independent actionable frontier after this Epoch integrates. QQ/TIM and authentication remain separate.",
+      "next_action": "Run #95 added one separate anonymous direct ToolRegistry observation for bangumi.render_query_subjects with {media:anime,year:2012,resultMode:top,limit:1}; the sanitized report records one public HTTP request and summary state=value/keys=[artifact] only. This does not replay the consumed G01 Agent/MCP canary (year=2026, month=7, concepts=[后宫], resultMode=all, limit=100, explain=full), does not accept the user scenario or add Agent/MCP evidence, and does not establish complete Bangumi search coverage. Keep G01 PARTIAL and never retry the consumed one-shot.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "direct_public_renderer_probe_2026_10_13": {
+          "report": "docs/live-probes/public-tools-2026-10-13-110542656-20614.json",
+          "tool": "bangumi.render_query_subjects",
+          "input": {
+            "media": "anime",
+            "year": 2012,
+            "resultMode": "top",
+            "limit": 1
+          },
+          "mode": "read_only_public_api_smoke",
+          "request_count": 1,
+          "result_summary": {
+            "state": "value",
+            "keys": [
+              "artifact"
+            ]
+          },
+          "assertions_passed": true,
+          "catalog_sha256": "2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e",
+          "probe_script_sha256": "aa5e20c363a6787a6b1bc7735b4813dbd018caf537fec422e1e4e57215a935c3",
+          "acceptance_boundary": "Direct public ToolRegistry evidence only. This fixed year=2012 profile is distinct from the consumed G01 Agent/MCP one-shot (year=2026, month=7, concepts=[后宫], resultMode=all, limit=100, explain=full); it does not accept the G01 scenario, establish complete catalog/search coverage, or add Agent/MCP evidence. The report stores the artifact key only, not subject rows or image bytes. Keep G01 PARTIAL; never retry the consumed one-shot."
+        }
+      }
     },
     {
       "id": "G02",
