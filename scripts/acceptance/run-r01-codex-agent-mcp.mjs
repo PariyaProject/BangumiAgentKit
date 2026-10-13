@@ -31,7 +31,7 @@ const SERVER_ID = 'bgk_r01_one_tool';
 const MODEL = 'gpt-6-luna';
 const REASONING_EFFORT = 'max';
 const RUN_NUMBER = 95;
-export const R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp';
+export const R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp-followup';
 export const R01_ARGUMENT_PROFILE = 'fixed-r01-subject-41529-include-evidence-v1';
 export const R01_REPORT_RELATIVE_PATH =
   'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json';
@@ -356,6 +356,7 @@ export function assertR01CandidateReviewGate(status, pr, { sourceRevision, curre
     runState?.active_epoch_pr === epochView?.number,
     runState?.pending_epoch == null,
     epochView?.github_state === 'OPEN',
+    epoch?.epoch_id === R01_EPOCH_ID,
     epoch?.pr_number === epochView?.number,
     epoch?.branch === status?.git?.branch,
     epoch?.candidate_sha === candidateSha,
@@ -949,10 +950,10 @@ export function runR01CodexAgentMcp({
     }
     printSanitized({
       passed: false,
-      state:
-        terminalPersistenceUncertain
-          ? 'RESULT_PERSISTENCE_UNCERTAIN'
-          : terminalResultPersistedState ?? (terminalAttempted ? 'INCONCLUSIVE' : 'CLAIM_NOT_AUTHORIZED'),
+      state: terminalPersistenceUncertain
+        ? 'RESULT_PERSISTENCE_UNCERTAIN'
+        : (terminalResultPersistedState ??
+          (terminalAttempted ? 'INCONCLUSIVE' : 'CLAIM_NOT_AUTHORIZED')),
       ...safeClaimSummary,
     });
     return 1;

@@ -269,7 +269,7 @@ CODEX_R01_PROBE_ARGUMENTS = {
 }
 CODEX_R01_ARGUMENT_PROFILE = 'fixed-r01-subject-41529-include-evidence-v1'
 CODEX_R01_REPORT_RELATIVE_PATH = 'docs/live-probes/pariya-agent-codex-luna-e2e-R01-relations.json'
-CODEX_R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp'
+CODEX_R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp-followup'
 CODEX_R01_CLAIM_LATCH_NAME = 'harness-r95-r01-subject-relations-claimed'
 CODEX_R01_CLAIM_LATCH_DESCRIPTION = (
     'Run 95 R01 bangumi.get_subject_relations one-shot latch; permanent; never remove or recreate.'
@@ -7264,7 +7264,7 @@ def codex_mcp_evidence_is_valid(
     if is_r01 and (
         type(report.get('runNumber')) is not int or report['runNumber'] != 95
         or report.get('frontierId') != 'R01'
-        or report.get('epochId') != 'run95-r01-subject-relations-agent-mcp'
+        or report.get('epochId') != 'run95-r01-subject-relations-agent-mcp-followup'
         or type(report.get('prNumber')) is not int or report['prNumber'] < 1
         or not isinstance(report.get('claimId'), str)
         or not report['claimId'].startswith(

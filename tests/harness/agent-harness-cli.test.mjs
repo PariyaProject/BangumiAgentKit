@@ -1340,15 +1340,15 @@ function run95R01ClaimFixture({ claimState = 'CLAIMED', reconciliation } = {}) {
   const { run, epoch } = passedCandidateFixture();
   const candidateSha = sha('b');
   const baseSha = sha('a');
-  const reviewerId = 'gpt-6-luna-max-run95-pr143-round1';
-  const claimId = `r01-run-95-pr-143-${candidateSha.slice(0, 12)}-test`;
+  const reviewerId = 'gpt-6-luna-max-run95-pr147-round1';
+  const claimId = `r01-run-95-pr-147-${candidateSha.slice(0, 12)}-test`;
   run.profile = 'AUTONOMOUS_EVOLUTION';
-  run.active_epoch_pr = 143;
+  run.active_epoch_pr = 147;
   run.pending_epoch = null;
-  run.next_action = 'RESUME_PR_143';
+  run.next_action = 'RESUME_PR_147';
   epoch.epoch_id = R01_EPOCH_ID;
-  epoch.pr_number = 143;
-  epoch.branch = 'codex/epoch-run95-r01-subject-relations-agent-mcp';
+  epoch.pr_number = 147;
+  epoch.branch = 'codex/epoch-run95-r01-subject-relations-agent-mcp-followup';
   epoch.base_branch = 'master';
   epoch.base_sha = baseSha;
   epoch.candidate_sha = candidateSha;
@@ -1379,7 +1379,7 @@ function run95R01ClaimFixture({ claimState = 'CLAIMED', reconciliation } = {}) {
       ciSha: candidateSha,
       ciStatus: 'SUCCESS',
       bundleSha256: 'c'.repeat(64),
-      prNumber: 143,
+      prNumber: 147,
       reviewerId,
       model: 'gpt-6-luna',
       reasoningEffort: 'max',
@@ -1441,7 +1441,7 @@ test('CLI reconciles a durable CLAIMED R01 attempt without invoking Codex or aut
       '--run',
       '95',
       '--pr',
-      '143',
+      '147',
     ]);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /R01_ONE_SHOT_RECONCILED/u);
@@ -1490,7 +1490,7 @@ test('CLI reconciliation fails closed when the permanent R01 claim latch is miss
       '--run',
       '95',
       '--pr',
-      '143',
+      '147',
     ]);
     assert.equal(result.status, 2);
     assert.match(result.stderr, /^R01_ONESHOT_LATCH_MISSING:/u);
@@ -1528,7 +1528,7 @@ test('CLI recovers a lost PR-body write from the immutable terminal latch withou
       '--run',
       '95',
       '--pr',
-      '143',
+      '147',
     ]);
     assert.equal(result.status, 0, result.stderr);
     const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
@@ -1555,7 +1555,7 @@ test('CLI reconciles an already-written sanitized R01 report by exact claim and 
       frontierId: 'R01',
       epochId: R01_EPOCH_ID,
       claimId: disposition.claimId,
-      prNumber: 143,
+      prNumber: 147,
       sourceRevision: disposition.sourceCandidateSha,
       baseSha: disposition.baseSha,
       reviewerId: disposition.reviewerId,
@@ -1586,7 +1586,7 @@ test('CLI reconciles an already-written sanitized R01 report by exact claim and 
     }
     assert.equal(validation.passed, true, validation.reason);
     const result = environment.execute(
-      ['epoch:r01-one-shot-reconcile', '--run', '95', '--pr', '143'],
+      ['epoch:r01-one-shot-reconcile', '--run', '95', '--pr', '147'],
       { HARNESS_R01_REPORT_PATH: reportPath },
     );
     assert.equal(result.status, 0, result.stderr);
@@ -1622,7 +1622,7 @@ test('CLI terminalizes an invalid claim-bound R01 report as unaccepted and non-r
       frontierId: 'R01',
       epochId: R01_EPOCH_ID,
       claimId: disposition.claimId,
-      prNumber: 143,
+      prNumber: 147,
       sourceRevision: disposition.sourceCandidateSha,
       baseSha: disposition.baseSha,
       reviewerId: disposition.reviewerId,
@@ -1639,7 +1639,7 @@ test('CLI terminalizes an invalid claim-bound R01 report as unaccepted and non-r
   fs.writeFileSync(reportPath, serialized, { mode: 0o600 });
   try {
     const result = environment.execute(
-      ['epoch:r01-one-shot-reconcile', '--run', '95', '--pr', '143'],
+      ['epoch:r01-one-shot-reconcile', '--run', '95', '--pr', '147'],
       { HARNESS_R01_REPORT_PATH: reportPath },
     );
     assert.equal(result.status, 0, result.stderr);

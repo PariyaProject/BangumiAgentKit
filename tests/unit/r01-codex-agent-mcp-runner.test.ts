@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { presentMcpToolResult } from '../../apps/mcp/src/result-presenter.js';
 import { verifyR01DirectRelationsAnswer } from '../../scripts/acceptance/r01-direct-relations-answer-check.mjs';
 import {
+  R01_EPOCH_ID,
   R01_EXPECTED_QUERY_ARGUMENTS,
   assertR01CandidateReviewGate,
   buildCodexExecArgs,
@@ -32,6 +33,7 @@ import {
 
 const TARGET_TOOL = 'bangumi.get_subject_relations';
 const SERVER_ID = 'bgk_r01_one_tool';
+const PREVIOUS_R01_EPOCH_ID = 'run95-r01-subject-relations-agent-mcp';
 const MANDATORY_CI_CHECKS = [
   'harness-control',
   'sqlite-default',
@@ -154,7 +156,7 @@ function completeCandidateRepo() {
 function writeR01CanonicalClaim(root: string, sourceRevision: string, bundleSha256: string) {
   const claimPath = path.join(root, '.git/pariya-agent-state/r01-run95-one-shot-claim.json');
   const baseSha = sourceRevision;
-  const claimId = `r01-run-95-pr-143-${sourceRevision.slice(0, 12)}-1791765972000`;
+  const claimId = `r01-run-95-pr-147-${sourceRevision.slice(0, 12)}-1791765972000`;
   mkdirSync(path.dirname(claimPath), { recursive: true });
   writeFileSync(
     claimPath,
@@ -162,18 +164,18 @@ function writeR01CanonicalClaim(root: string, sourceRevision: string, bundleSha2
       schemaVersion: 1,
       runNumber: 95,
       frontierId: 'R01',
-      epochId: 'run95-r01-subject-relations-agent-mcp',
+      epochId: 'run95-r01-subject-relations-agent-mcp-followup',
       state: 'CLAIMED',
       sourceRevision,
       bundleSha256,
       expectedArgumentsSha256: sha256(canonicalJson(R01_EXPECTED_QUERY_ARGUMENTS)),
       claimId,
-      prNumber: 143,
+      prNumber: 147,
       baseSha,
-      reviewerId: 'gpt-6-luna-max-run95-pr143-round1',
+      reviewerId: 'gpt-6-luna-max-run95-pr147-round1',
     })}\n`,
   );
-  return { claimId, prNumber: 143, baseSha, reviewerId: 'gpt-6-luna-max-run95-pr143-round1' };
+  return { claimId, prNumber: 147, baseSha, reviewerId: 'gpt-6-luna-max-run95-pr147-round1' };
 }
 
 function writerInput(bundleSha256: string, sourceRevision: string) {
@@ -217,11 +219,11 @@ function writerInput(bundleSha256: string, sourceRevision: string) {
     toolTextUtf8Bytes: Buffer.byteLength(text, 'utf8'),
     sourceRevision,
     bundleSha256,
-    claimId: `r01-run-95-pr-143-${sourceRevision.slice(0, 12)}-1791765972000`,
-    prNumber: 143,
+    claimId: `r01-run-95-pr-147-${sourceRevision.slice(0, 12)}-1791765972000`,
+    prNumber: 147,
     baseSha: sourceRevision,
-    reviewerId: 'gpt-6-luna-max-run95-pr143-round1',
-    epochId: 'run95-r01-subject-relations-agent-mcp',
+    reviewerId: 'gpt-6-luna-max-run95-pr147-round1',
+    epochId: 'run95-r01-subject-relations-agent-mcp-followup',
     toolResultSummary: {
       toolName: TARGET_TOOL,
       resultState: result.state,
@@ -304,6 +306,7 @@ describe('R01 Codex one-tool runner', () => {
         number: 104,
         github_state: 'OPEN',
         state: {
+          epoch_id: R01_EPOCH_ID,
           pr_number: 104,
           branch,
           state: 'REVIEW_READY',
@@ -311,12 +314,14 @@ describe('R01 Codex one-tool runner', () => {
           candidate_sha: candidateSha,
           ci: { sha: candidateSha, status: 'SUCCESS' },
           review_pass_sha: candidateSha,
-          review_history: [{
-            candidate_sha: candidateSha,
-            reviewed_base_sha: baseSha,
-            reviewer_id: 'gpt-6-luna-max-run95-pr104-round1',
-            verdict: 'PASS',
-          }],
+          review_history: [
+            {
+              candidate_sha: candidateSha,
+              reviewed_base_sha: baseSha,
+              reviewer_id: 'gpt-6-luna-max-run95-pr104-round1',
+              verdict: 'PASS',
+            },
+          ],
         },
       },
     };
@@ -349,6 +354,19 @@ describe('R01 Codex one-tool runner', () => {
       baseSha,
       reviewerId: 'gpt-6-luna-max-run95-pr104-round1',
     });
+    const predecessorEpoch = {
+      ...status,
+      epoch: {
+        ...status.epoch,
+        state: { ...status.epoch.state, epoch_id: PREVIOUS_R01_EPOCH_ID },
+      },
+    };
+    expect(() =>
+      assertR01CandidateReviewGate(predecessorEpoch, pr, {
+        sourceRevision: candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    ).toThrow(/active exact Candidate/u);
     expect(() =>
       assertR01CandidateReviewGate(status, pr, {
         sourceRevision: 'c'.repeat(40),
@@ -564,7 +582,9 @@ describe('R01 Codex one-tool runner', () => {
     expect(completedWithError.eventStreamComplete).toBe(true);
     expect(completedWithError.codexErrorItemCount).toBe(1);
     expect(r01EventStreamIsClean(completedWithError)).toBe(false);
-    expect(r01EventStreamIsClean({ eventStreamComplete: true, codexErrorItemCount: null })).toBe(false);
+    expect(r01EventStreamIsClean({ eventStreamComplete: true, codexErrorItemCount: null })).toBe(
+      false,
+    );
     expect(parseCodexJsonl('{"type":"thread.started"}\nnot-json').parsed).toBe(false);
   });
 
@@ -605,16 +625,30 @@ describe('R01 Codex one-tool runner', () => {
     ).toBe(false);
   });
 
+  it('rejects a report bound to the predecessor merged R01 Epoch ID', () => {
+    const fixture = completeCandidateRepo();
+    try {
+      writeR01CanonicalClaim(fixture.root, fixture.head, fixture.bundleSha256);
+      const input = writerInput(fixture.bundleSha256, fixture.head);
+      input.epochId = PREVIOUS_R01_EPOCH_ID;
+      expect(() => buildR01AgentMcpReport(input, fixture.root)).toThrow(
+        /exact durable Harness claim provenance/u,
+      );
+    } finally {
+      rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
   it('writes only sanitized counts and hashes after exact R01 row and scope readback', () => {
     const fixture = completeCandidateRepo();
     try {
       writeR01CanonicalClaim(fixture.root, fixture.head, fixture.bundleSha256);
       const input = writerInput(fixture.bundleSha256, fixture.head);
       expect(input.claimId).toMatch(/^r01-run-95-pr-\d+-[0-9a-f]{12}-\d+$/u);
-      expect(input.prNumber).toBe(143);
+      expect(input.prNumber).toBe(147);
       expect(input.baseSha).toMatch(/^[0-9a-f]{40}$/u);
       expect(input.reviewerId).toMatch(/^gpt-6-luna-max-run95-pr\d+-round\d+$/u);
-      expect(input.epochId).toBe('run95-r01-subject-relations-agent-mcp');
+      expect(input.epochId).toBe('run95-r01-subject-relations-agent-mcp-followup');
       const check = verifyR01DirectRelationsAnswer(
         input.answer,
         input.queryArguments,
@@ -723,7 +757,7 @@ describe('R01 Codex one-tool runner', () => {
         evidenceKind: 'codex_cli_mcp_tool_use',
         runNumber: 95,
         frontierId: 'R01',
-        claimId: `r01-run-95-pr-143-${fixture.head.slice(0, 12)}-1791765972000`,
+        claimId: `r01-run-95-pr-147-${fixture.head.slice(0, 12)}-1791765972000`,
         codexErrorItemCount: 0,
         resultCount: 1,
         model: 'gpt-6-luna',
@@ -817,8 +851,12 @@ describe('R01 Codex one-tool runner', () => {
         (buildR01AgentMcpReport(wrongArguments, fixture.root) as { passed: boolean }).passed,
       ).toBe(false);
       expect(() => buildR01AgentMcpReport(extraCall, fixture.root)).toThrow(/exactly one/u);
-      expect(() => buildR01AgentMcpReport(errorItem, fixture.root)).toThrow(/exactly one|error item/u);
-      expect(() => buildR01AgentMcpReport(missingErrorCount, fixture.root)).toThrow(/exactly one|error item/u);
+      expect(() => buildR01AgentMcpReport(errorItem, fixture.root)).toThrow(
+        /exactly one|error item/u,
+      );
+      expect(() => buildR01AgentMcpReport(missingErrorCount, fixture.root)).toThrow(
+        /exactly one|error item/u,
+      );
       expect(() => buildR01AgentMcpReport(privateRead, fixture.root)).toThrow(
         /anonymous public read-only/u,
       );
