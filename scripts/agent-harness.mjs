@@ -84,6 +84,21 @@ import {
   R01OneShotClaimError,
   verifyR01OneShotGitHubLatch,
 } from './lib/r01-one-shot-claim.mjs';
+import {
+  acquireD07OneShotGitHubLatch,
+  acquireD07OneShotTerminalGitHubLatch,
+  claimD07OneShotAtomically,
+  D07OneShotClaimError,
+  d07OneShotClaimIdFromLabel,
+  readD07OneShotGitHubLatch,
+  readD07OneShotTerminalGitHubLatch,
+  verifyD07OneShotGitHubLatch,
+} from './lib/d07-one-shot-claim.mjs';
+import {
+  d07RunnerTempDirectory,
+  isD07RunnerProcessActive,
+  setD07RunnerProcessTitle,
+} from './lib/d07-runner-liveness.mjs';
 import { isG16LunaMaxReviewerId } from './lib/g16-reviewer-id.mjs';
 import { parseCodexJsonl, summarizeCodexEvents } from './acceptance/run-g26-codex-agent-mcp.mjs';
 import {
@@ -111,9 +126,7 @@ import {
   G16_ARGUMENT_PROFILE,
   G16_EXPECTED_QUERY_ARGUMENTS,
 } from './acceptance/g16-person-activity-answer-check.mjs';
-import {
-  g16RunnerPublicKeySha256,
-} from './acceptance/g16-agent-mcp-runner-receipt.mjs';
+import { g16RunnerPublicKeySha256 } from './acceptance/g16-agent-mcp-runner-receipt.mjs';
 import { validateG16SanitizedReportFile } from './acceptance/write-g16-agent-mcp-report.mjs';
 import {
   G06_MODEL,
@@ -134,6 +147,8 @@ import {
   verifyP01PersonPositionAnswer,
 } from './acceptance/p01-person-position-answer-check.mjs';
 import { validateP01SanitizedReportFile } from './acceptance/write-p01-agent-mcp-report.mjs';
+import { validateD07SanitizedReport } from './acceptance/write-d07-agent-mcp-report.mjs';
+import { runD07CodexAgentMcp } from './acceptance/run-d07-codex-agent-mcp.mjs';
 import {
   buildP01RunnerReceiptPayload,
   createP01RunnerReceipt,
@@ -158,6 +173,10 @@ import {
   validateP01HarnessClaim,
 } from './acceptance/run-p01-codex-agent-mcp.mjs';
 import { sanitizeGitRepositoryEnvironment as sanitizeP01GitEnvironment } from './lib/g26-mcp-bundle.mjs';
+import {
+  D07_EXPECTED_YEARS,
+  D07_QUERY_ARGUMENTS_BY_YEAR,
+} from './acceptance/d07-current-rank-answer-check.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const P01_MODEL = 'gpt-6-luna';
@@ -178,8 +197,112 @@ const HARNESS_MOCK_G04_BUNDLE_ENV = 'HARNESS_G04_BUNDLE_SHA256';
 const G16_MODEL = 'gpt-6-luna';
 const G16_REASONING_EFFORT = 'max';
 const G16_EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp';
+const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
+const D07_ARGUMENT_PROFILE = 'fixed-d07-current-rank-by-source-year-2016-2025-v1';
+const D07_MODEL = 'gpt-6-luna';
+const D07_REASONING_EFFORT = 'max';
+const D07_TOOL_NAME = 'bangumi.query_subjects';
+const D07_REPORT_RELATIVE_PATH =
+  'docs/live-probes/d07-current-rank-by-release-year-agent-mcp-run95.json';
+const D07_REPORT_PATH = path.join(root, D07_REPORT_RELATIVE_PATH);
+const D07_LOCAL_CLAIM_FILENAME = 'd07-run95-one-shot-claim.json';
 const G16_REPORT_PATH = path.join(root, 'docs/live-probes/g16-director-person-activity-run95.json');
 const G16_REPORT_RELATIVE_PATH = path.relative(root, G16_REPORT_PATH);
+
+function d07LocalClaimJournalPath() {
+  if (process.env.HARNESS_D07_LOCAL_CLAIM_PATH) {
+    return path.resolve(process.env.HARNESS_D07_LOCAL_CLAIM_PATH);
+  }
+  if (process.env.HARNESS_MOCK_STATE) {
+    return path.join(
+      path.dirname(path.resolve(process.env.HARNESS_MOCK_STATE)),
+      D07_LOCAL_CLAIM_FILENAME,
+    );
+  }
+  const commonDirectory = path.resolve(root, git('rev-parse', '--git-common-dir'));
+  return path.join(commonDirectory, 'pariya-agent-state', D07_LOCAL_CLAIM_FILENAME);
+}
+
+function writeD07LocalClaimJournal(claim) {
+  const filePath = d07LocalClaimJournalPath();
+  fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
+  let descriptor;
+  try {
+    descriptor = fs.openSync(filePath, 'wx', 0o600);
+    fs.writeFileSync(descriptor, `${JSON.stringify(claim, null, 2)}\n`, 'utf8');
+    fs.fsyncSync(descriptor);
+  } catch {
+    if (descriptor !== undefined) {
+      try {
+        fs.closeSync(descriptor);
+      } catch {
+        // Preserve the original local create-once failure.
+      }
+    }
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_LOCAL_JOURNAL_EXISTS',
+      'A local D07 one-shot recovery journal already exists; inspect it before proceeding.',
+    );
+  }
+  fs.closeSync(descriptor);
+  return filePath;
+}
+
+function readD07LocalClaimJournal() {
+  const filePath = d07LocalClaimJournalPath();
+  let info;
+  try {
+    info = fs.lstatSync(filePath);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
+  if (!info.isFile() || info.isSymbolicLink() || info.size <= 0 || info.size > 32 * 1024) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_LOCAL_JOURNAL_INVALID',
+      'The local D07 recovery journal is not a bounded regular file.',
+    );
+  }
+  let claim;
+  try {
+    claim = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_LOCAL_JOURNAL_INVALID',
+      'The local D07 recovery journal is not valid JSON.',
+    );
+  }
+  if (
+    !claim ||
+    typeof claim !== 'object' ||
+    claim.runNumber !== 95 ||
+    claim.frontierId !== 'D07' ||
+    claim.epochId !== D07_EPOCH_ID ||
+    claim.toolName !== D07_TOOL_NAME ||
+    claim.retryAllowed !== false ||
+    claim.state !== 'CLAIMED' ||
+    typeof claim.claimId !== 'string' ||
+    !/^d07-run-95-pr-\d+-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(claim.claimId) ||
+    typeof claim.prNumber !== 'number' ||
+    !Number.isSafeInteger(claim.prNumber) ||
+    !Number.isSafeInteger(claim.runnerPid) ||
+    claim.runnerPid <= 0 ||
+    !/^[0-9a-f]{40}$/u.test(claim.sourceCandidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(claim.baseSha ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(claim.bundleSha256 ?? '')
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_LOCAL_JOURNAL_INVALID',
+      'The local D07 recovery journal does not contain an exact no-retry claim.',
+    );
+  }
+  return claim;
+}
+
+function clearD07LocalClaimJournal(claimId) {
+  const claim = readD07LocalClaimJournal();
+  if (claim?.claimId === claimId) fs.rmSync(d07LocalClaimJournalPath());
+}
 const G06_REPORT_ROOT =
   process.env.HARNESS_MOCK_STATE && process.env.HARNESS_G06_REPORT_ROOT
     ? path.resolve(process.env.HARNESS_G06_REPORT_ROOT)
@@ -578,6 +701,10 @@ Usage: pnpm harness <command> [options]
   epoch:r01-one-shot-reconcile --run <issue> --pr <number>
   epoch:g06-one-shot-run --run <issue>
   epoch:g06-one-shot-reconcile --run <issue> --pr <number>
+  epoch:d07-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --claim-id <id> --reviewer-id <id> --bundle-sha256 <sha> --model gpt-6-luna --reasoning-effort max
+  epoch:d07-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN> [--report-sha256 <sha>]
+  epoch:d07-one-shot-run --run <issue>
+  epoch:d07-one-shot-reconcile --run <issue> --pr <number>
   epoch:p01-one-shot-run --run <issue>
   epoch:p01-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
   frontier:review-reserve --run <issue> [--evidence <json>] [--runtime-recovery]
@@ -1228,6 +1355,18 @@ function commandCandidateCheck(options) {
       'A durable G06 one-shot disposition must be preserved exactly across Candidate refreshes',
     );
   }
+  const priorD07Disposition = epoch.adversarial_preflight?.d07_one_shot_disposition;
+  const nextD07Disposition = evidence.adversarial_preflight?.d07_one_shot_disposition;
+  if (
+    (priorD07Disposition === undefined) !== (nextD07Disposition === undefined) ||
+    (priorD07Disposition !== undefined &&
+      canonicalHash(priorD07Disposition) !== canonicalHash(nextD07Disposition))
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_DISPOSITION_IMMUTABLE',
+      'A durable D07 one-shot disposition must be preserved exactly across Candidate refreshes',
+    );
+  }
   epoch.validation = evidence.validation ?? epoch.validation;
   epoch.scope_closure = evidence.scope_closure;
   epoch.adversarial_preflight = evidence.adversarial_preflight;
@@ -1475,6 +1614,14 @@ function commandReviewResult(options) {
   ) {
     result.epoch.next_action = 'RUN_G06_ONE_SHOT_AND_RECONCILE_BEFORE_MERGE';
     result.run.next_action = 'RUN_G06_ONE_SHOT_BEFORE_MERGE';
+  }
+  if (
+    verdict === 'PASS' &&
+    result.epoch.epoch_id === D07_EPOCH_ID &&
+    !Object.hasOwn(result.epoch.adversarial_preflight ?? {}, 'd07_one_shot_disposition')
+  ) {
+    result.epoch.next_action = 'RUN_D07_ONE_SHOT_AND_RECONCILE_BEFORE_MERGE';
+    result.run.next_action = 'RUN_D07_ONE_SHOT_BEFORE_MERGE';
   }
   updatePr(prNumber, result.epoch);
   updateIssue(runNumber, result.run);
@@ -2137,12 +2284,7 @@ function commandEpochG04OneShotClaim(gate, { printOutput = true } = {}) {
       acquireGlobalLatch: () => acquireG04OneShotGitHubLatch(gh),
       persistClaim: (claim) => {
         const latest = epochState(prNumber);
-        if (
-          Object.hasOwn(
-            latest.state.adversarial_preflight ?? {},
-            'g04_one_shot_disposition',
-          )
-        ) {
+        if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'g04_one_shot_disposition')) {
           throw new HarnessInvariantError(
             'G04_ONESHOT_ALREADY_CLAIMED',
             'A durable G04 one-shot disposition already exists; refusing to overwrite it.',
@@ -2384,8 +2526,15 @@ function commandEpochG04OneShotRun(options) {
 
 function assertG16OneShotClaimReadiness(gate) {
   const {
-    runNumber, prNumber, candidateSha, baseSha, bundleSha256, model,
-    reasoningEffort, reviewerId, runnerReceiptPublicKey,
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    model,
+    reasoningEffort,
+    reviewerId,
+    runnerReceiptPublicKey,
   } = gate;
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
@@ -2395,29 +2544,55 @@ function assertG16OneShotClaimReadiness(gate) {
   const currentBaseSha = remoteBaseSha('master');
   const latestReview = epoch.review_history?.at(-1);
   let runnerReceiptPublicKeySha256;
-  try { runnerReceiptPublicKeySha256 = g16RunnerPublicKeySha256(runnerReceiptPublicKey); }
-  catch { runnerReceiptPublicKeySha256 = null; }
+  try {
+    runnerReceiptPublicKeySha256 = g16RunnerPublicKeySha256(runnerReceiptPublicKey);
+  } catch {
+    runnerReceiptPublicKeySha256 = null;
+  }
   const preflight = epoch.adversarial_preflight ?? {};
   if (
-    Number(runNumber) !== 95 || !Number.isSafeInteger(Number(prNumber)) || Number(prNumber) < 1 ||
-    !/^[0-9a-f]{40}$/u.test(candidateSha ?? '') || !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
+    Number(runNumber) !== 95 ||
+    !Number.isSafeInteger(Number(prNumber)) ||
+    Number(prNumber) < 1 ||
+    !/^[0-9a-f]{40}$/u.test(candidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
     run.state !== 'EPOCH_ACTIVE' ||
-    run.profile !== 'AUTONOMOUS_EVOLUTION' || run.active_epoch_pr !== Number(prNumber) ||
-    run.pending_epoch != null || epoch.state !== 'REVIEW_PASSED' || epoch.epoch_id !== G16_EPOCH_ID ||
-    epoch.pr_number !== Number(prNumber) || !epoch.advances_frontier_ids?.includes('G16') ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.epoch_id !== G16_EPOCH_ID ||
+    epoch.pr_number !== Number(prNumber) ||
+    !epoch.advances_frontier_ids?.includes('G16') ||
     epoch.scope_closure?.related_work_remaining !== false ||
-    Object.hasOwn(preflight, 'g16_one_shot_disposition') || epoch.branch !== currentBranch() ||
-    currentHead() !== candidateSha || git('status', '--porcelain') !== '' ||
-    pr.state !== 'OPEN' || pr.isDraft || pr.baseRefName !== 'master' || pr.headRefName !== epoch.branch ||
-    pr.headRefOid !== candidateSha || epoch.base_branch !== 'master' || epoch.base_sha !== baseSha ||
-    epoch.reviewed_base_sha !== baseSha || currentBaseSha !== baseSha || epoch.candidate_sha !== candidateSha ||
-    epoch.review_pass_sha !== candidateSha || epoch.ci?.sha !== candidateSha || epoch.ci?.status !== 'SUCCESS' ||
-    !mandatoryChecksSuccessful(pr.statusCheckRollup) || model !== G16_MODEL ||
-    reasoningEffort !== G16_REASONING_EFFORT || !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
+    Object.hasOwn(preflight, 'g16_one_shot_disposition') ||
+    epoch.branch !== currentBranch() ||
+    currentHead() !== candidateSha ||
+    git('status', '--porcelain') !== '' ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft ||
+    pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch ||
+    pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' ||
+    epoch.base_sha !== baseSha ||
+    epoch.reviewed_base_sha !== baseSha ||
+    currentBaseSha !== baseSha ||
+    epoch.candidate_sha !== candidateSha ||
+    epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha ||
+    epoch.ci?.status !== 'SUCCESS' ||
+    !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    model !== G16_MODEL ||
+    reasoningEffort !== G16_REASONING_EFFORT ||
+    !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
     !/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKeySha256 ?? '') ||
-    latestReview?.candidate_sha !== candidateSha || latestReview.reviewed_base_sha !== baseSha ||
-    latestReview.verdict !== 'PASS' || latestReview.reviewer_id !== reviewerId ||
-    !isG16LunaMaxReviewerId(reviewerId, Number(prNumber)) || preflight.completed !== true
+    latestReview?.candidate_sha !== candidateSha ||
+    latestReview.reviewed_base_sha !== baseSha ||
+    latestReview.verdict !== 'PASS' ||
+    latestReview.reviewer_id !== reviewerId ||
+    !isG16LunaMaxReviewerId(reviewerId, Number(prNumber)) ||
+    preflight.completed !== true
   ) {
     throw new HarnessInvariantError(
       'G16_ONESHOT_CLAIM_GATE_FAILED',
@@ -2431,8 +2606,15 @@ function commandEpochG16OneShotClaim(gate, { printOutput = true } = {}) {
   ensureControlPlane();
   ensureCleanWorkingTree();
   const {
-    runNumber, prNumber, candidateSha, baseSha, bundleSha256,
-    model, reasoningEffort, reviewerId, runnerReceiptPublicKey,
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    model,
+    reasoningEffort,
+    reviewerId,
+    runnerReceiptPublicKey,
   } = gate;
   const claimId = `g16-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`;
   const runnerReceiptPublicKeySha256 = g16RunnerPublicKeySha256(runnerReceiptPublicKey);
@@ -2480,7 +2662,8 @@ function commandEpochG16OneShotClaim(gate, { printOutput = true } = {}) {
         };
         updatePr(prNumber, nextEpoch);
       },
-      readClaim: () => epochState(prNumber).state.adversarial_preflight?.g16_one_shot_disposition ?? null,
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.g16_one_shot_disposition ?? null,
       verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
     });
   } catch (error) {
@@ -2490,66 +2673,125 @@ function commandEpochG16OneShotClaim(gate, { printOutput = true } = {}) {
     throw error;
   }
   const result = {
-    state: 'G16_ONE_SHOT_CLAIMED', claimId, runNumber: Number(runNumber),
-    frontierId: 'G16', epochId: G16_EPOCH_ID, prNumber: Number(prNumber),
-    candidateSha, baseSha, ciSha: candidateSha, ciStatus: 'SUCCESS',
-    reviewerId, bundleSha256, expectedArgumentsSha256: canonicalHash(G16_EXPECTED_QUERY_ARGUMENTS),
-    model, reasoningEffort, runnerReceiptPublicKey, runnerReceiptPublicKeySha256, retryAllowed: false,
+    state: 'G16_ONE_SHOT_CLAIMED',
+    claimId,
+    runNumber: Number(runNumber),
+    frontierId: 'G16',
+    epochId: G16_EPOCH_ID,
+    prNumber: Number(prNumber),
+    candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    reviewerId,
+    bundleSha256,
+    expectedArgumentsSha256: canonicalHash(G16_EXPECTED_QUERY_ARGUMENTS),
+    model,
+    reasoningEffort,
+    runnerReceiptPublicKey,
+    runnerReceiptPublicKeySha256,
+    retryAllowed: false,
   };
   if (printOutput) print(result);
   return result;
 }
 
-function commandEpochG16OneShotResult(claim, resultState, reportSha256, runnerReceipt, { printOutput = true } = {}) {
+function commandEpochG16OneShotResult(
+  claim,
+  resultState,
+  reportSha256,
+  runnerReceipt,
+  { printOutput = true } = {},
+) {
   ensureControlPlane();
   if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState)) {
-    throw new HarnessInvariantError('G16_ONESHOT_RESULT_INVALID', 'Only terminal G16 one-shot states are supported.');
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_RESULT_INVALID',
+      'Only terminal G16 one-shot states are supported.',
+    );
   }
   if (resultState === 'INCONCLUSIVE' && fs.existsSync(G16_REPORT_PATH)) {
-    throw new HarnessInvariantError('G16_ONESHOT_REPORT_EXISTS', 'Cannot record INCONCLUSIVE while the canonical G16 report exists.');
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_REPORT_EXISTS',
+      'Cannot record INCONCLUSIVE while the canonical G16 report exists.',
+    );
   }
   const runResult = issueState(claim.runNumber);
   const epochResult = epochState(claim.prNumber);
   const current = epochResult.state.adversarial_preflight?.g16_one_shot_disposition;
   let publicKeyValid = false;
   try {
-    publicKeyValid = g16RunnerPublicKeySha256(current?.runnerReceiptPublicKey) === current?.runnerReceiptPublicKeySha256;
-  } catch { publicKeyValid = false; }
+    publicKeyValid =
+      g16RunnerPublicKeySha256(current?.runnerReceiptPublicKey) ===
+      current?.runnerReceiptPublicKeySha256;
+  } catch {
+    publicKeyValid = false;
+  }
   if (
-    !current || current.claimId !== claim.claimId || current.runNumber !== 95 ||
-    current.prNumber !== Number(claim.prNumber) || current.frontierId !== 'G16' ||
-    current.epochId !== G16_EPOCH_ID || current.sourceCandidateSha !== claim.candidateSha ||
-    current.baseSha !== claim.baseSha || current.ciSha !== claim.candidateSha || current.ciStatus !== 'SUCCESS' ||
-    current.reviewerId !== claim.reviewerId || current.bundleSha256 !== claim.bundleSha256 ||
+    !current ||
+    current.claimId !== claim.claimId ||
+    current.runNumber !== 95 ||
+    current.prNumber !== Number(claim.prNumber) ||
+    current.frontierId !== 'G16' ||
+    current.epochId !== G16_EPOCH_ID ||
+    current.sourceCandidateSha !== claim.candidateSha ||
+    current.baseSha !== claim.baseSha ||
+    current.ciSha !== claim.candidateSha ||
+    current.ciStatus !== 'SUCCESS' ||
+    current.reviewerId !== claim.reviewerId ||
+    current.bundleSha256 !== claim.bundleSha256 ||
     current.expectedArgumentsSha256 !== canonicalHash(G16_EXPECTED_QUERY_ARGUMENTS) ||
-    current.model !== G16_MODEL || current.reasoningEffort !== G16_REASONING_EFFORT ||
-    current.retryAllowed !== false || !publicKeyValid ||
+    current.model !== G16_MODEL ||
+    current.reasoningEffort !== G16_REASONING_EFFORT ||
+    current.retryAllowed !== false ||
+    !publicKeyValid ||
     current.runnerReceiptPublicKey !== claim.runnerReceiptPublicKey ||
     current.runnerReceiptPublicKeySha256 !== claim.runnerReceiptPublicKeySha256
   ) {
-    throw new HarnessInvariantError('G16_ONESHOT_CLAIM_MISMATCH', 'The durable Harness control plane has no matching G16 one-shot claim.');
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_CLAIM_MISMATCH',
+      'The durable Harness control plane has no matching G16 one-shot claim.',
+    );
   }
   if (current.state === resultState) {
     if (resultState === 'REPORT_WRITTEN') {
       const report = validateG16SanitizedReportFile(current, root, G16_REPORT_PATH);
-      if (!report.passed || report.reportPath !== G16_REPORT_RELATIVE_PATH ||
-          report.reportSha256 !== current.reportSha256 ||
-          reportSha256 !== current.reportSha256 || canonicalHash(report.report.runnerReceipt) !== canonicalHash(runnerReceipt)) {
-        throw new HarnessInvariantError('G16_ONESHOT_REPORT_INVALID', report.reason ?? 'The recorded G16 report no longer matches its claim.');
+      if (
+        !report.passed ||
+        report.reportPath !== G16_REPORT_RELATIVE_PATH ||
+        report.reportSha256 !== current.reportSha256 ||
+        reportSha256 !== current.reportSha256 ||
+        canonicalHash(report.report.runnerReceipt) !== canonicalHash(runnerReceipt)
+      ) {
+        throw new HarnessInvariantError(
+          'G16_ONESHOT_REPORT_INVALID',
+          report.reason ?? 'The recorded G16 report no longer matches its claim.',
+        );
       }
     }
     const response = {
-      state: 'G16_ONE_SHOT_RESULT_ALREADY_RECORDED', claimId: current.claimId, resultState,
+      state: 'G16_ONE_SHOT_RESULT_ALREADY_RECORDED',
+      claimId: current.claimId,
+      resultState,
       ...(resultState === 'REPORT_WRITTEN' ? { reportSha256: current.reportSha256 } : {}),
     };
     if (printOutput) print(response);
     return response;
   }
   if (current.state !== 'CLAIMED') {
-    throw new HarnessInvariantError('G16_ONESHOT_ALREADY_TERMINAL', 'A terminal G16 one-shot result cannot be replaced.');
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_ALREADY_TERMINAL',
+      'A terminal G16 one-shot result cannot be replaced.',
+    );
   }
-  if (runResult.state.active_epoch_pr !== Number(claim.prNumber) || runResult.state.pending_epoch != null) {
-    throw new HarnessInvariantError('G16_ONESHOT_CLAIM_MISMATCH', 'The G16 claim no longer belongs to the active Run Epoch.');
+  if (
+    runResult.state.active_epoch_pr !== Number(claim.prNumber) ||
+    runResult.state.pending_epoch != null
+  ) {
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_CLAIM_MISMATCH',
+      'The G16 claim no longer belongs to the active Run Epoch.',
+    );
   }
 
   let acceptedReport;
@@ -2558,41 +2800,74 @@ function commandEpochG16OneShotResult(claim, resultState, reportSha256, runnerRe
     const epoch = epochResult.state;
     const pr = epochResult.view;
     const latestReview = epoch.review_history?.at(-1);
-    const candidateCurrent = run.state === 'EPOCH_ACTIVE' && run.profile === 'AUTONOMOUS_EVOLUTION' &&
+    const candidateCurrent =
+      run.state === 'EPOCH_ACTIVE' &&
+      run.profile === 'AUTONOMOUS_EVOLUTION' &&
       run.active_epoch_pr === Number(claim.prNumber) &&
-      epoch.state === 'REVIEW_PASSED' && epoch.epoch_id === G16_EPOCH_ID && epoch.pr_number === Number(claim.prNumber) &&
+      epoch.state === 'REVIEW_PASSED' &&
+      epoch.epoch_id === G16_EPOCH_ID &&
+      epoch.pr_number === Number(claim.prNumber) &&
       epoch.advances_frontier_ids?.includes('G16') === true &&
-      epoch.scope_closure?.related_work_remaining === false && epoch.adversarial_preflight?.completed === true &&
-      epoch.base_branch === 'master' && epoch.base_sha === current.baseSha && epoch.reviewed_base_sha === current.baseSha &&
-      remoteBaseSha('master') === current.baseSha && epoch.candidate_sha === current.sourceCandidateSha &&
-      epoch.review_pass_sha === current.sourceCandidateSha && epoch.ci?.sha === current.ciSha && epoch.ci?.status === 'SUCCESS' &&
-      latestReview?.candidate_sha === current.sourceCandidateSha && latestReview.reviewed_base_sha === current.baseSha &&
-      latestReview.reviewer_id === current.reviewerId && latestReview.verdict === 'PASS' && pr.state === 'OPEN' &&
-      !pr.isDraft && pr.baseRefName === 'master' && pr.headRefName === epoch.branch &&
-      pr.headRefOid === current.sourceCandidateSha && mandatoryChecksSuccessful(pr.statusCheckRollup);
+      epoch.scope_closure?.related_work_remaining === false &&
+      epoch.adversarial_preflight?.completed === true &&
+      epoch.base_branch === 'master' &&
+      epoch.base_sha === current.baseSha &&
+      epoch.reviewed_base_sha === current.baseSha &&
+      remoteBaseSha('master') === current.baseSha &&
+      epoch.candidate_sha === current.sourceCandidateSha &&
+      epoch.review_pass_sha === current.sourceCandidateSha &&
+      epoch.ci?.sha === current.ciSha &&
+      epoch.ci?.status === 'SUCCESS' &&
+      latestReview?.candidate_sha === current.sourceCandidateSha &&
+      latestReview.reviewed_base_sha === current.baseSha &&
+      latestReview.reviewer_id === current.reviewerId &&
+      latestReview.verdict === 'PASS' &&
+      pr.state === 'OPEN' &&
+      !pr.isDraft &&
+      pr.baseRefName === 'master' &&
+      pr.headRefName === epoch.branch &&
+      pr.headRefOid === current.sourceCandidateSha &&
+      mandatoryChecksSuccessful(pr.statusCheckRollup);
     if (!candidateCurrent) {
-      throw new HarnessInvariantError('G16_ONESHOT_REPORT_STALE', 'G16 REPORT_WRITTEN requires the claimed Candidate, Base, CI, reviewer PASS, and ready PR to remain current.');
+      throw new HarnessInvariantError(
+        'G16_ONESHOT_REPORT_STALE',
+        'G16 REPORT_WRITTEN requires the claimed Candidate, Base, CI, reviewer PASS, and ready PR to remain current.',
+      );
     }
     acceptedReport = validateG16SanitizedReportFile(current, root, G16_REPORT_PATH);
-    if (!acceptedReport.passed || acceptedReport.reportPath !== G16_REPORT_RELATIVE_PATH ||
-        acceptedReport.reportSha256 !== reportSha256 ||
-        canonicalHash(acceptedReport.report.runnerReceipt) !== canonicalHash(runnerReceipt)) {
-      throw new HarnessInvariantError('G16_ONESHOT_REPORT_INVALID', acceptedReport.reason ?? 'The G16 report does not match the durable one-shot claim.');
+    if (
+      !acceptedReport.passed ||
+      acceptedReport.reportPath !== G16_REPORT_RELATIVE_PATH ||
+      acceptedReport.reportSha256 !== reportSha256 ||
+      canonicalHash(acceptedReport.report.runnerReceipt) !== canonicalHash(runnerReceipt)
+    ) {
+      throw new HarnessInvariantError(
+        'G16_ONESHOT_REPORT_INVALID',
+        acceptedReport.reason ?? 'The G16 report does not match the durable one-shot claim.',
+      );
     }
   }
 
   const nextEpoch = structuredClone(epochResult.state);
   nextEpoch.adversarial_preflight.g16_one_shot_disposition = {
-    ...current, state: resultState, reportWritten: resultState === 'REPORT_WRITTEN',
-    ...(acceptedReport ? {
-      reportPath: acceptedReport.reportPath, reportSha256: acceptedReport.reportSha256,
-      runnerReceiptSha256: canonicalHash(acceptedReport.report.runnerReceipt),
-    } : {}),
-    retryAllowed: false, finishedAt: new Date().toISOString(),
+    ...current,
+    state: resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    ...(acceptedReport
+      ? {
+          reportPath: acceptedReport.reportPath,
+          reportSha256: acceptedReport.reportSha256,
+          runnerReceiptSha256: canonicalHash(acceptedReport.report.runnerReceipt),
+        }
+      : {}),
+    retryAllowed: false,
+    finishedAt: new Date().toISOString(),
   };
   updatePr(claim.prNumber, nextEpoch);
   const response = {
-    state: 'G16_ONE_SHOT_RESULT_RECORDED', claimId: claim.claimId, resultState,
+    state: 'G16_ONE_SHOT_RESULT_RECORDED',
+    claimId: claim.claimId,
+    resultState,
     reportWritten: resultState === 'REPORT_WRITTEN',
     ...(acceptedReport ? { reportSha256: acceptedReport.reportSha256 } : {}),
   };
@@ -2602,30 +2877,53 @@ function commandEpochG16OneShotResult(claim, resultState, reportSha256, runnerRe
 
 function persistHarnessG16OneShotResult(claim, state, reportSha256, runnerReceipt) {
   let response;
-  try { response = commandEpochG16OneShotResult(claim, state, reportSha256, runnerReceipt, { printOutput: false }); }
-  catch { /* The GitHub PR update may have applied before its response was lost. */ }
-  if (
-    ['G16_ONE_SHOT_RESULT_RECORDED', 'G16_ONE_SHOT_RESULT_ALREADY_RECORDED'].includes(response?.state) &&
-    response?.claimId === claim.claimId && response.resultState === state &&
-    (state !== 'REPORT_WRITTEN' || response.reportSha256 === reportSha256)
-  ) return true;
   try {
-    const disposition = epochState(claim.prNumber).state.adversarial_preflight?.g16_one_shot_disposition;
-    if (!disposition || disposition.claimId !== claim.claimId || disposition.state !== state ||
-        disposition.retryAllowed !== false) return false;
+    response = commandEpochG16OneShotResult(claim, state, reportSha256, runnerReceipt, {
+      printOutput: false,
+    });
+  } catch {
+    /* The GitHub PR update may have applied before its response was lost. */
+  }
+  if (
+    ['G16_ONE_SHOT_RESULT_RECORDED', 'G16_ONE_SHOT_RESULT_ALREADY_RECORDED'].includes(
+      response?.state,
+    ) &&
+    response?.claimId === claim.claimId &&
+    response.resultState === state &&
+    (state !== 'REPORT_WRITTEN' || response.reportSha256 === reportSha256)
+  )
+    return true;
+  try {
+    const disposition = epochState(claim.prNumber).state.adversarial_preflight
+      ?.g16_one_shot_disposition;
+    if (
+      !disposition ||
+      disposition.claimId !== claim.claimId ||
+      disposition.state !== state ||
+      disposition.retryAllowed !== false
+    )
+      return false;
     if (state === 'INCONCLUSIVE') return !fs.existsSync(G16_REPORT_PATH);
     const report = validateG16SanitizedReportFile(disposition, root, G16_REPORT_PATH);
-    return report.passed && report.reportPath === G16_REPORT_RELATIVE_PATH &&
+    return (
+      report.passed &&
+      report.reportPath === G16_REPORT_RELATIVE_PATH &&
       report.reportSha256 === reportSha256 &&
-      canonicalHash(report.report.runnerReceipt) === canonicalHash(runnerReceipt);
-  } catch { return false; }
+      canonicalHash(report.report.runnerReceipt) === canonicalHash(runnerReceipt)
+    );
+  } catch {
+    return false;
+  }
 }
 
 function commandEpochG16OneShotRun(options) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
   if (Number(runNumber) !== 95) {
-    throw new HarnessInvariantError('G16_ONESHOT_RUN_INVALID', 'G16 one-shot runs are limited to Run 95.');
+    throw new HarnessInvariantError(
+      'G16_ONESHOT_RUN_INVALID',
+      'G16 one-shot runs are limited to Run 95.',
+    );
   }
   process.exitCode = runG16CodexAgentMcp({
     claimHarness: (gate) => commandEpochG16OneShotClaim(gate, { printOutput: false }),
@@ -2636,8 +2934,14 @@ function commandEpochG16OneShotRun(options) {
 
 function assertR01OneShotClaimReadiness(gate) {
   const {
-    runNumber, prNumber, candidateSha, baseSha, bundleSha256,
-    model, reasoningEffort, reviewerId,
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    model,
+    reasoningEffort,
+    reviewerId,
   } = gate;
   const runResult = issueState(runNumber);
   const epochResult = epochState(prNumber);
@@ -2649,26 +2953,46 @@ function assertR01OneShotClaimReadiness(gate) {
   const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round\\d+$`, 'u');
   const preflight = epoch.adversarial_preflight ?? {};
   if (
-    Number(runNumber) !== 95 || !Number.isSafeInteger(Number(prNumber)) || Number(prNumber) < 1 ||
-    !/^[0-9a-f]{40}$/u.test(candidateSha ?? '') || !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
+    Number(runNumber) !== 95 ||
+    !Number.isSafeInteger(Number(prNumber)) ||
+    Number(prNumber) < 1 ||
+    !/^[0-9a-f]{40}$/u.test(candidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
     !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
-    run.state !== 'EPOCH_ACTIVE' || run.profile !== 'AUTONOMOUS_EVOLUTION' ||
-    run.active_epoch_pr !== Number(prNumber) || run.pending_epoch != null ||
-    epoch.state !== 'REVIEW_PASSED' || epoch.epoch_id !== R01_EPOCH_ID ||
-    epoch.pr_number !== Number(prNumber) || !epoch.advances_frontier_ids?.includes('R01') ||
-    epoch.scope_closure?.related_work_remaining !== false || preflight.completed !== true ||
-    Object.hasOwn(preflight, 'r01_one_shot_disposition') || epoch.branch !== currentBranch() ||
-    currentHead() !== candidateSha || git('status', '--porcelain') !== '' ||
-    pr.state !== 'OPEN' || pr.isDraft || pr.baseRefName !== 'master' ||
-    pr.headRefName !== epoch.branch || pr.headRefOid !== candidateSha ||
-    epoch.base_branch !== 'master' || epoch.base_sha !== baseSha ||
-    epoch.reviewed_base_sha !== baseSha || currentBaseSha !== baseSha ||
-    epoch.candidate_sha !== candidateSha || epoch.review_pass_sha !== candidateSha ||
-    epoch.ci?.sha !== candidateSha || epoch.ci?.status !== 'SUCCESS' ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.epoch_id !== R01_EPOCH_ID ||
+    epoch.pr_number !== Number(prNumber) ||
+    !epoch.advances_frontier_ids?.includes('R01') ||
+    epoch.scope_closure?.related_work_remaining !== false ||
+    preflight.completed !== true ||
+    Object.hasOwn(preflight, 'r01_one_shot_disposition') ||
+    epoch.branch !== currentBranch() ||
+    currentHead() !== candidateSha ||
+    git('status', '--porcelain') !== '' ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft ||
+    pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch ||
+    pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' ||
+    epoch.base_sha !== baseSha ||
+    epoch.reviewed_base_sha !== baseSha ||
+    currentBaseSha !== baseSha ||
+    epoch.candidate_sha !== candidateSha ||
+    epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha ||
+    epoch.ci?.status !== 'SUCCESS' ||
     !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
-    model !== R01_MODEL || reasoningEffort !== R01_REASONING_EFFORT ||
-    latestReview?.candidate_sha !== candidateSha || latestReview.reviewed_base_sha !== baseSha ||
-    latestReview.verdict !== 'PASS' || latestReview.reviewer_id !== reviewerId ||
+    model !== R01_MODEL ||
+    reasoningEffort !== R01_REASONING_EFFORT ||
+    latestReview?.candidate_sha !== candidateSha ||
+    latestReview.reviewed_base_sha !== baseSha ||
+    latestReview.verdict !== 'PASS' ||
+    latestReview.reviewer_id !== reviewerId ||
     !reviewerPattern.test(reviewerId ?? '')
   ) {
     throw new HarnessInvariantError(
@@ -2683,8 +3007,14 @@ function commandEpochR01OneShotClaim(gate, { printOutput = true } = {}) {
   ensureControlPlane();
   ensureCleanWorkingTree();
   const {
-    runNumber, prNumber, candidateSha, baseSha, bundleSha256,
-    model, reasoningEffort, reviewerId,
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    model,
+    reasoningEffort,
+    reviewerId,
   } = gate;
   assertR01OneShotClaimReadiness(gate);
   const claimId = `r01-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`;
@@ -2730,7 +3060,8 @@ function commandEpochR01OneShotClaim(gate, { printOutput = true } = {}) {
         };
         updatePr(prNumber, nextEpoch);
       },
-      readClaim: () => epochState(prNumber).state.adversarial_preflight?.r01_one_shot_disposition ?? null,
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.r01_one_shot_disposition ?? null,
       verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
     });
   } catch (error) {
@@ -3162,20 +3493,40 @@ function commandEpochR01OneShotReconcile(options) {
 
 function persistHarnessR01OneShotResult(claim, state, reportSha256) {
   let response;
-  try { response = commandEpochR01OneShotResult(claim, state, reportSha256, { printOutput: false }); }
-  catch { /* The GitHub PR update may have applied before its response was lost. */ }
-  if (
-    ['R01_ONE_SHOT_RESULT_RECORDED', 'R01_ONE_SHOT_RESULT_ALREADY_RECORDED'].includes(response?.state) &&
-    response?.claimId === claim.claimId && response.resultState === state &&
-    (state !== 'REPORT_WRITTEN' || response.reportSha256 === reportSha256)
-  ) return true;
   try {
-    const disposition = epochState(claim.prNumber).state.adversarial_preflight?.r01_one_shot_disposition;
-    if (!disposition || disposition.claimId !== claim.claimId || disposition.state !== state || disposition.retryAllowed !== false) return false;
+    response = commandEpochR01OneShotResult(claim, state, reportSha256, { printOutput: false });
+  } catch {
+    /* The GitHub PR update may have applied before its response was lost. */
+  }
+  if (
+    ['R01_ONE_SHOT_RESULT_RECORDED', 'R01_ONE_SHOT_RESULT_ALREADY_RECORDED'].includes(
+      response?.state,
+    ) &&
+    response?.claimId === claim.claimId &&
+    response.resultState === state &&
+    (state !== 'REPORT_WRITTEN' || response.reportSha256 === reportSha256)
+  )
+    return true;
+  try {
+    const disposition = epochState(claim.prNumber).state.adversarial_preflight
+      ?.r01_one_shot_disposition;
+    if (
+      !disposition ||
+      disposition.claimId !== claim.claimId ||
+      disposition.state !== state ||
+      disposition.retryAllowed !== false
+    )
+      return false;
     if (state === 'INCONCLUSIVE') return !fs.existsSync(R01_REPORT_PATH);
     const report = validateR01SanitizedReportFile(disposition, root);
-    return report.passed && report.reportPath === R01_REPORT_RELATIVE_PATH && report.reportSha256 === reportSha256;
-  } catch { return false; }
+    return (
+      report.passed &&
+      report.reportPath === R01_REPORT_RELATIVE_PATH &&
+      report.reportSha256 === reportSha256
+    );
+  } catch {
+    return false;
+  }
 }
 
 function commandEpochR01OneShotRun(options) {
@@ -3338,8 +3689,7 @@ function commandEpochG06OneShotClaim(gate, { printOutput = true } = {}) {
     claimG06OneShotAtomically({
       claim,
       assertReady: () => assertG06OneShotClaimReadiness(gate),
-      acquireGlobalLatch: (value) =>
-        acquireG06OneShotGitHubLatch(gh, value.receiptPublicKey),
+      acquireGlobalLatch: (value) => acquireG06OneShotGitHubLatch(gh, value.receiptPublicKey),
       persistClaim: (value) => {
         const latest = epochState(prNumber);
         if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'g06_one_shot_disposition')) {
@@ -3451,9 +3801,7 @@ function persistG06ReconciliationMetadata(runNumber, prNumber, reconciliation) {
     ...priorReconciliation,
     ...reconciliation,
     reconciledAt:
-      priorReconciliation.reconciledAt ??
-      reconciliation.reconciledAt ??
-      new Date().toISOString(),
+      priorReconciliation.reconciledAt ?? reconciliation.reconciledAt ?? new Date().toISOString(),
   };
   if (!Object.hasOwn(reconciliation, 'observedReportSha256')) {
     delete disposition.reconciliation.observedReportSha256;
@@ -3904,6 +4252,591 @@ function commandEpochG06OneShotRun(options) {
     },
     persistResult: (claim, state, reportSha256) =>
       persistHarnessG06OneShotResult(claim, state, reportSha256),
+  });
+}
+
+function assertD07OneShotClaimReadiness(gate) {
+  const {
+    runNumber,
+    prNumber,
+    candidateSha,
+    baseSha,
+    bundleSha256,
+    reviewerId,
+    model,
+    reasoningEffort,
+  } = gate;
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = runResult.state;
+  const epoch = epochResult.state;
+  const pr = epochResult.view;
+  const latestReview = epoch.review_history?.at(-1);
+  git('fetch', '--no-tags', 'origin', 'master');
+  const currentBaseSha = remoteBaseSha('master');
+  const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round\\d+$`, 'u');
+  const preflight = epoch.adversarial_preflight ?? {};
+  if (
+    Number(runNumber) !== 95 ||
+    !Number.isSafeInteger(Number(prNumber)) ||
+    Number(prNumber) < 1 ||
+    !/^[0-9a-f]{40}$/u.test(candidateSha ?? '') ||
+    !/^[0-9a-f]{40}$/u.test(baseSha ?? '') ||
+    !/^[0-9a-f]{64}$/u.test(bundleSha256 ?? '') ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.epoch_id !== D07_EPOCH_ID ||
+    epoch.pr_number !== Number(prNumber) ||
+    !epoch.advances_frontier_ids?.includes('D07') ||
+    epoch.scope_closure?.related_work_remaining !== false ||
+    preflight.completed !== true ||
+    Object.hasOwn(preflight, 'd07_one_shot_disposition') ||
+    epoch.branch !== currentBranch() ||
+    currentHead() !== candidateSha ||
+    git('status', '--porcelain') !== '' ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft ||
+    pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch ||
+    pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' ||
+    epoch.base_sha !== baseSha ||
+    epoch.reviewed_base_sha !== baseSha ||
+    currentBaseSha !== baseSha ||
+    epoch.candidate_sha !== candidateSha ||
+    epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha ||
+    epoch.ci?.status !== 'SUCCESS' ||
+    !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    model !== D07_MODEL ||
+    reasoningEffort !== D07_REASONING_EFFORT ||
+    latestReview?.candidate_sha !== candidateSha ||
+    latestReview.reviewed_base_sha !== baseSha ||
+    latestReview.verdict !== 'PASS' ||
+    latestReview.reviewer_id !== reviewerId ||
+    !reviewerPattern.test(reviewerId ?? '')
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_CLAIM_GATE_FAILED',
+      'D07 one-shot requires the clean active exact Candidate, current Base, seven-check CI, and latest exact-identity Luna Max PASS.',
+      { runNumber, prNumber, candidateSha, baseSha },
+    );
+  }
+}
+
+function commandEpochD07OneShotClaim(options, { printOutput = true } = {}) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const gate = {
+    runNumber,
+    prNumber,
+    candidateSha: required(options, 'candidate'),
+    baseSha: required(options, 'base'),
+    claimId: required(options, 'claim-id'),
+    reviewerId: required(options, 'reviewer-id'),
+    bundleSha256: required(options, 'bundle-sha256'),
+    model: required(options, 'model'),
+    reasoningEffort: required(options, 'reasoning-effort'),
+  };
+  const expectedClaimIdPattern = new RegExp(
+    `^d07-run-95-pr-${Number(prNumber)}-${gate.candidateSha.slice(0, 12)}-[0-9a-f]{12}$`,
+    'u',
+  );
+  if (!expectedClaimIdPattern.test(gate.claimId)) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_CLAIM_INVALID',
+      'The D07 claim ID must bind the exact PR and Candidate.',
+    );
+  }
+  assertD07OneShotClaimReadiness(gate);
+  const claim = {
+    claimId: gate.claimId,
+    frontierId: 'D07',
+    epochId: D07_EPOCH_ID,
+    runNumber: Number(runNumber),
+    prNumber: Number(prNumber),
+    toolName: D07_TOOL_NAME,
+    argumentProfile: D07_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: canonicalHash(D07_QUERY_ARGUMENTS_BY_YEAR),
+    expectedCallCount: D07_EXPECTED_YEARS.length,
+    sourceCandidateSha: gate.candidateSha,
+    baseSha: gate.baseSha,
+    ciSha: gate.candidateSha,
+    ciStatus: 'SUCCESS',
+    bundleSha256: gate.bundleSha256,
+    reviewerId: gate.reviewerId,
+    model: gate.model,
+    reasoningEffort: gate.reasoningEffort,
+    state: 'CLAIMED',
+    reportWritten: false,
+    reportSha256: null,
+    retryAllowed: false,
+    runnerPid: process.pid,
+    claimedAt: new Date().toISOString(),
+  };
+  setD07RunnerProcessTitle(claim.claimId);
+  try {
+    claimD07OneShotAtomically({
+      claim,
+      assertReady: () => assertD07OneShotClaimReadiness(gate),
+      persistLocalClaim: writeD07LocalClaimJournal,
+      acquireGlobalLatch: () => acquireD07OneShotGitHubLatch(gh, claim.claimId),
+      persistClaim: (value) => {
+        const latest = epochState(prNumber);
+        if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'd07_one_shot_disposition')) {
+          throw new HarnessInvariantError(
+            'D07_ONESHOT_ALREADY_CLAIMED',
+            'A durable D07 one-shot disposition already exists; refusing to overwrite it.',
+          );
+        }
+        const next = structuredClone(latest.state);
+        next.adversarial_preflight = {
+          ...next.adversarial_preflight,
+          d07_one_shot_disposition: value,
+        };
+        next.next_action = 'D07_ONE_SHOT_CLAIMED_DO_NOT_RETRY';
+        updatePr(prNumber, next);
+      },
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.d07_one_shot_disposition ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof D07OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  if (printOutput) print({ state: 'D07_ONE_SHOT_CLAIMED', ...claim });
+  return claim;
+}
+
+function commandEpochD07OneShotResult(options, { printOutput = true } = {}) {
+  ensureControlPlane();
+  const runNumber = Number(required(options, 'run'));
+  const prNumber = Number(required(options, 'pr'));
+  const claimId = required(options, 'claim-id');
+  const resultState = required(options, 'state');
+  const reportSha256 = options['report-sha256'] ?? null;
+  if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState)) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RESULT_INVALID',
+      'Only terminal D07 results are supported.',
+    );
+  }
+  const epochResult = epochState(prNumber);
+  const current = epochResult.state.adversarial_preflight?.d07_one_shot_disposition;
+  if (
+    runNumber !== 95 ||
+    epochResult.state.epoch_id !== D07_EPOCH_ID ||
+    epochResult.state.pr_number !== prNumber ||
+    current?.claimId !== claimId ||
+    current?.retryAllowed !== false ||
+    !Object.hasOwn(current ?? {}, 'reportWritten')
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_CLAIM_MISMATCH',
+      'The active D07 PR does not contain the requested no-retry claim.',
+    );
+  }
+  if (current.state !== 'CLAIMED') {
+    if (
+      current.state === resultState &&
+      current.reportSha256 === reportSha256 &&
+      current.reportPath === (resultState === 'REPORT_WRITTEN' ? D07_REPORT_RELATIVE_PATH : null) &&
+      verifyD07OneShotGitHubLatch(gh, current.claimId) &&
+      readD07OneShotTerminalGitHubLatch(gh)?.state === resultState
+    ) {
+      const result = { state: 'D07_ONE_SHOT_RESULT_ALREADY_RECORDED', claimId, resultState };
+      if (printOutput) print(result);
+      clearD07LocalClaimJournal(claimId);
+      return result;
+    }
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_TERMINAL_IMMUTABLE',
+      'A terminal D07 result cannot be replaced.',
+    );
+  }
+  if (resultState === 'REPORT_WRITTEN') {
+    if (!/^[0-9a-f]{64}$/u.test(reportSha256 ?? '') || !fs.existsSync(D07_REPORT_PATH)) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_MISSING',
+        'REPORT_WRITTEN requires the claim-bound sanitized D07 report file and digest.',
+      );
+    }
+    const observedSha256 = createHash('sha256')
+      .update(fs.readFileSync(D07_REPORT_PATH))
+      .digest('hex');
+    if (observedSha256 !== reportSha256) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_DIGEST_MISMATCH',
+        'The D07 report bytes do not match the supplied terminal digest.',
+      );
+    }
+    let report;
+    try {
+      report = JSON.parse(fs.readFileSync(D07_REPORT_PATH, 'utf8'));
+    } catch {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_INVALID',
+        'The D07 sanitized report is not valid JSON.',
+      );
+    }
+    if (!validateD07SanitizedReport(report, current).passed) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_INVALID',
+        'The D07 sanitized report does not match its immutable one-shot claim.',
+      );
+    }
+  } else if (reportSha256 !== null || fs.existsSync(D07_REPORT_PATH)) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_INCONCLUSIVE_REPORT_PRESENT',
+      'An INCONCLUSIVE D07 result cannot retain an accepted report.',
+    );
+  }
+  let terminal;
+  try {
+    verifyD07OneShotGitHubLatch(gh, current.claimId);
+    terminal = acquireD07OneShotTerminalGitHubLatch(gh, resultState, reportSha256);
+    verifyD07OneShotGitHubLatch(gh, current.claimId);
+  } catch (error) {
+    if (error instanceof D07OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  const next = structuredClone(epochResult.state);
+  next.adversarial_preflight = {
+    ...next.adversarial_preflight,
+    d07_one_shot_disposition: {
+      ...current,
+      state: resultState,
+      reportWritten: resultState === 'REPORT_WRITTEN',
+      reportPath: resultState === 'REPORT_WRITTEN' ? D07_REPORT_RELATIVE_PATH : null,
+      reportSha256,
+      terminalLabel: terminal.state,
+      finishedAt: new Date().toISOString(),
+      retryAllowed: false,
+    },
+  };
+  next.next_action =
+    resultState === 'REPORT_WRITTEN'
+      ? 'COMMIT_D07_REPORT_AND_REFRESH_CANDIDATE'
+      : 'D07_ONE_SHOT_INCONCLUSIVE_NO_RETRY';
+  updatePr(prNumber, next);
+  clearD07LocalClaimJournal(claimId);
+  const result = { state: 'D07_ONE_SHOT_RESULT_RECORDED', claimId, resultState, reportSha256 };
+  if (printOutput) print(result);
+  return result;
+}
+
+function commandEpochD07OneShotRun(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = Number(required(options, 'run'));
+  if (runNumber !== 95) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RUN_INVALID',
+      'D07 one-shot runs are limited to Run #95.',
+    );
+  }
+  process.exitCode = runD07CodexAgentMcp({
+    readGate: () => {
+      const run = issueState(95).state;
+      const prNumber = run.active_epoch_pr;
+      if (!Number.isSafeInteger(prNumber)) {
+        throw new HarnessInvariantError(
+          'D07_ONESHOT_NO_ACTIVE_EPOCH',
+          'Run 95 has no active D07 Epoch.',
+        );
+      }
+      const result = epochState(prNumber);
+      return {
+        run: { ...run, number: 95 },
+        epoch: result.state,
+        pr: { ...result.view, number: prNumber },
+      };
+    },
+    currentBaseSha: () => remoteBaseSha('master'),
+    claimHarness: (gate) =>
+      commandEpochD07OneShotClaim(
+        {
+          run: gate.runNumber,
+          pr: gate.prNumber,
+          candidate: gate.candidateSha,
+          base: gate.baseSha,
+          'claim-id': gate.claimId,
+          'reviewer-id': gate.reviewerId,
+          'bundle-sha256': gate.bundleSha256,
+          model: gate.model,
+          'reasoning-effort': gate.reasoningEffort,
+        },
+        { printOutput: false },
+      ),
+    assertClaimStillClaimed: (claim) => {
+      git('fetch', '--no-tags', 'origin', 'master');
+      if (remoteBaseSha('master') !== claim.baseSha) return false;
+      const current = epochState(claim.prNumber).state.adversarial_preflight
+        ?.d07_one_shot_disposition;
+      if (
+        !current ||
+        current.state !== 'CLAIMED' ||
+        canonicalHash(current) !== canonicalHash(claim)
+      ) {
+        return false;
+      }
+      verifyD07OneShotGitHubLatch(gh, claim.claimId);
+      if (readD07OneShotTerminalGitHubLatch(gh)) return false;
+      return true;
+    },
+    persistResult: (claim, state, reportSha256) => {
+      const result = commandEpochD07OneShotResult(
+        {
+          run: claim.runNumber,
+          pr: claim.prNumber,
+          'claim-id': claim.claimId,
+          state,
+          ...(reportSha256 ? { 'report-sha256': reportSha256 } : {}),
+        },
+        { printOutput: false },
+      );
+      return (
+        result?.state === 'D07_ONE_SHOT_RESULT_RECORDED' ||
+        result?.state === 'D07_ONE_SHOT_RESULT_ALREADY_RECORDED'
+      );
+    },
+  });
+}
+
+function commandEpochD07OneShotReconcile(options) {
+  ensureControlPlane();
+  const runNumber = Number(required(options, 'run'));
+  const prNumber = Number(required(options, 'pr'));
+  if (runNumber !== 95) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RECONCILE_INVALID',
+      'D07 one-shot reconciliation is limited to Run #95.',
+    );
+  }
+  let epochResult = epochState(prNumber);
+  if (epochResult.state.epoch_id !== D07_EPOCH_ID || epochResult.state.pr_number !== prNumber) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RECONCILE_INVALID',
+      'The requested PR is not the Run 95 D07 Epoch.',
+    );
+  }
+
+  let disposition = epochResult.state.adversarial_preflight?.d07_one_shot_disposition;
+  let localClaim = readD07LocalClaimJournal();
+  let globalClaimLabel = readD07OneShotGitHubLatch(gh);
+  let globalLatchMissing = globalClaimLabel === null;
+
+  if (!disposition && globalLatchMissing && localClaim) {
+    if (
+      isD07RunnerProcessActive({ runnerPid: localClaim.runnerPid, claimId: localClaim.claimId })
+    ) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_RUNNER_ACTIVE',
+        'The D07 claim preflight is still active; wait before reconciling its repository latch.',
+      );
+    }
+    try {
+      acquireD07OneShotGitHubLatch(gh, localClaim.claimId);
+      globalClaimLabel = verifyD07OneShotGitHubLatch(gh, localClaim.claimId);
+      globalLatchMissing = false;
+    } catch (error) {
+      if (error instanceof D07OneShotClaimError) {
+        throw new HarnessInvariantError(error.code, error.message);
+      }
+      throw error;
+    }
+  }
+
+  if (!disposition && globalLatchMissing) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_CLAIM_MISSING',
+      'The active D07 PR has no durable or local claim to reconcile; no query may be retried.',
+    );
+  }
+
+  if (!disposition) {
+    const globalClaimId = d07OneShotClaimIdFromLabel(globalClaimLabel);
+    if (
+      !globalClaimId ||
+      !localClaim ||
+      localClaim.claimId !== globalClaimId ||
+      localClaim.runNumber !== runNumber ||
+      localClaim.prNumber !== prNumber
+    ) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_ORPHAN_LATCH',
+        'The permanent D07 latch has no matching local claim record; preserve it and never retry.',
+      );
+    }
+    if (
+      isD07RunnerProcessActive({ runnerPid: localClaim.runnerPid, claimId: localClaim.claimId })
+    ) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_RUNNER_ACTIVE',
+        'The exact claim-bound D07 runner is still active; wait for its terminal result.',
+      );
+    }
+    const next = structuredClone(epochResult.state);
+    next.adversarial_preflight = {
+      ...next.adversarial_preflight,
+      d07_one_shot_disposition: localClaim,
+    };
+    next.next_action = 'D07_ONE_SHOT_CLAIMED_DO_NOT_RETRY';
+    updatePr(prNumber, next);
+    epochResult = epochState(prNumber);
+    disposition = epochResult.state.adversarial_preflight?.d07_one_shot_disposition;
+    if (!disposition || canonicalHash(disposition) !== canonicalHash(localClaim)) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_CLAIM_READBACK_MISMATCH',
+        'The orphan D07 claim journal could not be restored to the active PR body.',
+      );
+    }
+  }
+
+  if (!disposition) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_CLAIM_MISSING',
+      'The active D07 PR has no durable claim to reconcile; no query may be retried.',
+    );
+  }
+  verifyD07OneShotGitHubLatch(gh, disposition.claimId);
+  if (localClaim) {
+    if (localClaim.claimId !== disposition.claimId) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_LOCAL_CLAIM_MISMATCH',
+        'The local D07 recovery journal does not match the durable PR claim.',
+      );
+    }
+    const originalDisposition = structuredClone(disposition);
+    if (originalDisposition.state !== 'CLAIMED') {
+      for (const key of [
+        'state',
+        'reportWritten',
+        'reportPath',
+        'reportSha256',
+        'terminalLabel',
+        'finishedAt',
+      ]) {
+        delete originalDisposition[key];
+      }
+      originalDisposition.state = 'CLAIMED';
+      originalDisposition.reportWritten = false;
+      originalDisposition.reportPath = null;
+      originalDisposition.reportSha256 = null;
+    }
+    if (canonicalHash(localClaim) !== canonicalHash(originalDisposition)) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_LOCAL_CLAIM_MISMATCH',
+        'The local D07 recovery journal does not match the durable PR claim.',
+      );
+    }
+  }
+  if (
+    disposition.state === 'CLAIMED' &&
+    isD07RunnerProcessActive({ runnerPid: disposition.runnerPid, claimId: disposition.claimId })
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RUNNER_ACTIVE',
+      'The exact claim-bound D07 runner is still active; wait for its terminal result.',
+    );
+  }
+  if (disposition.state === 'CLAIMED') {
+    fs.rmSync(d07RunnerTempDirectory(disposition.claimId), { recursive: true, force: true });
+  }
+
+  let resultState = disposition.state;
+  let reportSha256 = disposition.reportSha256 ?? null;
+  const terminal = readD07OneShotTerminalGitHubLatch(gh);
+  if (terminal) {
+    resultState = terminal.state;
+    reportSha256 = terminal.reportSha256;
+  } else if (disposition.state === 'CLAIMED') {
+    if (fs.existsSync(D07_REPORT_PATH)) {
+      const bytes = fs.readFileSync(D07_REPORT_PATH);
+      let report;
+      try {
+        report = JSON.parse(bytes.toString('utf8'));
+      } catch {
+        throw new HarnessInvariantError(
+          'D07_ONESHOT_REPORT_INVALID',
+          'A report exists but is not valid JSON; preserve it and keep the D07 latch spent.',
+        );
+      }
+      if (!validateD07SanitizedReport(report, disposition).passed) {
+        throw new HarnessInvariantError(
+          'D07_ONESHOT_REPORT_INVALID',
+          'A report exists but does not match the durable D07 claim; preserve it and keep the latch spent.',
+        );
+      }
+      reportSha256 = createHash('sha256').update(bytes).digest('hex');
+      resultState = 'REPORT_WRITTEN';
+    } else {
+      reportSha256 = null;
+      resultState = 'INCONCLUSIVE';
+    }
+  } else {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_TERMINAL_MISSING',
+      'The D07 disposition is terminal but its permanent terminal latch is missing; keep the latch spent.',
+    );
+  }
+
+  if (resultState === 'REPORT_WRITTEN') {
+    if (!fs.existsSync(D07_REPORT_PATH)) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_MISSING',
+        'The permanent D07 result claims a report that is not present locally.',
+      );
+    }
+    const bytes = fs.readFileSync(D07_REPORT_PATH);
+    const report = JSON.parse(bytes.toString('utf8'));
+    const observed = createHash('sha256').update(bytes).digest('hex');
+    if (observed !== reportSha256 || !validateD07SanitizedReport(report, disposition).passed) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_INVALID',
+        'The permanent D07 result does not match the local claim-bound sanitized report.',
+      );
+    }
+  } else if (fs.existsSync(D07_REPORT_PATH)) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_INCONCLUSIVE_REPORT_PRESENT',
+      'An inconclusive D07 result cannot accept a report file.',
+    );
+  }
+
+  const result = commandEpochD07OneShotResult(
+    {
+      run: runNumber,
+      pr: prNumber,
+      'claim-id': disposition.claimId,
+      state: resultState,
+      ...(reportSha256 ? { 'report-sha256': reportSha256 } : {}),
+    },
+    { printOutput: false },
+  );
+  if (
+    result?.state !== 'D07_ONE_SHOT_RESULT_RECORDED' &&
+    result?.state !== 'D07_ONE_SHOT_RESULT_ALREADY_RECORDED'
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RECONCILIATION_FAILED',
+      'Harness did not confirm the D07 terminal result readback.',
+    );
+  }
+  fs.rmSync(d07RunnerTempDirectory(disposition.claimId), { recursive: true, force: true });
+  print({
+    state: 'D07_ONE_SHOT_RECONCILED',
+    result: resultState,
+    claimId: disposition.claimId,
+    retryAllowed: false,
   });
 }
 
@@ -4909,6 +5842,130 @@ function completeMergedIntegration({ runNumber, prNumber, runState, epoch, merge
   });
 }
 
+function assertD07OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
+  const disposition = epoch.adversarial_preflight?.d07_one_shot_disposition;
+  const latestReview = epoch.review_history?.at(-1);
+  const terminalState = disposition?.state;
+  const reportWritten = terminalState === 'REPORT_WRITTEN';
+  const claimReview = epoch.review_history?.find(
+    (review) =>
+      review?.candidate_sha === disposition?.sourceCandidateSha &&
+      review?.reviewed_base_sha === disposition?.baseSha &&
+      review?.verdict === 'PASS' &&
+      review?.reviewer_id === disposition?.reviewerId,
+  );
+  if (
+    epoch.epoch_id !== D07_EPOCH_ID ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.pr_number !== Number(prNumber) ||
+    !disposition ||
+    disposition.runNumber !== Number(runNumber) ||
+    disposition.prNumber !== Number(prNumber) ||
+    disposition.epochId !== D07_EPOCH_ID ||
+    disposition.frontierId !== 'D07' ||
+    disposition.toolName !== D07_TOOL_NAME ||
+    disposition.argumentProfile !== D07_ARGUMENT_PROFILE ||
+    disposition.expectedArgumentsSha256 !== canonicalHash(D07_QUERY_ARGUMENTS_BY_YEAR) ||
+    disposition.expectedCallCount !== D07_EXPECTED_YEARS.length ||
+    !/^[0-9a-f]{40}$/u.test(disposition.sourceCandidateSha ?? '') ||
+    disposition.baseSha !== epoch.base_sha ||
+    disposition.ciSha !== disposition.sourceCandidateSha ||
+    disposition.ciStatus !== 'SUCCESS' ||
+    disposition.retryAllowed !== false ||
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(terminalState) ||
+    disposition.reportWritten !== reportWritten ||
+    disposition.reportPath !== (reportWritten ? D07_REPORT_RELATIVE_PATH : null) ||
+    disposition.terminalLabel !== terminalState ||
+    typeof disposition.finishedAt !== 'string' ||
+    !claimReview ||
+    disposition.model !== D07_MODEL ||
+    disposition.reasoningEffort !== D07_REASONING_EFFORT ||
+    latestReview?.candidate_sha !== epoch.candidate_sha ||
+    latestReview?.reviewed_base_sha !== epoch.base_sha ||
+    latestReview?.verdict !== 'PASS' ||
+    epoch.review_pass_sha !== epoch.candidate_sha
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RECONCILIATION_REQUIRED',
+      'A D07 Epoch cannot merge without the exact no-retry claim and terminal result.',
+    );
+  }
+  try {
+    git('merge-base', '--is-ancestor', disposition.sourceCandidateSha, epoch.candidate_sha);
+    verifyD07OneShotGitHubLatch(gh, disposition.claimId);
+  } catch {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RECONCILIATION_REQUIRED',
+      'The original D07 claim or Candidate ancestry is not verified.',
+    );
+  }
+  let terminal;
+  try {
+    terminal = readD07OneShotTerminalGitHubLatch(gh);
+  } catch (error) {
+    if (error instanceof D07OneShotClaimError)
+      throw new HarnessInvariantError(error.code, error.message);
+    throw error;
+  }
+  if (
+    terminal?.state !== terminalState ||
+    terminal.reportSha256 !== (disposition.reportSha256 ?? null)
+  ) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_RECONCILIATION_REQUIRED',
+      'The permanent D07 terminal latch does not match the Epoch disposition.',
+    );
+  }
+  if (reportWritten) {
+    if (
+      !/^[0-9a-f]{64}$/u.test(disposition.reportSha256 ?? '') ||
+      !fs.existsSync(D07_REPORT_PATH)
+    ) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_MISSING',
+        'A D07 REPORT_WRITTEN disposition requires the sanitized report in the Candidate.',
+      );
+    }
+    const reportBytes = fs.readFileSync(D07_REPORT_PATH);
+    const observedSha256 = createHash('sha256').update(reportBytes).digest('hex');
+    if (observedSha256 !== disposition.reportSha256) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_DIGEST_MISMATCH',
+        'The D07 report bytes do not match the terminal disposition digest.',
+      );
+    }
+    let report;
+    try {
+      report = JSON.parse(reportBytes.toString('utf8'));
+    } catch {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_INVALID',
+        'The D07 report is not valid JSON.',
+      );
+    }
+    if (!validateD07SanitizedReport(report, disposition).passed) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_REPORT_INVALID',
+        'The D07 report does not match its exact claim.',
+      );
+    }
+    if (
+      frontierContext().ledger.records.find((record) => record.id === 'D07')?.status !== 'PARTIAL'
+    ) {
+      throw new HarnessInvariantError(
+        'D07_ONESHOT_FRONTIER_NOT_ADVANCED',
+        'A valid D07 report must be committed with its bounded PARTIAL frontier evidence.',
+      );
+    }
+  } else if (fs.existsSync(D07_REPORT_PATH)) {
+    throw new HarnessInvariantError(
+      'D07_ONESHOT_INCONCLUSIVE_REPORT_PRESENT',
+      'An INCONCLUSIVE D07 result cannot merge with a D07 report file.',
+    );
+  }
+  return reportWritten;
+}
+
 function assertG06OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
   const disposition = epoch.adversarial_preflight?.g06_one_shot_disposition;
   const reconciliation = disposition?.reconciliation;
@@ -5007,7 +6064,10 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
       'The Run Issue does not identify this PR as its active Epoch',
     );
   }
-  if (epoch.epoch_id === G06_EPOCH_ID) {
+  if (epoch.epoch_id === D07_EPOCH_ID) {
+    assertD07OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
+    ensureCleanWorkingTree();
+  } else if (epoch.epoch_id === G06_EPOCH_ID) {
     const reportValidated = assertG06OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureG06MergeWorkingTree(reportValidated);
   } else ensureCleanWorkingTree();
@@ -5335,6 +6395,10 @@ const commands = {
   'epoch:r01-one-shot-reconcile': commandEpochR01OneShotReconcile,
   'epoch:g06-one-shot-run': commandEpochG06OneShotRun,
   'epoch:g06-one-shot-reconcile': commandEpochG06OneShotReconcile,
+  'epoch:d07-one-shot-claim': commandEpochD07OneShotClaim,
+  'epoch:d07-one-shot-result': commandEpochD07OneShotResult,
+  'epoch:d07-one-shot-run': commandEpochD07OneShotRun,
+  'epoch:d07-one-shot-reconcile': commandEpochD07OneShotReconcile,
   'epoch:p01-one-shot-run': commandEpochP01OneShotRun,
   'epoch:p01-one-shot-result': commandEpochP01OneShotResult,
   'frontier:review-reserve': commandFrontierReviewReserve,

@@ -615,6 +615,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_A01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_A01_AGGREGATE_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G26_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_D07_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S02_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
@@ -2248,6 +2249,142 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             },
         }
 
+    def _d07_report_fixture(self, source_revision=None):
+        catalog_bytes = self.catalog_path.read_bytes()
+        tool = next(item for item in self.catalog if item['name'] == 'bangumi.query_subjects')
+        revision = source_revision or self.source_revision
+        base_sha = self.stale_candidate_source_revision
+        years = list(GENERATOR.CODEX_D07_EXPECTED_YEARS)
+        summaries = [
+            {
+                'year': year,
+                'subjectId': 10000 + year,
+                'rank': index + 1,
+                'titleSha256': hashlib.sha256(f'Anime {year}'.encode('utf-8')).hexdigest(),
+            }
+            for index, year in enumerate(years)
+        ]
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_d07_current_rank_agent_mcp',
+            'runNumber': 95,
+            'scenarioId': 'D07',
+            'profile': 'run95-d07-current-rank-by-release-year-agent-mcp-v1',
+            'frontierId': 'D07',
+            'epochId': GENERATOR.CODEX_D07_EPOCH_ID,
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'prNumber': 158,
+            'claimId': f"d07-run-95-pr-158-{revision[:12]}-cccccccccccc",
+            'reviewerId': 'gpt-6-luna-max-run95-pr158-round1',
+            'mcpBundleSha256': GENERATOR.codex_g26_candidate_bundle_sha256(revision),
+            'observedAt': '2026-10-13T12:30:00.000Z',
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '0.162.0-alpha.17.2',
+            'toolName': 'bangumi.query_subjects',
+            'argumentProfile': GENERATOR.CODEX_D07_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_D07_ARGUMENTS_BY_YEAR,
+            ),
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'serverToolNames': ['bangumi.query_subjects'],
+            'serverToolCount': 1,
+            'mcpServerNames': ['bgk_d07_one_tool'],
+            'expectedCallCount': len(years),
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'eventStreamComplete': True,
+            'turnCompleted': True,
+            'codexMcpToolEventCount': len(years),
+            'codexErrorItemCount': 0,
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': len(years),
+            'deniedCallCount': 0,
+            'resultStatus': 'SUCCESS',
+            'answerCheckMethod': GENERATOR.CODEX_D07_ANSWER_CHECK_METHOD,
+            'answerChecks': {key: True for key in GENERATOR.CODEX_D07_ANSWER_CHECK_FIELDS},
+            'resultCounters': {
+                'expectedYears': len(years),
+                'observedCalls': len(years),
+                'yearsWithOneObservedRank': len(years),
+                'rankMinimum': 1,
+                'rankMaximum': len(years),
+            },
+            'resultSummaries': summaries,
+            'retrievedAt': {
+                'first': '2026-10-13T12:00:00.000Z',
+                'last': '2026-10-13T12:09:00.000Z',
+            },
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawResultStored': False,
+                'credentialsStored': False,
+            },
+            'rawAnswerPersisted': False,
+            'rawToolResultPersisted': False,
+        }
+
+    def _d07_harness_status_fixture(self, report, report_bytes):
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'D07',
+            'epochId': GENERATOR.CODEX_D07_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'toolName': 'bangumi.query_subjects',
+            'argumentProfile': GENERATOR.CODEX_D07_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'expectedCallCount': len(GENERATOR.CODEX_D07_EXPECTED_YEARS),
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'bundleSha256': report['mcpBundleSha256'],
+            'reviewerId': report['reviewerId'],
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_D07_REPORT_RELATIVE_PATH,
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+            'terminalLabel': 'REPORT_WRITTEN',
+            'retryAllowed': False,
+        }
+        return {
+            'run': {
+                'number': 95,
+                'state': {'profile': 'AUTONOMOUS_EVOLUTION', 'active_epoch_pr': report['prNumber']},
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_D07_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'review_history': [{
+                        'candidate_sha': report['sourceRevision'],
+                        'reviewed_base_sha': report['baseSha'],
+                        'reviewer_id': report['reviewerId'],
+                        'verdict': 'PASS',
+                    }],
+                    'adversarial_preflight': {'d07_one_shot_disposition': disposition},
+                },
+            },
+        }
+
     def _s02_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
@@ -3611,6 +3748,17 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             }],
         }), encoding='utf-8')
 
+    def _write_d07_frontier(self, status, source_refs=None):
+        frontier_path = self.root / 'docs/product/frontier-ledger.json'
+        frontier_path.parent.mkdir(parents=True, exist_ok=True)
+        frontier_path.write_text(json.dumps({
+            'records': [{
+                'id': 'D07',
+                'status': status,
+                'source_refs': source_refs or ['docs/research/user-scenario-catalog.md'],
+            }],
+        }), encoding='utf-8')
+
     def test_g26_frontier_stays_unassessed_without_a_live_report(self):
         self._write_g26_frontier('UNASSESSED')
         self.assertTrue(GENERATOR.validate_g26_frontier_evidence())
@@ -4711,6 +4859,85 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         counters['rowsMatched'] = 1
 
         self.assertFalse(GENERATOR.codex_g26_report_is_valid(report))
+
+    def test_d07_frontier_stays_unassessed_until_the_claim_bound_report_is_accepted(self):
+        self._write_d07_frontier('UNASSESSED')
+        self.assertTrue(GENERATOR.validate_d07_frontier_evidence())
+        self.assertFalse(GENERATOR.codex_d07_report_is_valid({}))
+
+    def test_accepts_only_exact_candidate_bound_d07_report_and_terminal_harness_claim(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_D07_REPORT_RELATIVE_PATH).name
+        report = self._d07_report_fixture()
+        report_text = json.dumps(report, ensure_ascii=False, indent=2) + '\n'
+        report_bytes = report_text.encode('utf-8')
+        report_path.write_bytes(report_bytes)
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        harness_status = self._d07_harness_status_fixture(report, report_bytes)
+        self._write_d07_frontier('PARTIAL', [
+            'docs/research/user-scenario-catalog.md',
+            GENERATOR.CODEX_D07_REPORT_RELATIVE_PATH,
+        ])
+
+        self.assertTrue(GENERATOR.codex_d07_probe_revision_has_implementation(self.source_revision))
+        self.assertTrue(GENERATOR.codex_d07_report_is_valid(report, harness_status, report_sha256))
+        self.assertTrue(
+            GENERATOR.codex_d07_harness_disposition_matches_report(
+                report, harness_status, report_sha256,
+            ),
+        )
+        self.assertTrue(
+            GENERATOR.codex_d07_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        with patch.object(
+            GENERATOR, 'codex_d07_harness_status', return_value=harness_status,
+        ):
+            self.assertTrue(GENERATOR.validate_d07_frontier_evidence())
+
+        self._git('add', GENERATOR.CODEX_D07_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized D07 evidence after its candidate')
+        self.assertTrue(
+            GENERATOR.codex_d07_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ),
+        )
+        with patch.object(
+            GENERATOR, 'codex_d07_harness_status', return_value=harness_status,
+        ):
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.query_subjects'],
+                {GENERATOR.CODEX_D07_REPORT_RELATIVE_PATH},
+            )
+
+        self.assertNotIn('answer', report)
+        self.assertNotIn('toolCalls', report)
+        self.assertNotIn('Example anime', report_text)
+
+    def test_d07_report_rejects_raw_fields_wrong_years_and_wrong_terminal_digest(self):
+        report = self._d07_report_fixture()
+        invalid_reports = [
+            {**report, 'answer': 'raw output'},
+            {**report, 'resultSummaries': report['resultSummaries'][:-1]},
+            {**report, 'model': 'gpt-6-sol'},
+            {
+                **report,
+                'answerChecks': {**report['answerChecks'], 'historicalRankNotClaimed': False},
+            },
+        ]
+        for invalid in invalid_reports:
+            with self.subTest(keys=set(invalid)):
+                self.assertFalse(GENERATOR.codex_d07_report_is_valid(invalid))
+
+        report_bytes = json.dumps(report).encode('utf-8')
+        status = self._d07_harness_status_fixture(report, report_bytes)
+        self.assertIsNone(
+            GENERATOR.codex_d07_harness_disposition_matches_report(
+                report, status, '0' * 64,
+            ),
+        )
+        self._write_d07_frontier('PARTIAL')
+        self.assertFalse(GENERATOR.validate_d07_frontier_evidence())
 
     def test_g26_candidate_validation_ignores_caller_git_repository_overrides(self):
         expected = GENERATOR.codex_g26_candidate_bundle_sha256(self.source_revision)

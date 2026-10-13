@@ -42,6 +42,16 @@ import {
 } from '../../scripts/acceptance/g06-runner-receipt.mjs';
 import { G04_EXPECTED_QUERY_ARGUMENTS } from '../../scripts/acceptance/g04-person-activity-answer-check.mjs';
 import {
+  D07_EXPECTED_YEARS,
+  D07_QUERY_ARGUMENTS_BY_YEAR,
+} from '../../scripts/acceptance/d07-current-rank-answer-check.mjs';
+import {
+  d07OneShotLatchLabelDescription,
+  d07OneShotLatchLabelName,
+  d07OneShotTerminalLabelName,
+} from '../../scripts/lib/d07-one-shot-claim.mjs';
+import { d07RunnerProcessTitle } from '../../scripts/lib/d07-runner-liveness.mjs';
+import {
   generateG04RunnerReceiptKeyPair,
   g04RunnerPublicKeySha256,
 } from '../../scripts/acceptance/g04-runner-receipt.mjs';
@@ -71,6 +81,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(root, 'scripts/agent-harness.mjs');
 const mockBin = path.join(root, 'tests/harness/mock-harness-bin.mjs');
 const sha = (digit) => digit.repeat(40);
+const D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year';
 const mandatoryChecks = [
   'harness-control',
   'sqlite-default',
@@ -1712,6 +1723,240 @@ function g06HarnessEnvironment(run, epoch, overrides = {}) {
     ...overrides,
   });
 }
+
+function run95D07ClaimFixture({ runnerPid = 999999 } = {}) {
+  const { run, epoch } = passedCandidateFixture();
+  const candidateSha = sha('b');
+  const baseSha = sha('a');
+  const reviewerId = 'gpt-6-luna-max-run95-pr158-round1';
+  const claimId = `d07-run-95-pr-158-${candidateSha.slice(0, 12)}-${'c'.repeat(12)}`;
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 158;
+  run.pending_epoch = null;
+  epoch.epoch_id = D07_EPOCH_ID;
+  epoch.pr_number = 158;
+  epoch.branch = 'codex/epoch-run95-d07-current-rank-by-release-year';
+  epoch.base_branch = 'master';
+  epoch.base_sha = baseSha;
+  epoch.candidate_sha = candidateSha;
+  epoch.reviewed_base_sha = baseSha;
+  epoch.review_pass_sha = candidateSha;
+  epoch.state = 'REVIEW_PASSED';
+  epoch.advances_frontier_ids = ['D07'];
+  epoch.ci = { sha: candidateSha, status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The bounded D07 call is controlled by a permanent one-shot latch.',
+    why_not_extend_further: 'Historical rank snapshots remain outside the current-source contract.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'The exact D07 call order, claim and privacy constraints were reviewed.',
+    d07_one_shot_disposition: {
+      claimId,
+      frontierId: 'D07',
+      epochId: D07_EPOCH_ID,
+      runNumber: 95,
+      prNumber: 158,
+      toolName: 'bangumi.query_subjects',
+      argumentProfile: 'fixed-d07-current-rank-by-source-year-2016-2025-v1',
+      expectedArgumentsSha256: canonicalHash(D07_QUERY_ARGUMENTS_BY_YEAR),
+      expectedCallCount: D07_EXPECTED_YEARS.length,
+      sourceCandidateSha: candidateSha,
+      baseSha,
+      ciSha: candidateSha,
+      ciStatus: 'SUCCESS',
+      bundleSha256: 'c'.repeat(64),
+      reviewerId,
+      model: 'gpt-6-luna',
+      reasoningEffort: 'max',
+      state: 'CLAIMED',
+      reportWritten: false,
+      reportSha256: null,
+      retryAllowed: false,
+      runnerPid,
+      claimedAt: '2026-10-13T12:00:00.000Z',
+    },
+  };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: reviewerId,
+      candidate_sha: candidateSha,
+      reviewed_base_sha: baseSha,
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  return { run, epoch, claimId };
+}
+
+function d07HarnessEnvironment(run, epoch, overrides = {}) {
+  const { d07ClaimId, ...stateOverrides } = overrides;
+  const labelName = d07OneShotLatchLabelName();
+  return createMockEnvironment({
+    runIssueNumber: 95,
+    runIssueTitle: 'Run 95 D07 reconciliation fixture',
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch: epoch.branch,
+    featureBranch: epoch.branch,
+    featureHeadSha: epoch.candidate_sha,
+    baseSha: epoch.base_sha,
+    draft: false,
+    repositoryLabels: {
+      [labelName]: {
+        name: labelName,
+        color: 'b60205',
+        description: d07OneShotLatchLabelDescription(
+          d07ClaimId ?? epoch.adversarial_preflight.d07_one_shot_disposition.claimId,
+        ),
+      },
+    },
+    ...stateOverrides,
+  });
+}
+
+function writeD07LocalClaimJournal(environment, claim) {
+  fs.writeFileSync(
+    path.join(environment.directory, 'd07-run95-one-shot-claim.json'),
+    `${JSON.stringify(claim, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+}
+
+test('CLI reconciles an abandoned D07 claim to terminal INCONCLUSIVE without retrying', () => {
+  const { run, epoch, claimId } = run95D07ClaimFixture();
+  const environment = d07HarnessEnvironment(run, epoch, { d07ClaimId: claimId });
+  try {
+    const result = environment.execute([
+      'epoch:d07-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '158',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /D07_ONE_SHOT_RECONCILED/u);
+    const state = environment.readState();
+    const stored = parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight
+      .d07_one_shot_disposition;
+    assert.equal(stored.claimId, claimId);
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.reportWritten, false);
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(stored.terminalLabel, 'INCONCLUSIVE');
+    assert.equal(
+      state.repositoryLabels[d07OneShotTerminalLabelName()].description,
+      'D07-INCONCLUSIVE:report=none',
+    );
+    assert.equal(
+      state.calls.some((call) => call.tool === 'codex'),
+      false,
+      'reconciliation must never invoke Codex or the MCP query',
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI refuses to reconcile a D07 claim while its claim-specific runner is active', () => {
+  const { run, epoch } = run95D07ClaimFixture({ runnerPid: process.pid });
+  const environment = d07HarnessEnvironment(run, epoch);
+  const originalTitle = process.title;
+  try {
+    process.title = d07RunnerProcessTitle(
+      epoch.adversarial_preflight.d07_one_shot_disposition.claimId,
+    );
+    const result = environment.execute([
+      'epoch:d07-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '158',
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^D07_ONESHOT_RUNNER_ACTIVE:/u);
+    assert.equal(
+      Object.hasOwn(environment.readState().repositoryLabels, d07OneShotTerminalLabelName()),
+      false,
+    );
+  } finally {
+    process.title = originalTitle;
+    environment.cleanup();
+  }
+});
+
+test('CLI restores an orphan D07 global latch from its matching local claim journal', () => {
+  const { run, epoch, claimId } = run95D07ClaimFixture();
+  const claim = epoch.adversarial_preflight.d07_one_shot_disposition;
+  delete epoch.adversarial_preflight.d07_one_shot_disposition;
+  const environment = d07HarnessEnvironment(run, epoch, { d07ClaimId: claimId });
+  writeD07LocalClaimJournal(environment, claim);
+  try {
+    const result = environment.execute([
+      'epoch:d07-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '158',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /D07_ONE_SHOT_RECONCILED/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.d07_one_shot_disposition;
+    assert.equal(stored.claimId, claimId);
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(
+      fs.existsSync(path.join(environment.directory, 'd07-run95-one-shot-claim.json')),
+      false,
+    );
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI terminalizes an uncertain local D07 claim without ever authorizing a retry', () => {
+  const { run, epoch, claimId } = run95D07ClaimFixture();
+  const claim = epoch.adversarial_preflight.d07_one_shot_disposition;
+  delete epoch.adversarial_preflight.d07_one_shot_disposition;
+  const environment = d07HarnessEnvironment(run, epoch, {
+    repositoryLabels: {},
+    d07ClaimId: claimId,
+  });
+  writeD07LocalClaimJournal(environment, claim);
+  try {
+    const result = environment.execute([
+      'epoch:d07-one-shot-reconcile',
+      '--run',
+      '95',
+      '--pr',
+      '158',
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /D07_ONE_SHOT_RECONCILED/u);
+    assert.equal(
+      fs.existsSync(path.join(environment.directory, 'd07-run95-one-shot-claim.json')),
+      false,
+    );
+    assert.equal(
+      environment.readState().repositoryLabels[d07OneShotLatchLabelName()].description,
+      d07OneShotLatchLabelDescription(claimId),
+    );
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER)
+      .adversarial_preflight.d07_one_shot_disposition;
+    assert.equal(stored.state, 'INCONCLUSIVE');
+    assert.equal(stored.retryAllowed, false);
+    assert.equal(
+      environment.readState().calls.some((call) => call.tool === 'codex'),
+      false,
+    );
+    assert.equal(claimId, claim.claimId);
+  } finally {
+    environment.cleanup();
+  }
+});
 
 test('CLI reconciles a durable CLAIMED R01 attempt without invoking Codex or authorizing retry', () => {
   const { run, epoch } = run95R01ClaimFixture();
