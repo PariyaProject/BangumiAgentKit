@@ -444,9 +444,13 @@
         "packages/tools/src/definitions/read-tools.ts",
         "tests/render/subject-overview.test.ts",
         "tests/semantic/subject-overview.test.ts",
-        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "scripts/acceptance/run-g06-codex-agent-mcp.mjs",
+        "scripts/acceptance/write-g06-agent-mcp-report.mjs",
+        "scripts/lib/g06-one-shot-claim.mjs",
+        "tests/unit/g06-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The bounded get_subject_cast MCP text projection preserves returned character/actor identities, raw relation labels, source coverage and omission counts within 3600 UTF-8 bytes; the 100-row adversarial fixture was 398109 bytes before compaction and its full structuredContent remains equality-wise unchanged. One exact Candidate A public Agent call used subjectId=218707/limit=100, completed only get_subject_cast, returned 7 rows with 4 visible and 3 omitted from 1373-byte text, and passed the exact visible row-pair and scope-disclosure checks. The Antigravity event stream does not expose a separate structuredContent field, so do not claim live full-object readback; the integration equality assertion covers preservation. Keep PARTIAL because one response does not establish exhaustive cast coverage or a universal main/support taxonomy; QQ/TIM remains separate.",
+      "next_action": "Run 95 has a candidate-bound Luna Max read-only runner and permanent no-retry claim/result/reconciliation path. First complete exact Candidate CI and Harness review for PR #148. Only after same-identity PASS may the runner make its one fixed Agent/MCP read; run the existing exact single-tool public probe separately after its own gate. Keep those evidence cells separate and keep G06 PARTIAL until an accepted report is committed with its exact source Candidate and fresh gates. No G06 claim/query/probe has been made.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -458,7 +462,11 @@
           "tests/render/subject-cast-g06.test.ts",
           "tests/integration/live-subject-credit.acceptance.test.ts",
           "tests/render/subject-credit-mobile-layout.test.ts",
-          "tests/integration/tool-catalog-completeness.test.ts"
+          "tests/integration/tool-catalog-completeness.test.ts",
+          "tests/unit/g06-codex-agent-mcp-runner.test.ts",
+          "tests/unit/g06-subject-cast-agent-mcp.test.ts",
+          "tests/harness/g06-one-shot-claim.test.mjs",
+          "tests/harness/agent-harness-cli.test.mjs"
         ],
         "implementation": [
           "apps/mcp/src/result-presenter.ts",
@@ -466,7 +474,12 @@
           "packages/bangumi-core/src/services/character-service.ts",
           "packages/bangumi-core/src/workflows/subject-cast.ts",
           "packages/renderer/src/view-model-builders/index.ts",
-          "packages/renderer/src/templates/CastCard.tsx"
+          "packages/renderer/src/templates/CastCard.tsx",
+          "scripts/acceptance/run-g06-codex-agent-mcp.mjs",
+          "scripts/acceptance/write-g06-agent-mcp-report.mjs",
+          "scripts/lib/g06-one-shot-claim.mjs",
+          "scripts/agent-harness.mjs",
+          "scripts/generate-tool-acceptance-tasks.py"
         ],
         "live_probe": "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
         "current_agent_canary_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
@@ -484,11 +497,11 @@
           ],
           "answer_check_method": "row-separated-exact-character-actor-pairs-v1",
           "answer_report_pending": false,
-          "current_candidate_answer_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
-          "current_candidate_answer_report_sha": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
+          "historical_run89_answer_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
+          "historical_run89_answer_report_sha": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
           "current_candidate_catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e"
         },
-        "current_candidate_agent_canary": {
+        "historical_run89_agent_canary": {
           "tool": "bangumi.get_subject_cast",
           "completed_tool_calls": 1,
           "subject_id": 218707,
@@ -539,6 +552,19 @@
           "result": "PASS 1 file / 1 opt-in test; official v0 through public ToolRegistry; 7 cast/actor links; 100 staff rows / 22 raw roles; overview partial with 24 staff rows in 6 groups and 9 relations; 720x5228 renderer Artifact visually inspected.",
           "user_clients_tested": false,
           "oauth_or_account_data_used": false
+        },
+        "run95_implementation_setup": {
+          "runNumber": 95,
+          "prNumber": 148,
+          "implementationCommit": "58ab652bd0f3c992538e2f0aa6dcc190b9782d79",
+          "baseSha": "d4a63ad36e2c71e71fc1b0589441989aacf3f5f1",
+          "implementationCiRun": 38340199889,
+          "implementationCiResult": "7/7 PASS on the initial implementation commit; frontier-record update requires a new exact Candidate CI run.",
+          "agentMcpQueryAttempted": false,
+          "directPublicProbeAttempted": false,
+          "reportWritten": false,
+          "retryAllowed": false,
+          "currentAcceptanceCredit": "none until a sanitized current-source report is accepted"
         }
       }
     },
