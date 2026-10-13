@@ -3476,13 +3476,22 @@
       "kind": "source_frontier",
       "user_question": "Can one allowlisted public community source safely support a narrow structured claim?",
       "lane": "recorded_product_opportunities",
-      "status": "RESEARCH_READY",
+      "status": "CLOSED_NO_SAFE_SOURCE",
       "source_refs": [
         "docs/agent/PRODUCT_CHARTER.md#pre-authorized-read-only-frontiers",
-        "docs/research/autonomous-frontier-audit-2026-08-24.md"
+        "docs/research/autonomous-frontier-audit-2026-08-24.md",
+        "docs/research/run95-community-public-source-contract-2026-10-13.md"
       ],
-      "next_action": "Research one capability-specific allowlisted source contract including attribution, limits, isolation, and closure evidence.",
-      "reopen_when": "Terms, robots evidence, source structure, risk, or the supported user question changes.",
+      "next_action": "No current public structured community source is allowlisted for Run #95. Reopen only after an official public discussion API contract appears or a separate current terms/robots, attribution, retention, and coverage review approves a specific public HTML source.",
+      "reopen_when": "An official public API documents subject-linked topic/reply events, or a separate current terms/robots and coverage review approves a specific public HTML source.",
+      "research_closure": {
+        "completed_at": "2026-10-13T11:40:32Z",
+        "evidence_refs": [
+          "docs/research/run95-community-public-source-contract-2026-10-13.md"
+        ],
+        "conclusion": "The official public v0 OpenAPI has no subject-topic/reply/discussion route; search heat is collection count; /p1 is private frontend API. Earlier HTML candidates are not allowlisted because this Run did not perform a current terms/robots and coverage review. No runtime request or content collection occurred."
+      },
+      "closure_reason": "Closed for the current evidence set: no supported public structured discussion source is documented, private /p1 is out of scope, and the explored HTML candidates do not have a current explicit allowlist or terms/robots/coverage review. This does not declare HTML universally unusable.",
       "related_ids": ["OP-003"]
     },
     {
