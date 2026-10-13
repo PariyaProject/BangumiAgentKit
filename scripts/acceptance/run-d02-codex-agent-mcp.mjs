@@ -26,6 +26,7 @@ import {
   readG26McpBundleAttestation,
   sanitizeGitRepositoryEnvironment,
 } from '../lib/g26-mcp-bundle.mjs';
+import { createD02ChildEnvironment } from '../lib/d02-environment.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const TOOL_NAME = 'bangumi.search_subjects';
@@ -129,15 +130,8 @@ export function buildCodexExecArgs({ root = ROOT, nodePath, summaryPath, sourceR
   ];
 }
 
-function sanitizedEnvironment(source = process.env) {
-  const environment = { ...source };
-  for (const key of Object.keys(environment)) {
-    if (
-      key === 'PARIYA_D02_RUN95_CLAIM_FILE' ||
-      /(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY|BASE[_-]?URL|MODEL[_-]?CATALOG|MODEL[_-]?PROVIDER|CODEX_PROFILE|CODEX_MODEL|CODEX_PROVIDER|ANTHROPIC|GEMINI|GOOGLE|VERTEX|AZURE|MISTRAL|OLLAMA|LMSTUDIO)/iu.test(key)
-    ) delete environment[key];
-  }
-  return sanitizeGitRepositoryEnvironment(environment);
+export function sanitizedEnvironment(source = process.env) {
+  return createD02ChildEnvironment(source);
 }
 
 function gitText(args) {

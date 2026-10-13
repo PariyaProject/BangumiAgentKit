@@ -17,7 +17,12 @@ import { presentMcpToolResult } from './dist/result-presenter.js';
 import { authorizeToolCall, canonicalJson, claimSingleToolCall } from '../../scripts/lib/codex-one-tool-evidence.mjs';
 import { checkD02AnonymousSourceRequest } from '../../scripts/lib/d02-source-fence.mjs';
 import { projectD02SearchResult } from '../../scripts/acceptance/d02-public-search-answer-check.mjs';
-import { computeMcpBundleSha256, gitRepositoryText, readG26McpBundleAttestation } from '../../scripts/lib/g26-mcp-bundle.mjs';
+import {
+  computeMcpBundleSha256,
+  gitRepositoryText,
+  readG26McpBundleAttestation,
+} from '../../scripts/lib/g26-mcp-bundle.mjs';
+import { restrictD02ProcessEnvironment } from '../../scripts/lib/d02-environment.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const TOOL_NAME = 'bangumi.search_subjects';
@@ -118,8 +123,9 @@ function createAnonymousFetch() {
 
 async function main() {
   const config = parseArgs(process.argv.slice(2));
-  for (const key of Object.keys(process.env)) {
-    if (/(?:BANGUMI|BGM_|OAUTH|TOKEN|SECRET|CREDENTIAL|API[_-]?KEY)/iu.test(key)) delete process.env[key];
+  const credentialEnvironmentCleared = restrictD02ProcessEnvironment(process.env);
+  if (!credentialEnvironmentCleared) {
+    throw new Error('D02 MCP server could not verify its allowlisted environment.');
   }
   const identity = catalogIdentity();
   const sourceSha = gitRepositoryText(ROOT, ['rev-parse', 'HEAD']);
@@ -159,7 +165,7 @@ async function main() {
     serverId: 'bgk_d02_one_tool',
     serverProfile: SERVER_PROFILE,
     authMode: 'anonymous-optional-read',
-    credentialEnvironmentCleared: true,
+    credentialEnvironmentCleared,
     bearerTokenInjected: false,
     sourceRevision: sourceSha,
     bundleSha256: bundleSha,

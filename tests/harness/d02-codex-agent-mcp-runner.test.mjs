@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildCodexExecArgs,
   runD02CodexAgentMcp,
+  sanitizedEnvironment,
   validateLocalClaimPath,
   validateRunnerArgs,
 } from '../../scripts/acceptance/run-d02-codex-agent-mcp.mjs';
@@ -36,4 +37,46 @@ test('D02 Codex invocation is Luna Max, read-only, credential-free, and one-tool
   assert.ok(args.at(-1).includes(JSON.stringify(D02_EXPECTED_QUERY_ARGUMENTS)));
   assert.match(args.at(-1), /exactly once/u);
   assert.match(args.at(-1), /不判断低刺激或官方相似度/u);
+});
+
+test('D02 runner passes only its minimal environment allowlist to child processes', () => {
+  const environment = sanitizedEnvironment({
+    PATH: '/usr/bin:/bin',
+    HOME: '/tmp/d02-home',
+    CODEX_HOME: '/tmp/d02-codex-home',
+    TMPDIR: '/tmp',
+    PGPASSWORD: 'fixture-only',
+    MYSQL_PWD: 'fixture-only',
+    AWS_ACCESS_KEY_ID: 'fixture-only',
+    DATABASE_URL: 'postgres://fixture-only',
+    BANGUMI_OAUTH_TOKEN: 'fixture-only',
+    OPENAI_API_KEY: 'fixture-only',
+    PARIYA_D02_RUN95_CLAIM_FILE: '/tmp/private-claim.json',
+    UNCLASSIFIED_SECRET: 'fixture-only',
+  });
+
+  assert.deepEqual(Object.keys(environment).sort(), [
+    'CODEX_HOME',
+    'GIT_CONFIG_GLOBAL',
+    'GIT_CONFIG_NOSYSTEM',
+    'GIT_CONFIG_SYSTEM',
+    'HOME',
+    'PATH',
+    'TMPDIR',
+  ]);
+  assert.equal(environment.PATH, '/usr/bin:/bin');
+  assert.equal(environment.HOME, '/tmp/d02-home');
+  assert.equal(environment.CODEX_HOME, '/tmp/d02-codex-home');
+  for (const key of [
+    'PGPASSWORD',
+    'MYSQL_PWD',
+    'AWS_ACCESS_KEY_ID',
+    'DATABASE_URL',
+    'BANGUMI_OAUTH_TOKEN',
+    'OPENAI_API_KEY',
+    'PARIYA_D02_RUN95_CLAIM_FILE',
+    'UNCLASSIFIED_SECRET',
+  ]) {
+    assert.equal(Object.hasOwn(environment, key), false);
+  }
 });
