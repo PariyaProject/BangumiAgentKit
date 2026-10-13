@@ -558,6 +558,52 @@ CODEX_G06_PRIVACY_FIELDS = {
     'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
     'artifactImageBytesStored', 'credentialsStored',
 }
+CODEX_D02_EXPECTED_ARGUMENTS = {
+    'query': '末世 旅行', 'type': 'anime', 'sort': 'match', 'nsfw': 'exclude',
+    'limit': 8, 'offset': 0,
+}
+CODEX_D02_REPORT_RELATIVE_PATH = 'docs/live-probes/pariya-agent-codex-luna-e2e-D02-search-subjects.json'
+CODEX_D02_EPOCH_ID = 'run95-d02-public-search-candidate-boundary'
+CODEX_D02_ARGUMENT_PROFILE = 'fixed-d02-apocalypse-travel-keyword-anime-top8-v1'
+CODEX_D02_TOOL_NAME = 'bangumi.search_subjects'
+CODEX_D02_CLAIM_LATCH_NAME = 'harness-r95-d02-search-subjects-claimed'
+CODEX_D02_TERMINAL_LATCH_NAME = 'harness-r95-d02-search-subjects-terminal'
+CODEX_D02_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'frontierId', 'scenarioId', 'epochId',
+    'claimId', 'prNumber', 'toolName', 'argumentProfile', 'expectedArgumentsSha256',
+    'candidateSha', 'sourceRevision', 'baseSha', 'bundleSha256', 'ciSha', 'ciStatus',
+    'reviewerId', 'model', 'reasoningEffort', 'codexCliVersion', 'processExitCode',
+    'eventStreamParsed', 'codexMcpToolEventCount', 'codexErrorItemCount', 'mcpServerNames',
+    'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount', 'allowedCallCount',
+    'deniedCallCount', 'catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256',
+    'observedAt', 'authMode', 'serverId', 'resultReadbackMode', 'resultReadbackTextUtf8Bytes',
+    'serverProfile', 'sourceRequestCount', 'authorizationHeaderSeen', 'sourceRequestValidated',
+    'bearerTokenInjected', 'serverToolNames', 'serverResultStatus', 'sourceResultSha256',
+    'sourceResultByteLength', 'source', 'answerChecks', 'answerUtf8Bytes', 'answerSha256',
+    'privacy', 'acceptanceCredit', 'limitations', 'candidate_refresh_reason',
+}
+CODEX_D02_SOURCE_FIELDS = {
+    'api', 'operation', 'resultStatus', 'responseRows', 'returnedCandidates', 'reportedTotal',
+    'completeResultReadback', 'rawAnswerPersisted', 'rawToolResultPersisted',
+}
+CODEX_D02_ANSWER_CHECK_FIELDS = {
+    'accepted', 'argumentsMatch', 'sourceResultValid', 'answerRows', 'matchedRows', 'missingRows',
+    'unsupportedClaims', 'scopeLineVerified',
+}
+CODEX_D02_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted', 'communityRead',
+    'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored', 'rawResultStored',
+    'artifactImageBytesStored', 'credentialsStored',
+}
+CODEX_D02_LIMITATIONS = [
+    '仅为固定关键词的实验性公开搜索候选，不代表官方相似度或用户偏好匹配。',
+    '来源没有低刺激指标；未判断候选是否适合此偏好。',
+    '单次分页结果不完整；未返回不表示不存在。',
+    '不包含社区、账号、OAuth、QQ 或 TIM 证据。',
+]
+CODEX_D02_CANDIDATE_REFRESH_REASON = (
+    'Attach the accepted sanitized D02 search report to the same Epoch and re-establish the exact Candidate.'
+)
 CODEX_G16_REPORT_RELATIVE_PATH = 'docs/live-probes/g16-director-person-activity-run95.json'
 CODEX_G16_EPOCH_ID = 'run95-g16-director-person-activity-agent-mcp'
 CODEX_G16_ARGUMENT_PROFILE = 'fixed-g16-person-6154-director-tv-36m-48r-16d-20rows-v1'
@@ -1932,6 +1978,58 @@ CODEX_G06_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_g06_harness_disposition_matches_report(',
         'CODEX_G06_EXPECTED_ARGUMENTS',
         'CODEX_G06_REPORT_RELATIVE_PATH',
+    ),
+}
+CODEX_D02_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/d02-public-search-answer-check.mjs': (
+        "export const D02_EXPECTED_QUERY_ARGUMENTS",
+        'export function checkD02PublicSearchAnswer(',
+        'export function extractD02SearchReadback(',
+        'export function projectD02SearchResult(',
+    ),
+    'scripts/acceptance/run-d02-codex-agent-mcp.mjs': (
+        'export function runD02CodexAgentMcp(',
+        "'--model', MODEL, '--sandbox', 'read-only'",
+        'assertClaimStillClaimed(durableClaim)',
+        "const REPORT_PATH = path.join(",
+    ),
+    'scripts/acceptance/write-d02-agent-mcp-report.mjs': (
+        'export function validateD02SanitizedReportFile(',
+        "'codex_cli_d02_search_subjects_agent_mcp'",
+        "rawToolResultPersisted: false",
+        "openSync(target, 'wx', 0o600)",
+    ),
+    'scripts/lib/d02-one-shot-claim.mjs': (
+        'export function claimD02OneShotAtomically(',
+        'export function acquireD02OneShotGitHubLatch(',
+        'export function acquireD02OneShotTerminalGitHubLatch(',
+    ),
+    'scripts/lib/d02-source-fence.mjs': (
+        'export function checkD02AnonymousSourceRequest(',
+        "url.pathname !== '/v0/search/subjects'",
+        'SOURCE_REQUEST_LIMIT_REACHED',
+    ),
+    'apps/mcp/d02-one-tool-mcp-server.mjs': (
+        "const TOOL_NAME = 'bangumi.search_subjects'",
+        'new MemoryStorage()',
+        'structuredContent: safeResult',
+        'const safeResult = projectD02SearchResult(result)',
+        'createAnonymousFetch()',
+    ),
+    'scripts/agent-harness.mjs': (
+        'function assertD02OneShotClaimReadiness(',
+        'function commandEpochD02OneShotClaim(',
+        'function commandEpochD02OneShotResult(',
+        "'epoch:d02-one-shot-run': commandEpochD02OneShotRun",
+        "'epoch:d02-one-shot-reconcile': commandEpochD02OneShotReconcile",
+        'function commandEpochD02OrphanLatchReconcile(',
+        'function assertD02OneShotReconciledBeforeMerge(',
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_d02_report_is_valid(',
+        'def codex_d02_harness_disposition_matches_report(',
+        'CODEX_D02_EXPECTED_ARGUMENTS',
+        'CODEX_D02_REPORT_RELATIVE_PATH',
     ),
 }
 CODEX_G19_PROBE_IMPLEMENTATION_MARKERS = {
@@ -5107,6 +5205,302 @@ def codex_g06_report_is_valid(
     )
 
 
+def codex_d02_probe_revision_has_implementation(revision: object) -> bool:
+    """Bind D02 evidence to the exact Harness-governed anonymous Luna Max runner."""
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return (
+        codex_probe_revision_has_implementation(revision)
+        and _codex_revision_has_markers(str(ROOT), revision, CODEX_D02_PROBE_IMPLEMENTATION_MARKERS)
+    )
+
+
+def codex_d02_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Require the sanitized D02 report to be local or a direct child of its exact Candidate."""
+    if not codex_d02_probe_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_D02_REPORT_RELATIVE_PATH,
+    )
+
+
+def codex_d02_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the durable Run/Epoch D02 disposition through the Harness status command."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_d02_github_label(name: str) -> dict[str, object] | None:
+    """Read a permanent D02 latch; never create or mutate labels during acceptance generation."""
+    try:
+        result = subprocess.run(
+            ['gh', 'api', f'repos/{{owner}}/{{repo}}/labels/{name}'],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        label = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return label if isinstance(label, dict) else None
+
+
+def codex_d02_harness_latches() -> dict[str, object] | None:
+    claim = codex_d02_github_label(CODEX_D02_CLAIM_LATCH_NAME)
+    terminal = codex_d02_github_label(CODEX_D02_TERMINAL_LATCH_NAME)
+    if claim is None or terminal is None:
+        return None
+    return {'claim': claim, 'terminal': terminal}
+
+
+def codex_d02_claim_identity(report: dict[str, object]) -> dict[str, object]:
+    return {
+        'runNumber': report.get('runNumber'),
+        'frontierId': report.get('frontierId'),
+        'toolName': report.get('toolName'),
+        'argumentProfile': report.get('argumentProfile'),
+        'candidateSha': report.get('candidateSha'),
+        'baseSha': report.get('baseSha'),
+        'bundleSha256': report.get('bundleSha256'),
+        'expectedArgumentsSha256': report.get('expectedArgumentsSha256'),
+        'prNumber': report.get('prNumber'),
+        'reviewerId': report.get('reviewerId'),
+        'model': report.get('model'),
+        'reasoningEffort': report.get('reasoningEffort'),
+    }
+
+
+def codex_d02_harness_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+    latches: object = None,
+) -> dict[str, object] | None:
+    """Require the exact permanent claim/terminal latches and D02 PR result."""
+    if not isinstance(harness_status, dict) or not isinstance(latches, dict):
+        return None
+    run = harness_status.get('run')
+    epoch_view = harness_status.get('epoch')
+    run_state = run.get('state') if isinstance(run, dict) else None
+    epoch = epoch_view.get('state') if isinstance(epoch_view, dict) else None
+    pr_number = report.get('prNumber')
+    github_state = epoch_view.get('github_state') if isinstance(epoch_view, dict) else None
+    if (
+        not isinstance(run, dict) or run.get('number') != 95
+        or not isinstance(run_state, dict) or run_state.get('profile') != 'AUTONOMOUS_EVOLUTION'
+        or not isinstance(epoch_view, dict) or epoch_view.get('number') != pr_number
+        or github_state not in {'OPEN', 'MERGED'}
+        or (github_state == 'OPEN' and run_state.get('active_epoch_pr') != pr_number)
+        or (github_state == 'MERGED' and run_state.get('last_merged_epoch_pr') != pr_number)
+        or not isinstance(epoch, dict) or epoch.get('epoch_id') != CODEX_D02_EPOCH_ID
+        or epoch.get('pr_number') != pr_number
+    ):
+        return None
+    preflight = epoch.get('adversarial_preflight')
+    disposition = preflight.get('d02_one_shot_disposition') if isinstance(preflight, dict) else None
+    if not isinstance(disposition, dict):
+        return None
+    source_revision = report.get('sourceRevision')
+    reviews = epoch.get('review_history')
+    source_review_exists = isinstance(reviews, list) and any(
+        isinstance(item, dict)
+        and item.get('candidate_sha') == source_revision
+        and item.get('reviewed_base_sha') == report.get('baseSha')
+        and item.get('reviewer_id') == report.get('reviewerId')
+        and item.get('verdict') == 'PASS'
+        for item in reviews
+    )
+    latest_review = reviews[-1] if isinstance(reviews, list) and reviews else None
+    current_candidate = epoch.get('candidate_sha')
+    expected = {
+        'claimId': report.get('claimId'), 'frontierId': 'D02', 'epochId': CODEX_D02_EPOCH_ID,
+        'runNumber': 95, 'prNumber': pr_number, 'toolName': CODEX_D02_TOOL_NAME,
+        'argumentProfile': CODEX_D02_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': _canonical_json_sha256(CODEX_D02_EXPECTED_ARGUMENTS),
+        'state': 'REPORT_WRITTEN', 'candidateSha': source_revision,
+        'baseSha': report.get('baseSha'), 'ciSha': source_revision, 'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'), 'bundleSha256': report.get('bundleSha256'),
+        'model': 'gpt-6-luna', 'reasoningEffort': 'max', 'reportWritten': True,
+        'reportPath': CODEX_D02_REPORT_RELATIVE_PATH, 'reportSha256': report_sha256,
+        'retryAllowed': False,
+    }
+    if (
+        not isinstance(report_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+        or not source_review_exists
+        or not isinstance(current_candidate, str)
+        or epoch.get('review_pass_sha') != current_candidate
+        or not isinstance(latest_review, dict)
+        or latest_review.get('candidate_sha') != current_candidate
+        or latest_review.get('reviewed_base_sha') != epoch.get('base_sha')
+        or latest_review.get('verdict') != 'PASS'
+        or any(disposition.get(key) != value for key, value in expected.items())
+    ):
+        return None
+    reconciliation = disposition.get('reconciliation')
+    if (
+        not isinstance(reconciliation, dict)
+        or reconciliation.get('terminalLatch') != 'REPORT_WRITTEN'
+        or reconciliation.get('reportValidation') != 'VALID'
+        or reconciliation.get('observedReportSha256') != report_sha256
+        or not isinstance(reconciliation.get('reconciledAt'), str)
+        or not reconciliation['reconciledAt']
+    ):
+        return None
+    identity_sha256 = _canonical_json_sha256(codex_d02_claim_identity(report))
+    terminal_digest = hashlib.sha256(f'{identity_sha256}:{report_sha256}'.encode('utf-8')).hexdigest()
+    claim_latch = latches.get('claim')
+    terminal_latch = latches.get('terminal')
+    if (
+        not isinstance(claim_latch, dict) or
+        claim_latch.get('name') != CODEX_D02_CLAIM_LATCH_NAME or
+        claim_latch.get('description') != f'D02 claim sha256={identity_sha256}' or
+        not isinstance(terminal_latch, dict) or
+        terminal_latch.get('name') != CODEX_D02_TERMINAL_LATCH_NAME or
+        terminal_latch.get('description') != f'D02:REPORT_WRITTEN:{terminal_digest}'
+    ):
+        return None
+    return disposition
+
+
+def codex_d02_report_is_valid(
+    report: object, harness_status: object = None, report_sha256: object = None,
+    latches: object = None,
+) -> bool:
+    """Validate sanitized D02 candidate rows plus permanent, claim-bound Harness evidence."""
+    if not isinstance(report, dict) or set(report) != CODEX_D02_REPORT_FIELDS:
+        return False
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    pr_number = report.get('prNumber')
+    expected_claim_id = 'd02-run-95-' + _canonical_json_sha256({
+        'candidateSha': report.get('candidateSha'),
+        'baseSha': base_sha,
+        'bundleSha256': report.get('bundleSha256'),
+        'expectedArgumentsSha256': _canonical_json_sha256(CODEX_D02_EXPECTED_ARGUMENTS),
+    })[:24]
+    if (
+        type(report.get('schemaVersion')) is not int or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_cli_d02_search_subjects_agent_mcp'
+        or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
+        or report.get('frontierId') != 'D02' or report.get('scenarioId') != 'D02'
+        or report.get('epochId') != CODEX_D02_EPOCH_ID
+        or report.get('toolName') != CODEX_D02_TOOL_NAME
+        or report.get('argumentProfile') != CODEX_D02_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(CODEX_D02_EXPECTED_ARGUMENTS)
+        or type(pr_number) is not int or pr_number < 1
+        or not codex_g16_reviewer_id_is_valid(report.get('reviewerId'), pr_number)
+        or report.get('claimId') != expected_claim_id
+        or not isinstance(report.get('claimId'), str)
+        or not re.fullmatch(r'd02-run-95-[0-9a-f]{24}', report['claimId'])
+        or not isinstance(source_revision, str) or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or report.get('candidateSha') != source_revision
+        or not isinstance(base_sha, str) or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or report.get('ciSha') != source_revision or report.get('ciStatus') != 'SUCCESS'
+        or _run_repository_git(ROOT, 'merge-base', '--is-ancestor', base_sha, source_revision).returncode != 0
+        or not isinstance(report.get('bundleSha256'), str) or not re.fullmatch(r'[0-9a-f]{64}', report['bundleSha256'])
+        or codex_g26_candidate_bundle_sha256(source_revision) != report.get('bundleSha256')
+        or not codex_d02_probe_revision_has_implementation(source_revision)
+        or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+', report['codexCliVersion'])
+        or type(report.get('processExitCode')) is not int or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True
+        or type(report.get('codexMcpToolEventCount')) is not int or report['codexMcpToolEventCount'] != 1
+        or type(report.get('codexErrorItemCount')) is not int or report['codexErrorItemCount'] != 0
+        or report.get('mcpServerNames') != ['bgk_d02_one_tool']
+        or type(report.get('nonMcpToolEventCount')) is not int or report['nonMcpToolEventCount'] != 0
+        or report.get('nonMcpToolTypes') != []
+        or type(report.get('shellToolCallCount')) is not int or report['shellToolCallCount'] != 0
+        or type(report.get('allowedCallCount')) is not int or report['allowedCallCount'] != 1
+        or type(report.get('deniedCallCount')) is not int or report['deniedCallCount'] != 0
+        or report.get('authMode') != 'anonymous-optional-read; credential environment cleared; MemoryStorage empty'
+        or report.get('serverId') != 'bgk_d02_one_tool'
+        or report.get('serverProfile') != 'one-tool-anonymous-optional-read-v1'
+        or report.get('resultReadbackMode') not in {'structuredContent', 'complete-json-text'}
+        or (report.get('resultReadbackMode') == 'structuredContent' and report.get('resultReadbackTextUtf8Bytes') is not None)
+        or (report.get('resultReadbackMode') == 'complete-json-text' and
+            (type(report.get('resultReadbackTextUtf8Bytes')) is not int or
+             not 0 < report['resultReadbackTextUtf8Bytes'] <= 3600))
+        or type(report.get('sourceRequestCount')) is not int or report['sourceRequestCount'] != 1
+        or report.get('authorizationHeaderSeen') is not False
+        or report.get('sourceRequestValidated') is not True
+        or report.get('bearerTokenInjected') is not False
+        or report.get('serverToolNames') != [CODEX_D02_TOOL_NAME]
+        or report.get('serverResultStatus') != 'SUCCESS'
+        or not isinstance(report.get('sourceResultSha256'), str) or not re.fullmatch(r'[0-9a-f]{64}', report['sourceResultSha256'])
+        or type(report.get('sourceResultByteLength')) is not int or not 0 < report['sourceResultByteLength'] <= 1_000_000
+        or not isinstance(report.get('observedAt'), str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', report['observedAt'])
+        or any(not isinstance(report.get(key), str) or not re.fullmatch(r'[0-9a-f]{64}', report[key])
+               for key in ('catalogSha256', 'toolDescriptionSha256', 'inputSchemaSha256'))
+    ):
+        return False
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    tool = next((item for item in catalog if isinstance(item, dict) and item.get('name') == CODEX_D02_TOOL_NAME), None)
+    if (
+        not isinstance(tool, dict) or tool.get('auth') != 'optional' or tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(tool.get('description', '').encode('utf-8')).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(tool.get('inputSchema'))
+    ):
+        return False
+
+    source = report.get('source')
+    rows = source.get('responseRows') if isinstance(source, dict) else None
+    total = source.get('reportedTotal') if isinstance(source, dict) else None
+    answer = report.get('answerChecks')
+    if (
+        not isinstance(source, dict) or set(source) != CODEX_D02_SOURCE_FIELDS
+        or source.get('api') != 'Bangumi official public v0 (experimental)'
+        or source.get('operation') != 'POST /v0/search/subjects'
+        or source.get('resultStatus') not in {'exact', 'disambiguation', 'not_found'}
+        or type(rows) is not int or not 0 <= rows <= CODEX_D02_EXPECTED_ARGUMENTS['limit']
+        or type(source.get('returnedCandidates')) is not int or source['returnedCandidates'] != rows
+        or (total is not None and (type(total) is not int or total < rows))
+        or source.get('completeResultReadback') is not True
+        or source.get('rawAnswerPersisted') is not False
+        or source.get('rawToolResultPersisted') is not False
+        or (source.get('resultStatus') == 'not_found' and rows != 0)
+        or not isinstance(answer, dict) or set(answer) != CODEX_D02_ANSWER_CHECK_FIELDS
+        or answer.get('accepted') is not True or answer.get('argumentsMatch') is not True
+        or answer.get('sourceResultValid') is not True
+        or type(answer.get('answerRows')) is not int or answer.get('answerRows') != rows
+        or type(answer.get('matchedRows')) is not int or answer.get('matchedRows') != rows
+        or type(answer.get('missingRows')) is not int or answer.get('missingRows') != 0
+        or answer.get('unsupportedClaims') is not False or answer.get('scopeLineVerified') is not True
+        or type(report.get('answerUtf8Bytes')) is not int or not 0 < report['answerUtf8Bytes'] <= 3600
+        or not isinstance(report.get('answerSha256'), str) or not re.fullmatch(r'[0-9a-f]{64}', report['answerSha256'])
+        or report.get('acceptanceCredit') != {'agentMcpTools': 1, 'frontierD02': 'PARTIAL'}
+        or report.get('limitations') != CODEX_D02_LIMITATIONS
+        or report.get('candidate_refresh_reason') != CODEX_D02_CANDIDATE_REFRESH_REASON
+    ):
+        return False
+    privacy = report.get('privacy')
+    if (
+        not isinstance(privacy, dict) or set(privacy) != CODEX_D02_PRIVACY_FIELDS
+        or privacy.get('authProfile') != 'anonymous'
+        or any(value is not False for key, value in privacy.items() if key != 'authProfile')
+        or _contains_forbidden_codex_content(report)
+    ):
+        return False
+    status = harness_status if harness_status is not None else codex_d02_harness_status(pr_number)
+    current_latches = latches if latches is not None else codex_d02_harness_latches()
+    return codex_d02_harness_disposition_matches_report(report, status, report_sha256, current_latches) is not None
+
+
 def codex_g19_probe_revision_has_implementation(revision: object) -> bool:
     """Bind the G19 report to its exact Luna Max runner, origin checker, and writer."""
     if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
@@ -7847,6 +8241,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G16_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_D02_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_P01_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -7948,6 +8343,25 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault('bangumi.get_subject_cast', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == 'codex_cli_d02_search_subjects_agent_mcp':
+            try:
+                report_bytes = path.read_bytes()
+            except OSError:
+                continue
+            current_status = codex_d02_harness_status(report.get('prNumber'))
+            current_latches = codex_d02_harness_latches()
+            if (
+                path.name != Path(CODEX_D02_REPORT_RELATIVE_PATH).name
+                or not codex_d02_report_is_valid(
+                    report, current_status, hashlib.sha256(report_bytes).hexdigest(), current_latches,
+                )
+                or not codex_d02_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault(CODEX_D02_TOOL_NAME, set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_g19_person_origin_agent_mcp':
             if (

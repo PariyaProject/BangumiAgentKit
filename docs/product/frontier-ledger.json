@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-13T06:51:19Z",
+  "updated_at": "2026-10-13T08:13:29Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1566,8 +1566,11 @@
       "user_question": "适合喜欢《少女终末旅行》的低刺激末世旅行动画有哪些？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-d02-public-search-source-contract-2026-10-13.md"
+      ],
+      "next_action": "2026-10-13T08:13:29Z: Run #95 D02 bounded public-search Epoch remains selected on exact base 5de65c5316884333e2df1590ae8676424ee0e9f4. The current branch adds a D02-only anonymous one-request MCP server, exact candidate/scope checker, sanitized report, current acceptance-generator support, and Harness-owned repository-wide claim/terminal labels plus no-Codex reconciliation. No commit, PR, live API query, or one-shot claim exists. Keep UNASSESSED until exact Candidate/Base CI, same-identity Luna Max PASS, and the distinct one-shot are accepted. After a valid result, commit the sanitized report directly after its claim Candidate and refresh Candidate/CI/review before merge; all answers remain keyword candidates only and cannot classify low-stimulation content or official similarity. No account/OAuth/community/QQ/TIM path.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },

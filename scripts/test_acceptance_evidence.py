@@ -3336,6 +3336,215 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             report, status, hashlib.sha256(bytes_value).hexdigest(),
         )
 
+    def _d02_report_fixture(self, source_revision=None):
+        tool = next((item for item in self.catalog if item['name'] == GENERATOR.CODEX_D02_TOOL_NAME), None)
+        if tool is None:
+            tool = {
+                'name': GENERATOR.CODEX_D02_TOOL_NAME,
+                'auth': 'optional',
+                'risk': 'read',
+                'description': 'Search public Bangumi subjects by a bounded keyword.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {
+                        'query': {'type': 'string'}, 'type': {'type': 'string'},
+                        'sort': {'type': 'string'}, 'nsfw': {'type': 'string'},
+                        'limit': {'type': 'integer'}, 'offset': {'type': 'integer'},
+                    },
+                    'required': ['query'],
+                },
+            }
+            self.catalog.append(tool)
+            self.catalog_path.write_text(
+                json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8',
+            )
+        catalog_bytes = self.catalog_path.read_bytes()
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+        claim_sha = GENERATOR._canonical_json_sha256({
+            'candidateSha': revision,
+            'baseSha': base_sha,
+            'bundleSha256': '7' * 64,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_D02_EXPECTED_ARGUMENTS,
+            ),
+        })[:24]
+        return {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_d02_search_subjects_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'D02',
+            'scenarioId': 'D02',
+            'epochId': GENERATOR.CODEX_D02_EPOCH_ID,
+            'claimId': f'd02-run-95-{claim_sha}',
+            'prNumber': 152,
+            'toolName': GENERATOR.CODEX_D02_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_D02_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_D02_EXPECTED_ARGUMENTS,
+            ),
+            'candidateSha': revision,
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'bundleSha256': '7' * 64,
+            'ciSha': revision,
+            'ciStatus': 'SUCCESS',
+            'reviewerId': 'gpt-6-luna-max-run95-pr152-round1',
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '1.2.3',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'mcpServerNames': ['bgk_d02_one_tool'],
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'authMode': 'anonymous-optional-read; credential environment cleared; MemoryStorage empty',
+            'serverId': 'bgk_d02_one_tool',
+            'resultReadbackMode': 'structuredContent',
+            'resultReadbackTextUtf8Bytes': None,
+            'serverProfile': 'one-tool-anonymous-optional-read-v1',
+            'sourceRequestCount': 1,
+            'authorizationHeaderSeen': False,
+            'sourceRequestValidated': True,
+            'bearerTokenInjected': False,
+            'serverToolNames': [GENERATOR.CODEX_D02_TOOL_NAME],
+            'serverResultStatus': 'SUCCESS',
+            'sourceResultSha256': '8' * 64,
+            'sourceResultByteLength': 512,
+            'observedAt': '2026-10-13T04:00:00.000Z',
+            'source': {
+                'api': 'Bangumi official public v0 (experimental)',
+                'operation': 'POST /v0/search/subjects',
+                'resultStatus': 'disambiguation',
+                'responseRows': 1,
+                'returnedCandidates': 1,
+                'reportedTotal': 5,
+                'completeResultReadback': True,
+                'rawAnswerPersisted': False,
+                'rawToolResultPersisted': False,
+            },
+            'answerChecks': {
+                'accepted': True,
+                'argumentsMatch': True,
+                'sourceResultValid': True,
+                'answerRows': 1,
+                'matchedRows': 1,
+                'missingRows': 0,
+                'unsupportedClaims': False,
+                'scopeLineVerified': True,
+            },
+            'answerUtf8Bytes': 256,
+            'answerSha256': '9' * 64,
+            'privacy': {
+                'authProfile': 'anonymous',
+                'oauthAttempted': False,
+                'accountDataRead': False,
+                'writesAttempted': False,
+                'communityRead': False,
+                'qqPipelineTested': False,
+                'timClientTested': False,
+                'promptStored': False,
+                'answerStored': False,
+                'rawResultStored': False,
+                'artifactImageBytesStored': False,
+                'credentialsStored': False,
+            },
+            'acceptanceCredit': {'agentMcpTools': 1, 'frontierD02': 'PARTIAL'},
+            'limitations': GENERATOR.CODEX_D02_LIMITATIONS,
+            'candidate_refresh_reason': GENERATOR.CODEX_D02_CANDIDATE_REFRESH_REASON,
+        }
+
+    def _d02_harness_fixture(self, report, report_bytes):
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        identity_sha256 = GENERATOR._canonical_json_sha256(
+            GENERATOR.codex_d02_claim_identity(report),
+        )
+        terminal_digest = hashlib.sha256(
+            f'{identity_sha256}:{report_sha256}'.encode('utf-8'),
+        ).hexdigest()
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'D02',
+            'epochId': GENERATOR.CODEX_D02_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'toolName': GENERATOR.CODEX_D02_TOOL_NAME,
+            'argumentProfile': GENERATOR.CODEX_D02_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'state': 'REPORT_WRITTEN',
+            'candidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'bundleSha256': report['bundleSha256'],
+            'reviewerId': report['reviewerId'],
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_D02_REPORT_RELATIVE_PATH,
+            'reportSha256': report_sha256,
+            'retryAllowed': False,
+            'reconciliation': {
+                'terminalLatch': 'REPORT_WRITTEN',
+                'reportValidation': 'VALID',
+                'observedReportSha256': report_sha256,
+                'reconciledAt': '2026-10-13T04:01:00.000Z',
+            },
+        }
+        status = {
+            'run': {
+                'number': 95,
+                'state': {'profile': 'AUTONOMOUS_EVOLUTION', 'active_epoch_pr': report['prNumber']},
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_D02_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'base_sha': report['baseSha'],
+                    'candidate_sha': report['sourceRevision'],
+                    'review_pass_sha': report['sourceRevision'],
+                    'review_history': [{
+                        'candidate_sha': report['sourceRevision'],
+                        'reviewed_base_sha': report['baseSha'],
+                        'reviewer_id': report['reviewerId'],
+                        'verdict': 'PASS',
+                    }],
+                    'adversarial_preflight': {'d02_one_shot_disposition': disposition},
+                },
+            },
+        }
+        latches = {
+            'claim': {
+                'name': GENERATOR.CODEX_D02_CLAIM_LATCH_NAME,
+                'description': f'D02 claim sha256={identity_sha256}',
+            },
+            'terminal': {
+                'name': GENERATOR.CODEX_D02_TERMINAL_LATCH_NAME,
+                'description': f'D02:REPORT_WRITTEN:{terminal_digest}',
+            },
+        }
+        return status, latches
+
+    def _d02_is_valid(self, report, report_bytes=None, status=None, latches=None):
+        bytes_value = report_bytes or json.dumps(report, ensure_ascii=False).encode('utf-8')
+        observed_status, observed_latches = self._d02_harness_fixture(report, bytes_value)
+        return GENERATOR.codex_d02_report_is_valid(
+            report,
+            status or observed_status,
+            hashlib.sha256(bytes_value).hexdigest(),
+            latches or observed_latches,
+        )
+
     def _g19_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
@@ -4420,6 +4629,58 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                     report_path, self.source_revision,
                 ),
             )
+
+    def test_accepts_exact_candidate_bound_sanitized_d02_search_report_and_global_latches(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_D02_REPORT_RELATIVE_PATH).name
+        report = self._d02_report_fixture()
+        report_path.write_text(json.dumps(report, ensure_ascii=False), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        harness_status, latches = self._d02_harness_fixture(report, report_bytes)
+        with (
+            patch.object(GENERATOR, 'codex_d02_probe_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=report['bundleSha256']),
+            patch.object(GENERATOR, 'codex_d02_harness_status', return_value=harness_status),
+            patch.object(GENERATOR, 'codex_d02_harness_latches', return_value=latches),
+        ):
+            self.assertTrue(GENERATOR.codex_d02_report_is_valid(
+                report, harness_status, report_sha256, latches,
+            ))
+            self.assertTrue(GENERATOR.codex_d02_report_matches_candidate_revision(
+                report_path, self.source_revision,
+            ))
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_sources(self.catalog)[GENERATOR.CODEX_D02_TOOL_NAME],
+                {GENERATOR.CODEX_D02_REPORT_RELATIVE_PATH},
+            )
+        for forbidden in ('answer', 'prompt', 'toolOutput', 'rawResult', 'candidateName', 'subjectId'):
+            self.assertNotIn(forbidden, report)
+
+    def test_rejects_d02_reports_without_exact_rows_scope_or_terminal_latches(self):
+        report = self._d02_report_fixture()
+        report_bytes = json.dumps(report, ensure_ascii=False).encode('utf-8')
+        status, latches = self._d02_harness_fixture(report, report_bytes)
+        with (
+            patch.object(GENERATOR, 'codex_d02_probe_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=report['bundleSha256']),
+        ):
+            self.assertTrue(self._d02_is_valid(report, report_bytes, status, latches))
+            for invalid in (
+                {**report, 'model': 'gpt-6-sol'},
+                {**report, 'answer': 'raw response must not be stored'},
+                {**report, 'source': {**report['source'], 'rawAnswerPersisted': True}},
+                {**report, 'answerChecks': {**report['answerChecks'], 'unsupportedClaims': True}},
+                {**report, 'privacy': {**report['privacy'], 'accountDataRead': True}},
+            ):
+                with self.subTest(invalid=invalid):
+                    invalid_bytes = json.dumps(invalid, ensure_ascii=False).encode('utf-8')
+                    invalid_status, invalid_latches = self._d02_harness_fixture(invalid, invalid_bytes)
+                    self.assertFalse(self._d02_is_valid(
+                        invalid, invalid_bytes, invalid_status, invalid_latches,
+                    ))
+            wrong_latches = json.loads(json.dumps(latches))
+            wrong_latches['terminal']['description'] = 'D02:INCONCLUSIVE:' + '0' * 64
+            self.assertFalse(self._d02_is_valid(report, report_bytes, status, wrong_latches))
 
     def test_rejects_g06_reports_with_changed_scope_privacy_or_harness_digest(self):
         report = self._g06_report_fixture()

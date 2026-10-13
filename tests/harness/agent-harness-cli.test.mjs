@@ -26,6 +26,11 @@ import {
   canonicalG06ArgumentsSha256,
 } from '../../scripts/acceptance/g06-subject-cast-answer-check.mjs';
 import {
+  d02OneShotClaimLabelDescription,
+  d02OneShotClaimLabelName,
+  d02OneShotTerminalLabelName,
+} from '../../scripts/lib/d02-one-shot-claim.mjs';
+import {
   buildG06AgentMcpReport,
   writeG06AgentMcpReport,
 } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
@@ -103,7 +108,9 @@ function controlFixture() {
 function createMockEnvironment(overrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bangumi-harness-cli-'));
   const binDirectory = path.join(directory, 'bin');
+  const gitCommonDirectory = path.join(directory, 'mock-git-common');
   fs.mkdirSync(binDirectory);
+  fs.mkdirSync(gitCommonDirectory);
   for (const tool of ['git', 'gh']) {
     const wrapper = path.join(binDirectory, tool);
     fs.writeFileSync(wrapper, `#!/bin/sh\nexec "${process.execPath}" "${mockBin}" ${tool} "$@"\n`);
@@ -123,6 +130,7 @@ function createMockEnvironment(overrides = {}) {
     baseSha: sha('a'),
     featureHeadSha: sha('b'),
     mergeSha: sha('c'),
+    gitCommonDirectory,
     mergeAllowed: true,
     candidateIsAncestor: true,
     remoteFeatureExists: true,
@@ -2509,6 +2517,115 @@ test('CLI rejects a wrong-run G16 one-shot before touching Harness state', () =>
   }
 });
 
+test('CLI rejects a D02 query outside Run 95 before creating any claim latch', () => {
+  const environment = createMockEnvironment();
+  try {
+    const result = environment.execute(['epoch:d02-one-shot-run', '--run', '1']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^D02_ONESHOT_RUN_INVALID:/u);
+    const state = environment.readState();
+    assert.deepEqual(state.repositoryLabels ?? {}, {});
+    assert.equal(state.prBody.includes('d02_one_shot_disposition'), false);
+    assert.equal(state.calls.some((call) =>
+      call.tool === 'gh' && call.args[0] === 'api' &&
+      call.args[1] === 'repos/{owner}/{repo}/labels' && call.args.includes('--method')),
+    false);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI terminalizes an orphaned D02 claim latch without querying or fabricating a claim', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
+  const branch = 'codex/epoch-run95-d02-public-search-candidate-boundary';
+  run.state = 'EPOCH_ACTIVE';
+  run.profile = 'AUTONOMOUS_EVOLUTION';
+  run.active_epoch_pr = 42;
+  run.pending_epoch = null;
+  epoch.epoch_id = 'run95-d02-public-search-candidate-boundary';
+  epoch.pr_number = 42;
+  epoch.branch = branch;
+  epoch.base_branch = 'master';
+  epoch.base_sha = sha('a');
+  epoch.reviewed_base_sha = sha('a');
+  epoch.candidate_sha = sha('b');
+  epoch.review_pass_sha = sha('b');
+  epoch.advances_frontier_ids = ['D02'];
+  epoch.scope_closure = {
+    why_not_review_earlier: 'The D02 source and Candidate gates are complete.',
+    why_not_extend_further: 'One bounded anonymous query is sufficient for this slice.',
+    related_work_remaining: false,
+  };
+  epoch.adversarial_preflight = {
+    completed: true,
+    summary: 'D02 gates were reviewed before the one-shot latch was acquired.',
+  };
+  epoch.review_history = [{
+    review_number: 1,
+    reviewer_id: reviewerId,
+    candidate_sha: sha('b'),
+    reviewed_base_sha: sha('a'),
+    verdict: 'PASS',
+    findings: [],
+  }];
+  const claim = {
+    runNumber: 95,
+    frontierId: 'D02',
+    toolName: 'bangumi.search_subjects',
+    argumentProfile: 'fixed-d02-apocalypse-travel-keyword-anime-top8-v1',
+    candidateSha: sha('b'),
+    baseSha: sha('a'),
+    bundleSha256: 'd'.repeat(64),
+    expectedArgumentsSha256: canonicalHash({
+      query: '末世 旅行', type: 'anime', sort: 'match', nsfw: 'exclude', limit: 8, offset: 0,
+    }),
+    prNumber: 42,
+    reviewerId,
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    retryAllowed: false,
+  };
+  const claimLabel = d02OneShotClaimLabelName();
+  const environment = createMockEnvironment({
+    runIssueNumber: 95,
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    branch,
+    featureBranch: branch,
+    featureHeadSha: sha('b'),
+    baseSha: sha('a'),
+    draft: false,
+    repositoryLabels: {
+      [claimLabel]: {
+        name: claimLabel,
+        color: 'b60205',
+        description: d02OneShotClaimLabelDescription(claim),
+      },
+    },
+  });
+  try {
+    const result = environment.execute(
+      ['epoch:d02-one-shot-reconcile', '--run', '95', '--pr', '42'],
+      { HARNESS_D02_BUNDLE_SHA256: claim.bundleSha256 },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /D02_ORPHAN_LATCH_RECONCILED_INCONCLUSIVE/u);
+    const state = environment.readState();
+    const stored = parseControlBlock(state.prBody, EPOCH_MARKER).adversarial_preflight;
+    assert.equal(stored.d02_one_shot_disposition, undefined);
+    assert.equal(stored.d02_orphan_latch_reconciliation.state, 'INCONCLUSIVE');
+    assert.equal(stored.d02_orphan_latch_reconciliation.queryInvoked, false);
+    assert.equal(stored.d02_orphan_latch_reconciliation.retryAllowed, false);
+    assert.equal(state.repositoryLabels[d02OneShotTerminalLabelName()].description.startsWith('D02:INCONCLUSIVE:'), true);
+    assert.equal(parseControlBlock(state.runBody, RUN_MARKER).next_action,
+      'PARK_ORPHANED_D02_EPOCH_AND_CONTINUE_DISCOVERY');
+    assert.equal(state.calls.some((call) => call.tool === 'codex'), false);
+  } finally {
+    environment.cleanup();
+  }
+});
+
 test('CLI rejects caller-key P01 claims and fabricated all-true REPORT_WRITTEN evidence', () => {
   const { run, epoch } = passedCandidateFixture();
   const reviewerId = 'gpt-6-luna-max-run95-pr42-round1';
@@ -3197,6 +3314,85 @@ test('CLI Candidate refresh cannot clear or replace the durable G06 one-shot dis
       const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
       assert.deepEqual(stored.adversarial_preflight.g06_one_shot_disposition, disposition);
     }
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('CLI Candidate refresh cannot clear or replace the durable D02 one-shot disposition', () => {
+  const { run, epoch } = passedCandidateFixture();
+  const disposition = {
+    schemaVersion: 1,
+    claimId: `d02-run-95-${'1'.repeat(24)}`,
+    runNumber: 95,
+    frontierId: 'D02',
+    epochId: 'run95-d02-public-search-candidate-boundary',
+    toolName: 'bangumi.search_subjects',
+    argumentProfile: 'fixed-d02-apocalypse-travel-keyword-anime-top8-v1',
+    expectedArgumentsSha256: canonicalHash({
+      query: '末世 旅行', type: 'anime', sort: 'match', nsfw: 'exclude', limit: 8, offset: 0,
+    }),
+    state: 'REPORT_WRITTEN',
+    candidateSha: sha('b'),
+    baseSha: sha('a'),
+    ciSha: sha('b'),
+    ciStatus: 'SUCCESS',
+    bundleSha256: 'c'.repeat(64),
+    prNumber: 42,
+    reviewerId: 'gpt-6-luna-max-run95-pr42-round1',
+    model: 'gpt-6-luna',
+    reasoningEffort: 'max',
+    reportWritten: true,
+    reportPath: 'docs/live-probes/pariya-agent-codex-luna-e2e-D02-search-subjects.json',
+    reportSha256: 'd'.repeat(64),
+    retryAllowed: false,
+  };
+  epoch.adversarial_preflight.d02_one_shot_disposition = structuredClone(disposition);
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+    featureHeadSha: sha('d'),
+    draft: false,
+  });
+  try {
+    const invalid = [
+      { candidate_refresh_reason: 'Attempt to remove the D02 terminal disposition.' },
+      {
+        candidate_refresh_reason: 'Attempt to replace the D02 terminal disposition.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Attempted D02 result replacement.',
+          d02_one_shot_disposition: { ...disposition, reportSha256: 'e'.repeat(64) },
+        },
+      },
+    ];
+    for (const overrides of invalid) {
+      const result = environment.execute([
+        'candidate:check', '--pr', '42', '--evidence',
+        candidateEvidence(environment, { candidate_sha: sha('d'), ...overrides }),
+      ]);
+      assert.equal(result.status, 2);
+      assert.match(result.stderr, /^D02_ONESHOT_DISPOSITION_IMMUTABLE:/u);
+      const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+      assert.deepEqual(stored.adversarial_preflight.d02_one_shot_disposition, disposition);
+    }
+
+    const accepted = environment.execute([
+      'candidate:check', '--pr', '42', '--evidence',
+      candidateEvidence(environment, {
+        candidate_sha: sha('d'),
+        candidate_refresh_reason: 'Preserve the accepted D02 report in the refreshed Candidate.',
+        adversarial_preflight: {
+          completed: true,
+          summary: 'Preserve exact D02 query claim and terminal evidence.',
+          d02_one_shot_disposition: disposition,
+        },
+      }),
+    ]);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    const refreshed = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(refreshed.state, 'REVIEW_READY');
+    assert.deepEqual(refreshed.adversarial_preflight.d02_one_shot_disposition, disposition);
   } finally {
     environment.cleanup();
   }

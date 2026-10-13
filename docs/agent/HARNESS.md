@@ -336,6 +336,23 @@ claim and terminal labels, Candidate/Base/CI/reviewer/bundle binding, and the
 digest of the canonical report bytes. Missing, inconclusive, conflicting, or
 unreadable control-plane state leaves the tool uncredited.
 
+For Run 95 D02, `pnpm harness epoch:d02-one-shot-run --run 95` is the only
+query route. It requires the exact active Candidate, current Base, seven
+mandatory checks, completed Scope Closure, and the same Luna Max reviewer PASS;
+it creates and reads back the repository-wide D02 latch and exact Epoch PR
+claim before the runner can invoke Codex. The runner rechecks that claim before
+and after the single anonymous public-v0 search. A permanent terminal label
+binds either the sanitized report digest or an inconclusive result. If the
+process is interrupted, `pnpm harness epoch:d02-one-shot-reconcile --run 95
+--pr <pr>` never invokes Codex: it verifies the existing claim and latches,
+then accepts only a claim-bound sanitized report or records a permanent
+no-retry inconclusive outcome. An accepted report is a post-PASS evidence
+artifact: commit it immediately after the query Candidate, run `candidate:check`
+with its `candidate_refresh_reason`, preserve the complete D02 disposition, and
+re-establish exact-SHA CI plus a new same-identity PASS before merging. The
+merge gate verifies that the report commit is the direct child of the claimed
+Candidate and is included in the newly reviewed Candidate.
+
 The runner re-reads the durable claim immediately before invoking Codex and
 again before writing a report. Runner completion and recovery compete for one
 second permanent, create-only terminal label whose description binds the
@@ -929,6 +946,9 @@ help` for exact arguments.
   reason before its default allowance is exhausted.
 - `epoch:start`: record a selected Epoch in the Run Issue before branch work.
 - `epoch:open-pr`: open the single Draft PR after a meaningful commit.
+- `epoch:d02-one-shot-run` and `epoch:d02-one-shot-reconcile`: execute or
+  recover the Run 95 D02 claim-bound anonymous public-search attempt; recovery
+  never invokes Codex or retries a spent query.
 - `guard:legacy-paths`: reject V3 Product changes to legacy runtime paths.
 - `candidate:check`: enforce path, Scope Closure, preflight, Candidate, base,
   and exact-SHA CI invariants. After PASS, it can revoke the old PASS and
