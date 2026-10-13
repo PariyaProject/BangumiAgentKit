@@ -7434,12 +7434,14 @@ def codex_d07_report_is_valid(
     for year, row in zip(CODEX_D07_EXPECTED_YEARS, summaries):
         if (
             not isinstance(row, dict)
-            or set(row) != {'year', 'subjectId', 'rank', 'titleSha256'}
+            or set(row) != {'year', 'subjectId', 'rank', 'titleSha256', 'retrievedAt'}
             or row.get('year') != year
             or type(row.get('subjectId')) is not int or row['subjectId'] <= 0
             or type(row.get('rank')) is not int or row['rank'] <= 0
             or not isinstance(row.get('titleSha256'), str)
             or not re.fullmatch(r'[0-9a-f]{64}', row['titleSha256'])
+            or not isinstance(row.get('retrievedAt'), str)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', row['retrievedAt'])
         ):
             return False
     coverage_summaries = report.get('coverageSummaries')
@@ -7474,6 +7476,8 @@ def codex_d07_report_is_valid(
         or any(not isinstance(value, str) or not re.fullmatch(
             r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', value,
         ) for value in retrieved.values())
+        or retrieved['first'] != summaries[0]['retrievedAt']
+        or retrieved['last'] != summaries[-1]['retrievedAt']
     ):
         return False
     privacy = report.get('privacy')

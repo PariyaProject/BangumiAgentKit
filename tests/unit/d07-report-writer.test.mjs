@@ -143,6 +143,8 @@ test('writes only hash-bound D07 evidence without retaining answer or returned t
   assert.equal(result.report.evidenceKind, 'codex_cli_d07_current_rank_agent_mcp');
   assert.equal(result.report.answerChecks.allPassed, true);
   assert.equal(result.report.resultSummaries.length, 10);
+  assert.equal(result.report.resultSummaries[0].retrievedAt, '2026-10-13T12:00:00.000Z');
+  assert.equal(result.report.resultSummaries.at(-1).retrievedAt, '2026-10-13T12:09:00.000Z');
   assert.equal(result.report.coverageSummaries.length, 10);
   assert.deepEqual(
     [...new Set(result.report.coverageSummaries.map((row) => row.coverageState))].sort(),
@@ -181,6 +183,32 @@ test('rejects persisted reports with extra raw fields or a mismatched claim', ()
   );
   assert.equal(
     validateD07SanitizedReport(result.report, { ...claim, claimId: 'different-claim' }).passed,
+    false,
+  );
+  assert.equal(
+    validateD07SanitizedReport(
+      {
+        ...result.report,
+        resultSummaries: result.report.resultSummaries.map((row, index) =>
+          index === 0 ? { ...row, retrievedAt: 'invalid-time' } : row,
+        ),
+      },
+      claim,
+    ).passed,
+    false,
+  );
+  assert.equal(
+    validateD07SanitizedReport({ ...result.report, resultSummaries: {} }, claim).passed,
+    false,
+  );
+  assert.equal(
+    validateD07SanitizedReport(
+      {
+        ...result.report,
+        retrievedAt: { ...result.report.retrievedAt, first: '2026-10-13T00:00:00.000Z' },
+      },
+      claim,
+    ).passed,
     false,
   );
 });

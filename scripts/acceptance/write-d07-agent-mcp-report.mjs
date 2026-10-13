@@ -365,13 +365,15 @@ export function validateD07SanitizedReport(report, claim) {
       report.resultSummaries.length === years.length &&
       report.resultSummaries.every(
         (row, index) =>
-          exactKeys(row, ['year', 'subjectId', 'rank', 'titleSha256']) &&
+          exactKeys(row, ['year', 'subjectId', 'rank', 'titleSha256', 'retrievedAt']) &&
           row.year === years[index] &&
           Number.isSafeInteger(row.subjectId) &&
           row.subjectId > 0 &&
           Number.isSafeInteger(row.rank) &&
           row.rank > 0 &&
-          isSha(row.titleSha256, 64),
+          isSha(row.titleSha256, 64) &&
+          typeof row.retrievedAt === 'string' &&
+          Number.isFinite(Date.parse(row.retrievedAt)),
       ),
     coverageSummaries:
       Array.isArray(report?.coverageSummaries) &&
@@ -405,7 +407,9 @@ export function validateD07SanitizedReport(report, claim) {
     retrievedAt:
       exactKeys(report?.retrievedAt, ['first', 'last']) &&
       Number.isFinite(Date.parse(report.retrievedAt.first)) &&
-      Number.isFinite(Date.parse(report.retrievedAt.last)),
+      Number.isFinite(Date.parse(report.retrievedAt.last)) &&
+      report.retrievedAt.first === report.resultSummaries?.[0]?.retrievedAt &&
+      report.retrievedAt.last === report.resultSummaries?.at?.(-1)?.retrievedAt,
     privacy:
       exactKeys(report?.privacy, PRIVACY_KEYS) &&
       report.privacy.authProfile === 'anonymous' &&

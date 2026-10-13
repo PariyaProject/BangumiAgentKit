@@ -70,6 +70,8 @@ test('accepts bounded top results while preserving each observed coverage state'
   assert.equal(result.coverageSummaries[1].scanned, 20);
   assert.equal(result.coverageSummaries[1].matched, 7);
   assert.equal(result.coverageSummaries[1].returned, 1);
+  assert.equal(result.resultSummaries[0].retrievedAt, '2026-10-13T12:00:00.000Z');
+  assert.equal(result.resultSummaries.at(-1).retrievedAt, '2026-10-13T12:09:00.000Z');
   assert.equal(Object.hasOwn(result, 'answer'), false);
   assert.equal(Object.hasOwn(result, 'toolCalls'), false);
 });

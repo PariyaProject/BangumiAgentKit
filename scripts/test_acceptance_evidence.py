@@ -2261,6 +2261,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'subjectId': 10000 + year,
                 'rank': index + 1,
                 'titleSha256': hashlib.sha256(f'Anime {year}'.encode('utf-8')).hexdigest(),
+                'retrievedAt': f'2026-10-13T12:{index:02}:00.000Z',
             }
             for index, year in enumerate(years)
         ]
@@ -4933,6 +4934,13 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {**report, 'answer': 'raw output'},
             {**report, 'resultSummaries': report['resultSummaries'][:-1]},
+            {
+                **report,
+                'resultSummaries': [
+                    {**report['resultSummaries'][0], 'retrievedAt': 'invalid-time'},
+                    *report['resultSummaries'][1:],
+                ],
+            },
             {
                 **report,
                 'coverageSummaries': [

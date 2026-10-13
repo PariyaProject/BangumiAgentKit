@@ -154,7 +154,11 @@ export function verifyD07CurrentRankAnswer(answerText, toolCalls) {
   };
   const passed = Object.values(checks).every(Boolean);
   const sourceRows = exactCalls
-    ? calls.map((call, index) => ({ year: D07_EXPECTED_YEARS[index], ...call.result.items[0] }))
+    ? calls.map((call, index) => ({
+        year: D07_EXPECTED_YEARS[index],
+        ...call.result.items[0],
+        retrievedAt: call.result.retrievedAt,
+      }))
     : [];
   const resultCounters = {
     expectedYears: D07_EXPECTED_YEARS.length,
@@ -183,11 +187,12 @@ export function verifyD07CurrentRankAnswer(answerText, toolCalls) {
     ...(exactCalls ? { coverageSummaries } : {}),
     ...(exactCalls
       ? {
-          resultSummaries: sourceRows.map(({ year, id, rank, titleSha256 }) => ({
+          resultSummaries: sourceRows.map(({ year, id, rank, titleSha256, retrievedAt }) => ({
             year,
             subjectId: id,
             rank,
             titleSha256,
+            retrievedAt,
           })),
           retrievedAt: {
             first: calls[0].result.retrievedAt,
