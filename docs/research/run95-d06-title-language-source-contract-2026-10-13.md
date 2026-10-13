@@ -8,6 +8,16 @@ The official `POST /v0/search/subjects` contract requires a keyword. Its documen
 
 The official Subject model returns `name` and `name_cn` as strings. It does not label either field with a language identifier or expose a separate Japanese-title field. The current AgentKit discovery candidate carries `name` and optional `nameCn`, along with its bounded evidence fields; the `query_subjects` input has no title-language or missing-name predicate.
 
+The model-facing query schema now has a focused regression that rejects `titleLanguage` and `missingOriginalTitle` arguments while continuing to accept a bounded keyword/media query. This protects the source boundary; it does not test an Agent answer or add matrix credit.
+
+## Validation
+
+- `pnpm vitest run tests/discovery/parity.test.ts`: PASS, 1 file / 3 tests.
+- `pnpm harness frontier:check`: PASS, 121 records / 99 actionable; D06 remains PARTIAL at the source-contract layer.
+- `pnpm acceptance:check`: PASS, 108/108 validators; Agent/MCP remains 83/96 and no D06/query_subjects credit is added.
+- `pnpm harness guard:legacy-paths --base origin/master --product-epoch`; `git diff --check`: PASS.
+- No Bangumi query, model call, account, community, QQ, or TIM request was made.
+
 ## D06 classification
 
 `D06` is recorded `PARTIAL` as a capability/source assessment only. A caller can inspect title fields in results from an explicitly bounded keyword search, but the API does not support a database-wide search for entries with one title field absent, and it provides no structured language fact proving that a returned original title is or is not Japanese. Search totals are estimates and result coverage is bounded. Therefore no answer may claim an exhaustive list or infer absence from omitted rows.
