@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-13T01:36:43Z",
+  "updated_at": "2026-10-13T06:19:29Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1732,10 +1732,10 @@
       "kind": "scenario",
       "user_question": "有中文名但没有日文名的动画条目有哪些？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
-      "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
+      "status": "PARTIAL",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-d06-title-language-source-contract-2026-10-13.md", "packages/tools/src/definitions/discovery-tools.ts", "packages/provider-core/src/providers.ts", "tests/discovery/parity.test.ts"],
+      "next_action": "Source-contract assessment 2026-10-13: official v0 search requires a keyword and documents type/tag/date/rating/rating-count/rank/NSFW filters, but no missing-name or title-language filter; Subject returns `name` and `name_cn` strings without a language code. A model-facing schema regression rejects unsupported titleLanguage and missingOriginalTitle filters. This is PARTIAL capability evidence only: no D06 Agent/MCP answer was run or accepted, no query_subjects matrix credit is added, and estimated/bounded search cannot enumerate all matching works or prove absence. Any later D06 observation must be a distinct exact-gated no-retry profile and report only the observed keyword sample. See docs/research/run95-d06-title-language-source-contract-2026-10-13.md.",
+      "reopen_when": "Public v0 adds structured title-language metadata or a supported complete predicate for missing Japanese/original titles; or a separately gated D06 current-source answer demonstrates a bounded usable sample.",
       "related_ids": []
     },
     {

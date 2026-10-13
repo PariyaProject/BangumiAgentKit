@@ -41,4 +41,27 @@ describe('discovery surface parity', () => {
       renderTool?.input.safeParse({ sort: 'score', tieBreak: { field: 'ratingCount' } }).success,
     ).toBe(true);
   });
+
+  it('does not expose a D06 title-language or missing-name filter without source support', () => {
+    const tool = new ToolRegistry({ storage: new MemoryStorage() }).getTool(
+      'bangumi.query_subjects',
+    );
+    expect(tool?.input.safeParse({ keyword: 'D06 source check', media: 'anime' }).success).toBe(
+      true,
+    );
+    expect(
+      tool?.input.safeParse({
+        keyword: 'D06 source check',
+        media: 'anime',
+        titleLanguage: 'ja',
+      }).success,
+    ).toBe(false);
+    expect(
+      tool?.input.safeParse({
+        keyword: 'D06 source check',
+        media: 'anime',
+        missingOriginalTitle: true,
+      }).success,
+    ).toBe(false);
+  });
 });
