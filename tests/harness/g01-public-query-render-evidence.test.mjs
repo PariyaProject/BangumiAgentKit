@@ -53,6 +53,12 @@ test('G01 direct-public query renderer evidence stays separate from its spent ca
   assert.match(g01.next_action, /does not replay the consumed G01 Agent\/MCP canary/);
   assert.ok(toolRow?.includes(reportPath));
   assert.ok(toolRow?.includes('◐'));
-  assert.match(acceptance, /匿名可用的公开 API 工具有逐项实测：60\/65/);
+  const publicEvidenceSummary = acceptance.match(/匿名可用的公开 API 工具有逐项实测：(\d+)\/65/);
+  const publicEvidenceRows = acceptance
+    .split('\n')
+    .filter((line) => line.startsWith('| `bangumi.'))
+    .filter((line) => line.split('|')[7]?.includes('◐')).length;
+  assert.ok(publicEvidenceSummary);
+  assert.equal(Number(publicEvidenceSummary[1]), publicEvidenceRows);
   assert.match(acceptance, /Agent→MCP 模型调用证据：83\/96/);
 });
