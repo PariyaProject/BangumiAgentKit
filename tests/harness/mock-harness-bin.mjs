@@ -167,7 +167,8 @@ if (tool === 'gh') {
     const ref = rest[0];
     if (ref === 'HEAD') {
       output(state.branch === state.baseBranch ? state.baseSha : state.featureHeadSha);
-    } else if (ref === `origin/${state.baseBranch}`) output(state.baseSha);
+    } else if (ref === '--git-common-dir') output(state.gitCommonDirectory ?? '.git');
+    else if (ref === `origin/${state.baseBranch}`) output(state.baseSha);
     else if (ref === `origin/${state.featureBranch}`)
       output(state.remoteTrackingFeatureSha ?? state.featureHeadSha);
     else fail(`unknown ref: ${ref}`);

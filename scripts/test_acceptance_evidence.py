@@ -3155,6 +3155,187 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             report, status, hashlib.sha256(bytes_value).hexdigest(),
         )
 
+    def _sign_g06_runner_report(self, report):
+        result = subprocess.run(
+            [
+                'node',
+                str(Path(__file__).resolve().parents[1] / 'tests/fixtures/sign-g06-runner-report.mjs'),
+            ],
+            cwd=Path(__file__).resolve().parents[1],
+            input=json.dumps(report),
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        proof = json.loads(result.stdout)
+        return proof['receiptPublicKey'], proof['runnerReceipt']
+
+    def _g06_report_fixture(self, source_revision=None):
+        tool = next((item for item in self.catalog if item['name'] == 'bangumi.get_subject_cast'), None)
+        if tool is None:
+            tool = {
+                'name': 'bangumi.get_subject_cast',
+                'auth': 'none',
+                'risk': 'read',
+                'description': 'Read bounded current-source subject cast rows.',
+                'inputSchema': {
+                    'type': 'object',
+                    'properties': {'subjectId': {'type': 'integer'}, 'limit': {'type': 'integer'}},
+                    'required': ['subjectId'],
+                },
+            }
+            self.catalog.append(tool)
+            self.catalog_path.write_text(json.dumps(self.catalog, ensure_ascii=False), encoding='utf-8')
+        catalog_bytes = self.catalog_path.read_bytes()
+        revision = source_revision or self.source_revision
+        base_sha = self._git('rev-parse', f'{revision}^').stdout.strip()
+        privacy = {
+            'authProfile': 'anonymous',
+            'oauthAttempted': False,
+            'accountDataRead': False,
+            'writesAttempted': False,
+            'communityRead': False,
+            'qqPipelineTested': False,
+            'timClientTested': False,
+            'promptStored': False,
+            'answerStored': False,
+            'rawResultStored': False,
+            'artifactImageBytesStored': False,
+            'credentialsStored': False,
+        }
+        counters = {
+            'sourceRowsObserved': 1,
+            'sourceRowsReturned': 1,
+            'rowsUsedForAnswerCheck': 1,
+            'structuredContentReadbackAvailable': True,
+            'rowsOmittedFromText': 0,
+            'actorRowsOmittedFromText': 0,
+            'sourceTruncated': False,
+            'schemaDriftRows': 0,
+            'invalidActorIdRows': 0,
+            'visibleCastRowsCount': 1,
+            'castRowsMatchedCount': 1,
+            'missingCastRowsCount': 0,
+            'mismatchedCastRowsCount': 0,
+            'duplicateAnswerRowsCount': 0,
+            'unmatchedAnswerRowsCount': 0,
+            'clippedCastRowsUnavailableCount': 0,
+            'clippedActorNamesUnavailableCount': 0,
+            'characterActorPairsMatchedCount': 1,
+            'rawRelationLabelsMatchedCount': 1,
+            'toolTextUtf8Bytes': 256,
+        }
+        report = {
+            'schemaVersion': 1,
+            'evidenceKind': 'codex_cli_g06_subject_cast_agent_mcp',
+            'runNumber': 95,
+            'frontierId': 'G06',
+            'scenarioId': 'G06',
+            'epochId': GENERATOR.CODEX_G06_EPOCH_ID,
+            'claimId': f'g06-run-95-pr-170-{revision[:12]}-123',
+            'prNumber': 170,
+            'sourceRevision': revision,
+            'baseSha': base_sha,
+            'ciSha': revision,
+            'ciStatus': 'SUCCESS',
+            'reviewerId': 'gpt-6-luna-max-run95-pr170-round1',
+            'bundleSha256': '8' * 64,
+            'catalogSha256': hashlib.sha256(catalog_bytes).hexdigest(),
+            'toolDescriptionSha256': hashlib.sha256(tool['description'].encode('utf-8')).hexdigest(),
+            'inputSchemaSha256': GENERATOR._canonical_json_sha256(tool['inputSchema']),
+            'observedAt': '2026-10-13T02:00:00.000Z',
+            'toolName': 'bangumi.get_subject_cast',
+            'argumentProfile': GENERATOR.CODEX_G06_ARGUMENT_PROFILE,
+            'expectedArgumentsSha256': GENERATOR._canonical_json_sha256(
+                GENERATOR.CODEX_G06_EXPECTED_ARGUMENTS,
+            ),
+            'model': 'gpt-6-luna',
+            'reasoningEffort': 'max',
+            'codexCliVersion': '0.162.0',
+            'processExitCode': 0,
+            'eventStreamParsed': True,
+            'codexMcpToolEventCount': 1,
+            'codexErrorItemCount': 0,
+            'mcpServerNames': ['bgk_g06_one_tool'],
+            'nonMcpToolEventCount': 0,
+            'nonMcpToolTypes': [],
+            'shellToolCallCount': 0,
+            'allowedCallCount': 1,
+            'deniedCallCount': 0,
+            'answerCheckMethod': GENERATOR.CODEX_G06_ANSWER_CHECK_METHOD,
+            'answerChecks': {key: True for key in GENERATOR.CODEX_G06_ANSWER_CHECK_FIELDS},
+            'answerCounters': counters,
+            'toolResultSummary': {
+                'status': 'ok',
+                'subjectIdMatches': True,
+                'rowsObserved': 1,
+                'rowsReturned': 1,
+                'rowsInReadback': 1,
+                'rowsOmittedFromText': 0,
+                'actorRowsOmittedFromText': 0,
+                'truncated': False,
+                'schemaDriftRows': 0,
+                'invalidActorIdRows': 0,
+                'resultSha256': '9' * 64,
+            },
+            'toolTextUtf8Bytes': 256,
+            'answerUtf8Bytes': 512,
+            'answerSha256': 'a' * 64,
+            'privacy': privacy,
+        }
+        self.g06_receipt_public_key, report['runnerReceipt'] = self._sign_g06_runner_report(report)
+        return report
+
+    def _g06_harness_status_fixture(self, report, report_bytes):
+        disposition = {
+            'claimId': report['claimId'],
+            'frontierId': 'G06',
+            'epochId': GENERATOR.CODEX_G06_EPOCH_ID,
+            'runNumber': 95,
+            'prNumber': report['prNumber'],
+            'toolName': report['toolName'],
+            'argumentProfile': report['argumentProfile'],
+            'expectedArgumentsSha256': report['expectedArgumentsSha256'],
+            'state': 'REPORT_WRITTEN',
+            'sourceCandidateSha': report['sourceRevision'],
+            'baseSha': report['baseSha'],
+            'ciSha': report['sourceRevision'],
+            'ciStatus': 'SUCCESS',
+            'reviewerId': report['reviewerId'],
+            'bundleSha256': report['bundleSha256'],
+            'model': report['model'],
+            'reasoningEffort': report['reasoningEffort'],
+            'reportWritten': True,
+            'reportPath': GENERATOR.CODEX_G06_REPORT_RELATIVE_PATH,
+            'reportSha256': hashlib.sha256(report_bytes).hexdigest(),
+            'receiptPublicKey': self.g06_receipt_public_key,
+            'retryAllowed': False,
+        }
+        return {
+            'run': {
+                'number': 95,
+                'state': {'profile': 'AUTONOMOUS_EVOLUTION', 'active_epoch_pr': report['prNumber']},
+            },
+            'epoch': {
+                'number': report['prNumber'],
+                'github_state': 'OPEN',
+                'state': {
+                    'epoch_id': GENERATOR.CODEX_G06_EPOCH_ID,
+                    'pr_number': report['prNumber'],
+                    'adversarial_preflight': {'g06_one_shot_disposition': disposition},
+                },
+            },
+        }
+
+    def _g06_is_valid(self, report, report_bytes=None, harness_status=None):
+        bytes_value = report_bytes or json.dumps(report).encode('utf-8')
+        status = harness_status or self._g06_harness_status_fixture(report, bytes_value)
+        return GENERATOR.codex_g06_report_is_valid(
+            report, status, hashlib.sha256(bytes_value).hexdigest(),
+        )
+
     def _g19_report_fixture(self, source_revision=None):
         catalog_bytes = self.catalog_path.read_bytes()
         tool = next(item for item in self.catalog if item['name'] == 'bangumi.get_person_activity')
@@ -4205,6 +4386,94 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 report_path, self.stale_candidate_source_revision,
             ),
         )
+
+    def test_accepts_exact_candidate_bound_sanitized_g06_subject_cast_report(self):
+        report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G06_REPORT_RELATIVE_PATH).name
+        report = self._g06_report_fixture()
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        report_bytes = report_path.read_bytes()
+        report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+        harness_status = self._g06_harness_status_fixture(report, report_bytes)
+        with (
+            patch.object(GENERATOR, 'codex_g06_probe_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=report['bundleSha256']),
+            patch.object(GENERATOR, 'codex_g06_harness_status', return_value=harness_status),
+        ):
+            self.assertTrue(GENERATOR.codex_g06_report_is_valid(report, harness_status, report_sha256))
+            self.assertTrue(
+                GENERATOR.codex_g06_report_matches_candidate_revision(
+                    report_path, self.source_revision,
+                ),
+            )
+            self.assertEqual(
+                GENERATOR.model_mcp_e2e_sources(self.catalog)['bangumi.get_subject_cast'],
+                {GENERATOR.CODEX_G06_REPORT_RELATIVE_PATH},
+            )
+        for forbidden in ('answer', 'toolOutput', 'prompt', 'rawRows', 'rawResult', 'characterName'):
+            self.assertNotIn(forbidden, report)
+
+        self._git('add', GENERATOR.CODEX_G06_REPORT_RELATIVE_PATH)
+        self._git('commit', '-qm', 'add sanitized G06 subject cast evidence')
+        with patch.object(GENERATOR, 'codex_g06_probe_revision_has_implementation', return_value=True):
+            self.assertTrue(
+                GENERATOR.codex_g06_report_matches_candidate_revision(
+                    report_path, self.source_revision,
+                ),
+            )
+
+    def test_rejects_g06_reports_with_changed_scope_privacy_or_harness_digest(self):
+        report = self._g06_report_fixture()
+        report_bytes = json.dumps(report).encode('utf-8')
+        status = self._g06_harness_status_fixture(report, report_bytes)
+        with (
+            patch.object(GENERATOR, 'codex_g06_probe_revision_has_implementation', return_value=True),
+            patch.object(GENERATOR, 'codex_g26_candidate_bundle_sha256', return_value=report['bundleSha256']),
+        ):
+            self.assertTrue(self._g06_is_valid(report, report_bytes, status))
+            for override in (
+                {'model': 'gpt-6-sol'},
+                {'reasoningEffort': 'high'},
+                {'toolName': 'bangumi.get_subject_relations'},
+                {'answerChecks': {**report['answerChecks'], 'serverPrivacySafe': False}},
+                {'answerChecks': {**report['answerChecks'], 'boundedAnswerBytes': False}},
+                {'answerUtf8Bytes': 3601},
+            ):
+                with self.subTest(override=override):
+                    invalid = {**report, **override}
+                    invalid_bytes = json.dumps(invalid).encode('utf-8')
+                    invalid_status = self._g06_harness_status_fixture(invalid, invalid_bytes)
+                    self.assertFalse(self._g06_is_valid(invalid, invalid_bytes, invalid_status))
+
+            unsafe = json.loads(json.dumps(report))
+            unsafe['privacy']['accountDataRead'] = True
+            unsafe_bytes = json.dumps(unsafe).encode('utf-8')
+            unsafe_status = self._g06_harness_status_fixture(unsafe, unsafe_bytes)
+            self.assertFalse(self._g06_is_valid(unsafe, unsafe_bytes, unsafe_status))
+
+            wrong_digest_status = self._g06_harness_status_fixture(report, report_bytes)
+            wrong_digest_status['epoch']['state']['adversarial_preflight']['g06_one_shot_disposition'][
+                'reportSha256'
+            ] = 'b' * 64
+            self.assertFalse(self._g06_is_valid(report, report_bytes, wrong_digest_status))
+
+    def test_reconciliation_evidence_requires_a_runner_signature_bound_to_the_durable_claim(self):
+        report = self._g06_report_fixture()
+        durable_public_key = self.g06_receipt_public_key
+        report_without_receipt = {key: value for key, value in report.items() if key != 'runnerReceipt'}
+        other_public_key, other_receipt = self._sign_g06_runner_report(report_without_receipt)
+        self.assertNotEqual(other_public_key, durable_public_key)
+        report_without_receipt['runnerReceipt'] = other_receipt
+        report_bytes = json.dumps(report_without_receipt).encode('utf-8')
+        self.g06_receipt_public_key = durable_public_key
+        status = self._g06_harness_status_fixture(report_without_receipt, report_bytes)
+
+        self.assertFalse(self._g06_is_valid(report_without_receipt, report_bytes, status))
+
+        forged = {key: value for key, value in report.items() if key != 'runnerReceipt'}
+        forged_bytes = json.dumps(forged).encode('utf-8')
+        self.g06_receipt_public_key = durable_public_key
+        forged_status = self._g06_harness_status_fixture(forged, forged_bytes)
+        self.assertFalse(self._g06_is_valid(forged, forged_bytes, forged_status))
 
     def test_accepts_exact_candidate_bound_sanitized_g19_person_origin_report(self):
         report_path = self.live_probe_dir / Path(GENERATOR.CODEX_G19_REPORT_RELATIVE_PATH).name

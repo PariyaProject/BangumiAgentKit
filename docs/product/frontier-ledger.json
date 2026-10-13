@@ -444,9 +444,19 @@
         "packages/tools/src/definitions/read-tools.ts",
         "tests/render/subject-overview.test.ts",
         "tests/semantic/subject-overview.test.ts",
-        "docs/research/run78-subject-overview-contract-live-2026-10-04.md"
+        "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
+        "scripts/acceptance/run-g06-codex-agent-mcp.mjs",
+        "scripts/lib/g06-privacy-summary.mjs",
+        "scripts/acceptance/write-g06-agent-mcp-report.mjs",
+        "scripts/lib/g06-one-shot-claim.mjs",
+        "tests/unit/g06-codex-agent-mcp-runner.test.ts",
+        "scripts/acceptance/g06-runner-receipt.mjs",
+        "scripts/acceptance/g06-runner-receipt.d.mts",
+        "scripts/acceptance/verify-g06-runner-receipt.mjs",
+        "tests/harness/codex-one-tool-evidence.test.mjs",
+        "tests/fixtures/sign-g06-runner-report.mjs"
       ],
-      "next_action": "The bounded get_subject_cast MCP text projection preserves returned character/actor identities, raw relation labels, source coverage and omission counts within 3600 UTF-8 bytes; the 100-row adversarial fixture was 398109 bytes before compaction and its full structuredContent remains equality-wise unchanged. One exact Candidate A public Agent call used subjectId=218707/limit=100, completed only get_subject_cast, returned 7 rows with 4 visible and 3 omitted from 1373-byte text, and passed the exact visible row-pair and scope-disclosure checks. The Antigravity event stream does not expose a separate structuredContent field, so do not claim live full-object readback; the integration equality assertion covers preservation. Keep PARTIAL because one response does not establish exhaustive cast coverage or a universal main/support taxonomy; QQ/TIM remains separate.",
+      "next_action": "Round 1 on Candidate 2bcce5a found two P1 and one P2. Commit b15978d fixed the emitted communityRead privacy field, added a durable-claim-pinned Ed25519 runtime receipt verified at report/reconciliation/acceptance boundaries, and required unknown-truncation disclosure. Exact CI run 38344676039 failed because tests/harness/codex-one-tool-evidence.test.mjs imported the full MCP server and required @modelcontextprotocol/sdk in the dependency-free Harness job. The privacy contract now lives in scripts/lib/g06-privacy-summary.mjs, shared by server, report validator, and test. The single failing test reproduced under a missing-SDK loader and then passed; full no-SDK Harness suite 188/188 and acceptance validator 108/108 pass locally. Next commit/push this test-boundary fix to the same PR, require fresh exact-head CI 7/7, refresh Candidate/Base evidence with all three round-1 closure mappings, then continue the same Luna Max reviewer identity for round 2 before any one-shot activity.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -458,7 +468,13 @@
           "tests/render/subject-cast-g06.test.ts",
           "tests/integration/live-subject-credit.acceptance.test.ts",
           "tests/render/subject-credit-mobile-layout.test.ts",
-          "tests/integration/tool-catalog-completeness.test.ts"
+          "tests/integration/tool-catalog-completeness.test.ts",
+          "tests/unit/g06-codex-agent-mcp-runner.test.ts",
+          "tests/unit/g06-subject-cast-agent-mcp.test.ts",
+          "tests/harness/g06-one-shot-claim.test.mjs",
+          "tests/harness/agent-harness-cli.test.mjs",
+          "tests/harness/codex-one-tool-evidence.test.mjs",
+          "tests/fixtures/sign-g06-runner-report.mjs"
         ],
         "implementation": [
           "apps/mcp/src/result-presenter.ts",
@@ -466,7 +482,17 @@
           "packages/bangumi-core/src/services/character-service.ts",
           "packages/bangumi-core/src/workflows/subject-cast.ts",
           "packages/renderer/src/view-model-builders/index.ts",
-          "packages/renderer/src/templates/CastCard.tsx"
+          "packages/renderer/src/templates/CastCard.tsx",
+          "scripts/acceptance/run-g06-codex-agent-mcp.mjs",
+          "scripts/acceptance/write-g06-agent-mcp-report.mjs",
+          "scripts/lib/g06-one-shot-claim.mjs",
+          "scripts/agent-harness.mjs",
+          "scripts/generate-tool-acceptance-tasks.py",
+          "scripts/acceptance/g06-runner-receipt.mjs",
+          "scripts/lib/g06-privacy-summary.mjs",
+          "scripts/acceptance/g06-runner-receipt.d.mts",
+          "scripts/acceptance/verify-g06-runner-receipt.mjs",
+          "scripts/test_acceptance_evidence.py"
         ],
         "live_probe": "docs/live-probes/g06-cast-agent-renderer-2026-10-03.json",
         "current_agent_canary_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
@@ -484,11 +510,11 @@
           ],
           "answer_check_method": "row-separated-exact-character-actor-pairs-v1",
           "answer_report_pending": false,
-          "current_candidate_answer_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
-          "current_candidate_answer_report_sha": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
+          "historical_run89_answer_report": "docs/research/run89-g06-cast-agent-canary-2026-10-05.json",
+          "historical_run89_answer_report_sha": "fc59f8c05cae0a03f751bc26c221dbe34147d1d3",
           "current_candidate_catalog_sha256": "26672c59d62f41910457fcee14f7925c615b17ff6ff658cac0e3ca053a02e08e"
         },
-        "current_candidate_agent_canary": {
+        "historical_run89_agent_canary": {
           "tool": "bangumi.get_subject_cast",
           "completed_tool_calls": 1,
           "subject_id": 218707,
@@ -539,6 +565,31 @@
           "result": "PASS 1 file / 1 opt-in test; official v0 through public ToolRegistry; 7 cast/actor links; 100 staff rows / 22 raw roles; overview partial with 24 staff rows in 6 groups and 9 relations; 720x5228 renderer Artifact visually inspected.",
           "user_clients_tested": false,
           "oauth_or_account_data_used": false
+        },
+        "run95_corrective_ci_test_boundary": {
+          "runNumber": 95,
+          "prNumber": 148,
+          "failedCandidateSha": "b15978de98292b4ddf5d804291ce80bbc005d181",
+          "failedCiRun": 38344676039,
+          "failure": "The harness-control node --test job loads all tests without workspace dependency installation; codex-one-tool-evidence.test.mjs imported apps/mcp/codex-one-tool-mcp-server.mjs, whose top-level @modelcontextprotocol/sdk import raised ERR_MODULE_NOT_FOUND. All other harness tests passed.",
+          "generalizedFix": "Move the immutable G06 privacy contract/builder into dependency-free scripts/lib/g06-privacy-summary.mjs consumed by the MCP server and report validator; test that shared builder instead of importing the executable server.",
+          "regression": "node --experimental-loader=/tmp/run95-block-sdk-loader.mjs --test tests/harness/codex-one-tool-evidence.test.mjs passed 10/10 after the change; the same command failed before it.",
+          "fullHarnessNoSdk": "node --experimental-loader=/tmp/run95-block-sdk-loader.mjs --test tests/harness/*.test.mjs passed 188/188.",
+          "acceptanceEvidence": "pnpm acceptance:check passed 108/108; matrix remains 96 catalog/direct, 56 public, 31 N/A, 9 pending, auth denial 21 plus 1 pending, real auth 0/33, Agent/MCP 83/96, QQ/TIM 0/96.",
+          "oneShotActions": false
+        },
+        "run95_implementation_setup": {
+          "runNumber": 95,
+          "prNumber": 148,
+          "implementationCommit": "58ab652bd0f3c992538e2f0aa6dcc190b9782d79",
+          "baseSha": "d4a63ad36e2c71e71fc1b0589441989aacf3f5f1",
+          "implementationCiRun": 38340199889,
+          "implementationCiResult": "7/7 PASS on the initial implementation commit; frontier-record update requires a new exact Candidate CI run.",
+          "agentMcpQueryAttempted": false,
+          "directPublicProbeAttempted": false,
+          "reportWritten": false,
+          "retryAllowed": false,
+          "currentAcceptanceCredit": "none until a sanitized current-source report is accepted"
         }
       }
     },

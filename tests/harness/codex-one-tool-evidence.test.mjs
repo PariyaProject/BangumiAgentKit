@@ -16,6 +16,8 @@ import {
   summarizeSubjectStatsFacts,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
+import { buildG06PrivacySummary, G06_PRIVACY } from '../../scripts/lib/g06-privacy-summary.mjs';
+import { g06ServerPrivacyMatches } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
 
 const target = 'bangumi.get_subject_stats_intelligence';
 const expectedArguments = { subjectId: 218707 };
@@ -34,6 +36,12 @@ test('one-tool profile only exposes the exact anonymous read tool', () => {
   assert.deepEqual(filterAllowedTools(tools, target), [tools[0]]);
   assert.throws(() => filterAllowedTools(tools, 'bangumi.update_collection'), /auth=none, risk=read/);
   assert.throws(() => filterAllowedTools([...tools, { ...tools[0] }], target), /exactly one/);
+});
+
+test('the G06 server emits the exact privacy summary required by its report validator', () => {
+  const summary = { privacy: buildG06PrivacySummary() };
+  assert.deepEqual(summary.privacy, G06_PRIVACY);
+  assert.equal(g06ServerPrivacyMatches(summary), true);
 });
 
 test('only an anonymous read tool receives non-destructive idempotent MCP annotations', () => {
