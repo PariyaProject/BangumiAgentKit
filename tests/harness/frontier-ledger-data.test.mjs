@@ -41,3 +41,16 @@ test('G16 frontier guidance stays independent of transient Run execution state',
   assert.doesNotMatch(record.next_action, /\bclaim\/report\b/iu);
   assert.doesNotMatch(record.next_action, /\bquery has (?:not )?run\b/iu);
 });
+
+test('R01 can resume in a distinct follow-up Epoch without reusing its one-shot claim', () => {
+  const record = ledger.records.find(({ id }) => id === 'R01');
+  assert.ok(record, 'R01 must remain in the canonical frontier');
+  assert.equal(record.status, 'PARTIAL');
+  assert.match(record.next_action, /still-unspent one-shot/u);
+  assert.match(record.next_action, /fresh Base-bound follow-up Epoch ID/u);
+  assert.match(record.next_action, /never reuse a merged\/stale Candidate/u);
+  assert.match(record.next_action, /repository-wide permanent latch/u);
+  assert.match(record.next_action, /fixed subjectId=41529\/includeEvidence=true profile/u);
+  assert.match(record.next_action, /inconclusive result is no-credit and never retried/u);
+  assert.doesNotMatch(record.next_action, /run95-r01-subject-relations-agent-mcp-followup/u);
+});
