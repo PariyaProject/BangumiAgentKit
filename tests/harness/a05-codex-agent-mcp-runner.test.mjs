@@ -93,13 +93,16 @@ test('A05 Codex invocation is pinned to Luna Max, read-only, and one MCP tool', 
   assert.ok(args.includes('mcp_servers.bgk_a05_one_tool.required=true'));
   assert.ok(args.includes('features.shell_tool=false'));
   assert.ok(args.includes('web_search="disabled"'));
-  assert.equal(
-    args.filter(
-      (item) =>
-        item.startsWith('mcp_servers.') &&
-        item.endsWith('.enabled_tools=["bangumi.query_subjects"]'),
-    ).length,
-    1,
+  const mcpConfig = args.filter((item) => item.startsWith('mcp_servers.'));
+  const mcpServerNames = [
+    ...new Set(
+      mcpConfig.map((item) => item.match(/^mcp_servers\.([^.]+)\./u)?.[1]).filter(Boolean),
+    ),
+  ].sort();
+  assert.deepEqual(mcpServerNames, ['bgk_a05_one_tool']);
+  assert.deepEqual(
+    mcpConfig.filter((item) => item.includes('.enabled_tools=')),
+    ['mcp_servers.bgk_a05_one_tool.enabled_tools=["bangumi.query_subjects"]'],
   );
 });
 
@@ -125,6 +128,13 @@ test('A05 completion gate rejects incomplete streams and every nonzero or unknow
     ),
     false,
   );
+  assert.equal(
+    a05CodexCompletionIsClean(
+      { parsed: false },
+      { eventStreamComplete: true, codexErrorItemCount: 0 },
+    ),
+    false,
+  );
   assert.equal(a05CodexCompletionIsClean({ parsed: true }, { eventStreamComplete: true }), false);
 });
 
@@ -139,6 +149,83 @@ test('A05 one-shot gate requires the exact current Candidate/Base, clean CI, and
   staleBase.epoch.state.reviewed_base_sha = 'd'.repeat(40);
   assert.throws(
     () => assertA05CandidateReviewGate(staleBase, pr, { candidateSha, currentBaseSha: baseSha }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const wrongEpochBase = structuredClone(status);
+  wrongEpochBase.epoch.state.base_sha = 'd'.repeat(40);
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(wrongEpochBase, pr, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const wrongCandidate = structuredClone(status);
+  wrongCandidate.epoch.state.candidate_sha = 'e'.repeat(40);
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(wrongCandidate, pr, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const wrongPrHead = { ...pr, headRefOid: 'f'.repeat(40) };
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(status, wrongPrHead, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const wrongPrBase = { ...pr, baseRefName: 'stale-base' };
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(status, wrongPrBase, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const wrongCiSha = structuredClone(status);
+  wrongCiSha.epoch.state.ci.sha = '1'.repeat(40);
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(wrongCiSha, pr, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const failedCi = structuredClone(status);
+  failedCi.epoch.state.ci.status = 'FAILED_OR_PENDING';
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(failedCi, pr, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
+    /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
+  );
+
+  const missingCheck = {
+    ...pr,
+    statusCheckRollup: mandatoryChecks.filter((check) => check.name !== 'harness-control'),
+  };
+  assert.throws(
+    () =>
+      assertA05CandidateReviewGate(status, missingCheck, {
+        candidateSha,
+        currentBaseSha: baseSha,
+      }),
     /exact-Candidate current-base CI and GPT-6 Luna Max PASS/u,
   );
 

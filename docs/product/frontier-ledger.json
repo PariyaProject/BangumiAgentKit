@@ -2480,7 +2480,7 @@
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-a05-collection-completion-source-contract-2026-10-09.md"
       ],
-      "next_action": "Run #95 selected Epoch `run95-a05-collection-completion-filter` from master a4c1836. Preserve UNASSESSED until the existing `scripts/acceptance/run-a05-codex-agent-mcp.mjs --run 95` runner writes and validates its exact-candidate sanitized report. The runner makes one anonymous public `bangumi.query_subjects` MCP call with the fixed `A05_EXPECTED_QUERY_ARGUMENTS` only after exact Candidate/Base CI and GPT-6 Luna Max PASS; its local Git-metadata one-shot claim is permanent. Any failed or inconclusive one-shot claim must never be retried and receives no matrix credit. If accepted, change to PARTIAL only, preserving experimental search, estimated totals, bounded-sample, formula, and unresolved-bucket limits. No OAuth/account/community/QQ/TIM action.",
+      "next_action": "A05 remains UNASSESSED. Use its existing one-tool Agent/MCP runner only after Harness verifies a clean exact Candidate/current Base, all required checks, and GPT-6 Luna Max PASS. The fixed public query profile is `A05_EXPECTED_QUERY_ARGUMENTS` and returns one anonymous read-only `bangumi.query_subjects` observation with no account, community, or write path. Its local one-shot claim is permanent: any failed or inconclusive attempt must never be retried and receives no matrix credit. If the report is accepted, change to PARTIAL only, preserving experimental search, estimated totals, bounded-sample, formula, and unresolved-bucket limits. No OAuth/account/community/QQ/TIM action.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
