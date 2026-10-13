@@ -536,7 +536,7 @@ CODEX_D07_REPORT_FIELDS = {
     'eventStreamComplete', 'turnCompleted', 'codexMcpToolEventCount',
     'codexErrorItemCount', 'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount',
     'allowedCallCount', 'deniedCallCount', 'resultStatus', 'answerCheckMethod',
-    'answerChecks', 'resultCounters', 'resultSummaries', 'retrievedAt', 'privacy',
+    'answerChecks', 'resultCounters', 'resultSummaries', 'coverageSummaries', 'retrievedAt', 'privacy',
     'rawAnswerPersisted', 'rawToolResultPersisted',
 }
 CODEX_D07_ANSWER_CHECK_FIELDS = {
@@ -1780,6 +1780,7 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
 CODEX_D07_PROBE_IMPLEMENTATION_MARKERS = {
     'scripts/acceptance/d07-current-rank-answer-check.mjs': (
         'export const D07_EXPECTED_YEARS',
+        'export const D07_LIMITATIONS',
         'export const D07_QUERY_ARGUMENTS_BY_YEAR',
         'export function verifyD07CurrentRankAnswer(',
         'historicalRankNotClaimed:',
@@ -7439,6 +7440,27 @@ def codex_d07_report_is_valid(
             or type(row.get('rank')) is not int or row['rank'] <= 0
             or not isinstance(row.get('titleSha256'), str)
             or not re.fullmatch(r'[0-9a-f]{64}', row['titleSha256'])
+        ):
+            return False
+    coverage_summaries = report.get('coverageSummaries')
+    if not isinstance(coverage_summaries, list) or len(coverage_summaries) != len(CODEX_D07_EXPECTED_YEARS):
+        return False
+    for year, row in zip(CODEX_D07_EXPECTED_YEARS, coverage_summaries):
+        if (
+            not isinstance(row, dict)
+            or set(row) != {
+                'year', 'resultState', 'coverageState', 'requested', 'scanned',
+                'matched', 'returned', 'totalKind',
+            }
+            or row.get('year') != year
+            or row.get('resultState') not in ('ok', 'partial')
+            or row.get('coverageState') not in ('complete', 'partial', 'unknown')
+            or type(row.get('requested')) is not int or row['requested'] != 1
+            or type(row.get('scanned')) is not int or not 1 <= row['scanned'] <= 500
+            or type(row.get('matched')) is not int or not 1 <= row['matched'] <= row['scanned']
+            or type(row.get('returned')) is not int or row['returned'] != 1
+            or row['returned'] > row['matched']
+            or row.get('totalKind') != 'exact'
         ):
             return False
     if (

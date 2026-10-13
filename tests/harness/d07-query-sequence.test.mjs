@@ -31,10 +31,10 @@ test('summarizes D07 source output without retaining title text', async () => {
     retrievedAt: '2026-10-13T12:00:00.000Z',
     plan: { operation: 'browseSubjects' },
     coverage: {
-      state: 'complete',
+      state: 'unknown',
       requested: 1,
-      scanned: 1,
-      matched: 1,
+      scanned: 20,
+      matched: 7,
       returned: 1,
       totalKind: 'exact',
     },
@@ -47,7 +47,7 @@ test('summarizes D07 source output without retaining title text', async () => {
     operation: 'browseSubjects',
     retrievedAt: '2026-10-13T12:00:00.000Z',
     totalKind: 'exact',
-    coverage: { state: 'complete', requested: 1, scanned: 1, matched: 1, returned: 1 },
+    coverage: { state: 'unknown', requested: 1, scanned: 20, matched: 7, returned: 1 },
     itemCount: 1,
     items: [
       {

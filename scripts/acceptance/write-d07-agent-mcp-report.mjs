@@ -64,6 +64,7 @@ const REPORT_KEYS = [
   'answerChecks',
   'resultCounters',
   'resultSummaries',
+  'coverageSummaries',
   'retrievedAt',
   'privacy',
   'rawAnswerPersisted',
@@ -263,6 +264,7 @@ export function buildD07SanitizedReport(input, claim) {
     answerChecks: { ...answerResult.answerChecks, allPassed: true },
     resultCounters: answerResult.resultCounters,
     resultSummaries: answerResult.resultSummaries,
+    coverageSummaries: answerResult.coverageSummaries,
     retrievedAt: answerResult.retrievedAt,
     privacy: {
       authProfile: 'anonymous',
@@ -370,6 +372,35 @@ export function validateD07SanitizedReport(report, claim) {
           Number.isSafeInteger(row.rank) &&
           row.rank > 0 &&
           isSha(row.titleSha256, 64),
+      ),
+    coverageSummaries:
+      Array.isArray(report?.coverageSummaries) &&
+      report.coverageSummaries.length === years.length &&
+      report.coverageSummaries.every(
+        (row, index) =>
+          exactKeys(row, [
+            'year',
+            'resultState',
+            'coverageState',
+            'requested',
+            'scanned',
+            'matched',
+            'returned',
+            'totalKind',
+          ]) &&
+          row.year === years[index] &&
+          ['ok', 'partial'].includes(row.resultState) &&
+          ['complete', 'partial', 'unknown'].includes(row.coverageState) &&
+          row.requested === 1 &&
+          Number.isSafeInteger(row.scanned) &&
+          row.scanned >= 1 &&
+          row.scanned <= 500 &&
+          Number.isSafeInteger(row.matched) &&
+          row.matched >= 1 &&
+          row.matched <= row.scanned &&
+          row.returned === 1 &&
+          row.returned <= row.matched &&
+          row.totalKind === 'exact',
       ),
     retrievedAt:
       exactKeys(report?.retrievedAt, ['first', 'last']) &&

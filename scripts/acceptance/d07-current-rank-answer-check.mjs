@@ -20,6 +20,11 @@ export const D07_QUERY_ARGUMENTS_BY_YEAR = Object.freeze(
   ),
 );
 
+export const D07_LIMITATIONS =
+  '这些是检索时按发行年份筛选得到的当前排名候选，不代表对应年份当时的历史排名；每年仅观察一个有界返回候选，覆盖状态以工具返回为准，不能据此声称完整目录覆盖。';
+
+const D07_MAX_SCANNED_CANDIDATES = 500;
+
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === 'object') {
@@ -54,18 +59,25 @@ function sourceCallIsValid(call, year) {
   const result = call?.result;
   const coverage = result?.coverage;
   const item = Array.isArray(result?.items) ? result.items[0] : null;
+  const validCoverageCounters =
+    ['complete', 'partial', 'unknown'].includes(coverage?.state) &&
+    coverage?.requested === 1 &&
+    Number.isSafeInteger(coverage?.scanned) &&
+    coverage.scanned >= 1 &&
+    coverage.scanned <= D07_MAX_SCANNED_CANDIDATES &&
+    Number.isSafeInteger(coverage?.matched) &&
+    coverage.matched >= 1 &&
+    coverage.matched <= coverage.scanned &&
+    coverage?.returned === 1 &&
+    coverage.returned <= coverage.matched;
   return (
     canonicalJson(call?.arguments) === canonicalJson(expectedArguments) &&
-    result?.state === 'ok' &&
+    ['ok', 'partial'].includes(result?.state) &&
     result?.operation === 'browseSubjects' &&
     result?.totalKind === 'exact' &&
     typeof result?.retrievedAt === 'string' &&
     Number.isFinite(Date.parse(result.retrievedAt)) &&
-    coverage?.state === 'complete' &&
-    coverage?.requested === 1 &&
-    coverage?.scanned === 1 &&
-    coverage?.matched === 1 &&
-    coverage?.returned === 1 &&
+    validCoverageCounters &&
     result.itemCount === 1 &&
     Array.isArray(result.items) &&
     result.items.length === 1 &&
@@ -75,18 +87,6 @@ function sourceCallIsValid(call, year) {
     item.rank > 0 &&
     /^[0-9a-f]{64}$/u.test(item?.titleSha256 ?? '')
   );
-}
-
-function currentSnapshotLimitation(text) {
-  return /当前/u.test(text);
-}
-
-function historicalRankLimitation(text) {
-  return /历史/u.test(text) && /(不代表|不能|无法|并非|并不是|不等于)/u.test(text);
-}
-
-function coverageLimitation(text) {
-  return /覆盖/u.test(text) && /(有限|部分|不完整|未证明)/u.test(text);
 }
 
 /**
@@ -148,9 +148,9 @@ export function verifyD07CurrentRankAnswer(answerText, toolCalls) {
     exactYearSequence:
       answerShape && D07_EXPECTED_YEARS.every((year, index) => answer.rows[index]?.year === year),
     rowsMatchSourceIdsRanksAndTitles: exactRows,
-    currentSnapshotOnly: currentSnapshotLimitation(limitations),
-    historicalRankNotClaimed: historicalRankLimitation(limitations),
-    coverageLimitDisclosed: coverageLimitation(limitations),
+    currentSnapshotOnly: limitations === D07_LIMITATIONS,
+    historicalRankNotClaimed: limitations === D07_LIMITATIONS,
+    coverageLimitDisclosed: limitations === D07_LIMITATIONS,
   };
   const passed = Object.values(checks).every(Boolean);
   const sourceRows = exactCalls
@@ -163,11 +163,24 @@ export function verifyD07CurrentRankAnswer(answerText, toolCalls) {
     rankMinimum: sourceRows.length > 0 ? Math.min(...sourceRows.map((row) => row.rank)) : null,
     rankMaximum: sourceRows.length > 0 ? Math.max(...sourceRows.map((row) => row.rank)) : null,
   };
+  const coverageSummaries = exactCalls
+    ? calls.map((call, index) => ({
+        year: D07_EXPECTED_YEARS[index],
+        resultState: call.result.state,
+        coverageState: call.result.coverage.state,
+        requested: call.result.coverage.requested,
+        scanned: call.result.coverage.scanned,
+        matched: call.result.coverage.matched,
+        returned: call.result.coverage.returned,
+        totalKind: call.result.totalKind,
+      }))
+    : [];
   return {
     passed,
     method: 'd07-current-rank-by-source-year-v1',
     answerChecks: checks,
     resultCounters,
+    ...(exactCalls ? { coverageSummaries } : {}),
     ...(exactCalls
       ? {
           resultSummaries: sourceRows.map(({ year, id, rank, titleSha256 }) => ({

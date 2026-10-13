@@ -2264,6 +2264,19 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             }
             for index, year in enumerate(years)
         ]
+        coverage_summaries = [
+            {
+                'year': year,
+                'resultState': ('ok', 'ok', 'partial')[index % 3],
+                'coverageState': ('complete', 'unknown', 'partial')[index % 3],
+                'requested': 1,
+                'scanned': (8, 20, 20)[index % 3],
+                'matched': (4, 7, 7)[index % 3],
+                'returned': 1,
+                'totalKind': 'exact',
+            }
+            for index, year in enumerate(years)
+        ]
         return {
             'schemaVersion': 1,
             'evidenceKind': 'codex_cli_d07_current_rank_agent_mcp',
@@ -2316,6 +2329,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
                 'rankMaximum': len(years),
             },
             'resultSummaries': summaries,
+            'coverageSummaries': coverage_summaries,
             'retrievedAt': {
                 'first': '2026-10-13T12:00:00.000Z',
                 'last': '2026-10-13T12:09:00.000Z',
@@ -4919,6 +4933,13 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
         invalid_reports = [
             {**report, 'answer': 'raw output'},
             {**report, 'resultSummaries': report['resultSummaries'][:-1]},
+            {
+                **report,
+                'coverageSummaries': [
+                    {**report['coverageSummaries'][0], 'scanned': 0},
+                    *report['coverageSummaries'][1:],
+                ],
+            },
             {**report, 'model': 'gpt-6-sol'},
             {
                 **report,

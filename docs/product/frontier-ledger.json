@@ -1803,6 +1803,8 @@
         "scripts/acceptance/d07-current-rank-answer-check.mjs",
         "scripts/acceptance/run-d07-codex-agent-mcp.mjs",
         "scripts/acceptance/write-d07-agent-mcp-report.mjs",
+        "scripts/generate-tool-acceptance-tasks.py",
+        "scripts/test_acceptance_evidence.py",
         "scripts/lib/d07-one-shot-claim.mjs",
         "scripts/lib/d07-query-sequence.mjs",
         "tests/harness/d07-one-shot-claim.test.mjs",

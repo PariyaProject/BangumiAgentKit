@@ -8,6 +8,7 @@ import test from 'node:test';
 import { canonicalHash } from '../../scripts/lib/frontier-ledger.mjs';
 import {
   D07_EXPECTED_YEARS,
+  D07_LIMITATIONS,
   D07_QUERY_ARGUMENTS_BY_YEAR,
 } from '../../scripts/acceptance/d07-current-rank-answer-check.mjs';
 import {
@@ -45,11 +46,17 @@ function claimFixture() {
 function acceptedInput(claim) {
   const callSummaries = D07_EXPECTED_YEARS.map((year, index) => ({
     year,
-    state: 'ok',
+    state: index % 3 === 2 ? 'partial' : 'ok',
     operation: 'browseSubjects',
     retrievedAt: `2026-10-13T12:${String(index).padStart(2, '0')}:00.000Z`,
     totalKind: 'exact',
-    coverage: { state: 'complete', requested: 1, scanned: 1, matched: 1, returned: 1 },
+    coverage: {
+      state: ['complete', 'unknown', 'partial'][index % 3],
+      requested: 1,
+      scanned: index % 3 === 0 ? 8 : 20,
+      matched: index % 3 === 0 ? 4 : 7,
+      returned: 1,
+    },
     itemCount: 1,
     items: [{ id: 10000 + year, rank: index + 1, titleSha256: hash(`Example anime ${year}`) }],
   }));
@@ -62,7 +69,7 @@ function acceptedInput(claim) {
       title: `Example anime ${call.year}`,
       rank: call.items[0].rank,
     })),
-    limitations: '这些是当前排名快照，不代表对应年份当时的历史排名；覆盖范围有限。',
+    limitations: D07_LIMITATIONS,
   });
   const args = D07_EXPECTED_YEARS.map((year) => D07_QUERY_ARGUMENTS_BY_YEAR[year]);
   return {
@@ -136,6 +143,14 @@ test('writes only hash-bound D07 evidence without retaining answer or returned t
   assert.equal(result.report.evidenceKind, 'codex_cli_d07_current_rank_agent_mcp');
   assert.equal(result.report.answerChecks.allPassed, true);
   assert.equal(result.report.resultSummaries.length, 10);
+  assert.equal(result.report.coverageSummaries.length, 10);
+  assert.deepEqual(
+    [...new Set(result.report.coverageSummaries.map((row) => row.coverageState))].sort(),
+    ['complete', 'partial', 'unknown'],
+  );
+  assert.equal(result.report.coverageSummaries[1].scanned, 20);
+  assert.equal(result.report.coverageSummaries[1].matched, 7);
+  assert.equal(result.report.coverageSummaries[1].returned, 1);
   assert.equal(result.report.rawAnswerPersisted, false);
   assert.equal(result.report.rawToolResultPersisted, false);
   assert.equal(Object.hasOwn(result.report, 'answer'), false);

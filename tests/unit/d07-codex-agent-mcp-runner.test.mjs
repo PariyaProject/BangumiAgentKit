@@ -16,12 +16,19 @@ const candidate = 'a'.repeat(40);
 const base = 'b'.repeat(40);
 
 function resultFor(year, index) {
+  const coverageState = ['unknown', 'partial', 'complete'][index % 3];
   return {
-    state: 'ok',
+    state: coverageState === 'partial' ? 'partial' : 'ok',
     operation: 'browseSubjects',
     totalKind: 'exact',
     retrievedAt: `2026-10-13T12:${String(index).padStart(2, '0')}:00.000Z`,
-    coverage: { state: 'complete', requested: 1, scanned: 1, matched: 1, returned: 1 },
+    coverage: {
+      state: coverageState,
+      requested: 1,
+      scanned: coverageState === 'complete' ? 8 : 20,
+      matched: coverageState === 'complete' ? 4 : 7,
+      returned: 1,
+    },
     itemCount: 1,
     items: [{ id: 10000 + year, rank: index + 1, displayName: `Anime ${year}` }],
   };
