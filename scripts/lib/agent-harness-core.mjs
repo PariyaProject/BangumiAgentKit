@@ -511,7 +511,7 @@ export function assertProductCommitHygiene(subjects) {
     `^(?:(?:${runtimeStateVerb})\\s+(?:the\\s+)?)*(?:[a-z]\\d{2}\\s+)?(?:(?:one|single)[\\s._-]*shot\\s+)?(?:claim|disposition|attempt|retry|result|report)(?:[\\s._-]+(?:state|status|outcome|verdict))?\\s+(?:(?:to|as|is)\\s+)?(?:claimed|unclaimed|inconclusive|report_written(?:_ack_pending)?|consumed|spent|retry_allowed|retry_prohibited|allowed|prohibited|terminal)(?:\\s+(?:for|on)\\s+(?:run|epoch|pr|issue)\\s*#?\\d+|\\s+#?\\d+)?$`,
   );
   const durableEngineering =
-    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|frontier|capability|api|renderer|standalone|agent-ux)\):\s+\S|^docs:\s+(?:add|clarify|describe|document|explain|improve|keep|maintain|outline|preserve|specify|summarize|teach)\s+\S/iu;
+    /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+\S|^docs\((?:product|frontier|acceptance|capability|api|renderer|standalone|agent-ux)\):\s+\S|^docs:\s+(?:add|clarify|describe|document|explain|improve|keep|maintain|outline|preserve|specify|summarize|teach)\s+\S/iu;
   const engineeringPrefix =
     /^(?:feat|fix|test|refactor|perf|build)(?:\([^)]*\))?:\s+|^docs(?:\([^)]*\))?:\s+/iu;
   const runtimeOnly = subjects.filter((subject) => {

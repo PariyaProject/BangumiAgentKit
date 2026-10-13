@@ -512,6 +512,43 @@ CODEX_G16_EXPECTED_ARGUMENTS = {
 }
 CODEX_G06_EXPECTED_ARGUMENTS = {'subjectId': 218707, 'limit': 100}
 CODEX_G06_REPORT_RELATIVE_PATH = 'docs/live-probes/g06-subject-cast-agent-mcp-run95.json'
+CODEX_D07_EXPECTED_YEARS = tuple(range(2016, 2026))
+CODEX_D07_ARGUMENTS_BY_YEAR = {
+    year: {
+        'media': 'anime', 'year': year, 'sort': 'rank', 'resultMode': 'top',
+        'limit': 1, 'explain': 'compact',
+    }
+    for year in CODEX_D07_EXPECTED_YEARS
+}
+CODEX_D07_REPORT_RELATIVE_PATH = (
+    'docs/live-probes/d07-current-rank-by-release-year-agent-mcp-run95.json'
+)
+CODEX_D07_EPOCH_ID = 'run95-d07-current-rank-by-release-year'
+CODEX_D07_ARGUMENT_PROFILE = 'fixed-d07-current-rank-by-source-year-2016-2025-v1'
+CODEX_D07_ANSWER_CHECK_METHOD = 'd07-current-rank-by-source-year-v1'
+CODEX_D07_REPORT_FIELDS = {
+    'schemaVersion', 'evidenceKind', 'runNumber', 'scenarioId', 'profile', 'frontierId',
+    'epochId', 'sourceRevision', 'baseSha', 'prNumber', 'claimId', 'reviewerId',
+    'mcpBundleSha256', 'observedAt', 'model', 'reasoningEffort', 'codexCliVersion',
+    'toolName', 'argumentProfile', 'expectedArgumentsSha256', 'catalogSha256',
+    'toolDescriptionSha256', 'inputSchemaSha256', 'serverToolNames', 'serverToolCount',
+    'mcpServerNames', 'expectedCallCount', 'processExitCode', 'eventStreamParsed',
+    'eventStreamComplete', 'turnCompleted', 'codexMcpToolEventCount',
+    'codexErrorItemCount', 'nonMcpToolEventCount', 'nonMcpToolTypes', 'shellToolCallCount',
+    'allowedCallCount', 'deniedCallCount', 'resultStatus', 'answerCheckMethod',
+    'answerChecks', 'resultCounters', 'resultSummaries', 'coverageSummaries', 'retrievedAt', 'privacy',
+    'rawAnswerPersisted', 'rawToolResultPersisted',
+}
+CODEX_D07_ANSWER_CHECK_FIELDS = {
+    'validJsonAndBoundedSize', 'answerSchema', 'exactTenOrderedSourceCalls',
+    'exactYearSequence', 'rowsMatchSourceIdsRanksAndTitles', 'currentSnapshotOnly',
+    'historicalRankNotClaimed', 'coverageLimitDisclosed', 'allPassed',
+}
+CODEX_D07_PRIVACY_FIELDS = {
+    'authProfile', 'oauthAttempted', 'accountDataRead', 'writesAttempted',
+    'communityRead', 'qqPipelineTested', 'timClientTested', 'promptStored', 'answerStored',
+    'rawResultStored', 'credentialsStored',
+}
 CODEX_G06_EPOCH_ID = 'run95-g06-subject-cast-current-source'
 CODEX_G06_ARGUMENT_PROFILE = 'fixed-g06-subject-218707-cast-limit-100-v1'
 CODEX_G06_ANSWER_CHECK_METHOD = 'g06-candidate-cast-rows-and-coverage-v1'
@@ -1738,6 +1775,62 @@ CODEX_G26_PROBE_IMPLEMENTATION_MARKERS = {
         'def codex_g26_candidate_bundle_sha256(',
         'def codex_g26_report_matches_candidate_revision(',
         'def validate_g26_frontier_evidence(',
+    ),
+}
+CODEX_D07_PROBE_IMPLEMENTATION_MARKERS = {
+    'scripts/acceptance/d07-current-rank-answer-check.mjs': (
+        'export const D07_EXPECTED_YEARS',
+        'export const D07_LIMITATIONS',
+        'export const D07_QUERY_ARGUMENTS_BY_YEAR',
+        'export function verifyD07CurrentRankAnswer(',
+        'historicalRankNotClaimed:',
+    ),
+    'scripts/lib/d07-query-sequence.mjs': (
+        'export function createD07QuerySequenceGate()',
+        'export function summarizeD07QueryResult(',
+        "const TARGET_TOOL = 'bangumi.query_subjects'",
+    ),
+    'scripts/lib/d07-one-shot-claim.mjs': (
+        'export function acquireD07OneShotGitHubLatch(',
+        'export function acquireD07OneShotTerminalGitHubLatch(',
+        'export function claimD07OneShotAtomically(',
+    ),
+    'scripts/lib/d07-runner-liveness.mjs': (
+        'export function setD07RunnerProcessTitle(',
+        'export function isD07RunnerProcessActive(',
+    ),
+    'apps/mcp/d07-one-tool-mcp-server.mjs': (
+        "const TARGET_TOOL = 'bangumi.query_subjects'",
+        'runtimeCandidateMatches(candidateSha, bundleSha256)',
+        'createD07QuerySequenceGate()',
+        'isD07RunnerProcessActive(runner)',
+    ),
+    'scripts/acceptance/run-d07-codex-agent-mcp.mjs': (
+        'export function buildD07CodexExecArgs(',
+        'export function assertCurrentD07ReviewGate(',
+        'export function runD07CodexAgentMcp(',
+        'd07EventSummariesMatchServer(',
+        "'features.shell_tool=false'",
+        "'features.multi_agent=false'",
+    ),
+    'scripts/acceptance/write-d07-agent-mcp-report.mjs': (
+        'export function buildD07SanitizedReport(',
+        'export function validateD07SanitizedReport(',
+        'export function writeD07AgentMcpReport(',
+        'fs.linkSync(stagePath, reportPath)',
+    ),
+    'scripts/agent-harness.mjs': (
+        'function commandEpochD07OneShotClaim(',
+        'function commandEpochD07OneShotResult(',
+        'function commandEpochD07OneShotRun(',
+        'function commandEpochD07OneShotReconcile(',
+        "'epoch:d07-one-shot-run': commandEpochD07OneShotRun",
+    ),
+    'scripts/generate-tool-acceptance-tasks.py': (
+        'def codex_d07_report_is_valid(',
+        'def codex_d07_report_matches_candidate_revision(',
+        'def codex_d07_harness_disposition_matches_report(',
+        'def validate_d07_frontier_evidence(',
     ),
 }
 CODEX_S02_PROBE_IMPLEMENTATION_MARKERS = {
@@ -3180,6 +3273,14 @@ def codex_g26_probe_revision_has_implementation(revision: object) -> bool:
     )
 
 
+def codex_d07_probe_revision_has_implementation(revision: object) -> bool:
+    if not isinstance(revision, str) or not re.fullmatch(r'[0-9a-f]{40}', revision):
+        return False
+    return _codex_revision_has_markers(
+        str(ROOT), revision, CODEX_D07_PROBE_IMPLEMENTATION_MARKERS,
+    )
+
+
 def _codex_relations_report_matches_candidate_revision(
     report_path: Path,
     revision: object,
@@ -3375,6 +3476,20 @@ def codex_g26_report_matches_candidate_revision(report_path: Path, revision: obj
     if not codex_g26_probe_revision_has_implementation(revision):
         return False
     return codex_g20_report_matches_candidate_revision(report_path, revision)
+
+
+def codex_d07_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    """Bind D07 evidence to the exact reviewed one-shot Candidate and report-only commit."""
+    if not codex_d07_probe_revision_has_implementation(revision):
+        return False
+    try:
+        relative_path = report_path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return False
+    return (
+        relative_path == CODEX_D07_REPORT_RELATIVE_PATH
+        and codex_g20_report_matches_candidate_revision(report_path, revision)
+    )
 
 
 def codex_g26_candidate_bundle_sha256(revision: object) -> str | None:
@@ -7136,6 +7251,299 @@ def validate_g26_frontier_evidence() -> bool:
     )
 
 
+def codex_d07_harness_status(pr_number: object) -> dict[str, object] | None:
+    """Read the durable Run/Epoch D07 disposition through the Harness status command."""
+    if type(pr_number) is not int or pr_number < 1:
+        return None
+    try:
+        result = subprocess.run(
+            ['node', str(ROOT / 'scripts/agent-harness.mjs'), 'status', '--run', '95', '--pr', str(pr_number)],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        if result.returncode != 0:
+            return None
+        status = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    return status if isinstance(status, dict) else None
+
+
+def codex_d07_harness_disposition_matches_report(
+    report: dict[str, object], harness_status: object, report_sha256: object,
+) -> dict[str, object] | None:
+    """Require the exact terminal D07 claim and sanitized-report digest in Harness state."""
+    if not isinstance(harness_status, dict):
+        return None
+    run = harness_status.get('run')
+    epoch_view = harness_status.get('epoch')
+    run_state = run.get('state') if isinstance(run, dict) else None
+    epoch = epoch_view.get('state') if isinstance(epoch_view, dict) else None
+    pr_number = report.get('prNumber')
+    if (
+        not isinstance(run, dict) or run.get('number') != 95
+        or not isinstance(run_state, dict) or run_state.get('profile') != 'AUTONOMOUS_EVOLUTION'
+        or not isinstance(epoch_view, dict) or epoch_view.get('number') != pr_number
+        or epoch_view.get('github_state') not in {'OPEN', 'MERGED'}
+        or (epoch_view.get('github_state') == 'OPEN' and run_state.get('active_epoch_pr') != pr_number)
+        or not isinstance(epoch, dict) or epoch.get('epoch_id') != CODEX_D07_EPOCH_ID
+        or epoch.get('pr_number') != pr_number
+    ):
+        return None
+    preflight = epoch.get('adversarial_preflight')
+    disposition = preflight.get('d07_one_shot_disposition') if isinstance(preflight, dict) else None
+    if not isinstance(disposition, dict):
+        return None
+    source_revision = report.get('sourceRevision')
+    expected = {
+        'claimId': report.get('claimId'), 'frontierId': 'D07', 'epochId': CODEX_D07_EPOCH_ID,
+        'runNumber': 95, 'prNumber': pr_number, 'toolName': 'bangumi.query_subjects',
+        'argumentProfile': CODEX_D07_ARGUMENT_PROFILE,
+        'expectedArgumentsSha256': _canonical_json_sha256(CODEX_D07_ARGUMENTS_BY_YEAR),
+        'expectedCallCount': len(CODEX_D07_EXPECTED_YEARS),
+        'state': 'REPORT_WRITTEN', 'sourceCandidateSha': source_revision,
+        'baseSha': report.get('baseSha'), 'ciSha': source_revision, 'ciStatus': 'SUCCESS',
+        'reviewerId': report.get('reviewerId'), 'bundleSha256': report.get('mcpBundleSha256'),
+        'model': 'gpt-6-luna', 'reasoningEffort': 'max', 'reportWritten': True,
+        'reportPath': CODEX_D07_REPORT_RELATIVE_PATH, 'reportSha256': report_sha256,
+        'terminalLabel': 'REPORT_WRITTEN', 'retryAllowed': False,
+    }
+    if (
+        not isinstance(report_sha256, str) or not re.fullmatch(r'[0-9a-f]{64}', report_sha256)
+        or any(disposition.get(key) != value for key, value in expected.items())
+        or not any(
+            isinstance(review, dict)
+            and review.get('candidate_sha') == source_revision
+            and review.get('reviewed_base_sha') == report.get('baseSha')
+            and review.get('reviewer_id') == report.get('reviewerId')
+            and review.get('verdict') == 'PASS'
+            for review in epoch.get('review_history', [])
+        )
+    ):
+        return None
+    return disposition
+
+
+def codex_d07_report_is_valid(
+    report: object, harness_status: object = None, report_sha256: object = None,
+) -> bool:
+    """Validate sanitized, exact-Candidate D07 current-rank evidence."""
+    if not isinstance(report, dict) or set(report) != CODEX_D07_REPORT_FIELDS:
+        return False
+    source_revision = report.get('sourceRevision')
+    base_sha = report.get('baseSha')
+    pr_number = report.get('prNumber')
+    if (
+        type(report.get('schemaVersion')) is not int or report.get('schemaVersion') != 1
+        or report.get('evidenceKind') != 'codex_cli_d07_current_rank_agent_mcp'
+        or type(report.get('runNumber')) is not int or report.get('runNumber') != 95
+        or report.get('frontierId') != 'D07' or report.get('scenarioId') != 'D07'
+        or report.get('epochId') != CODEX_D07_EPOCH_ID
+        or report.get('profile') != 'run95-d07-current-rank-by-release-year-agent-mcp-v1'
+        or report.get('toolName') != 'bangumi.query_subjects'
+        or report.get('argumentProfile') != CODEX_D07_ARGUMENT_PROFILE
+        or report.get('expectedArgumentsSha256') != _canonical_json_sha256(CODEX_D07_ARGUMENTS_BY_YEAR)
+        or report.get('model') != 'gpt-6-luna' or report.get('reasoningEffort') != 'max'
+        or type(pr_number) is not int or pr_number < 1
+        or not re.fullmatch(rf'gpt-6-luna-max-run95-pr{pr_number}-round\d+', str(report.get('reviewerId', '')))
+        or not isinstance(source_revision, str) or not re.fullmatch(r'[0-9a-f]{40}', source_revision)
+        or not isinstance(base_sha, str) or not re.fullmatch(r'[0-9a-f]{40}', base_sha)
+        or not re.fullmatch(rf'd07-run-95-pr-{pr_number}-{source_revision[:12]}-[0-9a-f]{{12}}', str(report.get('claimId', '')))
+        or report.get('mcpBundleSha256') != codex_g26_candidate_bundle_sha256(source_revision)
+        or not codex_d07_probe_revision_has_implementation(source_revision)
+        or report.get('expectedCallCount') != len(CODEX_D07_EXPECTED_YEARS)
+        or report.get('serverToolNames') != ['bangumi.query_subjects']
+        or report.get('serverToolCount') != 1
+        or report.get('mcpServerNames') != ['bgk_d07_one_tool']
+        or report.get('processExitCode') != 0
+        or report.get('eventStreamParsed') is not True
+        or report.get('eventStreamComplete') is not True
+        or report.get('turnCompleted') is not True
+        or report.get('codexMcpToolEventCount') != len(CODEX_D07_EXPECTED_YEARS)
+        or report.get('codexErrorItemCount') != 0
+        or report.get('nonMcpToolEventCount') != 0
+        or report.get('nonMcpToolTypes') != []
+        or report.get('shellToolCallCount') != 0
+        or report.get('allowedCallCount') != len(CODEX_D07_EXPECTED_YEARS)
+        or report.get('deniedCallCount') != 0
+        or report.get('resultStatus') != 'SUCCESS'
+        or report.get('answerCheckMethod') != CODEX_D07_ANSWER_CHECK_METHOD
+        or report.get('rawAnswerPersisted') is not False
+        or report.get('rawToolResultPersisted') is not False
+    ):
+        return False
+    for key in ('mcpBundleSha256', 'expectedArgumentsSha256', 'catalogSha256',
+                'toolDescriptionSha256', 'inputSchemaSha256'):
+        if not isinstance(report.get(key), str) or not re.fullmatch(r'[0-9a-f]{64}', report[key]):
+            return False
+    if not _run_repository_git(ROOT, 'merge-base', '--is-ancestor', base_sha, source_revision).returncode == 0:
+        return False
+
+    observed_at = report.get('observedAt')
+    if (
+        not isinstance(observed_at, str)
+        or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', observed_at)
+        or not isinstance(report.get('codexCliVersion'), str)
+        or not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?', report['codexCliVersion'])
+    ):
+        return False
+    try:
+        catalog_bytes = CATALOG.read_bytes()
+        catalog = json.loads(catalog_bytes)
+    except (OSError, ValueError):
+        return False
+    current_tool = next(
+        (item for item in catalog if isinstance(item, dict)
+         and item.get('name') == 'bangumi.query_subjects'),
+        None,
+    )
+    if (
+        not isinstance(current_tool, dict)
+        or current_tool.get('auth') != 'none'
+        or current_tool.get('risk') != 'read'
+        or report.get('catalogSha256') != hashlib.sha256(catalog_bytes).hexdigest()
+        or report.get('toolDescriptionSha256') != hashlib.sha256(
+            current_tool.get('description', '').encode('utf-8'),
+        ).hexdigest()
+        or report.get('inputSchemaSha256') != _canonical_json_sha256(current_tool.get('inputSchema'))
+    ):
+        return False
+
+    checks = report.get('answerChecks')
+    if (
+        not isinstance(checks, dict)
+        or set(checks) != CODEX_D07_ANSWER_CHECK_FIELDS
+        or any(value is not True for value in checks.values())
+    ):
+        return False
+    counters = report.get('resultCounters')
+    if (
+        not isinstance(counters, dict)
+        or set(counters) != {
+            'expectedYears', 'observedCalls', 'yearsWithOneObservedRank', 'rankMinimum', 'rankMaximum',
+        }
+        or counters.get('expectedYears') != len(CODEX_D07_EXPECTED_YEARS)
+        or counters.get('observedCalls') != len(CODEX_D07_EXPECTED_YEARS)
+        or counters.get('yearsWithOneObservedRank') != len(CODEX_D07_EXPECTED_YEARS)
+        or type(counters.get('rankMinimum')) is not int or counters['rankMinimum'] < 1
+        or type(counters.get('rankMaximum')) is not int or counters['rankMaximum'] < counters['rankMinimum']
+    ):
+        return False
+    summaries = report.get('resultSummaries')
+    if not isinstance(summaries, list) or len(summaries) != len(CODEX_D07_EXPECTED_YEARS):
+        return False
+    for year, row in zip(CODEX_D07_EXPECTED_YEARS, summaries):
+        if (
+            not isinstance(row, dict)
+            or set(row) != {'year', 'subjectId', 'rank', 'titleSha256', 'retrievedAt'}
+            or row.get('year') != year
+            or type(row.get('subjectId')) is not int or row['subjectId'] <= 0
+            or type(row.get('rank')) is not int or row['rank'] <= 0
+            or not isinstance(row.get('titleSha256'), str)
+            or not re.fullmatch(r'[0-9a-f]{64}', row['titleSha256'])
+            or not isinstance(row.get('retrievedAt'), str)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', row['retrievedAt'])
+        ):
+            return False
+    coverage_summaries = report.get('coverageSummaries')
+    if not isinstance(coverage_summaries, list) or len(coverage_summaries) != len(CODEX_D07_EXPECTED_YEARS):
+        return False
+    for year, row in zip(CODEX_D07_EXPECTED_YEARS, coverage_summaries):
+        if (
+            not isinstance(row, dict)
+            or set(row) != {
+                'year', 'resultState', 'coverageState', 'requested', 'scanned',
+                'matched', 'returned', 'totalKind',
+            }
+            or row.get('year') != year
+            or row.get('resultState') not in ('ok', 'partial')
+            or row.get('coverageState') not in ('complete', 'partial', 'unknown')
+            or type(row.get('requested')) is not int or row['requested'] != 1
+            or type(row.get('scanned')) is not int or not 1 <= row['scanned'] <= 500
+            or type(row.get('matched')) is not int or not 1 <= row['matched'] <= row['scanned']
+            or type(row.get('returned')) is not int or row['returned'] != 1
+            or row['returned'] > row['matched']
+            or row.get('totalKind') != 'exact'
+        ):
+            return False
+    if (
+        min(row['rank'] for row in summaries) != counters['rankMinimum']
+        or max(row['rank'] for row in summaries) != counters['rankMaximum']
+    ):
+        return False
+    retrieved = report.get('retrievedAt')
+    if (
+        not isinstance(retrieved, dict) or set(retrieved) != {'first', 'last'}
+        or any(not isinstance(value, str) or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z', value,
+        ) for value in retrieved.values())
+        or retrieved['first'] != summaries[0]['retrievedAt']
+        or retrieved['last'] != summaries[-1]['retrievedAt']
+    ):
+        return False
+    privacy = report.get('privacy')
+    expected_privacy = {
+        'authProfile': 'anonymous', 'oauthAttempted': False, 'accountDataRead': False,
+        'writesAttempted': False, 'communityRead': False, 'qqPipelineTested': False,
+        'timClientTested': False, 'promptStored': False, 'answerStored': False,
+        'rawResultStored': False, 'credentialsStored': False,
+    }
+    if (
+        not isinstance(privacy, dict) or set(privacy) != CODEX_D07_PRIVACY_FIELDS
+        or privacy != expected_privacy or _contains_forbidden_codex_content(report)
+    ):
+        return False
+    if harness_status is not None:
+        disposition = codex_d07_harness_disposition_matches_report(
+            report, harness_status, report_sha256,
+        )
+        if disposition is None:
+            return False
+    return True
+
+
+def codex_d07_report_matches_candidate_revision(report_path: Path, revision: object) -> bool:
+    if not codex_d07_probe_revision_has_implementation(revision):
+        return False
+    return _codex_relations_report_matches_candidate_revision(
+        report_path, revision, CODEX_D07_REPORT_RELATIVE_PATH,
+    )
+
+
+def validate_d07_frontier_evidence() -> bool:
+    """Keep D07 UNASSESSED until the exact claim-bound report is accepted as PARTIAL."""
+    frontier_path = ROOT / 'docs/product/frontier-ledger.json'
+    report_path = ROOT / CODEX_D07_REPORT_RELATIVE_PATH
+    try:
+        frontier = json.loads(frontier_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    records = frontier.get('records') if isinstance(frontier, dict) else None
+    record = next(
+        (item for item in records or [] if isinstance(item, dict) and item.get('id') == 'D07'),
+        None,
+    )
+    if not isinstance(record, dict):
+        return False
+    if record.get('status') == 'UNASSESSED':
+        return not report_path.exists()
+    if (
+        record.get('status') != 'PARTIAL'
+        or not report_path.is_file()
+        or CODEX_D07_REPORT_RELATIVE_PATH not in record.get('source_refs', [])
+    ):
+        return False
+    try:
+        report_bytes = report_path.read_bytes()
+        report = json.loads(report_bytes)
+    except (OSError, ValueError):
+        return False
+    harness_status = codex_d07_harness_status(report.get('prNumber'))
+    return (
+        codex_d07_report_is_valid(report, harness_status, hashlib.sha256(report_bytes).hexdigest())
+        and codex_d07_report_matches_candidate_revision(report_path, report.get('sourceRevision'))
+    )
+
+
 def codex_d04_coverage_is_valid(coverage: object) -> bool:
     if not isinstance(coverage, dict) or set(coverage) != CODEX_D04_COVERAGE_FIELDS:
         return False
@@ -7847,6 +8255,7 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
     report_paths.append(LIVE_PROBE_DIR / CODEX_G05_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G16_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G06_REPORT_RELATIVE_PATH.split('/')[-1])
+    report_paths.append(LIVE_PROBE_DIR / CODEX_D07_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_G19_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_P01_REPORT_RELATIVE_PATH.split('/')[-1])
     report_paths.append(LIVE_PROBE_DIR / CODEX_S03_REPORT_RELATIVE_PATH.split('/')[-1])
@@ -7948,6 +8357,24 @@ def model_mcp_e2e_sources(catalog: list[dict]) -> dict[str, set[str]]:
             ):
                 continue
             sources.setdefault('bangumi.get_subject_cast', set()).add(report_source_ref(path))
+            continue
+        if report.get('evidenceKind') == 'codex_cli_d07_current_rank_agent_mcp':
+            try:
+                report_bytes = path.read_bytes()
+            except OSError:
+                continue
+            current_status = codex_d07_harness_status(report.get('prNumber'))
+            if (
+                path.name != Path(CODEX_D07_REPORT_RELATIVE_PATH).name
+                or not codex_d07_report_is_valid(
+                    report, current_status, hashlib.sha256(report_bytes).hexdigest(),
+                )
+                or not codex_d07_report_matches_candidate_revision(
+                    path, report.get('sourceRevision'),
+                )
+            ):
+                continue
+            sources.setdefault('bangumi.query_subjects', set()).add(report_source_ref(path))
             continue
         if report.get('evidenceKind') == 'codex_g19_person_origin_agent_mcp':
             if (
@@ -8221,6 +8648,11 @@ def main() -> None:
         raise SystemExit(
             'G26 frontier status/evidence mismatch: keep it UNASSESSED without a report, '
             'or bind PARTIAL to the exact candidate-bound report.'
+        )
+    if not validate_d07_frontier_evidence():
+        raise SystemExit(
+            'D07 frontier status/evidence mismatch: keep it UNASSESSED without a report, '
+            'or bind PARTIAL to the exact claim-bound candidate report.'
         )
     catalog = json.loads(CATALOG.read_text(encoding='utf-8'))
     source = test_source()

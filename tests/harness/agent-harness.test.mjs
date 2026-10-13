@@ -933,6 +933,7 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(g26): isolate candidate history checks from git overrides',
     'fix(g26): update candidate history verifier',
     'docs(frontier): record G04 evidence provenance',
+    'docs(acceptance): advance frontier evidence',
     'docs: keep R01 one-shot resume guidance',
   ]);
   assert.throws(
@@ -962,6 +963,7 @@ test('L. COMMIT HYGIENE: runtime paths and runtime-only commit subjects are reje
     'fix(harness): set epoch.review.runtime.state to review_runtime_recovery_required for PR #103',
     'fix(harness): record frontier closure runtime history outcome as UNAVAILABLE',
     'docs(frontier): record frontier closure runtime history outcome as UNAVAILABLE',
+    'docs(acceptance): explain CI green',
     'docs(frontier): record G04 one-shot disposition as CLAIMED for PR #136',
     'docs(frontier): RECORD g04 one-shot disposition AS claimed for PR #136',
     'docs(frontier): record G04 one-shot attempt as INCONCLUSIVE for PR #136',
