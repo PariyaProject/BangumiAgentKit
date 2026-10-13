@@ -26,6 +26,7 @@ import {
   createC07CohortRenderOfflineFixtureFetch,
 } from '../../scripts/lib/c07-cohort-render-offline-fixture.mjs';
 import { inspectC07PngArtifact } from '../../scripts/lib/c07-png-artifact-validation.mjs';
+import { buildG06PrivacySummary } from '../../scripts/lib/g06-privacy-summary.mjs';
 import { MemoryStorage } from '@bangumi-agent-kit/db';
 import { HttpClient, toPublicError } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
@@ -120,23 +121,6 @@ function writeSanitizedSummary(summaryPath, summary, serverInstanceId) {
   const temporary = `${absolute}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(snapshot, null, 2)}\n`, { mode: 0o600 });
   fs.renameSync(temporary, absolute);
-}
-
-export function buildG06PrivacySummary() {
-  return {
-    authProfile: 'anonymous',
-    oauthAttempted: false,
-    accountDataRead: false,
-    writesAttempted: false,
-    communityRead: false,
-    qqPipelineTested: false,
-    timClientTested: false,
-    promptStored: false,
-    answerStored: false,
-    rawResultStored: false,
-    artifactImageBytesStored: false,
-    credentialsStored: false,
-  };
 }
 
 function parseArguments(argv) {

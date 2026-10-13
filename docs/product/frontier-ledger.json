@@ -446,6 +446,7 @@
         "tests/semantic/subject-overview.test.ts",
         "docs/research/run78-subject-overview-contract-live-2026-10-04.md",
         "scripts/acceptance/run-g06-codex-agent-mcp.mjs",
+        "scripts/lib/g06-privacy-summary.mjs",
         "scripts/acceptance/write-g06-agent-mcp-report.mjs",
         "scripts/lib/g06-one-shot-claim.mjs",
         "tests/unit/g06-codex-agent-mcp-runner.test.ts",
@@ -455,7 +456,7 @@
         "tests/harness/codex-one-tool-evidence.test.mjs",
         "tests/fixtures/sign-g06-runner-report.mjs"
       ],
-      "next_action": "Round 1 on Candidate 2bcce5a found two P1 and one P2. The local corrective tree now includes the emitted communityRead privacy flag, a signed Ed25519 runtime receipt pinned by the durable claim and permanent repository latch and verified at report/reconciliation/acceptance boundaries, plus explicit disclosure when truncation is unknown. Local checks pass: focused G06 28/28, Harness 188/188, evidence acceptance 108/108, OAuth/account/intelligence/write slice 23 files/119 tests, typecheck/lint/build, auth:check, acceptance:check, frontier:check, and legacy-path guard. Current-source evidence remains 83/96 Agent/MCP and 56/65 public; no G06 claim/query/probe has occurred. Next commit and push the corrections to this same PR, require fresh exact-head 7/7 CI, refresh Candidate/Base evidence with all three corrective-closure mappings, then continue the same Luna Max reviewer identity for round 2 before any one-shot activity.",
+      "next_action": "Round 1 on Candidate 2bcce5a found two P1 and one P2. Commit b15978d fixed the emitted communityRead privacy field, added a durable-claim-pinned Ed25519 runtime receipt verified at report/reconciliation/acceptance boundaries, and required unknown-truncation disclosure. Exact CI run 38344676039 failed because tests/harness/codex-one-tool-evidence.test.mjs imported the full MCP server and required @modelcontextprotocol/sdk in the dependency-free Harness job. The privacy contract now lives in scripts/lib/g06-privacy-summary.mjs, shared by server, report validator, and test. The single failing test reproduced under a missing-SDK loader and then passed; full no-SDK Harness suite 188/188 and acceptance validator 108/108 pass locally. Next commit/push this test-boundary fix to the same PR, require fresh exact-head CI 7/7, refresh Candidate/Base evidence with all three round-1 closure mappings, then continue the same Luna Max reviewer identity for round 2 before any one-shot activity.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -488,6 +489,7 @@
           "scripts/agent-harness.mjs",
           "scripts/generate-tool-acceptance-tasks.py",
           "scripts/acceptance/g06-runner-receipt.mjs",
+          "scripts/lib/g06-privacy-summary.mjs",
           "scripts/acceptance/g06-runner-receipt.d.mts",
           "scripts/acceptance/verify-g06-runner-receipt.mjs",
           "scripts/test_acceptance_evidence.py"
@@ -563,6 +565,18 @@
           "result": "PASS 1 file / 1 opt-in test; official v0 through public ToolRegistry; 7 cast/actor links; 100 staff rows / 22 raw roles; overview partial with 24 staff rows in 6 groups and 9 relations; 720x5228 renderer Artifact visually inspected.",
           "user_clients_tested": false,
           "oauth_or_account_data_used": false
+        },
+        "run95_corrective_ci_test_boundary": {
+          "runNumber": 95,
+          "prNumber": 148,
+          "failedCandidateSha": "b15978de98292b4ddf5d804291ce80bbc005d181",
+          "failedCiRun": 38344676039,
+          "failure": "The harness-control node --test job loads all tests without workspace dependency installation; codex-one-tool-evidence.test.mjs imported apps/mcp/codex-one-tool-mcp-server.mjs, whose top-level @modelcontextprotocol/sdk import raised ERR_MODULE_NOT_FOUND. All other harness tests passed.",
+          "generalizedFix": "Move the immutable G06 privacy contract/builder into dependency-free scripts/lib/g06-privacy-summary.mjs consumed by the MCP server and report validator; test that shared builder instead of importing the executable server.",
+          "regression": "node --experimental-loader=/tmp/run95-block-sdk-loader.mjs --test tests/harness/codex-one-tool-evidence.test.mjs passed 10/10 after the change; the same command failed before it.",
+          "fullHarnessNoSdk": "node --experimental-loader=/tmp/run95-block-sdk-loader.mjs --test tests/harness/*.test.mjs passed 188/188.",
+          "acceptanceEvidence": "pnpm acceptance:check passed 108/108; matrix remains 96 catalog/direct, 56 public, 31 N/A, 9 pending, auth denial 21 plus 1 pending, real auth 0/33, Agent/MCP 83/96, QQ/TIM 0/96.",
+          "oneShotActions": false
         },
         "run95_implementation_setup": {
           "runNumber": 95,

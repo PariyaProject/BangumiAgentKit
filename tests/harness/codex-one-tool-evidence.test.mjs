@@ -16,11 +16,8 @@ import {
   summarizeSubjectStatsFacts,
   summarizeToolResult,
 } from '../../scripts/lib/codex-one-tool-evidence.mjs';
-import { buildG06PrivacySummary } from '../../apps/mcp/codex-one-tool-mcp-server.mjs';
-import {
-  G06_PRIVACY,
-  g06ServerPrivacyMatches,
-} from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
+import { buildG06PrivacySummary, G06_PRIVACY } from '../../scripts/lib/g06-privacy-summary.mjs';
+import { g06ServerPrivacyMatches } from '../../scripts/acceptance/write-g06-agent-mcp-report.mjs';
 
 const target = 'bangumi.get_subject_stats_intelligence';
 const expectedArguments = { subjectId: 218707 };

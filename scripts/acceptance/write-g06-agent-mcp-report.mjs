@@ -15,6 +15,7 @@ import {
   verifyG06SubjectCastObservation,
 } from './g06-subject-cast-answer-check.mjs';
 import { verifyG06RunnerReceipt } from './g06-runner-receipt.mjs';
+import { G06_PRIVACY } from '../lib/g06-privacy-summary.mjs';
 
 export const G06_REPORT_EVIDENCE_KIND = 'codex_cli_g06_subject_cast_agent_mcp';
 export const G06_MODEL = 'gpt-6-luna';
@@ -148,20 +149,6 @@ export const G06_TOOL_RESULT_SUMMARY_FIELDS = new Set([
   'resultSha256',
 ]);
 
-export const G06_PRIVACY = Object.freeze({
-  authProfile: 'anonymous',
-  oauthAttempted: false,
-  accountDataRead: false,
-  writesAttempted: false,
-  communityRead: false,
-  qqPipelineTested: false,
-  timClientTested: false,
-  promptStored: false,
-  answerStored: false,
-  rawResultStored: false,
-  artifactImageBytesStored: false,
-  credentialsStored: false,
-});
 export const G06_PRIVACY_FIELDS = new Set(Object.keys(G06_PRIVACY));
 
 export function g06ServerPrivacyMatches(summary) {
