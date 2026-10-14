@@ -460,6 +460,28 @@ review consumption, run `candidate:check` again against the exact current
 branch/PR SHA, Base, and CI before reserving a new launch. A reconciled state
 with consumed review budget cannot use this retry path.
 
+One separately audited continuation applies to a reconciled state created after
+a completed PASS was refreshed into a new Candidate. It is eligible only when
+the active Run still points to this open Epoch PR, the Run has no Product,
+closure, or runtime-recovery reservation, neither the Epoch nor frontier
+closure has a current reviewer, the last Epoch runtime is `COMPLETED`, every
+consumed Epoch review has a matching verdict
+history entry, and the latest `candidate_refresh_history` links the last PASS
+Candidate/Base to the currently recorded Candidate/Base. The Run and Epoch
+must also have normal review capacity remaining. Invoke
+`candidate:check --pr <number> --run <issue> --evidence <json>` with the exact
+current Candidate/Base and all ordinary Scope Closure/preflight/path/CI
+evidence. The current branch HEAD must descend from both the passed and
+refreshed Candidates, and the evidence must include a specific
+`review_reassessment_reason` (12–500 characters). The command revalidates all
+Candidate gates, appends a `review_reassessment_history` entry,
+and returns the Epoch to `REVIEW_READY` without changing consumed counts,
+review history, or one-shot dispositions. The next paired reservation consumes
+the next normal review slot. A count/history mismatch, missing PASS-to-refresh
+link, stale Base/Candidate/CI, active reviewer, outstanding reservation, or
+exhausted budget remains fail-closed; this path does not classify a reviewer as
+`UNAVAILABLE` and does not authorize a replacement.
+
 Each reviewer start consumes one slot even if it later fails or terminates.
 Waiting/polling the same reviewer consumes no slot.
 
