@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "bangumi_official_public_person_selection_v1",
+  "observedDate": "2026-10-14",
+  "sourceEndpoint": "https://api.bgm.tv/v0/search/persons",
+  "method": "POST",
+  "careerFilter": "seiyu",
+  "requestLimit": 5,
+  "requestOffset": 0,
+  "responseStatus": 200,
+  "responseCount": 5,
+  "requestBodySha256": "326c41d17eb1061c3d7bd3b5972b51c9125467ac751a41d00427a88397775bf5",
+  "responseBodySha256": "7c981bfd227de4905c0d4bf416c50b98ff4c365e160d5a37bc2187854ecfdc2b",
+  "selectionRule": "first-two-returned-results-with-seiyu-career",
+  "selected": [
+    {
+      "personId": 4765,
+      "resultIndex": 0,
+      "careerIncludesSeiyu": true
+    },
+    {
+      "personId": 17075,
+      "resultIndex": 1,
+      "careerIncludesSeiyu": true
+    }
+  ],
+  "authenticationUsed": false,
+  "oauthAttempted": false,
+  "accountDataRead": false,
+  "namesStored": false,
+  "rawResponseStored": false
+}

@@ -72,6 +72,8 @@ if (tool === 'gh') {
     const label = state.repositoryLabels?.[name];
     if (!label) fail('HTTP 404 Not Found');
     else output(label);
+  } else if (group === 'label' && action === 'list') {
+    output(Object.values(state.repositoryLabels ?? {}));
   } else if (group === 'api' && flagValue('--method') === 'PATCH' && flagValue('--input') === '-') {
     const payload = JSON.parse(stdin());
     if (/^repos\/\{owner\}\/\{repo\}\/issues\/\d+$/u.test(action)) {

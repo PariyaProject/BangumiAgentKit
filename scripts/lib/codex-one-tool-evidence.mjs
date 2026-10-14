@@ -36,10 +36,59 @@ export function authorizeToolCall({ name, args, expectedTool, expectedArguments,
   return { allowed: true, code: 'ALLOWLISTED_FIXED_PUBLIC_QUERY' };
 }
 
+export function authorizeToolCallSequence({ name, args, expectedTool, expectedArgumentSequence, completedCalls }) {
+  if (name !== expectedTool) return { allowed: false, code: 'TOOL_NOT_ALLOWLISTED' };
+  if (!Array.isArray(expectedArgumentSequence) || expectedArgumentSequence.length < 1 ||
+      !Number.isSafeInteger(completedCalls) || completedCalls < 0) {
+    return { allowed: false, code: 'PROFILE_SEQUENCE_INVALID' };
+  }
+  if (completedCalls >= expectedArgumentSequence.length) {
+    return { allowed: false, code: 'CALL_LIMIT_REACHED' };
+  }
+  if (canonicalJson(args || {}) !== canonicalJson(expectedArgumentSequence[completedCalls])) {
+    return { allowed: false, code: 'ARGUMENTS_DO_NOT_MATCH_PROFILE_SEQUENCE' };
+  }
+  return { allowed: true, code: 'ALLOWLISTED_PROFILE_QUERY', sequenceIndex: completedCalls };
+}
+
+export function createProfileCallQueue() {
+  let tail = Promise.resolve();
+  return async function enqueueProfileCall(operation) {
+    if (typeof operation !== 'function') throw new TypeError('A profile call queue requires an operation.');
+    const previous = tail;
+    let release;
+    tail = new Promise((resolve) => { release = resolve; });
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
+  };
+}
+
 export function claimSingleToolCall(lockPath) {
   let descriptor;
   try {
     descriptor = fs.openSync(lockPath, 'wx', 0o600);
+    fs.closeSync(descriptor);
+    return true;
+  } catch (error) {
+    if (descriptor !== undefined) {
+      try { fs.closeSync(descriptor); } catch { /* Preserve the original failure. */ }
+    }
+    if (error?.code === 'EEXIST') return false;
+    throw error;
+  }
+}
+
+export function claimProfileSequenceCall(lockPath, sequenceIndex) {
+  if (typeof lockPath !== 'string' || !Number.isSafeInteger(sequenceIndex) || sequenceIndex < 0 || sequenceIndex > 7) {
+    throw new TypeError('A profile sequence lock path and bounded zero-based call index are required.');
+  }
+  let descriptor;
+  try {
+    descriptor = fs.openSync(`${lockPath}.call-${sequenceIndex + 1}-claimed`, 'wx', 0o600);
     fs.closeSync(descriptor);
     return true;
   } catch (error) {

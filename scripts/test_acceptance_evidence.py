@@ -620,6 +620,7 @@ class CodexModelMcpEvidenceTests(unittest.TestCase):
             *GENERATOR.CODEX_G04_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G05_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G16_PROBE_IMPLEMENTATION_MARKERS,
+            *GENERATOR.CODEX_C03_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_G19_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_P01_PROBE_IMPLEMENTATION_MARKERS,
             *GENERATOR.CODEX_S03_PROBE_IMPLEMENTATION_MARKERS,
@@ -6155,6 +6156,57 @@ class AuthAcceptanceEvidenceTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+
+
+class C03PersonSelectionEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.evidence = {
+            'schemaVersion': 1,
+            'evidenceKind': 'bangumi_official_public_person_selection_v1',
+            'observedDate': '2026-10-14',
+            'sourceEndpoint': 'https://api.bgm.tv/v0/search/persons',
+            'method': 'POST',
+            'careerFilter': 'seiyu',
+            'requestLimit': 5,
+            'requestOffset': 0,
+            'responseStatus': 200,
+            'responseCount': 5,
+            'requestBodySha256': 'a' * 64,
+            'responseBodySha256': 'b' * 64,
+            'selectionRule': 'first-two-returned-results-with-seiyu-career',
+            'selected': [
+                {'personId': call['arguments']['personId'], 'resultIndex': index,
+                 'careerIncludesSeiyu': True}
+                for index, call in enumerate(GENERATOR.CODEX_C03_EXPECTED_CALLS)
+            ],
+            'authenticationUsed': False,
+            'oauthAttempted': False,
+            'accountDataRead': False,
+            'namesStored': False,
+            'rawResponseStored': False,
+        }
+
+    def test_accepts_a_current_bounded_voice_actor_lookup(self):
+        self.assertTrue(GENERATOR.codex_c03_person_selection_evidence_is_valid(self.evidence))
+        self.assertTrue(GENERATOR.codex_c03_person_selection_file_is_valid())
+
+    def test_rejects_a_different_person_or_unverified_career(self):
+        changed_id = json.loads(json.dumps(self.evidence))
+        changed_id['selected'][0]['personId'] += 1
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(changed_id))
+
+        unverified_career = json.loads(json.dumps(self.evidence))
+        unverified_career['selected'][1]['careerIncludesSeiyu'] = False
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(unverified_career))
+
+    def test_rejects_authentication_or_raw_person_data(self):
+        authenticated = json.loads(json.dumps(self.evidence))
+        authenticated['authenticationUsed'] = True
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(authenticated))
+
+        raw_data = json.loads(json.dumps(self.evidence))
+        raw_data['namesStored'] = True
+        self.assertFalse(GENERATOR.codex_c03_person_selection_evidence_is_valid(raw_data))
 
 
 if __name__ == '__main__':

@@ -72,6 +72,19 @@ import {
   G16OneShotClaimError,
 } from './lib/g16-one-shot-claim.mjs';
 import {
+  acquireAgentMcpProfileGitHubLatch,
+  agentMcpProfileArgumentsSha256,
+  agentMcpProfileClaimLabelDescription,
+  agentMcpProfileRegistrySha256,
+  acquireAgentMcpProfileTerminalGitHubLatch,
+  agentMcpProfileTerminalLabelDescription,
+  agentMcpProfileTerminalLabelName,
+  AgentMcpProfileClaimError,
+  claimAgentMcpProfileAtomically,
+  classifyAgentMcpProfileInconclusiveReport,
+  getAgentMcpProfileById,
+} from './lib/agent-mcp-profile-claims.mjs';
+import {
   acquireG04OneShotGitHubLatch,
   claimG04OneShotAtomically,
   G04OneShotClaimError,
@@ -130,6 +143,7 @@ import {
 } from './acceptance/g16-person-activity-answer-check.mjs';
 import { g16RunnerPublicKeySha256 } from './acceptance/g16-agent-mcp-runner-receipt.mjs';
 import { validateG16SanitizedReportFile } from './acceptance/write-g16-agent-mcp-report.mjs';
+import { validateC03SanitizedReportFile } from './acceptance/write-c03-profile-report.mjs';
 import {
   G06_MODEL,
   G06_REASONING_EFFORT,
@@ -174,7 +188,11 @@ import {
   textResultBytes,
   validateP01HarnessClaim,
 } from './acceptance/run-p01-codex-agent-mcp.mjs';
-import { sanitizeGitRepositoryEnvironment as sanitizeP01GitEnvironment } from './lib/g26-mcp-bundle.mjs';
+import {
+  computeMcpBundleSha256,
+  readG26McpBundleAttestation,
+  sanitizeGitRepositoryEnvironment as sanitizeP01GitEnvironment,
+} from './lib/g26-mcp-bundle.mjs';
 import {
   D07_EXPECTED_YEARS,
   D07_QUERY_ARGUMENTS_BY_YEAR,
@@ -699,6 +717,9 @@ Usage: pnpm harness <command> [options]
   epoch:g04-one-shot-run --run <issue>
   epoch:g04-legacy-claim-reconcile --run <issue> --pr <number> --source-pr <number>
   epoch:g16-one-shot-run --run <issue>
+  epoch:agent-mcp-profile-status --run <issue> --pr <number> --profile-id <id>
+  epoch:agent-mcp-profile-claim --run <issue> --pr <number> --profile-id <id> --bundle-sha256 <sha> --reviewer-id <id> --runner-public-key <base64>
+  epoch:agent-mcp-profile-result --run <issue> --pr <number> --profile-id <id> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN> [--report-sha256 <sha>]
   epoch:r01-one-shot-run --run <issue>
   epoch:r01-one-shot-reconcile --run <issue> --pr <number>
   epoch:g06-one-shot-run --run <issue>
@@ -1415,6 +1436,18 @@ function commandCandidateCheck(options) {
     throw new HarnessInvariantError(
       'D07_ONESHOT_DISPOSITION_IMMUTABLE',
       'A durable D07 one-shot disposition must be preserved exactly across Candidate refreshes',
+    );
+  }
+  const priorProfileDispositions = epoch.adversarial_preflight?.agent_mcp_profile_dispositions;
+  const nextProfileDispositions = evidence.adversarial_preflight?.agent_mcp_profile_dispositions;
+  if (
+    (priorProfileDispositions === undefined) !== (nextProfileDispositions === undefined) ||
+    (priorProfileDispositions !== undefined &&
+      canonicalHash(priorProfileDispositions) !== canonicalHash(nextProfileDispositions))
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_DISPOSITION_IMMUTABLE',
+      'Durable Agent/MCP profile claims and terminal results must be preserved exactly across Candidate refreshes',
     );
   }
   epoch.validation = evidence.validation ?? epoch.validation;
@@ -2995,6 +3028,650 @@ function commandEpochG16OneShotRun(options) {
     claimHarness: (gate) => commandEpochG16OneShotClaim(gate, { printOutput: false }),
     persistResult: (claim, state, reportSha256, receipt) =>
       persistHarnessG16OneShotResult(claim, state, reportSha256, receipt),
+  });
+}
+
+function agentMcpProfileClaims(epoch) {
+  return epoch?.adversarial_preflight?.agent_mcp_profile_dispositions ?? {};
+}
+
+function agentMcpProfileBundleMatches(candidateSha, bundleSha256, allowReportWorktree = false) {
+  if (process.env.HARNESS_MOCK_STATE) {
+    const status = git('status', '--porcelain', '--untracked-files=all');
+    const reportOnly =
+      status === `?? ${getAgentMcpProfileById('c03-voice-actor-comparison-v1').reportPath}`;
+    return (
+      bundleSha256 === process.env.HARNESS_G04_BUNDLE_SHA256 &&
+      currentHead() === candidateSha &&
+      (status === '' || (allowReportWorktree && reportOnly))
+    );
+  }
+  try {
+    const status = git('status', '--porcelain', '--untracked-files=all');
+    const clean = status === '';
+    const reportOnly =
+      status === `?? ${getAgentMcpProfileById('c03-voice-actor-comparison-v1').reportPath}`;
+    return (
+      (clean || (allowReportWorktree && reportOnly)) &&
+      git('rev-parse', 'HEAD') === candidateSha &&
+      computeMcpBundleSha256(root) === bundleSha256 &&
+      readG26McpBundleAttestation(root) === bundleSha256
+    );
+  } catch {
+    return false;
+  }
+}
+
+function readAgentMcpProfileLabels() {
+  const labels = JSON.parse(gh('label', 'list', '--limit', '1000', '--json', 'name,description'));
+  if (!Array.isArray(labels)) {
+    throw new HarnessInvariantError(
+      'PROFILE_CONTROL_STATE_UNAVAILABLE',
+      'Unable to read repository-scoped Agent/MCP profile latches.',
+    );
+  }
+  return labels;
+}
+
+function assertAgentMcpProfileReviewReadiness(
+  { runNumber, prNumber, profile, runnerReceiptPublicKey },
+  { checkRunnerReceiptKey = true, checkBundle = true } = {},
+) {
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const run = runResult.state;
+  const epoch = epochResult.state;
+  const pr = epochResult.view;
+  const candidateSha = epoch.candidate_sha;
+  const baseSha = epoch.base_sha;
+  const currentBaseSha = remoteBaseSha('master');
+  const latestReview = epoch.review_history?.at(-1);
+  let runnerReceiptPublicKeySha256;
+  if (checkRunnerReceiptKey) {
+    try {
+      runnerReceiptPublicKeySha256 = g16RunnerPublicKeySha256(
+        runnerReceiptPublicKey?.publicKeyBase64,
+      );
+    } catch {
+      runnerReceiptPublicKeySha256 = null;
+    }
+  }
+  const existingDisposition = agentMcpProfileClaims(epoch)[profile.id];
+  if (
+    Number(runNumber) !== 95 ||
+    !Number.isSafeInteger(Number(prNumber)) ||
+    Number(prNumber) < 1 ||
+    run.state !== 'EPOCH_ACTIVE' ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
+    run.active_epoch_pr !== Number(prNumber) ||
+    run.pending_epoch != null ||
+    epoch.state !== 'REVIEW_PASSED' ||
+    epoch.epoch_id !== profile.epochId ||
+    epoch.pr_number !== Number(prNumber) ||
+    !epoch.advances_frontier_ids?.includes(profile.frontierId) ||
+    epoch.scope_closure?.related_work_remaining !== false ||
+    epoch.adversarial_preflight?.completed !== true ||
+    existingDisposition !== undefined ||
+    epoch.branch !== currentBranch() ||
+    currentHead() !== candidateSha ||
+    git('status', '--porcelain') !== '' ||
+    pr.state !== 'OPEN' ||
+    pr.isDraft ||
+    pr.baseRefName !== 'master' ||
+    pr.headRefName !== epoch.branch ||
+    pr.headRefOid !== candidateSha ||
+    epoch.base_branch !== 'master' ||
+    epoch.reviewed_base_sha !== baseSha ||
+    currentBaseSha !== baseSha ||
+    epoch.review_pass_sha !== candidateSha ||
+    epoch.ci?.sha !== candidateSha ||
+    epoch.ci?.status !== 'SUCCESS' ||
+    !mandatoryChecksSuccessful(pr.statusCheckRollup) ||
+    latestReview?.candidate_sha !== candidateSha ||
+    latestReview.reviewed_base_sha !== baseSha ||
+    latestReview.verdict !== 'PASS' ||
+    !isG16LunaMaxReviewerId(latestReview.reviewer_id, Number(prNumber)) ||
+    (runnerReceiptPublicKey?.reviewerId !== undefined &&
+      latestReview.reviewer_id !== runnerReceiptPublicKey.reviewerId) ||
+    profile.model !== 'gpt-6-luna' ||
+    profile.reasoningEffort !== 'max' ||
+    (checkRunnerReceiptKey &&
+      (!/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKey?.bundleSha256 ?? '') ||
+        !/^[A-Za-z0-9+/]{40,100}={0,2}$/u.test(runnerReceiptPublicKey?.publicKeyBase64 ?? '') ||
+        !/^[0-9a-f]{64}$/u.test(runnerReceiptPublicKeySha256 ?? '')))
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_CLAIM_GATE_FAILED',
+      'A profile one-shot claim requires the clean active exact Candidate, unchanged Base, seven-check CI, and exact Luna Max PASS.',
+      { runNumber, prNumber, candidateSha, baseSha, profileId: profile.id },
+    );
+  }
+  if (
+    checkBundle &&
+    !agentMcpProfileBundleMatches(candidateSha, runnerReceiptPublicKey.bundleSha256)
+  ) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_BUNDLE_MISMATCH',
+      'The registered profile claim must bind the current exact-Candidate MCP bundle.',
+      { candidateSha, profileId: profile.id },
+    );
+  }
+  return {
+    runResult,
+    epochResult,
+    run,
+    epoch,
+    pr,
+    candidateSha,
+    baseSha,
+    reviewerId: latestReview.reviewer_id,
+    runnerReceiptPublicKeySha256,
+  };
+}
+
+function commandEpochAgentMcpProfileStatus(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const profileId = required(options, 'profile-id');
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_UNKNOWN',
+      'Unknown profile id; the registered profile set is closed.',
+      { profileId },
+    );
+  }
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const disposition = agentMcpProfileClaims(epochResult.state)[profile.id] ?? null;
+  const labels = readAgentMcpProfileLabels();
+  const claimLabel = labels.find((label) => label.name === profile.claimLabelName) ?? null;
+  const terminalLabelName = agentMcpProfileTerminalLabelName(profile);
+  const terminalLabel = labels.find((label) => label.name === terminalLabelName) ?? null;
+  const expectedDescription = agentMcpProfileClaimLabelDescription(profile);
+  let state = 'UNCLAIMED';
+  if (claimLabel && claimLabel.description !== expectedDescription) {
+    state = 'LATCH_CONFLICT';
+  } else if ((claimLabel === null) !== (disposition === null)) {
+    state = 'AMBIGUOUS';
+  } else if (disposition) {
+    state = disposition.state;
+    if (
+      disposition.profileId !== profile.id ||
+      disposition.toolName !== profile.toolName ||
+      disposition.argumentProfile !== profile.argumentProfile ||
+      disposition.expectedArgumentsSha256 !== agentMcpProfileArgumentsSha256(profile) ||
+      disposition.registrySha256 !== agentMcpProfileRegistrySha256() ||
+      disposition.retryAllowed !== false
+    )
+      state = 'CLAIM_MISMATCH';
+  }
+  if (disposition && ['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(disposition.state)) {
+    let expectedTerminalDescription;
+    try {
+      expectedTerminalDescription = agentMcpProfileTerminalLabelDescription(
+        profile,
+        disposition.state,
+        disposition.reportSha256 ?? disposition.unacceptedReportSha256 ?? null,
+      );
+    } catch {
+      state = 'TERMINAL_DISPOSITION_INVALID';
+    }
+    if (!terminalLabel || terminalLabel.description !== expectedTerminalDescription) {
+      state = 'TERMINAL_LATCH_MISMATCH';
+    }
+  } else if (terminalLabel) {
+    state = 'AMBIGUOUS_TERMINAL_LATCH';
+  }
+  let reviewGate = { eligible: false, reason: null };
+  if (state === 'UNCLAIMED') {
+    try {
+      assertAgentMcpProfileReviewReadiness(
+        {
+          runNumber,
+          prNumber,
+          profile,
+        },
+        { checkRunnerReceiptKey: false, checkBundle: false },
+      );
+      reviewGate = { eligible: true, reason: null };
+    } catch (error) {
+      reviewGate = {
+        eligible: false,
+        reason: error instanceof HarnessInvariantError ? error.code : 'PROFILE_REVIEW_GATE_FAILED',
+      };
+    }
+  }
+  print({
+    state,
+    run: Number(runNumber),
+    pr: Number(prNumber),
+    epoch_id: epochResult.state.epoch_id,
+    profile_id: profile.id,
+    frontier_id: profile.frontierId,
+    tool_name: profile.toolName,
+    argument_profile: profile.argumentProfile,
+    expected_arguments_sha256: agentMcpProfileArgumentsSha256(profile),
+    registry_sha256: agentMcpProfileRegistrySha256(),
+    call_count: profile.calls.length,
+    retry_allowed: false,
+    claim_label_present: claimLabel !== null,
+    terminal_label_present: terminalLabel !== null,
+    review_gate: reviewGate,
+    disposition,
+    issue_state: runResult.state.state,
+  });
+}
+
+function commandEpochAgentMcpProfileClaim(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const profileId = required(options, 'profile-id');
+  const bundleSha256 = required(options, 'bundle-sha256');
+  const reviewerId = required(options, 'reviewer-id');
+  const runnerPublicKey = required(options, 'runner-public-key');
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_UNKNOWN',
+      'Unknown profile id; the registered profile set is closed.',
+      { profileId },
+    );
+  }
+  if (Number(runNumber) !== 95 || !/^[0-9a-f]{64}$/u.test(bundleSha256)) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_CLAIM_INVALID',
+      'Profile claims require Run #95 and a SHA-256 MCP bundle digest.',
+    );
+  }
+  const gate = {
+    runNumber,
+    prNumber,
+    profile,
+    runnerReceiptPublicKey: {
+      reviewerId,
+      bundleSha256,
+      publicKeyBase64: runnerPublicKey,
+    },
+  };
+  const ready = assertAgentMcpProfileReviewReadiness(gate);
+  const claimId = `profile-run-95-pr-${prNumber}-${ready.candidateSha.slice(0, 12)}-${Date.now()}`;
+  const claim = {
+    schemaVersion: 1,
+    claimId,
+    state: 'CLAIMED',
+    profileId: profile.id,
+    frontierId: profile.frontierId,
+    epochId: profile.epochId,
+    runNumber: 95,
+    prNumber: Number(prNumber),
+    toolName: profile.toolName,
+    argumentProfile: profile.argumentProfile,
+    expectedArguments: profile.calls.map((call) => structuredClone(call.arguments)),
+    expectedArgumentsSha256: agentMcpProfileArgumentsSha256(profile),
+    registrySha256: agentMcpProfileRegistrySha256(),
+    sourceCandidateSha: ready.candidateSha,
+    baseSha: ready.baseSha,
+    ciSha: ready.candidateSha,
+    ciStatus: 'SUCCESS',
+    reviewerId: ready.reviewerId,
+    bundleSha256,
+    runnerReceiptPublicKey: runnerPublicKey,
+    runnerReceiptPublicKeySha256: ready.runnerReceiptPublicKeySha256,
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: new Date().toISOString(),
+  };
+  try {
+    claimAgentMcpProfileAtomically({
+      claim,
+      assertReady: () => assertAgentMcpProfileReviewReadiness(gate),
+      acquireGlobalLatch: () => acquireAgentMcpProfileGitHubLatch(gh, profile),
+      persistClaim: (currentClaim) => {
+        const latest = epochState(prNumber);
+        const current = agentMcpProfileClaims(latest.state);
+        if (Object.hasOwn(current, profile.id)) {
+          throw new HarnessInvariantError(
+            'AGENT_MCP_PROFILE_ALREADY_CLAIMED',
+            'A durable profile disposition already exists; refusing to overwrite it.',
+            { profileId },
+          );
+        }
+        const nextEpoch = structuredClone(latest.state);
+        nextEpoch.adversarial_preflight = {
+          ...nextEpoch.adversarial_preflight,
+          agent_mcp_profile_dispositions: {
+            ...current,
+            [profile.id]: currentClaim,
+          },
+        };
+        updatePr(prNumber, nextEpoch);
+      },
+      readClaim: () => agentMcpProfileClaims(epochState(prNumber).state)[profile.id] ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof AgentMcpProfileClaimError) {
+      throw new HarnessInvariantError(error.code, error.message, { profileId });
+    }
+    throw error;
+  }
+  print({
+    state: 'AGENT_MCP_PROFILE_CLAIMED',
+    claimId,
+    run: 95,
+    pr: Number(prNumber),
+    profileId: profile.id,
+    candidateSha: ready.candidateSha,
+    baseSha: ready.baseSha,
+    ciSha: ready.candidateSha,
+    ciStatus: 'SUCCESS',
+    reviewerId: ready.reviewerId,
+    bundleSha256,
+    expectedArgumentsSha256: claim.expectedArgumentsSha256,
+    registrySha256: claim.registrySha256,
+    retryAllowed: false,
+  });
+}
+
+function assertAgentMcpProfileClaimCurrent(profile, claim) {
+  const runResult = issueState(claim.runNumber);
+  const epochResult = epochState(claim.prNumber);
+  const run = runResult.state;
+  const epoch = epochResult.state;
+  const pr = epochResult.view;
+  const latestReview = epoch.review_history?.at(-1);
+  const currentBaseSha = remoteBaseSha('master');
+  const valid =
+    runResult.view.number === claim.runNumber &&
+    run.state === 'EPOCH_ACTIVE' &&
+    run.active_epoch_pr === claim.prNumber &&
+    run.pending_epoch == null &&
+    epoch.epoch_id === profile.epochId &&
+    epoch.pr_number === claim.prNumber &&
+    epoch.state === 'REVIEW_PASSED' &&
+    epoch.scope_closure?.related_work_remaining === false &&
+    epoch.adversarial_preflight?.completed === true &&
+    epoch.base_branch === 'master' &&
+    epoch.base_sha === claim.baseSha &&
+    epoch.reviewed_base_sha === claim.baseSha &&
+    currentBaseSha === claim.baseSha &&
+    epoch.candidate_sha === claim.sourceCandidateSha &&
+    epoch.review_pass_sha === claim.sourceCandidateSha &&
+    epoch.ci?.sha === claim.ciSha &&
+    epoch.ci?.status === 'SUCCESS' &&
+    latestReview?.candidate_sha === claim.sourceCandidateSha &&
+    latestReview.reviewed_base_sha === claim.baseSha &&
+    latestReview.reviewer_id === claim.reviewerId &&
+    latestReview.verdict === 'PASS' &&
+    pr.state === 'OPEN' &&
+    !pr.isDraft &&
+    pr.baseRefName === 'master' &&
+    pr.headRefName === epoch.branch &&
+    pr.headRefOid === claim.sourceCandidateSha &&
+    mandatoryChecksSuccessful(pr.statusCheckRollup) &&
+    agentMcpProfileBundleMatches(claim.sourceCandidateSha, claim.bundleSha256, true);
+  if (!valid) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_CLAIM_STALE',
+      'Profile result must bind the original active Candidate, Base, CI, reviewer PASS, and MCP bundle.',
+      { profileId: profile.id, claimId: claim.claimId },
+    );
+  }
+  return { run, epoch, pr, latestReview };
+}
+
+function commandEpochAgentMcpProfileResult(options) {
+  ensureControlPlane();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const profileId = required(options, 'profile-id');
+  const claimId = required(options, 'claim-id');
+  const resultState = required(options, 'state');
+  const reportSha256 = options['report-sha256'] ?? null;
+  const profile = getAgentMcpProfileById(profileId);
+  if (!profile) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_UNKNOWN',
+      'Unknown profile id; the registered profile set is closed.',
+      { profileId },
+    );
+  }
+  if (!['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState) || Number(runNumber) !== 95) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_RESULT_INVALID',
+      'Profile result requires Run #95 and a terminal INCONCLUSIVE or REPORT_WRITTEN state.',
+    );
+  }
+  const epochResult = epochState(prNumber);
+  const runResult = issueState(runNumber);
+  const current = agentMcpProfileClaims(epochResult.state)[profile.id];
+  if (!current || current.claimId !== claimId || current.state === undefined) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_CLAIM_MISMATCH',
+      'The active Epoch has no matching durable profile claim.',
+      { profileId, claimId },
+    );
+  }
+  const claimMatches =
+    current.profileId === profile.id &&
+    current.frontierId === profile.frontierId &&
+    current.epochId === profile.epochId &&
+    current.runNumber === 95 &&
+    current.prNumber === Number(prNumber) &&
+    current.toolName === profile.toolName &&
+    current.argumentProfile === profile.argumentProfile &&
+    canonicalHash(current.expectedArguments) ===
+      canonicalHash(profile.calls.map((call) => call.arguments)) &&
+    current.expectedArgumentsSha256 === agentMcpProfileArgumentsSha256(profile) &&
+    current.registrySha256 === agentMcpProfileRegistrySha256() &&
+    current.sourceCandidateSha === current.ciSha &&
+    current.ciStatus === 'SUCCESS' &&
+    current.reviewerId &&
+    isG16LunaMaxReviewerId(current.reviewerId, Number(prNumber)) &&
+    current.bundleSha256 &&
+    current.runnerReceiptPublicKeySha256 &&
+    current.retryAllowed === false;
+  if (!claimMatches) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_CLAIM_MISMATCH',
+      'The persisted profile claim does not match its closed registry entry.',
+      { profileId, claimId },
+    );
+  }
+  const claimLabel = readAgentMcpProfileLabels().find(
+    (label) => label.name === profile.claimLabelName,
+  );
+  if (claimLabel?.description !== agentMcpProfileClaimLabelDescription(profile)) {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_CLAIM_LATCH_MISMATCH',
+      'A profile result requires the exact permanent repository-scoped claim latch.',
+      { profileId, claimId },
+    );
+  }
+  if (current.state === resultState) {
+    const terminalDescription = agentMcpProfileTerminalLabelDescription(
+      profile,
+      resultState,
+      current.reportSha256 ?? null,
+    );
+    const terminalLabel = readAgentMcpProfileLabels().find(
+      (label) => label.name === agentMcpProfileTerminalLabelName(profile),
+    );
+    if (terminalLabel?.description !== terminalDescription) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_TERMINAL_LATCH_MISMATCH',
+        'The terminal profile label does not match the durable disposition.',
+      );
+    }
+    if (resultState === 'REPORT_WRITTEN') {
+      const validation = validateC03SanitizedReportFile(
+        current,
+        root,
+        path.join(root, profile.reportPath),
+      );
+      if (
+        !validation.passed ||
+        validation.reportSha256 !== current.reportSha256 ||
+        reportSha256 !== current.reportSha256
+      ) {
+        throw new HarnessInvariantError(
+          'AGENT_MCP_PROFILE_REPORT_INVALID',
+          validation.reason ?? 'The recorded report no longer matches its durable profile claim.',
+        );
+      }
+    }
+    print({
+      state: 'AGENT_MCP_PROFILE_RESULT_ALREADY_RECORDED',
+      claimId,
+      profileId,
+      resultState,
+      reportSha256: current.reportSha256 ?? null,
+      retryAllowed: false,
+      issue_state: runResult.state.state,
+    });
+    return;
+  }
+  if (current.state !== 'CLAIMED') {
+    throw new HarnessInvariantError(
+      'AGENT_MCP_PROFILE_ALREADY_TERMINAL',
+      'A terminal profile result is immutable and cannot be replaced.',
+      { profileId, claimId, currentState: current.state },
+    );
+  }
+
+  let acceptedReport = null;
+  let boundReportSha256 = reportSha256;
+  if (resultState === 'REPORT_WRITTEN') {
+    if (!/^[0-9a-f]{64}$/u.test(reportSha256 ?? '')) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_REPORT_HASH_REQUIRED',
+        'REPORT_WRITTEN requires the exact sanitized report SHA-256.',
+      );
+    }
+    assertAgentMcpProfileClaimCurrent(profile, current);
+    const status = git('status', '--porcelain', '--untracked-files=all');
+    if (status !== `?? ${profile.reportPath}`) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
+        'Only the claim-bound sanitized C03 report may be untracked while recording REPORT_WRITTEN.',
+        { status: status.split('\n') },
+      );
+    }
+    acceptedReport = validateC03SanitizedReportFile(
+      current,
+      root,
+      path.join(root, profile.reportPath),
+    );
+    if (
+      !acceptedReport.passed ||
+      acceptedReport.reportPath !== profile.reportPath ||
+      acceptedReport.reportSha256 !== reportSha256
+    ) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_REPORT_INVALID',
+        acceptedReport.reason ?? 'C03 sanitized report does not match the exact claim.',
+      );
+    }
+  } else {
+    const reportPath = path.join(root, profile.reportPath);
+    const reportExists = fs.existsSync(reportPath);
+    if (reportExists) {
+      const bytes = fs.readFileSync(reportPath);
+      const observedSha256 = createHash('sha256').update(bytes).digest('hex');
+      if (reportSha256 !== observedSha256) {
+        throw new HarnessInvariantError(
+          'AGENT_MCP_PROFILE_INCONCLUSIVE_REPORT_HASH',
+          'An unaccepted report digest must match the exact retained C03 artifact.',
+        );
+      }
+      const validation = validateC03SanitizedReportFile(current, root, reportPath);
+      if (validation.passed) {
+        let claimCurrent = true;
+        try {
+          assertAgentMcpProfileClaimCurrent(profile, current);
+        } catch (error) {
+          if (
+            !(error instanceof HarnessInvariantError) ||
+            error.code !== 'AGENT_MCP_PROFILE_CLAIM_STALE'
+          ) {
+            throw error;
+          }
+          claimCurrent = false;
+        }
+        if (
+          classifyAgentMcpProfileInconclusiveReport({
+            reportValid: true,
+            claimCurrent,
+          }) === 'REPORT_WRITTEN_REQUIRED'
+        ) {
+          throw new HarnessInvariantError(
+            'AGENT_MCP_PROFILE_REPORT_WRITTEN_REQUIRED',
+            'A valid report for the still-current Candidate must be recorded as REPORT_WRITTEN.',
+          );
+        }
+      }
+      boundReportSha256 = observedSha256;
+    } else if (reportSha256 !== null) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_INCONCLUSIVE_REPORT_HASH',
+        'A report digest was supplied but the canonical C03 report file is absent.',
+      );
+    }
+    const status = git('status', '--porcelain', '--untracked-files=all');
+    if (status !== (reportExists ? `?? ${profile.reportPath}` : '')) {
+      throw new HarnessInvariantError(
+        'AGENT_MCP_PROFILE_WORKTREE_UNEXPECTED',
+        'An INCONCLUSIVE result may retain only its exact unaccepted C03 report.',
+        { status: status.split('\n') },
+      );
+    }
+  }
+
+  const terminalLabel = acquireAgentMcpProfileTerminalGitHubLatch(
+    gh,
+    profile,
+    resultState,
+    boundReportSha256,
+  );
+  const nextEpoch = structuredClone(epochResult.state);
+  const nextDisposition = {
+    ...current,
+    state: resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    ...(acceptedReport
+      ? {
+          reportPath: acceptedReport.reportPath,
+          reportSha256: acceptedReport.reportSha256,
+          runnerReceiptSha256: canonicalHash(acceptedReport.report.runnerReceipt),
+        }
+      : boundReportSha256
+        ? { unacceptedReportSha256: boundReportSha256 }
+        : {}),
+    terminalLabel: terminalLabel.name,
+    terminalLabelDescription: terminalLabel.description,
+    retryAllowed: false,
+    finishedAt: new Date().toISOString(),
+  };
+  nextEpoch.adversarial_preflight.agent_mcp_profile_dispositions = {
+    ...agentMcpProfileClaims(nextEpoch),
+    [profile.id]: nextDisposition,
+  };
+  updatePr(prNumber, nextEpoch);
+  print({
+    state: 'AGENT_MCP_PROFILE_RESULT_RECORDED',
+    claimId,
+    profileId,
+    resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    reportSha256: acceptedReport?.reportSha256 ?? null,
+    unacceptedReportSha256: resultState === 'INCONCLUSIVE' ? boundReportSha256 : null,
+    retryAllowed: false,
+    terminalLabelCreated: terminalLabel.created,
+    issue_state: runResult.state.state,
   });
 }
 
@@ -6457,6 +7134,9 @@ const commands = {
   'epoch:g04-one-shot-run': commandEpochG04OneShotRun,
   'epoch:g04-legacy-claim-reconcile': commandEpochG04LegacyClaimReconcile,
   'epoch:g16-one-shot-run': commandEpochG16OneShotRun,
+  'epoch:agent-mcp-profile-status': commandEpochAgentMcpProfileStatus,
+  'epoch:agent-mcp-profile-claim': commandEpochAgentMcpProfileClaim,
+  'epoch:agent-mcp-profile-result': commandEpochAgentMcpProfileResult,
   'epoch:r01-one-shot-run': commandEpochR01OneShotRun,
   'epoch:r01-one-shot-reconcile': commandEpochR01OneShotReconcile,
   'epoch:g06-one-shot-run': commandEpochG06OneShotRun,
