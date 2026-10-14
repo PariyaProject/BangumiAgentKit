@@ -1845,8 +1845,15 @@
       "user_question": "两位声优在共同作品数量和主役比例上谁更高？",
       "lane": "capability_maturity_and_user_journeys",
       "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "source_refs": [
+        "docs/research/user-scenario-catalog.md",
+        "docs/research/run95-c03-person-selection-2026-10-14.json",
+        "scripts/acceptance/agent-mcp-profile-registry.json",
+        "scripts/lib/c03-profile-evidence.mjs",
+        "tests/harness/c03-profile-evidence.test.mjs",
+        "tests/harness/run-c03-profile-codex-agent-mcp.test.mjs"
+      ],
+      "next_action": "After the exact C03 Candidate passes 7/7 CI and same-identity GPT-6 Luna Max review, run the registered one-shot profile once; keep this scenario UNASSESSED until its claim-bound report validates, then record only observed bounded overlap and role shares with coverage limits.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
