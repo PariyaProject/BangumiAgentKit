@@ -9,6 +9,18 @@ const ledger = JSON.parse(
   readFileSync(path.join(root, 'docs/product/frontier-ledger.json'), 'utf8'),
 );
 
+function assertOneShotRuntimeIsHarnessOwned(record) {
+  const guidance = [record.next_action, record.evidence?.source_contract]
+    .filter(Boolean)
+    .join(' ');
+  assert.match(guidance, /active Harness Run\/Epoch/u);
+  assert.match(guidance, /never retry a consumed claim/u);
+  assert.doesNotMatch(
+    guidance,
+    /\bRun #95\b|\bPR #\d+\b|retryAllowed\s*=|INCONCLUSIVE|Candidate [0-9a-f]{7,}/iu,
+  );
+}
+
 test('consumed Run 95 S03 one-shot stays partial and cannot be retried', () => {
   const record = ledger.records.find(({ id }) => id === 'S03');
   assert.ok(record, 'S03 must remain in the canonical frontier');
@@ -31,28 +43,50 @@ test('G04 frontier keeps stable query policy without Run 95 attempt state', () =
   assert.match(record.next_action, /assigned same-identity Luna Max PASS/u);
 });
 
-test('G16 frontier guidance stays independent of transient Run execution state', () => {
+test('G16 frontier keeps stable source guidance separate from Harness runtime state', () => {
   const record = ledger.records.find(({ id }) => id === 'G16');
   assert.ok(record, 'G16 must remain in the canonical frontier');
-  assert.match(record.next_action, /official public relation/u);
   assert.match(record.next_action, /PARTIAL/u);
-  assert.doesNotMatch(record.next_action, /\bRun #\d+\b/iu);
-  assert.doesNotMatch(record.next_action, /\b[0-9a-f]{40}\b/iu);
-  assert.doesNotMatch(record.next_action, /\bclaim\/report\b/iu);
-  assert.doesNotMatch(record.next_action, /\bquery has (?:not )?run\b/iu);
+  assert.match(record.next_action, /complete director filmography/u);
+  assert.match(record.evidence.source_contract, /exact normalized director-label allow-list/u);
+  assertOneShotRuntimeIsHarnessOwned(record);
 });
 
-test('R01 can resume in a distinct follow-up Epoch without reusing its one-shot claim', () => {
+test('R01 frontier keeps source limits separate from Harness runtime state', () => {
   const record = ledger.records.find(({ id }) => id === 'R01');
   assert.ok(record, 'R01 must remain in the canonical frontier');
   assert.equal(record.status, 'PARTIAL');
-  assert.match(record.next_action, /still-unspent one-shot/u);
-  assert.match(record.next_action, /fresh Base-bound follow-up Epoch ID/u);
-  assert.match(record.next_action, /never reuse a merged\/stale Candidate/u);
-  assert.match(record.next_action, /repository-wide permanent latch/u);
-  assert.match(record.next_action, /fixed subjectId=41529\/includeEvidence=true profile/u);
-  assert.match(record.next_action, /inconclusive result is no-credit and never retried/u);
-  assert.doesNotMatch(record.next_action, /run95-r01-subject-relations-agent-mcp-followup/u);
+  assert.match(record.next_action, /reverse\/transitive edges/u);
+  assert.match(record.next_action, /official viewing order/u);
+  assertOneShotRuntimeIsHarnessOwned(record);
+});
+
+test('D07, P01, and A01 keep stable scenario guidance and defer claim state to Harness', () => {
+  const expected = [
+    {
+      id: 'D07',
+      status: 'UNASSESSED',
+      scenario: /historical-rank scenario/u,
+    },
+    {
+      id: 'P01',
+      status: 'UNASSESSED',
+      scenario: /bounded role distribution/u,
+    },
+    {
+      id: 'A01',
+      status: 'UNASSESSED',
+      scenario: /cohort-analysis scenario/u,
+    },
+  ];
+
+  for (const item of expected) {
+    const record = ledger.records.find(({ id }) => id === item.id);
+    assert.ok(record, `${item.id} must remain in the canonical frontier`);
+    assert.equal(record.status, item.status);
+    assert.match(record.next_action, item.scenario);
+    assertOneShotRuntimeIsHarnessOwned(record);
+  }
 });
 
 test('community source closure is evidence-bound and keeps discussion scenarios unresolved', () => {
