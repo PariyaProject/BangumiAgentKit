@@ -13,6 +13,7 @@ import {
   RUN_MARKER,
   createEpochState,
   createRunState,
+  isReconciledPostPassCandidateRefresh,
   parseControlBlock,
   renderEpochBody,
   renderRunBody,
@@ -361,6 +362,36 @@ function candidateEvidence(environment, overrides = {}) {
     }),
   );
   return file;
+}
+
+function reconciledPostPassRefreshFixture() {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RESERVATION_RECONCILED';
+  epoch.candidate_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.review.consumed = 1;
+  epoch.review.runtime = { state: 'COMPLETED', reason: null, allocation: 'NORMAL' };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: 'gpt-6-luna-max-test-reviewer',
+      candidate_sha: sha('c'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  epoch.candidate_refresh_history = [
+    {
+      review_number: 1,
+      previous_candidate_sha: sha('c'),
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      reason: 'A required post-PASS evidence file was added.',
+      at: '2026-10-14T00:00:00.000Z',
+    },
+  ];
+  return { run, epoch };
 }
 
 function correctiveClosure(findingId = 'review-2-finding-1') {
@@ -3850,6 +3881,8 @@ test('CLI Candidate gate can revalidate a legacy reconciled no-start state', () 
       'candidate:check',
       '--pr',
       '42',
+      '--run',
+      '95',
       '--evidence',
       candidateEvidence(consumedEnvironment),
     ]);
@@ -3857,6 +3890,132 @@ test('CLI Candidate gate can revalidate a legacy reconciled no-start state', () 
     assert.match(result.stderr, /^INVALID_CANDIDATE_STATE:/u);
   } finally {
     consumedEnvironment.cleanup();
+  }
+});
+
+test('CLI Candidate gate reassesses an exact post-PASS refresh without resetting review history', () => {
+  const { run, epoch } = reconciledPostPassRefreshFixture();
+  const originalHistory = structuredClone(epoch.review_history);
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--run',
+      '95',
+      '--evidence',
+      candidateEvidence(environment, {
+        review_reassessment_reason:
+          'The completed PASS is linked to this exact post-PASS Candidate refresh; all consumed rounds have verdict records and no paired review reservation remains.',
+      }),
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_READY');
+    assert.equal(stored.next_action, 'RESERVE_REVIEWER_2');
+    assert.equal(stored.review.consumed, 1);
+    assert.equal(stored.review.reserved, 0);
+    assert.deepEqual(stored.review_history, originalHistory);
+    assert.equal(stored.review_reassessment_history.length, 1);
+    assert.equal(stored.review_reassessment_history[0].from_state, 'REVIEW_RESERVATION_RECONCILED');
+    assert.equal(stored.review_reassessment_history[0].previous_candidate_sha, sha('b'));
+    assert.equal(stored.review_reassessment_history[0].candidate_sha, sha('b'));
+    assert.equal(stored.review_reassessment_history[0].preserved_review_count, 1);
+    assert.match(stored.review_reassessment_history[0].review_history_sha, /^[a-f0-9]{64}$/u);
+  } finally {
+    environment.cleanup();
+  }
+});
+
+test('post-PASS reassessment requires matched review history and no active reservation', () => {
+  const { run, epoch } = reconciledPostPassRefreshFixture();
+  assert.equal(isReconciledPostPassCandidateRefresh(run, epoch), true);
+
+  const closureReserved = structuredClone(run);
+  closureReserved.outer_sol.closure.reserved = 1;
+  assert.equal(isReconciledPostPassCandidateRefresh(closureReserved, epoch), false);
+
+  const productReserved = structuredClone(run);
+  productReserved.outer_sol.product.reserved = 1;
+  assert.equal(isReconciledPostPassCandidateRefresh(productReserved, epoch), false);
+
+  const epochReserved = structuredClone(epoch);
+  epochReserved.review.reserved = 1;
+  assert.equal(isReconciledPostPassCandidateRefresh(run, epochReserved), false);
+
+  const reviewerActive = structuredClone(epoch);
+  reviewerActive.review.reviewer_id = 'gpt-6-luna-max-test-reviewer';
+  assert.equal(isReconciledPostPassCandidateRefresh(run, reviewerActive), false);
+
+  const reviewerInterrupted = structuredClone(epoch);
+  reviewerInterrupted.review.runtime.state = 'INTERRUPTED_RESUMABLE';
+  assert.equal(isReconciledPostPassCandidateRefresh(run, reviewerInterrupted), false);
+
+  const unmatchedConsumedRound = structuredClone(epoch);
+  unmatchedConsumedRound.review.consumed = 2;
+  assert.equal(isReconciledPostPassCandidateRefresh(run, unmatchedConsumedRound), false);
+
+  const brokenRefreshLink = structuredClone(epoch);
+  brokenRefreshLink.candidate_refresh_history[0].previous_candidate_sha = sha('d');
+  assert.equal(isReconciledPostPassCandidateRefresh(run, brokenRefreshLink), false);
+});
+
+test('CLI Candidate gate rejects a reconciled refresh with an unmatched consumed review slot', () => {
+  const { run, epoch } = controlFixture();
+  epoch.state = 'REVIEW_RESERVATION_RECONCILED';
+  epoch.candidate_sha = sha('b');
+  epoch.ci = { sha: sha('b'), status: 'SUCCESS', url: 'https://example.test/ci' };
+  epoch.review.consumed = 2;
+  epoch.review.runtime = { state: 'COMPLETED', reason: null, allocation: 'NORMAL' };
+  epoch.review_history = [
+    {
+      review_number: 1,
+      reviewer_id: 'gpt-6-luna-max-test-reviewer',
+      candidate_sha: sha('c'),
+      reviewed_base_sha: sha('a'),
+      verdict: 'PASS',
+      findings: [],
+    },
+  ];
+  epoch.candidate_refresh_history = [
+    {
+      review_number: 2,
+      previous_candidate_sha: sha('c'),
+      candidate_sha: sha('b'),
+      reviewed_base_sha: sha('a'),
+      reason: 'A required post-PASS evidence file was added.',
+      at: '2026-10-14T00:00:00.000Z',
+    },
+  ];
+  const environment = createMockEnvironment({
+    runBody: renderRunBody(run),
+    prBody: renderEpochBody(epoch),
+  });
+  try {
+    const result = environment.execute([
+      'candidate:check',
+      '--pr',
+      '42',
+      '--run',
+      '95',
+      '--evidence',
+      candidateEvidence(environment, {
+        review_reassessment_reason:
+          'An audit reason is present, but a consumed slot has no recorded verdict history.',
+      }),
+    ]);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^INVALID_CANDIDATE_STATE:/u);
+    const stored = parseControlBlock(environment.readState().prBody, EPOCH_MARKER);
+    assert.equal(stored.state, 'REVIEW_RESERVATION_RECONCILED');
+    assert.equal(stored.review.consumed, 2);
+    assert.equal(stored.review_reassessment_history.length, 0);
+  } finally {
+    environment.cleanup();
   }
 });
 
