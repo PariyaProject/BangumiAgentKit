@@ -2473,7 +2473,7 @@
         "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
         "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "Keep A01 UNASSESSED; bounded direct-public compare/render observations can support only their respective public-matrix rows, not the cohort-analysis scenario or Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
+      "next_action": "Keep A01 UNASSESSED. Direct-public observations for compare_subject_cohorts, aggregate_subject_cohort, render_subject_cohort_comparison, and render_subject_cohort_aggregation may support only their respective public-matrix rows; they do not answer the cohort-analysis scenario or grant Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {

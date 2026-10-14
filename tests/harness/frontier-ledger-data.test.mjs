@@ -77,6 +77,7 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
       id: 'A01',
       status: 'UNASSESSED',
       scenario: /cohort-analysis scenario/u,
+      publicRows: /aggregate_subject_cohort.*public-matrix rows/u,
     },
   ];
 
@@ -85,6 +86,7 @@ test('D07, P01, and A01 keep stable scenario guidance and defer claim state to H
     assert.ok(record, `${item.id} must remain in the canonical frontier`);
     assert.equal(record.status, item.status);
     assert.match(record.next_action, item.scenario);
+    if (item.publicRows) assert.match(record.next_action, item.publicRows);
     assertOneShotRuntimeIsHarnessOwned(record);
   }
 });
