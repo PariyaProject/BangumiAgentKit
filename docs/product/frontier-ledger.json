@@ -1078,7 +1078,7 @@
         "tests/harness/agent-harness-cli.test.mjs",
         "tests/harness/g16-one-shot-claim.test.mjs"
       ],
-      "next_action": "Merged PR #137 run95-g16-director-person-activity-agent-mcp already consumed the Run #95 one-shot: Harness state INCONCLUSIVE, no report, retryAllowed=false, with the repository-global claim label present. Never rerun bangumi.get_person_activity for G16 or bypass the latch. Keep G16 PARTIAL for the bounded implementation and source contract only; no Run #95 Agent/MCP credit or complete director-filmography claim.",
+      "next_action": "Keep G16 PARTIAL: the bounded implementation and source contract do not establish a complete director filmography. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "closure_reason": "Delivered a bounded exact-label director-role observation over current official person-subject relations and first_air_date windows, with 36-month support, raw-role evidence, and explicit unknown/exclusion/cap coverage; this is not a complete historical career result.",
@@ -1115,7 +1115,7 @@
           "scripts/generate-tool-acceptance-tasks.py",
           "scripts/test_acceptance_evidence.py"
         ],
-        "source_contract": "Official v0 person-subject relations are filtered by an exact normalized director-label allow-list before bounded subject hydration. Subject first_air_date assigns rows to calendar months ending on as_of; TV classification remains conservative. Missing role labels are unknown, while non-matching labels are excluded without being presented as proof of no directing work. Existing relation/detail/row/concurrency/response caps and current-source limitations remain visible. Run #95 acceptance plumbing now includes a one-tool Candidate-bound Agent/MCP runner, a repository-global create-only Run/tool latch shared across clones and replacement PRs, canonical Harness claim/result reconciliation, signed sanitized receipt, independent report validation, and crash recovery that never reruns Codex. The Run #95 G16 query was invoked once through PR #137 and ended INCONCLUSIVE with no report and retryAllowed=false. This implementation/readback support adds no Agent/MCP acceptance credit; never retry. The scenario remains PARTIAL and no complete career claim is justified.",
+        "source_contract": "Official v0 person-subject relations are filtered by an exact normalized director-label allow-list before bounded subject hydration. Subject first_air_date assigns rows to calendar months ending on as_of; TV classification remains conservative. Missing role labels are unknown, while non-matching labels are excluded without being presented as proof of no directing work. Existing relation/detail/row/concurrency/response caps and current-source limitations remain visible. Acceptance tooling supplies a one-tool Candidate-bound runner, repository-global create-only claim latches across clones and replacement PRs, canonical Harness claim/result reconciliation, signed sanitized receipts, independent report validation, and crash recovery that never reruns an Agent. This tooling is implementation/readback support only; it earns no Agent/MCP credit by itself. The scenario remains PARTIAL; no complete career claim is justified.",
         "formula_version": "person-activity-window-v1",
         "run95_public_identity_source": {
           "endpoint": "GET /v0/subjects/{subject_id}/persons",
@@ -1813,7 +1813,7 @@
         "tests/unit/d07-current-rank-answer-check.test.mjs",
         "tests/unit/d07-report-writer.test.mjs"
       ],
-      "next_action": "Run #95 D07 ten-call Agent/MCP attempt was invoked once on PR #158 Candidate 9ed363ddfc5b5315b41f8f618bf38971ef56b630 / Base b052d8038d458cd976b4d4fed9e5b2cd320f47ee and is permanently INCONCLUSIVE/no-report/retryAllowed=false. Never rerun or recreate its claim/latch. The separate 2026 query_subjects direct-public observation is only a public API matrix row; it does not answer the historical-rank scenario or add Agent/MCP credit. Keep D07 UNASSESSED and do not claim historical winners or complete annual coverage.",
+      "next_action": "Keep D07 UNASSESSED until an accepted bounded answer report supports the historical-rank scenario. The separate query_subjects public API row is not Agent/MCP evidence and does not establish historical winners or annual coverage. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -1960,7 +1960,7 @@
         "tests/unit/p01-codex-agent-mcp-runner.test.ts",
         "tests/unit/p01-agent-mcp-report.test.ts"
       ],
-      "next_action": "Merged PR #135 records the Run #95 fixed P01 person-role query as terminal INCONCLUSIVE/no-report/retryAllowed=false. Never rerun or replace the claim. Keep P01 UNASSESSED because no accepted current-source answer report demonstrates the bounded role distribution; preserve partial/no-report states and do not claim completeness.",
+      "next_action": "Keep P01 UNASSESSED until accepted current-source evidence demonstrates the bounded role distribution. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim. Preserve partial/no-report results and avoid completeness claims.",
       "reopen_when": "Accepted direct P01 answer evidence, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
@@ -2473,7 +2473,7 @@
         "tests/unit/a01-aggregate-subject-cohort-answer-check.test.ts",
         "tests/unit/a01-aggregate-codex-agent-mcp-runner.test.ts"
       ],
-      "next_action": "The distinct aggregate_subject_cohort one-shot was invoked once on the exact reviewed Candidate and is consumed INCONCLUSIVE: one target MCP event DONE/server SUCCESS, but structured result readback and answer checks failed. Preserve the sanitized report; never retry or count it. 2026-10-14T01:12:41Z: the separate public-matrix reconciliation invoked only bangumi.compare_subject_cohorts and bangumi.render_subject_cohort_comparison through ToolRegistry, each maxSubjects=1, on Candidate 69e57591bd65f349073b842f02eba14dbbd82e43 / Base 25ee15967382700ec288023a2544119a18035b5f; report docs/live-probes/public-tools-2026-10-14-011241653-71778.json records 14 anonymous public HTTP requests (7 per tool), no OAuth or writes. Both summaries passed; compare remains partial with five warnings and render returned an ArtifactRef. Candidate matrix is 63/65. This does not resolve the original A01 scenario, change its UNASSESSED status, add Agent/MCP credit, or retry the aggregate one-shot. Refresh the Candidate and pass exact-SHA CI and same-identity review before integration.",
+      "next_action": "Keep A01 UNASSESSED; bounded direct-public compare/render observations can support only their respective public-matrix rows, not the cohort-analysis scenario or Agent/MCP credit. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2813,7 +2813,7 @@
       "lane": "capability_maturity_and_user_journeys",
       "status": "PARTIAL",
       "source_refs": ["docs/research/user-scenario-catalog.md", "docs/live-probes/public-tools-2026-10-12-102328403-99452.json", "docs/tool-catalog.json", "scripts/smoke-public-tools-online.ts", "scripts/acceptance/run-r01-codex-agent-mcp.mjs", "scripts/acceptance/r01-direct-relations-answer-check.mjs", "scripts/acceptance/write-r01-agent-mcp-report.mjs", "tests/unit/r01-codex-agent-mcp-runner.test.ts", "tests/unit/r01-direct-relations-answer-check.test.ts", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "scripts/acceptance/run-r01-codex-agent-mcp.d.mts", "scripts/generate-tool-acceptance-tasks.py", "scripts/test_acceptance_evidence.py", "tests/harness/agent-harness-cli.test.mjs", "tests/harness/frontier-ledger-data.test.mjs"],
-      "next_action": "Merged PR #147 run95-r01-subject-relations-agent-mcp-followup consumed the Run #95 one-shot as INCONCLUSIVE/no-report/retryAllowed=false; the permanent R01 terminal label confirms report=none. Never rerun the fixed subjectId=41529/includeEvidence=true profile or recreate/bypass its latch. Keep R01 PARTIAL; existing direct-source evidence does not establish complete relations, reverse/transitive edges, or official viewing order.",
+      "next_action": "Keep R01 PARTIAL: current direct-source evidence does not establish complete relations, reverse/transitive edges, or official viewing order. Before any one-shot Agent/MCP invocation, consult the active Harness Run/Epoch for current claim eligibility; never retry a consumed claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": []
     },
