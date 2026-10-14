@@ -372,6 +372,7 @@ export function createEpochState({
     reviewed_base_sha: null,
     review_pass_sha: null,
     candidate_refresh_history: [],
+    review_reassessment_history: [],
     ci: { sha: null, status: 'NOT_RUN', url: null },
     review,
     integration: DEFAULT_INTEGRATION,
@@ -1206,6 +1207,117 @@ export function refreshPassedCandidate(epoch, { candidateSha, baseSha, reason, a
   nextEpoch.final_corrective_sha = null;
   nextEpoch.final_corrective_base_sha = null;
   nextEpoch.final_corrective_reason = null;
+  nextEpoch.next_action = `RESERVE_REVIEWER_${nextEpoch.review.consumed + 1}`;
+  return nextEpoch;
+}
+
+export function isReconciledPostPassCandidateRefresh(run, epoch) {
+  const outer = run?.outer_sol;
+  const product = outer?.product;
+  const review = epoch?.review;
+  const history = epoch?.review_history;
+  const refreshes = epoch?.candidate_refresh_history;
+  const lastReview = Array.isArray(history) ? history.at(-1) : undefined;
+  const lastRefresh = Array.isArray(refreshes) ? refreshes.at(-1) : undefined;
+
+  return (
+    run?.state === 'EPOCH_ACTIVE' &&
+    String(run?.active_epoch_pr ?? '') === String(epoch?.pr_number ?? '') &&
+    epoch?.state === 'REVIEW_RESERVATION_RECONCILED' &&
+    outer?.reserved === 0 &&
+    product?.reserved === 0 &&
+    outer?.closure?.reserved === 0 &&
+    (outer?.runtime_recovery?.reserved ?? 0) === 0 &&
+    (run?.frontier_closure?.reviewer_id ?? null) === null &&
+    !['ACTIVE', 'INTERRUPTED_RESUMABLE'].includes(run?.frontier_closure?.runtime?.state) &&
+    (review?.reserved ?? 0) === 0 &&
+    (review?.runtime_recovery?.reserved ?? 0) === 0 &&
+    (outer?.reservation_id ?? null) === null &&
+    (outer?.runtime_recovery_reservation_id ?? null) === null &&
+    (review?.reservation_id ?? null) === null &&
+    (review?.runtime_recovery_reservation_id ?? null) === null &&
+    review?.reviewer_id === null &&
+    review?.runtime?.state === 'COMPLETED' &&
+    Number.isInteger(review?.consumed) &&
+    review.consumed > 0 &&
+    Number.isInteger(review?.max) &&
+    review.consumed < review.max &&
+    Number.isInteger(product?.consumed) &&
+    Number.isInteger(product?.max) &&
+    product.consumed < product.max &&
+    Array.isArray(history) &&
+    history.length === review.consumed &&
+    history.every(
+      (entry, index) =>
+        entry?.review_number === index + 1 &&
+        typeof entry?.reviewer_id === 'string' &&
+        typeof entry?.candidate_sha === 'string',
+    ) &&
+    lastReview?.verdict === 'PASS' &&
+    Array.isArray(refreshes) &&
+    refreshes.length > 0 &&
+    lastRefresh?.review_number === review.consumed &&
+    lastRefresh?.previous_candidate_sha === lastReview.candidate_sha &&
+    lastRefresh?.candidate_sha === epoch?.candidate_sha &&
+    lastRefresh?.reviewed_base_sha === epoch?.base_sha &&
+    epoch?.review_pass_sha === null &&
+    epoch?.reviewed_base_sha === null
+  );
+}
+
+export function recordReconciledPostPassCandidateReassessment(
+  run,
+  sourceEpoch,
+  validatedEpoch,
+  { candidateSha, baseSha, reason, at } = {},
+) {
+  if (!isReconciledPostPassCandidateRefresh(run, sourceEpoch)) {
+    throw new HarnessInvariantError(
+      'REVIEW_REASSESSMENT_NOT_ELIGIBLE',
+      'The paired Run/Epoch state is not an exact completed-PASS Candidate refresh with all prior review launches accounted for',
+    );
+  }
+  requireText(candidateSha, 'REVIEW_REASSESSMENT_INVALID', 'candidate_sha');
+  requireText(baseSha, 'REVIEW_REASSESSMENT_INVALID', 'base_sha');
+  if (
+    validatedEpoch.state !== sourceEpoch.state ||
+    validatedEpoch.candidate_sha !== candidateSha ||
+    validatedEpoch.base_sha !== baseSha ||
+    canonicalHash(validatedEpoch.review) !== canonicalHash(sourceEpoch.review) ||
+    canonicalHash(validatedEpoch.review_history) !== canonicalHash(sourceEpoch.review_history)
+  ) {
+    throw new HarnessInvariantError(
+      'REVIEW_REASSESSMENT_INVALID',
+      'Candidate validation must preserve the reconciled state and all consumed review accounting until reassessment is recorded',
+    );
+  }
+  requireText(reason, 'REVIEW_REASSESSMENT_REASON_REQUIRED', 'review_reassessment_reason');
+  const normalizedReason = reason.trim();
+  if (normalizedReason.length < 12 || normalizedReason.length > 500) {
+    throw new HarnessInvariantError(
+      'REVIEW_REASSESSMENT_REASON_REQUIRED',
+      'review_reassessment_reason must contain 12 to 500 non-whitespace characters',
+    );
+  }
+
+  const nextEpoch = cloneState(validatedEpoch);
+  nextEpoch.review_reassessment_history ??= [];
+  nextEpoch.review_reassessment_history.push({
+    from_state: sourceEpoch.state,
+    previous_candidate_sha: sourceEpoch.candidate_sha,
+    candidate_sha: candidateSha,
+    previous_base_sha: sourceEpoch.base_sha,
+    base_sha: baseSha,
+    preserved_review_count: sourceEpoch.review.consumed,
+    review_history_sha: canonicalHash(sourceEpoch.review_history),
+    reason: normalizedReason,
+    at: at ?? new Date().toISOString(),
+  });
+  nextEpoch.candidate_sha = candidateSha;
+  nextEpoch.base_sha = baseSha;
+  nextEpoch.review_pass_sha = null;
+  nextEpoch.reviewed_base_sha = null;
+  nextEpoch.state = 'REVIEW_READY';
   nextEpoch.next_action = `RESERVE_REVIEWER_${nextEpoch.review.consumed + 1}`;
   return nextEpoch;
 }

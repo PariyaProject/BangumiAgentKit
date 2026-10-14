@@ -34,6 +34,7 @@ import {
   extendEpochReviewBudget,
   extendRunProductReviewBudget,
   assertG04OneShotResultArtifactState,
+  isReconciledPostPassCandidateRefresh,
   g04DispositionAcknowledges,
   isTerminalRunState,
   markReviewStarted,
@@ -43,6 +44,7 @@ import {
   reconcileFrontierReviewReservation,
   reconcileReviewReservation,
   refreshPassedCandidate,
+  recordReconciledPostPassCandidateReassessment,
   resumeCorrectiveAfterReviewBudgetExtension,
   restoreIntegrationAuthority,
   resumeDiscoveryAfterFrontierRejection,
@@ -685,7 +687,7 @@ Usage: pnpm harness <command> [options]
   epoch:start --run <issue> --spec <json>
   epoch:open-pr --run <issue> --title <title>
   guard:legacy-paths [--base origin/master] [--product-epoch]
-  candidate:check --pr <number> --evidence <json>
+  candidate:check --pr <number> [--run <issue>] --evidence <json>
   review:reserve --run <issue> --pr <number> [--runtime-recovery]
   review:started --run <issue> --pr <number> --reviewer-id <id> [--runtime-recovery]
   review:reconcile --run <issue> --pr <number> [--definitely-not-started] [--runtime-recovery]
@@ -1202,6 +1204,41 @@ function commandCandidateCheck(options) {
   const epochResult = epochState(prNumber);
   let epoch = structuredClone(epochResult.state);
   const refreshingPassedCandidate = epoch.state === 'REVIEW_PASSED';
+  const needsReconciledPostPassReassessment =
+    epoch.state === 'REVIEW_RESERVATION_RECONCILED' && (epoch.review?.consumed ?? 0) > 0;
+  let reconciledPostPassRefresh = false;
+  let reassessmentRunState = null;
+  if (needsReconciledPostPassReassessment) {
+    if (!options.run) {
+      throw new HarnessInvariantError(
+        'REVIEW_REASSESSMENT_RUN_REQUIRED',
+        'A post-PASS reconciled Candidate reassessment requires --run for paired-ledger validation',
+      );
+    }
+    const reassessmentRun = issueState(required(options, 'run'));
+    if (
+      reassessmentRun.view.state !== 'OPEN' ||
+      !isReconciledPostPassCandidateRefresh(reassessmentRun.state, epoch)
+    ) {
+      throw new HarnessInvariantError(
+        'INVALID_CANDIDATE_STATE',
+        'A consumed reconciled state can resume only when it is an exact post-PASS Candidate refresh with no unmatched review launch or reservation',
+      );
+    }
+    reassessmentRunState = reassessmentRun.state;
+    const reassessmentReason = evidence.review_reassessment_reason;
+    if (
+      typeof reassessmentReason !== 'string' ||
+      reassessmentReason.trim().length < 12 ||
+      reassessmentReason.trim().length > 500
+    ) {
+      throw new HarnessInvariantError(
+        'REVIEW_REASSESSMENT_REASON_REQUIRED',
+        'review_reassessment_reason must contain 12 to 500 non-whitespace characters',
+      );
+    }
+    reconciledPostPassRefresh = true;
+  }
   const reconciledWithoutLaunch =
     epoch.state === 'REVIEW_RESERVATION_RECONCILED' &&
     epoch.review?.consumed === 0 &&
@@ -1215,6 +1252,7 @@ function commandCandidateCheck(options) {
       'FINAL_CORRECTIVE_REQUIRED',
       'FINAL_CORRECTIVE_READY',
       ...(refreshingPassedCandidate ? ['REVIEW_PASSED'] : []),
+      ...(reconciledPostPassRefresh ? ['REVIEW_RESERVATION_RECONCILED'] : []),
     ].includes(epoch.state) &&
     !reconciledWithoutLaunch
   ) {
@@ -1242,6 +1280,18 @@ function commandCandidateCheck(options) {
         currentHeadSha: head,
       },
     );
+  }
+  if (reconciledPostPassRefresh) {
+    const lastReviewCandidateSha = epochResult.state.review_history.at(-1)?.candidate_sha;
+    if (
+      !isAncestor(lastReviewCandidateSha, head) ||
+      !isAncestor(epochResult.state.candidate_sha, head)
+    ) {
+      throw new HarnessInvariantError(
+        'REVIEW_REASSESSMENT_NOT_DESCENDANT',
+        'A reassessed Candidate must preserve both the passed Candidate and the currently recorded post-PASS refresh in its history',
+      );
+    }
   }
   if (refreshingPassedCandidate) {
     if (epoch.review_pass_sha !== epoch.candidate_sha) {
@@ -1432,7 +1482,18 @@ function commandCandidateCheck(options) {
     prHeadSha: epochResult.view.headRefOid,
     currentBaseSha: baseSha,
   });
-  if (finalCorrective) {
+  if (reconciledPostPassRefresh) {
+    epoch = recordReconciledPostPassCandidateReassessment(
+      reassessmentRunState,
+      epochResult.state,
+      epoch,
+      {
+        candidateSha: head,
+        baseSha,
+        reason: evidence.review_reassessment_reason,
+      },
+    );
+  } else if (finalCorrective) {
     epoch.state = 'FINAL_CORRECTIVE_READY';
     epoch.final_corrective_sha = head;
     epoch.final_corrective_base_sha = baseSha;
@@ -1443,7 +1504,12 @@ function commandCandidateCheck(options) {
   }
   if (epochResult.view.isDraft) gh('pr', 'ready', String(prNumber));
   updatePr(prNumber, epoch);
-  print({ state: epoch.state, candidate_sha: head, base_sha: baseSha });
+  print({
+    state: epoch.state,
+    candidate_sha: head,
+    base_sha: baseSha,
+    review_reassessment: reconciledPostPassRefresh,
+  });
 }
 
 function commandReviewReserve(options) {
