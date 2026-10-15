@@ -103,6 +103,8 @@ test('P05 remains unassessed until its gated one-read report exists', () => {
   assert.ok(
     record.source_refs.includes('scripts/acceptance/run-p05-person-media-public-probe.ts'),
   );
+  assert.ok(record.source_refs.includes('scripts/lib/p05-one-shot-claim.mjs'));
+  assert.ok(record.source_refs.includes('tests/harness/agent-harness-cli.test.mjs'));
 
   const evidence = record.evidence?.p05_person_media_distribution_2026_10_15;
   assert.ok(evidence, 'P05 source and runner evidence must be recorded');
@@ -114,6 +116,8 @@ test('P05 remains unassessed until its gated one-read report exists', () => {
     maxCharacters: 1,
   });
   assert.equal(evidence.planned_public_profile.live_query_run, false);
+  assert.match(evidence.runner_contract.repository_global_claim, /repository-scoped create-only GitHub label/u);
+  assert.match(evidence.runner_contract.repository_global_claim, /active-PR claim.*read back/u);
   assert.equal(
     evidence.official_source_contract.pagination_total_order_or_completeness_documented,
     false,

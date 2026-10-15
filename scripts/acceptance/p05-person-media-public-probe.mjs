@@ -1,3 +1,9 @@
+import { canonicalHash } from '../lib/frontier-ledger.mjs';
+import {
+  P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+  P05_ONE_SHOT_LATCH_LABEL_NAME,
+} from '../lib/p05-one-shot-claim.mjs';
+
 export const P05_TOOL_NAME = 'bangumi.get_person_profile';
 export const P05_EPOCH_ID = 'run95-p05-person-media-distribution-public-probe-20261015';
 export const P05_ARGUMENT_PROFILE = 'p05-person-media-types-3474-500-subjects-v1';
@@ -17,6 +23,7 @@ export const P05_REQUIRED_CHECKS = Object.freeze([
   'provider-foundation',
   'discovery-foundation',
 ]);
+export const P05_ARGUMENTS_SHA256 = canonicalHash(P05_ARGUMENTS);
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -111,7 +118,7 @@ export function p05PersonMediaSummaryIsValid(summary) {
   );
 }
 
-export function p05CandidateGateIsReady({
+function p05ReviewedCandidateFieldsAreReady({
   status,
   pr,
   currentHead,
@@ -124,8 +131,10 @@ export function p05CandidateGateIsReady({
   const history = Array.isArray(epoch?.review_history) ? epoch.review_history : [];
   const latestReview = history.at(-1);
   if (
-    run?.state !== 'ACTIVE' ||
+    run?.state !== 'EPOCH_ACTIVE' ||
+    run.profile !== 'AUTONOMOUS_EVOLUTION' ||
     run.active_epoch_pr !== pr?.number ||
+    run.pending_epoch != null ||
     epochView?.number !== pr?.number ||
     epoch?.epoch_id !== P05_EPOCH_ID ||
     epoch?.state !== 'REVIEW_PASSED' ||
@@ -141,10 +150,12 @@ export function p05CandidateGateIsReady({
     latestReview?.candidate_sha !== currentHead ||
     latestReview?.reviewed_base_sha !== currentBaseSha ||
     !/^gpt-6-luna-max-run95-pr166-round\d+$/u.test(latestReview?.reviewer_id ?? '') ||
-    epoch?.review?.reviewer_id !== latestReview.reviewer_id ||
+    epoch?.review?.reviewer_id != null ||
+    epoch?.review?.runtime?.state !== 'COMPLETED' ||
     pr?.state !== 'OPEN' ||
     pr?.isDraft !== false ||
     pr?.baseRefName !== 'master' ||
+    pr?.headRefName !== currentBranch ||
     pr?.baseRefOid !== currentBaseSha ||
     pr?.headRefOid !== currentHead
   ) {
@@ -165,4 +176,41 @@ export function p05CandidateGateIsReady({
       (check) => check.status === 'COMPLETED' && check.conclusion === 'SUCCESS',
     );
   });
+}
+
+export function p05CandidateGateIsReady(input) {
+  const epoch = input?.status?.epoch?.state;
+  return (
+    p05ReviewedCandidateFieldsAreReady(input) &&
+    !Object.hasOwn(epoch?.adversarial_preflight ?? {}, 'p05_one_shot_disposition')
+  );
+}
+
+export function p05OneShotClaimGateIsReady(input) {
+  const { claimId } = input;
+  if (!p05ReviewedCandidateFieldsAreReady(input)) return false;
+  const epoch = input.status.epoch.state;
+  const claim = epoch.adversarial_preflight?.p05_one_shot_disposition;
+  const latestReview = epoch.review_history.at(-1);
+  return (
+    typeof claimId === 'string' &&
+    claim?.claimId === claimId &&
+    claim.frontierId === 'P05' &&
+    claim.epochId === P05_EPOCH_ID &&
+    claim.runNumber === 95 &&
+    claim.prNumber === input.pr.number &&
+    claim.toolName === P05_TOOL_NAME &&
+    claim.argumentProfile === P05_ARGUMENT_PROFILE &&
+    claim.expectedArgumentsSha256 === P05_ARGUMENTS_SHA256 &&
+    claim.state === 'CLAIMED' &&
+    claim.sourceCandidateSha === input.currentHead &&
+    claim.baseSha === input.currentBaseSha &&
+    claim.ciSha === input.currentHead &&
+    claim.ciStatus === 'SUCCESS' &&
+    claim.reviewerId === latestReview.reviewer_id &&
+    claim.retryAllowed === false &&
+    claim.reportWritten === false &&
+    claim.globalLatch?.name === P05_ONE_SHOT_LATCH_LABEL_NAME &&
+    claim.globalLatch?.description === P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION
+  );
 }

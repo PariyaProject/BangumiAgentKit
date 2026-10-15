@@ -163,6 +163,23 @@ import {
   P01_EXPECTED_QUERY_ARGUMENTS,
   verifyP01PersonPositionAnswer,
 } from './acceptance/p01-person-position-answer-check.mjs';
+import {
+  P05_ARGUMENTS_SHA256,
+  P05_ARGUMENT_PROFILE,
+  P05_EPOCH_ID,
+  P05_TOOL_NAME,
+  p05CandidateGateIsReady,
+  p05PersonMediaSummaryIsValid,
+} from './acceptance/p05-person-media-public-probe.mjs';
+import {
+  acquireP05OneShotGitHubLatch,
+  claimP05OneShotAtomically,
+  P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+  P05_ONE_SHOT_LATCH_LABEL_NAME,
+  P05_ONE_SHOT_REPORT_PATH,
+  P05OneShotClaimError,
+  verifyP05OneShotGitHubLatch,
+} from './lib/p05-one-shot-claim.mjs';
 import { validateP01SanitizedReportFile } from './acceptance/write-p01-agent-mcp-report.mjs';
 import { validateD07SanitizedReport } from './acceptance/write-d07-agent-mcp-report.mjs';
 import { runD07CodexAgentMcp } from './acceptance/run-d07-codex-agent-mcp.mjs';
@@ -715,6 +732,8 @@ Usage: pnpm harness <command> [options]
   review:result --run <issue> --pr <number> --verdict <verdict> [--findings <json>]
   epoch:g19-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --reviewer-id <id>
   epoch:g19-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN>
+  epoch:p05-one-shot-claim --run <issue> --pr <number> --candidate <sha> --base <sha> --reviewer-id <id>
+  epoch:p05-one-shot-result --run <issue> --pr <number> --claim-id <id> --state <INCONCLUSIVE|REPORT_WRITTEN> [--artifact-sha256 <sha>]
   epoch:g04-one-shot-run --run <issue>
   epoch:g04-legacy-claim-reconcile --run <issue> --pr <number> --source-pr <number>
   epoch:g16-one-shot-run --run <issue>
@@ -1359,6 +1378,18 @@ function commandCandidateCheck(options) {
       'A durable G19 one-shot disposition must be preserved across Candidate refreshes',
     );
   }
+  const priorP05Disposition = epoch.adversarial_preflight?.p05_one_shot_disposition;
+  const nextP05Disposition = evidence.adversarial_preflight?.p05_one_shot_disposition;
+  if (
+    (priorP05Disposition === undefined) !== (nextP05Disposition === undefined) ||
+    (priorP05Disposition !== undefined &&
+      canonicalHash(priorP05Disposition) !== canonicalHash(nextP05Disposition))
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_DISPOSITION_IMMUTABLE',
+      'A durable P05 one-shot claim and terminal result must be preserved exactly across Candidate refreshes',
+    );
+  }
   const priorP01Disposition = epoch.adversarial_preflight?.p01_one_shot_disposition;
   const nextP01Disposition = evidence.adversarial_preflight?.p01_one_shot_disposition;
   if (
@@ -1892,6 +1923,216 @@ function commandEpochG19OneShotResult(options) {
     claimId,
     resultState,
     reportWritten: resultState === 'REPORT_WRITTEN',
+  });
+}
+
+function assertP05OneShotClaimReadiness({
+  runNumber,
+  prNumber,
+  candidateSha,
+  baseSha,
+  reviewerId,
+}) {
+  const runResult = issueState(runNumber);
+  const epochResult = epochState(prNumber);
+  const currentHeadSha = currentHead();
+  const currentBranchName = currentBranch();
+  const currentBaseSha = remoteBaseSha('master');
+  const status = {
+    run: { state: runResult.state },
+    epoch: { number: Number(prNumber), state: epochResult.state },
+  };
+  if (
+    Number(runNumber) !== 95 ||
+    Number(prNumber) !== 166 ||
+    runResult.view.state !== 'OPEN' ||
+    epochResult.state.base_branch !== 'master' ||
+    git('status', '--porcelain') !== '' ||
+    candidateSha !== currentHeadSha ||
+    baseSha !== currentBaseSha ||
+    epochResult.state.epoch_id !== P05_EPOCH_ID ||
+    !epochResult.state.advances_frontier_ids?.includes('P05') ||
+    !p05CandidateGateIsReady({
+      status,
+      pr: epochResult.view,
+      currentHead: currentHeadSha,
+      currentBaseSha,
+      currentBranch: currentBranchName,
+    }) ||
+    epochResult.state.review_history?.at(-1)?.reviewer_id !== reviewerId
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_CLAIM_GATE_FAILED',
+      'P05 one-shot claim requires the clean exact reviewed Candidate/Base, seven-check CI, and same-identity Luna Max PASS.',
+      { runNumber, prNumber, candidateSha, baseSha },
+    );
+  }
+  return { runResult, epochResult, candidateSha, baseSha, reviewerId };
+}
+
+function commandEpochP05OneShotClaim(options) {
+  ensureControlPlane();
+  ensureCleanWorkingTree();
+  const runNumber = required(options, 'run');
+  const prNumber = required(options, 'pr');
+  const candidateSha = required(options, 'candidate');
+  const baseSha = required(options, 'base');
+  const reviewerId = required(options, 'reviewer-id');
+  assertP05OneShotClaimReadiness({ runNumber, prNumber, candidateSha, baseSha, reviewerId });
+
+  const claim = {
+    schemaVersion: 1,
+    claimId: `p05-run-${runNumber}-pr-${prNumber}-${candidateSha.slice(0, 12)}-${Date.now()}`,
+    frontierId: 'P05',
+    epochId: P05_EPOCH_ID,
+    runNumber: Number(runNumber),
+    toolName: P05_TOOL_NAME,
+    argumentProfile: P05_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: P05_ARGUMENTS_SHA256,
+    state: 'CLAIMED',
+    sourceCandidateSha: candidateSha,
+    baseSha,
+    ciSha: candidateSha,
+    ciStatus: 'SUCCESS',
+    prNumber: Number(prNumber),
+    reviewerId,
+    globalLatch: {
+      name: P05_ONE_SHOT_LATCH_LABEL_NAME,
+      description: P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+    },
+    reportWritten: false,
+    retryAllowed: false,
+    claimedAt: new Date().toISOString(),
+  };
+
+  try {
+    claimP05OneShotAtomically({
+      claim,
+      assertReady: () =>
+        assertP05OneShotClaimReadiness({ runNumber, prNumber, candidateSha, baseSha, reviewerId }),
+      acquireGlobalLatch: () => acquireP05OneShotGitHubLatch(gh),
+      persistClaim: (value) => {
+        const latest = epochState(prNumber);
+        if (Object.hasOwn(latest.state.adversarial_preflight ?? {}, 'p05_one_shot_disposition')) {
+          throw new HarnessInvariantError(
+            'P05_ONESHOT_ALREADY_CLAIMED',
+            'A durable P05 one-shot claim or result already exists; refusing a duplicate claim.',
+          );
+        }
+        const nextEpoch = structuredClone(latest.state);
+        nextEpoch.adversarial_preflight = {
+          ...nextEpoch.adversarial_preflight,
+          p05_one_shot_disposition: value,
+        };
+        updatePr(prNumber, nextEpoch);
+      },
+      readClaim: () =>
+        epochState(prNumber).state.adversarial_preflight?.p05_one_shot_disposition ?? null,
+      verifyClaim: (observed, expected) => canonicalHash(observed) === canonicalHash(expected),
+    });
+  } catch (error) {
+    if (error instanceof P05OneShotClaimError) {
+      throw new HarnessInvariantError(error.code, error.message);
+    }
+    throw error;
+  }
+
+  print({
+    state: 'P05_ONE_SHOT_CLAIMED',
+    claimId: claim.claimId,
+    runNumber: claim.runNumber,
+    prNumber: claim.prNumber,
+    candidateSha: claim.sourceCandidateSha,
+    baseSha: claim.baseSha,
+    reviewerId: claim.reviewerId,
+    globalLatch: claim.globalLatch.name,
+    expectedArgumentsSha256: claim.expectedArgumentsSha256,
+    retryAllowed: false,
+  });
+}
+
+function commandEpochP05OneShotResult(options) {
+  ensureControlPlane();
+  const runNumber = Number(required(options, 'run'));
+  const prNumber = Number(required(options, 'pr'));
+  const claimId = required(options, 'claim-id');
+  const resultState = required(options, 'state');
+  const artifactSha256 = options['artifact-sha256']
+    ? required(options, 'artifact-sha256')
+    : null;
+  if (
+    runNumber !== 95 ||
+    prNumber !== 166 ||
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(resultState) ||
+    (artifactSha256 !== null && !/^[0-9a-f]{64}$/u.test(artifactSha256)) ||
+    (resultState === 'REPORT_WRITTEN' && artifactSha256 === null)
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_RESULT_INVALID',
+      'P05 result must be a terminal state with an optional valid artifact digest.',
+    );
+  }
+  const epochResult = epochState(prNumber);
+  const current = epochResult.state.adversarial_preflight?.p05_one_shot_disposition;
+  if (
+    !current ||
+    current.claimId !== claimId ||
+    current.runNumber !== runNumber ||
+    current.prNumber !== prNumber ||
+    current.frontierId !== 'P05' ||
+    current.epochId !== P05_EPOCH_ID ||
+    current.globalLatch?.name !== P05_ONE_SHOT_LATCH_LABEL_NAME ||
+    current.globalLatch?.description !== P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_CLAIM_MISMATCH',
+      'The active Epoch PR has no matching durable P05 one-shot claim.',
+      { runNumber, prNumber },
+    );
+  }
+  if (current.state === resultState) {
+    if ((current.artifactSha256 ?? null) !== artifactSha256) {
+      throw new HarnessInvariantError(
+        'P05_ONESHOT_ALREADY_TERMINAL',
+        'A terminal P05 result cannot be replaced with a different artifact.',
+      );
+    }
+    print({ state: 'P05_ONE_SHOT_RESULT_ALREADY_RECORDED', claimId, resultState });
+    return;
+  }
+  if (current.state !== 'CLAIMED') {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_ALREADY_TERMINAL',
+      'A terminal P05 one-shot result cannot be replaced.',
+      { existingState: current.state, requestedState: resultState },
+    );
+  }
+
+  const nextEpoch = structuredClone(epochResult.state);
+  nextEpoch.adversarial_preflight.p05_one_shot_disposition = {
+    ...current,
+    state: resultState,
+    resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    retryAllowed: false,
+    ...(artifactSha256 ? { artifactPath: 'docs/live-probes/p05-person-media-public-probe-run95.json', artifactSha256 } : {}),
+    finishedAt: new Date().toISOString(),
+  };
+  updatePr(prNumber, nextEpoch);
+  const readback = epochState(prNumber).state.adversarial_preflight?.p05_one_shot_disposition;
+  if (canonicalHash(readback) !== canonicalHash(nextEpoch.adversarial_preflight.p05_one_shot_disposition)) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_RESULT_READBACK_MISMATCH',
+      'The terminal P05 one-shot result did not read back exactly from the active Epoch PR.',
+    );
+  }
+  print({
+    state: 'P05_ONE_SHOT_RESULT_RECORDED',
+    claimId,
+    resultState,
+    reportWritten: resultState === 'REPORT_WRITTEN',
+    artifactSha256,
+    retryAllowed: false,
   });
 }
 
@@ -6817,6 +7058,140 @@ function assertG06OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
   return reportWritten;
 }
 
+function assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber) {
+  const claim = epoch.adversarial_preflight?.p05_one_shot_disposition;
+  const reviewerPattern = new RegExp(`^gpt-6-luna-max-run95-pr${prNumber}-round\\d+$`, 'u');
+  if (
+    !claim ||
+    claim.frontierId !== 'P05' ||
+    claim.epochId !== P05_EPOCH_ID ||
+    claim.runNumber !== Number(runNumber) ||
+    claim.prNumber !== Number(prNumber) ||
+    !['INCONCLUSIVE', 'REPORT_WRITTEN'].includes(claim.state) ||
+    claim.retryAllowed !== false ||
+    claim.ciStatus !== 'SUCCESS' ||
+    claim.ciSha !== claim.sourceCandidateSha ||
+    claim.expectedArgumentsSha256 !== P05_ARGUMENTS_SHA256 ||
+    !reviewerPattern.test(claim.reviewerId ?? '') ||
+    claim.globalLatch?.name !== P05_ONE_SHOT_LATCH_LABEL_NAME ||
+    claim.globalLatch?.description !== P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION ||
+    !epoch.advances_frontier_ids?.includes('P05') ||
+    !epoch.review_history?.some((review) =>
+      review.candidate_sha === claim.sourceCandidateSha &&
+      review.reviewed_base_sha === claim.baseSha &&
+      review.reviewer_id === claim.reviewerId &&
+      review.verdict === 'PASS'
+    )
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_RECONCILIATION_REQUIRED',
+      'P05 integration requires its exact durable terminal one-shot claim and permanent repository latch.',
+    );
+  }
+  try {
+    verifyP05OneShotGitHubLatch(gh);
+  } catch (error) {
+    if (error instanceof P05OneShotClaimError) {
+      throw new HarnessInvariantError(error.code, error.message);
+    }
+    throw error;
+  }
+
+  if (claim.state === 'REPORT_WRITTEN' && claim.reportWritten !== true) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_INVALID',
+      'A REPORT_WRITTEN P05 claim must bind an accepted report.',
+    );
+  }
+  if (claim.state === 'INCONCLUSIVE' && claim.reportWritten !== false) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_INVALID',
+      'An INCONCLUSIVE P05 claim cannot count its report as accepted evidence.',
+    );
+  }
+  if (!claim.artifactPath && claim.artifactSha256 == null) {
+    if (claim.state === 'REPORT_WRITTEN') {
+      throw new HarnessInvariantError(
+        'P05_ONESHOT_REPORT_INVALID',
+        'A REPORT_WRITTEN P05 claim must include its report path and digest.',
+      );
+    }
+    return;
+  }
+  if (
+    claim.artifactPath !== P05_ONE_SHOT_REPORT_PATH ||
+    !/^[0-9a-f]{64}$/u.test(claim.artifactSha256 ?? '')
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_INVALID',
+      'The durable P05 artifact path or digest is invalid.',
+    );
+  }
+  const artifactPath = path.resolve(root, claim.artifactPath);
+  if (!fs.existsSync(artifactPath)) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_MISSING',
+      'The durable P05 claim names a report that is absent from the merge Candidate.',
+    );
+  }
+  const artifactBytes = fs.readFileSync(artifactPath);
+  const artifactSha256 = createHash('sha256').update(artifactBytes).digest('hex');
+  if (artifactSha256 !== claim.artifactSha256) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_DIGEST_MISMATCH',
+      'The P05 report bytes do not match the durable one-shot claim.',
+    );
+  }
+  let report;
+  try {
+    report = JSON.parse(artifactBytes.toString('utf8'));
+  } catch {
+    throw new HarnessInvariantError('P05_ONESHOT_REPORT_INVALID', 'The P05 report is not valid JSON.');
+  }
+  const expectedResultState = claim.state === 'REPORT_WRITTEN' ? 'SUCCESS' : 'INCONCLUSIVE';
+  if (
+    report.runNumber !== Number(runNumber) ||
+    report.frontierId !== 'P05' ||
+    report.epochId !== P05_EPOCH_ID ||
+    report.prNumber !== Number(prNumber) ||
+    report.claimId !== claim.claimId ||
+    report.sourceRevision !== claim.sourceCandidateSha ||
+    report.baseSha !== claim.baseSha ||
+    report.ciSha !== claim.ciSha ||
+    report.reviewerId !== claim.reviewerId ||
+    report.reviewVerdict !== 'PASS' ||
+    report.reviewPassSha !== claim.sourceCandidateSha ||
+    report.toolName !== P05_TOOL_NAME ||
+    report.argumentProfile !== P05_ARGUMENT_PROFILE ||
+    canonicalHash(report.arguments) !== claim.expectedArgumentsSha256 ||
+    report.toolInvocationCount !== 1 ||
+    report.resultState !== expectedResultState
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_INVALID',
+      'The P05 report does not match the exact one-shot claim.',
+    );
+  }
+  const expectedAssertions = [
+    'exactHarnessCandidateGate',
+    'exactPublicReadArguments',
+    'exactlyOneToolInvocation',
+    'anonymousPublicRequestObserved',
+    'personMediaSummaryValid',
+  ];
+  if (
+    claim.state === 'REPORT_WRITTEN' &&
+    (!p05PersonMediaSummaryIsValid(report.resultSummary) ||
+      Object.keys(report.assertions ?? {}).sort().join(',') !== expectedAssertions.sort().join(',') ||
+      expectedAssertions.some((key) => report.assertions[key] !== true))
+  ) {
+    throw new HarnessInvariantError(
+      'P05_ONESHOT_REPORT_INVALID',
+      'The P05 report assertions or returned-row summary are incomplete.',
+    );
+  }
+}
+
 function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   ensureControlPlane();
   const runNumber = required(options, 'run');
@@ -6848,6 +7223,9 @@ function commandEpochMerge(options, { resumeBlocked = false } = {}) {
   } else if (epoch.epoch_id === G06_EPOCH_ID) {
     const reportValidated = assertG06OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
     ensureG06MergeWorkingTree(reportValidated);
+  } else if (epoch.epoch_id === P05_EPOCH_ID) {
+    assertP05OneShotReconciledBeforeMerge(epoch, runNumber, prNumber);
+    ensureCleanWorkingTree();
   } else ensureCleanWorkingTree();
   if (
     resumeBlocked &&
@@ -7166,6 +7544,8 @@ const commands = {
   'review:result': commandReviewResult,
   'epoch:g19-one-shot-claim': commandEpochG19OneShotClaim,
   'epoch:g19-one-shot-result': commandEpochG19OneShotResult,
+  'epoch:p05-one-shot-claim': commandEpochP05OneShotClaim,
+  'epoch:p05-one-shot-result': commandEpochP05OneShotResult,
   'epoch:g04-one-shot-run': commandEpochG04OneShotRun,
   'epoch:g04-legacy-claim-reconcile': commandEpochG04LegacyClaimReconcile,
   'epoch:g16-one-shot-run': commandEpochG16OneShotRun,

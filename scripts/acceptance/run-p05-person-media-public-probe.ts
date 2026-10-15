@@ -15,19 +15,26 @@ import { HttpClient } from '@bangumi-agent-kit/bangumi-transport';
 import { createRuntimeDependenciesWithStorage, ToolRegistry } from '@bangumi-agent-kit/tools';
 import {
   P05_ARGUMENTS,
+  P05_ARGUMENTS_SHA256,
   P05_ARGUMENT_PROFILE,
   P05_EPOCH_ID,
   P05_TOOL_NAME,
   p05CandidateGateIsReady,
+  p05OneShotClaimGateIsReady,
   p05PersonMediaSummaryIsValid,
   projectP05PersonMediaSummary,
 } from './p05-person-media-public-probe.mjs';
+import {
+  P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+  P05_ONE_SHOT_LATCH_LABEL_NAME,
+  P05_ONE_SHOT_REPORT_PATH,
+} from '../lib/p05-one-shot-claim.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN_NUMBER = 95;
 const PR_NUMBER = 166;
 const RUNNER_ARGS = ['--live', '--run', String(RUN_NUMBER), '--pr', String(PR_NUMBER)];
-const REPORT_PATH = path.join(ROOT, 'docs/live-probes/p05-person-media-public-probe-run95.json');
+const REPORT_PATH = path.join(ROOT, P05_ONE_SHOT_REPORT_PATH);
 const HARNESS_SCRIPT = path.join(ROOT, 'scripts/agent-harness.mjs');
 const RUNNER_PATH = fileURLToPath(import.meta.url);
 const EXPECTED_ARGUMENTS_CANONICAL =
@@ -65,7 +72,7 @@ function assertRunnerArguments(args: string[]): void {
   }
 }
 
-function readCandidateGate() {
+function readCandidateGate({ claimId = null }: { claimId?: string | null } = {}) {
   const status = JSON.parse(command(process.execPath, [
     HARNESS_SCRIPT,
     'status',
@@ -79,37 +86,33 @@ function readCandidateGate() {
     'view',
     String(PR_NUMBER),
     '--json',
-    'number,state,isDraft,baseRefName,baseRefOid,headRefOid,statusCheckRollup',
+    'number,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,statusCheckRollup',
   ]));
   const currentHead = git('rev-parse', 'HEAD');
   const currentBaseSha = git('rev-parse', 'origin/master');
   const currentBranch = git('branch', '--show-current');
-  if (!p05CandidateGateIsReady({ status, pr, currentHead, currentBaseSha, currentBranch })) {
+  const gate = { status, pr, currentHead, currentBaseSha, currentBranch };
+  const ready = claimId === null
+    ? p05CandidateGateIsReady(gate)
+    : p05OneShotClaimGateIsReady({ ...gate, claimId });
+  if (!ready) {
     throw new Error('P05 public probe refused: exact Candidate/Base CI and GPT-6 Luna Max PASS are not current.');
   }
-  return { status, pr, currentHead, currentBaseSha, currentBranch };
+  return gate;
 }
 
-function createLocalClaim(candidateSha: string, baseSha: string, reviewerId: string): string {
+function localClaimPath(): string {
   const commonDir = path.resolve(ROOT, git('rev-parse', '--git-common-dir'));
   const stateDir = path.join(commonDir, 'run95-local-claims');
   mkdirSync(stateDir, { recursive: true, mode: 0o700 });
-  const claimPath = path.join(stateDir, 'p05-run95-person-media-public-probe-claim.json');
-  const claim = {
-    schemaVersion: 1,
-    state: 'CLAIMED',
-    runNumber: RUN_NUMBER,
-    frontierId: 'P05',
-    epochId: P05_EPOCH_ID,
-    prNumber: PR_NUMBER,
-    candidateSha,
-    baseSha,
-    reviewerId,
-    toolName: P05_TOOL_NAME,
-    argumentProfile: P05_ARGUMENT_PROFILE,
-    expectedArgumentsSha256: sha256(canonicalJson(P05_ARGUMENTS)),
-    claimedAt: new Date().toISOString(),
-  };
+  return path.join(stateDir, 'p05-run95-person-media-public-probe-claim.json');
+}
+
+function createLocalClaim(claim: Record<string, unknown>): string {
+  const claimPath = localClaimPath();
+  if (claim.expectedArgumentsSha256 !== P05_ARGUMENTS_SHA256) {
+    throw new Error('P05 local claim arguments do not match the fixed public profile.');
+  }
   let descriptor: number | undefined;
   try {
     descriptor = openSync(claimPath, 'wx', 0o600);
@@ -128,18 +131,102 @@ function createLocalClaim(candidateSha: string, baseSha: string, reviewerId: str
   return claimPath;
 }
 
+function claimHarnessP05OneShot(gate: ReturnType<typeof readCandidateGate>) {
+  const reviewerId = gate.status.epoch.state.review_history.at(-1).reviewer_id;
+  const result = JSON.parse(command(process.execPath, [
+    HARNESS_SCRIPT,
+    'epoch:p05-one-shot-claim',
+    '--run',
+    String(RUN_NUMBER),
+    '--pr',
+    String(PR_NUMBER),
+    '--candidate',
+    gate.currentHead,
+    '--base',
+    gate.currentBaseSha,
+    '--reviewer-id',
+    reviewerId,
+  ]));
+  if (
+    result.state !== 'P05_ONE_SHOT_CLAIMED' ||
+    typeof result.claimId !== 'string' ||
+    result.candidateSha !== gate.currentHead ||
+    result.baseSha !== gate.currentBaseSha ||
+    result.reviewerId !== reviewerId ||
+    result.globalLatch !== P05_ONE_SHOT_LATCH_LABEL_NAME ||
+    result.expectedArgumentsSha256 !== P05_ARGUMENTS_SHA256 ||
+    result.retryAllowed !== false
+  ) {
+    throw new Error('Repository-wide P05 claim was not confirmed by the Harness.');
+  }
+  return result as { claimId: string; candidateSha: string; baseSha: string; reviewerId: string };
+}
+
+function persistHarnessP05OneShotResult(
+  claimId: string,
+  resultState: 'INCONCLUSIVE' | 'REPORT_WRITTEN',
+  artifactSha256: string,
+): void {
+  const result = JSON.parse(command(process.execPath, [
+    HARNESS_SCRIPT,
+    'epoch:p05-one-shot-result',
+    '--run',
+    String(RUN_NUMBER),
+    '--pr',
+    String(PR_NUMBER),
+    '--claim-id',
+    claimId,
+    '--state',
+    resultState,
+    '--artifact-sha256',
+    artifactSha256,
+  ]));
+  if (
+    result.state !== 'P05_ONE_SHOT_RESULT_RECORDED' ||
+    result.claimId !== claimId ||
+    result.resultState !== resultState ||
+    result.artifactSha256 !== artifactSha256 ||
+    result.retryAllowed !== false
+  ) {
+    throw new Error('Terminal P05 claim result did not read back from the active Epoch PR.');
+  }
+}
+
 async function main(): Promise<void> {
   assertRunnerArguments(process.argv.slice(2));
   if (git('status', '--porcelain')) {
     throw new Error('P05 public probe requires a clean Candidate checkout.');
   }
   git('fetch', 'origin', 'master');
-  const { status, currentHead, currentBaseSha } = readCandidateGate();
+  const candidateGate = readCandidateGate();
   if (existsSync(REPORT_PATH)) {
     throw new Error('P05 public probe report already exists; refusing a second observation.');
   }
+  const claimPathBeforeRequest = localClaimPath();
+  if (existsSync(claimPathBeforeRequest)) {
+    throw new Error('P05 local claim already exists or is uncertain; refusing another request.');
+  }
+  const durableClaim = claimHarnessP05OneShot(candidateGate);
+  const { status, currentHead, currentBaseSha } = readCandidateGate({ claimId: durableClaim.claimId });
   const latestReview = status.epoch.state.review_history.at(-1);
-  const claimPath = createLocalClaim(currentHead, currentBaseSha, latestReview.reviewer_id);
+  const claimPath = createLocalClaim({
+    schemaVersion: 1,
+    state: 'CLAIMED',
+    runNumber: RUN_NUMBER,
+    frontierId: 'P05',
+    epochId: P05_EPOCH_ID,
+    prNumber: PR_NUMBER,
+    claimId: durableClaim.claimId,
+    candidateSha: currentHead,
+    baseSha: currentBaseSha,
+    reviewerId: latestReview.reviewer_id,
+    toolName: P05_TOOL_NAME,
+    argumentProfile: P05_ARGUMENT_PROFILE,
+    expectedArgumentsSha256: P05_ARGUMENTS_SHA256,
+    globalLatchName: P05_ONE_SHOT_LATCH_LABEL_NAME,
+    globalLatchDescription: P05_ONE_SHOT_LATCH_LABEL_DESCRIPTION,
+    claimedAt: new Date().toISOString(),
+  });
 
   let requestCount = 0;
   const publicHttpClient = new HttpClient({
@@ -185,6 +272,7 @@ async function main(): Promise<void> {
     frontierId: 'P05',
     epochId: P05_EPOCH_ID,
     prNumber: PR_NUMBER,
+    claimId: durableClaim.claimId,
     sourceRevision: currentHead,
     baseSha: currentBaseSha,
     ciSha: status.epoch.state.ci.sha,
@@ -215,15 +303,21 @@ async function main(): Promise<void> {
   };
   mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
   writeFileSync(REPORT_PATH, `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
+  const reportSha256 = sha256(readFileSync(REPORT_PATH));
   const claim = JSON.parse(readFileSync(claimPath, 'utf8')) as Record<string, unknown>;
   writeFileSync(claimPath, `${JSON.stringify({
     ...claim,
     state: 'TERMINAL',
     resultState: report.resultState,
-    reportPath: path.relative(ROOT, REPORT_PATH),
-    reportSha256: sha256(readFileSync(REPORT_PATH)),
+    artifactPath: path.relative(ROOT, REPORT_PATH),
+    artifactSha256: reportSha256,
     finishedAt: new Date().toISOString(),
   }, null, 2)}\n`, { mode: 0o600 });
+  persistHarnessP05OneShotResult(
+    durableClaim.claimId,
+    passed ? 'REPORT_WRITTEN' : 'INCONCLUSIVE',
+    reportSha256,
+  );
   process.stdout.write(`${JSON.stringify({
     reportPath: path.relative(ROOT, REPORT_PATH),
     resultState: report.resultState,

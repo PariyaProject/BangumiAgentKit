@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T04:09:00Z",
+  "updated_at": "2026-10-15T04:35:23Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2061,10 +2061,13 @@
         "packages/tools/src/definitions/read-tools.ts",
         "scripts/acceptance/p05-person-media-public-probe.mjs",
         "scripts/acceptance/run-p05-person-media-public-probe.ts",
+        "scripts/agent-harness.mjs",
+        "scripts/lib/p05-one-shot-claim.mjs",
+        "tests/harness/agent-harness-cli.test.mjs",
         "tests/harness/p05-person-media-public-probe.test.mjs",
         "tests/harness/frontier-ledger-data.test.mjs"
       ],
-      "next_action": "Keep UNASSESSED until the dedicated one-read report exists and its count/coverage assertions pass. Run it only after exact Candidate/Base validation, all seven mandatory CI checks, Harness review readiness, and the assigned same-identity GPT-6 Luna Max PASS. Any valid result supports only Bangumi subject-type distribution among rows returned to that invocation, with observed/returned/truncated counts and undocumented upstream completeness; it does not support platform or exhaustive career-wide distribution. No Agent/MCP, renderer, OAuth/account, community/HTML, write, QQ, or TIM acceptance is implied.",
+      "next_action": "Keep UNASSESSED until the dedicated one-read report exists and its count/coverage assertions pass. Run it only after exact Candidate/Base validation, all seven mandatory CI checks, Harness review readiness, and the assigned same-identity GPT-6 Luna Max PASS. Before invocation, require the permanent repository-wide create-only P05 label and exact active-PR claim persistence/readback; the local claim is defense in depth. Any valid result supports only Bangumi subject-type distribution among rows returned to that invocation, with observed/returned/truncated counts and undocumented upstream completeness; it does not support platform or exhaustive career-wide distribution. No Agent/MCP, renderer, OAuth/account, community/HTML, write, QQ, or TIM acceptance is implied.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2097,6 +2100,7 @@
             "runner": "scripts/acceptance/run-p05-person-media-public-probe.ts",
             "projection_and_gate": "scripts/acceptance/p05-person-media-public-probe.mjs",
             "test": "tests/harness/p05-person-media-public-probe.test.mjs",
+            "repository_global_claim": "A permanent repository-scoped create-only GitHub label serializes clones; the exact active-PR claim is written and read back before the request. A local Git-metadata claim remains defense in depth.",
             "retained_summary": [
               "aggregate subject-type counts",
               "unique-subject counts",
