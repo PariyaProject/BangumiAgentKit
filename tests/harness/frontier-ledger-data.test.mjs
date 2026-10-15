@@ -100,9 +100,32 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
   assert.match(record.next_action, /INCONCLUSIVE/u);
   assert.match(record.next_action, /retryAllowed=false/u);
   assert.match(record.next_action, /Do not repeat this call/u);
+  assert.deepEqual(Object.keys(record.evidence).sort(), [
+    'p03_agent_mcp_profile_preflight',
+    'p03_agent_mcp_profile_result',
+  ]);
 
   const preflight = record.evidence?.p03_agent_mcp_profile_preflight;
   assert.ok(preflight, 'the historical preflight snapshot must remain available');
+  assert.deepEqual(Object.keys(preflight).sort(), [
+    'arguments',
+    'auth',
+    'calls',
+    'checks',
+    'claim_state',
+    'epoch_id',
+    'live_query_run',
+    'profile_id',
+    'source_completeness',
+    'status_boundary',
+    'tool',
+  ]);
+  assert.deepEqual(Object.keys(preflight.arguments).sort(), [
+    'includeCredits',
+    'maxCharacters',
+    'maxSubjects',
+    'personId',
+  ]);
   assert.equal(preflight.claim_state, 'UNCLAIMED');
   assert.equal(preflight.live_query_run, false);
   assert.match(preflight.status_boundary, /preflight snapshot/u);
@@ -110,6 +133,26 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
 
   const result = record.evidence?.p03_agent_mcp_profile_result;
   assert.ok(result, 'the terminal disposition must be recorded separately');
+  assert.deepEqual(Object.keys(result).sort(), [
+    'base_sha',
+    'bundle_sha256',
+    'calls',
+    'ci_run',
+    'ci_status',
+    'claim_state',
+    'epoch_id',
+    'finished_at',
+    'merge_commit_sha',
+    'profile_id',
+    'reason_code',
+    'report_present',
+    'report_written',
+    'retry_allowed',
+    'reviewer_id',
+    'sanitized_assertions',
+    'source_candidate_sha',
+    'source_completeness',
+  ]);
   assert.equal(result.epoch_id, 'run95-p03-person-chinese-title-agent-mcp-20261015');
   assert.equal(result.profile_id, 'p03-person-name-cn-agent-mcp-v1');
   assert.equal(result.claim_state, 'INCONCLUSIVE');
@@ -143,10 +186,6 @@ test('P03 terminal Agent/MCP disposition stays partial, uncredited, and non-retr
     non_mcp_tool_event_count: 0,
     shell_tool_call_count: 0,
   });
-  assert.doesNotMatch(
-    JSON.stringify(result),
-    /raw_answer|raw_api_payload|raw_event_stream|prompt|account_data/iu,
-  );
 });
 
 test('P05 records its bounded live report as partial returned-row evidence', () => {
