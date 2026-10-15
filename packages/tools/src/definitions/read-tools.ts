@@ -992,12 +992,20 @@ export function createReadTools(
   const getPersonProfile = defineTool({
     name: 'bangumi.get_person_profile',
     description:
-      '生成一个现实人物/声优/制作人员的结构化履历摘要：身份、媒介分布、原始职位/角色标签、去重作品/角色计数和受限关系明细。用于 Agent 一次回答“这个人参与过什么”；时间窗口、最近活动、工作量趋势和合作次数需要额外数据，本工具不会猜测。',
+      '生成现实人物/声优/制作人员的结构化履历摘要。可选 includeChronology=true，以最多 48 个等距采样的动画作品官方播出/发行日期，报告本次样本中观察到的最早和最近日期；人物关系顺序和完整性未声明，因此不能据此声称完整生涯首作/最近作品或实际参与日期。该选项默认关闭。时间窗工作量、趋势和合作次数仍需额外数据，本工具不会猜测。',
     input: z.object({
       personId: z.number().int().positive().describe('Bangumi 人物 ID'),
       includeCredits: z.boolean().optional().describe('是否返回受限的作品/角色关系明细；默认 true'),
       maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系最多返回条数'),
       maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系最多返回条数'),
+      includeChronology: z.boolean().optional().describe('是否额外读取受限动画作品详情并计算观察样本发行日期极值；默认 false'),
+      maxChronologySubjects: z
+        .number()
+        .int()
+        .min(1)
+        .max(48)
+        .optional()
+        .describe('includeChronology=true 时最多读取的动画作品详情数，最高 48'),
     }),
     auth: 'none',
     scopes: [],
@@ -1008,6 +1016,8 @@ export function createReadTools(
       const profile = await activePersonService.getPersonProfile(input.personId, {
         maxSubjects: input.maxSubjects ?? 500,
         maxCharacters: input.maxCharacters ?? 500,
+        includeChronology: input.includeChronology === true,
+        maxChronologySubjects: input.maxChronologySubjects ?? 48,
       });
       const retrievedAt = new Date().toISOString();
       const identityMissingFields = [
@@ -1016,12 +1026,14 @@ export function createReadTools(
         profile.person.bloodType === undefined ? 'person.blood_type' : undefined,
       ].filter((field): field is string => field !== undefined);
       const relationPartial = profile.subjects.truncated || profile.characters.truncated;
-      const partial = relationPartial || identityMissingFields.length > 0;
+      const chronologyRequested = profile.releaseChronology !== undefined;
+      const partial = relationPartial || identityMissingFields.length > 0 || chronologyRequested;
       const notComputable = [
         'recent_activity',
         'voice_actor_workload_window',
         'historical_growth',
         'collaboration_count',
+        ...(profile.releaseChronology?.state === 'not_computable' ? ['release_chronology'] : []),
       ];
       return {
         state: partial ? 'partial' : 'complete',
@@ -1073,6 +1085,16 @@ export function createReadTools(
             operation: 'GET /v0/persons/{person_id}/characters',
             retrievedAt,
           },
+          ...(profile.releaseChronology && profile.releaseChronology.selectedSubjectDetails > 0
+            ? [
+                {
+                  source: 'official-v0',
+                  operation: 'GET /v0/subjects/{subject_id}',
+                  retrievedAt,
+                  selected: profile.releaseChronology.selectedSubjectDetails,
+                },
+              ]
+            : []),
           {
             source: 'derived-s7',
             formulaVersion: 'person-activity-v1',
@@ -1082,10 +1104,13 @@ export function createReadTools(
         ],
         limitations: [
           '人物作品关系接口没有分页、总数或完整性承诺；本次返回范围未截断只表示本地没有截断收到的关系行，不代表完整人物作品表。nameCnSource 为空字符串、纯空白字符串、缺失或非字符串值不证明该作品没有中文名。',
-          '人物关系接口不提供作品日期，不能从本结果计算最近作品或 3/6/12 个月工作量。',
+          ...(profile.releaseChronology
+            ? profile.releaseChronology.limitations
+            : ['人物关系接口不提供作品日期，不能从本结果计算最近作品或 3/6/12 个月工作量。']),
           '本仓库没有兼容历史快照，不能计算增长、趋势或前后窗口比较。',
           '合作人数和共同作品需要额外的 subject→persons 图遍历，本工具不伪造该统计。',
         ],
+        ...(profile.releaseChronology ? { releaseChronology: profile.releaseChronology } : {}),
         notComputable,
         warnings: [
           ...(identityMissingFields.length > 0
@@ -1102,11 +1127,15 @@ export function createReadTools(
             code: 'NOT_COMPUTABLE',
             state: 'not_computable',
             fields: notComputable,
-            message: '当前官方关系源没有日期或历史快照，不能计算时间窗口、趋势或合作人数。',
+            message:
+              profile.releaseChronology?.state === 'not_computable'
+                ? '本次受限动画样本未取得有效官方播出/发行日期；这不证明人物没有动画作品。时间窗口、趋势和合作人数也仍不可计算。'
+                : '当前官方关系源没有日期或历史快照，不能计算时间窗口、趋势或合作人数。',
           },
         ],
         capabilityStates: {
           profile: partial ? 'partial' : 'complete',
+          release_chronology: profile.releaseChronology?.state ?? 'not_requested',
           recent_activity: 'not_computable',
           voice_actor_workload_window: 'not_computable',
           historical_growth: 'not_computable',

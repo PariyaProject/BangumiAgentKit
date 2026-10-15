@@ -7,6 +7,8 @@ import {
   PersonActivitySummary,
   PersonRelationCharacter,
   PersonRelationSubject,
+  PersonReleaseChronology,
+  PersonReleaseChronologySubject,
   RelationCollection,
   SubjectStaffGroup,
   SubjectStaffMember,
@@ -16,6 +18,58 @@ import { normalizeSearchText } from '../workflows/resolve-subject.js';
 import { mapSubjectType } from './subject-service.js';
 
 export type { PersonRelationCharacter } from '../models/person.js';
+
+export const PERSON_PROFILE_CHRONOLOGY_MAX_SUBJECT_DETAILS = 48;
+export const PERSON_PROFILE_CHRONOLOGY_MAX_CONCURRENCY = 4;
+export const PERSON_PROFILE_CHRONOLOGY_MAX_RESPONSE_BYTES = 1_048_576;
+
+type ReleaseDateObservation =
+  | { kind: 'valid'; date: string; subject: PersonReleaseChronologySubject }
+  | { kind: 'missing' }
+  | { kind: 'invalid' }
+  | { kind: 'failed' };
+
+function validIsoCalendarDate(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length !== 10) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 1 || month < 1 || month > 12) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day >= 1 && day <= daysInMonth[month - 1]!;
+}
+
+function sampleEvenly<T>(items: readonly T[], limit: number): T[] {
+  if (items.length <= limit) return [...items];
+  if (limit <= 1) return [items[Math.floor((items.length - 1) / 2)]!];
+  return Array.from({ length: limit }, (_, index) =>
+    items[Math.floor((index * (items.length - 1)) / (limit - 1))]!,
+  );
+}
+
+async function mapConcurrentOrdered<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  task: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await task(items[index]!);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return results;
+}
 
 function positiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
@@ -379,6 +433,8 @@ export interface SearchPersonsOptions {
 export interface PersonProfileOptions {
   maxSubjects?: number;
   maxCharacters?: number;
+  includeChronology?: boolean;
+  maxChronologySubjects?: number;
 }
 
 export class PersonService {
@@ -477,12 +533,115 @@ export class PersonService {
       returned: Math.min(allCharacters.length, characterLimit),
       truncated: allCharacters.length > characterLimit,
     };
+    const releaseChronology = options.includeChronology
+      ? await this.getReleaseChronology(subjects, options.maxChronologySubjects)
+      : undefined;
 
     return {
       person: mapPerson(rawPerson),
       subjects,
       characters,
       summary: aggregatePersonActivity(subjects.items, characters.items),
+      ...(releaseChronology ? { releaseChronology } : {}),
+    };
+  }
+
+  private async getReleaseChronology(
+    subjects: RelationCollection<PersonRelationSubject>,
+    requestedLimit = PERSON_PROFILE_CHRONOLOGY_MAX_SUBJECT_DETAILS,
+  ): Promise<PersonReleaseChronology> {
+    const safeRequestedLimit = Number.isFinite(requestedLimit)
+      ? Math.floor(requestedLimit)
+      : PERSON_PROFILE_CHRONOLOGY_MAX_SUBJECT_DETAILS;
+    const detailLimit = Math.max(
+      1,
+      Math.min(PERSON_PROFILE_CHRONOLOGY_MAX_SUBJECT_DETAILS, safeRequestedLimit),
+    );
+    const animeRows = subjects.items.filter((subject) => subject.mediaTypeCode === 2);
+    const uniqueAnimeSubjects = new Map<number, PersonRelationSubject>();
+    for (const subject of animeRows) {
+      if (!uniqueAnimeSubjects.has(subject.id)) uniqueAnimeSubjects.set(subject.id, subject);
+    }
+    const candidates = [...uniqueAnimeSubjects.values()];
+    const selected = sampleEvenly(candidates, detailLimit);
+    const observations = await mapConcurrentOrdered(
+      selected,
+      PERSON_PROFILE_CHRONOLOGY_MAX_CONCURRENCY,
+      async (subject): Promise<ReleaseDateObservation> => {
+        try {
+          const raw = await this.api.getSubjectById(subject.id, {
+            maxResponseBytes: PERSON_PROFILE_CHRONOLOGY_MAX_RESPONSE_BYTES,
+          });
+          const date = (raw as { date?: unknown } | null)?.date;
+          if (date === undefined || date === null) return { kind: 'missing' };
+          if (!validIsoCalendarDate(date)) return { kind: 'invalid' };
+          return {
+            kind: 'valid',
+            date,
+            subject: { id: subject.id, name: subject.name },
+          };
+        } catch {
+          return { kind: 'failed' };
+        }
+      },
+    );
+    const dated = observations
+      .filter((observation): observation is Extract<ReleaseDateObservation, { kind: 'valid' }> =>
+        observation.kind === 'valid',
+      )
+      .sort((left, right) => left.date.localeCompare(right.date) || left.subject.id - right.subject.id);
+    const earliestDate = dated[0]?.date;
+    const latestDate = dated.at(-1)?.date;
+    const limitations = [
+      '极值只代表本次采样到的动画条目官方 subject.date；官方字段语义是播出/发行日期，不代表人物实际参与或工作的日期。',
+      '人物作品关系接口未声明顺序、总数、分页或完整性；即使本次返回行全部采样，也不能据此推断人物完整生涯的最早或最近作品。',
+      '等距选样依据关系接口的返回顺序，仅用于确定性抽样，不把该顺序解释为时间顺序。',
+    ];
+    if (dated.length === 0) {
+      limitations.unshift(
+        '本次选取的动画作品没有取得有效日期；这不证明人物没有动画作品，也不证明所有相关作品都没有日期。',
+      );
+    }
+    const extreme = (date: string | undefined) => {
+      if (!date) return undefined;
+      return {
+        date,
+        subjects: dated
+          .filter((observation) => observation.date === date)
+          .map((observation) => observation.subject),
+      };
+    };
+
+    return {
+      state: dated.length > 0 ? 'partial' : 'not_computable',
+      sourceCompleteness: 'undocumented',
+      dateSemantics: 'official-subject-air-release-date',
+      samplingStrategy:
+        candidates.length > selected.length
+          ? 'evenly-spaced-returned-anime-relations'
+          : 'all-returned-anime-relations',
+      relationRowsObserved: subjects.observed,
+      relationRowsReturned: subjects.returned,
+      relationRowsTruncated: subjects.truncated,
+      animeRelationRowsReturned: animeRows.length,
+      uniqueAnimeSubjects: candidates.length,
+      selectedSubjectIds: selected.map((subject) => subject.id),
+      selectedSubjectDetails: selected.length,
+      succeededSubjectDetails: observations.filter((observation) => observation.kind !== 'failed')
+        .length,
+      failedSubjectDetails: observations.filter((observation) => observation.kind === 'failed')
+        .length,
+      validDateSubjects: dated.length,
+      missingDateSubjects: observations.filter((observation) => observation.kind === 'missing')
+        .length,
+      invalidDateSubjects: observations.filter((observation) => observation.kind === 'invalid')
+        .length,
+      omittedAnimeSubjects: Math.max(0, candidates.length - selected.length),
+      maxConcurrency: PERSON_PROFILE_CHRONOLOGY_MAX_CONCURRENCY,
+      responseByteLimit: PERSON_PROFILE_CHRONOLOGY_MAX_RESPONSE_BYTES,
+      ...(extreme(earliestDate) ? { earliestObserved: extreme(earliestDate) } : {}),
+      ...(extreme(latestDate) ? { latestObserved: extreme(latestDate) } : {}),
+      limitations,
     };
   }
 

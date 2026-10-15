@@ -48,6 +48,23 @@ describe('Phase 2: MCP Tool Schema Tests', () => {
     expect(subjectMin).toBeGreaterThanOrEqual(0);
     expect(subjectSchema.required).toContain('subjectId');
 
+    const personProfileTool = tools.find((t: any) => t.name === 'bangumi.get_person_profile');
+    expect(personProfileTool).toBeDefined();
+    const personProfileSchema = personProfileTool?.inputSchema as any;
+    expect(personProfileSchema.required).toContain('personId');
+    expect(personProfileSchema.required).not.toContain('includeChronology');
+    expect(personProfileSchema.properties.includeChronology.type).toBe('boolean');
+    expect(personProfileSchema.properties.maxChronologySubjects.maximum).toBe(48);
+    expect(personProfileTool?.description).toContain('等距采样');
+
+    const renderPersonProfileTool = tools.find(
+      (t: any) => t.name === 'bangumi.render_person_profile',
+    );
+    expect(renderPersonProfileTool).toBeDefined();
+    const renderPersonProfileSchema = renderPersonProfileTool?.inputSchema as any;
+    expect(renderPersonProfileSchema.properties.includeChronology.type).toBe('boolean');
+    expect(renderPersonProfileSchema.properties.maxChronologySubjects.maximum).toBe(48);
+
     // 3. bangumi.get_calendar schema check
     const calendarTool = tools.find((t: any) => t.name === 'bangumi.get_calendar');
     expect(calendarTool).toBeDefined();

@@ -577,6 +577,42 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
         ],
         characterRoles: [{ key: '主角', label: '主角', count: 5, uniqueSubjects: 5 }],
       },
+      releaseChronology: {
+        state: 'partial',
+        sourceCompleteness: 'undocumented',
+        dateSemantics: 'official-subject-air-release-date',
+        samplingStrategy: 'evenly-spaced-returned-anime-relations',
+        relationRowsObserved: 9,
+        relationRowsReturned: 6,
+        relationRowsTruncated: true,
+        animeRelationRowsReturned: 6,
+        uniqueAnimeSubjects: 6,
+        selectedSubjectIds: [1, 2, 3],
+        selectedSubjectDetails: 3,
+        succeededSubjectDetails: 3,
+        failedSubjectDetails: 0,
+        validDateSubjects: 3,
+        missingDateSubjects: 0,
+        invalidDateSubjects: 0,
+        omittedAnimeSubjects: 3,
+        maxConcurrency: 4,
+        responseByteLimit: 1_048_576,
+        earliestObserved: {
+          date: '2000-01-01',
+          subjects: [
+            { id: 1, name: 'Very Long Japanese Title 1' },
+            { id: 2, name: 'Very Long Japanese Title 2' },
+          ],
+        },
+        latestObserved: {
+          date: '2025-10-01',
+          subjects: [{ id: 3, name: 'Very Long Japanese Title 3' }],
+        },
+        limitations: [
+          '极值只代表本次采样到的动画条目官方 subject.date；官方字段语义是播出/发行日期，不代表人物实际参与或工作的日期。',
+          '人物作品关系接口未声明顺序、总数、分页或完整性；本次样本不能代表完整人物生涯。',
+        ],
+      },
     };
 
     const vm: PersonProfileViewModel = buildPersonProfileViewModel(profile, {
@@ -597,11 +633,21 @@ describe('PR-5 Renderer Cards (R01 - R07)', () => {
     expect(vm.unobservedSubjectCredits).toBe(3);
     expect(vm.unobservedCharacterCredits).toBe(2);
     expect(vm.person.summaryTruncated).toBe(true);
+    expect(vm.releaseChronology?.earliestObserved).toMatchObject({
+      date: '2000-01-01',
+      subjects: [
+        { id: 1, name: 'Very Long Japanese Title 1' },
+        { id: 2, name: 'Very Long Japanese Title 2' },
+      ],
+    });
 
     const html = renderHtmlTemplate(vm, 'bangumi-dark', {}, 640);
     expect(html).toContain('width:640px');
     expect(html).toContain('水濑祈');
     expect(html).toContain('简介（摘要）：');
+    expect(html).toContain('动画播出/发行日期观察（受限样本）');
+    expect(html).toContain('本次样本中最早日期：2000-01-01');
+    expect(html).toContain('Very Long Japanese Title 1 (#1)');
     expect(html).toContain('已观察 16 条，返回 11 条，展示 5 条');
     expect(html).toContain('上游未说明作品关系是否完整');
     expect(html).toContain('上游已提供中文名（与原名相同）');

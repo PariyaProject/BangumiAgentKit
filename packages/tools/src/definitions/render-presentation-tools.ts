@@ -741,12 +741,21 @@ export function createRenderPresentationTools(
 
   const renderPersonProfile = defineTool({
     name: 'bangumi.render_person_profile',
-    description: '生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。',
+    description:
+      '生成现实人物/声优/制作人员履历与关系分布图片卡片 Artifact。可选 includeChronology=true 显示最多 48 部采样动画的官方播出/发行日期极值和覆盖限制；默认关闭，且不代表完整生涯首作/最近作品或实际参与日期。',
     input: z.object({
       personId: z.number().int().positive().describe('Bangumi 人物 ID'),
       maxSubjects: z.number().int().min(1).max(500).optional().describe('作品关系读取上限'),
       maxCharacters: z.number().int().min(1).max(500).optional().describe('角色关系读取上限'),
       maxCredits: z.number().int().min(1).max(20).optional().describe('每类关系最多展示条数'),
+      includeChronology: z.boolean().optional().describe('是否额外读取受限动画作品详情并展示观察样本发行日期极值；默认 false'),
+      maxChronologySubjects: z
+        .number()
+        .int()
+        .min(1)
+        .max(48)
+        .optional()
+        .describe('includeChronology=true 时最多读取的动画作品详情数，最高 48'),
     }),
     auth: 'none',
     scopes: [],
@@ -762,6 +771,8 @@ export function createRenderPresentationTools(
       const profile = await personService.getPersonProfile(input.personId, {
         maxSubjects: input.maxSubjects ?? 500,
         maxCharacters: input.maxCharacters ?? 500,
+        includeChronology: input.includeChronology === true,
+        maxChronologySubjects: input.maxChronologySubjects ?? 48,
       });
       const viewModel = buildPersonProfileViewModel(profile, {
         retrievedAt: new Date().toISOString(),

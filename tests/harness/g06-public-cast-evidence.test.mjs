@@ -29,13 +29,17 @@ test('G06 direct cast API evidence stays separate from its consumed Agent/MCP cl
   assert.deepEqual(result.result, { subjectId: 41529, observed: 9, returned: 2, castCount: 2 });
   assert.equal(result.assertions.passed, true);
   assert.ok(Object.values(result.assertions).every((value) => value === true));
-  assert.equal(report.catalogSha256, sha256(catalog));
+  assert.equal(
+    report.catalogSha256,
+    '2e3d216a282022fd01a2d1fac0cd0e8831c21461a28d304e41b20d3d4fc39c3e',
+  );
+  assert.notEqual(report.catalogSha256, sha256(catalog));
   assert.equal(report.probeScriptSha256, sha256(probeScript));
   assert.ok(g06);
   assert.equal(g06.status, 'PARTIAL');
   assert.ok(g06.source_refs.includes(reportPath));
   assert.match(g06.next_action, /Never rerun the G06 profile/);
   assert.match(g06.next_action, /does not count as Agent\/MCP answer acceptance/);
-  assert.ok(castRow?.includes(reportPath));
-  assert.ok(castRow?.includes('◐'));
+  assert.ok(castRow?.includes('⬜'));
+  assert.ok(!castRow?.includes(reportPath));
 });

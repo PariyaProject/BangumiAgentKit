@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T01:24:46Z",
+  "updated_at": "2026-10-15T02:28:12Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -1976,11 +1976,47 @@
       "kind": "scenario",
       "user_question": "某人物首次参与动画和最近参与动画分别是什么？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
-      "source_refs": ["docs/research/user-scenario-catalog.md"],
-      "next_action": "Assess current capability coverage, bounded scope salvage, and direct evidence.",
+      "status": "PARTIAL",
+      "source_refs": ["docs/research/user-scenario-catalog.md", "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md", "packages/bangumi-core/src/models/person.ts", "packages/bangumi-core/src/services/person-service.ts", "packages/tools/src/definitions/read-tools.ts", "packages/tools/src/definitions/render-presentation-tools.ts", "apps/mcp/src/result-presenter.ts", "packages/renderer/src/view-models/index.ts", "packages/renderer/src/view-model-builders/index.ts", "packages/renderer/src/templates/PersonProfileCard.tsx", "docs/tool-catalog.json", "docs/BANGUMI_TOOL_ACCEPTANCE_TASKS.md", "tests/unit/person-intelligence.test.ts", "tests/integration/mcp-result-presenter.test.ts", "tests/integration/mcp-schema.test.ts", "tests/integration/tool-direct-execute-read.test.ts", "tests/render/render-cards.test.ts"],
+      "next_action": "Keep PARTIAL: the opt-in implementation reports earliest/latest official air or release dates only within a deterministic sample of returned anime relations. The current official contract does not document relation ordering or completeness, so career-wide first/latest participation remains unsupported. No live P02 query was run. Reopen if an authoritative complete/order contract or a separately authorized, bounded observation can support a stronger claim.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
-      "related_ids": []
+      "related_ids": [],
+      "evidence": {
+        "p02_observed_animation_release_chronology_2026_10_15": {
+          "report": "docs/research/run95-p02-observed-animation-release-chronology-2026-10-15.md",
+          "official_source_contract": {
+            "observed_at": "2026-10-15",
+            "person_subject_rows_have_date": false,
+            "pagination_total_order_or_completeness_documented": false,
+            "subject_detail_date": "optional YYYY-MM-DD air date",
+            "claim_limit": "Observed sample only; no actual participation date or career-wide extrema."
+          },
+          "implementation": {
+            "tools": ["bangumi.get_person_profile", "bangumi.render_person_profile"],
+            "opt_in": true,
+            "max_subject_details": 48,
+            "max_concurrency": 4,
+            "max_response_bytes_each": 1048576,
+            "selection": "deduplicated returned anime relations; deterministic even spacing when over budget",
+            "coverage": ["selected", "succeeded", "failed", "valid dates", "missing dates", "invalid dates", "omitted anime relations"],
+            "no_valid_date_state": "not_computable; no negative claim"
+          },
+          "validation": {
+            "typecheck": "pnpm typecheck passed",
+            "focused_tests": {
+              "command": "pnpm exec vitest run tests/unit/person-intelligence.test.ts tests/integration/mcp-result-presenter.test.ts tests/integration/mcp-schema.test.ts tests/integration/tool-direct-execute-read.test.ts tests/render/render-cards.test.ts",
+              "files_passed": 5,
+              "tests_passed": 60
+            },
+            "lint": "pnpm lint passed",
+            "build": "pnpm build passed",
+            "legacy_path_guard": "pnpm harness guard:legacy-paths passed",
+            "acceptance": "pnpm acceptance:check; 120 evidence tests; current catalog/table counts: public 54/65, Agent/MCP 81/96"
+          },
+          "live_query_run": false,
+          "status_boundary": "PARTIAL; bounded implementation evidence does not complete the original career-wide user question."
+        }
+      }
     },
     {
       "id": "P03",
