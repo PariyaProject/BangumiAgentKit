@@ -1,6 +1,6 @@
 # Run #95 P05: person-work subject-type distribution source contract
 
-Rechecked 2026-10-15 against BangumiAgentKit master `244b5426e2ae99006b9eadcf3275db4187ef3288` and the pinned first-party Bangumi API OpenAPI revision `65d29cff2331e08c0110d30d515f7f1b6488f845`. P05 remains `UNASSESSED` until the current gated public observation is recorded. This report contains no person-specific API result.
+Rechecked 2026-10-15 against BangumiAgentKit master `244b5426e2ae99006b9eadcf3275db4188` and the pinned first-party Bangumi API OpenAPI revision `65d29cff2331e08c0110d30d515f7f1b6488f845`. This document records the source contract; the single gated public observation is recorded separately in [`p05-person-media-public-probe-run95.json`](../live-probes/p05-person-media-public-probe-run95.json). The P05 frontier advances to `PARTIAL` on this report-bound Candidate because the observed relation set has no upstream completeness contract.
 
 ## Official source contract
 
@@ -15,6 +15,6 @@ Rechecked 2026-10-15 against BangumiAgentKit master `244b5426e2ae99006b9eadcf327
 
 ## Bounded claim and disposition
 
-After the reviewed observation, a valid answer can describe only the Bangumi subject-type distribution among the relation rows returned to that invocation, along with the observed/returned/truncated counts and the undocumented upstream completeness limit. It cannot claim a platform distribution, an exhaustive career-wide distribution, or that unreturned work types do not exist.
+The single reviewed invocation returned 402 relation rows for person 3474: 401 anime rows and one game row, covering 370 unique subjects. The report records 402 observed/returned rows, no local truncation, and `sourceCompleteness: undocumented`. It supports only the returned-row distribution and cannot establish platform distribution, career-wide exhaustiveness, or that unreturned work types do not exist.
 
-No P05 live query has occurred in this Epoch yet. P05 remains `UNASSESSED` until the exact reviewed Candidate’s public probe and summary assertions pass. This direct ToolRegistry observation cannot add Agent/MCP, renderer, QQ, or TIM acceptance.
+The report-bound Candidate still requires exact 7/7 CI, same-identity GPT-6 Luna Max review, and Harness integration. The terminal claim forbids a retry. This direct ToolRegistry observation does not add Agent/MCP, renderer, QQ, or TIM acceptance.

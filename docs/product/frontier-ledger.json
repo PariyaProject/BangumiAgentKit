@@ -2,7 +2,7 @@
   "schema": "bangumi-frontier/v1",
   "version": 1,
   "policy_version": "harness-v3.2-frontier-closure-v1",
-  "updated_at": "2026-10-15T04:35:23Z",
+  "updated_at": "2026-10-15T05:01:08Z",
   "catalog_sources": [
     {
       "id": "USER-SCENARIOS",
@@ -2053,10 +2053,11 @@
       "kind": "scenario",
       "user_question": "某人物作品按媒介分布如何？",
       "lane": "capability_maturity_and_user_journeys",
-      "status": "UNASSESSED",
+      "status": "PARTIAL",
       "source_refs": [
         "docs/research/user-scenario-catalog.md",
         "docs/research/run95-p05-person-work-media-distribution-source-contract-2026-10-15.md",
+        "docs/live-probes/p05-person-media-public-probe-run95.json",
         "packages/bangumi-core/src/services/person-service.ts",
         "packages/tools/src/definitions/read-tools.ts",
         "scripts/acceptance/p05-person-media-public-probe.mjs",
@@ -2067,7 +2068,7 @@
         "tests/harness/p05-person-media-public-probe.test.mjs",
         "tests/harness/frontier-ledger-data.test.mjs"
       ],
-      "next_action": "Keep UNASSESSED until the dedicated one-read report exists and its count/coverage assertions pass. Run it only after exact Candidate/Base validation, all seven mandatory CI checks, Harness review readiness, and the assigned same-identity GPT-6 Luna Max PASS. Before invocation, require the permanent repository-wide create-only P05 label and exact active-PR claim persistence/readback; the local claim is defense in depth. Any valid result supports only Bangumi subject-type distribution among rows returned to that invocation, with observed/returned/truncated counts and undocumented upstream completeness; it does not support platform or exhaustive career-wide distribution. No Agent/MCP, renderer, OAuth/account, community/HTML, write, QQ, or TIM acceptance is implied.",
+      "next_action": "Keep PARTIAL: the single anonymous direct ToolRegistry result for person 3474 observed and returned 402 relation rows (401 anime, 1 game), with no local truncation and undocumented upstream completeness. This supports only returned-row subject-type distribution; it does not support platform or exhaustive career-wide distribution. The report-bound Candidate still requires exact 7/7 CI, same-identity GPT-6 Luna Max review, and Harness integration. Never retry the consumed P05 claim. This direct read does not establish Agent/MCP, renderer, OAuth/account, community/HTML, write, QQ, or TIM acceptance.",
       "reopen_when": "Implementation, source coverage, user value, or a protected boundary changes.",
       "related_ids": [],
       "evidence": {
@@ -2086,7 +2087,7 @@
             "pagination_total_order_or_completeness_documented": false,
             "claim_limit": "Bangumi subject-type distribution among returned relation rows only; these categories are not media platforms and upstream completeness is undocumented."
           },
-          "planned_public_profile": {
+          "public_profile": {
             "tool": "bangumi.get_person_profile",
             "arguments": {
               "personId": 3474,
@@ -2094,7 +2095,24 @@
               "maxSubjects": 500,
               "maxCharacters": 1
             },
-            "live_query_run": false
+            "live_query_run": true,
+            "tool_invocation_count": 1
+          },
+          "observed_result": {
+            "report": "docs/live-probes/p05-person-media-public-probe-run95.json",
+            "report_sha256": "659bba19b4e8a54970420b6306791a813a2eeee15b53ba18598cbdecc3306872",
+            "result_state": "SUCCESS",
+            "http_requests": 3,
+            "subject_rows_observed": 402,
+            "subject_rows_returned": 402,
+            "subject_rows_truncated": false,
+            "source_completeness": "undocumented",
+            "unique_subjects": 370,
+            "subject_media": {
+              "anime": { "relation_rows": 401, "unique_subjects": 369, "raw_codes": [2] },
+              "game": { "relation_rows": 1, "unique_subjects": 1, "raw_codes": [4] }
+            },
+            "claim_limit": "Returned relation rows only; upstream completeness is undocumented."
           },
           "runner_contract": {
             "runner": "scripts/acceptance/run-p05-person-media-public-probe.ts",
@@ -2115,7 +2133,7 @@
               "raw response payload"
             ]
           },
-          "status_boundary": "UNASSESSED: static source and runner evidence are recorded; no person-profile request has been made and no direct observation is claimed."
+          "status_boundary": "PARTIAL: one anonymous public ToolRegistry invocation was observed and its sanitized report is bound to the durable one-shot claim. The returned rows do not establish upstream completeness or an exhaustive career distribution."
         }
       }
     },
